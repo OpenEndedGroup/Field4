@@ -20,10 +20,14 @@ import afield.four.synth.patRenderStereo
 import afield.four.synth.patRenderStereoDirt
 import afield.four.synth.patVoice
 import afield.stdlib.AudioVisualizerOptions
+import java.net.http.WebSocket
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
+import javax.sound.sampled.AudioSystem
 import kotlin.math.roundToInt
 
 /**
@@ -56,14 +60,56 @@ data class RenderedAudioFile(
     }
 
     companion object {
-        /** Wrap a WAV another Field facility has already rendered. */
+        /**
+         * Wrap a WAV another Field facility has already rendered, reading its header for the rest.
+         *
+         * [sampleRate], [channels] and [durationSeconds] are taken from the file itself rather than
+         * left null: the header is sitting on disk, and a `RenderedAudioFile` that claims to know
+         * nothing about a WAV it is holding is no use to a box drawing a provenance line. They stay
+         * null only when the header will not parse.
+         */
         fun existing(
             path: Path,
             generator: String,
             provenance: Map<String, String> = emptyMap(),
-        ): RenderedAudioFile = RenderedAudioFile(path.toAbsolutePath(), generator, provenance = provenance)
+        ): RenderedAudioFile {
+            val absolute = path.toAbsolutePath()
+            val header = wavHeaderFacts(absolute)
+            return RenderedAudioFile(
+                absolute, generator,
+                sampleRate = header?.sampleRate,
+                channels = header?.channels,
+                durationSeconds = header?.durationSeconds,
+                provenance = provenance,
+            )
+        }
     }
 }
+
+/** What one WAV's own header says about itself. */
+internal data class WavHeaderFacts(
+    val sampleRate: Int,
+    val channels: Int,
+    val durationSeconds: Double,
+)
+
+/**
+ * Read a WAV's header, and nothing else.
+ *
+ * `javax.sound.sampled` parses the header without decoding a sample, which is the point: an
+ * hour-long capture should not have to be loaded into the JVM to find out how long it is. Null for
+ * anything that will not parse, and for anything whose header declines to say — `frameLength` and
+ * `sampleRate` are both allowed to be `AudioSystem.NOT_SPECIFIED`, and a guessed duration is worse
+ * than an absent one.
+ */
+internal fun wavHeaderFacts(path: Path): WavHeaderFacts? = runCatching {
+    val format = AudioSystem.getAudioFileFormat(path.toFile())
+    val rate = format.format.sampleRate
+    val frames = format.frameLength.toLong()
+    val channels = format.format.channels
+    if (rate <= 0f || frames <= 0L || channels <= 0) null
+    else WavHeaderFacts(rate.roundToInt(), channels, frames / rate.toDouble())
+}.getOrNull()
 
 /** One named analysis request, retained beside its accepted job and final result. */
 data class NamedAudioAnalysis(val label: String, val operation: ModelOperation) {
@@ -158,12 +204,73 @@ fun standardAudioAnalyses(
 }
 
 /**
+ * One leg of a rendered-audio fan-out, held on to only so that it can be let go of.
+ *
+ * A leg owns two things that outlive the future a caller holds: an `await` poll loop, and the
+ * WebSocket that `watch` opened. Neither stops by itself if the analysis is abandoned — the service
+ * closes an events socket after a *terminal* event, and a job whose worker wedged never has one. So
+ * the handles are kept, and [abandon] is what a failed sibling or a cancelling caller reaches for.
+ *
+ * Every method is synchronized because a leg is populated on one HTTP callback thread and abandoned
+ * from another; [abandon] arriving first must still release a socket that opens afterwards.
+ */
+private class AnalysisLeg {
+    private var abandoned = false
+    private var socket: CompletableFuture<WebSocket>? = null
+    private var analysis: CompletableFuture<AnalysisResult>? = null
+
+    @Synchronized
+    fun watching(pending: CompletableFuture<WebSocket>) {
+        socket = pending
+        if (abandoned) release(pending)
+    }
+
+    @Synchronized
+    fun polling(pending: CompletableFuture<AnalysisResult>) {
+        analysis = pending
+        if (abandoned) pending.cancel(false)
+    }
+
+    @Synchronized
+    fun abandon() {
+        abandoned = true
+        analysis?.cancel(false)
+        socket?.let(::release)
+    }
+
+    /**
+     * Close now, or when the handshake finishes: a still-connecting socket cannot be closed.
+     *
+     * `abort()` rather than `sendClose()` because there is nothing to say and no reply worth
+     * waiting for. Measured against the stub, which counts live subscriptions, this is enough for
+     * the service side to notice and drop its own end.
+     */
+    private fun release(pending: CompletableFuture<WebSocket>) {
+        pending.whenComplete { open, _ -> open?.abort() }
+    }
+}
+
+/**
  * Import [render], submit a fan-out of analysis jobs, watch them, and complete with all results.
  *
  * Nothing blocks Field's run loop. [requests] runs after import because it needs the content id and
  * exact WAV duration. [onAccepted] is where a box normally displays [fieldAudioJobStatusHtml];
  * [onProgress] can replace that card as WebSocket events arrive. The global iframe monitor sees the
  * same durable jobs without any special integration.
+ *
+ * The fan-out is all-or-nothing, it fails at the *first* failure, and it cleans up after itself.
+ * `CompletableFuture.allOf` gives none of the last two on its own: it does not short-circuit —
+ * `BiRelay.tryFire` needs both of its sources done, so `allOf` keeps waiting for every future long
+ * after one of them has failed — and it has no way to reach the legs it is waiting on. So each leg
+ * reports its own failure, and when one does the others are abandoned rather than left running:
+ * their `await` polls are cancelled and their progress sockets closed. A fan-out with a hole in it
+ * has no [RenderedAudioAnalysis] to return, and two abandoned legs would otherwise keep polling and
+ * keep a socket open for as long as Field runs.
+ *
+ * Cancelling the returned future does the same thing, and is the only way to stop an analysis whose
+ * jobs never reach a terminal state at all. On success the sockets are left to the service, which
+ * closes them itself once it has sent the terminal event — closing them from here would race the
+ * last [onProgress] call.
  */
 fun FieldAudioClient.analyzeRenderedAudio(
     render: RenderedAudioFile,
@@ -177,7 +284,19 @@ fun FieldAudioClient.analyzeRenderedAudio(
     require(startSeconds >= 0.0) { "startSeconds must be non-negative" }
     require(durationSeconds == null || durationSeconds > 0.0) { "durationSeconds must be positive" }
 
-    return importWav(render.path).thenCompose { asset ->
+    val legs = CopyOnWriteArrayList<AnalysisLeg>()
+    val released = AtomicBoolean()
+    val outcome = CompletableFuture<RenderedAudioAnalysis>()
+    // One hook for both endings that strand work: a leg that failed, and a caller who cancelled. A
+    // leg registered after this has run sees `released` and abandons itself.
+    outcome.whenComplete { _, error ->
+        if (error != null) {
+            released.set(true)
+            legs.forEach(AnalysisLeg::abandon)
+        }
+    }
+
+    importWav(render.path).thenCompose { asset ->
         val source = asset.representations.firstOrNull {
             it.mediaType in setOf("audio/wav", "audio/x-wav") && it.role == "canonical_project"
         } ?: asset.representations.firstOrNull { it.mediaType in setOf("audio/wav", "audio/x-wav") }
@@ -193,22 +312,42 @@ fun FieldAudioClient.analyzeRenderedAudio(
         require(named.isNotEmpty()) { "at least one analysis request is required" }
 
         val futures = named.map { request ->
+            val leg = AnalysisLeg()
+            legs += leg
+            if (released.get()) leg.abandon()
             submit(request.operation).thenCompose { accepted ->
                 onAccepted(request, accepted)
-                watch(
-                    accepted.jobId,
-                    onEvent = { event -> onProgress(request, accepted, event) },
-                    onError = { error -> onProgressError(request, error) },
+                leg.watching(
+                    watch(
+                        accepted.jobId,
+                        onEvent = { event -> onProgress(request, accepted, event) },
+                        onError = { error -> onProgressError(request, error) },
+                    )
                 )
-                awaitAnalysis(accepted).thenApply { result ->
+                val analysis = awaitAnalysis(accepted)
+                leg.polling(analysis)
+                analysis.thenApply { result ->
                     CompletedAudioAnalysis(request.label, accepted, result)
                 }
             }
         }
+        // The first leg to fail is the answer. Waiting for `allOf` here would mean waiting for the
+        // siblings too, and a sibling whose worker wedged never finishes — a box would then get
+        // neither a result nor an error, just a future that stays pending for as long as Field runs.
+        futures.forEach { leg ->
+            leg.whenComplete { _, error -> error?.let { outcome.completeExceptionally(it.unwrapCompletion()) } }
+        }
         CompletableFuture.allOf(*futures.toTypedArray()).thenApply {
             RenderedAudioAnalysis(render, asset, source, region, futures.map { it.join() })
         }
+    }.whenComplete { bundle, error ->
+        if (error != null) {
+            outcome.completeExceptionally(error.unwrapCompletion())
+        } else {
+            outcome.complete(bundle)
+        }
     }
+    return outcome
 }
 
 /** Offline-render a Pat pattern to an immutable-analysis-ready WAV. */
@@ -397,10 +536,22 @@ fun recordSonicPiWav(
                 "Sonic Pi did not save a stable WAV to $path after stop-recording settled for " +
                     "$stopSettleMillis ms" + if (recentErrors.isBlank()) "" else "; recent errors: $recentErrors"
             }
+            // The recorder's own header is the truth about what was captured. The arithmetic below
+            // is only an estimate of it — settle plus sleep plus tail, which is what the *plan* was
+            // — and the two differ by however long Sonic Pi actually took to start and stop. Say
+            // which one this is, so a box that draws the provenance line is not quietly guessing.
+            val header = wavHeaderFacts(path.toAbsolutePath())
             RenderedAudioFile(
                 path.toAbsolutePath(), "Sonic Pi",
-                durationSeconds = seconds + (startSettleMillis + tailMillis) / 1000.0,
-                provenance = mapOf("workspace" to workspace, "capture_seconds" to seconds.toString()) + provenance,
+                sampleRate = header?.sampleRate,
+                channels = header?.channels,
+                durationSeconds = header?.durationSeconds
+                    ?: (seconds + (startSettleMillis + tailMillis) / 1000.0),
+                provenance = mapOf(
+                    "workspace" to workspace,
+                    "capture_seconds" to seconds.toString(),
+                    "duration_from" to if (header != null) "wav header" else "capture arithmetic",
+                ) + provenance,
             )
         } finally {
             runCatching { sonicPi.stopAll() }

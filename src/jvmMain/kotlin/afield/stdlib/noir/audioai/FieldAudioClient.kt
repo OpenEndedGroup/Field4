@@ -3,6 +3,7 @@
 package afield.stdlib.noir.audioai
 
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.encodeToString
@@ -10,16 +11,20 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import java.net.ConnectException
 import java.net.URI
 import java.net.URLEncoder
 import java.net.http.HttpClient
+import java.net.http.HttpConnectTimeoutException
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.net.http.WebSocket
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Duration
+import java.util.concurrent.CancellationException
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CompletionException
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
@@ -83,6 +88,31 @@ class FieldAudioJobException(
     error?.let { "${it.code}: ${it.message}" }
         ?: "audio job $jobId ended as $state"
 )
+
+/**
+ * There was no conversation: the service could not be reached, or did not answer in the protocol.
+ *
+ * Distinct from [FieldAudioException], which is the service saying no in its own words, and from
+ * [FieldAudioJobException], which is a job of its own that went wrong. This one means the request
+ * never landed — a refused connection because the Python service in `services/field-audio-ai` is
+ * not running, a connect timeout — or that a 2xx body was not the JSON the endpoint promises.
+ *
+ * It exists because the alternative was unusable. `java.net.ConnectException` from
+ * `HttpClient.sendAsync` carries **no message at all**, so a box whose only problem was that the
+ * service had not been started displayed an empty error: not the address, not the port, not even the
+ * word audio. [baseUri] and [requestPath] say where and what.
+ */
+class FieldAudioTransportException(
+    /** The client's base address — the thing to check is running, or to point somewhere else. */
+    val baseUri: URI,
+    /** Path of the request that failed, e.g. `/v1/assets/import`. */
+    val requestPath: String,
+    message: String,
+    cause: Throwable?,
+) : RuntimeException(message, cause)
+
+/** The exception a box needs to read, not the `CompletableFuture` bookkeeping around it. */
+internal fun Throwable.unwrapCompletion(): Throwable = (this as? CompletionException)?.cause ?: this
 
 @Serializable
 private data class FieldAudioErrorEnvelope(val error: StructuredError)
@@ -340,8 +370,10 @@ class FieldAudioClient(
      */
     fun download(representation: AssetRepresentation, destination: Path): CompletableFuture<Path> {
         val request = HttpRequest.newBuilder(resolve(representation.binaryUrl)).GET().build()
+        val path = request.uri().path
         return http.sendAsync(request, HttpResponse.BodyHandlers.ofByteArray())
-            .thenApplyAsync({ response ->
+            .handleAsync({ response, transport ->
+                if (transport != null) throw unreachable(path, transport.unwrapCompletion())
                 requireSuccess(response.statusCode(), String(response.body().take(512).toByteArray()))
                 destination.parent?.let(Files::createDirectories)
                 Files.write(destination, response.body())
@@ -349,12 +381,20 @@ class FieldAudioClient(
             }, callbackExecutor)
     }
 
-    /** Poll durable job state without occupying Field's runloop. */
+    /**
+     * Poll durable job state without occupying Field's runloop.
+     *
+     * Cancelling the returned future stops the polling. That is the only way to stop it — a job
+     * whose worker has wedged never reaches a terminal state, and this loop is otherwise happy to
+     * ask about it every [pollEvery] for the lifetime of the JVM.
+     */
     fun await(jobId: String, pollEvery: Duration = Duration.ofMillis(200)): CompletableFuture<JobRecord> {
         val result = CompletableFuture<JobRecord>()
         fun poll() {
+            if (result.isDone) return
             inspect(jobId).whenComplete { job, error ->
                 when {
+                    result.isDone -> Unit
                     error != null -> result.completeExceptionally(error)
                     job.state.terminal -> result.complete(job)
                     else -> CompletableFuture.delayedExecutor(
@@ -374,14 +414,8 @@ class FieldAudioClient(
      * if the job ends as anything but `COMPLETE`.
      */
     fun awaitCandidates(accepted: JobAccepted): CompletableFuture<CandidateSet> =
-        await(accepted.jobId).thenCompose { job ->
-            if (job.state != JobState.COMPLETE) {
-                CompletableFuture.failedFuture(
-                    FieldAudioJobException(job.id, job.state, job.error)
-                )
-            } else {
-                candidateSet(requireNotNull(job.candidateSetId) { "completed job has no candidate set" })
-            }
+        awaitResult(accepted) { job ->
+            candidateSet(requireNotNull(job.candidateSetId) { "completed job has no candidate set" })
         }
 
     /**
@@ -390,14 +424,8 @@ class FieldAudioClient(
      * Fails with [FieldAudioJobException] if the job ends as anything but `COMPLETE`.
      */
     fun awaitCodec(accepted: JobAccepted): CompletableFuture<CodecReconstructionResult> =
-        await(accepted.jobId).thenCompose { job ->
-            if (job.state != JobState.COMPLETE) {
-                CompletableFuture.failedFuture(
-                    FieldAudioJobException(job.id, job.state, job.error)
-                )
-            } else {
-                codecResult(requireNotNull(job.codecResultId) { "completed codec job has no result" })
-            }
+        awaitResult(accepted) { job ->
+            codecResult(requireNotNull(job.codecResultId) { "completed codec job has no result" })
         }
 
     /**
@@ -406,21 +434,42 @@ class FieldAudioClient(
      * Fails with [FieldAudioJobException] if the job ends as anything but `COMPLETE`.
      */
     fun awaitAnalysis(accepted: JobAccepted): CompletableFuture<AnalysisResult> =
-        await(accepted.jobId).thenCompose { job ->
+        awaitResult(accepted) { job ->
+            analysisResult(requireNotNull(job.analysisResultId) {
+                "completed analysis job has no result"
+            })
+        }
+
+    /**
+     * Await one job and fetch whatever it stored, or fail with [FieldAudioJobException].
+     *
+     * Cancellation has to be forwarded by hand: cancelling a `thenCompose` stage says nothing about
+     * the stage it was composed onto, so without this the poll loop would outlive the future that
+     * is the caller's only handle on it.
+     */
+    private fun <T> awaitResult(
+        accepted: JobAccepted,
+        fetch: (JobRecord) -> CompletableFuture<T>,
+    ): CompletableFuture<T> {
+        val polling = await(accepted.jobId)
+        val result = polling.thenCompose { job ->
             if (job.state != JobState.COMPLETE) {
-                CompletableFuture.failedFuture(
-                    FieldAudioJobException(job.id, job.state, job.error)
-                )
+                CompletableFuture.failedFuture(FieldAudioJobException(job.id, job.state, job.error))
             } else {
-                analysisResult(requireNotNull(job.analysisResultId) {
-                    "completed analysis job has no result"
-                })
+                fetch(job)
             }
         }
+        result.whenComplete { _, error -> if (error is CancellationException) polling.cancel(false) }
+        return result
+    }
 
     /**
      * Subscribe to progress history plus live events. The server closes the socket
      * after a terminal event. The returned socket can be used to cancel the subscription.
+     *
+     * A handshake that never lands — the service is not running, or the job is unknown to it — fails
+     * the returned future with [FieldAudioTransportException]. [onError] is left alone: an error on
+     * an established socket is the caller's to interpret.
      */
     fun watch(
         jobId: String,
@@ -451,7 +500,10 @@ class FieldAudioClient(
             }
 
             override fun onError(webSocket: WebSocket, error: Throwable) = onError(error)
-        })
+        }).handle { socket, transport ->
+            if (transport != null) throw unreachable("/v1/events/$jobId", transport.unwrapCompletion())
+            socket
+        }
     }
 
     private fun resolve(path: String): URI = baseUri.resolve(path)
@@ -474,17 +526,65 @@ class FieldAudioClient(
             null,
         )
 
-    private fun <T> send(request: HttpRequest, serializer: KSerializer<T>?): CompletableFuture<T> =
-        http.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-            .thenApplyAsync({ response ->
+    private fun <T> send(request: HttpRequest, serializer: KSerializer<T>?): CompletableFuture<T> {
+        val path = request.uri().path
+        return http.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+            .handleAsync({ response, transport ->
+                if (transport != null) throw unreachable(path, transport.unwrapCompletion())
                 requireSuccess(response.statusCode(), response.body())
                 @Suppress("UNCHECKED_CAST")
                 if (serializer == null) response.body() as T
-                else json.decodeFromString(serializer, response.body())
+                else decode(path, response.body(), serializer)
             }, callbackExecutor)
+    }
 
     private fun requireSuccess(status: Int, body: String) {
         if (status !in 200..299) throw decodeFieldAudioError(status, body, json)
+    }
+
+    private fun <T> decode(path: String, body: String, serializer: KSerializer<T>): T =
+        try {
+            json.decodeFromString(serializer, body)
+        } catch (failure: SerializationException) {
+            throw FieldAudioTransportException(
+                baseUri, path,
+                "Field Audio answered $baseUri$path with something this Field cannot read: " +
+                    "${failure.message?.lineSequence()?.firstOrNull()?.trim().orEmpty()}. " +
+                    "Body began: ${body.take(200)}",
+                failure,
+            )
+        }
+
+    /**
+     * The service is not there, or did not finish answering.
+     *
+     * Worth spelling out at length because the underlying throwable often says nothing: a refused
+     * loopback connection is a `ConnectException` with a null message.
+     */
+    private fun unreachable(path: String, cause: Throwable): FieldAudioTransportException {
+        // Two different silences to fill. A refused loopback connection is a `ConnectException`
+        // whose message is null *and* whose whole cause chain is empty — measured against a closed
+        // port, so there is no "Connection refused" text anywhere to quote — which is why it gets a
+        // clause of its own. Other transport faults (TLS, DNS) normally do carry a message, though
+        // sometimes only on a cause, so take the first one the chain offers.
+        val kind = cause::class.simpleName ?: cause::class.java.name
+        val detail = generateSequence(cause) { it.cause }
+            .take(8)
+            .mapNotNull { it.message?.takeIf(String::isNotBlank) }
+            .firstOrNull()
+            ?: when (cause) {
+                is ConnectException -> "nothing accepted the connection"
+                is HttpConnectTimeoutException -> "the connection timed out"
+                else -> null
+            }
+        val reason = if (detail == null || detail == kind) kind else "$kind: $detail"
+        return FieldAudioTransportException(
+            baseUri, path,
+            "Field Audio is not answering at $baseUri$path: $reason. The service is a separate " +
+                "process — start it from services/field-audio-ai — or construct FieldAudioClient " +
+                "with the address of one that is already running.",
+            cause,
+        )
     }
 
     companion object {
