@@ -280,7 +280,41 @@ object KotlinSourceIndex {
             matches.firstOrNull { it.filePath == sourcePath }?.categoryOrNull()?.let { return it }
         }
 
-        val categories = matches.mapNotNull { it.categoryOrNull() }.distinct()
+        // **A bare member name identifies nothing.** [matches] is a simple-name match, so with no
+        // `sourceName`/`sourcePath` to disambiguate, a record like `Buf.abs` or `Oscillators.filter`
+        // answers for any candidate that happens to be called `abs` or `filter` — including
+        // `java.lang.Math.abs` and `List.filter`, which have nothing to do with either file. This is
+        // the same defect class the `docsAreSourceBacked` check in
+        // [afield.KotlinCompletionSupport.classifyMetadata] was added for ("it filed a graphics
+        // preamble's `Mesh.pos` under Data"), but that check cannot help a candidate that carries no
+        // declaration information either, which is exactly a `java.lang` member.
+        //
+        // Measured when `afield.four.synth` was given file categories: 14 of the 110 candidates
+        // behind `Math.` — `abs`, `ceil`, `floor`, `pow`, `tanh`, `random`, `max`, `min`, `fma`,
+        // `clamp`, `floorDiv`, `floorMod`, `ceilDiv`, `expm1` — were answered "Synthesis" or
+        // "Patterns", and `List.filter` was answered "Synthesis" from `Oscillators.kt`. Category is
+        // one of the popup's grouping *and* ranking inputs, so the visible consequence was
+        // `Math.toRadians` leaving the 80 rows a person can see. `FieldSuggestPresentationTest`'s
+        // rank case caught it.
+        //
+        // So when the name is all we have, only a **top-level** declaration counts — the same rule,
+        // for the same reason, as `StdlibReferenceGenerator.evidenceTokens` ("a member name like
+        // `transform`, `origin` or `previous` is an ordinary English word"). Verified against the
+        // corpus: every one of the colliding names above is a member, and none of them is declared
+        // at top level anywhere in `afield.four.synth`, so this removes the misattribution without
+        // changing any other answer. A hinted lookup is unaffected: it has already been resolved
+        // exactly above, and its `matches` are narrowed by a real file.
+        // Top-level is necessary but **not sufficient**, and this is a known remaining hole rather
+        // than a solved problem: an *extension* is a top-level declaration, so
+        // `operator fun Float.plus(sig: Signal)` in `Signal.kt` is a top-level `plus` and still
+        // answers for `List.plus`, because the index records no receiver to tell the two apart.
+        // Also requiring the top-level matches to *agree* was measured and is not clearly better —
+        // it recovers `List.filter` (rank 69 -> 63) and loses `Math.toRadians` (61 -> 76) — so the
+        // simpler rule is kept and the hole is documented. Closing it properly needs a receiver on
+        // the record, which is a change to what the index stores.
+        val hadSourceHint = !sourceName.isNullOrBlank() || !sourcePath.isNullOrBlank()
+        val usable = if (hadSourceHint) matches else matches.filter { '.' !in it.name }
+        val categories = usable.mapNotNull { it.categoryOrNull() }.distinct()
         return categories.singleOrNull() ?: categories.firstOrNull()
     }
 
