@@ -123,7 +123,7 @@ the highest-contrast candidate it found when it cannot reach the target.
 
 `src/jvmMain/kotlin/afield/stdlib/colors.kt`
 
-**Used in:** [Colors to FLine examples](../colors_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md)
+**Used in:** [Colors to FLine examples](../colors_examples.md)
 
 ### Top-level functions { #colors-kt-functions }
 

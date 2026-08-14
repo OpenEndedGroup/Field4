@@ -1,3 +1,4 @@
+@file:afield.CompletionCategory("Patterns")
 /*
  The parameter-application algebra: combining patterns of different types, and choosing
  whose rhythm survives.

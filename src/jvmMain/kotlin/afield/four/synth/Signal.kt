@@ -1,3 +1,4 @@
+@file:afield.CompletionCategory("Synthesis")
 package afield.four.synth
 
 import afield.graphquery.LiveGraphEdge
@@ -19,7 +20,7 @@ import kotlin.math.abs
 class SynthContext(
     /** Sample rate in Hz (e.g. 48000). */
     val sampleRate: Float,
-    /** Maximum buffer size (frames per JACK cycle). */
+    /** Maximum buffer size: the number of frames rendered per audio-engine block. */
     val bufferSize: Int
 ) {
     val inverseSampleRate: Float = 1f / sampleRate
@@ -61,10 +62,14 @@ class SynthContext(
      * 1. Pre-allocates every internal buffer (avoids GC on audio thread).
      * 2. Exercises the hot path enough times (~15 000) to trigger
      *    HotSpot C2 JIT compilation, so the optimised native code is
-     *    ready before the first real JACK callback.
+     *    ready before the audio thread renders its first real block.
      *
-     * Call from the main thread *before* assigning the signal to a
-     * [JackSynth].
+     * Call from the main thread *before* the graph reaches
+     * [FieldAudioEngine]. In practice you do not: pass
+     * `warmUpCycles` to [audio] or to [AudioPatchSpec.from] instead, and
+     * [FieldAudioEngine.register] runs the equivalent loop for the whole
+     * stereo patch on its way in. This entry point is the mono, do-it-yourself
+     * form of the same thing and has no caller in the tree.
      */
     fun warmUp(signal: Signal, cycles: Int = 15_000) {
         val saved = cycleId
@@ -104,6 +109,25 @@ class SynthContext(
 // ═══════════════════════════════════════════════════════════════════
 
 
+/**
+ * One mono audio source, rendered a block at a time — the atom the whole synthesis category is built
+ * from.
+ *
+ * A subclass implements [generate], writing `numFrames` samples into the array it is handed. Callers
+ * use [render] instead, never [generate], and the difference is the point: [render] memoizes on
+ * [SynthContext.cycleId], so a `Signal` reached from two places in one graph is evaluated **once**
+ * per block and the second reader replays the cache. That is what makes `val o = sine; o + o * 0.5f`
+ * one oscillator heard twice rather than two that have drifted apart, and it is why a stateful
+ * generator must not be rendered by hand.
+ *
+ * Arithmetic builds graphs rather than numbers: `+`, `-`, `*`, `/` and unary minus each wrap their
+ * operands in a new node, and `/` is overloaded once more so a [SignalProcessor] on the right means
+ * *pipe into* rather than *divide by* — `saw / OnePole(800.p)` is a filtered sawtooth. Plain `Float`
+ * and `Double` operands work throughout and lift to a constant.
+ *
+ * Nothing here touches an audio device. To hear a graph, close it with `audio { … }` and return the
+ * resulting [AudioPatchSpec] from a box; [FieldAudioEngine] owns the device and the audio thread.
+ */
 abstract class Signal {
 
     // ── per-cycle cache ─────────────────────────────────────────────
@@ -181,6 +205,21 @@ operator fun Int.times(sig: Signal): Signal    = sig * toFloat()
 // ═══════════════════════════════════════════════════════════════════
 //  Param – modulatable parameter
 // ═══════════════════════════════════════════════════════════════════
+/**
+ * A control value that is also a [Signal], so anything a graph can take can be modulated.
+ *
+ * Three ways to say what it holds, in increasing liveness. A number, via [base] or the `.p` extension
+ * (`440.p`). A lambda in [supplier], evaluated once per cycle with [SynthContext] as its receiver, so
+ * it can read [SynthContext.time] or the Ableton Link beat. Or a full signal graph, which is what
+ * `SineOsc(freq = lfo)` is doing — because `Param` extends `Signal`, an oscillator's frequency input
+ * accepts an oscillator.
+ *
+ * Reading [base] answers with the value last *observed* if the graph-binding runtime is driving this
+ * parameter, and with the number you set otherwise, so a `Param` under external control reports what
+ * it is really doing rather than what it was initialised to. Writing [base] always sets the number
+ * and notifies `GraphBindingRuntime`, which is how a `ParamQuery` path selector — `params(…)` with a
+ * glob naming `freq` across a patch — reaches a graph that is already running.
+ */
 open class Param(base: Float = 0f) : Signal() {
     private var rawBase: Float = base
     @Volatile
@@ -641,6 +680,16 @@ class Mix(vararg sources: Signal) : Signal(), LiveGraphInspectable {
     )
 }
 
+/**
+ * Anything that can fill a left and a right buffer for one block — the stereo counterpart of [Signal],
+ * and the currency of the stereo half of the graph: it is what `AudioPatchSpec.from` accepts, what a
+ * `Pan` or a Faust node is, and what the offline renderers take.
+ *
+ * Deliberately one method and no memoization, so a stateless adapter can implement it directly. A
+ * generator that carries state across blocks should extend [StereoNode] instead, which adds [Signal]'s
+ * per-cycle cache — without it, a stereo node reached twice in one block advances its own state twice.
+ * [hold] wraps an arbitrary implementation to get the same protection.
+ */
 interface StereoRenderable {
     fun render(outL: FloatArray, outR: FloatArray, numFrames: Int, ctx: SynthContext)
 }

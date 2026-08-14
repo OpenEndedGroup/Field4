@@ -1,3 +1,4 @@
+@file:afield.CompletionCategory("Audio")
 package afield.four.synth
 
 import afield.Box
@@ -16,9 +17,16 @@ import kotlin.math.sqrt
  * noise.
  *
  * This used to read "and every audio figure in the documentation uses it". [DocsAudioProvenance]
- * swept the published corpus and measured each clip, and it is not true: of the twelve, four are
- * [patVoice] and **six** come from [DoughDspSoundDocs], which never reaches this voice at all.
- * `public/docs/sound.md` has the breakdown and `DocsAudioProvenanceGuardTest` pins the counts.
+ * swept the published corpus and measured each clip, and it is not true: a *minority* of the
+ * published clips are [patVoice], and the largest family comes from [DoughDspSoundDocs], which
+ * never reaches this voice at all.
+ *
+ * The counts deliberately do not appear in that sentence any more. They did — "of the twelve, four
+ * are `patVoice` and six come from `DoughDspSoundDocs`" — and two of the three had gone stale by
+ * the time this package entered the generated codebase reference, which publishes this block
+ * verbatim. The corpus grew a Faust clip and a DoughDSP scene; the places that hold the numbers as
+ * *data* were updated (`DocsAudioProvenanceGuardTest`'s pinned per-family map, and the table on
+ * `public/docs/sound.md`) and this paragraph was not. Read those, not this.
  *
  * This file is the other half. [DirtSamples] could already play the genuine Tidal sample set, but
  * only *live* — [playDirt] drives a polyphonic player through `respondAhead`, a clock and an audio

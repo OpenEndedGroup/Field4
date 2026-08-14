@@ -1,3 +1,4 @@
+@file:afield.CompletionCategory("Synthesis")
 /*
  Live-coding entrypoints for afield.four.synth.
 

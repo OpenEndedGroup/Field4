@@ -1,3 +1,4 @@
+@file:afield.CompletionCategory("Synthesis")
 package afield.four.synth
 
 import org.graalvm.polyglot.Context

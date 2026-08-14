@@ -98,30 +98,94 @@ object StdlibReferenceGenerator {
 
     /**
      * Source roots to document, relative to the repo. `afield.stdlib` is the live-coding standard
-     * library; `afield.visualization` is the value-visualizer/plot surface a box reaches for next.
+     * library; `afield.visualization` is the value-visualizer/plot surface a box reaches for next;
+     * `afield.four.synth` is the audio stack — the second-largest body of box-facing API in the
+     * tree, and the one a box reaches for when it wants to make a sound rather than a picture.
+     *
+     * `afield.four.synth` was outside this list until it was added deliberately, and the cost of
+     * that was concrete: `import afield.four.synth.*` is in the default box preamble (`intro`, in
+     * `Boxes.kt`), so every name in that package is already in scope in every box, and none of them
+     * appeared here. Adding the root is one line; what it needed was the [CATEGORY_BLURBS] work
+     * beside it, because exactly one file in that package carried a `@file:CompletionCategory` and
+     * every other one would have landed in `uncategorised.md` — a worse reference than none. (The
+     * file count is deliberately not written here: nothing guards it, and the package is growing.)
      */
     private val SOURCE_ROOTS = listOf(
         "src/jvmMain/kotlin/afield/stdlib",
         "src/jvmMain/kotlin/afield/visualization",
+        "src/jvmMain/kotlin/afield/four/synth",
     )
 
     /**
-     * Paths (repo-relative prefixes) skipped inside [SOURCE_ROOTS].
+     * Paths (repo-relative prefixes) skipped inside [SOURCE_ROOTS]. A whole file path is a valid
+     * prefix, and that is how single files are named here.
      *
      * `afield/stdlib/linalg` is machine-generated from the typed algebra model and already has its
      * own, better reference at `linear_algebra_api.md`; duplicating ~1500 generated swizzle members
      * here would drown every hand-written symbol in the section.
+     *
+     * The rest are the harnesses inside `afield.four.synth` — smoke tests, docs figure galleries,
+     * the provenance audit, the compile-only cookbook, and two files with no public API at all.
+     * They are not reference material, and this is a purely reference-side statement of that.
+     *
+     * **Not [EXCLUDE_CATEGORIES], which was the first attempt and was wrong for a measured reason.**
+     * One `@file:CompletionCategory("Internal")` per file would have done both jobs, except that the
+     * label is read by [afield.KotlinCompletionSupport.isHiddenCompletionCategory], on the strength
+     * of which `execution.kt` **drops the candidate from the completion popup**. And the label is
+     * not scoped to the declaration you meant: [KotlinSourceIndex] records every declaration in a
+     * file together with that file's category and applies **no visibility filter at all**, while
+     * [KotlinSourceIndex.getCompletionCategoryForSymbol] ends in a name-only
+     * `categories.firstOrNull()`. Measured on these eleven files: 574 declaration names between
+     * them, 235 of which are also declared elsewhere in the tree *and* appear in real box code.
+     * `SoundRenderPathDocs.kt` by itself contributes members named `audio`, `cps`, `cycles`,
+     * `pattern`, `voice` and `to` — so calling it `Internal` would put `audio`, the primary
+     * box-facing entry point of the entire Synthesis category, one first-wins lookup away from
+     * vanishing from the popup, and `to` with it. A documentation change must not be able to do that.
+     *
+     * Excluding by path costs nothing in exchange: these files carry no `@file:CompletionCategory`,
+     * exactly as they did before this package was published, so their completion behaviour is
+     * unchanged rather than merely believed to be unchanged.
      */
     private val EXCLUDE_PREFIXES = listOf(
         "src/jvmMain/kotlin/afield/stdlib/linalg/",
+        "src/jvmMain/kotlin/afield/four/synth/AbletonSetSmokeTest.kt",
+        "src/jvmMain/kotlin/afield/four/synth/DocsAudioProvenance.kt",
+        "src/jvmMain/kotlin/afield/four/synth/DoughDspPlotGallery.kt",
+        "src/jvmMain/kotlin/afield/four/synth/DoughDspSmokeTest.kt",
+        "src/jvmMain/kotlin/afield/four/synth/FaustSmokeTest.kt",
+        "src/jvmMain/kotlin/afield/four/synth/PrettyPrint.kt",
+        "src/jvmMain/kotlin/afield/four/synth/SonicPiActivity.kt",
+        "src/jvmMain/kotlin/afield/four/synth/SonicPiPatternsSmokeTest.kt",
+        "src/jvmMain/kotlin/afield/four/synth/SonicPiSmokeTest.kt",
+        "src/jvmMain/kotlin/afield/four/synth/SoundRenderPathDocs.kt",
+        "src/jvmMain/kotlin/afield/four/synth/SynthCookbookCompileDemo.kt",
     )
 
     /**
      * Completion categories that are not part of the public surface. `Internal` is exactly the
      * label the source uses for plumbing that completion should de-rank, so it has no place in a
      * "what can I call?" reference.
+     *
+     * Nothing in `afield.four.synth` uses it. See [EXCLUDE_PREFIXES] for why keeping a harness out
+     * of this reference is not the same statement as calling it internal, and what the difference
+     * was measured to cost.
      */
     private val EXCLUDE_CATEGORIES = setOf("Internal")
+
+    /**
+     * The package names of [SOURCE_ROOTS], as the pages name them in prose.
+     *
+     * Derived rather than written out, because the sentence "every public declaration in X and Y"
+     * appears on two generated pages and a third root was added after both were written.
+     */
+    private fun documentedPackages(): String {
+        val names = SOURCE_ROOTS.map { it.substringAfter("kotlin/").replace('/', '.') }.map { "`$it`" }
+        return when (names.size) {
+            0 -> ""
+            1 -> names.single()
+            else -> names.dropLast(1).joinToString(", ") + " and " + names.last()
+        }
+    }
 
     /** Page order, and the prose that introduces each category page. */
     private val CATEGORY_BLURBS: Map<String, String> = linkedMapOf(
@@ -174,7 +238,51 @@ object StdlibReferenceGenerator {
             "notion of a function. Build them, compose them, fit them, mutate them, and rewrite " +
             "their graphs with user-authored patterns.",
         "Visualization" to "Turning a value into something you can look at, without leaving the box.",
-        "Audio" to "Sound analysis and the network protocols that carry control data alongside it.",
+        "Synthesis" to "Field's own signal graph — the part of the audio stack that makes samples " +
+            "rather than arranging them. One value type carries the whole thing: `Signal` is a " +
+            "block-rendered mono source, `SignalProcessor` is a `Signal` that reads another one, " +
+            "and `/` chains the two, so `saw / OnePole(800.p)` is a filtered sawtooth and nothing " +
+            "else had to be declared. Control values are `Param`, which a plain number becomes " +
+            "with `.p`, and which can itself be driven by a signal. `audio { … }` closes a mono or " +
+            "stereo graph into an `AudioPatchSpec`; return one as a box's last expression and the " +
+            "box stays lit for as long as it is making sound. Underneath is a shared OpenAL " +
+            "engine, one process-wide, with warm-up passes available so the first buffer is not " +
+            "also the JIT's first look at your graph. On top of the oscillator / filter / effect / " +
+            "envelope families sit three larger things that are not Field's own DSP: **Faust**, " +
+            "whose compiler is embedded as WebAssembly and turns a `#faust` box into a running " +
+            "node in the same graph; the **dough** ports, hand-rolled float math kept " +
+            "deliberately inaccurate because the inaccuracy is the character; and the **spectral** " +
+            "and **granular** layers, which are Field's own. `Visualizers.kt` is how you look at " +
+            "any of it — every function there is an extension on a type declared in this " +
+            "category. Start from `synth.kt`, which is the terse surface a box actually imports; " +
+            "[Sound: from a pattern to something you can hear](../sound.md) is the prose, " +
+            "[Faust](../faust.md) is the embedded compiler with worked examples, and " +
+            "[DoughDSP: hear the primitives](../dough_dsp_sound.md) plays the ports.",
+        "Patterns" to "Musical time, as a value. A `PatPattern<A>` is a function from a span of " +
+            "cycles to the events inside it — so it is not a list, it is queried, and a pattern " +
+            "that never repeats costs no more to hold than one that does. Time is kept as an exact " +
+            "rational (`PatQ`, `BigInteger` over `BigInteger`) all the way through the transforms " +
+            "and is only converted to seconds at the boundary where something has to be " +
+            "scheduled, which is why a third of a cycle survives `fast`, `rev` and `every` without " +
+            "drifting. The notation and much of the vocabulary is Tidal's — `pat(\"bd [hh hh] " +
+            "sd\")`, `stack`, `jux`, `off`, `degradeBy`, the `|+|` operator family — but an atom " +
+            "here means whatever you want it to mean, not a sample name, which is what lets the " +
+            "same pattern drive a note process, a Field `Fn`, a set of signal-graph parameters or " +
+            "an arbitrary side effect. `Sequencing.kt` is the note-and-piano-roll layer patterns " +
+            "bridge into, and `BeatLaunch.kt` is `.onBeat { … }`, which holds any launchable value " +
+            "until the next musical boundary. " +
+            "[Patterns: writing rhythm as a function of time](../pattern_language.md) is the prose " +
+            "for all of it.",
+        "Audio" to "Sound that arrives from, or leaves for, somewhere other than Field's own " +
+            "signal graph: analysis products written by an offline tool, the network protocols " +
+            "that carry control data, the Dirt sample library on disk, an Ableton Live set read " +
+            "off the filesystem, and Sonic Pi driven as an owned child process with no window of " +
+            "its own. `SoundPathMap.kt` is the one to read first — it is the declared, " +
+            "re-derived-from-the-code map of every route Field has from a box to something " +
+            "audible, and it exists because a prose sentence about how many of those routes there " +
+            "are had already been wrong once — " +
+            "[Making a sound in Field: every path there is](../sound_paths.md) is that map " +
+            "rendered as a page. [Sonic Pi](../sonic_pi.md) is the owned-mode story in full.",
         "Audio AI" to "The client half of Field Audio: a separate HTTP/WebSocket service that runs " +
             "generative and analysis models over audio, and the typed vocabulary a box talks to it " +
             "in. Nothing here loads a model or does inference in the JVM — a box builds a " +
@@ -339,20 +447,25 @@ object StdlibReferenceGenerator {
          * name like `transform`, `origin` or `previous` is an ordinary English word that turns up in
          * unrelated example code; a top-level call `stft(` or a type `Spectrogram` does not.
          *
-         * [GENERIC_CALL_NAMES] is excluded on top of that, because "exactly one file defines it" is
-         * not the same as "seeing it means that file".
+         * [GENERIC_NAMES] is excluded on top of that, because "exactly one file defines it" is
+         * not the same as "seeing it means that file". It applies to **values as well as calls**:
+         * `synth.kt`'s whole design is that a bare lowercase `val` is a fresh unit generator, so it
+         * declares top-level `square`, `pulse`, `white`, `brown` and `impulse`, and `square` was
+         * already in the set — as a call name only, which is not where it was doing any harm.
          */
         fun evidenceTokens(): Set<Pair<String, String>> = buildSet {
             topLevelFunctions.forEach {
-                if (it.simpleName.length >= 3 && it.simpleName !in GENERIC_CALL_NAMES) add("call" to it.simpleName)
+                if (it.simpleName.length >= 3 && it.simpleName !in GENERIC_NAMES) add("call" to it.simpleName)
             }
             types.forEach { if (it.symbol.simpleName.length >= 4) add("type" to it.symbol.simpleName) }
-            topLevelValues.forEach { if (it.simpleName.length >= 5) add("name" to it.simpleName) }
+            topLevelValues.forEach {
+                if (it.simpleName.length >= 5 && it.simpleName !in GENERIC_NAMES) add("name" to it.simpleName)
+            }
         }
     }
 
     /**
-     * Call names that are never evidence of anything, however uniquely a file owns them.
+     * Names that are never evidence of anything, however uniquely a file owns them.
      *
      * The evidence index counts a name only when exactly one documented file declares it — which
      * looked like enough until `CeresExpression.kt` was published. That file declares top-level
@@ -362,16 +475,42 @@ object StdlibReferenceGenerator {
      * more, and `functions_examples.md` — which has nothing whatsoever to do with the Ceres
      * expression VM — was published as a worked example of it.
      *
-     * Uniqueness is a claim about the corpus; this set is a claim about the *reader*. Domain verbs
-     * that happen to be short stay in (`kis`, `dual`, `stft`): seeing one really does mean the page
-     * is about that file.
+     * `afield.four.synth` is the second instance of the same class, and a broader one, because a
+     * live-coding audio API is *deliberately* written in one-word English. Measured (see
+     * `AFIELD_EVIDENCE_DEBUG` in [buildEvidenceIndex]) on the day the package was added:
+     * `synth.kt` was published as a worked example of `polytope_examples.md` on the strength of
+     * `plate(`, `square` and `white` — a panel, a face and a colour — and of `functions_examples.md`
+     * on `square` and `pulse`. `PatSignals.kt` matched `petri_nets.md` on `run(` and `range(`;
+     * `PatAlgebra.kt` matched three unrelated pages on `with(`, which is a Kotlin scope function.
+     *
+     * Uniqueness is a claim about the corpus; this set is a claim about the *reader*. Domain words
+     * that happen to be short or ordinary-looking stay in (`kis`, `dual`, `stft`, `zaw`, `pulze`,
+     * `dirt`, `plateReverb`): seeing one really does mean the page is about that file. Removing a
+     * word degrades gracefully rather than deleting a link — a page that genuinely uses a file
+     * matches several *specific* names as well, and [MIN_EVIDENCE_HITS] is only two, so the true
+     * relationships in this corpus survive losing `off` and `scale` while the false ones do not.
      */
-    private val GENERIC_CALL_NAMES = setOf(
+    private val GENERIC_NAMES = setOf(
         "abs", "acos", "asin", "atan", "atan2", "ceil", "cos", "cosh", "exp", "floor", "hypot",
         "ln", "log", "log10", "log2", "max", "min", "pow", "round", "sign", "sin", "sinh", "sqrt",
         "tan", "tanh",
         // Not kotlin.math, but words an unrelated code fence uses about anything.
         "constant", "square", "reciprocal",
+        // Kotlin scope functions and ordinary member names that a top-level declaration shadows.
+        // Every one of these was verified to be matching something else: `with(` is Kotlin's,
+        // `net.run(` is a Petri net, `event.num(` is a member of `PatScheduledEvent`, and
+        // `rig.params(…).scale(` and `fn.scale(` are two other `scale`s entirely.
+        "with", "run", "num", "scale",
+        // `synth.kt`'s one-word unit-generator vals, which on a geometry, function or imaging page
+        // mean a panel, a beat, a filter response and two colours.
+        "plate", "pulse", "impulse", "white", "brown",
+        // The archetypal member names, which `stdlib.kt` happens to also declare at top level. Once
+        // the `\b` anchor stopped `set(` matching `offset(`, these alone were enough to publish
+        // `afield_four_graphics.md` and `ar_reference.md` as worked examples of `stdlib.kt` on the
+        // strength of `mesh.set(`, `list.add(` and `map.get(`. What is left for `stdlib.kt` is
+        // `Delegation` / `Inheritance` / `InheritanceFromContext` in `box_code_pipeline.md`, which
+        // is the one page that really is about it.
+        "set", "add", "get", "end", "start", "invoke", "begin",
     )
 
     private data class TypeEntry(
@@ -901,15 +1040,35 @@ object StdlibReferenceGenerator {
             doc.evidenceTokens().forEach { tokenOwners.getOrPut(it) { mutableSetOf() } += doc.relativePath }
         }
 
+        // Set `AFIELD_EVIDENCE_DEBUG` to a path suffix (`synth/synth.kt`, or `.kt` for everything) to
+        // print which tokens each page matched. "Used in" is a published factual claim about a page,
+        // and this is how you check one without re-deriving the rule by hand — which is how
+        // `synth.kt` was found being published as a worked example of `polytope_examples.md`.
+        val debugFor = System.getenv("AFIELD_EVIDENCE_DEBUG")?.trim()?.ifBlank { null }
         return documents.associate { doc ->
-            val patterns = doc.evidenceTokens()
-                .filter { tokenOwners[it]?.size == 1 }
-                .map { (kind, name) ->
-                    val escaped = Regex.escape(name)
-                    if (kind == "call") Regex("$escaped\\s*\\(") else Regex("\\b$escaped\\b")
+            val kept = doc.evidenceTokens().filter { tokenOwners[it]?.size == 1 }
+            val patterns = kept.associateWith { (kind, name) ->
+                val escaped = Regex.escape(name)
+                // Two tightenings, each fixing a measured false claim:
+                //  - `\b` on the call form. Unanchored, `ply(` matched `apply(`, `run(` matched
+                //    `rerun(`, `range(` matched `arrange(`, `cosine(` matched `cosineInterp(` and
+                //    `hslSet(` matched `okhslSet(` — where the last one let a single call in
+                //    `spatial_geometry_examples.md` count as two hits and clear the threshold alone.
+                //  - no whitespace before the `(`. A fenced block's *comments and string literals*
+                //    are code text as far as this index is concerned, and English prose inside them
+                //    ("seed cosine (grey) → target sine", "full range (chebyshev clamps)") was
+                //    matching. Kotlin allows `f (x)`; this corpus never writes it.
+                if (kind == "call") Regex("\\b$escaped\\(") else Regex("\\b$escaped\\b")
+            }
+            if (debugFor != null && doc.relativePath.endsWith(debugFor)) {
+                println("EVIDENCE-DEBUG ${doc.relativePath} unique tokens: $kept")
+                pages.forEach { (pageName, code) ->
+                    val matched = kept.filter { patterns.getValue(it).containsMatchIn(code) }
+                    if (matched.isNotEmpty()) println("EVIDENCE-DEBUG   $pageName <- $matched")
                 }
+            }
             val hits = pages.mapNotNull { (name, code) ->
-                val count = patterns.count { it.containsMatchIn(code) }
+                val count = patterns.values.count { it.containsMatchIn(code) }
                 if (count >= MIN_EVIDENCE_HITS) name to count else null
             }.sortedWith(compareByDescending<Pair<String, Int>> { it.second }.thenBy { it.first })
                 .take(MAX_EVIDENCE_LINKS)
@@ -1052,8 +1211,8 @@ object StdlibReferenceGenerator {
         appendLine(
             "Field's standard library is large and, until now, invisible: the only ways to read it " +
                 "were to open the source or to already know the name you wanted. This section is a " +
-                "browsable map of it — every public declaration in `afield.stdlib` and " +
-                "`afield.visualization`, with the KDoc that sits next to it in the source."
+                "browsable map of it — every public declaration in ${documentedPackages()}, with " +
+                "the KDoc that sits next to it in the source."
         )
         appendLine()
         val total = documents.sumOf { it.symbolCount() }
@@ -1121,11 +1280,19 @@ object StdlibReferenceGenerator {
                 "plumbing, and are excluded on purpose."
         )
         appendLine(
+            "- **The harnesses** — smoke tests, docs figure galleries, the audio-provenance audit " +
+                "and the compile-only synth cookbook — are build machinery rather than API, and are " +
+                "excluded by path. They are still real, still run in `check`, and still worth " +
+                "reading; they are just not the answer to \"what can I call?\"."
+        )
+        appendLine(
             "- **Graphics, rendering and the small languages beyond their host side** live in " +
                 "`afield.four`, `afield.rectsl` and `afield.stacksl`; start from " +
                 "[afield.four Graphics](../afield_four_graphics.md), the " +
                 "[RectSL cheatsheet](../rectsl_cheatsheet.md) and the " +
-                "[StackSL cheatsheet](../stacksl_cheatsheet.md)."
+                "[StackSL cheatsheet](../stacksl_cheatsheet.md). `afield.four.synth` **is** here — " +
+                "it is the audio half of `afield.four`, and [Sound: from a pattern to something " +
+                "you can hear](../sound.md) is the prose it belongs to."
         )
         appendLine()
         appendLine("## How to read a symbol you find here")
@@ -1363,7 +1530,7 @@ object StdlibReferenceGenerator {
         appendLine(
             "The other half of the coverage column on " +
                 "[the codebase reference](../public/docs/reference/index.md): $totalDocumented of " +
-                "$totalSymbols public symbols in `afield.stdlib` and `afield.visualization` carry a " +
+                "$totalSymbols public symbols in ${documentedPackages()} carry a " +
                 "KDoc summary, and this is what is missing, most valuable first."
         )
         appendLine()

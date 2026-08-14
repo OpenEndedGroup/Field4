@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 4358 of 6312 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 5047 of 8360 public symbols in `afield.stdlib`, `afield.visualization` and `afield.four.synth` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**134 undocumented entry points** (types, top-level functions and values) and 1662 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**466 undocumented entry points** (types, top-level functions and values) and 2617 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -12,12 +12,23 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 
 | File | Category | Used by examples | Undocumented entry points | Undocumented members | Coverage |
 | --- | --- | --- | --- | --- | --- |
+| [synth.kt](../src/jvmMain/kotlin/afield/four/synth/synth.kt) | Synthesis | sound_paths | 53 | 0 | 24% |
+| [TidalPatterns.kt](../src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt) | Patterns | pattern_language, petri_nets, sonic_pi | 44 | 78 | 20% |
+| [Visualizers.kt](../src/jvmMain/kotlin/afield/four/synth/Visualizers.kt) | Synthesis | visualizers | 40 | 11 | 0% |
 | [dynamic_graph_systems.kt](../src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt) | Data | dynamic_graph_systems_examples | 20 | 120 | 10% |
 | [wfc.kt](../src/jvmMain/kotlin/afield/stdlib/wfc.kt) | Data | wfc_examples | 20 | 59 | 30% |
+| [Signal.kt](../src/jvmMain/kotlin/afield/four/synth/Signal.kt) | Synthesis | sound_paths, faust, visualizers | 19 | 53 | 18% |
+| [Effects.kt](../src/jvmMain/kotlin/afield/four/synth/Effects.kt) | Synthesis | visualizers | 14 | 29 | 43% |
+| [Sequencing.kt](../src/jvmMain/kotlin/afield/four/synth/Sequencing.kt) | Patterns | boolean_network_music_examples, visualizers | 13 | 38 | 0% |
+| [BooleanNetworkSequencing.kt](../src/jvmMain/kotlin/afield/four/synth/BooleanNetworkSequencing.kt) | Patterns | boolean_network_music_examples | 13 | 19 | 2% |
 | [Protocol.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt) | Audio AI | field_audio_service_reference, audio_ai_analysis, visualizers | 11 | 39 | 79% |
+| [DirtSamples.kt](../src/jvmMain/kotlin/afield/four/synth/DirtSamples.kt) | Audio | boolean_network_music_examples | 8 | 42 | 5% |
+| [ParamQuery.kt](../src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt) | Synthesis | graph_query | 4 | 47 | 7% |
 | [GestureBoard.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoard.kt) | Uncategorised | audio_ai_gesture_board | 4 | 5 | 25% |
 | [contours.kt](../src/jvmMain/kotlin/afield/stdlib/contours.kt) | Graphics | spatial_geometry_examples | 4 | 3 | 70% |
+| [SonicPi.kt](../src/jvmMain/kotlin/afield/four/synth/SonicPi.kt) | Audio | sonic_pi | 3 | 46 | 34% |
 | [Functions.kt](../src/jvmMain/kotlin/afield/stdlib/Functions.kt) | Math | functions_examples | 1 | 47 | 83% |
+| [Envelopes.kt](../src/jvmMain/kotlin/afield/four/synth/Envelopes.kt) | Synthesis | visualizers | 1 | 36 | 19% |
 | [pf.kt](../src/jvmMain/kotlin/afield/stdlib/pf.kt) | Math | state_estimation_examples | 1 | 8 | 76% |
 | [ValueVisualizer.kt](../src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt) | Visualization | visualizers, agent_transcripts | 1 | 1 | 77% |
 | [stats.kt](../src/jvmMain/kotlin/afield/stdlib/stats.kt) | Math | statistics_examples | 0 | 152 | 13% |
@@ -29,17 +40,22 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Topology.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Topology.kt) | Polytopes | polytope_examples | 0 | 27 | 68% |
 | [FunctionFit.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionFit.kt) | Function | autodiff_examples, functions_examples, pattern_language | 0 | 26 | 53% |
 | [FunctionGraphRules.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionGraphRules.kt) | Function | functions_examples | 0 | 26 | 36% |
+| [FaustEngine.kt](../src/jvmMain/kotlin/afield/four/synth/FaustEngine.kt) | Synthesis | faust | 0 | 25 | 45% |
+| [SonicPiPatterns.kt](../src/jvmMain/kotlin/afield/four/synth/SonicPiPatterns.kt) | Audio | sonic_pi | 0 | 25 | 68% |
 | [alife_continuous.kt](../src/jvmMain/kotlin/afield/stdlib/alife_continuous.kt) | ALife | alife_examples | 0 | 25 | 57% |
 | [typography.kt](../src/jvmMain/kotlin/afield/stdlib/typography.kt) | Graphics | typography_examples | 0 | 23 | 70% |
 | [alife_lsystem.kt](../src/jvmMain/kotlin/afield/stdlib/alife_lsystem.kt) | ALife | alife_examples | 0 | 20 | 59% |
 | [alife_ca.kt](../src/jvmMain/kotlin/afield/stdlib/alife_ca.kt) | ALife | alife_examples | 0 | 19 | 71% |
 | [Transforms.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Transforms.kt) | Polytopes | polytope_examples | 0 | 19 | 76% |
+| [DoughDsp.kt](../src/jvmMain/kotlin/afield/four/synth/DoughDsp.kt) | Synthesis | dough_dsp_sound | 0 | 17 | 70% |
 | [FunctionEvolve.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionEvolve.kt) | Function | functions_examples | 0 | 17 | 51% |
 | [Symmetry.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Symmetry.kt) | Polytopes | polytope_examples | 0 | 15 | 53% |
+| [RenderedAudioAnalysis.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/RenderedAudioAnalysis.kt) | Audio AI | audio_render_analysis, visualizers | 0 | 14 | 50% |
 | [alife.kt](../src/jvmMain/kotlin/afield/stdlib/alife.kt) | ALife | alife_examples | 0 | 11 | 76% |
 | [imaging_geometry.kt](../src/jvmMain/kotlin/afield/stdlib/imaging_geometry.kt) | Imaging | imaging_examples | 0 | 11 | 73% |
 | [imaging.kt](../src/jvmMain/kotlin/afield/stdlib/imaging.kt) | Imaging | imaging_examples, wfc_examples, alife_examples | 0 | 10 | 85% |
 | [imaging_features.kt](../src/jvmMain/kotlin/afield/stdlib/imaging_features.kt) | Imaging | imaging_examples, visualizers, agent_transcripts | 0 | 10 | 77% |
+| [PatSoundDocs.kt](../src/jvmMain/kotlin/afield/four/synth/PatSoundDocs.kt) | Patterns | sound | 0 | 9 | 70% |
 | [linalg.kt](../src/jvmMain/kotlin/afield/stdlib/linalg.kt) | Math | fline_examples, kotlin_overview, linear_algebra | 0 | 9 | 89% |
 | [FieldAdapters.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/FieldAdapters.kt) | Polytopes | polytope_examples, agent_transcripts | 0 | 9 | 70% |
 | [booleannetworks.kt](../src/jvmMain/kotlin/afield/stdlib/booleannetworks.kt) | Data | boolean_networks_examples, boolean_network_music_examples | 0 | 7 | 78% |
@@ -52,24 +68,44 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [mesh.kt](../src/jvmMain/kotlin/afield/stdlib/mesh.kt) | Graphics | mesh_examples | 0 | 5 | 89% |
 | [CeresRealization.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/CeresRealization.kt) | Polytopes | polytope_examples | 0 | 5 | 75% |
 | [Conway.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Conway.kt) | Polytopes | polytope_examples | 0 | 5 | 64% |
-| [stdlib.kt](../src/jvmMain/kotlin/afield/stdlib/stdlib.kt) | Workspace | box_code_pipeline, keyframer_examples, kotlin_overview | 0 | 3 | 95% |
+| [FaustBox.kt](../src/jvmMain/kotlin/afield/four/synth/FaustBox.kt) | Synthesis | faust | 0 | 4 | 73% |
+| [DoughDspSoundDocs.kt](../src/jvmMain/kotlin/afield/four/synth/DoughDspSoundDocs.kt) | Synthesis | dough_dsp_sound | 0 | 3 | 81% |
+| [stdlib.kt](../src/jvmMain/kotlin/afield/stdlib/stdlib.kt) | Workspace | box_code_pipeline | 0 | 3 | 95% |
 | [FunctionRewritePattern.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionRewritePattern.kt) | Function | functions_examples | 0 | 2 | 84% |
 | [Canonical.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Canonical.kt) | Polytopes | polytope_examples | 0 | 2 | 95% |
 | [Realize.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Realize.kt) | Polytopes | polytope_examples | 0 | 1 | 93% |
+| [AbletonSet.kt](../src/jvmMain/kotlin/afield/four/synth/AbletonSet.kt) | Audio | — | 27 | 163 | 0% |
+| [PatFunctions.kt](../src/jvmMain/kotlin/afield/four/synth/PatFunctions.kt) | Patterns | — | 21 | 21 | 12% |
 | [essentiaAnalysis.kt](../src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt) | Audio | — | 17 | 109 | 0% |
 | [modelling.kt](../src/jvmMain/kotlin/afield/stdlib/modelling.kt) | Graphics | — | 13 | 54 | 0% |
+| [Oscillators.kt](../src/jvmMain/kotlin/afield/four/synth/Oscillators.kt) | Synthesis | — | 13 | 42 | 41% |
+| [Filters.kt](../src/jvmMain/kotlin/afield/four/synth/Filters.kt) | Synthesis | — | 11 | 28 | 11% |
 | [units.kt](../src/jvmMain/kotlin/afield/stdlib/units.kt) | Math | — | 11 | 9 | 27% |
+| [Sampling.kt](../src/jvmMain/kotlin/afield/four/synth/Sampling.kt) | Synthesis | — | 7 | 39 | 37% |
+| [AbletonSetDebugDrawing.kt](../src/jvmMain/kotlin/afield/four/synth/AbletonSetDebugDrawing.kt) | Audio | — | 7 | 19 | 0% |
+| [BeatLaunch.kt](../src/jvmMain/kotlin/afield/four/synth/BeatLaunch.kt) | Patterns | — | 7 | 0 | 0% |
 | [ArchitecturalGeometry.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt) | Solvers | — | 5 | 62 | 50% |
+| [Spectral.kt](../src/jvmMain/kotlin/afield/four/synth/Spectral.kt) | Synthesis | — | 5 | 32 | 33% |
 | [smile_interpolation_regression.kt](../src/jvmMain/kotlin/afield/stdlib/smile_interpolation_regression.kt) | Math | — | 5 | 16 | 0% |
+| [Dough.kt](../src/jvmMain/kotlin/afield/four/synth/Dough.kt) | Synthesis | — | 5 | 15 | 0% |
 | [LazyValueVisualizer.kt](../src/jvmMain/kotlin/afield/visualization/LazyValueVisualizer.kt) | Visualization | — | 5 | 5 | 0% |
 | [SemanticSearchManager.kt](../src/jvmMain/kotlin/afield/stdlib/SemanticSearchManager.kt) | Data | — | 3 | 34 | 0% |
 | [JSONLineServer.kt](../src/jvmMain/kotlin/afield/stdlib/JSONLineServer.kt) | Data | — | 3 | 27 | 3% |
 | [CeresExpression.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/CeresExpression.kt) | Solvers | — | 3 | 25 | 57% |
+| [FieldAudioEngine.kt](../src/jvmMain/kotlin/afield/four/synth/FieldAudioEngine.kt) | Synthesis | — | 3 | 16 | 0% |
+| [PatClock.kt](../src/jvmMain/kotlin/afield/four/synth/PatClock.kt) | Patterns | — | 3 | 10 | 0% |
+| [LaunchBundle.kt](../src/jvmMain/kotlin/afield/four/synth/LaunchBundle.kt) | Synthesis | — | 3 | 0 | 0% |
+| [AbletonLinkAudio.kt](../src/jvmMain/kotlin/afield/four/synth/AbletonLinkAudio.kt) | Audio | — | 2 | 30 | 0% |
+| [Physical.kt](../src/jvmMain/kotlin/afield/four/synth/Physical.kt) | Synthesis | — | 2 | 16 | 5% |
 | [LeastSquares.kt](../src/jvmMain/kotlin/afield/stdlib/LeastSquares.kt) | Math | — | 2 | 15 | 10% |
 | [JSONProcess.kt](../src/jvmMain/kotlin/afield/stdlib/JSONProcess.kt) | Data | — | 2 | 11 | 0% |
 | [dirichlet.kt](../src/jvmMain/kotlin/afield/stdlib/dirichlet.kt) | Math | — | 1 | 10 | 0% |
 | [tuio.kt](../src/jvmMain/kotlin/afield/stdlib/tuio.kt) | Data | — | 1 | 7 | 20% |
+| [FaustEditorExtension.kt](../src/jvmMain/kotlin/afield/four/synth/FaustEditorExtension.kt) | Synthesis | — | 1 | 3 | 20% |
+| [SonicPiEditorExtension.kt](../src/jvmMain/kotlin/afield/four/synth/SonicPiEditorExtension.kt) | Audio | — | 1 | 3 | 20% |
 | [GestureBoardVisualization.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoardVisualization.kt) | Uncategorised | — | 1 | 1 | 33% |
+| [AudioReturnValue.kt](../src/jvmMain/kotlin/afield/four/synth/AudioReturnValue.kt) | Synthesis | — | 1 | 0 | 0% |
+| [PatPatternReturnValue.kt](../src/jvmMain/kotlin/afield/four/synth/PatPatternReturnValue.kt) | Patterns | — | 1 | 0 | 0% |
 | [CeresGeometry.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt) | Solvers | — | 0 | 241 | 29% |
 | [osc.kt](../src/jvmMain/kotlin/afield/stdlib/osc.kt) | Audio | — | 0 | 18 | 33% |
 | [Colormaps.kt](../src/jvmMain/kotlin/afield/visualization/Colormaps.kt) | Visualization | — | 0 | 17 | 19% |
@@ -77,14 +113,74 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Summaries.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Summaries.kt) | Polytopes | — | 0 | 15 | 74% |
 | [fline_graph_connectivity.kt](../src/jvmMain/kotlin/afield/stdlib/fline_graph_connectivity.kt) | Graphics | — | 0 | 8 | 38% |
 | [jsonparsing.kt](../src/jvmMain/kotlin/afield/stdlib/jsonparsing.kt) | Data | — | 0 | 7 | 63% |
+| [FaustDsp.kt](../src/jvmMain/kotlin/afield/four/synth/FaustDsp.kt) | Synthesis | — | 0 | 6 | 53% |
+| [PatOnsetDetection.kt](../src/jvmMain/kotlin/afield/four/synth/PatOnsetDetection.kt) | Patterns | — | 0 | 6 | 57% |
 | [growing.kt](../src/jvmMain/kotlin/afield/stdlib/growing.kt) | Data | — | 0 | 6 | 57% |
+| [SonicPiLaunch.kt](../src/jvmMain/kotlin/afield/four/synth/SonicPiLaunch.kt) | Audio | — | 0 | 4 | 58% |
 | [numpy.kt](../src/jvmMain/kotlin/afield/stdlib/numpy.kt) | Data | — | 0 | 4 | 86% |
+| [PatPianoRollGallery.kt](../src/jvmMain/kotlin/afield/four/synth/PatPianoRollGallery.kt) | Patterns | — | 0 | 3 | 76% |
 | [FunctionOps.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionOps.kt) | Function | — | 0 | 3 | 75% |
+| [Buf.kt](../src/jvmMain/kotlin/afield/four/synth/Buf.kt) | Synthesis | — | 0 | 2 | 90% |
+| [FM.kt](../src/jvmMain/kotlin/afield/four/synth/FM.kt) | Synthesis | — | 0 | 1 | 90% |
 
 ## The highest-value individual gaps
 
 | Declaration | Kind | Where |
 | --- | --- | --- |
+| `BooleanTriggerMode` | class | `src/jvmMain/kotlin/afield/four/synth/BooleanNetworkSequencing.kt:14` |
+| `BooleanNetworkStep` | class | `src/jvmMain/kotlin/afield/four/synth/BooleanNetworkSequencing.kt:28` |
+| `BooleanNetworkResponseScope` | class | `src/jvmMain/kotlin/afield/four/synth/BooleanNetworkSequencing.kt:277` |
+| `BooleanNetworkResponseSpec` | class | `src/jvmMain/kotlin/afield/four/synth/BooleanNetworkSequencing.kt:304` |
+| `StereoAudioSample` | class | `src/jvmMain/kotlin/afield/four/synth/DirtSamples.kt:77` |
+| `DirtSampleToken` | class | `src/jvmMain/kotlin/afield/four/synth/DirtSamples.kt:114` |
+| `DirtSampleDescriptor` | class | `src/jvmMain/kotlin/afield/four/synth/DirtSamples.kt:133` |
+| `DirtSampleFamily` | class | `src/jvmMain/kotlin/afield/four/synth/DirtSamples.kt:182` |
+| `DirtSampleLibrary` | class | `src/jvmMain/kotlin/afield/four/synth/DirtSamples.kt:204` |
+| `DirtSamplePlayer` | class | `src/jvmMain/kotlin/afield/four/synth/DirtSamples.kt:342` |
+| `Delay` | class | `src/jvmMain/kotlin/afield/four/synth/Effects.kt:11` |
+| `FreeVerb` | class | `src/jvmMain/kotlin/afield/four/synth/Effects.kt:72` |
+| `SpringReverb` | class | `src/jvmMain/kotlin/afield/four/synth/Effects.kt:161` |
+| `ConvolutionReverb` | class | `src/jvmMain/kotlin/afield/four/synth/Effects.kt:281` |
+| `Chorus` | class | `src/jvmMain/kotlin/afield/four/synth/Effects.kt:384` |
+| `Waveshaper` | class | `src/jvmMain/kotlin/afield/four/synth/Effects.kt:445` |
+| `RectifierMode` | class | `src/jvmMain/kotlin/afield/four/synth/Effects.kt:491` |
+| `Rectifier` | class | `src/jvmMain/kotlin/afield/four/synth/Effects.kt:497` |
+| `StagedWaveFolder` | class | `src/jvmMain/kotlin/afield/four/synth/Effects.kt:538` |
+| `Compressor` | class | `src/jvmMain/kotlin/afield/four/synth/Effects.kt:625` |
+| `Limiter` | class | `src/jvmMain/kotlin/afield/four/synth/Effects.kt:704` |
+| `BitCrusher` | class | `src/jvmMain/kotlin/afield/four/synth/Effects.kt:751` |
+| `Flanger` | class | `src/jvmMain/kotlin/afield/four/synth/Effects.kt:788` |
+| `RingModulator` | class | `src/jvmMain/kotlin/afield/four/synth/Effects.kt:843` |
+| `BreakpointEnvelope` | class | `src/jvmMain/kotlin/afield/four/synth/Envelopes.kt:251` |
+| `ParamModulationMode` | class | `src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt:47` |
+| `ParamPath` | class | `src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt:115` |
+| `ParamSet` | class | `src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt:168` |
+| `ParamSetScope` | class | `src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt:329` |
+| `ScheduledNote` | class | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:26` |
+| `NoteWindowSnapshot` | class | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:87` |
+| `NoteSequenceScope` | class | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:113` |
+| `NoteProcess` | class | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:178` |
+| `SynthContext` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:20` |
+| `ParamScope` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:436` |
+| `SignalProcessor` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:591` |
+| `Const` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:601` |
+| `Mix` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:663` |
+| `StereoHold` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:729` |
+| `StereoSignal` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:743` |
+| `Pan` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:760` |
+| `SonicPiLogMessage` | class | `src/jvmMain/kotlin/afield/four/synth/SonicPi.kt:918` |
+| `SonicPiError` | class | `src/jvmMain/kotlin/afield/four/synth/SonicPi.kt:932` |
+| `SonicPiVersion` | class | `src/jvmMain/kotlin/afield/four/synth/SonicPi.kt:960` |
+| `PatParseFrame` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:295` |
+| `PatParseContext` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:308` |
+| `PatSourceSpan` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:320` |
+| `PatScheduledEvent` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:427` |
+| `ArpMode` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:990` |
+| `PatResponseScope` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:1812` |
+| `PatResponseSpec` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:1837` |
+| `AudioSnapshot` | class | `src/jvmMain/kotlin/afield/four/synth/Visualizers.kt:123` |
+| `Scope` | class | `src/jvmMain/kotlin/afield/four/synth/Visualizers.kt:215` |
+| `StereoScope` | class | `src/jvmMain/kotlin/afield/four/synth/Visualizers.kt:228` |
 | `Neighbor` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:442` |
 | `DynamicGraphSystem` | interface | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:444` |
 | `Vec3BreathingAnisotropicKnnSystem` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:485` |
@@ -119,91 +215,37 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `WfcStatus` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:858` |
 | `WfcObservation` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:860` |
 | `WfcSolver` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:862` |
+| `MiniPat` | object | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:1119` |
 | `Functions` | object | `src/jvmMain/kotlin/afield/stdlib/Functions.kt:204` |
 | `Matrix` | typealias | `src/jvmMain/kotlin/afield/stdlib/pf.kt:26` |
 | `WfcNeighbourhood` | typealias | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:152` |
-| `pointEdgeScalarField2D` | fun | `src/jvmMain/kotlin/afield/stdlib/contours.kt:334` |
-| `pointEdgeScalarField2D` | fun | `src/jvmMain/kotlin/afield/stdlib/contours.kt:368` |
-| `generateIsoContours` | fun | `src/jvmMain/kotlin/afield/stdlib/contours.kt:610` |
-| `generateSmoothIsoContours` | fun | `src/jvmMain/kotlin/afield/stdlib/contours.kt:698` |
-| `dynamicGraphSnapshot` | fun | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:65` |
-| `stepDynamicGraph` | fun | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:863` |
-| `stepDynamicGraphWithLinearDecay` | fun | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:877` |
-| `stepDynamicGraphWithExponentialDecay` | fun | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:889` |
-| `validateGestureBoard` | fun | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoard.kt:78` |
-| `BufferedImage.sliceIntoUniqueTiles` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1490` |
-| `loadPngTiles` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1530` |
-| `BufferedImage.sliceIntoOverlappingPatterns` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1533` |
-| `loadPngOverlappingPatterns` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1584` |
-| `savePng` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1593` |
-| `FloatArray.sliceIntoUniqueTiles2D` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1691` |
-| `FloatArray.sliceIntoOverlappingPatterns2D` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1738` |
-| `WFC_NORTH` | val | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:30` |
-| `WFC_EAST` | val | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:31` |
-| `WFC_SOUTH` | val | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:32` |
-| `WFC_WEST` | val | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:33` |
-| `WFC_VON_NEUMANN_NEIGHBORHOOD` | val | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:154` |
-| `WFC_MOORE_NEIGHBORHOOD` | val | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:155` |
-| `WFC_VON_NEUMANN_NEIGHBOURHOOD` | val | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:156` |
-| `WFC_MOORE_NEIGHBOURHOOD` | val | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:157` |
-| `Any.h` | val | `src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt:2513` |
-| `JSONProcess` | class | `src/jvmMain/kotlin/afield/stdlib/JSONProcess.kt:38` |
-| `LeastSquaresOptions` | class | `src/jvmMain/kotlin/afield/stdlib/LeastSquares.kt:31` |
-| `LeastSquaresResult` | class | `src/jvmMain/kotlin/afield/stdlib/LeastSquares.kt:53` |
-| `SemanticSearchResult` | class | `src/jvmMain/kotlin/afield/stdlib/SemanticSearchManager.kt:32` |
-| `SemanticSearchHit` | class | `src/jvmMain/kotlin/afield/stdlib/SemanticSearchManager.kt:39` |
-| `SemanticSearchManager` | class | `src/jvmMain/kotlin/afield/stdlib/SemanticSearchManager.kt:73` |
-| `FramesSigLoadOptions` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:47` |
-| `FramesSigMetadata` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:53` |
-| `FramesSigProduct` | interface | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:67` |
-| `FramesSigFloatProduct` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:74` |
-| `FramesSigFloatVectorProduct` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:91` |
-| `FramesSigTimedSample` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:109` |
-| `FramesSigProductInfo` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:118` |
-| `FramesSigDocument` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:126` |
-| `Sound2VecLoadOptions` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:347` |
-| `Sound2VecManifest` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:352` |
-| `Sound2VecClip` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:366` |
-| `Sound2VecAudioSubclip` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:416` |
-| `Sound2VecDataset` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:429` |
-| `FeatureExtractor` | interface | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:235` |
-| `UniformQuantileFeatureExtractor` | class | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:240` |
-| `ControllerConfig` | class | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:255` |
-| `ControllerDiagnostics` | class | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:301` |
-| `ControlOutput` | class | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:314` |
-| `ScalarSampleBatch` | class | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:345` |
-| `AdaptiveDistributionController` | class | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:356` |
-| `AdaptiveDistributionControllerBank` | class | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:502` |
-| `AdaptiveDistributionLoop` | class | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:517` |
-| `SmileGpOptions` | class | `src/jvmMain/kotlin/afield/stdlib/smile_interpolation_regression.kt:24` |
-| `SmileCubicSpline1D` | class | `src/jvmMain/kotlin/afield/stdlib/smile_interpolation_regression.kt:32` |
-| `SmileGaussianProcess1D` | class | `src/jvmMain/kotlin/afield/stdlib/smile_interpolation_regression.kt:45` |
-| `TuioListener` | interface | `src/jvmMain/kotlin/afield/stdlib/tuio.kt:29` |
-| `H2ValueSnapshot` | class | `src/jvmMain/kotlin/afield/visualization/LazyValueVisualizer.kt:50` |
-| `JSONLineServers` | object | `src/jvmMain/kotlin/afield/stdlib/JSONLineServer.kt:353` |
-| `CircularDirichlet` | object | `src/jvmMain/kotlin/afield/stdlib/dirichlet.kt:25` |
-| `H2ValueRegistry` | object | `src/jvmMain/kotlin/afield/visualization/LazyValueVisualizer.kt:56` |
-| `LazyValueVisualizer` | object | `src/jvmMain/kotlin/afield/visualization/LazyValueVisualizer.kt:116` |
-| `jsonl` | fun | `src/jvmMain/kotlin/afield/stdlib/JSONLineServer.kt:375` |
-| `registerJSONLineServerReturnValue` | fun | `src/jvmMain/kotlin/afield/stdlib/JSONLineServer.kt:379` |
-| `registerJSONProcessReturnValue` | fun | `src/jvmMain/kotlin/afield/stdlib/JSONProcess.kt:204` |
-| `PointRef.plus` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:1492` |
-| `PointRef.minus` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:1496` |
-| `PointRef.times` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:1498` |
-| `Number.times` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:1500` |
-| `Number.times` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:1502` |
-| `exp` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresExpression.kt:188` |
-| `cos` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresExpression.kt:196` |
-| `tan` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresExpression.kt:197` |
-| `loadFramesSig` | fun | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:167` |
-| `loadFramesSig` | fun | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:204` |
-| `loadSound2Vec` | fun | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:475` |
-| `loadSound2Vec` | fun | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:544` |
-| `ControlOutput.params` | fun | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:320` |
-| `ControlOutput.namedAppliedParams` | fun | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:323` |
-| `ControlOutput.namedNominalParams` | fun | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:334` |
-| `main` | fun | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:569` |
-| `gestureBoardHtml` | fun | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoardVisualization.kt:121` |
-| `smileCubicSpline` | fun | `src/jvmMain/kotlin/afield/stdlib/smile_interpolation_regression.kt:59` |
+| `BooleanNetwork.scheduledSteps` | fun | `src/jvmMain/kotlin/afield/four/synth/BooleanNetworkSequencing.kt:134` |
+| `BooleanNetwork.scheduledDrivenSteps` | fun | `src/jvmMain/kotlin/afield/four/synth/BooleanNetworkSequencing.kt:146` |
+| `BooleanNetwork.scheduledNotes` | fun | `src/jvmMain/kotlin/afield/four/synth/BooleanNetworkSequencing.kt:187` |
+| `BooleanNetwork.scheduledDrivenNotes` | fun | `src/jvmMain/kotlin/afield/four/synth/BooleanNetworkSequencing.kt:203` |
+| `BooleanNetwork.asNoteProcess` | fun | `src/jvmMain/kotlin/afield/four/synth/BooleanNetworkSequencing.kt:221` |
+| `BooleanNetwork.asDrivenNoteProcess` | fun | `src/jvmMain/kotlin/afield/four/synth/BooleanNetworkSequencing.kt:248` |
+| `BooleanNetwork.respond` | fun | `src/jvmMain/kotlin/afield/four/synth/BooleanNetworkSequencing.kt:328` |
+| `BooleanNetwork.respondAhead` | fun | `src/jvmMain/kotlin/afield/four/synth/BooleanNetworkSequencing.kt:356` |
+| `registerBooleanNetworkResponseReturnValue` | fun | `src/jvmMain/kotlin/afield/four/synth/BooleanNetworkSequencing.kt:377` |
+| `PatPattern.playDirt` | fun | `src/jvmMain/kotlin/afield/four/synth/DirtSamples.kt:54` |
+| `note` | fun | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:61` |
+| `midiToFrequency` | fun | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:77` |
+| `frequencyToMidi` | fun | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:79` |
+| `noteProcess` | fun | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:428` |
+| `notes` | fun | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:442` |
+| `Iterable.pianoRollSvg` | fun | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:454` |
+| `NoteWindowSnapshot.pianoRollSvg` | fun | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:485` |
+| `NoteProcess.pianoRollHtml` | fun | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:660` |
+| `Marker.pianoRoll` | fun | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:679` |
+| `Float.plus` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:193` |
+| `Float.times` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:194` |
+| `Float.minus` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:195` |
+| `Float.plus` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:197` |
+| `Double.plus` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:198` |
+| `Double.times` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:199` |
+| `Double.minus` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:200` |
+| `Double.plus` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:201` |
+| `Int.plus` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:202` |
 
-…and **14 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **346 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
