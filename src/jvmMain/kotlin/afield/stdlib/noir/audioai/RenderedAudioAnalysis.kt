@@ -361,11 +361,14 @@ fun recordSonicPiWav(
     workspace: String = "field_audio_analysis",
     startSettleMillis: Long = 300,
     tailMillis: Long = 900,
+    stopSettleMillis: Long = 500,
     saveTimeoutMillis: Long = 30_000,
     provenance: Map<String, String> = emptyMap(),
 ): CompletableFuture<RenderedAudioFile> {
     require(seconds > 0.0) { "seconds must be positive" }
-    require(startSettleMillis >= 0 && tailMillis >= 0 && saveTimeoutMillis > 0) { "recording waits are invalid" }
+    require(startSettleMillis >= 0 && tailMillis >= 0 && stopSettleMillis >= 0 && saveTimeoutMillis > 0) {
+        "recording waits are invalid"
+    }
     return CompletableFuture.supplyAsync({
         require(sonicPi.isRunning && sonicPi.awaitReady()) { "Sonic Pi is not ready" }
         path.parent?.let(Files::createDirectories)
@@ -382,8 +385,18 @@ fun recordSonicPiWav(
             Thread.sleep(tailMillis)
             sonicPi.stopRecording()
             recording = false
+            // Sonic Pi finalizes the recorder buffer asynchronously. Its save command is not a
+            // queue barrier: sending it in the same breath as stop-recording can be observed first
+            // and silently produce no file. Keep this in step with SonicPiPatternProbe's measured,
+            // working handshake rather than making a longer file-existence timeout hide the race.
+            Thread.sleep(stopSettleMillis)
             sonicPi.saveRecording(path.toAbsolutePath().toString())
-            require(awaitStableWav(path, saveTimeoutMillis)) { "Sonic Pi did not save a stable WAV to $path" }
+            require(awaitStableWav(path, saveTimeoutMillis)) {
+                val recentErrors = sonicPi.errors.takeLast(3)
+                    .joinToString(" | ") { it.message.lineSequence().firstOrNull()?.trim().orEmpty() }
+                "Sonic Pi did not save a stable WAV to $path after stop-recording settled for " +
+                    "$stopSettleMillis ms" + if (recentErrors.isBlank()) "" else "; recent errors: $recentErrors"
+            }
             RenderedAudioFile(
                 path.toAbsolutePath(), "Sonic Pi",
                 durationSeconds = seconds + (startSettleMillis + tailMillis) / 1000.0,
