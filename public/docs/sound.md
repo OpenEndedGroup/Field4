@@ -33,10 +33,41 @@ refuted it.
 | `patVoice` → `patRenderStereo` | **the stand-in**: one oscillator per event | `PatSoundDocs.kt` |
 | `DirtSampleLibrary` → `patRenderStereoDirt` | **real samples**, mixed into a buffer | `DirtRender.kt` |
 | `WavFloatArrayWriter` | a 16-bit PCM WAV, or bytes into a box's output | `WavFloatArrayWriter.kt` |
+| `patTranscribe` | **back the other way**: the buffer heard as pitched notes, and a `pat("…")` string that re-renders | `PatTranscription.kt` |
+| `patTranscribeAuto` | the same, with the register estimated instead of declared | `PatTranscription.kt` |
+| `showPatTranscriptionOf` | notated against recovered, overlaid on one MIDI axis | `PatTranscriptionGallery.kt` |
 
 The pattern language itself is documented on [its own page](pattern_language.md) and this one
 does not restate it. What matters here is only that a pattern is a *function from a query to
 a list of events*, and that both voices below consume exactly the same list.
+
+The last two rows run the path backwards, which is newer and worth one paragraph. `patTranscribe`
+takes a finite buffer and returns pitched note events plus the mini-notation that reproduces them, so
+the output of analysis is the same kind of object as the input to synthesis. On a notated scale it
+recovers 15 of 16 notes with a median pitch error of **0.3 cents**; on three of the corpus cases it
+returns *exactly* the notated integer sequence, and re-rendering that notation and transcribing it
+again returns the same notes. It is monophonic and says so: a triad is reported as `POLYPHONIC` and
+named as nothing rather than reported as its loudest note, while a sawtooth's full harmonic stack is
+not refused, because timbre is not polyphony. The single parameter that matters is the register you
+declare — it sets the analysis window and therefore the shortest note that can be resolved, and on
+identical audio the difference between declaring it and not is onset recall 0.91 against 0.03. If you
+cannot declare one, call `patTranscribeAuto`, which estimates it from a cheap wide first pass: mean
+onset recall over the corpus is 0.716 estimated against 0.690 declared and 0.538 for the wide default,
+and it refuses rather than transcribing when the first pass says the material is not one line.
+
+The loop closes all the way round, and the last hop is the one worth knowing about. Feeding the emitted
+notation back through the renderer and listening again — notation → sound → notation → sound, every hop
+a real Field path — **5 of 10 re-renderable corpus cases reproduce their own note sequence**. The other
+five are exactly the cases whose first hearing was already incomplete, so the fourth hop works as a
+validity check on the third rather than as a separate accuracy number. Every case is also classified by
+what it *did* rather than how it scored: 4 recovered exactly, 4 within tolerance, 5 refused with a
+reason, and **0 confidently wrong** — that last count being the one that matters, because a plausible
+parseable wrong answer gets believed where a refusal does not.
+
+Every figure quoted here is asserted by a test in `PatPitchTranscriptionTest`. The mechanism, the full
+measurement tables and the several things this got wrong before it got them right are in
+`dev_docs/pitch_transcription_roundtrip.md`; the runnable version is the
+[pitch_transcription_roundtrip](agent_transcripts.md) starting point.
 
 ---
 
