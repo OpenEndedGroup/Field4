@@ -1116,6 +1116,13 @@ The public [beat and pitch analysis walkthrough](audio_ai_analysis.md) and loada
 `audio_ai_analysis` operation transcript contain the full source → submit → monitor → await →
 visualize path.
 
+The same visualizer can begin with sound generated inside Field. `renderPatWav`, `renderDirtWav`,
+`renderDoughWav`, `renderFaustWavAsync`, and `recordSonicPiWav` all produce a
+`RenderedAudioFile`; `client.analyzeRenderedAudio(render)` imports it and returns a
+`RenderedAudioAnalysis` whose `visualizationHtml()` joins the playable waveform and every analysis
+lane on one sync group. The [render-to-analysis walkthrough](audio_render_analysis.md) and
+`audio_render_analysis` transcript show all five paths through submission and progress monitoring.
+
 ### Waveform-summary endpoint contract
 
 `AudioVisualizer` is not coupled to Field Audio. Any HTTP service can provide `waveformUrl`. The

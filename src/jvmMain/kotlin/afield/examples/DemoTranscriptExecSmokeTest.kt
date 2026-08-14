@@ -216,6 +216,9 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        // Every box is compiled through Field's real K2/preamble path, but none is evaluated: four
+        // of them intentionally reach an external analysis worker or real-time Sonic Pi recorder.
+        "audio_render_analysis",
         "graphics_renderer_launch",
         "afield_four_traditional_triangle",
         "recstl_playground",

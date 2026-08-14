@@ -1,0 +1,183 @@
+name: audio_render_analysis
+description: >
+  Close the loop from Field synthesis to durable Field Audio analysis. The guide embeds the global
+  job monitor; four runnable boxes render Pat/Dirt, Dough, Faust, or Sonic Pi to a WAV, upload it by
+  content hash, submit beat plus mono/polyphonic pitch jobs, stream status into the box, await the
+  durable results, and display source waveform and analyses on one synchronized timeline. No job is
+  submitted behind the transcript: each box contains the complete render-to-result program.
+operations:
+  - create:
+      box: render_analysis_guide
+      name: 1 · render → analyse guide and jobs
+      frame: { x: 50.0, y: 50.0, w: 1120.0, h: 650.0 }
+      properties:
+        code: |
+          import afield.stdlib.noir.audioai.*
+
+          display("guide", """
+          <section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.5 system-ui,sans-serif">
+            <h2 style="margin:0 0 8px;color:#7fcbd7">Field synthesis → Field Audio analysis</h2>
+            <p>Each box below contains the whole loop: make sound, write WAV, import immutable bytes, submit named jobs, stream progress, await results, and draw a synchronized waveform/beat/pitch board. Re-run unchanged code and the content-addressed import plus operation cache return the same results.</p>
+            <p><b>Pat, Dirt and Dough</b> render offline. <b>Faust</b> compiles and renders on a daemon future because its first compiler warm-up is slow. <b>Sonic Pi</b> records in real time on that same background executor. None blocks Field's run loop.</p>
+            <p>The local <code>RenderedAudioFile.provenance</code> records the producing box and render parameters. The server asset id remains a hash of the WAV bytes; the Field document remains the authority for source code and arrangement.</p>
+          </section>
+          """.trimIndent())
+          display("all durable jobs", fieldAudioJobMonitor(heightPixels = 390))
+
+  - create:
+      box: analyse_pat_render
+      name: 2 · Pat / Dirt render → analysis
+      frame: { x: 1210.0, y: 50.0, w: 1120.0, h: 980.0 }
+      properties:
+        code: |
+          import afield.four.synth.*
+          import afield.stdlib.noir.audioai.*
+          import java.nio.file.Path
+
+          val client = FieldAudioClient()
+          val pattern = (pat("{60 64 67 71, bd ~ sd ~, hh*8}")
+              with gain(sine().range(0.22, 0.72))
+              with pan("0.2 0.8"))
+          val render = renderDirtWav(
+              Path.of(System.getProperty("java.io.tmpdir"), "field-audio-renders", "pat-dirt-study.wav"),
+              pattern, cycles = 12, cps = 1.6,
+              provenance = mapOf("field_box" to "analyse_pat_render", "pattern" to "pitched chord + drums"),
+          )
+          display("render", "rendered ${render.path} · ${"%.2f".format(render.durationSeconds)} s")
+
+          client.analyzeRenderedAudio(
+              render,
+              requests = { region -> standardAudioAnalyses(region, requestedBy = "field:render-analysis/pat") },
+              onAccepted = { named, accepted ->
+                  display("${named.label} job", fieldAudioJobStatusHtml(accepted))
+              },
+              onProgress = { named, accepted, event ->
+                  display("${named.label} job", fieldAudioJobStatusHtml(accepted, event))
+              },
+              onProgressError = { named, error -> display("${named.label} stream", error.message ?: error.toString()) },
+          ).thenAccept { completed ->
+              display("synchronized result", completed.visualizationHtml(width = 1040, panelHeight = 230))
+          }.exceptionally { error ->
+              display("analysis error", error.cause?.message ?: error.message ?: error.toString())
+              null
+          }
+
+  - create:
+      box: analyse_dough_render
+      name: 3 · Dough render → analysis
+      frame: { x: 50.0, y: 760.0, w: 1120.0, h: 980.0 }
+      properties:
+        code: |
+          import afield.four.synth.*
+          import afield.stdlib.noir.audioai.*
+          import java.nio.file.Path
+
+          val client = FieldAudioClient()
+          val source = ZawOsc(Param(110f)) * 0.35f
+          val voice = source.through(Phaser(
+              rate = Param(0.23f), depth = Param(0.78f),
+              center = Param(540f), sweep = Param(1800f), mix = Param(0.92f),
+          ))
+          val render = renderDoughWav(
+              Path.of(System.getProperty("java.io.tmpdir"), "field-audio-renders", "dough-phaser-study.wav"),
+              voice, seconds = 18.0,
+              provenance = mapOf("field_box" to "analyse_dough_render", "voice" to "ZawOsc → Phaser"),
+          )
+          display("render", "rendered ${render.path} · ${render.sampleRate} Hz mono")
+
+          client.analyzeRenderedAudio(
+              render,
+              requests = { region -> standardAudioAnalyses(region, requestedBy = "field:render-analysis/dough") },
+              onAccepted = { named, accepted -> display("${named.label} job", fieldAudioJobStatusHtml(accepted)) },
+              onProgress = { named, accepted, event -> display("${named.label} job", fieldAudioJobStatusHtml(accepted, event)) },
+          ).thenAccept { completed ->
+              display("synchronized result", completed.visualizationHtml(width = 1040, panelHeight = 230))
+          }.exceptionally { error ->
+              display("analysis error", error.cause?.message ?: error.message ?: error.toString())
+              null
+          }
+
+  - create:
+      box: analyse_faust_render
+      name: 4 · Faust render → analysis
+      frame: { x: 1210.0, y: 1090.0, w: 1120.0, h: 980.0 }
+      properties:
+        code: |
+          import afield.four.synth.*
+          import afield.stdlib.noir.audioai.*
+          import java.nio.file.Path
+
+          val client = FieldAudioClient()
+          val faustSource = """
+              import("stdfaust.lib");
+              sweep = 240 + 170 * os.osc(0.11);
+              voice = os.sawtooth(sweep) : fi.lowpass(3, 900 + 650 * os.osc(0.07));
+              process = voice * 0.18 <: _,_;
+          """.trimIndent()
+
+          renderFaustWavAsync(
+              Path.of(System.getProperty("java.io.tmpdir"), "field-audio-renders", "faust-sweep-study.wav"),
+              name = "faust-sweep-study", source = faustSource, seconds = 18.0,
+              provenance = mapOf("field_box" to "analyse_faust_render"),
+          ).thenCompose { render ->
+              display("render", "rendered ${render.path} · ${render.sampleRate} Hz stereo")
+              client.analyzeRenderedAudio(
+                  render,
+                  requests = { region -> standardAudioAnalyses(region, requestedBy = "field:render-analysis/faust") },
+                  onAccepted = { named, accepted -> display("${named.label} job", fieldAudioJobStatusHtml(accepted)) },
+                  onProgress = { named, accepted, event -> display("${named.label} job", fieldAudioJobStatusHtml(accepted, event)) },
+              )
+          }.thenAccept { completed ->
+              display("synchronized result", completed.visualizationHtml(width = 1040, panelHeight = 230))
+          }.exceptionally { error ->
+              display("analysis error", error.cause?.message ?: error.message ?: error.toString())
+              null
+          }
+
+  - create:
+      box: analyse_sonic_pi_recording
+      name: 5 · Sonic Pi recording → analysis
+      frame: { x: 50.0, y: 1800.0, w: 1120.0, h: 1020.0 }
+      properties:
+        code: |
+          import afield.four.synth.*
+          import afield.stdlib.noir.audioai.*
+          import java.nio.file.Path
+
+          val client = FieldAudioClient()
+          val ruby = """
+              use_bpm 92
+              live_loop :analysis_drums do
+                sample :bd_haus, amp: 0.55
+                sleep 0.5
+                sample :elec_blip2, rate: [0.7, 1.0, 1.4].tick, amp: 0.28
+                sleep 0.5
+              end
+              live_loop :analysis_tone do
+                use_synth :hollow
+                play (scale :e3, :minor_pentatonic).tick, release: 0.7, amp: 0.35
+                sleep 1
+              end
+          """.trimIndent()
+
+          recordSonicPiWav(
+              sonicPi(),
+              Path.of(System.getProperty("java.io.tmpdir"), "field-audio-renders", "sonic-pi-study.wav"),
+              ruby, seconds = 18.0, workspace = "field_audio_analysis",
+              provenance = mapOf("field_box" to "analyse_sonic_pi_recording", "bpm" to "92"),
+          ).thenCompose { render ->
+              display("render", "recorded ${render.path}")
+              client.analyzeRenderedAudio(
+                  render,
+                  requests = { region -> standardAudioAnalyses(region, requestedBy = "field:render-analysis/sonic-pi") },
+                  onAccepted = { named, accepted -> display("${named.label} job", fieldAudioJobStatusHtml(accepted)) },
+                  onProgress = { named, accepted, event -> display("${named.label} job", fieldAudioJobStatusHtml(accepted, event)) },
+              )
+          }.thenAccept { completed ->
+              display("synchronized result", completed.visualizationHtml(width = 1040, panelHeight = 230))
+          }.exceptionally { error ->
+              display("analysis error", error.cause?.message ?: error.message ?: error.toString())
+              null
+          }
+
+  - execute: { box: render_analysis_guide }

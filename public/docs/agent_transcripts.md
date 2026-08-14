@@ -40,13 +40,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 60 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+All 61 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
 not in the same way, and the difference is worth knowing before you trust one. 43 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
 error-kind output line. (Almost always that is every box in the file. A transcript may deliberately
 create a box it does not execute — one that wants a device the build does not have, or that fails on
-purpose to demonstrate a diagnostic — and only the ops it actually writes down are replayed.) 10
+purpose to demonstrate a diagnostic — and only the ops it actually writes down are replayed.) 11
 open a GLFW window and a Vulkan renderer, which is not a thing to spin up headless in a build, so
 those are **built and compiled**: the graph is assembled through the real apply path and each box's
 Kotlin goes through the real K2 compiler, with only the terminal evaluation — the line that would
@@ -692,6 +692,22 @@ confidence, monophonic F0, voicing and polyphonic notes on synchronized timeline
 boxes are model-free and remain runnable without the analysis worker.
 Walkthrough: [Beat and pitch analysis](audio_ai_analysis.md).
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/audio_ai_analysis/metadata.edn)
+
+
+## External-service live-coding scenes
+
+<!-- transcript-index: verified-by = compile -->
+
+These boxes are all compiled through Field's real Kotlin/preamble path, but not evaluated by CI:
+their purpose is to cross a process or audio-device boundary that the lightweight build does not own.
+
+**audio_render_analysis** — Start with music written in Field rather than an imported recording.
+Four explicit live-coding boxes render Pat/Dirt, Dough and Faust or record Sonic Pi, write a finite
+WAV, import it by content hash, submit the standard beat and pitch fan-out, stream each job's status,
+and end in a source waveform plus synchronized analysis board. The guide and every complete service
+path are compile-checked; running them remains an intentional user action.
+Walkthrough: [Render Field music, then analyse it](audio_render_analysis.md).
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/audio_render_analysis/metadata.edn)
 
 ## visionOS device scenes
 
