@@ -31,6 +31,7 @@
 
 package afield.four.synth
 
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
@@ -60,6 +61,51 @@ class PatTranscriptionCase(
 
     /** The pattern, parsed once per call exactly as the renderer would parse it. */
     fun pattern(): PatPattern<String> = pat(notation)
+}
+
+/**
+ * What a case *did*, as opposed to how it scored.
+ *
+ * Scores rank; this classifies, and the distinction is the point. A transcriber that emits a plausible,
+ * parseable, wrong `pat("…")` is worse than one that returns `UNRESOLVED`, because the wrong answer will
+ * be believed and the refusal will not — yet those two land in the same region of any F-measure. So
+ * every case is put in exactly one of these buckets and [CONFIDENTLY_WRONG] carries an asserted ceiling.
+ */
+enum class PatCaseBehaviour {
+    /** The notated integer sequence came back exactly, and the emitted notation re-renders to it. */
+    RECOVERED_EXACTLY,
+
+    /** Every named note is the right note within 50 cents; some notated notes may be missing. */
+    RECOVERED_WITHIN,
+
+    /** Named nothing, or named less than it heard, and said so. Incomplete is fine here; silent is not. */
+    REFUSED,
+
+    /**
+     * Emitted notation containing a wrong or invented note, with **no warning attached**.
+     *
+     * The bucket that matters. Wrongness is judged in cents rather than on note names, so the corpus's
+     * deliberate 50-cents-sharp case does not land here for a rounding tie it cannot win. What puts a
+     * case here is a name closer to some other semitone than to the notated one, or a note matching no
+     * notated onset at all, in output that gave the reader no reason to doubt it.
+     */
+    CONFIDENTLY_WRONG
+}
+
+/** A case's behaviour, and the evidence for the classification. */
+data class PatCaseVerdict(
+    val label: String,
+    val behaviour: PatCaseBehaviour,
+    val wrongNames: Int,
+    val spuriousNotes: Int,
+    val missingNotes: Int,
+    val warnings: Int,
+    val why: String
+) {
+    fun describe(): String =
+        "%-18s %-18s".format(label, behaviour.name) +
+            "  wrong $wrongNames  invented $spuriousNotes  missing $missingNotes  warnings $warnings" +
+            (if (why.isEmpty()) "" else "  — $why")
 }
 
 /** Everything one case produced: the audio, the truth, what was heard, and how the two compare. */
@@ -93,7 +139,11 @@ class PatCaseResult(
     val pitchMatch: PatOnsetMatch,
     /** The union of the two, which is what [patDetectNoteOnsets] returns. */
     val mergedOnsets: List<Int>,
-    val mergedTally: PatOnsetTally
+    val mergedTally: PatOnsetTally,
+    /** The fourth hop: the emitted notation rendered again and heard again. */
+    val closure: PatLoopClosure,
+    /** What this case did, as opposed to how it scored. */
+    val verdict: PatCaseVerdict
 ) {
     val voicedFrames: Int get() = transcription.frames.count { it.voiced }
 
@@ -118,6 +168,7 @@ class PatCaseResult(
         appendLine("    voiced ${voicedFrames}/${transcription.frames.size} frames; " +
             "verdict ${transcription.diagnosis.verdict}")
         appendLine("    pat(\"${transcription.miniNotation}\") at cps ${"%.3f".format(transcription.cps)}")
+        appendLine("    behaviour ${verdict.behaviour}; loop ${closure.describe().trim()}")
         for (warning in transcription.warnings) appendLine("    ! $warning")
     }
 }
@@ -179,7 +230,8 @@ class PatLegatoProbe(
     val pitchTally: PatOnsetTally,
     val pitchMatch: PatOnsetMatch,
     val mergedOnsets: List<Int>,
-    val mergedTally: PatOnsetTally
+    val mergedTally: PatOnsetTally,
+    val closure: PatLoopClosure
 ) {
     fun describe(): String = buildString {
         appendLine(score.describe())
@@ -195,6 +247,7 @@ class PatLegatoProbe(
                 "(lag ${"%+.0f".format(pitchMatch.offset * 1000)} ms)"
         )
         appendLine("    pat(\"${transcription.miniNotation}\") at cps ${"%.3f".format(transcription.cps)}")
+        appendLine("    loop ${closure.describe().trim()}")
         for (warning in transcription.warnings) appendLine("    ! $warning")
     }
 }
@@ -408,6 +461,17 @@ object PatTranscriptionCorpus {
         val pitchOnsets = patDetectPitchChangeSamples(samples, sampleRate, gap, transcription.frames)
         val mergedOnsets = patDetectNoteOnsets(samples, sampleRate, gap, transcription.frames)
 
+        val closure = patCloseLoop(
+            label = case.label,
+            transcription = transcription,
+            wave = case.voice.wave,
+            decay = case.voice.decay,
+            minGapSeconds = gap,
+            minHz = minHz,
+            maxHz = maxHz,
+            sampleRate = sampleRate
+        )
+
         return PatCaseResult(
             case = case,
             sampleRate = sampleRate,
@@ -422,8 +486,92 @@ object PatTranscriptionCorpus {
             pitchTally = patTallyOnsets(pitchOnsets, scheduled, tolerance),
             pitchMatch = forgiveLag(pitchOnsets, scheduled, sampleRate),
             mergedOnsets = mergedOnsets,
-            mergedTally = patTallyOnsets(mergedOnsets, scheduled, tolerance)
+            mergedTally = patTallyOnsets(mergedOnsets, scheduled, tolerance),
+            closure = closure,
+            verdict = classify(case, reference, transcription, closure, sampleRate)
         )
+    }
+
+    /**
+     * Put one case in exactly one behaviour bucket.
+     *
+     * Wrongness is measured in **cents against the notated pitch**, so a name is only wrong when it is
+     * nearer some other semitone than the one that was played. That threshold is what keeps
+     * `detuned-cents` — whose notes sit exactly 50 cents from equal temperament, where no correct name
+     * exists — out of [PatCaseBehaviour.CONFIDENTLY_WRONG] for an arithmetic tie it cannot win.
+     *
+     * `REFUSED` is checked before `CONFIDENTLY_WRONG`, and that ordering is the whole design: a case
+     * that warned about what it could not name has told the reader how much to trust it, so it is not
+     * confidently anything. Being incomplete and saying so is a different act from being wrong quietly.
+     */
+    fun classify(
+        case: PatTranscriptionCase,
+        reference: List<PatRefNote>,
+        transcription: PatTranscription,
+        closure: PatLoopClosure,
+        sampleRate: Int
+    ): PatCaseVerdict {
+        val warnings = transcription.warnings.size
+        val named = transcription.notes.sortedBy { it.startSample }
+
+        if (named.isEmpty()) {
+            return PatCaseVerdict(
+                case.label, PatCaseBehaviour.REFUSED, 0, 0, reference.size, warnings,
+                "named nothing; ${transcription.diagnosis.verdict}"
+            )
+        }
+
+        // Pair each named note with the nearest notated onset, each spent once, then judge in cents.
+        val refs = reference.sortedBy { it.startSample }.toMutableList()
+        var wrong = 0
+        var spurious = 0
+        for (note in named) {
+            val bestIndex: Int? = refs.indices.minByOrNull { i ->
+                abs(refs[i].startSample.toDouble() / sampleRate - note.startSeconds)
+            }
+            if (bestIndex == null) { spurious++; continue }
+            val ref = refs[bestIndex]
+            val distance = abs(ref.startSample.toDouble() / sampleRate - note.startSeconds)
+            if (distance > ONSET_TOLERANCE_SECONDS) { spurious++; continue }
+            refs.removeAt(bestIndex)
+            if (abs(note.measuredMidi - ref.midi) * 100.0 > 50.0) wrong++
+        }
+        val missing = refs.size
+
+        val notatedCycle = case.pattern()
+            .events(PatArc(PatQ.ZERO, PatQ.of(case.cycles)))
+            .sortedWith(compareBy({ it.arc.start }, { it.arc.end }))
+            .mapNotNull { it.value.trim().toDoubleOrNull()?.let { midi -> Math.round(midi).toInt() } }
+
+        return when {
+            // Exact means exact, and it also has to survive being rendered again.
+            wrong == 0 && spurious == 0 && missing == 0 &&
+                transcription.midiSequence == notatedCycle && closure.closed ->
+                PatCaseVerdict(
+                    case.label, PatCaseBehaviour.RECOVERED_EXACTLY, 0, 0, 0, warnings,
+                    "the notated sequence, and it closes the loop"
+                )
+
+            wrong == 0 && spurious == 0 ->
+                PatCaseVerdict(
+                    case.label, PatCaseBehaviour.RECOVERED_WITHIN, 0, 0, missing, warnings,
+                    if (missing == 0) "every named note within 50 cents"
+                    else "every named note within 50 cents; $missing notated note(s) not named"
+                )
+
+            warnings > 0 ->
+                PatCaseVerdict(
+                    case.label, PatCaseBehaviour.REFUSED, wrong, spurious, missing, warnings,
+                    "$wrong wrong and $spurious invented, but the output warns the reader"
+                )
+
+            else ->
+                PatCaseVerdict(
+                    case.label, PatCaseBehaviour.CONFIDENTLY_WRONG, wrong, spurious, missing, warnings,
+                    "emitted pat(\"${transcription.miniNotation}\") with $wrong wrong and " +
+                        "$spurious invented note(s) and NO warning"
+                )
+        }
     }
 
     /** `patMatchOnsets` in sample space: the same onsets with their median constant lag removed. */
@@ -493,12 +641,74 @@ object PatTranscriptionCorpus {
             pitchTally = patTallyOnsets(pitchOnsets, scheduled, tolerance),
             pitchMatch = forgiveLag(pitchOnsets, scheduled, sampleRate),
             mergedOnsets = mergedOnsets,
-            mergedTally = patTallyOnsets(mergedOnsets, scheduled, tolerance)
+            mergedTally = patTallyOnsets(mergedOnsets, scheduled, tolerance),
+            closure = patCloseLoop(
+                label = "legato-dough",
+                transcription = transcription,
+                wave = PatWave.SINE,
+                decay = 0.03,
+                minGapSeconds = stepSeconds,
+                minHz = minHz,
+                maxHz = maxHz,
+                sampleRate = sampleRate
+            )
         )
     }
 
     /** Runs every case. Around a minute of CPU; there is no cache and no shared state. */
     fun runAll(sampleRate: Int = SR): List<PatCaseResult> = CASES.map { run(it, sampleRate) }
+
+    /** One case's onset recall when the register is estimated instead of declared. */
+    class PatAutoResult(
+        val label: String,
+        val declared: Double,
+        val auto: Double,
+        val wide: Double,
+        val estimated: ClosedFloatingPointRange<Double>?,
+        val autoNotes: Int,
+        val declaredNotes: Int
+    ) {
+        fun describe(): String =
+            "%-18s declared %.2f  auto %.2f  wide %.2f".format(label, declared, auto, wide) +
+                "  notes ${autoNotes}/${declaredNotes}" +
+                (estimated?.let {
+                    "  estimated ${"%.0f".format(it.start)}–${"%.0f".format(it.endInclusive)} Hz"
+                } ?: "  no estimate")
+    }
+
+    /**
+     * Onset recall three ways on the same audio: register declared, register estimated, register wide.
+     *
+     * This is the measurement that decides whether `minHz` can have a defensible default. `declared` is
+     * the ceiling — the notation's own range handed straight to the detector. `wide` is the floor a
+     * caller lands on today by omitting the parameter. `auto` is [patTranscribeAuto], and the question is
+     * how much of the gap it closes.
+     */
+    fun runAuto(sampleRate: Int = SR): List<PatAutoResult> = CASES.map { case ->
+        val samples = render(case, sampleRate)
+        val reference = referenceOf(case, sampleRate)
+        val scheduled = reference.map { it.startSample }.distinct().sorted()
+        val tolerance = (ONSET_TOLERANCE_SECONDS * sampleRate).toInt()
+        val gap = case.stepSeconds
+        val (minHz, maxHz) = registerOf(case, reference)
+
+        fun recallOf(t: PatTranscription): Double =
+            patTallyOnsets(t.notes.map { it.startSample }, scheduled, tolerance).recall
+
+        val declared = patTranscribe(samples, sampleRate, gap, minHz, maxHz)
+        val auto = patTranscribeAuto(samples, sampleRate, gap)
+        val wide = patTranscribe(samples, sampleRate, gap, PAT_PITCH_MIN_HZ, PAT_PITCH_MAX_HZ)
+
+        PatAutoResult(
+            label = case.label,
+            declared = recallOf(declared),
+            auto = recallOf(auto),
+            wide = recallOf(wide),
+            estimated = patEstimateRegister(samples, sampleRate),
+            autoNotes = auto.notes.size,
+            declaredNotes = declared.notes.size
+        )
+    }
 
     /** The corpus as a printable table, purposes included. */
     fun report(results: List<PatCaseResult>): String = buildString {
@@ -511,5 +721,39 @@ object PatTranscriptionCorpus {
             appendLine("    purpose: ${result.case.purpose}")
             appendLine()
         }
+        appendLine(census(results))
     }
+
+    /**
+     * The two corpus-level numbers a human should read first: what each case *did*, and how many
+     * survived being rendered from their own emitted notation.
+     */
+    fun census(results: List<PatCaseResult>): String = buildString {
+        appendLine("── behaviour ─────────────────────────────────────────────────────────────────")
+        for (behaviour in PatCaseBehaviour.entries) {
+            val hits = results.filter { it.verdict.behaviour == behaviour }
+            appendLine("%-18s %2d  %s".format(behaviour.name, hits.size, hits.joinToString(", ") { it.case.label }))
+        }
+        appendLine()
+        appendLine("── notation → sound → notation → sound ───────────────────────────────────────")
+        for (result in results) appendLine("  " + result.closure.describe())
+        val closable = results.filter {
+            it.closure.verdict == PatLoopVerdict.CLOSED || it.closure.verdict == PatLoopVerdict.DIVERGED
+        }
+        appendLine(
+            "  ${closable.count { it.closed() }} of ${closable.size} re-renderable cases close the loop" +
+                "  (${results.count { it.closure.verdict == PatLoopVerdict.REFUSED }} refused, " +
+                "${results.count { it.closure.verdict == PatLoopVerdict.NO_GRID }} without a grid)"
+        )
+    }
+
+    /** How many re-renderable cases reproduced their own notation, and out of how many. */
+    fun closureCount(results: List<PatCaseResult>): Pair<Int, Int> {
+        val closable = results.filter {
+            it.closure.verdict == PatLoopVerdict.CLOSED || it.closure.verdict == PatLoopVerdict.DIVERGED
+        }
+        return closable.count { it.closure.closed } to closable.size
+    }
+
+    private fun PatCaseResult.closed(): Boolean = closure.closed
 }

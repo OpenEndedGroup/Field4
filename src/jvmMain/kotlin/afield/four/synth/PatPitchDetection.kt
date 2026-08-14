@@ -827,6 +827,76 @@ fun patSpectralPeakCount(
 }
 
 /**
+ * Is there actually energy at [f0], or is [f0] a fundamental nobody played?
+ *
+ * The classic missing-fundamental problem, and this corpus produces it without being asked to. A major
+ * triad in near-just intonation is a 4:5:6 ratio — 261, 329 and 392 Hz are 4×, 5× and 6× of 65.3 Hz —
+ * so a periodicity detector allowed to consider lags that long is *correct* to report 65 Hz. The chord
+ * really is periodic at 65 Hz. Nobody played a 65 Hz note.
+ *
+ * Measured, before this existed: `patTranscribeAuto` estimated a register of 65–77 Hz for `chord-triad`
+ * and named five confident notes around MIDI 36. Every other guard passed it, because nothing was
+ * wrong with the periodicity — the aperiodic-fraction gate saw a mostly-voiced buffer and the harmonic
+ * residual saw a perfect harmonic stack. It was a coherent answer to a question nobody asked.
+ *
+ * The discriminator is spectral, not temporal: a played fundamental has energy in its own bin, and a
+ * virtual one does not. Returns the magnitude near [f0] relative to the loudest peak in the span, so
+ * a small value means the fundamental is inferred rather than heard.
+ *
+ * Note the control this has to survive: `bass-register` plays MIDI 36, which *is* 65 Hz, and must come
+ * back with a high ratio. The test separates "a low note" from "no low note" rather than distrusting
+ * low notes.
+ */
+fun patEnergyAtF0(
+    samples: FloatArray,
+    start: Int,
+    length: Int,
+    sampleRate: Int,
+    f0: Double,
+    maxFftSize: Int = 8192
+): Double {
+    if (!f0.isFinite() || f0 <= 0.0 || length <= 0) return 1.0
+    var fftSize = 2048
+    while (fftSize * 2 <= min(length, maxFftSize)) fftSize *= 2
+    if (samples.size < fftSize) return 1.0
+    // Resolving a 65 Hz fundamental from its 130 Hz neighbour needs the window to be long enough that
+    // one bin is well under f0; below that the answer is meaningless, so say so by declining to judge.
+    if (sampleRate.toDouble() / fftSize > f0 * 0.5) return 1.0
+
+    val center = (start + length / 2).coerceIn(0, max(0, samples.size - 1))
+    val from = (center - fftSize / 2).coerceIn(0, max(0, samples.size - fftSize))
+    if (samples.size - from < fftSize) return 1.0
+
+    val buffer = FloatArray(2 * fftSize)
+    for (i in 0 until fftSize) {
+        val hann = 0.5 - 0.5 * kotlin.math.cos(2.0 * Math.PI * i / (fftSize - 1))
+        buffer[2 * i] = (samples[from + i] * hann).toFloat()
+        buffer[2 * i + 1] = 0f
+    }
+    FFT(fftSize).forward(buffer)
+
+    val bins = fftSize / 2
+    val magnitude = DoubleArray(bins)
+    for (k in 0 until bins) {
+        val re = buffer[2 * k].toDouble()
+        val im = buffer[2 * k + 1].toDouble()
+        magnitude[k] = sqrt(re * re + im * im)
+    }
+    val binHz = sampleRate.toDouble() / fftSize
+    var loudest = 0.0
+    for (k in 1 until bins - 1) if (magnitude[k] > loudest) loudest = magnitude[k]
+    if (loudest <= 0.0) return 1.0
+
+    // Widen by two bins either side: a Hann main lobe is three bins and f0 rarely lands on a bin centre.
+    val target = (f0 / binHz).toInt()
+    var atF0 = 0.0
+    for (k in (target - 2).coerceAtLeast(1)..(target + 2).coerceAtMost(bins - 2)) {
+        if (magnitude[k] > atF0) atF0 = magnitude[k]
+    }
+    return atF0 / loudest
+}
+
+/**
  * How much of this span's strong spectral peak energy is *not* a harmonic of [f0].
  *
  * Measured on a Hann-windowed FFT of the middle of the span, because a note's attack and decay are

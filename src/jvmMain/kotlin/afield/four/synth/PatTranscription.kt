@@ -126,9 +126,47 @@ fun patEstimateStepGrid(
                 if (best == null || candidate.stepSeconds > best.stepSeconds) best = candidate
             }
         }
-        if (best != null) return best
+        if (best != null) return refineStep(best, sorted, totalSeconds)
     }
     return null
+}
+
+/**
+ * Re-fit the step *length* without changing the step *count*.
+ *
+ * The coarse sweep answers "how many steps", and it answers it by taking the largest step inside the
+ * tolerance — which systematically biases the step long, because a slightly-too-long step is exactly
+ * what a loosened tolerance admits. That bias then **accumulates**: it is invisible at step 1 and is
+ * the whole error by step 8.
+ *
+ * Found by closing the fourth hop and not before. `saw-timbre` reproduced its pitch sequence perfectly
+ * on re-render and still failed closure with a 54 ms onset shift, which made no sense against a
+ * detector whose own worst onset error on that case is 0.5 ms. The cause was a fitted step of 0.339 s
+ * against a true 0.333 s — 1.8% long, harmless per note, and 42 ms of drift by the end of the phrase.
+ * A three-hop test cannot see this at all: the note *names* are unaffected.
+ *
+ * So the count is kept and the length is minimised for worst residual over a narrow band around it.
+ */
+private fun refineStep(coarse: PatStepGrid, onsets: List<Double>, totalSeconds: Double): PatStepGrid {
+    if (coarse.steps <= 1) return coarse
+    var best = coarse
+    val samples = 2000
+    for (i in 0 until samples) {
+        val step = coarse.stepSeconds * (0.85 + (1.15 - 0.85) * i / (samples - 1.0))
+        if (step <= 0.0) continue
+        // The step count is what the coarse pass decided; only its length is up for revision here.
+        if (round(totalSeconds / step).toInt() != coarse.steps) continue
+        var worst = 0.0
+        for (t in onsets) {
+            val units = t / step
+            val residual = abs(units - round(units))
+            if (residual > worst) worst = residual
+        }
+        if (worst < best.worstResidual) {
+            best = PatStepGrid(step, worst, coarse.steps, coarse.acceptedAt)
+        }
+    }
+    return best
 }
 
 /**
@@ -165,6 +203,12 @@ class PatTranscription(
 
     /** MIDI numbers in time order, which is the sequence a caller usually wants to compare. */
     val midiSequence: List<Int> get() = notes.sortedBy { it.startSample }.map { it.midi }
+
+    /** The same transcription carrying one more warning. Used by [patTranscribeAuto]. */
+    internal fun withExtraWarning(warning: String): PatTranscription = PatTranscription(
+        notes, declined, frames, sampleRate, totalSeconds, grid, miniNotation, sustainFraction,
+        warnings + warning, diagnosis
+    )
 
     fun describe(): String = buildString {
         append("${notes.size} note(s)")
@@ -238,6 +282,20 @@ fun patTranscribe(
         // a detector reporting "there was nothing there" about audio it simply could not read.
         warnings += "named no notes at all — ${diagnosis.describe()}"
     }
+    // Self-knowledge, available with no ground truth at all: more onsets were located than notes were
+    // named, so the notation below is missing notes this detector itself heard.
+    //
+    // This warning is the whole difference between being wrong and being *confidently* wrong, and it
+    // exists because the corpus measured the gap. `legato-scale` emitted a plausible, parseable and
+    // incorrect `pat("60 62 65 _ 67 69 71 72 …")` — one note missing, one name 65 cents out — carrying
+    // no warning of any kind, so a reader had nothing to go on. A transcriber cannot know that it was
+    // wrong. It can always know that it declined to name something it detected, and saying so is what
+    // separates "this is the tune" from "this is most of the tune".
+    if (boundaries.size > all.size) {
+        warnings += "located ${boundaries.size} onset(s) but named ${all.size}: " +
+            "${boundaries.size - all.size} span(s) held no pitch steadily enough to name, so the " +
+            "notation below is missing notes that were heard — incomplete, not merely imprecise"
+    }
 
     val grid = patEstimateStepGrid(
         notes.map { it.startSeconds }, totalSeconds, tolerance = gridTolerance
@@ -259,6 +317,32 @@ fun patTranscribe(
         fractions[fractions.size / 2]
     }
     val notation = patNotationOf(notes, grid)
+
+    // The other half of "wrong" versus "confidently wrong", and the one that is actually hard.
+    //
+    // A note occupying more than one grid step, in a piece where the typical note occupies one, is
+    // exactly where two notes were heard as one. `legato-scale` emitted
+    // `pat("60 62 65 _ 67 69 71 72 …")` — 64 and 65 merged into a two-step `65 _`, one name 65 cents
+    // out — and every other self-check passed it: nothing was declined, the grid fitted, and as many
+    // notes were named as onsets were found. It was the only case in the corpus to emit a plausible,
+    // parseable, wrong notation with no warning at all, which is the worst thing this file can do.
+    //
+    // The detector cannot know which name is wrong. It can see that it wrote a held note into an
+    // otherwise even grid, and that is enough to tell the reader where to look.
+    if (grid != null && notes.size >= 3) {
+        val stepsPerNote = notes.map { note ->
+            val from = round(note.startSeconds / grid.stepSeconds).toInt()
+            val to = round(note.endSeconds / grid.stepSeconds).toInt()
+            max(1, to - from)
+        }
+        val held = stepsPerNote.count { it > 1 }
+        val single = stepsPerNote.count { it == 1 }
+        if (held > 0 && single > held) {
+            warnings += "$held of ${notes.size} named note(s) span more than one step in a grid whose " +
+                "other ${single} notes span exactly one. A held note in an even grid is where two " +
+                "notes are heard as one, so those names are the least trustworthy in the notation"
+        }
+    }
 
     return PatTranscription(
         notes = notes,
@@ -334,6 +418,390 @@ fun patRenderTranscription(
         sampleRate = sampleRate
     )
     return audio.mono
+}
+
+/**
+ * Guess the register from the audio, so a caller who cannot declare one is not silently punished.
+ *
+ * `minHz` sets the analysis window and therefore the shortest resolvable note, so a caller who omits it
+ * lands on a 46 ms window and, on a fast line, on onset recall 0.03. That is a correct measurement and
+ * an indefensible default: the first thing anyone does is call the function without telling it anything.
+ *
+ * The way out rests on a distinction the corpus made visible. A window that is too long ruins
+ * *segmentation* but not *estimation* — on `fast-line-untold` the wide pass left 329 of 329 frames
+ * voiced and its F0 trace followed the tune correctly; the frames knew the pitch and only the note
+ * boundaries were lost. So a wide first pass is a poor transcriber and a perfectly good histogram, and
+ * one cheap pass can buy the second pass its window.
+ *
+ * Deliberately asymmetric in what it is willing to get wrong. The low bound comes from a low
+ * *percentile* rather than the minimum, and is then dropped a further semitone. An estimate that is too
+ * low only costs sharpness; an estimate that is too high makes real low notes unvoiced and deletes them.
+ * Octave-down errors in the first pass therefore push this in the safe direction, which is why the
+ * cheap statistic is adequate.
+ *
+ * @param hop coarser than the analysis default on purpose: this pass needs a distribution, not timing,
+ *   so it pays a quarter of the frames.
+ * @return the register to hand [patTranscribe], or null when too little was voiced to have an opinion.
+ */
+fun patEstimateRegister(
+    samples: FloatArray,
+    sampleRate: Int,
+    minHz: Double = PAT_PITCH_MIN_HZ,
+    maxHz: Double = PAT_PITCH_MAX_HZ,
+    hop: Int = PAT_PITCH_HOP * 4,
+    lowPercentile: Double = 0.02,
+    highPercentile: Double = 0.98,
+    minVoicedFraction: Double = 0.10,
+    frames: List<PatF0Frame> = patF0Frames(samples, sampleRate, minHz = minHz, maxHz = maxHz, hop = hop)
+): ClosedFloatingPointRange<Double>? {
+    if (frames.isEmpty()) return null
+    val voiced = frames.filter { it.voiced && it.hz.isFinite() && it.hz > 0.0 }
+    if (voiced.size < 4 || voiced.size < minVoicedFraction * frames.size) return null
+
+    val sorted = voiced.map { it.hz }.sorted()
+    fun percentile(q: Double): Double =
+        sorted[((sorted.size - 1) * q).toInt().coerceIn(0, sorted.size - 1)]
+
+    val semitone = 1.0594630943592953
+    val lo = (percentile(lowPercentile) / semitone).coerceAtLeast(minHz)
+    val hi = (percentile(highPercentile) * semitone).coerceAtMost(maxHz)
+    if (hi <= lo * 1.05) return null
+    return lo..hi
+}
+
+/**
+ * [patTranscribe] with the register estimated from the audio instead of declared.
+ *
+ * Two passes: [patEstimateRegister] over a wide range to pick the window, then the real transcription
+ * inside it. What this recovers of the declared-register result is measured on the corpus by
+ * `PatTranscriptionCorpus.runAuto`, and reported rather than assumed — if it did not work this function
+ * would still exist, loudly warning instead of quietly guessing.
+ *
+ * The estimate is always recorded in [PatTranscription.warnings], because a register that was guessed
+ * is a different kind of claim from one that was promised, and the caller should be able to tell.
+ */
+fun patTranscribeAuto(
+    samples: FloatArray,
+    sampleRate: Int,
+    minGapSeconds: Double? = null,
+    hop: Int = PAT_PITCH_HOP,
+    gridTolerance: Double = 0.12
+): PatTranscription {
+    fun wideWith(warning: String): PatTranscription = patTranscribe(
+        samples, sampleRate, minGapSeconds = minGapSeconds,
+        minHz = PAT_PITCH_MIN_HZ, maxHz = PAT_PITCH_MAX_HZ, hop = hop, gridTolerance = gridTolerance
+    ).withExtraWarning(warning)
+
+    // One coarse wide pass, used for two decisions: whether narrowing is safe, and what to narrow to.
+    val coarse = patF0Frames(
+        samples, sampleRate,
+        minHz = PAT_PITCH_MIN_HZ, maxHz = PAT_PITCH_MAX_HZ, hop = PAT_PITCH_HOP * 4
+    )
+    val firstOpinion = patDiagnoseUnpitched(samples, sampleRate, coarse, namedNotes = 0)
+
+    // The gate is the *fraction* of loud frames that are aperiodic, not [patDiagnoseUnpitched]'s
+    // verdict. Using the verdict was the second wrong version of this guard: that function exists to
+    // explain why nothing was named and assumes nothing was, so on perfectly nameable material it finds
+    // the two frames straddling a note boundary, counts a handful of spectral peaks there, and returns
+    // POLYPHONIC. Gating on it refused five clean cases — saw, square, detuned, rests and bass all fell
+    // to recall 0.00. The fraction separates the corpus cleanly and by a wide margin: 0.86 for the
+    // triad and 1.00 for the noise train, against 0.18 for the worst monophonic case.
+    val loudFrames = firstOpinion.loudFrames
+    val aperiodicFraction =
+        if (loudFrames == 0) 1.0 else firstOpinion.loudUnvoicedFrames.toDouble() / loudFrames
+
+    // The guard, and it is not hypothetical: without it this function turned a correct refusal into
+    // five confidently-named notes. On `chord-triad` the wide pass leaves a triad mostly unvoiced, the
+    // few voiced frames are octave-error debris, and the estimated register came out 65–77 Hz — three
+    // semitones wide and nowhere near the music. Narrowing to it produced a short window, a stable-
+    // looking run, and five invented notes at onset recall 0.75, replacing an honest POLYPHONIC. So a
+    // first pass that already says "this is not one line" is believed, and the register is left wide.
+    if (loudFrames == 0 || aperiodicFraction >= 0.5) {
+        // Refuse outright rather than fall back to the wide default, which was the first version of
+        // this guard and was not enough. With the wide register `chord-triad` does not refuse — it
+        // names five notes — so "keep the wide default and let the refusal stand" preserved a refusal
+        // that was not there. A caller who cannot declare a register and hands in material the first
+        // pass already calls polyphonic gets a refusal, which is the only answer this function can
+        // defend.
+        return PatTranscription(
+            notes = emptyList(),
+            declined = emptyList(),
+            frames = coarse,
+            sampleRate = sampleRate,
+            totalSeconds = samples.size.toDouble() / sampleRate,
+            grid = null,
+            miniNotation = "~",
+            sustainFraction = 1.0,
+            warnings = listOf(
+                "refusing to transcribe without a declared register: " +
+                    "${"%.0f".format(aperiodicFraction * 100)}% of the loud frames in a coarse first " +
+                    "pass are aperiodic, so this is not one monophonic line — " +
+                    firstOpinion.describe() + ". Estimating a monophonic register from material that " +
+                    "is not monophonic invents notes, and the wide default does not refuse this " +
+                    "material either. Pass minHz/maxHz explicitly if you know this is one line"
+            ),
+            diagnosis = firstOpinion
+        )
+    }
+
+    val register = patEstimateRegister(samples, sampleRate, frames = coarse)
+
+    // Is the register's floor a note somebody played, or a fundamental the chord merely implies?
+    // See [patEnergyAtF0]: a 4:5:6 triad is genuinely periodic two octaves below anything sounding.
+    if (register != null) {
+        val loudest = coarse.filter { it.voiced }.maxByOrNull { it.rms }
+        // Tested at the pitch the detector actually reported for its loudest voiced frame — NOT at
+        // `register.start`, which is a semitone below the lowest note by construction and therefore has
+        // no energy in any recording ever made. Testing the floor refused eleven of thirteen cases.
+        val energyAtFloor = if (loudest == null) 1.0 else patEnergyAtF0(
+            samples,
+            start = loudest.startSample,
+            // Twelve periods of the reported pitch: long enough to resolve it, short enough to stay
+            // inside one note. Passing "up to a second" instead centred the transform half a second
+            // past the frame it was supposed to be about, which refused eleven of thirteen cases.
+            length = min(
+                samples.size - loudest.startSample,
+                max(2048, (12.0 * sampleRate / loudest.hz.coerceAtLeast(20.0)).toInt())
+            ),
+            sampleRate = sampleRate,
+            f0 = loudest.hz
+        )
+        if (energyAtFloor < 0.05) {
+            return PatTranscription(
+                notes = emptyList(),
+                declined = emptyList(),
+                frames = coarse,
+                sampleRate = sampleRate,
+                totalSeconds = samples.size.toDouble() / sampleRate,
+                grid = null,
+                miniNotation = "~",
+                sustainFraction = 1.0,
+                warnings = listOf(
+                    "refusing to transcribe without a declared register: the loudest voiced frame " +
+                        "reports ${"%.0f".format(loudest?.hz ?: 0.0)} Hz, which carries only " +
+                        "${"%.1f".format(energyAtFloor * 100)}% of the loudest peak's magnitude, so it " +
+                        "is a fundamental this material implies rather than one it plays — the " +
+                        "signature of a chord heard as its own virtual root. Pass minHz/maxHz " +
+                        "explicitly if you know this is one line"
+                ),
+                diagnosis = firstOpinion
+            )
+        }
+    }
+
+    if (register == null) {
+        return wideWith(
+            "could not estimate a register — too little of this buffer was voiced — so the wide " +
+                "default ${PAT_PITCH_MIN_HZ.toInt()}–${PAT_PITCH_MAX_HZ.toInt()} Hz was used, and the " +
+                "analysis window is at its longest (${patPitchFrameSpan(sampleRate, PAT_PITCH_MIN_HZ)} samples)"
+        )
+    }
+    val transcription = patTranscribe(
+        samples, sampleRate, minGapSeconds = minGapSeconds,
+        minHz = register.start, maxHz = register.endInclusive, hop = hop, gridTolerance = gridTolerance
+    )
+    return transcription.withExtraWarning(
+        "register was estimated from the audio, not declared: " +
+            "${"%.0f".format(register.start)}–${"%.0f".format(register.endInclusive)} Hz, " +
+            "giving a ${patPitchFrameSpan(sampleRate, register.start)}-sample window " +
+            "(${"%.1f".format(1000.0 * patPitchFrameSpan(sampleRate, register.start) / sampleRate)} ms)"
+    )
+}
+
+/** What happened when the emitted notation was rendered again and listened to again. */
+enum class PatLoopVerdict {
+    /** The second render was heard as the same notes, within a tolerance derived from the grid. */
+    CLOSED,
+
+    /** The emitted notation parsed and rendered, and produced different notes. The interesting case. */
+    DIVERGED,
+
+    /** Nothing was named, so there is no notation to re-render. Not a failure and not a success. */
+    REFUSED,
+
+    /** Notes were named but no grid was fitted, so the notation is unquantised and not re-renderable. */
+    NO_GRID
+}
+
+/**
+ * One full turn of notation → sound → notation → **sound**.
+ *
+ * The three-hop claim ("the recovered integers equal the notated integers") is weaker than it looks,
+ * because it compares a list against a list and never asks whether the *string* means what the list
+ * meant. A `pat("…")` that parses, renders, and sounds like something else passes it. This closes the
+ * fourth hop: the emitted notation is handed back to `patRenderStereo` at the `cps` the transcription
+ * reported, the second buffer is analysed by the same detector, and the two note sets are compared.
+ * Every hop is a real Field code path.
+ *
+ * **The criterion is sequence reproduction, and the timing bound is half a step.** Both of those are
+ * second attempts, and the first attempt is worth recording because it was a trap.
+ *
+ * Originally closure required the onset shift to sit inside `worstResidual · stepSeconds + 2 · hop`,
+ * on the reasoning that emission quantises onsets onto the grid so the grid's own reported residual
+ * bounds the displacement. That formula is **self-defeating**: fixing the grid fit (see [refineStep])
+ * cut the real onset shift on `saw-timbre` from 54 ms to 19 ms and simultaneously cut the allowance
+ * from 46 ms to 6 ms, because the allowance was mostly made of the error being removed. Accuracy
+ * improved and the count of closing cases fell from 3 to 1. A tolerance that tightens as the thing it
+ * measures improves is not a tolerance.
+ *
+ * The quantisation term was also never the dominant one. `|t2 − t1| ≤ |g − t1| + |t2 − g|`, and the
+ * second term — the detector's error on the *second* render — is the big one, is 8–29 ms on this
+ * corpus, and cannot be predicted from the first render because the re-render's articulation differs.
+ *
+ * So: closure asks whether the second hearing produced **the same MIDI sequence**, which is what "the
+ * loop closed" means musically and which no choice of tolerance can soften, plus whether every note
+ * still lands on its own step — a bound of `stepSeconds / 2`, derived from the grid rather than picked,
+ * because past half a step a note quantises to a different step and the notation is no longer
+ * re-derivable. The grid-quantisation figure is still computed and reported as
+ * [quantisationBound], now as an observation rather than a gate.
+ *
+ * @param centsShift worst pitch disagreement between the two hearings, over notes that paired up.
+ *   `NaN` when the sequence differs, because pairing across a dropped note compares unrelated notes and
+ *   the resulting "1199 cents" says nothing about pitch accuracy.
+ */
+data class PatLoopClosure(
+    val label: String,
+    val verdict: PatLoopVerdict,
+    val firstNotes: Int,
+    val secondNotes: Int,
+    val firstMidi: List<Int>,
+    val secondMidi: List<Int>,
+    val worstOnsetShift: Double,
+    val centsShift: Double,
+    val toleranceSeconds: Double,
+    /** What the grid's own quantisation would have allowed. Reported, not a gate. See [patCloseLoop]. */
+    val quantisationBound: Double,
+    val unpaired: Int,
+    val why: String
+) {
+    val closed: Boolean get() = verdict == PatLoopVerdict.CLOSED
+
+    fun describe(): String = buildString {
+        append("%-18s".format(label))
+        append(" %-9s".format(verdict.name))
+        append(" ${firstNotes}→${secondNotes} notes")
+        if (verdict == PatLoopVerdict.CLOSED || verdict == PatLoopVerdict.DIVERGED) {
+            append("  onset shift ${"%.1f".format(worstOnsetShift * 1000)} ms")
+            append(" of ${"%.1f".format(toleranceSeconds * 1000)} ms (grid quantisation was ")
+            append("${"%.1f".format(quantisationBound * 1000)} ms)")
+            if (centsShift.isFinite()) append("  cents shift ${"%.1f".format(centsShift)}")
+        }
+        if (why.isNotEmpty()) append("  — $why")
+    }
+}
+
+/**
+ * Render [transcription]'s own notation again and listen to it again.
+ *
+ * The comparison is against what the detector *heard the first time*, not against the notation that
+ * generated the original audio. That is deliberate and it is the only way this measures the emitter:
+ * scoring the second hearing against the original notation would fold the detector's accuracy back
+ * into the answer and a divergence caused purely by a bad string would be indistinguishable from one
+ * caused by a hard render.
+ *
+ * @param wave the timbre to re-render with. Passing the original case's wave keeps the second hop a
+ *   test of the notation rather than a test of whether the detector survives a timbre change.
+ */
+fun patCloseLoop(
+    label: String,
+    transcription: PatTranscription,
+    wave: PatWave = PatWave.SINE,
+    decay: Double = 0.03,
+    minGapSeconds: Double? = null,
+    minHz: Double = PAT_PITCH_MIN_HZ,
+    maxHz: Double = PAT_PITCH_MAX_HZ,
+    sampleRate: Int = PatSoundDocs.SR,
+    hop: Int = PAT_PITCH_HOP
+): PatLoopClosure {
+    val firstMidi = transcription.midiSequence
+    val empty = emptyList<Int>()
+
+    if (transcription.notes.isEmpty()) {
+        return PatLoopClosure(
+            label, PatLoopVerdict.REFUSED, 0, 0, empty, empty, 0.0, Double.NaN, 0.0, 0.0, 0,
+            "nothing was named, so there is no notation to render again"
+        )
+    }
+    val grid = transcription.grid
+        ?: return PatLoopClosure(
+            label, PatLoopVerdict.NO_GRID, firstMidi.size, 0, firstMidi, empty, 0.0, Double.NaN, 0.0, 0.0, 0,
+            "no grid was fitted, so the emitted notation carries no timing to reproduce"
+        )
+
+    val second = patRenderTranscription(transcription, wave = wave, decay = decay, sampleRate = sampleRate)
+    val gap = minGapSeconds ?: grid.stepSeconds
+    val reheard = patTranscribe(
+        second, sampleRate, minGapSeconds = gap, minHz = minHz, maxHz = maxHz, hop = hop
+    )
+    val secondMidi = reheard.midiSequence
+
+    // Reported, not a gate — see the KDoc for why this made a bad criterion.
+    val quantisationBound = grid.worstResidual * grid.stepSeconds + 2.0 * hop / sampleRate
+    // The gate: a note must still land on its own step, or the notation is not re-derivable.
+    val tolerance = grid.stepSeconds / 2.0
+
+    // Pair the two hearings by nearest onset, each spent once, and **only within one step**. Pairing
+    // without a bound was the first version and it lied loudly: when the second hearing loses a note,
+    // every later note pairs with its neighbour and the cascade reports a "shift" of 386 ms and a
+    // "cents shift" of 1100 on audio whose real disagreement is one dropped note. Those are the same
+    // off-by-one cascade that made segmentation report 1700 cents earlier in this branch. An unpairable
+    // note is now counted as unpaired, which is the honest description of it.
+    val pairingBound = grid.stepSeconds
+    val firstNotes = transcription.notes.sortedBy { it.startSample }
+    val secondNotes = reheard.notes.sortedBy { it.startSample }
+    val used = BooleanArray(secondNotes.size)
+    var worstShift = 0.0
+    var worstCents = 0.0
+    var paired = 0
+    var unpaired = 0
+    for (note in firstNotes) {
+        var bestIndex = -1
+        var bestDistance = Double.MAX_VALUE
+        for ((i, other) in secondNotes.withIndex()) {
+            if (used[i]) continue
+            val distance = abs(other.startSeconds - note.startSeconds)
+            if (distance < bestDistance) {
+                bestDistance = distance
+                bestIndex = i
+            }
+        }
+        if (bestIndex < 0 || bestDistance > pairingBound) {
+            unpaired++
+            continue
+        }
+        used[bestIndex] = true
+        paired++
+        if (bestDistance > worstShift) worstShift = bestDistance
+        val cents = abs(secondNotes[bestIndex].measuredMidi - note.measuredMidi) * 100.0
+        if (cents > worstCents) worstCents = cents
+    }
+
+    val reasons = mutableListOf<String>()
+    if (secondMidi != firstMidi) {
+        reasons += "the second hearing is a different sequence (${firstMidi.size} vs ${secondMidi.size} notes)"
+    }
+    if (unpaired > 0) reasons += "$unpaired note(s) had no counterpart within one step"
+    if (worstShift > tolerance) {
+        reasons += "worst onset shift ${"%.1f".format(worstShift * 1000)} ms exceeds half a step " +
+            "(${"%.1f".format(tolerance * 1000)} ms), so a note moved to a different step"
+    }
+    if (paired == 0) reasons += "no note paired up at all"
+
+    return PatLoopClosure(
+        label = label,
+        verdict = if (reasons.isEmpty()) PatLoopVerdict.CLOSED else PatLoopVerdict.DIVERGED,
+        firstNotes = firstMidi.size,
+        secondNotes = secondMidi.size,
+        firstMidi = firstMidi,
+        secondMidi = secondMidi,
+        worstOnsetShift = worstShift,
+        // Only meaningful when the sequence matched; otherwise pairing compares unrelated notes.
+        centsShift = if (paired == 0 || secondMidi != firstMidi) Double.NaN else worstCents,
+        toleranceSeconds = tolerance,
+        quantisationBound = quantisationBound,
+        unpaired = unpaired,
+        why = reasons.joinToString("; ")
+    )
 }
 
 /** Reference note, as the notation that produced the audio says it should be. */

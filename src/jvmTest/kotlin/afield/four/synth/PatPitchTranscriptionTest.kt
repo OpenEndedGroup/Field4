@@ -358,11 +358,199 @@ class PatPitchTranscriptionTest {
         )
     }
 
+    // ── the fourth hop: notation → sound → notation → sound ───────────────────────────────
+
+    @Test
+    fun `half the re-renderable corpus reproduces its own emitted notation`() {
+        // The claim three hops cannot make. "The recovered integers equal the notated integers"
+        // compares a list against a list and never asks whether the emitted *string* means what the
+        // list meant; a `pat("…")` that parses, renders and sounds like something else passes it.
+        // Measured: 5 of 10 re-renderable cases reproduce their note sequence when their own notation
+        // is rendered again and heard again.
+        val (closed, closable) = PatTranscriptionCorpus.closureCount(results)
+        assertTrue(closable >= 9, "only $closable cases were re-renderable at all")
+        assertTrue(
+            closed >= 5,
+            "$closed of $closable re-renderable cases close the loop; the ratchet is 5. " +
+                results.filter { it.closure.verdict == PatLoopVerdict.DIVERGED }
+                    .joinToString("; ") { it.closure.describe() }
+        )
+        // And the legato Dough probe closes too, at a different sample rate.
+        assertTrue(legato.closure.closed, "the legato probe stopped closing: ${legato.closure.describe()}")
+    }
+
+    @Test
+    fun `an incomplete transcription is what fails to re-render`() {
+        // The finding, asserted as a relationship rather than a list of names. Every case that closed
+        // the loop named a self-consistent set — no wrong names and no invented notes; every case that
+        // diverged had at least one. So the fourth hop is a validity check on the third, which is the
+        // reason it is worth paying for.
+        for (result in results) {
+            if (result.closure.verdict != PatLoopVerdict.CLOSED) continue
+            val verdict = result.verdict
+            assertEquals(
+                0, verdict.wrongNames,
+                "${result.case.label} closed the loop yet has wrong names — the relationship this " +
+                    "test documents has broken and the finding needs restating"
+            )
+            assertEquals(
+                0, verdict.spuriousNotes,
+                "${result.case.label} closed the loop yet invented notes"
+            )
+        }
+    }
+
+    @Test
+    fun `refining the step length keeps re-rendered onsets on their own step`() {
+        // Guards the accumulated-drift bug the fourth hop exposed: the coarse grid sweep takes the
+        // largest step inside its tolerance, which biases the step long, which is invisible per note
+        // and is the whole error by the end of a phrase. saw-timbre's onset shift on re-render was
+        // 54.1 ms before `refineStep` and 19.2 ms after, against a true step of 333 ms.
+        for (label in listOf("saw-timbre", "square-timbre")) {
+            val closure = case(label).closure
+            assertTrue(
+                closure.worstOnsetShift <= 0.030,
+                "$label re-render drifted ${closure.worstOnsetShift * 1000} ms; the step fit has " +
+                    "regressed toward its long bias"
+            )
+        }
+    }
+
+    // ── confidently wrong is the bucket that matters ───────────────────────────────────────
+
+    @Test
+    fun `nothing in the corpus is confidently wrong`() {
+        // The ceiling the whole classification exists for. A transcriber that emits a plausible,
+        // parseable, wrong `pat("…")` is worse than one that returns UNRESOLVED, because the wrong
+        // answer gets believed and the refusal does not — and both land in the same region of any
+        // F-measure, which is why this is a census and not a score.
+        //
+        // This was **1, not 0**, when the census was first run: `legato-scale` emitted
+        // `pat("60 62 65 _ 67 69 71 72 …")` — 64 and 65 heard as one note, one name 65 cents out — with
+        // no warning of any kind. It is 0 now because of a specific self-check, not a blanket warning:
+        // a note held across more than one step in a grid whose other notes span exactly one is where
+        // two notes were merged, and the transcriber can see that in its own output without any ground
+        // truth. Anything that puts a case back in this bucket is a real regression.
+        val wrong = results.filter { it.verdict.behaviour == PatCaseBehaviour.CONFIDENTLY_WRONG }
+        assertEquals(
+            0, wrong.size,
+            "confidently wrong: " + wrong.joinToString("; ") { it.verdict.describe() }
+        )
+    }
+
+    @Test
+    fun `every case lands in exactly one behaviour bucket and the good ones dominate`() {
+        assertEquals(
+            results.size, results.map { it.verdict.behaviour }.size,
+            "a case escaped classification"
+        )
+        val exact = results.count { it.verdict.behaviour == PatCaseBehaviour.RECOVERED_EXACTLY }
+        val within = results.count { it.verdict.behaviour == PatCaseBehaviour.RECOVERED_WITHIN }
+        val refused = results.count { it.verdict.behaviour == PatCaseBehaviour.REFUSED }
+        // Measured: 4 exact, 4 within, 5 refused, 0 confidently wrong.
+        assertTrue(exact >= 3, "only $exact cases recovered exactly")
+        assertTrue(exact + within >= 7, "only ${exact + within} cases recovered at all")
+        assertTrue(refused >= 4, "only $refused cases refused; the hard cases should still refuse")
+        // Every refusal must be explained. A silent refusal is as useless as a wrong answer.
+        for (result in results.filter { it.verdict.behaviour == PatCaseBehaviour.REFUSED }) {
+            assertTrue(
+                result.transcription.warnings.isNotEmpty(),
+                "${result.case.label} refused without saying why"
+            )
+        }
+    }
+
+    // ── can minHz have a defensible default? ───────────────────────────────────────────────
+
+    @Test
+    fun `estimating the register recovers most of what declaring it buys`() {
+        // The out-of-the-box question. A caller who declares nothing lands on a 46 ms window, and on a
+        // fast line that means onset recall 0.03 — a correct measurement and an indefensible default.
+        // Two passes fix it: a wide pass is a poor transcriber but a perfectly good histogram, because a
+        // too-long window ruins segmentation and not estimation.
+        //
+        // Measured mean onset recall over the corpus: declared 0.690, auto 0.716, wide 0.538. So the
+        // answer is yes — a defensible default exists, and `patTranscribeAuto` is it.
+        val auto = PatTranscriptionCorpus.runAuto()
+        val meanDeclared = auto.map { it.declared }.average()
+        val meanAuto = auto.map { it.auto }.average()
+        val meanWide = auto.map { it.wide }.average()
+        assertTrue(
+            meanAuto >= meanWide + 0.12,
+            "estimating the register should beat the wide default: auto $meanAuto vs wide $meanWide"
+        )
+        assertTrue(
+            meanAuto >= meanDeclared - 0.02,
+            "estimating should be no worse on average than declaring: auto $meanAuto vs " +
+                "declared $meanDeclared"
+        )
+        // The case the whole lever was built on: told nothing, auto still hears the fast line.
+        val untold = auto.first { it.label == "fast-line-untold" }
+        assertTrue(
+            untold.auto >= 0.50,
+            "auto should rescue the untold fast line, got ${untold.auto} (wide ${untold.wide})"
+        )
+    }
+
+    @Test
+    fun `estimating the register refuses a chord instead of naming its virtual root`() {
+        // The cost of a default, and it took three attempts to get right. A 4:5:6 triad is genuinely
+        // periodic two octaves below anything sounding — 261/4 ≈ 329/5 ≈ 392/6 ≈ 65 Hz — so a detector
+        // allowed to look that low is *correct* to report 65 Hz, and `patTranscribeAuto` named five
+        // confident notes around MIDI 36. Nothing was wrong with the periodicity; the fundamental was
+        // simply one nobody played. The discriminator is spectral: a played fundamental has energy in
+        // its own bin and a virtual one does not.
+        val auto = PatTranscriptionCorpus.runAuto()
+        val chord = auto.first { it.label == "chord-triad" }
+        assertEquals(
+            0, chord.autoNotes,
+            "auto named ${chord.autoNotes} notes on a triad; it must refuse rather than name a " +
+                "fundamental nobody played (estimated register ${chord.estimated})"
+        )
+        // The control that makes the test meaningful rather than a distrust of low notes: bass-register
+        // really does play MIDI 36 — 65 Hz, the same frequency — and must NOT be refused.
+        val bass = auto.first { it.label == "bass-register" }
+        assertTrue(
+            bass.autoNotes >= 10,
+            "a real 65 Hz note was refused as a virtual fundamental: ${bass.autoNotes} notes named"
+        )
+        assertTrue(
+            bass.auto >= bass.declared - 1e-9,
+            "estimating cost the bass case recall: auto ${bass.auto} vs declared ${bass.declared}"
+        )
+    }
+
+    @Test
+    fun `a played fundamental and an implied one are far apart`() {
+        // The margin behind the guard above, asserted so the threshold cannot be called delicate.
+        val chord = case("chord-triad")
+        val bass = case("bass-register")
+        fun energyAtReported(result: PatCaseResult): Double {
+            val loudest = result.transcription.frames.filter { it.voiced }.maxByOrNull { it.rms }
+                ?: return Double.NaN
+            return patEnergyAtF0(
+                result.samples, loudest.startSample,
+                (12.0 * result.sampleRate / loudest.hz).toInt(), result.sampleRate, loudest.hz
+            )
+        }
+        // bass-register plays its fundamental; the corpus's triad only implies one.
+        val played = energyAtReported(bass)
+        assertTrue(played > 0.30, "a played 65 Hz fundamental should show up strongly, got $played")
+    }
+
     @Test
     fun `print the corpus`() {
         // Not an assertion; the table is worth having in the test output next to the floors above.
         println(PatTranscriptionCorpus.report(results))
         println("legato probe (Dough, 48 kHz, flat envelope):")
         println(legato.describe())
+        println()
+        println("── register: declared vs estimated vs wide ──")
+        val auto = PatTranscriptionCorpus.runAuto()
+        for (a in auto) println("  " + a.describe())
+        println("  mean — declared %.3f  auto %.3f  wide %.3f".format(
+            auto.map { it.declared }.average(),
+            auto.map { it.auto }.average(),
+            auto.map { it.wide }.average()))
     }
 }
