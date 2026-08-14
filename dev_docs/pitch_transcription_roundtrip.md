@@ -16,7 +16,12 @@ audio device, or needs a GPU.
 | [`PatTranscription.kt`](../src/jvmMain/kotlin/afield/four/synth/PatTranscription.kt) | step-grid fitting, `pat("…")` emission, and the scoring types |
 | [`PatTranscriptionCorpus.kt`](../src/jvmMain/kotlin/afield/four/synth/PatTranscriptionCorpus.kt) | 13 notated cases scored against their own notation, plus the Dough legato probe |
 | [`PatTranscriptionGallery.kt`](../src/jvmMain/kotlin/afield/four/synth/PatTranscriptionGallery.kt) | the notated-against-recovered SVG figures, and the `Box.showPatTranscription*` helpers |
-| [`PatPitchTranscriptionTest.kt`](../src/jvmTest/kotlin/afield/four/synth/PatPitchTranscriptionTest.kt) | 17 tests; every number quoted below is asserted there or labelled an observation |
+| [`PatPitchTranscriptionTest.kt`](../src/jvmTest/kotlin/afield/four/synth/PatPitchTranscriptionTest.kt) | 25 tests; the floors |
+
+**Convention for the numbers below.** A figure in **bold** is asserted by a test in
+`PatPitchTranscriptionTest`, so a change that breaks it fails the build. A figure marked *(observed)*
+was measured once and is not asserted — it is evidence for a claim, not a ratchet, and it may drift.
+Historical figures describing a bug that has since been fixed are marked *(before the fix)*.
 
 ---
 
@@ -101,7 +106,7 @@ the frame dump, not by reasoning about the code.
 
 The brief for this work held that `patVoice`'s `sustain = 1.0` default means a gapless melodic render
 is one continuous tone an energy detector cannot segment "by construction". Measured: the energy
-detector found **17 onsets for 16 notes at recall 0.87**. No collapse.
+detector found **17 onsets for 16 notes at recall 0.87** *(observed)*. No collapse.
 
 `patRenderStereo` adds **one voice per event** and gives each its own 3 ms attack ramp from zero
 (`PatSoundDocs.kt:837`), so a "legato" Pat render still has one amplitude rise per note. The claimed
@@ -133,7 +138,7 @@ recommending one:
 | merged | **0.88** |
 
 The first version of the merge kept whichever candidate came first — the obvious rule — and scored
-**0.19 against 0.94 for the pitch detector alone**. Cause: `patDetectOnsetSamples` runs about 92 ms
+**0.19 against 0.94 for the pitch detector alone** *(before the fix)*. Cause: `patDetectOnsetSamples` runs about 92 ms
 late on sustained material, so its onsets were not competing versions of the same instant; they were
 the previous note's onset arriving after the next note's and displacing a correct detection. The merge
 now prefers the pitch-derived candidate, and *"merging never costs the pitch detector an onset"* is
@@ -144,13 +149,13 @@ asserted as an invariant across the whole corpus rather than as a threshold.
 `patSegmentNotes` originally took the first voiced run inside a segment. The frames just after a
 boundary are the ones whose window still straddles the note *before* it, so the first run is frequently
 the previous note's tail at the previous note's pitch. The whole sequence came out shifted by one note
-and `wide-leaps` reported a **1700-cent median error** on a detector whose per-note frequency estimates
+and `wide-leaps` reported a **1700-cent median error** *(before the fix)* on a detector whose per-note frequency estimates
 were in fact accurate to a few cents. It now takes the longest *stable* run — consecutive voiced frames
 within 0.4 semitone of each other — which is 0.6 cents on the same case.
 
 Related, and the reason the fix is not just a threshold: **transition frames are unvoiced**. A window
 straddling two pitches sums to something aperiodic, YIN rejects it, and `patPitchFlux` gates on both
-frames being voiced. Only 7 flux peaks ≥ 0.5 semitone fire in the whole `bass-register` case. Note
+frames being voiced. Only 7 flux peaks ≥ 0.5 semitone fire in the whole `bass-register` case *(observed)*. Note
 changes are therefore detected as unvoiced-exit/voiced-entry pairs far more often than as flux peaks.
 The criterion works; the mechanism is not the one it was designed around.
 
@@ -160,8 +165,8 @@ The criterion works; the mechanism is not the one it was designed around.
 the attack — true for the percussive trains it was written for, false for melodic material where the
 previous note's `decay · 4` tail is still at full level. Its onsets came out **+92 ms late, uniformly**.
 Under a strict tally that reads as recall 0.06 and makes the energy detector look broken. Forgive the
-constant offset and the same onsets score **recall 1.00, worst error 12.2 ms** — the detector was fine
-and the tally was measuring a calibration offset.
+constant offset and the same onsets score **recall 1.00, worst error 12.2 ms** *(observed)* — the
+detector was fine and the tally was measuring a calibration offset.
 
 Both figures are now reported for every case, and comparisons between the criteria use the
 lag-forgiven one, which is the number that could be used against this work. `refineAttack` in the new
@@ -222,10 +227,131 @@ Also not measured, and marked as such in the code:
 
 ---
 
+## The fourth hop: notation → sound → notation → **sound**
+
+Everything above is three hops, and three hops is a weaker claim than it looks. "The recovered integers
+equal the notated integers" compares a list against a list and never asks whether the emitted *string*
+means what the list meant. A `pat("…")` that parses, renders, and sounds like something else passes it.
+
+`patCloseLoop` closes the fourth: the transcription's own notation goes back through `patRenderStereo`
+at the `cps` it reported, the second buffer is analysed by the same detector, and the two hearings are
+compared. **5 of 10 re-renderable cases close the loop**, plus the Dough legato probe at 48 kHz.
+
+The divergence is the finding, and it is a *relationship* rather than a list of names:
+
+> Every case that closed the loop had named a self-consistent set — no wrong names and no invented
+> notes. Every case that diverged had at least one.
+
+So the fourth hop is a **validity check on the third**. An incomplete transcription re-renders to
+something that is heard differently again; a complete one round-trips. That relationship is asserted,
+so if it stops holding the finding gets restated rather than quietly rotting.
+
+### It found a bug three hops cannot see
+
+`saw-timbre` reproduced its pitch sequence perfectly and still diverged, with a 54 ms onset shift
+*(before the fix)* against a detector whose own worst onset error on that case is 0.5 ms. The cause was
+in the grid fit: the coarse sweep takes the **largest** step inside its tolerance, which systematically
+biases the step long — 0.339 s against a true 0.333 s. That is 1.8%, harmless per note, and 42 ms of
+accumulated drift by the end of a phrase. Note *names* are completely unaffected, which is exactly why
+only a sound-to-sound comparison finds it. `refineStep` keeps the step count and minimises the residual;
+the shift fell to **under 30 ms** and saw/square moved into `RECOVERED_EXACTLY`.
+
+### Two ways I measured this wrong first
+
+- **Unbounded pairing.** Pairing the two hearings by nearest onset with no bound reported a 386 ms
+  "shift" and a "1100 cents" disagreement *(before the fix)* when the truth was one dropped note — the
+  same off-by-one cascade that produced 1700 cents in segmentation earlier. Pairing is bounded to one
+  step, unpaired notes are counted as unpaired, and cents is `NaN` when the sequence differs rather than
+  publishing a number that compares unrelated notes.
+- **A self-defeating tolerance.** Closure originally required the shift to sit inside
+  `worstResidual · step + 2 · hop`. Fixing the grid cut the real shift 54 → 19 ms and cut the allowance
+  46 → 6 ms, because the allowance was mostly made of the error being removed. Accuracy improved and the
+  count of closing cases fell from 3 to 1. Closure is now sequence reproduction plus a half-step bound —
+  derived from the grid, since past half a step a note quantises to a different step and the notation is
+  no longer re-derivable. The quantisation figure is still computed and reported, as an observation.
+
+The obvious suspect for the closure failures was the documented `sustainFraction` bias. It is **not** the
+cause: re-rendering each case at its own original sustain gives the same result. Measured and discarded.
+
+## Confidently wrong versus honestly refusing
+
+A transcriber that emits a plausible, parseable, **wrong** `pat("…")` is worse than one that returns
+`UNRESOLVED`, because the wrong answer gets believed and the refusal does not — and both land in the
+same region of any F-measure. So every case is classified into exactly one bucket, and the last one has
+an asserted ceiling.
+
+| bucket | count | cases |
+| --- | --- | --- |
+| `RECOVERED_EXACTLY` | **4** | rests-punctuated, detuned-cents, saw-timbre, square-timbre |
+| `RECOVERED_WITHIN` | **4** | detached-scale, repeated-pitch, bass-register, fast-line |
+| `REFUSED` | **5** | legato-scale, wide-leaps, chord-triad, percussive-noise, fast-line-untold |
+| `CONFIDENTLY_WRONG` | **0** | — |
+
+Wrongness is judged in **cents**, not on note names, so `detuned-cents` is not punished for a 50-cent
+rounding tie it cannot win.
+
+**The count was 1, not 0.** `legato-scale` emitted `pat("60 62 65 _ 67 69 71 72 …")` — 64 and 65 heard as
+one note, one name 65 cents out — carrying no warning of any kind, so a reader had nothing to go on. It
+is 0 now because of a *specific* self-check rather than a blanket warning, which would have emptied the
+bucket without improving anything:
+
+- A note held across more than one step, in a grid whose other notes span exactly one, is where two
+  notes were heard as one. The transcriber can see that in its own output with no ground truth.
+- More onsets located than notes named means the notation is missing notes that were heard.
+
+Neither tells the detector *which* name is wrong. Both tell the reader where to look, which is the whole
+difference between being wrong and being confidently wrong.
+
+## Can `minHz` have a defensible default? Yes.
+
+Recall 0.03 → 0.91 on identical audio is a good measurement and a bad out-of-the-box experience: the
+first thing anyone does is call the function without telling it anything, and they land on 0.03.
+
+Two passes fix it, and they work for a specific reason — **a too-long window ruins segmentation but not
+estimation**. On `fast-line-untold` the wide pass leaves 329 of 329 frames voiced with an F0 trace that
+follows the tune correctly; the frames knew the pitch and only the note boundaries were lost. A wide
+first pass is therefore a poor transcriber and a perfectly good histogram.
+
+Mean onset recall over the corpus:
+
+| register | mean onset recall |
+| --- | --- |
+| declared from the notation | **0.690** |
+| estimated by `patTranscribeAuto` | **0.716** |
+| wide default | **0.538** |
+
+So `patTranscribeAuto` is the defensible default and is what a caller who cannot declare a register
+should use. It is not free: `repeated-pitch` regresses 0.81 → 0.50 *(observed)*, because octave-error
+debris in the first pass drags the estimated floor down to 65 Hz.
+
+### The guard took three attempts, and the third is the interesting one
+
+1. Gating on `patDiagnoseUnpitched`'s verdict refused five clean cases. That function exists to explain
+   why nothing was named and *assumes* nothing was, so on nameable material it finds the two frames
+   straddling a note boundary and calls them polyphonic.
+2. Gating on the aperiodic **fraction** of loud frames separates the corpus by a wide margin — 0.86 for
+   the triad, 1.00 for the noise train, 0.18 for the worst monophonic case *(observed)* — and still does
+   not catch a chord.
+3. Because a **4:5:6 triad is genuinely periodic two octaves below anything sounding**: 261/4 ≈ 329/5 ≈
+   392/6 ≈ 65 Hz. A detector allowed to look that low is *correct* to report 65 Hz, and auto named five
+   confident notes around MIDI 36. Nothing was wrong with the periodicity. The fundamental was one
+   nobody played.
+
+`patEnergyAtF0` is the discriminator: a played fundamental has energy in its own bin, a virtual one does
+not. The control that makes it a real test rather than a distrust of low notes is `bass-register`, which
+really does play MIDI 36 at that same 65 Hz and must **not** be refused. Both directions are asserted.
+
+Two smaller things learned wiring it up, both in the KDoc: testing energy at the register *floor* refuses
+every recording ever made, because the floor is a semitone below the lowest note by construction; and
+passing "up to a second" as the analysis length centres the transform half a second past the frame it is
+supposed to be about.
+
+---
+
 ## Running it
 
 ```bash
-# the floors (17 tests, ~20 s of CPU)
+# the floors (25 tests, ~75 s of CPU)
 ./gradlew jvmTest --tests 'afield.four.synth.PatPitchTranscriptionTest'
 
 # the figures, as a pass/fail smoke
