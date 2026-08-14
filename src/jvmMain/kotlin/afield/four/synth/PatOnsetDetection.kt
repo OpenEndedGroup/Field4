@@ -1,3 +1,4 @@
+@file:afield.CompletionCategory("Patterns")
 /*
  Where a rendered pattern's notes actually start, measured from the audio.
 

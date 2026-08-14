@@ -1,3 +1,4 @@
+@file:afield.CompletionCategory("Internal")
 package afield.four.synth
 
 import afield.graphquery.LiveGraphInspectable

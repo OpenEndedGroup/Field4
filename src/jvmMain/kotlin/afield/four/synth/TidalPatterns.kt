@@ -1,3 +1,4 @@
+@file:afield.CompletionCategory("Patterns")
 /*
  Pattern language and event model for live-coded musical structure.
 

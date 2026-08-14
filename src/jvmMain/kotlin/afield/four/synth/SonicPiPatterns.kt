@@ -1,3 +1,4 @@
+@file:afield.CompletionCategory("Audio")
 /*
  Field's pattern algebra as a sequencer for Sonic Pi's engine.
 

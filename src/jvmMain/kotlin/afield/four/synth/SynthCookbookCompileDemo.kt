@@ -1,3 +1,4 @@
+@file:afield.CompletionCategory("Internal")
 @file:Suppress("unused")
 
 package afield.four.synth

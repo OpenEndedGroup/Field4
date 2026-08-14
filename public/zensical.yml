@@ -34,6 +34,8 @@ nav:
       - ALife: reference/alife.md
       - Function: reference/function.md
       - Visualization: reference/visualization.md
+      - Synthesis: reference/synthesis.md
+      - Patterns: reference/patterns.md
       - Audio: reference/audio.md
       - Audio AI: reference/audio-ai.md
       - Workspace: reference/workspace.md

@@ -98,11 +98,21 @@ object StdlibReferenceGenerator {
 
     /**
      * Source roots to document, relative to the repo. `afield.stdlib` is the live-coding standard
-     * library; `afield.visualization` is the value-visualizer/plot surface a box reaches for next.
+     * library; `afield.visualization` is the value-visualizer/plot surface a box reaches for next;
+     * `afield.four.synth` is the audio stack — the second-largest body of box-facing API in the
+     * tree, and the one a box reaches for when it wants to make a sound rather than a picture.
+     *
+     * `afield.four.synth` was outside this list until it was added deliberately, and the cost of
+     * that was concrete: `import afield.four.synth.*` is in the default box preamble (`intro`, in
+     * `Boxes.kt`), so every name in that package is already in scope in every box, and none of them
+     * appeared here. Adding the root is one line; what it needed was the [CATEGORY_BLURBS] work
+     * beside it, because exactly one of those 57 files carried a `@file:CompletionCategory` and the
+     * other 56 would have landed in `uncategorised.md` — a worse reference than none.
      */
     private val SOURCE_ROOTS = listOf(
         "src/jvmMain/kotlin/afield/stdlib",
         "src/jvmMain/kotlin/afield/visualization",
+        "src/jvmMain/kotlin/afield/four/synth",
     )
 
     /**
@@ -120,8 +130,28 @@ object StdlibReferenceGenerator {
      * Completion categories that are not part of the public surface. `Internal` is exactly the
      * label the source uses for plumbing that completion should de-rank, so it has no place in a
      * "what can I call?" reference.
+     *
+     * This is also how the harnesses inside a documented root are kept out — a smoke test, a docs
+     * figure gallery or a compile-only cookbook is build plumbing, and labelling it `Internal`
+     * states that once, in the file, for both readers of this reference and the completion popup.
+     * See [SOURCE_ROOTS] for why `afield.four.synth` made that necessary.
      */
     private val EXCLUDE_CATEGORIES = setOf("Internal")
+
+    /**
+     * The package names of [SOURCE_ROOTS], as the pages name them in prose.
+     *
+     * Derived rather than written out, because the sentence "every public declaration in X and Y"
+     * appears on two generated pages and a third root was added after both were written.
+     */
+    private fun documentedPackages(): String {
+        val names = SOURCE_ROOTS.map { it.substringAfter("kotlin/").replace('/', '.') }.map { "`$it`" }
+        return when (names.size) {
+            0 -> ""
+            1 -> names.single()
+            else -> names.dropLast(1).joinToString(", ") + " and " + names.last()
+        }
+    }
 
     /** Page order, and the prose that introduces each category page. */
     private val CATEGORY_BLURBS: Map<String, String> = linkedMapOf(
@@ -174,7 +204,51 @@ object StdlibReferenceGenerator {
             "notion of a function. Build them, compose them, fit them, mutate them, and rewrite " +
             "their graphs with user-authored patterns.",
         "Visualization" to "Turning a value into something you can look at, without leaving the box.",
-        "Audio" to "Sound analysis and the network protocols that carry control data alongside it.",
+        "Synthesis" to "Field's own signal graph — the part of the audio stack that makes samples " +
+            "rather than arranging them. One value type carries the whole thing: `Signal` is a " +
+            "block-rendered mono source, `SignalProcessor` is a `Signal` that reads another one, " +
+            "and `/` chains the two, so `saw / OnePole(800.p)` is a filtered sawtooth and nothing " +
+            "else had to be declared. Control values are `Param`, which a plain number becomes " +
+            "with `.p`, and which can itself be driven by a signal. `audio { … }` closes a mono or " +
+            "stereo graph into an `AudioPatchSpec`; return one as a box's last expression and the " +
+            "box stays lit for as long as it is making sound. Underneath is a shared OpenAL " +
+            "engine, one process-wide, with warm-up passes available so the first buffer is not " +
+            "also the JIT's first look at your graph. On top of the oscillator / filter / effect / " +
+            "envelope families sit three larger things that are not Field's own DSP: **Faust**, " +
+            "whose compiler is embedded as WebAssembly and turns a `#faust` box into a running " +
+            "node in the same graph; the **dough** ports, hand-rolled float math kept " +
+            "deliberately inaccurate because the inaccuracy is the character; and the **spectral** " +
+            "and **granular** layers, which are Field's own. `Visualizers.kt` is how you look at " +
+            "any of it — every function there is an extension on a type declared in this " +
+            "category. Start from `synth.kt`, which is the terse surface a box actually imports; " +
+            "[Sound: from a pattern to something you can hear](../sound.md) is the prose, " +
+            "[Faust](../faust.md) is the embedded compiler with worked examples, and " +
+            "[DoughDSP: hear the primitives](../dough_dsp_sound.md) plays the ports.",
+        "Patterns" to "Musical time, as a value. A `PatPattern<A>` is a function from a span of " +
+            "cycles to the events inside it — so it is not a list, it is queried, and a pattern " +
+            "that never repeats costs no more to hold than one that does. Time is kept as an exact " +
+            "rational (`PatQ`, `BigInteger` over `BigInteger`) all the way through the transforms " +
+            "and is only converted to seconds at the boundary where something has to be " +
+            "scheduled, which is why a third of a cycle survives `fast`, `rev` and `every` without " +
+            "drifting. The notation and much of the vocabulary is Tidal's — `pat(\"bd [hh hh] " +
+            "sd\")`, `stack`, `jux`, `off`, `degradeBy`, the `|+|` operator family — but an atom " +
+            "here means whatever you want it to mean, not a sample name, which is what lets the " +
+            "same pattern drive a note process, a Field `Fn`, a set of signal-graph parameters or " +
+            "an arbitrary side effect. `Sequencing.kt` is the note-and-piano-roll layer patterns " +
+            "bridge into, and `BeatLaunch.kt` is `.onBeat { … }`, which holds any launchable value " +
+            "until the next musical boundary. " +
+            "[Patterns: writing rhythm as a function of time](../pattern_language.md) is the prose " +
+            "for all of it.",
+        "Audio" to "Sound that arrives from, or leaves for, somewhere other than Field's own " +
+            "signal graph: analysis products written by an offline tool, the network protocols " +
+            "that carry control data, the Dirt sample library on disk, an Ableton Live set read " +
+            "off the filesystem, and Sonic Pi driven as an owned child process with no window of " +
+            "its own. `SoundPathMap.kt` is the one to read first — it is the declared, " +
+            "re-derived-from-the-code map of every route Field has from a box to something " +
+            "audible, and it exists because a prose sentence about how many of those routes there " +
+            "are had already been wrong once — " +
+            "[Making a sound in Field: every path there is](../sound_paths.md) is that map " +
+            "rendered as a page. [Sonic Pi](../sonic_pi.md) is the owned-mode story in full.",
         "Audio AI" to "The client half of Field Audio: a separate HTTP/WebSocket service that runs " +
             "generative and analysis models over audio, and the typed vocabulary a box talks to it " +
             "in. Nothing here loads a model or does inference in the JVM — a box builds a " +
@@ -1052,8 +1126,8 @@ object StdlibReferenceGenerator {
         appendLine(
             "Field's standard library is large and, until now, invisible: the only ways to read it " +
                 "were to open the source or to already know the name you wanted. This section is a " +
-                "browsable map of it — every public declaration in `afield.stdlib` and " +
-                "`afield.visualization`, with the KDoc that sits next to it in the source."
+                "browsable map of it — every public declaration in ${documentedPackages()}, with " +
+                "the KDoc that sits next to it in the source."
         )
         appendLine()
         val total = documents.sumOf { it.symbolCount() }
@@ -1118,14 +1192,18 @@ object StdlibReferenceGenerator {
         )
         appendLine(
             "- **Declarations marked `Internal`** by their own `@file:CompletionCategory` are " +
-                "plumbing, and are excluded on purpose."
+                "plumbing, and are excluded on purpose. Inside `afield.four.synth` that label also " +
+                "carries the harnesses — the smoke tests, the docs figure galleries and the " +
+                "compile-only cookbook — which are build machinery rather than API."
         )
         appendLine(
             "- **Graphics, rendering and the small languages beyond their host side** live in " +
                 "`afield.four`, `afield.rectsl` and `afield.stacksl`; start from " +
                 "[afield.four Graphics](../afield_four_graphics.md), the " +
                 "[RectSL cheatsheet](../rectsl_cheatsheet.md) and the " +
-                "[StackSL cheatsheet](../stacksl_cheatsheet.md)."
+                "[StackSL cheatsheet](../stacksl_cheatsheet.md). `afield.four.synth` **is** here — " +
+                "it is the audio half of `afield.four`, and [Sound: from a pattern to something " +
+                "you can hear](../sound.md) is the prose it belongs to."
         )
         appendLine()
         appendLine("## How to read a symbol you find here")
@@ -1363,7 +1441,7 @@ object StdlibReferenceGenerator {
         appendLine(
             "The other half of the coverage column on " +
                 "[the codebase reference](../public/docs/reference/index.md): $totalDocumented of " +
-                "$totalSymbols public symbols in `afield.stdlib` and `afield.visualization` carry a " +
+                "$totalSymbols public symbols in ${documentedPackages()} carry a " +
                 "KDoc summary, and this is what is missing, most valuable first."
         )
         appendLine()

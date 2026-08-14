@@ -1,3 +1,4 @@
+@file:afield.CompletionCategory("Audio")
 package afield.four.synth
 
 import afield.four.audio.WavFloatArrayWriter

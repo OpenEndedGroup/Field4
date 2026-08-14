@@ -1,3 +1,4 @@
+@file:afield.CompletionCategory("Synthesis")
 @file:Suppress("DEPRECATION")
 
 package afield.four.synth

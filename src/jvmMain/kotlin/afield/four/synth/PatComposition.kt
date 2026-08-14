@@ -1,3 +1,4 @@
+@file:afield.CompletionCategory("Patterns")
 /*
  Compositional structure: the transforms that build a piece out of a pattern, and the pitch
  vocabulary — scales, named chords, and voice leading.

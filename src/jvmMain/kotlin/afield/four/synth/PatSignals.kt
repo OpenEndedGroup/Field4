@@ -1,3 +1,4 @@
+@file:afield.CompletionCategory("Patterns")
 /*
  Continuous (signal) patterns, and the discretisers that turn them back into events.
 
