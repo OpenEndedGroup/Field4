@@ -40,8 +40,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 61 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
-not in the same way, and the difference is worth knowing before you trust one. 43 of them are
+All 62 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+not in the same way, and the difference is worth knowing before you trust one. 44 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
 error-kind output line. (Almost always that is every box in the file. A transcript may deliberately
@@ -129,6 +129,23 @@ boolean; and *playground* is the box to edit. `showPatRoll` is SVG into `display
 renders through a deterministic CPU voice into an inline player, so there is no audio device and no
 window anywhere in this file.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/pattern_language_composition/metadata.edn)
+
+**pitch_transcription_roundtrip** — The other direction: sound back to notation. Five pure-compute
+boxes notate a pattern, render it offline, hear the audio back as pitched note events, and print a
+`pat("…")` string that re-renders — the arrow `audio_render_analysis` draws by hand and nothing in the
+repo could walk. Ground truth costs nothing here because Field authored the notation being scored
+against, so the reference is the audio's *cause* rather than an annotation of it: the clean box
+recovers 15 of 16 notes with a median pitch error of 0.3 cents. Two boxes are about failure. *A line
+with no attacks in it* is a single Dough oscillator whose frequency steps with continuous phase, so
+the RMS envelope is flat and the energy onset detector scores 0.13 against the pitch detector's 0.86 —
+a comparison `patRenderStereo` cannot host, because it re-attacks every event and its "legato" render
+has one amplitude rise per note. *A chord* is refused and named POLYPHONIC rather than reported as its
+loudest note, while a sawtooth's full harmonic stack is not refused, because timbre is not polyphony.
+The box to edit is box 4: it declares the register the detector may resolve, which sets the analysis
+window and therefore the shortest resolvable note, and changing that one line takes onset recall on
+unchanged audio from 0.91 to 0.03. Pitch error is reported in cents throughout, because one corpus
+case sits exactly 50 cents from equal temperament where the correct note name does not exist.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/pitch_transcription_roundtrip/metadata.edn)
 
 **petri_sound** — [Petri nets as a sequencer](petri_nets.md) as seven independent boxes, each
 drawing its net with `showPetriNet` and playing it with `showDirtAudio` — a net's `emits()` is a

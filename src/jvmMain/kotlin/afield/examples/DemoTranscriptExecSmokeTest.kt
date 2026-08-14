@@ -118,6 +118,11 @@ object DemoTranscriptExecSmokeTest {
         // Eight pure-compute pattern boxes; showPatRoll is drawToSVG -> display, so no Window, no
         // Renderer, no GPU and no audio device.
         "pattern_language_composition",
+        // Five pure-compute boxes closing notation -> sound -> notation. Every buffer is finite and
+        // offline (patRenderStereo, doughRenderMono), the figure is drawToSVG -> display, and the
+        // analysis is this repo's own YIN. No Window, no Renderer, no GPU, no audio device, and in
+        // particular no services/field-audio-ai.
+        "pitch_transcription_roundtrip",
         // Six pure-compute Petri boxes. showPetriNet is FLines -> display and showPatAudio renders
         // through the same offline CPU voice, so this plays without an audio device.
         "petri_sound",
