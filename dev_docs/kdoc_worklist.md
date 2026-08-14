@@ -161,16 +161,16 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `NoteSequenceScope` | class | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:113` |
 | `NoteProcess` | class | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:178` |
 | `SynthContext` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:20` |
-| `Signal` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:108` |
-| `Param` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:185` |
-| `ParamScope` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:398` |
-| `SignalProcessor` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:553` |
-| `Const` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:563` |
-| `Mix` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:625` |
-| `StereoRenderable` | interface | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:645` |
-| `StereoHold` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:681` |
-| `StereoSignal` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:695` |
-| `Pan` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:712` |
+| `Signal` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:112` |
+| `Param` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:189` |
+| `ParamScope` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:402` |
+| `SignalProcessor` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:557` |
+| `Const` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:567` |
+| `Mix` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:629` |
+| `StereoRenderable` | interface | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:649` |
+| `StereoHold` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:685` |
+| `StereoSignal` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:699` |
+| `Pan` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:716` |
 | `SonicPiLogMessage` | class | `src/jvmMain/kotlin/afield/four/synth/SonicPi.kt:918` |
 | `SonicPiError` | class | `src/jvmMain/kotlin/afield/four/synth/SonicPi.kt:932` |
 | `SonicPiVersion` | class | `src/jvmMain/kotlin/afield/four/synth/SonicPi.kt:960` |
@@ -244,8 +244,8 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `NoteWindowSnapshot.pianoRollSvg` | fun | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:485` |
 | `NoteProcess.pianoRollHtml` | fun | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:660` |
 | `Marker.pianoRoll` | fun | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:679` |
-| `Float.plus` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:170` |
-| `Float.times` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:171` |
-| `Float.minus` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:172` |
+| `Float.plus` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:174` |
+| `Float.times` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:175` |
+| `Float.minus` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:176` |
 
 …and **352 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.

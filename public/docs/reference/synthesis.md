@@ -1496,7 +1496,7 @@ Constants: `FORWARD`, `REVERSE`, `BIDIRECTIONAL`.
 | Declaration | Summary |
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Float</span></code> | Sample rate in Hz (e.g. 48000). |
-| <code class="highlight"><span class="k">val</span> <span class="n">bufferSize</span><span class="p">:</span> <span class="nc">Int</span></code> | Maximum buffer size (frames per JACK cycle). |
+| <code class="highlight"><span class="k">val</span> <span class="n">bufferSize</span><span class="p">:</span> <span class="nc">Int</span></code> | Maximum buffer size: the number of frames rendered per audio-engine block. |
 | <code class="highlight"><span class="k">val</span> <span class="n">inverseSampleRate</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">nyquist</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
 | <code class="highlight"><span class="k">var</span> <span class="n">cycleId</span><span class="p">:</span> <span class="nc">Long</span></code> | Monotonically increasing id; bumped once per process cycle. |

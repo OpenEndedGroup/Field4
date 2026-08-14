@@ -20,7 +20,7 @@ import kotlin.math.abs
 class SynthContext(
     /** Sample rate in Hz (e.g. 48000). */
     val sampleRate: Float,
-    /** Maximum buffer size (frames per JACK cycle). */
+    /** Maximum buffer size: the number of frames rendered per audio-engine block. */
     val bufferSize: Int
 ) {
     val inverseSampleRate: Float = 1f / sampleRate
@@ -62,10 +62,14 @@ class SynthContext(
      * 1. Pre-allocates every internal buffer (avoids GC on audio thread).
      * 2. Exercises the hot path enough times (~15 000) to trigger
      *    HotSpot C2 JIT compilation, so the optimised native code is
-     *    ready before the first real JACK callback.
+     *    ready before the audio thread renders its first real block.
      *
-     * Call from the main thread *before* assigning the signal to a
-     * [JackSynth].
+     * Call from the main thread *before* the graph reaches
+     * [FieldAudioEngine]. In practice you do not: pass
+     * `warmUpCycles` to [audio] or to [AudioPatchSpec.from] instead, and
+     * [FieldAudioEngine.register] runs the equivalent loop for the whole
+     * stereo patch on its way in. This entry point is the mono, do-it-yourself
+     * form of the same thing and has no caller in the tree.
      */
     fun warmUp(signal: Signal, cycles: Int = 15_000) {
         val saved = cycleId
