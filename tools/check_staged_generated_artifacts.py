@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
-"""Run the generated-artifact guards affected by the staged commit.
+"""Run the generated-artifact guards affected by the staged commit, or by a merge.
 
 The checks themselves operate on the working tree, not Git's index.  To avoid a
 false pass, this command refuses to check an artifact when an unstaged input or
 output could make the working tree differ from what is about to be committed.
+
+``--since <rev>`` selects from what changed between ``<rev>`` and ``HEAD`` instead
+of from the index.  That is the ``post-merge`` case, and it exists because the
+pre-commit path structurally cannot cover it: hooks live in ``.git/hooks``, which
+is per-clone and is never transported by Git, so work authored in another clone
+and brought in by ``git pull`` has never passed a hook here.  Every generated
+artifact that went stale on ``main`` between 2026-08-08 and 2026-08-14 arrived
+that way.
 """
 
 from __future__ import annotations
@@ -132,12 +140,78 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help="run every generated-artifact guard instead of selecting from staged paths",
     )
+    parser.add_argument(
+        "--since",
+        metavar="REV",
+        help=(
+            "select from paths changed between REV and HEAD instead of from the index "
+            "(the post-merge case: work that arrived by pull never passed a hook here)"
+        ),
+    )
     return parser.parse_args(argv)
+
+
+def _run_merge_check(repo: Path, since: str) -> int:
+    """Guard whatever a merge just brought in.
+
+    Deliberately advisory. Git ignores a ``post-merge`` hook's exit status, so this cannot and
+    should not try to block: the merge has already happened and un-doing it is not the hook's
+    business. What it owes the reader is the thing that was missing — the news, on the day, with
+    the command that fixes it, instead of a red gate the next morning.
+    """
+    if not _rev_exists(repo, since):
+        print(f"generated-artifact guard: no such revision {since}, skipping")
+        return 0
+
+    changed = _git_paths(repo, "diff", "--name-only", "--diff-filter=ACMR", f"{since}..HEAD")
+    selected = guards_for_paths(changed)
+    if not selected:
+        return 0
+
+    print(
+        "generated-artifact guard: checking "
+        + ", ".join(guard.description for guard in selected)
+        + f" (changed by {since}..HEAD)"
+    )
+    command = [str(repo / "gradlew"), "--continue", *(guard.task for guard in selected)]
+    code = subprocess.run(command, cwd=repo).returncode
+    if code != 0:
+        tasks = " ".join(guard.task for guard in selected)
+        print(
+            "\n"
+            "  A generated artifact is stale after this merge.\n"
+            "  It was not your commit that broke it and no hook ran on the clone that did:\n"
+            "  .git/hooks is per-clone and Git never transports it.\n"
+            "\n"
+            f"  Reproduce:  ./gradlew {tasks}\n"
+            "  The failing task names the artifact and the command that regenerates it.\n"
+            "  Regenerate and commit that, or `main` is red until someone else finds it.\n"
+            "\n"
+            "  Set FIELD_SKIP_MERGE_GUARD=1 to skip this check.\n",
+            file=sys.stderr,
+        )
+    return code
+
+
+def _rev_exists(repo: Path, rev: str) -> bool:
+    return (
+        subprocess.run(
+            ["git", "rev-parse", "--verify", "--quiet", f"{rev}^{{commit}}"],
+            cwd=repo,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        ).returncode
+        == 0
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv or sys.argv[1:])
     repo = _repo_root()
+
+    if args.since:
+        return _run_merge_check(repo, args.since)
+
     staged = _git_paths(repo, "diff", "--cached", "--name-only", "--diff-filter=ACMR")
     selected = list(GUARDS) if args.all else guards_for_paths(staged)
 
