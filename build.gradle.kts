@@ -2426,6 +2426,25 @@ tasks.register("smokeCeres") {
     )
 }
 
+// The Manifold binding's smoke. Deliberately much thinner than the Ceres block above it, because the
+// two optional native dependencies are shaped differently: Ceres needs a wrapper this repo builds and
+// a `-D` pointing at it, while Manifold ships its own C ABI (`libmanifoldc`) that `brew install
+// manifold` puts somewhere ManifoldLibrary already looks. So there is nothing to build, nothing to
+// point at, and no artifact to declare as an input — and the smoke skips cleanly, exit code 0, when
+// the library is absent, since a clone without it must still pass `check`.
+//
+//     brew install manifold          # once
+//     ./gradlew smokeManifold
+tasks.register<JavaExec>("smokeManifold") {
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    group = "verification"
+    description = "Runs the Manifold FFM smoke: exact volumes, booleans, offsets, level-set upcalls."
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.manifold.ManifoldSmokeTest")
+    workingDir = projectDir
+    jvmArgs(requiredRunJvmArgs())
+}
+
 tasks.register<JavaExec>("runfilestore") {
     javaLauncher.set(javaToolchains.fieldLauncher())
     group = "application"

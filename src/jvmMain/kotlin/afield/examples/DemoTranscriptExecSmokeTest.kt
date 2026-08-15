@@ -203,6 +203,13 @@ object DemoTranscriptExecSmokeTest {
         // detect a wrapper older than ABI v3 — which is exactly what the *committed* dylib is, so that
         // is the branch CI takes — and draw the unsolved seed with an explanation rather than failing.
         "ceres_free_variables",
+        // Two pure-CPU Manifold boxes: a machined part built out of Booleans, and a Kotlin lambda
+        // marched into a guaranteed-closed solid and then sliced. Both are FFM calls into
+        // `libmanifoldc` plus showMesh's CPU rasteriser, so no Window and no Renderer. Both detect an
+        // absent Manifold — which on a machine without `brew install manifold` is the branch CI takes
+        // — and the first one draws the same shape through Field's own marchingCubes instead, with the
+        // difference named, rather than failing.
+        "manifold_solids",
         // Two pure-CPU boxes that lower a RectSL scene to a GLSL distance field and print it.
         // `emitSdf` is a string builder over the compiled SceneProgram — no shaderc, no Window,
         // no Renderer — so both run to completion, which is also the cheapest check that the

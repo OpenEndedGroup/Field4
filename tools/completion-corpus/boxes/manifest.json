@@ -88,6 +88,8 @@
   {"doc": "linalg_thumbnails_demo", "box": "linalg_mat4", "codeSha256": "91cef275763ade72", "codeLines": 1, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "linalg_thumbnails_demo", "box": "linalg_vec2", "codeSha256": "20c641af3a5025ac", "codeLines": 1, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "linalg_thumbnails_demo", "box": "linalg_vec3", "codeSha256": "786d6b64a976894f", "codeLines": 1, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "manifold_solids", "box": "manifold_bracket", "codeSha256": "9e47097bbfce6248", "codeLines": 144, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "manifold_solids", "box": "manifold_levelset_slices", "codeSha256": "c32fdee7bcde5078", "codeLines": 125, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "mesh_geometry_examples", "box": "mesh_bridges", "codeSha256": "73c00d962b88bbb1", "codeLines": 78, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "mesh_geometry_examples", "box": "mesh_inline_view", "codeSha256": "28e486ef7cd4d627", "codeLines": 30, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "mesh_geometry_examples", "box": "mesh_marching", "codeSha256": "b8941a164b62bd66", "codeLines": 42, "receivers": ["afield.Box"], "preamble": ""},

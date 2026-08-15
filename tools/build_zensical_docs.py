@@ -41,12 +41,43 @@ def ceres_library_path(repo_root: Path) -> Path:
     return repo_root / "build" / "ken-ceres-redistributable" / name
 
 
+def manifold_library_path(repo_root: Path) -> Path:
+    """Where `afield.manifold.ManifoldLibrary` will look, from Python.
+
+    Deliberately shaped differently from [ceres_library_path], because the two
+    optional native dependencies are: the Ceres wrapper is built into `build/` by a
+    task in this repo, so there is exactly one path to check. Manifold is installed
+    by a package manager, so this walks the same candidate list `ManifoldLibrary`
+    does and returns the first hit — falling back to the first candidate so the
+    "missing" message names a plausible place rather than nothing. `repo_root` is
+    unused for the same reason, and is kept so every entry in
+    NATIVE_PREREQUISITES has one signature.
+    """
+    override = os.environ.get("AFIELD_MANIFOLD_LIBRARY", "").strip()
+    if override:
+        return Path(override)
+    if sys.platform.startswith("win"):
+        name, roots = "manifoldc.dll", ["C:\\Program Files\\manifold\\bin"]
+    elif sys.platform == "darwin":
+        name, roots = "libmanifoldc.dylib", ["/opt/homebrew/lib", "/usr/local/lib"]
+    else:
+        name, roots = "libmanifoldc.so", [
+            "/usr/local/lib",
+            "/usr/lib",
+            "/usr/lib/x86_64-linux-gnu",
+            "/usr/lib/aarch64-linux-gnu",
+        ]
+    candidates = [Path(root, name) for root in roots]
+    return next((c for c in candidates if c.exists()), candidates[0])
+
+
 # A capture that cannot run without a native artifact declares it with `requires="<key>"`
 # on its fence. Each key maps to where the artifact lives and the one command that builds
 # it. Nothing else reads the attribute -- docs_hooks ignores unknown fence attributes, so
 # adding one does not change a fence's capture digest.
 NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
     "ceres": (ceres_library_path, "./gradlew buildCeresRedistributable"),
+    "manifold": (manifold_library_path, "brew install manifold"),
 }
 
 REQUIRES_ATTR_RE = re.compile(r'(?m)^```\w*_?runner\b[^\n]*?\brequires="([^"]*)"')

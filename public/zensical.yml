@@ -88,6 +88,7 @@ nav:
         - Spectral Examples: spectral_examples.md
         - Imaging & Computer Vision: imaging_examples.md
         - Meshes & 3D Geometry: mesh_examples.md
+        - Solids & Booleans (Manifold): manifold.md
         - Geometry From Disk (OBJ, STL, PLY, glTF): geometry_from_disk.md
         - Polytopes & the Conway Algebra: polytope_examples.md
         - Typography as Geometry: typography_examples.md

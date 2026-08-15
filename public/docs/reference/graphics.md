@@ -1011,7 +1011,7 @@ These two formats, and no others — see `meshFromFile` for where to go for PLY,
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_io.kt`
 
-**Used in:** [Geometry from disk](../geometry_from_disk.md), [Meshes and 3D geometry](../mesh_examples.md)
+**Used in:** [Geometry from disk](../geometry_from_disk.md), [Meshes and 3D geometry](../mesh_examples.md), [Solids that cannot fail: Manifold in Field](../manifold.md)
 
 ### Top-level functions { #mesh-io-kt-functions }
 
@@ -1164,7 +1164,7 @@ quads. Loop is the triangle scheme, and it is the one here.
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_process.kt`
 
-**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [Geometry from disk](../geometry_from_disk.md)
+**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [Geometry from disk](../geometry_from_disk.md), [Solids that cannot fail: Manifold in Field](../manifold.md)
 
 ### Top-level functions { #mesh-process-kt-functions }
 
@@ -1250,7 +1250,7 @@ corrupt the march.
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_sdf.kt`
 
-**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md), [Geometry from disk](../geometry_from_disk.md)
+**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md), [Solids that cannot fail: Manifold in Field](../manifold.md)
 
 ### Top-level functions { #mesh-sdf-kt-functions }
 
@@ -1326,7 +1326,7 @@ println("${topo.eulerCharacteristic} χ, genus ${topo.genus}, watertight ${topo.
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_topology.kt`
 
-**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [Geometry from disk](../geometry_from_disk.md), [Typography as geometry — a string becomes contours](../typography_examples.md)
+**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [Geometry from disk](../geometry_from_disk.md), [Solids that cannot fail: Manifold in Field](../manifold.md)
 
 ### Top-level functions { #mesh-topology-kt-functions }
 
@@ -2095,7 +2095,7 @@ computation over cached outlines.
 
 `src/jvmMain/kotlin/afield/stdlib/typography.kt`
 
-**Used in:** [Typography as geometry — a string becomes contours](../typography_examples.md)
+**Used in:** [Typography as geometry — a string becomes contours](../typography_examples.md), [Solids that cannot fail: Manifold in Field](../manifold.md)
 
 ### Top-level functions { #typography-kt-functions }
 

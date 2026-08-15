@@ -40,8 +40,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 63 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
-not in the same way, and the difference is worth knowing before you trust one. 44 of them are
+All 64 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+not in the same way, and the difference is worth knowing before you trust one. 45 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
 error-kind output line. (Almost always that is every box in the file. A transcript may deliberately
@@ -646,6 +646,27 @@ print that it is missing, show a card naming `./gradlew buildCeresRedistributabl
 is swallowed by the same `runCatching`, so it is indistinguishable from an absent one at the box's
 output.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/ceres_free_variables/metadata.edn)
+
+**manifold_solids** — Two boxes on [robust mesh Booleans](manifold.md), the second optional native
+dependency in the tree and the one that needed no wrapper at all: Manifold ships a C ABI, so the whole
+binding is Panama/FFM against `libmanifoldc`. *A part, and whether it is manufacturable* builds a
+60×40×8 plate with four bored bosses, a properly rounded slot (a square `offset` by 4.5 with round
+joins, then extruded) and an 0.8mm chamfer done as a Minkowski closing with an octahedron — then
+prints the numbers that decide whether it could be cut: **15513.561 mm³**, genus **5**, and a
+**2.767mm** wall between the slot and the nearest bore, measured with `minGap` rather than eyeballed.
+It then checks Manifold against Field's own mesh family, which shares no code with it: `signedVolume`
+agrees to `1.28e-05` and both say genus 5. Kept honest by the same box, because it is the trap most
+worth knowing here — the *shaded* mesh has 9773 vertices against the plain one's 8740, split at every
+crease so each face can carry its own normal, and `isWatertight()` is therefore **false** on that one.
+Same geometry, different index topology; ask for `toTriMesh()` when you are measuring and
+`toTriMesh(normals = true)` when you are drawing. *A Kotlin lambda as a level set* is the upcall: a
+gyroid-thickened torus written as a function, marched by Manifold's own thread pool in 77 ms into a
+solid that is **guaranteed** closed rather than merely usually closed, then sliced into 13 layers — 79
+contours — with each layer `offset` inward by half a nozzle width, so the orange lines are the path a
+printer would actually walk. Both boxes need `brew install manifold`; without it the first draws the
+same shape through Field's own `marchingCubes` and names the difference, which is the point of the
+comparison.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/manifold_solids/metadata.edn)
 
 **rectsl_glsl_sdf** — Two boxes that print. [RectSL](rectsl_cheatsheet.md) scenes lower to a single
 `float scene(vec2, float)` GLSL function, and `emitSdf` is a string builder over the compiled
