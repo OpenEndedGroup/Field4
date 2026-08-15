@@ -77,18 +77,67 @@ excluded from the exact statistic, because a refused shape gets *two marchers on
 catches a broken lowering but says nothing about whether that field is the shape the notation meant.
 "Eleven of eleven agree" where three of them agreed with themselves is not the claim being made.
 
-### Point membership, which is the sharpest check of the four
+### That split is measured, not read off the package's own bookkeeping
 
-Volume, area and genus are all invariant under a mirror or a transposed axis. Membership is not. So
-the suite also samples points and asks both lowerings, one at a time, "is this inside?":
+Asserting it from `SolidBuild.isExact` would only be this package restating its own records. The
+discriminator used instead is a property the two paths cannot share: **the exact lowering has no
+`edgeLength` input at all.** Refine the march by 2.5× and a genuinely exact solid cannot move; a
+level set must.
 
-> **0 disagreements in 29,635 sampled points**, across the eight shapes with an exact path.
+| case | declared | volume @ h=1/40 | volume @ h=1/100 | tris @40 | tris @100 |
+|---|---|---|---|---|---|
+| `polyPlate` | exact | 11.000000000 | 11.000000000 | 92 | 92 |
+| `lBracketCut` | exact | 4.500000000 | 4.500000000 | 20 | 20 |
+| `starTaper` | exact | 0.874183638 | 0.874183638 | 36 | 36 |
+| `roundedSlot` | exact | 6.126108645 | 6.126108645 | 1036 | 1036 |
+| `ring` | exact | 2.901081094 | 2.901081094 | 131072 | 131072 |
+| `wedge` | exact | 2.035637074 | 2.035637074 | 2052 | 2052 |
+| `boredBoss` | exact | 8.192643611 | 8.192643611 | 3088 | 3088 |
+| `lens` | exact | 1.308240759 | 1.308240759 | 16632 | 16632 |
+| `blend` | *level set* | 2.219473784 | 2.221887467 | 15240 | 94008 |
+| `gyroidCore` | *level set* | 1.020684384 | 1.019038201 | 53928 | 333804 |
+| `hybridPlate` | *level set* | 5.863771670 | 5.867193874 | 7904 | 46192 |
 
-That is the check that caught `Section.revolved`'s KDoc claiming it revolves about the **Y** axis
-when Manifold revolves about **Z** — 100% agreement under the Z reading, about 65% under the
-documented one. Every axis and handedness convention in this package was settled that way rather
-than by reading a header, and `SolidSLConventionProbe` is kept in the tree as the way to settle the
-next one.
+Eight bit-identical, three moved. Corroborated by a fact that needs no argument at all:
+`lBracketCut`'s exact solid is **20 triangles** against 71,288 for its marched counterpart. There is
+no march that produces a twenty-triangle surface.
+
+### Point membership: a convention check, and *not* a fidelity one
+
+Volume, area and genus are all invariant under a mirror or a transposed axis. Membership is not, so
+sampling points and asking both lowerings "is this inside?" is what pins the conventions. It is how
+`Section.revolved`'s KDoc was caught claiming the **Y** axis where Manifold revolves about **Z** —
+100% agreement under the Z reading, about 65% under the documented one.
+
+An earlier draft of this page reported **0 disagreements in 29,635 sampled points** as if that were
+evidence of surface fidelity. **It is not, and the claim is withdrawn.** Those points are uniform in
+a box and the sampler skips everything within `0.03·span` of a surface — while the largest distance
+at which the two lowerings can *legitimately* differ is Manifold's faceting sagitta, measured at
+**1.25e-03 of that skip band**. Not one of the 29,635 points was ever in a position to disagree for a
+geometric reason. It is a real check against a gross error, visible from anywhere in the volume, and
+nothing more than that.
+
+The honest version asks a different question: **how close to the surface do you have to get before
+they stop agreeing, and is that distance the sagitta?** Points are projected onto the field's own
+zero set by Newton iteration, then offset along the gradient by a band `δ` that shrinks by decades:
+
+| case | polyhedral | 1e-2 | 1e-3 | 1e-4 | 1e-5 | 1e-6 | sagitta/span |
+|---|---|---|---|---|---|---|---|
+| `polyPlate` | yes | 0.00% | 0.00% | 0.00% | 0.00% | **0.00%** | 0 |
+| `lBracketCut` | yes | 0.00% | 0.00% | 0.00% | 0.00% | **0.00%** | 0 |
+| `starTaper` | yes | 0.00% | 0.00% | 0.00% | 0.00% | **0.00%** | 0 |
+| `roundedSlot` | no | 0.00% | 0.00% | 0.00% | 0.00% | 6.42% | 9.68e-06 |
+| `boredBoss` | no | 0.00% | 0.00% | 0.00% | 4.08% | 11.00% | 2.01e-05 |
+| `wedge` | no | 0.00% | 0.00% | 0.00% | 13.42% | 22.33% | 3.76e-05 |
+| `ring` | no | 0.00% | 0.00% | 0.00% | 28.17% | 47.75% | 3.76e-05 |
+| `lens` | no | 0.00% | 0.00% | 0.00% | 49.67% | 50.00% | 3.76e-05 |
+
+The crossover sits at the sagitta on every curved shape, and `lens` reaches 50% — a coin flip, which
+is exactly what two surfaces genuinely in different places must produce. The three polyhedral shapes
+are the control: no faceting, and **0.00% at every band down to 1e-6 of the span**, so the curved
+numbers are geometry rather than the raycast's own precision. Both directions are asserted, including
+that the deepest band really is inside the sagitta — so a shape whose crossover was never probed
+fails rather than passes.
 
 ## Agreement does not converge to zero, and that is the interesting part
 
@@ -255,6 +304,24 @@ Inventing a nicer convention and translating at the boundary would add exactly o
 silently mirrored or transposed solid — to the one thing this package exists to rule out. And there
 is no `Torus`: `torus(R, r)` is a *function* that builds `Profile.circle(r).translated(R, 0).revolved()`,
 which is what a torus is.
+
+!!! warning "Two lathes, ninety degrees apart"
+
+    Field has two of these and they do not agree, which is worth knowing before you port a profile
+    between them.
+
+    | | axis | profile |
+    |---|---|---|
+    | `afield.stdlib.revolveMesh` | **Y** | `(radius, y)` |
+    | `afield.manifold.Section.revolved`, and therefore `Profile.revolved` | **Z** | `(radius, z)` |
+
+    Measured on one asymmetric profile: Manifold's comes back with bounds
+    `(-1.6, -1.6, 0.2)…(1.6, 1.6, 1.0)` and `revolveMesh`'s with `(-1.6, 0.0, -1.6)…(1.6, 0.8, 1.6)`.
+
+    `Section.revolved`'s own KDoc currently says it revolves about the **Y** axis. That is a
+    documentation error and not an implementation one — `manifold_revolve` takes no axis argument at
+    all, so the binding has nothing to get wrong — but it is the reason this package's `Revolve`
+    carries a paragraph of measurement rather than a citation.
 
 ## Open this {#open-this}
 
