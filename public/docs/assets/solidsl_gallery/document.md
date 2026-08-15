@@ -190,10 +190,29 @@ if (!ManifoldLibrary.isAvailable) {
 // ---- and now the same expression, twice -----------------------------------------------
 // Side A: the distance field, sampled on a grid by Field's own marching cubes, in Kotlin.
 // Side B: Manifold's exact boolean kernel, in C++, through Panama/FFM.
-// The two share no line of code, no arithmetic and no measurement, so agreement between
-// them is evidence rather than a tautology.
 val q = SolidQuality(segments = quality, edgeLengthFraction = 1.0 / 110.0)
 val agreement = part.crossCheck(q)
+
+// First: is side B actually independent of side A? Claiming "they share no code" is not
+// worth much on its own — if this shape had refused the exact path, side B would be a level
+// set over the SAME field side A samples, and the two would agree even if the field were
+// wrong. So it is demonstrated rather than asserted, by a property the two paths cannot
+// share: the exact lowering has no edgeLength input at all. Refine the march and a genuinely
+// exact solid CANNOT move.
+println("---- is the comparison independent? ----")
+val coarse = part.buildSolid(SolidQuality(segments = quality, edgeLengthFraction = 1.0 / 40.0))
+val fine = part.buildSolid(SolidQuality(segments = quality, edgeLengthFraction = 1.0 / 110.0))
+val unmoved = coarse.solid.volume == fine.solid.volume &&
+    coarse.solid.triangleCount == fine.solid.triangleCount
+println("side B at h/40:  volume ${"%.9f".format(coarse.solid.volume)}, ${coarse.solid.triangleCount} triangles")
+println("side B at h/110: volume ${"%.9f".format(fine.solid.volume)}, ${fine.solid.triangleCount} triangles")
+println(
+    if (unmoved) "bit-identical under a 2.75x refinement, so side B is exact CSG and owes side A nothing"
+    else "MOVED with the march — this shape refused the exact path, so both sides are marching one " +
+        "field and their agreement is self-consistency, not cross-validation",
+)
+coarse.close(); fine.close()
+println()
 
 println("---- the measurement ----")
 println(agreement.report())

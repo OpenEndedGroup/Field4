@@ -393,6 +393,31 @@ class SolidSLCrossValidationTest {
         )
     }
 
+    /**
+     * The curved agreement floor is faceting, and the prediction is exact.
+     *
+     * # The exact assertion here is knowingly tight against a dependency we do not control
+     *
+     * `measured / predicted == 1.0` to `1e-6` is a claim about **Manifold's tessellation strategy**,
+     * not about anything in this repository. If upstream changes how it builds a cylinder, it goes
+     * red for a reason no commit here caused — the exact shape of brittleness this project has been
+     * bitten by before. So it is layered rather than left as a single hopeful number:
+     *
+     *  - **Layer 1, `within 2%`** is the load-bearing claim: *the curved floor is the
+     *    inscribed-polygon deficit and not something else*. The whole account of why the two
+     *    lowerings do not converge to zero rests on it, and it survives any change to how Manifold
+     *    subdivides so long as a cylinder is still a prism over an inscribed regular n-gon. What it
+     *    would miss: a change that kept the deficit's magnitude but altered its exact coefficient —
+     *    a different but still-inscribed polygon, say.
+     *  - **Layer 2, `within 1e-6`**, is a bonus: the model is not merely the right order but the
+     *    right number. Losing it would cost one nice fact and no argument.
+     *
+     * Layer 2 is kept because an exact assertion going red **is information** — it would mean the
+     * sentence "`facetingDeficit(n)` is exactly a cylinder's volume deficit", which this package's
+     * KDoc and its docs page both state as fact, had stopped being true. Its failure message
+     * therefore names the likely cause and says what to do, so that someone hitting it after a
+     * `brew upgrade` does not have to re-derive any of this.
+     */
     @Test
     fun `the curved floor is faceting, and scales as 1 over segments squared`() {
         if (!requireManifold()) return
@@ -410,10 +435,31 @@ class SolidSLCrossValidationTest {
                 val measured = (trueVolume - s.volume) / trueVolume
                 println("%8d %14.8f %14.8f %10.4f".format(n, predicted, measured, measured / predicted))
                 ratios += measured / predicted
+
+                // Layer 1 — the claim that matters, and the one that survives an upstream change of
+                // tessellation. If THIS fails, the curved floor is not the inscribed-polygon deficit
+                // at all, and the model in facetingDeficit's KDoc, in SolidAgreement's, and on the
+                // docs page is wrong.
+                assertTrue(
+                    abs(measured / predicted - 1.0) < 0.02,
+                    "at n=$n the curved agreement floor is not the inscribed-polygon deficit: " +
+                        "predicted $predicted, measured $measured (${measured / predicted}x). This " +
+                        "is the load-bearing claim, not the exact one below — the whole account of " +
+                        "why the two lowerings do not converge to zero rests on it.",
+                )
+
+                // Layer 2 — a bonus, knowingly brittle against a dependency we do not control.
                 assertTrue(
                     abs(measured / predicted - 1.0) < 1e-6,
-                    "a cylinder's volume deficit at n=$n should be exactly facetingDeficit(n): " +
-                        "predicted $predicted, measured $measured",
+                    "a cylinder's volume deficit at n=$n is no longer EXACTLY facetingDeficit(n): " +
+                        "predicted $predicted, measured $measured (${measured / predicted}x).\n" +
+                        "This most likely means Manifold changed how it tessellates a cylinder, not " +
+                        "that facetingDeficit is wrong — note that the 2% check immediately above " +
+                        "passed, so the floor is still the inscribed-polygon deficit, just no longer " +
+                        "a right prism over a regular n-gon to the last digit. If upstream really " +
+                        "has changed, the fix is to delete this assertion and soften the word " +
+                        "'exact' in facetingDeficit's KDoc, in SolidAgreement's, and in the faceting " +
+                        "table in public/docs/solid_notation.md. Measured against Manifold 3.5.2.",
                 )
             }
         }
