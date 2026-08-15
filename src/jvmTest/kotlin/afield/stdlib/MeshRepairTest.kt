@@ -517,6 +517,37 @@ class MeshRepairTest {
     }
 
     // ==========================================================================================
+    // The error message
+    // ==========================================================================================
+
+    /**
+     * `toSolid()` on a broken mesh must say **what is wrong**, not what the reader might try.
+     *
+     * The old message named `TriMesh.weld` and `TriMesh.fixWinding` as things to attempt — neither of
+     * which fixes a hole, which is the single most common reason a mesh off disk is refused. The
+     * message now carries the diagnosis, so it names the defect and the call that addresses it.
+     */
+    @Test
+    fun theRefusalNamesTheDefect() {
+        if (!manifold()) return
+        val holed = MeshDamage.deleteFaces(cube, 0, 2)
+        val thrown = runCatching { holed.toSolid() }.exceptionOrNull()
+        assertTrue(thrown is IllegalStateException, "toSolid should refuse a holed cube, got $thrown")
+        val message = thrown.message ?: ""
+        println("--- toSolid() refusal message ---\n$message")
+        assertTrue(
+            MeshDefectKind.OPEN_BOUNDARY.name in message,
+            "the message must name the actual defect; got:\n$message",
+        )
+        assertTrue("boundary edges" in message, "and describe it in words: \n$message")
+        assertTrue("repairToSolid" in message, "and point at the fix: \n$message")
+        assertTrue(
+            message.lines().size > 4,
+            "a one-line refusal cannot carry a diagnosis; got ${message.lines().size} lines",
+        )
+    }
+
+    // ==========================================================================================
     // The one real asset
     // ==========================================================================================
 

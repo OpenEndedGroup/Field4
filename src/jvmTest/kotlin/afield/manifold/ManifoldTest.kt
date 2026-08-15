@@ -364,7 +364,12 @@ class ManifoldTest {
             assertEquals(ManifoldStatus.NOT_MANIFOLD, solid.status)
             assertEquals(0.0, solid.volume, 0.0, "and it has no volume, which is the silent failure")
         }
-        // ...and the checking form turns that silence into an exception naming the repair.
+        // ...and the checking form turns that silence into an exception naming the DEFECT.
+        //
+        // This assertion used to require the word "weld", because the message was a list of repairs
+        // the reader might try. That was the wrong contract: welding does nothing for a single open
+        // triangle, so the message sent the reader down a dead end. It now carries
+        // [afield.stdlib.TriMesh.diagnose]'s report, which says what is actually wrong.
         val failure = runCatching { singleTriangle.toSolid().close() }.exceptionOrNull()
         assertTrue(failure is IllegalStateException, "expected an IllegalStateException, got $failure")
         assertTrue(
@@ -372,8 +377,12 @@ class ManifoldTest {
             "the message should name the status: ${failure.message}",
         )
         assertTrue(
-            failure.message?.contains("weld") == true,
-            "and suggest the repair: ${failure.message}",
+            failure.message?.contains("OPEN_BOUNDARY") == true,
+            "and the defect, which for a lone triangle is its open edge: ${failure.message}",
+        )
+        assertTrue(
+            failure.message?.contains("repairToSolid") == true,
+            "and the call that attempts it: ${failure.message}",
         )
     }
 
