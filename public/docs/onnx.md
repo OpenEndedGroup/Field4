@@ -28,6 +28,11 @@ val prompts = ClipText.encodeAll(listOf("an empty room", "a person at a desk"))
 ClipImage().encode(rgbaBytes, 640, 480).best(prompts)   // the better-matching label, and its share
 ```
 
+!!! info "Orientation only — `rgbaBytes` is not defined, so nothing runs this block"
+    Every call in it is exercised by `OnnxSmokeTest` / `ClipSmokeTest`, but *this text* is not
+    compiled by anything. See [which code on this page has actually run](#which-code-on-this-page-has-actually-run)
+    — it matters, and it is the gap an invented number once slipped through.
+
 ## The one idea that makes this live-codeable
 
 Session construction is the *expensive* half of ONNX — the graph is parsed, fused and specialised for
@@ -48,6 +53,10 @@ val loaded = OnnxRuntime.session(spec)
 // NOT cached — this rebuilds on every keystroke, and it is the one mistake to avoid.
 val mine = OnnxRuntime.env.createSession(path, options)
 ```
+
+*Not executed, and half of it must never be: the second line is an anti-example. The first is
+exercised by `OnnxSmokeTest.testSessionIsCached`, which asserts that two calls return the identical
+`OrtSession`.*
 
 The cache key is a `SessionSpec`: the model file, the provider, and the two thread counts. Thread
 pools are baked in at construction, so two specs differing only in `intraOpThreads` really are
@@ -193,6 +202,14 @@ depth.submit(webcam.frameBuffer, 640, 480)   // returns immediately
 if (depth.consume()) tex.recordUpload(commandBuffer)
 ```
 
+!!! info "This one genuinely cannot run here — it needs a Vulkan device and a webcam"
+    The headless docs runner has neither, so **the `StreamingTexture` and `recordUpload` lines are the
+    only code on this page that nothing in the repository checks**. The ONNX half is covered:
+    `OnnxSmokeTest.testWorkerPublishesAFrame` drives `DepthAnythingWorker` through `submit` and
+    `consume` end to end, and `testFp16BufferMatchesVulkanStride` asserts that `depthFp16`'s size is
+    exactly what `ImageData` computes for `VK_FORMAT_R16_SFLOAT` — which is the seam this snippet
+    depends on, checked without a GPU.
+
 Two design choices worth knowing, because both are the opposite of the obvious:
 
 - **Frames are dropped, not queued.** `submit` overwrites anything not yet picked up. A queue would
@@ -248,6 +265,13 @@ val carVec = encoder.encode(toRgba8(car), car.width, car.height)
 
 // A text-text cosine for scale, so the modality gap below is visible rather than asserted.
 val textText = clipEncode("storm").cosine(clipEncode("calm"))
+
+// A semantic axis: the unit direction from one prompt towards another. Projecting an image onto it
+// is a continuous knob whose units are meaning rather than pixels. What matters is not the absolute
+// value — same modality gap — but that the two images order correctly along it.
+val axis = text.getValue("an empty living room") axisTo text.getValue("a car")
+val roomOnAxis = roomVec.project(axis)
+val carOnAxis = carVec.project(axis)
 :::fold draw the numbers into the figure, because a box capture shows the output area, not stdout
 val rows = buildList {
     add("cosine of image against prompt")
@@ -264,8 +288,13 @@ val rows = buildList {
     add("is the comparison that means something:")
     add("  room -> %-20s %5.1f%%".format(roomVec.best(text)!!.first, roomVec.best(text)!!.second * 100))
     add("  car  -> %-20s %5.1f%%".format(carVec.best(text)!!.first, carVec.best(text)!!.second * 100))
+    add("")
+    add("axis: \"an empty living room\" -> \"a car\"")
+    add("  room photo   %+.4f".format(roomOnAxis))
+    add("  car render   %+.4f".format(carOnAxis))
+    add("  ordered correctly: %s".format(carOnAxis > roomOnAxis))
 }
-var table = Img.filled(600, 420, 3, 0.08f)
+var table = Img.filled(600, 540, 3, 0.08f)
 rows.forEachIndexed { i, line -> table = table.withLabel(line, 8, 10 + i * 25, 2) }
 
 showImgGrid(
@@ -313,16 +342,17 @@ other* and returns probabilities that sum to 1, most likely first. `best()` is i
 
 The third thing CLIP offers is the one nothing else does. The difference of two prompt embeddings is a
 *direction*, and projecting a frame onto it is a continuous parameter that tracks a semantic axis
-rather than a pixel statistic:
+rather than a pixel statistic. Two lines — `a axisTo b`, then `.project(axis)` — which is why they are
+not shown here as a snippet: they are executed in the figure above, on the axis from
+`"an empty living room"` towards `"a car"`, and its last three rows are the two projections and the
+check that they order correctly.
 
-```diffstatic {data-lang=kotlin}
-val weather = clipEncode("calm") axisTo clipEncode("storm")   // a unit direction
-val howStormy = frame.project(weather)                        // a knob, in units of meaning
-```
-
-Expect a small number near zero and watch how it *moves*; its absolute value is subject to the same
-modality gap as everything else. `ClipVector.mean(...)` averages and renormalises several prompts,
-which is the standard prompt-ensemble trick and one CLIP responds well to.
+The two projections come out small and on opposite sides of zero, which is what to expect — the same
+modality gap applies to a projection as to a cosine, so the magnitude is not a score. The signal is
+that the car render sits *further along* the axis than the room photograph, which the figure computes
+and states outright rather than asking you to eyeball it. For a live input the useful thing is not the
+value but how it *moves*. `ClipVector.mean(...)` averages and renormalises several prompts, which is
+the standard prompt-ensemble trick and one CLIP responds well to.
 
 The rest of `ClipVector` is small and pure: `plus`/`minus`/`times` (deliberately not renormalised,
 because the length of a difference is meaningful), `dot`, `cosine`, `normalized`, and
@@ -441,6 +471,45 @@ computer screen" at 41.7%, and puts "a person sitting at a desk" at 0.4% — cor
 nobody in the picture. It also guards against the failure that matters: if the decode produces an
 all-black buffer, every number below would still be produced and would still look plausible, so it
 checks mean luma and fails instead.
+
+## Which code on this page has actually run
+
+Documentation rots in a specific way: a snippet nobody executes drifts from the API it describes, and
+looks exactly like one that works. This page had that bug during drafting — an orientation snippet
+carried a confident `0.94f` that had never been computed. So here is the census, rather than an
+assurance.
+
+| bucket | blocks | non-blank lines |
+|---|---|---|
+| Kotlin executed by a docs-capture fence, every build | **2** | **112** |
+| Kotlin executed by nothing | 3 | 19 |
+| shell commands, both run by hand for this page | 2 | 4 |
+
+**What the denominator counts.** "Blocks" means fenced code blocks in `onnx.md`; the five Kotlin ones
+are counted whole, imports and all, because an import that does not resolve is exactly the kind of rot
+this is measuring. Lines are non-blank lines excluding the `:::static` / `:::fold` markers. The two
+capture fences are counted as executed because the docs build *runs them and screenshots the result* —
+if either stopped compiling, the build would fail rather than reuse a stale PNG, which
+`docs_capture_audit.py` re-verifies by re-deriving both from source twice.
+
+**What the three remaining blocks are, and what stands behind each:**
+
+| block | why it is not executed | what does cover it |
+|---|---|---|
+| the orientation snippet | `rgbaBytes` is deliberately undefined | every call in it, via both smokes |
+| the session-cache do/don't | half of it is an anti-example that *must* not run | `OnnxSmokeTest.testSessionIsCached` |
+| the worker + `StreamingTexture` | needs a Vulkan device and a webcam | the ONNX half, via `testWorkerPublishesAFrame`; the buffer stride, via `testFp16BufferMatchesVulkanStride` |
+
+**What would make the covered bucket full for the wrong reason.** If "covered" were allowed to mean
+"the API this snippet calls is asserted somewhere", all five blocks would count as covered and the
+number would be worthless — because that is *already true today*, and it is precisely the condition
+under which the invented `0.94f` survived review. Asserting `ClipImage.encode` in a smoke says nothing
+about whether a page's prose about it is right. Only the two capture fences are compiled and run *as
+written*; the other three are prose that happens to be syntax-highlighted, and are marked as such
+where they appear.
+
+The honest gap, stated once: **`StreamingTexture(...)` and `recordUpload(...)` are the only lines on
+this page that nothing in this repository checks.**
 
 ## The `clip()` macro that was built, and then removed
 
