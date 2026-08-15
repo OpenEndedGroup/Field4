@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-22 source file(s), 986 public symbol(s), 831 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+23 source file(s), 1068 public symbol(s), 881 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -863,7 +863,7 @@ showMesh(solid, caption = "${solid.triangleCount} triangles from 24 sites")
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_field.kt`
 
-**Used in:** [Geometry from disk](../geometry_from_disk.md), [Meshes and 3D geometry](../mesh_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md)
+**Used in:** [Geometry from disk](../geometry_from_disk.md), [Solids that cannot fail: Manifold in Field](../manifold.md), [Meshes and 3D geometry](../mesh_examples.md)
 
 ### Top-level functions { #mesh-field-kt-functions }
 
@@ -885,6 +885,10 @@ showMesh(solid, caption = "${solid.triangleCount} triangles from 24 sites")
 | <code class="highlight"><span class="k">fun</span> <span class="nc">TriMesh</span><span class="p">.</span><span class="nf">longestEdge</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | Longest edge in the mesh — a useful scale for choosing a weld tolerance or a march resolution. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">TriMesh</span><span class="p">.</span><span class="nf">meanEdgeLength</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | Mean edge length over the mesh's unique edges. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">TriMesh</span><span class="p">.</span><span class="nf">normalized</span><span class="p">(</span><span class="n">size</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriMesh</span></code> | This mesh recentred on its own bounding box and scaled so its longest axis is `size`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">TriMesh</span><span class="p">.</span><span class="nf">defectFLines</span><span class="p">(</span><span class="n">diagnosis</span><span class="p">:</span> <span class="nc">MeshDiagnosis</span> <span class="o">=</span> <span class="nf">diagnose</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">includeWinding</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> | The defects `TriMesh.diagnose` found, as coloured `FLine`s to draw over the mesh. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">TriMesh</span><span class="p">.</span><span class="nf">withDefectColors</span><span class="p">(</span><span class="n">diagnosis</span><span class="p">:</span> <span class="nc">MeshDiagnosis</span> <span class="o">=</span> <span class="nf">diagnose</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriMesh</span></code> | This mesh painted by defect, so its rendered picture shows where the trouble is. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showMeshDiagnosis</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="nc">TriMesh</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;main&quot;</span><span class="p">,</span> <span class="n">view</span><span class="p">:</span> <span class="nc">MeshView</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">maxDefects</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code> | The diagnosis as a card beside the mesh: the shape with its defects painted on, and the ordered list of what is wrong and what to call about it. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">TriMesh</span><span class="p">.</span><span class="nf">defectFacingView</span><span class="p">(</span><span class="n">diagnosis</span><span class="p">:</span> <span class="nc">MeshDiagnosis</span> <span class="o">=</span> <span class="nf">diagnose</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">420</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">340</span><span class="p">)</span><span class="p">:</span> <span class="nc">MeshView</span></code> | A camera pointed at this mesh's worst defect, so the picture shows the thing the caption is about. |
 
 ### MeshLines { #mesh-field-kt-meshlines }
 
@@ -972,7 +976,7 @@ facing `+y` — the difference is deliberate, a plane is a wall and a heightfiel
 | <code class="highlight"><span class="k">fun</span> <span class="nf">coneMesh</span><span class="p">(</span><span class="n">segments</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">cap</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriMesh</span></code> | A cone along `y` with its apex at `+height/2` and its base at `-height/2`. Watertight with `cap` (`χ = 2`). No normals — the apex is a genuine singularity. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">torusMesh</span><span class="p">(</span><span class="n">majorSegments</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">48</span><span class="p">,</span> <span class="n">minorSegments</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">24</span><span class="p">,</span> <span class="n">majorRadius</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">minorRadius</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.35</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriMesh</span></code> | A torus in the `xz` plane: `majorRadius` out to the centre of the tube, `minorRadius` the tube itself. Watertight, smooth normals, and the family's canonical **genus 1** shape — `χ = 0`, `MeshTopology.genus` `1`. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">capsuleMesh</span><span class="p">(</span><span class="n">segments</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span> <span class="n">rings</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.4</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriMesh</span></code> | A capsule (cylinder with hemispherical ends) along `y`: total length `height + 2 * radius`. |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">revolveMesh</span><span class="p">(</span><span class="n">profile</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">segments</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">48</span><span class="p">,</span> <span class="n">turns</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriMesh</span></code> | A lathe: a 2D `profile` of `(radius, y)` points swept around the `y` axis. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">revolveMesh</span><span class="p">(</span><span class="n">profile</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">segments</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">48</span><span class="p">,</span> <span class="n">turns</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriMesh</span></code> | A lathe: a 2D `profile` of `(radius, y)` points swept around the **`y` axis**. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">triangulatePolygon</span><span class="p">(</span><span class="n">polygon</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> | Ear-clipping triangulation of a simple (non-self-intersecting) polygon. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">polygonMesh</span><span class="p">(</span><span class="n">polygon</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriMesh</span></code> | A flat, triangulated polygon in the `xy` plane at `z = 0`, facing `+z`. Concave polygons are handled (`triangulatePolygon`). A disc: `χ = 1`, one boundary loop. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">extrudeMesh</span><span class="p">(</span><span class="n">polygon</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">caps</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriMesh</span></code> | A prism: `polygon` in the `xy` plane swept along `+z` by `height`. |
@@ -1193,6 +1197,227 @@ How well-shaped a mesh's triangles are — the number to look at before and afte
 | <code class="highlight"><span class="k">val</span> <span class="n">worstAspectRatio</span><span class="p">:</span> <span class="nc">Double</span></code> | The worst single triangle's aspect ratio. |
 | <code class="highlight"><span class="k">val</span> <span class="n">degenerateCount</span><span class="p">:</span> <span class="nc">Int</span></code> | Triangles with no area at all. Legal (a UV sphere has none, a marched surface can) but worth knowing. |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | All five numbers on one line, for `println`. |
+
+## mesh_repair.kt { #mesh-repair-kt }
+
+Why a mesh is not a solid, and what can be done about it — the paved road between "I loaded a file"
+and `toSolid()`.
+
+`TriMesh.diagnose` answers *why*, in terms a person can act on: which loops are open and how big,
+which edges have the wrong number of faces, which faces are duplicated, whether the winding is
+consistent and whether it points out. `TriMesh.repairToSolid` then attempts the fixes in a
+defensible order and hands back a [`MeshRepairResult`](graphics.md#mesh-repair-kt-meshrepairresult) that says **what it did and what it could
+not do** — a repair that quietly drops half your model is worse than one that refuses, so nothing
+here returns a bare mesh.
+
+```diffstatic {data-lang=kotlin}
+val mesh = meshFromAnyFile("scan.glb")
+println(mesh.diagnose().report())     // why it is not a solid, worst first
+val fixed = mesh.repairToSolid()
+println(fixed.report())               // what was done, and what was not
+if (fixed.isSolid) display(fixed.mesh.toSolid() - drill)
+```
+
+### What actually blocks `toSolid`, measured rather than assumed
+
+Every severity below was established by feeding Manifold a mesh damaged in exactly one named way
+(see `MeshDamage` in the tests) and asking whether it accepted the result. The answers are not the
+ones folklore predicts, and three of them matter:
+
+ - **A mesh with several disjoint components is fine.** Manifold accepts it and reports the sum of
+   the volumes. "Split into parts" is not a defect; it is `MeshDefectKind.MULTIPLE_COMPONENTS`, and
+   it is informational.
+ - **Zero-area triangles are fine.** Manifold accepts them and the volume is unchanged.
+ - **An inside-out mesh is fine, and that is the dangerous one.** Manifold accepts a consistently
+   but inwardly wound closed surface and reports a **negative volume** — so the boolean you do next
+   silently computes the wrong thing rather than throwing. That is
+   `MeshDefectKind.INVERTED_ORIENTATION`, and it is the reason this file reports severity
+   `MeshDefectSeverity.SUSPICIOUS` at all instead of just a pass/fail.
+
+What Manifold genuinely rejects is a short list: a non-finite position, an edge with other than two
+incident faces (which a duplicated face also produces, on all three of its edges), an open boundary,
+and inconsistent winding.
+
+### What the existing repairs already do, and where they stop
+
+`TriMesh.repaired` — `weld → removeDegenerateTriangles → removeUnusedVertices → fixWinding` — is
+not a straw man. Measured over twelve meshes that Manifold rejected, it already fixes **six**: every
+unwelded-seam case (welding is what turns an STL's pile of triangles into a surface) and every
+inconsistent-winding case. The six it cannot fix are exactly two families, and they are what this
+file adds:
+
+ 1. **Open boundaries** — nothing in the old pipeline fills a hole. `fillHoles` is the new code.
+ 2. **Non-manifold edges** — nothing removes a duplicated face or a dangling fin.
+    `removeDuplicateFaces` and `removeNonManifoldFins` are the new code.
+
+So the honest framing is that this file is the *last third* of a mesh repair pipeline, not the whole
+of one, and `TriMesh.repairToSolid` calls the existing repairs for the first two thirds.
+
+`src/jvmMain/kotlin/afield/stdlib/mesh_repair.kt`
+
+**Used in:** [Solids that cannot fail: Manifold in Field](../manifold.md), [Geometry from disk](../geometry_from_disk.md)
+
+### Top-level functions { #mesh-repair-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">TriMesh</span><span class="p">.</span><span class="nf">diagnose</span><span class="p">(</span><span class="n">weldTolerance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">6</span><span class="p">)</span><span class="p">:</span> <span class="nc">MeshDiagnosis</span></code> | Build (and do not cache) this mesh's [`MeshDiagnosis`](graphics.md#mesh-repair-kt-meshdiagnosis). See [`MeshDiagnosis`](graphics.md#mesh-repair-kt-meshdiagnosis) for the vocabulary. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">TriMesh</span><span class="p">.</span><span class="nf">removeDuplicateFaces</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriMesh</span></code> | Remove triangles that share all three corners with another triangle. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">TriMesh</span><span class="p">.</span><span class="nf">removeNonManifoldFins</span><span class="p">(</span><span class="n">maxRounds</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">16</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriMesh</span></code> | Remove dangling flaps: triangles that hang off a non-manifold edge instead of being part of the closed surface. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">TriMesh</span><span class="p">.</span><span class="nf">fillHoles</span><span class="p">(</span><span class="n">maxEdges</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">10</span><span class="n">&#95;000</span><span class="p">)</span><span class="p">:</span> <span class="nc">HoleFillResult</span></code> | Close every open boundary loop with a triangulated cap. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">TriMesh</span><span class="p">.</span><span class="nf">repairToSolid</span><span class="p">(</span><span class="n">weldTolerance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">6</span><span class="p">,</span> <span class="n">fillHoles</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">maxHoleEdges</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">10</span><span class="n">&#95;000</span><span class="p">,</span> <span class="n">keepLargestComponentOnly</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">MeshRepairResult</span></code> | Try to turn this mesh into something `afield.manifold.toSolid` will accept, and report honestly. |
+
+### MeshDefectSeverity { #mesh-repair-kt-meshdefectseverity }
+
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">MeshDefectSeverity</span></code>
+
+How much a defect matters — the distinction between "Manifold will refuse this" and "Manifold will accept this and quietly give you a wrong answer".
+
+### MeshDefectKind { #mesh-repair-kt-meshdefectkind }
+
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">MeshDefectKind</span></code>
+
+The kinds of thing that can be wrong with a mesh, **declared in the order worth fixing them**.
+
+### MeshDefect { #mesh-repair-kt-meshdefect }
+
+<code class="highlight"><span class="k">class</span> <span class="nf">MeshDefect</span><span class="p">(</span><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">MeshDefectKind</span><span class="p">,</span> <span class="k">val</span> <span class="n">severity</span><span class="p">:</span> <span class="nc">MeshDefectSeverity</span><span class="p">,</span> <span class="k">val</span> <span class="n">count</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">detail</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">fix</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>
+
+One thing that is wrong, with the evidence attached.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">MeshDefectKind</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">severity</span><span class="p">:</span> <span class="nc">MeshDefectSeverity</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">count</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">detail</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">fix</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
+### BoundaryLoopInfo { #mesh-repair-kt-boundaryloopinfo }
+
+<code class="highlight"><span class="k">class</span> <span class="nf">BoundaryLoopInfo</span><span class="p">(</span><span class="k">val</span> <span class="n">vertices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">perimeter</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">diameter</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">planarity</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">)</span></code>
+
+One open boundary loop, measured.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">vertices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">perimeter</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">diameter</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">planarity</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">edgeCount</span><span class="p">:</span> <span class="nc">Int</span></code> | Number of edges around the hole. |
+| <code class="highlight"><span class="k">val</span> <span class="n">isPlanar</span><span class="p">:</span> <span class="nc">Boolean</span></code> | True when the loop is flat enough that a planar fill is trustworthy. |
+| <code class="highlight"><span class="k">val</span> <span class="n">isSimple</span><span class="p">:</span> <span class="nc">Boolean</span></code> | True when the ring visits every vertex once. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
+### MeshComponentInfo { #mesh-repair-kt-meshcomponentinfo }
+
+<code class="highlight"><span class="k">class</span> <span class="nf">MeshComponentInfo</span><span class="p">(</span><span class="k">val</span> <span class="n">triangles</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">vertexCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">isClosed</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">signedVolume</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">triangleShare</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>
+
+One connected piece of the mesh, and whether it is a solid in its own right.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">triangles</span><span class="p">:</span> <span class="nc">IntArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">vertexCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">isClosed</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">signedVolume</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">triangleShare</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
+### MeshDiagnosis { #mesh-repair-kt-meshdiagnosis }
+
+<code class="highlight"><span class="k">class</span> <span class="nf">MeshDiagnosis</span><span class="p">(</span><span class="k">val</span> <span class="n">mesh</span><span class="p">:</span> <span class="nc">TriMesh</span><span class="p">,</span> <span class="k">val</span> <span class="n">weldTolerance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">6</span><span class="p">)</span></code>
+
+Everything wrong with one [`TriMesh`](graphics.md#mesh-kt-trimesh), with the evidence, ordered by what to fix first.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">topology</span><span class="p">:</span> <span class="nc">MeshTopology</span></code> | The topology this diagnosis reads. Shared, so ask it your own questions rather than rebuilding. |
+| <code class="highlight"><span class="k">val</span> <span class="n">nonFiniteVertices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> | Vertex indices whose position is `NaN` or infinite. |
+| <code class="highlight"><span class="k">val</span> <span class="n">degenerateFaces</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> | Triangles with a repeated corner or no area. |
+| <code class="highlight"><span class="k">val</span> <span class="n">duplicateFaceGroups</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">&gt;</span></code> | Groups of two or more triangles sharing the same three corners, whatever their winding. |
+| <code class="highlight"><span class="k">val</span> <span class="n">nonManifoldEdges</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Triple</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Int</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span><span class="p">&gt;</span></code> | Edges with three or more incident faces, as `(u, v, faceCount)`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">nonManifoldVertices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> | Vertices whose incident faces do not form a single fan. |
+| <code class="highlight"><span class="k">val</span> <span class="n">boundaryLoops</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BoundaryLoopInfo</span><span class="p">&gt;</span></code> | Every open boundary loop, measured — see [`BoundaryLoopInfo`](graphics.md#mesh-repair-kt-boundaryloopinfo). Largest first. |
+| <code class="highlight"><span class="k">val</span> <span class="n">unwalkableBoundaryEdges</span><span class="p">:</span> <span class="nc">Int</span></code> | Boundary edges that `MeshTopology.boundaryLoops` could not walk into a closed ring. |
+| <code class="highlight"><span class="k">val</span> <span class="n">inconsistentEdges</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span><span class="p">&gt;</span></code> | Interior edges whose two faces walk them the same way — the winding disagreements themselves. |
+| <code class="highlight"><span class="k">val</span> <span class="n">components</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">MeshComponentInfo</span><span class="p">&gt;</span></code> | Each connected piece, measured — see [`MeshComponentInfo`](graphics.md#mesh-repair-kt-meshcomponentinfo). Largest first. |
+| <code class="highlight"><span class="k">val</span> <span class="n">invertedComponents</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">MeshComponentInfo</span><span class="p">&gt;</span></code> | Closed components wound inward — accepted by Manifold, and a negative volume when they are. |
+| <code class="highlight"><span class="k">val</span> <span class="n">weldableVertices</span><span class="p">:</span> <span class="nc">Int</span></code> | How many vertices `TriMesh.weld` at `weldTolerance` would merge away. |
+| <code class="highlight"><span class="k">val</span> <span class="n">unreferencedVertices</span><span class="p">:</span> <span class="nc">Int</span></code> | Vertices no triangle references. |
+| <code class="highlight"><span class="k">val</span> <span class="n">defects</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">MeshDefect</span><span class="p">&gt;</span></code> | Every defect found, **worst and most causal first**. |
+| <code class="highlight"><span class="k">val</span> <span class="n">blockers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">MeshDefect</span><span class="p">&gt;</span></code> | Just the defects Manifold will refuse the mesh over. Empty means `TriMesh.toSolid` should work. |
+| <code class="highlight"><span class="k">val</span> <span class="n">isSolid</span><span class="p">:</span> <span class="nc">Boolean</span></code> | True when nothing `MeshDefectSeverity.BLOCKING` was found. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | One line: the counts, and the first blocker. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">report</span><span class="p">(</span><span class="n">maxDefects</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | The whole diagnosis as readable text, worst first — the thing to `print` when a `toSolid()` threw. |
+
+### HoleFillMethod { #mesh-repair-kt-holefillmethod }
+
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">HoleFillMethod</span></code>
+
+How one hole got filled — the difference between a fill you can trust and one you should look at.
+
+### HoleFillReport { #mesh-repair-kt-holefillreport }
+
+<code class="highlight"><span class="k">class</span> <span class="nf">HoleFillReport</span><span class="p">(</span><span class="k">val</span> <span class="n">loop</span><span class="p">:</span> <span class="nc">BoundaryLoopInfo</span><span class="p">,</span> <span class="k">val</span> <span class="n">method</span><span class="p">:</span> <span class="nc">HoleFillMethod</span><span class="p">,</span> <span class="k">val</span> <span class="n">trianglesAdded</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">capAreaFraction</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">note</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>
+
+What happened to one hole.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">loop</span><span class="p">:</span> <span class="nc">BoundaryLoopInfo</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">method</span><span class="p">:</span> <span class="nc">HoleFillMethod</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">trianglesAdded</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">capAreaFraction</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">note</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">isSuspect</span><span class="p">:</span> <span class="nc">Boolean</span></code> | True when this fill is one to look at before trusting: fanned, non-planar, or skipped. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
+### HoleFillResult { #mesh-repair-kt-holefillresult }
+
+<code class="highlight"><span class="k">class</span> <span class="nf">HoleFillResult</span><span class="p">(</span><span class="k">val</span> <span class="n">mesh</span><span class="p">:</span> <span class="nc">TriMesh</span><span class="p">,</span> <span class="k">val</span> <span class="n">fills</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">HoleFillReport</span><span class="p">&gt;</span><span class="p">)</span></code>
+
+The mesh with its holes closed, and the story of each one.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">filled</span><span class="p">:</span> <span class="nc">Int</span></code> | Holes that were closed, whatever the method. |
+| <code class="highlight"><span class="k">val</span> <span class="n">skipped</span><span class="p">:</span> <span class="nc">Int</span></code> | Holes still open because the caller's `TriMesh.fillHoles` limit refused them. |
+| <code class="highlight"><span class="k">val</span> <span class="n">suspect</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">HoleFillReport</span><span class="p">&gt;</span></code> | Fills worth looking at before trusting — see `HoleFillReport.isSuspect`. |
+
+### RepairStep { #mesh-repair-kt-repairstep }
+
+<code class="highlight"><span class="k">class</span> <span class="nf">RepairStep</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">changed</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">detail</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>
+
+One thing a repair pipeline did, and how much of it.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
+### MeshRepairResult { #mesh-repair-kt-meshrepairresult }
+
+<code class="highlight"><span class="k">class</span> <span class="nf">MeshRepairResult</span><span class="p">(</span><span class="k">val</span> <span class="n">mesh</span><span class="p">:</span> <span class="nc">TriMesh</span><span class="p">,</span> <span class="k">val</span> <span class="n">original</span><span class="p">:</span> <span class="nc">TriMesh</span><span class="p">,</span> <span class="k">val</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">RepairStep</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">before</span><span class="p">:</span> <span class="nc">MeshDiagnosis</span><span class="p">,</span> <span class="k">val</span> <span class="n">after</span><span class="p">:</span> <span class="nc">MeshDiagnosis</span><span class="p">,</span> <span class="k">val</span> <span class="n">holeFills</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">HoleFillReport</span><span class="p">&gt;</span><span class="p">)</span></code>
+
+What `TriMesh.repairToSolid` did, what it could not do, and the mesh that came out.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">mesh</span><span class="p">:</span> <span class="nc">TriMesh</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">original</span><span class="p">:</span> <span class="nc">TriMesh</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">RepairStep</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">before</span><span class="p">:</span> <span class="nc">MeshDiagnosis</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">after</span><span class="p">:</span> <span class="nc">MeshDiagnosis</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">holeFills</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">HoleFillReport</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">isSolid</span><span class="p">:</span> <span class="nc">Boolean</span></code> | True when nothing blocking remains — `mesh` should now survive `toSolid()`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">unfixed</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">MeshDefect</span><span class="p">&gt;</span></code> | The blocking defects still present, each carrying its own explanation of why nothing was done. |
+| <code class="highlight"><span class="k">val</span> <span class="n">remainingWarnings</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">MeshDefect</span><span class="p">&gt;</span></code> | Defects Manifold will accept but which are probably still wrong — see `MeshDefectSeverity.SUSPICIOUS`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">suspectFills</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">HoleFillReport</span><span class="p">&gt;</span></code> | Fills worth looking at with your eyes before trusting the volume. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">report</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | The whole story as readable text: what changed, what was filled, and what is still wrong. |
 
 ## mesh_sdf.kt { #mesh-sdf-kt }
 

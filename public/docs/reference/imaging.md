@@ -49,7 +49,7 @@ and anything needing a model file.
 
 `src/jvmMain/kotlin/afield/stdlib/imaging.kt`
 
-**Used in:** [Imaging and computer vision](../imaging_examples.md), [Wave Function Collapse examples](../wfc_examples.md), [Spatial artificial life](../alife_examples.md)
+**Used in:** [Imaging and computer vision](../imaging_examples.md), [Wave Function Collapse examples](../wfc_examples.md), [Depth and CLIP: neural vision in a box](../onnx.md)
 
 ### Top-level functions { #imaging-kt-functions }
 
