@@ -655,20 +655,51 @@ enum class HoleFillMethod {
  * @param loop the hole as it was measured before filling.
  * @param method how it was closed — see [HoleFillMethod].
  * @param trianglesAdded how many triangles the fill cost; `0` when the hole was skipped.
+ * @param capAreaFraction this cap's area as a fraction of the repaired mesh's whole surface — see
+ *   [isSuspect] for why a big one matters even when it is perfectly flat.
  * @param note the reason, when there is one worth reading.
  */
 class HoleFillReport(
     val loop: BoundaryLoopInfo,
     val method: HoleFillMethod,
     val trianglesAdded: Int,
+    val capAreaFraction: Double = 0.0,
     val note: String? = null,
 ) {
-    /** True when this fill is one to look at before trusting: fanned, or non-planar, or skipped. */
+    /**
+     * True when this fill is one to look at before trusting: fanned, non-planar, or skipped.
+     *
+     * # What this flag cannot tell you, demonstrated
+     *
+     * `isSuspect` catches fills whose *geometry* is doubtful. It does **not** catch a fill that is
+     * geometrically spotless and simply the wrong shape, and no flag on this class can, because **no
+     * local property of a hole distinguishes "this end should be a flat cap" from "the model
+     * continued here."** Two measured cases settle it, and they point opposite ways:
+     *
+     * | case | rim | cap method | cap share of surface | result |
+     * |---|---|---|---|---|
+     * | uncapped cylinder | flat | clean ear clip | large (both lids) | volume error **0.00000** — exactly right |
+     * | torus with its tube severed | flat | clean ear clip | small, 2.7% | volume error **4.2%**, and genus 1 becomes 0 |
+     *
+     * A size threshold was tried and removed: at any cut-off that flags the severed torus it also
+     * flags the cylinder, whose caps are correct, and at 5% it flags the cylinder and *misses* the
+     * torus entirely. The two are locally indistinguishable. [capAreaFraction] is still reported, as a
+     * fact rather than a verdict — a cap that is a tenth of your model is worth a look whatever the
+     * arithmetic says — but it deliberately does not set this flag.
+     *
+     * The only thing that catches the severed torus is comparison against the shape you meant, which
+     * at run time you do not have. So the honest contract is: a clean `isSuspect == false` means the
+     * cap's geometry is sound, **not** that the model is the one you started with.
+     */
     val isSuspect: Boolean
-        get() = method == HoleFillMethod.CENTROID_FAN || method == HoleFillMethod.SKIPPED_TOO_LARGE || !loop.isPlanar
+        get() = method == HoleFillMethod.CENTROID_FAN ||
+            method == HoleFillMethod.SKIPPED_TOO_LARGE ||
+            !loop.isPlanar
 
     override fun toString(): String =
-        "%s: %d edges -> %d triangles%s".format(method, loop.edgeCount, trianglesAdded, note?.let { " ($it)" } ?: "")
+        "%s: %d edges -> %d triangles, %.1f%% of the surface%s".format(
+            method, loop.edgeCount, trianglesAdded, capAreaFraction * 100, note?.let { " ($it)" } ?: "",
+        )
 }
 
 /** The mesh with its holes closed, and the story of each one. */
@@ -724,7 +755,17 @@ fun TriMesh.fillHoles(maxEdges: Int = 10_000): HoleFillResult {
     val loops = topology().boundaryLoops
     if (loops.isEmpty()) return HoleFillResult(this, emptyList())
 
-    val reports = mutableListOf<HoleFillReport>()
+    // Each pending fill records where its triangles land, so the cap's share of the finished
+    // surface can be measured once the mesh exists — see HoleFillReport.capAreaFraction.
+    class Pending(
+        val info: BoundaryLoopInfo,
+        val method: HoleFillMethod,
+        val firstTriangle: Int,
+        val triangleCount: Int,
+        val note: String?,
+    )
+
+    val pending = mutableListOf<Pending>()
     val extraPositions = mutableListOf<Float>()
     val extraIndices = mutableListOf<Int>()
     var nextVertex = vertexCount
@@ -732,8 +773,9 @@ fun TriMesh.fillHoles(maxEdges: Int = 10_000): HoleFillResult {
     // A traced ring may be a figure-eight through a pinch vertex; each simple piece is a real hole.
     for (ring in loops.flatMap { decomposeRing(it) }) {
         val info = measureLoop(this, ring)
+        val firstTriangle = triangleCount + extraIndices.size / 3
         if (ring.size > maxEdges) {
-            reports.add(HoleFillReport(info, HoleFillMethod.SKIPPED_TOO_LARGE, 0,
+            pending.add(Pending(info, HoleFillMethod.SKIPPED_TOO_LARGE, firstTriangle, 0,
                 "${ring.size} edges is past the maxEdges=$maxEdges limit"))
             continue
         }
@@ -741,7 +783,7 @@ fun TriMesh.fillHoles(maxEdges: Int = 10_000): HoleFillResult {
         val fill = ring.reversed()
         if (fill.size == 3) {
             extraIndices.add(fill[0]); extraIndices.add(fill[1]); extraIndices.add(fill[2])
-            reports.add(HoleFillReport(info, HoleFillMethod.SINGLE_TRIANGLE, 1))
+            pending.add(Pending(info, HoleFillMethod.SINGLE_TRIANGLE, firstTriangle, 1, null))
             continue
         }
         val projected = projectRing(this, fill)
@@ -750,7 +792,7 @@ fun TriMesh.fillHoles(maxEdges: Int = 10_000): HoleFillResult {
             for (k in clipped.indices step 3) {
                 extraIndices.add(fill[clipped[k]]); extraIndices.add(fill[clipped[k + 1]]); extraIndices.add(fill[clipped[k + 2]])
             }
-            reports.add(HoleFillReport(info, HoleFillMethod.EAR_CLIP, clipped.size / 3,
+            pending.add(Pending(info, HoleFillMethod.EAR_CLIP, firstTriangle, clipped.size / 3,
                 if (info.isPlanar) null else "loop is non-planar (%.1f%% of its diameter) — the cap is flat and the model is not"
                     .format(info.planarity * 100)))
         } else {
@@ -762,19 +804,34 @@ fun TriMesh.fillHoles(maxEdges: Int = 10_000): HoleFillResult {
             for (i in fill.indices) {
                 extraIndices.add(fill[i]); extraIndices.add(fill[(i + 1) % fill.size]); extraIndices.add(centre)
             }
-            reports.add(HoleFillReport(info, HoleFillMethod.CENTROID_FAN, fill.size,
+            pending.add(Pending(info, HoleFillMethod.CENTROID_FAN, firstTriangle, fill.size,
                 "ear clipping stalled — the loop is not simple in its own plane, so this cap may self-intersect"))
         }
     }
 
-    if (extraIndices.isEmpty()) return HoleFillResult(this, reports)
+    if (extraIndices.isEmpty()) {
+        return HoleFillResult(this, pending.map { HoleFillReport(it.info, it.method, 0, 0.0, it.note) })
+    }
     val pos = positions.copyOf(positions.size + extraPositions.size)
     for (i in extraPositions.indices) pos[positions.size + i] = extraPositions[i]
     val idx = indices.copyOf(indices.size + extraIndices.size)
     for (i in extraIndices.indices) idx[indices.size + i] = extraIndices[i]
     // Attributes are dropped: a cap has no sensible uv or colour, and a half-populated array is worse
     // than none. Call withVertexNormals() after if the result is going to a renderer.
-    return HoleFillResult(TriMesh(pos, idx), reports)
+    val filled = TriMesh(pos, idx)
+
+    val totalArea = filled.surfaceArea()
+    val reports = pending.map { p ->
+        var capArea = 0.0
+        for (t in p.firstTriangle until p.firstTriangle + p.triangleCount) capArea += filled.triangleArea(t)
+        val fraction = if (totalArea > 0.0) capArea / totalArea else 0.0
+        // Information, not a verdict: see HoleFillReport.isSuspect for why size cannot decide this.
+        val note = p.note ?: if (fraction > 0.05)
+            ("this cap is %.1f%% of the finished surface — its geometry is clean, but that much of the " +
+                "model is being invented rather than restored").format(fraction * 100) else null
+        HoleFillReport(p.info, p.method, p.triangleCount, fraction, note)
+    }
+    return HoleFillResult(filled, reports)
 }
 
 /**

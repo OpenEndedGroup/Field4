@@ -44,10 +44,29 @@ class MeshRepairTest {
     // The table
     // ==========================================================================================
 
-    /** What a row of the table claims should happen. */
+    /**
+     * What a row of the table claims should happen.
+     *
+     * The distinction between [Faithful] and [ValidButWrong] is the whole point of this file's second
+     * draft. `isValidSolid()` is not success: a hole filled with a flat cap seals the mesh, satisfies
+     * Manifold, lets every boolean through — and can be a completely different shape. Only comparison
+     * against the **undamaged original** catches that, and every row here has one.
+     */
     private sealed interface Expect {
-        /** Repair should produce a valid solid whose volume matches [volume] to [tolerance]. */
-        class Solidified(val volume: Double, val tolerance: Double = 1e-3) : Expect
+        /**
+         * Repair should give a valid solid that is *also* the original shape: volume and surface area
+         * within [tolerance] of the undamaged mesh, and the same genus.
+         */
+        class Faithful(val tolerance: Double = 0.005) : Expect
+
+        /**
+         * Repair should give a valid solid that is measurably **not** the original shape.
+         *
+         * These rows are not failures of the test, they are the honest product boundary, and deleting
+         * them would turn the headline into a lie. [minVolumeError] asserts a floor on how wrong it
+         * is, so a row cannot quietly become faithful without somebody noticing.
+         */
+        class ValidButWrong(val minVolumeError: Double, val why: String) : Expect
 
         /** Repair should *fail*, and should say so by leaving [kind] in `unfixed`. */
         class Unfixable(val kind: MeshDefectKind) : Expect
@@ -65,10 +84,13 @@ class MeshRepairTest {
         val mesh: TriMesh,
         val diagnosisMustName: List<MeshDefectKind>,
         val expect: Expect,
+        /** The undamaged mesh this row was made from — the ground truth a repair is judged against. */
+        val truth: TriMesh? = null,
     )
 
     private val cube = cubeMesh(1.0)
     private val ico = icosphereMesh(2, 1.0)
+    private val ico3 = icosphereMesh(3, 1.0)
     private val torus = torusMesh(24, 12)
 
     private val cubeVolume = 1.0
@@ -77,79 +99,117 @@ class MeshRepairTest {
 
     private fun table(): List<Row> = listOf(
         // --- undamaged controls: the pipeline must not break what is already fine ------------
-        Row("pristine cube", cube, emptyList(), Expect.Solidified(cubeVolume)),
-        Row("pristine icosphere", ico, emptyList(), Expect.Solidified(icoVolume)),
-        Row("pristine torus", torus, emptyList(), Expect.Solidified(torusVolume)),
+        Row("pristine cube", cube, emptyList(), Expect.Faithful(), cube),
+        Row("pristine icosphere", ico, emptyList(), Expect.Faithful(), ico),
+        Row("pristine torus", torus, emptyList(), Expect.Faithful(), torus),
 
-        // --- open boundaries: fillHoles is the new code ---------------------------------------
+        // --- FLAT holes. Every one of these caps exactly, and that is the point of saying so:
+        //     a planar rim is the easy case, and a table made only of these measures nothing.
         Row(
-            "one face deleted from a cube", MeshDamage.deleteFaces(cube, 0, 1),
-            listOf(MeshDefectKind.OPEN_BOUNDARY), Expect.Solidified(cubeVolume),
+            "flat: one face off a cube", MeshDamage.deleteFaces(cube, 0, 1),
+            listOf(MeshDefectKind.OPEN_BOUNDARY), Expect.Faithful(), cube,
         ),
         Row(
-            "one face deleted from an icosphere", MeshDamage.deleteFaces(ico, 0, 1),
-            listOf(MeshDefectKind.OPEN_BOUNDARY), Expect.Solidified(icoVolume),
+            "flat: a whole face off a cube", MeshDamage.deleteFaces(cube, 0, 2),
+            listOf(MeshDefectKind.OPEN_BOUNDARY), Expect.Faithful(), cube,
         ),
         Row(
-            "six faces deleted from an icosphere", MeshDamage.deleteFaces(ico, 0, 6),
-            listOf(MeshDefectKind.OPEN_BOUNDARY), Expect.Solidified(icoVolume, tolerance = 0.05),
+            "flat: one face off an icosphere", MeshDamage.deleteFaces(ico, 0, 1),
+            listOf(MeshDefectKind.OPEN_BOUNDARY), Expect.Faithful(), ico,
         ),
         Row(
-            "a cylinder with no caps", cylinderMesh(16, 0.5, 1.0, caps = false),
+            "flat: six faces off an icosphere", MeshDamage.deleteFaces(ico, 0, 6),
+            listOf(MeshDefectKind.OPEN_BOUNDARY), Expect.Faithful(), ico,
+        ),
+        Row(
+            "flat: a cylinder with no caps", cylinderMesh(16, 0.5, 1.0, caps = false),
+            listOf(MeshDefectKind.OPEN_BOUNDARY), Expect.Faithful(), cylinderMesh(16, 0.5, 1.0, caps = true),
+        ),
+
+        // --- CURVED and NON-PLANAR holes: the cases a fan fill cannot get right ----------------
+        Row(
+            "curved: a hole across a torus's tube", MeshDamage.deleteFaces(torus, 0, 16),
             listOf(MeshDefectKind.OPEN_BOUNDARY),
-            // Two flat circular holes: the cap is exact, so the volume is the analytic prism volume of
-            // a 16-gon of circumradius 0.5, height 1 — not pi r^2 h, because the mesh is a polygon.
-            Expect.Solidified(0.5 * 16 * 0.5 * 0.5 * kotlin.math.sin(2 * Math.PI / 16) * 1.0, tolerance = 1e-4),
+            Expect.ValidButWrong(
+                0.005,
+                "the rim wraps a saddle — 43% of its own diameter out of plane — so ear clipping " +
+                    "stalls and the centroid fan bulges through the tube",
+            ),
+            torus,
+        ),
+        Row(
+            "curved: a hole that severs a torus's tube", MeshDamage.deleteFaces(torus, 0, 24),
+            listOf(MeshDefectKind.OPEN_BOUNDARY),
+            Expect.ValidButWrong(
+                0.02,
+                "the worst case in this file: two PERFECTLY FLAT rims, cleanly ear-clipped, no " +
+                    "suspicion from planarity or from the fan — and the donut comes back with genus 0. " +
+                    "Nothing local to a hole can tell 'this end was flat' from 'the model continued'.",
+            ),
+            torus,
+        ),
+        Row(
+            "curved: a wide hole over an icosphere", MeshDamage.deleteFaces(ico3, 0, 80),
+            listOf(MeshDefectKind.OPEN_BOUNDARY),
+            Expect.ValidButWrong(0.005, "a flat lid chords off a spherical cap"),
+            ico3,
+        ),
+        Row(
+            "non-planar: a crowned cylinder rim", crownedCylinder(),
+            listOf(MeshDefectKind.OPEN_BOUNDARY),
+            Expect.ValidButWrong(0.10, "alternate rim vertices lifted along the rim's own normal"),
+            cylinderMesh(16, 0.5, 1.0, caps = true),
         ),
 
         // --- non-manifold edges: removeDuplicateFaces / removeNonManifoldFins are the new code -
         Row(
             "a duplicated face", MeshDamage.duplicateFace(ico, 0),
             listOf(MeshDefectKind.DUPLICATE_FACE, MeshDefectKind.NON_MANIFOLD_EDGE),
-            Expect.Solidified(icoVolume),
+            Expect.Faithful(), ico,
         ),
         Row(
             "a dangling non-manifold fin", MeshDamage.nonManifoldFin(ico, 0),
-            listOf(MeshDefectKind.NON_MANIFOLD_EDGE), Expect.Solidified(icoVolume),
+            listOf(MeshDefectKind.NON_MANIFOLD_EDGE), Expect.Faithful(), ico,
         ),
 
         // --- what the OLD pipeline already handled; these must keep working --------------------
         Row(
             "every vertex split (an STL)", MeshDamage.splitSharedVertices(ico),
-            listOf(MeshDefectKind.UNWELDED_VERTICES), Expect.Solidified(icoVolume),
+            listOf(MeshDefectKind.UNWELDED_VERTICES), Expect.Faithful(), ico,
         ),
         Row(
             "every vertex split, on a cube", MeshDamage.splitSharedVertices(cube),
-            listOf(MeshDefectKind.UNWELDED_VERTICES), Expect.Solidified(cubeVolume),
+            listOf(MeshDefectKind.UNWELDED_VERTICES), Expect.Faithful(), cube,
         ),
         Row(
             "split vertices jittered below the weld tolerance",
             MeshDamage.jitter(MeshDamage.splitSharedVertices(ico), 1e-7),
-            listOf(MeshDefectKind.UNWELDED_VERTICES), Expect.Solidified(icoVolume),
+            listOf(MeshDefectKind.UNWELDED_VERTICES), Expect.Faithful(), ico,
         ),
         Row(
             "one face cracked open", MeshDamage.crackOneFace(ico, 0),
-            listOf(MeshDefectKind.UNWELDED_VERTICES), Expect.Solidified(icoVolume),
+            listOf(MeshDefectKind.UNWELDED_VERTICES), Expect.Faithful(), ico,
         ),
         Row(
             "a third of the faces flipped", MeshDamage.flipSubsetWinding(ico, 3),
-            listOf(MeshDefectKind.INCONSISTENT_WINDING), Expect.Solidified(icoVolume),
+            listOf(MeshDefectKind.INCONSISTENT_WINDING), Expect.Faithful(), ico,
         ),
         Row(
             "a third of a cube's faces flipped", MeshDamage.flipSubsetWinding(cube, 3),
-            listOf(MeshDefectKind.INCONSISTENT_WINDING), Expect.Solidified(cubeVolume),
+            listOf(MeshDefectKind.INCONSISTENT_WINDING), Expect.Faithful(), cube,
         ),
         Row(
             "wound entirely inside out", MeshDamage.invertWinding(ico),
-            listOf(MeshDefectKind.INVERTED_ORIENTATION), Expect.Solidified(icoVolume),
+            listOf(MeshDefectKind.INVERTED_ORIENTATION), Expect.Faithful(), ico,
         ),
         Row(
             "zero-area triangles inserted", MeshDamage.insertDegenerate(ico, 3),
-            listOf(MeshDefectKind.DEGENERATE_FACE), Expect.Solidified(icoVolume),
+            listOf(MeshDefectKind.DEGENERATE_FACE), Expect.Faithful(), ico,
         ),
         Row(
             "two disjoint components", MeshDamage.secondComponent(cube, ico),
-            listOf(MeshDefectKind.MULTIPLE_COMPONENTS), Expect.Solidified(cubeVolume + icoVolume),
+            listOf(MeshDefectKind.MULTIPLE_COMPONENTS), Expect.Faithful(),
+            MeshDamage.secondComponent(cube, ico),
         ),
 
         // --- combinations: the order of the pipeline is what is under test here ----------------
@@ -157,13 +217,13 @@ class MeshRepairTest {
             "split vertices AND a hole",
             MeshDamage.deleteFaces(MeshDamage.splitSharedVertices(ico), 0, 1),
             listOf(MeshDefectKind.UNWELDED_VERTICES, MeshDefectKind.OPEN_BOUNDARY),
-            Expect.Solidified(icoVolume),
+            Expect.Faithful(), ico,
         ),
         Row(
             "a hole AND flipped windings AND a duplicate",
             MeshDamage.duplicateFace(MeshDamage.flipSubsetWinding(MeshDamage.deleteFaces(ico, 0, 1), 3), 5),
             listOf(MeshDefectKind.OPEN_BOUNDARY, MeshDefectKind.INCONSISTENT_WINDING, MeshDefectKind.DUPLICATE_FACE),
-            Expect.Solidified(icoVolume),
+            Expect.Faithful(), ico,
         ),
 
         // --- the ones it cannot fix, kept in the table on purpose ------------------------------
@@ -220,7 +280,7 @@ class MeshRepairTest {
             "the new pipeline should fix at least five more than the old one; got ${newFixes.size} vs ${oldFixes.size}",
         )
         // And the two families the old pipeline provably could not touch.
-        val holed = rows.first { it.name == "a cylinder with no caps" }.mesh
+        val holed = rows.first { it.name == "flat: a cylinder with no caps" }.mesh
         assertTrue(!holed.repaired().isValidSolid(), "repaired() must still not fill holes — else this test is stale")
         assertTrue(holed.repairToSolid().isSolid, "the new pipeline must fill them")
         val duped = rows.first { it.name == "a duplicated face" }.mesh
@@ -277,67 +337,225 @@ class MeshRepairTest {
     // ==========================================================================================
 
     /**
-     * The headline table. For every row: repair, then require a valid solid, the right volume, and
-     * that two actual Manifold booleans against it partition that volume exactly.
+     * The headline table: for every row, repair, then judge it against the **undamaged original**.
+     *
+     * `isValidSolid()` is the weak half of the claim and it is reported separately from the strong
+     * half. A repaired mesh is only called *faithful* when its volume and surface area are within the
+     * row's tolerance of the mesh it was damaged from and its genus is unchanged. Anything that is a
+     * valid solid but fails that is printed as `VALID-BUT-WRONG` with its actual error, because those
+     * are two different products and only the first deserves the word "repair".
      */
     @Test
-    fun repairTableBeforeAndAfter() {
+    fun repairTableAgainstGroundTruth() {
         if (!manifold()) return
         val rows = table()
-        var solidified = 0
+        var faithful = 0
+        var validButWrong = 0
         var reportedUnfixable = 0
-        println("=== repair table ===")
-        println("%-46s %-8s %-8s %s".format("case", "before", "after", "what happened"))
+        println("=== repair table, judged against the undamaged original ===")
+        println("%-44s %-6s %-6s %9s %9s %-9s %s".format(
+            "case", "before", "after", "volErr", "areaErr", "genus", "verdict"))
         for (r in rows) {
             val before = r.mesh.isValidSolid()
             val result = runCatching { r.mesh.repairToSolid() }
             val fixed = result.getOrNull()
             val after = fixed?.isSolid ?: false
-            println("%-46s %-8s %-8s %s".format(
-                r.name, before, after,
-                fixed?.let { f -> f.steps.filter { it.changed > 0 }.joinToString("; ") { it.name } } ?: "threw",
-            ))
+            val vErr = if (fixed == null || r.truth == null) Double.NaN
+                else relativeError(r.truth.signedVolume(), fixed.mesh.signedVolume())
+            val aErr = if (fixed == null || r.truth == null) Double.NaN
+                else relativeError(r.truth.surfaceArea(), fixed.mesh.surfaceArea())
+            val genusPair = if (fixed == null || r.truth == null) "-"
+                else "${r.truth.genus()}->${fixed.mesh.genus()}"
 
             when (val e = r.expect) {
-                is Expect.Solidified -> {
+                is Expect.Faithful -> {
                     val f = fixed ?: error("'${r.name}': repairToSolid threw ${result.exceptionOrNull()}")
+                    val truth = r.truth ?: error("'${r.name}': a Faithful row needs ground truth")
+                    println("%-44s %-6s %-6s %9.5f %9.5f %-9s %s".format(
+                        r.name, before, after, vErr, aErr, genusPair, "FAITHFUL"))
                     assertTrue(f.isSolid, "'${r.name}' should repair to a solid, but:\n${f.report()}")
+                    assertTrue(f.mesh.isValidSolid(), "'${r.name}': diagnosis says solid, Manifold disagrees")
                     assertTrue(
-                        f.mesh.isValidSolid(),
-                        "'${r.name}': diagnosis says solid but Manifold disagrees\n${f.report()}",
+                        vErr <= e.tolerance,
+                        "'${r.name}': valid but the WRONG SHAPE — volume is off by ${"%.4f".format(vErr)}, " +
+                            "tolerance ${e.tolerance}. Either the repair regressed or this row belongs in " +
+                            "ValidButWrong; do not widen the tolerance to make it pass.",
+                    )
+                    assertTrue(
+                        aErr <= e.tolerance * 4,
+                        "'${r.name}': surface area is off by ${"%.4f".format(aErr)}",
+                    )
+                    assertEquals(
+                        truth.genus(), f.mesh.genus(),
+                        "'${r.name}': the repair changed the genus, which means it changed the shape",
                     )
                     f.mesh.toSolid().use { solid ->
                         assertEquals(
-                            e.volume, solid.volume, e.tolerance,
-                            "'${r.name}': repaired volume is wrong (a negative value means it came back inside out)",
+                            truth.signedVolume(), solid.volume, kotlin.math.abs(truth.signedVolume()) * e.tolerance + 1e-9,
+                            "'${r.name}': Manifold's own volume must match the original too " +
+                                "(a negative value means it came back inside out)",
                         )
                         assertBooleansPartition(r.name, solid)
                     }
-                    solidified++
+                    faithful++
+                }
+                is Expect.ValidButWrong -> {
+                    val f = fixed ?: error("'${r.name}': repairToSolid threw ${result.exceptionOrNull()}")
+                    println("%-44s %-6s %-6s %9.5f %9.5f %-9s %s".format(
+                        r.name, before, after, vErr, aErr, genusPair, "VALID-BUT-WRONG"))
+                    assertTrue(f.isSolid, "'${r.name}' is expected to be valid, just wrong:\n${f.report()}")
+                    assertTrue(
+                        vErr >= e.minVolumeError,
+                        "'${r.name}': expected a measurably wrong shape (>= ${e.minVolumeError}) but the " +
+                            "volume error is only ${"%.5f".format(vErr)}. If the filler genuinely got " +
+                            "better, move this row to Faithful deliberately — ${e.why}",
+                    )
+                    // It still has to be a usable solid; being wrong is not licence to be broken.
+                    f.mesh.toSolid().use { solid -> assertBooleansPartition(r.name, solid) }
+                    validButWrong++
                 }
                 is Expect.Unfixable -> {
-                    val f = fixed
-                    if (f == null) {
-                        // Throwing is an acceptable way to fail, as long as it is not silent.
+                    println("%-44s %-6s %-6s %9s %9s %-9s %s".format(
+                        r.name, before, after, "-", "-", "-", "UNFIXABLE (reported)"))
+                    if (fixed == null) {
                         reportedUnfixable++
                     } else {
                         assertTrue(
-                            !f.isSolid,
+                            !fixed.isSolid,
                             "'${r.name}' is expected to be unfixable; if the pipeline now fixes it, " +
                                 "change the expectation deliberately rather than deleting the row",
                         )
                         assertTrue(
-                            e.kind in f.unfixed.map { it.kind },
-                            "'${r.name}': the failure must be REPORTED as ${e.kind}, got ${f.unfixed.map { it.kind }}\n${f.report()}",
+                            e.kind in fixed.unfixed.map { it.kind },
+                            "'${r.name}': the failure must be REPORTED as ${e.kind}, " +
+                                "got ${fixed.unfixed.map { it.kind }}\n${fixed.report()}",
                         )
                         reportedUnfixable++
                     }
                 }
             }
         }
-        println("solidified $solidified of ${rows.size} rows; $reportedUnfixable rows correctly reported as unfixable")
-        assertTrue(solidified >= 16, "expected at least 16 rows to become solids, got $solidified")
-        assertTrue(reportedUnfixable >= 2, "the table must retain cases the pipeline cannot fix, got $reportedUnfixable")
+        // The headline the docs quote. The denominator is the meshes Manifold actually rejects, and
+        // the numerator is split, because "valid" and "the shape you had" are different claims.
+        val rejectedRows = rows.filter { !it.mesh.isValidSolid() }
+        val rejectedFaithful = rejectedRows.count { r ->
+            r.expect is Expect.Faithful && runCatching { r.mesh.repairToSolid().isSolid }.getOrDefault(false)
+        }
+        val rejectedWrong = rejectedRows.count { it.expect is Expect.ValidButWrong }
+        val rejectedUnfixed = rejectedRows.count { it.expect is Expect.Unfixable }
+        println()
+        println("HEADLINE — denominator is the ${rejectedRows.size} of ${rows.size} rows Manifold rejects as-is:")
+        println("  become a valid solid:      ${rejectedFaithful + rejectedWrong} of ${rejectedRows.size}")
+        println("    ... and FAITHFUL:        $rejectedFaithful  (volume, area and genus match the undamaged original)")
+        println("    ... but VALID-BUT-WRONG: $rejectedWrong  (a solid you can cut, and not the shape you had)")
+        println("  correctly reported broken: $rejectedUnfixed")
+        println("across all ${rows.size} rows (including the 6 Manifold already accepted): " +
+            "$faithful faithful, $validButWrong valid-but-wrong, $reportedUnfixable unfixable")
+
+        assertEquals(
+            rejectedRows.size, rejectedFaithful + rejectedWrong + rejectedUnfixed,
+            "every rejected row must land in exactly one bucket, or the headline is not a partition",
+        )
+        assertTrue(
+            rejectedFaithful >= 15,
+            "expected at least 15 of the rejected rows to come back faithful, got $rejectedFaithful",
+        )
+        assertTrue(faithful >= 18, "expected at least 18 faithful rows overall, got $faithful")
+        assertTrue(
+            validButWrong >= 4,
+            "the table must keep cases the filler gets geometrically wrong, got $validButWrong — " +
+                "a table of only flat holes measures the easy case and inflates the headline",
+        )
+        assertTrue(reportedUnfixable >= 2, "the table must retain cases the pipeline cannot fix at all")
+    }
+
+    /**
+     * The flat-hole rows really are flat, asserted — so nobody can later claim the table was hard.
+     *
+     * This exists because the first draft of this file contained *only* flat holes: every one had a
+     * boundary planarity of 0.0000 and a post-repair volume error of 0.00000, which made a fan fill
+     * trivially correct and made "14 of 16" a measurement of the easy case.
+     */
+    @Test
+    fun theEasyRowsAreEasyAndTheHardRowsAreHard() {
+        val flat = listOf(
+            MeshDamage.deleteFaces(cube, 0, 2),
+            MeshDamage.deleteFaces(ico, 0, 1),
+            cylinderMesh(16, 0.5, 1.0, caps = false),
+        )
+        for (m in flat) {
+            val worst = m.diagnose().boundaryLoops.maxOf { it.planarity }
+            assertTrue(worst < 0.01, "this row is supposed to be a FLAT hole, planarity was $worst")
+        }
+        val hard = mapOf(
+            "torus tube" to MeshDamage.deleteFaces(torus, 0, 16),
+            "crowned rim" to crownedCylinder(),
+        )
+        for ((name, m) in hard) {
+            val worst = m.diagnose().boundaryLoops.maxOf { it.planarity }
+            assertTrue(worst > 0.10, "'$name' is supposed to be a NON-PLANAR hole, planarity was $worst")
+        }
+        // And the one that is flat and still wrong, which is the case no planarity check can catch.
+        val severed = MeshDamage.deleteFaces(torus, 0, 24)
+        val loops = severed.diagnose().boundaryLoops
+        assertTrue(
+            loops.all { it.isPlanar },
+            "the severed torus's rims are flat — that is precisely why it is dangerous: ${loops.map { it.planarity }}",
+        )
+    }
+
+    /**
+     * **No local signal can tell a good flat cap from a bad one** — proved by a pair of
+     * counterexamples that point opposite ways.
+     *
+     * This is the sharpest negative result in the feature, and it is a test rather than a comment
+     * because it is the thing most likely to be "fixed" later by somebody adding a plausible
+     * heuristic. A cap-area threshold was tried during development and removed:
+     *
+     *  - the **uncapped cylinder** gets two flat, cleanly ear-clipped caps that are a *large* share of
+     *    the surface, and the volume comes out **exactly** right;
+     *  - the **severed torus** gets two flat, cleanly ear-clipped caps that are a *small* share of the
+     *    surface, and the shape comes back with the wrong genus.
+     *
+     * Every local property that could be measured — planarity, method, edge count, cap area — is
+     * equal-or-better on the wrong one. Only the undamaged original separates them, and at run time
+     * nobody has it.
+     */
+    @Test
+    fun noLocalSignalSeparatesAGoodFlatCapFromABadOne() {
+        val goodBroken = cylinderMesh(16, 0.5, 1.0, caps = false)
+        val goodTruth = cylinderMesh(16, 0.5, 1.0, caps = true)
+        val badBroken = MeshDamage.deleteFaces(torus, 0, 24)
+
+        val good = goodBroken.fillHoles()
+        val bad = badBroken.fillHoles()
+
+        // Both are geometrically impeccable by every local measure.
+        for ((label, r) in listOf("cylinder" to good, "severed torus" to bad)) {
+            assertTrue(r.fills.all { it.method == HoleFillMethod.EAR_CLIP }, "$label: clean ear clip, no fan")
+            assertTrue(r.fills.all { it.loop.isPlanar }, "$label: perfectly flat rims")
+        }
+
+        // And the WRONG one has the SMALLER caps, so size cannot be the discriminator.
+        val goodShare = good.fills.maxOf { it.capAreaFraction }
+        val badShare = bad.fills.maxOf { it.capAreaFraction }
+        println("cap share of surface — correct cylinder %.3f, wrong torus %.3f".format(goodShare, badShare))
+        assertTrue(
+            badShare < goodShare,
+            "the whole point: the wrong fill's caps ($badShare) are smaller than the right fill's " +
+                "($goodShare), so no size threshold can separate them",
+        )
+
+        // Ground truth, and only ground truth, tells them apart.
+        val goodErr = relativeError(goodTruth.signedVolume(), good.mesh.signedVolume())
+        val badErr = relativeError(torus.signedVolume(), bad.mesh.repairToSolid().mesh.signedVolume())
+        assertTrue(goodErr < 1e-6, "the cylinder's caps are exact, error was $goodErr")
+        assertTrue(badErr > 0.02, "the torus's caps are not, error was $badErr")
+        assertEquals(1, torus.genus(), "the original is a donut")
+        assertEquals(
+            0, bad.mesh.repairToSolid().mesh.genus(),
+            "and the repaired one is not — the clearest possible statement of 'valid and wrong'",
+        )
     }
 
     /**
@@ -421,24 +639,7 @@ class MeshRepairTest {
      */
     @Test
     fun aNonPlanarHoleIsFilledAndFlagged() {
-        // Take a cylinder's open rims and push alternate vertices along each rim's OWN normal: a
-        // zig-zag crown. Along the rim's normal, not along z — cylinderMesh's axis is y, so displacing
-        // z moves the rim vertices *within* their own plane and the loop stays perfectly flat. That
-        // was a real bug in this test, and it is exactly the kind of thing planarity is meant to catch.
-        val open = cylinderMesh(16, 0.5, 1.0, caps = false)
-        val loops = open.diagnose().boundaryLoops
-        assertEquals(2, loops.size, "the uncapped cylinder has two rims")
-        assertTrue(loops.all { it.isPlanar }, "and both rims start out flat")
-        val pos = open.positions.copyOf()
-        for (loop in loops) {
-            val n = loop.normal
-            for ((i, v) in loop.vertices.withIndex()) {
-                if (i % 2 != 0) continue
-                pos[v * 3] += n.x * 0.35f; pos[v * 3 + 1] += n.y * 0.35f; pos[v * 3 + 2] += n.z * 0.35f
-            }
-        }
-        val wavy = TriMesh(pos, open.indices)
-
+        val wavy = crownedCylinder()
         val d = wavy.diagnose()
         val worst = d.boundaryLoops.maxByOrNull { it.planarity }!!
         assertTrue(
@@ -617,6 +818,33 @@ class MeshRepairTest {
     // ==========================================================================================
     // Fixtures and helpers
     // ==========================================================================================
+
+    /** Error between two measurements, relative to the larger — the scale-free comparison. */
+    private fun relativeError(a: Double, b: Double): Double {
+        val scale = maxOf(kotlin.math.abs(a), kotlin.math.abs(b))
+        return if (scale == 0.0) 0.0 else kotlin.math.abs(a - b) / scale
+    }
+
+    /**
+     * An uncapped cylinder whose rims have had alternate vertices lifted **along each rim's own
+     * normal** — a zig-zag crown, and a genuinely non-planar boundary loop.
+     *
+     * Along the rim's normal, not along z: `cylinderMesh`'s axis is y, so displacing z moves the rim
+     * vertices *within* their own plane and leaves the loop perfectly flat. That was a real bug in an
+     * earlier version of this file, and it is exactly the sort of thing planarity is meant to catch.
+     */
+    private fun crownedCylinder(): TriMesh {
+        val open = cylinderMesh(16, 0.5, 1.0, caps = false)
+        val pos = open.positions.copyOf()
+        for (loop in open.diagnose().boundaryLoops) {
+            val n = loop.normal
+            for ((i, v) in loop.vertices.withIndex()) {
+                if (i % 2 != 0) continue
+                pos[v * 3] += n.x * 0.35f; pos[v * 3 + 1] += n.y * 0.35f; pos[v * 3 + 2] += n.z * 0.35f
+            }
+        }
+        return TriMesh(pos, open.indices)
+    }
 
     /** [mesh] with vertex 0 moved to `NaN` — the one defect nothing can repair. */
     private fun nanVertex(mesh: TriMesh): TriMesh {
