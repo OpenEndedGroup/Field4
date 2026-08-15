@@ -2,18 +2,23 @@ package afield.solidsl
 
 import afield.manifold.ManifoldLibrary
 import afield.manifold.Solid
+import afield.stdlib.bounds
 import kotlin.math.abs
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
- * A scratch probe, not an assertion: prints what Manifold actually does for the handful of
- * conventions `afield.solidsl` has to match exactly — rotation order, twist direction, the sense of a
+ * What Manifold actually does for the handful of conventions `afield.solidsl` has to match exactly — rotation order, twist direction, the sense of a
  * partial revolve, where an extrusion sits in z.
  *
  * These are the places where a lowering can be plausibly, silently wrong: a mirrored solid still has
  * the right volume and the right genus and renders perfectly. So they are determined by running the
- * library rather than by reading its header, and the answers are then pinned by real assertions in
- * [SolidSLCrossValidationTest].
+ * library rather than by reading its header, and the answers are then pinned by real assertions —
+ * here for the revolve axis, and in [SolidSLCrossValidationTest] for the rest.
+ *
+ * This is also where a defect in code outside this package was found and is documented: see
+ * `Section revolved turns about Z, and the KDoc that says Y is wrong`.
  */
 class SolidSLConventionProbe {
 
@@ -69,6 +74,117 @@ class SolidSLConventionProbe {
                 ),
             )
         }
+    }
+
+    /**
+     * **Ground truth for the axis `Section.revolved` turns about — asserted, not printed.**
+     *
+     * `Section.revolved`'s KDoc (`Section.kt:191`) says "Revolve about the Y axis". It is wrong;
+     * Manifold revolves about **Z**, the profile's `x` becoming the radius in the XY plane and the
+     * profile's `y` becoming `z`. This settles it three independent ways so the finding can be acted
+     * on without re-deriving it.
+     *
+     * The profile is deliberately **asymmetric in y** — a right triangle at `x ∈ [1.0, 1.6]`,
+     * `y ∈ [0, 0.8]`. A symmetric one (the square the existing tests use) cannot discriminate at all,
+     * because a symmetric torus looks the same under either reading.
+     *
+     * 1. **Bounds.** One axis of the result must carry the profile's asymmetric `[0, 0.8]` and the
+     *    other two the swept `[-1.6, 1.6]`. Whichever axis holds `[0, 0.8]` *is* the axis. There is
+     *    nothing to interpret.
+     * 2. **Membership.** A point at radius 1.3 just above the profile's base is inside under one
+     *    reading and outside under the other.
+     * 3. **Pappus.** `2πRA` is axis-independent, so it confirms the solid is the right *shape* and
+     *    that only the axis was ever in question.
+     *
+     * # It is the KDoc that is wrong, not the binding
+     *
+     * `manifoldc.h:205` declares
+     * `manifold_revolve(void* mem, ManifoldPolygons* cs, int circular_segments, double revolve_degrees)`
+     * — **there is no axis parameter**, and `Section.revolved` passes exactly those three arguments.
+     * The wrapper has no axis to get wrong. The axis is Manifold's own convention and the prose
+     * misreports it.
+     *
+     * # Why it survived the test suite
+     *
+     * Because almost nothing in it discriminates. The torus checks are genus (1 either way), Pappus
+     * volume (axis-independent), and an equatorial slice contour count — and a torus about Y sliced
+     * at `z = 0` gives *two separate squares*, which is also two contours. The one committed
+     * assertion that does discriminate is the projected-shadow area, and the second half of this test
+     * shows by how much.
+     */
+    @Test
+    fun `Section revolved turns about Z, and the KDoc that says Y is wrong`() {
+        if (!ManifoldLibrary.isAvailable) return
+        // Lifted clear of the y = 0 plane on purpose. With its base on the axis plane, the two probe
+        // points below land exactly ON a face of the solid under one of the two readings, and
+        // `contains` at a boundary is a coin toss rather than an answer.
+        val triangle = Profile.polygon(listOf(P2(1.0, 0.2), P2(1.6, 0.2), P2(1.6, 1.0)))
+        triangle.revolved(segments = 256).exactSolid().orThrow().use {
+            val b = it.bounds
+            println("asymmetric profile revolved -> bounds $b, volume ${"%.5f".format(it.volume)}")
+
+            // 1. The asymmetric extent lands on Z; X and Y are the swept, symmetric ones.
+            assertEquals(0.2f, b.min.z, 1e-4f, "the profile's y = 0.2 edge must become z = 0.2")
+            assertEquals(1.0f, b.max.z, 1e-4f, "and its y = 1.0 apex must become z = 1.0")
+            assertEquals(-1.6f, b.min.x, 1e-3f, "x is swept, so it is symmetric about the origin")
+            assertEquals(-1.6f, b.min.y, 1e-3f, "and so is y — which is therefore NOT the axis")
+            assertTrue(
+                b.max.y > 1.5f,
+                "under the documented 'Y axis' reading y would carry the asymmetric [0.2, 1.0] " +
+                    "extent; it is ${b.min.y}..${b.max.y}",
+            )
+
+            // 2. The same discriminator pointwise, as a matched pair: these two points are each
+            //    other with y and z swapped. One is well inside under the Z reading and well outside
+            //    under the Y reading; the other is exactly the reverse. Neither is near a face.
+            assertTrue(
+                it.contains(1.45, 0.0, 0.6),
+                "radius 1.45 at z = 0.6 is inside a Z-axial solid — the section there runs 1.3..1.6",
+            )
+            assertTrue(
+                !it.contains(1.45, 0.6, 0.0),
+                "and its y/z mirror is outside, where the documented Y-axis reading would put it inside",
+            )
+
+            // 3. Pappus, axis-independent, confirming the shape rather than the axis.
+            val area = 0.5 * 0.6 * 0.8
+            val centroidRadius = (1.0 + 1.6 + 1.6) / 3.0
+            assertEquals(2 * Math.PI * centroidRadius * area, it.volume, 3e-3, "Pappus: V = 2 pi R A")
+        }
+
+        // Why the existing suite could not catch it. `ManifoldTest.kt:640` asserts that a revolved
+        // 0.6-square at R = 1.5 projects to an annulus of area pi(1.8^2 - 1.2^2) = 5.6549. That is
+        // the one committed assertion that discriminates: under the documented Y-axis reading the
+        // solid would be a ring standing in the XZ plane and its shadow on XY would be a 3.6 x 0.6
+        // band of area 2.16. It passes — so the *code* has been telling the truth all along and only
+        // the prose has not.
+        val underZ = Math.PI * (1.8 * 1.8 - 1.2 * 1.2)
+        val underY = 3.6 * 0.6
+        println("projected shadow area: %.4f if revolved about Z, %.4f if about Y".format(underZ, underY))
+        Profile.rect(0.6, 0.6).translated(1.5, 0.0).revolved(segments = 256).exactSolid().orThrow().use { torus ->
+            torus.project().use { shadow ->
+                println("  Manifold says ${"%.4f".format(shadow.area)}, ${shadow.contourCount} contours")
+                assertEquals(underZ, shadow.area, 1e-2, "the shadow is an annulus, so the axis is Z")
+                assertTrue(
+                    abs(shadow.area - underY) > 1.0,
+                    "and nowhere near the band a Y-axial revolve would cast",
+                )
+            }
+        }
+
+        // The likely origin of the error, and a hazard in its own right: Field's *own* lathe uses the
+        // other axis. `afield.stdlib.revolveMesh` is documented as and implemented as a sweep about
+        // Y — `vertex(rad * cu, profile[j].y, rad * su)`. The two lathes in this codebase disagree by
+        // ninety degrees, so a profile ported between them comes out silently rotated. That deserves
+        // a sentence in both KDocs, not only a correction in one.
+        val lathe = afield.stdlib.revolveMesh(
+            listOf(afield.stdlib.Vec2(1.0f, 0.0f), afield.stdlib.Vec2(1.6f, 0.0f), afield.stdlib.Vec2(1.6f, 0.8f)),
+            256,
+        )
+        val lb = lathe.bounds()
+        println("afield.stdlib.revolveMesh, same profile -> bounds $lb  (asymmetric extent on Y)")
+        assertEquals(0.0f, lb.min.y, 1e-4f, "revolveMesh keeps the profile's y as y — it sweeps about Y")
+        assertEquals(0.8f, lb.max.y, 1e-4f)
     }
 
     @Test
