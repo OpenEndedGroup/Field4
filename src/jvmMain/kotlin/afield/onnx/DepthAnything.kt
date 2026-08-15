@@ -30,9 +30,10 @@ import kotlin.math.roundToInt
  * ## The output is inverse relative depth, in arbitrary units
  *
  * This is the part that surprises people, so it is worth stating flatly. `predicted_depth` is not
- * metres and not normalised. Measured on a synthetic frame at 518x518 the raw range was
- * `[1.79, 3.27]`; on the same frame at 266x266 it was `[1.51, 2.45]`. The range moves with the
- * *content and the resolution*, and **larger means nearer**.
+ * metres and not normalised. On the synthetic frame [OnnxSmokeTest] uses, the raw range at 518x518 is
+ * `[1.0353, 2.8187]` and at 266x266 it is `[1.2826, 1.9854]` — both asserted there against a Python
+ * `onnxruntime` reference, so these are checked figures rather than remembered ones. The range moves
+ * with the *content and the resolution*, and **larger means nearer**.
  *
  * So a usable texture needs a normalisation window, and choosing it per-frame from that frame's own
  * min and max makes the image flicker — a hand entering shot rescales the entire background. This
@@ -367,6 +368,15 @@ data class DepthStats(
     val windowMin: Float,
     val windowMax: Float
 ) {
-    /** True while the smoothed window is still chasing the raw range. */
+    /**
+     * True once the smoothed window has *caught up* with this frame's raw range.
+     *
+     * The sense is worth reading twice, because both readings are plausible and only one is right:
+     * `settled` is the *arrived* state, not the chasing one. It is true on the first frame after
+     * construction or [DepthAnything.resetAdaptation] — the window is seeded from that frame's own
+     * range — and false for the frames after the scene changes, while the exponential moving average
+     * walks towards the new range. So a box that wants to wait for a stable normalisation waits for
+     * `settled`, and a box that wants to know the picture is still rescaling watches for `!settled`.
+     */
     val settled: Boolean get() = abs(rawMin - windowMin) < 1e-3f && abs(rawMax - windowMax) < 1e-3f
 }

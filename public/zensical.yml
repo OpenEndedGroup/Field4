@@ -87,6 +87,7 @@ nav:
         - Statistics & Dependence: statistics_examples.md
         - Spectral Examples: spectral_examples.md
         - Imaging & Computer Vision: imaging_examples.md
+        - Depth & CLIP (ONNX): onnx.md
         - Meshes & 3D Geometry: mesh_examples.md
         - Solids & Booleans (Manifold): manifold.md
         - Geometry From Disk (OBJ, STL, PLY, glTF): geometry_from_disk.md

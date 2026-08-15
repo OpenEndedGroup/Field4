@@ -10,7 +10,7 @@ FIELD_TEST
 id: onnx.clip.smoke
 runner: jvm-main
 entrypoint: afield.onnx.ClipSmokeTest
-tags: [smoke, onnx, ml, clip, macros, cpu, network]
+tags: [smoke, onnx, ml, clip, cpu, network]
 timeoutSec: 1200
 expect:
   exitCode: 0
@@ -18,7 +18,7 @@ expect:
     - "CLIP smoke tests passed"
 */
 /**
- * CLIP end to end, including the compile-time baking that is the point of it.
+ * CLIP end to end: both towers, the tokenizer, and the vector algebra on top of them.
  *
  * A numerical contract with two third-party ONNX graphs and a BPE vocabulary, checked against reference
  * values produced independently under Python's `onnxruntime` and `tokenizers` on the same weights.
@@ -37,7 +37,6 @@ expect:
  *    near 0.88; the test asserts that ordering survives, because ordering is the only thing that carries
  *    information.
  *
-
  * `network` is a real tag: the first run fetches ~600MB of encoders plus a 2MB vocabulary.
  */
 object ClipSmokeTest {
