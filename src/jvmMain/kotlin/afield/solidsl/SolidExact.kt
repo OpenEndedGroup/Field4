@@ -256,7 +256,7 @@ fun SolidExpr.buildSolid(quality: SolidQuality = SolidQuality()): SolidBuild {
         "afield.solidsl's exact lowering needs Manifold. ${ManifoldLibrary.describe()}"
     }
     val marched = mutableListOf<MarchedSubtree>()
-    val solid = Solid.scope { buildHybrid(this, quality, marched) }
+    val solid = Solid.scope { buildHybrid(this, quality, marched, bounds()) }
     return SolidBuild(solid, marched.toList())
 }
 
@@ -301,26 +301,46 @@ data class MarchedSubtree(
     val bounds: AxisAlignedBoundingBox3D,
 )
 
-private fun buildHybrid(e: SolidExpr, q: SolidQuality, marched: MutableList<MarchedSubtree>): Solid {
+/**
+ * @param ambient the bound of the nearest enclosing node that had one.
+ *
+ * That parameter is what makes `gyroid() and cuboid(2, 2, 2)` work. The [SolidExpr.Gyroid] child is
+ * unbounded and has no window of its own, but the [SolidExpr.Intersect] above it does — and
+ * intersecting with a bounded sibling is precisely how anybody uses a gyroid. Marching the child
+ * inside its parent's window is exact, because everything outside that window is cut away by the
+ * intersection anyway.
+ */
+private fun buildHybrid(
+    e: SolidExpr,
+    q: SolidQuality,
+    marched: MutableList<MarchedSubtree>,
+    ambient: AxisAlignedBoundingBox3D?,
+): Solid {
     if (e.exactRefusal() == null) return buildExactSolid(e, q)
+    val inner = e.bounds() ?: ambient
     return when (e) {
         // The node itself is fine; one of its children is not, so keep this level exact.
-        is SolidExpr.Union -> Solid.union(e.children.map { buildHybrid(it, q, marched) })
-        is SolidExpr.Intersect -> Solid.intersection(e.children.map { buildHybrid(it, q, marched) })
-        is SolidExpr.Difference -> Solid.difference(e.children.map { buildHybrid(it, q, marched) })
-        is SolidExpr.Translate -> buildHybrid(e.child, q, marched).translated(e.x, e.y, e.z)
-        is SolidExpr.Rotate -> buildHybrid(e.child, q, marched).rotated(e.x, e.y, e.z)
-        is SolidExpr.Scale -> buildHybrid(e.child, q, marched).scaled(e.x, e.y, e.z)
-        is SolidExpr.Mirror -> buildHybrid(e.child, q, marched).mirrored(e.x, e.y, e.z)
+        is SolidExpr.Union -> Solid.union(e.children.map { buildHybrid(it, q, marched, inner) })
+        is SolidExpr.Intersect -> Solid.intersection(e.children.map { buildHybrid(it, q, marched, inner) })
+        is SolidExpr.Difference -> Solid.difference(e.children.map { buildHybrid(it, q, marched, inner) })
+        is SolidExpr.Translate -> buildHybrid(e.child, q, marched, inner).translated(e.x, e.y, e.z)
+        is SolidExpr.Rotate -> buildHybrid(e.child, q, marched, inner).rotated(e.x, e.y, e.z)
+        is SolidExpr.Scale -> buildHybrid(e.child, q, marched, inner).scaled(e.x, e.y, e.z)
+        is SolidExpr.Mirror -> buildHybrid(e.child, q, marched, inner).mirrored(e.x, e.y, e.z)
         // This node is the one with no exact form. March it and nothing above it.
-        else -> marchSubtree(e, q, marched)
+        else -> marchSubtree(e, q, marched, ambient)
     }
 }
 
-private fun marchSubtree(e: SolidExpr, q: SolidQuality, marched: MutableList<MarchedSubtree>): Solid {
-    val raw = e.bounds() ?: error(
-        "cannot march $e: it is unbounded (a Gyroid, or a Union with one), so there is no window. " +
-            "Intersect it with something bounded first.",
+private fun marchSubtree(
+    e: SolidExpr,
+    q: SolidQuality,
+    marched: MutableList<MarchedSubtree>,
+    ambient: AxisAlignedBoundingBox3D?,
+): Solid {
+    val raw = e.bounds() ?: ambient ?: error(
+        "cannot march $e: it is unbounded (a Gyroid, or a Union with one), so there is no window " +
+            "and no bounded enclosing node to borrow one from. Intersect it with something bounded.",
     )
     val edge = q.edgeLengthFor(raw)
     // Two cells of headroom: a level set that touches its own window comes out open there, and an

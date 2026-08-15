@@ -234,25 +234,29 @@ fun SolidExpr.toField3(): Field3 = when (this) {
         }
     }
 
+    // Revolution is about **Z**, with the profile's x becoming the radius in the XY plane and the
+    // profile's y becoming z. That is measured, not read: `Section.revolved`'s own KDoc says "about
+    // the Y axis", and `SolidSLConventionProbe` shows a 0.6-square offset to x = 1.2 revolving to
+    // bounds ((-1.5, -1.5, -0.3), (1.5, 1.5, 0.3)) — a ring in the XY plane, of half-thickness 0.3
+    // in z. Point-membership against `Solid.contains` then agrees on 100% of samples, which it does
+    // not for any other axis assignment.
     is SolidExpr.Revolve -> {
         val p2 = profile.toField2()
         val sweep = degrees
         if (sweep >= 360.0) {
-            Field3 { px, py, pz -> p2.at(hypot(px, pz), py) }
+            Field3 { px, py, pz -> p2.at(hypot(px, py), pz) }
         } else {
-            // A partial revolve is the full one cut by a wedge. Manifold sweeps from +X toward -Z
-            // (its vertex at parameter phi is `(x cos phi, y, -x sin phi)`), so the kept region is
-            // `0 <= atan2(-z, x) <= sweep`, expressed as the intersection of two half-planes when the
-            // wedge is convex and their union when it is reflex.
+            // A partial revolve is the full one cut by a wedge. Manifold sweeps counter-clockwise
+            // from +X, so the kept region is `0 <= atan2(y, x) <= sweep`: the intersection of two
+            // half-planes while the wedge is convex, and their *union* once it is reflex.
             val a = Math.toRadians(sweep)
-            // Inward normals of the two cut planes, in the XZ plane.
-            val n0x = 0.0; val n0z = -1.0                 // keeps -z >= 0 side of the phi = 0 plane
-            val n1x = -sin(a); val n1z = -cos(a)          // keeps the phi <= sweep side
+            val sa = sin(a); val ca = cos(a)
             val reflex = sweep > 180.0
             Field3 { px, py, pz ->
-                val body = p2.at(hypot(px, pz), py)
-                val d0 = -(px * n0x + pz * n0z)
-                val d1 = -(px * n1x + pz * n1z)
+                val body = p2.at(hypot(px, py), pz)
+                // Inward normals (0, 1) and (sin a, -cos a); a half-space's field is -(n . p).
+                val d0 = -py
+                val d1 = -(sa * px - ca * py)
                 val wedge = if (reflex) min(d0, d1) else max(d0, d1)
                 max(body, wedge)
             }

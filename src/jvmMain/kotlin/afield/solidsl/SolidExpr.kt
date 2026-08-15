@@ -137,8 +137,18 @@ sealed interface SolidExpr {
     ) : SolidExpr
 
     /**
-     * A [Profile] revolved about **Y**. The profile must lie at `x >= 0`; anything at negative x is
-     * discarded rather than folded, which is Manifold's behaviour and is therefore this notation's.
+     * A [Profile] revolved about **Z**: the profile's `x` becomes the radius in the XY plane and its
+     * `y` becomes `z`. The profile must lie at `x >= 0`; anything at negative x is discarded rather
+     * than folded, which is Manifold's behaviour and is therefore this notation's.
+     *
+     * **Z, and not Y.** `Section.revolved`'s own KDoc says "about the Y axis" and it is wrong: a
+     * 0.6-square offset to `x = 1.2` comes back with bounds `((-1.5, -1.5, -0.3), (1.5, 1.5, 0.3))`,
+     * which is a ring in the XY plane. Point-membership between the two lowerings agrees on 100% of
+     * samples under this reading and on about 65% under the documented one, which is how it was
+     * settled — see `SolidSLConventionProbe`. Upstream's convention is at least *self*-consistent:
+     * revolving about Z matches [Cylinder] running along Z.
+     *
+     * @param degrees less than 360 leaves a wedge, swept counter-clockwise from +X.
      */
     data class Revolve(
         val profile: Profile,
@@ -369,13 +379,15 @@ fun cone(height: Number, radius: Number, segments: Int = 0): SolidExpr =
     SolidExpr.Cylinder(height.toDouble(), radius.toDouble(), 0.0, segments)
 
 /**
- * A torus: the ring of tube radius [minor] at distance [major] from the **Y** axis, so it lies in
- * the XZ plane.
+ * A torus: the ring of tube radius [minor] at distance [major] from the **Z** axis, lying in the XY
+ * plane.
  *
  * Not a primitive — this *is* `Profile.circle(minor).translated(major, 0).revolved()`, spelled out,
- * and it lowers through the revolve path like any other profile. The plane it ends up in is Y-axial
- * rather than Z-axial for that reason, and it agrees with `afield.stdlib.sdfTorus`, which is also
- * in the XZ plane.
+ * and it lowers through the revolve path like any other profile. Keeping it out of the algebra keeps
+ * the algebra small and makes [SolidExpr.Revolve] load-bearing rather than decorative.
+ *
+ * Note the axis: `afield.stdlib.sdfTorus` puts its ring in the **XZ** plane, this one is in **XY**,
+ * because [SolidExpr.Revolve] follows Manifold. `torus(R, r).turned(90.0)` is the `sdfTorus` one.
  */
 fun torus(major: Number, minor: Number, segments: Int = 0): SolidExpr =
     Profile.circle(minor, segments).translated(major, 0.0).revolved(segments = segments)
@@ -533,11 +545,11 @@ fun SolidExpr.bounds(): AxisAlignedBoundingBox3D? = when (this) {
     is SolidExpr.Revolve -> {
         val p = profile.bounds()
         if (p == null) null else {
-            // The profile lives at x >= 0 and sweeps that x out into the XZ plane.
+            // The profile lives at x >= 0; that x sweeps out into the XY plane and its y becomes z.
             val r = max(0.0, p.maxX)
             AxisAlignedBoundingBox3D(
-                Vec3((-r).toFloat(), p.minY.toFloat(), (-r).toFloat()),
-                Vec3(r.toFloat(), p.maxY.toFloat(), r.toFloat()),
+                Vec3((-r).toFloat(), (-r).toFloat(), p.minY.toFloat()),
+                Vec3(r.toFloat(), r.toFloat(), p.maxY.toFloat()),
             )
         }
     }
