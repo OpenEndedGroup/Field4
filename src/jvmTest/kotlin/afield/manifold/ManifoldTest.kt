@@ -616,6 +616,44 @@ class ManifoldTest {
         }
     }
 
+    /**
+     * `Section.revolved`'s axis of symmetry is **Z**, pinned by measurement.
+     *
+     * Volume and genus — which is all the Pappus test above checks — are rotation invariant, so the
+     * whole suite passed for as long as this binding has existed while the KDoc claimed the axis was
+     * Y. It is not: Manifold revolves the 2D cross-section about *its own* y-axis and that axis comes
+     * out as the solid's z. Reported by the agent working on `afield.solidsl`, whose independent
+     * point-membership cross-check sat at ~65% agreement until it assumed Z; confirmed here from
+     * scratch, against bounds and inside/outside tests rather than against their conclusion.
+     *
+     * Worth pinning because `afield.stdlib.revolveMesh`, Field's other lathe, revolves about **Y** —
+     * so the two disagree, and an invariant that cannot see the difference is how that got missed.
+     */
+    @Test
+    fun `revolved sweeps around Z, not Y`() {
+        if (!requireManifold()) return
+        // x in [1,2], y in [0,3]. Around Z this is a tube: radius 1..2, height 3 along z.
+        val profile = listOf(Vec2(1f, 0f), Vec2(2f, 0f), Vec2(2f, 3f), Vec2(1f, 3f))
+        Section.ofPolygon(profile).use { section ->
+            section.revolved(segments = 256).use { tube ->
+                val b = tube.bounds
+                assertEquals(-2.0, b.min.x.toDouble(), 1e-6, "x is radial")
+                assertEquals(2.0, b.max.x.toDouble(), 1e-6, "x is radial")
+                assertEquals(-2.0, b.min.y.toDouble(), 1e-6, "y is radial too")
+                assertEquals(2.0, b.max.y.toDouble(), 1e-6, "y is radial too")
+                assertEquals(0.0, b.min.z.toDouble(), 1e-6, "and the profile's y became z")
+                assertEquals(3.0, b.max.z.toDouble(), 1e-6, "and the profile's y became z")
+
+                // The decisive pair: the hole runs along Z, and Y passes through solid material.
+                assertTrue(!tube.contains(0.0, 0.0, 1.5), "the Z axis is the bore — it must be empty")
+                assertTrue(tube.contains(0.0, 1.5, 0.0), "the Y axis is inside the wall — it must be solid")
+
+                assertEquals(1, tube.genus, "a tube is a torus topologically")
+                assertEquals(PI * (2.0 * 2.0 - 1.0 * 1.0) * 3.0, tube.volume, 1e-2, "an annulus of height 3")
+            }
+        }
+    }
+
     @Test
     fun `slice and project return real cross sections`() {
         if (!requireManifold()) return
@@ -646,6 +684,15 @@ class ManifoldTest {
                     assertEquals(2L, equator.contourCount, "a torus's equator is two contours")
                 }
                 torus.project().use { shadow ->
+                    // THIS is the number that knows which axis `revolved` sweeps around, and for a
+                    // long time it was the only one in this file that did. `project()` flattens onto
+                    // XY, so a Z-revolved torus casts an annulus of 5.6549 where a Y-revolved one
+                    // would cast a 2.1600 rectangle. Genus, the Pappus volume above and the equator's
+                    // contour count are all rotation-invariant and pass under either reading — which
+                    // is how `Section.revolved`'s KDoc claimed "about the Y axis" for the lifetime of
+                    // the binding while this assertion quietly disproved it on every run. The lesson
+                    // is not about revolve: an invariant that cannot see a property does not defend
+                    // it, however green it is. See `revolved sweeps around Z, not Y` below.
                     assertEquals(2L, shadow.contourCount, "and its shadow is an annulus")
                     assertEquals(PI * (1.8 * 1.8 - 1.2 * 1.2), shadow.area, 1e-2)
                 }
