@@ -167,8 +167,11 @@ each with the reason it was left alone. `ToyCar.glb` in this repo goes through i
 solid you can boolean.
 
 The older `repaired()` is still there and still right for a mesh whose only problem is an unwelded
-seam. It does not fill holes, which is why it fixes 6 of the 16 broken meshes in the repair test
-table where `repairToSolid()` fixes 14.
+seam. It does not fill holes, which is why it makes 6 of the 21 rejected meshes in the repair test
+table valid where `repairToSolid()` makes 19 valid — of which **15 are also the shape you started
+with**, judged against the undamaged original. See
+[geometry from disk](geometry_from_disk.md) for why those two numbers have to be reported
+separately, and for the pair of cases proving that no local check can tell them apart.
 
 One trap worth stating on this page in particular: **Manifold accepts an inside-out mesh.** A closed,
 consistently-but-inwardly wound surface is a legal manifold and reports a *negative* volume, so

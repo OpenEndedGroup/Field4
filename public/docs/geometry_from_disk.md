@@ -489,8 +489,8 @@ out with a negative volume.
 
 **Hole filling is the part to be suspicious of.** Each ring is reversed (a cap must walk its boundary
 edges the opposite way to the surface), given a Newell normal, projected into that plane and
-ear-clipped; if ear clipping stalls, a centroid fan closes it anyway. Two failure modes, both
-reported rather than hidden:
+ear-clipped; if ear clipping stalls, a centroid fan closes it anyway. Two failure modes are detected
+and reported:
 
 - **a non-planar rim** gets a flat cap over a wavy hole. The mesh is a valid solid; the *volume is
   wrong*. `BoundaryLoopInfo.planarity` measures the deviation against the loop's own diameter before
@@ -502,17 +502,50 @@ A ring that repeats a vertex is neither: it is a figure-eight, two holes pinched
 capping it as one polygon *creates* a non-manifold edge — the repair would make the mesh worse. Those
 are split at the repeats first, so each real hole gets its own cap.
 
-### How much of this was already there
+#### And one failure mode that is *not* detectable, which matters more
+
+**No local property of a hole distinguishes "this end should be a flat cap" from "the model continued
+here."** Two measured cases settle it, and they point opposite ways:
+
+| | rim | cap | cap share of surface | result |
+|---|---|---|---|---|
+| uncapped cylinder | flat | clean ear clip | 16.5% | volume error **0.00000** — exactly right |
+| torus with its tube severed | flat | clean ear clip | 2.7% | volume error **4.2%**, and **genus 1 becomes 0** |
+
+Planarity, fill method, edge count and cap area are all equal-or-*better* on the wrong one. A cap-area
+threshold was implemented, measured against these two, and removed: at any cut-off that flags the
+severed torus it also flags the cylinder, whose caps are correct. `capAreaFraction` is still reported
+as a fact, but it deliberately does not set `isSuspect`.
+
+So the contract is: **`isSuspect == false` means the cap's geometry is sound, not that the model is
+the one you started with.** Only comparison against the shape you meant catches the difference, and at
+run time you do not have it.
+
+### How much of this was already there, and how much of it is actually *right*
 
 Honest accounting, because `repaired()` (weld → degenerate → unused → winding) has shipped in
-`mesh_topology.kt` for a while and is not a straw man. Against a table of 22 meshes broken in named
-ways, of which **16 are rejected by Manifold as-is** (the other six are damaged inputs Manifold
-accepts unchanged, and counting them would inflate both numbers):
+`mesh_topology.kt` for a while and is not a straw man.
 
-| | fixes |
+The test table is 27 meshes broken in named, deterministic ways, of which **21 are rejected by
+Manifold as-is** — the other six are damaged inputs Manifold accepts unchanged, and counting them
+would inflate everything below. Each row is a damaged copy of a known-good mesh, so the correct
+answer is known, and "repaired" is judged against **the undamaged original** rather than against
+`isValidSolid()`:
+
+| of the 21 Manifold rejects | |
 |---|---|
-| the pre-existing `repaired()` | **6 of 16** — every unwelded-seam and every inconsistent-winding case |
-| `repairToSolid()` | **14 of 16** |
+| the pre-existing `repaired()` makes valid | **6** — every unwelded-seam and every inconsistent-winding case, all of them faithful |
+| `repairToSolid()` makes valid | **19** |
+| ...of which **faithful** — volume, area *and* genus match the original | **15** |
+| ...of which **valid but the wrong shape** | **4** |
+| cannot be fixed, and say so | **2** |
+
+That split is the point. An earlier draft of this page claimed "14 of 16" — measured on a table in
+which **every hole was flat**, planarity `0.0000` and volume error `0.00000` on every one. A fan fill
+is trivially correct on a planar rim, so that number measured the easy case and quietly used "fixes"
+to mean "Manifold accepts it". The four wrong rows are curved and non-planar holes added specifically
+to stop that: a hole across a torus's tube (1.5% off), one that severs it (4.2% off, genus 1→0), a
+wide hole over a sphere (1.9% off), and a crowned rim (**35%** off).
 
 The new code is responsible for exactly two families: open boundaries, and non-manifold edges from
 duplicated faces or dangling fins. Two rows stay broken on purpose and assert that the failure is
@@ -524,6 +557,10 @@ affected triangles and cap the gap), and two closed tetrahedra sharing a face.
 `ToyCar.glb` — 77,429 vertices, 108,936 triangles, 2,197 components, 42,104 boundary edges in 2,782
 traced loops — **repairs to a valid solid you can boolean**. 21,047 vertices welded, 84 holes closed
 with 3,668 triangles.
+
+Note which half of the claim that is. Unlike every row of the test table, ToyCar has **no undamaged
+original to check against**, so "valid solid" is all anyone can say about it — exactly the weaker
+statement the table exists to separate from the stronger one.
 
 And the volume it then reports is `3.16e-5`, which is a number rather than an answer. Nine of those
 84 caps are flagged suspect, one of them a 335-edge centroid fan — a lid the size of a body panel.
