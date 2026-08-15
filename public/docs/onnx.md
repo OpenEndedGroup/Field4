@@ -25,7 +25,7 @@ depth.depthFp16                       // ready to upload as VK_FORMAT_R16_SFLOAT
 
 // What is this a picture of? — no training, no labels, just prompts.
 val prompts = ClipText.encodeAll(listOf("an empty room", "a person at a desk"))
-ClipImage().encode(rgbaBytes, 640, 480).best(prompts)   // ("an empty room", 0.94f)
+ClipImage().encode(rgbaBytes, 640, 480).best(prompts)   // the better-matching label, and its share
 ```
 
 ## The one idea that makes this live-codeable
