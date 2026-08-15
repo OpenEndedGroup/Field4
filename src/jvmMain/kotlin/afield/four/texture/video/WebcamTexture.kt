@@ -59,7 +59,7 @@ class WebcamTexture(
     private var frameBytes = 0
     private var cameraWidth = 0
     private var cameraHeight = 0
-    private var latestFrameId = 0L
+    private var latestFrameIdInternal = 0L
     private var uploadedFrameId = 0L
     private var capturedFrames = 0L
     private var uploadedFrames = 0L
@@ -75,6 +75,36 @@ class WebcamTexture(
 
     val active: Boolean
         get() = synchronized(stateLock) { running }
+
+    /**
+     * Monotonic id of the most recently captured frame, or 0 before the first.
+     *
+     * Lets a CPU-side consumer skip work it has already done, the same way [update] skips a redundant
+     * GPU upload.
+     */
+    val latestFrameId: Long
+        get() = synchronized(stateLock) { latestFrameIdInternal }
+
+    /**
+     * Read the newest frame on the CPU, without a GPU round trip.
+     *
+     * The capture thread already has every frame in host memory as tightly packed RGBA8 on its way to
+     * the staging buffer, so anything wanting pixels — a depth or segmentation model, say — should take
+     * them from here rather than reading the texture back off the GPU.
+     *
+     * [action] receives the shared capture buffer, its dimensions and the frame id. It runs while the
+     * capture lock is held, so it **must not block**: copy what it needs and return. Anything slower
+     * than a memcpy stalls capture and shows up as dropped frames.
+     *
+     * @return false if no frame has been captured yet, in which case [action] is not called
+     */
+    fun withLatestFrame(action: (rgba: java.nio.ByteBuffer, width: Int, height: Int, frameId: Long) -> Unit): Boolean =
+        synchronized(stateLock) {
+            val buffer = sharedFrameBuffer ?: return false
+            if (latestFrameIdInternal == 0L) return false
+            action(buffer, cameraWidth, cameraHeight, latestFrameIdInternal)
+            true
+        }
 
     override val imageView: ImageView
         get() = ensureInitialized().imageView
@@ -131,7 +161,7 @@ class WebcamTexture(
             frameBytes = 0
             cameraWidth = 0
             cameraHeight = 0
-            latestFrameId = 0L
+            latestFrameIdInternal = 0L
             uploadedFrameId = 0L
             capturedFrames = 0L
             uploadedFrames = 0L
@@ -149,10 +179,10 @@ class WebcamTexture(
         synchronized(stateLock) {
             val activeTexture = texture ?: return false
             val buffer = sharedFrameBuffer ?: return false
-            if (latestFrameId == uploadedFrameId) return false
+            if (latestFrameIdInternal == uploadedFrameId) return false
 
             activeTexture.upload(command, buffer, frameBytes)
-            uploadedFrameId = latestFrameId
+            uploadedFrameId = latestFrameIdInternal
             uploadedFrames++
             return true
         }
@@ -189,7 +219,7 @@ class WebcamTexture(
             """.trimIndent()
         }
 
-        override fun version(): Long = synchronized(stateLock) { latestFrameId + (uploadedFrameId shl 32) }
+        override fun version(): Long = synchronized(stateLock) { latestFrameIdInternal + (uploadedFrameId shl 32) }
     }
 
     private fun ensureInitialized(): WebcamRgbaTexture {
@@ -230,7 +260,7 @@ class WebcamTexture(
                 cameraWidth = width
                 cameraHeight = height
                 frameBytes = bytes
-                latestFrameId = 1L
+                latestFrameIdInternal = 1L
                 uploadedFrameId = 1L
                 capturedFrames = 1L
                 uploadedFrames = 1L
@@ -291,10 +321,10 @@ class WebcamTexture(
 
                     val latestBuffer = sharedFrameBuffer ?: return@synchronized
                     copyMatToBuffer(rgba, latestBuffer, frameBytes)
-                    if (latestFrameId != uploadedFrameId) {
+                    if (latestFrameIdInternal != uploadedFrameId) {
                         droppedFrames++
                     }
-                    latestFrameId++
+                    latestFrameIdInternal++
                     capturedFrames++
                 }
             } catch (_: InterruptedException) {

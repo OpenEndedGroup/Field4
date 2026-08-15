@@ -40,18 +40,19 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 62 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+All 63 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
 not in the same way, and the difference is worth knowing before you trust one. 44 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
 error-kind output line. (Almost always that is every box in the file. A transcript may deliberately
 create a box it does not execute — one that wants a device the build does not have, or that fails on
-purpose to demonstrate a diagnostic — and only the ops it actually writes down are replayed.) 11
-open a GLFW window and a Vulkan renderer, which is not a thing to spin up headless in a build, so
-those are **built and compiled**: the graph is assembled through the real apply path and each box's
-Kotlin goes through the real K2 compiler, with only the terminal evaluation — the line that would
-open the window — skipped. The remaining 7 are Kotlin **compiled to JavaScript** for a browser or
-visionOS head, through the real head profile that the box's `// {{ marker }}` selects.
+purpose to demonstrate a diagnostic — and only the ops it actually writes down are replayed.) 12 want
+something the lightweight build does not own — a GLFW window and Vulkan renderer, an external audio
+service, or a camera — so those are **built and compiled**: the graph is assembled through the real
+apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal evaluation —
+the line that would open the window or reach the device — skipped. The remaining 7 are Kotlin
+**compiled to JavaScript** for a browser or visionOS head, through the real head profile that the box's
+`// {{ marker }}` selects.
 
 None of the three proves a picture is *right*; that is what the docs captures and the gallery
 FIELD_TESTs are for. What all three prove is that the code in these files still compiles against
@@ -716,7 +717,8 @@ Walkthrough: [Beat and pitch analysis](audio_ai_analysis.md).
 <!-- transcript-index: verified-by = compile -->
 
 These boxes are all compiled through Field's real Kotlin/preamble path, but not evaluated by CI:
-their purpose is to cross a process or audio-device boundary that the lightweight build does not own.
+their purpose is to cross a process, audio-device or capture-device boundary that the lightweight
+build does not own.
 
 **audio_render_analysis** — Start with music written in Field rather than an imported recording.
 Four explicit live-coding boxes render Pat/Dirt, Dough and Faust or record Sonic Pi, write a finite
@@ -725,6 +727,16 @@ and end in a source waveform plus synchronized analysis board. The guide and eve
 path are compile-checked; running them remains an intentional user action.
 Walkthrough: [Render Field music, then analyse it](audio_render_analysis.md).
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/audio_render_analysis/metadata.edn)
+
+**onnx_webcam_live** — One webcam frame through two ONNX models in one box: Depth Anything V2 Small at
+266x266 (~120ms on a CPU execution provider) and CLIP ViT-B/32's vision tower (~45ms), displayed as the
+frame beside its colour-mapped depth map with a zero-shot ranking over four prompts. The interesting
+part is where the *text* tower runs: each `clip("...")` in the box body is encoded at **macro-expansion
+time** and baked into the box's `attic` as a base64 512-float constant, so the 242MB text encoder never
+loads when the box runs, on this run or in any later session. Because the transcript ships those four
+constants, `macro_clip` finds them already present and this box compiles in CI without touching the
+network. Needs a camera, which the build does not have, so it is compiled and never evaluated here.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/onnx_webcam_live/metadata.edn)
 
 ## visionOS device scenes
 

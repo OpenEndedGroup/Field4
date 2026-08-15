@@ -238,6 +238,11 @@ object DemoTranscriptExecSmokeTest {
         "rectsl_sdf_live",
         "spin_glass",
         "imgui_vr_panel",
+        // Needs a camera, which CI does not have, so the box is compiled and never evaluated. Its
+        // `clip("…")` constants are pre-baked into the transcript's `attic` property (see
+        // afield.onnx.ClipBakeTool), which is what keeps this compile hermetic: macro_clip finds each
+        // block already present and returns a cache hit instead of fetching a 242MB text encoder.
+        "onnx_webcam_live",
     )
 
     /**
