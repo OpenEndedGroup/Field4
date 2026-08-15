@@ -576,6 +576,37 @@ drawing: red for boundary loops, orange for non-manifold edges, magenta for pinc
 loops, yellow (opt-in) for winding disagreements. `TriMesh.withDefectColors()` is the per-vertex
 colouring the card renders, if you want it in your own picture.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/geometry_from_disk/mesh_defects.png" wait="9.0" capture="box" open-outputs="true" padding="20"}
+:::static
+// A sphere with a patch of faces removed, and one more face left unwelded — the two commonest
+// ways a mesh off disk fails. Built here rather than loaded, so the picture needs no file.
+val base = icosphereMesh(3, 1.0)
+var broken = base.filterTriangles { it >= 4 }
+
+// Give triangle 0 its own three vertices: the crack an STL export leaves at every seam.
+val pos = broken.positions.copyOf(broken.positions.size + 9)
+val idx = broken.indices.copyOf()
+for (k in 0..2) {
+    val v = broken.indices[k]
+    val d = (broken.vertexCount + k) * 3
+    pos[d] = broken.x(v); pos[d + 1] = broken.y(v); pos[d + 2] = broken.z(v)
+    idx[k] = broken.vertexCount + k
+}
+broken = TriMesh(pos, idx)
+
+println(broken.diagnose().report())
+:::fold draw it
+// No `view` argument, and that is the point: the camera aims itself at the worst defect. The hole
+// is on the far side from the default three-quarter view, so without that this figure would be a
+// photograph of an apparently perfect sphere captioned "4 faces removed".
+showMeshDiagnosis(broken, title = "4 faces removed, plus one unwelded face")
+:::endfold
+```
+
+![A grey wireframed icosphere with a black triangular hole punched through it, seen from a camera pointed straight at the damage. A red halo stains the ring of vertices around the hole, and a second, smaller red patch sits just below and right of it where one face was left unwelded. Beneath the render a legend reads "red = open boundary, orange = non-manifold edge, yellow = pinch vertex", then "645 verts, 1276 tris, 2 blocking" and three defect rows: BLOCKING UNWELDED_VERTICES x3, BLOCKING OPEN_BOUNDARY x12 with edge counts 6, 3, 3, and INFORMATIONAL MULTIPLE_COMPONENTS x2, each with the call that fixes it](assets/geometry_from_disk/mesh_defects.png)
+
+The camera in that figure was not chosen by hand. The hole is on the far side of the sphere from the default three-quarter view, so `showMeshDiagnosis` aiming itself at the worst defect is the only reason the damage is in shot — and the red halo and the red patch are the two blocking rows in the list beside it, which is the argument for a card over a `println`.
+
 The colouring is asserted on the raster rather than on the call returning: a clean cube paints 0 red
 pixels and one with a face removed paints 3,345; a clean icosphere paints 0 orange and one with a
 non-manifold fin paints 2,579.
