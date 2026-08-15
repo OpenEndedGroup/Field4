@@ -7,9 +7,6 @@ import afield.stdlib.AudioVisualizerOptions
 import afield.stdlib.AudioVisualizerSource
 import java.util.Locale
 
-private fun candidateNumber(value: Double): String = String.format(Locale.US, "%.3f", value)
-private fun candidatePercent(value: Double): String = String.format(Locale.US, "%.1f", value * 100)
-
 /**
  * The candidate board: the instrument for choosing between the alternatives a generation produced.
  *
@@ -19,6 +16,9 @@ private fun candidatePercent(value: Double): String = String.format(Locale.US, "
  * The provenance line under each player states the sample rates and the conversion, because whether
  * you are hearing the model or a resampler is not a detail.
  */
+
+private fun candidateNumber(value: Double): String = String.format(Locale.US, "%.3f", value)
+private fun candidatePercent(value: Double): String = String.format(Locale.US, "%.1f", value * 100)
 
 private fun String.htmlEscaped(): String = buildString(length) {
     for (character in this@htmlEscaped) append(

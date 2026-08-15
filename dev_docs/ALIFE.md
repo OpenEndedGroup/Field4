@@ -44,10 +44,18 @@ stop.
 
 The multi-file split follows the `imaging*.kt` / `mesh*.kt` convention for a large family. All seven
 carry `@file:afield.CompletionCategory("ALife")`. Without it the generator falls back to the category
-`Uncategorised` (`StdlibReferenceGenerator.kt:595#"/visualization/" in relativePath`) and **creates** a `public/docs/reference/uncategorised.md`
-that is not committed — which is how `alife_field.kt` first failed the reference drift guard. There is
-no such page today; commit `99a1a3f69` removed the last one by supplying the eleven annotations it was
-holding, so if you see it appear, a new file is missing its `CompletionCategory`.
+`Uncategorised` (`StdlibReferenceGenerator.kt:614#"/visualization/" in relativePath`) — which is how
+`alife_field.kt` first failed the reference drift guard, and how the gesture board came to be
+*published* on a page called "Uncategorised" from 2026-08-08 to 2026-08-14.
+
+That is now a hard build failure rather than a convention
+(`StdlibReferenceGenerator.kt:385#no @file:CompletionCategory, so it would be published`): the
+generator fails, naming the file, if any source lands in that bucket at all. The check is on the
+source condition on purpose. The drift guard compares the committed pages against what the source
+produces, so it certifies faithfulness rather than correctness — regenerate and commit an
+`uncategorised.md` and every guard goes green while the docs publish an instrument under a heading
+that means "nobody categorised this". A missing `CompletionCategory` can no longer be resolved by
+regenerating; it has to be answered.
 
 `alife_animate.kt` sits apart from the five simulation files for the same reason `alife_field.kt` does:
 those files name nothing from Field's box runtime and it is entirely about it (`Box`, `Frames`,

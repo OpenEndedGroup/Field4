@@ -1,3 +1,5 @@
+@file:afield.CompletionCategory("Audio AI")
+
 package afield.stdlib.noir.audioai
 
 import java.util.Locale

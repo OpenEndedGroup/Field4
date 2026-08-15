@@ -290,9 +290,9 @@ write a Monarch grammar for a language Monaco already knows.
 `bithero/nano`, `bithero/kotlinjs`, `bithero/morpho`, `bithero/petri`, `bithero/brief`.
 
 That list is the honest census of the editor's language surface, and it does not line up with the
-main-language list: `msl`, `stacksl`, `rectsl`, `fnrewrite` and `brief` have editor modules and no
-`BoxExecution`; `clojure`, `python` and `remotejs` have a `BoxExecution` and no module of their own.
-Neither asymmetry is a bug — it is what "small language" covers here.
+main-language list: `msl`, `stacksl`, `rectsl`, `fnrewrite`, `brief`, `sonicpi` and `faust` have
+editor modules and no `BoxExecution`; `clojure`, `python` and `remotejs` have a `BoxExecution` and no
+module of their own. Neither asymmetry is a bug — it is what "small language" covers here.
 
 ## The third shape: a compiler behind a browser extension
 

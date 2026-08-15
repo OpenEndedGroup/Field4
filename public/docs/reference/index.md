@@ -22,9 +22,8 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [Synthesis](synthesis.md) | 23 | 948 | 306 (32%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 17 | 750 | 315 (42%) | Musical time, as a value. |
 | [Audio](audio.md) | 12 | 688 | 149 (21%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
-| [Audio AI](audio-ai.md) | 11 | 336 | 272 (80%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
+| [Audio AI](audio-ai.md) | 13 | 351 | 276 (78%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Workspace](workspace.md) | 2 | 78 | 75 (96%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
-| [Uncategorised](uncategorised.md) | 2 | 15 | 4 (26%) |  |
 
 ## Every file, at a glance
 
@@ -59,7 +58,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [booleannetworks.kt](data.md#booleannetworks-kt) | Data | 32 | 25 | Synchronous Boolean networks and the pictures you draw of them. | [Boolean networks to FLine examples](../boolean_networks_examples.md), [Boolean network music examples](../boolean_network_music_examples.md) |
 | [BooleanNetworkSequencing.kt](patterns.md#booleannetworksequencing-kt) | Patterns | 36 | 1 |  | [Boolean network music examples](../boolean_network_music_examples.md) |
 | [Buf.kt](synthesis.md#buf-kt) | Synthesis | 22 | 20 |  |  |
-| [CandidateBoard.kt](audio-ai.md#candidateboard-kt) | Audio AI | 1 | 1 |  |  |
+| [CandidateBoard.kt](audio-ai.md#candidateboard-kt) | Audio AI | 1 | 1 | The candidate board: the instrument for choosing between the alternatives a generation produced. |  |
 | [Canonical.kt](polytopes.md#canonical-kt) | Polytopes | 42 | 40 | Canonicalization: the step that turns combinatorially-correct-but-lumpy Conway output into the solid you were picturing. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [CeresExpression.kt](solvers.md#ceresexpression-kt) | Solvers | 77 | 44 | Residuals written in Kotlin, compiled to a little register machine, and differentiated exactly by Ceres. |  |
 | [CeresGeometry.kt](solvers.md#ceresgeometry-kt) | Solvers | 351 | 104 | The constraint vocabulary for Field's Ceres point solver, and the encoding that ships it to a backend. |  |
@@ -106,8 +105,8 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [FunctionRewriteKotlin.kt](function.md#functionrewritekotlin-kt) | Function | 15 | 15 | The bridge that gives the string rewrite DSL a real Kotlin right-hand side. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
 | [FunctionRewritePattern.kt](function.md#functionrewritepattern-kt) | Function | 13 | 11 | The third rewriting surface in the family, and the algebraic one. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
 | [Functions.kt](math.md#functions-kt) | Math | 543 | 456 | The `Fn` toolkit: one-dimensional signals as values you can build, compose, sample and draw. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
-| [GestureBoard.kt](uncategorised.md#gestureboard-kt) | Uncategorised | 12 | 3 |  | [Gesture board: drawing toward a sound](../audio_ai_gesture_board.md) |
-| [GestureBoardVisualization.kt](uncategorised.md#gestureboardvisualization-kt) | Uncategorised | 3 | 1 |  |  |
+| [GestureBoard.kt](audio-ai.md#gestureboard-kt) | Audio AI | 12 | 3 |  | [Gesture board: drawing toward a sound](../audio_ai_gesture_board.md) |
+| [GestureBoardVisualization.kt](audio-ai.md#gestureboardvisualization-kt) | Audio AI | 3 | 1 |  |  |
 | [graph_connectivity.kt](graphics.md#graph-connectivity-kt) | Graphics | 82 | 52 | Self-contained graph / computational-geometry library over 2D and 3D point sets (`Vec2`/`Vec3`). | [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md) |
 | [growing.kt](data.md#growing-kt) | Data | 14 | 8 | A 3-regular graph that grows by local rewriting. |  |
 | [heatmap.kt](visualization.md#heatmap-kt) | Visualization | 6 | 6 |  |  |

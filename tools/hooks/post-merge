@@ -1,0 +1,33 @@
+#!/bin/sh
+# Check the generated artifacts a merge just brought in.
+#
+# Why this exists: the pre-commit guard cannot see this work. Hooks live in .git/hooks, which is
+# per-clone and is never transported by Git, so a commit authored in another clone and pulled in
+# here has passed no hook at all. Every generated artifact that went stale on `main` between
+# 2026-08-08 and 2026-08-14 arrived exactly that way, and was found hours-to-days later by the
+# 06:00 run rather than by the person who pulled it.
+#
+# Advisory by construction: Git ignores this hook's exit status. The merge has already happened.
+# What this buys is the news, on the day, naming the command that fixes it.
+set -eu
+
+hook_dir=$(dirname "$0")
+
+# Git LFS owns post-merge in this repository. install_git_hooks.py preserved it here rather than
+# replacing it, so run it first and on the same arguments.
+[ -x "$hook_dir/post-merge.local" ] && "$hook_dir/post-merge.local" "$@"
+
+repo_root=$(git rev-parse --show-toplevel)
+guard="$repo_root/tools/check_staged_generated_artifacts.py"
+
+# core.hooksPath is shared by all worktrees, and older branches predate the guard. Once the script
+# exists in that checkout the hook becomes active there, and not before.
+[ -f "$guard" ] || exit 0
+
+[ "${FIELD_SKIP_MERGE_GUARD:-}" = "1" ] && exit 0
+
+# ORIG_HEAD is where the branch was before the merge. Absent on a first clone or a fresh branch,
+# in which case there is no "what just arrived" to speak of.
+git rev-parse --verify --quiet ORIG_HEAD >/dev/null 2>&1 || exit 0
+
+python3 "$guard" --since ORIG_HEAD || true
