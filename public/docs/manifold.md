@@ -135,14 +135,55 @@ if (part.status.isError) println("could not build it: ${part.status}")
 ```
 
 The commonest failure by far is a mesh that came off disk. An STL has no index buffer at all, so every
-triangle owns its three vertices and the mesh is 36 loose vertices rather than a closed cube:
+triangle owns its three vertices and the mesh is 36 loose vertices rather than a closed cube.
 
-| symptom | fix |
+**Do not guess which repair to try.** `toSolid()` used to refuse with a list of candidates — weld,
+then fix the winding, then try `repaired()` — which is a decision tree the reader has to walk, and for
+the commonest case of all (a hole) none of the entries was the answer. The refusal now carries
+`TriMesh.diagnose()`'s report, so it names the defect:
+
+```
+this TriMesh is not a valid manifold: NOT_MANIFOLD.
+mesh: 8 vertices, 10 triangles, chi=1, 1 component(s)
+1 blocking defect(s) — Manifold will refuse this mesh.
+1. [BLOCKING] OPEN_BOUNDARY x4
+     4 boundary edges in 1 traced loop(s), edge counts [4]
+     fix: TriMesh.fillHoles() — flat holes fill cleanly; a non-planar loop gets a flat cap over a wavy rim.
+```
+
+Two calls, both in `afield.stdlib`, both documented at length under
+[geometry from disk](geometry_from_disk.md):
+
+| you want | call |
 |---|---|
-| `NOT_MANIFOLD` on a mesh that looks closed | `toSolid(weldTolerance = 1e-6)` — duplicated vertices along a seam |
-| still `NOT_MANIFOLD` after welding | `fixWinding()` — inconsistent triangle orientation |
-| `NOT_MANIFOLD` on a scan or a march | `repaired()`, then check `isWatertight()` |
-| `NON_FINITE_VERTEX` | a NaN in the positions, usually a degenerate normal upstream |
+| to know *why* this mesh is not a solid | `println(mesh.diagnose().report())` |
+| to fix it, and be told what could not be fixed | `mesh.repairToSolid()` |
+| to see where the trouble is | `showMeshDiagnosis(mesh)`, or `mesh.defectFLines()` |
+
+`repairToSolid()` welds, drops degenerate and duplicated faces, removes dangling fins, fixes the
+winding, **fills the holes**, and fixes the winding again — then hands back a `MeshRepairResult`
+rather than a mesh, because the interesting part is `unfixed`: the blocking defects still present,
+each with the reason it was left alone. `ToyCar.glb` in this repo goes through it and comes out a
+solid you can boolean.
+
+The older `repaired()` is still there and still right for a mesh whose only problem is an unwelded
+seam. It does not fill holes, which is why it makes 6 of the 21 rejected meshes in the repair test
+table valid where `repairToSolid()` makes 19 valid — of which **15 are also the shape you started
+with**, judged against the undamaged original. See
+[geometry from disk](geometry_from_disk.md) for why those two numbers have to be reported
+separately, and for the pair of cases proving that no local check can tell them apart.
+
+One trap worth stating on this page in particular: **Manifold accepts an inside-out mesh.** A closed,
+consistently-but-inwardly wound surface is a legal manifold and reports a *negative* volume, so
+`status` is `NO_ERROR` and the next boolean quietly computes the complement of what you meant.
+`isValidSolid()` cannot catch that; `diagnose()` reports it as `INVERTED_ORIENTATION`, and
+`repairToSolid()`'s second winding pass fixes it. Manifold likewise accepts zero-area triangles,
+pinch vertices, and disjoint components — whose volumes it sums.
+
+`NON_FINITE_VERTEX` remains what it always was: a NaN in the positions, usually a degenerate normal
+upstream. `repairToSolid()` refuses that one outright rather than repairing around it — dropping the
+affected triangles and capping the gap would produce a plausible solid missing an unknown amount of
+the model.
 
 `TriMesh.isValidSolid()` is the cheap pre-flight, and `toSolid()` checks by default.
 

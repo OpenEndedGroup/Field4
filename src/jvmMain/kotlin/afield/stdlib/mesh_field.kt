@@ -622,3 +622,214 @@ fun TriMesh.normalized(size: Number = 1.0): TriMesh {
     val s = if (longest < 1e-12) 1.0 else size.toDouble() / longest
     return translated(-cx, -cy, -cz).scaled(s)
 }
+
+// ==============================================================================================
+// Seeing what is wrong: the diagnosis, drawn
+// ==============================================================================================
+
+/**
+ * The defects [TriMesh.diagnose] found, as coloured [FLine]s to draw over the mesh.
+ *
+ * Reading a count of "2782 boundary edges" tells you the mesh is broken; seeing where they are tells
+ * you *what* is broken — a missing cap reads completely differently from a seam that failed to weld,
+ * and no number distinguishes them. [MeshLines.BOUNDARY] already drew open loops; this adds the rest
+ * of the vocabulary and colours each kind so a glance separates them:
+ *
+ * | colour | what |
+ * |---|---|
+ * | red | an open boundary loop — a hole |
+ * | orange | a non-manifold edge: three or more faces meet here |
+ * | yellow | an interior edge whose two faces disagree about which way is out |
+ * | magenta | a figure-eight loop: two holes pinched together at one vertex |
+ *
+ * ```kotlin
+ * val mesh = meshFromAnyFile("scan.stl")
+ * __.lines = mesh.toFLines(MeshLines.CREASES) + mesh.defectFLines()
+ * ```
+ *
+ * @param diagnosis reuse one you already built; a fresh one is made if you do not pass it.
+ * @param includeWinding draw the winding disagreements too. Off by default: on a badly wound mesh
+ *   there is one per interior edge and the picture becomes the wireframe.
+ */
+fun TriMesh.defectFLines(
+    diagnosis: MeshDiagnosis = diagnose(),
+    includeWinding: Boolean = false,
+): List<FLine> {
+    val out = mutableListOf<FLine>()
+
+    fun paint(line: FLine, r: Float, g: Float, b: Float): FLine {
+        line.properties["color"] = Vec4(r, g, b, 1f)
+        return line
+    }
+
+    for (loop in diagnosis.boundaryLoops) {
+        val ring = polylineFrom(loop.vertices.map { position(it) }, closed = true)
+        // A pinched loop is worth its own colour: it is the one a hole filler has to take apart first.
+        if (loop.isSimple) paint(ring, 1f, 0.25f, 0.25f) else paint(ring, 1f, 0.2f, 0.9f)
+        out.add(ring)
+    }
+    for ((u, v, _) in diagnosis.nonManifoldEdges) {
+        out.add(paint(polylineFrom(listOf(position(u), position(v))), 1f, 0.6f, 0.1f))
+    }
+    if (includeWinding) {
+        for ((u, v) in diagnosis.inconsistentEdges) {
+            out.add(paint(polylineFrom(listOf(position(u), position(v))), 1f, 0.95f, 0.3f))
+        }
+    }
+    return out
+}
+
+/**
+ * This mesh painted by defect, so its rendered picture shows where the trouble is.
+ *
+ * [defectFLines] is the right answer when the mesh is going into a Field document beside other
+ * drawing; this is the right answer when it is going through [TriMesh.renderPng], which draws a mesh
+ * and not lines. Vertices on an open boundary go red, endpoints of a non-manifold edge orange, pinch
+ * vertices yellow, and everything sound stays a neutral blue-grey.
+ *
+ * Any existing per-vertex colours are replaced — that is the point of asking for this one.
+ */
+fun TriMesh.withDefectColors(diagnosis: MeshDiagnosis = diagnose()): TriMesh {
+    val c = FloatArray(vertexCount * 3)
+    for (v in 0 until vertexCount) {
+        c[v * 3] = 0.42f; c[v * 3 + 1] = 0.48f; c[v * 3 + 2] = 0.58f
+    }
+    fun mark(v: Int, r: Float, g: Float, b: Float) {
+        if (v < 0 || v >= vertexCount) return
+        c[v * 3] = r; c[v * 3 + 1] = g; c[v * 3 + 2] = b
+    }
+    for (v in diagnosis.nonManifoldVertices) mark(v, 0.95f, 0.9f, 0.2f)
+    for ((u, v, _) in diagnosis.nonManifoldEdges) { mark(u, 1f, 0.55f, 0.1f); mark(v, 1f, 0.55f, 0.1f) }
+    for (loop in diagnosis.boundaryLoops) for (v in loop.vertices) mark(v, 1f, 0.2f, 0.2f)
+    return withColors(c)
+}
+
+/**
+ * The diagnosis as a card beside the mesh: the shape with its defects painted on, and the ordered
+ * list of what is wrong and what to call about it.
+ *
+ * This is [TriMesh.diagnose] made lookable-at. The render uses [withDefectColors], so the red on the
+ * picture and the "N boundary edges" in the list are the same fact seen twice — which is the whole
+ * argument for a card over a `println`.
+ *
+ * ```kotlin
+ * showMeshDiagnosis(meshFromAnyFile("scan.stl"))
+ * ```
+ *
+ * # The camera points at the defect, and that is not a nicety
+ *
+ * Leaving `view` as `null` aims the camera at the worst defect — see [defectFacingView]. The default
+ * three-quarter view shows a hole only if the hole happens to face the front, and a card captioned
+ * "4 faces removed" over a picture of an unblemished sphere is worse than no picture: it actively
+ * argues that nothing is wrong. Pass an explicit [MeshView] when you want a particular angle and are
+ * willing to check that the defect is in it.
+ *
+ * @param mesh the mesh to diagnose.
+ * @param view the camera. `null` (the default) points it at the worst defect.
+ * @param maxDefects how many rows of the list to show.
+ */
+fun Box.showMeshDiagnosis(
+    mesh: TriMesh,
+    channel: String = "main",
+    view: MeshView? = null,
+    maxDefects: Int = 8,
+    title: String? = null,
+) {
+    val diagnosis = mesh.diagnose()
+    val camera = view ?: mesh.defectFacingView(diagnosis, width = 420, height = 340)
+    val png = mesh.withDefectColors(diagnosis).renderPng(camera, caption = "", title = null)
+    val b64 = Base64.getEncoder().encodeToString(png)
+    fun escape(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    val badgeColor = { s: MeshDefectSeverity ->
+        when (s) {
+            MeshDefectSeverity.BLOCKING -> "#ff5555"
+            MeshDefectSeverity.SUSPICIOUS -> "#ffa640"
+            MeshDefectSeverity.INFORMATIONAL -> "#7f8ea3"
+        }
+    }
+    val html = buildString {
+        append("<div style='display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap'>")
+        append("<div>")
+        title?.let { append("<div style='color:#e6ecf4;font-weight:600;padding-bottom:6px'>${escape(it)}</div>") }
+        append("<img src='data:image/png;base64,$b64' style='border-radius:6px;display:block'/>")
+        append("<div style='color:#8a90a0;font-family:monospace;font-size:11px;padding-top:4px'>")
+        append("red = open boundary · orange = non-manifold edge · yellow = pinch vertex")
+        append("</div></div>")
+        append("<div style='min-width:320px;flex:1'>")
+        append("<div style='color:#e6ecf4;font-family:monospace;font-size:12px;padding-bottom:6px'>")
+        append("${mesh.vertexCount} verts · ${mesh.triangleCount} tris · ")
+        append(if (diagnosis.isSolid) "<span style='color:#69d07f'>a solid</span>"
+            else "<span style='color:#ff5555'>${diagnosis.blockers.size} blocking</span>")
+        append("</div>")
+        if (diagnosis.defects.isEmpty()) {
+            append("<div style='color:#93a4ba;font-size:12px'>No defects — closed, consistently wound, outward.</div>")
+        }
+        for (d in diagnosis.defects.take(maxDefects)) {
+            append("<div style='padding:5px 0;border-top:1px solid #23272f'>")
+            append("<div><span style='color:${badgeColor(d.severity)};font-family:monospace;font-size:11px'>")
+            append("${d.severity}</span> ")
+            append("<span style='color:#e6ecf4;font-family:monospace;font-size:12px'>${d.kind} ×${d.count}</span></div>")
+            append("<div style='color:#93a4ba;font-size:11px;line-height:1.45'>${escape(d.detail)}</div>")
+            append("<div style='color:#6f9fd0;font-size:11px;line-height:1.45'>fix: ${escape(d.fix)}</div>")
+            append("</div>")
+        }
+        if (diagnosis.defects.size > maxDefects) {
+            append("<div style='color:#6f7787;font-size:11px;padding-top:4px'>")
+            append("… and ${diagnosis.defects.size - maxDefects} more</div>")
+        }
+        append("</div></div>")
+    }
+    display(channel, html)
+}
+
+/**
+ * A camera pointed at this mesh's worst defect, so the picture shows the thing the caption is about.
+ *
+ * The focus is the first open boundary loop's centroid, or failing that a non-manifold edge, or a
+ * pinch vertex; with none of those the plain three-quarter view comes back unchanged. Yaw and pitch
+ * are then the direction from the mesh's own centre out to that focus, so the defect faces the
+ * viewer rather than hiding round the back.
+ *
+ * Written because two captures during this feature's development showed a perfect-looking model and
+ * asserted nothing about it — once a non-manifold fin on the far side of a sphere, once a hole. A
+ * defect visualisation whose default view can omit the defect is a visualisation you cannot trust,
+ * and "the reader will rotate it" is not true of a PNG in a document.
+ *
+ * @param diagnosis reuse one you already built.
+ * @param width output width in pixels.
+ * @param height output height in pixels.
+ */
+fun TriMesh.defectFacingView(
+    diagnosis: MeshDiagnosis = diagnose(),
+    width: Int = 420,
+    height: Int = 340,
+): MeshView {
+    val plain = MeshView(width = width, height = height)
+    if (vertexCount == 0) return plain
+
+    val focus: Vec3 = when {
+        diagnosis.boundaryLoops.isNotEmpty() -> {
+            val ring = diagnosis.boundaryLoops.first().vertices
+            var cx = 0f; var cy = 0f; var cz = 0f
+            for (v in ring) { cx += x(v); cy += y(v); cz += z(v) }
+            Vec3(cx / ring.size, cy / ring.size, cz / ring.size)
+        }
+        diagnosis.nonManifoldEdges.isNotEmpty() -> {
+            val (u, v, _) = diagnosis.nonManifoldEdges.first()
+            Vec3((x(u) + x(v)) / 2f, (y(u) + y(v)) / 2f, (z(u) + z(v)) / 2f)
+        }
+        diagnosis.nonManifoldVertices.isNotEmpty() -> position(diagnosis.nonManifoldVertices.first())
+        else -> return plain
+    }
+
+    val b = boundsArray()
+    val dx = focus.x - (b[0] + b[3]) / 2.0
+    val dy = focus.y - (b[1] + b[4]) / 2.0
+    val dz = focus.z - (b[2] + b[5]) / 2.0
+    val len = kotlin.math.sqrt(dx * dx + dy * dy + dz * dz)
+    if (len < 1e-9) return plain
+    return plain.copy(
+        yawDegrees = Math.toDegrees(kotlin.math.atan2(dx, dz)),
+        pitchDegrees = Math.toDegrees(kotlin.math.asin((dy / len).coerceIn(-1.0, 1.0))),
+    )
+}

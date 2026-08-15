@@ -188,13 +188,34 @@ class Section internal constructor(handle: MemorySegment) : AutoCloseable {
     }
 
     /**
-     * Revolve about the Y axis.
+     * A lathe: the cross-section's `x` becomes a radius and its `y` becomes the solid's **z**, so the
+     * resulting solid's axis of symmetry is **Z**.
      *
      * The profile must lie at `x >= 0`; the part at negative x is discarded rather than folded. A
      * square section offset from the axis revolves into a torus — genus 1, and the volume Pappus's
      * theorem says it should be: measured 4.7105 against an exact 4.7124.
      *
-     * @param revolveDegrees less than 360 leaves the solid open at the ends, and Manifold caps it.
+     * # This KDoc used to say "revolve about the Y axis", and that cost somebody an afternoon
+     *
+     * The old wording was not quite a lie: Manifold revolves the 2D cross-section around *its own*
+     * y-axis, and if you are thinking in the plane, "about Y" is what you are doing. But this function
+     * returns a [Solid], and a reader holding a `Solid` reads "Y axis" as a statement about 3D — which
+     * is wrong, because that 2D y-axis comes out as the solid's **Z**. Measured, on a profile spanning
+     * `x` in `[1,2]` and `y` in `[0,3]`, revolved 360°:
+     *
+     * ```
+     * bounds  min = (-2, -2, 0)   max = (2, 2, 3)      // x,y are radial; z is the profile's y
+     * contains(0, 0, 1.5) = false                      // the Z axis is the hole through the tube
+     * contains(0, 1.5, 0) = true                       // the Y axis is solid material
+     * volume 28.229, against pi * (2^2 - 1^2) * 3 = 28.274
+     * ```
+     *
+     * **This differs from Field's own [afield.stdlib.revolveMesh], whose axis is Y.** The two lathes
+     * in this codebase do not agree, and the old wording made them look as though they did. If you are
+     * porting a profile from one to the other, swap y and z — or [Solid.rotated] the result.
+     *
+     * @param revolveDegrees less than 360 leaves the solid open at the ends, and Manifold caps it. The
+     *   sweep starts at +x and turns toward +y.
      */
     fun revolved(segments: Int = 0, revolveDegrees: Double = 360.0): Solid = withPolygons { polygons ->
         Solid.wrap(ManifoldNative.revolve, polygons, segments, revolveDegrees)

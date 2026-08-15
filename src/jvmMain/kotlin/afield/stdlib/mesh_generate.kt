@@ -483,11 +483,22 @@ fun capsuleMesh(segments: Int = 32, rings: Int = 8, radius: Number = 0.4, height
 }
 
 /**
- * A lathe: a 2D [profile] of `(radius, y)` points swept around the `y` axis.
+ * A lathe: a 2D [profile] of `(radius, y)` points swept around the **`y` axis**.
  *
  * Profile points with radius `0` collapse to a single pole vertex rather than [segments] coincident
  * ones, so a profile that starts and ends on the axis produces a watertight solid — that is how
  * `revolveMesh(listOf(vec(0,1), vec(1,0), vec(0,-1)), 48)` gives a closed lens with `χ = 2`.
+ *
+ * # Field has two lathes and they are 90° apart
+ *
+ * This one sweeps around **Y**: the profile's `x` is a radius in the XZ plane and its `y` stays `y`.
+ * [afield.manifold.Section.revolved], the Manifold-backed one, sweeps around **Z**: the profile's `x`
+ * is a radius in the XY plane and its `y` becomes `z`. Measured on the same profile, this one gives
+ * bounds `(-1.6, 0, -1.6)…(1.6, 0.8, 1.6)` where that one gives `(-1.6, -1.6, 0.2)…(1.6, 1.6, 1.0)`.
+ *
+ * Neither convention is wrong, but nothing used to say they differed, so carrying a profile from the
+ * [TriMesh] path over to the CSG path silently produced a model lying on its side. Swap `y` and `z`
+ * in the profile, or rotate the result 90° about X.
  *
  * @param profile `(x = radius >= 0, y)`, in order along the surface. At least 2 points.
  * @param segments divisions around the axis (>= 3).

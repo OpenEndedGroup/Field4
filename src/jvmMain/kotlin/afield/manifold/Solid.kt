@@ -6,6 +6,7 @@ import afield.ToHTML
 import afield.stdlib.TriMesh
 import afield.stdlib.AxisAlignedBoundingBox3D
 import afield.stdlib.Vec3
+import afield.stdlib.diagnose
 import afield.stdlib.weld
 import java.lang.foreign.Arena
 import java.lang.foreign.MemorySegment
@@ -1041,14 +1042,23 @@ internal class NativeRelease(val handle: MemorySegment, private val kind: Kind) 
  * Anything else comes back as a [Solid] whose [Solid.status] says so — and rather than leave that to
  * be discovered later, this checks by default.
  *
- * The usual repairs, in the order worth trying them:
+ * # When it refuses, it says why
  *
- * | symptom | fix |
+ * Do not guess from the list below — the exception this throws now carries
+ * [afield.stdlib.TriMesh.diagnose]'s report, which names the actual defect: how many boundary edges in
+ * how many loops and how big, how many edges have three faces, whether the winding is consistent.
+ * The two calls worth knowing:
+ *
+ * | you want | call |
  * |---|---|
- * | [ManifoldStatus.NOT_MANIFOLD] on a mesh that looks closed | [afield.stdlib.weld] — duplicated vertices along a seam |
- * | ditto, after welding | [afield.stdlib.fixWinding] — inconsistent triangle orientation |
- * | ditto, on a marched or scanned surface | [afield.stdlib.repaired], then check [afield.stdlib.isWatertight] |
- * | [ManifoldStatus.NON_FINITE_VERTEX] | a NaN in the positions, usually a degenerate normal upstream |
+ * | to know *why* this mesh is not a solid | [afield.stdlib.diagnose] — `println(mesh.diagnose().report())` |
+ * | to fix it, and be told what could not be fixed | [afield.stdlib.repairToSolid] |
+ *
+ * [afield.stdlib.repairToSolid] welds, drops degenerate and duplicated faces, removes dangling fins,
+ * fixes the winding, fills the holes and fixes the winding again, and returns a
+ * [afield.stdlib.MeshRepairResult] rather than a bare mesh — because the interesting part is the list
+ * of things it could *not* do. The older [afield.stdlib.repaired] is still there and still fine for a
+ * mesh whose only problem is an unwelded seam; it does not fill holes.
  *
  * @param check throw on an invalid mesh instead of returning a [Solid] that quietly has no volume.
  * @param weldTolerance weld coincident vertices first. `null` (the default) does not weld, because
@@ -1071,7 +1081,19 @@ fun TriMesh.toSolid(check: Boolean = true, weldTolerance: Double? = null): Solid
         )
         try {
             val solid = Solid.wrap(ManifoldNative.ofMeshGL, mesh)
-            return if (check) solid.checked("this TriMesh") else solid
+            val status = solid.status
+            if (!check || !status.isError) return solid
+            // Manifold can only say *that* it refused. Field can say why, so it does: the diagnosis
+            // names the actual defect — which loops are open and how big, which edges have too many
+            // faces — instead of the old message's list of things the reader might try.
+            // `status` is read *before* the close below: the accessor throws on a released handle.
+            val why = runCatching { source.diagnose().report() }.getOrNull()
+            solid.close()
+            throw IllegalStateException(
+                "this TriMesh is not a valid manifold: $status.\n" +
+                    (why ?: "Diagnosis unavailable; see afield.stdlib.TriMesh.diagnose().") +
+                    "\nTriMesh.repairToSolid() attempts these in order and reports what it could not do.",
+            )
         } finally {
             ManifoldNative.unit(ManifoldNative.deleteMeshGL, mesh)
         }
