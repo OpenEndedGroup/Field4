@@ -48,7 +48,8 @@ import kotlin.math.sqrt
  *
  * ## Cost
  *
- * Text is ≈5ms per prompt and runs at expansion time. Vision is ≈36ms at 224x224 on a CPU provider —
+ * Text is ≈5ms per prompt, after the one-off cost of loading the encoder. Vision is ≈36ms at
+ * 224x224 on a CPU provider —
  * far cheaper than [DepthAnything], but still not free, so drive it from a worker if it is per-frame.
  *
  * @see ClipText for the text tower
