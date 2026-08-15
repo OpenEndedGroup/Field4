@@ -29,9 +29,15 @@ import kotlin.test.assertTrue
  * [AgreementKind.MARCHED_VS_MARCHED] — two independent marchers on one field, which catches a broken
  * lowering but says nothing about whether that field is the shape the notation meant. They are
  * counted separately and **excluded from the exact statistic**, because "11 of 11 agree" where three
- * of them agreed with themselves is the exact shape of overclaim this project keeps catching. The
- * split is itself asserted, so a change that quietly turned the exact path into a fallback fails
- * here rather than reading as a pass.
+ * of them agreed with themselves is the exact shape of overclaim this project keeps catching.
+ *
+ * That split is not taken on trust. Asserting it from [SolidBuild.isExact] would only be this
+ * package restating its own bookkeeping, so `SolidSLIndependenceTest` establishes it by a property
+ * the two paths cannot share: **the exact lowering has no `edgeLength` input at all**. Refine the
+ * march by 2.5x and all eight exact solids return a bit-identical volume, area and triangle count,
+ * while all three fallbacks move (`blend` goes from 15,240 triangles to 94,008). Corroborated by a
+ * fact needing no argument: `lBracketCut`'s exact solid is **20 triangles** against 71,288 for its
+ * marched counterpart, and no march produces a twenty-triangle surface.
  *
  * # Agreement has a floor, and the floor is computed rather than remembered
  *
@@ -440,15 +446,36 @@ class SolidSLCrossValidationTest {
     }
 
     // ==========================================================================================
-    // Point membership — the sharpest convention check there is
+    // Point membership — a convention check, and NOT a fidelity one
     // ==========================================================================================
 
+    /**
+     * Whether the two lowerings agree about which points are inside — a **coarse** check, and it
+     * matters to be clear about which one.
+     *
+     * Volume, area and genus are all invariant under a mirror or a transposed axis. Membership is
+     * not, so this is what pins the conventions: it is how `Section.revolved`'s "about the Y axis"
+     * was caught rather than shipped, at 100% agreement under the Z reading against about 65% under
+     * the documented one. A gross error is visible from anywhere in the volume, which is exactly why
+     * uniform box sampling finds it.
+     *
+     * **It is not evidence about surface fidelity, and the count it prints must not be read as
+     * though it were.** The points are uniform in a box, and everything within `0.03·span` of a
+     * surface is skipped on purpose — while the largest distance at which the two lowerings can
+     * *legitimately* differ is Manifold's faceting sagitta, which `SolidSLIndependenceTest` measures
+     * at **1.25e-03 of that skip band**. So not one of the 29,635 points sampled here was ever in a
+     * position to disagree for a geometric reason: this test cannot fail for the reason its name
+     * suggests, only for a much cruder one.
+     *
+     * The sharp version — *how close to the surface do you have to get before they stop agreeing,
+     * and is that distance the sagitta?* — needs a different sampler entirely and lives in
+     * `SolidSLIndependenceTest.membership disagreement appears only inside the faceting band`. The
+     * answer there is that the crossover is at the sagitta, to within a decade, on every curved
+     * shape, and that the polyhedral control never disagrees at all.
+     */
     @Test
     fun `the two lowerings agree point by point about what is inside`() {
         if (!requireManifold()) return
-        // Volume, area and genus are all invariant under a mirror or a transposed axis. Membership is
-        // not: this is the check that pins the conventions, and it is why `Section.revolved`'s
-        // "about the Y axis" was caught rather than shipped.
         val q = SolidQuality(segments = 128)
         var totalTested = 0
         var totalWrong = 0
@@ -482,7 +509,13 @@ class SolidSLCrossValidationTest {
                 totalWrong += wrong
             }
         }
-        println("membership: $totalWrong disagreements in $totalTested samples across ${corpus.count { it.expr.exactRefusal() == null }} shapes")
+        println(
+            "membership: $totalWrong disagreements in $totalTested samples across " +
+                "${corpus.count { it.expr.exactRefusal() == null }} shapes — a CONVENTION check " +
+                "(mirror, transposed axis, wrong handedness), not a fidelity one. None of these " +
+                "points is within four orders of magnitude of the faceting band; see " +
+                "SolidSLIndependenceTest for the sampler that can actually disagree.",
+        )
         assertTrue(totalTested > 20_000, "only $totalTested points were actually tested")
     }
 
