@@ -716,19 +716,28 @@ fun TriMesh.withDefectColors(diagnosis: MeshDiagnosis = diagnose()): TriMesh {
  * showMeshDiagnosis(meshFromAnyFile("scan.stl"))
  * ```
  *
+ * # The camera points at the defect, and that is not a nicety
+ *
+ * Leaving `view` as `null` aims the camera at the worst defect — see [defectFacingView]. The default
+ * three-quarter view shows a hole only if the hole happens to face the front, and a card captioned
+ * "4 faces removed" over a picture of an unblemished sphere is worse than no picture: it actively
+ * argues that nothing is wrong. Pass an explicit [MeshView] when you want a particular angle and are
+ * willing to check that the defect is in it.
+ *
  * @param mesh the mesh to diagnose.
- * @param view the camera; the default is the same three-quarter view the inline thumbnail uses.
+ * @param view the camera. `null` (the default) points it at the worst defect.
  * @param maxDefects how many rows of the list to show.
  */
 fun Box.showMeshDiagnosis(
     mesh: TriMesh,
     channel: String = "main",
-    view: MeshView = MeshView(width = 420, height = 340),
+    view: MeshView? = null,
     maxDefects: Int = 8,
     title: String? = null,
 ) {
     val diagnosis = mesh.diagnose()
-    val png = mesh.withDefectColors(diagnosis).renderPng(view, caption = "", title = null)
+    val camera = view ?: mesh.defectFacingView(diagnosis, width = 420, height = 340)
+    val png = mesh.withDefectColors(diagnosis).renderPng(camera, caption = "", title = null)
     val b64 = Base64.getEncoder().encodeToString(png)
     fun escape(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     val badgeColor = { s: MeshDefectSeverity ->
@@ -771,4 +780,56 @@ fun Box.showMeshDiagnosis(
         append("</div></div>")
     }
     display(channel, html)
+}
+
+/**
+ * A camera pointed at this mesh's worst defect, so the picture shows the thing the caption is about.
+ *
+ * The focus is the first open boundary loop's centroid, or failing that a non-manifold edge, or a
+ * pinch vertex; with none of those the plain three-quarter view comes back unchanged. Yaw and pitch
+ * are then the direction from the mesh's own centre out to that focus, so the defect faces the
+ * viewer rather than hiding round the back.
+ *
+ * Written because two captures during this feature's development showed a perfect-looking model and
+ * asserted nothing about it — once a non-manifold fin on the far side of a sphere, once a hole. A
+ * defect visualisation whose default view can omit the defect is a visualisation you cannot trust,
+ * and "the reader will rotate it" is not true of a PNG in a document.
+ *
+ * @param diagnosis reuse one you already built.
+ * @param width output width in pixels.
+ * @param height output height in pixels.
+ */
+fun TriMesh.defectFacingView(
+    diagnosis: MeshDiagnosis = diagnose(),
+    width: Int = 420,
+    height: Int = 340,
+): MeshView {
+    val plain = MeshView(width = width, height = height)
+    if (vertexCount == 0) return plain
+
+    val focus: Vec3 = when {
+        diagnosis.boundaryLoops.isNotEmpty() -> {
+            val ring = diagnosis.boundaryLoops.first().vertices
+            var cx = 0f; var cy = 0f; var cz = 0f
+            for (v in ring) { cx += x(v); cy += y(v); cz += z(v) }
+            Vec3(cx / ring.size, cy / ring.size, cz / ring.size)
+        }
+        diagnosis.nonManifoldEdges.isNotEmpty() -> {
+            val (u, v, _) = diagnosis.nonManifoldEdges.first()
+            Vec3((x(u) + x(v)) / 2f, (y(u) + y(v)) / 2f, (z(u) + z(v)) / 2f)
+        }
+        diagnosis.nonManifoldVertices.isNotEmpty() -> position(diagnosis.nonManifoldVertices.first())
+        else -> return plain
+    }
+
+    val b = boundsArray()
+    val dx = focus.x - (b[0] + b[3]) / 2.0
+    val dy = focus.y - (b[1] + b[4]) / 2.0
+    val dz = focus.z - (b[2] + b[5]) / 2.0
+    val len = kotlin.math.sqrt(dx * dx + dy * dy + dz * dz)
+    if (len < 1e-9) return plain
+    return plain.copy(
+        yawDegrees = Math.toDegrees(kotlin.math.atan2(dx, dz)),
+        pitchDegrees = Math.toDegrees(kotlin.math.asin((dy / len).coerceIn(-1.0, 1.0))),
+    )
 }

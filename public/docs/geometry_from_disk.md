@@ -420,6 +420,142 @@ An inside-out open mesh really is *invisible*, not dark: a flipped 128-triangle 
 **zero** non-background pixels, with all 128 triangles reported as culled. Both halves of that are
 asserted, along with the empty-parse behaviour above.
 
+## From a file on disk to a solid you can cut
+
+The table above is the manual version. `mesh_repair.kt` is the automatic one, and it exists because
+the step after "I loaded a mesh" is usually "I want to boolean it", and
+[`toSolid()`](manifold.md) refuses anything that is not already closed.
+
+Two calls. `diagnose()` says *why*; `repairToSolid()` fixes what it can and tells you what it could
+not.
+
+```kotlin
+val mesh = meshFromAnyFile("scan.glb")
+println(mesh.diagnose().report())          // why, worst first
+val fixed = mesh.repairToSolid()
+println(fixed.report())                    // what was done, and what was not
+if (fixed.isSolid) display(fixed.mesh.toSolid() - drill)
+```
+
+### The vocabulary, and which of it actually matters
+
+Every severity below was established by damaging a known-good mesh in exactly one named way and
+asking Manifold whether it accepted the result. The answers are not the ones folklore predicts.
+
+| defect | severity | what it means |
+|---|---|---|
+| `NON_FINITE_POSITION` | **blocking** | a `NaN` or infinite coordinate |
+| `UNWELDED_VERTICES` | **blocking** | coincident vertices with different indices — until they merge, every seam reads as a hole |
+| `DUPLICATE_FACE` | **blocking** | two triangles with the same corners; each extra copy makes its three edges non-manifold |
+| `NON_MANIFOLD_EDGE` | **blocking** | an edge with three or more faces |
+| `OPEN_BOUNDARY` | **blocking** | a hole |
+| `UNWALKABLE_BOUNDARY` | **blocking** | boundary edges in no closed ring |
+| `DEGENERATE_FACE` | suspicious | zero-area triangles — **Manifold accepts these** |
+| `NON_MANIFOLD_VERTEX` | suspicious | a pinch point — **Manifold accepts these** |
+| `INVERTED_ORIENTATION` | suspicious | closed but wound inward — **Manifold accepts this** |
+| `MULTIPLE_COMPONENTS` | informational | disjoint pieces — **Manifold accepts these and sums the volumes** |
+| `UNREFERENCED_VERTEX` | informational | vertices no triangle uses |
+
+The three "Manifold accepts this" rows are the reason there is a *suspicious* severity at all rather
+than a pass/fail. The dangerous one is `INVERTED_ORIENTATION`: an inside-out closed mesh is a
+perfectly legal manifold, and Manifold hands back a **negative volume**. Nothing throws. The boolean
+you do next quietly computes the complement of what you meant. A checker that only answered
+"valid / not valid" could not tell you that.
+
+`UNWALKABLE_BOUNDARY` deserves a note, because the first thing it usually means is not the exotic
+thing. Tracing a boundary into a ring follows directed half-edges, so **inconsistent winding breaks
+the trace** and a perfectly ordinary hole reports as unwalkable. Run `fixWinding()` and diagnose
+again before believing the exotic reading (two holes meeting at one vertex).
+
+### What the repairs do, and what they do not fix
+
+`repairToSolid()` runs these in this order, and the order is causal rather than a matter of taste —
+each step exists because the next would give a wrong answer without it.
+
+| step | fixes | does **not** fix |
+|---|---|---|
+| `weld` | unwelded seams, STL-style unshared vertices | anything, until it has run: hole and component counts are meaningless before it |
+| `removeDegenerateTriangles` | zero-area faces | — |
+| `removeDuplicateFaces` | duplicated faces; a back-to-back pair cancels to nothing | — |
+| `removeNonManifoldFins` | dangling flaps (a non-manifold edge **and** a boundary edge on the same triangle) | two closed sheets meeting on an edge — that needs a modelling decision, so it is left alone and reported |
+| `fixWinding` | inconsistent orientation | — |
+| `fillHoles` | open boundary loops | a non-planar or self-intersecting rim gets a cap it flags as suspect |
+| `fixWinding` again | inside-out components | — |
+
+The second `fixWinding` is not redundant. Its outward-facing stage only flips a component that is
+*closed*, because "outward" is undefined for an open sheet — so before the caps exist, every holed
+component is skipped. Running it again afterwards is what stops a repaired mesh coming back inside
+out with a negative volume.
+
+**Hole filling is the part to be suspicious of.** Each ring is reversed (a cap must walk its boundary
+edges the opposite way to the surface), given a Newell normal, projected into that plane and
+ear-clipped; if ear clipping stalls, a centroid fan closes it anyway. Two failure modes, both
+reported rather than hidden:
+
+- **a non-planar rim** gets a flat cap over a wavy hole. The mesh is a valid solid; the *volume is
+  wrong*. `BoundaryLoopInfo.planarity` measures the deviation against the loop's own diameter before
+  the fill happens, so the warning is available in advance.
+- **a self-intersecting rim** is what makes ear clipping stall, and the fan that closes it can pass
+  through itself.
+
+A ring that repeats a vertex is neither: it is a figure-eight, two holes pinched together, and
+capping it as one polygon *creates* a non-manifold edge — the repair would make the mesh worse. Those
+are split at the repeats first, so each real hole gets its own cap.
+
+### How much of this was already there
+
+Honest accounting, because `repaired()` (weld → degenerate → unused → winding) has shipped in
+`mesh_topology.kt` for a while and is not a straw man. Against a table of 22 meshes broken in named
+ways, of which **16 are rejected by Manifold as-is** (the other six are damaged inputs Manifold
+accepts unchanged, and counting them would inflate both numbers):
+
+| | fixes |
+|---|---|
+| the pre-existing `repaired()` | **6 of 16** — every unwelded-seam and every inconsistent-winding case |
+| `repairToSolid()` | **14 of 16** |
+
+The new code is responsible for exactly two families: open boundaries, and non-manifold edges from
+duplicated faces or dangling fins. Two rows stay broken on purpose and assert that the failure is
+*reported*: a `NaN` position (refused outright, because repairing around it would silently delete the
+affected triangles and cap the gap), and two closed tetrahedra sharing a face.
+
+### On the one real asset
+
+`ToyCar.glb` — 77,429 vertices, 108,936 triangles, 2,197 components, 42,104 boundary edges in 2,782
+traced loops — **repairs to a valid solid you can boolean**. 21,047 vertices welded, 84 holes closed
+with 3,668 triangles.
+
+And the volume it then reports is `3.16e-5`, which is a number rather than an answer. Nine of those
+84 caps are flagged suspect, one of them a 335-edge centroid fan — a lid the size of a body panel.
+`result.suspectFills` is the list to look at before trusting any measurement, and on a multi-part
+export of this size a repair that flagged *nothing* would mean the flagging was broken, not that the
+model was clean.
+
+### Seeing it
+
+`Box.showMeshDiagnosis(mesh)` puts the mesh — painted by defect — beside the ordered list of what is
+wrong. `TriMesh.defectFLines()` gives the same information as drawable lines to lay over your own
+drawing: red for boundary loops, orange for non-manifold edges, magenta for pinched figure-eight
+loops, yellow (opt-in) for winding disagreements. `TriMesh.withDefectColors()` is the per-vertex
+colouring the card renders, if you want it in your own picture.
+
+The colouring is asserted on the raster rather than on the call returning: a clean cube paints 0 red
+pixels and one with a face removed paints 3,345; a clean icosphere paints 0 orange and one with a
+non-manifold fin paints 2,579.
+
+`showMeshDiagnosis` **points the camera at the worst defect** unless you pass a view, and that is not
+a nicety. Two captures taken while this was being built showed a flawless-looking model and asserted
+nothing about it — once a non-manifold fin on the far side of a sphere, once a hole. A card captioned
+"4 faces removed" over a picture of an unblemished sphere argues that nothing is wrong.
+`TriMesh.defectFacingView()` is that camera, if you want it for your own render.
+
+### Open this to see it
+
+`public/docs/assets/mesh_repair_demo/` — two boxes: one damages a sphere and shows the diagnosis
+card, the other repairs it, prints what was done, and cuts the result. Both run with no files and no
+network, and both import `afield.stdlib.diagnose` / `repairToSolid`, so if they compile the Field you
+are running has this code.
+
 ## What it costs
 
 Reading a mesh off disk is cheap enough to do in a live box on every re-run. Measured on an M-series
