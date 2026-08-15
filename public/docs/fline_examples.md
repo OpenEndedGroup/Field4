@@ -2639,6 +2639,132 @@ val endDirs = listOf(
 lines(endDirs + listOf(f), w = 420.0, h = 260.0, fitToSize = true)
 ```
 
+
+### Hyperbezier (curvature-controlled stand-in for a cubic)
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.hyperbezierTo(
+    control1: Vec3,
+    control2: Vec3,
+    endPoint: Vec3,
+    tolerance: Number = 1e-4,
+    maxSegments: Int = 16,
+    cornerBias: Number = 1.0,
+    armResponse: Number = 2.0
+): FLine
+
+fun FLine.byHyperbezierTo(control1: Vec3, control2: Vec3, endPoint: Vec3, ...): FLine
+
+fun hyperbezierBetween(p0: Vec3, control1: Vec3, control2: Vec3, p3: Vec3, ...): FLine
+
+fun hyperbezierThrough(
+    points: List<Vec3>,
+    tension: Number = 1.0,
+    closed: Boolean = false,
+    ...
+): FLine
+
+fun fitHyperbezierCubics(p0: Vec3, control1: Vec3, control2: Vec3, p3: Vec3, ...): HyperbezierFit
+
+fun circleArm(angle: Double): Double
+```
+
+`hyperbezierTo` takes exactly the four points `cubicTo` takes — a start, two control points, an end — and draws a *different* curve through that polygon: a [hyperbezier](https://linebender.org/blog/hyperbezier/), whose curvature is a rational function of arc length rather than whatever a cubic's polynomial happens to give you. So it is a drop-in swap: change the call, keep the handles.
+
+It hands back several ordinary `CubicTo` nodes fitted to that curve, which means nothing downstream has to know about any of it — renderers, boolean ops, offsetting and hit-testing all keep working. The joins are G1 by construction, because every one of them uses the hyperbezier's own tangent.
+
+What makes the family worth having is how it behaves as the arms grow. `circleArm(theta)` is the arm length at which the curve is an *exact* circular arc — and an exact Euler spiral when the two tangent angles disagree. Push the arms out past that and a hyperbezier tightens towards a corner, where a cubic merely bulges.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/hyperbezier_arm_length_progression.png" embed=true}
+:::static
+
+// Six panels, reading left to right then top to bottom. The chord and the +/-45 degree
+// end tangents are held fixed; only the arm length changes, as a multiple of circleArm.
+val chord = 200.0
+val theta = Math.PI / 4
+val multiples = listOf(0.4, 0.7, 1.0, 1.4, 1.9, 2.4)
+
+val out = mutableListOf<FLine>()
+multiples.forEachIndexed { i, multiple ->
+    val arm = multiple * circleArm(theta)
+    val ox = (i % 3) * (chord + 55.0)
+    val oy = (i / 3) * 195.0
+    val p0 = vec(ox, oy, 0)
+    val p3 = vec(ox + chord, oy, 0)
+    // y grows downwards in the 2D outputs, so the arms lift by going negative.
+    val c1 = vec(ox + arm * chord * Math.cos(theta), oy - arm * chord * Math.sin(theta), 0)
+    val c2 = vec(ox + chord - arm * chord * Math.cos(theta), oy - arm * chord * Math.sin(theta), 0)
+
+    // the control polygon both curves are reading
+    out += fline {
+        moveTo(p0); lineTo(c1); lineTo(c2); lineTo(p3)
+        thickness = 1.0
+        color = vec(1.0, 1.0, 1.0, 0.18)
+    }
+    // the ordinary cubic through it
+    out += fline {
+        moveTo(p0); cubicTo(c1, c2, p3)
+        thickness = 6.0
+        color = vec(1.0, 1.0, 1.0, 0.22)
+    }
+    // the hyperbezier, as fitted cubics
+    out += fline {
+        moveTo(p0); hyperbezierTo(c1, c2, p3)
+        thickness = 2.0
+        color = vec(0.35, 0.66, 1.0, 1.0)
+    }
+}
+
+lines(out, w = 700.0, h = 320.0, fitToSize = true)
+```
+
+The thick pale line is the plain cubic, the blue one is the hyperbezier, and the faint outline is the control polygon they are both reading. The first two panels have short arms and the curves are nearly flat and nearly identical. The third is `circleArm` exactly: here the hyperbezier is a true circular arc, and the cubic — which is only ever an approximation to one — is close enough to hide underneath it. The bottom row is where they part company. At 1.4x, 1.9x and 2.4x the circle arm the cubic keeps ballooning out towards the control points, while the hyperbezier pulls into a corner.
+
+The one thing the family cannot do is a cubic's *second* inflection, so a polygon that crosses itself in an S-of-an-S is not representable. Everything else about the shape is fair game.
+
+Use `fitHyperbezierCubics` directly when you want the numbers rather than the line:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val fit = fitHyperbezierCubics(p0, c1, c2, p3, tolerance = 1e-4)
+fit.segmentCount   // how many cubics it took
+fit.maxError       // worst distance from the true curve, in world units
+fit.toleranceMet   // false if maxSegments ran out first
+fit.solved         // false if the solver stalled; cubics is then your input, unchanged
+fit.cubics         // the (control1, control2, end) triples
+```
+
+`tolerance` is a fraction of the chord length, so a fit does not change character with scale, and `maxSegments` is spent on whichever piece is currently worst — which matters for short-armed shapes, where all the error lives in a tight hook at each end and none of it in the middle.
+
+`hyperbezierThrough` runs the same machinery over a whole point list, estimating tangents Catmull-Rom style and fitting each span:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/hyperbezier_spline_through_points.png" embed=true}
+:::static
+
+val pts = listOf(
+    vec(40, 70, 0), vec(150, 200, 0), vec(260, 80, 0), vec(370, 210, 0), vec(470, 60, 0)
+)
+
+val loose = hyperbezierThrough(pts, tension = 1.0).apply {
+    thickness = 2.5
+    color = vec(0.35, 0.66, 1.0, 1.0)
+}
+val tight = hyperbezierThrough(pts, tension = 0.45).apply {
+    thickness = 2.0
+    color = vec(1.0, 0.62, 0.25, 0.9)
+}
+
+val dots = pts.map { p ->
+    rect(p.x - 3.0, p.y - 3.0, 6.0, 6.0)
+        .toFLine(color = vec(1.0, 1.0, 1.0, 0.75), filled = true, stroked = false)
+}
+
+lines(dots + listOf(loose, tight), w = 520.0, h = 260.0, fitToSize = true)
+```
+
+Blue is the default `tension = 1.0`; orange is `tension = 0.45`, which shortens the estimated arms and pulls the curve tighter to the polyline. Raising tension past `circleArm` territory is what turns the corners sharp rather than round — the same dial as the panels above, applied to every span at once.
+
 ## Boolean ops (2D)
 
 ```diffstatic {data-lang=kotlin}
