@@ -16,6 +16,10 @@ export machinery as anything you drew by hand. Scalar responses colour-map throu
 [`Colormaps`](rectsl_examples.md) tables RectSL uses. And `Img` implements `ToHTML`, so evaluating
 one in a box shows the picture, not `Img@3f1a2b`.
 
+Everything here is arithmetic you could have written out by hand. For the two questions you cannot —
+how far away is this, and what is it a picture *of* — see [depth and CLIP](onnx.md), which runs
+neural models over the same RGBA bytes an `Img` converts to in a dozen lines.
+
 ## The value type
 
 ```diffstatic {data-lang=kotlin}
