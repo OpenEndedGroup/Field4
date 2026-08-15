@@ -1,4 +1,5 @@
 import afield.four.Renderer
+import afield.four.util.Window
 import afield.four.buffers.FrameBufferGroup
 import arrow.core.right
 import arrow.core.left
