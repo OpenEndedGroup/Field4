@@ -182,6 +182,11 @@ const titleForCategory = (category) => {
     ai: "AI",
     "audio ai": "Audio AI",
     alife: "ALife",
+    // `afield/onnx` declares "Machine learning" with a lowercase l, which the fallback would
+    // respell "Machine Learning". The declared spelling is the authority — see
+    // FieldSuggestPresentationTest's `intentionalAliases`, whose whole point is that a category
+    // renders its own name unless someone deliberately says two names share a header.
+    "machine learning": "Machine learning",
     import: "Imports",
     imports: "Imports",
     type: "Types",
