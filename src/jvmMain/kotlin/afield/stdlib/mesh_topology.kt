@@ -358,6 +358,14 @@ fun TriMesh.weld(tolerance: Double = 1e-6): TriMesh {
     for (v in 0 until vertexCount) {
         val px = x(v); val py = y(v); val pz = z(v)
         var found = -1
+        if (!px.isFinite() || !py.isFinite() || !pz.isFinite()) {
+            // A NaN position has no grid cell — `floor(NaN).roundToLong()` throws "Cannot round NaN
+            // value", which is a spectacularly unhelpful thing for a mesh cleanup to die of. Keep the
+            // vertex as its own singleton instead and let TriMesh.diagnose report the real problem.
+            remap[v] = keptOriginal.size
+            keptOriginal.add(v)
+            continue
+        }
         if (cell <= 0.0) {
             val k = key(px.toRawBits().toLong(), py.toRawBits().toLong(), pz.toRawBits().toLong())
             grid[k]?.firstOrNull { o -> x(o) == px && y(o) == py && z(o) == pz }?.let { found = it }

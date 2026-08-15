@@ -174,9 +174,21 @@ class BoundaryLoopInfo(
     /** True when the loop is flat enough that a planar fill is trustworthy. */
     val isPlanar: Boolean get() = planarity <= 0.02
 
+    /**
+     * True when the ring visits every vertex once.
+     *
+     * A ring that repeats a vertex is a figure-eight: two holes meeting at a pinch point, walked as
+     * one loop because the boundary half-edges happen to chain that way. Measured on a real case —
+     * six faces deleted from an icosphere gives the ring `[1, 3, 2, 9, 3, 21]`. It is not a hole and
+     * must not be capped as one; a fan over it necessarily produces a non-manifold edge.
+     * [TriMesh.fillHoles] splits it at the repeats instead.
+     */
+    val isSimple: Boolean get() = vertices.toSet().size == vertices.size
+
     override fun toString(): String =
-        "loop(%d edges, perimeter %.4g, planarity %.3f%s)".format(
-            edgeCount, perimeter, planarity, if (isPlanar) "" else " NON-PLANAR",
+        "loop(%d edges, perimeter %.4g, planarity %.3f%s%s)".format(
+            edgeCount, perimeter, planarity,
+            if (isSimple) "" else " FIGURE-EIGHT", if (isPlanar) "" else " NON-PLANAR",
         )
 }
 
@@ -378,17 +390,24 @@ class MeshDiagnosis(val mesh: TriMesh, val weldTolerance: Double = 1e-6) {
             "${nonManifoldVertices.size} vertices are pinch points (Manifold tolerates these on their own)",
             "no automatic repair — splitting a pinch point changes the shape, so it is a modelling decision.",
         ))
-        if (boundaryLoops.isNotEmpty()) add(MeshDefect(
-            MeshDefectKind.OPEN_BOUNDARY, MeshDefectSeverity.BLOCKING, boundaryLoops.size,
-            "${boundaryLoops.size} open loops, ${boundaryLoops.count { !it.isPlanar }} of them non-planar; " +
-                "edge counts ${boundaryLoops.take(8).map { it.edgeCount }}${if (boundaryLoops.size > 8) " …" else ""}",
-            "TriMesh.fillHoles() — flat holes fill cleanly; a non-planar loop gets a fan and may look wrong.",
+        // Reported on the boundary EDGE count, not the loop count, because the loop walk itself can
+        // fail — see [unwalkableBoundaryEdges]. A mesh with holes whose rings could not be traced
+        // still has holes, and a diagnosis that said "0 open loops" there would be actively misleading.
+        if (topology.boundaryEdges.isNotEmpty()) add(MeshDefect(
+            MeshDefectKind.OPEN_BOUNDARY, MeshDefectSeverity.BLOCKING, topology.boundaryEdges.size,
+            "${topology.boundaryEdges.size} boundary edges in ${boundaryLoops.size} traced loop(s)" +
+                (if (boundaryLoops.isEmpty()) "" else
+                    ", edge counts ${boundaryLoops.take(8).map { it.edgeCount }}${if (boundaryLoops.size > 8) " …" else ""}") +
+                (boundaryLoops.count { !it.isPlanar }.let { if (it == 0) "" else "; $it non-planar" }) +
+                (boundaryLoops.count { !it.isSimple }.let { if (it == 0) "" else "; $it figure-eight" }),
+            "TriMesh.fillHoles() — flat holes fill cleanly; a non-planar loop gets a flat cap over a wavy rim.",
         ))
         if (unwalkableBoundaryEdges > 0) add(MeshDefect(
             MeshDefectKind.UNWALKABLE_BOUNDARY, MeshDefectSeverity.BLOCKING, unwalkableBoundaryEdges,
-            "$unwalkableBoundaryEdges boundary edges are not part of any closed loop — two holes meeting " +
-                "at one vertex, so the ring walk cannot come home",
-            "no automatic repair: fillHoles() cannot see these. Split the pinch vertex by hand, or weld harder.",
+            "$unwalkableBoundaryEdges boundary edges are in no closed ring, so fillHoles() cannot see them",
+            "most often this is just inconsistent winding, which reverses some boundary half-edges and " +
+                "breaks the walk — run TriMesh.fixWinding() and diagnose again. If it survives that, two " +
+                "holes meet at one vertex and the pinch has to be split by hand.",
         ))
         if (inconsistentEdges.isNotEmpty()) add(MeshDefect(
             MeshDefectKind.INCONSISTENT_WINDING, MeshDefectSeverity.BLOCKING, inconsistentEdges.size,
@@ -668,7 +687,9 @@ class HoleFillResult(val mesh: TriMesh, val fills: List<HoleFillReport>) {
  * Close every open boundary loop with a triangulated cap.
  *
  * This is the step nothing in Field had, and it is what turns a scan or a badly exported CAD part
- * into something Manifold will accept. For each loop from [MeshTopology.boundaryLoops]:
+ * into something Manifold will accept. Each loop from [MeshTopology.boundaryLoops] is first split into
+ * the simple rings it is really made of ([decomposeRing] — a traced ring can be a figure-eight through
+ * a pinch vertex, and capping *that* as one polygon creates a non-manifold edge). Then, per ring:
  *
  *  1. the ring is reversed, because a cap must walk each boundary edge in the **opposite** direction
  *     to the surface triangle already on it — that is what makes the closed surface consistently
@@ -708,7 +729,8 @@ fun TriMesh.fillHoles(maxEdges: Int = 10_000): HoleFillResult {
     val extraIndices = mutableListOf<Int>()
     var nextVertex = vertexCount
 
-    for (ring in loops) {
+    // A traced ring may be a figure-eight through a pinch vertex; each simple piece is a real hole.
+    for (ring in loops.flatMap { decomposeRing(it) }) {
         val info = measureLoop(this, ring)
         if (ring.size > maxEdges) {
             reports.add(HoleFillReport(info, HoleFillMethod.SKIPPED_TOO_LARGE, 0,
@@ -753,6 +775,43 @@ fun TriMesh.fillHoles(maxEdges: Int = 10_000): HoleFillResult {
     // Attributes are dropped: a cap has no sensible uv or colour, and a half-populated array is worse
     // than none. Call withVertexNormals() after if the result is going to a renderer.
     return HoleFillResult(TriMesh(pos, idx), reports)
+}
+
+/**
+ * Split a traced boundary ring into the simple rings it is really made of.
+ *
+ * A ring that repeats a vertex is a figure-eight: two holes that touch at a pinch point, chained into
+ * one walk by [MeshTopology.boundaryLoops] because at that vertex there were two boundary edges to
+ * leave by. Capping it as a single polygon is not merely inaccurate — the fan crosses itself and
+ * produces a **non-manifold edge**, so the "repaired" mesh is worse than the broken one. Measured:
+ * deleting six faces from an icosphere gives `[1, 3, 2, 9, 3, 21]`, and fanning it added an edge with
+ * four incident faces.
+ *
+ * The split is the classic stack decomposition: walk the ring, and whenever a vertex is met that is
+ * already on the stack, pop everything back to it and emit that as a sub-ring. Every original boundary
+ * edge lands in exactly one sub-ring, in its original direction, so the caps still close the surface
+ * exactly once and no cap shares an *edge* with another. They do share the pinch **vertex**, which
+ * leaves a non-manifold vertex behind — and that is fine, because Manifold accepts those (measured;
+ * see the file overview).
+ */
+private fun decomposeRing(ring: List<Int>): List<List<Int>> {
+    if (ring.toSet().size == ring.size) return listOf(ring)
+    val out = mutableListOf<List<Int>>()
+    val stack = mutableListOf<Int>()
+    val positionOf = HashMap<Int, Int>()
+    for (v in ring) {
+        val seen = positionOf[v]
+        if (seen != null) {
+            val sub = stack.subList(seen, stack.size).toList()
+            for (k in seen until stack.size) positionOf.remove(stack[k])
+            while (stack.size > seen) stack.removeAt(stack.size - 1)
+            if (sub.size >= 3) out.add(sub)
+        }
+        positionOf[v] = stack.size
+        stack.add(v)
+    }
+    if (stack.size >= 3) out.add(stack.toList())
+    return out
 }
 
 /**
@@ -962,6 +1021,20 @@ fun TriMesh.repairToSolid(
     val before = MeshDiagnosis(this, weldTolerance)
     val steps = mutableListOf<RepairStep>()
     var m = this
+
+    // A NaN position is refused rather than repaired, and the distinction is deliberate. The pipeline
+    // *could* limp on: removeDegenerateTriangles drops the affected faces (a NaN area fails every
+    // comparison), fillHoles caps the gap, and a valid-looking solid comes out. But that solid is
+    // missing whatever the broken triangles described, with no way to tell how much, so the only
+    // honest answer is to stop and name the upstream bug.
+    if (before.nonFiniteVertices.isNotEmpty()) {
+        steps.add(RepairStep(
+            "refused", 0,
+            "${before.nonFiniteVertices.size} vertices are NaN or infinite — stopping. Repairing around " +
+                "them would silently delete the triangles that use them and cap the gap.",
+        ))
+        return MeshRepairResult(this, this, steps, before, before, emptyList())
+    }
 
     fun step(name: String, detail: (TriMesh, TriMesh) -> Pair<Int, String>, op: (TriMesh) -> TriMesh) {
         val next = op(m)
