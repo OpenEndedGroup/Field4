@@ -730,12 +730,12 @@ Walkthrough: [Render Field music, then analyse it](audio_render_analysis.md).
 
 **onnx_webcam_live** — One webcam frame through two ONNX models in one box: Depth Anything V2 Small at
 266x266 (~120ms on a CPU execution provider) and CLIP ViT-B/32's vision tower (~45ms), displayed as the
-frame beside its colour-mapped depth map with a zero-shot ranking over four prompts. The interesting
-part is where the *text* tower runs: each `clip("...")` in the box body is encoded at **macro-expansion
-time** and baked into the box's `attic` as a base64 512-float constant, so the 242MB text encoder never
-loads when the box runs, on this run or in any later session. Because the transcript ships those four
-constants, `macro_clip` finds them already present and this box compiles in CI without touching the
-network. Needs a camera, which the build does not have, so it is compiled and never evaluated here.
+frame beside its colour-mapped depth map with a zero-shot ranking over four text prompts. The prompts are
+encoded once into a `val`, because a fixed prompt does not change between frames; the depth map is
+normalised against an exponential moving average of its own range, since Depth Anything emits *inverse
+relative* depth in arbitrary units whose range moves with the content. Running it downloads ~600MB of
+encoders on first use. Needs a camera, which the build does not have, so it is compiled and never
+evaluated here.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/onnx_webcam_live/metadata.edn)
 
 ## visionOS device scenes

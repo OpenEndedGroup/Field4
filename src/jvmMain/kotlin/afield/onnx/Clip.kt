@@ -25,13 +25,12 @@ import kotlin.math.sqrt
  *  1. **Zero-shot classification with no training.** Encode a handful of prompts once, cosine them
  *     against the live frame, take the best. See [ClipVector.classify].
  *  2. **Identity by similarity.** A stored vector plus a threshold is a recogniser.
- *  3. **A knob whose units are meaning.** `clip("storm") - clip("calm")` is a *direction*, and
+ *  3. **A knob whose units are meaning.** `clipEncode("storm") - clipEncode("calm")` is a *direction*, and
  *     projecting the current frame onto it is a continuous parameter that tracks a semantic axis
  *     rather than a pixel statistic. See [ClipVector.axisTo].
  *
- * And because the text tower only ever sees string literals in practice, `clip("storm")` is lifted to
- * **macro-expansion time** and baked into the box's attic as a constant — see `macro_clip`. The 242MB
- * text encoder never loads at frame time, or indeed ever again after the first expansion.
+ * Encode prompts once, into a `val`, and the text tower is simply not in the per-frame path — there is
+ * nothing cleverer to do about it than that.
  *
  * ## Cosine values are not comparable across modalities
  *
@@ -175,7 +174,7 @@ class ClipVector(val values: FloatArray) {
      * The unit direction from this towards [other] — a semantic axis.
      *
      * ```kotlin
-     * val weather = clip("calm") axisTo clip("storm")
+     * val weather = clipEncode("calm") axisTo clipEncode("storm")
      * val howStormy = frame.project(weather)     // a continuous knob, in units of meaning
      * ```
      */
@@ -192,7 +191,7 @@ class ClipVector(val values: FloatArray) {
     /**
      * Softmax over labelled candidates — the correct way to ask "which of these?".
      *
-     * @param candidates label to embedding; typically prompts baked with `clip("…")`
+     * @param candidates label to embedding; typically prompts encoded once with [clipEncode]
      * @param logitScale see [Clip.LOGIT_SCALE]; changes sharpness, never order
      * @return probabilities summing to 1, ordered most likely first
      */
@@ -216,9 +215,8 @@ class ClipVector(val values: FloatArray) {
     /**
      * Little-endian fp32, base64 encoded — 2732 characters.
      *
-     * This is what `macro_clip` bakes into a box's attic. Compact enough to sit in source, exact enough
-     * to round-trip without loss, and self-contained so a document carries its own constants rather
-     * than depending on a sidecar file that can go missing.
+     * For persisting an embedding — a stored identity to cosine against later, a prompt a document
+     * wants to carry rather than recompute. Exact: fp32 round-trips without loss.
      */
     fun toBase64(): String {
         val buffer = ByteBuffer.allocate(Clip.DIMENSION * Float.SIZE_BYTES).order(ByteOrder.LITTLE_ENDIAN)
@@ -254,9 +252,8 @@ class ClipVector(val values: FloatArray) {
 /**
  * The text tower.
  *
- * Almost always reached through the `clip("…")` macro rather than directly, since a prompt is a literal
- * in source and there is no reason to pay for it at runtime. Call [encode] directly when the string is
- * genuinely dynamic — read from a control, or arriving over OSC.
+ * Reached through [clipEncode] in box code. Encode a prompt once and keep the vector; the cost is the
+ * model load, not the encode.
  *
  * The tokenizer and session are process-global and never closed, for the same reason [OnnxRuntime]
  * caches sessions: this is a 242MB model whose whole cost is loading.
@@ -320,7 +317,7 @@ object ClipText {
  * ```kotlin
  * val clipImage = ClipImage()
  * val frame = clipImage.encode(webcamRgba, 640, 480)
- * frame.classify(mapOf("indoors" to clip("indoors"), "outdoors" to clip("outdoors")))
+ * frame.classify(mapOf("indoors" to clipEncode("indoors"), "outdoors" to clipEncode("outdoors")))
  * ```
  *
  * Buffers are allocated once and refilled, like [DepthAnything], so this is safe to call per frame if
@@ -454,9 +451,10 @@ class ClipImage(
 }
 
 /**
- * Encode a prompt at runtime.
+ * Encode a prompt to a unit-length 512-vector.
  *
- * Prefer the `clip("…")` macro, which does this once at expansion time and bakes the result. This
- * exists for prompts that are genuinely not known until the box runs.
+ * First call in a session loads the 242MB text encoder; after that each prompt is a few milliseconds.
+ * Hoist it into a `val` rather than calling it per frame — not because the encode is expensive, but
+ * because nothing about a fixed prompt changes between frames.
  */
 fun clipEncode(text: String): ClipVector = ClipText.encode(text)

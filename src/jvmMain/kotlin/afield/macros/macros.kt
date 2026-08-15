@@ -328,39 +328,6 @@ object MacroRegistry {
     val callRewrite = mutableMapOf<String, (Box, String, List<String>) -> Insert?>()
     val callRewriteWithContext = mutableMapOf<String, (Box, String, List<String>, ContainingFunction?) -> Insert?>()
 
-    private val previewFlag = ThreadLocal.withInitial { false }
-
-    /**
-     * True while this thread is expanding macros only to *show* the result, not to run it.
-     *
-     * `applyMacros(previewOnly = true)` drives the editor's "what does this expand to" display, which
-     * fires as the caret moves — so it can run many times a second, on half-written code. Its callers
-     * already suppress the [Insert] side effects (preamble and import insertion), but a macro that
-     * reaches outside that return value — writing the box attic, calling a model, downloading weights —
-     * has to suppress itself, and this is how it knows to.
-     *
-     * A macro that is pure with respect to everything but its return value can ignore this.
-     *
-     * @see withPreviewExpansion
-     */
-    val isPreviewExpansion: Boolean get() = previewFlag.get()
-
-    /**
-     * Run [body] with [isPreviewExpansion] set, restoring the previous value afterwards.
-     *
-     * Nests correctly, which matters because [afield.macros.macro_ai] re-enters `applyMacros` to build
-     * its own context.
-     */
-    fun <T> withPreviewExpansion(preview: Boolean, body: () -> T): T {
-        val prior = previewFlag.get()
-        previewFlag.set(preview)
-        try {
-            return body()
-        } finally {
-            previewFlag.set(prior)
-        }
-    }
-
     fun rewrite(box: Box, identifier: String, arguments: List<String>, containingFunction: ContainingFunction? = null): Insert? {
         val a = callRewriteWithContext.get(identifier)?.invoke(box, identifier, arguments, containingFunction)
             ?: callRewrite.get(identifier)?.invoke(box, identifier, arguments)

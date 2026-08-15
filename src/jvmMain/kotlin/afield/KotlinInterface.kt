@@ -339,10 +339,7 @@ class KotlinInterface(
         return runBlocking { complete(s, cursor) }
     }
 
-    override fun applyMacros(box: Box, s: String, skipMacros: Set<String>, previewOnly: Boolean): String =
-        MacroRegistry.withPreviewExpansion(previewOnly) { applyMacrosInner(box, s, skipMacros, previewOnly) }
-
-    private fun applyMacrosInner(box: Box, s: String, skipMacros: Set<String>, previewOnly: Boolean): String {
+    override fun applyMacros(box: Box, s: String, skipMacros: Set<String>, previewOnly: Boolean): String {
         var rewritten = s
         val needsRerun = false
         lblock("debug,kotlin", "rewriting AST analysis") {

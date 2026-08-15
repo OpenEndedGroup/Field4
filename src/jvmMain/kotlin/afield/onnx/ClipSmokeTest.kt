@@ -1,19 +1,9 @@
 package afield.onnx
 
-import afield.Box
-import afield.KotlinInterface2
-import afield.attic
-import afield.macros.atticHasClipBlock
-import afield.macros.clipValName
-import afield.macros.standardExecutionPractice
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.abs
 import kotlin.math.min
-import kotlin.script.experimental.api.KotlinType
-import kotlin.script.experimental.api.ResultValue
 
 /*
 FIELD_TEST
@@ -30,10 +20,8 @@ expect:
 /**
  * CLIP end to end, including the compile-time baking that is the point of it.
  *
- * Two halves. The first is a numerical contract with two third-party ONNX graphs and a BPE vocabulary,
- * checked against reference values produced independently under Python's `onnxruntime` and `tokenizers`
- * on the same weights. The second drives a real [KotlinInterface2] to prove that `clip("…")` actually
- * disappears from the source it was written in and reappears as a constant in the box attic.
+ * A numerical contract with two third-party ONNX graphs and a BPE vocabulary, checked against reference
+ * values produced independently under Python's `onnxruntime` and `tokenizers` on the same weights.
  *
  * What each assertion is defending:
  *
@@ -48,11 +36,8 @@ expect:
  *  * **The modality gap is real and is not a bug.** Image-text cosine sits near 0.21 while text-text sits
  *    near 0.88; the test asserts that ordering survives, because ordering is the only thing that carries
  *    information.
- *  * **Baking is cached.** A second expansion of the same prompt must not touch the model, which is the
- *    entire performance claim.
- *  * **Preview expansion never bakes.** Otherwise a caret moving over half-typed source would download
- *    242MB and fill the attic with prefixes of a word.
  *
+
  * `network` is a real tag: the first run fetches ~600MB of encoders plus a 2MB vocabulary.
  */
 object ClipSmokeTest {
@@ -86,7 +71,6 @@ object ClipSmokeTest {
 
         testVectorAlgebra()
         testBase64RoundTrip()
-        testValNameIsStableAndModelScoped()
 
         println("CLIP smoke: ensuring encoders (text=${Clip.TEXT_MODEL.isPresent}, vision=${Clip.VISION_MODEL.isPresent})")
         Clip.TOKENIZER.ensureLocal()
@@ -98,10 +82,6 @@ object ClipSmokeTest {
         testSemanticAxis(texts)
         testImageEmbeddingAndModalityGap(texts)
         testClassifyIsSoftmaxOverCandidates(texts)
-        testMacroBakesAndCaches()
-        testMacroCompilesAndEvaluates()
-        testPreviewExpansionDoesNotBake()
-        testMacroRejectsNonLiteral()
 
         if (failures > 0) {
             System.err.println("CLIP smoke: $failures check(s) failed")
@@ -153,17 +133,6 @@ object ClipSmokeTest {
         check("truncated base64 is rejected", runCatching { ClipVector.fromBase64("AAAA") }.isFailure) {
             "a 3-byte payload was accepted as a 512-vector"
         }
-    }
-
-    private fun testValNameIsStableAndModelScoped() {
-        val a = clipValName("model-x", "storm")
-        val b = clipValName("model-x", "storm")
-        val c = clipValName("model-x", "calm")
-        val d = clipValName("model-y", "storm")
-        check("the same model and prompt give the same name", a == b) { "$a vs $b" }
-        check("a different prompt gives a different name", a != c) { "both $a" }
-        check("a different model gives a different name", a != d) { "both $a" }
-        check("the name is a legal Kotlin identifier", Regex("""^__clip_[0-9a-f]{12}$""").matches(a)) { a }
     }
 
     // -- Against the Python oracle --
@@ -277,163 +246,6 @@ object ClipSmokeTest {
         }
         check("classify of nothing is empty", image.classify(emptyMap()).isEmpty()) { "expected empty" }
         println("  classify: ${ranked.joinToString { "${it.first}=${"%.4f".format(it.second)}" }}")
-    }
-
-    // -- The macro, end to end through a real REPL --
-
-    /**
-     * The claim that matters: `clip("storm")` leaves the source, and a second pass costs nothing.
-     *
-     * Cache-hit is proven by wall time rather than a counter, because the thing being asserted is that
-     * no session and no tokenizer were touched — and a hit that still loaded the model would pass a
-     * counter-based check while failing the actual promise. The bound is deliberately loose (50ms
-     * against a ≈5ms encode plus session lookup) so it cannot flake on a loaded machine.
-     */
-    private fun testMacroBakesAndCaches() = runBlocking {
-        val ki = KotlinInterface2(filePrefix = "clip-macro")
-        val box = Box("clip-macro")
-        val expected = clipValName(Clip.TEXT_MODEL.id, "storm")
-
-        val out = ki.applyMacros(box, """clip("storm")""")
-        check("the call site becomes the attic val", out.trim() == expected) { "expanded to `${out.trim()}`" }
-        check("the prompt literal is gone from the expansion", "\"storm\"" !in out) { out }
-
-        val attic = box.attic
-        check("the attic carries a keyed block", atticHasClipBlock(attic, expected)) { attic.take(200) }
-        check("the attic declares the val", "val $expected" in attic) { attic.take(200) }
-        check("the attic records the prompt for readers", "prompt: storm" in attic) { attic.take(200) }
-        check("the attic records the model", "model: ${Clip.TEXT_MODEL.id}" in attic) { attic.take(200) }
-
-        // The baked constant must equal what the encoder actually produces.
-        val bakedBase64 = Regex("""fromBase64\("([^"]+)"\)""").find(attic)?.groupValues?.get(1)
-        check("a base64 payload was written", bakedBase64 != null) { "no fromBase64 in attic" }
-        if (bakedBase64 != null) {
-            val baked = ClipVector.fromBase64(bakedBase64)
-            near("the baked vector is unit length", baked.norm, 1f)
-            near("the baked vector equals a fresh encode", baked.cosine(ClipText.encode("storm")), 1f)
-            for (i in REF_STORM_FIRST4.indices) {
-                near("baked component $i matches Python", baked.values[i], REF_STORM_FIRST4[i])
-            }
-        }
-
-        val atticAfterFirst = box.attic
-        val started = System.nanoTime()
-        val second = ki.applyMacros(box, """clip("storm")""")
-        val elapsedMs = (System.nanoTime() - started) / 1_000_000
-        check("the second expansion is identical", second.trim() == expected) { "got `${second.trim()}`" }
-        check("the attic is untouched on a cache hit", box.attic == atticAfterFirst) { "attic changed" }
-        check("a cache hit is fast (no model, no tokenizer)", elapsedMs < 50) { "took ${elapsedMs}ms" }
-
-        // A different prompt appends rather than replacing, so several constants coexist.
-        ki.applyMacros(box, """clip("calm")""")
-        val calmName = clipValName(Clip.TEXT_MODEL.id, "calm")
-        check("a second prompt is appended", atticHasClipBlock(box.attic, calmName)) { box.attic.take(300) }
-        check("the first prompt survives", atticHasClipBlock(box.attic, expected)) { box.attic.take(300) }
-
-        // Two prompts in one expression both resolve.
-        val both = ki.applyMacros(box, """clip("storm") to clip("calm")""")
-        check("both call sites resolve", expected in both && calmName in both) { both }
-        println("  macro: baked $expected, cache hit in ${elapsedMs}ms, attic ${box.attic.length} chars")
-    }
-
-    /** Preview expansion must never encode, download, or write the attic. */
-    private fun testPreviewExpansionDoesNotBake() = runBlocking {
-        val ki = KotlinInterface2(filePrefix = "clip-preview")
-        val box = Box("clip-preview")
-        // A prompt nothing has baked, deliberately looking like something half-typed.
-        val out = ki.applyMacros(box, """clip("sto")""", emptySet(), true)
-        check("preview leaves the attic empty", box.attic.isBlank()) { "attic became: ${box.attic.take(200)}" }
-        check("preview leaves the call as written", """clip("sto")""" in out) { "expanded to: $out" }
-
-        // But a prompt already in the attic still resolves in preview, so the display stays useful.
-        val name = clipValName(Clip.TEXT_MODEL.id, "storm")
-        box.setPropertyRaw(
-            "attic",
-            afield.macros.appendClipBlock("", name, Clip.TEXT_MODEL.id, "storm", ClipText.encode("storm").toBase64()),
-            doResync = false
-        )
-        val cached = ki.applyMacros(box, """clip("storm")""", emptySet(), true)
-        check("preview resolves an already-baked prompt", cached.trim() == name) { "got `${cached.trim()}`" }
-    }
-
-    /**
-     * The emitted attic source is real Kotlin, and the baked constant survives the REPL.
-     *
-     * Everything above proves the macro rewrites *text*. This proves the text **compiles**: the attic
-     * declaration evaluates, the rewritten body resolves the identifier it was given, and what comes back
-     * is a unit-length embedding. A macro that emitted subtly invalid source — a stray quote inside the
-     * base64, a wrong fully-qualified name, a `val` the REPL will not accept — passes every earlier
-     * assertion and fails here.
-     *
-     * The two `exec` calls are what [afield.macros.checkAtticAndExecute] and the following body execution
-     * do, run against the engine this test owns. `standardExecutionPractice(runSetupBlocks = true)` is
-     * *not* used, and this is the interesting part: that path reaches for `box.ki` — the box's own lazily
-     * created engine — whose startup is dispatched asynchronously and needs a pumping runloop that a
-     * headless `jvm-main` smoke does not have, so it simply hangs. The existing pattern-rewrite smoke
-     * sidesteps the same wall with `runSetupBlocks = false`. What is therefore *not* covered here is the
-     * `box.ki` plumbing between attic and body — long-standing infrastructure that `ai()` already depends
-     * on, and not something this macro can break.
-     */
-    private fun testMacroCompilesAndEvaluates() = runBlocking {
-        val ki = KotlinInterface2(
-            implicitReceivers = listOf(KotlinType(Box::class)),
-            filePrefix = "clip-exec"
-        )
-        val box = Box("clip-exec")
-        withTimeout(180_000) { ki.exec("1 + 1", implicits = listOf(box)) }
-
-        val expanded = withTimeout(180_000) { ki.applyMacros(box, """clip("storm").norm""") }
-        check("the body was rewritten to reference the constant", "clip(" !in expanded) { expanded }
-
-        var compileErr = ""
-        var evalErr = ""
-        var evalException: Throwable? = null
-        fun collect(): Triple<
-            (List<kotlin.script.experimental.api.ScriptDiagnostic>) -> Unit,
-            (List<kotlin.script.experimental.api.ScriptDiagnostic>) -> Unit,
-            (Throwable) -> Unit
-            > = Triple(
-            { ds -> compileErr += ds.joinToString { it.message } },
-            { ds -> evalErr += ds.joinToString { it.message } },
-            { t: Throwable -> evalException = t }
-        )
-
-        // 1. The attic, exactly as checkAtticAndExecute would run it.
-        val (onCompile, onEval, onThrow) = collect()
-        withTimeout(180_000) { ki.exec(box.attic, onCompile, onEval, onThrow, listOf(box)) }
-        check("the baked attic compiles", compileErr.isBlank()) { compileErr }
-        check("the baked attic evaluates", evalErr.isBlank() && evalException == null) {
-            "$evalErr / ${evalException?.message}"
-        }
-
-        // 2. The rewritten body, against the REPL state the attic just established.
-        val result = withTimeout(180_000) { ki.exec(expanded, onCompile, onEval, onThrow, listOf(box)) }
-        check("the rewritten body compiles", compileErr.isBlank()) { compileErr }
-        check("the rewritten body evaluates", evalErr.isBlank() && evalException == null) {
-            "$evalErr / ${evalException?.message}"
-        }
-
-        val value = (result as? ResultValue.Value)?.value
-        check("the expression returns a value", value != null) { "result=$result" }
-        val norm = (value as? Float) ?: (value as? Double)?.toFloat()
-        check("the value is the norm of a real embedding", norm != null) { "got ${value?.javaClass}: $value" }
-        if (norm != null) near("a baked vector round-trips through the REPL as unit length", norm, 1f)
-
-        check(
-            "the attic holds the baked constant",
-            atticHasClipBlock(box.attic, clipValName(Clip.TEXT_MODEL.id, "storm"))
-        ) { box.attic.take(200) }
-        println("  exec path: clip(\"storm\").norm = $norm")
-    }
-
-    private fun testMacroRejectsNonLiteral() = runBlocking {
-        val ki = KotlinInterface2(filePrefix = "clip-nonliteral")
-        val box = Box("clip-nonliteral")
-        val outcome = runCatching { ki.applyMacros(box, """val p = "x"; clip(p)""") }
-        check("a non-literal prompt is a clear error", outcome.isFailure) { "clip(p) was accepted" }
-        val message = outcome.exceptionOrNull()?.message ?: ""
-        check("the error points at clipEncode", "clipEncode" in message) { "message was: $message" }
-        check("nothing was baked", box.attic.isBlank()) { "attic became: ${box.attic.take(200)}" }
     }
 
     /** Integer-only, so Kotlin and NumPy build a byte-identical frame. See `OnnxSmokeTest`. */

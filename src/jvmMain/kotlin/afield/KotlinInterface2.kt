@@ -2502,10 +2502,7 @@ class KotlinInterface2(
         return runBlocking { complete(s, cursor) }
     }
 
-    override fun applyMacros(box: Box, s: String, skipMacros: Set<String>, previewOnly: Boolean): String =
-        MacroRegistry.withPreviewExpansion(previewOnly) { applyMacrosInner(box, s, skipMacros, previewOnly) }
-
-    private fun applyMacrosInner(box: Box, s: String, skipMacros: Set<String>, previewOnly: Boolean): String {
+    override fun applyMacros(box: Box, s: String, skipMacros: Set<String>, previewOnly: Boolean): String {
         // Pattern-rewrite layer: expand user-authored `rewrite { … }` rules (and blank the rule
         // blocks out of the source) before the builtin identifier macros run below, so a rule's
         // `to {}` output can still trigger the builtin macros. Pure PSI. See [PatternRewrite].

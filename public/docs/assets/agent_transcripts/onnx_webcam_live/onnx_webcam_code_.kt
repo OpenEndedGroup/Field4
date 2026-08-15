@@ -1,4 +1,5 @@
 import afield.onnx.ClipImage
+import afield.onnx.clipEncode
 import afield.onnx.DepthAnything
 import afield.util.PngEncoder
 import org.bytedeco.javacv.OpenCVFrameConverter
@@ -12,14 +13,13 @@ import org.lwjgl.system.MemoryUtil
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-// Baked at macro-expansion time: each clip("...") becomes a 512-float constant in this
-// box's attic (look at the attic after the first run). The 242MB text encoder loads once,
-// ever — never again on a re-run, and never in a future session.
+// Encoded once, here, into a val: the text tower is not in the per-frame path. First call in
+// a session loads the 242MB encoder; after that each prompt is a few milliseconds.
 val prompts = mapOf(
-    "a person at a desk" to clip("a person sitting at a desk"),
-    "an empty room"      to clip("an empty room"),
-    "a close-up face"    to clip("a close-up of a face"),
-    "a hand up close"    to clip("a hand held up to the camera")
+    "a person at a desk" to clipEncode("a person sitting at a desk"),
+    "an empty room"      to clipEncode("an empty room"),
+    "a close-up face"    to clipEncode("a close-up of a face"),
+    "a hand up close"    to clipEncode("a hand held up to the camera")
 )
 
 val grabber = OpenCVFrameGrabber(0)
