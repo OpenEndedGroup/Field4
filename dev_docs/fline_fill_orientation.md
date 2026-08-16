@@ -105,7 +105,7 @@ measures both halves, including the counterfactual.)
 | | |
 |---|---|
 | `graphics/StandardDrawing.kt:134#f.tessellate(samplesPerCubic)` | inside `trianglesOut`, which de-indexes into an `afield.four` vertex buffer. **No in-repo callers** — it is stdlib API for user boxes that own a `DynamicallyWriteable`. |
-| `ThreeJsViewer.kt:941#f.tessellate(samplesPerCubic)` | inside `appendFilledMesh` (`ThreeJsViewer.kt:930#private fun appendFilledMesh`), reached from `Box.threeLines(...)` (`ThreeJsViewer.kt:391#fun Box.threeLines`) and served into `threejs_viewer.html`. Also the wire format the visionOS native viewer reads (`FLineWire.swift:69#let fills`). |
+| `ThreeJsViewer.kt:1125#f.tessellate(samplesPerCubic)` | inside `appendFilledMesh` (`ThreeJsViewer.kt:1114#private fun appendFilledMesh`), reached from `Box.threeLines(...)` (`ThreeJsViewer.kt:575#fun Box.threeLines`) and served into `threejs_viewer.html`. Also the wire format the visionOS native viewer reads (`FLineWire.swift:69#let fills`). |
 
 Not on this path at all: SVG export (`graphics/someSkiko.kt:753#stroke="none" fill=` writes
 `<path fill=…>`), the 2D Skia canvas (`graphics/someSkiko.kt:375#f.filled) PaintMode.FILL`, a filled
@@ -116,8 +116,8 @@ And the reason it shipped: **nothing in Field culls back faces.** Every Vulkan p
 `VK_CULL_MODE_NONE` (`four/modules/Module.kt:803`, `:988`, `:1146`; `four/modules/MeshModule.kt:466`,
 `:664`; `four/imgui/ImGuiRenderToTexture.kt:250#vkCmdSetCullMode(cmd, VK_CULL_MODE_NONE)`). The
 three.js fill materials are `MeshStandardMaterial` with `side: THREE.DoubleSide`
-(`threejs_viewer.html:1010#side: THREE.DoubleSide`, `:1120`), and although they do derive normals
-from the winding — `computeVertexNormals()` at three sites, `:829`, `:880` and `:2697` — three.js
+(`threejs_viewer.html:1137#side: THREE.DoubleSide`, `:1325`), and although they do derive normals
+from the winding — `computeVertexNormals()` at three sites, `:955`, `:1007` and `:3410` — three.js
 flips the normal for back-facing fragments on a double-sided material, so a uniformly mis-wound flat
 face still shades correctly. The visionOS viewer sets `faceCulling = .none` explicitly
 (`FLineMeshBuilder.swift:401#faceCulling = .none`).
@@ -322,7 +322,7 @@ obviously wrong.
 *Was: a naive JS fan. Fixed 2026-08-03, in the same pass.*
 
 `FLine.tessellate` has two production call sites, and the second one —
-`ThreeJsViewer.kt:941#f.tessellate(samplesPerCubic)`, inside
+`ThreeJsViewer.kt:1125#f.tessellate(samplesPerCubic)`, inside
 `appendFilledMesh` — is only half the story for the three.js viewer, because `editable = true`
 **re-triangulates client-side**. It has to: the user drags points, and the fill has to follow between
 server round-trips.
@@ -384,14 +384,22 @@ rigidly rotated three ways — through both implementations and compares them **
 
 Two things about that comparison are worth knowing before extending it.
 
-* **The shimmed `THREE.ShapeUtils.triangulateShape` is `FloatEarcut`.** Not a compromise: the viewer's
-  three.js comes from a CDN (`threejs_viewer.html:267#cdn.jsdelivr.net/npm/three@`) and the only in-repo copy,
-  `extensions/remote_ar/vendor/super-three/0.184.0/`, is an incomplete vendoring whose
-  `three.module.js` imports a `three.core.js` that was never committed, so it cannot be loaded at all.
-  Holding the triangulator fixed also makes the comparison exact rather than a count, and earcut is
-  upstream on both sides — the duplicated logic is the clustering, the frame, the hemisphere, the
-  nesting and the `refs` index bookkeeping. What stays uncovered is float32-versus-float64 inside
-  earcut itself, which is what the browser captures below are for.
+* **The shimmed `THREE.ShapeUtils.triangulateShape` is `FloatEarcut`.** This bullet used to justify that
+  by *necessity* — the viewer's three.js came from a CDN, and the only in-repo copy was an incomplete
+  vendoring that could not be loaded at all. **That reason expired on 2026-08-15** and the sentence
+  stating it outlived it: `533918561` replaced the CDN import map with a vendored one, and `90230b1f4`
+  moved it to r184. Every clause of the old justification is now false — there is no CDN import
+  (`threejs_viewer.html:363#/vendor/three/0.184.0/three.module.js`), the copy it called incomplete no
+  longer exists, and the `src/commonMain/resources/vendor/three/0.184.0/three.core.js` whose absence was
+  the whole argument is committed. A shim over the real `ShapeUtils` has become possible.
+
+    It is still deliberately not what runs, for reasons that are now positive rather than forced —
+    `ViewerJavaScript`'s KDoc gives the same three. Earcut is upstream on **both** sides and is not what
+    drifts; the duplicated logic is the clustering, the frame, the hemisphere, the nesting and the
+    `refs` index bookkeeping. Holding the triangulator fixed makes the comparison exact **triangle for
+    triangle** rather than a count. And the shim can check a claim the real one cannot — see the next
+    bullet. What stays uncovered is float32-versus-float64 inside earcut itself, which is what the
+    browser captures below are for.
 * **The shim checks a claim the viewer only asserted in a comment**: that the rings are pre-sanitised,
   so three.js's `removeDupEndPts` finds nothing to pop and cannot shift the `refs` indices. Every ring
   handed to the shim is now checked for a repeated final point.
