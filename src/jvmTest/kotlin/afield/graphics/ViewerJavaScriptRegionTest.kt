@@ -66,6 +66,57 @@ class ViewerJavaScriptRegionTest {
     }
 
     /**
+     * The text lifted is the text a browser runs — asserted, because it is a claim with a condition.
+     *
+     * `Server.kt`'s `/threejs` route does not respond with the file. It responds with
+     * `filter(file.readText())`, and [afield.filter] substitutes every `{{ … }}` placeholder it finds,
+     * replacing an unknown one with the **empty string**. Every differential test in this package is
+     * written as though the two were the same text, and today they are — there is not one placeholder
+     * in `threejs_viewer.html`. The day somebody adds one inside a marked region, the region under test
+     * and the program in the browser part company, and the failure mode is the worst kind: every test
+     * stays green while measuring a different program.
+     *
+     * The second assertion is about the *route* rather than the text. If the server ever starts serving
+     * the viewer from the classpath instead of from this path, `ViewerJavaScript.VIEWER` becomes a copy
+     * and the whole harness quietly stops being a differential against production. That is the shape of
+     * defect this project has found five nights running: it lives in the path no artifact exercises.
+     */
+    @Test
+    fun theTextLiftedIsTheTextTheServerServes() {
+        ViewerJavaScript.KNOWN_REGIONS.keys.forEach { name ->
+            assertEquals(
+                ViewerJavaScript.regionSource(name), ViewerJavaScript.servedRegionSource(name),
+                "region `$name` contains a `{{ … }}` placeholder, so the browser runs different text " +
+                    "from the text this package lifts, and every differential test over it is vacuous",
+            )
+        }
+        val server = java.io.File("src/jvmMain/kotlin/afield/Server.kt")
+        assertTrue(server.isFile, "no Server.kt at ${server.absolutePath}")
+        assertTrue(
+            server.readText().contains("""File("./src/commonMain/resources/threejs_viewer.html")"""),
+            "the /threejs route no longer serves ${ViewerJavaScript.VIEWER.path}, so ViewerJavaScript " +
+                "is lifting a copy rather than the shipped source",
+        )
+    }
+
+    /**
+     * …and the placeholder guard is not vacuous: a real placeholder in a region would be caught.
+     *
+     * [afield.filter] silently replaces an unknown `{{ … }}` with the empty string, so the counterfactual
+     * has to show that the comparison notices. Without this, "no region contains a placeholder" could be
+     * true because the check does nothing.
+     */
+    @Test
+    fun thePlaceholderGuardWouldCatchARealPlaceholder() {
+        val withPlaceholder = "const A = 1; // {{ afield-version }}\n"
+        assertTrue(
+            afield.filter(withPlaceholder) != withPlaceholder,
+            "afield.filter no longer rewrites a `{{ … }}` placeholder, so the guard above is vacuous",
+        )
+        assertEquals("const A = 1; // \n", afield.filter(withPlaceholder))
+    }
+
+    /**
      * No DOM, and no `THREE` beyond the two members the harness shims.
      *
      * If the viewer ever needs more of three.js in here, this test is the place that says so — and the

@@ -2,6 +2,7 @@ package afield.graphics
 
 import afield.stdlib.DEFAULT_SURFACE
 import afield.stdlib.TriMesh
+import afield.stdlib.Vec3
 import afield.stdlib.prettySummary
 import afield.stdlib.shadedNormals
 import kotlinx.serialization.Serializable
@@ -115,6 +116,15 @@ data class ThreeDrawStyle(
  *
  * [callbackId], [hoverColor] and [topology] carry the same meaning they carry on
  * [ThreeInteractiveObject], so a drawable is pickable on exactly the terms an interactive FLine is.
+ *
+ * # Pickable, from 2026-08-16
+ *
+ * Those three fields were declared when the drawable layer landed and **nothing read them**: the viewer
+ * built `interactiveObjects` out of `payload.interactive`, which only the FLine half ever fills, so a
+ * mesh could be drawn and never hit. The headline example in [Box.three]'s own KDoc — a solid plus its
+ * FLine annotations — produced a scene in which you could measure the annotations and not the solid.
+ * They are read now; see [pickable], which is the one field that had to be added, and
+ * `// [viewer-region surface-hit-picking]` for what a hit on a surface resolves to.
  */
 @Serializable
 data class ThreeDrawable(
@@ -139,15 +149,139 @@ data class ThreeDrawable(
     val hoverColor: FloatArray? = null,
     /** [flineTopologyJson], for a drawable that came from an FLine and wants element-level hits. */
     val topology: String = "",
+    /**
+     * A stable name for this drawable, echoed back on every hit as [ThreeSurfaceHit.id].
+     *
+     * The sibling of [ThreeInteractiveObject.lineIndex], and a string rather than an index on purpose.
+     * An FLine's index is meaningful because the caller passed a *list* and the index points back into
+     * it; a drawable is added by a `mesh(…)` call and its ordinal changes the moment somebody inserts
+     * another one above. `label` is what a person reads and is free to be duplicated or absent; this is
+     * what a `when (hit.id)` switches on.
+     */
+    val id: String = "",
+    /**
+     * Whether a raycast may hit this drawable at all.
+     *
+     * Separate from [callbackId] because **pick-to-measure needs no callback**. Measuring from a solid
+     * to an annotation is a purely client-side act — the viewer computes the closest approach and draws
+     * the dimension without the server hearing about it — so a mesh has to be able to join
+     * `interactiveObjects` while having nothing to call. Conversely a mesh with a callback is pickable
+     * whether or not this is set; [ThreeSceneBuilder.mesh] works that out for the caller.
+     *
+     * `false` by default, and that is deliberate rather than lazy: a raycast against an unindexed
+     * 100k-triangle mesh is a brute-force triangle sweep, and every existing mesh figure in the docs is
+     * a *picture* that would gain nothing and pay for it. Opting in is one named argument.
+     */
+    val pickable: Boolean = false,
 ) {
     override fun toString(): String = prettySummary(
         "ThreeDrawable",
+        "id" to id,
         "label" to label,
         "style" to style,
         "vertices" to ((geometry.attributes["position"]?.array?.size ?: 0) / 3),
         "indices" to (geometry.index?.array?.size ?: 0),
         "group" to group,
         "panel" to panel,
+        "pickable" to pickable,
+    )
+}
+
+/**
+ * Which element of a surface a click landed on.
+ *
+ * Deliberately the same three-way distinction [afield.stdlib.FLineHitKind] draws — a dot, a line, an
+ * area — under the names a mesh uses for them, so that somebody who has read one hit record can read
+ * the other. [TRIANGLE] rather than `FACE` because a mesh face *is* a triangle and saying so avoids the
+ * suggestion that the viewer reassembled a coplanar fan into a polygon. It did not; it hands you the
+ * triangle three.js hit.
+ */
+enum class ThreeSurfaceHitKind {
+    /** A corner of the hit triangle, within the snap radius. */
+    VERTEX,
+
+    /** One of the hit triangle's three edges. */
+    EDGE,
+
+    /** The triangle's interior. */
+    TRIANGLE,
+
+    /** The classifier refused: a degenerate triangle, or a viewer too old to send one. */
+    UNKNOWN,
+}
+
+/**
+ * Where a click landed on a solid — the sibling of [afield.stdlib.FLineIntersection].
+ *
+ * # Read as a pair with FLineIntersection
+ *
+ * Every field that means the same thing is *named* the same thing, so the two records can be handled by
+ * one head: [position] is the raw hit, [onElement] is the point on the element the classifier decided
+ * you were pointing at, [label] is the author's name for the object, and [kind] says which of three
+ * shapes that element is. Only the identifying triple differs, and it has to: an FLine names an element
+ * by `(subPathIndex, nodeIndex, elementIndex)` because that is how an FLine is addressed, and a mesh
+ * names one by [faceIndex] plus [vertexIndex], because that is how a mesh is.
+ *
+ * # Why the barycentric coordinates are here
+ *
+ * [u], [v], [w] are the hit's barycentric coordinates in the triangle, summing to 1. They are the only
+ * honest way to interpolate anything the mesh carries per vertex — a colour, a UV, a scalar field, a
+ * displacement — at the point that was clicked, and they cost nothing to compute once the triangle is
+ * known. `FLineIntersection`'s `u`/`v` are a *surface parameterisation* of a quad and are a different
+ * animal; the names collide because both are "where in the element", and [w] is the tell that this one
+ * is barycentric.
+ *
+ * @property frontFacing whether the ray met the triangle's front face — its winding normal pointing
+ * back towards the camera. `false` means you clicked the inside of the model, which is either a
+ * deliberate look through an open shell or the thing that makes a mesh appear to have holes. Nothing in
+ * the FLine record corresponds, because an FLine fill is a sheet and has no inside.
+ */
+data class ThreeSurfaceHit(
+    /** [ThreeDrawable.id], or empty when the author did not name the drawable. */
+    val id: String = "",
+    /** [ThreeDrawable.label]. */
+    val label: String? = null,
+    /** The drawable's ordinal in the payload — the sibling of `FLineIntersection.lineIndex`. */
+    val drawableIndex: Int = -1,
+    val kind: ThreeSurfaceHitKind = ThreeSurfaceHitKind.UNKNOWN,
+    /** Where the ray met the surface, in the scene's own coordinates. */
+    val position: Vec3,
+    /**
+     * The point *on* the named element: the corner for a [ThreeSurfaceHitKind.VERTEX], the foot of the
+     * perpendicular for an [ThreeSurfaceHitKind.EDGE], the hit itself for the interior.
+     */
+    val onElement: Vec3? = null,
+    /** Which triangle of the mesh, counting from zero — the sibling of `elementIndex`. */
+    val faceIndex: Int = -1,
+    /**
+     * The mesh's own vertex index for a [ThreeSurfaceHitKind.VERTEX] hit, else `-1`.
+     *
+     * The index into the drawable's `position` attribute, which is the number you use to look the
+     * clicked vertex up in whatever the mesh was built from. The sibling of `nodeIndex`.
+     */
+    val vertexIndex: Int = -1,
+    /** Which of the triangle's three edges, `0` = (a,b), `1` = (b,c), `2` = (c,a). `-1` otherwise. */
+    val edgeIndex: Int = -1,
+    /** Barycentric weight of the triangle's first corner. */
+    val u: Double = Double.NaN,
+    /** Barycentric weight of the second corner. */
+    val v: Double = Double.NaN,
+    /** Barycentric weight of the third corner. `u + v + w == 1`. */
+    val w: Double = Double.NaN,
+    val frontFacing: Boolean = true,
+    /** The three corners of the hit triangle, in the mesh's winding order. */
+    val triangle: List<Vec3> = emptyList(),
+) {
+    override fun toString(): String = prettySummary(
+        "ThreeSurfaceHit",
+        "id" to id,
+        "label" to label,
+        "kind" to kind,
+        "faceIndex" to faceIndex,
+        "vertexIndex" to vertexIndex,
+        "edgeIndex" to edgeIndex,
+        "position" to position,
+        "frontFacing" to frontFacing,
     )
 }
 
@@ -231,6 +365,8 @@ internal val THREE_DEFAULT_SURFACE: FloatArray get() = DEFAULT_SURFACE
  *    material's shader patch has something to read.
  *
  * @param creaseAngleDegrees the angle above which an edge is kept hard. The rasterizer's default.
+ * @param id [ThreeDrawable.id] — a stable name echoed back on every hit.
+ * @param pickable [ThreeDrawable.pickable]; implied by a non-empty [callbackId] or a [hoverColor].
  */
 fun TriMesh.toThreeDrawable(
     style: ThreeDrawStyle = ThreeDrawStyle.surface(),
@@ -238,6 +374,10 @@ fun TriMesh.toThreeDrawable(
     panel: Int = 0,
     group: Int = -1,
     creaseAngleDegrees: Double = 35.0,
+    id: String = "",
+    callbackId: String = "",
+    hoverColor: FloatArray? = null,
+    pickable: Boolean = false,
 ): ThreeDrawable {
     val ready = if (hasNormals) this else shadedNormals(creaseAngleDegrees)
     val n = ready.vertexCount
@@ -287,5 +427,9 @@ fun TriMesh.toThreeDrawable(
         label = label,
         group = group,
         panel = panel,
+        callbackId = callbackId,
+        hoverColor = hoverColor,
+        id = id,
+        pickable = pickable || callbackId.isNotEmpty() || hoverColor != null,
     )
 }

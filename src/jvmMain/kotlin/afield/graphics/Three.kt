@@ -5,6 +5,7 @@ package afield.graphics
 import afield.Box
 import afield.stdlib.MeshView
 import afield.stdlib.TriMesh
+import afield.stdlib.Vec4
 import afield.stdlib.boundsArray
 import afield.stdlib.signedVolume
 import afield.stdlib.topology
@@ -17,12 +18,19 @@ import afield.stdlib.topology
  *
  * ```kotlin
  * three(channel = "car", height = 460) {
- *     mesh(car, wireframe = false)
+ *     mesh(car, wireframe = false, pickable = true)
  *     lines(measurements)                       // annotations in the same space as the solid
+ *     inspect(units = "mm")                     // …and a ruler that reaches both
  *     camera(yaw = 34.0, pitch = 26.0, distance = 2.4)
  *     title("ToyCar.glb — 108,936 triangles")
  * }
  * ```
+ *
+ * `pickable` and `inspect` are new on 2026-08-16, and the example above is why. Without them this same
+ * scene drew a solid and its annotations together and then let you measure **only the annotations** —
+ * the viewer built its pick list out of the FLine half of the payload, so a ray went straight through
+ * every mesh in it. A mesh hit now resolves to a vertex, an edge or a triangle
+ * ([ThreeSurfaceHit]) and the measure tool can span the two.
  *
  * # Why this exists
  *
@@ -51,6 +59,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     internal var camera: ThreeCameraSpec? = null
     internal var background: String? = null
     internal var autoFrame: Boolean = true
+    internal var inspector: ThreeInspector? = null
     private var helpersExplicit: Boolean? = null
 
     /**
@@ -74,6 +83,20 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
      * @param cullBackFaces on by default, so an inside-out face is a *missing* face — the diagnostic
      * the rasterizer has always given and the switch of renderer must not silently drop.
      * @param panel which viewport draws it; `-1` for all of them.
+     * @param id a stable name for the solid, echoed back on every hit as [ThreeSurfaceHit.id]. Free,
+     * and the thing a shared `onClick` closure switches on.
+     * @param onClick called with a [ThreeSurfaceHit] naming the triangle, edge or vertex that was
+     * clicked — the mesh counterpart of [afield.stdlib.onClick] on an FLine.
+     * @param hoverColor highlight while the pointer is over the solid, as an FLine's does.
+     * @param pickable whether a raycast may hit this mesh at all. Implied by [onClick] and by
+     * [hoverColor]; set it on its own to make a mesh **measurable without being clickable**, which is
+     * what [inspect]'s pick-to-measure needs and is the whole point of the flag. Off by default because
+     * a raycast against a 100k-triangle mesh is a brute-force triangle sweep and a figure that is only
+     * a picture should not pay for one.
+     * @param group which assembly group [inspect]'s explode moves this with, or `-1` to leave it put.
+     * A drawable's group is one number for the whole drawable — unlike an FLine batch, which carries a
+     * per-vertex `group` attribute — so the viewer moves it by its object transform rather than by
+     * rewriting a buffer. Same offsets, a great deal less work per slider frame.
      */
     fun mesh(
         mesh: TriMesh,
@@ -83,6 +106,11 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         flatShading: Boolean = false,
         opacity: Double = 1.0,
         panel: Int = 0,
+        id: String = "",
+        onClick: ((ThreeSurfaceHit) -> Unit)? = null,
+        hoverColor: Vec4? = null,
+        pickable: Boolean = false,
+        group: Int = -1,
     ) {
         drawables += mesh.toThreeDrawable(
             style = ThreeDrawStyle.surface(
@@ -93,6 +121,11 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             ),
             label = label,
             panel = panel,
+            group = group,
+            id = id,
+            callbackId = onClick?.let { registerThreeSurfaceClickCallback(it) } ?: "",
+            hoverColor = hoverColor?.let { floatArrayOf(it.x, it.y, it.z, it.w) },
+            pickable = pickable,
         )
     }
 
@@ -157,6 +190,42 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         else panels[0] = panels[0].copy(caption = text)
     }
 
+    /**
+     * Turn the measure / section / explode toolbar on for this scene.
+     *
+     * The inspector landed on 2026-08-11 as [Box.threeInspect], which takes a `Collection<FLine>` and
+     * builds the payload itself. There was no way to ask for it here, so the one scene type that has
+     * both a solid and its annotations — the reason [Box.three] exists — was the one scene type that
+     * could not be measured. This is that hole, closed.
+     *
+     * Pair it with `mesh(…, pickable = true)`: the toolbar is what draws the dimension, and the flag is
+     * what lets the ray find the solid. Neither is much use without the other.
+     *
+     * @param units appended to every dimension: `"mm"`.
+     * @param measurements dimensions the figure carries from the moment it is drawn, as distinct from
+     * the ones a reader picks.
+     */
+    fun inspect(
+        units: String = "",
+        decimals: Int = 2,
+        explode: ThreeExplode = ThreeExplode(),
+        section: ThreeSection = ThreeSection(),
+        measurements: List<ThreeMeasurement> = emptyList(),
+        pickToMeasure: Boolean = true,
+        groups: List<String> = emptyList(),
+    ) {
+        inspector = ThreeInspector(
+            enabled = true,
+            groups = groups,
+            explode = explode,
+            section = section,
+            measurements = measurements,
+            units = units,
+            decimals = decimals,
+            pickToMeasure = pickToMeasure,
+        )
+    }
+
     /** Build the payload. Internal: [Box.three] is the only caller. */
     internal fun payload(uid: String, frameWidth: Int? = null, frameHeight: Int? = null): ThreeGeometryPayload {
         // The FLine half is delegated wholesale to the existing builder rather than reimplemented, so
@@ -195,6 +264,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             helpers = helpersEnabled(),
             frameWidth = frameWidth,
             frameHeight = frameHeight,
+            inspector = inspector,
         )
     }
 }

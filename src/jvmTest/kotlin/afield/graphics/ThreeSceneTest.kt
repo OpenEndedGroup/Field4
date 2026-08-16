@@ -3,6 +3,7 @@ package afield.graphics
 import afield.stdlib.TriMesh
 import afield.stdlib.fline
 import afield.stdlib.icosphereMesh
+import afield.stdlib.onClick
 import afield.stdlib.vec
 import kotlinx.serialization.json.Json
 import kotlin.math.abs
@@ -274,6 +275,95 @@ class ThreeSceneTest {
                 "every turntable panel must frame the same bounds, or the shape breathes as it turns",
             )
         }
+    }
+
+    // ------------------------------------------------------------------ picking
+
+    /**
+     * A mesh is a *picture* unless it is asked to be otherwise, and asking is one named argument.
+     *
+     * The default matters more than it looks. Every mesh figure in the docs is something to look at,
+     * and a raycast against an unindexed 100k-triangle mesh is a brute-force triangle sweep — so
+     * `pickable` is off until somebody wants it, and `hoverColor` / `onClick` turn it on because a
+     * caller who supplied either of those has said what they want.
+     */
+    @Test
+    fun `a mesh is unpickable until asked, and a callback or a hover colour is the asking`() {
+        val plain = ThreeSceneBuilder(48).apply { mesh(square()) }.payload("t").drawables.single()
+        assertFalse(plain.pickable, "an ordinary mesh figure must not join the raycast")
+        assertEquals("", plain.callbackId)
+
+        val asked = ThreeSceneBuilder(48).apply { mesh(square(), pickable = true, id = "slab") }
+            .payload("t").drawables.single()
+        assertTrue(asked.pickable, "pickable = true is how a mesh becomes measurable without a callback")
+        assertEquals("slab", asked.id)
+        assertEquals("", asked.callbackId, "measurable is not the same as clickable")
+
+        val clickable = ThreeSceneBuilder(48).apply { mesh(square(), onClick = { }) }
+            .payload("t").drawables.single()
+        assertTrue(clickable.pickable, "a callback implies pickable")
+        assertTrue(
+            clickable.callbackId.startsWith("three-surface-"),
+            "a surface callback id must be visibly distinct from an FLine's `fline-` one; got " +
+                clickable.callbackId,
+        )
+
+        val hovering = ThreeSceneBuilder(48).apply { mesh(square(), hoverColor = vec(1.0, 0.0, 0.0, 1.0)) }
+            .payload("t").drawables.single()
+        assertTrue(hovering.pickable, "a hover colour implies pickable")
+        assertEquals(1f, assertNotNull(hovering.hoverColor)[0])
+    }
+
+    /**
+     * The measure toolbar can be turned on for a `three { }` scene at all.
+     *
+     * It could not before 2026-08-16: the inspector arrived as `Box.threeInspect(lines)`, which takes a
+     * `Collection<FLine>` and builds the payload itself — so the one scene shape that has both a solid
+     * and its annotations, which is the entire reason [Box.three] exists, was the one shape that could
+     * not carry it.
+     */
+    @Test
+    fun `a three scene can carry the inspector, and does not unless asked`() {
+        val without = ThreeSceneBuilder(48).apply { mesh(square()) }.payload("t")
+        assertNull(without.inspector, "an ordinary scene must not sprout a toolbar")
+
+        val with = ThreeSceneBuilder(48).apply {
+            mesh(square(), pickable = true)
+            inspect(units = "mm", decimals = 0)
+        }.payload("t")
+        val inspector = assertNotNull(with.inspector)
+        assertTrue(inspector.enabled)
+        assertEquals("mm", inspector.units)
+        assertEquals(0, inspector.decimals)
+        assertTrue(inspector.pickToMeasure, "the point of the pairing is picking")
+    }
+
+    /**
+     * The scene the whole night was for, at payload level: one solid *and* one annotation, both
+     * reachable by a ray.
+     *
+     * The drawable carries `pickable`; the FLine carries its own interactive object. The viewer appends
+     * the first to `interactiveObjects` after the second, and
+     * `ThreeSurfaceHitDifferentialTest.the viewer really does put a pickable drawable into the
+     * interactive set` holds that end of it.
+     */
+    @Test
+    fun `a mixed scene offers the ray a solid and an annotation`() {
+        val annotation = fline {
+            moveTo(vec(0.0, 0.0, 2.0))
+            lineTo(vec(1.0, 0.0, 2.0))
+            onClick = { }
+        }
+        val payload = ThreeSceneBuilder(48).apply {
+            mesh(square(), id = "solid", pickable = true)
+            lines(annotation)
+            inspect(units = "mm")
+        }.payload("t")
+
+        assertTrue(payload.drawables.single().pickable, "the solid must be pickable")
+        assertEquals(1, payload.interactive.size, "the annotation must still be its own interactive object")
+        assertTrue(payload.interactive.single().callbackId.startsWith("fline-"))
+        assertNotNull(payload.inspector, "and the toolbar that measures between them must be on")
     }
 
     @Test
