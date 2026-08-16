@@ -169,7 +169,7 @@ The test is a desktop check of the full transport and rendering head. Camera per
 
 ## Vendored runtime
 
-The head loads local copies of A-Frame 1.8.0, its matching `super-three` 0.184.0, and Tone.js 15.1.22 from `extensions/remote_ar/vendor/`. Licenses, package metadata, archive checksums, and refresh instructions live beside them. To reproduce the vendor tree:
+The head loads local copies of A-Frame 1.8.0 and Tone.js 15.1.22 from `extensions/remote_ar/vendor/`. A-Frame's browser bundle embeds its own `super-three` 0.184.0, so there is no separate Three.js here; the one Three.js anything imports directly is the stock build under `vendor/three/` that the docs viewer uses. Licenses, package metadata, archive checksums, and refresh instructions live beside them. To reproduce the vendor tree:
 
 ```diffstatic {data-lang=bash}
 python3 tools/vendor_remote_ar_runtime.py

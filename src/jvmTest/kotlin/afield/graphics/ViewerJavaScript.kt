@@ -53,12 +53,12 @@ import java.io.File
  *    rings are pre-sanitised, so three.js's `removeDupEndPts` finds nothing to pop and cannot shift
  *    `refs` indices out from under the caller. [Bridge.earcut] asserts it on every ring it is handed.
  *
- * What this does not cover, said once so it is not oversold: three r160's `Earcut` is float64 where
+ * What this does not cover, said once so it is not oversold: three's `Earcut` is float64 where
  * [FloatEarcut] is float32, and `triangulateShape` does a little bookkeeping of its own. Those stay
  * covered by the real browser captures in
  * `dev_docs/agents/artifacts/tessellate_facing/multi_plane_fill_demo/`.
  *
- * Note that three.js *is* now loadable in-repo — `src/commonMain/resources/vendor/three/0.160.0/`,
+ * Note that three.js *is* now loadable in-repo — `src/commonMain/resources/vendor/three/0.184.0/`,
  * vendored when the mesh examples moved onto this viewer and a CDN stopped being an acceptable
  * dependency for ~68 docs captures. So a shim using the real `THREE.ShapeUtils` has become possible.
  * It is deliberately still not what runs here, for the three reasons above: substituting the real one

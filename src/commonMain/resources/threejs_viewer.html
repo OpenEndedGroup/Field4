@@ -352,14 +352,16 @@
     through this file, and a docs build that loses the network most of the way through fails with a
     blank iframe and nothing useful in the log.
 
-    Note this is NOT `extensions/remote_ar/vendor/super-three/` — that vendoring is incomplete, its
-    three.module.js importing a three.core.js that was never committed, so it cannot be loaded at all.
+    Since r16x the module build is split: `three.module.js` imports `./three.core.js`, and both have
+    to be committed side by side. Vendoring only the first is exactly what left
+    `extensions/remote_ar/vendor/super-three/` unloadable for as long as it existed — it is gone now,
+    and A-Frame's browser bundle carries its own copy of that fork regardless.
 -->
 <script type="importmap">
     {
         "imports": {
-            "three": "/vendor/three/0.160.0/three.module.js",
-            "three/addons/": "/vendor/three/0.160.0/addons/"
+            "three": "/vendor/three/0.184.0/three.module.js",
+            "three/addons/": "/vendor/three/0.184.0/addons/"
         }
     }
 </script>

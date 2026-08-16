@@ -35,12 +35,11 @@ PACKAGES = (
         "d740e4ac22d4143e20a3866b5b957238a07823c659063dba829dca1771efbddc",
         ("LICENSE", "README.md", "package.json", "dist/aframe-v1.8.0.js", "dist/aframe-v1.8.0.min.js"),
     ),
-    Package(
-        "super-three",
-        "0.184.0",
-        "fa68a50089d140eae11cd6858406eda88a657e472a5770b93ab09c387674f932",
-        ("LICENSE", "README.md", "package.json", "build/three.module.js", "build/three.module.min.js"),
-    ),
+    # No `super-three` here. It was vendored as `build/three.module.js` alone, but since r16x that
+    # file is only half of the module build — it imports `./three.core.js`, which this spec never
+    # listed, so the copy on disk could not be loaded by anything and never was. A-Frame's browser
+    # bundle already embeds that fork, and the docs viewer has its own stock three.js under
+    # `src/commonMain/resources/vendor/three/`. Re-adding it means listing three.core.js too.
     Package(
         "tone",
         "15.1.22",

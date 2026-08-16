@@ -5,8 +5,14 @@ Field Remote loads its rendering and audio dependencies locally so the head can 
 | Package | Version | Role |
 | --- | --- | --- |
 | `aframe` | 1.8.0 | Browser bundle and the authoritative embedded Three.js runtime. |
-| `super-three` | 0.184.0 | Matching Three.js module build for tests, tooling, and future module migration. A-Frame's browser bundle already contains this code. |
 | `tone` | 15.1.22 | Audio runtime used by the advanced RemoteJS examples. |
+
+`super-three` 0.184.0 used to sit between those two, described as a module build kept for "tests,
+tooling, and future module migration". It was never any of those things: only `three.module.js` was
+vendored, and since r16x that file imports a `three.core.js` that the spec never listed, so nothing
+could load it. It is gone. A-Frame's bundle embeds that fork itself, and the one Three.js anybody
+imports directly is the stock build under `src/commonMain/resources/vendor/three/`, which the docs
+viewer uses and which ships both halves.
 
 Each package directory contains its upstream license, README, and package metadata. The exact files and archive checksums are declared in `tools/vendor_remote_ar_runtime.py`.
 
