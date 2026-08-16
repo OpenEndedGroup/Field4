@@ -28,12 +28,8 @@ import kotlin.io.path.name
 import kotlin.io.path.pathString
 import kotlin.system.exitProcess
 
-private val defaultGeneratedDocCachePath: Path = Paths.get(
-    System.getProperty("user.home"),
-    ".afield",
-    "filestore",
-    "generated_completion_docs.json"
-)
+private val defaultGeneratedDocCachePath: Path
+    get() = afield.ai.FilestoreDir.resolve("generated_completion_docs.json")
 
 private data class PolishOptions(
     val cacheFile: Path = defaultGeneratedDocCachePath,
@@ -279,7 +275,7 @@ Usage:
   ./gradlew polishCompletionDocsDryRun
 
 Options:
-  --cache-file <path>        Generated docs cache. Defaults to ~/.afield/filestore/generated_completion_docs.json
+  --cache-file <path>        Generated docs cache. Defaults to <checkout>/.field/filestore/generated_completion_docs.json (see FilestoreDir)
   --src-dir <path>           Source root relative to the repo. Defaults to src
   --model <model>            Model to use. Defaults to AFIELD_COMPLETION_DOC_POLISH_MODEL or AFIELD_AI_MODEL/flagship.
   --dry-run                  Let the model request edits, but do not write them. Pass as --args="--dry-run"; bare Gradle --dry-run skips the task.

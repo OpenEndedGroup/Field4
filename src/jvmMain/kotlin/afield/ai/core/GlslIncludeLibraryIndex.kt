@@ -3,6 +3,7 @@ package afield.ai.core
 import afield.RunsAt
 import afield.ai.CanonicalBundle
 import afield.ai.CanonicalDoc
+import afield.ai.FilestoreDir
 import afield.ai.OpenAiKnowledgeStore
 import afield.ai.Sha256
 import afield.early
@@ -76,12 +77,13 @@ private data class GlslIncludeLibrarySpec(
 object GlslIncludeLibraryIndex {
     private const val LYGIA_URL = "https://github.com/patriciogonzalezvivo/lygia.git"
 
-    private val mapper = OpenAiKnowledgeStore(
-        Paths.get(System.getProperty("user.home"), ".afield", "filestore", "glsl_include_knowledge_store.json")
-    )
-    private val cacheDir: Path = Paths.get(System.getProperty("user.home"), ".afield", "filestore")
+    private val mapper = OpenAiKnowledgeStore(FilestoreDir.resolve("glsl_include_knowledge_store.json"))
     private val vendorDir: Path = Paths.get(System.getProperty("user.home"), ".afield", "vendor")
-    private val indexPath: Path = cacheDir.resolve("glsl_include_index.json")
+
+    // Resolved per call, not captured — see [afield.ai.FilestoreDir]. `vendorDir` stays global on
+    // purpose: it holds a multi-hundred-megabyte checkout of Lygia, which is the same for everyone and
+    // is not an *answer* that two checkouts could disagree about.
+    private val indexPath: Path get() = FilestoreDir.resolve("glsl_include_index.json")
     private val syncLock = Any()
 
     @Volatile

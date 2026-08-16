@@ -1,5 +1,9 @@
 package afield
 
+import afield.ai.FilestoreDir
+import afield.ai.KotlinSourceIndex
+import afield.ai.KotlinSourceIndexDb
+import afield.ai.OpenAiFileStoreCache
 import afield.util.NodeTool
 import java.nio.file.Files
 import java.nio.file.Path
@@ -8,6 +12,7 @@ import kotlin.io.path.exists
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
@@ -83,10 +88,93 @@ class FieldSuggestPresentationTest {
      * classified here through the server's own [KotlinCompletionSupport.classifyMetadata] so the categories
      * — a ranking input — are the ones a browser would receive, and the ranking is done by the verbatim
      * `fieldSuggest.js` staged off the classpath.
+     *
+     * **Hermetic on purpose.** `classifyMetadata` falls back to
+     * [KotlinSourceIndex.getCompletionCategoryForSymbol], which until 2026-08-16 read
+     * `~/.afield/filestore/kotlin_source_index.json` — machine-global, outside every checkout, and
+     * rewritten by whichever Field ran last. The ranks below moved with it. Measured 2026-08-16, same
+     * payloads, same commit, only the index state differing:
+     *
+     * | case | recorded | machine's index | no index at all | this checkout's source |
+     * | --- | --- | --- | --- | --- |
+     * | FLine bare dot, `moveTo` | 10 | 12 | 15 | off-screen |
+     * | List bare dot, `filter` | 57 | 63 | 64 | 47 |
+     * | Math qualifier, `toRadians` | 52 | 45 | off-screen | 45 |
+     * | kotlin.math, `sin` | off-screen | off-screen | 73 | off-screen |
+     *
+     * Four states, four answers, one payload — so `moveTo` "falling from rank 10 to 12" was never a
+     * code change at all; it was `~/.afield/filestore` being rewritten between the day the fixture was
+     * cut and the day it was next run.
+     *
+     * So [withHermeticSourceIndex] builds the index from **this checkout's own source** into a temp
+     * directory and pins [FilestoreDir] at it for the duration: three runs across two different
+     * ambient machine states now give one answer. See `dev_docs/HERMETIC_COMPLETION_INPUTS.md`.
      */
     @Test
     fun `the answer a person typed is among the rows a person can see`() {
-        runProbe("rank", classifiedRankSpec())
+        withHermeticSourceIndex { runProbe("rank", classifiedRankSpec()) }
+    }
+
+    /**
+     * Run [block] with the completion path reading a source index built here, from this checkout.
+     *
+     * Not a canned JSON blob: a blob would freeze the categories at the moment it was cut and quietly
+     * stop describing the tree, and the point of classifying rows through the real
+     * [KotlinCompletionSupport.classifyMetadata] is that a change to the categories moves this
+     * measurement — which is correct, because it moves the real popup too. So the index is a function
+     * of this checkout's source and of nothing else: same checkout, same index, same ranks.
+     *
+     * The roots are `KotlinSourceIndex.runSync`'s, minus `src/personal/kotlin`: personal code is
+     * gitignored, so indexing it would put this measurement back outside the checkout by a different
+     * door. Dropping `src/generatedLinalg/kotlin` as well was measured and changes none of the six
+     * ranks, so it stays in for fidelity rather than because it matters.
+     *
+     * Asserts that the seed took effect, because a seam that is silently ignored is worse than none:
+     * `ifft` must come back as `Math`, which only a source index that read
+     * `src/jvmMain/kotlin/afield/stdlib/spectral.kt` and its `@file:CompletionCategory("Math")` can
+     * say. `ifft` and not `fft` because `fft` is declared in more than one categorised file, and
+     * [KotlinSourceIndex.getCompletionCategoryForSymbol] resolves a contested simple name by first
+     * match — a sentinel has to be unambiguous or it is measuring the walk order.
+     */
+    private fun <T> withHermeticSourceIndex(block: () -> T): T {
+        val dir = Files.createTempDirectory("field-suggest-source-index-")
+        return FilestoreDir.withDirectory(dir) {
+            val root = repoRoot()
+            val definitions = KotlinSourceIndex.scanDefinitions(
+                roots = listOf(root.resolve("src/jvmMain/kotlin"), root.resolve("src/generatedLinalg/kotlin")),
+                relativeTo = root,
+            )
+            assertTrue(
+                definitions.size >= 5000,
+                "the seeded source index looks empty (${definitions.size} definitions) — " +
+                    "scanDefinitions is not reading $root"
+            )
+            val db = KotlinSourceIndexDb(
+                root = ".",
+                apiKeyHash = null,
+                updatedAtEpochMs = 0L,
+                files = emptyList(),
+                definitions = definitions,
+            )
+            dir.resolve("kotlin_source_index.json")
+                .writeText(OpenAiFileStoreCache.defaultMapper().writeValueAsString(db))
+
+            // Assert the hermeticity itself. If `latestIndex` from some earlier test in this JVM were
+            // still answering, or if the pin were not reaching KotlinSourceIndex, this would read
+            // whatever the machine holds — and the ranks below would be that machine's, silently.
+            val seen = KotlinSourceIndex.loadIndex()
+            assertTrue(
+                seen != null && seen.definitions.size == definitions.size,
+                "the pinned filestore is not the one being read: seeded ${definitions.size} " +
+                    "definitions into ${FilestoreDir.describe()}, read back ${seen?.definitions?.size}"
+            )
+            assertEquals(
+                "Math",
+                KotlinSourceIndex.getCompletionCategoryForSymbol("ifft"),
+                "the seeded index answers no category for `ifft`, so the ranks below are not measuring it"
+            )
+            block()
+        }
     }
 
     /**

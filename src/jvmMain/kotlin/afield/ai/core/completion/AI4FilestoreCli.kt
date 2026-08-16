@@ -137,7 +137,7 @@ private fun printUsage() {
 AI4 filestore CLI
 
 Usage:
-  --cache-dir <path>   Directory for the cache DB (default: ~/.afield/filestore)
+  --cache-dir <path>   Directory for the cache DB (default: the checkout's .field/filestore; see FilestoreDir)
   --api-key <key>      OpenAI API key (default: OPENAI_API_KEY env var)
   --purpose <purpose>  OpenAI file purpose (default: assistants)
   --file <path>        Add a file (repeatable)
@@ -202,7 +202,9 @@ private fun workspaceSymbolSearchFromIndex(): (WorkspaceSymbolSearch) -> Workspa
 }
 
 private fun parseArgs(args: Array<String>): FilestoreCliConfig {
-    var cacheDir = Paths.get(System.getProperty("user.home"), ".afield", "filestore")
+    // The directory the rest of Field resolves, so `--cache-dir` defaults to the filestore this
+    // checkout actually uses rather than to a global one it may no longer share. See [FilestoreDir].
+    var cacheDir = FilestoreDir.path
     var apiKey: String? = null
     var purpose = "assistants"
     var files = mutableListOf<Path>()

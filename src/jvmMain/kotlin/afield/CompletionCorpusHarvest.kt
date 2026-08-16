@@ -14,6 +14,9 @@ expect:
   exitCode: 0
   stdoutContains:
     - "HARVEST DONE"
+    # Assert the hermeticity, not just the answer. A harvest that quietly fell back to this machine's
+    # classpath would still print HARVEST DONE and could still match the fixtures — on this machine.
+    - "imports   hermetic"
   # The drift guard. Checked-in fixtures that no longer match the corpus they were harvested from would
   # silently invalidate every number CompletionLoweringProbe reports, so a mismatch fails here instead.
   stdoutNotContains:
@@ -46,9 +49,18 @@ object CompletionCorpusHarvest {
         val fixtureDir = File(System.getenv("AFIELD_HARVEST_DIR")?.trim()?.ifBlank { null }
             ?: CompletionCorpus.FIXTURE_DIR)
 
+        // Harvest against the repository, not the machine. `prop<T>(name)` writes an import for T only
+        // when T resolves to exactly one class, so a class in src/personal sharing a simple name with
+        // core Field — one `rectgame.Window` was enough — deletes that import from every preamble that
+        // mentions it, and a `.field/fieldPreferencesJson` blacklist edit can do the same. Without this
+        // the guard below compares fixtures checked into git against an answer only this machine gives.
+        ImportResolution.hermetic =
+            System.getenv("AFIELD_IMPORT_HERMETIC")?.trim()?.let { it == "1" } ?: true
+
         println("mode      ${if (write) "WRITE" else "check"}")
         println("corpus    ${dirs.joinToString(", ")}")
         println("fixtures  ${fixtureDir.path}")
+        println("imports   ${ImportResolution.describe()}")
 
         val ki = KotlinInterface2(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = "corpus-harvest")
         val problems = mutableListOf<String>()
@@ -71,6 +83,54 @@ object CompletionCorpusHarvest {
         val classes = withPreamble.count { "class " in it.preamble }
         println("  preambles carrying a class declaration (the /*supermap*/ form): $classes")
 
+        // Every type a `prop<T>` macro asked for an import for. If one of them resolves differently here
+        // than in a clean checkout, the fixtures are about to be judged against an answer only this
+        // machine gives — which is exactly how the `Window` import got added and removed three times.
+        // Print the disagreement where it happens, with the candidates, rather than leaving the next
+        // person to infer it from a nineteen-line diff.
+        val propTypes = withPreamble.flatMap { c ->
+            Regex("""\bby\s+(?:Inheritance|Onceing)<([A-Za-z_][A-Za-z0-9_.]*)""").findAll(c.preamble)
+                .map { it.groupValues[1].substringAfterLast('.') }
+        }.distinct().sorted()
+        val diverging = ImportResolution.divergences(propTypes)
+        if (diverging.isEmpty()) {
+            println("  import resolution: all ${propTypes.size} prop<T> types agree with a clean checkout")
+        } else {
+            println("  import resolution: ${diverging.size} of ${propTypes.size} prop<T> types resolve " +
+                "differently on this machine. The harvest used the clean-checkout answer:")
+            diverging.forEach { d ->
+                println("    ${d.name}: clean=${d.hermetic ?: "no import"} | here=${d.machine ?: "no import (ambiguous)"}")
+                println("      candidates on this classpath: ${d.candidates.joinToString(", ")}")
+            }
+        }
+
+        // The blast radius, because `Window` was never the point: every contested simple name is a type
+        // a `prop<T>` would declare a property of and then silently not import.
+        val census = ImportResolution.census()
+        println("  import ambiguity on this classpath: ${census.ambiguous} of " +
+            "${census.resolvable + census.ambiguous} importable simple names are contested " +
+            "(${"%.2f".format(census.ambiguousShare * 100)}%), so `prop<T>` emits no import for any of them")
+
+        // And what this machine's own personal layer takes away on top of that. `Window` was one of
+        // these; the corpus only noticed because a fixture happened to pin it.
+        val casualties = ImportResolution.personalLayerCasualties()
+        if (casualties.isNotEmpty()) {
+            println("  this machine's personal layer removes the import for ${casualties.size} more " +
+                "type name(s) that a clean checkout can import:")
+            println("    ${casualties.take(40).joinToString(", ")}" + if (casualties.size > 40) ", …" else "")
+        }
+
+        // The one thing that must not be possible again: writing or checking fixtures against an answer
+        // this machine's classpath skewed. Hermetic mode is the default, so reaching this means someone
+        // set AFIELD_IMPORT_HERMETIC=0 on a machine with a colliding personal class — which is exactly
+        // the state that produced 559348acc, 10f3fbaf5 and 389e1d8ff. Fail rather than quietly comply.
+        check(ImportResolution.hermetic || diverging.isEmpty()) {
+            "refusing to ${if (write) "write" else "check"} fixtures non-hermetically while " +
+                "${diverging.size} prop<T> type(s) resolve differently here than in a clean checkout " +
+                "(${diverging.joinToString { it.name }}). Unset AFIELD_IMPORT_HERMETIC=0, or remove the " +
+                "colliding class from src/personal. See dev_docs/HERMETIC_COMPLETION_INPUTS.md."
+        }
+
         if (write) {
             val files = CompletionCorpus.writeFixtures(harvested, fixtureDir)
             println("wrote ${harvested.size} manifest entries and $files preamble files → ${fixtureDir.path}")
@@ -80,6 +140,18 @@ object CompletionCorpusHarvest {
 
         val (fixtures, drift) = CompletionCorpus.readFixtures(fixtureDir, dirs)
         val byLabel = fixtures.associateBy { it.label }
+        // A fixture is not merely "different from the harvest", it can be *wrong on its own terms*: a
+        // preamble that declares `by Inheritance<Window>()` and does not import Window describes a
+        // context in which Window does not resolve. That is what hand-deleting the import line left
+        // behind, and a diff against the harvest cannot say which side of it is right — this can.
+        val unimported = fixtures.mapNotNull { f ->
+            CompletionCorpus.typesDeclaredWithoutAnImport(f.preamble).takeIf { it.isNotEmpty() }
+                ?.let { f.label to it }
+        }
+        unimported.forEach { (label, types) ->
+            println("  DRIFT $label: fixture declares ${types.joinToString(", ")} but imports " +
+                "${if (types.size == 1) "it" else "them"} nowhere — the preamble cannot compile as written")
+        }
         val differing = harvested.filter { c ->
             val f = byLabel[c.label] ?: return@filter false      // absence is already reported as drift
             f.preamble.trim() != c.preamble.trim()
@@ -93,12 +165,13 @@ object CompletionCorpusHarvest {
             (b - a).take(3).forEach { println("      + $it") }
             (a - b).take(3).forEach { println("      - $it") }
         }
-        if (drift.isEmpty() && differing.isEmpty()) {
+        if (drift.isEmpty() && differing.isEmpty() && unimported.isEmpty()) {
             println("fixtures match the corpus: ${fixtures.size} entries, " +
-                "${fixtures.count { it.preamble.isNotBlank() }} with a preamble")
+                "${fixtures.count { it.preamble.isNotBlank() }} with a preamble, " +
+                "every declared property type in scope")
         }
         println("HARVEST DONE")
-        check(drift.isEmpty() && differing.isEmpty()) {
+        check(drift.isEmpty() && differing.isEmpty() && unimported.isEmpty()) {
             "completion-corpus fixtures drifted; regenerate with AFIELD_HARVEST_WRITE=1"
         }
     }
