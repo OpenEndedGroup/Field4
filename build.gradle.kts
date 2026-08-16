@@ -1101,8 +1101,14 @@ tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     // `ClassGraphException … Caused by: OutOfMemoryError` rather than with an assertion — a uniform
     // failure across every case in a class, which is the signature of the harness and not of the code.
     // They are the only cover `prop<T>(name)`'s import emission has, so the effect was that the macro
-    // whose import behaviour caused the nineteen-fixture drift had no working test at all. See
-    // dev_docs/HERMETIC_COMPLETION_INPUTS.md.
+    // whose import behaviour caused the nineteen-fixture drift had no working test at all.
+    //
+    // 4g rather than "just enough", because the threshold is a knife-edge: measured, the pair fails
+    // 5/5 at 512m and passes at 768m. A margin that narrow is decided by how much happens to be on the
+    // runtime classpath, which differs between two worktrees at the same commit — and did. Two nightly
+    // branches measured the 90230b1f4 baseline on this machine and got different failure *sets* (5
+    // here, 3 on the other) for that reason alone, which makes "how many tests fail at this commit"
+    // itself non-reproducible. See dev_docs/HERMETIC_COMPLETION_INPUTS.md.
     maxHeapSize = "4g"
 
     // A test worker is a fresh JVM and does not inherit the build's system properties, so the

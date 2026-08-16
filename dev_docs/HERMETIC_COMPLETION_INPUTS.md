@@ -73,6 +73,76 @@ printf 'package probe\nclass Window\n' > src/personal/kotlin/probe/probe.kt
 rm -rf src/personal build/personal
 ```
 
+### How big is this, really
+
+`Window` was not special. It was the one collision a fixture happened to pin. Measured 2026-08-16:
+
+**On a stock classpath, with no personal layer at all:**
+
+| | count |
+| --- | --- |
+| distinct simple names | 75,104 |
+| resolvable — exactly one importable candidate, so an import is emitted | 40,031 |
+| **contested — two or more, so `prop<T>` emits no import at all** | **11,315 (22.04%)** |
+| nothing importable (all nested or blacklisted) | 23,758 |
+
+So better than **one importable type name in five** on Field's classpath already cannot be imported
+by `prop<T>`. The macro writes `by Inheritance<T>()` and silently omits the import; the only trace is
+an `lprintln("warning,import", …)`. Floored at 9,000 with a 40% ceiling in
+`ImportResolutionTest.aMeasurableShareOfEveryImportableNameIsAlreadyContested`, with
+`Window`/`Renderer`/`Box` as scan sentinels so the floor cannot pass on junk.
+
+**And a personal layer takes more on top.** `ImportResolution.personalLayerCasualties()` is a set
+difference over the two indexes — names resolvable in a clean checkout and contested once
+`src/personal` joins the classpath. Reproducing the real layer's *namespace footprint* (the 829
+distinct top-level class names in that machine's `afield-personal.jar`, regenerated as empty classes
+in a scratch worktree; no code copied) the harvest reports:
+
+```
+this machine's personal layer removes the import for 124 more type name(s) that a clean checkout can import:
+  AnalysisSettings, AnimationReport, Arrow, BinaryDoubleTrack, Cell, ChatKt, Cluster, Color4,
+  CompileResult, ConstantTrack, ConstraintViolation, ContactManifold, ContactPair, Corner, Coverage, …
+```
+
+**`Window` was 1 of 124.** `Arrow`, `Cell`, `Color4`, `Float2`, `HalfEdge`, `Kernel`, `LineSegment`,
+`GroupNode`, `FlowField` and `Formula` are all types someone might plausibly write a `prop<T>` for,
+and on that machine none of them gets an import. The harvest prints this list where it applies.
+
+Blunt version: **the code Field generates into a user's box preamble depends on what is in their
+gitignored personal directory.** That is defensible for resolution — a user with their own `Window`
+really does have two — but it was invisible, and it reached a committed artifact.
+
+### Where else this shape reaches
+
+The tree has exactly two `ClassGraph` scans:
+
+| site | includes personal? | feeds |
+| --- | --- | --- |
+| `importHelp.kt` | **yes**, explicitly `PersonalLayer.current` | `prop<T>` imports (**committed** — the corpus fixtures), auto-import completion, `execution.kt`'s "did you mean" suggestions, `ForthInterpreter` word lookup |
+| `di.kt` | via the context classloader, but `acceptPackages("afield")` | `@RunsAt` startup wiring — personal code reaches it only by declaring an `afield.*` package |
+
+`StdlibReferenceGenerator`, which produces the *other* committed generated artifact
+(`public/docs/reference/`), reads explicit `src/jvmMain/kotlin/...` roots and never `src/personal`.
+**The completion-corpus fixtures were the only committed artifact exposed to this.**
+
+### The guard that makes the direction stick
+
+The harvest **refuses** to check or write fixtures when hermetic mode is off *and* a `prop<T>` type
+resolves differently here than in a clean checkout — the exact state that produced the three
+commits. Watched red, with the 829-name layer in place:
+
+```
+$ AFIELD_IMPORT_HERMETIC=0 ./gradlew --no-daemon checkCompletionCorpusFixtures
+imports   machine (personal layer: present (afield-personal.jar); blacklist: $user.dir/.field/fieldPreferencesJson, 7 patterns)
+IllegalStateException: refusing to check fixtures non-hermetically while 1 prop<T> type(s) resolve
+differently here than in a clean checkout (Window).
+```
+
+With hermetic mode on — the default — the same tree is green. So the resolution mechanism is:
+**the harvest excludes the personal layer *and* records that it did so (`imports   hermetic (…)`, an
+assertion in its `FIELD_TEST` block), and refuses to run at all if someone turns that off while the
+classpath is actually skewing the answer.**
+
 ### A second input on the same line
 
 `findClassesNamed` filters candidates through `currentFieldPreferences().importClassBlacklist`, which
@@ -193,6 +263,45 @@ genuinely off-screen — worse than the 12 the machine index reported, and worse
 records. Re-baselining it to "off-screen" would retire the exact signal the test exists for ("the
 answer a person typed is among the rows a person can see"). What changed tonight is that it is now red
 for a reproducible reason instead of a different reason every run.
+
+### Is the hermeticity asserted, or just observed?
+
+Asserted, and mutation-tested. Reverting `KotlinSourceIndex.indexPath` to the hardcoded
+`~/.afield/filestore/kotlin_source_index.json` makes **four** assertions fail:
+
+| test | message |
+| --- | --- |
+| `FilestoreDirTest.twoIndexesGiveTwoAnswersAndThePinDecidesWhich` | `expected:<Math> but was:<null>` |
+| `FilestoreDirTest.anEmptyFilestoreDoesNotFallBackToTheMachine` | `actual value is not null` |
+| `FilestoreDirTest.aLoadedIndexStopsAnsweringWhenTheDirectoryMoves` | `the in-memory index is not being consulted at all` |
+| `FieldSuggestPresentationTest` (rank) | `the pinned filestore is not the one being read: seeded 38996 definitions into …` |
+
+Removing only the `latestIndex` staleness guard fails the third alone. So neither the disk path nor
+the in-memory cache can quietly go machine-global again without a red test.
+
+## A third instance of the same shape: the failure count itself
+
+Two nightly branches measured the baseline at `90230b1f4` on the same machine and got **different
+sets**: this one saw 5 failures, branch 1 saw 3, and the two extra were
+`PropMacroRegressionTest`'s pair failing with `OutOfMemoryError` inside a ClassGraph scan.
+
+Neither measurement was flaky in itself — 5 runs in isolation here failed 5/5. The heap is the
+explanation, and the threshold is what matters:
+
+| test-worker heap | `PropMacroRegressionTest` |
+| --- | --- |
+| 512m (Gradle's default — no Test task set one) | 2 failures |
+| 768m | 0 failures |
+| 1g / 1536m / 2g | 0 failures |
+
+The flip is between **512m and 768m**. A knife-edge that narrow is decided by how much is on the
+runtime classpath, which differs between two worktrees at the same commit — different `build/`
+contents, different added test classes. So the *count of failing tests at a given commit* was itself
+not reproducible across checkouts, for a reason of exactly the kind this page is about. `maxHeapSize
+= "4g"` moves it off the edge.
+
+The lesson generalises past heap: when two honest agents report different baselines for the same
+commit, suspect a threshold before suspecting either of them.
 
 ## The general shape
 
