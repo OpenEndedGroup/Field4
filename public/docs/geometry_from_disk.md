@@ -43,9 +43,12 @@ Worth having the map, because "where is the loader" is a question this tree answ
 | Assimp / glTF | `afield/four/modules/simpleGLTFSupport.kt` | glTF, GLB, FBX, DAE, 3DS, OBJ, STL, PLY, … | packed 12-float GPU buffer + materials |
 | Fabricate | `afield/four/fabricated/FabricateGltfBridge.kt` | the Assimp model above | `FabricateScene` for the PBR [`StandardRenderer`](fabricate_renderer.md) |
 
-Against that there is exactly **one** renderer that can put a mesh on screen without a GPU:
-`VisionGeometryPreview`, behind `TriMesh.renderPng`, `showMesh` and the inline `toHTML()` card. It
-takes a `TriMesh` and nothing else.
+Against that there are **two** renderers that will put a mesh on screen. `showMesh` sends it to the
+Three.js viewer, where you can orbit it — the same viewer `threeLines(...)` draws FLines in, so a solid
+and its annotations can share one scene. `VisionGeometryPreview` is the other: a CPU z-buffer behind
+`TriMesh.renderPng` and the inline `toHTML()` card, needing no GPU and, being deterministic, still what
+the pixel-exact tests assert on. Pass `renderer = MeshRenderer.CPU` to `showMesh` for that one. Both
+take a `TriMesh` and nothing else.
 
 So until recently the graph had two missing edges. The PLY and Assimp loaders both produce ordinary
 host memory — `memAlloc`, not a Vulkan allocation — and both were one function away from a `TriMesh`,
@@ -82,12 +85,12 @@ println("assembled extent %.4f x %.4f x %.4f metres".format(
 showMesh(
     car,
     view = MeshView(width = 560, height = 420, wireframe = false),
-    title = "ToyCar.glb — 108,936 triangles through VisionGeometryPreview",
+    title = "ToyCar.glb — 108,936 triangles in the Three.js viewer",
 )
 :::endfold
 ```
 
-![The Khronos ToyCar GLB rendered by Field's CPU z-buffer preview: a 1950s saloon model sitting on a heavily draped cloth, correctly shaded with soft folds, above a caption reading 77429 verts, 108936 tris, extent 0.073 x 0.029 x 0.074, chi=1909, open](assets/geometry_from_disk/toycar.png)
+![The Khronos ToyCar GLB in Field's Three.js viewer: a 1950s saloon model sitting on a heavily draped cloth, correctly shaded with soft folds, above a caption reading 77429 verts, 108936 tris, extent 0.073 x 0.029 x 0.074, chi=1909, open](assets/geometry_from_disk/toycar.png)
 
 The numbers under the picture are the interesting part:
 
@@ -405,7 +408,7 @@ five of the six, which is the argument for printing it before drawing anything.
 |---|---|---|
 | a blank black panel | an empty mesh | A file whose *contents* are not what its extension says parses to `TriMesh.empty` with **no exception at all**. `println(mesh.summary())` — an empty one prints exactly `TriMesh(empty)`. |
 | holes, or whole faces missing | inside-out winding, open mesh | Back faces are culled exactly as a GPU culls them, so a wrongly-wound patch is not dark, it is *gone*. `fixWinding()`, then check `topology().isConsistentlyOriented`. |
-| looks fine, every measurement negative | inside-out winding, closed solid | The silhouette is unchanged and the rasterizer flips inward normals rather than shading them black, so the picture is no help at all. `signedVolume() < 0` is the only tell; `fixWinding()` is the fix. |
+| looks fine, every measurement negative | inside-out winding, closed solid | The silhouette is unchanged and both renderers flip inward normals rather than shading them black, so the picture is no help at all. `signedVolume() < 0` is the only tell; `fixWinding()` is the fix. |
 | flat, faceted or oddly uniform shading | no normals, or invented ones | A mesh with *none* is crease-shaded for you; one with wrong ones is not. Recompute with `shadedNormals(35.0)`. To drop them, `withoutAttributes()` — note that `copy(normals = null)` **keeps** them, because `null` there means "unchanged". |
 | `isWatertight()` false on a closed solid | it came through STL | Or it was `flatShaded()` before it was written. `weld(1e-5)` recovers the topology, and `meanEdgeLength()` is the scale that tells you 1e-5 is safe rather than a guess. |
 | the vertex count is exactly 3× | STL, or `flatShaded()` | Both un-weld every triangle, and the reader on the other side will not weld it back. `weld`, then `shadedNormals` if you want the hard edges again. |
@@ -657,6 +660,12 @@ pass — edge map, vertex stars, boundary walk — over the whole mesh. On a mod
 loops that is the expensive part of `showMesh`, not the picture. If you are re-rendering in a loop and
 do not need the numbers, call `renderPng` and `display` the base64 yourself.
 
+Those are the **CPU** path's numbers, which is what `showMesh(renderer = MeshRenderer.CPU)` still does.
+The default `showMesh` uploads the mesh to the Three.js viewer once and then costs nothing per frame,
+so the trade is the other way round: a higher fixed cost to open the viewer, and free re-rendering
+afterwards because the re-rendering is the GPU's. The topology pass behind the caption costs the same
+either way — it is the same `topology()` call.
+
 ## Writing back out
 
 ```diffstatic {data-lang=kotlin}
@@ -711,7 +720,8 @@ is re-run by CI on every build rather than asserted once and forgotten.
 | **read, any format** | `meshFromAnyFile`, `showMesh(path)`, `assimpToTriMesh`, `PlyModel.toTriMesh` — `afield/four/modules/MeshFromDisk.kt` |
 | **read, no dependencies** | `meshFromFile`, `triMeshFromObj`, `objToTriMesh`, `triMeshFromStl`, `stlToTriMesh` — `afield/stdlib/mesh_io.kt` |
 | **write** | `toObj`, `saveObj`, `toStlAscii`, `toStlBinary`, `saveStl` — same file |
-| **look at it** | `showMesh`, `showMeshGrid`, `showMeshTurntable`, `MeshView`, `renderPng`, `renderPixels`, `toFigureHtml`, `summary` — `afield/stdlib/mesh_field.kt` |
+| **look at it** | `showMesh`, `showMeshGrid`, `showMeshTurntable`, `MeshView`, `summary` — `afield/stdlib/mesh_field.kt`; `three`, `threeGrid`, `threeTurntable` — `afield/graphics/Three.kt` |
+| **look at it without a GPU** | `renderPng`, `renderPixels`, `toFigureHtml`, and `showMesh(renderer = MeshRenderer.CPU)` — `afield/stdlib/mesh_field.kt` |
 | **repair what you read** | `weld`, `fixWinding`, `removeDegenerateTriangles`, `repaired`, `largestComponent`, `shadedNormals`, `normalized` |
 | **on the GPU instead** | `plyModelHere`, `plyPointCloudHere`, `gltfModelHere`, `modelWithTextureHere` — `simplePLYSupport.kt`, `simpleGLTFSupport.kt` |
 | **let the AI read it** | `GeometryAgentTools.addSearchRoot`, `.register` — `afield/four/modules/GeometryAgentTools.kt` |
@@ -726,7 +736,7 @@ GeometryAgentTools.register()
 ```
 
 `ListGeometryFiles` tells the model what you have. `InspectGeometryFile` loads one, returns the same
-measurements this page describes, and — because the CPU rasteriser needs no GPU and no window — hands
+measurements this page describes, and — because the CPU rasteriser behind it needs no GPU and no window — hands
 back a *rendered image*, so a model can look at a scan rather than reason about its bounding box. It
 will only read inside roots you have added.
 

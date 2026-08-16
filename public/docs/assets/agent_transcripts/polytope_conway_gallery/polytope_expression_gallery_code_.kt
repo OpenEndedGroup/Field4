@@ -1,5 +1,4 @@
 import afield.stdlib.polytope.*
-import java.util.Base64
 
 // ***** CHANGE THIS LINE *****  Any prefix expression over the seeds T C O I D and the
 // operators d a k t g j n z o e s m b, with optional kN / tN degree indices. Re-run and
@@ -7,7 +6,7 @@ import java.util.Base64
 // topology and not off the pictures.
 val expressions = listOf("C", "dC", "aC", "kC", "tC", "gC", "bC", "k4aC", "sD")
 
-val view = MeshView(width = 300, height = 252, wireframe = false, distance = 2.3)
+val view = MeshView(wireframe = false, distance = 2.3)
 val cells = expressions.map { source ->
     val result = conway(source)
     val topology = result.polyhedron.topology
@@ -15,30 +14,15 @@ val cells = expressions.map { source ->
         .groupingBy { topology.faceCycle(it.id).size }
         .eachCount()
         .toSortedMap()
-    val png = Base64.getEncoder().encodeToString(
-        result.polyhedron.toTriMesh().renderPng(view, caption = "", title = null),
+    ThreeMeshPanel(
+        label = "$source  ${result.history.joinToString("") { it.symbol.toString() }}",
+        mesh = result.polyhedron.toTriMesh(),
+        facts = "${topology.elements(0).size}v ${topology.elements(1).size}e ${topology.elements(2).size}f" +
+            " · ${faces.entries.joinToString(" ") { "${it.value}×${it.key}-gon" }}" +
+            " · χ=${topology.eulerCharacteristic()}",
     )
-    """
-    <div>
-      <div style='color:#e6ecf4;font:600 13px monospace;padding-bottom:3px'>$source
-        <span style='color:#6d7787;font-weight:400'>
-          &nbsp;${result.history.joinToString("") { it.symbol.toString() }}
-        </span>
-      </div>
-      <img src='data:image/png;base64,$png' style='width:100%;border-radius:5px;display:block'/>
-      <div style='color:#93a4ba;font:11px monospace;padding-top:4px'>
-        ${topology.elements(0).size}v ${topology.elements(1).size}e ${topology.elements(2).size}f
-        &middot; ${faces.entries.joinToString(" ") { "${it.value}&times;${it.key}-gon" }}
-        &middot; &chi;=${topology.eulerCharacteristic()}
-      </div>
-    </div>
-    """.trimIndent()
 }
-display(
-    "gallery",
-    "<div style='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px'>" +
-        cells.joinToString("") + "</div>",
-)
+threeGrid(cells, channel = "gallery", name = "gallery", columns = 3, height = 756, cellWidth = 300, view = view)
 
 // Second column of the caption is `history`: the PRIMITIVES that actually ran, seed
 // outward. Composites are rewritten, never reimplemented, so `bC` reports `at`.

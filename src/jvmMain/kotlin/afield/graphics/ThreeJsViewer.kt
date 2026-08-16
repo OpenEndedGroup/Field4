@@ -6,6 +6,8 @@ import io.ktor.websocket.*
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
@@ -178,6 +180,7 @@ data class ThreeInteractiveVertex(
 )
 
 @Serializable
+@OptIn(ExperimentalSerializationApi::class)
 data class ThreeGeometryPayload(
     val type: String = "three/geometry",
     val uid: String,
@@ -197,7 +200,73 @@ data class ThreeGeometryPayload(
      * `null` for an ordinary [Box.threeLines] payload, and the viewer then behaves exactly as it did
      * before this existed — no HUD, no clipping planes, no kept copy of the base positions.
      */
-    val inspector: ThreeInspector? = null
+    val inspector: ThreeInspector? = null,
+    /**
+     * The scene as [ThreeDrawable]s — geometry plus per-drawable material state.
+     *
+     * Empty for every payload that predates [Box.three], and the viewer then takes exactly the path
+     * it always took: `lines` / `fills` / `points` above are unchanged, and a payload with no
+     * drawables encodes byte for byte as it did before this field existed.
+     * `ThreeScenePayloadCompatibilityTest` is what holds that claim, rather than the comment.
+     */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val drawables: List<ThreeDrawable> = emptyList(),
+    /**
+     * The viewports, when this is a contact sheet. Empty or one-element means a single full-bleed view.
+     *
+     * See [ThreePanel] for why a panel is a scissored viewport rather than a second iframe.
+     */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val panels: List<ThreePanel> = emptyList(),
+    /** Panels per row, when there is more than one. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val columns: Int = 1,
+    /** Scene background as a CSS colour, or `null` for the viewer's transparent default. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val background: String? = null,
+    /**
+     * Draw the reference grid and the axis tripod.
+     *
+     * On for FLines, which is what the viewer has always done. **Off for meshes**, because both
+     * helpers are a fixed world size — a 10-unit grid and a 0.9-unit tripod — and a mesh is whatever
+     * size its file says. The toy car in `geometry_from_disk.md` is 7cm across, so the grid would be
+     * 140 times its width and the tripod would swallow it whole. The CPU rasterizer draws neither,
+     * and a figure that changes renderer should not sprout furniture.
+     */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val helpers: Boolean = true,
+    /**
+     * The frame size this figure wants, in CSS pixels, for the viewer to report to its host.
+     *
+     * # Why the viewer has to say it out loud
+     *
+     * A box output panel sizes itself to its content, and for an iframe it learns the content size
+     * from an `afield-iframe-size` event the iframe dispatches on itself (`outputareas2.js`,
+     * `bindContentLoadEvents`). Every other embedded viewer gets this from `/iframe_autosize.js`;
+     * `threejs_viewer.html` is the one that never included it, because its body is `height: 100%` with
+     * `overflow: hidden` and measuring it would only ever report back whatever size it already had.
+     *
+     * The consequence went unnoticed while the viewer only drew FLines, which want to fill their
+     * column anyway. It became very visible when the mesh figures arrived: a six-panel contact sheet
+     * asking for 855 pixels of height was silently drawn in 430, and each cell came out about a
+     * hundred pixels tall.
+     *
+     * So the size is sent, and the viewer publishes it. `null` means "say nothing", which is exactly
+     * what every payload did before this existed.
+     */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val frameWidth: Int? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val frameHeight: Int? = null,
+    /**
+     * Where the camera starts, when the caller picked an angle rather than accepting [autoFrame].
+     *
+     * A docs figure chooses its viewpoint deliberately — half of `geometry_from_disk.md`'s value is
+     * that the toy car is seen from the one angle that shows the draped cloth — so the switch from
+     * the rasterizer had to bring [MeshView]'s four numbers with it.
+     */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val camera: ThreeCameraSpec? = null
 ) {
     override fun toString(): String = prettySummary(
         "ThreeGeometryPayload",
@@ -211,7 +280,10 @@ data class ThreeGeometryPayload(
         "interactive" to interactive.size,
         "scene" to (scene != null),
         "editableEnabled" to editableEnabled,
-        "inspector" to (inspector != null)
+        "inspector" to (inspector != null),
+        "drawables" to drawables.size,
+        "panels" to panels.size,
+        "camera" to camera
     )
 }
 
@@ -272,6 +344,16 @@ class ThreeGeometryViewState(val uid: String) {
 }
 
 private val knownThreeViews = ConcurrentHashMap<String, ThreeGeometryViewState>()
+
+/**
+ * The view for a uid, created on first use.
+ *
+ * `internal` so [Box.three] can register a view the same way [Box.threeLines] does. Going through one
+ * function rather than two `computeIfAbsent` calls on a private map is what keeps `subscribe-all` and
+ * the websocket attach path seeing every view, however it was made.
+ */
+internal fun threeViewFor(uid: String): ThreeGeometryViewState =
+    knownThreeViews.computeIfAbsent(uid) { ThreeGeometryViewState(uid) }
 
 /**
  * Sessions that asked to see *every* live Three.js view, not just one keyed by uid (the web viewer
@@ -404,7 +486,7 @@ fun Box.threeLines(
 <iframe src='${ln}' style='border:none;padding:0;margin:0;width:100%;height:${height}px'>
 """
     )
-    val view = knownThreeViews.computeIfAbsent(uid) { ThreeGeometryViewState(uid) }
+    val view = threeViewFor(uid)
     val payload = buildThreeGeometryPayload(uid, lines, samplesPerCubic, autoFrame, editable)
     view.update(payload)
     return view
@@ -471,7 +553,7 @@ fun Box.threeLines(
     editable = editable
 )
 
-private class BoundsTracker {
+internal class BoundsTracker {
     private var hasBounds = false
     private var minX = 0f
     private var minY = 0f

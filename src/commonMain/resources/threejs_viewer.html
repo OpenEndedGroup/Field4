@@ -44,6 +44,89 @@
             outline: none;
         }
 
+        /* Panel chrome sits over the canvas rather than in the WebGL scene: text stays crisp at any
+           DPR, and a caption does not have to be re-rendered when the camera moves.
+
+           For a single panel it does NOT overlay the geometry — it takes a band off the top and the
+           bottom and the canvas is inset to match, which is how the CPU rasterizer's figures were laid
+           out (title above, fact line below). Overlaying instead cost the mesh the vertical space it
+           was framed for, and a figure that changes renderer should not come out smaller. */
+        #panel-chrome {
+            position: absolute;
+            inset: 0;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        #panel-chrome.tiled {
+            display: grid;
+        }
+
+        #panel-chrome.solo {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        #panel-chrome.solo .panel-cell {
+            padding: 0;
+        }
+
+        #panel-chrome.solo .panel-title {
+            padding: 5px 8px 0 8px;
+        }
+
+        #panel-chrome.solo .panel-facts,
+        #panel-chrome.solo .panel-caption {
+            padding: 0 8px 5px 8px;
+        }
+
+        #canvas-wrap.chrome-top { top: 26px; }
+        #canvas-wrap.chrome-bottom { bottom: 22px; }
+        #canvas-wrap.chrome-bottom-2 { bottom: 40px; }
+
+        #panel-chrome .panel-cell {
+            padding: 6px 8px;
+            min-width: 0;
+        }
+
+        #panel-chrome .panel-title {
+            color: var(--ink);
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* A tiled panel is narrow and its title is usually a call — `loopSubdivide(3)`,
+           `laplacianSmooth(30) — deflates` — so it wraps to a second line rather than being cut off
+           with an ellipsis. Two lines, then it really is too long. */
+        #panel-chrome.tiled .panel-title {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            line-height: 1.25;
+        }
+
+        #panel-chrome.solo .panel-title {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #panel-chrome .panel-facts {
+            color: var(--muted);
+            font-size: 10.5px;
+            padding-top: 2px;
+            line-height: 1.45;
+        }
+
+        #panel-chrome .panel-caption {
+            color: var(--muted);
+            font-size: 11px;
+            padding-top: 3px;
+            line-height: 1.45;
+        }
+
         #hud {
             position: absolute;
             top: 6px;
@@ -261,11 +344,22 @@
     </div>
 </div>
 
+<!--
+    three.js is vendored in-repo rather than pulled from a CDN.
+
+    It used to be `cdn.jsdelivr.net`, which was survivable while a handful of docs assets came from
+    this viewer. It stopped being survivable when the mesh examples moved here: ~68 captures now go
+    through this file, and a docs build that loses the network most of the way through fails with a
+    blank iframe and nothing useful in the log.
+
+    Note this is NOT `extensions/remote_ar/vendor/super-three/` — that vendoring is incomplete, its
+    three.module.js importing a three.core.js that was never committed, so it cannot be loaded at all.
+-->
 <script type="importmap">
     {
         "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            "three": "/vendor/three/0.160.0/three.module.js",
+            "three/addons/": "/vendor/three/0.160.0/addons/"
         }
     }
 </script>
@@ -345,7 +439,30 @@ const payloadGeometrySlots = {
     lines: null,
     fills: null,
     points: null,
-    interactive: []
+    interactive: [],
+    // One slot per ThreeDrawable, in payload order. A drawable is geometry plus its own material
+    // state, which is the thing the lines/fills/points triple above could never express: every FLine
+    // fill wants the same material, and a solid does not want that material at all.
+    drawables: []
+};
+
+/**
+ * Multi-panel state.
+ *
+ * `panels` is the payload's panel list; `cameras` is one PerspectiveCamera per panel. A panel is a
+ * scissored viewport in this one WebGL context rather than a second iframe — see ThreePanel's KDoc
+ * for why (Chrome evicts live contexts past ~16, and a page of galleries goes over that easily).
+ *
+ * Orbiting a contact sheet turns every panel together, keeping their relative angles: the shared
+ * OrbitControls delta is read off `controls` and added to each panel's own spec. For a turntable that
+ * is exactly right — four views of one shape that stay four views of one shape as you drag.
+ */
+const panelState = {
+    panels: [],
+    cameras: [],
+    columns: 1,
+    // The orbit state the panel cameras are offset from, captured when a multi-panel payload lands.
+    base: null
 };
 const editableGeometrySlots = {
     lines: [],
@@ -854,6 +971,7 @@ function clearPayloadGeometrySlots() {
     payloadGeometrySlots.points = removeSlot(payloadGeometrySlots.points);
     payloadGeometrySlots.interactive.forEach((slot) => removeInteractiveSlot(slot));
     payloadGeometrySlots.interactive.length = 0;
+    clearDrawableSlots();
 }
 
 function clearEditableGeometrySlots() {
@@ -1027,6 +1145,61 @@ function makeFillMaterial() {
     };
     material.customProgramCacheKey = () => 'vertex-alpha-v1';
     return material;
+}
+
+/**
+ * The material a ThreeDrawable's style asks for.
+ *
+ * makeFillMaterial() above is this with the FLine defaults frozen in: DoubleSide and depthWrite off,
+ * which is right for translucent stacked sheets and wrong for anything solid. A solid drawn with
+ * depthWrite off has no self-occlusion — the far side of a sphere paints over the near side, and the
+ * result reads as a strange flat blob rather than as a bug, which is why it is worth naming here.
+ */
+function makeSurfaceMaterial(style) {
+    const s = style || {};
+    const material = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        vertexColors: true,
+        side: s.doubleSided === false ? THREE.FrontSide : THREE.DoubleSide,
+        transparent: true,
+        opacity: s.opacity === undefined ? 1.0 : s.opacity,
+        roughness: 0.6,
+        metalness: 0.1,
+        flatShading: !!s.flatShading,
+        // Push the surface back a touch so a wireframe drawn over it does not z-fight with it.
+        polygonOffset: true,
+        polygonOffsetFactor: 1,
+        polygonOffsetUnits: 1
+    });
+    material.depthWrite = s.depthWrite !== false;
+    material.onBeforeCompile = (shader) => {
+        shader.vertexShader = shader.vertexShader
+            .replace('#include <color_pars_vertex>', '#include <color_pars_vertex>\nattribute float alpha;\nvarying float vAlpha;')
+            .replace('#include <color_vertex>', '#include <color_vertex>\nvAlpha = alpha;');
+        shader.fragmentShader = shader.fragmentShader
+            .replace('#include <color_pars_fragment>', '#include <color_pars_fragment>\nvarying float vAlpha;')
+            .replace('vec4 diffuseColor = vec4( diffuse, opacity );', 'vec4 diffuseColor = vec4( diffuse, opacity * vAlpha );');
+    };
+    // The cache key MUST vary with anything that changes the compiled program. It used to be the
+    // constant 'vertex-alpha-v1', which was fine while there was exactly one fill material on the
+    // page; with per-drawable styles a flat-shaded surface would otherwise be handed the smooth
+    // program that was compiled first, and shade wrong for no visible reason.
+    material.customProgramCacheKey = () =>
+        'vertex-alpha-v2|' + (s.flatShading ? 'flat' : 'smooth') + '|' + (s.doubleSided === false ? 'front' : 'double');
+    return material;
+}
+
+/** The depth-tested wireframe MeshView.wireframe asks for, as an overlay object. */
+function makeWireframeOverlay(geometry, style) {
+    const c = (style && style.wireframeColor) || [0.06, 0.08, 0.11, 0.55];
+    const material = new THREE.LineBasicMaterial({
+        color: new THREE.Color(c[0], c[1], c[2]),
+        transparent: true,
+        opacity: c.length > 3 ? c[3] : 0.55,
+        depthTest: true,
+        depthWrite: false
+    });
+    return new THREE.LineSegments(new THREE.WireframeGeometry(geometry), material);
 }
 
 function makeInteractiveLineMaterial(hoverColor) {
@@ -2396,6 +2569,73 @@ function addPayloadPoints(data) {
     });
 }
 
+/** Tear down every drawable slot — called before a payload rebuilds them. */
+function clearDrawableSlots() {
+    payloadGeometrySlots.drawables.forEach((slot) => {
+        if (!slot) return;
+        if (slot.wire) {
+            if (slot.object) slot.object.remove(slot.wire);
+            slot.wire.geometry.dispose();
+            slot.wire.material.dispose();
+        }
+        removeSlot(slot);
+    });
+    payloadGeometrySlots.drawables = [];
+}
+
+/**
+ * Build the scene's ThreeDrawables.
+ *
+ * Rebuilt wholesale rather than updated in place: a drawable list can change length and change
+ * materials between payloads, which is exactly the case `updateGeometryInPlace` refuses. The
+ * in-place path still carries the frame-by-frame load, because that is the FLine geometry above and
+ * it is what a slider actually drives.
+ */
+function addPayloadDrawables(list) {
+    clearDrawableSlots();
+    if (!Array.isArray(list) || !list.length) return;
+
+    list.forEach((d, index) => {
+        if (!d || !d.geometry) return;
+        const kind = (d.style && d.style.kind) || 'surface';
+        const ObjectClass = kind === 'lines' ? THREE.LineSegments : (kind === 'points' ? THREE.Points : THREE.Mesh);
+        const defaults = {
+            color: { itemSize: 3, fill: [1, 1, 1] },
+            alpha: { itemSize: 1, fill: 1 }
+        };
+        if (kind === 'points') defaults.size = { itemSize: 1, fill: 3 };
+
+        const slot = upsertGeometrySlot(null, d.geometry, {
+            kind: 'drawable-' + index,
+            ObjectClass: ObjectClass,
+            // Normals come from Kotlin (toThreeDrawable), matching what the CPU rasterizer shades.
+            // Recomputing here would be an unconditional smooth average and would round every hard
+            // edge off a cube.
+            computeNormals: false,
+            defaults: defaults,
+            makeMaterial: () => {
+                if (kind === 'lines') return makeLineMaterial();
+                if (kind === 'points') return makePointMaterial();
+                return makeSurfaceMaterial(d.style);
+            }
+        });
+        if (!slot) return;
+
+        slot.panel = (d.panel === undefined || d.panel === null) ? 0 : d.panel;
+        slot.label = d.label || null;
+        slot.fitSample = fitSampleOf(d.geometry);
+        if (d.transform && d.transform.length === 16) {
+            slot.object.matrixAutoUpdate = false;
+            slot.object.matrix.fromArray(d.transform);
+        }
+        if (kind === 'surface' && d.style && d.style.wireframe) {
+            slot.wire = makeWireframeOverlay(slot.object.geometry, d.style);
+            slot.object.add(slot.wire);
+        }
+        payloadGeometrySlots.drawables.push(slot);
+    });
+}
+
 function buildSegmentsGeometry(points, color, alpha) {
     if (!points || points.length < 2) return null;
     const positions = [];
@@ -2710,6 +2950,7 @@ function renderPayloadGeometry(payload) {
     else payloadGeometrySlots.fills = removeSlot(payloadGeometrySlots.fills);
     if (payload.points) addPayloadPoints(payload.points);
     else payloadGeometrySlots.points = removeSlot(payloadGeometrySlots.points);
+    addPayloadDrawables(payload.drawables);
 
     const interactivePayload = payload.interactive || [];
     for (let i = 0; i < interactivePayload.length; i += 1) {
@@ -3564,6 +3805,193 @@ function frameBounds(bounds, pad = 1.25) {
     controls.update();
 }
 
+// [viewer-region camera-preset] BEGIN
+// A SECOND IMPLEMENTATION of VisionGeometryPreview.Camera, and marked as one.
+//
+// The CPU rasterizer and this viewer have to frame a mesh identically, or every docs figure shifts
+// when it changes renderer and the diff is 60 subtly-recomposed pictures. The Kotlin original is
+// `VisionGeometryPreview.renderPixels`; this is its transliteration, and
+// `ThreeCameraPresetParityTest` runs this very text on GraalJS and holds the two to the same numbers.
+//
+// Two details that are easy to get wrong and are the reason this is tested rather than trusted:
+//
+//   * `radius` is half the bounding-box **diagonal**, not half its largest dimension. Using the
+//     largest dimension frames a long thin mesh far too close.
+//   * yaw drives sin() on x and cos() on z, so yaw 0 / pitch 0 puts the eye on +z looking down -z —
+//     which is where the headset puts you, and what MeshView.turntable's angles assume.
+function cameraPresetEye(spec, bounds) {
+    const min = bounds.min;
+    const max = bounds.max;
+    const cx = (min[0] + max[0]) / 2;
+    const cy = (min[1] + max[1]) / 2;
+    const cz = (min[2] + max[2]) / 2;
+    const dx = max[0] - min[0];
+    const dy = max[1] - min[1];
+    const dz = max[2] - min[2];
+    const radius = Math.max(1e-4, 0.5 * Math.sqrt(dx * dx + dy * dy + dz * dz));
+
+    const yaw = (spec.yawDegrees || 0) * Math.PI / 180;
+    const pitch = (spec.pitchDegrees || 0) * Math.PI / 180;
+    const eyeDistance = radius * (spec.distance === undefined ? 2.7 : spec.distance);
+
+    return {
+        eye: [
+            cx + eyeDistance * Math.cos(pitch) * Math.sin(yaw),
+            cy + eyeDistance * Math.sin(pitch),
+            cz + eyeDistance * Math.cos(pitch) * Math.cos(yaw)
+        ],
+        target: [cx, cy, cz],
+        radius: radius,
+        // The rasterizer's near plane: a twentieth of the radius, which is always well in front of
+        // the mesh and keeps the depth buffer's precision where the geometry actually is.
+        near: Math.max(1e-5, radius * 0.05),
+        far: Math.max(eyeDistance + radius * 4, radius * 0.05 + 1)
+    };
+}
+// [viewer-region camera-preset] END
+
+/**
+ * Slide the camera along its own view direction until the geometry fills the frame.
+ *
+ * # Why this is not just the preset
+ *
+ * `cameraPresetEye` reproduces the rasterizer exactly, and the rasterizer could afford to be literal:
+ * it *chose its own canvas*, so `MeshView(width = 760, height = 470)` really was the frame. A viewer
+ * does not get that luxury. A box output is as wide as its column and the disclosure panel picks the
+ * height, so the same figure arrives in a band nearer 3.8:1 — and a camera that frames the bounding
+ * sphere vertically then leaves two thirds of the width empty and the mesh looking half the size it
+ * used to.
+ *
+ * So the preset supplies the **direction**, and this supplies the **distance**: the smallest one at
+ * which all eight corners of the bounding box are still inside the frustum, plus a margin. That is the
+ * ordinary "zoom to fit", and it uses the frame that actually exists rather than the one the figure
+ * was written against.
+ *
+ * Only ever applied when the payload named a camera — which is the mesh path. Every FLine payload
+ * predates this and keeps auto-framing exactly as before, so no existing capture moves.
+ *
+ * Iterated rather than solved: moving the eye changes each corner's depth, so the ratio is only
+ * locally linear. Four passes is comfortably enough to settle inside the 0.2% early-out.
+ */
+function fitCameraToBounds(cam, bounds, target, margin, points) {
+    // Prefer the geometry's own points to the corners of its bounding box.
+    //
+    // The box is a bad stand-in for anything that is not a box. Fitting its eight corners makes a
+    // cube fill its panel and an octahedron inscribed in the same box fill about half of it, which in
+    // a gallery of Platonic solids reads as five shapes at five arbitrary sizes. The rasterizer had
+    // the same weakness (it framed the bounding *sphere*) and the old figures show it.
+    //
+    // `points` is a strided sample capped at FIT_SAMPLE_LIMIT, so this stays cheap enough to run per
+    // frame for every panel even when the mesh is the 108k-triangle toy car.
+    const corners = [];
+    if (points && points.length >= 3) {
+        for (let i = 0; i + 2 < points.length; i += 3) {
+            corners.push(new THREE.Vector3(points[i], points[i + 1], points[i + 2]));
+        }
+    } else {
+        for (let i = 0; i < 8; i += 1) {
+            corners.push(new THREE.Vector3(
+                (i & 1) ? bounds.max[0] : bounds.min[0],
+                (i & 2) ? bounds.max[1] : bounds.min[1],
+                (i & 4) ? bounds.max[2] : bounds.min[2]
+            ));
+        }
+    }
+    const focus = new THREE.Vector3(target[0], target[1], target[2]);
+    const tanV = Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2);
+    const tanH = tanV * (cam.aspect || 1);
+    const inverse = new THREE.Matrix4();
+    const local = new THREE.Vector3();
+
+    for (let pass = 0; pass < 4; pass += 1) {
+        cam.updateMatrixWorld();
+        inverse.copy(cam.matrixWorld).invert();
+        let worst = 0;
+        let behind = false;
+        for (const corner of corners) {
+            local.copy(corner).applyMatrix4(inverse);
+            const depth = -local.z;
+            if (depth <= 1e-9) { behind = true; break; }
+            worst = Math.max(worst, Math.abs(local.x) / (tanH * depth), Math.abs(local.y) / (tanV * depth));
+        }
+        // A corner behind the eye means the fit is not meaningful yet; back off and try again.
+        if (behind) worst = 2;
+        if (worst <= 0) break;
+        const scale = worst * margin;
+        if (Math.abs(scale - 1) < 0.002) break;
+        const direction = cam.position.clone().sub(focus);
+        if (direction.lengthSq() < 1e-18) break;
+        cam.position.copy(focus.clone().add(direction.multiplyScalar(scale)));
+        cam.lookAt(focus);
+    }
+
+    const distance = cam.position.distanceTo(focus);
+    cam.near = Math.max(1e-5, distance * 0.01);
+    cam.far = Math.max(distance * 10, cam.near + 1);
+    cam.updateProjectionMatrix();
+}
+
+/**
+ * Point a camera at geometry using a ThreeCameraSpec. Returns the derived eye/target/radius.
+ *
+ * @param fit when true, [fitCameraToBounds] then pulls the distance in or out so the geometry fills
+ * the frame the viewer was actually given. The spec's `distance` becomes the padding factor.
+ */
+function applyCameraSpec(cam, spec, bounds, fit, points) {
+    if (!spec || !bounds || !bounds.min || !bounds.max) return null;
+    const derived = cameraPresetEye(spec, bounds);
+    cam.position.set(derived.eye[0], derived.eye[1], derived.eye[2]);
+    cam.up.set(0, 1, 0);
+    cam.lookAt(derived.target[0], derived.target[1], derived.target[2]);
+    cam.fov = spec.fieldOfViewDegrees === undefined ? 40 : spec.fieldOfViewDegrees;
+    cam.near = derived.near;
+    cam.far = derived.far;
+    cam.updateProjectionMatrix();
+    if (fit) {
+        // 2.7 is MeshView's default distance and frames the bounding sphere with a little air, so it
+        // is the multiple that means "no extra padding" here.
+        const requested = spec.distance === undefined ? 2.7 : spec.distance;
+        fitCameraToBounds(cam, bounds, derived.target, Math.max(1.02, requested / 2.7 * 1.06), points);
+    }
+    return derived;
+}
+
+/** How many vertices a fit samples. Enough to pin a silhouette, small enough to run every frame. */
+const FIT_SAMPLE_LIMIT = 512;
+
+/** A strided sample of a geometry's positions, as a flat xyz array. */
+function fitSampleOf(geometryData) {
+    const source = geometryData?.attributes?.position?.array;
+    if (!source || source.length < 3) return null;
+    const vertexCount = Math.floor(source.length / 3);
+    if (vertexCount <= FIT_SAMPLE_LIMIT) return Float32Array.from(source);
+    const stride = Math.ceil(vertexCount / FIT_SAMPLE_LIMIT);
+    const out = new Float32Array(Math.ceil(vertexCount / stride) * 3);
+    let w = 0;
+    for (let v = 0; v < vertexCount; v += stride) {
+        out[w] = source[v * 3];
+        out[w + 1] = source[v * 3 + 1];
+        out[w + 2] = source[v * 3 + 2];
+        w += 3;
+    }
+    return out.subarray(0, w);
+}
+
+/** Every fit sample belonging to [panelIndex], concatenated. `-1` drawables belong to every panel. */
+function fitPointsForPanel(panelIndex) {
+    const parts = payloadGeometrySlots.drawables
+        .filter((s) => s && s.fitSample && (panelIndex < 0 || s.panel === -1 || s.panel === panelIndex))
+        .map((s) => s.fitSample);
+    if (!parts.length) return null;
+    if (parts.length === 1) return parts[0];
+    let total = 0;
+    parts.forEach((p) => { total += p.length; });
+    const out = new Float32Array(total);
+    let at = 0;
+    parts.forEach((p) => { out.set(p, at); at += p.length; });
+    return out;
+}
+
 function setMode(mode) {
     editorState.mode = mode;
     controls.enabled = mode === 'camera';
@@ -3609,8 +4037,25 @@ function applyGeometry(payload) {
     if (editorState.scene) rebuildEditableView();
     else renderPayloadGeometry(payload);
     updateEditableHud();
+    publishFrameSize(payload);
+    applyScenePanels(payload);
+    if (payload.background) container.style.background = payload.background;
+    // Absent means true — the field is omitted from every payload that predates it.
+    const wantHelpers = payload.helpers !== false;
+    grid.visible = wantHelpers;
+    axes.visible = wantHelpers;
     if (!hasFramedInitialGeometry && payload.bounds && payload.autoFrame !== false) {
         frameBounds(payload.bounds);
+        hasFramedInitialGeometry = true;
+    }
+    // An explicit camera spec beats auto-framing, and beats it on every payload rather than only the
+    // first: a caller who named an angle means it, and a re-publish must not drift off it.
+    if (payload.camera && payload.bounds && panelState.cameras.length <= 1) {
+        camera.aspect = container.clientHeight > 0 ? container.clientWidth / container.clientHeight : 1;
+        applyCameraSpec(camera, payload.camera, payload.bounds, true, fitPointsForPanel(-1));
+        const derived = cameraPresetEye(payload.camera, payload.bounds);
+        controls.target.set(derived.target[0], derived.target[1], derived.target[2]);
+        controls.update();
         hasFramedInitialGeometry = true;
     }
     // Last, because it reads the geometry the steps above created and because framing the camera first
@@ -4012,6 +4457,200 @@ renderer.domElement.addEventListener('click', (event) => {
     }
 });
 
+/**
+ * Tell the host how big this figure wants to be.
+ *
+ * The box output panel sizes itself to its content, and for an iframe it learns that size from an
+ * `afield-iframe-size` event dispatched on the frame element (`outputareas2.js`,
+ * `bindContentLoadEvents`). Other embedded viewers get this from `/iframe_autosize.js`; this one
+ * cannot use it, because measuring a body that is `height: 100%` inside `overflow: hidden` only ever
+ * reports back the size it already has. So the size travels in the payload instead and is republished
+ * here verbatim.
+ *
+ * Silent when the payload does not carry one, which is every payload that predates it — so an FLine
+ * viewer keeps filling its column exactly as before.
+ */
+function publishFrameSize(payload) {
+    const width = Number(payload.frameWidth) || 0;
+    const height = Number(payload.frameHeight) || 0;
+    if (width <= 0 && height <= 0) return;
+    const frame = window.frameElement;
+    if (!frame) return;
+    if (width > 0) frame.dataset.afieldIntrinsicWidth = String(width);
+    if (height > 0) frame.dataset.afieldIntrinsicHeight = String(height);
+    frame.dispatchEvent(new CustomEvent('afield-iframe-size', {
+        detail: { width: width, height: height, reason: 'three/geometry', changed: true }
+    }));
+}
+
+/**
+ * Take the payload's panels and build a camera for each.
+ *
+ * A scene with no panels, or with one, keeps the single full-bleed camera and every behaviour the
+ * viewer had before panels existed — this is a no-op for every FLine payload.
+ */
+function applyScenePanels(payload) {
+    const panels = Array.isArray(payload.panels) ? payload.panels : [];
+    panelState.panels = panels;
+    panelState.columns = Math.max(1, payload.columns || 1);
+    panelState.cameras = [];
+    panelState.base = null;
+    clearPanelLabels();
+
+    // The scene-wide "N ln | N tri | N p" HUD sits top-right, which is exactly where a tiled layout
+    // puts its last column's title — they overlapped, and both became unreadable. In a contact sheet
+    // the per-panel chrome is the honest place for counts anyway, so the global one steps aside.
+    document.getElementById('hud').classList.toggle('hidden', panels.length > 1);
+
+    if (panels.length <= 1) {
+        // One panel still carries chrome (a title, a caption, the fact line); it just does not carry
+        // a viewport of its own.
+        if (panels.length === 1) renderPanelChrome(panels, 1, false);
+        return;
+    }
+
+    panels.forEach((p, index) => {
+        const vp = panelViewport(index, panels.length);
+        const cam = new THREE.PerspectiveCamera(45, vp.h > 0 ? vp.w / vp.h : 1, 0.01, 10000);
+        const bounds = p.bounds || payload.bounds;
+        if (bounds) applyCameraSpec(cam, p.camera || {}, bounds, true, fitPointsForPanel(index));
+        panelState.cameras.push({
+            camera: cam, spec: p.camera || {}, bounds: bounds, fitPoints: fitPointsForPanel(index)
+        });
+    });
+
+    // The orbit delta every panel is offset from is captured on the FIRST FRAME, not here.
+    //
+    // `applyGeometry` runs `frameBounds` after this, which moves the main camera to frame the whole
+    // scene — so a baseline taken now is the distance from before that move. The zoom ratio derived
+    // from it is then wrong by however much framing changed, which is ~1 for unit-scale geometry and
+    // enormous for anything else: extruded glyphs at extent 300 came out as dots, having been pushed
+    // back a hundredfold, while spheres of radius 1 looked perfectly fine and hid the bug.
+    panelState.base = null;
+    renderPanelChrome(panels, panels.length, true);
+}
+
+/** Panel titles/captions live in the DOM over the canvas, not in the WebGL scene. */
+function clearPanelLabels() {
+    const old = document.getElementById('panel-chrome');
+    if (old) old.remove();
+    container.classList.remove('chrome-top', 'chrome-bottom', 'chrome-bottom-2');
+}
+
+function textCell(className, text) {
+    const el = document.createElement('div');
+    el.className = className;
+    el.textContent = text;
+    return el;
+}
+
+function renderPanelChrome(panels, count, tiled) {
+    clearPanelLabels();
+    if (!panels.some((p) => p && (p.title || p.caption || p.facts))) return;
+    const host = document.createElement('div');
+    host.id = 'panel-chrome';
+
+    if (tiled) {
+        host.classList.add('tiled');
+        host.style.gridTemplateColumns = 'repeat(' + panelState.columns + ', minmax(0, 1fr))';
+        panels.forEach((p) => {
+            const cell = document.createElement('div');
+            cell.className = 'panel-cell';
+            if (p && p.title) cell.appendChild(textCell('panel-title', p.title));
+            if (p && p.facts) cell.appendChild(textCell('panel-facts', p.facts));
+            if (p && p.caption) cell.appendChild(textCell('panel-caption', p.caption));
+            host.appendChild(cell);
+        });
+        document.body.appendChild(host);
+        return;
+    }
+
+    // One panel: a band above and a band below, with the canvas inset to match, rather than an
+    // overlay across the middle of the geometry.
+    const p = panels[0] || {};
+    host.classList.add('solo');
+    const top = document.createElement('div');
+    top.className = 'panel-cell';
+    if (p.title) top.appendChild(textCell('panel-title', p.title));
+    const bottom = document.createElement('div');
+    bottom.className = 'panel-cell';
+    if (p.facts) bottom.appendChild(textCell('panel-facts', p.facts));
+    if (p.caption) bottom.appendChild(textCell('panel-caption', p.caption));
+    host.appendChild(top);
+    host.appendChild(bottom);
+    document.body.appendChild(host);
+
+    if (p.title) container.classList.add('chrome-top');
+    const belowLines = (p.facts ? 1 : 0) + (p.caption ? 1 : 0);
+    if (belowLines === 1) container.classList.add('chrome-bottom');
+    else if (belowLines >= 2) container.classList.add('chrome-bottom-2');
+    // The canvas just changed size, so the renderer and the camera aspect have to follow it.
+    onResize();
+}
+
+/**
+ * Reserved at the top of every tiled cell for its title and fact line.
+ *
+ * The chrome is a DOM overlay, so nothing stops the geometry being drawn underneath it — and once the
+ * camera fits the mesh properly, it is drawn right up to the cell edge and the two collide. Taking the
+ * band out of the *viewport* rather than nudging the camera keeps the fit honest: the mesh fills the
+ * space it is actually given.
+ */
+const PANEL_CHROME_TOP_PX = 42;
+
+/** The pixel rectangle panel [index] occupies, in CSS pixels with y measured from the bottom. */
+function panelViewport(index, count) {
+    const cols = Math.min(panelState.columns, count);
+    const rows = Math.ceil(count / cols);
+    const w = container.clientWidth / cols;
+    const h = container.clientHeight / rows;
+    const col = index % cols;
+    const row = Math.floor(index / cols);
+    // The band comes off the top of the cell; y is the cell's *bottom* edge, so it does not move.
+    const inset = Math.min(PANEL_CHROME_TOP_PX, Math.max(0, h - 40));
+    // WebGL's origin is bottom-left; the grid reads top-down, so the row is flipped.
+    return { x: col * w, y: (rows - 1 - row) * h, w: w, h: h - inset };
+}
+
+/** Every panel's camera, re-derived from its own spec plus the shared orbit delta. */
+function updatePanelCameras() {
+    if (!panelState.cameras.length) return;
+    if (!panelState.base) {
+        panelState.base = {
+            azimuth: controls.getAzimuthalAngle(),
+            polar: controls.getPolarAngle(),
+            distance: controls.getDistance()
+        };
+    }
+    const dAzimuth = (controls.getAzimuthalAngle() - panelState.base.azimuth) * 180 / Math.PI;
+    const dPolar = (controls.getPolarAngle() - panelState.base.polar) * 180 / Math.PI;
+    const zoom = panelState.base.distance > 1e-9 ? controls.getDistance() / panelState.base.distance : 1;
+    const count = panelState.cameras.length;
+    panelState.cameras.forEach((entry, index) => {
+        if (!entry.bounds) return;
+        const spec = entry.spec || {};
+        const vp = panelViewport(index, count);
+        entry.camera.aspect = vp.h > 0 ? vp.w / vp.h : 1;
+        applyCameraSpec(entry.camera, {
+            // Dragging right raises the azimuth, which should turn the model the same way it turns
+            // the single-panel camera — hence the plain addition rather than a subtraction.
+            yawDegrees: (spec.yawDegrees || 0) + dAzimuth,
+            // Polar is measured from +y down, so a positive polar delta is a *lower* pitch.
+            pitchDegrees: (spec.pitchDegrees || 0) - dPolar,
+            distance: (spec.distance === undefined ? 2.7 : spec.distance) * zoom,
+            fieldOfViewDegrees: spec.fieldOfViewDegrees
+        }, entry.bounds, true, entry.fitPoints);
+    });
+}
+
+/** Show only the drawables belonging to panel [index]; `panel === -1` means every panel. */
+function setPanelVisibility(index) {
+    payloadGeometrySlots.drawables.forEach((slot) => {
+        if (!slot || !slot.object) return;
+        slot.object.visible = slot.panel === -1 || slot.panel === index;
+    });
+}
+
 function onResize() {
     const width = container.clientWidth;
     const height = container.clientHeight;
@@ -4019,6 +4658,14 @@ function onResize() {
     renderer.setSize(width, height);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
+    // A camera that was fitted to the frame has to be refitted when the frame changes shape —
+    // including the resize the chrome bands trigger, which happens once on every mesh payload.
+    if (payloadState && payloadState.camera && payloadState.bounds && panelState.cameras.length <= 1) {
+        applyCameraSpec(camera, payloadState.camera, payloadState.bounds, true, fitPointsForPanel(-1));
+        const derived = cameraPresetEye(payloadState.camera, payloadState.bounds);
+        controls.target.set(derived.target[0], derived.target[1], derived.target[2]);
+        controls.update();
+    }
     if (pointMaterial && pointMaterial.uniforms) pointMaterial.uniforms.uPixelRatio.value = getDpr();
     if (editorState.marquee) showMarquee(editorState.marquee);
 }
@@ -4028,7 +4675,28 @@ function render() {
     controls.update();
     const interactivePointer = editorState.mode === 'camera' ? updateInteractiveHover() : false;
     if (editorState.mode === 'camera') renderer.domElement.style.cursor = interactivePointer ? 'pointer' : '';
-    renderer.render(scene, camera);
+
+    const count = panelState.cameras.length;
+    if (count > 1) {
+        updatePanelCameras();
+        renderer.setScissorTest(true);
+        for (let i = 0; i < count; i += 1) {
+            const vp = panelViewport(i, count);
+            renderer.setViewport(vp.x, vp.y, vp.w, vp.h);
+            renderer.setScissor(vp.x, vp.y, vp.w, vp.h);
+            setPanelVisibility(i);
+            renderer.render(scene, panelState.cameras[i].camera);
+        }
+        renderer.setScissorTest(false);
+        // Leave every drawable visible, so a payload that drops back to one panel is not left with
+        // most of its geometry switched off.
+        payloadGeometrySlots.drawables.forEach((slot) => {
+            if (slot && slot.object) slot.object.visible = true;
+        });
+    } else {
+        renderer.setViewport(0, 0, container.clientWidth, container.clientHeight);
+        renderer.render(scene, camera);
+    }
     requestAnimationFrame(render);
 }
 

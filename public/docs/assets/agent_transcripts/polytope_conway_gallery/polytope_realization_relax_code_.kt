@@ -1,6 +1,5 @@
 import afield.stdlib.polytope.*
 import afield.stdlib.Vec3
-import java.util.Base64
 import kotlin.random.Random
 
 // A real Conway output, then every vertex jittered. The topology is not touched: the
@@ -22,22 +21,12 @@ val jittered = clean.copy(realization = Realization3(
 
 val solved = jittered.solveRealization()
 
-val view = MeshView(width = 420, height = 360, wireframe = false, distance = 2.5)
-val panels = listOf(
-    "aC as built" to clean,
-    "jittered" to jittered,
-    "solveRealization()" to solved.polyhedron,
-)
-display(
-    "relax",
-    "<div style='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px'>" +
-        panels.joinToString("") { (label, p) ->
-            val png = Base64.getEncoder().encodeToString(
-                p.toTriMesh().renderPng(view, caption = "", title = null),
-            )
-            "<div><div style='color:#e6ecf4;font:600 13px monospace;padding-bottom:3px'>$label</div>" +
-                "<img src='data:image/png;base64,$png' style='width:100%;border-radius:5px;display:block'/></div>"
-        } + "</div>",
+val view = MeshView(wireframe = false, distance = 2.5)
+threeGrid(
+    "aC as built" to clean.toTriMesh(),
+    "jittered" to jittered.toTriMesh(),
+    "solveRealization()" to solved.polyhedron.toTriMesh(),
+    channel = "relax", name = "relax", columns = 3, height = 360, cellWidth = 420, view = view,
 )
 
 fun row(label: String, d: RealizationDiagnostics) =

@@ -42,12 +42,7 @@ import java.io.File
  *
  * ### Why `ShapeUtils.triangulateShape` is the Kotlin triangulator
  *
- * The viewer's `THREE` comes from a CDN (`threejs_viewer.html:197`, `three@0.160.0`) and the only
- * in-repo three — `extensions/remote_ar/vendor/super-three/0.184.0/` — is an incomplete vendoring
- * whose `three.module.js` imports a `three.core.js` that was never committed, so it cannot be loaded
- * at all. A hermetic test therefore cannot have the real `THREE.ShapeUtils`.
- *
- * So the shim's `triangulateShape` is [FloatEarcut] — the same triangulator the Kotlin oracle uses.
+ * The shim's `triangulateShape` is [FloatEarcut] — the same triangulator the Kotlin oracle uses.
  * That is a *stronger* comparison than the real thing would give, not a weaker one:
  *
  *  * the duplicated logic is the clustering, the projected frame, the hemisphere, the nesting and the
@@ -62,6 +57,12 @@ import java.io.File
  * [FloatEarcut] is float32, and `triangulateShape` does a little bookkeeping of its own. Those stay
  * covered by the real browser captures in
  * `dev_docs/agents/artifacts/tessellate_facing/multi_plane_fill_demo/`.
+ *
+ * Note that three.js *is* now loadable in-repo — `src/commonMain/resources/vendor/three/0.160.0/`,
+ * vendored when the mesh examples moved onto this viewer and a CDN stopped being an acceptable
+ * dependency for ~68 docs captures. So a shim using the real `THREE.ShapeUtils` has become possible.
+ * It is deliberately still not what runs here, for the three reasons above: substituting the real one
+ * would weaken the assertion from triangle-for-triangle to a count, not strengthen it.
  *
  * GraalJS rather than node because `org.graalvm.polyglot:js` is already a first-party dependency
  * (`build.gradle.kts:979`), `afield.morpho.MorphoRuntime` is the established idiom for it, and a
@@ -322,6 +323,7 @@ $region
             "sectionCutSegments",
             "sectionCutLength",
         ),
+        "camera-preset" to listOf("cameraPresetEye"),
     )
 
     /** What the `planar-tessellation` region exports, in the order the viewer defines them. */

@@ -288,32 +288,34 @@ orders and reports both: `notationHistory` is what you asked for, `history` is w
 ### The seeds
 
 Five Platonic seeds, each a fully realized `PolyhedralObject`. All the pictures below are Field's own
-CPU mesh rasteriser (`TriMesh.renderPng`) fed with `toTriMesh()`; the captions under each are read
-off the **topology**, not off the mesh.
+Three.js viewer (`threeGrid(...)`) fed with `toTriMesh()` — one WebGL context tiled into panels, so
+you can orbit the whole sheet at once. The captions under each are read off the **topology**, not off
+the mesh.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/seeds_gallery.png" wait="2.5" capture="box" open-outputs="true" w="1240" h="820" padding="14"}
 :::static
 import afield.stdlib.polytope.*
-import java.util.Base64
 
 :::fold one small gallery helper, reused by the two galleries below
 fun Box.gallery(channel: String, columns: Int, cell: Int, panels: List<Pair<String, PolyhedralObject>>) {
-    val view = MeshView(width = cell, height = (cell * 0.84).toInt(), wireframe = false, distance = 2.3)
-    display(channel, buildString {
-        append("<div style='display:grid;grid-template-columns:repeat($columns,minmax(0,1fr));gap:10px'>")
-        for ((label, p) in panels) {
+    val view = MeshView(wireframe = false, distance = 2.3)
+    val rows = (panels.size + columns - 1) / columns
+    threeGrid(
+        panels.map { (label, p) ->
             val t = p.topology
-            val png = Base64.getEncoder().encodeToString(p.toTriMesh().renderPng(view, caption = "", title = null))
-            append("<div><div style='color:#e6ecf4;font-weight:600;font-family:monospace;font-size:13px;padding-bottom:3px'>$label</div>")
-            append("<img src='data:image/png;base64,$png' style='width:100%;border-radius:5px;display:block'/>")
-            append("<div style='color:#93a4ba;font-family:monospace;font-size:11px;padding-top:4px'>")
-            append("${t.elements(0).size}v ${t.elements(1).size}e ${t.elements(2).size}f · ")
-            append(t.elements(2).groupingBy { t.faceCycle(it.id).size }.eachCount().toSortedMap()
-                .entries.joinToString(" ") { "${it.value}×${it.key}-gon" })
-            append(" · &chi;=${t.eulerCharacteristic()}</div></div>")
-        }
-        append("</div>")
-    })
+            ThreeMeshPanel(label, p.toTriMesh(), facts =
+                "${t.elements(0).size}v ${t.elements(1).size}e ${t.elements(2).size}f · " +
+                t.elements(2).groupingBy { t.faceCycle(it.id).size }.eachCount().toSortedMap()
+                    .entries.joinToString(" ") { "${it.value}×${it.key}-gon" } +
+                " · χ=${t.eulerCharacteristic()}")
+        },
+        channel = channel,
+        name = "gallery-$channel",
+        columns = columns,
+        height = rows * (cell * 0.84).toInt(),
+        cellWidth = cell,
+        view = view,
+    )
 }
 :::endfold
 
@@ -338,26 +340,27 @@ and mean radius.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/primitives_gallery.png" wait="3.0" capture="box" open-outputs="true" w="1240" h="800" padding="14"}
 :::static
 import afield.stdlib.polytope.*
-import java.util.Base64
 
 :::fold the same gallery helper as above
 fun Box.gallery(channel: String, columns: Int, cell: Int, panels: List<Pair<String, PolyhedralObject>>) {
-    val view = MeshView(width = cell, height = (cell * 0.84).toInt(), wireframe = false, distance = 2.3)
-    display(channel, buildString {
-        append("<div style='display:grid;grid-template-columns:repeat($columns,minmax(0,1fr));gap:10px'>")
-        for ((label, p) in panels) {
+    val view = MeshView(wireframe = false, distance = 2.3)
+    val rows = (panels.size + columns - 1) / columns
+    threeGrid(
+        panels.map { (label, p) ->
             val t = p.topology
-            val png = Base64.getEncoder().encodeToString(p.toTriMesh().renderPng(view, caption = "", title = null))
-            append("<div><div style='color:#e6ecf4;font-weight:600;font-family:monospace;font-size:13px;padding-bottom:3px'>$label</div>")
-            append("<img src='data:image/png;base64,$png' style='width:100%;border-radius:5px;display:block'/>")
-            append("<div style='color:#93a4ba;font-family:monospace;font-size:11px;padding-top:4px'>")
-            append("${t.elements(0).size}v ${t.elements(1).size}e ${t.elements(2).size}f · ")
-            append(t.elements(2).groupingBy { t.faceCycle(it.id).size }.eachCount().toSortedMap()
-                .entries.joinToString(" ") { "${it.value}×${it.key}-gon" })
-            append(" · &chi;=${t.eulerCharacteristic()}</div></div>")
-        }
-        append("</div>")
-    })
+            ThreeMeshPanel(label, p.toTriMesh(), facts =
+                "${t.elements(0).size}v ${t.elements(1).size}e ${t.elements(2).size}f · " +
+                t.elements(2).groupingBy { t.faceCycle(it.id).size }.eachCount().toSortedMap()
+                    .entries.joinToString(" ") { "${it.value}×${it.key}-gon" } +
+                " · χ=${t.eulerCharacteristic()}")
+        },
+        channel = channel,
+        name = "gallery-$channel",
+        columns = columns,
+        height = rows * (cell * 0.84).toInt(),
+        cellWidth = cell,
+        view = view,
+    )
 }
 :::endfold
 
@@ -398,7 +401,6 @@ Draw the polygon boundaries instead of the shading and the 24 pentagons appear:
 :::static
 import afield.stdlib.polytope.*
 import afield.stdlib.TriMesh
-import java.util.Base64
 
 // Shading cannot separate coplanar faces, so give each polygon its own colour instead. The
 // triangle -> source-polygon map is what makes that possible on a triangle mesh at all.
@@ -420,9 +422,12 @@ for (tri in 0 until g.triangleCount) {
 val painted = TriMesh(g.mesh.positions, g.mesh.indices, g.mesh.normals, null, colors)
 
 :::fold one figure with its own caption
-val png = Base64.getEncoder().encodeToString(painted.renderPng(
-    MeshView(wireframe = false, width = 860, height = 560, distance = 2.4), caption = "", title = null,
-))
+// A separate channel from the caption below: `display` REPLACES a channel's content, so a caption
+// written to "gyro" would silently take the viewer's place and the figure would lose its mesh.
+three(
+    painted, channel = "gyro3d", name = "gyro",
+    view = MeshView(wireframe = false, width = 860, height = 560, distance = 2.4), facts = false,
+)
 // The claim, measured rather than asserted: 24 faces sharing only 6 distinct outward normals.
 val distinctNormals = gyro.topology.elements(2)
     .map { gyro.faceNormal(it.id) }
@@ -430,7 +435,6 @@ val distinctNormals = gyro.topology.elements(2)
     .distinct()
 
 display("gyro", """
-    <img src='data:image/png;base64,$png' style='width:100%;border-radius:6px;display:block'/>
     <div style='color:#93a4ba;font:12px monospace;padding-top:8px;line-height:1.6'>
       gC &middot; ${gyro.topology.elements(2).size} faces, all
       ${gyro.topology.elements(2).map { gyro.topology.faceCycle(it.id).size }.distinct().joinToString("/")}-gons
@@ -452,26 +456,27 @@ vertices should stay on the old surface.** Hand `gyro` a different `RealizationP
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/composites_gallery.png" wait="3.5" capture="box" open-outputs="true" w="1240" h="800" padding="14"}
 :::static
 import afield.stdlib.polytope.*
-import java.util.Base64
 
 :::fold the same gallery helper as above
 fun Box.gallery(channel: String, columns: Int, cell: Int, panels: List<Pair<String, PolyhedralObject>>) {
-    val view = MeshView(width = cell, height = (cell * 0.84).toInt(), wireframe = false, distance = 2.3)
-    display(channel, buildString {
-        append("<div style='display:grid;grid-template-columns:repeat($columns,minmax(0,1fr));gap:10px'>")
-        for ((label, p) in panels) {
+    val view = MeshView(wireframe = false, distance = 2.3)
+    val rows = (panels.size + columns - 1) / columns
+    threeGrid(
+        panels.map { (label, p) ->
             val t = p.topology
-            val png = Base64.getEncoder().encodeToString(p.toTriMesh().renderPng(view, caption = "", title = null))
-            append("<div><div style='color:#e6ecf4;font-weight:600;font-family:monospace;font-size:13px;padding-bottom:3px'>$label</div>")
-            append("<img src='data:image/png;base64,$png' style='width:100%;border-radius:5px;display:block'/>")
-            append("<div style='color:#93a4ba;font-family:monospace;font-size:11px;padding-top:4px'>")
-            append("${t.elements(0).size}v ${t.elements(1).size}e ${t.elements(2).size}f · ")
-            append(t.elements(2).groupingBy { t.faceCycle(it.id).size }.eachCount().toSortedMap()
-                .entries.joinToString(" ") { "${it.value}×${it.key}-gon" })
-            append(" · &chi;=${t.eulerCharacteristic()}</div></div>")
-        }
-        append("</div>")
-    })
+            ThreeMeshPanel(label, p.toTriMesh(), facts =
+                "${t.elements(0).size}v ${t.elements(1).size}e ${t.elements(2).size}f · " +
+                t.elements(2).groupingBy { t.faceCycle(it.id).size }.eachCount().toSortedMap()
+                    .entries.joinToString(" ") { "${it.value}×${it.key}-gon" } +
+                " · χ=${t.eulerCharacteristic()}")
+        },
+        channel = channel,
+        name = "gallery-$channel",
+        columns = columns,
+        height = rows * (cell * 0.84).toInt(),
+        cellWidth = cell,
+        view = view,
+    )
 }
 :::endfold
 
@@ -697,7 +702,6 @@ triangle → source-polygon map.
 :::static
 import afield.stdlib.polytope.*
 import afield.stdlib.TriMesh
-import java.util.Base64
 
 // One scalar per face of a dodecahedron: spike height rises from left to right.
 var source = dodecahedron()
@@ -734,12 +738,13 @@ for (tri in 0 until g.triangleCount) {
 val painted = TriMesh(g.mesh.positions, g.mesh.indices, g.mesh.normals, null, colors)
 
 :::fold one figure, with its own caption, so nothing is read off a mesh-level summary
-val png = Base64.getEncoder().encodeToString(painted.renderPng(
-    MeshView(wireframe = false, width = 820, height = 560, distance = 2.3, yawDegrees = 0.0, pitchDegrees = 6.0),
-    caption = "", title = null,
-))
+// Its own channel — see the note on the gyro figure: a later display() to the same channel replaces.
+three(
+    painted, channel = "field3d", name = "field",
+    view = MeshView(wireframe = false, width = 820, height = 560, distance = 2.3, yawDegrees = 0.0, pitchDegrees = 6.0),
+    facts = false,
+)
 display("field", """
-    <img src='data:image/png;base64,$png' style='width:100%;border-radius:6px;display:block'/>
     <div style='color:#93a4ba;font:12px monospace;padding-top:8px;line-height:1.6'>
       kis deployed over ${deployed.size} faces &middot;
       heightScale resolved ${"%.3f".format(lo)} &hellip; ${"%.3f".format(hi)}<br/>
@@ -810,7 +815,6 @@ attributes are untouched — the result is `copy(realization = solved)` and noth
 :::static
 import afield.stdlib.polytope.*
 import afield.stdlib.Vec3
-import java.util.Base64
 import kotlin.random.Random
 
 // Take a real Conway output and jitter every vertex. The topology is not touched at all.
@@ -827,12 +831,13 @@ val jittered = clean.copy(realization = Realization3(clean.realization!!.vertexC
 val solved = jittered.solveRealization()
 
 :::fold render the three embeddings and their diagnostics as one figure
-val view = MeshView(width = 400, height = 340, wireframe = false, distance = 2.5)
-fun panel(label: String, p: PolyhedralObject): String {
-    val png = Base64.getEncoder().encodeToString(p.toTriMesh().renderPng(view, caption = "", title = null))
-    return "<div><div style='color:#e6ecf4;font:600 13px monospace;padding-bottom:3px'>$label</div>" +
-        "<img src='data:image/png;base64,$png' style='width:100%;border-radius:5px;display:block'/></div>"
-}
+threeGrid(
+    "aC as built" to clean.toTriMesh(),
+    "every vertex jittered" to jittered.toTriMesh(),
+    "solveRealization()" to solved.polyhedron.toTriMesh(),
+    channel = "solve3d", name = "embeddings", columns = 3, height = 340, cellWidth = 400,
+    view = MeshView(wireframe = false, distance = 2.5),
+)
 fun row(label: String, d: RealizationDiagnostics) =
     ("<tr><td style='padding:2px 14px 2px 0'>%s</td><td>%.5f</td><td>%.3e</td>" +
         "<td>%.3e</td><td>%.3e</td><td>%d</td></tr>").format(
@@ -840,11 +845,6 @@ fun row(label: String, d: RealizationDiagnostics) =
         d.facePlanarityRmsError, d.degenerateFaces.size)
 
 display("solve", """
-    <div style='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px'>
-      ${panel("aC as built", clean)}
-      ${panel("every vertex jittered", jittered)}
-      ${panel("solveRealization()", solved.polyhedron)}
-    </div>
     <table style='color:#c3ccd9;font:12px monospace;border-collapse:collapse;padding-top:10px;margin-top:10px'>
       <thead style='color:#6d7787'><tr>
         <th style='text-align:left;padding-right:14px'>embedding</th><th>edge mean</th>
@@ -902,7 +902,6 @@ moves. The default runs the first and polishes with the second.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/canonical.png" wait="4.0" capture="box" open-outputs="true" w="1220" h="820" padding="14"}
 :::static
 import afield.stdlib.polytope.*
-import java.util.Base64
 
 // The gyro-cube, exactly as the operator built it, and the same combinatorics canonicalized.
 val built = conway("gC").polyhedron
@@ -914,12 +913,12 @@ val before = built.normalize(gauge)
 val after = run.polyhedron.normalize(gauge)
 
 :::fold render the two embeddings and the three defining conditions
-val view = MeshView(width = 430, height = 380, wireframe = false, distance = 3.2)
-fun panel(label: String, p: PolyhedralObject): String {
-    val png = Base64.getEncoder().encodeToString(p.toTriMesh().renderPng(view, caption = "", title = null))
-    return "<div><div style='color:#e6ecf4;font:600 13px monospace;padding-bottom:3px'>$label</div>" +
-        "<img src='data:image/png;base64,$png' style='width:100%;border-radius:5px;display:block'/></div>"
-}
+threeGrid(
+    "gC as the operator built it" to before.toTriMesh(),
+    "gC.canonicalize()" to after.toTriMesh(),
+    channel = "canon3d", name = "embeddings", columns = 2, height = 380, cellWidth = 430,
+    view = MeshView(wireframe = false, distance = 3.2),
+)
 fun row(label: String, d: CanonicalDiagnostics) =
     ("<tr><td style='padding:2px 14px 2px 0'>%s</td><td>%.3e</td><td>%.3e</td>" +
         "<td>%.3e</td><td>%.4f</td><td>%.3e</td></tr>").format(
@@ -927,10 +926,6 @@ fun row(label: String, d: CanonicalDiagnostics) =
         d.dihedralAngleMean, d.dihedralAngleSpread)
 
 display("canon", """
-    <div style='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px'>
-      ${panel("gC as the operator built it", before)}
-      ${panel("gC.canonicalize()", after)}
-    </div>
     <table style='color:#c3ccd9;font:12px monospace;border-collapse:collapse;margin-top:12px'>
       <thead style='color:#6d7787'><tr>
         <th style='text-align:left;padding-right:14px'>embedding</th>
@@ -1017,7 +1012,6 @@ converges to, and what `relaxWithCeres` reaches. Nothing about the topology diff
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/kkc_canonical.png" wait="6.0" capture="box" open-outputs="true" w="1240" h="620" padding="14" requires="ceres"}
 :::static
 import afield.stdlib.polytope.*
-import java.util.Base64
 
 // kis applied twice to the cube: 38 vertices, 108 edges, 72 faces. The standing counter-example.
 // relaxWithCeres needs the native wrapper: ./gradlew buildCeresRedistributable
@@ -1032,12 +1026,11 @@ val panels = listOf(
     "canonicalize()" to iterated.polyhedron.normalize(gauge),
     "relaxWithCeres()" to solved.realization.polyhedron.normalize(gauge),
 )
-val view = MeshView(width = 380, height = 340, wireframe = false, distance = 3.2)
-fun panel(label: String, p: PolyhedralObject): String {
-    val png = Base64.getEncoder().encodeToString(p.toTriMesh().renderPng(view, caption = "", title = null))
-    return "<div><div style='color:#e6ecf4;font:600 13px monospace;padding-bottom:3px'>$label</div>" +
-        "<img src='data:image/png;base64,$png' style='width:100%;border-radius:5px;display:block'/></div>"
-}
+threeGrid(
+    panels.map { (label, p) -> ThreeMeshPanel(label, p.toTriMesh()) },
+    channel = "kkc3d", name = "embeddings", columns = 3, height = 340, cellWidth = 380,
+    view = MeshView(wireframe = false, distance = 3.2),
+)
 fun row(label: String, p: PolyhedralObject): String {
     val d = p.canonicalDiagnostics()
     return ("<tr><td style='padding:2px 14px 2px 0'>%s</td><td>%.3e</td><td>%.3e</td><td>%.3e</td>" +
@@ -1047,9 +1040,6 @@ fun row(label: String, p: PolyhedralObject): String {
 }
 
 display("kkc", """
-    <div style='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px'>
-      ${panels.joinToString("") { (label, p) -> panel(label, p) }}
-    </div>
     <table style='color:#c3ccd9;font:12px monospace;border-collapse:collapse;margin-top:12px'>
       <thead style='color:#6d7787'><tr>
         <th style='text-align:left;padding-right:14px'>embedding</th>
@@ -1102,7 +1092,6 @@ starting point, and the KDoc says that rather than claiming a finished object.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/spectral.png" wait="4.0" capture="box" open-outputs="true" w="1240" h="840" padding="14"}
 :::static
 import afield.stdlib.polytope.*
-import java.util.Base64
 
 // Throw the coordinates away and keep only the incidence structure.
 val topologyOnly: PolytopeTopology = conway("gC").polyhedron.topology
@@ -1114,22 +1103,16 @@ val recovered = spectral.canonicalize()
 val fromOperator = conway("gC").polyhedron.canonicalize()
 
 :::fold render the two routes and their agreement
-val view = MeshView(width = 380, height = 330, wireframe = false, distance = 3.2)
 val gauge = RigidGauge()
-fun panel(label: String, p: PolyhedralObject): String {
-    val png = Base64.getEncoder().encodeToString(
-        p.normalize(gauge).toTriMesh().renderPng(view, caption = "", title = null))
-    return "<div style='min-width:0'><div style='color:#e6ecf4;font:600 13px monospace;" +
-        "white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-bottom:4px'>$label</div>" +
-        "<img src='data:image/png;base64,$png' style='width:100%;border-radius:5px;display:block'/></div>"
-}
+threeGrid(
+    "1 · spectral only" to spectral.normalize(gauge).toTriMesh(),
+    "2 · canonicalize()" to recovered.polyhedron.normalize(gauge).toTriMesh(),
+    "3 · canonicalize()" to fromOperator.polyhedron.normalize(gauge).toTriMesh(),
+    channel = "spectral3d", name = "routes", columns = 3, height = 330, cellWidth = 380,
+    view = MeshView(wireframe = false, distance = 3.2),
+)
 val dev = recovered.polyhedron.symmetryDeviation()
 display("spectral", """
-    <div style='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px'>
-      ${panel("1 &middot; spectral only", spectral)}
-      ${panel("2 &middot; canonicalize()", recovered.polyhedron)}
-      ${panel("3 &middot; canonicalize()", fromOperator.polyhedron)}
-    </div>
     <div style='color:#c3ccd9;font:12px monospace;padding-top:12px;line-height:1.7'>
       1 &middot; spectral only &rarr; tangency spread
       ${"%.3e".format(spectral.canonicalDiagnostics().tangencyRadiusSpread)},
@@ -1466,8 +1449,6 @@ here exactly as it would be missing on a GPU, so this is a winding test as well 
 import afield.stdlib.polytope.*
 import afield.stdlib.MeshView
 import afield.stdlib.Vec3
-import afield.stdlib.renderPng
-import java.util.Base64
 
 val hole = 0.45f
 
@@ -1507,22 +1488,17 @@ val view = MeshView(
     width = 300, height = 260, wireframe = true, cullBackFaces = true,
 )
 val cells = listOf(true, false).map { withRing ->
-    val panel = plate(withRing)
-    val png = Base64.getEncoder().encodeToString(panel.toTriMesh().renderPng(view, caption = "", title = null))
-    val t = panel.topology
+    val plate = plate(withRing)
+    val t = plate.topology
     val face = t.elements(2).single()
-    """
-    <div>
-      <div style='color:#e6ecf4;font:600 13px monospace;padding-bottom:3px'>
-        ${if (withRing) "addFaceHole(face, ring)" else "the same plate, no ring"}</div>
-      <img src='data:image/png;base64,$png' style='width:100%;border-radius:5px;display:block'/>
-      <div style='color:#93a4ba;font:11px monospace;padding-top:4px'>
-        ${t.elements(0).size}v ${t.elements(1).size}e &middot; ${t.faceRings(face.id).size} ring(s)
-        &middot; ${panel.triangulate().triangleCount} triangles</div>
-    </div>
-    """
+    ThreeMeshPanel(
+        label = if (withRing) "addFaceHole(face, ring)" else "the same plate, no ring",
+        mesh = plate.toTriMesh(),
+        facts = "${t.elements(0).size}v ${t.elements(1).size}e · ${t.faceRings(face.id).size} ring(s)" +
+            " · ${plate.triangulate().triangleCount} triangles",
+    )
 }
-display("plates", "<div style='display:grid;grid-template-columns:1fr 1fr;gap:12px'>${cells.joinToString("")}</div>")
+threeGrid(cells, channel = "plates", name = "plates", columns = 2, height = 260, view = view)
 ```
 
 ![Two wireframe renders side by side. The left plate, built with addFaceHole, is a square annulus — a square frame with an empty square window at its centre, triangulated into eight triangles around the rim, reported as 8 vertices, 8 edges and 2 rings. The right plate is the identical outline with the ring dropped: a solid filled square of 2 triangles, 4 vertices, 4 edges and 1 ring](assets/polytope_examples/face_hole_counterfactual.png)
@@ -1640,7 +1616,7 @@ drops the caveats is worse than no page:
   and the `FLine`/`TriMesh` adapters. This page is the tour; that one is the index.
 - [Solvers reference](reference/solvers.md) — the Ceres constraint vocabulary behind `relax` and
   `CeresRealization`, plus the expression VM for residuals the vocabulary cannot say.
-- [Meshes & 3D Geometry](mesh_examples.md) — `TriMesh`, `MeshView`, `showMesh` and the CPU rasteriser
+- [Meshes & 3D Geometry](mesh_examples.md) — `TriMesh`, `MeshView`, `showMesh` and the Three.js viewer
   every gallery on this page is rendered by.
 - [FLine Examples](fline_examples.md) — `threeLines(...)`, `onClick`, `hoverColor` and the rest of
   the output surface `toFaceFLines()` plugs into.

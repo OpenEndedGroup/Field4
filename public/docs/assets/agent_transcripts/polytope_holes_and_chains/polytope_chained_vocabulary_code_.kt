@@ -1,7 +1,5 @@
 import afield.stdlib.polytope.*
 import afield.stdlib.MeshView
-import afield.stdlib.renderPng
-import java.util.Base64
 
 // Until 2026-08-05 none of these compiled: the eight composites were declared on
 // PolyhedralObject only, so cube().ambo() had no .bevel(), and needle, zip and ortho had no
@@ -18,30 +16,19 @@ val chains: List<Pair<String, PolytopeTransformResult>> = listOf(
     "cube().ambo().bevel()" to cube().ambo().bevel(),
 )
 
-val view = MeshView(width = 260, height = 220, wireframe = false, distance = 2.4)
+val view = MeshView(wireframe = false, distance = 2.4)
 val cells = chains.map { (source, result) ->
     val topology = result.polyhedron.topology
-    val png = Base64.getEncoder().encodeToString(
-        result.polyhedron.canonicalize().polyhedron.toTriMesh().renderPng(view, caption = "", title = null),
+    ThreeMeshPanel(
+        label = source,
+        mesh = result.polyhedron.canonicalize().polyhedron.toTriMesh(),
+        facts = "asked ${result.notationHistory.joinToString("") { it.symbol.toString() }}" +
+            " · ran ${result.history.joinToString("") { it.symbol.toString() }}" +
+            " · ${topology.elements(0).size}v ${topology.elements(1).size}e ${topology.elements(2).size}f" +
+            " · χ=${topology.eulerCharacteristic()}",
     )
-    """
-    <div>
-      <div style='color:#e6ecf4;font:600 12px monospace;padding-bottom:3px'>$source</div>
-      <img src='data:image/png;base64,$png' style='width:100%;border-radius:5px;display:block'/>
-      <div style='color:#93a4ba;font:11px monospace;padding-top:4px'>
-        asked ${result.notationHistory.joinToString("") { it.symbol.toString() }}
-        &middot; ran ${result.history.joinToString("") { it.symbol.toString() }}
-        &middot; ${topology.elements(0).size}v ${topology.elements(1).size}e ${topology.elements(2).size}f
-        &middot; &chi;=${topology.eulerCharacteristic()}
-      </div>
-    </div>
-    """.trimIndent()
 }
-display(
-    "chains",
-    "<div style='display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px'>" +
-        cells.joinToString("") + "</div>",
-)
+threeGrid(cells, channel = "chains", name = "chains", columns = 4, height = 440, cellWidth = 260, view = view)
 
 // The composite is recorded as what you asked for; the history is what actually ran. And a
 // longer chain is just more of the same.

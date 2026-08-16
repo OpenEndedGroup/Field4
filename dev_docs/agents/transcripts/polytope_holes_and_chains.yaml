@@ -97,8 +97,6 @@ operations:
           import afield.stdlib.polytope.*
           import afield.stdlib.MeshView
           import afield.stdlib.Vec3
-          import afield.stdlib.renderPng
-          import java.util.Base64
 
           // ***** CHANGE THIS LINE ***** the hole's half-width; 0 or more, less than 1.
           val hole = 0.45f
@@ -139,33 +137,22 @@ operations:
           // hole test. The wireframe is on so the eight rim triangles can be counted.
           val view = MeshView(
               yawDegrees = 0.0, pitchDegrees = 0.0, distance = 2.2,
-              width = 300, height = 260, wireframe = true, cullBackFaces = true,
+              wireframe = true, cullBackFaces = true,
           )
           val cells = listOf(true, false).map { withRing ->
               val object3 = plate(withRing)
               val mesh = object3.toTriMesh()
-              val png = Base64.getEncoder().encodeToString(mesh.renderPng(view, caption = "", title = null))
               val face = object3.topology.elements(2).single()
-              """
-              <div>
-                <div style='color:#e6ecf4;font:600 13px monospace;padding-bottom:3px'>
-                  ${if (withRing) "addFaceHole(face, ring)" else "the same plate, no ring"}
-                </div>
-                <img src='data:image/png;base64,$png' style='width:100%;border-radius:5px;display:block'/>
-                <div style='color:#93a4ba;font:11px monospace;padding-top:4px'>
-                  ${object3.topology.elements(0).size}v ${object3.topology.elements(1).size}e
-                  &middot; holes ${object3.topology.faceHoles(face.id).size}
-                  &middot; ${mesh.triangleCount} triangles
-                  &middot; area ${"%.3f".format(4.0 - if (withRing) 4.0 * hole * hole else 0.0)}
-                </div>
-              </div>
-              """.trimIndent()
+              ThreeMeshPanel(
+                  label = if (withRing) "addFaceHole(face, ring)" else "the same plate, no ring",
+                  mesh = mesh,
+                  facts = "${object3.topology.elements(0).size}v ${object3.topology.elements(1).size}e" +
+                      " · holes ${object3.topology.faceHoles(face.id).size}" +
+                      " · ${mesh.triangleCount} triangles" +
+                      " · area ${"%.3f".format(4.0 - if (withRing) 4.0 * hole * hole else 0.0)}",
+              )
           }
-          display(
-              "plates",
-              "<div style='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px'>" +
-                  cells.joinToString("") + "</div>",
-          )
+          threeGrid(cells, channel = "plates", name = "plates", columns = 2, height = 260, cellWidth = 300, view = view)
           println(
               """
               left: one face, two boundary rings, ${plate(true).toTriMesh().triangleCount} triangles
@@ -181,8 +168,6 @@ operations:
         code: |
           import afield.stdlib.polytope.*
           import afield.stdlib.MeshView
-          import afield.stdlib.renderPng
-          import java.util.Base64
 
           // Until 2026-08-05 none of these compiled: the eight composites were declared on
           // PolyhedralObject only, so cube().ambo() had no .bevel(), and needle, zip and ortho had no
@@ -199,30 +184,19 @@ operations:
               "cube().ambo().bevel()" to cube().ambo().bevel(),
           )
 
-          val view = MeshView(width = 260, height = 220, wireframe = false, distance = 2.4)
+          val view = MeshView(wireframe = false, distance = 2.4)
           val cells = chains.map { (source, result) ->
               val topology = result.polyhedron.topology
-              val png = Base64.getEncoder().encodeToString(
-                  result.polyhedron.canonicalize().polyhedron.toTriMesh().renderPng(view, caption = "", title = null),
+              ThreeMeshPanel(
+                  label = source,
+                  mesh = result.polyhedron.canonicalize().polyhedron.toTriMesh(),
+                  facts = "asked ${result.notationHistory.joinToString("") { it.symbol.toString() }}" +
+                      " · ran ${result.history.joinToString("") { it.symbol.toString() }}" +
+                      " · ${topology.elements(0).size}v ${topology.elements(1).size}e ${topology.elements(2).size}f" +
+                      " · χ=${topology.eulerCharacteristic()}",
               )
-              """
-              <div>
-                <div style='color:#e6ecf4;font:600 12px monospace;padding-bottom:3px'>$source</div>
-                <img src='data:image/png;base64,$png' style='width:100%;border-radius:5px;display:block'/>
-                <div style='color:#93a4ba;font:11px monospace;padding-top:4px'>
-                  asked ${result.notationHistory.joinToString("") { it.symbol.toString() }}
-                  &middot; ran ${result.history.joinToString("") { it.symbol.toString() }}
-                  &middot; ${topology.elements(0).size}v ${topology.elements(1).size}e ${topology.elements(2).size}f
-                  &middot; &chi;=${topology.eulerCharacteristic()}
-                </div>
-              </div>
-              """.trimIndent()
           }
-          display(
-              "chains",
-              "<div style='display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px'>" +
-                  cells.joinToString("") + "</div>",
-          )
+          threeGrid(cells, channel = "chains", name = "chains", columns = 4, height = 440, cellWidth = 260, view = view)
 
           // The composite is recorded as what you asked for; the history is what actually ran. And a
           // longer chain is just more of the same.

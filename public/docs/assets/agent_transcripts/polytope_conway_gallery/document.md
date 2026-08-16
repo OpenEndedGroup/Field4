@@ -11,12 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="polytope_expression_gallery" index="0" -->
 
 ```edn [field-box id="polytope_expression_gallery" role="properties"]
-{"id" "polytope_expression_gallery" "index" 0 "name" "1 — Conway expressions, retype the list" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — Conway expressions, retype the list" "_tombstone" false "frame" #afield/rect [80.0 80.0 270.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_expression_gallery_code_.kt" "lines" 52 "characters" 2246 "sha256" "cd015cc1988acad5de535ab21487a3b4f69915c8211349e162f021a8d1aa6f64"}]}
+{"id" "polytope_expression_gallery" "index" 0 "name" "1 — Conway expressions, retype the list" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — Conway expressions, retype the list" "_tombstone" false "frame" #afield/rect [80.0 80.0 270.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_expression_gallery_code_.kt" "lines" 36 "characters" 1703 "sha256" "4c8046873e1c5f0d5d4ca529a91a886f29c60c7b5fbd551eee4d6f84ef826289"}]}
 ```
 
 ```kotlin [field-property box="polytope_expression_gallery" name="code" path="polytope_expression_gallery_code_.kt"]
 import afield.stdlib.polytope.*
-import java.util.Base64
 
 // ***** CHANGE THIS LINE *****  Any prefix expression over the seeds T C O I D and the
 // operators d a k t g j n z o e s m b, with optional kN / tN degree indices. Re-run and
@@ -24,7 +23,7 @@ import java.util.Base64
 // topology and not off the pictures.
 val expressions = listOf("C", "dC", "aC", "kC", "tC", "gC", "bC", "k4aC", "sD")
 
-val view = MeshView(width = 300, height = 252, wireframe = false, distance = 2.3)
+val view = MeshView(wireframe = false, distance = 2.3)
 val cells = expressions.map { source ->
     val result = conway(source)
     val topology = result.polyhedron.topology
@@ -32,30 +31,15 @@ val cells = expressions.map { source ->
         .groupingBy { topology.faceCycle(it.id).size }
         .eachCount()
         .toSortedMap()
-    val png = Base64.getEncoder().encodeToString(
-        result.polyhedron.toTriMesh().renderPng(view, caption = "", title = null),
+    ThreeMeshPanel(
+        label = "$source  ${result.history.joinToString("") { it.symbol.toString() }}",
+        mesh = result.polyhedron.toTriMesh(),
+        facts = "${topology.elements(0).size}v ${topology.elements(1).size}e ${topology.elements(2).size}f" +
+            " · ${faces.entries.joinToString(" ") { "${it.value}×${it.key}-gon" }}" +
+            " · χ=${topology.eulerCharacteristic()}",
     )
-    """
-    <div>
-      <div style='color:#e6ecf4;font:600 13px monospace;padding-bottom:3px'>$source
-        <span style='color:#6d7787;font-weight:400'>
-          &nbsp;${result.history.joinToString("") { it.symbol.toString() }}
-        </span>
-      </div>
-      <img src='data:image/png;base64,$png' style='width:100%;border-radius:5px;display:block'/>
-      <div style='color:#93a4ba;font:11px monospace;padding-top:4px'>
-        ${topology.elements(0).size}v ${topology.elements(1).size}e ${topology.elements(2).size}f
-        &middot; ${faces.entries.joinToString(" ") { "${it.value}&times;${it.key}-gon" }}
-        &middot; &chi;=${topology.eulerCharacteristic()}
-      </div>
-    </div>
-    """.trimIndent()
 }
-display(
-    "gallery",
-    "<div style='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px'>" +
-        cells.joinToString("") + "</div>",
-)
+threeGrid(cells, channel = "gallery", name = "gallery", columns = 3, height = 756, cellWidth = 300, view = view)
 
 // Second column of the caption is `history`: the PRIMITIVES that actually ran, seed
 // outward. Composites are rewritten, never reimplemented, so `bC` reports `at`.
@@ -74,13 +58,12 @@ println(expressions.joinToString("\n") { source ->
 <!-- field-box id="polytope_realization_relax" index="1" -->
 
 ```edn [field-box id="polytope_realization_relax" role="properties"]
-{"id" "polytope_realization_relax" "index" 1 "name" "4 — realization before and after, with diagnostics" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — realization before and after, with diagnostics" "_tombstone" false "frame" #afield/rect [1120.0 1000.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_realization_relax_code_.kt" "lines" 68 "characters" 2804 "sha256" "23d2b00802e604ef7fb00be079ce17191d130b1591d631135e54c84406f6d251"}]}
+{"id" "polytope_realization_relax" "index" 1 "name" "4 — realization before and after, with diagnostics" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — realization before and after, with diagnostics" "_tombstone" false "frame" #afield/rect [1120.0 1000.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_realization_relax_code_.kt" "lines" 57 "characters" 2325 "sha256" "82e9709df1b599387060e1cbdf4d338de407ef7afa20ba55d0f753e08a5ffdeb"}]}
 ```
 
 ```kotlin [field-property box="polytope_realization_relax" name="code" path="polytope_realization_relax_code_.kt"]
 import afield.stdlib.polytope.*
 import afield.stdlib.Vec3
-import java.util.Base64
 import kotlin.random.Random
 
 // A real Conway output, then every vertex jittered. The topology is not touched: the
@@ -102,22 +85,12 @@ val jittered = clean.copy(realization = Realization3(
 
 val solved = jittered.solveRealization()
 
-val view = MeshView(width = 420, height = 360, wireframe = false, distance = 2.5)
-val panels = listOf(
-    "aC as built" to clean,
-    "jittered" to jittered,
-    "solveRealization()" to solved.polyhedron,
-)
-display(
-    "relax",
-    "<div style='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px'>" +
-        panels.joinToString("") { (label, p) ->
-            val png = Base64.getEncoder().encodeToString(
-                p.toTriMesh().renderPng(view, caption = "", title = null),
-            )
-            "<div><div style='color:#e6ecf4;font:600 13px monospace;padding-bottom:3px'>$label</div>" +
-                "<img src='data:image/png;base64,$png' style='width:100%;border-radius:5px;display:block'/></div>"
-        } + "</div>",
+val view = MeshView(wireframe = false, distance = 2.5)
+threeGrid(
+    "aC as built" to clean.toTriMesh(),
+    "jittered" to jittered.toTriMesh(),
+    "solveRealization()" to solved.polyhedron.toTriMesh(),
+    channel = "relax", name = "relax", columns = 3, height = 360, cellWidth = 420, view = view,
 )
 
 fun row(label: String, d: RealizationDiagnostics) =

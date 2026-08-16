@@ -621,8 +621,8 @@ one-sided window edges, and eight triangles cut from the windowed face where a s
 two. It then runs four operations a holed face refuses — `dual`, `bevel`, `toOff`, and fan
 triangulation — under `runCatching` and prints each real exception message, with the literal fallback
 `DID NOT THROW` in case one of them ever stops. *The same plate, with the ring and without it* is the
-counterfactual, rendered CPU-side by `TriMesh.renderPng` with back-face culling on, which makes the
-picture a winding test as well as a hole test: a mis-wound rim triangle would be *missing*. *Every
+counterfactual, rendered by `threeGrid(...)` with back-face culling on, which makes the picture a
+winding test as well as a hole test: a mis-wound rim triangle would be *missing*. *Every
 composite chains now* runs eight composite operators off one ambo — join, needle, zip, ortho, expand,
 snub, meta, bevel — prints what it asked for beside what actually ran, and closes with a composite
 still refusing a single realization policy. Until 2026-08-05 none of these compiled; needle, zip and

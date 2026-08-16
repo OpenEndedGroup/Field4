@@ -11,14 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="polytope_chained_vocabulary" index="0" -->
 
 ```edn [field-box id="polytope_chained_vocabulary" role="properties"]
-{"id" "polytope_chained_vocabulary" "index" 0 "name" "3 — every composite chains now" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — every composite chains now" "_tombstone" false "frame" #afield/rect [80.0 360.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_chained_vocabulary_code_.kt" "lines" 59 "characters" 2802 "sha256" "d3c77c19d51bb79121324b8b0e4d19f9d5fa4ba39786cce3b641fe1a4734b3aa"}]}
+{"id" "polytope_chained_vocabulary" "index" 0 "name" "3 — every composite chains now" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — every composite chains now" "_tombstone" false "frame" #afield/rect [80.0 360.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_chained_vocabulary_code_.kt" "lines" 46 "characters" 2323 "sha256" "11a5849687776fb5e0d747feec41cc5a8f71d1b0bce869c5f95c607ad06e47b1"}]}
 ```
 
 ```kotlin [field-property box="polytope_chained_vocabulary" name="code" path="polytope_chained_vocabulary_code_.kt"]
 import afield.stdlib.polytope.*
 import afield.stdlib.MeshView
-import afield.stdlib.renderPng
-import java.util.Base64
 
 // Until 2026-08-05 none of these compiled: the eight composites were declared on
 // PolyhedralObject only, so cube().ambo() had no .bevel(), and needle, zip and ortho had no
@@ -35,30 +33,19 @@ val chains: List<Pair<String, PolytopeTransformResult>> = listOf(
     "cube().ambo().bevel()" to cube().ambo().bevel(),
 )
 
-val view = MeshView(width = 260, height = 220, wireframe = false, distance = 2.4)
+val view = MeshView(wireframe = false, distance = 2.4)
 val cells = chains.map { (source, result) ->
     val topology = result.polyhedron.topology
-    val png = Base64.getEncoder().encodeToString(
-        result.polyhedron.canonicalize().polyhedron.toTriMesh().renderPng(view, caption = "", title = null),
+    ThreeMeshPanel(
+        label = source,
+        mesh = result.polyhedron.canonicalize().polyhedron.toTriMesh(),
+        facts = "asked ${result.notationHistory.joinToString("") { it.symbol.toString() }}" +
+            " · ran ${result.history.joinToString("") { it.symbol.toString() }}" +
+            " · ${topology.elements(0).size}v ${topology.elements(1).size}e ${topology.elements(2).size}f" +
+            " · χ=${topology.eulerCharacteristic()}",
     )
-    """
-    <div>
-      <div style='color:#e6ecf4;font:600 12px monospace;padding-bottom:3px'>$source</div>
-      <img src='data:image/png;base64,$png' style='width:100%;border-radius:5px;display:block'/>
-      <div style='color:#93a4ba;font:11px monospace;padding-top:4px'>
-        asked ${result.notationHistory.joinToString("") { it.symbol.toString() }}
-        &middot; ran ${result.history.joinToString("") { it.symbol.toString() }}
-        &middot; ${topology.elements(0).size}v ${topology.elements(1).size}e ${topology.elements(2).size}f
-        &middot; &chi;=${topology.eulerCharacteristic()}
-      </div>
-    </div>
-    """.trimIndent()
 }
-display(
-    "chains",
-    "<div style='display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px'>" +
-        cells.joinToString("") + "</div>",
-)
+threeGrid(cells, channel = "chains", name = "chains", columns = 4, height = 440, cellWidth = 260, view = view)
 
 // The composite is recorded as what you asked for; the history is what actually ran. And a
 // longer chain is just more of the same.
@@ -81,15 +68,13 @@ viz("chain", long.summary())
 <!-- field-box id="polytope_plate_with_and_without" index="1" -->
 
 ```edn [field-box id="polytope_plate_with_and_without" role="properties"]
-{"id" "polytope_plate_with_and_without" "index" 1 "name" "2 — the same plate, with the ring and without it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — the same plate, with the ring and without it" "_tombstone" false "frame" #afield/rect [80.0 220.0 330.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_plate_with_and_without_code_.kt" "lines" 79 "characters" 3866 "sha256" "aef479086a572d89e331e9240e5bed071b2e5adce363388c6725aa5f6d3e0421"}]}
+{"id" "polytope_plate_with_and_without" "index" 1 "name" "2 — the same plate, with the ring and without it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — the same plate, with the ring and without it" "_tombstone" false "frame" #afield/rect [80.0 220.0 330.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_plate_with_and_without_code_.kt" "lines" 66 "characters" 3388 "sha256" "36593b17d9300d57ed48d3ab64ef1c1981e001342d4784b6f9e85b0515c596c6"}]}
 ```
 
 ```kotlin [field-property box="polytope_plate_with_and_without" name="code" path="polytope_plate_with_and_without_code_.kt"]
 import afield.stdlib.polytope.*
 import afield.stdlib.MeshView
 import afield.stdlib.Vec3
-import afield.stdlib.renderPng
-import java.util.Base64
 
 // ***** CHANGE THIS LINE ***** the hole's half-width; 0 or more, less than 1.
 val hole = 0.45f
@@ -130,33 +115,22 @@ fun plate(withRing: Boolean): PolyhedralObject {
 // hole test. The wireframe is on so the eight rim triangles can be counted.
 val view = MeshView(
     yawDegrees = 0.0, pitchDegrees = 0.0, distance = 2.2,
-    width = 300, height = 260, wireframe = true, cullBackFaces = true,
+    wireframe = true, cullBackFaces = true,
 )
 val cells = listOf(true, false).map { withRing ->
     val object3 = plate(withRing)
     val mesh = object3.toTriMesh()
-    val png = Base64.getEncoder().encodeToString(mesh.renderPng(view, caption = "", title = null))
     val face = object3.topology.elements(2).single()
-    """
-    <div>
-      <div style='color:#e6ecf4;font:600 13px monospace;padding-bottom:3px'>
-        ${if (withRing) "addFaceHole(face, ring)" else "the same plate, no ring"}
-      </div>
-      <img src='data:image/png;base64,$png' style='width:100%;border-radius:5px;display:block'/>
-      <div style='color:#93a4ba;font:11px monospace;padding-top:4px'>
-        ${object3.topology.elements(0).size}v ${object3.topology.elements(1).size}e
-        &middot; holes ${object3.topology.faceHoles(face.id).size}
-        &middot; ${mesh.triangleCount} triangles
-        &middot; area ${"%.3f".format(4.0 - if (withRing) 4.0 * hole * hole else 0.0)}
-      </div>
-    </div>
-    """.trimIndent()
+    ThreeMeshPanel(
+        label = if (withRing) "addFaceHole(face, ring)" else "the same plate, no ring",
+        mesh = mesh,
+        facts = "${object3.topology.elements(0).size}v ${object3.topology.elements(1).size}e" +
+            " · holes ${object3.topology.faceHoles(face.id).size}" +
+            " · ${mesh.triangleCount} triangles" +
+            " · area ${"%.3f".format(4.0 - if (withRing) 4.0 * hole * hole else 0.0)}",
+    )
 }
-display(
-    "plates",
-    "<div style='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px'>" +
-        cells.joinToString("") + "</div>",
-)
+threeGrid(cells, channel = "plates", name = "plates", columns = 2, height = 260, cellWidth = 300, view = view)
 println(
     """
     left: one face, two boundary rings, ${plate(true).toTriMesh().triangleCount} triangles

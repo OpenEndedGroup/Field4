@@ -8,6 +8,9 @@ import afield.graphics.VISION_METAL_VERTEX_FLOATS
 import afield.graphics.VisionGeometryPreview
 import afield.graphics.polylineFrom
 import afield.graphics.samplePoints
+import afield.graphics.three
+import afield.graphics.threeGrid
+import afield.graphics.threeTurntable
 import java.util.Base64
 import kotlin.math.max
 
@@ -228,8 +231,13 @@ fun VoronoiLattice.toTriMesh(shrink: Double = 0.92, boundedOnly: Boolean = false
 // Mesh -> pixels
 // ==============================================================================================
 
-/** The neutral surface colour a mesh with no per-vertex colours is drawn in. */
-private val DEFAULT_SURFACE = floatArrayOf(0.70f, 0.745f, 0.80f)
+/**
+ * The neutral surface colour a mesh with no per-vertex colours is drawn in.
+ *
+ * `internal` rather than private because [afield.graphics.toThreeDrawable] draws the same uncoloured
+ * mesh on the GPU and must reach for the same grey — a copied literal is a drift waiting to happen.
+ */
+internal val DEFAULT_SURFACE = floatArrayOf(0.70f, 0.745f, 0.80f)
 
 /**
  * Pack this mesh into the 16-float-per-vertex layout [VisionGeometryPreview]'s rasterizer consumes,
@@ -502,10 +510,45 @@ internal fun meshThumbnailHtml(mesh: TriMesh): String {
 // ==============================================================================================
 
 /**
+ * Which renderer the `showMesh` family draws with.
+ *
+ * @see MeshRenderer.GPU for why the default moved.
+ */
+enum class MeshRenderer {
+    /**
+     * The Three.js viewer — orbitable, and the same renderer [afield.graphics.FLine]s use.
+     *
+     * The default since the two 3D outputs were unified. A mesh you can turn answers questions a
+     * fixed viewpoint cannot, and a mesh drawn here can share a scene with its FLine annotations.
+     */
+    GPU,
+
+    /**
+     * The CPU z-buffer rasterizer in [VisionGeometryPreview] — a static PNG at a fixed camera.
+     *
+     * Still the right tool, and not deprecated:
+     *
+     *  * it is **deterministic**, so it is what the pixel-exact proofs assert on
+     *    (`MeshDefectRenderTest`, `SolidSLRenderProofTest`, `MeshIoTest`, `MeshFromDiskTest`,
+     *    `AssimpSceneBridgeTest`);
+     *  * it needs no WebGL context, so it is what [TriMesh.toHTML]'s inline value-visualizer
+     *    thumbnail uses — an iframe per mesh in a list of values is a bad trade;
+     *  * it renders into a *pixel buffer*, which is what you want when compositing several meshes
+     *    into one figure by hand ([TriMesh.renderPixels]).
+     */
+    CPU,
+}
+
+/**
  * Push a rendered view of [mesh] to one of this box's output channels, with its measurements as a
  * caption.
  *
- * The AWT-free path ([TriMesh.renderPng] → `display`), so it is safe inside a live box.
+ * Draws in the Three.js viewer by default, so the result can be orbited; pass
+ * `renderer = MeshRenderer.CPU` for the static rasterized figure this used to produce. Both paths are
+ * AWT-free and safe inside a live box.
+ *
+ * @param height iframe height in pixels. Ignored by [MeshRenderer.CPU], which takes its size from
+ * [view]'s `width` and `height` instead.
  */
 fun Box.showMesh(
     mesh: TriMesh,
@@ -513,8 +556,21 @@ fun Box.showMesh(
     view: MeshView = MeshView(),
     caption: String? = null,
     title: String? = null,
+    renderer: MeshRenderer = MeshRenderer.GPU,
+    height: Int = 430,
 ) {
-    display(channel, mesh.toFigureHtml(view, caption, title))
+    when (renderer) {
+        MeshRenderer.CPU -> display(channel, mesh.toFigureHtml(view, caption, title))
+        MeshRenderer.GPU -> three(
+            subject = mesh,
+            channel = channel,
+            name = "mesh-$channel",
+            height = height,
+            view = view,
+            title = title,
+            caption = caption,
+        )
+    }
 }
 
 /**
@@ -529,8 +585,24 @@ fun Box.showMeshGrid(
     columns: Int = 2,
     cellWidth: Int = 380,
     view: MeshView = MeshView(),
+    renderer: MeshRenderer = MeshRenderer.GPU,
 ) {
     require(panels.isNotEmpty()) { "showMeshGrid needs at least one panel" }
+    if (renderer == MeshRenderer.GPU) {
+        val rows = (panels.size + columns - 1) / columns
+        threeGrid(
+            panels = panels,
+            channel = channel,
+            name = "grid-$channel",
+            // One WebGL context tiled into cells, so the height is the whole sheet's rather than one
+            // cell's. N iframes would be N contexts, and Chrome evicts the oldest past ~16.
+            height = (rows * cellWidth * 0.75).toInt().coerceAtLeast(200),
+            columns = columns,
+            view = view,
+            cellWidth = cellWidth,
+        )
+        return
+    }
     val cell = view.copy(width = cellWidth, height = (cellWidth * 0.75).toInt())
     val html = buildString {
         append("<div style='display:grid;grid-template-columns:repeat($columns,minmax(0,1fr));gap:10px'>")
@@ -556,8 +628,22 @@ fun Box.showMeshTurntable(
     views: List<MeshView> = MeshView.turntable(4),
     cellWidth: Int = 260,
     title: String? = null,
+    renderer: MeshRenderer = MeshRenderer.GPU,
 ) {
     require(views.isNotEmpty()) { "showMeshTurntable needs at least one view" }
+    if (renderer == MeshRenderer.GPU) {
+        threeTurntable(
+            mesh = mesh,
+            channel = channel,
+            name = "turntable-$channel",
+            height = (cellWidth * 0.75).toInt().coerceAtLeast(180),
+            views = views,
+            columns = views.size,
+            title = title,
+            wireframe = views.first().wireframe,
+        )
+        return
+    }
     val html = buildString {
         title?.let { append("<div style='color:#e6ecf4;font-weight:600;padding-bottom:6px'>$it</div>") }
         append("<div style='display:flex;gap:8px;flex-wrap:wrap'>")

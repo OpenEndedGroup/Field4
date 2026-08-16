@@ -4,9 +4,9 @@ description: >
   typography_field.kt for the bridges) as eight pure-compute boxes. Nothing here opens a Window or a
   Renderer: the letters are FILLED FROM THEIR OWN CONTOURS by the family's scanline filler and shown
   with showImgGrid (Img -> PngEncoder -> display), or drawn as FLines with showText / showPlaneGrid
-  (drawToSVG -> display), or rendered as meshes with showMeshGrid (TriMesh.renderPng, also AWT-free).
-  So there is no AWT rasteriser anywhere in this file — AWT is touched only to read the font's glyph
-  outlines.
+  (drawToSVG -> display), or rendered as meshes with showMeshGrid (the Three.js viewer, which you can
+  orbit). So there is no AWT rasteriser anywhere in this file — AWT is touched only to read the font's
+  glyph outlines.
     1. typo_values   — the three values. A Typeface, the glyphs of `o` and `l` and `B`, and their
                        rings printed: contour counts, nesting depths, signed areas, advances. Then the
                        whole word "Handgloves" filled from those contours, so the first thing you see
