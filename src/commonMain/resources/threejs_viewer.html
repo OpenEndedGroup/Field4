@@ -477,9 +477,14 @@ let cameraPointerDown = null;
 let cameraIsDragging = false;
 let hasFramedInitialGeometry = false;
 
+// The pick radii are NOT set here, and that is deliberate. They used to be two literals on the next
+// two lines — `0.06` and `1.5` — and those same two numbers are now the floors in
+// `// [viewer-region pick-thresholds]`, which is under test. Two copies of a constant, one tested and
+// one not, is the arrangement that produced the 2026-08-11 entry bug. So the defaults come from
+// `applyPickThresholds(null)`, called immediately after the region is evaluated: the no-bounds case
+// returns exactly the legacy constants, which `ThreePickThresholdTest` asserts. Nothing can raycast in
+// between — every raycast is in an event handler or the render loop, and both run after this script.
 const raycaster = new THREE.Raycaster();
-raycaster.params.Line = { threshold: 0.06 };
-raycaster.params.Points = { threshold: 1.5 };
 
 const pointer = new THREE.Vector2();
 const DRAG_THRESHOLD_PX = 4;
@@ -4563,29 +4568,73 @@ function updateEditableHud() {
     }
 }
 
+// [viewer-region pick-thresholds] BEGIN
+// How near a ray has to pass a LINE or a POINT SPRITE to count as hitting it.
+//
+// A `Mesh` is picked exactly — the ray either crosses a triangle or it does not — but a `Line` and a
+// `Points` have no area, so three.js needs a radius, and the viewer's were the constants `0.06` and
+// `1.5` world units. Fine numbers for a figure a couple of units across, and **nonsense** at model
+// scale: on the millimetre panels the inspector was written for, 0.06 mm is sixty microns, and an
+// FLine annotation in such a figure could not be clicked at all. It went unnoticed because until now
+// the only things worth clicking in those figures were the *fills*, which are meshes and are picked
+// exactly. Mixing a solid and its annotations made it impossible to ignore: the whole point of such a
+// scene is to measure from one to the other, and one of the two was unhittable.
+//
+// ### The monotonicity claim, which is why this is a region
+//
+// This is the one edit in the mesh-picking work that changes **existing** behaviour, so the property
+// that makes it safe is written as a function and asserted rather than argued in a comment:
+//
+//   * the result is never below the constant that was there before, at any bounds;
+//   * it is *exactly* that constant — bit for bit — for every figure below the crossover, which is a
+//     bounding diagonal of `0.06 / 0.005 = 12` for lines and `1.5 / 0.01 = 150` for points. Every
+//     unit-scale FLine figure in the docs is far below both;
+//   * it is non-decreasing in the diagonal, so no figure can be made *harder* to pick than it is today.
+//
+// `ThreePickThresholdTest` holds all three over a sweep that straddles both crossovers, plus the
+// missing-bounds case — which has to fall back to the legacy constants, because a payload with no
+// bounds is exactly the shape a caller that predates any of this sends.
+const PICK_LINE_THRESHOLD_MIN = 0.06;
+const PICK_POINT_THRESHOLD_MIN = 1.5;
+const PICK_LINE_THRESHOLD_FRACTION = 0.005;
+const PICK_POINT_THRESHOLD_FRACTION = 0.01;
+
 /**
- * How near a ray has to pass a line or a point sprite to count as hitting it.
+ * The bounding diagonal a threshold is scaled by.
  *
- * A `Mesh` is picked exactly — the ray either crosses a triangle or it does not — but a `Line` and a
- * `Points` have no area, so three.js needs a radius, and the viewer's has always been the constant
- * `0.06` world units. That is a fine number for a figure a couple of units across and a **nonsense**
- * one at model scale: on the millimetre panels the inspector was written for, 0.06 mm is sixty microns,
- * and an FLine annotation in such a figure could not be clicked at all. It went unnoticed because until
- * tonight the only things worth clicking in those figures were the *fills*, which are meshes.
- *
- * Mixing a solid and its annotations makes it impossible to ignore: the whole point of the scene is to
- * measure from one to the other, and one of the two was unhittable.
- *
- * Deliberately `max` and not a straight fraction. Every existing figure with a bounding diagonal under
- * 12 units — which is every unit-scale FLine figure in the docs — keeps the exact threshold it has
- * today, so this cannot re-tune anything that already works. It only ever makes a *large* figure
- * pickable, which is a state it has never been in.
+ * `1` for absent, degenerate or non-finite bounds — deliberately a *small* number, so the `max` below
+ * returns the legacy constant and a payload that says nothing usable about its size is treated exactly
+ * as it was before any of this existed. Four lines duplicated from `inspectorDiagonal`, because a
+ * region has to be liftable on its own and a cross-region call would make both untestable in isolation.
  */
-function applyPickThresholds(bounds) {
-    const diagonal = inspectorDiagonal(bounds);
-    raycaster.params.Line = { threshold: Math.max(0.06, diagonal * 0.005) };
-    raycaster.params.Points = { threshold: Math.max(1.5, diagonal * 0.01) };
+function pickThresholdDiagonal(bounds) {
+    if (!bounds || !bounds.min || !bounds.max) return 1;
+    const dx = bounds.max[0] - bounds.min[0];
+    const dy = bounds.max[1] - bounds.min[1];
+    const dz = bounds.max[2] - bounds.min[2];
+    const diagonal = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    return isFinite(diagonal) && diagonal > 0 ? diagonal : 1;
 }
+
+/** The line-pick radius for a figure of these bounds. Never below `PICK_LINE_THRESHOLD_MIN`. */
+function pickLineThreshold(bounds) {
+    return Math.max(PICK_LINE_THRESHOLD_MIN, pickThresholdDiagonal(bounds) * PICK_LINE_THRESHOLD_FRACTION);
+}
+
+/** The point-sprite pick radius. Never below `PICK_POINT_THRESHOLD_MIN`. */
+function pickPointThreshold(bounds) {
+    return Math.max(PICK_POINT_THRESHOLD_MIN, pickThresholdDiagonal(bounds) * PICK_POINT_THRESHOLD_FRACTION);
+}
+// [viewer-region pick-thresholds] END
+
+function applyPickThresholds(bounds) {
+    raycaster.params.Line = { threshold: pickLineThreshold(bounds) };
+    raycaster.params.Points = { threshold: pickPointThreshold(bounds) };
+}
+
+// The startup defaults, from the same function and therefore from the same constants — see the note by
+// `const raycaster`. `null` bounds is the legacy pair, exactly.
+applyPickThresholds(null);
 
 function applyGeometry(payload) {
     if (!payload || payload.type !== 'three/geometry') return;

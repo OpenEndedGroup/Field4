@@ -338,7 +338,30 @@ $region
             "sectionCutLength",
         ),
         "camera-preset" to listOf("cameraPresetEye"),
+        "pick-thresholds" to listOf(
+            "PICK_LINE_THRESHOLD_MIN",
+            "PICK_POINT_THRESHOLD_MIN",
+            "PICK_LINE_THRESHOLD_FRACTION",
+            "PICK_POINT_THRESHOLD_FRACTION",
+            "pickThresholdDiagonal",
+            "pickLineThreshold",
+            "pickPointThreshold",
+        ),
     )
+
+    /**
+     * The text the server actually serves for a region, which is not automatically the text on disk.
+     *
+     * `Server.kt`'s `/threejs` route responds with `filter(File("./src/commonMain/resources/threejs_viewer.html").readText())`,
+     * and [afield.filter] is a `{{ … }}` templating pass. So "the differential tests run the shipped
+     * source" is a claim with a condition attached — that no region contains a template placeholder —
+     * and [ViewerJavaScriptRegionTest.theTextLiftedIsTheTextTheServerServes] asserts it rather than
+     * assuming it. Today no placeholder appears anywhere in the viewer; the day one does, inside a
+     * region, every differential test silently starts measuring a different program from the one a
+     * browser runs.
+     */
+    fun servedRegionSource(name: String, file: File = VIEWER): String =
+        afield.filter(regionSource(name, file))
 
     /** What the `planar-tessellation` region exports, in the order the viewer defines them. */
     val DEFAULT_EXPORTS: List<String> = listOf(
