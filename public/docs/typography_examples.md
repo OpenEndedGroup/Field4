@@ -330,10 +330,11 @@ val expected = layoutText("o", face).glyphs.sumOf { it.glyph.inkArea } * 46.0
 val measured = layoutText("o", face).toMesh(depth = 46.0, yUp = false).volume()
 
 :::fold draw them — note what is NOT here: flatShaded()
-// flatShaded() un-welds every triangle, and showMesh computes topology() on what you hand it and
-// prints the answer as fact in the caption — so a flat-shaded copy would caption as "open" directly
-// under a title stating its genus. Unnecessary as well: the render path applies shadedNormals to an
-// unshaded mesh for you (mesh_field.kt:246).
+// flatShaded() un-welds every triangle, and the genus in these labels is topology() over whatever
+// you hand it — so a flat-shaded copy would label itself "genus null, watertight false" while
+// looking identical. The `word` panel below goes further: single-mesh showMesh writes its own fact
+// line, and that line would read "open (N boundary loop(s))". Unnecessary as well: both renderers
+// apply shadedNormals to a mesh that arrives without normals for you.
 showMeshGrid(
     "o — genus ${o.genus()}, 2D hole count $holesIn2D, watertight ${o.isWatertight()}" to o,
     "l — genus ${l.genus()}, watertight ${l.isWatertight()}" to l,
@@ -355,7 +356,10 @@ showMesh(
 
 Two claims are being *checked* there rather than illustrated. **Genus 1 for `o` and 0 for `l`** is a
 2D count (rings nested at odd depth) agreeing with a 3D one (χ over the mesh's vertices, edges and
-faces) — read the auto-captions, which `showMesh` computes from the mesh you actually handed it. And
+faces) — read the two panel labels, which the box composes by calling `genus()` and `isWatertight()`
+on the mesh it is about to draw, so they cannot describe some other mesh. (The fact line under the
+`word` panel is the *renderer's* own, computed by `showMesh` from what it was handed; a
+`showMeshGrid` sheet does not carry one — see [Field's 3D output](three_output.md#showmesh-after-the-change).) And
 the volume matches the ink area times the depth to `8.7e-16` relative, which is a shoelace sum
 agreeing with the divergence theorem to the last bit of a double. A dropped cap triangle, a wall
 wound the wrong way or an unpunched counter all break one of those.
@@ -366,11 +370,12 @@ rather than merely odd shading — the same failure a GPU would show you.
 !!! warning "Don't reach for `flatShaded()` here"
 
     It un-welds every triangle into its own three vertices, so the copy is no longer topologically
-    anything — and `showMesh` computes `topology()` on whatever you hand it and prints the answer
-    *as fact* in the figure caption (`mesh_field.kt:383-393`). Pass it a flat-shaded `o` and the
-    caption reads `open (N boundary loop(s))` directly underneath a line proving the mesh is closed.
-    You don't need it either way: `showMesh` renders through `toCapturedMesh`, which already applies
-    `shadedNormals` to a mesh that arrives without normals (`mesh_field.kt:246`), and an extrusion is
+    anything — and the single-mesh `showMesh` computes `topology()` on whatever you hand it and
+    prints the answer *as fact* in the figure's fact line (`TriMesh.threeFacts()` on the viewer path,
+    `TriMesh.toFigureHtml` on the CPU one — one shared sentence). Pass it a flat-shaded `o` and that
+    line reads `open (N boundary loop(s))` right beside a title stating the mesh is closed.
+    You don't need it either way: both renderers prepare the mesh through the same step, which
+    already applies `shadedNormals` to one that arrives without normals, and an extrusion is
     all creases so it comes out faceted anyway.
 
 ## Letters in the SDF family

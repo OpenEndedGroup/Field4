@@ -289,8 +289,9 @@ orders and reports both: `notationHistory` is what you asked for, `history` is w
 
 Five Platonic seeds, each a fully realized `PolyhedralObject`. All the pictures below are Field's own
 Three.js viewer (`threeGrid(...)`) fed with `toTriMesh()` — one WebGL context tiled into panels, so
-you can orbit the whole sheet at once. The captions under each are read off the **topology**, not off
-the mesh.
+you can orbit the whole sheet at once. The grey line under each panel's name is read off the
+**topology**, not off the mesh — this page hands `threeGrid` a `ThreeMeshPanel` per cell with that
+sentence already written, rather than letting the renderer compute a generic one.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/seeds_gallery.png" wait="2.5" capture="box" open-outputs="true" w="1240" h="820" padding="14"}
 :::static

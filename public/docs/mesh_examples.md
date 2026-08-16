@@ -105,9 +105,11 @@ showMeshGrid(
 :::endfold
 ```
 
-![Six marched solids in a 2x3 grid — a sharp union, the same union filleted, that solid drilled, a twisted box, a closed shell and the shell cut open — each captioned with its own vertex and triangle counts, Euler characteristic, genus, watertightness and volume](assets/mesh_examples/modelling.png)
+![Six marched solids in a 2x3 grid — a sharp union, the same union filleted, that solid drilled, a twisted box, a closed shell and the shell cut open — each panel headed with the expression that made it, and each drawn as a shaded surface with a depth-tested wireframe over it](assets/mesh_examples/modelling.png)
 
-Read the captions rather than the shapes and the whole story is there. The sharp union encloses
+Read the numbers rather than the shapes and the whole story is there. They are what the box
+`println`s when you run it, and they are quoted below because — unlike the rasterized sheet this
+figure replaced — a `showMeshGrid` panel no longer carries its own fact line. The sharp union encloses
 **2.2135**; the filleted one **2.2690**, because a fillet only ever *adds* material — that is a
 property you can assert rather than eyeball. Drilling through drops it to **1.8805** and takes χ from
 2 to **0**, genus 0 to **1**: the drill added a handle. The closed shell reports **χ = 4**, which is
@@ -115,10 +117,17 @@ exactly right and initially surprising — a shell is *two* nested closed surfac
 inner, and 2 + 2 = 4. Cutting it with a half-space glues them into one surface again (χ = 2) and
 halves the *z* extent, from 1.739 to 0.870, which is how you know the cut actually happened.
 
-`showMeshGrid(...)` is the fastest way to see a whole pipeline: captioned panels side by side, each
-one rasterised by the same CPU renderer the inline card uses — perspective, z-buffer, two-light
-lambert, depth-tested wireframe — then encoded with `PngEncoder` and pushed to the box output. No AWT
-is involved, so it works anywhere, including in this docs build.
+`showMeshGrid(...)` is the fastest way to see a whole pipeline: labelled panels side by side, in the
+Three.js viewer, so in a live box you can orbit the whole sheet at once. It is one WebGL context
+tiled into viewports rather than one iframe per panel, which matters more than it sounds —
+see [Field's 3D output](three_output.md#why-a-panel-is-a-viewport-and-not-an-iframe). Pass
+`renderer = MeshRenderer.CPU` for the static rasterized sheet this used to produce.
+
+One thing to know before you go looking for it: `showMeshGrid` does **not** write the per-panel fact
+line — counts, extent, χ, genus, volume — that the single-mesh `showMesh` and the inline card both
+do. It calls `threeGrid` with `facts` left off. If you want the numbers under every panel, call
+`threeGrid(..., facts = true)` directly, or hand it `ThreeMeshPanel(label, mesh, facts = "…")` cells
+with a sentence of your own; [polytope_examples.md](polytope_examples.md) does the latter throughout.
 
 The primitives are `sdfSphere`, `sdfBox`, `sdfRoundBox`, `sdfTorus`, `sdfPlane`, `sdfCylinder`,
 `sdfCapsule`, `sdfGyroid` and `sdfMetaballs`. The combinators are `sdfUnion`, `sdfIntersect`,
@@ -185,7 +194,7 @@ showMeshGrid(
 :::endfold
 ```
 
-![A marched sphere at resolution 16 and at 64 beside a drilled solid and a gyroid; each panel is captioned with its counts, Euler characteristic, genus and volume, and the two spheres also carry their volume error against 4/3 pi](assets/mesh_examples/convergence.png)
+![A marched sphere at resolution 16 and at 64 beside a drilled solid and a gyroid; the two sphere panels are headed with their volume error against 4/3 pi, 1.82% and 0.11%, and the gyroid panel is the only one whose shape is visibly open](assets/mesh_examples/convergence.png)
 
 The two spheres are the same field at two grid resolutions: **1544 triangles and a volume of
 4.1124** at 16, **24920 and 4.1840** at 64, against an analytic 4/3 π = 4.18879. Both are watertight
@@ -193,7 +202,9 @@ with χ = 2, and the error falls from **1.82% to 0.11%** — roughly the O(*h*²
 marcher, and the printed table in the box carries all four resolutions. The drilled solid is the
 topology point: it looks like a sphere from most angles and reports **χ = 0, genus 1**. The gyroid is
 the honest edge case — **χ = −20, genus 4, and *open*, with 20 boundary loops**, because the surface
-runs out of the sampling box rather than closing inside it. The card says so rather than pretending.
+runs out of the sampling box rather than closing inside it. `summary()` says so rather than
+pretending, and [Field's 3D output](three_output.md#one-scene-two-kinds-of-thing) draws those twenty
+loops over the surface so you can see where they are.
 
 **Why the surface is closed at all** is worth one paragraph, because plain marching cubes leaks and
 the leak is invisible until you count. Two cubes sharing a face can each pick a different
@@ -266,10 +277,13 @@ showMeshGrid(
 :::endfold
 ```
 
-![An icosahedron and its first and third Loop subdivisions, then a lumpy noisy ball and the same ball smoothed by 30 Laplacian and 30 Taubin iterations; the Laplacian result is visibly the smaller of the two and each panel is captioned with its volume and extent](assets/mesh_examples/process.png)
+![An icosahedron and its first and third Loop subdivisions, then a lumpy noisy ball and the same ball smoothed by 30 Laplacian and 30 Taubin iterations; the last two panels are both smooth round balls at the same apparent size, headed "laplacianSmooth(30) — deflated" and "taubinSmooth(30) — volume held"](assets/mesh_examples/process.png)
 
-Put the two results in one frame, as the last two panels do, and the Laplacian ball is unmistakably
-the smaller of the two — but the captions are what make it a measurement rather than an impression.
+The two smoothed balls are the point, and the picture will not settle it for you — **look at the
+printed volumes, not at the panels.** Each panel of a `showMeshGrid` frames its own bounds and
+zoom-to-fits, so the Laplacian ball's 20% smaller extent is normalised straight back out and the two
+come out the same apparent size. (The rasterized version of this figure carried a fact table under
+each panel; the viewer's grid does not — see [Field's 3D output](three_output.md#showmesh-after-the-change).)
 The noisy input encloses **2.1293** across an extent of 1.701. Thirty Laplacian iterations at λ = 0.6
 leave **1.1509** across 1.301: it has thrown away **46% of the volume**. Thirty Taubin iterations of
 the same λ, with μ = −0.63, leave **2.1840** across 1.631 — within about 3% of the clean ball this
@@ -327,12 +341,12 @@ showMeshGrid(
 :::endfold
 ```
 
-![A 5120-triangle icosphere beside its 2000-, 600- and 150-triangle decimations; all three are still recognisably round and watertight with chi = 2, and each caption carries the budget, the symmetric deviation from the original, and the volume](assets/mesh_examples/decimate.png)
+![A 5120-triangle icosphere beside its 2000-, 600- and 150-triangle decimations; all four are still recognisably round, the wireframe visibly coarsens from panel to panel, and each panel heading carries its budget and its symmetric deviation from the original](assets/mesh_examples/decimate.png)
 
 Every budget is hit **exactly** — 2000, 600 and 150 triangles — and all three stay watertight at
 χ = 2, which is the link condition doing its job. The volume drifts from 2.1400 down to 2.1252,
 2.0860 and 2.0724 (the collapses cut corners off a convex solid, so it can only lose). The number to
-budget against is the deviation in each caption: **0.0047** at 2000 triangles, **0.0166** at 600 and
+budget against is the deviation in each panel heading: **0.0047** at 2000 triangles, **0.0166** at 600 and
 **0.0326** at 150, on a ball of radius 0.8 — so a 34× reduction costs you about 4% of the radius. It
 is worth noticing that the deviation grows *slower* than the triangle count falls, which is the
 entire reason decimation is worth doing.
@@ -423,8 +437,10 @@ showMeshGrid(
 :::endfold
 ```
 
-![A helical tube swept along an FLine with no visible twisting, a coarse 14x8 torus, and an icosphere that has been through a binary STL round trip and been welded back; all three captioned as watertight](assets/mesh_examples/bridges.png)
+![A helical tube swept along an FLine with an even, untwisted ring of quads all the way round, a coarse 14x8 torus with its facets clearly visible, and an icosphere that has been through a binary STL round trip and been welded back](assets/mesh_examples/bridges.png)
 
+The watertightness is in the printed lines above rather than under each panel — a `showMeshGrid`
+sheet is labelled, not captioned.
 The coil is the frame test: 4320 triangles, watertight, χ = 2, and no twist anywhere along the helix
 even though the path's curvature swings through vertical twice. The round-tripped sphere comes back
 at **642 vertices, watertight, χ = 2, volume 1.4244** — the same 642 vertices it started with, after
@@ -524,8 +540,8 @@ amounts to produce:
 
 | figure | how |
 |---|---|
-| the five `diffstatic_runner` fences above | **executed by the docs build**; the image under each is that box's own output |
-| `assets/mesh_gallery/*.png` (four figures) | **committed captures** from the `mesh.gallery` FIELD_TEST: `python3 tools/run_field_tests.py --id mesh.gallery --port 9700` |
+| the five `diffstatic_runner` fences above | **executed by the docs build**; the image under each is that box's own output, drawn by the Three.js viewer — which is what `showMeshGrid` now uses |
+| `assets/mesh_gallery/*.png` (four figures) | **committed captures** from the `mesh.gallery` FIELD_TEST: `python3 tools/run_field_tests.py --id mesh.gallery --port 9700`. These are composited from `renderPixels`, so they are the **CPU rasterizer** and always will be — that is the point of them |
 
 The distinction is smaller than it looks, and neither route notices on its own when the code moves
 underneath it. A `diffstatic_runner` fence is re-executed only when the build decides its capture is out
