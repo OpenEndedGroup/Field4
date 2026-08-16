@@ -89,6 +89,66 @@ object ImportResolution {
         val machine: String?,
         val candidates: List<String>,
     )
+
+    /**
+     * How many simple names on this classpath an import can actually be emitted for.
+     *
+     * The `Window` defect was never about `Window`. [importStatementFrom] refuses to guess between two
+     * same-named classes, so **every** contested simple name is a type that `prop<T>(name)` will
+     * declare a property of and then not import — silently, with only an `lprintln` to say so. This
+     * counts the blast radius; [Census.ambiguousNames] is the list a reviewer can read down.
+     *
+     * A name is [resolvable] when exactly one candidate survives the `$`/blacklist filter (an import is
+     * emitted), [ambiguous] when two or more do (**no import at all**), and [unimportable] when none do
+     * — also no import, but correctly, because there was nothing to import.
+     */
+    data class Census(
+        val simpleNames: Int,
+        val resolvable: Int,
+        val ambiguous: Int,
+        val unimportable: Int,
+        val ambiguousNames: List<String>,
+    ) {
+        /** Share of names that *could* be imported but are not, because more than one class claims them. */
+        val ambiguousShare: Double
+            get() = if (resolvable + ambiguous == 0) 0.0
+            else ambiguous.toDouble() / (resolvable + ambiguous)
+    }
+
+    /**
+     * Every type name that this machine's personal layer has taken away.
+     *
+     * A name that resolves to exactly one importable class in a clean checkout, and to two or more
+     * once `src/personal` is on the classpath, is a type `prop<T>(name)` **stops** being able to
+     * import here — silently, for the same reason `Window` did. Computed as a set difference over the
+     * two indexes rather than by subtracting two counts, so it names the casualties instead of
+     * counting them.
+     *
+     * Empty when there is no personal layer, at no cost: the two indexes are then the same object.
+     */
+    fun personalLayerCasualties(): List<String> {
+        if (!PersonalLayer.isPresent) return emptyList()
+        val blacklist = blacklist()
+        fun importable(candidates: List<String>?) = candidates.orEmpty().count { isImportableClassName(it, blacklist) }
+        return hermeticIndex.keys
+            .filter { importable(hermeticIndex[it]) == 1 && importable(classpathIndex[it]) > 1 }
+            .sorted()
+    }
+
+    fun census(index: Map<String, List<String>> = index(), blacklist: List<String> = blacklist()): Census {
+        var resolvable = 0
+        var ambiguous = 0
+        var unimportable = 0
+        val contested = mutableListOf<String>()
+        for ((name, candidates) in index) {
+            when (candidates.count { isImportableClassName(it, blacklist) }) {
+                0 -> unimportable++
+                1 -> resolvable++
+                else -> { ambiguous++; contested += name }
+            }
+        }
+        return Census(index.size, resolvable, ambiguous, unimportable, contested.sorted())
+    }
 }
 
 /**

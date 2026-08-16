@@ -104,6 +104,33 @@ object CompletionCorpusHarvest {
             }
         }
 
+        // The blast radius, because `Window` was never the point: every contested simple name is a type
+        // a `prop<T>` would declare a property of and then silently not import.
+        val census = ImportResolution.census()
+        println("  import ambiguity on this classpath: ${census.ambiguous} of " +
+            "${census.resolvable + census.ambiguous} importable simple names are contested " +
+            "(${"%.2f".format(census.ambiguousShare * 100)}%), so `prop<T>` emits no import for any of them")
+
+        // And what this machine's own personal layer takes away on top of that. `Window` was one of
+        // these; the corpus only noticed because a fixture happened to pin it.
+        val casualties = ImportResolution.personalLayerCasualties()
+        if (casualties.isNotEmpty()) {
+            println("  this machine's personal layer removes the import for ${casualties.size} more " +
+                "type name(s) that a clean checkout can import:")
+            println("    ${casualties.take(40).joinToString(", ")}" + if (casualties.size > 40) ", …" else "")
+        }
+
+        // The one thing that must not be possible again: writing or checking fixtures against an answer
+        // this machine's classpath skewed. Hermetic mode is the default, so reaching this means someone
+        // set AFIELD_IMPORT_HERMETIC=0 on a machine with a colliding personal class — which is exactly
+        // the state that produced 559348acc, 10f3fbaf5 and 389e1d8ff. Fail rather than quietly comply.
+        check(ImportResolution.hermetic || diverging.isEmpty()) {
+            "refusing to ${if (write) "write" else "check"} fixtures non-hermetically while " +
+                "${diverging.size} prop<T> type(s) resolve differently here than in a clean checkout " +
+                "(${diverging.joinToString { it.name }}). Unset AFIELD_IMPORT_HERMETIC=0, or remove the " +
+                "colliding class from src/personal. See dev_docs/HERMETIC_COMPLETION_INPUTS.md."
+        }
+
         if (write) {
             val files = CompletionCorpus.writeFixtures(harvested, fixtureDir)
             println("wrote ${harvested.size} manifest entries and $files preamble files → ${fixtureDir.path}")
