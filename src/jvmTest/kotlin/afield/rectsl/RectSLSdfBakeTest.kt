@@ -336,7 +336,13 @@ class RectSLSdfBakeTest {
     private inline fun <reified T : Track<Double>> SceneProgram.tracksOfKind(): List<T> =
         allTracks().filterIsInstance<T>()
 
-    /** Every distinct track anywhere in this program's channel DAG. */
+    /**
+     * Every distinct track anywhere in this program's channel DAG.
+     *
+     * The `when (node)` deliberately has no `else`: [Node] is sealed, and a third
+     * kind that carried tracks would otherwise be walked past in silence, quietly
+     * shrinking what this test claims to cover. Let it fail to compile instead.
+     */
     private fun SceneProgram.allTracks(): List<Track<Double>> {
         val seen = LinkedHashSet<Track<Double>>()
         val roots = ArrayDeque<Track<Double>>()
