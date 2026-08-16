@@ -161,6 +161,46 @@ object CompletionCorpus {
         return out
     }
 
+    // ── self-consistency ────────────────────────────────────────────────────────────────────────────
+
+    /** `var Box.window by Inheritance<Window>()` — the declaration a `prop<T>(name)` macro writes. */
+    private val PROP_DECL = Regex("""\bby\s+(?:Inheritance|Onceing)<([A-Za-z_][A-Za-z0-9_.]*)""")
+
+    /**
+     * The types this preamble *declares a property of* but never brings into scope.
+     *
+     * Should always be empty, because the macro that writes `by Inheritance<T>()` writes T's import in
+     * the same [afield.macros.Insert]. It is checked anyway because the two halves are separable by
+     * hand — twice now a fixture has been "fixed" by deleting the import line and leaving the
+     * declaration, which produces a preamble in which T does not resolve, and a completion corpus whose
+     * whole purpose is measuring what resolves cannot afford to be measuring that.
+     *
+     * A type counts as in scope if it is default-imported, imported explicitly, declared in the preamble
+     * itself (the `/*supermap*/` and `/*graphics-structure-type*/` forms declare classes inline), or
+     * lives in a package the preamble star-imports — the last resolved through
+     * [ImportResolution]'s class index rather than guessed, so `import afield.four.buffers.*` excuses
+     * `FrameBufferGroup` and does not excuse `Window`.
+     */
+    fun typesDeclaredWithoutAnImport(preamble: String): List<String> {
+        val importLines = preamble.lines().map { it.trim() }.filter { it.startsWith("import ") }
+            .map { it.removePrefix("import ").trim() }
+        val explicit = importLines.filterNot { it.endsWith(".*") }.map { it.substringAfterLast('.') }.toSet()
+        val wildcards = importLines.filter { it.endsWith(".*") }.map { it.removeSuffix(".*") }.toSet()
+        return PROP_DECL.findAll(preamble).map { it.groupValues[1].substringAfterLast('.') }
+            .distinct()
+            .filterNot { t ->
+                isDefaultImportedTypeName(t) ||
+                    t in explicit ||
+                    Regex("""\bclass\s+$t\b""").containsMatchIn(preamble) ||
+                    // Guarded: resolving a star-import means a whole-classpath scan, and a preamble
+                    // with no star import needs no scan to be judged.
+                    (wildcards.isNotEmpty() &&
+                        ImportResolution.index()[t].orEmpty().any { fq -> fq.substringBeforeLast('.') in wildcards })
+            }
+            .sorted()
+            .toList()
+    }
+
     // ── fixtures ────────────────────────────────────────────────────────────────────────────────────
 
     /**
