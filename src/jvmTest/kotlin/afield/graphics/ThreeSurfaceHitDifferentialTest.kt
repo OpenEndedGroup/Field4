@@ -58,6 +58,19 @@ import kotlin.test.assertTrue
  *
  * `a section through a solid reports the cross-section it actually cut` is the same discipline applied
  * to the other half of the night's work: it pins the exact number a real run of the demo prints.
+ *
+ * ### An audit of the driven headline, and what it did not cover
+ *
+ * The 2026-08-16 browser capture reported twenty-five real clicks reading `150 mm` across a mesh and an
+ * FLine. On tracing it, that reading **could not have failed** for two whole classes of defect: the
+ * measure elements are built from corner *indices* and never read `u`, `v` or `w`, and on that figure
+ * `edge` and `triangle` both answer 150 anyway. The four tests under *what the headline did NOT test*
+ * are the configurations where each of those can fail —
+ * [the kind of element picked changes the measured distance] gives three distinct hand-derived
+ * distances for the three kinds, [aWrongBarycentricWeightGivesAWrongPointOnTheElement] makes a swapped
+ * weight produce a wrong distance and shows the centroid where it would not have, and
+ * [a weight swap leaves every measured dimension untouched — which is why 150 mm could not have failed]
+ * pins the boundary itself so it cannot silently move.
  */
 class ThreeSurfaceHitDifferentialTest {
 
@@ -534,6 +547,327 @@ class ThreeSurfaceHitDifferentialTest {
             val corner = js.call("measureElement", "point", js.fromJson("[[0,0,0]]"))
             val node = js.call("measureElement", "point", js.fromJson("[[0,0,3]]"))
             assertEquals(3.0, js.call("measureClosestApproach", corner, node).d("distance"), 1e-12)
+        }
+    }
+
+    // ------------------------------------------------------------------ what the headline did NOT test
+
+    /**
+     * **Where you click decides what you measure to** — three kinds, three different distances.
+     *
+     * ### Why this test exists: an audit of my own headline
+     *
+     * The driven capture on 2026-08-16 reported twenty-five clicks reading `150 mm` between a mesh and
+     * an FLine, matching the figure's authored dimension. That number is true and it was oversold.
+     * Tracing what it actually depends on:
+     *
+     *  * `surfacePickElementPoints` returns `tri[corner]`, or `tri[e]` and `tri[e+1]`, or all three
+     *    corners. It **never reads `u`, `v` or `w`.** A wrong barycentric weight therefore cannot change
+     *    a measured distance, at all, on any figure.
+     *  * On that particular slab the conduit's leg projects into the hit triangle *and* crosses the
+     *    diagonal edge that was picked, so `edge` and `triangle` both answer 150. The reading was
+     *    insensitive to the vertex/edge/triangle decision as well.
+     *
+     * So the 150 exercised the raycast, the `faceIndex` → triangle readout and the hand-off into
+     * `measureElement` — real things, and not the classifier's arithmetic. It could not have failed for
+     * a wrong weight or a wrong kind. This test is the configuration where it can.
+     *
+     * ### The configuration
+     *
+     * The right triangle again, and one annotation point at `(5, 3, 4)`, chosen so that all three
+     * answers differ and two of them are integers:
+     *
+     *  * **vertex** `A = (0,0,0)` → `√(25 + 9 + 16) = √50 = 7.0711`;
+     *  * **edge** `AB`, whose nearest point to the annotation is `(5, 0, 0)` → `√(9 + 16) = 5`;
+     *  * **triangle**, into which the annotation projects at `(5, 3, 0)` since `5 + 3 < 10` → `4`.
+     *
+     * A classifier that always answered `triangle` reads `4` three times, and
+     * [counterfactualAClassifierThatNeverSnapsCollapsesTheThreeDistancesToOne] shows exactly that.
+     */
+    @Test
+    fun `the kind of element picked changes the measured distance`() {
+        val annotation = "[[5,3,4]]"
+        val expected = mapOf(
+            "[0.6,0.6,0]" to Triple("vertex", sqrt(50.0), "the corner itself"),
+            "[5,0.9,0]" to Triple("edge", 5.0, "the foot on AB at (5, 0, 0)"),
+            "[3,3,0]" to Triple("triangle", 4.0, "the perpendicular into the face"),
+        )
+
+        val resolved = session().use { js ->
+            expected.keys.associateWith { click ->
+                val hit = js.classify(rightTriangle, click, rightTolerance)
+                val points = js.call("surfacePickElementPoints", js.fromJson(rightTriangle), hit)
+                hit.s("kind") to (0 until points.arraySize.toInt()).map { i ->
+                    val p = points.getArrayElement(i.toLong())
+                    listOf(
+                        p.getArrayElement(0).asDouble(),
+                        p.getArrayElement(1).asDouble(),
+                        p.getArrayElement(2).asDouble(),
+                    )
+                }
+            }
+        }
+
+        val distances = measureSession().use { js ->
+            val q = js.call("measureElement", "point", js.fromJson(annotation))
+            resolved.mapValues { (_, kindAndPoints) ->
+                val (kind, points) = kindAndPoints
+                val json = points.joinToString(",", "[", "]") { it.joinToString(",", "[", "]") }
+                val shape = if (points.size == 1) "point" else if (points.size == 2) "segment" else "polygon"
+                kind to js.call("measureClosestApproach", js.call("measureElement", shape, js.fromJson(json)), q)
+                    .d("distance")
+            }
+        }
+
+        expected.forEach { (click, want) ->
+            val (kind, distance) = distances.getValue(click)
+            assertEquals(want.first, kind, "the click at $click should be a ${want.first} hit")
+            assertEquals(
+                want.second, distance, 1e-12,
+                "a ${want.first} hit measures to ${want.third}, which is ${want.second} from (5, 3, 4)",
+            )
+        }
+
+        // …and the three really are distinct, or the test above could not have failed. Asserted rather
+        // than left to the reader, because "three numbers that happen to be equal" is exactly the shape
+        // the 150 mm headline turned out to have.
+        val values = distances.values.map { it.second }.sorted()
+        assertEquals(3, values.toSet().size, "the three kinds no longer give three distinct distances")
+        assertTrue(values.last() - values.first() > 3.0, "the spread collapsed to ${values.last() - values.first()}")
+    }
+
+    /** Red-first: disable snapping, and all three collapse to the interior answer. */
+    @Test
+    fun counterfactualAClassifierThatNeverSnapsCollapsesTheThreeDistancesToOne() {
+        val clicks = listOf("[0.6,0.6,0]", "[5,0.9,0]", "[3,3,0]")
+        val elements = session({
+            it.replace("if (cornerDistance <= tol) {", "if (cornerDistance < 0) {")
+                .replace("if (edgeDistance <= tol) {", "if (edgeDistance < 0) {")
+        }).use { js ->
+            clicks.map { click ->
+                val hit = js.classify(rightTriangle, click, rightTolerance)
+                assertEquals("triangle", hit.s("kind"), "the perturbation should have disabled snapping")
+                val points = js.call("surfacePickElementPoints", js.fromJson(rightTriangle), hit)
+                (0 until points.arraySize.toInt()).map { i ->
+                    val p = points.getArrayElement(i.toLong())
+                    listOf(
+                        p.getArrayElement(0).asDouble(),
+                        p.getArrayElement(1).asDouble(),
+                        p.getArrayElement(2).asDouble(),
+                    )
+                }
+            }
+        }
+        measureSession().use { js ->
+            val q = js.call("measureElement", "point", js.fromJson("[[5,3,4]]"))
+            val answers = elements.map { points ->
+                val json = points.joinToString(",", "[", "]") { it.joinToString(",", "[", "]") }
+                js.call("measureClosestApproach", js.call("measureElement", "polygon", js.fromJson(json)), q)
+                    .d("distance")
+            }
+            assertEquals(
+                listOf(4.0, 4.0, 4.0), answers.map { kotlin.math.round(it * 1e9) / 1e9 },
+                "a classifier that never snaps gives one answer for all three clicks, and it did not",
+            )
+        }
+    }
+
+    /**
+     * **The barycentric weights are load-bearing for exactly one thing, and here it is.**
+     *
+     * They do not reach a measured dimension — see the test above. What they *do* reach is
+     * `record.onElement` on a `triangle` hit, rebuilt as `u·a + v·b + w·c`, which travels to Kotlin as
+     * [ThreeSurfaceHit.onElement]. A caller measuring from that point — the obvious use, and the one
+     * the FLine path has always supported — gets a wrong answer for a wrong weight.
+     *
+     * ### The input that makes this able to fail, and the control that proves it
+     *
+     * An equilateral triangle of side 60, clicked at `(40, 12, 0)`, whose weights are
+     * `(0.2179, 0.5512, 0.2309)` — **pairwise distinct**, which is the whole point. Swapping `v` and `w`
+     * moves `onElement` to `(30.39, 28.64, 0)`, and its distance to an annotation 25 straight above the
+     * click goes from **25 exactly** to **31.531**.
+     *
+     * The control: the same triangle's **centroid**, where `u = v = w = ⅓`. There the identical
+     * perturbation moves nothing and the distance stays 25. A test written at the centroid — the obvious
+     * place to click, and the place I would have chosen — passes against a broken implementation. That
+     * is the failure two agents withdrew a headline for on 2026-08-15, reproduced here on purpose so it
+     * is visible rather than argued.
+     */
+    @Test
+    fun aWrongBarycentricWeightGivesAWrongPointOnTheElement() {
+        val side = 60.0
+        val apex = 30.0 * sqrt(3.0)
+        val triangle = "[[0,0,0],[$side,0,0],[30,$apex,0]]"
+        val tolerance = side * snapFraction
+        val click = "[40,12,0]"
+        val annotation = "[[40,12,25]]"
+        val centroid = "[${(0 + side + 30) / 3},${apex / 3},0]"
+
+        fun onElementFor(perturbation: (String) -> String, point: String): List<Double> =
+            session(perturbation).use { js ->
+                val hit = js.classify(triangle, point, tolerance)
+                assertEquals("triangle", hit.s("kind"), "the fixture must be an interior hit")
+                val on = hit.point("onElement")
+                listOf(on.first, on.second, on.third)
+            }
+
+        // The weights are distinct — the property that makes a swap detectable at all.
+        session().use { js ->
+            val hit = js.classify(triangle, click, tolerance)
+            val u = hit.d("u"); val v = hit.d("v"); val w = hit.d("w")
+            assertEquals(1.0, u + v + w, 1e-12, "barycentric weights must sum to 1")
+            val gaps = listOf(abs(u - v), abs(v - w), abs(u - w))
+            assertTrue(
+                gaps.min() > 0.01,
+                "the fixture's weights ($u, $v, $w) are too close together for a swap to be visible",
+            )
+        }
+
+        val swapWeights: (String) -> String = {
+            it.replace("return { u: 1 - v - w, v: v, w: w };", "return { u: 1 - v - w, v: w, w: v };")
+        }
+        val correct = onElementFor(ViewerJavaScript.UNPERTURBED, click)
+        val broken = onElementFor(swapWeights, click)
+        assertEquals(listOf(40.0, 12.0, 0.0), correct.map { kotlin.math.round(it * 1e9) / 1e9 })
+
+        measureSession().use { js ->
+            val q = js.call("measureElement", "point", js.fromJson(annotation))
+            fun distanceFrom(p: List<Double>) = js.call(
+                "measureClosestApproach",
+                js.call("measureElement", "point", js.fromJson("[[${p.joinToString(",")}]]")),
+                q,
+            ).d("distance")
+
+            assertEquals(25.0, distanceFrom(correct), 1e-9, "the annotation is 25 straight above the click")
+            assertEquals(31.5314, distanceFrom(broken), 1e-4, "a swapped weight must give a wrong distance")
+            assertTrue(
+                distanceFrom(broken) - 25.0 > 6.0,
+                "the perturbation moved the answer by only ${distanceFrom(broken) - 25.0}",
+            )
+        }
+
+        // The control. At the centroid the swap is invisible, so a test written there proves nothing.
+        val centroidCorrect = onElementFor(ViewerJavaScript.UNPERTURBED, centroid)
+        val centroidBroken = onElementFor(swapWeights, centroid)
+        centroidCorrect.zip(centroidBroken).forEach { (a, b) ->
+            assertEquals(a, b, 1e-9, "the centroid should be a fixed point of a weight swap, and is not")
+        }
+    }
+
+    /**
+     * The limitation, as a tested fact rather than a sentence: a weight swap does **not** move a
+     * measured dimension.
+     *
+     * This is the assertion that makes the audit above honest rather than merely stated. If somebody
+     * later makes `surfacePickElementPoints` interpolate — reporting, say, the barycentric point rather
+     * than the whole triangle for an interior hit — this test goes red, and the right response is to
+     * delete it and rewrite the paragraph in [aWrongBarycentricWeightGivesAWrongPointOnTheElement],
+     * because the scope of what a wrong weight can break will have changed.
+     *
+     * Written the awkward way round on purpose. A test asserting "these two are equal" normally means
+     * "this is correct"; this one means "this is the *boundary* of what the driven 150 mm could have
+     * caught", and the boundary is the thing that was missing from the first version of the headline.
+     */
+    @Test
+    fun `a weight swap leaves every measured dimension untouched — which is why 150 mm could not have failed`() {
+        val clicks = listOf("[0.6,0.6,0]", "[5,0.9,0]", "[3,3,0]")
+        val swapWeights: (String) -> String = {
+            it.replace("return { u: 1 - v - w, v: v, w: w };", "return { u: 1 - v - w, v: w, w: v };")
+        }
+
+        fun elementsUnder(perturbation: (String) -> String): List<Pair<String, List<List<Double>>>> =
+            session(perturbation).use { js ->
+                clicks.map { click ->
+                    val hit = js.classify(rightTriangle, click, rightTolerance)
+                    val points = js.call("surfacePickElementPoints", js.fromJson(rightTriangle), hit)
+                    hit.s("kind") to (0 until points.arraySize.toInt()).map { i ->
+                        val p = points.getArrayElement(i.toLong())
+                        listOf(
+                            p.getArrayElement(0).asDouble(),
+                            p.getArrayElement(1).asDouble(),
+                            p.getArrayElement(2).asDouble(),
+                        )
+                    }
+                }
+            }
+
+        val correct = elementsUnder(ViewerJavaScript.UNPERTURBED)
+        val swapped = elementsUnder(swapWeights)
+        assertEquals(
+            correct, swapped,
+            "a barycentric swap changed a measure element, so the audit's claim that the weights do " +
+                "not reach a dimension is out of date — rewrite it rather than deleting this test",
+        )
+        // And the kinds are the three distinct ones, so this is not vacuously comparing three
+        // identical answers.
+        assertEquals(listOf("vertex", "edge", "triangle"), correct.map { it.first })
+    }
+
+    /**
+     * The headline number itself, asserted rather than merely printed.
+     *
+     * A real run of the demo measures **150 mm** between the slab and the conduit, twenty-five times
+     * over a swept grid. Here is that measurement from the same geometry through the same two regions,
+     * as an assertion — so the figure in bold has a floor under it.
+     *
+     * The slab is `boxMesh(1200, 800, 60)`, whose first quad is the `+z` face and whose triangle 0 is
+     * `(4, 5, 7) = (−600,−400,30) (600,−400,30) (600,400,30)`. The conduit's vertical leg runs
+     * `(300, −260, 180) → (300, 240, 180)`. The face's diagonal crosses `x = 300` at `y = 200`, inside
+     * the leg's span, so the two segments cross in projection and their closest approach is exactly the
+     * `180 − 30 = 150` between their planes.
+     *
+     * **And the honest part:** the answer is 150 whether the click resolved to the diagonal *edge* or to
+     * the whole *triangle* — both asserted below — which is precisely why the driven reading could not
+     * distinguish them, and why the three tests above had to be written.
+     */
+    @Test
+    fun `the demo's 150 mm is reproducible from the geometry, by edge and by triangle alike`() {
+        val slab = boxMesh(1200.0, 800.0, 60.0).toThreeDrawable()
+        val positions = assertNotNull(slab.geometry.attributes["position"]).array
+        val indices = assertNotNull(slab.geometry.index).array
+
+        val corners = session().use { js ->
+            val tri = js.call(
+                "surfacePickTriangle",
+                js.fromJson(positions.joinToString(",", "[", "]")),
+                js.fromJson(indices.joinToString(",", "[", "]")),
+                0,
+            )
+            assertTrue(!tri.isNull, "boxMesh's face 0 should be readable")
+            (0 until 3).map { i ->
+                val p = tri.getArrayElement(i.toLong())
+                listOf(
+                    p.getArrayElement(0).asDouble(),
+                    p.getArrayElement(1).asDouble(),
+                    p.getArrayElement(2).asDouble(),
+                )
+            }
+        }
+        // The `+z` face, at z = 30 — the plane the clearance is measured from.
+        corners.forEach { assertEquals(30.0, it[2], 1e-9, "face 0 should be the +z face") }
+
+        val leg = "[[300,-260,180],[300,240,180]]"
+        measureSession().use { js ->
+            val conduit = js.call("measureElement", "segment", js.fromJson(leg))
+
+            val triangle = js.call(
+                "measureElement", "polygon",
+                js.fromJson(corners.joinToString(",", "[", "]") { it.joinToString(",", "[", "]") }),
+            )
+            assertEquals(
+                150.0, js.call("measureClosestApproach", triangle, conduit).d("distance"), 1e-9,
+                "the whole triangle to the conduit leg",
+            )
+
+            // Edge 2 of face 0 is (c, a) — the diagonal the driven click actually landed on.
+            val diagonal = js.call(
+                "measureElement", "segment",
+                js.fromJson("[${corners[2].joinToString(",", "[", "]")},${corners[0].joinToString(",", "[", "]")}]"),
+            )
+            assertEquals(
+                150.0, js.call("measureClosestApproach", diagonal, conduit).d("distance"), 1e-9,
+                "the picked diagonal edge to the conduit leg",
+            )
         }
     }
 

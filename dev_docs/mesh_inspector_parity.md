@@ -151,6 +151,40 @@ an interactive object.
 
 Captures: `dev_docs/agents/artifacts/mesh_inspector_parity/`.
 
+## What that headline could not have caught
+
+*Written after the fact, against my own number.* The `150 mm × 25` reading above is true and it was
+oversold. Tracing what it actually depends on:
+
+* `surfacePickElementPoints` returns `tri[corner]`, or `tri[e]` and `tri[e+1]`, or all three corners. It
+  **never reads `u`, `v` or `w`.** A wrong barycentric weight cannot change a measured distance, on any
+  figure, ever. The 25 readings were not testing the classifier's arithmetic.
+* On that slab the conduit's leg projects into the hit triangle *and* crosses the diagonal edge that was
+  picked, so `edge` and `triangle` both answer 150. The reading was insensitive to the
+  vertex/edge/triangle decision too.
+
+What it *did* exercise, and what nothing else does: the raycast reaching a mesh at all, the
+`faceIndex` → triangle readout, and the hand-off into `measureElement`. Real, and less than it looked.
+
+Four tests now cover what it could not, each with the input that makes it able to fail named:
+
+| test | the failing input | correct | broken |
+| --- | --- | --- | --- |
+| the kind of element picked changes the measured distance | an annotation at `(5, 3, 4)`, off to one side of a right triangle, so vertex/edge/triangle give **three different** answers | 7.0711 / 5 / 4 | 4 / 4 / 4 |
+| counterfactual — a classifier that never snaps | the same three clicks, with both snap branches disabled | — | collapses to 4 |
+| a wrong barycentric weight gives a wrong point on the element | a click whose weights are **pairwise distinct** (0.2179, 0.5512, 0.2309); the *centroid* is the control, where a swap is invisible | 25 | 31.531 |
+| a weight swap leaves every measured dimension untouched | the boundary itself, pinned so it cannot move silently | — | — |
+
+And the status of every number in this page, plainly:
+
+| number | asserted? |
+| --- | --- |
+| **150 mm** | yes — `the demo's 150 mm is reproducible from the geometry, by edge and by triangle alike`, exact to 1e-9, by both element kinds |
+| **1720 mm @ 144 mm** | yes — `a section through a solid reports the cross-section it actually cut` |
+| **2.0 vs 3.3826** | yes — the cross-region test |
+| **7.287 mm** pick radius | yes — `ThreePickThresholdTest` |
+| **853 clicks**, the `{0: 768, …}` histogram | **no — an observation.** It is a description of one browser run, not a property. Nothing floors it and nothing re-runs it |
+
 ## Open it
 
 `public/docs/assets/three_mesh_pick_demo/metadata.edn` is a loadable Field document with one Kotlin box:

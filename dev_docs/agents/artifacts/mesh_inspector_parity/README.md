@@ -14,6 +14,21 @@ The full account is in [`../../../mesh_inspector_parity.md`](../../../mesh_inspe
 | `02_picked_measurement.png` | the ruler active, and a **picked** dimension of `150 mm` between a triangle of the solid and a segment of the annotation. The status line reads `clearance 150 mm · 150 mm` — the authored dimension and the picked one, agreeing |
 | `03_section_cuts_the_solid.png` | the section tool cutting the **solid** as well as the annotations, cut outline in cyan, reporting `cut 1720 mm @ 144 mm` |
 
+## Read this before quoting the 150
+
+The `150 mm × 25` below is true and it was **oversold** when first written. Audited afterwards, that
+reading could not have failed for two whole classes of defect: the measure elements are built from
+triangle-corner *indices* and never read the barycentric weights, and on this particular figure the
+conduit's leg crosses both the picked edge *and* the hit triangle, so `edge` and `triangle` answer 150
+alike. What it does exercise — and what nothing else does — is the raycast reaching a mesh at all, the
+`faceIndex` → triangle readout, and the hand-off into `measureElement`.
+
+The configurations where those two classes *can* fail are in `ThreeSurfaceHitDifferentialTest` under
+*what the headline did NOT test*, each with its failing input named.
+
+The sweep below is an **observation** of one browser run: nothing floors it and nothing re-runs it. The
+150 itself *is* asserted, separately and exactly, by both element kinds.
+
 ## The numbers, and where they come from
 
 Sweeping 853 pickable canvas points and measuring each against one anchor triangle on the slab gives
