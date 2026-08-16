@@ -62,6 +62,9 @@ those rings go into the *same* scene as the solid.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/scene.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
+// FIELD_DOCS_EXPECT_SVG: false — the docs runner reads a bare `lines(` as Box.lines's 2D SVG path
+// and then demands an <svg>. The `lines(rims)` below is the scene builder's and emits an iframe.
+//
 // A gyroid is a triply-periodic minimal surface. Marched inside a finite box it is OPEN: the
 // surface leaves the sampling window rather than closing inside it, and every place it does that
 // is a boundary loop. `open(20)` in the printed summary is the claim; the picture is the evidence.
@@ -345,13 +348,61 @@ picture. What differs, and what does not:
   `TriMesh.colors` or from the rasterizer's own `DEFAULT_SURFACE` constant, read rather than copied
   so the two cannot drift into two different greys; alpha is a flat 1. A difference between the two
   outputs is a difference in shading model, never a difference in input.
-- **Back-face culling is held identical too**, and this is the one that matters diagnostically. A
-  face wound the wrong way is *missing* in the rasterizer — not dark, gone — and the
-  [polytope](polytope_examples.md) and [typography](typography_examples.md) pages teach that as a
-  winding test. `ThreeDrawStyle.surface(cullBackFaces = true)` is the default so it is missing in the
-  viewer too. Switching renderers must not quietly switch a diagnostic off.
+- **Back-face culling is held identical too**, and this is the one that matters diagnostically —
+  asserted rather than claimed, in the next section.
 - **The fact line is the same sentence**, from `TriMesh.threeFacts()` and `toFigureHtml` sharing one
   implementation.
+
+### The diagnostic that had to survive the switch
+
+A face wound the wrong way is *missing* in the rasterizer — not dark, **gone** — and the
+[polytope](polytope_examples.md) and [typography](typography_examples.md) pages both teach that as a
+winding test. `ThreeDrawStyle.surface(cullBackFaces = true)` is the default so it must be missing in
+the viewer too. Switching renderers is not allowed to quietly switch a diagnostic off, and that is
+the sort of claim that should be a picture rather than a sentence.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/winding.png" wait="7.0" capture="box" open-outputs="true" padding="20"}
+:::static
+// Take a sphere and reverse the winding of one band of triangles. Not one vertex moves.
+val ball = icosphereMesh(3, 0.8)
+val idx = ball.indices.copyOf()
+var reversed = 0
+for (t in 0 until ball.triangleCount) {
+    val cy = (ball.position(ball.ia(t)).y + ball.position(ball.ib(t)).y + ball.position(ball.ic(t)).y) / 3.0
+    if (cy > 0.30) {
+        val b = idx[t * 3 + 1]; idx[t * 3 + 1] = idx[t * 3 + 2]; idx[t * 3 + 2] = b
+        reversed++
+    }
+}
+val holed = TriMesh(ball.positions.copyOf(), idx)
+
+println("reversed %d of %d triangles; not one vertex moved".format(reversed, ball.triangleCount))
+println("volume  %.4f  ->  %.4f".format(ball.signedVolume(), holed.signedVolume()))
+println("consistently oriented: " + holed.topology().isConsistentlyOriented)
+
+val view = MeshView(width = 460, height = 380, yawDegrees = 18.0, pitchDegrees = 38.0, wireframe = true)
+showMesh(holed, channel = "three.js", view = view, height = view.height, renderer = MeshRenderer.GPU,
+         title = "the band is GONE, not dark")
+showMesh(holed, channel = "the CPU rasterizer", view = view,
+         renderer = MeshRenderer.CPU, title = "…and gone here too, which is the whole point")
+```
+
+![The same sphere with a reversed band drawn twice in one box. In both output channels a wide ragged band across the upper half of the sphere is simply absent — you look straight through the shell to the inside of its far side. In the upper, Three.js panel the wireframe of the missing triangles is still drawn across the hole; in the lower, CPU panel the hole is bare. Both carry the identical fact line, 642 verts, 1280 tris, chi=2 genus 0, watertight, volume 0.8112](assets/three_output/winding.png)
+
+**394 of 1280 triangles reversed, no vertex moved, and both renderers punch the same hole.** Look at
+what the numbers say while the picture says "hole", because this is the failure mode the whole
+apparatus exists to catch:
+
+* `signedVolume()` goes **2.1262 → 0.8112**. Quietly, catastrophically wrong.
+* the fact line still reads **`χ=2 genus 0 · watertight`** — χ is a *count* of vertices, edges and
+  faces, and reversing a triangle changes none of them. Topology is not orientation.
+* the only thing that says so out loud is `topology().isConsistentlyOriented`, which is **false**.
+  `fixWinding()` is the repair.
+
+One honest divergence the figure shows and nothing else records: in the Three.js panel the
+**wireframe overlay is not back-face culled**, so you can still see the reversed triangles' edges
+drawn across the hole. The rasterizer's depth-tested wireframe is culled with its surface, so its
+hole is bare. The *surfaces* agree, which is the diagnostic; the overlays do not.
 
 <!-- INSPECTOR-MESH-LIMITATION: this section describes the viewer at 90230b1f4, where mesh drawables
      are not registered as interactive objects. If mesh picking lands in the viewer, this whole
@@ -383,9 +434,12 @@ it is, put a `TriMesh` you want to *interrogate* through `toFLines(...)` and han
 ## What is deliberately unchanged
 
 `ThreeGeometryPayload`'s `lines` / `fills` / `points` are untouched, and a payload with an empty
-`drawables` list serialises byte for byte as it did before any of this existed —
-`ThreeScenePayloadCompatibilityTest` holds it there. That is what lets the editable path, the
-inspector and the twelve tests that pin the current payload carry on without a second thought, and it
+`drawables` list serialises byte for byte as it did before any of this existed. Two tests in
+`ThreeSceneTest` hold it there — *an FLine payload carries none of the new keys* and *a mesh scene
+does carry them*. (`Three.kt` and `ThreeJsViewer.kt` both name a `ThreeScenePayloadCompatibilityTest`
+for this; no such class exists in the tree at the time of writing, and those two tests are what the
+KDoc means.) That is what lets the editable path, the
+inspector and the tests that pin the current payload carry on without a second thought, and it
 is why no FLine capture in the docs moved when the mesh path landed.
 
 Three.js itself is **vendored**, not fetched: `src/commonMain/resources/vendor/three/0.184.0/`. A
@@ -412,6 +466,15 @@ All four figures on this page are `diffstatic_runner` fences: the docs build run
 in a real Field box and the image underneath is that box's own output, captured from the browser.
 Nothing here is drawn by hand, and nothing here is a mock-up of an output area.
 
-The renderer-comparison figure is the one to be slightly careful with. Its GPU half is a WebGL
-capture and is therefore *not* reproducible pixel for pixel — that is the whole reason the CPU half
-of the same figure exists, and the whole reason the rasterizer is still in the tree.
+`tools/docs_capture_audit.py --page three_output.md --repeat 2` re-derives all four from the code
+twice and compares per pixel: **four identical, no failures.** That is worth two sentences of nuance
+rather than a boast. It says these captures are deterministic *on one machine, one GPU, one driver,
+run to run* — which is the useful property for a docs build. It does not say they are reproducible
+*across* machines, and a WebGL capture is not: that is the whole reason the CPU half of the
+renderer-comparison figure exists, and the whole reason the rasterizer is still in the tree.
+
+One wrinkle worth knowing if you write a fence like these. The runner's output validator treats a
+bare `lines(` in the code as a call to `Box.lines(...)`, the 2D SVG path, and then fails the capture
+because no `<svg>` appeared. Inside `three { }`, `lines(…)` is the scene builder's and emits an
+iframe. `// FIELD_DOCS_EXPECT_SVG: false` in the fence is the documented escape hatch, and the first
+figure on this page carries it.
