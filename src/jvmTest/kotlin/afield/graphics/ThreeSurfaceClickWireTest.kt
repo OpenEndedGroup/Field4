@@ -291,7 +291,7 @@ class ThreeSurfaceClickWireTest {
             assertEquals(3, hit.triangle.size, "$kind: no triangle on the record")
             hit.triangle.forEach { c ->
                 assertTrue(
-                    Triple(c.x.toFloat(), c.y.toFloat(), c.z.toFloat()) in corners,
+                    Triple(c.x, c.y, c.z) in corners,
                     "$kind: the corner (${c.x}, ${c.y}, ${c.z}) is not a vertex of the drawable",
                 )
             }
