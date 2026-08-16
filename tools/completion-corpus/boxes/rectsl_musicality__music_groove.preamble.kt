@@ -1,5 +1,4 @@
 import afield.four.Renderer
-import afield.four.util.Window
 import java.nio.*
 import arrow.core.right
 import arrow.core.left
