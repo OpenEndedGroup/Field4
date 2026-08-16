@@ -42,6 +42,7 @@ nav:
     - Linear Algebra: linear_algebra.md
     - Generated Vector API: linear_algebra_api.md
     - FLine Examples: fline_examples.md
+    - Field's 3D Output: three_output.md
     - Visualizers & Controls: visualizers.md
     - Querying Object Graphs: graph_query.md
     - Rewriting Your Own Syntax: pattern_rewrite.md

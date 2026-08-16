@@ -9,8 +9,9 @@ The short answer is one line, and it is the same line for every format:
 showMesh("/path/to/thing.glb")
 ```
 
-That reads the file, assembles it, and pushes a shaded, z-buffered, wireframed render into the box's
-output area with the mesh's measurements printed underneath. Keep the mesh instead of the picture and
+That reads the file, assembles it, and pushes a shaded, wireframed, **orbitable** render into the
+box's output area with the mesh's measurements printed underneath — the Three.js viewer, which is
+where every mesh goes now unless you ask otherwise. Keep the mesh instead of the picture and
 everything in the [mesh family](mesh_examples.md) applies — weld it, measure its volume, decimate it,
 shoot a ray at it, write it back out as something else.
 
@@ -69,8 +70,9 @@ of folds, glass, and everything positioned by node transforms rather than baked 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/geometry_from_disk/toycar.png" wait="14.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// The same file public/docs/fabricate_renderer.md renders with full PBR — here through the CPU
-// z-buffer preview instead, which needs no GPU and works in a headless box.
+// The same file public/docs/fabricate_renderer.md renders with full PBR — here through the plain
+// Three.js viewer instead, which is `showMesh`'s default and gives you a solid you can orbit.
+// `renderer = MeshRenderer.CPU` for the static z-buffer figure, which needs no GPU at all.
 val glb = java.io.File("public/docs/assets/fabricate_demo/ToyCar.glb")
 println("${glb.name}: ${glb.length()} bytes on disk")
 
@@ -211,7 +213,7 @@ dir.deleteRecursively()
 :::endfold
 ```
 
-![Three renders of the same 1280-triangle sphere side by side: the source in pale blue from its own per-vertex colours, the OBJ round trip in the renderer's neutral blue-grey because OBJ dropped the colours, and the welded STL round trip in the same neutral grey, all three captioned as watertight with chi=2 and volume 4.1527](assets/geometry_from_disk/roundtrip.png)
+![Three renders of the same 1280-triangle sphere side by side: the source in pale blue from its own per-vertex colours, the OBJ round trip in the renderer's neutral blue-grey because OBJ dropped the colours, and the welded STL round trip in the same neutral grey. The panels are headed "source — icosphereMesh(3), coloured", "via ball.obj — colours gone" and "via ball.stl, welded — normals gone"; the counts and volumes are in the printed lines above, not under the panels](assets/geometry_from_disk/roundtrip.png)
 
 The pictures differ, and each difference is a format telling you what it cannot carry.
 
@@ -652,12 +654,12 @@ Looking at it costs more than reading it, and not where you would guess:
 |---|---|
 | `renderPng(560×420, wireframe = false)` | 51 ms |
 | `renderPng(560×420, wireframe = true)` | 114 ms |
-| `toFigureHtml(…)` — what `showMesh` calls | **419 ms** |
+| `toFigureHtml(…)` — what `showMesh(renderer = MeshRenderer.CPU)` calls | **419 ms** |
 
 The raster is 51 ms; the depth-tested wireframe doubles it; and the figure costs **four times the
 render**, because the caption's `χ`, genus, watertightness and boundary-loop count need a full topology
 pass — edge map, vertex stars, boundary walk — over the whole mesh. On a model with 2782 boundary
-loops that is the expensive part of `showMesh`, not the picture. If you are re-rendering in a loop and
+loops that is the expensive part of the call, not the picture. If you are re-rendering in a loop and
 do not need the numbers, call `renderPng` and `display` the base64 yourself.
 
 Those are the **CPU** path's numbers, which is what `showMesh(renderer = MeshRenderer.CPU)` still does.

@@ -471,7 +471,8 @@ you need to put a shaded one back together.
 
 The figures above are the plain form for a concrete reason worth knowing before you write your own:
 `showMesh` prints its own topology footer, so handing it a crease-split mesh puts *"χ=−4 genus 0 · open
-(42 boundary loop(s))"* immediately beneath a caption reading *"genus 5 · guaranteed closed"*. Both
+(42 boundary loop(s))"* on the line immediately above your own caption reading *"genus 5 · guaranteed
+closed"* — the renderer's sentence first, yours under it, as the figures on this page show. Both
 lines are true of different meshes, which is worse than either being wrong. Field's own
 `withVertexNormals()` splits at creases too, so this is a property of crease normals rather than of
 this binding.
