@@ -179,6 +179,94 @@ data class ThreeInteractiveVertex(
     val position: FloatArray
 )
 
+/**
+ * A click on a surface drawable, as the viewer posts it — the sibling of [FLineClick].
+ *
+ * A second wire type rather than more optional fields on [FLineClick], for one reason that settles it:
+ * [FLineClick] lives in `rpc.kt` and is shared with the 2D SVG output, which cannot ever produce a
+ * `faceIndex`. Widening it would put five permanently-null fields on every SVG click and would make the
+ * `three-surface-click` case indistinguishable from a very old browser posting a sparse `fline-click`.
+ *
+ * Every field is defaulted, so a viewer that predates a field it does not know about still decodes.
+ * `null` rather than `NaN` for the optional doubles, for the same reason [FLineClick] does it: JSON has
+ * no NaN and a browser that sends one produces a payload the server cannot parse at all.
+ */
+@Serializable
+data class ThreeSurfaceClick(
+    val callbackId: String,
+    /** [ThreeDrawable.id]. */
+    val id: String = "",
+    val label: String? = null,
+    val drawableIndex: Int = -1,
+    /** `vertex`, `edge`, `triangle`, or empty for the classifier's refusal. */
+    val kind: String = "",
+    val x: Double = 0.0,
+    val y: Double = 0.0,
+    val z: Double = 0.0,
+    val faceIndex: Int = -1,
+    val vertexIndex: Int = -1,
+    val edgeIndex: Int = -1,
+    val u: Double? = null,
+    val v: Double? = null,
+    val w: Double? = null,
+    /** The point on the named element. */
+    val ex: Double? = null,
+    val ey: Double? = null,
+    val ez: Double? = null,
+    val frontFacing: Boolean = true,
+    /** The hit triangle's nine ordinates, `[ax, ay, az, bx, …]`, or empty. */
+    val triangle: List<Double> = emptyList(),
+)
+
+/**
+ * The one place a posted [ThreeSurfaceClick] becomes the [ThreeSurfaceHit] a callback sees.
+ *
+ * Modelled line for line on `FLineClick.toIntersection()` in `outputs.kt`, including the "absent
+ * optional fields keep the record's own defaults" rule that lets an older viewer keep working.
+ */
+internal fun ThreeSurfaceClick.toHit(): ThreeSurfaceHit = ThreeSurfaceHit(
+    id = id,
+    label = label,
+    drawableIndex = drawableIndex,
+    kind = when (kind.lowercase()) {
+        "vertex" -> ThreeSurfaceHitKind.VERTEX
+        "edge" -> ThreeSurfaceHitKind.EDGE
+        "triangle", "face" -> ThreeSurfaceHitKind.TRIANGLE
+        else -> ThreeSurfaceHitKind.UNKNOWN
+    },
+    position = afield.stdlib.vec(x, y, z),
+    onElement = if (ex != null && ey != null) afield.stdlib.vec(ex, ey, ez ?: 0.0) else null,
+    faceIndex = faceIndex,
+    vertexIndex = vertexIndex,
+    edgeIndex = edgeIndex,
+    u = u ?: Double.NaN,
+    v = v ?: Double.NaN,
+    w = w ?: Double.NaN,
+    frontFacing = frontFacing,
+    triangle = if (triangle.size >= 9) {
+        (0 until 3).map { afield.stdlib.vec(triangle[it * 3], triangle[it * 3 + 1], triangle[it * 3 + 2]) }
+    } else emptyList(),
+)
+
+/**
+ * Server-side click callbacks for surface drawables.
+ *
+ * A registry of its own rather than a second map in `outputs.kt`'s, because the value type differs —
+ * `(ThreeSurfaceHit) -> Unit` against `(FLineIntersection) -> Unit` — and a shared map keyed by a
+ * prefix convention would be a cast waiting to be got wrong. The `three-surface-` id prefix is what
+ * makes the two namespaces visibly disjoint in a log.
+ */
+private val surfaceClickCallbacks = ConcurrentHashMap<String, (ThreeSurfaceHit) -> Unit>()
+
+internal fun registerThreeSurfaceClickCallback(callback: (ThreeSurfaceHit) -> Unit): String {
+    val id = "three-surface-${UUID.randomUUID()}"
+    surfaceClickCallbacks[id] = callback
+    return id
+}
+
+internal fun getThreeSurfaceClickCallback(callbackId: String): ((ThreeSurfaceHit) -> Unit)? =
+    surfaceClickCallbacks[callbackId]
+
 @Serializable
 @OptIn(ExperimentalSerializationApi::class)
 data class ThreeGeometryPayload(
@@ -391,6 +479,20 @@ fun installThreeJsHandler() {
                     val intersection = click.toIntersection()
                     GlobalScope.launch {
                         runCatching { callback(intersection) }
+                    }
+                }
+            }
+            "three-surface-click" -> {
+                // The mesh half of the same idea, and deliberately the same five lines: decode, look
+                // the callback up, hand it the record, never let a user closure's exception reach the
+                // websocket read loop.
+                val click = runCatching { threeJson.decodeFromJsonElement<ThreeSurfaceClick>(payload) }.getOrNull()
+                    ?: return@add Handled.no
+                val callback = getThreeSurfaceClickCallback(click.callbackId)
+                if (callback != null) {
+                    val hit = click.toHit()
+                    GlobalScope.launch {
+                        runCatching { callback(hit) }
                     }
                 }
             }

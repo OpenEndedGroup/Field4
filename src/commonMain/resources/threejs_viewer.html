@@ -435,6 +435,8 @@ scene.add(editorOverlayRoot);
 
 let pointMaterial = null;
 let interactiveObjects = [];
+/** Bumped whenever `interactiveObjects` is rebuilt, so the hover memo can tell one set from another. */
+let interactiveRevision = 0;
 let editableHitObjects = [];
 let payloadState = { editable: null };
 const payloadGeometrySlots = {
@@ -1156,9 +1158,15 @@ function makeFillMaterial() {
  * which is right for translucent stacked sheets and wrong for anything solid. A solid drawn with
  * depthWrite off has no self-occlusion — the far side of a sphere paints over the near side, and the
  * result reads as a strange flat blob rather than as a bug, which is why it is worth naming here.
+ *
+ * [hoverColor], when the drawable has one, patches in the same three uniforms
+ * `makeInteractiveFillMaterial` uses, so `setInteractiveHover` drives a solid and an FLine fill through
+ * one code path. Only when there is one: the extra uniforms change the compiled program, and every
+ * mesh figure in the docs is a picture that should keep the program it already had.
  */
-function makeSurfaceMaterial(style) {
+function makeSurfaceMaterial(style, hoverColor) {
     const s = style || {};
+    const hover = hoverColor || null;
     const material = new THREE.MeshStandardMaterial({
         color: 0xffffff,
         vertexColors: true,
@@ -1175,19 +1183,36 @@ function makeSurfaceMaterial(style) {
     });
     material.depthWrite = s.depthWrite !== false;
     material.onBeforeCompile = (shader) => {
+        let fragmentPars = '#include <color_pars_fragment>\nvarying float vAlpha;';
+        let diffuse = 'vec4 diffuseColor = vec4( diffuse, opacity * vAlpha );';
+        if (hover) {
+            shader.uniforms.uHover = { value: 0.0 };
+            shader.uniforms.uHoverColor = { value: new THREE.Color(hover[0], hover[1], hover[2]) };
+            shader.uniforms.uHoverAlpha = { value: hover.length > 3 ? hover[3] : 1.0 };
+            material.userData.shader = shader;
+            fragmentPars += '\nuniform float uHover;\nuniform vec3 uHoverColor;\nuniform float uHoverAlpha;';
+            diffuse = 'vec4 diffuseColor = vec4( diffuse, opacity * mix(vAlpha, uHoverAlpha, uHover) );';
+        }
         shader.vertexShader = shader.vertexShader
             .replace('#include <color_pars_vertex>', '#include <color_pars_vertex>\nattribute float alpha;\nvarying float vAlpha;')
             .replace('#include <color_vertex>', '#include <color_vertex>\nvAlpha = alpha;');
         shader.fragmentShader = shader.fragmentShader
-            .replace('#include <color_pars_fragment>', '#include <color_pars_fragment>\nvarying float vAlpha;')
-            .replace('vec4 diffuseColor = vec4( diffuse, opacity );', 'vec4 diffuseColor = vec4( diffuse, opacity * vAlpha );');
+            .replace('#include <color_pars_fragment>', fragmentPars)
+            .replace('vec4 diffuseColor = vec4( diffuse, opacity );', diffuse);
+        if (hover) {
+            shader.fragmentShader = shader.fragmentShader
+                .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, uHoverColor, uHover);');
+        }
     };
     // The cache key MUST vary with anything that changes the compiled program. It used to be the
     // constant 'vertex-alpha-v1', which was fine while there was exactly one fill material on the
     // page; with per-drawable styles a flat-shaded surface would otherwise be handed the smooth
-    // program that was compiled first, and shade wrong for no visible reason.
+    // program that was compiled first, and shade wrong for no visible reason. The hover patch is on
+    // the key for the same reason and nothing weaker: without it a hovering solid added after a plain
+    // one is handed the plain one's program and simply never highlights.
     material.customProgramCacheKey = () =>
-        'vertex-alpha-v2|' + (s.flatShading ? 'flat' : 'smooth') + '|' + (s.doubleSided === false ? 'front' : 'double');
+        'vertex-alpha-v3|' + (s.flatShading ? 'flat' : 'smooth') + '|' +
+        (s.doubleSided === false ? 'front' : 'double') + '|' + (hover ? 'hover' : 'plain');
     return material;
 }
 
@@ -1450,6 +1475,33 @@ function interactiveEntry(source, meshes, vertices) {
         label: typeof source.label === 'string' ? source.label : null,
         topology: parseFLineTopology(source.topology)
     };
+}
+
+/**
+ * The same entry, for a surface drawable — one constructor, two sources, still.
+ *
+ * A `ThreeDrawable` names `callbackId`, `hoverColor` and `label` identically to a
+ * `ThreeInteractiveObject`, so the shared half is `interactiveEntry`'s job and is *delegated* rather
+ * than retyped. That is the entire point of this region: on 2026-08-11 there were three copies of the
+ * entry literal and two of them were wrong, and adding a third source is exactly the moment that would
+ * happen again.
+ *
+ * What a surface adds is `entry.surface`, and its presence is the discriminator the pick path branches
+ * on. `lineIndex` stays `-1` and `topology` stays null, because a mesh has neither: those two fields
+ * are how an FLine is addressed, and a drawable is addressed by `id` and `drawableIndex`.
+ *
+ * @param geometry `{ positions, index }` lifted off the BufferGeometry by the caller — plain arrays, so
+ * this stays free of THREE and stays liftable.
+ */
+function surfaceEntry(source, meshes, drawableIndex, geometry) {
+    const entry = interactiveEntry(source, meshes, []);
+    entry.surface = {
+        id: typeof source.id === 'string' ? source.id : '',
+        drawableIndex: drawableIndex,
+        positions: geometry ? geometry.positions : null,
+        index: geometry ? geometry.index : null
+    };
+    return entry;
 }
 // [viewer-region interactive-entry] END
 
@@ -1795,6 +1847,296 @@ function flinePickClassify(topology, role, point3) {
     };
 }
 // [viewer-region fline-hit-picking] END
+
+// [viewer-region surface-hit-picking] BEGIN
+// Naming a clicked element on a SOLID — the sibling of `flinePickClassify` directly above.
+//
+// ### Why this had to exist
+//
+// `533918561` gave meshes a place in this viewer and its own KDoc says the viewer "gained no knowledge
+// of either source type — it draws drawables". That was true of *drawing* and false of *interacting*:
+// `renderPayloadGeometry` built `interactiveObjects` out of `payload.interactive`, which only the FLine
+// half ever fills, so the headline example — a car plus its FLine measurements — produced a scene where
+// you could measure the annotations and could not measure the car. Everything below exists to make a
+// mesh hit resolve to the same three shapes an FLine hit resolves to, so that the *existing*
+// `measureClosestApproach` can measure from one to the other without knowing which is which.
+//
+// ### What three.js gives us, and what it does not
+//
+// A raycast against a `Mesh` returns `faceIndex` and `point`, so the triangle needs no searching — the
+// hard half of `flinePickClassify`, which has to hunt the topology for the nearest element, is simply
+// absent here. What three.js does *not* give is the distinction a person means by clicking: corner,
+// edge, or face. That is the whole job below.
+//
+// ### The tolerance, and why it is not a barycentric one
+//
+// It is tempting to say "u < 0.05 means you hit the edge" and be done, since barycentric coordinates
+// are scale-free. It is also wrong, and the reason is slivers: 0.05 of the way across a triangle 0.01
+// units wide is 0.0005 units, which is not a distance anyone can aim a mouse at, while 0.05 across a
+// 500-unit triangle is 25 units of dead zone. So classification is by **true perpendicular distance in
+// the triangle's plane**, with the tolerance passed in as a world distance. The viewer derives it from
+// the hit triangle's own longest edge (`surfacePickTolerance`), which is scale-free in the way that
+// actually matters — the same mesh at any size classifies the same click identically — while staying a
+// real distance within any one triangle.
+//
+// The consequence is stated rather than hidden: on a sliver, *every* point is within snap distance of
+// an edge or a corner, so a sliver has no clickable interior. That is the honest answer. A sliver has
+// no interior anybody could point at either.
+//
+// **Vertex is tested before edge, and that ordering is the whole correctness argument.** A point near a
+// corner is near two edges as well, and it is nearer to those edges than it is to the corner — always,
+// by the triangle inequality. An implementation that tests edges first can never report a vertex.
+// `ThreeSurfaceHitDifferentialTest` asserts both halves of that sentence: that the corpus contains a
+// point genuinely nearer an edge than the corner, and that the classifier still says vertex.
+//
+// Pure arithmetic — no THREE, no DOM — so `ViewerJavaScript` lifts it and the differential test runs
+// this very text on GraalJS against expectations worked out from the geometry by hand.
+const SURFACE_PICK_EPS = 1e-12;
+
+/**
+ * How close to a corner or an edge counts as hitting it, as a fraction of the triangle's longest edge.
+ *
+ * 0.14 rather than a rounder number because of what it does to an equilateral triangle, which is the
+ * shape a well-conditioned mesh is mostly made of: the three corner discs and the three edge bands then
+ * leave an interior region of a bit under half the area. Much smaller and the corners are unhittable;
+ * much larger and the face is.
+ */
+const SURFACE_PICK_SNAP_FRACTION = 0.14;
+
+function surfacePickSub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+function surfacePickDot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+function surfacePickCross(a, b) {
+    return [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0]
+    ];
+}
+function surfacePickDistance(a, b) {
+    const d = surfacePickSub(a, b);
+    return Math.sqrt(surfacePickDot(d, d));
+}
+
+/**
+ * The three corners of triangle `faceIndex`, read out of a BufferGeometry's own arrays.
+ *
+ * `index` may be null, which is three.js's non-indexed geometry: the triangles are then consecutive
+ * triples of positions. Both cases are here rather than in the caller because getting the non-indexed
+ * one wrong produces a plausible triangle from the wrong place, which is the kind of bug that looks
+ * like a tolerance problem for a day.
+ *
+ * Returns `null` — never a triangle of zeros — for an out-of-range face.
+ */
+function surfacePickTriangle(positions, index, faceIndex) {
+    if (!positions || !(faceIndex >= 0)) return null;
+    const corners = surfacePickVertexIndices(positions, index, faceIndex);
+    if (!corners) return null;
+    const out = [];
+    for (let c = 0; c < 3; c += 1) {
+        const at = corners[c] * 3;
+        if (at + 2 >= positions.length) return null;
+        out.push([positions[at], positions[at + 1], positions[at + 2]]);
+    }
+    return out;
+}
+
+/** The mesh's own vertex indices for triangle `faceIndex` — the numbers a hit reports back. */
+function surfacePickVertexIndices(positions, index, faceIndex) {
+    const at = faceIndex * 3;
+    if (index) {
+        if (at + 2 >= index.length) return null;
+        return [index[at], index[at + 1], index[at + 2]];
+    }
+    if ((at + 2) * 3 + 2 >= positions.length) return null;
+    return [at, at + 1, at + 2];
+}
+
+/**
+ * Barycentric coordinates of `p` in the triangle, or `null` for a triangle with no plane.
+ *
+ * The projected solve (Ericson), so a point a little off the plane — which three.js's hit point always
+ * is, by a float or two — still gets the coordinates of its perpendicular projection rather than
+ * nonsense. `null` for a degenerate triangle is a refusal on purpose: a collapsed or collinear triangle
+ * has no interior to be at a position within, and returning `[1/3, 1/3, 1/3]` would be a plausible
+ * number for a question with no answer.
+ */
+function surfacePickBarycentric(tri, p) {
+    const v0 = surfacePickSub(tri[1], tri[0]);
+    const v1 = surfacePickSub(tri[2], tri[0]);
+    const v2 = surfacePickSub(p, tri[0]);
+    const d00 = surfacePickDot(v0, v0);
+    const d01 = surfacePickDot(v0, v1);
+    const d11 = surfacePickDot(v1, v1);
+    const d20 = surfacePickDot(v2, v0);
+    const d21 = surfacePickDot(v2, v1);
+    const denominator = d00 * d11 - d01 * d01;
+    // **Relative**, and that is not a nicety. `denominator` is (twice the area) squared, so it scales
+    // as the fourth power of the model: a perfectly ordinary triangle 1 µm on a side has one around
+    // 1e-24, and any absolute epsilon large enough to catch a real degeneracy would refuse it. The
+    // comparison that means "degenerate" is Cauchy–Schwarz — `d01² = d00·d11` exactly when the two
+    // edges are parallel — so the threshold belongs on that product and nowhere else.
+    if (!(Math.abs(denominator) > SURFACE_PICK_EPS * d00 * d11)) return null;
+    const v = (d11 * d20 - d01 * d21) / denominator;
+    const w = (d00 * d21 - d01 * d20) / denominator;
+    return { u: 1 - v - w, v: v, w: w };
+}
+
+/** The nearest point of segment `[a, b]` to `p`, with the parameter clamped, as `{ t, point, d }`. */
+function surfacePickNearestOnEdge(a, b, p) {
+    const d = surfacePickSub(b, a);
+    const lengthSquared = surfacePickDot(d, d);
+    if (!(lengthSquared > SURFACE_PICK_EPS)) {
+        return { t: 0, point: a.slice(), d: surfacePickDistance(a, p) };
+    }
+    const raw = surfacePickDot(surfacePickSub(p, a), d) / lengthSquared;
+    const t = Math.min(1, Math.max(0, raw));
+    const point = [a[0] + d[0] * t, a[1] + d[1] * t, a[2] + d[2] * t];
+    return { t: t, point: point, d: surfacePickDistance(point, p) };
+}
+
+/** The longest of the triangle's three edges — the length the snap radius is a fraction of. */
+function surfacePickLongestEdge(tri) {
+    let longest = 0;
+    for (let i = 0; i < 3; i += 1) {
+        longest = Math.max(longest, surfacePickDistance(tri[i], tri[(i + 1) % 3]));
+    }
+    return longest;
+}
+
+/** The snap radius for this triangle, in world units. */
+function surfacePickTolerance(tri, fraction) {
+    const f = Number.isFinite(fraction) ? fraction : SURFACE_PICK_SNAP_FRACTION;
+    return surfacePickLongestEdge(tri) * f;
+}
+
+/**
+ * Did the ray meet the triangle's front face?
+ *
+ * From the winding normal, not from the interpolated shading normal, because the question being asked
+ * is the one back-face culling asks — and a mesh whose normals were authored backwards should answer
+ * the same way the renderer does. `true` when there is no ray to compare against, which is the
+ * neutral answer for a caller that did not supply one.
+ */
+function surfacePickFrontFacing(tri, rayDirection) {
+    if (!rayDirection) return true;
+    const normal = surfacePickCross(surfacePickSub(tri[1], tri[0]), surfacePickSub(tri[2], tri[0]));
+    return surfacePickDot(normal, rayDirection) < 0;
+}
+
+/**
+ * The element a raycast hit landed on: `vertex`, `edge` or `triangle`.
+ *
+ * The mesh counterpart of `flinePickClassify`, and shaped to be read next to it. What comes back:
+ *
+ *  * `kind` — one of the three, or `''` when the triangle is degenerate and the question has no answer;
+ *  * `corner` — which of the triangle's three vertices, `0..2`, for a vertex hit, else `-1`;
+ *  * `edgeIndex` — `0` for `(a, b)`, `1` for `(b, c)`, `2` for `(c, a)`, else `-1`;
+ *  * `u`, `v`, `w` — barycentric weights of corners a, b, c, summing to 1;
+ *  * `onElement` — the point *on* the named element: the corner itself, the foot of the perpendicular
+ *    on the edge, or the hit projected onto the triangle's plane;
+ *  * `distance` — how far the hit was from that element, which is `0` for an interior hit by
+ *    construction and is what a caller wanting its own tolerance should look at;
+ *  * `frontFacing`.
+ *
+ * @param tolerance a world distance. `surfacePickTolerance` is what the viewer passes.
+ */
+function surfacePickClassify(tri, p, tolerance, rayDirection) {
+    const empty = {
+        kind: '',
+        corner: -1,
+        edgeIndex: -1,
+        u: NaN,
+        v: NaN,
+        w: NaN,
+        onElement: null,
+        distance: NaN,
+        frontFacing: true
+    };
+    if (!tri || tri.length !== 3 || !p) return empty;
+    const bary = surfacePickBarycentric(tri, p);
+    if (!bary) return empty;
+    const tol = Number.isFinite(tolerance) && tolerance > 0 ? tolerance : 0;
+    const frontFacing = surfacePickFrontFacing(tri, rayDirection);
+
+    // Corners first. A point near a corner is nearer still to the two edges that meet there, so an
+    // implementation that asks about edges first can never report a vertex at all.
+    let corner = -1;
+    let cornerDistance = Infinity;
+    for (let i = 0; i < 3; i += 1) {
+        const d = surfacePickDistance(p, tri[i]);
+        if (d < cornerDistance) { cornerDistance = d; corner = i; }
+    }
+    if (cornerDistance <= tol) {
+        return {
+            kind: 'vertex',
+            corner: corner,
+            edgeIndex: -1,
+            u: bary.u,
+            v: bary.v,
+            w: bary.w,
+            onElement: tri[corner].slice(),
+            distance: cornerDistance,
+            frontFacing: frontFacing
+        };
+    }
+
+    let edgeIndex = -1;
+    let edgeDistance = Infinity;
+    let foot = null;
+    for (let i = 0; i < 3; i += 1) {
+        const near = surfacePickNearestOnEdge(tri[i], tri[(i + 1) % 3], p);
+        if (near.d < edgeDistance) { edgeDistance = near.d; edgeIndex = i; foot = near.point; }
+    }
+    if (edgeDistance <= tol) {
+        return {
+            kind: 'edge',
+            corner: -1,
+            edgeIndex: edgeIndex,
+            u: bary.u,
+            v: bary.v,
+            w: bary.w,
+            onElement: foot,
+            distance: edgeDistance,
+            frontFacing: frontFacing
+        };
+    }
+
+    // The interior. `onElement` is rebuilt from the barycentric weights rather than copied from `p`,
+    // which is the same thing to within the float or two the hit point sits off the plane — and being
+    // exactly on the plane is what makes a measurement from this point to something else reproducible.
+    const onPlane = [0, 0, 0];
+    for (let axis = 0; axis < 3; axis += 1) {
+        onPlane[axis] = bary.u * tri[0][axis] + bary.v * tri[1][axis] + bary.w * tri[2][axis];
+    }
+    return {
+        kind: 'triangle',
+        corner: -1,
+        edgeIndex: -1,
+        u: bary.u,
+        v: bary.v,
+        w: bary.w,
+        onElement: onPlane,
+        distance: 0,
+        frontFacing: frontFacing
+    };
+}
+
+/**
+ * The hit, as the points that describe it — one, two or three of them.
+ *
+ * This is the whole bridge to the inspector, and it is three lines because the shapes were already
+ * agreed: `measureElement` takes exactly `point` / `segment` / `polygon`, an FLine hit already resolves
+ * to one of those, and so now does a mesh hit. Nothing in `measureClosestApproach` learns that meshes
+ * exist; measuring from a solid to an annotation is the *existing* code meeting an old shape from a new
+ * source. Returns `null` for a refusal, so the caller can fall back to the raw hit point.
+ */
+function surfacePickElementPoints(tri, record) {
+    if (!tri || !record || !record.kind) return null;
+    if (record.kind === 'vertex') return [tri[record.corner].slice()];
+    if (record.kind === 'edge') return [tri[record.edgeIndex].slice(), tri[(record.edgeIndex + 1) % 3].slice()];
+    return [tri[0].slice(), tri[1].slice(), tri[2].slice()];
+}
+// [viewer-region surface-hit-picking] END
 
 // [viewer-region inspector-measure] BEGIN
 // "How far apart are these two things" — the arithmetic half of the measure tool.
@@ -2459,6 +2801,64 @@ function flineRoleForObject(object) {
     return '';
 }
 
+/**
+ * The triangle a raycast hit, and how it was classified — the two things every surface path wants.
+ *
+ * One helper rather than three call sites repeating the `faceIndex` → triangle → tolerance → classify
+ * chain, because that chain has an ordering in it (the tolerance depends on the triangle) and three
+ * copies of an ordering is how the 2026-08-11 entry bug happened. `null` when there is no triangle to
+ * be had, and every caller then falls back to the raw hit point.
+ */
+function surfaceHitFor(entry, hit) {
+    const surface = entry && entry.surface;
+    if (!surface || !surface.positions || !hit) return null;
+    const tri = surfacePickTriangle(surface.positions, surface.index, hit.faceIndex);
+    if (!tri) return null;
+    const p = hit.point;
+    const point = [p.x, p.y, p.z];
+    const ray = raycaster && raycaster.ray ? raycaster.ray.direction : null;
+    const record = surfacePickClassify(
+        tri,
+        point,
+        surfacePickTolerance(tri, SURFACE_PICK_SNAP_FRACTION),
+        ray ? [ray.x, ray.y, ray.z] : null
+    );
+    return { surface: surface, tri: tri, point: point, record: record };
+}
+
+/** A surface hit as the `three-surface-click` wire record — the sibling of `intersectionForHit`. */
+function surfaceIntersectionForHit(entry, hit) {
+    const found = surfaceHitFor(entry, hit);
+    if (!found) return null;
+    const record = found.record;
+    const corners = surfacePickVertexIndices(found.surface.positions, found.surface.index, hit.faceIndex);
+    const on = record.onElement;
+    const flat = [];
+    found.tri.forEach((corner) => flat.push(corner[0], corner[1], corner[2]));
+    return {
+        id: found.surface.id || '',
+        label: typeof entry.label === 'string' ? entry.label : null,
+        drawableIndex: found.surface.drawableIndex,
+        kind: record.kind,
+        x: found.point[0],
+        y: found.point[1],
+        z: found.point[2],
+        faceIndex: hit.faceIndex === undefined ? -1 : hit.faceIndex,
+        // The mesh's own vertex index, not the corner ordinal 0..2: it is the number you look the
+        // clicked vertex up by in whatever the mesh was built from.
+        vertexIndex: record.kind === 'vertex' && corners ? corners[record.corner] : -1,
+        edgeIndex: record.edgeIndex,
+        u: Number.isFinite(record.u) ? record.u : null,
+        v: Number.isFinite(record.v) ? record.v : null,
+        w: Number.isFinite(record.w) ? record.w : null,
+        ex: on ? on[0] : null,
+        ey: on ? on[1] : null,
+        ez: on ? on[2] : null,
+        frontFacing: !!record.frontFacing,
+        triangle: flat
+    };
+}
+
 function intersectionForHit(entry, hit) {
     const p = hit && hit.point ? hit.point : new THREE.Vector3();
     let closestVertexIndex = -1;
@@ -2517,18 +2917,55 @@ function setInteractiveHover(entry, hovered) {
     });
 }
 
+/**
+ * The last state the hover pass was computed for — pointer, camera, and which objects were in it.
+ *
+ * The hover pass runs on **every frame**, and it raycasts every interactive object. That was affordable
+ * while the interactive set was FLine strokes and fills; a pickable 100k-triangle mesh is a
+ * brute-force triangle sweep sixty times a second for a scene nobody is even touching. So the answer is
+ * memoised on everything it depends on, and the pass is skipped outright while the camera is being
+ * dragged — orbiting is not hovering, and the pointer is nowhere meaningful during a drag anyway.
+ */
+let hoverCache = { key: '', result: false };
+
+function hoverStateKey() {
+    const q = camera.quaternion;
+    const t = camera.position;
+    // `interactiveRevision` and not just the set's length: a payload can replace every entry without
+    // changing how many there are, and a cache that missed that would hold a hover on an object that
+    // no longer exists.
+    return [
+        pointer.x.toFixed(5), pointer.y.toFixed(5),
+        t.x, t.y, t.z, q.x, q.y, q.z, q.w,
+        interactiveRevision
+    ].join(',');
+}
+
 function updateInteractiveHover() {
     if (!interactiveObjects.length) return false;
+    if (cameraIsDragging) return false;
+    const key = hoverStateKey();
+    if (key === hoverCache.key) return hoverCache.result;
+
+    // Only objects that can *show* something join the raycast. A drawable marked `pickable` with
+    // neither a hover colour nor a callback is measurable — the measure tool raycasts on click — and
+    // has nothing to say on hover, so it stays out of the per-frame sweep entirely.
+    const hoverable = interactiveObjects.filter((entry) => entry.hoverColor || entry.callbackId);
+    if (!hoverable.length) {
+        hoverCache = { key: key, result: false };
+        return false;
+    }
     raycaster.setFromCamera(pointer, camera);
-    const meshes = interactiveObjects.flatMap((entry) => entry.meshes);
+    const meshes = hoverable.flatMap((entry) => entry.meshes);
     const hits = raycaster.intersectObjects(meshes, false);
     const hitSet = new Set(hits.map((hit) => hit.object));
     let anyPointer = false;
-    interactiveObjects.forEach((entry) => {
+    hoverable.forEach((entry) => {
         const isHit = entry.meshes.some((mesh) => hitSet.has(mesh));
         if (entry.hoverColor) setInteractiveHover(entry, isHit);
         if (isHit && entry.callbackId) anyPointer = true;
     });
+    hoverCache = { key: key, result: anyPointer };
     return anyPointer;
 }
 
@@ -2618,8 +3055,11 @@ function addPayloadDrawables(list) {
             makeMaterial: () => {
                 if (kind === 'lines') return makeLineMaterial();
                 if (kind === 'points') return makePointMaterial();
-                return makeSurfaceMaterial(d.style);
-            }
+                return makeSurfaceMaterial(d.style, d.hoverColor);
+            },
+            // `setInteractiveHover` reaches for this by name on whatever mesh it was handed, so a
+            // hovering solid has to carry it exactly as an interactive FLine fill does.
+            configureObject: (object, material) => { object.userData.interactiveMat = material; }
         });
         if (!slot) return;
 
@@ -2634,8 +3074,30 @@ function addPayloadDrawables(list) {
             slot.wire = makeWireframeOverlay(slot.object.geometry, d.style);
             slot.object.add(slot.wire);
         }
+        // A pickable surface joins the interactive set — `renderPayloadGeometry` collects these and
+        // appends them *after* the FLine entries, so a mixed scene's solid and its annotations are both
+        // in the same raycast and the measure tool can span the two. Only surfaces: a `lines` or
+        // `points` drawable has no element structure to classify a hit against, and pretending
+        // otherwise would report a triangle that is not there.
+        if (kind === 'surface' && d.pickable) {
+            slot.entry = surfaceEntry(d, [slot.object], index, drawableGeometryArrays(slot.object.geometry));
+        }
         payloadGeometrySlots.drawables.push(slot);
     });
+}
+
+/**
+ * A drawable's raw position and index arrays, for the pick path.
+ *
+ * Read once, when the slot is built, rather than on every click: the arrays are the same objects the
+ * BufferAttributes hold, so this is a reference and not a copy, and a click has no work to do beyond
+ * indexing into them. `index` is null for a non-indexed geometry, which `surfacePickTriangle` handles.
+ */
+function drawableGeometryArrays(geometry) {
+    const position = geometry.getAttribute('position');
+    const index = geometry.getIndex();
+    if (!position) return null;
+    return { positions: position.array, index: index ? index.array : null };
 }
 
 function buildSegmentsGeometry(points, color, alpha) {
@@ -2945,6 +3407,7 @@ function renderPayloadGeometry(payload) {
     clearEditableGeometrySlots();
     clearGroup(editorOverlayRoot);
     interactiveObjects = [];
+    interactiveRevision += 1;
     editableHitObjects = [];
     if (payload.lines) addPayloadLines(payload.lines);
     else payloadGeometrySlots.lines = removeSlot(payloadGeometrySlots.lines);
@@ -2953,6 +3416,13 @@ function renderPayloadGeometry(payload) {
     if (payload.points) addPayloadPoints(payload.points);
     else payloadGeometrySlots.points = removeSlot(payloadGeometrySlots.points);
     addPayloadDrawables(payload.drawables);
+    // Alongside the FLines, not instead of them. This one line is the fix the whole `surface-hit-picking`
+    // region exists to serve: before it, `interactiveObjects` came only from `payload.interactive`,
+    // which only the FLine half of a scene ever fills, and a solid was unhittable no matter what the
+    // author asked for.
+    payloadGeometrySlots.drawables.forEach((slot) => {
+        if (slot && slot.entry) interactiveObjects.push(slot.entry);
+    });
 
     const interactivePayload = payload.interactive || [];
     for (let i = 0; i < interactivePayload.length; i += 1) {
@@ -2969,6 +3439,7 @@ function renderPayloadGeometry(payload) {
 function renderEditableBaseGeometry() {
     clearPayloadGeometrySlots();
     interactiveObjects = [];
+    interactiveRevision += 1;
     const sceneData = editorState.scene;
     if (!sceneData) return;
 
@@ -3679,6 +4150,17 @@ function inspectorDrawCut() {
 /** An element the user picked, resolved through the hit-picking region when there is a topology. */
 function inspectorElementFromHit(entry, hit) {
     const p = hit.point;
+    // A solid resolves first, and to the *same three shapes*. This is where pick-to-measure stops
+    // being an FLine feature: `measureClosestApproach` below is handed a polygon from a mesh triangle
+    // and a polygon from an FLine face and has no idea the two came from different worlds.
+    const found = surfaceHitFor(entry, hit);
+    if (found) {
+        const points = surfacePickElementPoints(found.tri, found.record);
+        if (points) {
+            const kind = points.length === 1 ? 'point' : (points.length === 2 ? 'segment' : 'polygon');
+            return measureElement(kind, points);
+        }
+    }
     const role = flineRoleForObject(hit.object);
     const topology = entry && entry.topology;
     if (topology) {
@@ -4455,7 +4937,12 @@ renderer.domElement.addEventListener('click', (event) => {
     }
 
     if (owner && owner.callbackId) {
-        sendMessage({ type: 'fline-click', callbackId: owner.callbackId, ...intersectionForHit(owner, hits[0]) });
+        if (owner.surface) {
+            const record = surfaceIntersectionForHit(owner, hits[0]);
+            if (record) sendMessage({ type: 'three-surface-click', callbackId: owner.callbackId, ...record });
+        } else {
+            sendMessage({ type: 'fline-click', callbackId: owner.callbackId, ...intersectionForHit(owner, hits[0]) });
+        }
     }
 });
 
