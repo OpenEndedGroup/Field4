@@ -48,13 +48,35 @@ data class KotlinSourceIndexDb(
 
 object KotlinSourceIndex {
     private val mapper = OpenAiFileStoreCache.defaultMapper()
-    private val cacheDir: Path = Paths.get(System.getProperty("user.home"), ".afield", "filestore")
-    private val cachePath: Path = cacheDir.resolve("filestore_cache.json")
-    private val indexPath: Path = cacheDir.resolve("kotlin_source_index.json")
+
+    // Resolved per call, not captured: [FilestoreDir] is pinnable, and a path frozen at class-load
+    // time is exactly the shape of bug that made this index machine-global in the first place.
+    private val cachePath: Path get() = FilestoreDir.resolve("filestore_cache.json")
+    private val indexPath: Path get() = FilestoreDir.resolve("kotlin_source_index.json")
 
     @Volatile
+    private var loadedFrom: Path? = null
+
+    /**
+     * The index in memory — but only while it still belongs to the directory [FilestoreDir] currently
+     * resolves to.
+     *
+     * The guard is what makes [FilestoreDir.withDirectory] actually work. Without it, a JVM that had
+     * already synced would keep answering from the old tree's index no matter where the filestore was
+     * pointed, and a test seeding a fixture would silently measure whatever ran before it — which is
+     * the failure mode this whole seam exists to remove, reintroduced one level up.
+     *
+     * The setter is `internal` rather than `private` for exactly one reason: an in-memory staleness
+     * guard that only [runSync] can ever populate is a guard no test can reach, and `FilestoreDirTest`
+     * has to be able to put a loaded index in place before it moves the directory out from under it.
+     */
+    @Volatile
     var latestIndex: KotlinSourceIndexDb? = null
-        private set
+        get() = if (loadedFrom == null || loadedFrom == FilestoreDir.path) field else null
+        internal set(value) {
+            field = value
+            loadedFrom = if (value == null) null else FilestoreDir.path
+        }
 
     fun loadIndex(): KotlinSourceIndexDb? {
         if (!Files.exists(indexPath)) return null
@@ -413,6 +435,38 @@ object KotlinSourceIndex {
             sleepMs = (sleepMs * 1.6).toLong().coerceAtMost(2_000L)
         }
     }
+
+    /**
+     * The definitions [roots] declare — the deterministic half of [runSync], with no network, no
+     * upload and no cache.
+     *
+     * A function of the source tree and nothing else, which is exactly what a test needs to seed a
+     * fixture index into [FilestoreDir] instead of reading whichever Field last wrote the machine's
+     * one. `fileId` and `contentHash` are left empty, because they are upload bookkeeping for
+     * `WorkspaceSymbolSearchSupport` and `SemanticRetrievalService` and no completion path reads them;
+     * [runSync] still fills them for the real index.
+     *
+     * @param relativeTo the path each `filePath` is recorded relative to — `user.dir` in [runSync].
+     */
+    fun scanDefinitions(roots: List<Path>, relativeTo: Path): List<KotlinDefinitionRecord> =
+        collectKotlinFiles(roots.filter { Files.exists(it) }).sorted().flatMap { file ->
+            val rel = runCatching { relativeTo.relativize(file).toString() }
+                .getOrElse { file.toString() }.replace("\\", "/")
+            val text = runCatching { Files.readString(file, StandardCharsets.UTF_8) }.getOrNull()
+                ?: return@flatMap emptyList()
+            parseTopLevelDefinitions(text).map { def ->
+                KotlinDefinitionRecord(
+                    name = def.name,
+                    kind = def.kind,
+                    filePath = rel,
+                    line = def.line,
+                    fileId = null,
+                    contentHash = "",
+                    kdoc = def.kdoc,
+                    completionCategory = def.completionCategory
+                )
+            }
+        }
 
     private fun collectKotlinFiles(roots: List<Path>): List<Path> {
         val out = mutableListOf<Path>()

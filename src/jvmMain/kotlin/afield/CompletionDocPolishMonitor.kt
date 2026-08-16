@@ -22,12 +22,9 @@ object CompletionDocPolishMonitor {
 
     private val lock = Any()
     private val json = Json { ignoreUnknownKeys = true }
-    private val cachePath: Path = Paths.get(
-        System.getProperty("user.home"),
-        ".afield",
-        "filestore",
-        "generated_completion_docs.json"
-    )
+    // The same file Ai4CompletionDoc and Ai4CompletionDocPolishCli read; this was the fourth place
+    // spelling `~/.afield/filestore` by hand. See [afield.ai.FilestoreDir].
+    private val cachePath: Path get() = afield.ai.FilestoreDir.resolve("generated_completion_docs.json")
     private val runStore = CompletionDocPolishRunStore(completionDocPolishLogDir(), MAX_LOG_CHARS)
 
     private var runState = restoreRunState()

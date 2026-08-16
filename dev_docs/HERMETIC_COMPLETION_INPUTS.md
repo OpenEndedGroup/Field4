@@ -141,19 +141,58 @@ Completion reads it: `classifyMetadata` → `KotlinSourceIndex.getCompletionCate
 (`KotlinCompletionSupport.kt`), and the category feeds ranking. A test that reads through it is
 measuring the last Field to run, not its own input.
 
+### Observed, not argued
+
+`FieldSuggestPresentationTest`'s rank case, run on 2026-08-16 at `2b35d7c9f`. Same recorded payloads,
+same commit, same command; only the index state differs:
+
+| case | recorded in the fixture | the machine's `~/.afield` index | no index at all | built from this checkout |
+| --- | --- | --- | --- | --- |
+| FLine bare dot, `moveTo` | 10 | 12 | 15 | off-screen |
+| List bare dot, `filter` | 57 | 63 | 64 | 47 |
+| Math qualifier, `toRadians` | 52 | 45 | off-screen | 45 |
+| kotlin.math, `sin` | off-screen | off-screen | 73 | off-screen |
+
+Four states, four answers, one payload of 249 candidates. **So `moveTo` "falling from rank 10 to 12"
+was never a code change: it was `~/.afield/filestore` being rewritten between the day the fixture was
+cut and the day it was next run.** The recorded 10 corresponds to no state reachable today.
+
 ### The fix
 
 `FilestoreDir` is the single resolution point:
 
 | precedence | source |
 | --- | --- |
-| 1 | `-Dafield.filestore.dir=<path>` |
+| 1 | `-Dafield.filestore.dir=<path>` — the build forwards the whole `afield.` namespace to test workers |
 | 2 | `AFIELD_FILESTORE_DIR=<path>` |
 | 3 | `<user.dir>/.field/filestore` — per checkout, so two checkouts cannot fight |
-| 4 | `~/.afield/filestore` — only if it already exists and (3) does not, so an existing install keeps its caches |
 
-`FilestoreDir.withDirectory(path) { … }` seeds a fixture index for a test. See
-`FilestoreDirTest` and `FieldSuggestPresentationTest`.
+On first use of (3) in a checkout that has none, `~/.afield/filestore` is copied in if it exists —
+once, logged, best-effort. Not a move: another Field may still be reading it. The copy is not
+tidiness, it is money: `filestore_cache.json` maps content hashes to OpenAI file IDs, and discarding
+it re-uploads every source file.
+
+`FilestoreDir.withDirectory(path) { … }` pins it in-process, which is how a test seeds a fixture
+index. Pinning alone is not enough: `KotlinSourceIndex.latestIndex` holds the index a live Field
+synced at startup, so it now remembers **which directory it was loaded from** and returns null when
+that is no longer the one in force. Without that guard the disk reads move and the in-memory answer
+does not — the same machine-global answer, one level up, and invisible. `FilestoreDirTest`
+`aLoadedIndexStopsAnsweringWhenTheDirectoryMoves` covers it, and was checked against a mutant with
+the guard removed: it fails there, so it is testing the guard and not the disk path beside it.
+
+### What the rank case says now
+
+Hermetic: `FieldSuggestPresentationTest` builds the index from `src/jvmMain/kotlin` +
+`src/generatedLinalg/kotlin` (`KotlinSourceIndex.scanDefinitions` — `runSync`'s parse with no network
+and no upload) into a temp directory and pins it. Three runs across two different ambient machine
+states now produce byte-identical ranks. Dropping `src/generatedLinalg` was measured too and moves
+none of the six ranks, so its inclusion is fidelity, not load-bearing.
+
+**The rank case is still red, and should stay red.** With a hermetic index `moveTo` at a bare `f.` is
+genuinely off-screen — worse than the 12 the machine index reported, and worse than the 10 the fixture
+records. Re-baselining it to "off-screen" would retire the exact signal the test exists for ("the
+answer a person typed is among the rows a person can see"). What changed tonight is that it is now red
+for a reproducible reason instead of a different reason every run.
 
 ## The general shape
 

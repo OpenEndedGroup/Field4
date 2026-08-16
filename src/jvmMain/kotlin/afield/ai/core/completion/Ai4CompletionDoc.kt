@@ -1,5 +1,6 @@
 package afield.ai.core.completion
 
+import afield.ai.FilestoreDir
 import afield.ai.KotlinDefinitionRecord
 import afield.ai.KotlinSourceIndex
 import afield.ai.OpenAiFileStoreCache
@@ -452,12 +453,7 @@ private data class GeneratedCompletionDocCacheDb(
 )
 
 private class GeneratedCompletionDocCache(
-    private val dbPath: Path = Paths.get(
-        System.getProperty("user.home"),
-        ".afield",
-        "filestore",
-        "generated_completion_docs.json"
-    )
+    private val dbPath: Path = FilestoreDir.resolve("generated_completion_docs.json")
 ) {
     private val mapper = OpenAiFileStoreCache.defaultMapper()
     private val lock = ReentrantReadWriteLock()
