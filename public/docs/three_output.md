@@ -462,12 +462,12 @@ context re-tile itself.
 
 ## Where the pictures come from
 
-All four figures on this page are `diffstatic_runner` fences: the docs build runs that exact Kotlin
+All five figures on this page are `diffstatic_runner` fences: the docs build runs that exact Kotlin
 in a real Field box and the image underneath is that box's own output, captured from the browser.
 Nothing here is drawn by hand, and nothing here is a mock-up of an output area.
 
-`tools/docs_capture_audit.py --page three_output.md --repeat 2` re-derives all four from the code
-twice and compares per pixel: **four identical, no failures.** That is worth two sentences of nuance
+`tools/docs_capture_audit.py --page three_output.md --repeat 2` re-derives all five from the code
+twice and compares per pixel: **five identical, no failures.** That is worth two sentences of nuance
 rather than a boast. It says these captures are deterministic *on one machine, one GPU, one driver,
 run to run* — which is the useful property for a docs build. It does not say they are reproducible
 *across* machines, and a WebGL capture is not: that is the whole reason the CPU half of the
