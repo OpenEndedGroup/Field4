@@ -1096,6 +1096,15 @@ tasks {
 tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     jvmArgs(vectorizationJvmArgs)
 
+    // Gradle gives a test worker 512m by default, and that is not enough to hold a ClassGraph scan of
+    // Field's classpath. Both of PropMacroRegressionTest's cases were failing with
+    // `ClassGraphException … Caused by: OutOfMemoryError` rather than with an assertion — a uniform
+    // failure across every case in a class, which is the signature of the harness and not of the code.
+    // They are the only cover `prop<T>(name)`'s import emission has, so the effect was that the macro
+    // whose import behaviour caused the nineteen-fixture drift had no working test at all. See
+    // dev_docs/HERMETIC_COMPLETION_INPUTS.md.
+    maxHeapSize = "4g"
+
     // A test worker is a fresh JVM and does not inherit the build's system properties, so the
     // `-Dafield.…=write` switches our characterization tests document for regenerating their
     // goldens never actually reached them. Forward that one namespace and nothing else: it keeps
