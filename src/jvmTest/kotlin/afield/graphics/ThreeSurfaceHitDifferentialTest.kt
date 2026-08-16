@@ -1,5 +1,6 @@
 package afield.graphics
 
+import afield.stdlib.boxMesh
 import org.graalvm.polyglot.Value
 import kotlin.math.abs
 import kotlin.math.hypot
@@ -7,6 +8,7 @@ import kotlin.math.sqrt
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -52,7 +54,10 @@ import kotlin.test.assertTrue
  * runs **two** regions — this one and `inspector-measure` — and measures from a triangle of a mesh to
  * an FLine annotation floating above it. The expected answer is 2.0 exactly, by construction, and the
  * test also computes what the answer would have been had the surface hit degraded to the raw click
- * point: 2.0886. The gap is what proves the polygon really travelled between the two regions.
+ * point: 3.3826. The gap is what proves the polygon really travelled between the two regions.
+ *
+ * `a section through a solid reports the cross-section it actually cut` is the same discipline applied
+ * to the other half of the night's work: it pins the exact number a real run of the demo prints.
  */
 class ThreeSurfaceHitDifferentialTest {
 
@@ -529,6 +534,56 @@ class ThreeSurfaceHitDifferentialTest {
             val corner = js.call("measureElement", "point", js.fromJson("[[0,0,0]]"))
             val node = js.call("measureElement", "point", js.fromJson("[[0,0,3]]"))
             assertEquals(3.0, js.call("measureClosestApproach", corner, node).d("distance"), 1e-12)
+        }
+    }
+
+    // ------------------------------------------------------------------ the section, on a solid
+
+    /**
+     * The section tool cuts the solid, and the length it reports is checkable.
+     *
+     * Before 2026-08-16 `inspectorDrawCut` looked at `payloadGeometrySlots.fills` and at each
+     * interactive object's fills, and at nothing else — so in a scene whose only geometry is a mesh
+     * drawable there was no cut at all, and the readout said `cut 0 mm`. Drawables are in that loop
+     * now.
+     *
+     * The figure is the demo's slab, `1200 × 800 × 60`, sectioned by the default `+x` plane at
+     * `fraction = 0.62`. Both numbers the viewer prints follow from that and from nothing else:
+     *
+     *  * the plane sits at `−600 + 0.62 × 1200 = 144`;
+     *  * the cut is the slab's `800 × 60` cross-section, whose perimeter is `2 × (800 + 60) = 1720`.
+     *
+     * A real run of the demo prints exactly `cut 1720 mm @ 144 mm`
+     * (`dev_docs/agents/artifacts/mesh_inspector_parity/03_section_cuts_the_solid.png`). This is that
+     * observation turned into an assertion, on the same geometry, through the same region.
+     */
+    @Test
+    fun `a section through a solid reports the cross-section it actually cut`() {
+        val slab = boxMesh(1200.0, 800.0, 60.0).toThreeDrawable()
+        val positions = assertNotNull(slab.geometry.attributes["position"]).array
+        val indices = assertNotNull(slab.geometry.index).array
+
+        ViewerJavaScript.Session.open(
+            regionName = "inspector-section",
+            exports = ViewerJavaScript.KNOWN_REGIONS.getValue("inspector-section"),
+        ).use { js ->
+            val bounds = """{"min":[-600,-400,-30],"max":[600,400,30]}"""
+            val plane = js.call("sectionPlane", js.fromJson(bounds), js.fromJson("[1,0,0]"), 0.62, false)
+            assertEquals(144.0, plane.getMember("at").asDouble(), 1e-9, "−600 + 0.62 × 1200")
+
+            val cut = js.call(
+                "sectionCutTriangles",
+                js.fromJson(positions.joinToString(",", "[", "]")),
+                js.fromJson(indices.joinToString(",", "[", "]")),
+                plane,
+            )
+            val length = js.call("sectionCutLength", cut).asDouble()
+            assertEquals(
+                1720.0, length, 1e-6,
+                "the cut of a 1200×800×60 slab at x = 144 is its 800×60 cross-section, perimeter 1720",
+            )
+            // …and the number is not zero for a trivial reason: the cut has real segments in it.
+            assertTrue(cut.arraySize >= 6, "the cut came back with ${cut.arraySize} ordinates")
         }
     }
 

@@ -3065,6 +3065,10 @@ function addPayloadDrawables(list) {
 
         slot.panel = (d.panel === undefined || d.panel === null) ? 0 : d.panel;
         slot.label = d.label || null;
+        slot.group = Number.isFinite(d.group) ? d.group : -1;
+        // The drawable's own kind, kept because `slot.kind` is the upsert cache key (`drawable-3`) and
+        // says nothing about whether this is a surface. The section's cut outline needs to know.
+        slot.kindOfDraw = kind;
         slot.fitSample = fitSampleOf(d.geometry);
         if (d.transform && d.transform.length === 16) {
             slot.object.matrixAutoUpdate = false;
@@ -3908,6 +3912,19 @@ function inspectorCapture(payload) {
             }
         });
     });
+    // Drawables contribute to their group's centroid too, or a solid grouped with an FLine annotation
+    // would slide to the annotation's centroid rather than to the pair's.
+    (payload.drawables || []).forEach((d) => {
+        const group = Number.isFinite(d.group) ? d.group : -1;
+        if (group < 0) return;
+        const array = d.geometry && d.geometry.attributes && d.geometry.attributes.position
+            ? d.geometry.attributes.position.array : null;
+        if (!array) return;
+        for (let i = 0; i + 2 < array.length; i += 3) {
+            allPositions.push(array[i], array[i + 1], array[i + 2]);
+            allGroups.push(group);
+        }
+    });
     inspectorState.centroids = explodeGroupCentroids(
         allPositions, allGroups, (spec.groups || []).length
     ).centroids;
@@ -3947,6 +3964,16 @@ function inspectorClippableMaterials() {
             if (slot[key] && slot[key].material) out.push(slot[key].material);
         });
     });
+    // And the drawables — the solids. Without this a section cut the FLine annotations and left the
+    // mesh they annotate standing whole in front of them, which reads as the section being broken
+    // rather than as the section not applying to meshes. The wireframe overlay is a separate material
+    // on a child object and has to be told separately, or the cut face keeps its grid of triangles
+    // floating past the plane.
+    payloadGeometrySlots.drawables.forEach((slot) => {
+        if (!slot) return;
+        if (slot.material) out.push(slot.material);
+        if (slot.wire && slot.wire.material) out.push(slot.wire.material);
+    });
     return out;
 }
 
@@ -3967,6 +3994,19 @@ function inspectorApplyExplode() {
         explodeApply(slot.base, slot.groups, offsets, attribute.array);
         attribute.needsUpdate = true;
         slot.object.geometry.computeBoundingSphere();
+    });
+    // A drawable's group is a single number on the whole drawable, exactly as an interactive object's
+    // is, so it moves the same way — by `object.position` rather than by rewriting a vertex buffer.
+    // Which is also the only way it *could* move: a drawable carries no per-vertex `group` attribute,
+    // and before this it simply stood still while the FLines around it came apart.
+    payloadGeometrySlots.drawables.forEach((slot) => {
+        if (!slot || !slot.object) return;
+        // A drawable with its own `transform` has `matrixAutoUpdate` off, so writing `position` would
+        // change nothing and quietly do nothing. It is left where its author put it.
+        if (slot.object.matrixAutoUpdate === false) return;
+        const group = Number.isFinite(slot.group) ? slot.group : -1;
+        const offset = (group >= 0 && group < offsets.length) ? offsets[group] : [0, 0, 0];
+        slot.object.position.set(offset[0], offset[1], offset[2]);
     });
     // An interactive object is one FLine, so its group is uniform: move the whole object.
     inspectorState.interactive.forEach((entry) => {
@@ -4120,6 +4160,25 @@ function inspectorDrawCut() {
         const position = geometry.getAttribute('position');
         const index = geometry.getIndex();
         // the object may have been translated by the explode; the cut is in world space
+        const moved = new Float32Array(position.array.length);
+        for (let i = 0; i + 2 < moved.length; i += 3) {
+            moved[i] = position.array[i] + offset.x;
+            moved[i + 1] = position.array[i + 1] + offset.y;
+            moved[i + 2] = position.array[i + 2] + offset.z;
+        }
+        outline.push(...sectionCutTriangles(moved, index ? index.array : null, cut));
+    });
+    // The solids. Same treatment as an interactive object's fills, and for the same reason: the cut is
+    // in world space and the explode may have moved the object out from under it. Without this a
+    // section through a scene with a mesh in it drew a cut line round the annotations and none round
+    // the thing being annotated, which is the half that a fabricator cares about.
+    payloadGeometrySlots.drawables.forEach((slot) => {
+        if (!slot || !slot.object || slot.kindOfDraw !== 'surface') return;
+        const geometry = slot.object.geometry;
+        const position = geometry.getAttribute('position');
+        if (!position) return;
+        const index = geometry.getIndex();
+        const offset = slot.object.position;
         const moved = new Float32Array(position.array.length);
         for (let i = 0; i + 2 < moved.length; i += 3) {
             moved[i] = position.array[i] + offset.x;
@@ -4504,6 +4563,30 @@ function updateEditableHud() {
     }
 }
 
+/**
+ * How near a ray has to pass a line or a point sprite to count as hitting it.
+ *
+ * A `Mesh` is picked exactly — the ray either crosses a triangle or it does not — but a `Line` and a
+ * `Points` have no area, so three.js needs a radius, and the viewer's has always been the constant
+ * `0.06` world units. That is a fine number for a figure a couple of units across and a **nonsense**
+ * one at model scale: on the millimetre panels the inspector was written for, 0.06 mm is sixty microns,
+ * and an FLine annotation in such a figure could not be clicked at all. It went unnoticed because until
+ * tonight the only things worth clicking in those figures were the *fills*, which are meshes.
+ *
+ * Mixing a solid and its annotations makes it impossible to ignore: the whole point of the scene is to
+ * measure from one to the other, and one of the two was unhittable.
+ *
+ * Deliberately `max` and not a straight fraction. Every existing figure with a bounding diagonal under
+ * 12 units — which is every unit-scale FLine figure in the docs — keeps the exact threshold it has
+ * today, so this cannot re-tune anything that already works. It only ever makes a *large* figure
+ * pickable, which is a state it has never been in.
+ */
+function applyPickThresholds(bounds) {
+    const diagonal = inspectorDiagonal(bounds);
+    raycaster.params.Line = { threshold: Math.max(0.06, diagonal * 0.005) };
+    raycaster.params.Points = { threshold: Math.max(1.5, diagonal * 0.01) };
+}
+
 function applyGeometry(payload) {
     if (!payload || payload.type !== 'three/geometry') return;
     payloadState = payload;
@@ -4513,6 +4596,7 @@ function applyGeometry(payload) {
     hideMarquee();
 
     updateMeta(payload.meta);
+    applyPickThresholds(payload.bounds);
     editorState.scene = payload.scene ? JSON.parse(JSON.stringify(payload.scene)) : null;
     editorState.selection = new Set();
     if (!payload.editableEnabled) {
