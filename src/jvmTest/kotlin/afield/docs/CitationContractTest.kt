@@ -80,6 +80,19 @@ class CitationContractTest {
          * is cheap to keep empty by lengthening an anchor.
          */
         const val MAX_FRAGILE = 0
+
+        /**
+         * Floor on citations written as an **abbreviated** path — the population that only resolves
+         * through [CitationGuard.indexFilesUnder], and therefore the population a nested checkout
+         * inside the tree breaks all at once.
+         *
+         * Measured 2026-08-17: 83 of 222. Floored well under that rather than pinned, because a doc
+         * legitimately becoming more explicit should not fail a build. The floor exists for one reason:
+         * without it, [anAbbreviatedPathStillResolvesWithANestedCheckoutInTheTree] could become a guard
+         * over an empty set — every citation spelled out in full, nothing left for the index to resolve,
+         * and the regression it protects against silently unreachable.
+         */
+        const val MIN_ABBREVIATED_CITATIONS = 60
     }
 
     private val root = CitationGuard.repoRoot()
@@ -195,6 +208,156 @@ class CitationContractTest {
         }
         println("  total: $total")
         assertTrue(total >= 0, "unreachable; the count is a measurement, not a contract")
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // The resolver itself — why an abbreviated citation resolves, and when it must refuse to
+    // ---------------------------------------------------------------------------------------------
+
+    /**
+     * A checkout-shaped tree at [dir]: the two markers a repository root carries, plus [files] as
+     * repo-relative paths.
+     *
+     * Both markers, deliberately. A fixture that planted only the one the fix keys on could not tell a
+     * correct rule from a rule that happens to key on the same thing for the wrong reason.
+     */
+    private fun plantCheckout(dir: File, vararg files: String) {
+        dir.mkdirs()
+        File(dir, "settings.gradle.kts").writeText("// planted by CitationContractTest\n")
+        File(dir, ".git").writeText("gitdir: /nowhere/planted\n")
+        files.forEach { rel ->
+            File(dir, rel).also { it.parentFile.mkdirs() }.writeText("fun planted() {}\n")
+        }
+    }
+
+    private fun withPlantedTree(body: (File) -> Unit) {
+        val tmp = File.createTempFile("citation-index-", "").let {
+            it.delete(); it.mkdirs(); it
+        }
+        try {
+            body(tmp)
+        } finally {
+            tmp.deleteRecursively()
+        }
+    }
+
+    /**
+     * An abbreviated citation still resolves when the tree contains nested checkouts.
+     *
+     * This is the regression test for the failure that made this whole class a permanent false red in
+     * `/Users/marc/field4` — the only tree the gates are actually run in — while staying green in every
+     * clean worktree. The index walked `.claude/worktrees/`, which on this machine holds three complete
+     * checkouts, so every filename matched four times and every abbreviated citation resolved to null.
+     * Measured 2026-08-17: 83 of 222 citations broken there, 0 in a worktree.
+     *
+     * The decoys are planted rather than the real thing borrowed, and the assertion that they exist is
+     * not decoration: without it this test passes just as happily against a tree with nothing nested in
+     * it, which is the shape of "measured the easy case" this repo keeps rediscovering.
+     */
+    @Test
+    fun anAbbreviatedPathStillResolvesWithANestedCheckoutInTheTree() = withPlantedTree { tmp ->
+        val cited = "src/jvmMain/kotlin/afield/graphics/ThreeJsViewer.kt"
+        plantCheckout(tmp, cited)
+        // Three, with these names, because that is what this machine actually carries today.
+        val nested = listOf("faust-field-4-bindings-2699a4", "pensive-goodall-d0fb94", "serene-panini-93b3ca")
+        nested.forEach { plantCheckout(File(tmp, ".claude/worktrees/$it"), cited) }
+
+        nested.forEach {
+            assertTrue(
+                File(tmp, ".claude/worktrees/$it/$cited").isFile,
+                "the decoy that makes this test able to fail was never planted: $it"
+            )
+        }
+
+        val index = CitationGuard.indexFilesUnder(tmp)
+        assertEquals(
+            1, index["ThreeJsViewer.kt"]?.size,
+            "the index must see this checkout's ThreeJsViewer.kt and none of the nested copies; it saw " +
+                index["ThreeJsViewer.kt"]?.map { it.relativeToOrSelf(tmp).path }
+        )
+        assertEquals(
+            File(tmp, cited), CitationGuard.locate(tmp, "ThreeJsViewer.kt", index),
+            "an abbreviated citation must survive a nested checkout"
+        )
+    }
+
+    /**
+     * An in-repo Gradle subproject is part of this checkout and stays in the index.
+     *
+     * This is the input that rules out the obvious implementation. `settings.gradle.kts` is how
+     * [CitationGuard.repoRoot] recognises a root, so skipping on it looks right — and it repairs the 83
+     * broken citations above while breaking 4 that currently pass, because
+     * `tools/code-use-semantic-sidecar` is an in-repo build with its own `settings.gradle.kts` and
+     * `dev_docs/completion_aa_sidecar.md` cites into it. `.git` is the marker that separates the two.
+     */
+    @Test
+    fun anInRepoGradleSubprojectIsNotMistakenForANestedCheckout() = withPlantedTree { tmp ->
+        plantCheckout(tmp, "src/jvmMain/kotlin/afield/Outer.kt")
+        // A subproject: its own settings.gradle.kts, no .git of its own.
+        val sub = File(tmp, "tools/code-use-semantic-sidecar")
+        File(sub, "src/main/kotlin/AaCompletion.kt")
+            .also { it.parentFile.mkdirs() }.writeText("class AaCompleter\n")
+        File(sub, "settings.gradle.kts").writeText("// in-repo build\n")
+        assertTrue(!File(sub, ".git").exists(), "the fixture must not give the subproject its own .git")
+
+        val index = CitationGuard.indexFilesUnder(tmp)
+        assertEquals(
+            File(sub, "src/main/kotlin/AaCompletion.kt"),
+            CitationGuard.locate(tmp, "AaCompletion.kt", index),
+            "a subproject's sources are part of this checkout and must stay resolvable"
+        )
+    }
+
+    /**
+     * The real repo still contains that input, so the test above is guarding something live.
+     *
+     * An argument about `tools/code-use-semantic-sidecar` is only worth the lines it takes if the
+     * directory is still shaped that way and still cited. When this fails, the reasoning on
+     * [CitationGuard.isForeignCheckout] has gone stale and wants re-reading, not patching.
+     */
+    @Test
+    fun theInputThatRulesOutTheGradleMarkerIsReallyInThisRepo() {
+        val sub = File(root, "tools/code-use-semantic-sidecar")
+        assertTrue(
+            File(sub, "settings.gradle.kts").isFile,
+            "tools/code-use-semantic-sidecar no longer has its own settings.gradle.kts"
+        )
+        assertTrue(
+            !File(sub, ".git").exists(),
+            "tools/code-use-semantic-sidecar has acquired a .git and is now a separate checkout"
+        )
+        val cited = CitationGuard.parse(
+            File(root, "dev_docs/completion_aa_sidecar.md"), "dev_docs/completion_aa_sidecar.md"
+        ).map { it.path }.filter { it.endsWith("AaCompletion.kt") || it.endsWith("CodeUseSemanticSidecar.kt") }
+        assertTrue(
+            cited.isNotEmpty(),
+            "no guarded page cites into the in-repo subproject any more, so the marker argument is moot"
+        )
+    }
+
+    /**
+     * The corpus really does lean on the filename index, and by how much.
+     *
+     * The number the nested-checkout fix is worth is the number of citations that cannot resolve without
+     * the index — those written as an abbreviated path rather than a full repo-relative one. Measured
+     * 2026-08-17: 83 of 222, and the floor under it is what stops the regression test above from
+     * quietly becoming a guard over nothing.
+     */
+    @Test
+    fun abbreviatedCitationsAreCountedAndFloored() {
+        val cites = pages().flatMap { p -> CitationGuard.parse(p, p.relativeTo(root).path) }
+        val abbreviated = cites.filterNot { File(root, it.path).isFile }
+        println(
+            "--- citations resolved through the filename index: ${abbreviated.size} of ${cites.size} " +
+                "(floor $MIN_ABBREVIATED_CITATIONS) ---"
+        )
+        assertTrue(
+            abbreviated.size >= MIN_ABBREVIATED_CITATIONS,
+            "only ${abbreviated.size} of ${cites.size} citations are abbreviated (floor " +
+                "$MIN_ABBREVIATED_CITATIONS). If docs have genuinely been spelled out in full, lower " +
+                "this deliberately — but note that anAbbreviatedPathStillResolvesWithANestedCheckout" +
+                "InTheTree is then guarding a case the corpus no longer contains."
+        )
     }
 
     /**
