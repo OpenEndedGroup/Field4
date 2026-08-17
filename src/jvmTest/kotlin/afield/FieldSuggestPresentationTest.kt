@@ -299,9 +299,17 @@ class FieldSuggestPresentationTest {
      */
     @Test
     fun `the rank a person sees, measured over the whole caret corpus`() {
+        val spec = withHermeticSourceIndex { rankMetricsSpec() }
+        // Dropped where `tools/rank_weight_lab.py` can find it, so a proposed change to a weight
+        // constant can be measured against this corpus in ten seconds instead of three minutes. Written
+        // from inside the test rather than by the tool, because the classification and the prior are the
+        // server's and only the test has them; the tool must not get its own opinion about either.
+        val dump = repoRoot().resolve("build/completion-corpus/rank-spec.json")
+        Files.createDirectories(dump.parent)
+        dump.writeText(spec)
         // 578 carets, each opened twice (as shipped, and with the category signal removed), so the
         // budget is minutes rather than the seconds the other three modes need.
-        withHermeticSourceIndex { runProbe("rankmetrics", rankMetricsSpec(), timeoutSeconds = 900) }
+        withHermeticSourceIndex { runProbe("rankmetrics", spec, timeoutSeconds = 900) }
     }
 
     /**
