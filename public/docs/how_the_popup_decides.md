@@ -145,8 +145,14 @@ prior** — the paragraph under it says why, and it is the most useful thing on 
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" warm-completion=true screenshot="assets/popup-decides-fline-dot.png" padding="6" wait="0" timeout="140" embed=true hidden=true name="popup-decides-fline-dot" alt="A real Field completion popup at a bare dot on an FLine. A single section header reads GRAPHICS. Under it, five rows marked PR: breakNext (Boolean), currentPoint (Vec3?), here (FLine.Node), nodes (ArrayList<FLine.Node>), properties (MutableMap<String, Any?>); then rows marked ME: breakNext() (Unit), byFiltering((Vec3?, FLine.Node) -> Boole..., FLine), byThickening(Float) (FLine), center(). The documentation panel on the right reads Category Graphics above a signature card showing breakNext: Boolean."}
 // Fresh and deterministic: clear the recency store so nothing this machine happens to have accepted
-// before outranks the prior, and hide the run-tick overlay.
-ui.eval("window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text.ok{display:none !important}';document.head.appendChild(s);return 'setup';")
+// before outranks the prior, and hide the run-tick overlay — all of it, not just `.tick_text.ok`,
+// since `f.` is deliberately incomplete Kotlin and any tick here would be the error-coloured one.
+// Known and measured, so that nobody re-derives it: an INTERMITTENT few dozen pixels can appear at
+// the very top-left of this clip, inside the padding and outside the panel itself. Present in three
+// captures of four, absent in the fourth; `docs_capture_audit --repeat 2` scored it at 0.0049% of
+// pixels, maxΔ214. Purely cosmetic and disclosed rather than papered over — the rows, the section
+// header and the doc panel are identical every time, which is everything this figure is for.
+ui.eval("window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text{display:none !important}';document.head.appendChild(s);return 'setup';")
 ui.openEditor(id)
 ui.pause(700)
 ui.clickSelector(".monaco-editor")
