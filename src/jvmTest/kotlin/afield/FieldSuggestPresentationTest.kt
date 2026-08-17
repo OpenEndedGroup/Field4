@@ -199,9 +199,12 @@ class FieldSuggestPresentationTest {
         assertTrue(heads.size >= 4, "the recorded rank payloads look empty (found ${heads.size} cases)")
         // Deliberately a targeted rewrite rather than a JSON round-trip: this file has no JSON library on
         // its test classpath, and the fixture is machine-written with one row object per `{"text":…}`.
-        val row = Regex("""\{"text":"((?:[^"\\]|\\.)*)","displayText":"((?:[^"\\]|\\.)*)","tail":"((?:[^"\\]|\\.)*)","icon":"([a-z]*)"}""")
+        val row = Regex(
+            """\{"text":"((?:[^"\\]|\\.)*)","displayText":"((?:[^"\\]|\\.)*)","tail":"((?:[^"\\]|\\.)*)","icon":"([a-z]*)","declaredIn":"((?:[^"\\]|\\.)*)"}"""
+        )
         var classified = 0
         var withPrior = 0
+        var withDeclaredIn = 0
         val out = StringBuilder()
         var cursor = 0
         // Each case owns the text from its own header up to the next case's header.
@@ -211,18 +214,31 @@ class FieldSuggestPresentationTest {
             val receiver = unescape(head.groupValues[2])
             val segment = raw.substring(head.range.first, segmentEnd)
             out.append(row.replace(segment) { m ->
-                val (text, displayText, tail, icon) = m.destructured
+                val text = m.groupValues[1]
+                val displayText = m.groupValues[2]
+                val tail = m.groupValues[3]
+                val icon = m.groupValues[4]
+                val declaredIn = unescape(m.groupValues[5])
                 val name = unescape(text)
+                if (declaredIn.isNotBlank()) withDeclaredIn++
+                // `declaredIn` is the whole reason a category can be right: it turns "what category is the
+                // name `scale`?" — 42 answers in this tree — into "what category is `FLine.scale`?".
+                // Recorded per row from the sidecar, and passed exactly as `execution.kt` passes it.
                 val category = KotlinCompletionSupport.classifyMetadata(
                     Metadata(icon = icon, tail = unescape(tail), text = name,
                         displayText = unescape(displayText), category = ""),
                     name,
+                    if (declaredIn.isBlank()) emptyMap()
+                    else mapOf(AaCompletionClient.DECLARED_IN to declaredIn),
                 ).category
                 // Exactly what `execution.kt` forwards: the receiver's own declared prior, matched on the
                 // bare member name so one annotation entry covers every overload.
                 val rank = CommonMemberPrior.rankOf(receiver, name)
                 if (rank > 0) withPrior++
                 classified++
+                // `declaredIn` is deliberately NOT forwarded to the popup — it is a server-side
+                // classification input, not something `fieldSuggest.js` ranks on. What crosses the wire is
+                // its consequence: the category.
                 """{"text":"$text","displayText":"$displayText","tail":"$tail","icon":"$icon",""" +
                     """"category":${json(category)},"commonMemberRank":$rank}"""
             })
@@ -236,6 +252,13 @@ class FieldSuggestPresentationTest {
             withPrior >= 5,
             "no recorded row resolved a @CommonMembers prior ($withPrior) — CommonMemberPrior is not " +
                 "reaching the fixture, so the ranks below are not measuring it"
+        )
+        // Same reasoning for the other seam. If `declaredIn` stopped being recorded, every category would
+        // silently fall back to name-voting and these ranks would quietly become the old wrong ones.
+        assertTrue(
+            withDeclaredIn >= 900,
+            "only $withDeclaredIn recorded rows carry `declaredIn`, so the categories below are being " +
+                "resolved by bare name — re-enrich the fixture (see dev_docs/completion_aa_sidecar.md)"
         )
         return out.toString()
     }
