@@ -85,6 +85,20 @@ Two tiers, in order:
    resolves even though `StandardDrawing.kt` exists twice in this repo (`graphics/` and `stdlib/`) —
    which is the case that makes "just require unique filenames" a non-answer.
 
+Tier 2's **refusal** is the part worth guarding, and worth being careful about how you prove it. Measured
+2026-08-17 in a clean worktree: **70 filenames are duplicated inside the repo proper**, 16 of them `.kt`.
+That population is what keeps the refusal reachable at all, so it is floored
+(`MIN_DUPLICATED_FILENAMES = 40`) and the refusal is asserted against a *real* duplicate rather than a
+planted one, by `aFilenameDuplicatedWithinThisCheckoutIsStillRefused`.
+
+The reason for that care is a hole in this night's own first pass, and it generalises. *"83 unresolvable
+before, 0 after"* proves nested checkouts are excluded. It proves **nothing** about whether an ambiguous
+path is still refused — had the fix accidentally been "return the first candidate", all 222 citations
+would still have resolved, the number would still have read 0, and no assertion in the suite would have
+objected. The check that closes it is a mutation: change tier 2's `singleOrNull()` to `firstOrNull()` and
+`aFilenameDuplicatedWithinThisCheckoutIsStillRefused` fails on `StandardDrawing.kt`. Run that mutation if
+you ever rewrite `locate` — a resolver suite that survives it is not testing resolution.
+
 There used to be a third tier: *the only file with this name, wherever it is*, written
 `suffix.singleOrNull() ?: byName.singleOrNull()`. It is worth knowing why that is gone, because the
 shape recurs. The `singleOrNull` reads as "only answer if unambiguous" and the elvis behind it then
@@ -248,9 +262,21 @@ nested clone or worktree always has one, an in-repo subproject never does.
 `anInRepoGradleSubprojectIsNotMistakenForANestedCheckout` and
 `theInputThatRulesOutTheGradleMarkerIsReallyInThisRepo` hold both halves down.
 
+**`.git` is two shapes, and both have to be covered.** `git clone` leaves a `.git` *directory*;
+`git worktree add` leaves a `.git` *file* holding a `gitdir:` pointer. Measured 2026-08-17: all three
+checkouts under `.claude/worktrees/` are the **file** shape, because the agent harness makes worktrees
+rather than clones. `File(dir, ".git").exists()` is true of both — but on the evidence actually available
+the rule had only ever been exercised against one of them, so `bothShapesOfANestedCheckoutAreExcluded`
+plants one of each and asserts the fixture really made one of each. Otherwise the fix works today and
+breaks the first time somebody clones into the tree.
+
 The residual cost is narrow and deliberate: a git **submodule** also carries a `.git` file, so an
 *abbreviated* citation into `services/field-audio-ai` will not resolve. A full repo-relative path still
-does, because `locate()` tries that before it consults the index at all.
+does, because `locate()` tries that before it consults the index at all. That trade is **pinned by
+`noGuardedPageCitesIntoASubmoduleByAnAbbreviatedPath`**, not merely asserted about the present: it fails
+and names the citation the moment somebody writes one, instead of surfacing later as a mysterious "does
+not exist" on a file that plainly does. It also fails if the repo stops declaring any submodule at all,
+which is the point at which this paragraph should be deleted rather than left to mislead.
 
 **5. The gate that did not run.** The worst one, because it is self-concealing. Verified against
 `build.gradle.kts` and against a real build log on 2026-08-12:

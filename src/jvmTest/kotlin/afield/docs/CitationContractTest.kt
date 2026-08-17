@@ -4,6 +4,7 @@ import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.test.fail
 
 /**
  * The corpus-wide citation guard: every `dev_docs` page that opts in, checked in one place.
@@ -93,6 +94,23 @@ class CitationContractTest {
          * and the regression it protects against silently unreachable.
          */
         const val MIN_ABBREVIATED_CITATIONS = 60
+
+        /**
+         * Floor on filenames that are duplicated **inside this one checkout** — the population that keeps
+         * [CitationGuard.locate]'s refusal branch alive.
+         *
+         * This floor exists because of a hole in the first version of this night's work. "Unresolvable
+         * citations: 83 before, 0 after" proves nested checkouts are excluded; it proves nothing about
+         * whether the resolver still *refuses* a path that is genuinely ambiguous within one tree, which
+         * is the entire reason `locate` insists on a single match. If every filename in the repo were
+         * unique, that branch would be dead code and no assertion here would notice it being deleted.
+         *
+         * Measured 2026-08-17 in a clean worktree: **70** duplicated basenames, 16 of them `.kt`, the
+         * clearest being `StandardDrawing.kt` (`afield/graphics/` and `afield/stdlib/`). Floored at 40,
+         * which is well under the measurement but far enough above zero that
+         * [aFilenameDuplicatedWithinThisCheckoutIsStillRefused] cannot become vacuous without saying so.
+         */
+        const val MIN_DUPLICATED_FILENAMES = 40
     }
 
     private val root = CitationGuard.repoRoot()
@@ -215,16 +233,31 @@ class CitationContractTest {
     // ---------------------------------------------------------------------------------------------
 
     /**
+     * How a checkout carries its `.git`, which is **not** one shape.
+     *
+     * `git clone` leaves a `.git` **directory**; `git worktree add` leaves a `.git` **file** holding a
+     * `gitdir:` pointer. Measured 2026-08-17: all three checkouts under `.claude/worktrees/` are the
+     * *file* shape, because the agent harness makes worktrees rather than clones. A rule tested only
+     * against the shape that happens to be there today would work by luck and break the first time
+     * somebody cloned into the tree instead. `File(dir, ".git").exists()` is true of both, and
+     * [bothShapesOfANestedCheckoutAreExcluded] is what stops that being an accident.
+     */
+    private enum class GitShape { FILE, DIRECTORY }
+
+    /**
      * A checkout-shaped tree at [dir]: the two markers a repository root carries, plus [files] as
      * repo-relative paths.
      *
      * Both markers, deliberately. A fixture that planted only the one the fix keys on could not tell a
      * correct rule from a rule that happens to key on the same thing for the wrong reason.
      */
-    private fun plantCheckout(dir: File, vararg files: String) {
+    private fun plantCheckout(dir: File, gitShape: GitShape = GitShape.FILE, vararg files: String) {
         dir.mkdirs()
         File(dir, "settings.gradle.kts").writeText("// planted by CitationContractTest\n")
-        File(dir, ".git").writeText("gitdir: /nowhere/planted\n")
+        when (gitShape) {
+            GitShape.FILE -> File(dir, ".git").writeText("gitdir: /nowhere/planted\n")
+            GitShape.DIRECTORY -> File(dir, ".git").mkdirs()
+        }
         files.forEach { rel ->
             File(dir, rel).also { it.parentFile.mkdirs() }.writeText("fun planted() {}\n")
         }
@@ -257,10 +290,10 @@ class CitationContractTest {
     @Test
     fun anAbbreviatedPathStillResolvesWithANestedCheckoutInTheTree() = withPlantedTree { tmp ->
         val cited = "src/jvmMain/kotlin/afield/graphics/ThreeJsViewer.kt"
-        plantCheckout(tmp, cited)
+        plantCheckout(tmp, GitShape.FILE, cited)
         // Three, with these names, because that is what this machine actually carries today.
         val nested = listOf("faust-field-4-bindings-2699a4", "pensive-goodall-d0fb94", "serene-panini-93b3ca")
-        nested.forEach { plantCheckout(File(tmp, ".claude/worktrees/$it"), cited) }
+        nested.forEach { plantCheckout(File(tmp, ".claude/worktrees/$it"), GitShape.FILE, cited) }
 
         nested.forEach {
             assertTrue(
@@ -292,7 +325,7 @@ class CitationContractTest {
      */
     @Test
     fun anInRepoGradleSubprojectIsNotMistakenForANestedCheckout() = withPlantedTree { tmp ->
-        plantCheckout(tmp, "src/jvmMain/kotlin/afield/Outer.kt")
+        plantCheckout(tmp, GitShape.FILE, "src/jvmMain/kotlin/afield/Outer.kt")
         // A subproject: its own settings.gradle.kts, no .git of its own.
         val sub = File(tmp, "tools/code-use-semantic-sidecar")
         File(sub, "src/main/kotlin/AaCompletion.kt")
@@ -396,7 +429,7 @@ class CitationContractTest {
     @Test
     fun theUnresolvableDiagnosticSaysWhichFailureItWas() = withPlantedTree { tmp ->
         val cited = "src/jvmMain/kotlin/afield/graphics/ThreeJsViewer.kt"
-        plantCheckout(tmp, cited)
+        plantCheckout(tmp, GitShape.FILE, cited)
         val index = CitationGuard.indexFilesUnder(tmp) +
             mapOf(
                 // An ambiguity *within* one checkout — the case that must still be reported, and the
@@ -423,6 +456,181 @@ class CitationContractTest {
         assertTrue(
             "directory in the citation is wrong" in wrongDir,
             "a right filename under a wrong directory should say so: $wrongDir"
+        )
+    }
+
+    /**
+     * Both shapes of nested checkout are excluded — `.git` as a **file** and as a **directory**.
+     *
+     * `git clone` leaves a `.git` directory; `git worktree add` leaves a `.git` file holding a `gitdir:`
+     * pointer. Measured 2026-08-17, all three checkouts under `/Users/marc/field4/.claude/worktrees/`
+     * are the *file* shape, because the agent harness creates worktrees. So the rule that fixed the 83
+     * broken citations was, on the evidence available, only ever exercised against one of the two shapes
+     * it has to handle — and the day somebody clones into the tree instead, "it worked last time" would
+     * have been the only reason to believe it still worked.
+     *
+     * Both are planted here, and the fixture asserts it really made one of each, so this cannot silently
+     * degrade into two copies of the shape that already worked.
+     */
+    @Test
+    fun bothShapesOfANestedCheckoutAreExcluded() = withPlantedTree { tmp ->
+        val cited = "src/jvmMain/kotlin/afield/graphics/ThreeJsViewer.kt"
+        plantCheckout(tmp, GitShape.FILE, cited)
+        val asFile = File(tmp, ".claude/worktrees/made-by-git-worktree")
+        val asDir = File(tmp, "vendor/made-by-git-clone")
+        plantCheckout(asFile, GitShape.FILE, cited)
+        plantCheckout(asDir, GitShape.DIRECTORY, cited)
+
+        // The fixture is the experiment; assert it is actually set up the way the argument needs.
+        assertTrue(
+            File(asFile, ".git").isFile,
+            "the worktree-shaped decoy must carry .git as a FILE, or this test is two copies of the " +
+                "same case",
+        )
+        assertTrue(
+            File(asDir, ".git").isDirectory,
+            "the clone-shaped decoy must carry .git as a DIRECTORY, or the untested shape is still " +
+                "untested",
+        )
+
+        val index = CitationGuard.indexFilesUnder(tmp)
+        assertEquals(
+            1, index["ThreeJsViewer.kt"]?.size,
+            "both shapes must be excluded; the index saw " +
+                index["ThreeJsViewer.kt"]?.map { it.relativeToOrSelf(tmp).path },
+        )
+        assertEquals(File(tmp, cited), CitationGuard.locate(tmp, "ThreeJsViewer.kt", index))
+    }
+
+    /**
+     * A filename genuinely duplicated **within this checkout** is still refused, and said to be ambiguous.
+     *
+     * This is the assertion the first pass of this work was missing, and the omission is the exact shape
+     * this repo keeps rediscovering: the headline number could not have failed. "83 unresolvable before,
+     * 0 after" demonstrates that nested checkouts no longer pollute the index. It says nothing about
+     * whether `locate` still *refuses* an ambiguous path — and refusing is the whole reason it insists on
+     * a single match. Had the fix accidentally been "return the first candidate", every citation would
+     * still have resolved, the number would still have read 0, and nothing here would have objected.
+     *
+     * So this drives the **real repo index**, not a planted tree, using a real duplicated name: 70 of them
+     * exist in a clean worktree ([MIN_DUPLICATED_FILENAMES]), `StandardDrawing.kt` among them
+     * (`afield/graphics/` and `afield/stdlib/`). Neutering `locate`'s `singleOrNull()` to `firstOrNull()`
+     * fails this test; that mutation was run, and it does.
+     *
+     * The second half matters as much as the first: the *disambiguated* form must keep working. It is why
+     * "make every filename unique" was never an available answer to the nested-checkout problem.
+     */
+    @Test
+    fun aFilenameDuplicatedWithinThisCheckoutIsStillRefused() {
+        val index = CitationGuard.indexFilesUnder(root)
+        val duplicated = index.filterValues { it.size > 1 }
+        val ktDuplicated = duplicated.filterKeys { it.endsWith(".kt") }.keys.sorted()
+        assertTrue(
+            ktDuplicated.isNotEmpty(),
+            "no .kt filename is duplicated in this checkout any more, so nothing here exercises " +
+                "locate()'s refusal branch. Plant a duplicate in a fixture instead of deleting this.",
+        )
+
+        // Prefer the named example the KDoc and dev_docs argue from; fall back to whatever exists, so a
+        // rename cannot turn a real assertion into a skipped one.
+        val name = if ("StandardDrawing.kt" in ktDuplicated) "StandardDrawing.kt" else ktDuplicated.first()
+        val matches = index.getValue(name)
+        println(
+            "--- ambiguous-by-design: $name matches ${matches.size} files in this checkout ---\n" +
+                matches.joinToString("\n") { "  " + it.relativeToOrSelf(root).path }
+        )
+
+        assertEquals(
+            null, CitationGuard.locate(root, name, index),
+            "a bare `$name` matches ${matches.size} files in this checkout and must be refused, not " +
+                "guessed at",
+        )
+
+        val citation = CitationGuard.Citation(
+            page = "dev_docs/(synthetic)", pageLine = 1, path = name,
+            advisoryLine = 1, anchor = "irrelevant — resolution fails before the file is read",
+            form = CitationGuard.Form.PROSE_LINE_SYMBOL,
+        )
+        val resolution = CitationGuard.resolve(root, citation)
+        val reason = (resolution as? CitationGuard.Resolution.Broken)?.reason
+            ?: fail("an ambiguous path must resolve to Broken, not to a guess; got $resolution")
+        assertTrue("ambiguous" in reason, "and must be reported as ambiguous, not missing: $reason")
+        assertTrue(
+            matches.take(2).all { it.relativeToOrSelf(root).path in reason },
+            "and must name the files it matched, so the reader does not have to go and find them: $reason",
+        )
+
+        // The other half of the bargain: written out far enough, the same citation resolves.
+        val disambiguated = matches.first().relativeToOrSelf(root).path
+            .split('/').takeLast(2).joinToString("/")
+        assertEquals(
+            matches.first(), CitationGuard.locate(root, disambiguated, index),
+            "`$disambiguated` names exactly one file and must resolve — this is why 'make every " +
+                "filename unique' was never the answer",
+        )
+    }
+
+    /** The duplicated-filename population, printed and floored, so the test above cannot go vacuous. */
+    @Test
+    fun duplicatedFilenamesWithinThisCheckoutAreCountedAndFloored() {
+        val index = CitationGuard.indexFilesUnder(root)
+        val duplicated = index.filterValues { it.size > 1 }
+        println(
+            "--- filenames duplicated within this checkout: ${duplicated.size} " +
+                "(floor $MIN_DUPLICATED_FILENAMES), worst multiplicity " +
+                "${duplicated.values.maxOfOrNull { it.size } ?: 0} ---"
+        )
+        assertTrue(
+            duplicated.size >= MIN_DUPLICATED_FILENAMES,
+            "only ${duplicated.size} filenames are duplicated in this checkout (floor " +
+                "$MIN_DUPLICATED_FILENAMES). If that is genuinely true now, lower it deliberately — but " +
+                "note aFilenameDuplicatedWithinThisCheckoutIsStillRefused is then guarding a case the " +
+                "repo barely contains.",
+        )
+    }
+
+    /**
+     * The submodule caveat, pinned rather than asserted about the present.
+     *
+     * A git submodule carries a `.git` file, so [CitationGuard.isForeignCheckout] treats it as a foreign
+     * checkout and its files stay out of the index. That is deliberate — a submodule is a different
+     * repository — and it is documented in `dev_docs/citation_contracts.md` as the fix's one residual
+     * cost, on the strength of "no citation in the corpus points into one, measured, 0 of 222".
+     *
+     * That sentence was true about the present with nothing holding it true. This is the holding: a full
+     * repo-relative path into a submodule still resolves (tier 1 never touches the index), so only an
+     * *abbreviated* one is at risk, and if somebody writes one this fails here and names it — instead of
+     * failing as a mysterious "does not exist" on a file that plainly does.
+     */
+    @Test
+    fun noGuardedPageCitesIntoASubmoduleByAnAbbreviatedPath() {
+        val gitmodules = File(root, ".gitmodules")
+        val submodulePaths = if (!gitmodules.isFile) emptyList() else gitmodules.readLines()
+            .mapNotNull { line ->
+                line.trim().removePrefix("path").trim().let {
+                    if (line.trim().startsWith("path")) it.removePrefix("=").trim() else null
+                }
+            }
+            .filter { it.isNotEmpty() }
+        println("--- submodules declared in .gitmodules: $submodulePaths ---")
+        assertTrue(
+            submodulePaths.isNotEmpty(),
+            "this repo no longer declares any submodule, so the caveat in citation_contracts.md about " +
+                "abbreviated submodule citations is moot and should be deleted from the page rather " +
+                "than left to mislead",
+        )
+
+        val offenders = pages()
+            .flatMap { p -> CitationGuard.parse(p, p.relativeTo(root).path) }
+            .filter { c ->
+                // Only an abbreviated path is at risk; a full repo-relative one resolves without the index.
+                !File(root, c.path).isFile && submodulePaths.any { c.path.startsWith("$it/") }
+            }
+        assertTrue(
+            offenders.isEmpty(),
+            "${offenders.size} citation(s) point into a submodule by an abbreviated path, which the " +
+                "filename index deliberately cannot resolve. Write the full repo-relative path — that " +
+                "still works:\n" + offenders.joinToString("\n") { "  ${it.describe()}" },
         )
     }
 
