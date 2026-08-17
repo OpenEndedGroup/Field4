@@ -178,34 +178,87 @@ class FieldSuggestPresentationTest {
     }
 
     /**
-     * The recorded payloads, with each row's `category` filled in by the server's own classifier.
+     * The recorded payloads, with each row's `category` and `commonMemberRank` filled in by the server's
+     * own logic.
      *
      * The fixture holds what the *sidecar* sends (text/displayText/tail/icon); the browser receives those
-     * rows after `KotlinCompletionSupport.classifyMetadata`, and category is one of the popup's ranking
-     * inputs. Classifying here rather than baking a category into the fixture keeps the two in step: a
-     * change to the classifier moves this measurement, which is correct — it moves the real popup too.
+     * rows after `KotlinCompletionSupport.classifyMetadata` plus [CommonMemberPrior], and both are popup
+     * ranking inputs. Deriving them here rather than baking them into the fixture keeps the two in step: a
+     * change to the classifier or to a `@CommonMembers` list moves this measurement, which is correct — it
+     * moves the real popup too.
+     *
+     * `commonMemberRank` is per *case*, not per row, because it depends on the receiver the caret sits on
+     * — so each case declares its `receiver` and rows are rewritten case by case. A row-at-a-time rewrite
+     * cannot see which case it belongs to, which is why this is grouped rather than one regex over the
+     * whole file.
      */
     private fun classifiedRankSpec(): String {
         val raw = resource("/fieldSuggest/rank-payloads.json")
-        val cases = Regex("""\{\s*"label":""").findAll(raw).count()
-        assertTrue(cases >= 4, "the recorded rank payloads look empty (found $cases cases)")
+        val caseHead = Regex(""""label":"([^"]+)","code":"(?:[^"\\]|\\.)*","receiver":"((?:[^"\\]|\\.)*)"""")
+        val heads = caseHead.findAll(raw).toList()
+        assertTrue(heads.size >= 4, "the recorded rank payloads look empty (found ${heads.size} cases)")
         // Deliberately a targeted rewrite rather than a JSON round-trip: this file has no JSON library on
         // its test classpath, and the fixture is machine-written with one row object per `{"text":…}`.
         val row = Regex("""\{"text":"((?:[^"\\]|\\.)*)","displayText":"((?:[^"\\]|\\.)*)","tail":"((?:[^"\\]|\\.)*)","icon":"([a-z]*)"}""")
         var classified = 0
-        val filled = row.replace(raw) { m ->
-            val (text, displayText, tail, icon) = m.destructured
-            val category = KotlinCompletionSupport.classifyMetadata(
-                Metadata(icon = icon, tail = unescape(tail), text = unescape(text),
-                    displayText = unescape(displayText), category = ""),
-                unescape(text),
-            ).category
-            classified++
-            """{"text":"$text","displayText":"$displayText","tail":"$tail","icon":"$icon",""" +
-                """"category":${json(category)}}"""
+        var withPrior = 0
+        val out = StringBuilder()
+        var cursor = 0
+        // Each case owns the text from its own header up to the next case's header.
+        for ((index, head) in heads.withIndex()) {
+            val segmentEnd = if (index + 1 < heads.size) heads[index + 1].range.first else raw.length
+            out.append(raw, cursor, head.range.first)
+            val receiver = unescape(head.groupValues[2])
+            val segment = raw.substring(head.range.first, segmentEnd)
+            out.append(row.replace(segment) { m ->
+                val (text, displayText, tail, icon) = m.destructured
+                val name = unescape(text)
+                val category = KotlinCompletionSupport.classifyMetadata(
+                    Metadata(icon = icon, tail = unescape(tail), text = name,
+                        displayText = unescape(displayText), category = ""),
+                    name,
+                ).category
+                // Exactly what `execution.kt` forwards: the receiver's own declared prior, matched on the
+                // bare member name so one annotation entry covers every overload.
+                val rank = CommonMemberPrior.rankOf(receiver, name)
+                if (rank > 0) withPrior++
+                classified++
+                """{"text":"$text","displayText":"$displayText","tail":"$tail","icon":"$icon",""" +
+                    """"category":${json(category)},"commonMemberRank":$rank}"""
+            })
+            cursor = segmentEnd
         }
+        out.append(raw, cursor, raw.length)
         assertTrue(classified >= 500, "expected to classify the recorded rows, classified only $classified")
-        return filled
+        // A prior that resolves for nothing would leave every rank below unchanged and this test would
+        // still pass, so assert the seam carried. FLine's own cases supply these.
+        assertTrue(
+            withPrior >= 5,
+            "no recorded row resolved a @CommonMembers prior ($withPrior) — CommonMemberPrior is not " +
+                "reaching the fixture, so the ranks below are not measuring it"
+        )
+        return out.toString()
+    }
+
+    /**
+     * The prior's magnitude lives in two places — `CommonMemberPrior` (server) and `fieldSuggest.js`
+     * (client) — because the server sends a rank and the client turns it into points. If they drift, the
+     * server keeps ranking members the popup then scores differently, and every rank in this file becomes
+     * a measurement of the drift rather than of the design.
+     */
+    @Test
+    fun `the common-member prior agrees between the server and the popup`() {
+        val js = resource("/fieldSuggest.js")
+        val base = Regex("""const COMMON_MEMBER_BASE = (\d+);""").find(js)?.groupValues?.get(1)?.toInt()
+        val step = Regex("""const COMMON_MEMBER_STEP = (\d+);""").find(js)?.groupValues?.get(1)?.toInt()
+        assertEquals(
+            CommonMemberPrior.BASE, base,
+            "fieldSuggest.js's COMMON_MEMBER_BASE and CommonMemberPrior.BASE have drifted"
+        )
+        assertEquals(
+            CommonMemberPrior.STEP, step,
+            "fieldSuggest.js's COMMON_MEMBER_STEP and CommonMemberPrior.STEP have drifted"
+        )
     }
 
     private fun unescape(value: String): String =

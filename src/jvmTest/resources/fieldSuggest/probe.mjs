@@ -843,6 +843,21 @@ const runRankGuard = async (specPath) => {
       String(rows.length).padStart(9) + show(rank).padStart(10) + show(was).padStart(10) +
       ms.toFixed(1).padStart(7)
     );
+    // `FIELD_RANK_DUMP=<n>` prints the first n rows a person would actually see, for the case named by
+    // `FIELD_RANK_DUMP_CASE` (default: all). A rank on its own says the answer moved without saying what
+    // moved above it, which is not enough to tell a ranking bug from a ranking decision.
+    const dumpRows = Number(process.env.FIELD_RANK_DUMP) || 0;
+    const dumpCase = process.env.FIELD_RANK_DUMP_CASE || "";
+    if (dumpRows > 0 && (!dumpCase || c.label === dumpCase)) {
+      console.log(`    -- ${c.label}: first ${Math.min(dumpRows, rows.length)} of ${rows.length} visible`);
+      rows.slice(0, dumpRows).forEach((row, i) => {
+        const m = c.metadata.find((x) => (x.displayText || x.text) === row);
+        const bits = m
+          ? `category=${JSON.stringify(m.category || "")} commonMemberRank=${m.commonMemberRank || 0}`
+          : "(no matching payload row)";
+        console.log(`    ${String(i + 1).padStart(4)}  ${row.padEnd(44)} ${bits}`);
+      });
+    }
     if (was === null && rank !== null) {
       failures.push(
         `${c.label}: \`${c.truth}\` is now VISIBLE at rank ${rank}, where the fixture records it as ` +

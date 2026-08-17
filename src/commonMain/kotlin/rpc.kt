@@ -256,7 +256,23 @@ data class Metadata(
      * it would make a candidate that both fits the expected type and is declared on `Any` disappear
      * instead of merely ranking lower. `fieldSuggest.js` turns this into its own ranking term.
      */
-    val declarationProximity: String = ""
+    val declarationProximity: String = "",
+    /**
+     * 1-based position of this candidate in its receiver type's `@CommonMembers` list, or 0 for a
+     * candidate the type does not call out. Supplied by the server from the annotation on the receiver's
+     * class; `fieldSuggest.js` turns it into a ranking term.
+     *
+     * This is a **prior**, and it exists because the popup had none. At an empty prefix (`f.`) there is
+     * no text to fuzzy-match, so ranking falls to category weight plus the server's order — and the one
+     * term that could lift the members a person actually reaches for is `recency`, which lives in
+     * `localStorage`. That is zero for a new user, zero in a fresh browser profile, and zero in every
+     * test, so the ordering a test can measure is not the ordering a long-time user sees. An annotation
+     * in the source is visible to all four.
+     *
+     * Ranked rather than boolean so a type can say `moveTo` before `cubicTo` without the client
+     * inventing an order. See `CommonMemberPrior`.
+     */
+    val commonMemberRank: Int = 0
 )
 
 

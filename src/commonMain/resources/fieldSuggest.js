@@ -52,6 +52,24 @@ const PROXIMITY_SCORE = new Map([
   ["universal", -85],
 ]);
 
+// The receiver type's own answer to "what do you do with one of these", declared as `@CommonMembers` on
+// the class and forwarded per row as `Metadata.commonMemberRank` (1-based; 0 = the type said nothing).
+//
+// This is the popup's only PRIOR. At an empty prefix there is no text to fuzzy-match, so without it the
+// ranking is category weight plus the order the server sent, and the term that ought to decide it —
+// `recency`, up to ~62 — lives in `localStorage`, i.e. zero for a new user, zero in a fresh profile, and
+// zero in every test. So the base sits ABOVE CATEGORY_WEIGHT's ceiling of 28, so a called-out member
+// clears an otherwise uncategorised page, and BELOW recency's, so what someone demonstrably uses still
+// wins. Kept in step with `afield.CommonMemberPrior.BASE`/`STEP`, which FieldSuggestPresentationTest
+// asserts against these two literals.
+const COMMON_MEMBER_BASE = 40;
+const COMMON_MEMBER_STEP = 2;
+const commonMemberScoreFor = (item) => {
+  const rank = Number(item.commonMemberRank) || 0;
+  if (rank <= 0) return 0;
+  return Math.max(1, COMMON_MEMBER_BASE - (rank - 1) * COMMON_MEMBER_STEP);
+};
+
 const LOW_VALUE_MEMBER_NAMES = new Set([
   "equals",
   "hashCode",
@@ -401,6 +419,7 @@ const normalizeRpcCompletion = (
     category: categoryFor(m, languageId, source),
     contextScore: Number(m.contextScore) || 0,
     declarationProximity: m.declarationProximity || "",
+    commonMemberRank: Number(m.commonMemberRank) || 0,
     range,
     prefix: m.prefix || "",
     languageId,
@@ -751,6 +770,8 @@ const rankItems = (items, query, recencyStore, memberContext = false) => {
         PROXIMITY_SCORE.get(String(item.declarationProximity || "")) ?? 0;
       // Server-supplied context boost (e.g. type-matching operands after an infix function).
       const contextScore = Number(item.contextScore) || 0;
+      // The receiver type's declared prior; see COMMON_MEMBER_BASE.
+      const commonMemberScore = commonMemberScoreFor(item);
       const score =
         (Number.isFinite(fuzzy) ? fuzzy : -Infinity) +
         categoryScore +
@@ -758,7 +779,8 @@ const rankItems = (items, query, recencyStore, memberContext = false) => {
         aiLateBonus +
         memberScore +
         proximityScore +
-        contextScore -
+        contextScore +
+        commonMemberScore -
         originalIndex * 0.012;
       return {
         item,
@@ -768,6 +790,7 @@ const rankItems = (items, query, recencyStore, memberContext = false) => {
         categoryScore,
         memberScore,
         proximityScore,
+        commonMemberScore,
         originalIndex,
       };
     })
@@ -775,6 +798,8 @@ const rankItems = (items, query, recencyStore, memberContext = false) => {
     .sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
       if (b.recency !== a.recency) return b.recency - a.recency;
+      if (b.commonMemberScore !== a.commonMemberScore)
+        return b.commonMemberScore - a.commonMemberScore;
       if (b.categoryScore !== a.categoryScore)
         return b.categoryScore - a.categoryScore;
       if (b.memberScore !== a.memberScore) return b.memberScore - a.memberScore;

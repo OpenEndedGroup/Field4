@@ -469,6 +469,60 @@ of *every* completion, including the prefix path that is currently rank-1 correc
 not enough evidence to do it on. So: not tonight, deliberately — but the harness it needs now exists, and
 the honest next step is to widen `rank-payloads.json` and then rebalance against it.
 
+### 2026-08-16: a prior, a seventh case, and why the bare dot is still red
+
+Two things the paragraph above asked for now exist, and measuring them found the actual cause of the
+bare-dot failure — which is **not** ordering, and not `CATEGORY_WEIGHT`'s zeroes either.
+
+**A prior: `@CommonMembers`.** `FLine` now declares the members it is actually for
+(`moveTo, lineTo, cubicTo, close, here, rot, scale, copy`), `CommonMemberPrior` turns that into
+`Metadata.commonMemberRank`, and `fieldSuggest.js` scores it at `COMMON_MEMBER_BASE = 40` decaying by 2 per
+position. The band is deliberate: above `CATEGORY_WEIGHT`'s ceiling of 28, so a called-out member clears an
+uncategorised page, and below `recency`'s ~62, so what someone demonstrably uses still wins. This exists
+because the popup had **no** prior: `fuzzyScoreText` returns 0 for an empty query
+(`if (!q) return 0`), so at a bare `f.` the only term that could lift `moveTo` was `recency` — which is
+`localStorage`, hence zero for a new user, zero in a fresh profile, and zero in every test (the probe calls
+`window.localStorage.clear()`). An annotation in the source is the same answer for all four.
+
+**A seventh case: `FLine prefixed m`** (`f.m|`, 10 rows recorded from `/complete`). This is the gesture a
+person really uses to reach a member they know, and it was untested — five of the six existing cases are
+bare receivers. `moveTo` was rank **6 of 10** before the prior and is rank **1** with it.
+
+**The bare-dot case is still red, and the reason is a category collision, not ranking.** Dumping the 80
+visible rows (`FIELD_RANK_DUMP=80 FIELD_RANK_DUMP_CASE='FLine bare dot'`, new in `probe.mjs`) shows the
+prior working perfectly *within* a section — `lineTo`, `cubicTo`, `here` are ranks 1, 2, 3 — and then:
+
+| row | member | category it was given |
+| --- | --- | --- |
+| 76 | `moveTo` | **Math** |
+| 77 | `close` | **Solvers** |
+| 78 | `rot` | **Patterns** |
+| 79 | `scale` | **Synthesis** |
+| 80 | `copy` | **Audio** |
+
+Five of FLine's eight common members are filed under someone else's category, so the popup renders them in a
+different **section**, after all ~70 Graphics rows. `KotlinSourceIndex.getCompletionCategoryForSymbol`
+resolves a contested simple **name** by first match, `afield/stdlib/Functions.kt` is
+`@file:CompletionCategory("Math")` and declares a `moveTo`, and `FLine.kt` carries no file category at all
+(nor do 33 of the 35 files in `afield/graphics/`). So the name lookup answers "Math" and short-circuits.
+
+The sharp form: **`lineTo`, `cubicTo` and `here` are correct precisely because they collide with nothing** —
+the name lookup finds no annotated declaration, falls through to path inference, and gets Graphics. So the
+name-keyed lookup is *worse than its own fallback*, and a symbol is misfiled exactly when some unrelated
+categorised file happens to share its name. That is a correctness bug in classification, not a weighting
+choice, and no amount of ranking fixes it because sectioning happens above ranking.
+
+Note also that the fixture cannot see the disambiguator the live popup has: the sidecar sends `declaredIn`
+per candidate, `classifyMetadata` can consult it via `declarationCategory(extraInfo)`, and
+`rank-payloads.json` records only `text`/`displayText`/`tail`/`icon`. So this measurement is *more*
+pessimistic than the running app, and re-recording the fixture with `declaredIn` is a prerequisite for
+trusting bare-dot numbers at all.
+
+**So `observedRank: 10` stays, and the case stays red.** It improved (off-screen → 76) and 76 is still worse
+than the 10 once recorded, which is exactly what the ratchet should say. Re-cutting it to 76 would record a
+misclassification as the expectation. Fix the classification — prefer a declaration-backed answer over a
+name-only one, and give `afield/graphics/` a file category — then re-measure.
+
 Also measured, since it was the stated risk of raising the cap: **client ranking cost is flat in the
 candidate count** — 200 vs 1200 rows ranks in 11.6ms vs 12.2ms (median of 3, node 22), because the 80-row
 cut follows a single sort. The payload grows 40KB → 58–69KB (+45%, not 6×), and the truth's rank was

@@ -1,5 +1,6 @@
 package afield.graphics
 
+import afield.CommonMembers
 import afield.HasProperties
 import afield.Rect
 import afield.stdlib.*
@@ -122,6 +123,10 @@ internal fun FLine.planePoint(x: Number, y: Number, z: Number = 0): Vec3 {
  * need per-instruction properties (for example, `color` or `pointSize`).
  */
 @Serializable(with = FLineSerializer::class)
+// The paragraph above already tells a reader which members matter; this tells the completion popup the
+// same thing, because at a bare `f.` it otherwise has only alphabetical order to go on and `moveTo` sits
+// 37th of 249. Order follows the KDoc: build the path, then move it around.
+@CommonMembers("moveTo", "lineTo", "cubicTo", "close", "here", "rot", "scale", "copy")
 class FLine : HasProperties {
 
     var nodes = arrayListOf<Node>()
