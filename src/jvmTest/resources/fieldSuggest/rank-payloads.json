@@ -1,5 +1,5 @@
 {"cases":[
-{"label":"String bare dot","code":"val s = \"x\"\ns.|","truth":"uppercase","observedRank":null,"metadata":[
+{"label":"String bare dot","code":"val s = \"x\"\ns.|","receiver":"java.lang.String","truth":"uppercase","observedRank":null,"metadata":[
   {"text":"chars(","displayText":"chars()","tail":"IntStream!","icon":"method"},
   {"text":"codePoints(","displayText":"codePoints()","tail":"IntStream!","icon":"method"},
   {"text":"compareTo(","displayText":"compareTo(other: String)","tail":"Int","icon":"method"},
@@ -300,11 +300,11 @@
   {"text":"zip(","displayText":"zip(other: CharSequence, transform: (@R|ParameterName|(name = String(a))  Char, @R|ParameterName|(name = String(b))  Char) -> V)","tail":"List<V>","icon":"method"},
   {"text":"Companion","displayText":"Companion","tail":"String","icon":"class"}
 ]},
-{"label":"String two chars","code":"val s = \"x\"\ns.up|","truth":"uppercase","observedRank":1,"metadata":[
+{"label":"String two chars","code":"val s = \"x\"\ns.up|","receiver":"java.lang.String","truth":"uppercase","observedRank":1,"metadata":[
   {"text":"uppercase(","displayText":"uppercase()","tail":"String","icon":"method"},
   {"text":"uppercase(","displayText":"uppercase(locale: Locale)","tail":"String","icon":"method"}
 ]},
-{"label":"FLine bare dot","code":"val f = FLine()\nf.|","truth":"moveTo","observedRank":10,"metadata":[
+{"label":"FLine bare dot","code":"val f = FLine()\nf.|","receiver":"afield.graphics.FLine","truth":"moveTo","observedRank":10,"note":"DELIBERATELY RED - do not re-cut to match. moveTo is off-screen/deep here because KotlinSourceIndex.getCompletionCategoryForSymbol resolves a contested simple NAME by first match, and afield/stdlib/Functions.kt is @file:CompletionCategory(\"Math\") while FLine.kt carries no category - so FLine.moveTo is filed under Math and rendered in a different SECTION from Graphics. close/rot/scale/copy are mis-filed the same way (Solvers/Patterns/Synthesis/Audio). lineTo/cubicTo/here collide with nothing, fall through to path inference, and are correctly Graphics - so the name lookup is worse than its own fallback. The @CommonMembers prior ranks correctly WITHIN a section (lineTo/cubicTo/here are 1/2/3) and cannot cross one. Fix the classification, then re-measure.","metadata":[
   {"text":"breakNext(","displayText":"breakNext()","tail":"Unit","icon":"method"},
   {"text":"breakNext","displayText":"breakNext","tail":"Boolean","icon":"var"},
   {"text":"byFiltering(","displayText":"byFiltering(predicate: (Vec3?, FLine.Node) -> Boolean)","tail":"FLine","icon":"method"},
@@ -555,7 +555,7 @@
   {"text":"MoveTo","displayText":"MoveTo","tail":"FLine","icon":"class"},
   {"text":"Node","displayText":"Node","tail":"FLine","icon":"class"}
 ]},
-{"label":"List bare dot","code":"val l = listOf(1)\nl.|","truth":"filter","observedRank":57,"metadata":[
+{"label":"List bare dot","code":"val l = listOf(1)\nl.|","receiver":"java.util.List","truth":"filter","observedRank":57,"metadata":[
   {"text":"contains(","displayText":"contains(element: E)","tail":"Boolean","icon":"method"},
   {"text":"containsAll(","displayText":"containsAll(elements: Collection<E>)","tail":"Boolean","icon":"method"},
   {"text":"equals(","displayText":"equals(other: Any?)","tail":"Boolean","icon":"method"},
@@ -892,7 +892,7 @@
   {"text":"zipWithNext(","displayText":"zipWithNext()","tail":"List<Pair<T, T>>","icon":"method"},
   {"text":"zipWithNext(","displayText":"zipWithNext(transform: (@R|ParameterName|(name = String(a))  T, @R|ParameterName|(name = String(b))  T) -> R)","tail":"List<R>","icon":"method"}
 ]},
-{"label":"kotlin.math package","code":"val x = kotlin.math.|","truth":"sin","observedRank":null,"metadata":[
+{"label":"kotlin.math package","code":"val x = kotlin.math.|","receiver":"","truth":"sin","observedRank":null,"metadata":[
   {"text":"Constants","displayText":"Constants","tail":"kotlin.math","icon":"class"},
   {"text":"IEEErem(","displayText":"IEEErem(divisor: Double)","tail":"Double","icon":"method"},
   {"text":"IEEErem(","displayText":"IEEErem(divisor: Float)","tail":"Float","icon":"method"},
@@ -994,7 +994,7 @@
   {"text":"withSign(","displayText":"withSign(sign: Float)","tail":"Float","icon":"method"},
   {"text":"withSign(","displayText":"withSign(sign: Int)","tail":"Float","icon":"method"}
 ]},
-{"label":"Math qualifier","code":"val a = Math.|","truth":"toRadians","observedRank":52,"metadata":[
+{"label":"Math qualifier","code":"val a = Math.|","receiver":"java.lang.Math","truth":"toRadians","observedRank":52,"metadata":[
   {"text":"E","displayText":"E","tail":"Double","icon":"property"},
   {"text":"IEEEremainder(","displayText":"IEEEremainder(f1: Double, f2: Double)","tail":"Double","icon":"method"},
   {"text":"PI","displayText":"PI","tail":"Double","icon":"property"},
@@ -1105,5 +1105,17 @@
   {"text":"unsignedPowExact(","displayText":"unsignedPowExact(x: Int, n: Int)","tail":"Int","icon":"method"},
   {"text":"unsignedPowExact(","displayText":"unsignedPowExact(x: Long, n: Int)","tail":"Long","icon":"method"},
   {"text":"RandomNumberGeneratorHolder","displayText":"RandomNumberGeneratorHolder","tail":"Math","icon":"class"}
+]},
+{"label":"FLine prefixed m","code":"val f = FLine()\nf.m|","receiver":"afield.graphics.FLine","truth":"moveTo","observedRank":1,"note":"The gesture a person actually uses to reach a member they know. moveTo was rank 6 of 10 before @CommonMembers and is rank 1 with it; the prior is what holds it there.","metadata":[
+  {"text":"matches(","displayText":"matches(pattern: String)","tail":"ParamSet","icon":"method"},
+  {"text":"midPoint(","displayText":"midPoint()","tail":"Vector3f","icon":"method"},
+  {"text":"minus(","displayText":"minus(n: Vec3)","tail":"FLine","icon":"method"},
+  {"text":"minus(","displayText":"minus(n: Vec2)","tail":"FLine","icon":"method"},
+  {"text":"minus(","displayText":"minus(other: SpreadsheetScalar)","tail":"SpreadsheetScalar","icon":"method"},
+  {"text":"moveTo(","displayText":"moveTo(x: Number, y: Number, z: Number)","tail":"FLine","icon":"method"},
+  {"text":"moveTo(","displayText":"moveTo(v: Vec3)","tail":"FLine","icon":"method"},
+  {"text":"moveTo(","displayText":"moveTo(v: Vec2)","tail":"FLine","icon":"method"},
+  {"text":"moveTo(","displayText":"moveTo(v: Vector3d)","tail":"FLine","icon":"method"},
+  {"text":"moveTo(","displayText":"moveTo(v: Vec3, style: FLine.Node.() -> Unit)","tail":"FLine","icon":"method"}
 ]}
 ]}

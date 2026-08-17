@@ -3224,10 +3224,18 @@ class KotlinExecution : BoxExecution {
                 val proximity = it.extraInfo[AaCompletionClient.DECLARATION_PROXIMITY]?.toString().orEmpty()
                 val withProximity = if (proximity.isBlank()) categorizedMetadata
                     else categorizedMetadata.copy(declarationProximity = proximity)
+                // The receiver type's own statement of which members matter, from `@CommonMembers`. Only
+                // the *name* is matched, so one entry covers every overload. This is the popup's only
+                // prior at an empty prefix, where there is no text to fuzzy-match and `recency` — the
+                // term that would otherwise decide it — is empty for anyone who has not used the member
+                // before on this machine.
+                val commonRank = CommonMemberPrior.rankOf(receiverTypeHint, candidateName)
+                val withPrior = if (commonRank <= 0) withProximity
+                    else withProximity.copy(commonMemberRank = commonRank)
                 if (typeFits) {
-                    withProximity.copy(contextScore = InfixCompletion.OPERAND_MATCH_BOOST)
+                    withPrior.copy(contextScore = InfixCompletion.OPERAND_MATCH_BOOST)
                 } else {
-                    withProximity
+                    withPrior
                 }
             }
         }
