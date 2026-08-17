@@ -387,6 +387,46 @@ class CitationContractTest {
     }
 
     /**
+     * The unresolvable diagnostic distinguishes *missing* from *ambiguous*, and names the files.
+     *
+     * The message these replace said "does not exist, or the abbreviated path matches more than one
+     * file". The two halves want opposite repairs, and handing a reader both is why 83 ambiguous
+     * citations were read as 83 deleted files — twice.
+     */
+    @Test
+    fun theUnresolvableDiagnosticSaysWhichFailureItWas() = withPlantedTree { tmp ->
+        val cited = "src/jvmMain/kotlin/afield/graphics/ThreeJsViewer.kt"
+        plantCheckout(tmp, cited)
+        val index = CitationGuard.indexFilesUnder(tmp) +
+            mapOf(
+                // An ambiguity *within* one checkout — the case that must still be reported, and the
+                // reason the fix could not simply be "make everything unique".
+                "Twin.kt" to listOf(File(tmp, "a/Twin.kt"), File(tmp, "b/Twin.kt"))
+            )
+
+        val missing = CitationGuard.explainUnresolvable(tmp, "NoSuchFile.kt", index)
+        assertTrue("does not exist" in missing, "a missing file must be reported as missing: $missing")
+        assertTrue(
+            "ambiguous" !in missing,
+            "a missing file must not be reported as possibly-ambiguous: $missing"
+        )
+
+        val ambiguous = CitationGuard.explainUnresolvable(tmp, "Twin.kt", index)
+        assertTrue("ambiguous" in ambiguous, "two matches must be reported as ambiguous: $ambiguous")
+        assertTrue(
+            "a/Twin.kt" in ambiguous && "b/Twin.kt" in ambiguous,
+            "an ambiguity must name the files it matched, or the reader has to go and find them: " +
+                ambiguous
+        )
+
+        val wrongDir = CitationGuard.explainUnresolvable(tmp, "wrong/dir/ThreeJsViewer.kt", index)
+        assertTrue(
+            "directory in the citation is wrong" in wrongDir,
+            "a right filename under a wrong directory should say so: $wrongDir"
+        )
+    }
+
+    /**
      * Not a test: the mechanical refresh of advisory line numbers, gated behind an environment
      * variable so an ordinary build can never rewrite tracked files.
      *

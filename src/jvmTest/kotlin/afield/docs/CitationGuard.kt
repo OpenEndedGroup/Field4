@@ -285,8 +285,8 @@ object CitationGuard {
      * `?: byName.singleOrNull()` fallback here, which accepted a uniquely-named file even when the
      * *directory* the citation named did not exist — so `wrong/dir/FLine.kt` resolved happily to
      * `graphics/FLine.kt` and a misleading path could sit in a doc indefinitely with nothing to say so.
-     * It is written in the shape this repo has learned to distrust: a `single…() ?: first…()`-style
-     * pair where the second half quietly undoes the first half's insistence on being unambiguous.
+     * It is written in the shape this repo has learned to distrust: a `single…() ?: first…()`-style pair
+     * where the second half quietly undoes the first half's insistence on being unambiguous.
      *
      * Measured before removing it: it resolved **0** of the corpus's 222 citations, every one of which
      * matched on the full suffix instead. So it was dead code whose only reachable effect was to launder
@@ -300,6 +300,41 @@ object CitationGuard {
             .singleOrNull()
     }
 
+    /** How many candidate files [locate] is naming at most, before a message stops being readable. */
+    private const val MAX_LISTED_CANDIDATES = 8
+
+    /**
+     * Why [locate] returned null for [path], said precisely.
+     *
+     * The message this replaces was *"cited file X does not exist, or the abbreviated path matches more
+     * than one file"*. Those two causes need opposite repairs — restore/rename the file, versus lengthen
+     * the path — and a reader handed both at once has to go and find out which happened. That is not a
+     * theoretical cost: the conflation is exactly why the nested-checkout failure above was read as 83
+     * deleted files and mis-diagnosed twice. So ambiguity now *names the files it matched*, which makes
+     * a nested checkout self-evident in the failure text rather than a puzzle.
+     */
+    fun explainUnresolvable(
+        root: File,
+        path: String,
+        index: Map<String, List<File>> = fileIndex,
+    ): String {
+        val byName = index[path.substringAfterLast('/')].orEmpty()
+        val matches = byName.filter { it.path.endsWith("/$path") }
+        if (matches.isEmpty()) {
+            val elsewhere = if (byName.isEmpty()) ""
+            else " — a file of that name exists at " +
+                byName.take(MAX_LISTED_CANDIDATES).joinToString(", ") { it.relativeToOrSelf(root).path } +
+                ", so the directory in the citation is wrong"
+            return "cited file `$path` does not exist$elsewhere"
+        }
+        val shown = matches.take(MAX_LISTED_CANDIDATES).joinToString(", ") {
+            it.relativeToOrSelf(root).path
+        }
+        val more = (matches.size - MAX_LISTED_CANDIDATES).let { if (it > 0) ", +$it more" else "" }
+        return "cited path `$path` is ambiguous — ${matches.size} files match it ($shown$more). " +
+            "Write enough of the path to pick one."
+    }
+
     /**
      * Find [Citation.anchor] in [Citation.path] and report where it really is.
      *
@@ -308,12 +343,7 @@ object CitationGuard {
      * author toward an anchor specific enough to stand on its own.
      */
     fun resolve(root: File, c: Citation): Resolution {
-        val f = locate(root, c.path)
-            ?: return Resolution.Broken(
-                c,
-                "cited file `${c.path}` does not exist, or the abbreviated path matches more than " +
-                    "one file — write enough of the path to be unambiguous"
-            )
+        val f = locate(root, c.path) ?: return Resolution.Broken(c, explainUnresolvable(root, c.path))
         val lines = f.readLines()
         val hits = lines.mapIndexedNotNull { i, l -> if (c.anchor in l) i + 1 else null }
         if (hits.isEmpty()) {
