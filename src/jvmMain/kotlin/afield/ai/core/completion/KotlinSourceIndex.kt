@@ -277,10 +277,33 @@ object KotlinSourceIndex {
         return partialMatch?.kdoc
     }
 
+    /**
+     * The completion category for one candidate.
+     *
+     * [declaredIn] is what makes this answerable: a bare member name is not a question this index can
+     * answer, because the index is keyed by name and a common verb collides hard — in this tree `scale`
+     * is declared in 42 categorised files, `close` in 21, `copy` in 16. Given the *declaring* container
+     * the answer is exact, because [parseTopLevelDefinitions] already stores members qualified
+     * (`"$owner.$name"`), so `FLine.moveTo` is a key this index holds.
+     *
+     * `declaredIn` arrives from the AA sidecar per candidate ([AaCompletionClient.DECLARED_IN]) and is
+     * either a class FQN for a member (`afield.graphics.FLine`) or a package for a top-level extension
+     * (`afield.four.synth`). Both are handled below, and both beat voting on a name.
+     *
+     * Returns null rather than guessing when the evidence does not single one declaration out. That is
+     * deliberate and it is a fix, not a regression: the caller falls through to `declarationCategory` and
+     * then to `inferCompletionCategory`, which knows how to read a path and a qualified name. A wrong
+     * category is much worse than none, because the popup GROUPS by category — a misfiled member is
+     * rendered in a foreign section, below every row of its own type, where no ranking term can reach it.
+     * That is what filed `FLine.moveTo` under **Math** (its only categorised namesake being
+     * `stdlib/Functions.kt`) and `close`/`rot`/`scale`/`copy` under Solvers/Patterns/Synthesis/Audio,
+     * while `lineTo` and `cubicTo` were correct all along purely because they collide with nothing.
+     */
     fun getCompletionCategoryForSymbol(
         symbolName: String,
         sourceName: String? = null,
-        sourcePath: String? = null
+        sourcePath: String? = null,
+        declaredIn: String? = null
     ): String? {
         val index = latestIndex ?: loadIndex() ?: return null
         val simpleName = symbolName.substringAfterLast('.').trim()
@@ -302,8 +325,27 @@ object KotlinSourceIndex {
             matches.firstOrNull { it.filePath == sourcePath }?.categoryOrNull()?.let { return it }
         }
 
-        val categories = matches.mapNotNull { it.categoryOrNull() }.distinct()
-        return categories.singleOrNull() ?: categories.firstOrNull()
+        val container = declaredIn?.trim()?.takeIf { it.isNotEmpty() }
+        if (container != null) {
+            // A member: ask for the exact declaration, `Owner.member`. If it is in the index, its answer is
+            // the only correct one — including "no category", which must NOT fall through to the name vote.
+            val ownerSimple = container.substringAfterLast('.')
+            val exact = matches.filter { it.name == "$ownerSimple.$simpleName" }
+            if (exact.isNotEmpty()) return exact.firstNotNullOfOrNull { it.categoryOrNull() }
+
+            // A top-level extension: `declaredIn` is a package, which scopes the vote to the right file
+            // instead of choosing between 42 of them.
+            val packagePath = container.replace('.', '/')
+            val inPackage = matches.filter { it.filePath.contains("/$packagePath/") }
+            if (inPackage.isNotEmpty()) return inPackage.firstNotNullOfOrNull { it.categoryOrNull() }
+
+            // `declaredIn` names something outside this tree — `java.lang.Math`, a jar. This tree's
+            // namesakes say nothing about it, so decline instead of borrowing their category.
+            return null
+        }
+
+        // No declaring container to go on: answer only if the tree is unanimous about the name.
+        return matches.mapNotNull { it.categoryOrNull() }.distinct().singleOrNull()
     }
 
     fun currentVectorStoreId(): String? =

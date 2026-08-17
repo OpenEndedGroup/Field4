@@ -387,7 +387,10 @@ internal object KotlinCompletionSupport {
             ?: KotlinSourceIndex.getCompletionCategoryForSymbol(
                 symbolName = name,
                 sourceName = metadata.documentationSourceName.takeIf { it.isNotBlank() },
-                sourcePath = metadata.documentationSourcePath.takeIf { it.isNotBlank() }
+                sourcePath = metadata.documentationSourcePath.takeIf { it.isNotBlank() },
+                // The declaring container turns "what category is the name `scale`?" — a question with 42
+                // answers in this tree — into "what category is `FLine.scale`?", which has one.
+                declaredIn = extraInfo[AaCompletionClient.DECLARED_IN]?.toString()?.takeIf { it.isNotBlank() }
             )?.let(::normalizedCompletionCategory)
             ?: declarationCategory(extraInfo)
             ?: inferCompletionCategory(metadata, name, extraInfo)
@@ -432,6 +435,11 @@ internal object KotlinCompletionSupport {
 
         categoryFromPath(sourcePath)?.let { return it }
         categoryFromQualifiedName(sourceName)?.let { return it }
+        // Where the candidate is DECLARED, before anything inferred from its type or its spelling. It was
+        // read above only to decide whether the receiver joins `text`, never mapped — so a member of
+        // `afield.graphics.FLine` whose own file carries no `@file:CompletionCategory` fell through to
+        // guessing from its return type. `categoryFromQualifiedName` already knew the answer.
+        categoryFromQualifiedName(declaredIn.lowercase())?.let { return it }
         categoryFromQualifiedName(tail)?.let { return it }
         categoryFromQualifiedName(text)?.let { return it }
 

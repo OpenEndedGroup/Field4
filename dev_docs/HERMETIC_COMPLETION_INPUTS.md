@@ -258,11 +258,53 @@ and no upload) into a temp directory and pins it. Three runs across two differen
 states now produce byte-identical ranks. Dropping `src/generatedLinalg` was measured too and moves
 none of the six ranks, so its inclusion is fidelity, not load-bearing.
 
-**The rank case is still red, and should stay red.** With a hermetic index `moveTo` at a bare `f.` is
-genuinely off-screen — worse than the 12 the machine index reported, and worse than the 10 the fixture
-records. Re-baselining it to "off-screen" would retire the exact signal the test exists for ("the
-answer a person typed is among the rows a person can see"). What changed tonight is that it is now red
-for a reproducible reason instead of a different reason every run.
+**The rank case was red, deliberately, and is now GREEN because the cause was fixed** (2026-08-17).
+Superseding what this section used to say: with a hermetic index `moveTo` at a bare `f.` was genuinely
+off-screen, and re-baselining it to "off-screen" would have retired the exact signal the test exists
+for. That instruction held for a day and is what forced a diagnosis instead of a fixture edit.
+
+What it turned out to be — and it was never a *ranking* problem:
+
+- `KotlinSourceIndex.getCompletionCategoryForSymbol` was keyed by **bare simple name** and ended with
+  `categories.singleOrNull() ?: categories.firstOrNull()`. That reads as "only answer if unambiguous"
+  and is identical to `firstOrNull()`: with one category `single == first`; with several, `single` is
+  null and the elvis takes the first anyway. The ambiguity guard was written and neutralised on one
+  line. In this tree `scale` is declared in **42** categorised files, `close` in 21, `copy` in 16.
+- So `FLine.moveTo` was filed under **Math** — its only categorised namesake being
+  `stdlib/Functions.kt` — and `close`/`rot`/`scale`/`copy` under Solvers/Patterns/Synthesis/Audio.
+  Because the popup **groups** by category, those rows rendered in foreign *sections*, below every
+  Graphics row, where no ranking term can reach them. `lineTo`/`cubicTo`/`here` were correct all along
+  purely because they collide with nothing and fell through to path inference — so the name lookup was
+  worse than its own fallback.
+- The answer was already in the tree, twice: `parseTopLevelDefinitions` stores members **qualified**
+  (`"$owner.$name"`), so `FLine.moveTo` was always a key this index held, and the sidecar already sends
+  `declaredIn` per candidate. The lookup discarded both. It now resolves by declaring container, scopes
+  a top-level extension's vote to `declaredIn`'s package, and **declines** rather than borrowing a
+  namesake's category when `declaredIn` names something outside this tree.
+
+Measured with the payloads held constant — `declaredIn` was added to the recorded rows and nothing
+else changed, so the classification is the only variable:
+
+| case | before | after |
+| --- | --- | --- |
+| FLine bare dot, `moveTo` | off-screen | **1** — top six are its `@CommonMembers`, in declared order |
+| FLine prefixed `f.m`, `moveTo` | 6 of 10 | **1** |
+| List bare dot, `filter` | 57 | 71 |
+| Math qualifier, `toRadians` | 52 | off-screen |
+
+**The last two got worse, and are accepted, because the fix is telling the truth.** All 109
+`java.lang.Math` rows now classify as `External` — correctly and *uniformly* — so they tie at
+`CATEGORY_WEIGHT` and the list collapses to the server's alphabetical order (`E`, `IEEEremainder`,
+`PI`, `TAU`, `abs`…), putting `toRadians` past row 80 of 110. Its 52 was misclassification *noise*
+handing some rows a nonzero weight, not a ranking decision. A type you cannot annotate has no prior
+and no weight, so a bare dot on it is alphabetical — the same argument that says nobody reaches
+`moveTo` by scanning 249 rows. Both are re-cut with that reasoning in the fixture's `note`, and the
+case now measures the standing `CATEGORY_WEIGHT` defect (11 of the 16 categories the server sends
+score 0) honestly, instead of being accidentally compensated for it.
+
+**The rule that produced this outcome, for next time:** a rank case may be re-cut once the *cause* is
+diagnosed and either fixed or explicitly accepted in the fixture's `note`. It may never be re-cut
+because it is red.
 
 ### Is the hermeticity asserted, or just observed?
 
