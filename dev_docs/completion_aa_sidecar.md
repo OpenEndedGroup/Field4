@@ -442,7 +442,7 @@ transport cap from 200 was necessary and not sufficient: it moved the cut from 2
 > **Corrected 2026-08-17.** This paragraph used to say "**at an empty prefix every row scores alike**", so
 > that the 80-row cut kept the server's order verbatim. That is not true, and believing it cost a day of
 > misdiagnosis — it makes a bare-dot rank look like a *transport* problem when it is a *classification* one.
-> `fuzzy` is indeed 0 for everyone, but the score is a **sum** (`fieldSuggest.js#rankItems`) and the other
+> `fuzzy` is indeed 0 for everyone, but the score is a **sum** (`fieldSuggest.js:759#rankItems`) and the other
 > terms are wildly unequal:
 >
 > | term | max | source |
