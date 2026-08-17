@@ -729,10 +729,10 @@ here; the voice wants an audio device and the last one fails by design.
 **popup_prior_inspect** — Asks Field what ranking prior the completion popup currently has for a
 receiver type, by calling the object the completion server itself calls — `afield.CommonMemberPrior` —
 rather than describing it. Tabulates the type's `@CommonMembers` list in declared order with the score
-each position earns and the category each member would be filed under, which is the field that decides
-which *section* of the popup it renders in. Change one string to ask about your own class. Replay it
-when a member you expect near the top of `ctrl-space` is not there; the two right-hand columns are,
-between them, the answer to nearly every "why is that so far down". Explained on
+each position earns. Change one string to ask about your own class, and replay it when a member you
+expect near the top of `ctrl-space` is not there. It answers one of the two questions that place a row:
+the other is which *section* it lands in, which lives behind an `internal` object and so belongs to
+`FIELD_RANK_DUMP` instead. Both are explained on
 [How the Popup Decides](how_the_popup_decides.md).
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/popup_prior_inspect/metadata.edn)
 

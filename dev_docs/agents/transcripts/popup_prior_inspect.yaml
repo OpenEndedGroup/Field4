@@ -3,13 +3,15 @@ description: >
   One box that asks Field what ranking prior the completion popup currently has for a given receiver
   type, by calling the same object the completion server calls — afield.CommonMemberPrior — rather
   than describing it. Prints the receiver's @CommonMembers list in declared order with the score each
-  position earns, and the completion category each member would be filed under, which is the field
-  that decides which SECTION of the popup it renders in.
+  position earns, which is one of the two things that place a row in the popup.
 
-  Backs the computed table on public/docs/how_the_popup_decides.md, and is worth replaying on its own
-  whenever a member you expect near the top of `ctrl-space` is not there: the two columns on the
-  right are, between them, the answer to almost every "why is that so far down" question. Change
-  `receiver` to any qualified type name to ask about your own class.
+  It cannot print the other one — which SECTION the row lands in, and sectioning sits above ranking.
+  That answer belongs to KotlinCompletionSupport, which is `internal` and so deliberately out of a
+  box's reach; `FIELD_RANK_DUMP` prints a category beside every visible row instead.
+
+  Backs the computed figure on public/docs/how_the_popup_decides.md, and is worth replaying on its own
+  whenever a member you expect near the top of `ctrl-space` is not there. Change `receiver` to any
+  qualified type name to ask about your own class.
 operations:
   - create:
       box: agent_popup_prior_inspect
