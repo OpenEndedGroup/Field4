@@ -1,5 +1,6 @@
 package afield.ai.core
 
+import afield.logger.lprintln
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -129,7 +130,52 @@ object AgentToolExtensions {
         }
         registrations.removeAll { it.toolClass.simpleName == name }
         registrations.add(Registration(toolClass, available, handler))
-        live.forEach { it.registerExtension(toolClass, available, handler) }
+        live.forEach {
+            if (!it.registerExtension(toolClass, available, handler)) reportRefusal(name, "register")
+        }
+    }
+
+    /**
+     * Say out loud that a registration was refused, because the alternative is the failure mode this
+     * seam exists to prevent: a tool that is registered on the author's side and invisible to every
+     * model, with nothing anywhere to say why.
+     *
+     * [ToolRegistry.registerExtension] returns `false` on a collision with a core tool name and
+     * documents that *"the caller turns that into an error the extension author can read; swallowing it
+     * would leave them with a tool that is registered on their side and invisible to every model"*.
+     * Neither caller did: [register] threw on the strength of a **separate** pre-check and dropped the
+     * authoritative answer, and [applyTo] dropped it deliberately. So the documented contract had no
+     * enforcing call site anywhere.
+     *
+     * Both of those sites are now honest, but be clear about which one carries the weight, because
+     * tracing it changed the answer. Neither of these is the path the failure actually takes:
+     *
+     *  - [register]'s refusal is a **race only**. Its pre-check has already established that no bound
+     *    registry holds the name, so a `false` here means core claimed it in between. Worth reporting
+     *    precisely because it should be unreachable.
+     *  - [applyTo]'s refusal is **unreachable for a fresh registry**, which is the only kind it gets:
+     *    `applyTo` runs at the very top of `registerBuiltInAgentTools`, so the registry is still empty
+     *    and accepts everything.
+     *
+     * The real path is neither, and it is not in this file: the extension is accepted by the empty
+     * registry and then **overwritten** by core's own `register` a few calls later, which is documented
+     * behaviour and was silent. That is where the log line that matters lives — see
+     * [ToolRegistry.register] — and `AgentToolExtensions.register` could not have caught it, because at
+     * startup [bound] is empty and there is no collision for it to see.
+     *
+     * A log line rather than a throw, at all three sites. The reasoning that kept [applyTo] silent was
+     * right that throwing inside a bridge constructor costs the whole conversation instead of the one bad
+     * tool. It was wrong to conclude silence: not throwing and not telling anybody are separable
+     * decisions, and only the first was justified.
+     */
+    private fun reportRefusal(name: String, where: String) {
+        lprintln(
+            "warning,ai4",
+            "AgentToolExtensions ($where): the tool named '$name' was refused because a built-in AI " +
+                "tool already uses that name, so no model will see it. Rename the request class — its " +
+                "simple name is the tool name the model sees, and it has to be unique across every " +
+                "tool in the conversation."
+        )
     }
 
     /** Drop a tool. Mostly for tests, and for a live-coded registration being retired. */
@@ -208,18 +254,24 @@ object AgentToolExtensions {
      * happened to have loaded before the human's first AI turn. See this object's docs for what that
      * actually looked like in practice.
      *
-     * A refusal from [ToolRegistry.registerExtension] here is a name collision with a core built-in and
-     * is dropped silently, unlike the same collision in [register]. There is nobody to tell: this runs
-     * inside a bridge constructor, on whatever thread opened the chat, and throwing would take out the
-     * chat rather than the offending tool. [register] catches the overwhelmingly more common case — the
-     * author writing the registration while an agent is already up — and reports it there.
+     * A refusal from [ToolRegistry.registerExtension] here is a name collision with a core built-in. It
+     * is **logged, not thrown**: this runs inside a bridge constructor on whatever thread opened the
+     * chat, so throwing would take out the conversation rather than the one offending tool. It used to be
+     * dropped in silence, which is a different decision and was never argued for.
+     *
+     * Do not expect to see it. This runs at the very top of `registerBuiltInAgentTools`, so the registry
+     * is empty and accepts every registration; a refusal here would mean that invariant has changed. The
+     * collision an extension author actually hits is reported one layer down, by [ToolRegistry.register]
+     * when core overwrites the name it just accepted. See [reportRefusal].
      */
     internal fun applyTo(tools: ToolRegistry) {
         synchronized(boundRegistries) { boundRegistries.add(tools) }
         registrations.forEach { registration ->
             @Suppress("UNCHECKED_CAST")
             val typed = registration as Registration<Any>
-            tools.registerExtension(typed.toolClass, typed.available, typed.handler)
+            if (!tools.registerExtension(typed.toolClass, typed.available, typed.handler)) {
+                reportRefusal(typed.toolClass.simpleName, "applyTo")
+            }
         }
     }
 }

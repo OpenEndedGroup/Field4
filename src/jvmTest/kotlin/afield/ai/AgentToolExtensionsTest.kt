@@ -2,6 +2,8 @@ package afield.ai
 
 import afield.ai.core.AgentToolExtensions
 import afield.ai.core.CarriesToolImages
+import afield.ai.core.LogDispatcher
+import afield.ai.core.LogSink
 import afield.ai.core.SummarisesForToolLog
 import afield.ai.core.ToolExecutionContext
 import afield.ai.core.ToolImage
@@ -551,6 +553,108 @@ class AgentToolExtensionsTest {
             1,
             AgentToolExtensions.registeredToolNames().count { it == "NightlyFragile" },
             "and the registration list did not grow or shrink",
+        )
+    }
+
+    /** A core-side request class that collides with [ClashingCluster.Commentary] by simple name. */
+    object CoreSideCluster {
+        @JsonClassDescription("Stands in for core's built-in of this name.")
+        data class Commentary(val text: String = "")
+    }
+
+    /**
+     * Core displacing an extension's tool name is reported rather than done in silence.
+     *
+     * This is the collision an extension author actually hits, and finding it meant correcting where the
+     * bug was. Every other test here — [anExtensionCannotTakeOverACoreToolName] included — builds a
+     * `ToolRegistry` *first*, so `AgentToolExtensions.register` can see the clash and throws. The
+     * ordering the docs recommend is the opposite one: *"call it once, from wherever the owning code is
+     * first touched — a personal package's `init`, a `Box` helper, an installer"*, i.e. before any chat
+     * exists. In that ordering nothing is bound, `register` has no registry to find the clash in, and its
+     * check is vacuous.
+     *
+     * What happens next is not a refusal at all, which is why looking for one was the wrong place to
+     * look. `applyTo` runs at the top of `registerBuiltInAgentTools` against an **empty** registry, so
+     * `registerExtension` succeeds; core's own `register` then overwrites the name a few calls later and
+     * takes ownership. Documented, deliberate, correct — and completely silent, leaving exactly the state
+     * `registerExtension`'s KDoc says a caller must never allow: *"a tool that is registered on their side
+     * and invisible to every model"*.
+     *
+     * Asserted at the `ToolRegistry` level rather than through `AgentToolExtensions`, because that object
+     * is a process-wide singleton whose bound-registry set is polluted by every other test in this class —
+     * so "nothing is bound yet" is not a state a test in this JVM can reach. The displacement itself is,
+     * and it is where the fix lives.
+     */
+    @Test
+    fun coreDisplacingAnExtensionsToolNameIsReported() {
+        val tools = ToolRegistry()
+        assertTrue(
+            tools.registerExtension(ClashingCluster.Commentary::class.java, { true }) { _, _ ->
+                mapOf("extension" to true)
+            },
+            "an empty registry accepts the extension — this is the step that makes the silence possible, " +
+                "so it is asserted rather than assumed",
+        )
+        assertEquals(
+            mapOf("extension" to true),
+            tools.executeByName(ctx, "Commentary", """{"text": "hello"}"""),
+            "and for a moment the extension really is the Commentary tool",
+        )
+
+        val captured = mutableListOf<String>()
+        val sink = LogSink { event -> captured += "${event.channel}|${event.message}" }
+        LogDispatcher.addSink(sink)
+        try {
+            tools.register(CoreSideCluster.Commentary::class.java) { _, _ -> mapOf("core" to true) }
+        } finally {
+            LogDispatcher.removeSink(sink)
+        }
+
+        // Core wins, which is right and is not what changed.
+        assertEquals(
+            mapOf("core" to true),
+            tools.executeByName(ctx, "Commentary", """{"text": "hello"}"""),
+            "core's names are reserved; the extension must not survive the collision",
+        )
+
+        val reported = captured.filter { "Commentary" in it && "displaced" in it }
+        assertTrue(
+            reported.isNotEmpty(),
+            "the displacement must be reported somewhere the author can see it — otherwise they have a " +
+                "tool registered on their side that no model will ever call, and nothing to tell them " +
+                "why. Captured ${captured.size} log line(s):\n" +
+                captured.joinToString("\n").take(2000),
+        )
+        assertTrue(
+            reported.any { it.startsWith("warning") },
+            "and on a warning channel, not buried in an info stream: $reported",
+        )
+    }
+
+    /**
+     * Displacing a name **core already owned** says nothing, so the report above cannot become noise.
+     *
+     * Core re-registering its own tool is ordinary (`registerBuiltInAgentTools` runs once per bridge, and
+     * a process builds several), and a warning on every one of those would be worse than the silence it
+     * replaced — a channel nobody reads is how the original failure stayed invisible for so long.
+     */
+    @Test
+    fun coreReplacingItsOwnToolNameIsNotReported() {
+        val tools = ToolRegistry()
+        tools.register(CoreSideCluster.Commentary::class.java) { _, _ -> mapOf("core" to 1) }
+
+        val captured = mutableListOf<String>()
+        val sink = LogSink { event -> captured += "${event.channel}|${event.message}" }
+        LogDispatcher.addSink(sink)
+        try {
+            tools.register(CoreSideCluster.Commentary::class.java) { _, _ -> mapOf("core" to 2) }
+        } finally {
+            LogDispatcher.removeSink(sink)
+        }
+
+        assertTrue(
+            captured.none { "displaced" in it },
+            "core replacing its own registration is not a collision and must stay quiet: $captured",
         )
     }
 
