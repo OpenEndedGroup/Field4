@@ -48,6 +48,43 @@ are two, and they could hardly be more different:
 Neither is a superset of the other. That is what makes running both on one source a *measurement*
 rather than a formality.
 
+### The vocabulary, drawn
+
+Six primitives and a swept profile, each built through `buildSolid` and drawn in its own panel. Five
+of the six lower **exactly** — `exactRefusal()` returns `null` for `sphere`, `cuboid`, `cylinder`,
+`cone` and `torus`, and for `Profile.star(…).extruded(…)` too, twist and all. `gyroid` is the one
+that refuses, which is why it is not in the picture: there is no CSG tree whose surface is a triply
+periodic minimal surface.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/vocabulary.png" wait="8.0" capture="box" open-outputs="true" padding="20"}
+:::static
+import afield.solidsl.*
+
+// Every panel frames its own bounds, so the small shapes are not lost beside the large ones.
+val q = SolidQuality(segments = 64, edgeLengthFraction = 1.0 / 55.0)
+fun mesh(e: SolidExpr) = e.buildSolid(q).let { b ->
+    val m = b.solid.toTriMesh(normals = true); b.close(); m
+}
+
+threeGrid(
+    "sphere(1.0)" to mesh(sphere(1.0)),
+    "cuboid(1.6, 1.2, 0.8)" to mesh(cuboid(1.6, 1.2, 0.8)),
+    "cylinder(1.6, 0.7)" to mesh(cylinder(1.6, 0.7)),
+    "cone(1.6, 0.8)" to mesh(cone(1.6, 0.8)),
+    "torus(1.0, 0.32)" to mesh(torus(1.0, 0.32)),
+    "star(6).extruded(twist 90)" to mesh(Profile.star(6, 0.9, 0.45).extruded(1.2, twistDegrees = 90.0)),
+    channel = "vocab", columns = 3, height = 470,
+    view = MeshView(width = 300, height = 210, yawDegrees = 32.0, pitchDegrees = 16.0, wireframe = true),
+)
+```
+
+![Six panels in two rows of three: a sphere; a rectangular block drawn with only a few large triangles per face; a cylinder lying at an angle with its flat end visibly faceted into straight segments; a cone seen close to base-on with its apex to the lower left; a torus; and a six-pointed star column seen nearly end-on, its points sweeping round as the extrusion twists. All are flat grey with the triangle wireframe drawn, each framed to its own bounds so the small shapes are not lost beside the large ones](assets/solid_notation/vocabulary.png)
+
+The faceting is the honest part. `cylinder(1.6, 0.7)` with `segments = 64` is a 64-gon prism on the
+exact path, not a true cylinder — the table above says so and the picture shows it. Raise `segments`
+and the silhouette tightens; the *field* lowering of the same expression has a true circular
+cross-section at every resolution and gets the surface wrong in a different way instead.
+
 ## The headline: two evaluations, and how far apart they land
 
 `crossCheck` builds a shape both ways and compares volume, surface area, genus and a symmetric
@@ -207,6 +244,39 @@ The last two are not "we did not get to it". An exact-looking answer is availabl
 *wrong* answer, systematically, in a direction that does not shrink. Filing them beside the smooth
 blends would flatten a real distinction.
 
+All four refuse, and each says something different. They are still perfectly drawable — the field
+lowering takes every one of them — so the refusal costs you the *exact* backend, not the shape.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/refusals.png" wait="8.0" capture="box" open-outputs="true" padding="20"}
+:::static
+import afield.solidsl.*
+
+val q = SolidQuality(segments = 64, edgeLengthFraction = 1.0 / 70.0)
+
+val blend = smoothUnion(sphere(0.5).at(0.0, 0.0, 1.0), cylinder(1.9, 0.26), k = 0.28)
+val rounded = cuboid(1.2, 1.2, 1.2).rounded(0.18)
+// A shelled sphere is a sphere from the outside, so cut it open — otherwise the picture
+// shows nothing the plain sphere does not.
+val shellCut = sphere(0.9).shelled(0.08) - cuboid(1.2, 1.2, 1.2).at(0.9, 0.0, 0.9)
+// The gyroid has no window of its own and borrows the cuboid's, which is the bounds story below.
+val gyr = gyroid(6.0, 0.30) and cuboid(2.6, 2.6, 2.6)
+
+listOf("blend" to blend, "rounded" to rounded, "shell" to shellCut, "gyroid" to gyr).forEach { (n, e) ->
+    println("%-8s refuses=%s".format(n, e.exactRefusal() != null))
+}
+
+threeGrid(
+    "smoothUnion(k = 0.28)" to blend.marchedMesh(q),
+    "cuboid.rounded(0.18)" to rounded.marchedMesh(q),
+    "sphere.shelled(0.08), cut open" to shellCut.marchedMesh(q),
+    "gyroid(6.0) and cuboid(2.6)" to gyr.marchedMesh(q),
+    channel = "refusals", columns = 2, height = 540,
+    view = MeshView(width = 330, height = 250, yawDegrees = 24.0, pitchDegrees = 8.0, wireframe = true),
+)
+```
+
+![Four panels. Top left, a ball with a cylindrical post emerging from it, the two merging into each other without a crease at the join. Top right, a cube whose edges and corners are all rounded, drawn in a dense uniform mesh. Bottom left, a sphere with a rectangular notch cut out of its side, the opening revealing a hollow interior and a wall of visible, even thickness. Bottom right, a triply periodic lattice of smooth interlocking surfaces filling a cube and cut off flat at the cube's six faces](assets/solid_notation/refusals.png)
+
 Note what is **not** on the list. Every `Profile` node lowers exactly — including `Profile.offset`,
 because `Section.offset(d, JoinType.ROUND)` is definitionally the Minkowski sum with a disc, which is
 *exactly* what `sdf − d` means. A rounded slot has an exact form and a rounded solid does not, and
@@ -230,6 +300,53 @@ Measured on that part: **39,552 triangles against 110,168** for the naive whole-
 same edge length — 2.79×, and the plate's six faces stay six faces. The result is still one
 guaranteed-closed Manifold solid, because the exact operand and the marched one meet in a real batch
 boolean.
+
+The ratio is a property of the part, not of the method, and it is worth seeing a case where it is
+nearly 1. The plate below is smaller relative to its boss, so the marched subtree's bounds cover most
+of the shape and the hybrid saves almost nothing in triangle count — **29,632 against 31,240**, a
+factor of 1.05.
+
+Which makes it the more useful picture, because the count is not where the difference lives. Look at
+the *tessellation* in the two panels below. On the left the plate is a handful of large triangles
+with long diagonals across each face, and each bore is a clean swept strip: those are exact planes
+and exact cylinders, and they are coarse because a plane needs two triangles and no more. Only the
+blended boss carries a fine mesh, because only the boss was sampled. On the right the same part is
+uniformly dense — the flat faces are diced into thousands of triangles that buy nothing, because
+marching cubes has no way to know a plane is a plane. Nearly the same triangle budget, spent
+completely differently.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/hybrid.png" wait="8.0" capture="box" open-outputs="true" padding="20"}
+:::static
+import afield.solidsl.*
+
+val q = SolidQuality(segments = 96, edgeLengthFraction = 1.0 / 80.0)
+
+val plate = cuboid(3.2, 2.2, 0.42)
+val bores = unionOf(listOf(-1.1 to -0.7, 1.1 to -0.7, -1.1 to 0.7, 1.1 to 0.7).map { (x, y) ->
+    cylinder(2.0, 0.30, segments = 96).at(x, y, 0.0)
+})
+val boss = smoothUnion(
+    sphere(0.42, segments = 96).at(0.0, 0.0, 0.62),
+    cylinder(1.1, 0.26, segments = 96).at(0.0, 0.0, 0.30),
+    k = 0.22,
+)
+val part = (plate - bores) + boss
+
+val build = part.buildSolid(q)
+println(build.report())
+val naive = part.marchedMesh(q)
+println("hybrid ${build.solid.triangleCount} triangles, naive ${naive.triangleCount}")
+
+threeGrid(
+    "buildSolid — exact plate, marched boss" to build.solid.toTriMesh(normals = true),
+    "marchedMesh — everything approximated" to naive,
+    channel = "hybrid", columns = 2, height = 360,
+    view = MeshView(width = 360, height = 300, yawDegrees = 34.0, pitchDegrees = 24.0, wireframe = true),
+)
+build.close()
+```
+
+![Two panels of the same part: a rectangular plate with four corner holes and a domed boss blended into its centre. The left panel, the hybrid build, draws the plate as a handful of large flat triangles with long diagonals and the bores as clean swept strips, while only the central boss carries a fine mesh. The right panel, fully marched, is uniformly finely triangulated everywhere including the flat faces](assets/solid_notation/hybrid.png)
 
 This needs the expression to know its own extent, which is the first thing a notation buys that a
 closure cannot: `SolidExpr.bounds()` is computed **symbolically**, with nothing sampled and nothing

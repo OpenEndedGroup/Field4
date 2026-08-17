@@ -170,6 +170,8 @@
   {"doc": "rewrite_strategies_demo", "box": "rw_seq", "codeSha256": "68eae0103f0c53bf", "codeLines": 9, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "rewrite_strategies_demo", "box": "rw_subset", "codeSha256": "90f63b3f13cdf9a9", "codeLines": 10, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "rewrite_strategies_demo", "box": "rw_topdown", "codeSha256": "5be627146c6725b4", "codeLines": 7, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "solidsl_notation", "box": "solidsl_part", "codeSha256": "5e4b2181acb9e773", "codeLines": 95, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "solidsl_notation", "box": "solidsl_shader", "codeSha256": "c53cc13eada5bc71", "codeLines": 61, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "spatial_geometry_examples", "box": "spatial_apollonius", "codeSha256": "18bc6f672db02104", "codeLines": 62, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "spatial_geometry_examples", "box": "spatial_apollonius_sweep", "codeSha256": "71d0a7b3c2fe7568", "codeLines": 50, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "spatial_geometry_examples", "box": "spatial_clustering", "codeSha256": "0e3d6de7ecb3715f", "codeLines": 75, "receivers": ["afield.Box"], "preamble": ""},
