@@ -361,6 +361,32 @@ class CitationContractTest {
     }
 
     /**
+     * Every citation resolves by agreeing with the **whole** cited path suffix.
+     *
+     * [CitationGuard.locate] used to fall back to "the only file with this name, wherever it is", which
+     * accepts a citation whose directory component is simply wrong. That fallback resolved 0 of the 222
+     * citations here when measured, so removing it cost nothing and closed a way for a misleading path to
+     * live in a doc forever. This asserts the corpus still does not need it.
+     */
+    @Test
+    fun everyCitationResolvesByPathSuffixNotByBareName() {
+        val index = CitationGuard.indexFilesUnder(root)
+        val laundered = pages()
+            .flatMap { p -> CitationGuard.parse(p, p.relativeTo(root).path) }
+            .filterNot { File(root, it.path).isFile }
+            .filter { c ->
+                val byName = index[c.path.substringAfterLast('/')].orEmpty()
+                byName.none { it.path.endsWith("/${c.path}") } && byName.size == 1
+            }
+        assertTrue(
+            laundered.isEmpty(),
+            "${laundered.size} citation(s) name a directory that does not exist and were only resolving " +
+                "because the filename happens to be unique:\n" +
+                laundered.joinToString("\n") { "  ${it.describe()}" }
+        )
+    }
+
+    /**
      * Not a test: the mechanical refresh of advisory line numbers, gated behind an environment
      * variable so an ordinary build can never rewrite tracked files.
      *

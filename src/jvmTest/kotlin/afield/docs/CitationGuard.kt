@@ -280,12 +280,24 @@ object CitationGuard {
      * The file a citation path points at, or null when it is missing or ambiguous.
      *
      * Exact repo-relative paths win outright, so an unambiguous citation never pays for the index.
+     *
+     * A match must agree with the **whole** cited path suffix. There used to be a
+     * `?: byName.singleOrNull()` fallback here, which accepted a uniquely-named file even when the
+     * *directory* the citation named did not exist — so `wrong/dir/FLine.kt` resolved happily to
+     * `graphics/FLine.kt` and a misleading path could sit in a doc indefinitely with nothing to say so.
+     * It is written in the shape this repo has learned to distrust: a `single…() ?: first…()`-style
+     * pair where the second half quietly undoes the first half's insistence on being unambiguous.
+     *
+     * Measured before removing it: it resolved **0** of the corpus's 222 citations, every one of which
+     * matched on the full suffix instead. So it was dead code whose only reachable effect was to launder
+     * an error, and [CitationContractTest.everyCitationResolvesByPathSuffixNotByBareName] asserts the
+     * corpus still does not need it.
      */
     fun locate(root: File, path: String, index: Map<String, List<File>> = fileIndex): File? {
         File(root, path).takeIf { it.isFile }?.let { return it }
-        val byName = index[path.substringAfterLast('/')].orEmpty()
-        val suffix = byName.filter { it.path.endsWith("/$path") }
-        return suffix.singleOrNull() ?: byName.singleOrNull()
+        return index[path.substringAfterLast('/')].orEmpty()
+            .filter { it.path.endsWith("/$path") }
+            .singleOrNull()
     }
 
     /**
