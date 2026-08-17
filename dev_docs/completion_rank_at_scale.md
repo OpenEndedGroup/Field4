@@ -300,13 +300,53 @@ file still resolve a contested simple name by first match — `getKDocForSymbol`
 `bestDefinitionForSimpleName`, `resolveSourceCard`. This repository has been burned by that shape before:
 `~/.afield/filestore` rewritten between runs once gave four different ranks for one caret.
 
-None of the three is on this path — `classifyMetadata` reaches the index only through
-`getCompletionCategoryForSymbol`, and since `69ca4d5cb` that either answers exactly (`Owner.member`),
-scopes the vote to `declaredIn`'s package, declines, or requires the tree to be unanimous; the other three
-are the documentation and source-card paths. But that is an argument, so
-`the corpus's categories do not depend on the order the source tree was walked` **asserts** it: the
-definition list is shuffled with a fixed seed before the index is built, and the classified spec — which
-carries the category of all 6 679 distinct rows — must come out byte-identical.
+The argument was that none of the three is on this path, because `classifyMetadata` reaches the index only
+through `getCompletionCategoryForSymbol`. **That argument is wrong.** The test
+`the corpus's categories do not depend on the order the source tree was walked` shuffles the definition
+list with a fixed seed and compares the category of all 6 679 distinct rows. It is a **deliberate red**:
+
+> **68 of 6 679 distinct recorded rows (1.0%) get a different category when the source tree is walked in a
+> different order.**
+
+Discriminated from the obvious alternative — a `latestIndex` cache confound serving both runs one index —
+by a marker assertion that the two runs report *different* first definitions. They do, so the permutation
+reached the index and the disagreement belongs to the classifier, not to the harness.
+
+The mechanism is visible in every disagreeing row: `declaredIn` is a **package**, never a class. It is the
+top-level-extension branch that `69ca4d5cb` itself added,
+
+```kotlin
+val inPackage = matches.filter { it.filePath.contains("/$packagePath/") }
+if (inPackage.isNotEmpty()) return inPackage.firstNotNullOfOrNull { it.categoryOrNull() }
+```
+
+and `afield.stdlib` holds files carrying different `@file:CompletionCategory` values, so
+`firstNotNullOfOrNull` answers with whichever file the walk reached first:
+
+| row | `declaredIn` | one walk order | another |
+| --- | --- | --- | --- |
+| `max(` | `afield.stdlib` | Math | Graphics |
+| `main(` | `afield.stdlib` | Math | Visualization |
+| `lineTo(` | `afield.stdlib` | Graphics | Solvers |
+| `summary(` | `afield.stdlib` | Function | Polytopes |
+| `loop(` | `afield` | Audio | Synthesis |
+
+So this is precisely the defect `69ca4d5cb` diagnosed for the *name* vote, surviving one layer down in the
+vote that replaced it — and it is the shape flagged in `KotlinSourceIndex` and never reproduced until now.
+**The fix is the same one-liner:** take `inPackage`'s distinct categories and return `singleOrNull()`, so a
+contested package declines and falls through to path inference instead of borrowing whichever file sorted
+first. Not applied here, because it moves categories and therefore moves both the seven-case rank ratchet
+and the floors above, and a ratchet re-cut in the last half hour of a session is how this journal has been
+burned twice.
+
+**What it does to the numbers in this document — it bounds them rather than voiding them.** 1.0% of distinct
+rows may carry a machine-dependent category, so an individual rank can wobble and the aggregates carry that
+noise. It does not plausibly overturn the refusal, and the reason is inside the refusal's own evidence: R2
+rewrote the weight of *every* row's category, a far larger perturbation than a category change on 1% of
+rows, and moved visible recall by 0.000. A conclusion that survives rewriting the whole weight table does
+not turn on 68 rows. But that is an argument about magnitudes rather than a measurement, so the honest status
+of every figure here is: **measured on this checkout, with a known 1.0% order-dependent component, pending
+that one-line fix and a re-measure.**
 
 ## What this says to do instead
 

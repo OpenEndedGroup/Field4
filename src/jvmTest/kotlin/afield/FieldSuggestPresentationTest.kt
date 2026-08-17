@@ -321,23 +321,7 @@ class FieldSuggestPresentationTest {
      * depends on the receiver the caret sits on, so it is resolved case by case.
      */
     private fun rankMetricsSpec(): String {
-        val rows = ArrayList<List<String>>()
-        val cases = ArrayList<List<String>>()
-        val meta = LinkedHashMap<String, String>()
-        for (line in gzipResource("/fieldSuggest/rank-corpus.tsv.gz").lineSequence()) {
-            if (line.isEmpty()) continue
-            val f = line.split('\t')
-            when (f[0]) {
-                "#meta" -> meta[f[1]] = f[2]
-                "R" -> rows.add(f.drop(1))
-                "C" -> cases.add(f.drop(1))
-            }
-        }
-        assertTrue(
-            rows.size >= 5000 && cases.size >= 400,
-            "the wide rank corpus looks empty (${rows.size} rows, ${cases.size} carets) — regenerate it " +
-                "with tools/record_rank_corpus.py (see dev_docs/completion_rank_at_scale.md)"
-        )
+        val (rows, cases, meta) = corpusRecording()
 
         // One classification per distinct row. `declaredIn` is what makes the answer right — it turns "what
         // category is `scale`?", which has 42 answers in this tree, into "what category is `FLine.scale`?" —
@@ -345,11 +329,7 @@ class FieldSuggestPresentationTest {
         var withDeclaredIn = 0
         val classified = rows.map { r ->
             if (r[4].isNotBlank()) withDeclaredIn++
-            KotlinCompletionSupport.classifyMetadata(
-                Metadata(icon = r[3], tail = r[2], text = r[0], displayText = r[1], category = ""),
-                r[0],
-                if (r[4].isBlank()) emptyMap() else mapOf(AaCompletionClient.DECLARED_IN to r[4]),
-            ).category
+            categoryOfRow(r)
         }
         assertTrue(
             withDeclaredIn >= rows.size / 2,
@@ -465,27 +445,104 @@ class FieldSuggestPresentationTest {
      * This repository has been burned by that exact shape: `~/.afield/filestore` rewritten between runs
      * gave four different ranks for one caret, which is why [withHermeticSourceIndex] exists at all.
      *
-     * The argument is that none of those three is on this path — `classifyMetadata` reaches the index only
-     * through [KotlinSourceIndex.getCompletionCategoryForSymbol], which since `69ca4d5cb` either answers
-     * exactly (`Owner.member`), scopes the vote to `declaredIn`'s package, declines, or requires the tree
-     * to be unanimous, and the other three are the documentation and source-card paths. But an argument is
-     * not a measurement, so this permutes the definition list — the one degree of freedom a filesystem
-     * walk has — and requires the spec, which carries the category of all 6 679 distinct rows, to come out
-     * byte-identical.
+     * The argument was that none of those three is on this path — `classifyMetadata` reaches the index only
+     * through [KotlinSourceIndex.getCompletionCategoryForSymbol]. That argument is **wrong**, and this test
+     * is a **deliberate red** that says so.
+     *
+     * ### The verdict (2026-08-17): a genuine order dependency, 68 of 6 679 rows
+     *
+     * Discriminated from the obvious alternative — a `latestIndex` cache confound making both runs read one
+     * index — by the marker assertion below: the two runs report *different* first definitions, so the
+     * permutation really reached the index and the disagreement is the classifier's, not the harness's.
+     *
+     * The mechanism is visible in every disagreeing row: `declaredIn` is a **package**, never a class. So
+     * it is the top-level-extension branch that `69ca4d5cb` added,
+     *
+     *     val inPackage = matches.filter { it.filePath.contains("/$packagePath/") }
+     *     if (inPackage.isNotEmpty()) return inPackage.firstNotNullOfOrNull { it.categoryOrNull() }
+     *
+     * where `afield.stdlib` holds files carrying *different* `@file:CompletionCategory` values, so
+     * `firstNotNullOfOrNull` answers with whichever file the walk reached first: `max` is `Math` or
+     * `Graphics`, `main` is `Math` or `Visualization`, `lineTo` is `Graphics` or `Solvers`. It is exactly the
+     * defect `69ca4d5cb` fixed for the *name* vote, surviving one layer down in the vote it replaced it
+     * with — and it is the shape flagged in `KotlinSourceIndex` and never reproduced until now.
+     *
+     * **The fix is the same one-liner as last night's:** take `inPackage`'s distinct categories and return
+     * `singleOrNull()`, so a contested package declines and falls through to path inference instead of
+     * borrowing whichever file sorted first. Deliberately not done here: it moves categories, so it moves
+     * the seven-case rank ratchet and the corpus floors, and a ratchet re-cut at the end of a session is
+     * how this journal has been burned before. Left red on purpose — see
+     * `dev_docs/completion_rank_at_scale.md` for the bound it puts on the numbers in that document.
      */
     @Test
     fun `the corpus's categories do not depend on the order the source tree was walked`() {
-        val inScanOrder = withHermeticSourceIndex { rankMetricsSpec() }
-        // A fixed seed, so a failure here is reproducible. One permutation is enough: the claim is that
-        // order is not consulted at all, and a single permutation that changes something refutes it.
-        val shuffled = withHermeticSourceIndex(shuffleSeed = 20260817L) { rankMetricsSpec() }
-        assertEquals(
-            inScanOrder, shuffled,
-            "the classified corpus differs when the source index is built in a different order — some " +
-                "row's category comes from a first-match-wins lookup, so every rank measured over this " +
-                "corpus is partly a measurement of this machine's filesystem"
+        val rows = corpusRecording().first
+
+        // Classify every distinct row under one definition order, and report which order was actually in
+        // force. The marker is what discriminates a real finding from a broken test: if both runs report
+        // the same first definition then the permutation never reached the index — most likely
+        // `KotlinSourceIndex.latestIndex`, a cached static, answering both times — and any verdict below
+        // would be about this harness rather than about the classifier.
+        fun classifyUnder(seed: Long?): Pair<String, List<String>> =
+            withHermeticSourceIndex(shuffleSeed = seed) {
+                val index = KotlinSourceIndex.loadIndex()
+                    ?: fail("no index is readable inside the hermetic block")
+                index.definitions.first().name to rows.map { categoryOfRow(it) }
+            }
+
+        val (markerA, inScanOrder) = classifyUnder(null)
+        val (markerB, shuffled) = classifyUnder(20260817L)
+        assertTrue(
+            markerA != markerB,
+            "both runs saw the same index (first definition `$markerA` either way), so the permutation " +
+                "never reached KotlinSourceIndex and this test is measuring nothing. Most likely " +
+                "`latestIndex` is being reused across the two hermetic blocks."
         )
+
+        val disagreements = rows.indices.filter { inScanOrder[it] != shuffled[it] }
+        if (disagreements.isNotEmpty()) {
+            val sample = disagreements.take(10).joinToString("\n") { i ->
+                "    ${rows[i][0]}  declaredIn=${rows[i][4].ifBlank { "<none>" }}  " +
+                    "scan-order=[${inScanOrder[i]}]  shuffled=[${shuffled[i]}]"
+            }
+            fail(
+                "${disagreements.size} of ${rows.size} distinct recorded rows get a different category when " +
+                    "the source tree is walked in a different order, so a first-match-wins lookup is still " +
+                    "reachable from `classifyMetadata` and every rank measured over this corpus inherits " +
+                    "this machine's filesystem order:\n$sample"
+            )
+        }
     }
+
+    /** The checked-in recording: interned rows, cases, and the `#meta` header. */
+    private fun corpusRecording(): Triple<List<List<String>>, List<List<String>>, Map<String, String>> {
+        val rows = ArrayList<List<String>>()
+        val cases = ArrayList<List<String>>()
+        val meta = LinkedHashMap<String, String>()
+        for (line in gzipResource("/fieldSuggest/rank-corpus.tsv.gz").lineSequence()) {
+            if (line.isEmpty()) continue
+            val f = line.split('\t')
+            when (f[0]) {
+                "#meta" -> meta[f[1]] = f[2]
+                "R" -> rows.add(f.drop(1))
+                "C" -> cases.add(f.drop(1))
+            }
+        }
+        assertTrue(
+            rows.size >= 5000 && cases.size >= 400,
+            "the wide rank corpus looks empty (${rows.size} rows, ${cases.size} carets) — regenerate it " +
+                "with tools/record_rank_corpus.py (see dev_docs/completion_rank_at_scale.md)"
+        )
+        return Triple(rows, cases, meta)
+    }
+
+    /** The category the popup would receive for one recorded row, through the server's own classifier. */
+    private fun categoryOfRow(r: List<String>): String =
+        KotlinCompletionSupport.classifyMetadata(
+            Metadata(icon = r[3], tail = r[2], text = r[0], displayText = r[1], category = ""),
+            r[0],
+            if (r[4].isBlank()) emptyMap() else mapOf(AaCompletionClient.DECLARED_IN to r[4]),
+        ).category
 
     private fun gzipResource(path: String): String {
         val stream = javaClass.getResourceAsStream(path)
