@@ -4,32 +4,41 @@
 for — should `CATEGORY_WEIGHT` learn the server's category vocabulary? — is **refused, with the
 number**. The exposure figure that has stood in `completion_aa_sidecar.md` since 2026-08-07 (11 of the
 16 categories the server sends score 0; measured here at **89.6% of all recorded rows**) is real and
-**not load-bearing**: closing it changes visible recall by 0.000 and MRR by +0.005.
+**not load-bearing**: closing it changes visible recall by **0.000**, and the +0.005 of MRR it appears to
+buy is **below this corpus's resolution** (see the walk-order section — a 1.0% order-dependent category
+component is plausibly larger than 0.005 of MRR). The refusal rests on the recall figure, which is
+structurally protected; nobody should bank the MRR delta as a gain.
 
 Everything below is reproducible from this checkout. Nothing in it is an estimate.
 
 > ## Scope: this measures the AA (`k2-aa`) backend, and the editor may not be on it
 >
 > **Read this before quoting any number here.** These 578 carets were recorded by POSTing to the
-> code-use semantic sidecar's `/complete`, and the sidecar's own reply said `backend: "k2-aa"`
-> (`tools/record_rank_corpus.py` prints it, and refuses to record until candidates arrive). On that path
-> the two terms this measurement turns on are **present**: 5 018 of the 6 679 distinct recorded rows
-> (75.1%) carry a `declarationProximity` — `own` 4 047, `supertype` 932, `universal` 39 — and
-> `CommonMemberPrior` resolves a prior for FLine's eight named members with the scores
-> `fieldSuggest.js` expects (40, 38, 36, 34, 32, 30 …). Both are asserted, not observed.
+> code-use semantic sidecar's `/complete`, whose reply stamps its own `backend`. That string is now
+> written into the corpus header (`#meta backend k2-aa`) and asserted, so the claim outlives the session
+> that made it; it used to be a console line that nothing re-checked. (`/health` on the same sidecar
+> answers `k2-standalone` — two endpoints' vocabularies for one process, not a disagreement.)
 >
-> A capture of **the real popup** in a live Field, taken the same day on branch 3, found the opposite:
-> `declarationProximity` empty on all 80 rows and scores descending by exactly 0.012, which is
-> `originalIndex * 0.012` with every other term at zero — the signature of the **K1 fallback**, which
-> supplies neither proximity nor the prior. Reproduced twice there.
+> The structural leg is the stronger one. `Metadata.declarationProximity` has exactly **one** producer in
+> the tree — `execution.kt:3226`, copying `extraInfo[AaCompletionClient.DECLARATION_PROXIMITY]`, which
+> only the AA client populates — so a row carrying it **cannot** have come from K1. 5 018 of the 6 679
+> distinct recorded rows (75.1%) carry one: `own` 4 047, `supertype` 932, `universal` 39. And
+> `CommonMemberPrior` resolves a prior for FLine's named members at the scores `fieldSuggest.js` expects
+> (40, 38, 36, 34, 32, 30 …). Both asserted, not observed.
 >
-> So the two paths are **different backends**, and this document describes the AA one. What is measured
-> here — that `CATEGORY_WEIGHT` is inert, that sectioning is not the lever, that owned and foreign
-> receivers are a factor of ten apart — is a statement about a popup served by the sidecar. It says
-> **nothing** about a popup served by K1, where on branch 3's evidence category weight is also inert but
-> for a different reason (no categories arriving at all), and where the prior contributes nothing because
-> it never crosses the wire. Which backend a given user's editor is on, and why K1 served that capture, is
-> branch 3's task and is deliberately not touched here.
+> **Mind the direction of that inference.** What is used here is *present ⇒ AA*. The converse,
+> *blank ⇒ K1*, is **false**, and an earlier draft of this note leaned on it: proximity is populated only
+> for **member** completions, so a genuine AA reply to a non-member caret carries none at all — branch 3
+> demonstrated exactly that, an AA response with it blank on all 44 rows. The retracted premise is not
+> needed. What does still stand from branch 3's live capture is the other half: scores descending by
+> exactly `originalIndex * 0.012`, i.e. every other term at zero, which is a signature no AA-served
+> member panel produces.
+>
+> So this document describes the **AA** path. What is measured here — that `CATEGORY_WEIGHT` is inert,
+> that sectioning is not the lever, that owned and foreign receivers are a factor of ten apart — is a
+> statement about a popup served by the sidecar, and says **nothing** about one served by the K1 fallback,
+> where the prior contributes nothing because it never crosses the wire at all. Which backend a given
+> user's editor is on is branch 3's task and is deliberately not touched here.
 >
 > The one thing that would make this document wrong rather than merely scoped is if the *recording* had
 > been served by K1 too — because a silently absent prior looks exactly like a prior that does not help.
@@ -213,7 +222,13 @@ the same recorded payloads; only the constant differs.
 
 Read R2 against R0. **A rebalance that teaches `CATEGORY_WEIGHT` every category the server sends —
 taking the exposure figure from 89.6% of rows to 10.6% — changes visible recall by 0.000 in all three
-forms and MRR by +0.005.** Nobody would feel that. Read R1 against R0: the same rebalance at a
+forms.** Nobody would feel that. The +0.005 of MRR in the same row is **not** a gain to bank: this corpus
+carries a 1.0% order-dependent category component (see below), which is plausibly a larger perturbation
+than 0.005 of MRR, so that figure is **below resolution** and the honest reading is "indistinguishable
+from zero". The recall column is the load-bearing one, and it is the one with structural protection:
+`filterAndLimit` ranks, truncates to 80, and only *then* groups, so grouping cannot change which rows
+survive — `probe.mjs` fails if any answer is visible in one order and not the other. Read R1 against R0:
+the same rebalance at a
 magnitude large enough to reorder sections costs **5.5 points of bare-dot contested recall**, 13 answers
 pushed off the screen entirely, because the 80 rows are a fixed budget and lifting one bucket by 24
 points evicts another bucket's rows. Recall is a cliff; a rank of 2 versus 1 is not. That trade is the

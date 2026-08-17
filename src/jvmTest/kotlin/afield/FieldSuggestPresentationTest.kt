@@ -336,19 +336,32 @@ class FieldSuggestPresentationTest {
             "only $withDeclaredIn of ${rows.size} distinct rows carry `declaredIn`, so categories are being " +
                 "resolved by bare name and these ranks are the old wrong ones"
         )
-        // WHICH BACKEND RECORDED THIS. `declarationProximity` is sent only by the AA sidecar; the K1
-        // fallback supplies neither it nor `commonMemberRank`. A live-popup capture taken on 2026-08-17
-        // found proximity empty on all 80 rows and scores descending by exactly `originalIndex * 0.012` —
-        // the signature of K1 having served it. If this corpus were recorded through that path, the prior
-        // and the largest negative term would both be silently absent, and "the weights are inert" would be
-        // a measurement of their absence rather than of the ranker. Measured here: 5018 of 6679 (75.1%).
+        // WHICH BACKEND RECORDED THIS, asserted two independent ways, because every conclusion drawn from
+        // this corpus is a statement about one completion backend. The K1 fallback supplies neither
+        // `declarationProximity` nor `commonMemberRank`, so a corpus recorded through it would measure a
+        // ranker with its terms switched off, and the null result would be an artefact of their absence.
+        //
+        // First, what the server said. `/complete` stamps its own `backend` on the reply, and the recorder
+        // now writes it into the corpus header, so the claim outlives the session that made it — it used to
+        // be a console line and nothing re-checked it.
+        assertEquals(
+            "k2-aa", meta["backend"],
+            "the corpus header reports backend `${meta["backend"]}`, not the AA sidecar's `k2-aa` — read the " +
+                "scope note at the top of dev_docs/completion_rank_at_scale.md before trusting a number here"
+        )
+        // Second, structurally, and this is the stronger leg. `Metadata.declarationProximity` has exactly
+        // ONE producer in the tree — `execution.kt:3226`, copying
+        // `extraInfo[AaCompletionClient.DECLARATION_PROXIMITY]`, which only the AA client populates — so a
+        // row carrying it CANNOT have come from K1. Note the direction: this asserts "present ⇒ AA". The
+        // converse, "blank ⇒ K1", is FALSE and must not be used, because proximity is populated only for
+        // member completions, so a genuine AA reply to a non-member caret carries none of it. Measured
+        // here: 5018 of 6679 distinct rows (75.1%) — own 4047, supertype 932, universal 39.
         val withProximity = rows.count { it[5].isNotBlank() }
         assertTrue(
             withProximity >= rows.size / 2,
-            "only $withProximity of ${rows.size} distinct rows carry `declarationProximity`, which the K1 " +
-                "fallback never sends — so this corpus was probably recorded off the AA path and every " +
-                "conclusion drawn from it is about a ranker running with its terms switched off. See the " +
-                "scope note at the top of dev_docs/completion_rank_at_scale.md."
+            "only $withProximity of ${rows.size} distinct rows carry `declarationProximity`, whose only " +
+                "producer is the AA path — so this corpus was probably not recorded through it, and every " +
+                "conclusion drawn from it is about a ranker running with its terms switched off."
         )
 
         val out = StringBuilder(16 shl 20)

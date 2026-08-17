@@ -508,7 +508,9 @@ the honest next step is to widen `rank-payloads.json` and then rebalance against
 > `/complete`, both caret forms, 284 of them bare dots — and the rebalance was then *measured* rather than
 > argued. Teaching `CATEGORY_WEIGHT` every category the server sends, which takes this exposure figure from
 > **89.6% of recorded rows** to 10.6%, moves visible recall by **0.000** in all three caret forms and MRR
-> by **+0.005**. Doing the same thing at a magnitude large enough to reorder sections costs **5.5 points of
+> by +0.005 -- a figure **below this corpus's resolution**, not a gain, since the corpus carries a 1.0%
+> order-dependent category component that is plausibly larger. The recall figure is the load-bearing one.
+> Doing the same thing at a magnitude large enough to reorder sections costs **5.5 points of
 > bare-dot contested recall** — 80 rows are a fixed budget, so lifting one bucket evicts another's rows, and
 > recall is a cliff where a rank of 2 versus 1 is not. Changing `PROXIMITY_SCORE`'s `universal` term, the
 > largest single term in the ranker, by ±55 points moves nothing measurable either.

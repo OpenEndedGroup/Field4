@@ -126,10 +126,17 @@ def main() -> int:
     # takes ~1 min) rather than stalling a keystroke, so a recorder that trusted the first reply would
     # write an empty corpus and a green-looking gate over nothing.
     probe = {"snippet": "val s = \"x\"\ns.", "cursor": 14, "classpathRoots": roots, "limit": 20}
+    backend = ""
     for attempt in range(60):
         reply = post(url, probe, args.timeout)
         if reply.get("candidates"):
-            print(f"[record] AA session warm after {attempt * 5}s ({reply.get('backend')})", flush=True)
+            # WHICH BACKEND ANSWERED — persisted into `#meta` below, not merely printed. Every conclusion
+            # drawn from this corpus is a statement about one completion backend: the K1 fallback supplies
+            # neither `proximity` nor `commonMemberRank`, so a corpus recorded through it would measure a
+            # ranker with its terms switched off and the null result would be an artefact. This used to be
+            # a console line in a session that then ended, which nothing could re-check.
+            backend = str(reply.get("backend") or "")
+            print(f"[record] AA session warm after {attempt * 5}s ({backend})", flush=True)
             break
         print(f"  … {reply.get('message', '')!r}", flush=True)
         time.sleep(5)
@@ -190,6 +197,7 @@ def main() -> int:
     with gzip.open(out, "wt", encoding="utf-8", compresslevel=9) as f:
         f.write(f"#meta\tversion\t1\n")
         f.write(f"#meta\tcorpus\t{args.corpus}\n")
+        f.write(f"#meta\tbackend\t{backend}\n")
         f.write(f"#meta\tlimit\t{args.limit}\n")
         f.write(f"#meta\tcases\t{len(cases)}\n")
         f.write(f"#meta\trows\t{len(rows)}\n")
