@@ -433,11 +433,32 @@ commit above moved its bucket and then raised its floor.
 96% recall while `moveTo` was nowhere on screen (present in the response, index 159 of 249).
 
 The mechanism, measured rather than assumed, by running the shipped `fieldSuggest.js` verbatim over recorded
-payloads: **at an empty prefix every row scores alike**, the client's sort is stable, and the 80-row cut
-then keeps whatever order the server sent. Replaying the same payloads with the answer moved to the front
-puts every case at rank 1, which is what pins it down. So "ranking is client-side" is true with a prefix and
-false without one, and at a bare dot **the server's order is the user-visible order**. Raising the transport
-cap from 200 was necessary and not sufficient: it moved the cut from 200-by-alphabet to 80-by-alphabet.
+payloads: at an empty prefix `fuzzyScoreItem` returns 0 for every row (`fuzzyScoreText` opens with
+`if (!q) return 0`), the client's sort is stable, and the 80-row cut keeps whatever order survives the
+*remaining* terms. So "ranking is client-side" is true with a prefix and much weaker without one. Raising the
+transport cap from 200 was necessary and not sufficient: it moved the cut from 200-by-alphabet to
+80-by-alphabet.
+
+> **Corrected 2026-08-17.** This paragraph used to say "**at an empty prefix every row scores alike**", so
+> that the 80-row cut kept the server's order verbatim. That is not true, and believing it cost a day of
+> misdiagnosis — it makes a bare-dot rank look like a *transport* problem when it is a *classification* one.
+> `fuzzy` is indeed 0 for everyone, but the score is a **sum** (`fieldSuggest.js#rankItems`) and the other
+> terms are wildly unequal:
+>
+> | term | max | source |
+> | --- | --- | --- |
+> | `recency` | ≈62 (`freshness * 34 + log2(count+1) * 8`) | `localStorage` — 0 for a new user, a fresh profile, and every test |
+> | `commonMemberScore` | 40 | `@CommonMembers` on the receiver's class, via `Metadata.commonMemberRank` |
+> | `categoryScore` | 28 | `CATEGORY_WEIGHT`, from the candidate's category |
+> | `proximityScore` | 0 / −20 / −85 | `declarationProximity` |
+> | `originalIndex * 0.012` | ≈3 across all 249 rows | the server's entire ordering |
+>
+> The server's order is the *weakest* term, worth ~3 points in total. It only looked authoritative because
+> most rows scored 0 for category — itself a symptom, since `CATEGORY_WEIGHT` recognises 5 of the 16
+> categories the server sends. Two things worth carrying forward: an empty-prefix ranking is decided almost
+> entirely by category and by the prior; and a **test can never observe the recency term at all**, because
+> there is no `localStorage`, which is precisely why the prior had to be a static annotation in the source
+> rather than something learned from usage.
 
 So an empty-prefix response is ordered by **proximity to the receiver** (`receiverProximity`) — the one
 signal the client cannot recover, because the wire carries the caret's receiver on every row and never the
@@ -446,19 +467,33 @@ declaring container: the receiver's own members, then extensions written for its
 nothing about what the user is holding.
 
 `FieldSuggestPresentationTest.the answer a person typed is among the rows a person can see` holds it, and is
-the only place in the repo where a *rank* is asserted: 6 real payloads recorded from `/complete` (1095 rows,
-`src/jvmTest/resources/fieldSuggest/rank-payloads.json`), each row classified through the server's own
-`KotlinCompletionSupport.classifyMetadata` so the categories are the ones a browser receives, ranked by the
-verbatim `fieldSuggest.js` staged off the classpath. Rank of the member the author wrote, of 80 visible rows:
+the only place in the repo where a *rank* is asserted: **7** real payloads recorded from `/complete` (1105
+rows, `src/jvmTest/resources/fieldSuggest/rank-payloads.json`), each row classified through the server's own
+`KotlinCompletionSupport.classifyMetadata` so the categories are the ones a browser receives, and given the
+`@CommonMembers` prior through the server's own `CommonMemberPrior`, then ranked by the verbatim
+`fieldSuggest.js` staged off the classpath. Rank of the member the author wrote, of 80 visible rows:
 
-| case | rows sent | before | after |
+| case | rows sent | at the cap raise | today |
 | --- | --- | --- | --- |
-| `FLine.` → `moveTo` | 249 | not shown | **10** |
-| `Math.` → `toRadians` | 110 | not shown | **52** |
-| `List.` → `filter` | 335 | 42 | 57 (worse, still visible — `filter` is an `Iterable` extension, so `List`'s own members now precede it) |
+| `FLine.` → `moveTo` | 249 | 10 | **1** — top six are FLine's `@CommonMembers`, in declared order |
+| `f.m` → `moveTo` | 10 | (not a case yet) | **1** — 6 without the prior |
+| `Math.` → `toRadians` | 110 | 52 | not shown — accepted, see the fixture's `note` |
+| `List.` → `filter` | 335 | 57 | 71 — accepted, same reason |
 | `s.up` → `uppercase` | 2 | 1 | 1 (a prefix was never the broken case) |
 | `String.` → `uppercase` | 299 | not shown | not shown |
 | `kotlin.math.` → `sin` | 100 | not shown | not shown |
+
+Two structural changes stand behind that column, both 2026-08-17. **A prior:** `@CommonMembers` on a class
+lists the handful of members that answer "what do you do with one of these", the server forwards the
+position as `Metadata.commonMemberRank`, and `fieldSuggest.js` scores it at `COMMON_MEMBER_BASE` (40) minus
+2 per place — above `CATEGORY_WEIGHT`'s ceiling so a called-out member clears an uncategorised page, below
+`recency`'s so demonstrated use still wins. It exists because recency, the only term that could otherwise
+lift `moveTo` at a bare dot, is `localStorage` and therefore zero for a new user and in every test.
+**A classification fix:** categories now resolve by *declaring container* rather than by bare name; see
+`dev_docs/HERMETIC_COMPLETION_INPUTS.md`, which has the full diagnosis. The rows now carry `declaredIn`, so
+re-recording must keep that field — `FieldSuggestPresentationTest` fails if fewer than 900 rows have it,
+because without it every category silently reverts to name-voting and these ranks quietly become the old
+wrong ones.
 
 **What the two remaining "not shown" rows are, and what was deliberately NOT done.** Both are the standing
 `CATEGORY_WEIGHT` defect, now with a reproducible user-visible instance: that table keys the *old*
