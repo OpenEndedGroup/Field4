@@ -5,9 +5,13 @@ description: >
   than describing it. Prints the receiver's @CommonMembers list in declared order with the score each
   position earns, which is one of the two things that place a row in the popup.
 
-  It cannot print the other one — which SECTION the row lands in, and sectioning sits above ranking.
-  That answer belongs to KotlinCompletionSupport, which is `internal` and so deliberately out of a
-  box's reach; `FIELD_RANK_DUMP` prints a category beside every visible row instead.
+  It cannot print the other one — which SECTION the row lands in. Grouping is applied to the rows that
+  ranking has already chosen and truncated to (`orderItemsForGroupedDisplay(rankItems(…).slice(0,
+  MAX_VISIBLE_ITEMS))`), so it is a permutation within them: it can push a row a long way down the
+  visible list, and a prior cannot lift a row out of its own section into an earlier one, but grouping
+  never decides whether a row is on screen at all — ranking alone does that. The category answer belongs
+  to KotlinCompletionSupport, which is `internal` and so deliberately out of a box's reach;
+  `FIELD_RANK_DUMP` prints a category beside every visible row instead.
 
   Backs the computed figure on public/docs/how_the_popup_decides.md, and is worth replaying on its own
   whenever a member you expect near the top of `ctrl-space` is not there. Change `receiver` to any
