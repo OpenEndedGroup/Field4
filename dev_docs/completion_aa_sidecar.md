@@ -504,6 +504,20 @@ of *every* completion, including the prefix path that is currently rank-1 correc
 not enough evidence to do it on. So: not tonight, deliberately — but the harness it needs now exists, and
 the honest next step is to widen `rank-payloads.json` and then rebalance against it.
 
+> **Answered 2026-08-17, and the answer is no.** The widening happened — 578 carets recorded from
+> `/complete`, both caret forms, 284 of them bare dots — and the rebalance was then *measured* rather than
+> argued. Teaching `CATEGORY_WEIGHT` every category the server sends, which takes this exposure figure from
+> **89.6% of recorded rows** to 10.6%, moves visible recall by **0.000** in all three caret forms and MRR
+> by **+0.005**. Doing the same thing at a magnitude large enough to reorder sections costs **5.5 points of
+> bare-dot contested recall** — 80 rows are a fixed budget, so lifting one bucket evicts another's rows, and
+> recall is a cliff where a rank of 2 versus 1 is not. Changing `PROXIMITY_SCORE`'s `universal` term, the
+> largest single term in the ranker, by ±55 points moves nothing measurable either.
+>
+> So this defect is **real and not load-bearing**, and it is closed as measured rather than fixed. The full
+> sweep, the falsification that keeps "changing it does nothing" from being a bug in the harness, and what
+> the bare dot's remaining 21-point payload-to-screen gap actually is, are in
+> **`dev_docs/completion_rank_at_scale.md`**. `tools/rank_weight_lab.py` re-runs the sweep in a minute.
+
 ### 2026-08-16: a prior, a seventh case, and why the bare dot is still red
 
 Two things the paragraph above asked for now exist, and measuring them found the actual cause of the
