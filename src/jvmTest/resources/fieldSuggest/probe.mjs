@@ -1075,7 +1075,11 @@ const runRankMetrics = async (specPath) => {
   // Per-category, over the carets whose ANSWER carries that category — the breakdown a rebalance needs.
   const byCategory = new Map();
   for (const r of rows) {
-    const key = r.truthCategory || "(none)";
+    // Two different nothings, kept apart. `(absent)` is a caret whose answer the server never sent —
+    // the recall harness's problem, not the ranker's. `(uncategorised)` is an answer the server DID
+    // send and `classifyMetadata` gave no category to, which is a classification gap and not a
+    // weighting one; conflating them made one bucket of 168 look like the worst-ranked category here.
+    const key = r.truthCategory || (r.present ? "(uncategorised)" : "(absent)");
     const bucket = byCategory.get(key) || { cases: 0, found: 0, ranks: [], weighted: WEIGHT_KEYS.has(weightKeyOf(key)) };
     bucket.cases++;
     if (r.visibleRank !== null) {
