@@ -11,9 +11,20 @@ import java.io.File
 import java.util.zip.GZIPInputStream
 
 // Field's working directory is the checkout it was started from; walk up to its root.
-val repo = generateSequence(File(".").absoluteFile) { it.parentFile }
-    .firstOrNull { File(it, "settings.gradle.kts").exists() }
-    ?: error("no Field checkout above ${File(".").absolutePath} — start Field from the repo root")
+// Spelled with explicit types on purpose: in the REPL a `generateSequence(...).firstOrNull { } ?: error(...)`
+// chain infers `Any` here, and the first `File(repo, ...)` below then fails to resolve a constructor.
+fun findRepoRoot(): File {
+    var at: File? = File(".").absoluteFile
+    while (at != null) {
+        val here: File = at
+        if (File(here, "settings.gradle.kts").exists()) return here
+        at = here.parentFile
+    }
+    // `throw` and not `error(...)`: inside a box, `error` resolves to a Box member that returns Unit,
+    // so a function ending in it fails to compile with "missing return statement".
+    throw IllegalStateException("no Field checkout above ${File(".").absolutePath} - start Field from the repo root")
+}
+val repo: File = findRepoRoot()
 val corpus = File(repo, "src/jvmTest/resources/fieldSuggest/rank-corpus.tsv.gz")
 
 val lines = GZIPInputStream(corpus.inputStream()).bufferedReader().readLines()

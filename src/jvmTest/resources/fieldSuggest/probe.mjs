@@ -932,6 +932,13 @@ const METRIC_FLOORS = {
   // Measured 2026-08-17: prefixed 0.647, bare 0.124.
   "prefixed mrr": 0.61,
   "bare mrr": 0.11,
+  // Split by whether this tree DECLARES the receiver, because the global bare figure averages two
+  // populations that are a factor of ten apart and the deferred decision was about the second one.
+  // Measured 2026-08-17: owned 0.892 / 0.219, foreign 0.540 / 0.022.
+  "bare-owned contested recall": 0.85,
+  "bare-owned mrr": 0.20,
+  "bare-foreign contested recall": 0.50,
+  "bare-foreign mrr": 0.018,
 };
 // Sectioning pushing the answer down by more than this in the median means a category assignment has
 // broken again the way `FLine.moveTo` filed under Math did.
@@ -995,6 +1002,14 @@ const runRankMetrics = async (specPath) => {
     rows.push({
       label: c.label,
       form: c.form,
+      truth: c.truth,
+      receiver: String(c.receiver || ""),
+      // The decision `69ca4d5cb` deferred was about *foreign* receivers specifically: "a foreign
+      // receiver you cannot annotate has no prior and no weight, so a bare dot on it is alphabetical".
+      // A receiver this tree declares can carry `@CommonMembers` and a `@file:CompletionCategory`;
+      // `java.lang.Math` and `kotlin.collections.List` cannot. Split, so a real effect on one
+      // population cannot average against no effect on the other.
+      owned: String(c.receiver || "").startsWith("afield."),
       sent: c.metadata.length,
       // Payload recall — the number every other completion measurement in this tree reports. Kept
       // beside the visible rank on purpose: 96% of it once hid an answer at index 159 of 249.
@@ -1028,6 +1043,12 @@ const runRankMetrics = async (specPath) => {
     // much at the 90th percentile of those it moves.
     const shifts = found.filter((r) => r.flatRank !== null).map((r) => r.visibleRank - r.flatRank);
     const gains = found.filter((r) => r.neutralRank !== null).map((r) => r.neutralRank - r.flatRank);
+    // The sectioning counterfactual: what ranking ACROSS the sections instead of grouping into them
+    // would give. It is the flat order, which the shipped ranker already produced — so this costs
+    // nothing to measure and it is not a model of a redesign, it is the redesign's own numbers.
+    const flatMrr = subset.length
+      ? subset.reduce((sum, r) => sum + (r.flatRank ? 1 / r.flatRank : 0), 0) / subset.length
+      : 0;
     const tail = (values) => {
       const moved = values.filter((v) => v !== 0);
       return { moved: moved.length, p90: p90(moved.map(Math.abs)) };
@@ -1041,6 +1062,8 @@ const runRankMetrics = async (specPath) => {
       recall: found.length / Math.max(1, subset.length),
       contestedRecall: contestedFound.length / Math.max(1, contested.length),
       mrr,
+      flatMrr,
+      medianFlatRank: median(found.filter((r) => r.flatRank !== null).map((r) => r.flatRank)),
       medianRank: median(found.map((r) => r.visibleRank)),
       medianSectionShift: median(shifts),
       medianWeightGain: median(gains),
@@ -1048,10 +1071,11 @@ const runRankMetrics = async (specPath) => {
       weight,
     };
     console.log(
-      `  ${name.padEnd(9)}${String(m.cases).padStart(6)}${m.inPayload.toFixed(3).padStart(10)}` +
+      `  ${name.padEnd(13)}${String(m.cases).padStart(6)}${m.inPayload.toFixed(3).padStart(10)}` +
         `${String(m.contested).padStart(11)}${m.recall.toFixed(3).padStart(8)}` +
         `${m.contestedRecall.toFixed(3).padStart(10)}${m.mrr.toFixed(3).padStart(6)}` +
-        `${String(m.medianRank ?? "-").padStart(8)}` +
+        `${m.flatMrr.toFixed(3).padStart(8)}${String(m.medianRank ?? "-").padStart(8)}` +
+        `${String(m.medianFlatRank ?? "-").padStart(8)}` +
         `${`${m.medianSectionShift ?? "-"}/${section.moved}/${section.p90 ?? "-"}`.padStart(12)}` +
         `${`${m.medianWeightGain ?? "-"}/${weight.moved}/${weight.p90 ?? "-"}`.padStart(12)}`,
     );
@@ -1063,14 +1087,41 @@ const runRankMetrics = async (specPath) => {
     `\n  ${spec.cases.length} carets, ${spec.corpus.rows} distinct recorded rows, wire limit ${spec.corpus.limit}`,
   );
   console.log("  (section / weight columns read median / cases moved / p90 of those moved)");
+  console.log("  (flatMrr / flatMed are the sectioning counterfactual: rank ACROSS sections, not into them)");
   console.log(
-    "  " + "form".padEnd(9) + "cases".padStart(6) + "inPayload".padStart(10) + "contested".padStart(11) +
-      "recall".padStart(8) + "c-recall".padStart(10) + "mrr".padStart(6) + "medRank".padStart(8) +
-      "section".padStart(12) + "weight".padStart(12),
+    "  " + "form".padEnd(13) + "cases".padStart(6) + "inPayload".padStart(10) + "contested".padStart(11) +
+      "recall".padStart(8) + "c-recall".padStart(10) + "mrr".padStart(6) + "flatMrr".padStart(8) +
+      "medRank".padStart(8) + "flatMed".padStart(8) + "section".padStart(12) + "weight".padStart(12),
   );
   report("prefixed", rows.filter((r) => r.form === "prefixed"));
   report("bare", rows.filter((r) => r.form === "bare"));
   report("all", rows);
+  // Split the other way. The deferred decision is about a bare dot on a receiver nobody here can
+  // annotate, so that is the population it has to be measured on.
+  report("bare-owned", rows.filter((r) => r.form === "bare" && r.owned));
+  report("bare-foreign", rows.filter((r) => r.form === "bare" && !r.owned && r.receiver !== ""));
+
+  // The two rows the deferred decision names, by name, because they are the two a reader will look for.
+  console.log("\n  the two receivers `69ca4d5cb` deferred, caret by caret");
+  for (const receiver of ["java.lang.Math", "kotlin.collections.List", "java.util.List"]) {
+    const named = rows.filter((r) => r.receiver === receiver);
+    if (!named.length) continue;
+    const bare = named.filter((r) => r.form === "bare");
+    console.log(
+      `    ${receiver}: ${named.length} carets (${bare.length} bare), ` +
+        `visible recall ${(named.filter((r) => r.visibleRank !== null).length / named.length).toFixed(3)}, ` +
+        `median rank ${median(named.filter((r) => r.visibleRank !== null).map((r) => r.visibleRank)) ?? "-"}`,
+    );
+    // Bare first: the prefixed form was never the broken case, and it is the bare one the
+    // deferred decision is about.
+    for (const r of [...bare, ...named.filter((r) => r.form !== "bare")].slice(0, 8)) {
+      console.log(
+        `      ${r.form.padEnd(9)}${String(r.truth).padEnd(18)}sent ${String(r.sent).padStart(4)}` +
+          `   visible ${String(r.visibleRank ?? "not shown").padStart(9)}` +
+          `   flat ${String(r.flatRank ?? "-").padStart(9)}`,
+      );
+    }
+  }
 
   // Per-category, over the carets whose ANSWER carries that category — the breakdown a rebalance needs.
   const byCategory = new Map();
@@ -1115,6 +1166,19 @@ const runRankMetrics = async (specPath) => {
     const metric = name.endsWith("mrr") ? "mrr" : "contestedRecall";
     const value = byForm[form][metric];
     if (!(value >= floor)) failures.push(`${name} is ${value.toFixed(3)}, below its floor of ${floor}`);
+  }
+  // The sectioning counterfactual is only a counterfactual about ORDER, and this asserts why: the
+  // visible set is decided before `orderItemsForGroupedDisplay` ever runs, so an answer is visible in
+  // the flat order exactly when it is visible in the grouped one. If someone moves the
+  // `.slice(MAX_VISIBLE_ITEMS)` to after the grouping, sectioning starts deciding *visibility* and this
+  // fails — which is the whole argument for "collapsing sections recovers none of the missing answers".
+  const flatOnly = rows.filter((r) => (r.visibleRank === null) !== (r.flatRank === null));
+  if (flatOnly.length > 0) {
+    failures.push(
+      `${flatOnly.length} answers are visible in one of the flat/grouped orders and not the other ` +
+        `(e.g. ${flatOnly[0].label}). Sectioning is supposed to permute the visible rows, not choose ` +
+        `them — so either filterAndLimit now cuts after grouping, or this decomposition is wrong.`,
+    );
   }
   if (byForm.all.medianSectionShift > MEDIAN_SECTION_SHIFT_CEILING) {
     failures.push(

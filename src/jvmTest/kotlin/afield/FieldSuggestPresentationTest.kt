@@ -136,14 +136,14 @@ class FieldSuggestPresentationTest {
      * [KotlinSourceIndex.getCompletionCategoryForSymbol] resolves a contested simple name by first
      * match — a sentinel has to be unambiguous or it is measuring the walk order.
      */
-    private fun <T> withHermeticSourceIndex(block: () -> T): T {
+    private fun <T> withHermeticSourceIndex(shuffleSeed: Long? = null, block: () -> T): T {
         val dir = Files.createTempDirectory("field-suggest-source-index-")
         return FilestoreDir.withDirectory(dir) {
             val root = repoRoot()
             val definitions = KotlinSourceIndex.scanDefinitions(
                 roots = listOf(root.resolve("src/jvmMain/kotlin"), root.resolve("src/generatedLinalg/kotlin")),
                 relativeTo = root,
-            )
+            ).let { if (shuffleSeed == null) it else it.shuffled(kotlin.random.Random(shuffleSeed)) }
             assertTrue(
                 definitions.size >= 5000,
                 "the seeded source index looks empty (${definitions.size} definitions) — " +
@@ -356,6 +356,20 @@ class FieldSuggestPresentationTest {
             "only $withDeclaredIn of ${rows.size} distinct rows carry `declaredIn`, so categories are being " +
                 "resolved by bare name and these ranks are the old wrong ones"
         )
+        // WHICH BACKEND RECORDED THIS. `declarationProximity` is sent only by the AA sidecar; the K1
+        // fallback supplies neither it nor `commonMemberRank`. A live-popup capture taken on 2026-08-17
+        // found proximity empty on all 80 rows and scores descending by exactly `originalIndex * 0.012` —
+        // the signature of K1 having served it. If this corpus were recorded through that path, the prior
+        // and the largest negative term would both be silently absent, and "the weights are inert" would be
+        // a measurement of their absence rather than of the ranker. Measured here: 5018 of 6679 (75.1%).
+        val withProximity = rows.count { it[5].isNotBlank() }
+        assertTrue(
+            withProximity >= rows.size / 2,
+            "only $withProximity of ${rows.size} distinct rows carry `declarationProximity`, which the K1 " +
+                "fallback never sends — so this corpus was probably recorded off the AA path and every " +
+                "conclusion drawn from it is about a ranker running with its terms switched off. See the " +
+                "scope note at the top of dev_docs/completion_rank_at_scale.md."
+        )
 
         val out = StringBuilder(16 shl 20)
         out.append("{\"corpus\":{")
@@ -427,7 +441,50 @@ class FieldSuggestPresentationTest {
             "only $truthUnweighted carets have an answer in a category `CATEGORY_WEIGHT` scores 0, so this " +
                 "corpus cannot measure the standing weight defect it exists to measure"
         )
+        // The deferred decision was about a bare dot on a receiver nobody here can annotate
+        // (`java.lang.Math`, `kotlin.collections.List`), and the probe splits on exactly that. Without
+        // enough of them the split is vacuous, and the global bare figure goes on averaging two
+        // populations that turn out to be a factor of ten apart.
+        val bareForeign = cases.count { it[1] == "bare" && it[2].isNotBlank() && !it[2].startsWith("afield.") }
+        assertTrue(
+            bareForeign >= 60,
+            "only $bareForeign bare carets sit on a receiver this tree does not declare, so the " +
+                "owned-versus-foreign split the deferred decision turns on cannot be measured"
+        )
         return out.toString()
+    }
+
+    /**
+     * **Is any of this decided by the order the source tree happened to be walked?**
+     *
+     * A fair question, because the corpus measurement classifies every row through [KotlinSourceIndex],
+     * the index is a flat list of definitions in scan order, and three lookups in that file still resolve
+     * a contested simple name by first match: `getKDocForSymbol`, `bestDefinitionForSimpleName` and
+     * `resolveSourceCard`. If a row's category came from one of those, then "the popup is insensitive to
+     * `CATEGORY_WEIGHT`" would be a claim about this machine's filesystem rather than about the ranker.
+     * This repository has been burned by that exact shape: `~/.afield/filestore` rewritten between runs
+     * gave four different ranks for one caret, which is why [withHermeticSourceIndex] exists at all.
+     *
+     * The argument is that none of those three is on this path — `classifyMetadata` reaches the index only
+     * through [KotlinSourceIndex.getCompletionCategoryForSymbol], which since `69ca4d5cb` either answers
+     * exactly (`Owner.member`), scopes the vote to `declaredIn`'s package, declines, or requires the tree
+     * to be unanimous, and the other three are the documentation and source-card paths. But an argument is
+     * not a measurement, so this permutes the definition list — the one degree of freedom a filesystem
+     * walk has — and requires the spec, which carries the category of all 6 679 distinct rows, to come out
+     * byte-identical.
+     */
+    @Test
+    fun `the corpus's categories do not depend on the order the source tree was walked`() {
+        val inScanOrder = withHermeticSourceIndex { rankMetricsSpec() }
+        // A fixed seed, so a failure here is reproducible. One permutation is enough: the claim is that
+        // order is not consulted at all, and a single permutation that changes something refutes it.
+        val shuffled = withHermeticSourceIndex(shuffleSeed = 20260817L) { rankMetricsSpec() }
+        assertEquals(
+            inScanOrder, shuffled,
+            "the classified corpus differs when the source index is built in a different order — some " +
+                "row's category comes from a first-match-wins lookup, so every rank measured over this " +
+                "corpus is partly a measurement of this machine's filesystem"
+        )
     }
 
     private fun gzipResource(path: String): String {

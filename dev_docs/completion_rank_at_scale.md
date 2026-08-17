@@ -8,6 +8,34 @@ number**. The exposure figure that has stood in `completion_aa_sidecar.md` since
 
 Everything below is reproducible from this checkout. Nothing in it is an estimate.
 
+> ## Scope: this measures the AA (`k2-aa`) backend, and the editor may not be on it
+>
+> **Read this before quoting any number here.** These 578 carets were recorded by POSTing to the
+> code-use semantic sidecar's `/complete`, and the sidecar's own reply said `backend: "k2-aa"`
+> (`tools/record_rank_corpus.py` prints it, and refuses to record until candidates arrive). On that path
+> the two terms this measurement turns on are **present**: 5 018 of the 6 679 distinct recorded rows
+> (75.1%) carry a `declarationProximity` — `own` 4 047, `supertype` 932, `universal` 39 — and
+> `CommonMemberPrior` resolves a prior for FLine's eight named members with the scores
+> `fieldSuggest.js` expects (40, 38, 36, 34, 32, 30 …). Both are asserted, not observed.
+>
+> A capture of **the real popup** in a live Field, taken the same day on branch 3, found the opposite:
+> `declarationProximity` empty on all 80 rows and scores descending by exactly 0.012, which is
+> `originalIndex * 0.012` with every other term at zero — the signature of the **K1 fallback**, which
+> supplies neither proximity nor the prior. Reproduced twice there.
+>
+> So the two paths are **different backends**, and this document describes the AA one. What is measured
+> here — that `CATEGORY_WEIGHT` is inert, that sectioning is not the lever, that owned and foreign
+> receivers are a factor of ten apart — is a statement about a popup served by the sidecar. It says
+> **nothing** about a popup served by K1, where on branch 3's evidence category weight is also inert but
+> for a different reason (no categories arriving at all), and where the prior contributes nothing because
+> it never crosses the wire. Which backend a given user's editor is on, and why K1 served that capture, is
+> branch 3's task and is deliberately not touched here.
+>
+> The one thing that would make this document wrong rather than merely scoped is if the *recording* had
+> been served by K1 too — because a silently absent prior looks exactly like a prior that does not help.
+> It was not: the proximity distribution above cannot come from a path that sends no proximity, and it is
+> asserted in `FieldSuggestPresentationTest` so it cannot rot into a false claim.
+
 ## Why a wide corpus had to exist first
 
 Every other measurement of completion in this tree measures the *payload*: is the member the author
@@ -83,6 +111,38 @@ carry a category `CATEGORY_WEIGHT` scores 0 — i.e. that every term the conclus
 completion measurement in this tree reports; visible recall is the user's. At a bare dot they are
 **0.908 and 0.694** — a 21-point gap, 88 carets whose answer the server computed and the popup did not
 show. That is "96% recall hid the answer at index 159 of 249", at population scale.
+
+### That bare figure was averaging two populations a factor of ten apart
+
+It is the wrong unit, and `69ca4d5cb` said so before anyone measured it: *"a foreign receiver you cannot
+annotate has no prior and no weight, so a bare dot on it is alphabetical."* A receiver this tree declares
+can carry `@CommonMembers` and a `@file:CompletionCategory`; `java.lang.Math` and
+`kotlin.collections.List` cannot. Split on it:
+
+| bare dot on | cases | in payload | contested | recall | MRR | median rank |
+| --- | --- | --- | --- | --- | --- | --- |
+| a receiver this tree **declares** (`afield.*`) | 146 | 0.986 | 120 | **0.911** | **0.219** | 9 |
+| a receiver it does **not** (`kotlin.*`, `java.*`) | 100 | 0.940 | 100 | **0.540** | **0.022** | 39 |
+
+Recall 0.911 against 0.540, MRR 0.219 against 0.022 — a factor of ten — and *every* foreign bare caret is
+contested, 100 of 100. So the popup is not uniformly mediocre at a bare dot: it is good on Field's own
+types and close to useless on the ones nobody here can annotate. That is precisely the population the
+deferred decision was about, and precisely what the global figure hid. Both rows are floored in
+`probe.mjs`, and the test asserts the corpus holds at least 60 foreign bare carets so the split cannot go
+vacuous.
+
+The two receivers `69ca4d5cb` names, caret by caret, as shipped:
+
+| caret | rows sent | visible rank |
+| --- | --- | --- |
+| `Math.` → `cos` | 110 | 32 |
+| `Math.` → `sqrt`, `Math.` → `sin` | 110 | not shown |
+| `List.` → `forEach` | 331 | 29 |
+| `List.` → `map`, `mapIndexed`, `indices`, `joinToString`, `firstOrNull`, `sortedByDescending` | 331 | not shown |
+| the same members with two characters typed | 1–32 | 1–20 |
+
+The prefixed column is why nobody has filed this as a bug: typing two letters fixes it completely. The
+bare gesture on a foreign receiver is the one that does not work.
 
 ### The section effect and the weight effect, separated
 
@@ -163,12 +223,43 @@ R5 and R6 are worth recording for the same reason: **changing the largest single
 ±55 points moves nothing measurable.** At a bare dot every `universal` row takes the same penalty, so
 the term is a uniform shift within a group and only bites at a group boundary.
 
-So the honest two-part statement is:
+### And on the population the decision was actually about
+
+The table above is the global figure, which the split shows is the wrong unit. So here is the same sweep
+restricted to a bare dot on a receiver this tree cannot annotate — the 100 carets `69ca4d5cb` was talking
+about — beside what each variant costs the 146 it can:
+
+| variant | foreign recall | foreign MRR | foreign median rank | owned recall |
+| --- | --- | --- | --- | --- |
+| R0 as shipped | **0.540** | 0.022 | 39 | **0.911** |
+| R1 server vocabulary at 24 | **0.420** | 0.017 | 34 | 0.904 |
+| R2 server vocabulary at 12 | **0.540** | 0.029 | 41 | **0.911** |
+| R3 `kotlin` 24 only | **0.550** | 0.036 | 32 | 0.897 |
+| R4 `kotlin` 24, `external` 24 | **0.550** | 0.039 | 32 | 0.897 |
+| R5/R6 proximity ±55 | 0.540 | 0.022 | 39–40 | 0.911 |
+
+The best any variant does for the population the decision was about is **+0.010 — one caret in a
+hundred** — and it does it by giving `Kotlin` a weight, which is the *opposite* direction from "teach the
+table Field's vocabulary", and it costs 0.014 of owned recall (two carets) to get there. Net across all
+284 bare carets: R3 and R4 are 0.694 → 0.690. And on `Math` and `List` specifically, **every variant
+leaves every named row exactly where it was**: `Math.` → `cos` at 32 in all seven, `sqrt` and `sin` off
+screen in all seven, `List.` → `forEach` 29 → 42 under R2 (worse) and 30 under R5, everything else off
+screen in all seven.
+
+That is the sharpest form of the answer. The rows the human named would not move.
+
+The mechanism is that the 80 rows are a fixed budget, so a reweighting is zero-sum between populations,
+and the corpus says the shipped allocation is already at a local optimum: every direction tested trades
+one population for another at parity or worse.
+
+So the honest three-part statement is:
 
 1. `CATEGORY_WEIGHT` measurably affects the **order** of about a quarter of answers (120 of 456), by up
    to 6 rows at p90.
 2. It affects the **visibility** of 0 of 578 answers at any magnitude that does not also evict
    something, and −5.5 points at a magnitude that does.
+3. On the foreign-receiver population it was deferred *for*, the whole reachable range is
+   **−0.120 to +0.010** of recall, and the +0.010 costs −0.014 elsewhere.
 
 **The claim that would have made this refusal fail, and why it is not vacuous:** if the harness were
 insensitive to `CATEGORY_WEIGHT`, "changing it does nothing" would be a bug in the measurement rather
@@ -176,17 +267,63 @@ than a fact about the ranker. R1 is that falsification, and it is in the recorde
 harness, the same corpus, moves bare contested recall by −0.055 when the table changes by 24 points. The
 harness is sensitive; the popup is not.
 
-### What this says to do instead
+## Would fixing sectioning buy anything? No — measured, and the hypothesis is retired
 
-The bare dot's real number is `bare recall 0.694` against `in payload 0.908`. That gap is 88 carets, and
-none of the seven variants above closes any of it. What is left, in order of measured size:
+`69ca4d5cb` closes with *"sectioning happens above ranking, so no prior can cross it"*, which reads like
+the next lever. It is not, and the reason is structural rather than empirical: `filterAndLimit` cuts to
+`MAX_VISIBLE_ITEMS` on the **flat** ranked list and only then groups. So an answer is visible in the flat
+order exactly when it is visible in the grouped one, and **ranking across sections instead of into them
+recovers 0 of the 88 missing answers.** That is not an argument in prose — `probe.mjs` fails if any answer
+is visible in one order and not the other, which is also the guard that catches someone moving the
+`.slice()` to after the grouping.
 
-- **The 80-row budget itself.** Every contested bare caret is the ranker choosing 80 of 100–571 rows,
-  and no reweighting creates a row. Whether the popup should show more than 80 rows when the prefix is
-  empty is a *product* question this corpus can now answer either way.
-- **More `@CommonMembers` priors.** `Graphics`, the one annotated receiver family, is the best-ranked
-  population in the table (0.967, median rank 1). Only `FLine` carries the annotation. 100 distinct
-  receivers in the corpus do not.
+What collapsing sections *would* buy is order, and that is small:
+
+| population | MRR as shipped | MRR ranked across sections | median rank | flat median |
+| --- | --- | --- | --- | --- |
+| prefixed | 0.647 | 0.656 | 1 | 1 |
+| bare | 0.124 | 0.127 | 13 | 12 |
+| bare-owned | 0.219 | 0.227 | 9 | 7 |
+| bare-foreign | 0.022 | **0.020 (worse)** | 39 | 45 |
+
+So sectioning costs the median answer nothing, helps the foreign population slightly, and would buy at
+most **+0.008 MRR** if removed. `FLine.moveTo` rendered at row 76 was the tail of this distribution
+(96 of 456 answers move at all, p90 13 rows), not its shape — and after the classification fix that tail
+is the *symptom* of a misfiled category, which is why the ceiling on the median shift is a useful gate and
+a redesign is not a useful project.
+
+## Is any of this decided by the order the source tree was walked?
+
+Asked because it would invalidate everything above: the measurement classifies every row through
+`KotlinSourceIndex`, whose index is a flat list of definitions in scan order, and three lookups in that
+file still resolve a contested simple name by first match — `getKDocForSymbol`,
+`bestDefinitionForSimpleName`, `resolveSourceCard`. This repository has been burned by that shape before:
+`~/.afield/filestore` rewritten between runs once gave four different ranks for one caret.
+
+None of the three is on this path — `classifyMetadata` reaches the index only through
+`getCompletionCategoryForSymbol`, and since `69ca4d5cb` that either answers exactly (`Owner.member`),
+scopes the vote to `declaredIn`'s package, declines, or requires the tree to be unanimous; the other three
+are the documentation and source-card paths. But that is an argument, so
+`the corpus's categories do not depend on the order the source tree was walked` **asserts** it: the
+definition list is shuffled with a fixed seed before the index is built, and the classified spec — which
+carries the category of all 6 679 distinct rows — must come out byte-identical.
+
+## What this says to do instead
+
+The bare dot's real number is **0.540 recall on a receiver this tree cannot annotate**, against 0.911 on
+one it can. None of the seven weight variants closes any of that, and neither would removing sectioning.
+What is left, in measured order of size:
+
+- **`@CommonMembers` on the receivers people actually use.** This is the one lever with a measured
+  factor-of-ten behind it. `Graphics` — the only annotated receiver family — is the best-ranked population
+  in the corpus (0.967, median rank 1), and the owned-versus-foreign split is the same story from the
+  other side. Only `FLine` carries the annotation; the corpus holds 101 receivers.
+- **The 80-row budget itself,** for foreign receivers specifically, where 100 of 100 bare carets are
+  contested. Every one is the ranker choosing 80 of 110–571 rows, and no reweighting creates a row.
+  Whether an empty prefix should show more than 80 rows is a product question this corpus can now answer.
+- **A prior for types this tree does not own.** `@CommonMembers` cannot be written on `java.lang.Math`,
+  which is the whole reason its bare dot is alphabetical. An external-annotation side table would be the
+  first thing the corpus could measure honestly.
 - **The `(uncategorised)` 107.** Not urgent (0.916 / rank 2), but it is the classification gap that
   `declaredIn` did not close.
 
