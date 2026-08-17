@@ -17,34 +17,36 @@ From `code`
 Ask Field what prior the completion popup has, instead of trusting a number typed into a
 page. `CommonMemberPrior` is the object the completion server itself calls, once per
 candidate, on every keystroke — so this table is the popup's own arithmetic rather than a
-description of it. The category column is the same lookup that decides which SECTION a
-row renders under, and sectioning sits above ranking: a prior can order a row inside its
-section but can never lift it past a row in an earlier one.
+description of it. Change `receiver` to any qualified type name to ask about your own class.
+
+What this cannot tell you is which SECTION each of these lands in, which is the other half
+of where a row appears on screen. That answer belongs to KotlinCompletionSupport, and it is
+`internal` — deliberately unreachable from a box. Use `FIELD_RANK_DUMP` for that; it prints
+a `category=` beside every visible row. See public/docs/how_the_popup_decides.md.
 
 ```edn [field-box id="agent_popup_prior_inspect" role="properties"]
-{"id" "agent_popup_prior_inspect" "index" 0 "name" "What prior does the popup have" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What prior does the popup have" "_tombstone" false "frame" #afield/rect [80.0 80.0 680.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_popup_prior_inspect_code_.kt" "lines" 36 "characters" 1785 "sha256" "96ca4f6e755611ca93a61372441713a038ed2aa325088914c7b8d086939c9fac"}]}
+{"id" "agent_popup_prior_inspect" "index" 0 "name" "What prior does the popup have" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What prior does the popup have" "_tombstone" false "frame" #afield/rect [80.0 80.0 680.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_popup_prior_inspect_code_.kt" "lines" 34 "characters" 1741 "sha256" "ed63a03d22e892d1965001a2f20197bdf7f6e89b28d1414f66aac0478f2848ce"}]}
 ```
 
 ```kotlin [field-property box="agent_popup_prior_inspect" name="code" path="agent_popup_prior_inspect_code_.kt"]
 // Ask Field what prior the completion popup has, instead of trusting a number typed into a
 // page. `CommonMemberPrior` is the object the completion server itself calls, once per
 // candidate, on every keystroke — so this table is the popup's own arithmetic rather than a
-// description of it. The category column is the same lookup that decides which SECTION a
-// row renders under, and sectioning sits above ranking: a prior can order a row inside its
-// section but can never lift it past a row in an earlier one.
+// description of it. Change `receiver` to any qualified type name to ask about your own class.
+//
+// What this cannot tell you is which SECTION each of these lands in, which is the other half
+// of where a row appears on screen. That answer belongs to KotlinCompletionSupport, and it is
+// `internal` — deliberately unreachable from a box. Use `FIELD_RANK_DUMP` for that; it prints
+// a `category=` beside every visible row. See public/docs/how_the_popup_decides.md.
 val receiver = "afield.graphics.FLine"
 val ranks = afield.CommonMemberPrior.ranksFor(receiver)
 
 val cell = "padding:2px 20px 2px 0"
 val rows = ranks.entries.joinToString("") { (member, position) ->
     val score = afield.CommonMemberPrior.scoreOf(position)
-    val section = runCatching {
-        afield.ai.KotlinSourceIndex.getCompletionCategoryForSymbol(member, declaredIn = receiver)
-    }.getOrNull() ?: "no category here"
     "<tr><td style=\"$cell\">$position</td>" +
         "<td style=\"$cell\"><b>$member</b></td>" +
-        "<td style=\"$cell\">$score</td>" +
-        "<td style=\"padding:2px 0\">$section</td></tr>"
+        "<td style=\"padding:2px 0\">$score</td></tr>"
 }
 
 display("main", """
@@ -55,8 +57,7 @@ display("main", """
       <tr style="opacity:0.62;text-align:left">
         <th style="$cell">position</th>
         <th style="$cell">member</th>
-        <th style="$cell">prior score</th>
-        <th style="padding:2px 0">section it lands in</th>
+        <th style="padding:2px 0">prior score</th>
       </tr>
       $rows
     </table>
