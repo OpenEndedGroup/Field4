@@ -40,8 +40,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 64 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
-not in the same way, and the difference is worth knowing before you trust one. 45 of them are
+All 65 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+not in the same way, and the difference is worth knowing before you trust one. 46 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
 error-kind output line. (Almost always that is every box in the file. A transcript may deliberately
@@ -667,6 +667,24 @@ printer would actually walk. Both boxes need `brew install manifold`; without it
 same shape through Field's own `marchingCubes` and names the difference, which is the point of the
 comparison.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/manifold_solids/metadata.edn)
+
+**solidsl_notation** — Two boxes on [`afield.solidsl`](solid_notation.md), the notation in which a
+solid is a *value* rather than a `(Vec3) -> Float`. *A part, and what the notation knows before it
+meshes* interrogates a bored plate with a blended boss before anything is built: **17 nodes**,
+symbolic bounds, and exactly one subtree with no exact CSG form — the `SmoothUnion`, because "a
+smooth blend's fillet surface lies on neither operand, so no union, intersection or difference of the
+two can produce it". Then it builds the hybrid, and the report is the point: **1 subtree marched, the
+rest exact**, the blend at `edgeLength 0.02163` and the plate and its four bores never sampled at
+all — 29,632 triangles, watertight, volume **2.840885**, genus **4**, one for each bore. *The same
+value, lowered to GLSL* needs neither Manifold nor a GPU: it emits `float sdSolid(vec3 p)` by walking
+the tree, then shows what a notation buys that a closure cannot. Difference forty extra bores into
+the scene, most of them nowhere near the part, and symbolic bounds alone cut **88 nodes to 28 and 654
+GLSL statements to 294** — nothing sampled, nothing built. The last two lines are the ones worth
+sitting with: set the blend radius to zero and the simplifier reports `path level set -> exact`,
+because a blend of radius zero *is* a union, and a union has an exact form where a blend never will.
+Ask the *unsimplified* tree and it still refuses — the rewrite is what removes the refusal — so the
+box prints both, which is the only way that pair of lines stops looking like a contradiction.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/solidsl_notation/metadata.edn)
 
 **rectsl_glsl_sdf** — Two boxes that print. [RectSL](rectsl_cheatsheet.md) scenes lower to a single
 `float scene(vec2, float)` GLSL function, and `emitSdf` is a string builder over the compiled

@@ -215,6 +215,7 @@ object DemoTranscriptExecSmokeTest {
         // no Renderer — so both run to completion, which is also the cheapest check that the
         // emitter's own starting point still compiles against it.
         "rectsl_glsl_sdf",
+        "solidsl_notation",
         // Two pure-CPU boxes on the third track backend: one prints a track's symbolic IR with its
         // free parameters still unsolved, the other fits those parameters against waypoints and
         // rasterises target/seed/fitted with TriMesh.renderPng into display(). `toFn` and the Adam
