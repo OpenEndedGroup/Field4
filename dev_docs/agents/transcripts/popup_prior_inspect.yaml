@@ -1,0 +1,65 @@
+name: popup_prior_inspect
+description: >
+  One box that asks Field what ranking prior the completion popup currently has for a given receiver
+  type, by calling the same object the completion server calls — afield.CommonMemberPrior — rather
+  than describing it. Prints the receiver's @CommonMembers list in declared order with the score each
+  position earns, and the completion category each member would be filed under, which is the field
+  that decides which SECTION of the popup it renders in.
+
+  Backs the computed table on public/docs/how_the_popup_decides.md, and is worth replaying on its own
+  whenever a member you expect near the top of `ctrl-space` is not there: the two columns on the
+  right are, between them, the answer to almost every "why is that so far down" question. Change
+  `receiver` to any qualified type name to ask about your own class.
+operations:
+  - create:
+      box: agent_popup_prior_inspect
+      name: What prior does the popup have
+      frame:
+        x: 80.0
+        y: 80.0
+        w: 680.0
+        h: 190.0
+      properties:
+        code: |
+          // Ask Field what prior the completion popup has, instead of trusting a number typed into a
+          // page. `CommonMemberPrior` is the object the completion server itself calls, once per
+          // candidate, on every keystroke — so this table is the popup's own arithmetic rather than a
+          // description of it. The category column is the same lookup that decides which SECTION a
+          // row renders under, and sectioning sits above ranking: a prior can order a row inside its
+          // section but can never lift it past a row in an earlier one.
+          val receiver = "afield.graphics.FLine"
+          val ranks = afield.CommonMemberPrior.ranksFor(receiver)
+
+          val cell = "padding:2px 20px 2px 0"
+          val rows = ranks.entries.joinToString("") { (member, position) ->
+              val score = afield.CommonMemberPrior.scoreOf(position)
+              val section = runCatching {
+                  afield.ai.KotlinSourceIndex.getCompletionCategoryForSymbol(member, declaredIn = receiver)
+              }.getOrNull() ?: "no category here"
+              "<tr><td style=\"$cell\">$position</td>" +
+                  "<td style=\"$cell\"><b>$member</b></td>" +
+                  "<td style=\"$cell\">$score</td>" +
+                  "<td style=\"padding:2px 0\">$section</td></tr>"
+          }
+
+          display("main", """
+            <div style="font:12px/1.7 ui-monospace,monospace;color:#cfd8e3;padding:10px 14px">
+              <div style="opacity:0.72">@CommonMembers on $receiver — ${ranks.size} members, first scores
+                ${afield.CommonMemberPrior.BASE}, less ${afield.CommonMemberPrior.STEP} per position</div>
+              <table style="margin-top:9px;border-collapse:collapse">
+                <tr style="opacity:0.62;text-align:left">
+                  <th style="$cell">position</th>
+                  <th style="$cell">member</th>
+                  <th style="$cell">prior score</th>
+                  <th style="padding:2px 0">section it lands in</th>
+                </tr>
+                $rows
+              </table>
+            </div>
+          """)
+  - execute:
+      box: agent_popup_prior_inspect
+      property: code
+      type: all
+  - wait:
+      millis: 400
