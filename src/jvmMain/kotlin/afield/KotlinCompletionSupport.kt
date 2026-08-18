@@ -1950,6 +1950,46 @@ internal object KotlinCompletionSupport {
         return null
     }
 
+    /**
+     * The receiver's *qualified* name at a dot-completion caret, or null when it cannot be pinned down.
+     *
+     * [inferReceiverOwnerName] answers a similar question for documentation, but deliberately in simple
+     * names — a KDoc lookup matches on `FLine.moveTo`. [CommonMemberPrior] cannot use a simple name: it
+     * resolves the annotation with `Class.forName`. The AA backend forwards a qualified name on every row
+     * (`receiverQualifiedName`), so the prior works there. The K1 delegate forwards no receiver at all,
+     * and K1 serves every completion until the AA session has warmed — including the first `ctrl-space`
+     * after launch. Without this the prior is absent exactly when a person first meets the popup.
+     *
+     * Sources, most certain first: the live value's own class, then the declared type, then the
+     * constructor called to make it. A simple name read out of the source text is accepted only when
+     * exactly one class on the classpath answers to it — guessing between homonyms would attach one
+     * type's prior to another type's members.
+     *
+     * [box] may be null when there is no live REPL to ask; the source text then decides alone.
+     * [resolveSimpleName] is that classpath lookup, injectable because it is a whole-classpath scan whose
+     * answer depends on the personal layer and the import blacklist — see `ImportResolution`.
+     */
+    fun receiverQualifiedNameAtCompletion(
+        box: Box?,
+        allCode: String,
+        position: Int,
+        resolveSimpleName: (String) -> List<String>? = ::findClassesNamed,
+    ): String? {
+        val identifier = extractReceiverExpressionAtCompletion(allCode, position)?.trim() ?: return null
+        if (!identifier.matches(Regex("[A-Za-z_][A-Za-z0-9_]*"))) return null
+
+        // A box that has already run knows the answer exactly: ask the live value for its own class.
+        box?.ki?.context?.vars?.get(identifier)?.value?.let { value ->
+            value::class.qualifiedName?.takeIf { it.isNotBlank() }?.let { return it }
+        }
+
+        val fromSource = explicitTypeForLocal(allCode, identifier)?.takeIf { it.isNotBlank() }
+            ?: constructedTypeForLocal(allCode, identifier)?.takeIf { it.isNotBlank() }
+            ?: return null
+        if ('.' in fromSource) return fromSource
+        return resolveSimpleName(fromSource)?.singleOrNull()
+    }
+
     private fun inferEnclosingLambdaReceiverOwner(allCode: String, position: Int): String? {
         val callName = enclosingLambdaCallName(allCode, position) ?: return null
         val index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex() ?: return null

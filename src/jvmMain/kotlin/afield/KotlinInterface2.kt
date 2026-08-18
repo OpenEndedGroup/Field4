@@ -18,6 +18,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -590,6 +591,51 @@ class KotlinInterface2(
      */
     override suspend fun warmCompletion() {
         k1CompletionDelegate()
+    }
+
+    /**
+     * Poll the AA sidecar with the real request shape until it actually serves, so the next completion
+     * is the one a user gets rather than the K1 fallback.
+     *
+     * One request is not enough: the sidecar builds its Analysis-API session in the background and, until
+     * it exists, returns success-with-no-candidates and the message "session building (warming up; using
+     * K1 meanwhile)" — which [complete] correctly treats as a fall-through to K1. That is right for a
+     * keystroke and wrong for a docs capture, which would otherwise photograph the fallback. Deliberately
+     * routed through [AaCompletionClient] with this box's own preamble, receivers and imports, so what is
+     * warmed is the session [complete] will hit and not a differently-shaped neighbour.
+     */
+    override suspend fun warmCompletionBackend(timeoutMs: Long): String {
+        if (KotlinEngineConfig.activeCompletionBackend != KotlinEngineConfig.CompletionBackend.AA) {
+            return "backend=k1 (nothing to warm)"
+        }
+        // The box's preamble and receivers are read on the runloop, the way [complete] reads them — this
+        // is called from off-runloop callers (the docs `drive` op) and walking a box's parents while the
+        // main thread edits them is not a race worth taking for a warm-up.
+        val completionPreamble = withContext(Runloop.runLoop.main) {
+            resolveBoxContext()?.let { normalizePreambleText(gatherPreambleUpwards(it)) }.orEmpty()
+        }
+        val receiverTypes = implicitReceivers.map { it.typeName }
+        // A receiver whose members exist on any classpath, so "served" means the session works rather
+        // than that this particular type resolved.
+        val snippet = "val __warm = \"\"\nval __warmed = __warm."
+        val deadline = System.nanoTime() + timeoutMs.coerceAtLeast(0) * 1_000_000
+        var attempts = 0
+        while (true) {
+            attempts++
+            val outcome = withContext(Dispatchers.IO) {
+                AaCompletionClient.complete(
+                    snippet, snippet.length, completionPreamble, receiverTypes, replImports = introImports,
+                )
+            }
+            val detail = outcome.detail
+            if (outcome.served) return "served after $attempts attempt(s) ($detail)"
+            // A missing sidecar or an unreachable one will not become reachable by asking again.
+            if (detail == "no-sidecar-url" || detail == "no-classpath" || detail.startsWith("error ")) {
+                return "gave up after $attempts attempt(s) ($detail)"
+            }
+            if (System.nanoTime() >= deadline) return "timed out after $attempts attempt(s) ($detail)"
+            delay(500)
+        }
     }
 
     @Volatile

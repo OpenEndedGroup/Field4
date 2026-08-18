@@ -3050,6 +3050,18 @@ class KotlinExecution : BoxExecution {
         fun completionFor(c: CompletionResult.Success, infixExpectedTypes: Set<String> = emptySet()): List<Metadata> {
             val activeToken = allCode.substring(c.bounds.start, c.bounds.end).trim()
             val argumentCallable = callableBeforeArgumentCursor(allCode, position)
+            // The receiver the `@CommonMembers` prior keys on when the backend named none. AA forwards
+            // `receiverQualifiedName` on every row; the K1 delegate forwards nothing, and K1 serves the
+            // first completion after launch plus every completion while the AA session warms — so without
+            // this the prior is absent for the popup a person meets first. Resolved once per request (one
+            // caret has one receiver) and only if some row actually asks for it.
+            val caretReceiverQualifiedName: String? by lazy(LazyThreadSafetyMode.NONE) {
+                KotlinCompletionSupport.receiverQualifiedNameAtCompletion(inside, allCode, position).also {
+                    if (completionTraceEnabled()) {
+                        completionTrace("completion prior-receiver resolved='${it.orEmpty()}'")
+                    }
+                }
+            }
             return c.metadata.mapNotNull {
 //                println(it.extraInfo)
                 var extraDoc = ""
@@ -3229,7 +3241,13 @@ class KotlinExecution : BoxExecution {
                 // prior at an empty prefix, where there is no text to fuzzy-match and `recency` — the
                 // term that would otherwise decide it — is empty for anyone who has not used the member
                 // before on this machine.
-                val commonRank = CommonMemberPrior.rankOf(receiverTypeHint, candidateName)
+                // Only when the backend named nothing the prior can load — no receiver at all (K1), or an
+                // unqualified one (a bare `receiverType`, or the `"Box"` stand-in above) — does the caret's
+                // own receiver stand in. A qualified hint decides alone, so the AA path is unchanged: a
+                // member AA's receiver has no prior for must not pick one up from a differently-inferred
+                // type for the same expression.
+                val priorReceiver = receiverTypeHint?.takeIf { '.' in it } ?: caretReceiverQualifiedName
+                val commonRank = CommonMemberPrior.rankOf(priorReceiver, candidateName)
                 val withPrior = if (commonRank <= 0) withProximity
                     else withProximity.copy(commonMemberRank = commonRank)
                 if (typeFits) {

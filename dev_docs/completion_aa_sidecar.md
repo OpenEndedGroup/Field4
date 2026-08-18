@@ -709,6 +709,23 @@ runtime. Entry point `afield.tools.codeuse.CodeUseSemanticSidecarKt` (`build.gra
 - It exports `AFIELD_CODE_USE_SEMANTIC_SIDECAR_URL` for the Field JVM (which `AaCompletionClient` reads).
 - Disable launcher-managed startup with `AFIELD_CODE_USE_SEMANTIC_SIDECAR=off`.
 
+**The docs runner manages one too** (`public/docs_hooks.py`, `_ensure_semantic_sidecar`), because it does
+not go through `field.sh` — it launches `./gradlew runJvm` itself, so before 2026-08-18 it had no sidecar
+and **every `capture="ui"` completion figure in `public/docs` was a picture of the K1 fallback**. Nothing
+failed; the figures were of the wrong thing, and the runner's own log said so on every one
+(`completion backend=K1 … (AA→K1: no-sidecar-url)`). It reuses/starts on the same derived port as
+`field.sh`, so a checkout has one sidecar and one warm session rather than two — `derive_sidecar_port`
+there is a deliberate copy of the shell formula, cross-checked against `field.sh` by
+`tools/test_docs_runner_completion_backend.py`. `FIELD_DOCS_RUNNER_SIDECAR=off` opts out.
+
+Two things keep it honest, since "the config says AA" was exactly the reading that hid this:
+- the `drive` op's `warmCompletion` also warms the *serving* backend (`warmCompletionBackend`,
+  `KotlinInterface2.kt`), polling `/complete` until the AA session exists. Otherwise the capture races
+  the ~1 min session build and photographs K1 legitimately.
+- after a completion capture, the runner reads the Field log slice that capture wrote and **fails the
+  fence** if any request in it logged `AA→K1` (`_assert_completion_served_by_aa`). A deliberate
+  `-Dafield.kotlin.completion=k1` logs `(backend=k1)` instead and is left alone.
+
 Run it manually:
 ```bash
 ./gradlew -p tools/code-use-semantic-sidecar run --args="--port 17841 --workspace $PWD"
@@ -757,6 +774,18 @@ var activeCompletionBackend = when (System.getProperty(
 So AA is strictly additive: worst case you get exactly the K1 experience. The K1 delegate itself is
 warmed ahead of time (`warmCompletion`/`warmCompletionAsync`, `KotlinInterface2.kt:587,603`) so the first
 real request — and every fallback — is fast and doesn't re-enter the compiler mid-analysis.
+
+**Fallback is not a rare path, so what a row *carries* has to survive it.** The empty-result row above
+covers the warming session, which means **the first `ctrl-space` after launch is normally K1-served** —
+measured as two consecutive completions on one caret, `(AA→K1: empty: session building (warming up; using
+K1 meanwhile))` then `backend=AA … 1616ms`. Anything the ranking reads out of `extraInfo` is therefore
+absent for the popup a person meets first. The `@CommonMembers` prior was: it keys on
+`receiverQualifiedName`, which only `AaCompletionClient` sets, so `CommonMemberPrior.rankOf(null, name)`
+returned 0 on every K1 dot completion. `execution.kt` now resolves the caret's receiver itself when the
+backend named none (`KotlinCompletionSupport.receiverQualifiedNameAtCompletion` — live value's class,
+then declared type, then the constructor called, and a simple name only when exactly one class on the
+classpath answers to it). Note that `FieldSuggestPresentationTest` structurally cannot catch this class
+of defect: it replays *recorded sidecar payloads*, so it only ever measures AA.
 
 ---
 

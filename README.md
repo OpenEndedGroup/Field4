@@ -161,6 +161,12 @@ Regenerate every screenshot and video through a fresh Field-backed docs run:
 FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py --clean
 ```
 
+That run starts (or reuses) this checkout's completion sidecar on the same port
+`./field.sh` uses, because completion figures otherwise capture the K1 fallback
+rather than the default backend — a `capture="ui"` completion fence now fails if
+Field's log says its completion fell back. `FIELD_DOCS_RUNNER_SIDECAR=off` skips
+the sidecar, at the cost of failing those fences.
+
 The consolidated testing guide is `dev_docs/testing/TESTING_STRATEGY.md`.
 
 ## License
