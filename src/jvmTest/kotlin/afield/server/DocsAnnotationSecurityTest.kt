@@ -175,6 +175,24 @@ class DocsAnnotationSecurityTest {
         }
     }
 
+    @Test
+    fun aFieldHostIsLocalhostOrAnIpLiteralAndNeverADnsName() {
+        for (authority in listOf(
+            "localhost", "LOCALHOST:9092", "127.0.0.1", "127.0.0.1:9092",
+            "192.168.2.125:9092", "[::1]", "[::1]:9092", "[fe80::1]:9092",
+        )) {
+            assertTrue(isAllowedFieldHost(authority), "$authority must remain a valid Field authority")
+        }
+        for (authority in listOf(
+            null, "", "field.attacker.example", "field.attacker.example:19092",
+            "localhost.attacker.example", "127.0.0.1.nip.io", "::1:9092",
+            "localhost:", "localhost:0", "localhost:65536", "localhost:not-a-port",
+            "[::1]trailing", "[::1]:not-a-port",
+        )) {
+            assertFalse(isAllowedFieldHost(authority), "'$authority' must not become a trusted Host")
+        }
+    }
+
     // ══════════════════════════════════════════════════════════════════════════
     // The annotation routes
     // ══════════════════════════════════════════════════════════════════════════

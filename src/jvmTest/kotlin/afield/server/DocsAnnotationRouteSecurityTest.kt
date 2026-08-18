@@ -194,6 +194,40 @@ class DocsAnnotationRouteSecurityTest {
     }
 
     /**
+     * A DNS-rebinding page keeps its own origin and `Host` equal while changing only the
+     * address that name resolves to. Equality therefore proves same-origin, not that the
+     * request named Field. `Sec-Fetch-Site` says `same-origin` in this attack too, so the
+     * host allow-list has to run before either same-origin signal is trusted.
+     */
+    @Test
+    fun aRebindingHostnameCannotNameFieldEvenWhenTheBrowserCallsItSameOrigin() = docsApp {
+        assertRefusedAsCrossSite(
+            post("/api/docs-annotations") {
+                header(HttpHeaders.Host, "field.attacker.example")
+                header(HttpHeaders.Origin, "http://field.attacker.example")
+                header(SEC_FETCH_SITE_HEADER, "same-origin")
+                jsonBody(UPSERT)
+            },
+        )
+    }
+
+    /** Literal LAN and loopback addresses remain valid Field authorities, including ports. */
+    @Test
+    fun literalIpAuthoritiesStillWorkForFieldsOwnPage() = docsApp {
+        // IPv6 is covered directly in DocsAnnotationSecurityTest: Ktor's test engine parses
+        // `[::1]:9092` as a broken decimal port before Field's route can see the request.
+        for (authority in listOf("127.0.0.1:9092", "192.168.2.125:9092")) {
+            val response = post("/api/docs-annotations") {
+                header(HttpHeaders.Host, authority)
+                header(HttpHeaders.Origin, "http://$authority")
+                header(SEC_FETCH_SITE_HEADER, "same-origin")
+                jsonBody(UPSERT)
+            }
+            assertEquals(HttpStatusCode.OK, response.status, "Field's own page at $authority: ${response.bodyAsText()}")
+        }
+    }
+
+    /**
      * The whole `Sec-Fetch-Site` vocabulary, and the two ways of not saying anything.
      *
      * Written as a table because the interesting cases are the ones nobody thinks to try.

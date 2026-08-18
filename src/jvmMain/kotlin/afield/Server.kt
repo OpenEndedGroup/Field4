@@ -4974,9 +4974,11 @@ private val fieldApiSameSiteExemptPaths = setOf("/api/import-offline-doc")
  *
  * ## Why this is off by default, which is the uncomfortable part
  *
- * `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned` counts it: **34 of 38
- * state-changing routes have no access control of any kind**, `POST /api/shutdown-instance`
- * among them, and there is no `install(Authentication)` anywhere in the tree. Two separate
+ * `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned` counts it: **36 of 40
+ * state-changing HTTP routes have no route-specific access control**, `POST
+ * /api/shutdown-instance` among them, and there is no `install(Authentication)` anywhere
+ * in the tree. The same test separately inventories three WebSocket channels; `/ws` and
+ * `/controllers/ws` accept commands without authentication. Two separate
  * exposures follow, and it is worth not conflating them:
  *
  *  - **another website**, via the CORS block above. That is what this guard closes.
@@ -4988,7 +4990,7 @@ private val fieldApiSameSiteExemptPaths = setOf("/api/import-offline-doc")
  *    `curl` recipes in its own dev_docs.
  *
  * So: default-permissive, because turning it on is a behaviour change to a running system
- * that nobody is awake to notice, and because a silent default-deny on 34 routes is how you
+ * that nobody is awake to notice, and because a silent default-deny on 36 routes is how you
  * discover which of them the human's own tooling was using. Loud either way, because the
  * failure mode this whole area is about is capability you did not know you had.
  */
@@ -5000,19 +5002,23 @@ internal fun Application.installFieldApiWriteGuard() {
     if (!required) {
         lprintln(
             "warning,server",
-            "Field's HTTP API is unauthenticated: 34 of its 38 state-changing routes have no access control, " +
-                "the connector binds 0.0.0.0, and CORS allows any origin. Any host on this network can call " +
+            "Field's HTTP API is unauthenticated: 36 of its 40 state-changing routes have no route-specific " +
+                "access control, and the /ws and /controllers/ws WebSocket command channels are also " +
+                "unauthenticated. " +
+                "The connector binds 0.0.0.0, and CORS allows any origin. Any host on this network can call " +
                 "them with curl, and any website you have open can call them from your browser. Set " +
-                "$FIELD_API_REQUIRE_SAME_SITE_ENV=1 to refuse the browser half (the network half needs a bind " +
-                "address change, which would break the visionOS shell). See dev_docs/DOCS_IMPROVEMENT_AGENT.md.",
+                "$FIELD_API_REQUIRE_SAME_SITE_ENV=1 to refuse cross-site HTTP writes; it does not cover the " +
+                "WebSocket command channels or the network half. The latter needs authentication or a bind " +
+                "address change, which would break the visionOS shell. See dev_docs/DOCS_IMPROVEMENT_AGENT.md.",
         )
         return
     }
     lprintln(
         "server",
-        "$FIELD_API_REQUIRE_SAME_SITE_ENV is set: cross-site writes to /api/… are refused, except " +
-            "${fieldApiSameSiteExemptPaths.joinToString()}. This does NOT authenticate the API — a client that " +
-            "sends no Origin, which includes every curl on this network, is unaffected.",
+        "$FIELD_API_REQUIRE_SAME_SITE_ENV is set: cross-site HTTP writes are refused, except " +
+            "${fieldApiSameSiteExemptPaths.joinToString()}. The /ws and /controllers/ws WebSocket command " +
+            "channels are not covered and remain unauthenticated. This does NOT authenticate the API — a " +
+            "client that sends no Origin, which includes every curl on this network, is unaffected.",
     )
     intercept(ApplicationCallPipeline.Plugins) {
         // Reads only, and the CORS preflight, pass untouched: this is about writes, and a

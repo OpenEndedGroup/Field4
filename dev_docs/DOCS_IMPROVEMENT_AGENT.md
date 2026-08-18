@@ -83,9 +83,15 @@ Two questions now, because they are two different questions:
 | question | what answers it | what it stops |
 | --- | --- | --- |
 | which **machine**? | `isLoopbackDocsClient`, on `request.local.remoteAddress` | another device on the Wi-Fi |
-| which **website**? | `isSameSiteRequest`, on `Sec-Fetch-Site` and `Origin`/`Host` | a page in *your* browser |
+| which **website**? | `isSameSiteRequest`, on a literal/localhost `Host`, then `Sec-Fetch-Site` and `Origin` | a page in *your* browser, including DNS rebinding |
 
-`isSameSiteRequest` prefers **`Sec-Fetch-Site`**, which the browser sets and a page cannot
+For any browser-shaped request, `Host` must first name `localhost` or a literal IP address.
+No name is resolved. This closes the DNS-rebinding shape in which a page keeps
+`Origin == Host == field.attacker.example`, reports `Sec-Fetch-Site: same-origin`, and changes
+only the address its hostname resolves to. Equality proves same-origin; it does not prove that
+the origin named Field.
+
+After that check, `isSameSiteRequest` prefers **`Sec-Fetch-Site`**, which the browser sets and a page cannot
 — it is a forbidden header name, so no `fetch` option touches it. `same-origin` passes;
 `none` passes, because a typed URL or a bookmark has no initiator and is not a CSRF;
 `cross-site`, `same-site` and anything unrecognised are refused. `same-site` being refused
@@ -93,9 +99,9 @@ is the interesting one: `http://localhost:9493` is a different *origin* from
 `https://localhost:9092` but the same *site*, and it is precisely the origin the 2026-08-11
 session measured a successful attack from.
 
-For a client too old to send it, `Origin` is compared with `Host`. Both are set by the
-browser from the same URL, so they agree for a same-origin request. `Origin: null` — a
-sandboxed iframe — has no authority and cannot match.
+For a client too old to send it, `Origin` is compared with the already-validated `Host`.
+Both are set by the browser from the same URL, so they agree for a same-origin request.
+`Origin: null` — a sandboxed iframe — has no authority and cannot match.
 
 **No `Origin` at all is allowed.** That is `curl`, a script, the visionOS shell's own
 fetches; nobody's ambient credentials are being borrowed, so it is not the thing this guard
@@ -175,9 +181,9 @@ curl -sk https://localhost:9092/api/docs-improvement
 | `AFIELD_DOCS_IMPROVEMENT` | unset | the same switch, from the environment. `1`, `true`, `yes`, `on`; anything else — **including the empty string** — is off. |
 | `AFIELD_DOCS_IMPROVEMENT_TOKEN` | a fresh random 24-byte hex value, printed once | the value of `X-Field-Docs-Improvement-Token`. Compared with `MessageDigest.isEqual`. |
 | `AFIELD_DOCS_IMPROVEMENT_DIR` | the server's own working directory, canonicalised | the checkout the agent may edit. Must exist and be a directory, or the run refuses with a sentence. |
-| `AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE` | unset | lets **annotation** requests come from other devices. Logged as a warning at startup. Never affects the spawn. |
+| `AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE` | unset | lets **annotation** requests come from other devices. Browser URLs must still use a literal IP (or also opt into cross-site annotations for a custom hostname). Logged as a warning at startup. Never affects the spawn. |
 | `AFIELD_DOCS_ANNOTATIONS_ALLOW_CROSS_SITE` | unset | lets **annotation** requests come from other *websites*. A different axis from the row above, and the same rule: warned about at startup, never affects the spawn. |
-| `AFIELD_API_REQUIRE_SAME_SITE` (`-Dafield.api.requireSameSite`) | unset | refuses cross-site writes across Field's **whole** API, not just this feature. Off by default; see the last section for what it does and — mostly — does not close. |
+| `AFIELD_API_REQUIRE_SAME_SITE` (`-Dafield.api.requireSameSite`) | unset | refuses cross-site writes across Field's **whole** API, not just this feature. Browser URLs must name `localhost` or a literal IP. Off by default; see the last section for what it does and — mostly — does not close. |
 
 Five independent conditions guard the spawn, each separately sufficient to stop the
 attack above:
@@ -306,7 +312,7 @@ faithfully follow.
   remote browser clients, so the binding stayed and the routes grew guards. If a future
   Field wants a loopback-only mode, that is a server-wide switch and a different change.
 - **The rest of the API is still unauthenticated, and that is the largest thing on this
-  page.** 34 of 38 mutating routes have no guard of any kind, and `0.0.0.0` plus "Ktor's
+  page.** 36 of 40 mutating HTTP routes have no route-specific guard, and `0.0.0.0` plus "Ktor's
   CORS plugin does not run at all for a request with no `Origin`" means `curl` from any
   host on the Wi-Fi reaches every one of them. Demonstrated 2026-08-12 rather than
   asserted: `GET https://192.168.2.125:9492/api/instance-info` — the machine's own LAN
@@ -330,14 +336,15 @@ worklog decays and this one should not:
 added, when one is removed, and — the case a count could never see — when one quietly
 loses its guard.
 
-**34 of 38 state-changing routes have no access control of any kind**, and there is no
+**36 of 40 state-changing HTTP routes have no route-specific access control**, and there is no
 `install(Authentication)` anywhere in the tree.
 
 ## Two exposures, which are worth not conflating
 
 |  | reached by | closed by | status |
 | --- | --- | --- | --- |
-| **another website** | a page in your browser, via `anyHost()` | `AFIELD_API_REQUIRE_SAME_SITE=1`, or per-route guards | switchable, **off by default** |
+| **another website, HTTP** | a page in your browser, via `anyHost()` | `AFIELD_API_REQUIRE_SAME_SITE=1`, or per-route guards | switchable, **off by default** |
+| **another website, WebSocket** | a page that opens `/ws` or `/controllers/ws` | authentication or a guard on the upgrade | **open; not covered by the HTTP switch** |
 | **another host** | `curl` from the Wi-Fi, via `httpsHost = "0.0.0.0"` | authentication, or a narrower bind | **open** |
 
 The second row is the one to read twice. Ktor's CORS plugin does not run for a request
@@ -363,9 +370,12 @@ install(CORS) {
 ```
 
 `anyHost()` means *any website you have open in any tab* may call Field. The surface is
-**70 HTTP routes with literal paths — 29 GET and 38 state-changing** (33 POST, 3 DELETE,
-2 PUT; `PUT` is in fact excluded, since only GET/POST/DELETE are allow-listed — which is
-configuration, not a guard, and is not what `PUT …/resolve` relies on any more).
+**40 state-changing HTTP routes**: 38 with literal paths (33 POST, 3 DELETE, 2 PUT), plus
+the wildcard `POST /field-audio/{...}` and `PUT /field-audio/{...}` routes that the old
+literal-only census missed. `PUT` is excluded by CORS, since only GET/POST/DELETE are
+allow-listed — which is configuration, not a guard, and is not what `PUT …/resolve` relies
+on any more. The application-wide same-site switch covers both Field Audio writes because
+its interceptor is not restricted to `/api`; it remains off by default.
 
 Four of the 38 are guarded, all of them in `docsAnnotations.kt`, and the table that says so
 is asserted in `FieldApiCorsExposureTest`:
@@ -376,7 +386,21 @@ is asserted in `FieldApiCorsExposureTest`:
 | `PUT /api/docs-annotations/{id}/resolve` | loopback + same-site |
 | `DELETE /api/docs-annotations/{id}` | loopback + same-site |
 | `POST /api/docs-improvement` | loopback + same-site + enabled&token |
+| `POST /field-audio/{...}` | none (covered only when the application switch is on) |
+| `PUT /field-audio/{...}` | none (covered only when the application switch is on; also absent from CORS) |
 | **the other 34** | **none** |
+
+WebSockets are a separate census because their HTTP `GET` upgrade bypasses both CORS and
+the write interceptor's mutating-method branch:
+
+| route | role | guard |
+| --- | --- | --- |
+| `/ws` | main editor command channel | **none** |
+| `/controllers/ws` | remote control commands | **none** |
+| `/welcome-events` | server-to-client refresh notifications; incoming data ignored | none |
+
+So `AFIELD_API_REQUIRE_SAME_SITE=1` refuses cross-site **HTTP writes**, including Field
+Audio, but it does not refuse the browser half of the two WebSocket command surfaces.
 
 ## What was measured, 2026-08-11, real Chromium, real foreign origin
 
@@ -441,7 +465,7 @@ What 2026-08-12 did instead was cheaper and pushes the decision to where the kno
 - **`AFIELD_API_REQUIRE_SAME_SITE`**, an application-wide refusal of cross-site writes with
   `/api/import-offline-doc` exempted, **off by default**. Same shape as everything else
   here — safe default, documented hatch — except that "safe" points the other way: the
-  default is the old behaviour, because turning a refusal on across 34 routes is how you
+  default is the old behaviour, because turning a refusal on across 36 routes is how you
   find out at 4am which of them the human's own tooling was quietly using;
 - **one loud startup line**, unconditionally, naming the exposure and the switch.
 
@@ -456,25 +480,27 @@ Neither it nor this switch touches the network half.
 
 ## Where the tests are
 
-Four files, 39 tests. Two of them start a real Ktor application; two read source.
+Four files, 44 tests. Two of them start a real Ktor application; two read source.
 
-- `src/jvmTest/kotlin/afield/server/DocsAnnotationRouteSecurityTest.kt` — **12 tests**,
+- `src/jvmTest/kotlin/afield/server/DocsAnnotationRouteSecurityTest.kt` — **15 tests**,
   route-level, through the real CORS configuration. This file exists because of a measured
   gap: delete the guard *call* at the head of `post("/api/docs-annotations")` and the 19
-  tests that existed before it **all still pass**, while 6 of these 12 go red. Testing a
-  predicate is not testing a route. Seven reverts are recorded in its KDoc with the count
-  each one produced.
+  tests that existed before it **all still pass**, while 6 of the 12 route tests that
+  existed then go red. Testing a predicate is not testing a route. The DNS-rebinding row
+  was also watched red first: `Host == Origin` plus `Sec-Fetch-Site: same-origin` returned
+  200 until the literal/localhost host allow-list ran before those signals.
 - `src/jvmTest/kotlin/afield/server/FieldApiWriteGuardTest.kt` — **7 tests** over
   `AFIELD_API_REQUIRE_SAME_SITE`, including one whose entire job is to assert the
   *limitation*: a request with no `Origin` is not refused, so the switch does nothing about
   the network.
-- `src/jvmTest/kotlin/afield/server/DocsAnnotationSecurityTest.kt` — **16 tests** over the
+- `src/jvmTest/kotlin/afield/server/DocsAnnotationSecurityTest.kt` — **17 tests** over the
   guard functions as pure functions of a `DocsAccessPolicy` value, which is what makes
   reverting one and re-running a two-minute experiment.
-- `src/jvmTest/kotlin/afield/server/FieldApiCorsExposureTest.kt` — **4 tests** pinning
+- `src/jvmTest/kotlin/afield/server/FieldApiCorsExposureTest.kt` — **5 tests** pinning
   decisions rather than behaviour: the CORS block literally, the route→guard table, the
   fact that `X-Field-Docs-Improvement-Token` is not CORS-allow-listed, and that adding
-  `PUT` to `allowMethod` widens the surface.
+  `PUT` to `allowMethod` widens the surface. The fifth inventories every WebSocket and
+  distinguishes the two unguarded command channels from the notification-only channel.
 
 **If you change a guard, revert it and watch the suite before trusting the green.** Every
 count in those files was observed, not predicted.

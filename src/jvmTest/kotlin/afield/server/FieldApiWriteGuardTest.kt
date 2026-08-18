@@ -25,10 +25,10 @@ import kotlin.test.assertTrue
  * The opt-in refusal of cross-site writes across the whole API.
  *
  * `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned` establishes the number:
- * 34 of 38 state-changing routes have no access control at all, and Field's CORS config
+ * 36 of 40 state-changing HTTP routes have no route-specific access control at all, and Field's CORS config
  * says `anyHost()`, so any website you have open can call every one of them. That number is
  * not something a nightly agent gets to fix by changing a default — turning a refusal on
- * across 34 routes is exactly how you find out which of them the human's own tooling was
+ * across 36 routes is exactly how you find out which of them the human's own tooling was
  * quietly using, at 4am, with nobody awake.
  *
  * So the switch exists, the default is the old behaviour, and there is a loud line at
@@ -81,7 +81,7 @@ class FieldApiWriteGuardTest {
 
     @Test
     fun everyMutatingMethodIsCovered() = guardedApp(on = true) {
-        for (path in listOf("/api/anything", "/api/deep/nested/thing")) {
+        for (path in listOf("/api/anything", "/api/deep/nested/thing", "/field-audio/v1/jobs/one/cancel")) {
             assertEquals(HttpStatusCode.Forbidden, post(path) { fromEvilPage() }.status, "for $path")
         }
     }
@@ -124,7 +124,7 @@ class FieldApiWriteGuardTest {
      * [isSameSiteRequest] calls that same-site, deliberately — refusing it would break every
      * non-browser client Field has, including the `curl` recipes in its own dev_docs — and
      * Ktor's CORS plugin does not run for such a request either. So this guard, switched
-     * fully on, still leaves all 34 unguarded mutating routes reachable from the network.
+     * fully on, still leaves all 36 unguarded mutating HTTP routes reachable from the network.
      *
      * Closing *that* means an authentication scheme or a narrower bind address, and the bind
      * address is `0.0.0.0` because the visionOS shell reaches Field over Wi-Fi.

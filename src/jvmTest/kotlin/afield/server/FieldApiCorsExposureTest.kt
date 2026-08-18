@@ -1,5 +1,6 @@
 package afield.server
 
+import afield.FIELD_API_REQUIRE_SAME_SITE_ENV
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -170,14 +171,16 @@ class FieldApiCorsExposureTest {
      * tree, because there is no `install(Authentication)` in it either. So `"none"` here
      * means precisely `"none"`.
      *
-     * Its limits are real. It sees literal-path declarations only, so parameterised
-     * sub-routes under a `route("…") { }` prefix are absent. It attributes a guard by
-     * textual containment between one declaration and the next, so a guard mentioned in a
-     * comment would count. It is a tripwire on growth and on regression, not a proof.
+     * Its limits are real. It sees declarations with a quoted path and joins a relative
+     * path to the nearest preceding `route("…")` prefix in the same file. That covers the
+     * `/field-audio/{...}` wildcard writes that the old literal-only census missed, but it
+     * is not a Kotlin parser. It attributes a guard by textual containment between one
+     * declaration and the next, so a guard mentioned in a comment would count. It is a
+     * tripwire on growth and on regression, not a proof.
      *
      * ## What the table says, and it is the honest answer to "is Field's API authenticated"
      *
-     * **34 of 38 mutating routes have no guard of any kind**, including
+     * **36 of 40 mutating routes have no route-specific guard of any kind**, including
      * `POST /api/shutdown-instance`, which a foreign origin was measured stopping the
      * server with, and `POST /api/agent-worktrees/delete`. The HTTPS connector binds
      * `0.0.0.0` — deliberately, so the visionOS shell and other devices can reach Field —
@@ -189,7 +192,10 @@ class FieldApiCorsExposureTest {
      */
     @Test
     fun everyMutatingRouteAndItsGuardIsPinned() {
-        val declaration = Regex("""^[ \t]*(get|post|put|delete|patch)\(\s*"(/[^"]*)"""", RegexOption.MULTILINE)
+        val declaration = Regex(
+            """^[ \t]*(get|post|put|delete|patch)\(\s*"((?:/|\{)[^"]*)""",
+            RegexOption.MULTILINE,
+        )
         // The guard vocabulary of docsAnnotations.kt, decomposed into the questions each
         // one actually asks, so that "loopback" means the same thing in every row.
         val guardAtoms = mapOf(
@@ -207,12 +213,13 @@ class FieldApiCorsExposureTest {
                 val declarations = declaration.findAll(text).toList()
                 declarations.forEachIndexed { index, match ->
                     if (match.groupValues[1] == "get") return@forEachIndexed
+                    val path = qualifyRoutePath(text, match.range.first, match.groupValues[2])
                     val handler = text.substring(
                         match.range.last + 1,
                         declarations.getOrNull(index + 1)?.range?.first ?: text.length,
                     )
                     val atoms = guardAtoms.filterKeys { it in handler }.values.flatten().distinct()
-                    found["${match.groupValues[1].uppercase()} ${match.groupValues[2]}"] =
+                    found["${match.groupValues[1].uppercase()} $path"] =
                         if (atoms.isEmpty()) "none" else order.filter { it in atoms }.joinToString(" + ")
                 }
             }
@@ -232,14 +239,75 @@ class FieldApiCorsExposureTest {
         // wholesale update of the map above.
         val unguarded = found.count { it.value == "none" }
         assertEquals(
-            34, unguarded,
-            "The number of mutating routes with no access control at all was 34 on 2026-08-12, out of " +
+            36, unguarded,
+            "The complete census has 36 mutating routes with no route-specific access control, out of " +
                 "${found.size}. If this went down, say so in dev_docs/DOCS_IMPROVEMENT_AGENT.md — it is the " +
                 "headline number in that page. If it went up, you added an unauthenticated write.",
         )
         listOf("POST /api/shutdown-instance", "POST /api/agent-worktrees/delete", "POST /api/projects/delete")
             .forEach { assertEquals("none", found[it], "$it is expected to still be unguarded, and to be named") }
     }
+
+    /**
+     * WebSockets are their own exposure surface: CORS does not govern an upgrade, and the
+     * application write guard deliberately skips GET before it can inspect the handshake.
+     * The old HTTP-only inventory omitted all three channels, which made the startup claim
+     * that the switch refused "the browser half" false for the two command channels.
+     */
+    @Test
+    fun everyWebSocketRouteAndItsWriteRoleIsPinned() {
+        val declaration = Regex("""^[ \t]*webSocket\(\s*"([^"]*)"""", RegexOption.MULTILINE)
+        val routeBoundary = Regex(
+            """^[ \t]*(?:webSocket|route|get|post|put|delete|patch)\(""",
+            RegexOption.MULTILINE,
+        )
+        val found = sortedMapOf<String, String>()
+
+        File(repositoryRoot(), "src/jvmMain/kotlin/afield").walkTopDown()
+            .filter { it.isFile && it.extension == "kt" }
+            .forEach { file ->
+                val text = file.readText()
+                declaration.findAll(text).forEach { match ->
+                    val path = qualifyWebSocketPath(file, match.groupValues[1])
+                    val end = routeBoundary.findAll(text)
+                        .firstOrNull { it.range.first > match.range.first }
+                        ?.range?.first ?: text.length
+                    val handler = text.substring(match.range.last + 1, end)
+                    val role = if (
+                        "handleControllerInput(" in handler ||
+                        "rawHandlers.values" in handler ||
+                        "handle(message)" in handler
+                    ) "commands" else "server notifications"
+                    val guard = if ("isSameSiteRequest(" in handler) "same-site" else "none"
+                    found[path] = "$role; $guard"
+                }
+            }
+
+        assertEquals(
+            EXPECTED_WEBSOCKET_SURFACE,
+            found,
+            "The WebSocket surface changed. Command channels are browser-writable even when " +
+                "$FIELD_API_REQUIRE_SAME_SITE_ENV is set unless their upgrade performs its own guard.",
+        )
+        assertTrue(
+            Regex("""HttpMethod\.Get,\s*HttpMethod\.Head,\s*HttpMethod\.Options""").containsMatchIn(serverSource),
+            "The HTTP write guard no longer visibly skips WebSocket GET upgrades; re-measure the table instead " +
+                "of preserving this assertion mechanically.",
+        )
+    }
+
+    private fun qualifyRoutePath(source: String, declarationStart: Int, rawPath: String): String {
+        if (rawPath.startsWith('/')) return rawPath
+        val prefix = Regex("""^[ \t]*route\(\s*"(/[^"]*)"""", RegexOption.MULTILINE)
+            .findAll(source.substring(0, declarationStart))
+            .lastOrNull()
+            ?.groupValues?.get(1)
+        assertTrue(prefix != null, "relative route '$rawPath' has no preceding route prefix")
+        return prefix.trimEnd('/') + "/" + rawPath.trimStart('/')
+    }
+
+    private fun qualifyWebSocketPath(file: File, rawPath: String): String =
+        if (file.name == "controllers.kt" && rawPath == "/ws") "/controllers/ws" else rawPath
 
     private fun repositoryRoot(): File {
         var candidate: File? = File(".").absoluteFile
@@ -249,7 +317,7 @@ class FieldApiCorsExposureTest {
     }
 
     private companion object {
-        /** Route to guard, as of 2026-08-12. Four guarded rows; everything else is open. */
+        /** Four route-specific guards; the application-wide switch is off by default. */
         val EXPECTED_MUTATING_SURFACE = sortedMapOf(
             "DELETE /api/docs-annotations/{id}" to "loopback + same-site",
             "DELETE /api/maven-dependencies" to "none",
@@ -288,9 +356,17 @@ class FieldApiCorsExposureTest {
             "POST /api/shutdown-instance" to "none",
             "POST /api/starting-points/open" to "none",
             "POST /api/workspace-switch" to "none",
+            "POST /field-audio/{...}" to "none",
             "POST /stream" to "none",
             "PUT /api/docs-annotations/{id}/resolve" to "loopback + same-site",
             "PUT /api/document-tags" to "none",
+            "PUT /field-audio/{...}" to "none",
+        )
+
+        val EXPECTED_WEBSOCKET_SURFACE = sortedMapOf(
+            "/controllers/ws" to "commands; none",
+            "/welcome-events" to "server notifications; none",
+            "/ws" to "commands; none",
         )
     }
 }

@@ -196,6 +196,11 @@ internal fun refuseDocsAnnotationRequest(policy: DocsAccessPolicy, remoteAddress
  * application-wide, and a route that must not be reachable has to refuse for itself — the
  * same conclusion `Server.kt` reaches about the bind address, for the same reason.
  *
+ * Before either signal is trusted, a browser-shaped request has to name Field as
+ * `localhost` or a literal IP address. Merely having `Origin == Host` is not enough: a
+ * DNS-rebinding page keeps those equal while changing the address its own name resolves
+ * to. As with [isLoopbackDocsClient], this check never performs a name lookup.
+ *
  * Two signals, in the order of how much they are worth:
  *
  *  - **`Sec-Fetch-Site`**, which the browser sets and a page cannot: it is a forbidden
@@ -219,18 +224,48 @@ internal fun refuseDocsAnnotationRequest(policy: DocsAccessPolicy, remoteAddress
  * so it fails closed.
  */
 internal fun isSameSiteRequest(secFetchSite: String?, origin: String?, hostHeader: String?): Boolean {
-    when (secFetchSite?.trim()?.lowercase()) {
+    val fetchSite = secFetchSite?.trim()?.lowercase().orEmpty()
+    val presented = origin?.trim().orEmpty()
+    if ((fetchSite.isNotEmpty() || presented.isNotEmpty()) && !isAllowedFieldHost(hostHeader)) return false
+    when (fetchSite) {
         "same-origin", "none" -> return true
-        null, "" -> Unit
+        "" -> Unit
         else -> return false
     }
-    val presented = origin?.trim().orEmpty()
     if (presented.isEmpty()) return true
     val host = hostHeader?.trim().orEmpty()
     if (host.isEmpty()) return false
     val authority = presented.substringAfter("://", missingDelimiterValue = "")
     return authority.isNotEmpty() && authority.equals(host, ignoreCase = true)
 }
+
+/**
+ * The authorities Field can safely recognise without asking DNS: its conventional
+ * `localhost` name and literal IPv4/IPv6 addresses, each optionally carrying a port.
+ */
+internal fun isAllowedFieldHost(hostHeader: String?): Boolean {
+    val authority = hostHeader?.trim().orEmpty()
+    if (authority.isEmpty()) return false
+    val host = when {
+        authority.startsWith('[') && ']' in authority -> {
+            val close = authority.indexOf(']')
+            if (!isValidAuthorityPort(authority.substring(close + 1))) return false
+            authority.substring(1, close)
+        }
+        authority.count { it == ':' } <= 1 -> {
+            val colon = authority.indexOf(':')
+            if (colon >= 0 && !isValidAuthorityPort(authority.substring(colon))) return false
+            authority.substringBefore(':')
+        }
+        else -> return false // Browsers bracket an IPv6 Host; an unbracketed one is not an authority.
+    }
+    if (host.equals("localhost", ignoreCase = true)) return true
+    return runCatching { InetAddress.ofLiteral(host) }.isSuccess
+}
+
+private fun isValidAuthorityPort(suffix: String): Boolean =
+    suffix.isEmpty() ||
+        (suffix.startsWith(':') && suffix.drop(1).toIntOrNull()?.let { it in 1..65535 } == true)
 
 /**
  * [isSameSiteRequest] as a refusal, with the sentence the annotation panel renders.
@@ -710,8 +745,10 @@ internal fun Route.installDocsAnnotationRoutes(policy: DocsAccessPolicy = docsAc
     if (policy.allowRemoteAnnotations) {
         lprintln(
             "warning,docs-annotations",
-            "$DOCS_ANNOTATIONS_ALLOW_REMOTE_ENV is set: documentation annotations accept writes from any host " +
-                "that can reach this port. The improvement agent stays loopback-only regardless.",
+            "$DOCS_ANNOTATIONS_ALLOW_REMOTE_ENV is set: documentation annotations accept network peers that " +
+                "can reach this port. Browser requests must still use localhost or a literal IP and be same-origin " +
+                "unless $DOCS_ANNOTATIONS_ALLOW_CROSS_SITE_ENV is also set. The improvement agent stays " +
+                "loopback-only regardless.",
         )
     }
     if (policy.allowCrossSiteAnnotations) {
