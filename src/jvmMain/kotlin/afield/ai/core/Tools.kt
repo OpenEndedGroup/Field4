@@ -15,6 +15,7 @@ import afield.CodeUseUnresolvedRow
 import afield.ai.SemanticRetrievalHit
 import afield.ai.SemanticRetrievalModelInfo
 import afield.ai.SemanticRetrievalStatus
+import afield.logger.lprintln
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
@@ -763,7 +764,24 @@ internal class ToolRegistry {
             // Core is registering this name directly, so core owns it from here on — even if an
             // extension got there first, which it does: applyTo runs at the top of
             // registerBuiltInAgentTools, before any of core's own register calls.
-            extensionOwned.remove(toolClass.simpleName)
+            //
+            // And that ordering is exactly why the displacement has to be said out loud. This is the one
+            // path by which the failure [registerExtension] is written to prevent still happens: an
+            // extension registered before any chat existed is applied to a fresh registry — which
+            // accepts it, because the registry is still empty — and is then overwritten here, a few
+            // calls later, by the built-in of the same name. The author ends up with a tool registered
+            // on their side that no model will ever see. AgentToolExtensions.register cannot catch this
+            // one either: it looks for the clash in the registries bound so far, and at startup there
+            // are none. Nothing anywhere reported it until this line.
+            if (extensionOwned.remove(toolClass.simpleName)) {
+                lprintln(
+                    "warning,ai4",
+                    "core tool '${toolClass.simpleName}' has displaced an extension tool of the same " +
+                        "name, so no model will see the extension's. Rename the extension's request " +
+                        "class — its simple name is the tool name the model sees, and core's names " +
+                        "are reserved."
+                )
+            }
         }
     }
 

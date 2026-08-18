@@ -877,6 +877,320 @@ const runRankGuard = async (specPath) => {
   return failures.length;
 };
 
+// ---------------------------------------------------------------------------- rank, at corpus scale
+
+/**
+ * RANKMETRICS mode: the same question as RANK, over the whole caret corpus, with the terms separated.
+ *
+ * A rank per case is a ratchet; a rank per *population* is what a weighting decision needs — and the
+ * commit that fixed completion categories closed by saying that whether `CATEGORY_WEIGHT` should learn
+ * the server's vocabulary "is a decision and not a measurement". So this replays every caret in
+ * `rank-corpus.tsv.gz` (recorded from the sidecar's own `/complete`; see `tools/record_rank_corpus.py`)
+ * and reports recall, MRR and median rank — split by caret form, because a bare `expr.` and a typed
+ * `expr.ab` are different questions and one mean over both hides the bare dot inside the prefix.
+ *
+ * ### Isolating the section effect from the weight effect
+ *
+ * `filterAndLimit` cuts to `MAX_VISIBLE_ITEMS` on the **flat** ranked list and only then calls
+ * `orderItemsForGroupedDisplay`. So sectioning is a permutation *within* the visible rows — it never
+ * decides which rows are visible — and `rankItems` writes its own `score` onto every item it returns.
+ * That makes the decomposition exact, with no re-implementation of the ranker:
+ *
+ *   flat rank     position in `controller.items` re-sorted by descending `score`  (weights only)
+ *   visible rank  position in `controller.items` as rendered                      (weights + sections)
+ *   neutral rank  the same case replayed with every category replaced by one constant, which both
+ *                 collapses the sections into one group and ties every `categoryScore` at 0
+ *
+ *   visible − flat     what SECTIONING costs the answer
+ *   neutral − flat     what CATEGORY WEIGHT buys it
+ *
+ * The rendered row count and `controller.items` are checked to agree per case: if they ever diverge,
+ * the flat-rank recovery is reading the wrong array and every number below is wrong the same way.
+ */
+
+/** The category keys `CATEGORY_WEIGHT` scores above zero, read out of the staged fieldSuggest.js.
+ *  Read rather than listed: this mode exists to count how many real completions land in a category the
+ *  table does not know, and a hand-copy would keep agreeing with itself after a rebalance. */
+const WEIGHT_KEYS = new Set(
+  [...(readFileSync(new URL("./fieldSuggest.js", import.meta.url), "utf8")
+    .match(/const CATEGORY_WEIGHT = new Map\(\[[\s\S]*?\]\);/) || [""])[0]
+    .matchAll(/\["([^"]+)",\s*(-?\d+)\]/g)]
+    .filter((m) => Number(m[2]) > 0)
+    .map((m) => m[1]),
+);
+
+// Floors, not printouts. Each sits a little below the figure measured when this was cut (the run is in
+// dev_docs/completion_rank_at_scale.md), so a real regression fails and noise does not. A number
+// printed without a floor near it is how this project once reported 98.6% behind an assertion that
+// would have passed at 6%.
+const METRIC_FLOORS = {
+  // Of the carets where the popup had to leave something out, how many still show the answer.
+  // Measured 2026-08-17: prefixed 0.822, bare 0.703.
+  "prefixed contested recall": 0.78,
+  "bare contested recall": 0.66,
+  // Mean reciprocal visible rank over every caret of that form, an absent answer counting 0.
+  // Measured 2026-08-17: prefixed 0.647, bare 0.124.
+  "prefixed mrr": 0.61,
+  "bare mrr": 0.11,
+  // Split by whether this tree DECLARES the receiver, because the global bare figure averages two
+  // populations that are a factor of ten apart and the deferred decision was about the second one.
+  // Measured 2026-08-17: owned 0.892 / 0.219, foreign 0.540 / 0.022.
+  "bare-owned contested recall": 0.85,
+  "bare-owned mrr": 0.20,
+  "bare-foreign contested recall": 0.50,
+  "bare-foreign mrr": 0.018,
+};
+// Sectioning pushing the answer down by more than this in the median means a category assignment has
+// broken again the way `FLine.moveTo` filed under Math did.
+const MEDIAN_SECTION_SHIFT_CEILING = 8;
+
+const median = (values) => {
+  if (!values.length) return null;
+  const s = [...values].sort((a, b) => a - b);
+  const mid = s.length >> 1;
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+};
+
+const p90 = (values) => {
+  if (!values.length) return null;
+  const s = [...values].sort((a, b) => a - b);
+  return s[Math.min(s.length - 1, Math.floor(0.9 * s.length))];
+};
+
+/**
+ * Is this rendered label the member the author wrote?
+ *
+ * Deliberately stricter than RANK mode's `row === truth || row.startsWith(truth)`. A bare `startsWith`
+ * accepts `mapNotNull(…)` as an answer of `map`, `toIntOrNull()` as `toInt`, and `lengthSquared` as
+ * `length` — and the corpus is full of all three, so at 578 carets a loose predicate is not a rounding
+ * error, it is a recall figure that cannot fail. A rendered label is the popup's `displayText`, which is
+ * either the bare name of a property or `name(params…)` for a callable, so the exact rule is available.
+ */
+const isTruthLabel = (label, truth) => label === truth || label.startsWith(`${truth}(`);
+
+/** Rank of `truth` among row labels, 1-based, or null. */
+const rankOfTruth = (labels, truth) => {
+  const index = labels.findIndex((row) => isTruthLabel(row, truth));
+  return index < 0 ? null : index + 1;
+};
+
+const weightKeyOf = (category) => String(category || "other").trim().toLowerCase() || "other";
+
+const runRankMetrics = async (specPath) => {
+  const spec = JSON.parse(readFileSync(specPath, "utf8"));
+  const failures = [];
+  const rows = [];
+  let mismatchedItems = 0;
+  for (const c of spec.cases) {
+    const shipped = await openPopup({ code: c.code, metadata: c.metadata });
+    const items = shipped.controller.items;
+    const rendered = labelsOf(shipped.list());
+    if (rendered.length !== items.length) mismatchedItems++;
+    const flat = [...items]
+      .sort((a, b) => Number(b.score) - Number(a.score))
+      .map((i) => String(i.displayText || i.text || ""));
+
+    // The same payload with the category signal removed entirely: one group, every categoryScore 0.
+    const neutral = await openPopup({
+      code: c.code,
+      metadata: c.metadata.map((m) => ({ ...m, category: "uncategorised" })),
+    });
+
+    // The same predicate the rank uses, so "(none)" below means exactly "the answer is not in the
+    // payload at all" and cannot quietly mean "the matcher disagreed with itself".
+    const truthRow = c.metadata.find((m) => isTruthLabel(String(m.displayText || m.text || ""), c.truth));
+    rows.push({
+      label: c.label,
+      form: c.form,
+      truth: c.truth,
+      receiver: String(c.receiver || ""),
+      // The decision `69ca4d5cb` deferred was about *foreign* receivers specifically: "a foreign
+      // receiver you cannot annotate has no prior and no weight, so a bare dot on it is alphabetical".
+      // A receiver this tree declares can carry `@CommonMembers` and a `@file:CompletionCategory`;
+      // `java.lang.Math` and `kotlin.collections.List` cannot. Split, so a real effect on one
+      // population cannot average against no effect on the other.
+      owned: String(c.receiver || "").startsWith("afield."),
+      sent: c.metadata.length,
+      // Payload recall — the number every other completion measurement in this tree reports. Kept
+      // beside the visible rank on purpose: 96% of it once hid an answer at index 159 of 249.
+      present: truthRow !== undefined,
+      contested: c.metadata.length > rendered.length,
+      visibleRank: rankOfTruth(rendered, c.truth),
+      flatRank: rankOfTruth(flat, c.truth),
+      neutralRank: rankOfTruth(labelsOf(neutral.list()), c.truth),
+      truthCategory: (truthRow || {}).category || "",
+      unweightedRows: c.metadata.filter((m) => !WEIGHT_KEYS.has(weightKeyOf(m.category))).length,
+    });
+  }
+
+  if (mismatchedItems > 0) {
+    failures.push(
+      `${mismatchedItems} cases render a different number of rows than \`controller.items\` holds, so the ` +
+        `flat-rank recovery is reading the wrong array and every decomposition below is invalid`,
+    );
+  }
+
+  const byForm = {};
+  const report = (name, subset) => {
+    const found = subset.filter((r) => r.visibleRank !== null);
+    const contested = subset.filter((r) => r.contested);
+    const contestedFound = contested.filter((r) => r.visibleRank !== null);
+    const mrr = subset.length
+      ? subset.reduce((sum, r) => sum + (r.visibleRank ? 1 / r.visibleRank : 0), 0) / subset.length
+      : 0;
+    // Both decompositions are heavy-tailed — a median of 0 with 40 cases moved by 30 rows is a real
+    // effect that a median alone denies — so each reports how many cases it moves at all, and by how
+    // much at the 90th percentile of those it moves.
+    const shifts = found.filter((r) => r.flatRank !== null).map((r) => r.visibleRank - r.flatRank);
+    const gains = found.filter((r) => r.neutralRank !== null).map((r) => r.neutralRank - r.flatRank);
+    // The sectioning counterfactual: what ranking ACROSS the sections instead of grouping into them
+    // would give. It is the flat order, which the shipped ranker already produced — so this costs
+    // nothing to measure and it is not a model of a redesign, it is the redesign's own numbers.
+    const flatMrr = subset.length
+      ? subset.reduce((sum, r) => sum + (r.flatRank ? 1 / r.flatRank : 0), 0) / subset.length
+      : 0;
+    const tail = (values) => {
+      const moved = values.filter((v) => v !== 0);
+      return { moved: moved.length, p90: p90(moved.map(Math.abs)) };
+    };
+    const section = tail(shifts);
+    const weight = tail(gains);
+    const m = {
+      cases: subset.length,
+      inPayload: subset.filter((r) => r.present).length / Math.max(1, subset.length),
+      contested: contested.length,
+      recall: found.length / Math.max(1, subset.length),
+      contestedRecall: contestedFound.length / Math.max(1, contested.length),
+      mrr,
+      flatMrr,
+      medianFlatRank: median(found.filter((r) => r.flatRank !== null).map((r) => r.flatRank)),
+      medianRank: median(found.map((r) => r.visibleRank)),
+      medianSectionShift: median(shifts),
+      medianWeightGain: median(gains),
+      section,
+      weight,
+    };
+    console.log(
+      `  ${name.padEnd(13)}${String(m.cases).padStart(6)}${m.inPayload.toFixed(3).padStart(10)}` +
+        `${String(m.contested).padStart(11)}${m.recall.toFixed(3).padStart(8)}` +
+        `${m.contestedRecall.toFixed(3).padStart(10)}${m.mrr.toFixed(3).padStart(6)}` +
+        `${m.flatMrr.toFixed(3).padStart(8)}${String(m.medianRank ?? "-").padStart(8)}` +
+        `${String(m.medianFlatRank ?? "-").padStart(8)}` +
+        `${`${m.medianSectionShift ?? "-"}/${section.moved}/${section.p90 ?? "-"}`.padStart(12)}` +
+        `${`${m.medianWeightGain ?? "-"}/${weight.moved}/${weight.p90 ?? "-"}`.padStart(12)}`,
+    );
+    byForm[name] = m;
+    return m;
+  };
+
+  console.log(
+    `\n  ${spec.cases.length} carets, ${spec.corpus.rows} distinct recorded rows, wire limit ${spec.corpus.limit}`,
+  );
+  console.log("  (section / weight columns read median / cases moved / p90 of those moved)");
+  console.log("  (flatMrr / flatMed are the sectioning counterfactual: rank ACROSS sections, not into them)");
+  console.log(
+    "  " + "form".padEnd(13) + "cases".padStart(6) + "inPayload".padStart(10) + "contested".padStart(11) +
+      "recall".padStart(8) + "c-recall".padStart(10) + "mrr".padStart(6) + "flatMrr".padStart(8) +
+      "medRank".padStart(8) + "flatMed".padStart(8) + "section".padStart(12) + "weight".padStart(12),
+  );
+  report("prefixed", rows.filter((r) => r.form === "prefixed"));
+  report("bare", rows.filter((r) => r.form === "bare"));
+  report("all", rows);
+  // Split the other way. The deferred decision is about a bare dot on a receiver nobody here can
+  // annotate, so that is the population it has to be measured on.
+  report("bare-owned", rows.filter((r) => r.form === "bare" && r.owned));
+  report("bare-foreign", rows.filter((r) => r.form === "bare" && !r.owned && r.receiver !== ""));
+
+  // The two rows the deferred decision names, by name, because they are the two a reader will look for.
+  console.log("\n  the two receivers `69ca4d5cb` deferred, caret by caret");
+  for (const receiver of ["java.lang.Math", "kotlin.collections.List", "java.util.List"]) {
+    const named = rows.filter((r) => r.receiver === receiver);
+    if (!named.length) continue;
+    const bare = named.filter((r) => r.form === "bare");
+    console.log(
+      `    ${receiver}: ${named.length} carets (${bare.length} bare), ` +
+        `visible recall ${(named.filter((r) => r.visibleRank !== null).length / named.length).toFixed(3)}, ` +
+        `median rank ${median(named.filter((r) => r.visibleRank !== null).map((r) => r.visibleRank)) ?? "-"}`,
+    );
+    // Bare first: the prefixed form was never the broken case, and it is the bare one the
+    // deferred decision is about.
+    for (const r of [...bare, ...named.filter((r) => r.form !== "bare")].slice(0, 8)) {
+      console.log(
+        `      ${r.form.padEnd(9)}${String(r.truth).padEnd(18)}sent ${String(r.sent).padStart(4)}` +
+          `   visible ${String(r.visibleRank ?? "not shown").padStart(9)}` +
+          `   flat ${String(r.flatRank ?? "-").padStart(9)}`,
+      );
+    }
+  }
+
+  // Per-category, over the carets whose ANSWER carries that category — the breakdown a rebalance needs.
+  const byCategory = new Map();
+  for (const r of rows) {
+    // Two different nothings, kept apart. `(absent)` is a caret whose answer the server never sent —
+    // the recall harness's problem, not the ranker's. `(uncategorised)` is an answer the server DID
+    // send and `classifyMetadata` gave no category to, which is a classification gap and not a
+    // weighting one; conflating them made one bucket of 168 look like the worst-ranked category here.
+    const key = r.truthCategory || (r.present ? "(uncategorised)" : "(absent)");
+    const bucket = byCategory.get(key) || { cases: 0, found: 0, ranks: [], weighted: WEIGHT_KEYS.has(weightKeyOf(key)) };
+    bucket.cases++;
+    if (r.visibleRank !== null) {
+      bucket.found++;
+      bucket.ranks.push(r.visibleRank);
+    }
+    byCategory.set(key, bucket);
+  }
+  console.log("\n  the answer's own category (w = CATEGORY_WEIGHT scores it above zero)");
+  console.log(
+    "  " + "category".padEnd(22) + "w".padStart(3) + "cases".padStart(7) + "recall".padStart(8) +
+      "medRank".padStart(9),
+  );
+  const ordered = [...byCategory.entries()].sort((a, b) => b[1].cases - a[1].cases);
+  for (const [name, b] of ordered) {
+    if (b.cases < 3) continue;
+    console.log(
+      "  " + name.padEnd(22) + (b.weighted ? "w" : "·").padStart(3) + String(b.cases).padStart(7) +
+        (b.found / b.cases).toFixed(3).padStart(8) + String(median(b.ranks) ?? "-").padStart(9),
+    );
+  }
+  const unweightedCases = [...byCategory.values()].filter((b) => !b.weighted).reduce((n, b) => n + b.cases, 0);
+  const totalRows = rows.reduce((n, r) => n + r.sent, 0);
+  const unweightedRows = rows.reduce((n, r) => n + r.unweightedRows, 0);
+  console.log(
+    `\n  CATEGORY_WEIGHT exposure: ${unweightedRows}/${totalRows} recorded rows ` +
+      `(${((100 * unweightedRows) / totalRows).toFixed(1)}%) and ${unweightedCases}/${rows.length} answers ` +
+      `carry a category the client scores 0`,
+  );
+
+  for (const [name, floor] of Object.entries(METRIC_FLOORS)) {
+    const form = name.split(" ")[0];
+    const metric = name.endsWith("mrr") ? "mrr" : "contestedRecall";
+    const value = byForm[form][metric];
+    if (!(value >= floor)) failures.push(`${name} is ${value.toFixed(3)}, below its floor of ${floor}`);
+  }
+  // The sectioning counterfactual is only a counterfactual about ORDER, and this asserts why: the
+  // visible set is decided before `orderItemsForGroupedDisplay` ever runs, so an answer is visible in
+  // the flat order exactly when it is visible in the grouped one. If someone moves the
+  // `.slice(MAX_VISIBLE_ITEMS)` to after the grouping, sectioning starts deciding *visibility* and this
+  // fails — which is the whole argument for "collapsing sections recovers none of the missing answers".
+  const flatOnly = rows.filter((r) => (r.visibleRank === null) !== (r.flatRank === null));
+  if (flatOnly.length > 0) {
+    failures.push(
+      `${flatOnly.length} answers are visible in one of the flat/grouped orders and not the other ` +
+        `(e.g. ${flatOnly[0].label}). Sectioning is supposed to permute the visible rows, not choose ` +
+        `them — so either filterAndLimit now cuts after grouping, or this decomposition is wrong.`,
+    );
+  }
+  if (byForm.all.medianSectionShift > MEDIAN_SECTION_SHIFT_CEILING) {
+    failures.push(
+      `sectioning now pushes the answer down by a median of ${byForm.all.medianSectionShift} rows ` +
+        `(ceiling ${MEDIAN_SECTION_SHIFT_CEILING}) — a category assignment has broken the way FLine.moveTo did`,
+    );
+  }
+  for (const message of failures) console.log(`FAIL rankmetrics: ${message}`);
+  if (failures.length === 0) console.log("PASS rankmetrics: every population floor holds");
+  return failures.length;
+};
+
 /**
  * The class-level guard behind the "Audio Ai" defect: *every* category the Kotlin side can put on a
  * completion must render its own spelling in the popup header. The expectations come from Kotlin
@@ -940,6 +1254,14 @@ if (mode === "rank") {
     failed++;
   } else {
     failed += await runRankGuard(specPath);
+  }
+}
+if (mode === "rankmetrics") {
+  if (!specPath) {
+    console.log("FAIL rankmetrics mode needs a path to the wide-corpus spec json");
+    failed++;
+  } else {
+    failed += await runRankMetrics(specPath);
   }
 }
 

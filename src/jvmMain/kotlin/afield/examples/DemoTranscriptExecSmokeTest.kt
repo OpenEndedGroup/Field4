@@ -225,6 +225,12 @@ object DemoTranscriptExecSmokeTest {
         // `source` lambda. Pure arithmetic and one daemon sampler thread — no Window, no Renderer, no
         // audio device — so the whole transcript runs to completion here.
         "control_surface_laws",
+        // Asks `afield.CommonMemberPrior` and `KotlinSourceIndex` what ranking prior and completion
+        // category the popup currently has for a receiver type, and tabulates the answer into
+        // display(). Two in-process lookups and some string building — no completion server, no
+        // window — so running it here is also the cheapest check that the two entry points
+        // public/docs/how_the_popup_decides.md names still exist with the signatures it claims.
+        "popup_prior_inspect",
     )
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */

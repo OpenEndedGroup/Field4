@@ -136,14 +136,14 @@ class FieldSuggestPresentationTest {
      * [KotlinSourceIndex.getCompletionCategoryForSymbol] resolves a contested simple name by first
      * match — a sentinel has to be unambiguous or it is measuring the walk order.
      */
-    private fun <T> withHermeticSourceIndex(block: () -> T): T {
+    private fun <T> withHermeticSourceIndex(shuffleSeed: Long? = null, block: () -> T): T {
         val dir = Files.createTempDirectory("field-suggest-source-index-")
         return FilestoreDir.withDirectory(dir) {
             val root = repoRoot()
             val definitions = KotlinSourceIndex.scanDefinitions(
                 roots = listOf(root.resolve("src/jvmMain/kotlin"), root.resolve("src/generatedLinalg/kotlin")),
                 relativeTo = root,
-            )
+            ).let { if (shuffleSeed == null) it else it.shuffled(kotlin.random.Random(shuffleSeed)) }
             assertTrue(
                 definitions.size >= 5000,
                 "the seeded source index looks empty (${definitions.size} definitions) — " +
@@ -261,6 +261,306 @@ class FieldSuggestPresentationTest {
                 "resolved by bare name — re-enrich the fixture (see dev_docs/completion_aa_sidecar.md)"
         )
         return out.toString()
+    }
+
+    /**
+     * **The same question as the case above, over 578 carets instead of seven.**
+     *
+     * The seven-case fixture is a *ratchet*: each case carries a note saying why its number is what it is,
+     * and a slip fails. What it cannot do is support a decision about the ranker's *weights*, and the
+     * commit that landed the classification fix says so in as many words — whether `CATEGORY_WEIGHT`
+     * should learn the server's category vocabulary "is a decision and not a measurement" — while
+     * `dev_docs/completion_aa_sidecar.md` has said for ten days that the corpus has to be widened first
+     * "or it is tuning on four carets".
+     *
+     * So this is the population. `tools/scrape_completion_corpus.py --wide` harvests both caret forms from
+     * every doc in the tree that has a Kotlin block — for `expr.member` in code a human wrote, the member
+     * they wrote *is* the label, which is free and unarguable ground truth — and
+     * `tools/record_rank_corpus.py` drives each caret through the sidecar's own `/complete`, the endpoint
+     * [AaCompletionClient] posts to per keystroke, at the same `limit = 1200`. The recording is checked in
+     * (`rank-corpus.tsv.gz`) so this test needs no sidecar.
+     *
+     * Same seams as the seven-case gate, deliberately: every row is classified by the server's own
+     * [KotlinCompletionSupport.classifyMetadata], the prior comes from the server's own
+     * [CommonMemberPrior], and the ranking is done by the verbatim `fieldSuggest.js` staged off the
+     * classpath. Two things this corpus records that the seven-case fixture does not:
+     *
+     *  - **`proximity`.** `fieldSuggest.js` scores `own`/`supertype`/`universal` at 0 / −20 / **−85**, its
+     *    largest negative term, and `rank-payloads.json` has never carried it — so every rank asserted in
+     *    this repo before today was computed with that term zero for every row.
+     *  - **The bare gesture at scale.** Every scraped caret keeps two characters after the dot, so the
+     *    recall corpus is entirely the *prefixed* gesture, where `fuzzy` dominates. The bare dot, which is
+     *    the case the whole `CATEGORY_WEIGHT` argument is about, had six instances in the repo.
+     *
+     * The aggregate floors are asserted in `probe.mjs`, next to the code that computes them. What is
+     * asserted *here* is that the corpus can still fail: a recall-at-80 measured over carets that send
+     * fewer than 80 rows is 100% by construction, so the headline is restricted to the **contested**
+     * carets — the ones where the popup had to leave something out — and the count of those is asserted.
+     */
+    @Test
+    fun `the rank a person sees, measured over the whole caret corpus`() {
+        val spec = withHermeticSourceIndex { rankMetricsSpec() }
+        // Dropped where `tools/rank_weight_lab.py` can find it, so a proposed change to a weight
+        // constant can be measured against this corpus in ten seconds instead of three minutes. Written
+        // from inside the test rather than by the tool, because the classification and the prior are the
+        // server's and only the test has them; the tool must not get its own opinion about either.
+        val dump = repoRoot().resolve("build/completion-corpus/rank-spec.json")
+        Files.createDirectories(dump.parent)
+        dump.writeText(spec)
+        // 578 carets, each opened twice (as shipped, and with the category signal removed), so the
+        // budget is minutes rather than the seconds the other three modes need.
+        withHermeticSourceIndex { runProbe("rankmetrics", spec, timeoutSeconds = 900) }
+    }
+
+    /**
+     * Expand `rank-corpus.tsv.gz` into the probe's spec, filling in the two server-side ranking inputs.
+     *
+     * The recording interns its rows (the vocabulary repeats hugely — every `String` receiver in the
+     * corpus ships the same rows), and `category` is a function of the row alone, so the whole table is
+     * classified **once** rather than once per occurrence. `commonMemberRank` is per *case*, because it
+     * depends on the receiver the caret sits on, so it is resolved case by case.
+     */
+    private fun rankMetricsSpec(): String {
+        val (rows, cases, meta) = corpusRecording()
+
+        // One classification per distinct row. `declaredIn` is what makes the answer right — it turns "what
+        // category is `scale`?", which has 42 answers in this tree, into "what category is `FLine.scale`?" —
+        // and it is passed exactly as `execution.kt` passes it.
+        var withDeclaredIn = 0
+        val classified = rows.map { r ->
+            if (r[4].isNotBlank()) withDeclaredIn++
+            categoryOfRow(r)
+        }
+        assertTrue(
+            withDeclaredIn >= rows.size / 2,
+            "only $withDeclaredIn of ${rows.size} distinct rows carry `declaredIn`, so categories are being " +
+                "resolved by bare name and these ranks are the old wrong ones"
+        )
+        // WHICH BACKEND RECORDED THIS, asserted two independent ways, because every conclusion drawn from
+        // this corpus is a statement about one completion backend. The K1 fallback supplies neither
+        // `declarationProximity` nor `commonMemberRank`, so a corpus recorded through it would measure a
+        // ranker with its terms switched off, and the null result would be an artefact of their absence.
+        //
+        // First, what the server said. `/complete` stamps its own `backend` on the reply, and the recorder
+        // now writes it into the corpus header, so the claim outlives the session that made it — it used to
+        // be a console line and nothing re-checked it.
+        assertEquals(
+            "k2-aa", meta["backend"],
+            "the corpus header reports backend `${meta["backend"]}`, not the AA sidecar's `k2-aa` — read the " +
+                "scope note at the top of dev_docs/completion_rank_at_scale.md before trusting a number here"
+        )
+        // Second, structurally, and this is the stronger leg. `Metadata.declarationProximity` has exactly
+        // ONE producer in the tree — `execution.kt:3226`, copying
+        // `extraInfo[AaCompletionClient.DECLARATION_PROXIMITY]`, which only the AA client populates — so a
+        // row carrying it CANNOT have come from K1. Note the direction: this asserts "present ⇒ AA". The
+        // converse, "blank ⇒ K1", is FALSE and must not be used, because proximity is populated only for
+        // member completions, so a genuine AA reply to a non-member caret carries none of it. Measured
+        // here: 5018 of 6679 distinct rows (75.1%) — own 4047, supertype 932, universal 39.
+        val withProximity = rows.count { it[5].isNotBlank() }
+        assertTrue(
+            withProximity >= rows.size / 2,
+            "only $withProximity of ${rows.size} distinct rows carry `declarationProximity`, whose only " +
+                "producer is the AA path — so this corpus was probably not recorded through it, and every " +
+                "conclusion drawn from it is about a ranker running with its terms switched off."
+        )
+
+        val out = StringBuilder(16 shl 20)
+        out.append("{\"corpus\":{")
+        meta.entries.forEachIndexed { i, (k, v) ->
+            out.append(if (i == 0) "" else ",").append(json(k)).append(':').append(json(v))
+        }
+        out.append("},\n\"cases\":[\n")
+        var withPrior = 0
+        var contestedBare = 0
+        var truthUniversal = 0
+        var truthUnweighted = 0
+        for ((caseIndex, c) in cases.withIndex()) {
+            val receiver = c[2]
+            val truth = c[3]
+            val indices = c[5].split(',').map { it.toInt() }
+            val code = String(java.util.Base64.getDecoder().decode(c[4]), Charsets.UTF_8).replace('‸', '|')
+            if (c[1] == "bare" && indices.size > MAX_VISIBLE_ROWS) contestedBare++
+            if (caseIndex > 0) out.append(",\n")
+            out.append("{\"label\":").append(json(c[0]))
+                .append(",\"form\":").append(json(c[1]))
+                .append(",\"receiver\":").append(json(receiver))
+                .append(",\"truth\":").append(json(truth))
+                .append(",\"code\":").append(json(code))
+                .append(",\"metadata\":[")
+            for ((i, index) in indices.withIndex()) {
+                val r = rows[index]
+                val rank = CommonMemberPrior.rankOf(receiver, r[0])
+                if (rank > 0) withPrior++
+                if (r[0] == truth || r[1] == truth || r[1].startsWith("$truth(")) {
+                    if (r[5] == "universal") truthUniversal++
+                    if (normalizeForWeight(classified[index]) !in WEIGHTED_CATEGORIES) truthUnweighted++
+                }
+                if (i > 0) out.append(',')
+                out.append("{\"text\":").append(json(r[0]))
+                    .append(",\"displayText\":").append(json(r[1]))
+                    .append(",\"tail\":").append(json(r[2]))
+                    .append(",\"icon\":").append(json(r[3]))
+                    .append(",\"category\":").append(json(classified[index]))
+                    .append(",\"declarationProximity\":").append(json(r[5]))
+                    .append(",\"commonMemberRank\":").append(rank)
+                    .append('}')
+            }
+            out.append("]}")
+        }
+        out.append("\n]}\n")
+
+        // ---- the inputs that would have made the headline fail, asserted to be present ---------------
+        // A recall@80 over carets that send fewer than 80 rows is 1.0 by construction, so the headline is
+        // the contested subset and the corpus has to have one that is big enough to mean anything.
+        assertTrue(
+            contestedBare >= 80,
+            "only $contestedBare bare carets send more than $MAX_VISIBLE_ROWS rows, so a recall-at-" +
+                "$MAX_VISIBLE_ROWS over this corpus could not have failed — widen it"
+        )
+        // The prior and the two large zero/negative terms must all be exercised, or the aggregate is
+        // measuring a ranker with most of its terms switched off.
+        assertTrue(
+            withPrior >= 100,
+            "only $withPrior rows across the corpus resolve a @CommonMembers prior — CommonMemberPrior is " +
+                "not reaching this measurement"
+        )
+        assertTrue(
+            truthUniversal >= 10,
+            "only $truthUniversal carets have an answer declared `universal` (the −85 proximity term), so " +
+                "the corpus cannot show what that term costs"
+        )
+        assertTrue(
+            truthUnweighted >= 100,
+            "only $truthUnweighted carets have an answer in a category `CATEGORY_WEIGHT` scores 0, so this " +
+                "corpus cannot measure the standing weight defect it exists to measure"
+        )
+        // The deferred decision was about a bare dot on a receiver nobody here can annotate
+        // (`java.lang.Math`, `kotlin.collections.List`), and the probe splits on exactly that. Without
+        // enough of them the split is vacuous, and the global bare figure goes on averaging two
+        // populations that turn out to be a factor of ten apart.
+        val bareForeign = cases.count { it[1] == "bare" && it[2].isNotBlank() && !it[2].startsWith("afield.") }
+        assertTrue(
+            bareForeign >= 60,
+            "only $bareForeign bare carets sit on a receiver this tree does not declare, so the " +
+                "owned-versus-foreign split the deferred decision turns on cannot be measured"
+        )
+        return out.toString()
+    }
+
+    /**
+     * **Is any of this decided by the order the source tree happened to be walked?**
+     *
+     * A fair question, because the corpus measurement classifies every row through [KotlinSourceIndex],
+     * the index is a flat list of definitions in scan order, and three lookups in that file still resolve
+     * a contested simple name by first match: `getKDocForSymbol`, `bestDefinitionForSimpleName` and
+     * `resolveSourceCard`. If a row's category came from one of those, then "the popup is insensitive to
+     * `CATEGORY_WEIGHT`" would be a claim about this machine's filesystem rather than about the ranker.
+     * This repository has been burned by that exact shape: `~/.afield/filestore` rewritten between runs
+     * gave four different ranks for one caret, which is why [withHermeticSourceIndex] exists at all.
+     *
+     * The argument was that none of those three is on this path — `classifyMetadata` reaches the index only
+     * through [KotlinSourceIndex.getCompletionCategoryForSymbol]. That argument is **wrong**, and this test
+     * is a **deliberate red** that says so.
+     *
+     * ### The verdict (2026-08-17): a genuine order dependency, 68 of 6 679 rows
+     *
+     * Discriminated from the obvious alternative — a `latestIndex` cache confound making both runs read one
+     * index — by the marker assertion below: the two runs report *different* first definitions, so the
+     * permutation really reached the index and the disagreement is the classifier's, not the harness's.
+     *
+     * The mechanism is visible in every disagreeing row: `declaredIn` is a **package**, never a class. So
+     * it is the top-level-extension branch that `69ca4d5cb` added,
+     *
+     *     val inPackage = matches.filter { it.filePath.contains("/$packagePath/") }
+     *     if (inPackage.isNotEmpty()) return inPackage.firstNotNullOfOrNull { it.categoryOrNull() }
+     *
+     * where `afield.stdlib` holds files carrying *different* `@file:CompletionCategory` values, so
+     * `firstNotNullOfOrNull` answers with whichever file the walk reached first: `max` is `Math` or
+     * `Graphics`, `main` is `Math` or `Visualization`, `lineTo` is `Graphics` or `Solvers`. It is exactly the
+     * defect `69ca4d5cb` fixed for the *name* vote, surviving one layer down in the vote it replaced it
+     * with — and it is the shape flagged in `KotlinSourceIndex` and never reproduced until now.
+     *
+     * **The fix is the same one-liner as last night's:** take `inPackage`'s distinct categories and return
+     * `singleOrNull()`, so a contested package declines and falls through to path inference instead of
+     * borrowing whichever file sorted first. Deliberately not done here: it moves categories, so it moves
+     * the seven-case rank ratchet and the corpus floors, and a ratchet re-cut at the end of a session is
+     * how this journal has been burned before. Left red on purpose — see
+     * `dev_docs/completion_rank_at_scale.md` for the bound it puts on the numbers in that document.
+     */
+    @Test
+    fun `the corpus's categories do not depend on the order the source tree was walked`() {
+        val rows = corpusRecording().first
+
+        // Classify every distinct row under one definition order, and report which order was actually in
+        // force. The marker is what discriminates a real finding from a broken test: if both runs report
+        // the same first definition then the permutation never reached the index — most likely
+        // `KotlinSourceIndex.latestIndex`, a cached static, answering both times — and any verdict below
+        // would be about this harness rather than about the classifier.
+        fun classifyUnder(seed: Long?): Pair<String, List<String>> =
+            withHermeticSourceIndex(shuffleSeed = seed) {
+                val index = KotlinSourceIndex.loadIndex()
+                    ?: fail("no index is readable inside the hermetic block")
+                index.definitions.first().name to rows.map { categoryOfRow(it) }
+            }
+
+        val (markerA, inScanOrder) = classifyUnder(null)
+        val (markerB, shuffled) = classifyUnder(20260817L)
+        assertTrue(
+            markerA != markerB,
+            "both runs saw the same index (first definition `$markerA` either way), so the permutation " +
+                "never reached KotlinSourceIndex and this test is measuring nothing. Most likely " +
+                "`latestIndex` is being reused across the two hermetic blocks."
+        )
+
+        val disagreements = rows.indices.filter { inScanOrder[it] != shuffled[it] }
+        if (disagreements.isNotEmpty()) {
+            val sample = disagreements.take(10).joinToString("\n") { i ->
+                "    ${rows[i][0]}  declaredIn=${rows[i][4].ifBlank { "<none>" }}  " +
+                    "scan-order=[${inScanOrder[i]}]  shuffled=[${shuffled[i]}]"
+            }
+            fail(
+                "${disagreements.size} of ${rows.size} distinct recorded rows get a different category when " +
+                    "the source tree is walked in a different order, so a first-match-wins lookup is still " +
+                    "reachable from `classifyMetadata` and every rank measured over this corpus inherits " +
+                    "this machine's filesystem order:\n$sample"
+            )
+        }
+    }
+
+    /** The checked-in recording: interned rows, cases, and the `#meta` header. */
+    private fun corpusRecording(): Triple<List<List<String>>, List<List<String>>, Map<String, String>> {
+        val rows = ArrayList<List<String>>()
+        val cases = ArrayList<List<String>>()
+        val meta = LinkedHashMap<String, String>()
+        for (line in gzipResource("/fieldSuggest/rank-corpus.tsv.gz").lineSequence()) {
+            if (line.isEmpty()) continue
+            val f = line.split('\t')
+            when (f[0]) {
+                "#meta" -> meta[f[1]] = f[2]
+                "R" -> rows.add(f.drop(1))
+                "C" -> cases.add(f.drop(1))
+            }
+        }
+        assertTrue(
+            rows.size >= 5000 && cases.size >= 400,
+            "the wide rank corpus looks empty (${rows.size} rows, ${cases.size} carets) — regenerate it " +
+                "with tools/record_rank_corpus.py (see dev_docs/completion_rank_at_scale.md)"
+        )
+        return Triple(rows, cases, meta)
+    }
+
+    /** The category the popup would receive for one recorded row, through the server's own classifier. */
+    private fun categoryOfRow(r: List<String>): String =
+        KotlinCompletionSupport.classifyMetadata(
+            Metadata(icon = r[3], tail = r[2], text = r[0], displayText = r[1], category = ""),
+            r[0],
+            if (r[4].isBlank()) emptyMap() else mapOf(AaCompletionClient.DECLARED_IN to r[4]),
+        ).category
+
+    private fun gzipResource(path: String): String {
+        val stream = javaClass.getResourceAsStream(path)
+            ?: fail("$path is not on the test classpath (expected it in jvmTest resources)")
+        return stream.use { java.util.zip.GZIPInputStream(it).readBytes().toString(Charsets.UTF_8) }
     }
 
     /**
@@ -423,12 +723,28 @@ class FieldSuggestPresentationTest {
         return "{\n \"categories\": [\n$entries\n ]\n}\n"
     }
 
-    private fun json(value: String): String =
-        "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+    /** A JSON string literal. Control characters are escaped rather than passed through, because the
+     *  wide corpus carries real multi-line box source as a case's `code` — an unescaped newline there is
+     *  a `SyntaxError` from `JSON.parse` a hundred lines into the spec. */
+    private fun json(value: String): String {
+        val out = StringBuilder(value.length + 2).append('"')
+        for (ch in value) {
+            when {
+                ch == '\\' -> out.append("\\\\")
+                ch == '"' -> out.append("\\\"")
+                ch == '\n' -> out.append("\\n")
+                ch == '\r' -> out.append("\\r")
+                ch == '\t' -> out.append("\\t")
+                ch < ' ' -> out.append("\\u%04x".format(ch.code))
+                else -> out.append(ch)
+            }
+        }
+        return out.append('"').toString()
+    }
 
     // ------------------------------------------------------------------ running the probe
 
-    private fun runProbe(mode: String, categorySpec: String? = null) {
+    private fun runProbe(mode: String, categorySpec: String? = null, timeoutSeconds: Long = 180) {
         if (System.getenv("AFIELD_SKIP_JS_TESTS") == "1") {
             println("FieldSuggestPresentationTest: skipped by AFIELD_SKIP_JS_TESTS=1")
             return
@@ -454,7 +770,7 @@ class FieldSuggestPresentationTest {
             .redirectErrorStream(true)
             .start()
         val output = process.inputStream.bufferedReader().readText()
-        if (!process.waitFor(180, TimeUnit.SECONDS)) {
+        if (!process.waitFor(timeoutSeconds, TimeUnit.SECONDS)) {
             process.destroyForcibly()
             fail("the completion-popup probe ($mode) never finished:\n$output")
         }
@@ -490,6 +806,47 @@ class FieldSuggestPresentationTest {
             dir = dir.parent ?: fail("could not locate the repo root from ${Path.of("").toAbsolutePath()}")
         }
         return dir
+    }
+
+    /**
+     * `normalizeCategory` from `fieldSuggest.js`, which is what `CATEGORY_WEIGHT` is keyed by: trimmed,
+     * lowercased, blank becoming `other`. Mirrored rather than shared because the two sides are different
+     * languages; the mirroring is safe only because [weightedCategories] reads the table itself.
+     */
+    private fun normalizeForWeight(category: String): String =
+        category.trim().lowercase().ifEmpty { "other" }
+
+    private val WEIGHTED_CATEGORIES: Set<String> by lazy { weightedCategories() }
+
+    /** `MAX_VISIBLE_ITEMS` in `fieldSuggest.js` — how many rows the popup will ever render. Read from the
+     *  shipped file, because "contested" below means "sends more rows than the popup can show" and a stale
+     *  copy of this number would silently redefine the subset the headline is measured over. */
+    private val MAX_VISIBLE_ROWS: Int by lazy {
+        Regex("""const MAX_VISIBLE_ITEMS = (\d+);""").find(resource("/fieldSuggest.js"))
+            ?.groupValues?.get(1)?.toInt()
+            ?: fail("could not find MAX_VISIBLE_ITEMS in fieldSuggest.js")
+    }
+
+    /**
+     * The category names `CATEGORY_WEIGHT` scores **above zero**, read out of the shipped
+     * `fieldSuggest.js`.
+     *
+     * Read rather than listed, because the whole point of the corpus measurement below is to count how
+     * many real completions land in a category this table does not know, and a hand-copied list would go
+     * on agreeing with itself after the table was rebalanced — which is the one moment the count matters.
+     */
+    private fun weightedCategories(): Set<String> {
+        val js = resource("/fieldSuggest.js")
+        val table = Regex("""const CATEGORY_WEIGHT = new Map\(\[(.*?)]\);""", RegexOption.DOT_MATCHES_ALL)
+            .find(js)?.groupValues?.get(1)
+            ?: fail("could not find CATEGORY_WEIGHT in fieldSuggest.js")
+        val entries = Regex("""\["([^"]+)",\s*(-?\d+)]""").findAll(table)
+            .associate { it.groupValues[1] to it.groupValues[2].toInt() }
+        assertTrue(
+            entries.size >= 5 && entries.values.any { it > 0 },
+            "CATEGORY_WEIGHT parsed as $entries — the scan of fieldSuggest.js has rotted"
+        )
+        return entries.filterValues { it > 0 }.keys
     }
 
     private companion object {

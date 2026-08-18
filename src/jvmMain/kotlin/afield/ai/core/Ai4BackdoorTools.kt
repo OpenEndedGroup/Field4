@@ -120,7 +120,21 @@ internal object Ai4BackdoorTools {
                 }
                 sessionInfo.boxes.containsKey(trimmed) -> FileRef(docName, trimmed, defaultProperty)
                 else -> {
-                    val byName = sessionInfo.boxes.values.firstOrNull { it.name == trimmed }
+                    // A duplicated name is refused, not resolved: uniqueBoxOrRefuse throws
+                    // AmbiguousBoxNameException, which agent-ai-tool-call turns into ok=false with the
+                    // count and "reference one by its uid instead" — the same refusal
+                    // tools/field_mcp.py's _resolve_box has always given.
+                    //
+                    // A name that matches *nothing* still falls through to the literal-uid branch
+                    // below, deliberately and unchanged. That branch is not a guess: it is how an
+                    // honest uid reaches its box when the uid is not in `sessionInfo.boxes` (the
+                    // document root), and when the token is simply a typo the provider's own
+                    // "Unknown box '<token>'" is a better message than anything this resolver could
+                    // give. Only ambiguity errors here, because only ambiguity has no answer.
+                    val byName = uniqueBoxOrRefuse(
+                        trimmed,
+                        sessionInfo.boxes.values.filter { it.name == trimmed }
+                    )
                     if (byName != null) FileRef(docName, byName.id, defaultProperty)
                     else FileRef(docName, trimmed, defaultProperty)
                 }
@@ -159,12 +173,15 @@ internal object Ai4BackdoorTools {
             )
         }
         val runMacro: (MacroRunRequest) -> MacroRunResult = { req ->
-            // Resolve target box tokens against the live document (uid or name).
+            // Resolve target box tokens against the live document (uid or name). A duplicated name is
+            // refused rather than resolved — see the refResolver above; replaying a macro over the
+            // wrong box is the one failure here that edits a document.
             val targets = req.targetBoxes.mapNotNull { raw ->
                 val token = raw.trim()
                 if (token.isEmpty()) null
                 else if (sessionInfo.boxes.containsKey(token)) token
-                else sessionInfo.boxes.values.firstOrNull { it.name == token }?.id ?: token
+                else uniqueBoxOrRefuse(token, sessionInfo.boxes.values.filter { it.name == token })?.id
+                    ?: token
             }
             val result = OperationTranscript.runMacro(
                 documentPath = docPath,

@@ -70,6 +70,50 @@ it**. Where the anchor turns out to be is the answer.
 The line number stays, and stays useful, but it is **advisory**: it is what the reader is shown, and
 it disambiguates an anchor that occurs more than once.
 
+### How the *path* resolves, and why only a full suffix counts
+
+Prose cites `` `FloatEarcut.kt:705#linkedList` ``, not
+`src/jvmMain/kotlin/afield/graphics/FloatEarcut.kt`, and it should keep being able to — a sentence
+carrying a forty-character path is a sentence nobody reads. Measured 2026-08-17: **83 of the corpus's
+222 citations are abbreviated**, so this is the majority case, not a convenience.
+
+Two tiers, in order:
+
+1. **Exact repo-relative path.** `File(root, path)`, if it is a file. An unambiguous citation never pays
+   for the index at all.
+2. **Full path *suffix*, and only if exactly one file matches.** So `graphics/StandardDrawing.kt`
+   resolves even though `StandardDrawing.kt` exists twice in this repo (`graphics/` and `stdlib/`) —
+   which is the case that makes "just require unique filenames" a non-answer.
+
+Tier 2's **refusal** is the part worth guarding, and worth being careful about how you prove it. Measured
+2026-08-17 in a clean worktree: **70 filenames are duplicated inside the repo proper**, 16 of them `.kt`.
+That population is what keeps the refusal reachable at all, so it is floored
+(`MIN_DUPLICATED_FILENAMES = 40`) and the refusal is asserted against a *real* duplicate rather than a
+planted one, by `aFilenameDuplicatedWithinThisCheckoutIsStillRefused`.
+
+The reason for that care is a hole in this night's own first pass, and it generalises. *"83 unresolvable
+before, 0 after"* proves nested checkouts are excluded. It proves **nothing** about whether an ambiguous
+path is still refused — had the fix accidentally been "return the first candidate", all 222 citations
+would still have resolved, the number would still have read 0, and no assertion in the suite would have
+objected. The check that closes it is a mutation: change tier 2's `singleOrNull()` to `firstOrNull()` and
+`aFilenameDuplicatedWithinThisCheckoutIsStillRefused` fails on `StandardDrawing.kt`. Run that mutation if
+you ever rewrite `locate` — a resolver suite that survives it is not testing resolution.
+
+There used to be a third tier: *the only file with this name, wherever it is*, written
+`suffix.singleOrNull() ?: byName.singleOrNull()`. It is worth knowing why that is gone, because the
+shape recurs. The `singleOrNull` reads as "only answer if unambiguous" and the elvis behind it then
+answers regardless — so `wrong/dir/FLine.kt` resolved happily to `graphics/FLine.kt`, and a citation
+whose directory component was simply wrong could sit in a doc forever with nothing to say so. Measured
+before removing it: it resolved **0** of the 222 citations, every one of which matched on the full
+suffix. A tier whose only reachable effect is to launder an error.
+`everyCitationResolvesByPathSuffixNotByBareName` asserts the corpus still does not need it, and will
+name any citation that starts to.
+
+This is the same shape as an ambiguity guard found neutralised elsewhere in the tree on 2026-08-16 —
+`categories.singleOrNull() ?: categories.firstOrNull()`, which is *identical to `firstOrNull()`*: with
+one element `single` == `first`, with several `single` == null and the elvis takes the first anyway. If
+you write `singleOrNull` because ambiguity should be refused, do not put a fallback behind it.
+
 ### The two tiers, and why the obvious assertion is the wrong one
 
 **Tier 1 — the anchor. Absolute.** It must exist. Insertion-invariant, so no sibling branch can ever
@@ -180,7 +224,61 @@ opt in via `path:line#anchor`. **65** bare citations remain on the two guarded p
 printed on every build by `unguardedCitationsAreCountedNotIgnored`, deliberately with no floor,
 because it is a measurement and pretending otherwise would be the very thing this page is against.
 
-**4. The gate that did not run.** The worst one, because it is self-concealing. Verified against
+**4. The environment, not the corpus — a nested checkout.** New on 2026-08-17, and the one to read
+first if this guard is red for you and green for everybody else.
+
+`CitationContractTest` was a **permanent false red in `/Users/marc/field4`** — the one tree the gates
+are actually run in — while passing in every clean worktree. Measured there on 2026-08-17 with the real
+resolver, read-only: **83 of 222 citations unresolvable, and the 83 were exactly the 83 written as an
+abbreviated path**. Zero genuine breaks. The nightly journal recorded 81 on 08-14 and 82 on 08-16; those
+are the same measurement, and the count rose because the corpus gained one abbreviated citation on each
+of those dates — not because anything drifted.
+
+The cause was `CitationGuard`'s filename index. It walked the whole tree skipping
+`.git`/`build`/`node_modules`/`.gradle`/`out`/`.idea`, and **not** `.claude/worktrees/`, which on this
+machine holds complete nested checkouts left by agents — three of them that day. Every source filename
+therefore matched four times, and `locate()` answers only when exactly one file matches, so every
+abbreviated citation resolved to null at once. `ThreeJsViewer.kt`: 4 files in the primary tree, 1 in a
+worktree.
+
+Two lessons, and the second is the more useful:
+
+- **A guard that is red only in the tree you work in is worse than no guard**, because it trains you to
+  skip the output. This one had already produced a wrong diagnosis that was written down and then had to
+  be retracted.
+- **The diagnostic was a participant in the failure.** The message was *"cited file X does not exist, or
+  the abbreviated path matches more than one file"*, which conflates two causes needing opposite repairs
+  — restore the file, versus lengthen the path. Reading 83 of those, twice, produced "83 files were
+  deleted" both times. The two cases are now separate messages and an ambiguity **names the files it
+  matched**, so a nested checkout diagnoses itself in the failure text.
+
+The index now skips any directory that is the root of a *different* checkout. **The marker is `.git`,
+not `settings.gradle.kts`**, and that is measured rather than assumed: `tools/code-use-semantic-sidecar`
+is an in-repo Gradle build with its own `settings.gradle.kts` whose sources genuinely are part of this
+checkout, and the guarded page `completion_aa_sidecar.md` cites two of them (`AaCompletion.kt`,
+`CodeUseSemanticSidecar.kt`). Skipping on `settings.gradle.kts` repairs the 83 and breaks those 4 — it
+trades one false red for a smaller one. `.git` separates the two cases exactly on the real inputs: a
+nested clone or worktree always has one, an in-repo subproject never does.
+`anInRepoGradleSubprojectIsNotMistakenForANestedCheckout` and
+`theInputThatRulesOutTheGradleMarkerIsReallyInThisRepo` hold both halves down.
+
+**`.git` is two shapes, and both have to be covered.** `git clone` leaves a `.git` *directory*;
+`git worktree add` leaves a `.git` *file* holding a `gitdir:` pointer. Measured 2026-08-17: all three
+checkouts under `.claude/worktrees/` are the **file** shape, because the agent harness makes worktrees
+rather than clones. `File(dir, ".git").exists()` is true of both — but on the evidence actually available
+the rule had only ever been exercised against one of them, so `bothShapesOfANestedCheckoutAreExcluded`
+plants one of each and asserts the fixture really made one of each. Otherwise the fix works today and
+breaks the first time somebody clones into the tree.
+
+The residual cost is narrow and deliberate: a git **submodule** also carries a `.git` file, so an
+*abbreviated* citation into `services/field-audio-ai` will not resolve. A full repo-relative path still
+does, because `locate()` tries that before it consults the index at all. That trade is **pinned by
+`noGuardedPageCitesIntoASubmoduleByAnAbbreviatedPath`**, not merely asserted about the present: it fails
+and names the citation the moment somebody writes one, instead of surfacing later as a mysterious "does
+not exist" on a file that plainly does. It also fails if the repo stops declaring any submodule at all,
+which is the point at which this paragraph should be deleted rather than left to mislead.
+
+**5. The gate that did not run.** The worst one, because it is self-concealing. Verified against
 `build.gradle.kts` and against a real build log on 2026-08-12:
 
 `build.gradle.kts:1355-1362` adds six documentation gates to `check` with `dependsOn` and **no
@@ -211,6 +309,25 @@ It depends on all six gates and on nothing else — no `:allTests` in the way, s
 hide whether they ran. Measured at **1m13s**, against roughly seven minutes for a full `check`, which
 makes it cheap enough to run on any documentation change. It does not alter what `check` does;
 `check --continue` remains the way to get all six *plus* the tests.
+
+**And now the part that catches people, including the author of this page.** `docsGates` depends on
+those six `JavaExec` gates **and on nothing else — in particular not on `:jvmTest`**. Verified against
+`build.gradle.kts:1398-1407`, where all six `dependsOn` lines are visible and there is no seventh. So
+**a green `docsGates` says nothing whatsoever about `CitationContractTest`**, `SmallLanguageAnatomyTest`
+or `CloseNodeCitationDriftTest` — the three guards this entire page is about. A green `docsGates` has
+been quoted as covering citation work it never touched.
+
+To verify a citation change you need both, and only the second one reads the guards on this page:
+
+```
+./gradlew --no-daemon docsGates
+./gradlew --no-daemon jvmTest --tests '*CitationContractTest*' --tests '*SmallLanguageAnatomy*'
+```
+
+And read the **XML** — `build/test-results/jvmTest/TEST-*.xml`, its `tests=` and `failures=`
+attributes — not an exit code and not "BUILD SUCCESSFUL". A `--tests` filter that matches zero tests
+exits 0, so a typo in the filter is indistinguishable from a pass; and piping Gradle into `tail` makes
+`$?` report the pipe's status rather than Gradle's (use `PIPESTATUS`).
 
 ## What none of this checks
 
