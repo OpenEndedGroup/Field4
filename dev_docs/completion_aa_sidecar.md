@@ -104,19 +104,19 @@ the same non-reentrant dispatcher used elsewhere (see the `warmCompletion` note 
 
 ### 2.3 `KotlinInterface2.complete()` — backend switch
 
-`KotlinInterface2.complete(s, cursor)` (`KotlinInterface2.kt:551#override suspend fun complete(s: String, cursor: Int)`) is the fork:
+`KotlinInterface2.complete(s, cursor)` (`KotlinInterface2.kt:552#override suspend fun complete(s: String, cursor: Int)`) is the fork:
 
-- If `KotlinEngineConfig.activeCompletionBackend == AA` (`KotlinInterface2.kt:560#activeCompletionBackend ==`):
+- If `KotlinEngineConfig.activeCompletionBackend == AA` (`KotlinInterface2.kt:561#activeCompletionBackend ==`):
   1. gather the box's inherited preamble: `normalizePreambleText(gatherPreambleUpwards(box))`
-     (`KotlinInterface2.kt:561#normalizePreambleText(gatherPreambleUpwards`; `gatherPreambleUpwards` in `macros/macros.kt:117#fun gatherPreambleUpwards`,
+     (`KotlinInterface2.kt:562#normalizePreambleText(gatherPreambleUpwards`; `gatherPreambleUpwards` in `macros/macros.kt:117#fun gatherPreambleUpwards`,
      `normalizePreambleText` in `stdlib/shaders.kt:2569#fun normalizePreambleText`).
   2. collect implicit receiver type names (e.g. `afield.Box`).
   3. call `AaCompletionClient.complete(s, cursor, completionPreamble, receiverTypes)` on
      `Dispatchers.IO` (`KotlinInterface2.kt:565-566`).
   4. If AA **served** the result, log `backend=AA … (detail)` and return it (`KotlinInterface2.kt:569-571`).
-  5. Otherwise log `backend=K1 … (AA→K1: detail)` and fall through (`KotlinInterface2.kt:573#if (outcome.served)`).
+  5. Otherwise log `backend=K1 … (AA→K1: detail)` and fall through (`KotlinInterface2.kt:574#if (outcome.served)`).
 - Otherwise (backend `K1`, or after an AA miss) it calls `k1CompletionDelegate().complete(s, cursor)`
-  (`KotlinInterface2.kt:577#backend=K1`).
+  (`KotlinInterface2.kt:578#backend=K1`).
 
 Every request logs which backend actually served it on the `completion` log channel, so the source of any
 given completion is never a mystery.
@@ -169,7 +169,7 @@ so the client sees a clean "server-fail" and falls back to K1, never an HTTP err
 
 #### What `AaCompleter` does with the Analysis API (`AaCompletion.kt`)
 
-`AaCompleter.complete()` (`AaCompletion.kt:741#fun complete(`) reconstructs the box's editing context as a synthetic,
+`AaCompleter.complete()` (`AaCompletion.kt:740#fun complete(`) reconstructs the box's editing context as a synthetic,
 compilable, **in-memory dangling `KtFile`** and asks the Analysis API what's in scope at the caret:
 
 - **Preamble → local stubs, *and* file scope.** A dangling file's own *top-level* declarations don't
@@ -654,7 +654,7 @@ branch resolves from the qualified expression and was left byte-for-byte alone.
 Standalone AA **cannot** enumerate a *binary* package's members by prefix
 (`packageScope.callables(nameFilter)` returns empty for binary packages), but it *can* resolve them by
 exact name (`findTopLevelCallables`, `findClassLike`, `findTypeAlias`). So `AaSymbolIndex`
-(`AaCompletion.kt:289#data class AaSymbolIndex`) scans the binary classpath roots once with ASM to learn which callable /
+(`AaCompletion.kt:288#data class AaSymbolIndex`) scans the binary classpath roots once with ASM to learn which callable /
 classifier / type-alias names exist per imported package, then AA resolves them on demand by exact name.
 The index is disk-cached under the sidecar scratch dir, keyed by a stat-only classpath fingerprint
 (`buildOrLoad`, `:112`; fingerprint `:130`), so a recompile transparently rebuilds it and an unchanged

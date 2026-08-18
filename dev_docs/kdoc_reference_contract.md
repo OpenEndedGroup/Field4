@@ -152,9 +152,9 @@ will not reach the page. The guard treats them as benign, annotated or not.
 
 This is the part that surprises people, and it has already caused one confident misattribution. The
 generated pages carry `Used in:` back-links, and those are *derived from the docs pages themselves*,
-not from KDoc. `StdlibReferenceGenerator.buildEvidenceIndex` (`StdlibReferenceGenerator.kt:1026#private fun buildEvidenceIndex`)
+not from KDoc. `StdlibReferenceGenerator.buildEvidenceIndex` (`StdlibReferenceGenerator.kt:1045#private fun buildEvidenceIndex`)
 lists **every** `public/docs/*.md` except the nine in `EVIDENCE_PAGE_BLOCKLIST`
-(`StdlibReferenceGenerator.kt:305#EVIDENCE_PAGE_BLOCKLIST`), reduces each to its *code* text only — fenced blocks plus
+(`StdlibReferenceGenerator.kt:320#EVIDENCE_PAGE_BLOCKLIST`), reduces each to its *code* text only — fenced blocks plus
 inline code spans, with bare filename spans dropped (`codeTextOf`, `:1091`) — and links a page to
 a source file when at least `MIN_EVIDENCE_HITS` = 2 (`:94`) tokens that are **uniquely owned** by
 that one file (ownership built at `:1038-1040`, applied at `:1049`) match in it.

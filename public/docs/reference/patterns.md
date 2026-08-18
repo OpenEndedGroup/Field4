@@ -229,7 +229,7 @@ A named parameter pattern waiting to be attached to some atoms.
 
 `src/jvmMain/kotlin/afield/four/synth/PatComposition.kt`
 
-**Used in:** [Patterns: writing rhythm as a function of time](../pattern_language.md)
+**Used in:** [Patterns: writing rhythm as a function of time](../pattern_language.md), [How the popup decides](../how_the_popup_decides.md)
 
 ### Top-level functions { #patcomposition-kt-functions }
 

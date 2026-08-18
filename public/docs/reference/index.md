@@ -149,7 +149,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [ParamQuery.kt](synthesis.md#paramquery-kt) | Synthesis | 57 | 4 | The synth-facing head of the graph-query layer: turn a `PathSet` into a set of *drivable parameters*. | [Querying object graphs](../graph_query.md) |
 | [PatAlgebra.kt](patterns.md#patalgebra-kt) | Patterns | 66 | 65 |  | [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md), [Sonic Pi](../sonic_pi.md) |
 | [PatClock.kt](patterns.md#patclock-kt) | Patterns | 14 | 0 |  |  |
-| [PatComposition.kt](patterns.md#patcomposition-kt) | Patterns | 53 | 53 |  | [Patterns: writing rhythm as a function of time](../pattern_language.md) |
+| [PatComposition.kt](patterns.md#patcomposition-kt) | Patterns | 53 | 53 |  | [Patterns: writing rhythm as a function of time](../pattern_language.md), [How the popup decides](../how_the_popup_decides.md) |
 | [PatFunctions.kt](patterns.md#patfunctions-kt) | Patterns | 48 | 6 |  |  |
 | [PatOnsetDetection.kt](patterns.md#patonsetdetection-kt) | Patterns | 14 | 8 |  |  |
 | [PatPatternReturnValue.kt](patterns.md#patpatternreturnvalue-kt) | Patterns | 1 | 0 |  |  |
