@@ -40,8 +40,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 65 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
-not in the same way, and the difference is worth knowing before you trust one. 46 of them are
+All 66 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+not in the same way, and the difference is worth knowing before you trust one. 47 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
 error-kind output line. (Almost always that is every box in the file. A transcript may deliberately
@@ -725,6 +725,16 @@ compiling and its lines are added back before the marker is placed — get that 
 diagnostic lands a row or two off, looking like a compiler bug. Only the middle three boxes are replayed
 here; the voice wants an audio device and the last one fails by design.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/faust_voice/metadata.edn)
+
+**popup_prior_inspect** — Asks Field what ranking prior the completion popup currently has for a
+receiver type, by calling the object the completion server itself calls — `afield.CommonMemberPrior` —
+rather than describing it. Tabulates the type's `@CommonMembers` list in declared order with the score
+each position earns. Change one string to ask about your own class, and replay it when a member you
+expect near the top of `ctrl-space` is not there. It answers one of the two questions that place a row:
+the other is which *section* it lands in, which lives behind an `internal` object and so belongs to
+`FIELD_RANK_DUMP` instead. Both are explained on
+[How the Popup Decides](how_the_popup_decides.md).
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/popup_prior_inspect/metadata.edn)
 
 ## Service-backed composition scenes
 
