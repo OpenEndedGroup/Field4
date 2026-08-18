@@ -364,7 +364,9 @@ None of that says Sonic Pi then *does* what the program says. `sonicpi.pattern.t
 on the real engine with `pat("bd ~ [bd bd bd] bd")` at a quarter cycle per second — a triplet inside
 a binary bar, chosen so that a detector cannot pass by accident. It runs twice: once at `amp: 0`,
 measuring Sonic Pi's own line-activity reports, and once audible at a master volume of 0.15,
-recorded through Sonic Pi's recorder and analysed in process.
+recorded through Sonic Pi's recorder and analysed in process. It skips loudly on machines without
+Sonic Pi; `FIELD_SONIC_PI_REQUIRED=1` turns that skip (or a boot that never becomes ready) into a
+failure on machines whose job is to exercise the external engine.
 
 ```diffstatic {data-lang=text}
 :::static

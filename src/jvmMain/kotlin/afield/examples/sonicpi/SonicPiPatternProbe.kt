@@ -63,11 +63,17 @@ expect:
  * `0.333` would drift visibly across the nine seconds.
  *
  * Degrades to a loud skip without an install, the way [SonicPiLinkAudioProbe] does — the answer
- * "there is no Sonic Pi here" is not a regression, and a probe that fails the build for it teaches
- * nothing. Unlike that probe, this one *asserts*: the bounds below are numbers that were measured
- * on this machine, not guesses, and they are commented with what was seen.
+ * "there is no Sonic Pi here" is not a regression on an ordinary machine. A machine whose job is
+ * to exercise Sonic Pi sets `FIELD_SONIC_PI_REQUIRED=1`, which turns either unavailable-engine skip
+ * into a failure. Unlike that probe, this one *asserts*: the bounds below are numbers that were
+ * measured on this machine, not guesses, and they are commented with what was seen.
  */
 object SonicPiPatternProbe {
+
+    /** A strict Sonic Pi machine must fail rather than turn an unmeasured probe into a green skip. */
+    internal fun refuseRequiredSkip(required: Boolean, reason: String) {
+        check(!required) { "FIELD_SONIC_PI_REQUIRED=1, but $reason" }
+    }
 
     /**
      * Master volume for the audible half. Low enough not to wake anyone, high enough to measure.
@@ -120,10 +126,12 @@ object SonicPiPatternProbe {
 
     @JvmStatic
     fun main(args: Array<String>) {
+        val required = System.getenv("FIELD_SONIC_PI_REQUIRED") == "1"
         val install = runCatching { SonicPiInstall.discover() }.getOrNull()
         if (install == null) {
             println("SKIPPED: no Sonic Pi install found, so nothing here was exercised.")
             println("  Set -Dsonicpi.home or SONIC_PI_HOME if one is installed somewhere unusual.")
+            refuseRequiredSkip(required, "no Sonic Pi install was found")
             println("pattern timing probe finished")
             return
         }
@@ -137,6 +145,7 @@ object SonicPiPatternProbe {
             sonicPi = SonicPi.shared()
             if (!sonicPi.awaitReady(120_000L)) {
                 println("SKIPPED: Sonic Pi booted but never announced /spider/ready.")
+                refuseRequiredSkip(required, "Sonic Pi never became ready")
                 println("pattern timing probe finished")
                 return
             }
