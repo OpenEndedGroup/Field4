@@ -120,28 +120,18 @@ you write `singleOrNull` because ambiguity should be refused, do not put a fallb
 turn it red; it fires only when something is renamed or deleted, which is an editorial event a person
 should look at.
 
-**Tier 2 — the number. Bounded, not exact.** The instinct is to require every advisory number to be
-*correct*, and that instinct rebuilds the hazard: a sibling inserting twenty lines above a citation
-would turn the guard red again, wearing a different hat.
+**Tier 2 — the number. Measured, not asserted.** Requiring every advisory number to be exact rebuilds
+the hazard immediately: a sibling inserting lines above a citation turns a docs guard red. The later
+40-line ceiling only postponed that failure. Measured history found that 36% of commits touching a
+cited file insert more than 40 lines, so an unrelated source branch could still fail the guard while
+changing no citation identity.
 
-But "cannot be asserted exactly" is not "cannot be asserted", and stopping there would swap a guard
-that goes red for a number that goes unread — this repo's most-recorded failure. So the enforcement
-moves from the *count* to the *magnitude*:
+The inventory therefore reports every drift and names the worst one, but source motion is not a hard
+failure. The load-bearing checks are the anchor resolving absolutely, the per-page citation floors,
+and the corpus floor of **184 unique anchors**. A stale number is repaired mechanically; a missing or
+ambiguous symbol remains red.
 
-> No single citation may be more than `MAX_ADVISORY_DRIFT` (**40**) lines wrong.
-
-The count is the wrong quantity. How many numbers drift depends on how densely a page cites the file
-someone edited — one insertion into `Server.kt` drifts all seven citations pointing at it, the same
-insertion elsewhere drifts one, and those are equally harmful to a reader. The magnitude is the right
-quantity, because how *far* wrong a number is, is exactly how harmful it is: three lines off and the
-reader still sees the anchor; three hundred and the citation is a lie.
-
-40 is a judgement — roughly a screenful — stated as a judgement so it can be argued with. It was
-verified to bite: inserting 60 lines into `Server.kt` fails and names the citation and its real line,
-while a 20-line insertion stays green.
-
-So: **the anchor is guaranteed by CI absolutely; the number is guaranteed to within a screenful and
-refreshed on demand.**
+So: **the anchor is guaranteed by CI absolutely; the number is reported and refreshed on demand.**
 
 Refresh a page's worth of numbers with:
 
