@@ -105,6 +105,46 @@ fun fileRefFor(docName: String, uid: String, property: String): String =
 
 fun boxLabel(target: Box): String = target.name.trim().ifBlank { target.id }
 
+/**
+ * Thrown when a box *name* an agent supplied matches more than one box.
+ *
+ * Box names are freely duplicated in a Field document — two boxes called `render` is an ordinary
+ * thing for a person to have — so a name is a label, not an identifier. Only the uid is one. Every
+ * tool that accepts "a box" accepts either, and until this existed the name path resolved a duplicate
+ * with `firstOrNull`: the edit landed on whichever box the document's map happened to iterate first,
+ * silently, with a success result. That is the worst available outcome, because the agent is then
+ * told it changed the box it asked for.
+ *
+ * Refusing is safe to do by throwing because *both* dispatchers already turn an exception out of a
+ * provider into a per-call tool error carrying [message], and neither aborts the conversation:
+ * `agent-ai-tool-call` in `agent_backdoor.kt` replies `ok=false, error=<message>`, and the OpenAI
+ * harness in [OpenAiIdeCodexBridge] feeds back `{error: true, message: <message>}`. So the agent
+ * reads the count and the instruction, and retries with a uid.
+ *
+ * The wording is copied from `tools/field_mcp.py`'s `_resolve_box`, which has always refused here —
+ * including its single quotes, which are what Python's `{token!r}` produces for an ordinary name — so
+ * that the canonical MCP path and the in-app paths read identically to whoever hits it.
+ */
+class AmbiguousBoxNameException(val name: String, val matchCount: Int) : IllegalArgumentException(
+    "$matchCount boxes are named '$name'; reference one by its uid instead."
+)
+
+/**
+ * The single box in [matches], or `null` if there were none — refusing rather than choosing when
+ * [name] matched more than one.
+ *
+ * Deduplicates by uid first, so a caller that assembled [matches] from overlapping collections (the
+ * chat handler searches `root + boxes.values`) cannot report the same box twice as an ambiguity.
+ *
+ * `null` means "no such name", which every caller already has a path for. The refusal throws instead
+ * of returning, because there is no honest value to return: see [AmbiguousBoxNameException].
+ */
+fun uniqueBoxOrRefuse(name: String, matches: List<Box>): Box? {
+    val distinct = matches.distinctBy { it.id }
+    if (distinct.size > 1) throw AmbiguousBoxNameException(name, distinct.size)
+    return distinct.firstOrNull()
+}
+
 fun diagnosticToCompileDiagnostic(diagnostic: ScriptDiagnostic): CompileDiagnostic {
     val location = diagnostic.location
     return CompileDiagnostic(
@@ -929,20 +969,53 @@ fun installAi4() {
         fun textPropertyContents(target: Box, property: String): String? =
             (target.getPropertyRaw(property) as? String)?.takeIf { it.isNotBlank() }
 
+        /**
+         * Resolve what a model called a box to a box: uid, then exact label, then label ignoring case,
+         * then a unique substring of a label.
+         *
+         * The uid tier can be `firstOrNull` because uids are unique. The two *label* tiers cannot, and
+         * were `firstOrNull` until 2026-08-17: two boxes named `render` and an agent asking for `render`
+         * got whichever one the document's map iterated first, silently. They go through
+         * [uniqueBoxOrRefuse], which throws [AmbiguousBoxNameException] instead of picking.
+         *
+         * Exactness still disambiguates, and that ordering is why the tiers are worth keeping separate:
+         * boxes `Foo` and `foo` are not ambiguous for `foo`, because tier 2 resolves it before the
+         * case-insensitive tier ever sees both.
+         *
+         * The loose substring tier deliberately stays `singleOrNull` — silent `null`, no refusal. It is
+         * a *guess*, not a claim about identity: several labels containing `ren` is the normal state of
+         * a document, not a naming collision an author should be told to fix, and callers already
+         * handle "no match".
+         */
         fun resolveBoxByChatName(rawName: String): Box? {
             val requested = rawName.trim()
             if (requested.isBlank()) return null
             val boxes = (listOf(sessionInfo.root) + sessionInfo.boxes.values)
                 .distinctBy { it.id }
             boxes.firstOrNull { it.id == requested }?.let { return it }
-            boxes.firstOrNull { boxLabel(it) == requested }?.let { return it }
-            boxes.firstOrNull { boxLabel(it).equals(requested, ignoreCase = true) }?.let { return it }
+            uniqueBoxOrRefuse(requested, boxes.filter { boxLabel(it) == requested })?.let { return it }
+            uniqueBoxOrRefuse(
+                requested,
+                boxes.filter { boxLabel(it).equals(requested, ignoreCase = true) }
+            )?.let { return it }
             val partial = boxes.filter { boxLabel(it).contains(requested, ignoreCase = true) }
             return partial.singleOrNull()
         }
 
+        /**
+         * Ambiguity is swallowed here, and only here: this feeds [expandBoxSlashRefs], which rewrites
+         * `/box name` inside **prose the human typed**. Throwing out of a regex replacement would abort
+         * the whole chat turn over a phrase in a sentence. A `null` leaves the `/box render` text
+         * standing unexpanded, which is what an unknown name has always done and is visible to both
+         * the model and the author. Every *tool* target goes through [requestedRefOrCurrent] instead,
+         * which lets the refusal through.
+         */
         fun boxChatRef(rawName: String, rawProperty: String?): String? {
-            val target = resolveBoxByChatName(rawName) ?: return null
+            val target = try {
+                resolveBoxByChatName(rawName)
+            } catch (ambiguous: AmbiguousBoxNameException) {
+                null
+            } ?: return null
             val property = rawProperty?.trim()?.takeIf { it.isNotBlank() } ?: "code"
             return fileRefFor(docName, target.id, property)
         }
