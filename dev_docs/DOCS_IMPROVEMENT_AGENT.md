@@ -6,7 +6,8 @@ Two features live in `src/jvmMain/kotlin/afield/server/docsAnnotations.kt` and
 The first is benign and pleasant: `/field-docs/…` mirrors the published documentation
 through Field's own origin and injects a note-taking panel into it. Select a sentence,
 press `Ctrl+Shift+A`, type a note, and it is stored in `~/.afield/docs-annotations.json`
-with an anchor good enough to find the sentence again after the page is rebuilt.
+by default (or the file selected by `AFIELD_DOCS_ANNOTATIONS_STORE`), with an anchor good
+enough to find the sentence again after the page is rebuilt.
 
 The second is not benign. `POST /api/docs-improvement` takes the unresolved notes, turns
 them into a prompt, and runs
@@ -183,6 +184,7 @@ curl -sk https://localhost:9092/api/docs-improvement
 | `AFIELD_DOCS_IMPROVEMENT_DIR` | the server's own working directory, canonicalised | the checkout the agent may edit. Must exist and be a directory, or the run refuses with a sentence. |
 | `AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE` | unset | lets **annotation** requests come from other devices. Browser URLs must still use a literal IP (or also opt into cross-site annotations for a custom hostname). Logged as a warning at startup. Never affects the spawn. |
 | `AFIELD_DOCS_ANNOTATIONS_ALLOW_CROSS_SITE` | unset | lets **annotation** requests come from other *websites*. A different axis from the row above, and the same rule: warned about at startup, never affects the spawn. |
+| `AFIELD_DOCS_ANNOTATIONS_STORE` (`-Dafield.docsAnnotations.store`) | `~/.afield/docs-annotations.json` | selects the annotation notebook. Relative paths are resolved from Field's working directory, so automation can use `.field-backdoor/docs-annotations.json` without touching the human's global notes. The property wins over the environment. |
 | `AFIELD_API_REQUIRE_SAME_SITE` (`-Dafield.api.requireSameSite`) | unset | refuses cross-site writes across Field's **whole** API, not just this feature. Browser URLs must name `localhost` or a literal IP. Off by default; see the last section for what it does and — mostly — does not close. |
 
 Five independent conditions guard the spawn, each separately sufficient to stop the
@@ -295,13 +297,13 @@ faithfully follow.
 
 ## What is not solved
 
-- **The store is one global file.** `~/.afield/docs-annotations.json` is shared by every
-  Field on the machine — the main tree, every worktree, every window. Notes now carry
-  `recordedInCheckout` so you can at least tell which one wrote them, but two Fields
-  writing at once can still lose a note: the lock around the file is per-JVM, and the
-  improvement agent is explicitly told to edit that same file while it runs. Making the
-  store per-checkout would fix it and would orphan every note already written, so it is
-  left as a decision rather than taken.
+- **The default store is still one global file.** `~/.afield/docs-annotations.json` remains
+  shared by the main tree, every worktree and every window so this change does not silently
+  orphan existing notes. Automation and worktrees can instead set
+  `AFIELD_DOCS_ANNOTATIONS_STORE=.field-backdoor/docs-annotations.json`; Field resolves it
+  against that checkout and prints the resulting path at startup. Two JVMs pointed at the
+  same file can still lose a note because the lock is per-JVM, so use distinct paths when
+  they may write concurrently. `recordedInCheckout` remains attribution, not locking.
 - **Prompt injection is mitigated, not removed.** With the endpoint gated, an attacker
   can no longer both plant the text and pull the trigger. A note you did not write can
   still end up in a run you did launch — the notes are yours, so this is mostly a
@@ -480,7 +482,7 @@ Neither it nor this switch touches the network half.
 
 ## Where the tests are
 
-Four files, 44 tests. Two of them start a real Ktor application; two read source.
+Four files, 45 tests. Two of them start a real Ktor application; two read source.
 
 - `src/jvmTest/kotlin/afield/server/DocsAnnotationRouteSecurityTest.kt` — **15 tests**,
   route-level, through the real CORS configuration. This file exists because of a measured
@@ -493,7 +495,7 @@ Four files, 44 tests. Two of them start a real Ktor application; two read source
   `AFIELD_API_REQUIRE_SAME_SITE`, including one whose entire job is to assert the
   *limitation*: a request with no `Origin` is not refused, so the switch does nothing about
   the network.
-- `src/jvmTest/kotlin/afield/server/DocsAnnotationSecurityTest.kt` — **17 tests** over the
+- `src/jvmTest/kotlin/afield/server/DocsAnnotationSecurityTest.kt` — **18 tests** over the
   guard functions as pure functions of a `DocsAccessPolicy` value, which is what makes
   reverting one and re-running a two-minute experiment.
 - `src/jvmTest/kotlin/afield/server/FieldApiCorsExposureTest.kt` — **5 tests** pinning

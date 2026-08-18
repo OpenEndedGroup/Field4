@@ -278,6 +278,34 @@ class DocsAnnotationSecurityTest {
         assertTrue("not a directory" in notADirectory.problem, "was: ${notADirectory.problem}")
     }
 
+    @Test
+    fun theAnnotationStoreCanBeIsolatedWithoutOrphaningTheDefaultNotebook() = withTempDir { dir ->
+        val home = Files.createDirectory(dir.resolve("home"))
+        val checkout = Files.createDirectory(dir.resolve("a checkout"))
+        val explicit = dir.resolve("isolated notes.json")
+
+        assertEquals(
+            home.resolve(".afield/docs-annotations.json").toAbsolutePath().normalize(),
+            resolveDocsAnnotationStorePath(null, null, home, checkout),
+            "unset preserves the human's existing shared notebook",
+        )
+        assertEquals(
+            checkout.resolve(".field-backdoor/docs-annotations.json").toAbsolutePath().normalize(),
+            resolveDocsAnnotationStorePath(null, " .field-backdoor/docs-annotations.json ", home, checkout),
+            "a relative environment override is checkout-local",
+        )
+        assertEquals(
+            explicit.toAbsolutePath().normalize(),
+            resolveDocsAnnotationStorePath(explicit.toString(), "ignored.json", home, checkout),
+            "the JVM property is the more specific override",
+        )
+        assertEquals(
+            checkout.resolve("from-env.json").toAbsolutePath().normalize(),
+            resolveDocsAnnotationStorePath("   ", "from-env.json", home, checkout),
+            "a blank property defers to the environment",
+        )
+    }
+
     // ══════════════════════════════════════════════════════════════════════════
     // The documentation proxy
     // ══════════════════════════════════════════════════════════════════════════

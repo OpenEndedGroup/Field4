@@ -87,6 +87,12 @@ internal const val DOCS_ANNOTATIONS_ALLOW_REMOTE_ENV = "AFIELD_DOCS_ANNOTATIONS_
 /** Escape hatch that re-opens the annotation *API* to other websites. A different axis from the one above. */
 internal const val DOCS_ANNOTATIONS_ALLOW_CROSS_SITE_ENV = "AFIELD_DOCS_ANNOTATIONS_ALLOW_CROSS_SITE"
 
+/** System property that selects the annotation notebook. Env fallback: [DOCS_ANNOTATIONS_STORE_ENV]. */
+internal const val DOCS_ANNOTATIONS_STORE_PROPERTY = "afield.docsAnnotations.store"
+
+/** Annotation notebook path. Unset preserves the shared `~/.afield/docs-annotations.json` default. */
+internal const val DOCS_ANNOTATIONS_STORE_ENV = "AFIELD_DOCS_ANNOTATIONS_STORE"
+
 /** Header carrying [DOCS_IMPROVEMENT_TOKEN_ENV] on a launch request. */
 internal const val DOCS_IMPROVEMENT_TOKEN_HEADER = "X-Field-Docs-Improvement-Token"
 
@@ -428,12 +434,12 @@ data class DocsAnnotation(
     /**
      * The checkout whose Field recorded this note.
      *
-     * The store is the single global `~/.afield/docs-annotations.json`, shared by every
+     * The store defaults to the global `~/.afield/docs-annotations.json`, shared by every
      * Field on the machine, so before this field there was no way to tell a note written
-     * from the human's main tree apart from one written by a nightly worktree's server —
-     * which matters now that a note is an instruction to a coding agent. Empty for notes
-     * written before this field existed, and never used as a filter: it is a fact for a
-     * reader, not a security boundary.
+     * from the human's main tree apart from one written by a nightly worktree's server.
+     * [DOCS_ANNOTATIONS_STORE_ENV] can now isolate those servers, but old and default
+     * notes still need attribution. Empty for notes written before this field existed,
+     * and never used as a filter: it is a fact for a reader, not a security boundary.
      */
     val recordedInCheckout: String = "",
 )
@@ -465,23 +471,49 @@ data class DocsAnnotation(
     val workingDirectory: String = "",
 )
 
-/** Where notes live when nobody has said otherwise: one file, shared by every Field on the machine. */
-private fun defaultDocsAnnotationStorePath(): Path =
-    Paths.get(System.getProperty("user.home"), ".afield", "docs-annotations.json")
+/**
+ * Resolves the notebook once at startup without requiring it to exist yet.
+ *
+ * The property wins over the environment, as it does for the enable switch. Relative
+ * overrides are relative to the server's working directory, which makes
+ * `AFIELD_DOCS_ANNOTATIONS_STORE=.field-backdoor/docs-annotations.json` naturally
+ * checkout-local. Unset deliberately preserves the existing shared notebook rather
+ * than silently orphaning a human's notes during a security fix.
+ */
+internal fun resolveDocsAnnotationStorePath(
+    property: String?,
+    environment: String?,
+    userHome: Path,
+    serverDirectory: Path,
+): Path {
+    val configured = property?.trim()?.takeIf { it.isNotEmpty() }
+        ?: environment?.trim()?.takeIf { it.isNotEmpty() }
+    val requested = configured?.let(Paths::get) ?: userHome.resolve(".afield").resolve("docs-annotations.json")
+    return (if (requested.isAbsolute) requested else serverDirectory.resolve(requested))
+        .toAbsolutePath().normalize()
+}
+
+private fun configuredDocsAnnotationStorePath(): Path = resolveDocsAnnotationStorePath(
+    System.getProperty(DOCS_ANNOTATIONS_STORE_PROPERTY),
+    System.getenv(DOCS_ANNOTATIONS_STORE_ENV),
+    Paths.get(System.getProperty("user.home")),
+    Paths.get("."),
+)
 
 private object DocsAnnotationStore {
     private val lock = Any()
     private val json = Json { prettyPrint = true; ignoreUnknownKeys = true }
 
     /**
-     * A `var` for exactly one reason: [withDocsAnnotationStoreAt].
+     * A `var` for exactly one reason: [withDocsAnnotationStoreAt]. Production resolves
+     * its value once from [DOCS_ANNOTATIONS_STORE_PROPERTY]/[DOCS_ANNOTATIONS_STORE_ENV].
      *
      * A route-level test that POSTs an annotation would otherwise write into the human's
      * real `~/.afield/docs-annotations.json`, which is not a temp file and not the test's
      * to touch. There is no production path that assigns to this.
      */
     @Volatile
-    var path: Path = defaultDocsAnnotationStorePath()
+    var path: Path = configuredDocsAnnotationStorePath()
 
     fun list(): List<DocsAnnotation> = synchronized(lock) { read().annotations }
 
@@ -537,7 +569,8 @@ private object DocsAnnotationStore {
 }
 
 /**
- * Runs [block] with the annotation store pointed at [path], then puts it back. Tests only.
+ * Runs [block] with the annotation store pointed at [path], then puts it back. Tests only;
+ * production isolation uses [DOCS_ANNOTATIONS_STORE_ENV] or [DOCS_ANNOTATIONS_STORE_PROPERTY].
  *
  * The alternative was a test that drives `POST /api/docs-annotations` for real and lands a
  * note in the human's own notebook, which is a worse trade than a `var`. Not concurrent-safe,
@@ -590,10 +623,10 @@ internal fun docsAnnotationTags(note: String, supplied: List<String>): List<Stri
  * adding notes through the panel, so a torn write loses annotations.
  *
  * Extracted from the store object so a test can point it at a temporary directory. What
- * it does not do is protect against two *processes* interleaving: the store is one
- * global file shared by every Field on the machine, and the in-JVM lock around it says
- * nothing about the other JVM. `recordedInCheckout` exists so that at least the result
- * is legible after the fact.
+ * it does not do is protect against two *processes* pointed at the same file: the in-JVM
+ * lock says nothing about another JVM. The default remains one global file shared by
+ * every Field on the machine; [DOCS_ANNOTATIONS_STORE_ENV] is how automation and
+ * worktrees opt out. `recordedInCheckout` keeps the default legible after the fact.
  */
 internal fun writeDocsAnnotationsAtomically(path: Path, json: Json, annotations: List<DocsAnnotation>) {
     Files.createDirectories(path.parent)
@@ -728,6 +761,7 @@ internal const val SEC_FETCH_SITE_HEADER = "Sec-Fetch-Site"
 internal fun Route.installDocsAnnotationRoutes(policy: DocsAccessPolicy = docsAccessPolicy) {
     // One line at startup that says what this server will and will not do, because the
     // failure mode being defended against is silent capability.
+    lprintln("docs-annotations", "Documentation annotation store: ${DocsAnnotationStore.path}")
     if (policy.improvementEnabled) {
         lprintln(
             "docs-annotations",
