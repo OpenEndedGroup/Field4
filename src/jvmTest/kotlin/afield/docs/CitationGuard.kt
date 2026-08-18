@@ -218,25 +218,121 @@ object CitationGuard {
      * sentence carrying a forty-character path is a sentence nobody reads. So a path that is not
      * repo-relative is matched as a **path suffix**, and is only accepted if exactly one file matches.
      */
-    private val fileIndex: Map<String, List<File>> by lazy {
-        val skip = setOf(".git", "build", "node_modules", ".gradle", "out", ".idea")
-        repoRoot().walkTopDown()
-            .onEnter { it.name !in skip }
+    private val fileIndex: Map<String, List<File>> by lazy { indexFilesUnder(repoRoot()) }
+
+    /** Directory names never worth walking, whichever tree they turn up in. */
+    private val SKIP_DIRS = setOf(".git", "build", "node_modules", ".gradle", "out", ".idea")
+
+    /**
+     * True when [dir] is the root of a **different checkout** than [root] — a nested clone or git
+     * worktree that happens to live inside this one.
+     *
+     * ## Why this test exists
+     *
+     * [locate] resolves an abbreviated citation by requiring that exactly one file match it. A nested
+     * checkout makes *every* filename in the tree match one extra time, so on a machine where agents
+     * routinely leave complete checkouts under `.claude/worktrees/` — three of them, today — every
+     * abbreviated citation in the corpus becomes unresolvable at once.
+     *
+     * That was not a hypothetical. Measured 2026-08-17 in `/Users/marc/field4`: **83 of 222 citations
+     * broken, which is exactly the 83 written in abbreviated form**, while the identical corpus in a
+     * clean worktree broke none. The nightly journal recorded 81 on 08-14 and 82 on 08-16; those are
+     * the same measurement, and the count rose because the corpus gained one abbreviated citation on
+     * each of those dates, not because anything drifted.
+     *
+     * A permanent false red in the one tree gates are actually run in is worse than having no guard,
+     * because it teaches a reader to skip the output — and it had already produced one wrong diagnosis
+     * that then had to be retracted.
+     *
+     * ## Why the marker is `.git` and not `settings.gradle.kts`
+     *
+     * [repoRoot] finds a root by looking for `settings.gradle.kts`, so that reads like the natural
+     * marker here too. It is the wrong one, and measurably so: `tools/code-use-semantic-sidecar` is an
+     * in-repo Gradle build with its own `settings.gradle.kts`, its sources genuinely *are* part of this
+     * checkout, and the guarded page `dev_docs/completion_aa_sidecar.md` cites two of them
+     * (`AaCompletion.kt`, `CodeUseSemanticSidecar.kt`). Skipping on `settings.gradle.kts` repairs the 83
+     * and breaks those 4 — a fix that trades one false red for a smaller one.
+     *
+     * `.git` separates the two cases exactly, on the real inputs: a nested clone or worktree always has
+     * one (a directory, or a file for a worktree), an in-repo subproject never does. See
+     * [CitationContractTest.anInRepoGradleSubprojectIsNotMistakenForANestedCheckout], which pins the
+     * distinction, and `dev_docs/citation_contracts.md` for the whole story.
+     *
+     * The residual cost is narrow and deliberate: a git *submodule* also carries a `.git` file, so an
+     * *abbreviated* citation into `services/field-audio-ai` would not resolve. A full repo-relative path
+     * still does, because [locate] tries that before it ever consults the index.
+     */
+    fun isForeignCheckout(root: File, dir: File): Boolean =
+        dir.absolutePath != root.absolutePath && File(dir, ".git").exists()
+
+    /**
+     * [fileIndex]'s walk over an arbitrary [root] — exposed so a test can build an index over a tree it
+     * planted, which is the only way to check the nested-checkout rule without contaminating this one.
+     */
+    fun indexFilesUnder(root: File): Map<String, List<File>> =
+        root.walkTopDown()
+            .onEnter { it.name !in SKIP_DIRS && !isForeignCheckout(root, it) }
             .filter { it.isFile && it.extension in EXT.split("|") }
             .toList()
             .groupBy { it.name }
-    }
 
     /**
      * The file a citation path points at, or null when it is missing or ambiguous.
      *
      * Exact repo-relative paths win outright, so an unambiguous citation never pays for the index.
+     *
+     * A match must agree with the **whole** cited path suffix. There used to be a
+     * `?: byName.singleOrNull()` fallback here, which accepted a uniquely-named file even when the
+     * *directory* the citation named did not exist — so `wrong/dir/FLine.kt` resolved happily to
+     * `graphics/FLine.kt` and a misleading path could sit in a doc indefinitely with nothing to say so.
+     * It is written in the shape this repo has learned to distrust: a `single…() ?: first…()`-style pair
+     * where the second half quietly undoes the first half's insistence on being unambiguous.
+     *
+     * Measured before removing it: it resolved **0** of the corpus's 222 citations, every one of which
+     * matched on the full suffix instead. So it was dead code whose only reachable effect was to launder
+     * an error, and [CitationContractTest.everyCitationResolvesByPathSuffixNotByBareName] asserts the
+     * corpus still does not need it.
      */
-    fun locate(root: File, path: String): File? {
+    fun locate(root: File, path: String, index: Map<String, List<File>> = fileIndex): File? {
         File(root, path).takeIf { it.isFile }?.let { return it }
-        val byName = fileIndex[path.substringAfterLast('/')].orEmpty()
-        val suffix = byName.filter { it.path.endsWith("/$path") }
-        return suffix.singleOrNull() ?: byName.singleOrNull()
+        return index[path.substringAfterLast('/')].orEmpty()
+            .filter { it.path.endsWith("/$path") }
+            .singleOrNull()
+    }
+
+    /** How many candidate files [locate] is naming at most, before a message stops being readable. */
+    private const val MAX_LISTED_CANDIDATES = 8
+
+    /**
+     * Why [locate] returned null for [path], said precisely.
+     *
+     * The message this replaces was *"cited file X does not exist, or the abbreviated path matches more
+     * than one file"*. Those two causes need opposite repairs — restore/rename the file, versus lengthen
+     * the path — and a reader handed both at once has to go and find out which happened. That is not a
+     * theoretical cost: the conflation is exactly why the nested-checkout failure above was read as 83
+     * deleted files and mis-diagnosed twice. So ambiguity now *names the files it matched*, which makes
+     * a nested checkout self-evident in the failure text rather than a puzzle.
+     */
+    fun explainUnresolvable(
+        root: File,
+        path: String,
+        index: Map<String, List<File>> = fileIndex,
+    ): String {
+        val byName = index[path.substringAfterLast('/')].orEmpty()
+        val matches = byName.filter { it.path.endsWith("/$path") }
+        if (matches.isEmpty()) {
+            val elsewhere = if (byName.isEmpty()) ""
+            else " — a file of that name exists at " +
+                byName.take(MAX_LISTED_CANDIDATES).joinToString(", ") { it.relativeToOrSelf(root).path } +
+                ", so the directory in the citation is wrong"
+            return "cited file `$path` does not exist$elsewhere"
+        }
+        val shown = matches.take(MAX_LISTED_CANDIDATES).joinToString(", ") {
+            it.relativeToOrSelf(root).path
+        }
+        val more = (matches.size - MAX_LISTED_CANDIDATES).let { if (it > 0) ", +$it more" else "" }
+        return "cited path `$path` is ambiguous — ${matches.size} files match it ($shown$more). " +
+            "Write enough of the path to pick one."
     }
 
     /**
@@ -247,12 +343,7 @@ object CitationGuard {
      * author toward an anchor specific enough to stand on its own.
      */
     fun resolve(root: File, c: Citation): Resolution {
-        val f = locate(root, c.path)
-            ?: return Resolution.Broken(
-                c,
-                "cited file `${c.path}` does not exist, or the abbreviated path matches more than " +
-                    "one file — write enough of the path to be unambiguous"
-            )
+        val f = locate(root, c.path) ?: return Resolution.Broken(c, explainUnresolvable(root, c.path))
         val lines = f.readLines()
         val hits = lines.mapIndexedNotNull { i, l -> if (c.anchor in l) i + 1 else null }
         if (hits.isEmpty()) {
