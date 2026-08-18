@@ -295,29 +295,21 @@ So there is now a task that makes the evidence unconditional:
 ./gradlew --no-daemon docsGates
 ```
 
-It depends on all six gates and on nothing else — no `:allTests` in the way, so no test failure can
-hide whether they ran. Measured at **1m13s**, against roughly seven minutes for a full `check`, which
-makes it cheap enough to run on any documentation change. It does not alter what `check` does;
-`check --continue` remains the way to get all six *plus* the tests.
+It depends on all six generated-artifact gates plus a focused `citationGates` test task — no
+`:allTests` in the way. `citationGates` runs `CitationContractTest`, `SmallLanguageAnatomyTest`,
+`CloseNodeCitationDriftTest`, and the build-wiring regression that pins this dependency. Its filter
+fails when it matches no tests, and it runs after the six non-test gates so a citation failure cannot
+hide whether those gates ran. It does not alter what `check` does; `check --continue` remains the way
+to run the complete test suite as well.
 
-**And now the part that catches people, including the author of this page.** `docsGates` depends on
-those six `JavaExec` gates **and on nothing else — in particular not on `:jvmTest`**. Verified against
-`build.gradle.kts:1398-1407`, where all six `dependsOn` lines are visible and there is no seventh. So
-**a green `docsGates` says nothing whatsoever about `CitationContractTest`**, `SmallLanguageAnatomyTest`
-or `CloseNodeCitationDriftTest` — the three guards this entire page is about. A green `docsGates` has
-been quoted as covering citation work it never touched.
-
-To verify a citation change you need both, and only the second one reads the guards on this page:
+So one command now verifies a citation change at both layers:
 
 ```
 ./gradlew --no-daemon docsGates
-./gradlew --no-daemon jvmTest --tests '*CitationContractTest*' --tests '*SmallLanguageAnatomy*'
 ```
 
-And read the **XML** — `build/test-results/jvmTest/TEST-*.xml`, its `tests=` and `failures=`
-attributes — not an exit code and not "BUILD SUCCESSFUL". A `--tests` filter that matches zero tests
-exits 0, so a typo in the filter is indistinguishable from a pass; and piping Gradle into `tail` makes
-`$?` report the pipe's status rather than Gradle's (use `PIPESTATUS`).
+Read the citation task's **XML** — `build/test-results/citationGates/TEST-*.xml`, its `tests=` and
+`failures=` attributes — as well as the six named gate results, not merely "BUILD SUCCESSFUL".
 
 ## What none of this checks
 

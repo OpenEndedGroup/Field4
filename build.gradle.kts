@@ -1139,6 +1139,25 @@ tasks.register<org.gradle.api.tasks.testing.Test>("jvmMeasurements") {
     shouldRunAfter(jvmTestTask)
 }
 
+val citationGuardTestClasses = listOf(
+    "afield.docs.CitationContractTest",
+    "afield.docs.SmallLanguageAnatomyTest",
+    "afield.graphics.CloseNodeCitationDriftTest",
+    "afield.docs.DocsGatesWiringTest",
+)
+
+val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationGates") {
+    group = "verification"
+    description = "Runs the citation-contract guards without the rest of the JVM test suite."
+    dependsOn("jvmTestClasses")
+    testClassesDirs = jvmTestTask.get().testClassesDirs
+    classpath = jvmTestTask.get().classpath
+    filter {
+        citationGuardTestClasses.forEach(::includeTestsMatching)
+        isFailOnNoMatchingTests = true
+    }
+}
+
 tasks.named("compileKotlinJvm") {
     dependsOn(generateLinalgBuildProfile)
 }
@@ -1390,20 +1409,34 @@ tasks.named("check") {
 // you get is not reproducible from this file. Three of these are JavaExec and emit no test XML, so
 // their absence is invisible to any "N tests, 0 failures" summary.
 //
-// Hence this: one task that runs the documentation gates and nothing else, with no :allTests in the
-// way. For a human checking a docs change, and for the nightly harness, which needs to report
-// checkCodebaseReference explicitly rather than hope it ran.
+// Hence this: one task that runs the documentation gates and the focused citation-contract tests,
+// with no :allTests in the way. For a human checking a docs change, and for the nightly harness,
+// which needs to report checkCodebaseReference explicitly rather than hope it ran.
 //   ./gradlew --no-daemon docsGates
 // This does not change what `check` does. See dev_docs/citation_contracts.md.
 tasks.register("docsGates") {
     group = "verification"
-    description = "Runs only the documentation/generated-artifact guards, without :allTests — so a docs change can be verified, and reported on, without a test failure hiding whether they ran."
+    description = "Runs the documentation/generated-artifact and citation guards without :allTests."
     dependsOn("checkCodebaseReference")
     dependsOn("checkKDocAttachment")
     dependsOn("checkAgentTranscripts")
     dependsOn("checkAgentTranscriptIndex")
     dependsOn("checkCompletionCorpusFixtures")
     dependsOn("checkPythonTools")
+    dependsOn(citationGates)
+}
+
+// Run the focused JVM tests after the six non-test gates. A citation failure must not recreate the
+// old failure mode where :jvmTest stopped Gradle before generated-artifact evidence was produced.
+citationGates.configure {
+    mustRunAfter(
+        "checkCodebaseReference",
+        "checkKDocAttachment",
+        "checkAgentTranscripts",
+        "checkAgentTranscriptIndex",
+        "checkCompletionCorpusFixtures",
+        "checkPythonTools",
+    )
 }
 
 tasks.register<JavaExec>("runSidecarPathParseSmokeTest") {
