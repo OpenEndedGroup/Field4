@@ -271,9 +271,10 @@ which is the point at which this paragraph should be deleted rather than left to
 **5. The gate that did not run.** The worst one, because it is self-concealing. Verified against
 `build.gradle.kts` and against a real build log on 2026-08-12:
 
-`build.gradle.kts:1355-1362` adds six documentation gates to `check` with `dependsOn` and **no
-ordering constraint whatsoever** — the only `shouldRunAfter` in the file, at line 1119, is unrelated.
-So when a test fails, Gradle stops scheduling and an arbitrary subset of those gates never runs.
+At the time of the 2026-08-12 failure, `build.gradle.kts` added six documentation gates to `check`
+with `dependsOn` and **no ordering constraint whatsoever**. So when a test failed, Gradle stopped
+scheduling and an arbitrary subset of those gates never ran. A seventh, `checkAgentDemos`, now guards
+loadable demo metadata; the scheduling lesson is unchanged.
 
 In the 2026-08-12 baseline, `:checkPythonTools`, `:checkAgentTranscriptIndex` and
 `:checkAgentTranscripts` ran and passed; `:jvmTest` then failed; and `:checkKDocAttachment`,
@@ -295,10 +296,10 @@ So there is now a task that makes the evidence unconditional:
 ./gradlew --no-daemon docsGates
 ```
 
-It depends on all six generated-artifact gates plus a focused `citationGates` test task — no
+It depends on all seven generated-artifact gates plus a focused `citationGates` test task — no
 `:allTests` in the way. `citationGates` runs `CitationContractTest`, `SmallLanguageAnatomyTest`,
 `CloseNodeCitationDriftTest`, and the build-wiring regression that pins this dependency. Its filter
-fails when it matches no tests, and it runs after the six non-test gates so a citation failure cannot
+fails when it matches no tests, and it runs after the seven non-test gates so a citation failure cannot
 hide whether those gates ran. It does not alter what `check` does; `check --continue` remains the way
 to run the complete test suite as well.
 
@@ -309,7 +310,7 @@ So one command now verifies a citation change at both layers:
 ```
 
 Read the citation task's **XML** — `build/test-results/citationGates/TEST-*.xml`, its `tests=` and
-`failures=` attributes — as well as the six named gate results, not merely "BUILD SUCCESSFUL".
+`failures=` attributes — as well as the seven named gate results, not merely "BUILD SUCCESSFUL".
 
 ## What none of this checks
 

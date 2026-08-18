@@ -16,3 +16,8 @@ Box 3 needs the spec the test drops. If it says so, run once:
 
 The written-up version, with the full sweep and the falsification behind it, is
 `dev_docs/completion_rank_at_scale.md`.
+
+The loose `*_code_.kt` files are what Field loads, while `metadata.edn` carries portable inline
+fallbacks. `./gradlew checkAgentDemos` requires those copies to be byte-identical. After editing a
+loose file, refresh the canonical document with `./gradlew regenerateAgentDemos`; that task uses
+Field's own EDN codec rather than rewriting the serialization by hand.

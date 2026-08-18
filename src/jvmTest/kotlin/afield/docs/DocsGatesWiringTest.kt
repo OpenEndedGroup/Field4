@@ -24,6 +24,10 @@ class DocsGatesWiringTest {
             )
         }
         assertTrue(
+            Regex("""tasks\.register\("docsGates"\)[\s\S]*?dependsOn\("checkAgentDemos"\)""").containsMatchIn(build),
+            "docsGates no longer checks loadable agent-demo metadata drift",
+        )
+        assertTrue(
             Regex("""tasks\.register\(\"docsGates\"\)[\s\S]*?dependsOn\(citationGates\)""").containsMatchIn(build),
             "docsGates no longer depends on the focused citationGates task",
         )

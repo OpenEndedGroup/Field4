@@ -1298,6 +1298,27 @@ tasks.register<JavaExec>("regenerateAgentTranscriptStartingPoints") {
     args(file("public/docs/assets/agent_transcripts").absolutePath)
 }
 
+// Loadable documents under dev_docs/agents/demos keep large properties both inline in metadata.edn
+// and in loose sidecar files. Field prefers the loose file, so editing one makes the live demo look
+// correct while the canonical portable document silently stays stale. Check every pair byte-for-byte;
+// regenerate through SavingContext's EDN codec rather than hand-editing the serialized document.
+tasks.register<JavaExec>("checkAgentDemos") {
+    group = "verification"
+    description = "Fails when a dev_docs/agents/demos metadata.edn inline fallback differs from its loose sidecar file."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.docs.AgentDemoDriftGuard")
+}
+
+tasks.register<JavaExec>("regenerateAgentDemos") {
+    group = "documentation"
+    description = "Refreshes dev_docs/agents/demos metadata.edn inline fallbacks from their loose files through Field's EDN codec."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.docs.AgentDemoDriftGuard")
+    args("--write")
+}
+
 // Field's automation substrate has Python tests, and until 2026-07-30 nothing ran them. The three
 // tools/test_*.py suites pin the shared run_field_tests.py backdoor argument emitter, the
 // docs-capture freshness classifier and the smoke runner's worktree-scoped JVM reaper — all of it
@@ -1398,9 +1419,10 @@ tasks.named("check") {
     dependsOn("checkAgentTranscripts")
     dependsOn("checkAgentTranscriptIndex")
     dependsOn("checkCompletionCorpusFixtures")
+    dependsOn("checkAgentDemos")
 }
 
-// The six gates above are attached to `check` with no ordering constraint, which means Gradle is free
+// These documentation gates are attached to `check` with no ordering constraint, which means Gradle is free
 // to schedule them anywhere relative to `:allTests` — and without `--continue`, a single failing test
 // stops the build before an arbitrary subset of them has run. That is not hypothetical: on 2026-08-12
 // a baseline `check` ran checkPythonTools, checkAgentTranscriptIndex and checkAgentTranscripts, then
@@ -1423,10 +1445,11 @@ tasks.register("docsGates") {
     dependsOn("checkAgentTranscriptIndex")
     dependsOn("checkCompletionCorpusFixtures")
     dependsOn("checkPythonTools")
+    dependsOn("checkAgentDemos")
     dependsOn(citationGates)
 }
 
-// Run the focused JVM tests after the six non-test gates. A citation failure must not recreate the
+// Run the focused JVM tests after the seven non-test gates. A citation failure must not recreate the
 // old failure mode where :jvmTest stopped Gradle before generated-artifact evidence was produced.
 citationGates.configure {
     mustRunAfter(
@@ -1436,6 +1459,7 @@ citationGates.configure {
         "checkAgentTranscriptIndex",
         "checkCompletionCorpusFixtures",
         "checkPythonTools",
+        "checkAgentDemos",
     )
 }
 

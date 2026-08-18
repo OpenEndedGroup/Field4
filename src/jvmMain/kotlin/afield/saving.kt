@@ -30,6 +30,14 @@ data class Box_transfer(val id: String, val properties: Map<String, Pair<String,
 
 data class BoxTransferEdn(val id: String, val properties: Map<String, Any?>)
 
+/** One sidecar-backed property as stored inline in a document's `metadata.edn`. */
+data class InlineFileSnapshot(
+    val boxId: String,
+    val property: String,
+    val path: String,
+    val inline: String,
+)
+
 private data class BoxRef(val id: String)
 private data class FileRef(val path: String)
 private data class FileInline(val path: String, val inline: String)
@@ -1221,6 +1229,64 @@ class SavingContext {
             }
             BoxTransferEdn(id, props)
         }
+    }
+
+    /**
+     * Lists the inline fallbacks carried by a document without resolving them through loose files.
+     *
+     * Field normally prefers `<box>_<property>_.<ext>` when that file exists, which means a stale
+     * inline fallback is invisible during ordinary use. Documentation artifacts need to compare the
+     * two copies explicitly, so this exposes the decoded [FileInline] values without making that
+     * persistence implementation type public.
+     */
+    fun readInlineFileSnapshots(directory: String): List<InlineFileSnapshot> =
+        readEdnTransfers(directory).flatMap { transfer ->
+            transfer.properties.mapNotNull { (property, value) ->
+                val file = value as? FileInline ?: return@mapNotNull null
+                InlineFileSnapshot(transfer.id, property, file.path, file.inline)
+            }
+        }
+
+    /**
+     * Refreshes every `#afield/file-inline` fallback from its loose file using Field's EDN codec.
+     *
+     * This is the non-interactive equivalent of opening and saving the document: the loose file is
+     * the value Field loads, and [Edn.write] with [ednCustom] is the serializer Field uses on save.
+     * Only `metadata.edn` is rewritten; source sidecars, history and generated prose are untouched.
+     * Paths are confined to the document directory so a malformed artifact cannot read elsewhere.
+     * Returns the refreshed relative paths in document order.
+     */
+    fun refreshInlineFilesFromDisk(directory: String): List<String> {
+        val root = File(directory).canonicalFile
+        val metadata = File(root, METADATA_EDN)
+        require(metadata.isFile) { "missing $METADATA_EDN in ${root.path}" }
+        val rootPath = root.toPath().normalize()
+        val refreshedPaths = mutableListOf<String>()
+
+        fun refresh(value: Any?): Any? = when (value) {
+            is FileInline -> {
+                val target = File(root, value.path).canonicalFile
+                require(target.toPath().normalize().startsWith(rootPath)) {
+                    "inline file escapes document directory: ${value.path}"
+                }
+                require(target.isFile) { "missing inline sidecar ${value.path} in ${root.path}" }
+                refreshedPaths += value.path
+                value.copy(inline = target.readText())
+            }
+
+            is Map<*, *> -> LinkedHashMap<Any?, Any?>().also { out ->
+                value.forEach { (key, item) -> out[refresh(key)] = refresh(item) }
+            }
+
+            is List<*> -> value.map(::refresh)
+            is Set<*> -> value.mapTo(LinkedHashSet(), ::refresh)
+            else -> value
+        }
+
+        val decoded = Edn.read(metadata.readText(), ednCustom)
+        val encoded = Edn.write(refresh(decoded), ednCustom)
+        metadata.safeSave(encoded, createBackup = false, atomic = true)
+        return refreshedPaths
     }
 
     fun readEdnTransfersFromString(ednText: String): List<BoxTransferEdn> {
