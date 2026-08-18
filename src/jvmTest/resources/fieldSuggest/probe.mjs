@@ -925,19 +925,19 @@ const WEIGHT_KEYS = new Set(
 // would have passed at 6%.
 const METRIC_FLOORS = {
   // Of the carets where the popup had to leave something out, how many still show the answer.
-  // Measured 2026-08-17: prefixed 0.822, bare 0.703.
+  // Measured 2026-08-18 after removing package walk-order dependence: prefixed 0.822, bare 0.657.
   "prefixed contested recall": 0.78,
-  "bare contested recall": 0.66,
+  "bare contested recall": 0.62,
   // Mean reciprocal visible rank over every caret of that form, an absent answer counting 0.
-  // Measured 2026-08-17: prefixed 0.647, bare 0.124.
+  // Measured 2026-08-18: prefixed 0.652, bare 0.123.
   "prefixed mrr": 0.61,
   "bare mrr": 0.11,
   // Split by whether this tree DECLARES the receiver, because the global bare figure averages two
   // populations that are a factor of ten apart and the deferred decision was about the second one.
-  // Measured 2026-08-17: owned 0.892 / 0.219, foreign 0.540 / 0.022.
+  // Measured 2026-08-18: owned 0.900 / 0.219, foreign 0.420 / 0.018.
   "bare-owned contested recall": 0.85,
   "bare-owned mrr": 0.20,
-  "bare-foreign contested recall": 0.50,
+  "bare-foreign contested recall": 0.38,
   "bare-foreign mrr": 0.018,
 };
 // Sectioning pushing the answer down by more than this in the median means a category assignment has

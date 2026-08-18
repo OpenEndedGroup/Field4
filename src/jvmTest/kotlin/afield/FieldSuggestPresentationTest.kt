@@ -132,9 +132,8 @@ class FieldSuggestPresentationTest {
      * Asserts that the seed took effect, because a seam that is silently ignored is worse than none:
      * `ifft` must come back as `Math`, which only a source index that read
      * `src/jvmMain/kotlin/afield/stdlib/spectral.kt` and its `@file:CompletionCategory("Math")` can
-     * say. `ifft` and not `fft` because `fft` is declared in more than one categorised file, and
-     * [KotlinSourceIndex.getCompletionCategoryForSymbol] resolves a contested simple name by first
-     * match — a sentinel has to be unambiguous or it is measuring the walk order.
+     * say. `ifft` and not `fft` because `fft` is declared in more than one categorised file: the
+     * classifier deliberately declines a contested category, so a sentinel has to be unambiguous.
      */
     private fun <T> withHermeticSourceIndex(shuffleSeed: Long? = null, block: () -> T): T {
         val dir = Files.createTempDirectory("field-suggest-source-index-")
@@ -459,33 +458,29 @@ class FieldSuggestPresentationTest {
      * gave four different ranks for one caret, which is why [withHermeticSourceIndex] exists at all.
      *
      * The argument was that none of those three is on this path — `classifyMetadata` reaches the index only
-     * through [KotlinSourceIndex.getCompletionCategoryForSymbol]. That argument is **wrong**, and this test
-     * is a **deliberate red** that says so.
+     * through [KotlinSourceIndex.getCompletionCategoryForSymbol]. That argument was **wrong**, and this test
+     * reproduced the surviving first-match lookup before the classifier was repaired.
      *
-     * ### The verdict (2026-08-17): a genuine order dependency, 68 of 6 679 rows
+     * ### The verdict (2026-08-18): the 68-row dependency is fixed
      *
      * Discriminated from the obvious alternative — a `latestIndex` cache confound making both runs read one
      * index — by the marker assertion below: the two runs report *different* first definitions, so the
      * permutation really reached the index and the disagreement is the classifier's, not the harness's.
      *
-     * The mechanism is visible in every disagreeing row: `declaredIn` is a **package**, never a class. So
-     * it is the top-level-extension branch that `69ca4d5cb` added,
+     * Before the fix, the mechanism was visible in every disagreeing row: `declaredIn` was a **package**,
+     * never a class. It was the top-level-extension branch that `69ca4d5cb` added,
      *
      *     val inPackage = matches.filter { it.filePath.contains("/$packagePath/") }
-     *     if (inPackage.isNotEmpty()) return inPackage.firstNotNullOfOrNull { it.categoryOrNull() }
+     *     return inPackage.mapNotNull { it.categoryOrNull() }.distinct().singleOrNull()
      *
-     * where `afield.stdlib` holds files carrying *different* `@file:CompletionCategory` values, so
-     * `firstNotNullOfOrNull` answers with whichever file the walk reached first: `max` is `Math` or
-     * `Graphics`, `main` is `Math` or `Visualization`, `lineTo` is `Graphics` or `Solvers`. It is exactly the
-     * defect `69ca4d5cb` fixed for the *name* vote, surviving one layer down in the vote it replaced it
-     * with — and it is the shape flagged in `KotlinSourceIndex` and never reproduced until now.
+     * `afield.stdlib` holds files carrying *different* `@file:CompletionCategory` values. The old
+     * `firstNotNullOfOrNull` answered with whichever file the walk reached first: `max` was `Math` or
+     * `Graphics`, `main` was `Math` or `Visualization`, and `lineTo` was `Graphics` or `Solvers`. The new
+     * consensus lookup declines those contested packages and falls through to path inference.
      *
-     * **The fix is the same one-liner as last night's:** take `inPackage`'s distinct categories and return
-     * `singleOrNull()`, so a contested package declines and falls through to path inference instead of
-     * borrowing whichever file sorted first. Deliberately not done here: it moves categories, so it moves
-     * the seven-case rank ratchet and the corpus floors, and a ratchet re-cut at the end of a session is
-     * how this journal has been burned before. Left red on purpose — see
-     * `dev_docs/completion_rank_at_scale.md` for the bound it puts on the numbers in that document.
+     * The test still asserts that the shuffle reached a genuinely different index, then requires all
+     * 6 679 classified rows to agree. The seven-case ratchet and population floors were re-measured after
+     * the repair; see `dev_docs/completion_rank_at_scale.md` for the movements it exposed.
      */
     @Test
     fun `the corpus's categories do not depend on the order the source tree was walked`() {

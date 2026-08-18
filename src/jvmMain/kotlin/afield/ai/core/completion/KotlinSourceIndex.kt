@@ -334,10 +334,13 @@ object KotlinSourceIndex {
             if (exact.isNotEmpty()) return exact.firstNotNullOfOrNull { it.categoryOrNull() }
 
             // A top-level extension: `declaredIn` is a package, which scopes the vote to the right file
-            // instead of choosing between 42 of them.
+            // instead of choosing between 42 of them. A package can still contain several categorised
+            // files, so answer only when those files agree rather than inheriting filesystem walk order.
             val packagePath = container.replace('.', '/')
             val inPackage = matches.filter { it.filePath.contains("/$packagePath/") }
-            if (inPackage.isNotEmpty()) return inPackage.firstNotNullOfOrNull { it.categoryOrNull() }
+            if (inPackage.isNotEmpty()) {
+                return inPackage.mapNotNull { it.categoryOrNull() }.distinct().singleOrNull()
+            }
 
             // `declaredIn` names something outside this tree — `java.lang.Math`, a jar. This tree's
             // namesakes say nothing about it, so decline instead of borrowing their category.

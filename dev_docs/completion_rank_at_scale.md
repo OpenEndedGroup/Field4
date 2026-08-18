@@ -1,13 +1,16 @@
 # The rank a person sees, measured over 578 carets
 
-**Status, 2026-08-17.** The popup's ranking is now a measured system, and the decision it was measured
-for — should `CATEGORY_WEIGHT` learn the server's category vocabulary? — is **refused, with the
-number**. The exposure figure that has stood in `completion_aa_sidecar.md` since 2026-08-07 (11 of the
-16 categories the server sends score 0; measured here at **89.6% of all recorded rows**) is real and
-**not load-bearing**: closing it changes visible recall by **0.000**, and the +0.005 of MRR it appears to
-buy is **below this corpus's resolution** (see the walk-order section — a 1.0% order-dependent category
-component is plausibly larger than 0.005 of MRR). The refusal rests on the recall figure, which is
-structurally protected; nobody should bank the MRR delta as a gain.
+**Status, 2026-08-18.** The popup's ranking is now deterministic under a shuffled source walk. Package
+lookups no longer borrow the first categorised file they happen to encounter: they answer only when the
+package's files agree. The order test now agrees on all **6 679** distinct rows, the seven-case ratchet
+was re-cut at its one genuine movement, and the 578-caret population was measured again.
+
+That clean measurement overturns one earlier conclusion. The conservative R2 weight table now raises
+bare-foreign contested recall from **0.420 to 0.540** and all bare contested recall from **0.657 to
+0.708**, while bare-owned contested recall stays **0.900**. That is well above this corpus's resolution,
+so the old refusal does not survive. No weight change ships with the determinism repair: R2 also pushes
+the median visible foreign answer from 32 to 41 and moves `List.forEach` from 36 to 42, so adopting it is
+a separate product decision with a real, recorded trade-off rather than cleanup hidden in a bug fix.
 
 Everything below is reproducible from this checkout. Nothing in it is an estimate.
 
@@ -34,8 +37,9 @@ Everything below is reproducible from this checkout. Nothing in it is an estimat
 > exactly `originalIndex * 0.012`, i.e. every other term at zero, which is a signature no AA-served
 > member panel produces.
 >
-> So this document describes the **AA** path. What is measured here — that `CATEGORY_WEIGHT` is inert,
-> that sectioning is not the lever, that owned and foreign receivers are a factor of ten apart — is a
+> So this document describes the **AA** path. What is measured here — that a conservative category
+> rebalance changes foreign visibility, that sectioning is not the lever, and that owned and foreign
+> receivers are more than a factor of ten apart in reciprocal rank — is a
 > statement about a popup served by the sidecar, and says **nothing** about one served by the K1 fallback,
 > where the prior contributes nothing because it never crosses the wire at all. Which backend a given
 > user's editor is on is branch 3's task and is deliberately not touched here.
@@ -100,14 +104,15 @@ was computed with that term silently zero for every row.
 
 ## The measurement
 
-Measured 2026-08-17 on this checkout. Floors sit just under each figure, in `probe.mjs` beside the code
+Measured 2026-08-18 on this checkout, after removing package walk-order dependence. Floors sit just
+under each figure, in `probe.mjs` beside the code
 that computes them.
 
 | form | cases | in payload | contested | recall | contested recall | MRR | median rank |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| prefixed | 294 | 0.881 | 101 | 0.881 | **0.822** | **0.647** | 1 |
-| bare | 284 | 0.908 | 236 | 0.694 | **0.703** | **0.124** | 13 |
-| all | 578 | 0.894 | 337 | 0.789 | 0.739 | 0.390 | 3 |
+| prefixed | 294 | 0.881 | 101 | 0.881 | **0.822** | **0.652** | 1 |
+| bare | 284 | 0.908 | 236 | 0.655 | **0.657** | **0.123** | 12 |
+| all | 578 | 0.894 | 337 | 0.770 | 0.706 | 0.392 | 2 |
 
 "Contested" means the caret sent more rows than the popup can show, so the popup had to leave something
 out. The headline is restricted to that subset for a reason that has bitten this project repeatedly: a
@@ -118,7 +123,7 @@ carry a category `CATEGORY_WEIGHT` scores 0 — i.e. that every term the conclus
 
 **The two left-hand columns are the point of the exercise.** Payload recall is what every other
 completion measurement in this tree reports; visible recall is the user's. At a bare dot they are
-**0.908 and 0.694** — a 21-point gap, 88 carets whose answer the server computed and the popup did not
+**0.908 and 0.655** — a 25-point gap, 72 carets whose answer the server computed and the popup did not
 show. That is "96% recall hid the answer at index 159 of 249", at population scale.
 
 ### That bare figure was averaging two populations a factor of ten apart
@@ -130,10 +135,10 @@ can carry `@CommonMembers` and a `@file:CompletionCategory`; `java.lang.Math` an
 
 | bare dot on | cases | in payload | contested | recall | MRR | median rank |
 | --- | --- | --- | --- | --- | --- | --- |
-| a receiver this tree **declares** (`afield.*`) | 146 | 0.986 | 120 | **0.911** | **0.219** | 9 |
-| a receiver it does **not** (`kotlin.*`, `java.*`) | 100 | 0.940 | 100 | **0.540** | **0.022** | 39 |
+| a receiver this tree **declares** (`afield.*`) | 146 | 0.986 | 120 | **0.918** | **0.219** | 9.5 |
+| a receiver it does **not** (`kotlin.*`, `java.*`) | 100 | 0.940 | 100 | **0.420** | **0.018** | 32 |
 
-Recall 0.911 against 0.540, MRR 0.219 against 0.022 — a factor of ten — and *every* foreign bare caret is
+Recall 0.918 against 0.420, MRR 0.219 against 0.018 — still a factor of twelve in reciprocal rank — and *every* foreign bare caret is
 contested, 100 of 100. So the popup is not uniformly mediocre at a bare dot: it is good on Field's own
 types and close to useless on the ones nobody here can annotate. That is precisely the population the
 deferred decision was about, and precisely what the global figure hid. Both rows are floored in
@@ -146,7 +151,7 @@ The two receivers `69ca4d5cb` names, caret by caret, as shipped:
 | --- | --- | --- |
 | `Math.` → `cos` | 110 | 32 |
 | `Math.` → `sqrt`, `Math.` → `sin` | 110 | not shown |
-| `List.` → `forEach` | 331 | 29 |
+| `List.` → `forEach` | 331 | 36 |
 | `List.` → `map`, `mapIndexed`, `indices`, `joinToString`, `firstOrNull`, `sortedByDescending` | 331 | not shown |
 | the same members with two characters typed | 1–32 | 1–20 |
 
@@ -167,14 +172,14 @@ decides which rows are visible — and `rankItems` writes its own `score` onto e
 No re-implementation of the ranker, and the rendered row count is checked against `controller.items`
 per case, so a divergence fails loudly instead of quietly invalidating the decomposition.
 
-| effect | cases moved (of 456 found) | median | p90 of those moved |
+| effect | cases moved (of 445 found) | median | p90 of those moved |
 | --- | --- | --- | --- |
-| sectioning (visible − flat) | 96 | 0 | 13 rows |
-| category weight (neutral − flat) | 120 | 0 | 6 rows |
+| sectioning (visible − flat) | 71 | 0 | 8 rows |
+| category weight (neutral − flat) | 107 | 0 | 16 rows |
 
 So after last night's classification fix, **sectioning is an outlier cost and not a systemic one** —
 `FLine.moveTo` rendered at row 76 was the tail of the distribution, not its shape. The case counts are
-reported next to the medians deliberately: a median of 0 with 96 cases moved and a p90 of 13 is a real
+reported next to the medians deliberately: a median of 0 with 71 cases moved and a p90 of 8 is a real
 effect that a median alone denies.
 
 ### Per category, over the carets whose answer carries that category
@@ -183,56 +188,55 @@ effect that a median alone denies.
 
 | category | w | cases | recall | median rank |
 | --- | --- | --- | --- | --- |
-| Kotlin | · | 165 | 0.758 | 7 |
-| (uncategorised) | · | 107 | 0.916 | 2 |
+| Kotlin | · | 165 | 0.685 | 7 |
+| (uncategorised) | · | 118 | 0.898 | 2 |
 | (absent) | · | 61 | 0.000 | — |
-| Graphics | w | 61 | 0.967 | 1 |
+| Graphics | w | 63 | 0.984 | 1 |
 | External | · | 36 | 0.889 | 9.5 |
 | Audio | · | 33 | 1.000 | 2 |
-| Data | · | 26 | 1.000 | 2 |
+| Data | · | 24 | 1.000 | 2 |
 | Math | · | 20 | 0.950 | 2 |
-| Visualization | · | 19 | 0.947 | 2 |
+| Visualization | · | 18 | 1.000 | 2 |
 | Polytopes | · | 15 | 1.000 | 10 |
-| ALife | · | 13 | 1.000 | 2 |
-| Function | · | 9 | 0.778 | 4 |
-| Imaging | · | 7 | 0.714 | 2 |
+| ALife | · | 10 | 1.000 | 2 |
+| Imaging | · | 5 | 0.600 | 2 |
+| Function | · | 5 | 1.000 | 13 |
+| Machine learning | · | 3 | 1.000 | 2 |
 
 `(absent)` at recall exactly 0.000 is a consistency check on the truth matcher, not a finding.
-`(uncategorised)` is a *classification* gap rather than a weighting one, and at 0.916 / rank 2 it is not
+`(uncategorised)` is a *classification* gap rather than a weighting one, and at 0.898 / rank 2 it is not
 costing anything today.
 
 The shape that decides the question is in the first and fifth rows. **The two worst-ranked populations
-in the popup are `Kotlin` (165 cases, 0.758, median 7) and `External` (36, 0.889, median 9.5)** — and
+in the popup are `Kotlin` (165 cases, 0.685, median 7) and `External` (36, 0.889, median 9.5)** — and
 those are exactly the two categories that "teach the table Field's vocabulary" pushes *down*.
 
-## The decision: the rebalance is refused
+## The decision: the old refusal is withdrawn; R2 is reopened
 
 `tools/rank_weight_lab.py` runs the whole sweep in about a minute. Every row is the same 578 carets and
 the same recorded payloads; only the constant differs.
 
 | variant | prefixed c-recall | bare c-recall | all recall | MRR (all) | exposure |
 | --- | --- | --- | --- | --- | --- |
-| R0 as shipped | 0.822 | **0.703** | **0.789** | 0.390 | 89.6% |
-| R1 server vocabulary at 24, kotlin/external 0 | 0.822 | **0.648** | 0.766 | 0.403 | 71.6% |
-| R2 server vocabulary at 12, kotlin 8, external 4 | 0.822 | **0.703** | **0.789** | 0.395 | 10.6% |
-| R3 kotlin 24 only | 0.822 | 0.699 | 0.787 | 0.389 | 32.6% |
-| R4 kotlin 24, external 24 | 0.822 | 0.699 | 0.787 | 0.390 | 28.6% |
-| R5 `universal` −85 → −40 | 0.822 | 0.703 | 0.789 | 0.389 | 89.6% |
-| R6 `universal` −85 → −140 | 0.822 | 0.703 | 0.789 | 0.390 | 89.6% |
+| R0 as shipped | 0.822 | **0.657** | **0.770** | 0.392 | 90.2% |
+| R1 server vocabulary at 24, kotlin/external 0 | 0.822 | 0.653 | 0.768 | 0.403 | 75.4% |
+| R2 server vocabulary at 12, kotlin 8, external 4 | 0.822 | **0.708** | **0.791** | 0.393 | 14.4% |
+| R3 kotlin 24 only | 0.822 | 0.695 | 0.785 | 0.394 | 33.2% |
+| R4 kotlin 24, external 24 | 0.822 | 0.695 | 0.785 | 0.395 | 29.2% |
+| R5 `universal` −85 → −40 | 0.822 | 0.657 | 0.770 | 0.391 | 90.2% |
+| R6 `universal` −85 → −140 | 0.822 | 0.657 | 0.770 | 0.392 | 90.2% |
 
-Read R2 against R0. **A rebalance that teaches `CATEGORY_WEIGHT` every category the server sends —
-taking the exposure figure from 89.6% of rows to 10.6% — changes visible recall by 0.000 in all three
-forms.** Nobody would feel that. The +0.005 of MRR in the same row is **not** a gain to bank: this corpus
-carries a 1.0% order-dependent category component (see below), which is plausibly a larger perturbation
-than 0.005 of MRR, so that figure is **below resolution** and the honest reading is "indistinguishable
-from zero". The recall column is the load-bearing one, and it is the one with structural protection:
-`filterAndLimit` ranks, truncates to 80, and only *then* groups, so grouping cannot change which rows
-survive — `probe.mjs` fails if any answer is visible in one order and not the other. Read R1 against R0:
-the same rebalance at a
-magnitude large enough to reorder sections costs **5.5 points of bare-dot contested recall**, 13 answers
-pushed off the screen entirely, because the 80 rows are a fixed budget and lifting one bucket by 24
-points evicts another bucket's rows. Recall is a cliff; a rank of 2 versus 1 is not. That trade is the
-wrong way round.
+Read R2 against R0. Teaching the table the server vocabulary at a conservative magnitude raises bare
+contested recall by **0.051** and all recall by **0.021**. The order-dependent classifier had hidden that
+gain completely: the pre-fix run reported 0.000. This is not an MRR rounding argument; twelve additional
+foreign-receiver answers cross the 80-row visibility cliff. The harness remains sensitive in the other
+direction too: R1's larger weights lower bare contested recall slightly, so magnitude still matters.
+
+That makes R2 a credible candidate, not an automatic shipment. Its exposure remains 14.4% because
+`other` and uncategorised rows are still unweighted; eliminating exposure is not itself the objective.
+More importantly, the same table raises foreign recall while worsening the median rank among answers
+that remain visible. The next decision should therefore be made on the split below, not on one global
+score.
 
 R5 and R6 are worth recording for the same reason: **changing the largest single term in the ranker by
 ±55 points moves nothing measurable.** At a bare dot every `universal` row takes the same penalty, so
@@ -246,41 +250,30 @@ about — beside what each variant costs the 146 it can:
 
 | variant | foreign recall | foreign MRR | foreign median rank | owned recall |
 | --- | --- | --- | --- | --- |
-| R0 as shipped | **0.540** | 0.022 | 39 | **0.911** |
-| R1 server vocabulary at 24 | **0.420** | 0.017 | 34 | 0.904 |
-| R2 server vocabulary at 12 | **0.540** | 0.029 | 41 | **0.911** |
-| R3 `kotlin` 24 only | **0.550** | 0.036 | 32 | 0.897 |
-| R4 `kotlin` 24, `external` 24 | **0.550** | 0.039 | 32 | 0.897 |
-| R5/R6 proximity ±55 | 0.540 | 0.022 | 39–40 | 0.911 |
+| R0 as shipped | **0.420** | 0.018 | 32 | **0.900** |
+| R1 server vocabulary at 24 | **0.420** | 0.017 | 33 | 0.892 |
+| R2 server vocabulary at 12 | **0.540** | 0.030 | 41 | **0.900** |
+| R3 `kotlin` 24 only | **0.530** | 0.036 | 32 | 0.883 |
+| R4 `kotlin` 24, `external` 24 | **0.530** | 0.039 | 32 | 0.883 |
+| R5/R6 proximity ±55 | 0.420 | 0.018 | 32 | 0.900 |
 
-The best any variant does for the population the decision was about is **+0.010 — one caret in a
-hundred** — and it does it by giving `Kotlin` a weight, which is the *opposite* direction from "teach the
-table Field's vocabulary", and it costs 0.014 of owned recall (two carets) to get there. Net across all
-284 bare carets: R3 and R4 are 0.694 → 0.690. And on `Math` and `List` specifically, **every variant
-leaves every named row exactly where it was**: `Math.` → `cos` at 32 in all seven, `sqrt` and `sin` off
-screen in all seven, `List.` → `forEach` 29 → 42 under R2 (worse) and 30 under R5, everything else off
-screen in all seven.
+R2 gains **0.120 — twelve carets in a hundred — with no owned contested-recall cost**. R3 and R4 gain
+0.110 but give up 0.017 of owned recall, so they are dominated by R2 on recall. Named-receiver detail
+keeps the result honest: `Math.cos` stays at 32 under R2, while `List.forEach` moves from 36 to 42 and
+the other named bare members remain off screen. The gain comes from other foreign carets, not from every
+example improving uniformly.
 
-That is the sharpest form of the answer. The rows the human named would not move.
-
-The mechanism is that the 80 rows are a fixed budget, so a reweighting is zero-sum between populations,
-and the corpus says the shipped allocation is already at a local optimum: every direction tested trades
-one population for another at parity or worse.
+The mechanism is still a fixed 80-row budget, but the clean corpus no longer says the shipped allocation
+is a local optimum. R2 admits more answers by redistributing that budget; its higher foreign median rank
+shows the admitted answers tend to arrive near the cutoff.
 
 So the honest three-part statement is:
 
-1. `CATEGORY_WEIGHT` measurably affects the **order** of about a quarter of answers (120 of 456), by up
-   to 6 rows at p90.
-2. It affects the **visibility** of 0 of 578 answers at any magnitude that does not also evict
-   something, and −5.5 points at a magnitude that does.
-3. On the foreign-receiver population it was deferred *for*, the whole reachable range is
-   **−0.120 to +0.010** of recall, and the +0.010 costs −0.014 elsewhere.
-
-**The claim that would have made this refusal fail, and why it is not vacuous:** if the harness were
-insensitive to `CATEGORY_WEIGHT`, "changing it does nothing" would be a bug in the measurement rather
-than a fact about the ranker. R1 is that falsification, and it is in the recorded sweep: the same
-harness, the same corpus, moves bare contested recall by −0.055 when the table changes by 24 points. The
-harness is sensitive; the popup is not.
+1. As shipped, `CATEGORY_WEIGHT` affects the **order** of 107 found answers, with a p90 movement of 16
+   rows among those moved.
+2. R2 affects **visibility** materially: +0.051 bare contested recall and +0.120 foreign recall.
+3. That recall gain leaves owned contested recall unchanged, but foreign median rank worsens by nine
+   rows. The weight table is reopened, not settled.
 
 ## Would fixing sectioning buy anything? No — measured, and the hypothesis is retired
 
@@ -288,7 +281,7 @@ harness is sensitive; the popup is not.
 the next lever. It is not, and the reason is structural rather than empirical: `filterAndLimit` cuts to
 `MAX_VISIBLE_ITEMS` on the **flat** ranked list and only then groups. So an answer is visible in the flat
 order exactly when it is visible in the grouped one, and **ranking across sections instead of into them
-recovers 0 of the 88 missing answers.** That is not an argument in prose — `probe.mjs` fails if any answer
+recovers 0 of the 72 payload-present missing answers.** That is not an argument in prose — `probe.mjs` fails if any answer
 is visible in one order and not the other, which is also the guard that catches someone moving the
 `.slice()` to after the grouping.
 
@@ -296,14 +289,14 @@ What collapsing sections *would* buy is order, and that is small:
 
 | population | MRR as shipped | MRR ranked across sections | median rank | flat median |
 | --- | --- | --- | --- | --- |
-| prefixed | 0.647 | 0.656 | 1 | 1 |
-| bare | 0.124 | 0.127 | 13 | 12 |
-| bare-owned | 0.219 | 0.227 | 9 | 7 |
-| bare-foreign | 0.022 | **0.020 (worse)** | 39 | 45 |
+| prefixed | 0.652 | 0.660 | 1 | 1 |
+| bare | 0.123 | 0.128 | 12 | 11 |
+| bare-owned | 0.219 | 0.229 | 9.5 | 7 |
+| bare-foreign | 0.018 | 0.018 | 32 | 31 |
 
-So sectioning costs the median answer nothing, helps the foreign population slightly, and would buy at
-most **+0.008 MRR** if removed. `FLine.moveTo` rendered at row 76 was the tail of this distribution
-(96 of 456 answers move at all, p90 13 rows), not its shape — and after the classification fix that tail
+So sectioning costs the median answer nothing and would buy at most **+0.008 MRR** if removed.
+`FLine.moveTo` rendered at row 76 was the tail of this distribution
+(71 of 445 answers move at all, p90 8 rows), not its shape — and after the classification fix that tail
 is the *symptom* of a misfiled category, which is why the ceiling on the median shift is a useful gate and
 a redesign is not a useful project.
 
@@ -316,9 +309,9 @@ file still resolve a contested simple name by first match — `getKDocForSymbol`
 `~/.afield/filestore` rewritten between runs once gave four different ranks for one caret.
 
 The argument was that none of the three is on this path, because `classifyMetadata` reaches the index only
-through `getCompletionCategoryForSymbol`. **That argument is wrong.** The test
+through `getCompletionCategoryForSymbol`. **That argument was wrong.** The test
 `the corpus's categories do not depend on the order the source tree was walked` shuffles the definition
-list with a fixed seed and compares the category of all 6 679 distinct rows. It is a **deliberate red**:
+list with a fixed seed and compares the category of all 6 679 distinct rows. Before the repair it found:
 
 > **68 of 6 679 distinct recorded rows (1.0%) get a different category when the source tree is walked in a
 > different order.**
@@ -327,16 +320,16 @@ Discriminated from the obvious alternative — a `latestIndex` cache confound se
 by a marker assertion that the two runs report *different* first definitions. They do, so the permutation
 reached the index and the disagreement belongs to the classifier, not to the harness.
 
-The mechanism is visible in every disagreeing row: `declaredIn` is a **package**, never a class. It is the
+The mechanism was visible in every disagreeing row: `declaredIn` is a **package**, never a class. It was the
 top-level-extension branch that `69ca4d5cb` itself added,
 
 ```kotlin
 val inPackage = matches.filter { it.filePath.contains("/$packagePath/") }
-if (inPackage.isNotEmpty()) return inPackage.firstNotNullOfOrNull { it.categoryOrNull() }
+return inPackage.mapNotNull { it.categoryOrNull() }.distinct().singleOrNull()
 ```
 
-and `afield.stdlib` holds files carrying different `@file:CompletionCategory` values, so
-`firstNotNullOfOrNull` answers with whichever file the walk reached first:
+and `afield.stdlib` holds files carrying different `@file:CompletionCategory` values. The old
+`firstNotNullOfOrNull` answered with whichever file the walk reached first:
 
 | row | `declaredIn` | one walk order | another |
 | --- | --- | --- | --- |
@@ -346,28 +339,21 @@ and `afield.stdlib` holds files carrying different `@file:CompletionCategory` va
 | `summary(` | `afield.stdlib` | Function | Polytopes |
 | `loop(` | `afield` | Audio | Synthesis |
 
-So this is precisely the defect `69ca4d5cb` diagnosed for the *name* vote, surviving one layer down in the
-vote that replaced it — and it is the shape flagged in `KotlinSourceIndex` and never reproduced until now.
-**The fix is the same one-liner:** take `inPackage`'s distinct categories and return `singleOrNull()`, so a
-contested package declines and falls through to path inference instead of borrowing whichever file sorted
-first. Not applied here, because it moves categories and therefore moves both the seven-case rank ratchet
-and the floors above, and a ratchet re-cut in the last half hour of a session is how this journal has been
-burned twice.
+So this was precisely the defect `69ca4d5cb` diagnosed for the *name* vote, surviving one layer down in
+the vote that replaced it. The repair takes the package's distinct non-null categories and returns
+`singleOrNull()`: a contested package declines and falls through to path inference instead of borrowing
+whichever file sorted first.
 
-**What it does to the numbers in this document — it bounds them rather than voiding them.** 1.0% of distinct
-rows may carry a machine-dependent category, so an individual rank can wobble and the aggregates carry that
-noise. It does not plausibly overturn the refusal, and the reason is inside the refusal's own evidence: R2
-rewrote the weight of *every* row's category, a far larger perturbation than a category change on 1% of
-rows, and moved visible recall by 0.000. A conclusion that survives rewriting the whole weight table does
-not turn on 68 rows. But that is an argument about magnitudes rather than a measurement, so the honest status
-of every figure here is: **measured on this checkout, with a known 1.0% order-dependent component, pending
-that one-line fix and a re-measure.**
+After the repair, the same test proves that two genuinely different definition orders classify all
+6 679 rows identically. One of seven hand-cut cases moved (`List.filter`, visible rank 71 → 78), and the
+population moved enough to invalidate the old weighting conclusion. That is why every table above was
+recomputed rather than described as bounded by the old 1.0% figure.
 
 ## What this says to do instead
 
-The bare dot's real number is **0.540 recall on a receiver this tree cannot annotate**, against 0.911 on
-one it can. None of the seven weight variants closes any of that, and neither would removing sectioning.
-What is left, in measured order of size:
+The shipped bare dot's real number is **0.420 recall on a receiver this tree cannot annotate**, against
+0.918 on one it can. R2 closes 0.120 of that gap without lowering owned contested recall, but makes the
+median visible foreign answer later. That measured trade-off is now the next ranking decision. Beyond it:
 
 - **`@CommonMembers` on the receivers people actually use.** This is the one lever with a measured
   factor-of-ten behind it. `Graphics` — the only annotated receiver family — is the best-ranked population
@@ -379,7 +365,7 @@ What is left, in measured order of size:
 - **A prior for types this tree does not own.** `@CommonMembers` cannot be written on `java.lang.Math`,
   which is the whole reason its bare dot is alphabetical. An external-annotation side table would be the
   first thing the corpus could measure honestly.
-- **The `(uncategorised)` 107.** Not urgent (0.916 / rank 2), but it is the classification gap that
+- **The `(uncategorised)` 118.** Not urgent (0.898 / rank 2), but it is the classification gap that
   `declaredIn` did not close.
 
 Whatever is tried, `tools/rank_weight_lab.py` measures it in ten seconds against a corpus that can fail.

@@ -39,7 +39,7 @@ BASE = [("local", 28), ("graphics", 26), ("functions", 22), ("values", 20), ("ty
 SERVER_ONLY = ["math", "audio", "data", "visualization", "polytopes", "alife", "function", "imaging",
                "machine learning", "solvers", "patterns", "synthesis", "audio ai", "geometry"]
 
-# The experiments behind the refusal recorded in dev_docs/completion_rank_at_scale.md. Each is
+# The experiments behind the decision recorded in dev_docs/completion_rank_at_scale.md. Each is
 # (name, extra weights, universal-proximity override).
 EXPERIMENTS = [
     ("R0 as shipped", [], None),
