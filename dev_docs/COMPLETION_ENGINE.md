@@ -41,7 +41,7 @@ delegate bootstraps `gatherPreambleUpwards(box)` with `Box` as an implicit recei
 
 1. **`@exported` members surface under their underscore alias.** A member marked `@exported`
    (also `@rootExported` / `@metarootExported`) in an ancestor box is republished under its
-   underscore alias — `exportedAlias(name)` = `_name` (`KotlinInterface2.kt:3085#private fun exportedAlias`) — onto the
+   underscore alias — `exportedAlias(name)` = `_name` (`KotlinInterface2.kt:3131#private fun exportedAlias`) — onto the
    box / root / metaroot (`processExportedFunction` → `Box.setPropertyRaw` +
    `upsertExportedDeclaration`) and inherited downward. **Completion in a descendant box must
    offer the `_name` alias** (e.g. an exported `foo()` → `_foo`).

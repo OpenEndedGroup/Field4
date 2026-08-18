@@ -114,7 +114,7 @@ main source (`FLinesAndJavaShapes.kt:810#return PathFlattener(this.on, tol)`, in
 `src/`. So this is the cost of geometry operations, not of frames.
 
 **Field has a second, independent flattener, and it is the one that draws.** `StandardDrawing.linesOut`
-(`graphics/StandardDrawing.kt:206#f.uniform_linearize(samplesPerCubic`) calls `FLine.uniform_linearize` (`FLine.kt:857#Unused parameters:`), which emits a fixed
+(`graphics/StandardDrawing.kt:206#f.uniform_linearize(samplesPerCubic`) calls `FLine.uniform_linearize` (`FLine.kt:862#Unused parameters:`), which emits a fixed
 `samplesPerCubic` (default 100) samples per `CubicTo` at **uniform parameter**; fills reach the same
 function through `FLine.tessellate`, and `ThreeJsViewer.kt` is a third caller. Nothing on that path
 constructs a `PathFlattener` or a `Cursor`.

@@ -105,6 +105,19 @@ interface KotlinScriptEngine {
     suspend fun warmCompletion() {}
 
     /**
+     * Build the *serving* completion backend, not just the fallback.
+     *
+     * [warmCompletion] warms the K1 delegate, which is the safety net; when the AA backend is selected
+     * the first requests are still served by K1, because the sidecar answers "session building (warming
+     * up; using K1 meanwhile)" until its Analysis-API session exists. A person sees that as one K1
+     * completion and then AA — but a *capture* sees it as a picture of the fallback, which is why the
+     * docs harness calls this before a completion figure. Blocks until the serving backend answers or
+     * [timeoutMs] passes; returns a short status for the log. No-op (`"unsupported"`) for engines with
+     * no second backend.
+     */
+    suspend fun warmCompletionBackend(timeoutMs: Long = 120_000): String = "unsupported"
+
+    /**
      * Fire-and-forget proactive warm: schedule [warmCompletion] on the main-runloop dispatcher so
      * the one heavy K1 bootstrap happens *before* the first completion/error-suggestion request
      * rather than blocking it. Idempotent and self-de-duplicating (a no-op while a warm is already

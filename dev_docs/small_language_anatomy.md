@@ -91,9 +91,9 @@ it is a literal token that must still appear somewhere in the cited file. The li
 | 11 | the list of editor language modules loaded at boot | `src/commonMain/resources/bootstrapMonaco.js:45` | `FIELD_LANGUAGE_MODULES` |
 | 12 | the one-at-a-time module loader, and why it is not one `require` | `src/commonMain/resources/bootstrapMonaco.js:59` | `loadFieldLanguageModules` |
 | 13 | the set of languages Field's own suggest widget serves | `src/commonMain/resources/fieldSuggest.js:8` | `DEFAULT_LANGUAGES` |
-| 14 | the gate that consults it | `src/commonMain/resources/fieldSuggest.js:1144` | `this.languages.has` |
-| 15 | client-side ranking (fuzzy + category + recency + contextScore) | `src/commonMain/resources/fieldSuggest.js:735` | `const rankItems` |
-| 16 | the `complete` RPC the browser sends | `src/commonMain/resources/fieldSuggest.js:1290` | `requestWithReply("complete"` |
+| 14 | the gate that consults it | `src/commonMain/resources/fieldSuggest.js:1174` | `this.languages.has` |
+| 15 | client-side ranking (fuzzy + category + recency + contextScore) | `src/commonMain/resources/fieldSuggest.js:759` | `const rankItems` |
+| 16 | the `complete` RPC the browser sends | `src/commonMain/resources/fieldSuggest.js:1320` | `requestWithReply("complete"` |
 | 17 | the server handler for it | `src/jvmMain/kotlin/afield/Server.kt:2191` | `handlers["complete"]` |
 | 18 | the polymorphic hop into the language's own completion | `src/jvmMain/kotlin/afield/Server.kt:2197` | `box.ke.complete` |
 | 19 | the sibling hover/doc route | `src/jvmMain/kotlin/afield/Server.kt:2218` | `handlers["symbol-context"]` |
@@ -379,7 +379,7 @@ itself before the compiler runs.
 | the throw that means expansion did not happen | `src/jvmMain/kotlin/afield/macros/RewriteDsl.kt:62` | `private fun erased` |
 | the metavariable kinds | `src/jvmMain/kotlin/afield/macros/RewriteDsl.kt:34` | `sealed interface MetaKind` |
 | the expander | `src/jvmMain/kotlin/afield/macros/PatternRewrite.kt:76` | `object PatternRewrite` |
-| where the REPL calls it | `src/jvmMain/kotlin/afield/KotlinInterface2.kt:2549` | `PatternRewrite.expand` |
+| where the REPL calls it | `src/jvmMain/kotlin/afield/KotlinInterface2.kt:2595` | `PatternRewrite.expand` |
 | its smoke test | `src/jvmMain/kotlin/afield/PatternRewriteSmokeTest.kt:14` | `kotlin.pattern-rewrite.smoke` |
 
 The design idea is worth stating plainly, because it is not obvious and it is cheap: **a rule body only
@@ -427,18 +427,18 @@ Note the path: the hooks module is `public/docs_hooks.py`, **not** `tools/docs_h
 
 | what | site | anchor |
 | --- | --- | --- |
-| the fence names | `public/docs_hooks.py:42` | `RUNNER_TARGETS` |
-| the two that execute | `public/docs_hooks.py:48` | `RUNNER_FENCES` |
-| the function that finds and runs them | `public/docs_hooks.py:1899` | `def process_markdown` |
-| where the build imports the hooks | `tools/build_zensical_docs.py:211` | `import docs_hooks` |
-| the full attribute set of a runner fence | `public/docs_hooks.py:216` | `class RunnerOptions` |
-| where every fence attribute is parsed | `public/docs_hooks.py:2121` | `def parse_runner_options` |
-| where `data-lang=` is read | `public/docs_hooks.py:2311` | `def fence_language_key` |
-| **per-language wrapping of the fence body** | `public/docs_hooks.py:2316` | `def wrap_runnable_code_for_language` |
-| **per-language box construction** | `public/docs_hooks.py:3840` | `elif language == "fieldml":` |
-| the accepted `capture=` modes | `public/docs_hooks.py:2144` | `if capture not in` |
-| `capture="ui"` drives the live editor | `public/docs_hooks.py:1564` | `drive the live editor` |
-| the still capture for `capture="box"` | `public/docs_hooks.py:4031` | `screenshot-box` |
+| the fence names | `public/docs_hooks.py:43` | `RUNNER_TARGETS` |
+| the two that execute | `public/docs_hooks.py:49` | `RUNNER_FENCES` |
+| the function that finds and runs them | `public/docs_hooks.py:2134` | `def process_markdown` |
+| where the build imports the hooks | `tools/build_zensical_docs.py:242` | `import docs_hooks` |
+| the full attribute set of a runner fence | `public/docs_hooks.py:241` | `class RunnerOptions` |
+| where every fence attribute is parsed | `public/docs_hooks.py:2356` | `def parse_runner_options` |
+| where `data-lang=` is read | `public/docs_hooks.py:2546` | `def fence_language_key` |
+| **per-language wrapping of the fence body** | `public/docs_hooks.py:2551` | `def wrap_runnable_code_for_language` |
+| **per-language box construction** | `public/docs_hooks.py:4075` | `elif language == "fieldml":` |
+| the accepted `capture=` modes | `public/docs_hooks.py:2379` | `if capture not in` |
+| `capture="ui"` drives the live editor | `public/docs_hooks.py:1792` | `drive the live editor` |
+| the still capture for `capture="box"` | `public/docs_hooks.py:4266` | `screenshot-box` |
 
 `diffstatic {data-lang=x}` is highlighted and not executed; `diffstatic_runner {…}` is executed in a
 real box in a real Field and its screenshot, video or audio is captured. There are **6** `capture=`

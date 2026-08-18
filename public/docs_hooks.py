@@ -14,6 +14,7 @@ import socket
 import subprocess
 import sys
 import time
+import zlib
 from dataclasses import dataclass, replace
 from types import SimpleNamespace
 from pathlib import Path
@@ -108,6 +109,30 @@ RUNNER_CONTINUE_ON_ERROR_ENV = "FIELD_DOCS_RUNNER_CONTINUE_ON_ERROR"
 RUNNER_PORT_ENV = "FIELD_DOCS_RUNNER_PORT"
 RUNNER_WORKSPACE_ENV = "FIELD_DOCS_RUNNER_WORKSPACE"
 DEFAULT_RUNNER_PORT = 9477
+# The code-use semantic sidecar, which is what makes the DEFAULT completion backend exist.
+#
+# `KotlinEngineConfig.activeCompletionBackend` is `AA`, but `AaCompletionClient` engages only when a
+# sidecar URL is configured; without one `KotlinInterface2.complete` falls through to K1 and says so in
+# the log. `field.sh` is the only other thing in the tree that starts a sidecar and exports the URL, and
+# this runner does not go through it -- it launches `./gradlew runJvm` directly. So until 2026-08-18 every
+# completion figure in the docs was a picture of the K1 fallback, and the runner's own Field log said
+# `completion backend=K1 box='Untitled'(__docs_drive__) 2ms (AA→K1: no-sidecar-url)` on every one.
+#
+# Set `FIELD_DOCS_RUNNER_SIDECAR=off` to build without one (completion captures then fail the guard in
+# `_assert_completion_served_by_aa`, which is the point -- a silently-K1 figure is a wrong figure).
+RUNNER_SIDECAR_ENV = "FIELD_DOCS_RUNNER_SIDECAR"
+SIDECAR_URL_ENV = "AFIELD_CODE_USE_SEMANTIC_SIDECAR_URL"
+SIDECAR_PORT_ENV = "AFIELD_CODE_USE_SEMANTIC_SIDECAR_PORT"
+# Starting one means a Gradle run plus the sidecar's own boot. The Analysis-API session it then builds is
+# a separate wait, paid per capture by the `drive` op (`warmCompletionBackend`), because until that session
+# exists the sidecar answers "session building" and `complete` falls through to K1 anyway.
+SIDECAR_START_DEADLINE_SEC = float(os.environ.get("AFIELD_DOCS_SIDECAR_START_TIMEOUT", "300"))
+# What Field logs for every completion request, in the `completion` channel. The reason clause is what
+# distinguishes a deliberate `-Dafield.kotlin.completion=k1` (`(backend=k1)`) from AA selected and not
+# serving (`(AA→K1: <why>)`) -- only the latter is a defect in a capture.
+COMPLETION_AA_FALLBACK_RE = re.compile(r"^.*completion backend=K1.*\(AA→K1:.*$", re.MULTILINE)
+COMPLETION_BACKEND_RE = re.compile(r"completion backend=(\w+)")
+ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 RUNNER_MODE_ALIASES = {
     "incremental": "incremental",
     "cache": "incremental",
@@ -264,6 +289,47 @@ class RunnerOptions:
     language_key: str
 
 
+def derive_sidecar_port(repo_root: Path) -> int:
+    """The checkout-derived sidecar port, computed exactly as `field.sh derive_sidecar_port` does.
+
+    Byte-for-byte agreement is the whole point: a different formula here would start a SECOND sidecar
+    for the same checkout, so a docs build and an interactive `./field.sh` would each pay a cold
+    Analysis-API session instead of sharing one. `cksum` is shelled out to rather than reimplemented
+    because POSIX `cksum` is CRC-32/CKSUM, which is *not* `zlib.crc32` -- a hand-rolled copy would agree
+    on nothing and drift silently.
+    """
+    override = os.environ.get(SIDECAR_PORT_ENV, "").strip()
+    if override:
+        return int(override)
+    try:
+        completed = subprocess.run(
+            ["cksum"], input=str(repo_root).encode("utf-8"), capture_output=True, check=True
+        )
+        checksum = int(completed.stdout.split()[0])
+    except (OSError, ValueError, IndexError, subprocess.CalledProcessError):
+        # No `cksum` (Windows): any stable port will do, it just won't be field.sh's.
+        checksum = zlib.crc32(str(repo_root).encode("utf-8"))
+    return 17841 + (checksum % 1000)
+
+
+def sidecar_workspace_status(url: str, repo_root: Path) -> str:
+    """`ok` / `wrong` / `down` for a sidecar URL, matching `field.sh sidecar_status`.
+
+    A sidecar analyses one workspace, so one serving a *different* checkout is not reusable -- it is
+    `wrong`, and reusing it would silently complete against another tree's sources.
+    """
+    base = url.rstrip("/")
+    if base.endswith("/analyze"):
+        base = base[: -len("/analyze")]
+    try:
+        with urllib.request.urlopen(base + "/health", timeout=1.0) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except Exception:
+        return "down"
+    reported = os.path.realpath(str(payload.get("workspaceRoot", "")))
+    return "ok" if reported == os.path.realpath(str(repo_root)) else "wrong"
+
+
 @dataclass(frozen=True)
 class CacheEntry:
     digest: str
@@ -298,6 +364,11 @@ class RunnerState:
         # as "the JVM died mid-capture" and reports the runner's own SIGKILL as a crash --
         # which on 2026-07-28 aimed triage at an OOM that never happened. See Backlog #18.
         self._shared_field_stop_reason: str | None = None
+        # Resolved once, before the first shared Field starts, because the completion backend is chosen
+        # from the environment at JVM start. None = no AA backend for this build.
+        self._sidecar_url: str | None = None
+        self._sidecar_checked = False
+        self._sidecar_started_by_runner = False
         self._closed = False
         self.failures: list[str] = []
         # Captures that failed but had a committed asset already on disk to fall back
@@ -489,6 +560,63 @@ class RunnerState:
             summary_lines.append(f"JVM crash dump present: {crash_reports[0][0]}")
         return "\n".join(summary_lines)
 
+    def _shared_log_size(self) -> int:
+        try:
+            return self.shared_log_path.stat().st_size
+        except OSError:
+            return 0
+
+    def _shared_log_since(self, offset: int) -> str:
+        """The Field log written after [offset] bytes -- i.e. by one capture and nothing else.
+
+        Clamped rather than trusted: a mid-build server restart truncates the log, after which an older
+        offset is past the end and would read nothing.
+        """
+        size = self._shared_log_size()
+        start = offset if 0 <= offset <= size else 0
+        try:
+            with self.shared_log_path.open("rb") as handle:
+                handle.seek(start)
+                return handle.read().decode("utf-8", errors="replace")
+        except OSError:
+            return ""
+
+    def _assert_completion_served_by_aa(
+        self, *, page_path: Path, output_path: Path, log_offset: int, command: list[str]
+    ) -> None:
+        """Fail a completion capture that photographed the K1 fallback instead of the real backend.
+
+        Field logs the serving backend for every completion request, so this asks the capture's own log
+        slice rather than inferring anything from configuration -- which is exactly the distinction that
+        hid this for as long as it did: `activeCompletionBackend` reads `AA` in a build where every
+        completion was served by K1.
+
+        Only an `AA→K1` fallback fails. A build that deliberately selects K1
+        (`-Dafield.kotlin.completion=k1`) logs `(backend=k1)` and is left alone.
+        """
+        slice_text = self._shared_log_since(log_offset)
+        fallbacks = COMPLETION_AA_FALLBACK_RE.findall(slice_text)
+        if fallbacks:
+            # Field's log is written for a terminal, so the channel tag arrives wrapped in ANSI. Strip it:
+            # this text is going into an exception a person reads in a build log or a saved report.
+            reasons = "\n".join("  " + ANSI_ESCAPE_RE.sub("", line).strip() for line in fallbacks[:5])
+            raise RuntimeError(
+                f"Field docs runner completion capture for {page_path.name} -> {output_path.name} was "
+                f"served by the K1 fallback, not the default (AA) backend, so the figure does not show "
+                f"what a user gets.\nField's own log says:\n{reasons}\n"
+                f"Sidecar for this build: {self._sidecar_url or 'none'}\n"
+                f"Start one (or let the runner: unset {RUNNER_SIDECAR_ENV}) and re-capture. Note that a "
+                f"shared Field this runner REUSED rather than started carries whatever environment it was "
+                f"launched with, not this one's.\n"
+                f"Command: {shlex.join(command)}"
+            )
+        if not COMPLETION_BACKEND_RE.search(slice_text):
+            LOG.warning(
+                "Field docs runner: %s -> %s set warm-completion but requested no completion (nothing in "
+                "the log's `completion` channel), so the backend could not be checked",
+                page_path.name, output_path.name,
+            )
+
     def _collect_jvm_crash_dumps(self) -> list[tuple[str, str]]:
         """Find JVM crash artifacts written since this server started, newest first.
 
@@ -676,6 +804,92 @@ class RunnerState:
             f"in one attempt: {outcome}. See {self.shared_log_path}"
         )
 
+    def _ensure_semantic_sidecar(self) -> str | None:
+        """Make the default completion backend actually available to the shared Field, and return its URL.
+
+        Mirrors `field.sh ensure_semantic_sidecar`: reuse a healthy sidecar for THIS checkout on the
+        checkout-derived port, otherwise start one there. Long-lived by design and deliberately not torn
+        down with the build -- the next docs build, and any `./field.sh` in this checkout, reuse it and skip
+        the Analysis-API cold start. Returns None when there is none (a `=off` build, or a start that
+        failed); the completion guard, not this, is what decides whether that matters.
+        """
+        if self._sidecar_url is not None or self._sidecar_checked:
+            return self._sidecar_url
+        self._sidecar_checked = True
+
+        if os.environ.get(RUNNER_SIDECAR_ENV, "").strip().lower() in FALSE_VALUES:
+            LOG.info("Field docs runner completion sidecar disabled by %s", RUNNER_SIDECAR_ENV)
+            return None
+        if not (self.repo_root / "tools" / "code-use-semantic-sidecar").is_dir():
+            LOG.warning("Field docs runner found no tools/code-use-semantic-sidecar in %s", self.repo_root)
+            return None
+
+        # An inherited URL wins if it is serving this checkout -- someone who exported one meant it.
+        configured = os.environ.get(SIDECAR_URL_ENV, "").strip()
+        if configured and sidecar_workspace_status(configured, self.repo_root) == "ok":
+            LOG.info("Field docs runner using configured completion sidecar %s", configured)
+            self._sidecar_url = configured
+            return self._sidecar_url
+
+        port = derive_sidecar_port(self.repo_root)
+        url = f"http://127.0.0.1:{port}"
+        status = sidecar_workspace_status(url, self.repo_root)
+        if status == "ok":
+            LOG.info("Field docs runner reusing completion sidecar %s", url)
+            self._sidecar_url = url
+            return self._sidecar_url
+        if status == "wrong":
+            LOG.warning(
+                "Field docs runner: %s serves a different workspace; completion captures will have no "
+                "AA backend. Set %s to a sidecar for %s.", url, SIDECAR_PORT_ENV, self.repo_root
+            )
+            return None
+
+        log_path = self.repo_root / "build" / "code-use-semantic-sidecar" / "docs-runner-sidecar.log"
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        gradle_wrapper = "gradlew.bat" if os.name == "nt" else "./gradlew"
+        command = [
+            str(self.repo_root / gradle_wrapper), "-p", "tools/code-use-semantic-sidecar", "run",
+            f"--args=--port {port} --workspace {self.repo_root}",
+        ]
+        LOG.info("Field docs runner starting completion sidecar on port %s (log: %s)", port, log_path)
+        popen_kwargs: dict[str, Any] = {
+            "cwd": str(self.repo_root),
+            "stdout": log_path.open("w", encoding="utf-8"),
+            "stdin": subprocess.DEVNULL,
+            "text": True,
+        }
+        popen_kwargs["stderr"] = subprocess.STDOUT
+        if os.name == "nt":
+            popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
+        else:
+            popen_kwargs["start_new_session"] = True
+        try:
+            process = subprocess.Popen(command, **popen_kwargs)
+        except OSError as exc:
+            LOG.warning("Field docs runner could not start the completion sidecar: %s", exc)
+            return None
+
+        deadline = time.monotonic() + SIDECAR_START_DEADLINE_SEC
+        while time.monotonic() < deadline:
+            if process.poll() is not None:
+                LOG.warning(
+                    "Field docs runner completion sidecar exited with code %s before becoming healthy; "
+                    "see %s", process.returncode, log_path
+                )
+                return None
+            if sidecar_workspace_status(url, self.repo_root) == "ok":
+                LOG.info("Field docs runner completion sidecar ready on %s", url)
+                self._sidecar_url = url
+                self._sidecar_started_by_runner = True
+                return self._sidecar_url
+            time.sleep(1.0)
+        LOG.warning(
+            "Field docs runner completion sidecar did not become healthy in %.0fs; see %s",
+            SIDECAR_START_DEADLINE_SEC, log_path
+        )
+        return None
+
     def _start_shared_field_server_once(self) -> str | None:
         """Start one shared Field server and wait for health.
 
@@ -691,13 +905,21 @@ class RunnerState:
         self.shared_log_path.parent.mkdir(parents=True, exist_ok=True)
         log_handle = self.shared_log_path.open("w", encoding="utf-8")
 
+        # The completion backend is decided by this env, at JVM start, and cannot be changed later: the
+        # sidecar URL is read from `System.getenv`. So it has to be resolved BEFORE the server starts,
+        # not lazily at the first completion capture.
+        server_env = {**os.environ, "PORT": str(self.backdoor_port)}
+        sidecar_url = self._ensure_semantic_sidecar()
+        if sidecar_url:
+            server_env[SIDECAR_URL_ENV] = sidecar_url
+
         popen_kwargs: dict[str, Any] = {
             "cwd": str(self.repo_root),
             "stdout": log_handle,
             "stderr": subprocess.STDOUT,
             "stdin": subprocess.DEVNULL,
             "text": True,
-            "env": {**os.environ, "PORT": str(self.backdoor_port)},
+            "env": server_env,
         }
         if os.name == "nt":
             popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
@@ -1216,6 +1438,12 @@ class RunnerState:
             self.server_restarts,
             elapsed,
         )
+        if self._sidecar_started_by_runner and self._sidecar_url:
+            LOG.info(
+                "Field docs runner left the completion sidecar it started running at %s (long-lived by "
+                "design -- the next docs build and any ./field.sh in this checkout reuse it)",
+                self._sidecar_url,
+            )
         if self.failures:
             # Distinguish honestly: fallbacks still render a real (committed) image;
             # broken failures leave the HTML pointing at a missing asset.
@@ -1610,6 +1838,8 @@ class RunnerState:
             code=code,
         ).process_command
         LOG.info("Field docs runner driving UI %s for %s", page_path.name, primary)
+        # Remember where the Field log ends, so the completion guard below reads only THIS capture's lines.
+        completion_log_offset = self._shared_log_size() if options.warm_completion else 0
         try:
             completed = self._run_capture_child(
                 command,
@@ -1652,6 +1882,11 @@ class RunnerState:
             raise RuntimeError(
                 f"Field docs runner ui drive produced no output for {page_path.name}: missing {', '.join(missing)}.\n"
                 f"Command: {shlex.join(command)}"
+            )
+        if options.warm_completion:
+            self._assert_completion_served_by_aa(
+                page_path=page_path, output_path=primary,
+                log_offset=completion_log_offset, command=command,
             )
         self.cache[cache_key] = digest
         self.cache_metadata[cache_key] = cache_metadata

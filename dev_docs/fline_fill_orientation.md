@@ -3,7 +3,7 @@
 *2026-08-02.*
 
 Everything that turns a **filled** `FLine` into triangles funnels into one place:
-`FLine.tessellate` (`src/jvmMain/kotlin/afield/graphics/FLine.kt:1014#fun tessellate`). It flattens
+`FLine.tessellate` (`src/jvmMain/kotlin/afield/graphics/FLine.kt:1019#fun tessellate`). It flattens
 the line into rings and hands them to `PlanarTessellation`
 (`src/jvmMain/kotlin/afield/graphics/PlanarTessellation.kt:170#fun tessellate`), which groups them into planes,
 works out which rings are holes in which, and hands each group to `FloatEarcut`.
@@ -297,7 +297,7 @@ So there is now one implementation — `PlanarTessellation` — and two thin ada
 
 | | |
 |---|---|
-| `FLine.tessellate` (`FLine.kt:1014#fun tessellate`) | flattens and sanitises, then packs each returned polygon's own vertices |
+| `FLine.tessellate` (`FLine.kt:1019#fun tessellate`) | flattens and sanitises, then packs each returned polygon's own vertices |
 | `EarcutFaceTriangulator` (`polytope/FieldAdapters.kt:214#object EarcutFaceTriangulator`) | reads a `Realization3` and maps the returned `(ring, vertex)` references back to realization indices |
 
 `EarcutFaceTriangulator` therefore *gained* hole support, through a new

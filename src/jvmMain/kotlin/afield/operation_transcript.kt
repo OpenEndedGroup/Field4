@@ -1418,6 +1418,24 @@ object OperationTranscript {
                         }
                     }
                     lprintln("info,docs", "drive warmCompletion for box=${target.id} took ${warmMs}ms")
+                    // ...and then the backend that will actually SERVE it. Warming K1 alone is how every
+                    // completion figure in the docs came to be a picture of the fallback: the AA sidecar
+                    // answers "session building" for the first seconds of its life, `complete` falls
+                    // through to K1 exactly as designed, and the capture records that. Off the runloop —
+                    // this waits on HTTP, and the runloop is what the driver pumps.
+                    val backendMs = measureTimeMillis {
+                        runCatching {
+                            runBlocking { target.ki.warmCompletionBackend() }
+                        }.onSuccess {
+                            lprintln("info,docs", "drive warmCompletionBackend for box=${target.id}: $it")
+                        }.onFailure {
+                            lprintln(
+                                "warning,docs",
+                                "drive warmCompletionBackend failed: ${it.javaClass.simpleName}: ${it.message}"
+                            )
+                        }
+                    }
+                    lprintln("info,docs", "drive warmCompletionBackend for box=${target.id} took ${backendMs}ms")
                 }
 
                 val videoPath = payload["video"]?.toString()?.takeIf { it.isNotBlank() }
