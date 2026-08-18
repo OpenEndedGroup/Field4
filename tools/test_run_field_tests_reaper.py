@@ -60,6 +60,17 @@ REAL_RUNJVM_COMMAND = (
     "afield.Server"
 )
 
+REAL_SIDECAR_COMMAND = (
+    JAVA + " "
+    "-Dapple.awt.UIElement=true -Dfile.encoding=UTF-8 "
+    "-cp {root}/tools/code-use-semantic-sidecar/build/classes/java/main:"
+    "{root}/tools/code-use-semantic-sidecar/build/classes/kotlin/main:"
+    "{root}/tools/code-use-semantic-sidecar/build/resources/main:"
+    "/Users/marc/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/"
+    "kotlin-stdlib/2.4.20-Beta1/kotlin-stdlib-2.4.20-Beta1.jar "
+    "afield.tools.codeuse.CodeUseSemanticSidecarKt --port 17969 --workspace {root}"
+)
+
 PRIMARY = Path("/Users/marc/field4")
 MINE = Path("/Users/marc/field4-worktrees/2026-07-30-2-transcript-race-and-harness-scoping")
 SIBLING = Path("/Users/marc/field4-worktrees/2026-07-30-1-typography-geometry-family")
@@ -67,6 +78,10 @@ SIBLING = Path("/Users/marc/field4-worktrees/2026-07-30-1-typography-geometry-fa
 
 def command_from(root: Path) -> str:
     return REAL_RUNJVM_COMMAND.format(root=str(root))
+
+
+def sidecar_command_from(root: Path) -> str:
+    return REAL_SIDECAR_COMMAND.format(root=str(root))
 
 
 class ScopePrefixTests(unittest.TestCase):
@@ -134,6 +149,21 @@ class AttributionTests(unittest.TestCase):
         self.assertTrue(_command_belongs_to(launcher, MINE))
         self.assertFalse(_command_belongs_to(launcher, SIBLING))
         self.assertFalse(_command_belongs_to(launcher, PRIMARY))
+
+    def test_the_semantic_sidecar_is_attributed_to_its_own_checkout_only(self) -> None:
+        """The sidecar is a nested Gradle build, not part of the root build output.
+
+        This shape comes from a live leaked sidecar process. Its main class identifies the
+        process type, while its only checkout ownership signal is the nested tool classpath.
+        Both conditions are required for the preflight reaper to clean it up without touching
+        a sibling worktree's completion process.
+        """
+        sidecar = sidecar_command_from(MINE)
+        rest = sidecar.partition(" ")[2]
+        self.assertTrue(any(marker in rest for marker in FIELD_JVM_MARKERS))
+        self.assertTrue(_command_belongs_to(sidecar, MINE))
+        self.assertFalse(_command_belongs_to(sidecar, SIBLING))
+        self.assertFalse(_command_belongs_to(sidecar, PRIMARY))
 
     def test_the_aot_signal_carries_it_without_a_classpath(self) -> None:
         # The jvm-main launcher path, and anything launched with a `@argfile` classpath.

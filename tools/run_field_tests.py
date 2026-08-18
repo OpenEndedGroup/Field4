@@ -176,14 +176,19 @@ def recycle_field(port: int, ctx: Any, *, grace: float = 12.0) -> None:
 
 
 # Command-line markers identifying a JVM this repo launched: the Field server
-# (build.gradle.kts `runJvm` -> mainClass afield.Server) and the jvm-main test
-# launcher. Matching the main class rather than the java binary is what keeps the
-# reaper off Gradle/Kotlin daemons, IDEs and unrelated JVMs.
+# (build.gradle.kts `runJvm` -> mainClass afield.Server), the jvm-main test
+# launcher and the completion Analysis API sidecar. Matching the main class
+# rather than the java binary is what keeps the reaper off Gradle/Kotlin daemons,
+# IDEs and unrelated JVMs.
 #
 # These say "this is a Field JVM". They do NOT say "this is OUR Field JVM" -- see
 # [_command_belongs_to] for that half, which is what keeps parallel agents in sibling
 # worktrees from SIGKILLing each other's tests.
-FIELD_JVM_MARKERS = ("afield.Server", "afield.AgentJvmMainLauncher")
+FIELD_JVM_MARKERS = (
+    "afield.Server",
+    "afield.AgentJvmMainLauncher",
+    "afield.tools.codeuse.CodeUseSemanticSidecarKt",
+)
 
 
 def _checkout_scope_prefix(root: Path) -> str:
@@ -206,14 +211,17 @@ def _command_belongs_to(command: str, root: Path) -> bool:
     * ``-Dafield.aot.cache.path=<root>/...`` -- ``build.gradle.kts``'s
       ``fieldAotStatusJvmArgs`` puts this on the ``runJvm`` server, defaulting to
       ``<root>/build/aot/field.aot``. It is the cheapest and most direct answer.
-    * a ``-classpath``/``-cp`` entry under ``<root>/build/``. Not a theoretical fallback: an
+    * a ``-classpath``/``-cp`` entry under ``<root>/build/`` or the semantic sidecar's
+      ``<root>/tools/code-use-semantic-sidecar/build/``. Not a theoretical fallback: an
       observed ``afield.AgentJvmMainLauncher`` running
       ``afield.examples.DemoTranscriptExecSmokeTest`` carried **no**
       ``-Dafield.aot.cache.path`` argument at all, and its classpath was the only thing naming
       its checkout. The property is also emitted *empty* when ``-PfieldAotCache=false``
-      resolves the cache file to null. ``<root>/build/`` rather than ``<root>/`` on purpose: a
-      checkout's build output is unambiguous, whereas ``<root>/`` would also match incidental
-      paths such as a worktree's ``<primary>/.git/worktrees/<name>`` gitdir.
+      resolves the cache file to null. The semantic sidecar is a nested Gradle build, so its
+      classes live under its own ``build/`` directory. These exact build roots are used rather
+      than ``<root>/`` on purpose: a checkout's build output is unambiguous, whereas
+      ``<root>/`` would also match incidental paths such as a worktree's
+      ``<primary>/.git/worktrees/<name>`` gitdir.
 
     Tokenising with ``split()`` is good enough here and not more: ``ps`` prints argument values
     unquoted (``-Dafield.aot.detail=No AOT cache was requested. ...`` really does arrive as
@@ -229,7 +237,10 @@ def _command_belongs_to(command: str, root: Path) -> bool:
         return True
 
     args = command.split()
-    build_prefix = prefix + "build" + os.sep
+    build_prefixes = (
+        prefix + "build" + os.sep,
+        prefix + "tools" + os.sep + "code-use-semantic-sidecar" + os.sep + "build" + os.sep,
+    )
     for index, arg in enumerate(args):
         if arg in {"-classpath", "-cp", "--class-path"}:
             classpath = args[index + 1] if index + 1 < len(args) else ""
@@ -237,7 +248,11 @@ def _command_belongs_to(command: str, root: Path) -> bool:
             classpath = arg.partition("=")[2]
         else:
             continue
-        if any(entry.startswith(build_prefix) for entry in classpath.split(os.pathsep)):
+        if any(
+            entry.startswith(build_prefix)
+            for entry in classpath.split(os.pathsep)
+            for build_prefix in build_prefixes
+        ):
             return True
     return False
 
