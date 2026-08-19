@@ -303,6 +303,15 @@ and can still draw. It is registered with the box as well, and fenced by its own
     when the animation retires itself or gets replaced, not for releasing something that must be
     released when a person presses stop.** Put that in a `finally`.
 
+    **This bites one thing in the standard library.** `Box.streamProcess` runs an external command
+    and streams its output into a box, and it is the only place in Field's source that installs an
+    `atEnd` — the block that calls `proc.destroy()`. Its KDoc says *"ending the Frames will kill the
+    process"*. Pressing stop does end the Frames, and
+    `StreamProcessStopLeakTest.stopLeavesTheProcessRunning` shows a real `/bin/sleep` outliving it.
+    Re-running the box kills it correctly. If you launch a subprocess from a box, do not rely on
+    stop to reap it. The mechanism, the full caller sweep and the two candidate fixes are written up
+    in `dev_docs/frames_stop_end_phase.md`; which one Field adopts is not settled.
+
 ## Time, if you actually meant seconds
 
 `AnimationClock.nowSeconds()` — `Runloop.kt` — is the time source to write motion against. Ordinarily
