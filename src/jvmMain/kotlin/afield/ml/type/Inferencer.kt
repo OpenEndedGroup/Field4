@@ -205,11 +205,20 @@ class Inferencer {
                 resolved(FieldMLHostTypes.constructorResultType(pruned(klass), emptyList()), call.range)
             }
             "hostNew" -> arguments.takeIf { it.size == 2 }?.let { (argumentList, klass) ->
+                namedFields(argumentList)?.let { names ->
+                    return resolved(FieldMLHostTypes.namedConstructorResultType(pruned(klass), names), call.range)
+                }
                 val argumentTypes = spreadTypes(argumentList) ?: return null
                 resolved(FieldMLHostTypes.constructorResultType(pruned(klass), argumentTypes), call.range)
             }
             "hostCall" -> arguments.takeIf { it.size == 3 }?.let { (method, argumentList, target) ->
                 val methodName = literalString(method) ?: return null
+                namedFields(argumentList)?.let { names ->
+                    return resolved(
+                        FieldMLHostTypes.namedMethodResultType(pruned(target), methodName, names),
+                        method.range,
+                    )
+                }
                 val argumentTypes = spreadTypes(argumentList) ?: return null
                 resolved(FieldMLHostTypes.methodResultType(pruned(target), methodName, argumentTypes), method.range)
             }
@@ -233,6 +242,17 @@ class Inferencer {
             }
             "hostExt" -> arguments.takeIf { it.size == 4 }?.let { (klass, method, argumentList, receiver) ->
                 val methodName = literalString(method) ?: return null
+                namedFields(argumentList)?.let { names ->
+                    return resolved(
+                        FieldMLHostTypes.namedStaticMethodResultType(
+                            pruned(klass),
+                            methodName,
+                            names,
+                            wantsExtensionReceiver = true,
+                        ),
+                        method.range,
+                    )
+                }
                 val argumentTypes = spreadTypes(argumentList) ?: return null
                 resolved(
                     FieldMLHostTypes.staticMethodResultType(
@@ -245,6 +265,17 @@ class Inferencer {
             }
             "hostStaticCall" -> arguments.takeIf { it.size == 3 }?.let { (method, argumentList, klass) ->
                 val methodName = literalString(method) ?: return null
+                namedFields(argumentList)?.let { names ->
+                    return resolved(
+                        FieldMLHostTypes.namedStaticMethodResultType(
+                            pruned(klass),
+                            methodName,
+                            names,
+                            wantsExtensionReceiver = false,
+                        ),
+                        method.range,
+                    )
+                }
                 val argumentTypes = spreadTypes(argumentList) ?: return null
                 resolved(
                     FieldMLHostTypes.staticMethodResultType(pruned(klass), methodName, argumentTypes),
@@ -468,6 +499,17 @@ class Inferencer {
         }
 
     private fun sourceString(expr: Expr): String? = (expr as? EString)?.value
+
+    /**
+     * The field names of an argument written as a **record**, which is what makes a host call a
+     * *named* one — and therefore the only shape that can leave a Kotlin default unwritten. Null for
+     * every other shape, so the positional path is untouched.
+     *
+     * Read off the inferred type rather than off the syntax, so `let options = {a = 1} in
+     * hostNew options C` behaves the same as writing the record in place.
+     */
+    private fun namedFields(expr: TExpr): Set<String>? =
+        (pruned(expr) as? TRecord)?.fields?.keys
 
     /**
      * The argument types behind the tuple-or-list spread the `host…` family uses, or null when the

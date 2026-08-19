@@ -6,7 +6,9 @@ import java.lang.reflect.Modifier
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.TypeVariable
 import java.lang.reflect.WildcardType
+import kotlin.reflect.KFunction
 import kotlin.reflect.KParameter
+import kotlin.reflect.jvm.javaType
 import kotlin.reflect.jvm.kotlinFunction
 
 /**
@@ -191,6 +193,114 @@ object FieldMLHostTypes {
         }
         return Resolution.Found(valueType(owner))
     }
+
+    // ---- named arguments ---------------------------------------------------------------------
+
+    /**
+     * The type-level twin of `FieldMLHostBridge.callMethodNamed`, and deliberately weaker than its
+     * positional counterpart in one respect: it resolves on the argument *names* alone and ignores
+     * their types.
+     *
+     * That is not laziness, it is where the information is. A name set is usually far more selective
+     * than an arity — most overload sets differ in what they are called, not just in how many — and
+     * the value-level scoring that would break a remaining tie has to agree with what the runtime
+     * does, which for a named call is `chooseNamed`. Rather than keep a third scorer in step, this
+     * answers the question that is actually asked of it: *if* the call resolves, what does it
+     * return. When two candidates accept the same names it degrades to [OPAQUE], the same way
+     * [resolve] does, and the runtime refuses outright — a difference in strictness that is safe in
+     * the only direction that matters, since the type checker never rejects a call the runtime would
+     * have made.
+     */
+    fun namedMethodResultType(receiver: Type, name: String, argumentNames: Set<String>): Resolution {
+        val owner = jvmClassOf(receiver) ?: return Resolution.Unknown
+        return resolveNamed(
+            kotlinFunctionsOf(FieldMLHostBridge.instanceMethods(owner, name)),
+            argumentNames,
+            wantsExtensionReceiver = false,
+        ) { "${owner.simpleName} has no method '$name' with exactly the named parameters ${describeNames(argumentNames)}" }
+    }
+
+    fun namedStaticMethodResultType(
+        classType: Type,
+        name: String,
+        argumentNames: Set<String>,
+        wantsExtensionReceiver: Boolean,
+    ): Resolution {
+        val owner = classHandleName(classType)?.let { loadClass(it) } ?: return Resolution.Unknown
+        return resolveNamed(
+            kotlinFunctionsOf(FieldMLHostBridge.staticMethods(owner, name)),
+            argumentNames,
+            wantsExtensionReceiver,
+        ) {
+            "${owner.simpleName} has no static method '$name' with exactly the named parameters " +
+                describeNames(argumentNames)
+        }
+    }
+
+    fun namedConstructorResultType(classType: Type, argumentNames: Set<String>): Resolution {
+        val owner = classHandleName(classType)?.let { loadClass(it) } ?: return Resolution.Unknown
+        val viable = owner.constructors
+            .mapNotNull { runCatching { it.kotlinFunction }.getOrNull() }
+            .filter { acceptsNames(it, argumentNames, wantsExtensionReceiver = false) }
+        if (viable.isEmpty()) {
+            return Resolution.Refused(
+                "${owner.simpleName} has no constructor with exactly the named parameters ${describeNames(argumentNames)}",
+            )
+        }
+        return Resolution.Found(valueType(owner))
+    }
+
+    private fun kotlinFunctionsOf(methods: List<java.lang.reflect.Method>): List<KFunction<*>> =
+        methods.mapNotNull { runCatching { it.kotlinFunction }.getOrNull() }
+
+    private fun resolveNamed(
+        candidates: List<KFunction<*>>,
+        argumentNames: Set<String>,
+        wantsExtensionReceiver: Boolean,
+        refusal: () -> String,
+    ): Resolution {
+        val viable = candidates.filter { acceptsNames(it, argumentNames, wantsExtensionReceiver) }
+        if (viable.isEmpty()) return Resolution.Refused(refusal())
+        val results = viable.map { kotlinResultType(it) }.distinct()
+        return Resolution.Found(results.singleOrNull() ?: opaque)
+    }
+
+    /**
+     * Whether [candidate] could be the member a named call means: every name given is one of its
+     * value parameters, and every value parameter not given has a default or is a `vararg`.
+     *
+     * `kotlin-reflect` reports a Kotlin **default** and a **name** from the same metadata, which is
+     * the whole reason these two mechanisms close together — see
+     * `FieldMLHostBridge.callMethodNamed`.
+     */
+    private fun acceptsNames(
+        candidate: KFunction<*>,
+        argumentNames: Set<String>,
+        wantsExtensionReceiver: Boolean,
+    ): Boolean {
+        val hasReceiver = candidate.parameters.any { it.kind == KParameter.Kind.EXTENSION_RECEIVER }
+        if (hasReceiver != wantsExtensionReceiver) return false
+        val valueParameters = candidate.parameters.filter { it.kind == KParameter.Kind.VALUE }
+        val names = valueParameters.mapNotNull { it.name }.toSet()
+        if (argumentNames.any { it !in names }) return false
+        return valueParameters.none { it.name !in argumentNames && !it.isOptional && !it.isVararg }
+    }
+
+    /**
+     * A `KFunction`'s result as a FieldML type. The Kotlin view is used rather than the JVM one
+     * because it is what named resolution already has in hand, and because it carries the
+     * nullability that `resultTypeOf` has to go back to `kotlin-reflect` for: a `T?` degrades to
+     * [OPAQUE], since the runtime turns a null into `Unit` rather than into a value of that class.
+     */
+    private fun kotlinResultType(candidate: KFunction<*>): Type {
+        if (candidate.returnType.isMarkedNullable) return opaque
+        val raw = (candidate.returnType.classifier as? kotlin.reflect.KClass<*>)?.java ?: return opaque
+        if (raw == Void.TYPE || raw == Unit::class.java) return TUnit
+        return fieldMLTypeOf(runCatching { candidate.returnType.javaType }.getOrNull() ?: raw)
+    }
+
+    private fun describeNames(names: Set<String>): String =
+        if (names.isEmpty()) "(none)" else names.sorted().joinToString(", ", prefix = "(", postfix = ")")
 
     /**
      * The result type shared by every candidate that could take [arguments] — or, when they disagree,

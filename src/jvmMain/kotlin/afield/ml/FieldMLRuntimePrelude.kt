@@ -324,18 +324,34 @@ object FieldMLRuntimePrelude {
             // parameter has to be spelled out.
             "hostNull" to FieldMLValue.HostValue(null),
             "hostClass" to native1("hostClass") { name -> FieldMLValue.HostValue(hostClass(name.asString("class name"))) },
+            // A **record** of arguments means a named call, which is also the only way to let
+            // Kotlin fill in a default (FieldMLHostBridge.callMethodNamed says why the two are one
+            // feature). A tuple or a list still spreads positionally, and `hostCall1` — which never
+            // spreads at all — is the way to pass one record *as* one argument.
             "hostNew" to native2("hostNew") { arguments, klass ->
-                FieldMLHostBridge.construct(klass.asClass("hostNew"), FieldMLHostBridge.spreadArguments(arguments))
+                if (arguments is FieldMLValue.RecordValue) {
+                    FieldMLHostBridge.constructNamed(klass.asClass("hostNew"), arguments.hostFields())
+                } else {
+                    FieldMLHostBridge.construct(klass.asClass("hostNew"), FieldMLHostBridge.spreadArguments(arguments))
+                }
             },
             "hostNew0" to native1("hostNew0") { klass ->
                 FieldMLHostBridge.construct(klass.asClass("hostNew0"), emptyList())
             },
             "hostCall" to native3("hostCall") { name, arguments, target ->
-                FieldMLHostBridge.callMethod(
-                    name.asString("method name"),
-                    target.asHost("target"),
-                    FieldMLHostBridge.spreadArguments(arguments),
-                )
+                if (arguments is FieldMLValue.RecordValue) {
+                    FieldMLHostBridge.callMethodNamed(
+                        name.asString("method name"),
+                        target.asHost("target"),
+                        arguments.hostFields(),
+                    )
+                } else {
+                    FieldMLHostBridge.callMethod(
+                        name.asString("method name"),
+                        target.asHost("target"),
+                        FieldMLHostBridge.spreadArguments(arguments),
+                    )
+                }
             },
             "hostCall0" to native2("hostCall0") { name, target ->
                 FieldMLHostBridge.callMethod(name.asString("method name"), target.asHost("target"), emptyList())
@@ -355,21 +371,41 @@ object FieldMLRuntimePrelude {
                 )
             },
             "hostStaticCall" to native3("hostStaticCall") { name, arguments, klass ->
-                FieldMLHostBridge.callStaticMethod(
-                    name.asString("method name"),
-                    klass.asClass("hostStaticCall class"),
-                    FieldMLHostBridge.spreadArguments(arguments),
-                )
+                if (arguments is FieldMLValue.RecordValue) {
+                    FieldMLHostBridge.callStaticMethodNamed(
+                        name.asString("method name"),
+                        klass.asClass("hostStaticCall class"),
+                        extensionReceiver = null,
+                        arguments = arguments.hostFields(),
+                    )
+                } else {
+                    FieldMLHostBridge.callStaticMethod(
+                        name.asString("method name"),
+                        klass.asClass("hostStaticCall class"),
+                        FieldMLHostBridge.spreadArguments(arguments),
+                    )
+                }
             },
             // Kotlin extensions compile to statics whose first parameter is the receiver, and Field's
             // Kotlin surface is mostly extensions — so the pipe-shaped form of a static call, with the
             // piped value going in front of the written arguments, is the one that actually gets used.
             "hostExt" to native4("hostExt") { klass, name, arguments, receiver ->
+                if (arguments is FieldMLValue.RecordValue) {
+                    // The piped value is the *extension receiver*, which has no name Kotlin will
+                    // accept in a `callBy` map, so it is bound by kind rather than by name.
+                    FieldMLHostBridge.callStaticMethodNamed(
+                        name.asString("method name"),
+                        klass.asClass("hostExt class"),
+                        extensionReceiver = fieldMLValueToHost(receiver),
+                        arguments = arguments.hostFields(),
+                    )
+                } else {
                 FieldMLHostBridge.callStaticMethod(
                     name.asString("method name"),
                     klass.asClass("hostExt class"),
                     listOf(fieldMLValueToHost(receiver)) + FieldMLHostBridge.spreadArguments(arguments),
                 )
+                }
             },
             "hostStaticTap" to native4("hostStaticTap") { name, arguments, klass, input ->
                 FieldMLHostBridge.callStaticMethod(
@@ -615,6 +651,13 @@ object FieldMLRuntimePrelude {
 
     private fun FieldMLValue.asRecord(name: String): Map<String, FieldMLValue> =
         (this as? FieldMLValue.RecordValue)?.fields ?: error("Expected record $name, found ${renderFieldMLValue(this)}")
+
+    /**
+     * A record of named arguments, host-side. Functions stay [FieldMLValue]s for the same reason
+     * [FieldMLHostBridge.spreadArguments] leaves them alone: `samProxy` has to be able to see them.
+     */
+    private fun FieldMLValue.RecordValue.hostFields(): Map<String, Any?> =
+        fields.mapValues { fieldMLValueToHost(it.value) }
 
     private fun FieldMLValue.asHostArguments(name: String): List<Any?> =
         when (this) {

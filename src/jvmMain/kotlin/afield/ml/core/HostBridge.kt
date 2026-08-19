@@ -14,6 +14,11 @@ import java.lang.reflect.Proxy
 import java.lang.reflect.TypeVariable
 import java.lang.reflect.WildcardType
 import kotlin.coroutines.Continuation
+import kotlin.reflect.KFunction
+import kotlin.reflect.KParameter
+import kotlin.reflect.jvm.isAccessible
+import kotlin.reflect.jvm.javaType
+import kotlin.reflect.jvm.kotlinFunction
 
 /**
  * The reflective half of FieldML's JVM bridge: given a name, a receiver and some already-converted
@@ -79,6 +84,179 @@ object FieldMLHostBridge {
         val chosen = choose(candidates, arguments)
             ?: error(refusal("constructor", owner.simpleName, owner, candidates, arguments))
         return hostToFieldMLValue(invoke(chosen, null, arguments))
+    }
+
+    // ---- named arguments, and therefore Kotlin defaults ----------------------------------------
+
+    /**
+     * Calls written with a **record** of named arguments instead of a tuple of positional ones —
+     * `hostNew {window = w} Renderer` rather than `hostNew (w, []) Renderer`.
+     *
+     * This is mechanisms B and C of `dev_docs/FIELDML_HOST_BRIDGE.md`, and they turn out to be one
+     * mechanism. Plain reflection sees neither a parameter's *name* nor its *default*: a Kotlin
+     * `Renderer(window, additionalWindows = emptyList())` is, to `Class.getConstructors`, a
+     * two-argument constructor and nothing else, which is why every optional parameter had to be
+     * written out. `kotlin-reflect` sees both — `KParameter.name` and `KParameter.isOptional` — and
+     * `KCallable.callBy` is the one entry point that does something with them, filling every
+     * parameter absent from the map with the default the source declared. Naming the arguments is
+     * therefore not a convenience *beside* defaults; it is the thing that makes defaults reachable
+     * at all, because a positional call has no way to say which parameter it is skipping.
+     *
+     * Three things about this are deliberate.
+     *
+     * **The record replaces the tuple rather than adding a name.** `spreadArguments` already
+     * dispatches on the shape of the argument — a tuple and a list spread, `Unit` is no arguments,
+     * anything else is one — so a record spreading *by name* is the same rule continued, and
+     * `hostCall1`, which never spreads, is the escape it always was for passing one of something.
+     * The cost is real and worth stating: a `Map` that arrived from the JVM is a `RecordValue`, so
+     * handing one to `hostCall` as a single argument now needs `hostCall1`.
+     *
+     * **Coercion still happens here, not in `callBy`.** `callBy` type-checks against the declared
+     * `KType` and will not narrow a FieldML `Float` (a JVM `Double`) into a `Float` parameter, so
+     * every supplied value goes through [coerce] against the erased parameter class first. That is
+     * also what keeps SAM conversion working in a named call.
+     *
+     * **An ambiguous name set is refused rather than guessed.** Two overloads that both accept the
+     * names given is exactly the case where picking one is a coin toss, and a wrong reflective call
+     * is much harder to diagnose than a diagnostic that lists the candidates.
+     */
+    fun callMethodNamed(name: String, target: Any, arguments: Map<String, Any?>): FieldMLValue {
+        val candidates = kotlinCandidates(instanceMethods(target.javaClass, name))
+        val chosen = chooseNamed(candidates, arguments)
+            ?: error(namedRefusal("method", name, target.javaClass, candidates, arguments))
+        return hostToFieldMLValue(invokeNamed(chosen, target, null, arguments))
+    }
+
+    fun callStaticMethodNamed(
+        name: String,
+        owner: Class<*>,
+        extensionReceiver: Any?,
+        arguments: Map<String, Any?>,
+    ): FieldMLValue {
+        val candidates = kotlinCandidates(staticMethods(owner, name))
+            .filter { (it.parameters.any { p -> p.kind == KParameter.Kind.EXTENSION_RECEIVER }) == (extensionReceiver != null) }
+        val chosen = chooseNamed(candidates, arguments)
+            ?: error(namedRefusal("static method", name, owner, candidates, arguments))
+        return hostToFieldMLValue(invokeNamed(chosen, null, extensionReceiver, arguments))
+    }
+
+    fun constructNamed(owner: Class<*>, arguments: Map<String, Any?>): FieldMLValue {
+        val candidates = owner.constructors.mapNotNull { runCatching { it.kotlinFunction }.getOrNull() }
+        val chosen = chooseNamed(candidates, arguments)
+            ?: error(namedRefusal("constructor", owner.simpleName, owner, candidates, arguments))
+        return hostToFieldMLValue(invokeNamed(chosen, null, null, arguments))
+    }
+
+    /** All same-named members, any arity: a named call chooses by name set, not by count. */
+    fun instanceMethods(owner: Class<*>, name: String): List<Method> =
+        owner.methods.filter { !Modifier.isStatic(it.modifiers) && it.name == name }
+
+    fun staticMethods(owner: Class<*>, name: String): List<Method> =
+        owner.methods.filter { Modifier.isStatic(it.modifiers) && it.name == name }
+
+    /**
+     * The Kotlin view of some JVM methods, dropping the ones there is no Kotlin view of.
+     *
+     * `kotlinFunction` is null for a Java method and for the `name$default` synthetics the compiler
+     * emits, and it *throws* on a few shapes it cannot model — both are "this member has no named
+     * parameters", so both are simply not candidates.
+     */
+    private fun kotlinCandidates(methods: List<Method>): List<KFunction<*>> =
+        methods.mapNotNull { runCatching { it.kotlinFunction }.getOrNull() }
+
+    /**
+     * The one candidate whose value parameters the given names satisfy, or null.
+     *
+     * Viable means every name given is a parameter of this candidate, and every parameter *not*
+     * given either has a default or is a `vararg` (which Kotlin also treats as optional). Among the
+     * viable, the one whose arguments need the least conversion wins — the same ladder positional
+     * resolution uses, so `set(x = 1.0, y = 1.0)` picks the same overload `set(1.0, 1.0)` does. A
+     * remaining tie is refused by the caller rather than broken arbitrarily.
+     */
+    private fun chooseNamed(candidates: List<KFunction<*>>, arguments: Map<String, Any?>): KFunction<*>? {
+        val viable = candidates.filter { namedScore(it, arguments) != null }
+        if (viable.isEmpty()) return null
+        val best = viable.minOf { namedScore(it, arguments)!! }
+        val winners = viable.filter { namedScore(it, arguments) == best }
+        return winners.singleOrNull()
+    }
+
+    private fun namedScore(candidate: KFunction<*>, arguments: Map<String, Any?>): Int? {
+        val valueParameters = candidate.parameters.filter { it.kind == KParameter.Kind.VALUE }
+        val byName = valueParameters.associateBy { it.name }
+        if (arguments.keys.any { it !in byName }) return null
+        if (valueParameters.any { it.name !in arguments.keys && !it.isOptional && !it.isVararg }) return null
+        var total = 0
+        arguments.forEach { (name, value) ->
+            val parameter = byName.getValue(name)
+            val raw = erasedClass(parameter) ?: return@forEach
+            val score = scoreArgument(raw, javaTypeOrNull(parameter), value)
+            if (score == INCOMPATIBLE) return null
+            total += score
+        }
+        return total
+    }
+
+    private fun invokeNamed(
+        candidate: KFunction<*>,
+        instance: Any?,
+        extensionReceiver: Any?,
+        arguments: Map<String, Any?>,
+    ): Any? {
+        val bound = mutableMapOf<KParameter, Any?>()
+        candidate.parameters.forEach { parameter ->
+            when (parameter.kind) {
+                KParameter.Kind.INSTANCE -> instance?.let { bound[parameter] = it }
+                KParameter.Kind.EXTENSION_RECEIVER -> extensionReceiver?.let { bound[parameter] = it }
+                // A newer Kotlin adds `CONTEXT` for context parameters. Nothing in FieldML can name
+                // one, and leaving it unbound is the same as leaving out a required parameter —
+                // `callBy` says so, which is a better message than anything invented here.
+                else -> {
+                    if (parameter.kind != KParameter.Kind.VALUE) return@forEach
+                    if (parameter.name !in arguments) return@forEach
+                    val raw = erasedClass(parameter)
+                    val value = arguments[parameter.name]
+                    bound[parameter] = if (raw == null) value else coerce(raw, javaTypeOrNull(parameter), value)
+                }
+            }
+        }
+        candidate.isAccessible = true
+        return try {
+            candidate.callBy(bound)
+        } catch (invocation: InvocationTargetException) {
+            throw invocation.targetException ?: invocation
+        }
+    }
+
+    private fun erasedClass(parameter: KParameter): Class<*>? =
+        (parameter.type.classifier as? kotlin.reflect.KClass<*>)?.java
+
+    private fun javaTypeOrNull(parameter: KParameter): java.lang.reflect.Type? =
+        runCatching { parameter.type.javaType }.getOrNull()
+
+    /**
+     * Why a named call found nothing, in the terms the author can act on: what they named, and what
+     * each candidate would have accepted. The optional/required split is the useful part — "you left
+     * out `renderer`, which has no default" is a different mistake from "there is no `rendrer`".
+     */
+    private fun namedRefusal(
+        kind: String,
+        name: String,
+        owner: Class<*>,
+        candidates: List<KFunction<*>>,
+        arguments: Map<String, Any?>,
+    ): String {
+        val given = arguments.keys.sorted().joinToString(", ")
+        if (candidates.isEmpty()) return "No $kind '$name' on ${owner.name} has named parameters"
+        val offered = candidates.take(4).joinToString("; ") { candidate ->
+            candidate.parameters
+                .filter { it.kind == KParameter.Kind.VALUE }
+                .joinToString(", ", prefix = "(", postfix = ")") {
+                    if (it.isOptional || it.isVararg) "${it.name}?" else "${it.name}"
+                }
+        }
+        return "No $kind '$name' on ${owner.name} accepts exactly the names ($given)." +
+            " Candidates (a trailing ? means the parameter has a default): $offered"
     }
 
     /** Members visible to `hostGet`: a map key, a static member of a `Class`, or an instance member. */

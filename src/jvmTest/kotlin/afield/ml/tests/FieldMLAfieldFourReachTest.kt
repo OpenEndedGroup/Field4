@@ -306,10 +306,11 @@ class FieldMLAfieldFourReachTest {
         ),
         Statement(
             "Renderer(window)",
-            """hostNew (hostNull, []) (hostClass "afield.four.Renderer")""",
-            "KOTLIN DEFAULT ARGUMENT again: the JVM constructor is `Renderer(Window, List)` " +
-                "(Renderer.kt:147), so `additionalWindows = emptyList()` has to be written out. " +
-                "Expressible; NOT RUN — needs a real Window",
+            """hostNew {mainWindow = hostNull} (hostClass "afield.four.Renderer")""",
+            "KOTLIN DEFAULT ARGUMENT, and as of 2026-08-19 no longer one that has to be written out: " +
+                "a *record* of arguments is a named call, and a named call is the only shape that can " +
+                "leave `additionalWindows = emptyList()` (Renderer.kt:147) unsaid. The positional form " +
+                "`hostNew (hostNull, []) …` still works. Expressible; NOT RUN — needs a real Window",
         ),
         Statement(
             "start(renderer::run)",
@@ -330,9 +331,12 @@ class FieldMLAfieldFourReachTest {
         ),
         Statement(
             "var m = ComputeMesh()",
-            """hostNew (hostNull) (hostClass "afield.four.modules.ComputeMesh")""",
-            "KOTLIN DEFAULT ARGUMENT: `renderer = fromContext()` is invisible to reflection, so the renderer " +
-                "must be passed explicitly. Expressible; NOT RUN",
+            """hostNew {renderer = hostNull} (hostClass "afield.four.modules.ComputeMesh")""",
+            "KOTLIN DEFAULT ARGUMENT again. `renderer = fromContext()` is now omittable by name, but it " +
+                "is written here anyway on purpose: `fromContext()` reads Field's *box context*, which a " +
+                "reflective call is not inside, so letting the default fire would be the wrong renderer " +
+                "rather than none. Named arguments make the choice available; they do not make it right. " +
+                "Expressible; NOT RUN",
         ),
         Statement(
             "module += \"step\" to m",
@@ -358,7 +362,9 @@ class FieldMLAfieldFourReachTest {
         Statement(
             "fieldProbeHere(samples = 100000).display(\"probe\")",
             null,
-            "SOURCE MACRO, and NAMED ARGUMENT: a reflective call is positional only",
+            "SOURCE MACRO. The named argument half of this stopped being a blocker on 2026-08-19 — " +
+                "`hostCall \"display\" {name = \"probe\"}` is now an ordinary call — but `fieldProbeHere` " +
+                "is a macro (mechanism A) and there is still no JVM member to name parameters of",
         ),
         Statement(
             "m.x = N / 64",
