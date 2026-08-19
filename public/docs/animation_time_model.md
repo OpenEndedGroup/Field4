@@ -187,7 +187,7 @@ suspend fun frame(): Boolean {
 | how it stops | what actually happens |
 | --- | --- |
 | **You re-run the box.** | The launch bumps `runGeneration[strand]`. The old `Frames`'s `shouldend` closes over the *old* generation, sees the mismatch at the top of its next `frame()`, and cancels. This is the everyday one. |
-| **`Box.stop` / the stop button.** | `stopTrackedJobs()` is a barrier: it bumps `launchEpoch`, bumps *every* strand's generation, and cancels every job in `box.jobs` outright. |
+| **`Box.stop` / the stop button.** | `stopTrackedJobs()` is a barrier: it bumps `launchEpoch`, bumps *every* strand's generation, and cancels every job in `box.jobs` outright. It also, as a consequence, [skips your `.end { }` block](#box-stop-skips-the-end-block). |
 | **`end()` from inside the body.** | Cancels the job directly. Called before the launch has a job, it sets `stillborn` and the animation is cancelled at its first frame instead. |
 | **The body returns.** | `eachFrame`'s `while (frame())` exits, or a `frames { }` block runs off the end. Normal completion. |
 | **`forever { }` returns `false`.** | Normal completion, same as above. |
@@ -203,7 +203,8 @@ import kotlinx.coroutines.launch
 class Result(val how: String, val extraBodyCalls: String, val endBlockRan: Boolean, val note: String)
 
 // Each probe runs a frame body for three pumps, requests a stop, then pumps six more times and
-// reports what the body did afterwards.
+// reports what the body did afterwards. These are the stops box code can stage for itself; the
+// `Box.stop` case needs the box's launch epoch, which is internal to Field — see the warning below.
 fun probe(
     how: String,
     note: String,
@@ -224,9 +225,9 @@ fun probe(
 }
 
 val results = listOf(
-    probe("re-run the box (shouldend flips)", "the generation fence is read at the top of frame()",
+    probe("shouldend flips — what re-running does", "the generation fence is read at the top of frame()",
         { c -> eachFrame { c() } }, { f, _ -> f.shouldend = { true } }),
-    probe("Box.stop (the Job is cancelled)", "the pending yield() throws immediately",
+    probe("the Job is cancelled directly", "the pending yield() throws immediately",
         { c -> eachFrame { c() } }, { _, job -> job.cancel() }),
     probe("end() from inside the body", "requested during a body call, so nothing follows it",
         { c -> eachFrame { c(); end() } }, { _, _ -> }),
@@ -254,7 +255,7 @@ display("main", """
 """)
 ```
 
-![A table of five ways a Frames stops, showing that flipping shouldend costs one further body call while cancelling the Job costs none, and that the .end block runs only for the cancellation cases](assets/animation_time_model/stopping.png)
+![A table of five ways a Frames stops, showing that flipping shouldend costs one further body call while cancelling the Job costs none, and that the .end block runs for the three cancellation cases and not for the two completion cases](assets/animation_time_model/stopping.png)
 
 Two results there are worth stating in words, because both are easy to assume the other way round.
 
@@ -271,10 +272,36 @@ does not go through that path, and neither does one that simply returns. So `.en
 *"when this animation is cancelled"*, not *"when this animation finishes"*. For cleanup that must
 happen either way, use a Kotlin `try`/`finally` inside the body.
 
-When `atEnd` *does* run, it runs properly: `frame()` re-enters through `withContext(NonCancellable)`
+And when both are present and a cancellation arrives, **`.end { }` runs first** — `frame()` calls it
+from inside its own `catch`, before rethrowing, so the cancellation has not yet unwound the body's
+`finally`. That is the opposite of the order you would guess from the nesting.
+(`FramesSemanticsTest.theEndBlockRunsBeforeTheBodysOwnFinally`.)
+
+When `atEnd` does run, it runs properly: `frame()` re-enters through `withContext(NonCancellable)`
 on a fresh `Job` that inherits the dispatcher and the box context, so the end block still gets frames
 and can still draw. It is registered with the box as well, and fenced by its own generation — so a
 *second* stop, arriving while the end block is running, cancels the end block too.
+
+### `Box.stop` skips the end block { #box-stop-skips-the-end-block }
+
+!!! warning "Pressing stop does not run your `.end { }`. Re-running the box does."
+
+    This page said the opposite in its first draft, and the demo document below is what caught it.
+    The figure above is right about what it measures — a cancelled `Job` reaches `atEnd` — but
+    `Box.stop` does more than cancel the job.
+
+    `stopTrackedJobs()` increments the box's `launchEpoch` *first*. `frame()` then does launch the
+    end phase, and immediately hands the end job to `Box.registerLaunchJob`, which finds the epoch
+    stale and — this is the part that matters — **cancels the job it was given**. The end block is
+    sitting in the Framer's queue at that moment and is killed before it is ever dispatched.
+
+    Re-running the box is different: that bumps the strand *generation* and leaves `launchEpoch`
+    alone, so the end job registers and `.end { }` runs normally.
+
+    Both halves are pinned by `FramesSemanticsTest.boxStopCancelsTheEndBlockBeforeItCanRun` and
+    `reRunningTheBoxStillRunsTheEndBlock`. The practical rule: **`.end { }` is for cleanup you want
+    when the animation retires itself or gets replaced, not for releasing something that must be
+    released when a person presses stop.** Put that in a `finally`.
 
 ## Time, if you actually meant seconds
 

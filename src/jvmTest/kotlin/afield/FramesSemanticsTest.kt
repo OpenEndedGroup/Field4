@@ -184,6 +184,100 @@ class FramesSemanticsTest {
         assertFalse(cleanedUp, ".end { } runs on cancellation, not on completion")
     }
 
+    /**
+     * On cancellation, `.end { }` runs **before** a `finally` inside the body.
+     *
+     * [Frames.frame] runs `atEnd` from inside its own `catch` and only then rethrows, so the
+     * cancellation has not yet unwound the body when the end block runs. Worth pinning: the
+     * intuitive reading — cleanup blocks running outermost-last — gives the opposite order.
+     */
+    @Test
+    fun theEndBlockRunsBeforeTheBodysOwnFinally() {
+        val order = mutableListOf<String>()
+        val f = frames {
+            try {
+                while (true) frame()
+            } finally {
+                order += "body finally"
+            }
+        }.end { order += "end block" }
+
+        val framer = Framer()
+        val job = CoroutineScope(framer).launch { runCatching { f.body() } }
+        f.job = job
+        repeat(3) { framer.frame() }
+        job.cancel()
+        repeat(3) { framer.frame() }
+
+        assertEquals(listOf("end block", "body finally"), order)
+    }
+
+    /**
+     * Wires a [Frames] to a real [Box] the way both launchers do, so the tests below exercise the
+     * actual epoch/generation fences rather than a bare `Job()`.
+     *
+     * The two hooks are the whole contract a launcher installs: [Frames.shouldend] is the strand
+     * generation fence, and [Frames.onAtEndStart] registers the end-phase job with the box.
+     */
+    private fun launchAgainst(box: Box, frames: Frames, strand: String = "default"): Pair<Framer, kotlinx.coroutines.Job> {
+        val launchEpoch = box.captureLaunchEpoch()
+        val generation = box.runGeneration.compute(strand) { _, current -> (current ?: -1) + 1 }!!
+        frames.shouldend = { box.runGeneration[strand] != generation }
+        frames.onAtEndStart = { endJob -> box.registerLaunchJob(endJob, launchEpoch) }
+        val framer = Framer()
+        val job = CoroutineScope(framer).launch { runCatching { frames.body() } }
+        frames.job = job
+        box.registerLaunchJob(job, launchEpoch)
+        return framer to job
+    }
+
+    /**
+     * **`Box.stop` does not run `.end { }`.**
+     *
+     * This is the one that surprised me, and it is not visible from `Phased.kt` alone.
+     * `frame()` does launch the end phase on cancellation — but it then calls `onAtEndStart`, which
+     * registers the end job with the box via [Box.registerLaunchJob]. `stopTrackedJobs` has already
+     * incremented `launchEpoch`, so that registration fails, and `registerLaunchJob` *cancels the
+     * job it was handed*. The end block is queued on the Framer and killed before it is dispatched.
+     *
+     * So `.end { }` is narrower than "on cancellation": it is "on cancellation that did not come
+     * from a full stop".
+     */
+    @Test
+    fun boxStopCancelsTheEndBlockBeforeItCanRun() {
+        val box = Box("stop-kills-end")
+        var cleaned = false
+        val f = eachFrame { }.end { cleaned = true }
+        val (framer, _) = launchAgainst(box, f)
+
+        repeat(3) { framer.frame() }
+        KotlinExecution().stop(box)
+        repeat(8) { framer.frame() }
+
+        assertFalse(cleaned, "Box.stop bumps launchEpoch, so the end job is cancelled at registration")
+    }
+
+    /**
+     * Re-running the box — a generation bump with no epoch change — *does* run `.end { }`.
+     *
+     * The contrast with [boxStopCancelsTheEndBlockBeforeItCanRun] is the whole point: the two stops
+     * a user reaches for most differ in whether cleanup happens at all.
+     */
+    @Test
+    fun reRunningTheBoxStillRunsTheEndBlock() {
+        val box = Box("rerun-keeps-end")
+        var cleaned = false
+        val f = eachFrame { }.end { cleaned = true }
+        val (framer, _) = launchAgainst(box, f)
+
+        repeat(3) { framer.frame() }
+        // What a second launch on the same strand does, and nothing else.
+        box.runGeneration.compute("default") { _, current -> (current ?: -1) + 1 }
+        repeat(8) { framer.frame() }
+
+        assertTrue(cleaned, "a generation bump leaves launchEpoch alone, so the end job registers")
+    }
+
     @Test
     fun aGeneratorKeepsItsLocalsAcrossSteps() {
         // The pull-based counterpart: state lives in ordinary locals, no coroutine dispatcher.
