@@ -129,8 +129,15 @@ fun Track<Double>.fitParameters(
     require(targets.isNotEmpty()) { "a fit needs at least one target" }
 
     val seed = toFn(over).orThrow()
-    val mask = freeParameterIndices(seed)
-    if (mask.isEmpty()) {
+    // Per *name*, not per θ index. A lowering may use one sub-`Fn` more than once — a heading reads
+    // each of its position tracks twelve times — and `FnAutoDiff.leafIndices` keys by path, so one
+    // named parameter can occupy several θ slots. They are occurrences of a single variable: the
+    // gradient with respect to it is the sum over its slots (the chain rule for a repeated
+    // occurrence), and a step has to move all of them or the graph stops corresponding to any
+    // `substituteParameters` of the IR — `fitted` and `fittedFn` would then sample differently,
+    // which is the one way this fitter could return a confidently wrong answer.
+    val slots = freeParameterSlots(seed)
+    if (slots.isEmpty()) {
         throw RectLangException(
             "this track has no free parameters to solve for — mark one with `free-param` " +
                 "(RectSL) or FreeParamTrack (Kotlin). Descending on an empty mask would report " +
@@ -139,7 +146,8 @@ fun Track<Double>.fitParameters(
     }
 
     val theta = seed.extractParameters()
-    val movable = mask.values.toIntArray()
+    val names = slots.keys.toList()
+    val slotsOf: List<IntArray> = names.map { slots.getValue(it).toIntArray() }
 
     /** Weighted RMS distance from the targets, which is what `improved` and the plots report. */
     fun residual(current: Functions.Fn): Double {
@@ -153,18 +161,25 @@ fun Track<Double>.fitParameters(
         return if (weight <= 0.0) 0.0 else sqrt(sum / weight)
     }
 
-    /** d(mean squared weighted error)/dθ, one backward sweep per target, masked to [movable]. */
+    /**
+     * d(mean squared weighted error)/d(parameter), one entry per name in [names] and one backward
+     * sweep per target — each name's entry summed over every θ slot the name occupies.
+     */
     fun gradient(at: DoubleArray): DoubleArray {
         val current = seed.applyParameters(at)
-        val grad = DoubleArray(at.size)
+        val grad = DoubleArray(names.size)
         var weight = 0.0
         for (target in targets) {
             val g = current.gradientAt(target.time)
             val delta = g.value - target.value
             weight += target.weight
-            for (i in movable) grad[i] += 2.0 * target.weight * delta * g.gradient[i]
+            for (n in names.indices) {
+                var partial = 0.0
+                for (i in slotsOf[n]) partial += g.gradient[i]
+                grad[n] += 2.0 * target.weight * delta * partial
+            }
         }
-        if (weight > 0.0) for (i in movable) grad[i] /= weight
+        if (weight > 0.0) for (n in grad.indices) grad[n] /= weight
         return grad
     }
 
@@ -182,8 +197,8 @@ fun Track<Double>.fitParameters(
     // What is *not* acceptable is doing that silently, so [TrackFitResult.stuckParameters] carries
     // the set out either way and `TrackFitResult.partlyStuck` says so in one boolean.
     val startGradient = gradient(theta)
-    val stuck = mask.filter { (_, index) -> startGradient[index] == 0.0 }.keys
-    if (stuck.size == mask.size) {
+    val stuck = names.filterIndexed { n, _ -> startGradient[n] == 0.0 }.toSet()
+    if (stuck.size == names.size) {
         throw RectLangException(
             "every free parameter of this track has an exactly zero derivative at every target " +
                 "($stuck), so a descent would report convergence without moving. The usual cause is " +
@@ -197,8 +212,10 @@ fun Track<Double>.fitParameters(
     val residuals = mutableListOf(startResidual)
     val steps = mutableListOf<TrackFitStep>()
 
-    val m = DoubleArray(theta.size)
-    val v = DoubleArray(theta.size)
+    // Adam state is per parameter, not per θ slot: the slots of one name move together, so they
+    // share one moment estimate as well as one gradient.
+    val m = DoubleArray(names.size)
+    val v = DoubleArray(names.size)
 
     for (iteration in 1..iterations) {
         // The *squared* weighted mean is what is descended; the sqrt in `residual` is a positive
@@ -206,15 +223,15 @@ fun Track<Double>.fitParameters(
         // a perfect fit.
         val grad = if (iteration == 1) startGradient else gradient(theta)
 
-        for (i in movable) {
-            val g = grad[i]
+        for (n in names.indices) {
+            val g = grad[n]
             if (!g.isFinite()) continue
-            m[i] = beta1 * m[i] + (1.0 - beta1) * g
-            v[i] = beta2 * v[i] + (1.0 - beta2) * g * g
-            val mHat = m[i] / (1.0 - Math.pow(beta1, iteration.toDouble()))
-            val vHat = v[i] / (1.0 - Math.pow(beta2, iteration.toDouble()))
+            m[n] = beta1 * m[n] + (1.0 - beta1) * g
+            v[n] = beta2 * v[n] + (1.0 - beta2) * g * g
+            val mHat = m[n] / (1.0 - Math.pow(beta1, iteration.toDouble()))
+            val vHat = v[n] / (1.0 - Math.pow(beta2, iteration.toDouble()))
             val update = lr * mHat / (sqrt(vHat) + epsilon)
-            if (update.isFinite()) theta[i] -= update
+            if (update.isFinite()) for (i in slotsOf[n]) theta[i] -= update
         }
 
         val stepResidual = residual(seed.applyParameters(theta))
@@ -223,7 +240,7 @@ fun Track<Double>.fitParameters(
     }
 
     val fittedFn = seed.applyParameters(theta)
-    val solved = mask.mapValues { (_, index) -> theta[index] }
+    val solved = names.withIndex().associate { (n, name) -> name to theta[slotsOf[n][0]] }
     return TrackFitResult(
         parameters = solved,
         initialParameters = freeParameters(),
@@ -261,6 +278,11 @@ fun defaultFitWindow(targets: List<TrackFitTarget>): Functions.Domain {
  *
  * [step] is relative, `step * (1 + |value|)`, the same scaling `fitGradient`'s finite-difference
  * path uses, so a near-zero parameter is probed finely and a large one meaningfully.
+ *
+ * A parameter occupying several θ slots (see [freeParameterSlots]) is treated as the one variable it
+ * is: the exact side sums its slots' partials and the difference side perturbs them together. Doing
+ * either half of that alone would make the two disagree for a reason that has nothing to do with the
+ * derivative being wrong.
  */
 fun Track<Double>.gradientAgreement(
     times: List<Double>,
@@ -271,19 +293,20 @@ fun Track<Double>.gradientAgreement(
     step: Double = 1e-6
 ): Double {
     val fn = toFn(over).valueOrNull() ?: return Double.POSITIVE_INFINITY
-    val mask = freeParameterIndices(fn)
-    if (mask.isEmpty()) return 0.0
+    val slots = freeParameterSlots(fn)
+    if (slots.isEmpty()) return 0.0
     val theta = fn.extractParameters()
     var worst = 0.0
     for (time in times) {
         val exact = fn.applyParameters(theta).gradientAt(time).gradient
-        for ((_, index) in mask) {
-            val h = step * (1.0 + abs(theta[index]))
-            val plus = theta.copyOf().also { it[index] += h }
-            val minus = theta.copyOf().also { it[index] -= h }
+        for ((_, indices) in slots) {
+            val h = step * (1.0 + abs(theta[indices.first()]))
+            val plus = theta.copyOf().also { for (i in indices) it[i] += h }
+            val minus = theta.copyOf().also { for (i in indices) it[i] -= h }
             val fd = (fn.applyParameters(plus).eval(time) - fn.applyParameters(minus).eval(time)) /
                 (2.0 * h)
-            val delta = abs(exact[index] - fd) / (1.0 + abs(fd))
+            val analytic = indices.sumOf { exact[it] }
+            val delta = abs(analytic - fd) / (1.0 + abs(fd))
             if (delta > worst || delta.isNaN()) worst = delta
         }
     }

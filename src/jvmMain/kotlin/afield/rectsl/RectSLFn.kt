@@ -951,8 +951,28 @@ internal const val FREE_PARAM_GRAPH_PREFIX: String = "rectsl.param:"
  * — so index *i* here is index *i* there. A label node contains exactly one leaf, so the index
  * assigned while descending into it is the one the name belongs to.
  */
-fun freeParameterIndices(fn: Functions.Fn): Map<String, Int> {
-    val out = LinkedHashMap<String, Int>()
+fun freeParameterIndices(fn: Functions.Fn): Map<String, Int> =
+    freeParameterSlots(fn).mapValues { (_, indices) -> indices.first() }
+
+/**
+ * **Every** θ index each named free parameter occupies, in graph order — the honest form of
+ * [freeParameterIndices], which can only report one.
+ *
+ * One IR parameter can become several θ leaves, because a lowering is free to use the same sub-`Fn`
+ * more than once and `FnAutoDiff.leafIndices` keys by *path*: two occurrences of one node are two
+ * paths and therefore two indices. `x + x` over a single [FreeParamTrack] has always had this shape;
+ * [lowerHeading] made it the common case, since a heading reads each of its position tracks twelve
+ * times (two probes, six widenings).
+ *
+ * The distinction matters because the two spellings disagree about what a fit *is*. Moving one of a
+ * parameter's twelve slots and leaving eleven does not fit the track — it produces a lowered graph
+ * that no longer corresponds to any [substituteParameters] of the IR, so [TrackFitResult.fitted] and
+ * [TrackFitResult.fittedFn] would sample differently. Treating the slots as one variable, with the
+ * gradient summed over them and the step applied to all of them, is the ordinary chain rule for a
+ * repeated occurrence and is what [Track.fitParameters] does.
+ */
+fun freeParameterSlots(fn: Functions.Fn): Map<String, List<Int>> {
+    val out = LinkedHashMap<String, MutableList<Int>>()
     var counter = 0
     fun walk(f: Functions.Fn) {
         val node = f.graphNode()
@@ -963,7 +983,7 @@ fun freeParameterIndices(fn: Functions.Fn): Map<String, Int> {
         if (node.op == "name" && label != null && label.startsWith(FREE_PARAM_GRAPH_PREFIX) &&
             counter == before + 1
         ) {
-            out[label.removePrefix(FREE_PARAM_GRAPH_PREFIX)] = before
+            out.getOrPut(label.removePrefix(FREE_PARAM_GRAPH_PREFIX)) { mutableListOf() } += before
         }
     }
     walk(fn)
