@@ -11,6 +11,14 @@ A green docs build proves execution for the captures it actually ran. It proves 
 inputs represented in the capture cache key, and it proves determinism only when two independent runs
 are compared.
 
+Some real captures require an external service or hardware and cannot honestly be recreated by the
+ordinary docs runner. Their ownership lives in `dev_docs/docs_capture_owners.json`: the published
+asset, page, real generator, strict regeneration command, and produced artifact are all declared
+together. `docs_capture_audit.py --inventory` includes these component-owned captures, and the Python
+tool gate rejects missing assets, pages, generators, page references, duplicate owners, and paths
+outside the docs asset tree. A normal `--repeat 2` pass still covers only runner-managed captures;
+run the component command in its required environment before replacing one of these assets.
+
 ## Build modes
 
 Run docs through the repository wrapper so Markdown hooks, capture dependencies, and the Zensical

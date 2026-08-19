@@ -8,7 +8,10 @@ a verification tool that silently changes its mind about what "stale" means is w
 Run with:  uv run --group docs python -m unittest tools.test_docs_capture_audit
 """
 
+import json
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from tools.docs_capture_audit import (
@@ -24,6 +27,7 @@ from tools.docs_capture_audit import (
     compare_images,
     failing_exit_code,
     fold_runs,
+    load_external_capture_owners,
 )
 
 
@@ -323,6 +327,41 @@ class ExitCodeTests(unittest.TestCase):
     def test_clean_verdicts_pass(self) -> None:
         for verdict in ("identical", "jitter", "new"):
             self.assertEqual(failing_exit_code({"counts": {verdict: 3}}), 0, verdict)
+
+
+class ExternalCaptureOwnershipTests(unittest.TestCase):
+    def test_real_manifest_registers_the_sonic_pi_measurement(self) -> None:
+        owners = load_external_capture_owners()
+        match = [owner for owner in owners if owner.asset.endswith("/sonic_pi/pattern_onsets.png")]
+        self.assertEqual(len(match), 1)
+        self.assertEqual(match[0].owner, "sonicpi.pattern.timing")
+        self.assertIn("FIELD_SONIC_PI_REQUIRED=1", match[0].command)
+
+    def test_manifest_rejects_an_asset_the_page_does_not_reference(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            docs = root / "public" / "docs"
+            asset = docs / "assets" / "probe.png"
+            generator = root / "src" / "Probe.kt"
+            asset.parent.mkdir(parents=True)
+            generator.parent.mkdir(parents=True)
+            asset.write_bytes(b"png")
+            generator.write_text("object Probe", encoding="utf-8")
+            (docs / "page.md").write_text("no image here", encoding="utf-8")
+            manifest = root / "owners.json"
+            manifest.write_text(json.dumps({
+                "version": 1,
+                "captures": [{
+                    "asset": "public/docs/assets/probe.png",
+                    "page": "page.md",
+                    "owner": "probe",
+                    "generator": "src/Probe.kt",
+                    "command": "run probe",
+                    "artifact": "probe.png",
+                }],
+            }), encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "does not reference"):
+                load_external_capture_owners(manifest, repo_root=root, docs_dir=docs)
 
 
 if __name__ == "__main__":

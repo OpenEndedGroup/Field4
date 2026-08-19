@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "captures": [
+    {
+      "asset": "public/docs/assets/sonic_pi/pattern_onsets.png",
+      "page": "sonic_pi.md",
+      "owner": "sonicpi.pattern.timing",
+      "generator": "src/jvmMain/kotlin/afield/examples/sonicpi/SonicPiPatternProbe.kt",
+      "command": "FIELD_SONIC_PI_REQUIRED=1 uv run --project . --group backdoor python tools/run_field_tests.py --id sonicpi.pattern.timing",
+      "artifact": "sonicpi_pattern_onsets.png in the artifacts directory printed by the probe; inspect it before replacing the committed asset"
+    }
+  ]
+}
