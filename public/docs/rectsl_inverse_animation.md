@@ -377,13 +377,27 @@ reach their own endpoints (`expo-in` is 2⁻¹⁰ at u=0, not 0) and which in a 
 their time exactly at those endpoints. `closed(u)·(1−floor(u))·(1−floor(1−u)) + floor(u)` is that
 branch structure written as arithmetic.
 
-| | before `floor` | after |
-| --- | --- | --- |
-| gallery tracks that lower | 2363 / 2754 (85.8%) | **2638 / 2754 (95.8%)** |
-| channel values compared | 302,293 | **328,451 of 333,207 (98.6%)** |
-| easings that lower | 29 / 38 | **35 / 38** |
-| distinct refusal reasons | 5 | **1** |
-| worst relative disagreement | 6.6·10⁻¹⁶ | 6.6·10⁻¹⁶ (unchanged) |
+| | before `floor` | after `floor` | after `atan2` |
+| --- | --- | --- | --- |
+| gallery tracks that lower | 2363 / 2754 (85.8%) | 2638 / 2754 (95.8%) | **2754 / 2754 (100%)** |
+| channel values compared | 302,293 | 328,451 of 333,207 (98.6%) | **333,207 of 333,207 (100%)** |
+| easings that lower | 29 / 38 | **35 / 38** | 35 / 38 |
+| distinct refusal reasons | 5 | 1 | **0** |
+| worst relative disagreement | 6.6·10⁻¹⁶ | 6.6·10⁻¹⁶ | 7.7·10⁻¹⁴ |
+
+The third column is 2026-08-19, and it closed the list the second column left. `->face-travel` builds
+a `HeadingTrack` — `atan2` of a central finite difference — and it was the *whole* of that residual
+4.2%: 116 tracks, every refusal in the corpus that was not a pattern track. `Fn` gained `atan`,
+`atan2` and `hypot`, and the near-zero guards on `/` and `smoothstep` went with them.
+
+Two things in that column are worth not glossing. The worst disagreement rose two orders of
+magnitude, and it should have: a heading *differences* two positions a 240th of a second apart, so a
+one-ulp error in a position is a ~10⁻¹⁴ error in the angle. It is amplification, not a new
+approximation — a heading over an unnested trajectory is bit-identical at all 4001 samples of a
+winding circle. And `atan2` is a **primitive** rather than `atan(y/x)` with a quadrant fix-up, which
+is what the refusal text had predicted: the fix-up divides first, `-0.0 / -1.0` is `+0.0`, and the
+answer comes out `+pi` where the truth is `-pi`. Half a turn, from two inputs that compare equal.
+`RectSLHeadingTest` keeps that as a measurement rather than as a remark.
 
 ## What is still refused, and whether that is permanent
 
@@ -394,12 +408,18 @@ and `closable` is the distinction a reader actually needs, borrowed from the std
 
 | refused | closable? | why, and what it would take |
 | --- | --- | --- |
-| `->face-travel` headings | yes | `atan2` has no `Fn` op. Needs an `FnExpr.Atan` plus atan2's quadrant fix-up, which the exact step can now supply. This is the whole of the remaining 4.2%. |
-| `/` by a non-constant | yes | RectSL's `/` returns 0 where `|divisor| <= 1e-12`. An exact indicator exists now; what blocks it is that the suppressed branch still evaluates `a/b` and yields `0·inf` = NaN. A *constant* divisor folds the guard exactly. |
-| `smoothstep` with non-constant edges | yes | the same `0·inf` problem, for the coincident-edge guard. |
-| `mod` | yes | Kotlin's `%` truncates toward zero, and `trunc` is not `floor`; it needs a sign primitive. A constant pair still folds. |
+| `mod` | yes | and the reason on this line was **wrong until 2026-08-19**, which is the argument for measuring a refusal instead of reasoning one out. It used to say `%` needed a sign primitive. It does not: `trunc(z) = s·floor(z) − (1−s)·floor(−z)` with `s` the exact step is exact at every double. What defeats it is that Kotlin's `%` on doubles is the *exact* remainder, and `a − b·trunc(a/b)` is a different function once the quotient outgrows 53 bits — `1e17 % 3` is `1.0` and the reconstruction says `0.0`, silently, *as a zero*, which is indistinguishable from the near-zero guard having fired. A constant pair still folds. |
 | `bounce-*` easings | yes | four parabolic arcs, each join needing its own clamped ramp. Expressible with the machinery that is now here; not yet expressed. |
 | the pattern tracks | **no** | an interpreter over a mini-notation tree, not an expression of fixed shape — the same reason `FnNonDifferentiable` refuses `pat` itself. |
+
+What left this table on 2026-08-19, besides the headings: `/` by a non-constant and `smoothstep` with
+non-constant edges. Both were blocked on a real observation with the wrong conclusion — masking the
+*result* (`[|b| > 1e-12] · (a/b)`) does still divide on the suppressed branch, so `0·inf` is NaN. The
+answer is to guard the *divisor*: `b·live + (1 − live)` is `b` where the guard passes and exactly
+`1.0` where it does not, so no infinity is ever created to be masked. The sign of the suppressed zero
+is then repaired by adding `−0.0`, which is the true additive identity on doubles where `+0.0` is
+not — without it a negative numerator lowers to `−0.0` where the sampler says `0.0`, and a stray
+signed zero is exactly what can spin a `->face-travel` rect through half a turn.
 
 There is a matching honesty rule in the fitter. A staircase's derivative really is zero, so a
 parameter reachable *only* through a `floor`, a gate or a hold has no path to the value at all —
@@ -417,14 +437,21 @@ Fn-lowered tracks:
 
 | measurement | value |
 | --- | --- |
-| gallery tracks that lower | 2638 of 2754 (95.8%) |
-| channel values compared | 328,451 of 333,207 across all 33 compilable programs (98.6%) |
-| worst relative disagreement | **6.6·10⁻¹⁶** |
-| worst absolute disagreement | **1.3·10⁻¹⁵** |
+| gallery tracks that lower | **2754 of 2754 (100%)** |
+| channel values compared | **333,207 of 333,207** across all 33 compilable programs |
+| worst relative disagreement | **7.7·10⁻¹⁴** (a `cascade-split` rotation; see the amplification note above) |
+| worst absolute disagreement | **8.3·10⁻¹⁴** |
 | easings lowered | 35 of 38, worst disagreement 8.9·10⁻¹⁶ over a 1001-point grid |
-| exact gradient vs central difference | worst **7.1·10⁻¹¹** over twenty-one parameterised shapes |
+| exact gradient vs central difference | worst **7.1·10⁻¹¹** over twenty-one parameterised shapes; **6.8·10⁻⁹** for a heading |
 | the exact step, at its own boundary | exact, including at `-0.0` |
 | a looped clock across 4.5 periods | **bit-identical** (0.0); ping-pong 8.9·10⁻¹⁶; a hold track 5.6·10⁻¹⁷ |
+| a heading round a winding circle | **bit-identical at 4001 of 4001 samples**, across two branch-cut crossings |
+| a heading whose velocity vanishes | **bit-identical at 801 of 801**, with 400 of them needing a wider probe than the first |
+| the guarded `/` and `smoothstep` | **bit-identical at 2001 of 2001 each**, including the sample where the guard fires |
+
+The lowering rate is now *asserted*, not printed. It sat in a `println` for as long as it was
+interesting, which is the shape of failure where an impressive number quietly rots; the test fails if
+a single gallery track refuses.
 
 That last row is the one that matters for a fit. Agreeing on values proves nothing about a
 derivative — a second interpreter can reproduce `eval` everywhere and still differentiate the wrong
