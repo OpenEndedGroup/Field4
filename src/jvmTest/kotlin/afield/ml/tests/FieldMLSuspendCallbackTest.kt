@@ -9,6 +9,7 @@ import afield.ml.core.Evaluator
 import afield.ml.core.FieldMLHostBridge
 import afield.ml.core.FieldMLValue
 import afield.ml.core.fieldMLValueToHost
+import afield.ml.type.FieldMLHostTypes
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.atomic.AtomicInteger
@@ -191,6 +192,72 @@ class FieldMLSuspendCallbackTest {
             ),
             "a plain Function2 must not be read as a suspend type",
         )
+    }
+
+    /**
+     * The measurement, over Field's whole per-frame surface rather than over the two members the
+     * tests above happen to name.
+     *
+     * "It works on `eachFrame`" is a claim about one signature. This walks every public member of
+     * the three types a person animating a Field box actually touches, finds every parameter whose
+     * type is a `suspend` function, and asks the *production* type-level path — the same
+     * `FieldMLHostTypes.parameterSlot` + `samParameterTypes` pair `Inferencer.preInferHostSpine`
+     * calls — what a FieldML author would have to write for it. Every one of them has to come back
+     * with the written arity rather than the JVM's, because a single slot that still counts its
+     * continuation is a signature where the type checker refuses the correct lambda.
+     *
+     * The floor is the whole set, not a percentage of it. A partial answer here is not a partial
+     * capability, it is a trap: the surface is small enough to enumerate, so anything less than all
+     * of it means some `suspend` shape is silently miscounted and nothing else would say so.
+     */
+    @Test
+    fun everySuspendCallbackSlotOnFieldsPerFrameSurfaceReportsTheWrittenArity() {
+        val surface = listOf(
+            Class.forName("afield.PhasedKt"),
+            Class.forName("afield.stdlib.StdlibKt"),
+            Frames::class.java,
+        )
+
+        val slots = mutableListOf<Triple<String, Int, Int>>()
+        surface.forEach { owner ->
+            owner.methods.filter { it.declaringClass == owner }.forEach { method ->
+                method.genericParameterTypes.forEachIndexed { index, generic ->
+                    val raw = method.parameterTypes[index]
+                    val shape = FieldMLHostBridge.suspendShape(raw, generic) ?: return@forEachIndexed
+                    val slot = FieldMLHostTypes.parameterSlot(method, index)
+                    val claimed = FieldMLHostTypes.samParameterTypes(slot)?.size ?: -1
+                    slots += Triple(
+                        "${owner.simpleName}.${method.name} param $index",
+                        shape.parameterCount,
+                        claimed,
+                    )
+                }
+            }
+        }
+
+        val disagreed = slots.filter { (_, written, claimed) -> written != claimed }
+        val report = buildString {
+            appendLine("suspend function-typed parameters across Field's per-frame surface:")
+            appendLine("  slots found:              ${slots.size}")
+            appendLine("  written arity == claimed: ${slots.size - disagreed.size}")
+            slots.sortedBy { it.first }.forEach { (name, written, claimed) ->
+                appendLine("    $name — written $written, type checker claims $claimed")
+            }
+            if (disagreed.isNotEmpty()) {
+                appendLine("  DISAGREED (the type checker would refuse the correct lambda):")
+                disagreed.forEach { appendLine("    ${it.first}") }
+            }
+        }
+        println(report)
+
+        // 16 as of 2026-08-19, and the floor is that number rather than a comfortable fraction of
+        // it: `frames`, `loop`, `forever`, `eachFrame`, `end`, `launchFrames`, `animate`, both
+        // `start`s, both `then`s, three generator builders, `Frames.body` and `Frames.atEnd`. A
+        // floor rather than an equality so that *adding* a per-frame builder does not fail this
+        // test, but if the surface shrinks below what was actually verified that is worth stopping
+        // for.
+        assertTrue(slots.size >= 16, "expected at least 16 suspend callback slots, found ${slots.size}\n$report")
+        assertTrue(disagreed.isEmpty(), "${disagreed.size} slot(s) still count the continuation\n$report")
     }
 
     // ---- the type checker agrees --------------------------------------------------------------
