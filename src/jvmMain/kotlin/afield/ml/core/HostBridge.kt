@@ -13,6 +13,7 @@ import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Proxy
 import java.lang.reflect.TypeVariable
 import java.lang.reflect.WildcardType
+import kotlin.coroutines.Continuation
 
 /**
  * The reflective half of FieldML's JVM bridge: given a name, a receiver and some already-converted
@@ -416,18 +417,101 @@ object FieldMLHostBridge {
             value is FieldMLValue.ConstructorValue
 
     /**
+     * A Kotlin `suspend` function type as plain reflection sees it, or null for an ordinary one.
+     *
+     * `suspend Frames.() -> Unit` is not its own JVM type. It compiles to
+     * `Function2<? super Frames, ? super Continuation<? super Unit>, ? extends Object>`: the
+     * parameters as written, then a trailing [kotlin.coroutines.Continuation], then a return erased
+     * to `Object` because a suspend call may hand back either its value *or* the
+     * `COROUTINE_SUSPENDED` marker. Two consequences follow, and both are why this exists:
+     *
+     * - the continuation is a **calling-convention** argument, not one the author wrote, so it must
+     *   not be curried into the FieldML closure;
+     * - the declared result survives *only* as the continuation's type argument, so
+     *   `Function2.invoke`'s own return says nothing. `forever`'s block really returns `Boolean`,
+     *   and reading `? extends Object` instead is the difference between a loop and a cast failure.
+     *
+     * Detection has to read the *substituted* parameter, and it has to take the **lower** bound of a
+     * wildcard: Kotlin emits parameters contravariantly, so `? super Continuation<…>` carries its
+     * information below, not above. That is the same rule `FieldMLHostTypes.substituteVariables`
+     * follows, and for the same reason — these two remain deliberate twins.
+     */
+    class SuspendShape(
+        /** How many arguments the author actually writes: the SAM's arity minus the continuation. */
+        val parameterCount: Int,
+        /** The declared result, read out of `Continuation<? super R>`, or `Object` when erased. */
+        val resultType: Class<*>,
+    )
+
+    fun suspendShape(iface: Class<*>, generic: java.lang.reflect.Type?): SuspendShape? {
+        val method = functionalMethod(iface) ?: return null
+        val parameters = method.genericParameterTypes
+        val last = parameters.lastOrNull() ?: return null
+        val variables = typeArguments(iface, generic)
+        val continuation = contravariant(last, variables) ?: return null
+        if (rawClass(continuation) != Continuation::class.java) return null
+        val declared = (continuation as? ParameterizedType)
+            ?.actualTypeArguments?.firstOrNull()
+            ?.let { contravariant(it, variables) }
+            ?.let { rawClass(it) }
+        return SuspendShape(parameters.size - 1, declared ?: Any::class.java)
+    }
+
+    /**
+     * Substitutes a functional interface's type variables and then reads a wildcard from the side
+     * that carries the information for a *parameter* position — the lower bound first. See
+     * [SuspendShape] for why that direction matters here and [resolveClass] for the covariant twin.
+     */
+    private fun contravariant(
+        type: java.lang.reflect.Type?,
+        variables: Map<String, java.lang.reflect.Type>,
+    ): java.lang.reflect.Type? =
+        when (type) {
+            null -> null
+            is TypeVariable<*> -> variables[type.name]?.let { contravariant(it, emptyMap()) }
+            is WildcardType ->
+                (type.lowerBounds.firstOrNull() ?: type.upperBounds.firstOrNull())
+                    ?.let { contravariant(it, variables) }
+            else -> type
+        }
+
+    private fun rawClass(type: java.lang.reflect.Type?): Class<*>? =
+        when (type) {
+            is Class<*> -> type
+            is ParameterizedType -> type.rawType as? Class<*>
+            else -> null
+        }
+
+    /**
      * Wraps a FieldML function as an instance of the functional interface [iface].
      *
      * The interesting part is [generic]: the erased signature of `Function2.invoke` is
      * `(Object, Object) -> Object`, so a proxy built from it alone would hand a boxed `Double` to a
-     * parameter declared `Function2<Int, Int, Float>` and the Kotlin code would fail its implicit
+     * parameter declared `Function2<Int, Int, Float>` and the Kotlin body would fail its implicit
      * cast. Reading the type arguments off the parameter's *generic* type at the use site is what
      * makes `Img.generate(w, h) { x, y -> … }` land a real `java.lang.Float`.
+     *
+     * A `suspend` functional type ([suspendShape]) is the same proxy with two edits, and the reason
+     * it is only two is worth stating. On the JVM a `suspend` function is an ordinary method that
+     * takes a trailing [kotlin.coroutines.Continuation] and returns *either* its value or the
+     * `COROUTINE_SUSPENDED` marker; returning the value is the ordinary "completed without
+     * suspending" path, which is exactly what a suspend body containing no suspension points
+     * compiles to. FieldML has no suspension points — no `await`, no `yield`, and no reflective
+     * route to a `suspend` JVM member, because such a member's arity counts the continuation the
+     * bridge cannot construct — so an adapted FieldML closure *always* completes synchronously and
+     * this proxy can never need to return the marker or resume the continuation it drops.
+     *
+     * The bound that buys, stated plainly: the FieldML body itself cannot suspend. `Frames.frame()`
+     * and `Frames.delay()` stay out of reach, so `frames { }` — whose contract is that the body
+     * drives `frame()` — is still not FieldML-writable, while `eachFrame`, `loop`, `forever`,
+     * `Frames.end` and `Box.launchFrames`, where the enclosing Kotlin owns the suspension points and
+     * the block is a plain per-frame body, all are.
      */
     private fun samProxy(iface: Class<*>, generic: java.lang.reflect.Type?, function: FieldMLValue): Any {
         val method = functionalMethod(iface) ?: error("${iface.name} is not a functional interface")
         val variables = typeArguments(iface, generic)
-        val resultType = resolveClass(method.genericReturnType, variables) ?: method.returnType
+        val suspend = suspendShape(iface, generic)
+        val resultType = suspend?.resultType ?: resolveClass(method.genericReturnType, variables) ?: method.returnType
         val loader = iface.classLoader ?: FieldMLHostBridge::class.java.classLoader
         val handler = InvocationHandler { proxy, called, rawArguments ->
             when {
@@ -435,7 +519,12 @@ object FieldMLHostBridge {
                 called.name == "equals" && called.parameterCount == 1 -> proxy === rawArguments?.get(0)
                 called.name == "toString" && called.parameterCount == 0 -> "<FieldML function as ${iface.simpleName}>"
                 else -> {
-                    val incoming = rawArguments?.toList().orEmpty()
+                    val arrived = rawArguments?.toList().orEmpty()
+                    // Drop the continuation, and only when one really arrived: a proxy is reachable
+                    // from Kotlin that erased the type differently, and silently eating a real
+                    // argument would be far worse than passing an extra one.
+                    val incoming =
+                        if (suspend != null && arrived.lastOrNull() is Continuation<*>) arrived.dropLast(1) else arrived
                     var current = function
                     if (incoming.isEmpty()) {
                         // Nothing to feed a curried FieldML function with; `Runnable`-shaped

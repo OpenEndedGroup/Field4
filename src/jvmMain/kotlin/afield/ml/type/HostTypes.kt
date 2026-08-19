@@ -337,7 +337,16 @@ object FieldMLHostTypes {
     fun samParameterTypes(parameter: HostParameter): List<Type>? {
         val method = FieldMLHostBridge.functionalMethod(parameter.jvmClass) ?: return null
         val variables = samTypeArguments(parameter.jvmClass, parameter.generic)
-        return method.genericParameterTypes.mapIndexed { index, jvm ->
+        // A `suspend` type's trailing `Continuation` is a calling-convention argument that
+        // `FieldMLHostBridge.samProxy` drops, so it is not one the author writes and must not be
+        // claimed here either: with it, `eachFrame (fun f -> …)` is checked against two parameters
+        // and `checkLambdaArity` refuses the *correct* arity while letting the wrong one through.
+        // Dropping the trailing slot also keeps the indices of the rest aligned with the ones
+        // [nullableFunctionArguments] reads off `kotlin-reflect`, which never sees a continuation.
+        val visible = FieldMLHostBridge.suspendShape(parameter.jvmClass, parameter.generic)
+            ?.let { method.genericParameterTypes.take(it.parameterCount) }
+            ?: method.genericParameterTypes.toList()
+        return visible.mapIndexed { index, jvm ->
             if (index in parameter.nullableFunctionArguments) opaque else fieldMLTypeOf(substituteVariables(jvm, variables))
         }
     }
@@ -352,10 +361,19 @@ object FieldMLHostTypes {
      * `fun a b -> …` really is a `Function1<A, Function1<B, C>>`. When the result is *not* a
      * functional interface, the extra parameter means the JVM is handed a function where it wants a
      * value, and that fails on the first call — which is worth saying at compile time.
+     *
+     * A `suspend` type's own return is erased to `Object` and says nothing; its declared result
+     * lives inside the trailing `Continuation`, which is what [FieldMLHostBridge.suspendShape] digs
+     * out. Asking the erased return would answer "not a functional interface" for every suspend
+     * callback — accidentally the right answer for `suspend Frames.() -> Unit`, and the wrong one
+     * for a suspend type that really does hand back a lambda.
      */
     fun samResultAcceptsFunction(parameter: HostParameter): Boolean {
         val method = FieldMLHostBridge.functionalMethod(parameter.jvmClass) ?: return true
         val variables = samTypeArguments(parameter.jvmClass, parameter.generic)
+        FieldMLHostBridge.suspendShape(parameter.jvmClass, parameter.generic)?.let {
+            return FieldMLHostBridge.functionalMethod(it.resultType) != null
+        }
         val resolved = rawClassOf(substituteVariables(method.genericReturnType, variables)) ?: return true
         return FieldMLHostBridge.functionalMethod(resolved) != null
     }
