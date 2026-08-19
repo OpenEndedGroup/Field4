@@ -34,7 +34,10 @@ import kotlin.math.sqrt
  * key times, the clamp bounds, the `0.5` in an easing, the `-1.0` that mirrors a reversed clock.
  * Letting a descent move those would not fit a track, it would dismantle one. So the loss and the
  * Adam update here are the same shape as `fitGradient`'s, over a **mask**: only the θ slots that
- * [freeParameterIndices] identified as named parameters ever move.
+ * [freeParameterSlots] identified as named parameters ever move — *slots*, plural, because a
+ * lowering may use one sub-`Fn` more than once and each occurrence gets its own θ index. A heading
+ * reads each of its position tracks twelve times. The slots of one name are one variable here:
+ * gradients summed, one Adam moment, one step written to all of them.
  *
  * Everything under the mask is borrowed rather than reimplemented. The gradient is
  * [Functions.Fn.gradientAt] — one forward interpretation and one backward sweep through the same
