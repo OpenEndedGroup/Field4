@@ -294,6 +294,164 @@ class FramesSemanticsTest {
         assertEquals(listOf(0.0, 1.0, 1.5, 1.75, 1.875), out)
     }
 
+    // ---- the rest of the surface the page's ledger lists -------------------------------------
+
+    /** Evaluating a `Frames` without returning it shows this, so the page quotes it. */
+    @Test
+    fun toStringIsTheStringThePageQuotes() {
+        assertEquals("(frames)", frames { }.toString())
+    }
+
+    /**
+     * `delay(ms)` suspends for real milliseconds and *then* advances one frame.
+     *
+     * A [Framer] implements no `Delay`, so kotlinx falls back to its default scheduler and
+     * re-dispatches the resumption onto the Framer — which means the frame only lands once
+     * something pumps. Pumping in a wall-clock loop is the honest way to observe that.
+     */
+    @Test
+    fun delaySuspendsInRealTimeAndThenAdvancesOneFrame() {
+        val f = frames { delay(60) }
+        val framer = Framer()
+        val job = CoroutineScope(framer).launch { runCatching { f.body() } }
+        f.job = job
+
+        val deadline = System.nanoTime() + 5_000_000_000L
+        while (f.frameNumber < 1 && System.nanoTime() < deadline) {
+            framer.frame()
+            Thread.sleep(2)
+        }
+        assertEquals(1, f.frameNumber, "delay(60) should suspend, then advance exactly one frame")
+        job.cancel()
+    }
+
+    /** `wait()` parks the body, advancing a frame per pump, until the job is cancelled. */
+    @Test
+    fun waitAdvancesUntilCancelled() {
+        val f = frames { wait() }
+        val framer = Framer()
+        val job = CoroutineScope(framer).launch { runCatching { f.body() } }
+        f.job = job
+
+        repeat(5) { framer.frame() }
+        val parked = f.frameNumber
+        assertTrue(parked >= 4, "wait() advances about one frame per pump, got $parked")
+        job.cancel()
+        repeat(3) { framer.frame() }
+        assertEquals(parked, f.frameNumber, "and stops once the job is cancelled")
+    }
+
+    /** `a + b` runs two frame programs under one parent; both advance as the parent advances. */
+    @Test
+    fun framesPlusRunsBothChildrenInParallel() {
+        var left = 0
+        var right = 0
+        val combined = eachFrame { left++ } + eachFrame { right++ }
+
+        val framer = Framer()
+        val job = CoroutineScope(framer).launch { runCatching { combined.body() } }
+        combined.job = job
+        repeat(6) { framer.frame() }
+        job.cancel()
+
+        assertTrue(left > 0, "the left child never ran")
+        assertTrue(right > 0, "the right child never ran")
+        assertEquals(left, right, "the two children advance in step with each other")
+    }
+
+    /** `then` sequences two plain suspend lambdas into one. */
+    @Test
+    fun thenSequencesTwoSuspendLambdas() {
+        val order = mutableListOf<String>()
+        val first: suspend () -> Unit = { order += "first" }
+        val combined = first.then { order += "second" }
+        kotlinx.coroutines.runBlocking { combined() }
+        assertEquals(listOf("first", "second"), order)
+    }
+
+    /** `Framer.frame()` marks the Runloop thread while it drains, which is what `isMain` is for. */
+    @OptIn(kotlin.concurrent.atomics.ExperimentalAtomicApi::class)
+    @Test
+    fun framerMarksIsMainWhileItDrains() {
+        var insideDrain: Boolean? = null
+        val framer = Framer()
+        CoroutineScope(framer).launch { insideDrain = Generator.isMain.load() }
+
+        framer.frame()
+        assertEquals(true, insideDrain, "isMain is set while the queued block runs")
+        assertFalse(Generator.isMain.load(), "and cleared again once the drain finishes")
+    }
+
+    /** `gather { }` is the consume-only shape: `yield()` with no argument hands back `true`. */
+    @Test
+    fun gatherConsumesAndTheBareYieldReturnsTrue() {
+        val seen = mutableListOf<Int>()
+        val sink = gather<Int> {
+            while (true) {
+                seen += yield()
+            }
+        }
+        assertEquals(true, sink.start())
+        listOf(3, 1, 4).forEach { assertEquals(true, sink.next(it)) }
+        assertEquals(listOf(3, 1, 4), seen)
+    }
+
+    /** `a + b` on generators is sequential: drain the left, then the right. */
+    @Test
+    fun generatorPlusIsSequential() {
+        val ab = generator<Int> { yield(1); yield(2) } + generator<Int> { yield(3) }
+        val out = mutableListOf<Int>()
+        var v = ab.start()
+        while (v != null) { out += v; v = ab.next(Unit) }
+        assertEquals(listOf(1, 2, 3), out)
+    }
+
+    /** `a % b` is lockstep: one input to both, a `Pair` out, stopping when either side does. */
+    @Test
+    fun generatorRemIsLockstepAndStopsWithTheShorterSide() {
+        val doubling = generator2<Int, Int> { var x = yield(0); while (true) x = yield(x * 2) }
+        val threeOnly = generator2<Int, String> { yield("a"); yield("b"); yield("c") }
+        val both = doubling % threeOnly
+
+        val out = mutableListOf<Pair<Int, String>>()
+        var p = both.start()
+        var i = 1
+        while (p != null) { out += p; p = both.next(i); i++ }
+
+        assertEquals(listOf(0 to "a", 2 to "b", 4 to "c"), out)
+    }
+
+    /** `pipe` feeds one generator's output in as the next one's input. */
+    @Test
+    fun pipeFeedsOutputIntoTheNextGeneratorsInput() {
+        val source = generator<Int> { yield(1); yield(2); yield(3) }
+        val doubling = generator2<Int, Int> { var x = yield(0); while (true) x = yield(x * 2) }
+
+        val out = mutableListOf<Int>()
+        val piped = source pipe doubling
+        var v = piped.start()
+        while (v != null) { out += v; v = piped.next(Unit) }
+
+        assertEquals(listOf(2, 4, 6), out)
+    }
+
+    /** `map` transforms the outputs. */
+    @Test
+    fun mapTransformsTheOutput() {
+        val mapped = generator<Int> { yield(1); yield(2) }.map { "n$it" }
+        val out = mutableListOf<String>()
+        var v = mapped.start()
+        while (v != null) { out += v; v = mapped.next(Unit) }
+        assertEquals(listOf("n1", "n2"), out)
+    }
+
+    /** `EndedException` is declared in `Phased.kt`; nothing in the tree throws or catches it. */
+    @Test
+    fun endedExceptionIsADeclaredButUnusedThrowable() {
+        val e: Throwable = EndedException()
+        assertEquals("EndedException", e.javaClass.simpleName)
+    }
+
     @Test
     fun aGeneratorReportsCompletionWithNull() {
         val two = generator<String> {

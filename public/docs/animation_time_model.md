@@ -522,11 +522,144 @@ Three controllers, three sets of gains, and none of them declares a state class.
 in the middle of the `while (true)`, so `integral` and `previousError` are simply still there when
 `next(tick)` resumes it.
 
-The rest of the layer is combinators over that: `a + b` runs one generator to completion then the
-other, `a % b` feeds both the same input and yields their outputs as a `Pair` until either finishes,
-`a pipe b` feeds `a`'s output into `b`, and `map` transforms the output. `gather { }` is the
-convenience for a generator that only consumes, `generator { }` for one that only produces, and
-`generator2 { }` for both.
+### Composing them
+
+The rest of the layer is combinators, and they are worth knowing because they are how a generator
+stops being a one-off and starts being a pipeline. Here are three of them building one signal in
+four stages, each stage derived from the one before:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/animation_time_model/generator_pipeline.png" wait="2.0" capture="box" open-outputs="true" wait-output="true" w="1100" name="animation-generator-pipeline"}
+// `generator { }` is the output-only shape: the input type is Unit, so `yield(v)` returns Unit.
+// This one climbs from `from` to `to` over n steps and then simply returns — a generator that
+// completes rather than running forever.
+fun ramp(from: Double, to: Double, n: Int) = generator<Double> {
+    for (i in 0 until n) yield(from + (to - from) * i / (n - 1.0))
+}
+
+// `+` is sequential: drive the left to completion, then the right. An attack, then a decay.
+fun envelope() = ramp(0.0, 1.0, 90) + ramp(1.0, 0.15, 210)
+
+// `map` transforms the output values as they come past.
+fun shaped() = envelope().map { it * it }
+
+// `pipe` feeds one generator's output in as another's input. A one-pole smoother is the natural
+// thing to put on the right: it needs the previous output, which is exactly the state a generator
+// keeps for free.
+fun smoother(alpha: Double) = generator2<Double, Double> {
+    var y = 0.0
+    var x = yield(0.0)
+    while (true) {
+        y += alpha * (x - y)
+        x = yield(y)
+    }
+}
+
+// Drive any Unit-input generator by hand until it says it is finished by returning null.
+fun drive(g: Generator<Unit, Double>, cap: Int): List<Number> {
+    val out = mutableListOf<Number>()
+    var v = g.start()
+    while (v != null && out.size < cap) {
+        out += v
+        v = g.next(Unit)
+    }
+    return out
+}
+
+val cap = 300
+// The bare `ramp(0 -> 1, 90)` is deliberately not plotted: it is pixel-identical to the first 90
+// steps of `a + b`, so drawing it only puts an invisible series in the legend. Its length is the
+// interesting part, and you can read that off where the orange trace turns.
+showSignals(
+    "a + b — attack then decay" to drive(envelope(), cap),
+    ".map { it * it }" to drive(shaped(), cap),
+    "pipe smoother(0.06)" to drive(shaped() pipe smoother(0.06), cap),
+    channel = "main",
+    title = "one signal in three stages: +, map, pipe",
+    xTitle = "step",
+)
+```
+
+![Three traces sharing a peak at step 90: a straight-sided attack-then-decay envelope, the same envelope squared so both of its slopes bow downward, and a smoothed version that rounds off the peak and trails the others](assets/animation_time_model/generator_pipeline.png)
+
+The sharp turn at step 90 is `+` handing over from the attack to the decay — the left generator
+completed there, which is what `+` waits for. The bowed slopes are `map`. The rounded peak and the
+lag are the smoother on the right of `pipe`. Every one of those is a value you can pass around and
+re-compose, and none of them declares a state class.
+
+The two remaining shapes are about *consuming*. `%` runs two generators in lockstep on the same
+input and yields their outputs as a `Pair`, stopping when either does. `gather { }` is the
+consume-only form — output type `Boolean`, for a generator you drive for its effect rather than its
+value, where the no-argument `yield()` just hands back `true`:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/animation_time_model/generator_lockstep.png" wait="2.0" capture="box" open-outputs="true" wait-output="true" w="1100" name="animation-generator-lockstep"}
+// Two estimators over the same noisy input, in lockstep.
+val mean = generator2<Double, Double> {
+    var sum = 0.0
+    var n = 0
+    var x = yield(0.0)
+    while (true) {
+        sum += x; n++
+        x = yield(sum / n)
+    }
+}
+val peak = generator2<Double, Double> {
+    var highest = Double.NEGATIVE_INFINITY
+    var x = yield(0.0)
+    while (true) {
+        if (x > highest) highest = x
+        x = yield(highest)
+    }
+}
+
+// `%` — one input in, a Pair of outputs out, until either side finishes.
+val both = mean % peak
+
+val random = java.util.Random(7)
+val input = List(240) { i -> kotlin.math.sin(i * 0.05) + random.nextGaussian() * 0.25 }
+
+val means = mutableListOf<Number>()
+val peaks = mutableListOf<Number>()
+var pair = both.start()
+var i = 0
+while (i < input.size) {
+    // Into a local first: at a box's top level `pair` is a property, not a local, so Kotlin
+    // will not smart-cast it to non-null however obviously the loop guard proves it.
+    val step = pair ?: break
+    means += step.first
+    peaks += step.second
+    pair = both.next(input[i]); i++
+}
+
+// `gather { }` consumes and reports nothing useful — the work is the side effect. Note the bare
+// yield(): the no-argument overload exists exactly for this shape.
+var crossings = 0
+val countCrossings = gather<Double> {
+    var previous = 0.0
+    while (true) {
+        val x = yield()
+        if (previous <= 0.0 && x > 0.0) crossings++
+        previous = x
+    }
+}
+countCrossings.start()
+input.forEach { countCrossings.next(it) }
+
+showSignals(
+    "input (sine + noise)" to input.map { it as Number },
+    "running mean — left of %" to means,
+    "running peak — right of %" to peaks,
+    channel = "main",
+    title = "%% in lockstep — gather { } counted %d crossings".format(crossings),
+    xTitle = "step",
+)
+```
+
+![A noisy sine with two derived traces: a running mean that settles near zero and a running peak that steps up in a staircase and never comes back down](assets/animation_time_model/generator_lockstep.png)
+
+The peak trace only ever climbs — that is a running maximum, and the staircase is it meeting a new
+high. The mean settles towards the sine's own average. Both came out of one `next(x)` call per step
+on the composed generator, and the crossing count in the title came from a third generator that
+never yielded a value anyone read.
 
 !!! warning "A `Generator` is not thread-safe and not re-entrant."
 
