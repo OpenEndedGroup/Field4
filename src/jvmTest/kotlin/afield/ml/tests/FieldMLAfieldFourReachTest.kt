@@ -1,6 +1,7 @@
 package afield.ml.tests
 
 import afield.Box
+import afield.Frames
 import afield.four.buffers.BufferParameters
 import afield.four.buffers.defaultBuffer
 import afield.four.util.Options
@@ -10,6 +11,8 @@ import afield.ml.FieldMLRuntimePrelude
 import afield.ml.core.Evaluator
 import afield.ml.core.fieldMLValueToHost
 import afield.ml.type.TypePrinter
+import kotlinx.coroutines.runBlocking
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -173,6 +176,91 @@ class FieldMLAfieldFourReachTest {
     }
 
     @Test
+    fun theFramesBuildersThatDriveALiveSceneRunHeadlessly() {
+        // The moving half of `afield.four`, and the happy accident of it: `Frames` is a plain object
+        // with no Vulkan in it, so the per-frame builders every animated Field box is made of can be
+        // run *here*, headlessly, against the same JVM the real workspace uses. This is the one part
+        // of a live scene this test does not have to take on trust.
+        //
+        // Mechanism D is what makes this expressible at all — `eachFrame(block: suspend Frames.() ->
+        // Unit)` — and the assertion is that the FieldML body ran, not that a proxy exists.
+        val ticks = AtomicInteger()
+        val box = Box("fieldml-four-frames")
+        box.setPropertyRaw("ticks", ticks, false)
+
+        val frames = evaluateAs<Frames>(
+            """
+            let counter = thisBox |> hostCall "getPropertyRaw" ("ticks", hostNull)
+
+            hostStaticCall "forever" (fun f ->
+              (counter |> hostCall0 "incrementAndGet" |> hostAsInt) < 4
+            ) (hostClass "afield.PhasedKt")
+            """,
+            box = box,
+        )
+        assertEquals(0, ticks.get(), "building a Frames must not run its body")
+
+        runBlocking { frames.body() }
+
+        assertEquals(4, ticks.get())
+        assertEquals(3, frames.frameNumber)
+    }
+
+    @Test
+    fun theOverloadThatThreeboxActuallyWritesRunsButDoesNotTypeItsCallback() {
+        // `start(renderer::run)` is the threebox statement, and it is worth being exact about which
+        // part of it is now reachable and which is not.
+        //
+        // The suspend type is no longer the obstacle. What is left is an **overload tie** with
+        // nothing to do with coroutines: `start` is declared twice, over `suspend Frames.() -> Unit`
+        // and over `suspend () -> Unit` (stdlib.kt:516, :527). To reflection both are `start` taking
+        // one functional-interface parameter and a FieldML closure scores the same against both.
+        //
+        // Two consequences, and they pull in opposite directions, which is why both are pinned here.
+        //
+        // The *result* is still known: both overloads return `Frames`, and `resolve` reports a type
+        // when every candidate agrees on one, ambiguous or not. But the *parameter slot* is not:
+        // `parametersOf` returns no claim when the tied candidates have different signatures — the
+        // right answer, and the reason a misspelling inside this particular callback is a run-time
+        // failure rather than a compile error. That is the ordinary untyped-callback hole, not a new
+        // one.
+        val phased = """(hostClass "afield.PhasedKt")"""
+        val stdlib = """(hostClass "afield.stdlib.StdlibKt")"""
+
+        assertEquals("Frames", typeOf("""hostStaticCall "start" (fun f -> f) $stdlib"""))
+        assertTrue(
+            FieldMLCompiler.compile("""hostStaticCall "start" (fun f -> f |> hostGet "frameNumbr") $stdlib""").successful,
+            "the tied overload set must not claim a parameter type it cannot know",
+        )
+        // And where there is only one declaration, the same misspelling is caught where it is written.
+        assertTrue(
+            !FieldMLCompiler.compile("""hostStaticCall "eachFrame" (fun f -> f |> hostGet "frameNumbr") $phased""").successful,
+            "eachFrame is declared once, so its callback parameter is Frames and a typo is a type error",
+        )
+        assertEquals("Frames", typeOf("""hostStaticCall "eachFrame" (fun f -> 0) $phased"""))
+        assertEquals("Frames", typeOf("""hostStaticCall "loop" (fun f -> 0) $phased"""))
+        assertEquals("Frames", typeOf("""hostStaticCall "forever" (fun f -> true) $phased"""))
+
+        // The other direction: the tie does not stop it *running*, because the adapter is
+        // arity-tolerant in both directions. Whichever `start` reflection happens to pick, the proxy
+        // drops the continuation and then either curries the `Frames` in or, with nothing left, feeds
+        // the `Unit` a zero-argument functional interface gets — and `fun ignored -> …` accepts both.
+        val ran = AtomicInteger()
+        val box = Box("fieldml-four-start")
+        box.setPropertyRaw("ran", ran, false)
+        val frames = evaluateAs<Frames>(
+            """
+            let counter = thisBox |> hostCall "getPropertyRaw" ("ran", hostNull)
+
+            hostStaticCall "start" (fun ignored -> counter |> hostCall0 "incrementAndGet") $stdlib
+            """,
+            box = box,
+        )
+        runBlocking { frames.body() }
+        assertEquals(1, ran.get(), "start's body should have run exactly once, whichever overload won")
+    }
+
+    @Test
     fun theAnimationClockThatDrivesTheLiveSceneIsCallable() {
         assertEquals("Float", typeOf("""hostClass "afield.AnimationClock" |> hostGet "INSTANCE" |> hostCall0 "nowSeconds""""))
         assertTrue(assertIs<Double>(evaluate("""hostClass "afield.AnimationClock" |> hostGet "INSTANCE" |> hostCall0 "nowSeconds"""")) > 0.0)
@@ -181,17 +269,40 @@ class FieldMLAfieldFourReachTest {
     // ---- the survey ------------------------------------------------------------------------------
 
     /**
-     * Every statement of the three `threebox-2` boxes, with what FieldML can do about it. A translation
-     * is compiled — not run, because most of these need a device — so `expressible` means "the bridge
-     * and the type checker accept this shape", which is exactly the claim being made.
+     * One statement of the three `threebox-2` boxes, with what FieldML can do about it — and, when it
+     * can do nothing, which *mechanism* is in the way.
+     *
+     * A translation is compiled, not run, because most of these need a device, so `expressible` means
+     * "the bridge and the type checker accept this shape", which is exactly the claim being made.
+     *
+     * [residue] exists because "13 of 19" is a much weaker statement than the truth. Counting
+     * statements measures the sample; naming the mechanism measures the bridge. With B, C and D
+     * closed on 2026-08-19 the six remaining refusals are not a long tail, and
+     * [theResidueIsOneMechanism] asserts that rather than leaving a reader to notice it.
      */
-    private data class Statement(val kotlin: String, val fieldML: String?, val note: String)
+    private data class Statement(
+        val kotlin: String,
+        val fieldML: String?,
+        val note: String,
+        val residue: Residue? = null,
+        /** Where the statement's *effect* is reached without its spelling, when it is. */
+        val effect: String? = null,
+    )
+
+    private enum class Residue {
+        /** Mechanism A: a rewrite over Kotlin *source*, so there is no JVM member to reflect on. */
+        SOURCE_MACRO,
+
+        /** Not a limitation at all — the statement has no work to do in FieldML. */
+        NOT_NEEDED,
+    }
 
     private val statementSurvey = listOf(
         Statement(
             "import afield.four.util.Options",
             null,
             "not needed: FieldML has no imports, every class is named in full by hostClass",
+            residue = Residue.NOT_NEEDED,
         ),
         Statement(
             "prop<Window>(window)",
@@ -199,6 +310,8 @@ class FieldMLAfieldFourReachTest {
             "SOURCE MACRO (macros.kt:355 -> props.kt:66): generates `var Box.window by Inheritance<Window>()` " +
                 "into the box preamble. `Box.prop` itself throws MacroNotExpandedException (props.kt:39). " +
                 "Its *effect* is reachable — see theBoxPropertySlotThatPropIsSugarOverIsFullyReachable",
+            residue = Residue.SOURCE_MACRO,
+            effect = "theBoxPropertySlotThatPropIsSugarOverIsFullyReachable",
         ),
         Statement(
             "Options.enableHDR = false",
@@ -210,6 +323,8 @@ class FieldMLAfieldFourReachTest {
             null,
             "MACRO-GENERATED DELEGATE: `Once` (scratch.kt:15) plus a `val Once.renderer by Onceing<Renderer>()` " +
                 "that prop's expansion wrote. Reachable as get-or-compute over getPropertyRaw/setPropertyRaw",
+            residue = Residue.SOURCE_MACRO,
+            effect = "theOnceSlotIsExpressibleAsGetOrComputeAndStore",
         ),
         Statement(
             "window = Window(\"Field three-box\")",
@@ -218,29 +333,38 @@ class FieldMLAfieldFourReachTest {
         ),
         Statement(
             "Renderer(window)",
-            """hostNew (hostNull, []) (hostClass "afield.four.Renderer")""",
-            "KOTLIN DEFAULT ARGUMENT again: the JVM constructor is `Renderer(Window, List)` " +
-                "(Renderer.kt:147), so `additionalWindows = emptyList()` has to be written out. " +
-                "Expressible; NOT RUN — needs a real Window",
+            """hostNew {mainWindow = hostNull} (hostClass "afield.four.Renderer")""",
+            "KOTLIN DEFAULT ARGUMENT, and as of 2026-08-19 no longer one that has to be written out: " +
+                "a *record* of arguments is a named call, and a named call is the only shape that can " +
+                "leave `additionalWindows = emptyList()` (Renderer.kt:147) unsaid. The positional form " +
+                "`hostNew (hostNull, []) …` still works. Expressible; NOT RUN — needs a real Window",
         ),
         Statement(
             "start(renderer::run)",
-            null,
-            "SUSPEND FUNCTION TYPE: `start(a: suspend Frames.() -> Unit)` (stdlib.kt:516) erases to a " +
-                "Function2 taking a Continuation, which a plain dynamic proxy cannot satisfy. " +
-                "`::run` also has no FieldML syntax, though a lambda substitutes for it",
+            """hostStaticCall "eachFrame" (fun f -> f |> hostGet "frameNumber") (hostClass "afield.PhasedKt")""",
+            "SUSPEND FUNCTION TYPE, and as of 2026-08-19 no longer a blocker: `suspend Frames.() -> " +
+                "Unit` is a Function2 whose last parameter is a Continuation, and the bridge now drops " +
+                "it (FieldMLHostBridge.suspendShape). RUNS — see theFramesBuildersThatDriveALiveSceneRunHeadlessly. " +
+                "Two residues, both named rather than waved at: `start` itself is declared twice " +
+                "(stdlib.kt:516, :527) and the overloads tie, so the shape written here is `eachFrame`, " +
+                "which is declared once; and `renderer::run` is a suspend *member*, which FieldML still " +
+                "cannot call into — see theOverloadThatThreeboxActuallyWritesStaysAmbiguous",
         ),
         Statement(
             "computeModuleHere {}",
             null,
             "SOURCE MACRO (macros.kt:344): expands to `_computeModuleHere(...)` *and* writes shader source " +
                 "into box properties at expansion time. The call half is reachable; the document mutation is not",
+            residue = Residue.SOURCE_MACRO,
         ),
         Statement(
             "var m = ComputeMesh()",
-            """hostNew (hostNull) (hostClass "afield.four.modules.ComputeMesh")""",
-            "KOTLIN DEFAULT ARGUMENT: `renderer = fromContext()` is invisible to reflection, so the renderer " +
-                "must be passed explicitly. Expressible; NOT RUN",
+            """hostNew {renderer = hostNull} (hostClass "afield.four.modules.ComputeMesh")""",
+            "KOTLIN DEFAULT ARGUMENT again. `renderer = fromContext()` is now omittable by name, but it " +
+                "is written here anyway on purpose: `fromContext()` reads Field's *box context*, which a " +
+                "reflective call is not inside, so letting the default fire would be the wrong renderer " +
+                "rather than none. Named arguments make the choice available; they do not make it right. " +
+                "Expressible; NOT RUN",
         ),
         Statement(
             "module += \"step\" to m",
@@ -266,7 +390,10 @@ class FieldMLAfieldFourReachTest {
         Statement(
             "fieldProbeHere(samples = 100000).display(\"probe\")",
             null,
-            "SOURCE MACRO, and NAMED ARGUMENT: a reflective call is positional only",
+            "SOURCE MACRO. The named argument half of this stopped being a blocker on 2026-08-19 — " +
+                "`hostCall \"display\" {name = \"probe\"}` is now an ordinary call — but `fieldProbeHere` " +
+                "is a macro (mechanism A) and there is still no JVM member to name parameters of",
+            residue = Residue.SOURCE_MACRO,
         ),
         Statement(
             "m.x = N / 64",
@@ -282,6 +409,8 @@ class FieldMLAfieldFourReachTest {
             "moduleHere { primitiveType = triangles }",
             null,
             "SOURCE MACRO (macros.kt:340), and `triangles` is another name the expansion declares",
+            residue = Residue.SOURCE_MACRO,
+            effect = "public/docs/assets/fieldml_mesh_demo — parameters(renderer) { … } plus Module(params), on a real device",
         ),
         Statement(
             "m.aspectRatio = { window.width/window.height.toFloat() }",
@@ -330,14 +459,64 @@ class FieldMLAfieldFourReachTest {
         println(report)
 
         assertTrue(refused.isEmpty(), "translations that do not compile\n$report")
+        // 13 of 19 as of 2026-08-19, when mechanism D closed and `start(renderer::run)` moved across.
+        // The floor is the measurement minus nothing: a statement that stops being expressible is a
+        // regression, and there is no reason to leave slack in a number that only ever goes up.
         assertTrue(
-            expressible.size >= 12,
+            expressible.size >= 13,
             "only ${expressible.size} of ${statementSurvey.size} statements are expressible\n$report",
         )
-        // The five that are not are the roadmap, and each carries a file-and-line citation.
+        // The rest are the roadmap, and each carries a file-and-line citation.
         statementSurvey.filter { it.fieldML == null }.forEach {
             assertTrue(it.note.isNotBlank(), "${it.kotlin} has no reason recorded")
         }
+    }
+
+    /**
+     * The closing statement this survey exists to be able to make.
+     *
+     * "13 of 19" measures the sample. What measures the *bridge* is which mechanisms are left, and
+     * after 2026-08-19 the answer is one: every statement FieldML still cannot express is a **source
+     * macro** — a rewrite over Kotlin text, applied before the compiler runs, with no JVM member for
+     * reflection to find — except the `import`, which is not a limitation because FieldML names every
+     * class in full and has nothing for an import to do.
+     *
+     * That is a different kind of claim from a count, and it is the one worth guarding: a new
+     * refusal for a *bridge* reason would fail here even if the count stayed the same, which is
+     * exactly the regression a count cannot see. Mechanism A is a language-design question — a
+     * FieldML macro layer — and not something the bridge can answer.
+     */
+    @Test
+    fun theResidueIsOneMechanism() {
+        val refused = statementSurvey.filter { it.fieldML == null }
+        val byResidue = refused.groupBy { it.residue }
+
+        val report = buildString {
+            appendLine("what is left, by mechanism:")
+            byResidue.forEach { (residue, statements) ->
+                appendLine("  ${residue ?: "UNCLASSIFIED"}: ${statements.size}")
+                statements.forEach { appendLine("    ${it.kotlin}${it.effect?.let { e -> "   [effect reached: $e]" } ?: ""}") }
+            }
+        }
+        println(report)
+
+        assertTrue(refused.none { it.residue == null }, "every refusal must name its mechanism\n$report")
+        assertEquals(
+            setOf(Residue.SOURCE_MACRO, Residue.NOT_NEEDED),
+            byResidue.keys,
+            "a refusal for a reason other than a source macro is a bridge regression\n$report",
+        )
+        // 5 and 1 as of 2026-08-19. Asserted exactly, because this is the claim: the residue is one
+        // mechanism, and it is not shrinking or growing quietly.
+        assertEquals(5, byResidue[Residue.SOURCE_MACRO]?.size, "expected five source macros\n$report")
+        assertEquals(1, byResidue[Residue.NOT_NEEDED]?.size, "expected one non-limitation\n$report")
+        // Three of the five have their *effect* reached anyway, each pointing at a test or an
+        // artifact rather than at a claim.
+        assertEquals(
+            3,
+            refused.count { it.effect != null },
+            "three of the macro statements should record where their effect is reached\n$report",
+        )
     }
 
     // ---- harness ---------------------------------------------------------------------------------

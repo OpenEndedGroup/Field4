@@ -295,6 +295,47 @@ class FieldMLHostBridgeTest {
         )
     }
 
+    // ---- accessibility -------------------------------------------------------------------------
+
+    /**
+     * A public method of a public class, on a value whose **runtime** class is neither.
+     *
+     * `ByteBuffer.allocateDirect(…).asFloatBuffer()` is a `java.nio.DirectFloatBufferU`:
+     * package-private, in a package `java.base` does not export. Candidates are found on
+     * `target.javaClass`, so `Class.getMethods` returns a `Method` declared on *that*,
+     * `setAccessible` cannot open it, and `Method.invoke` throws `IllegalAccessException` — which,
+     * one dynamic proxy later, reaches the box as an `UndeclaredThrowableException` with a null
+     * message.
+     *
+     * This is not a JDK curiosity. It is every value whose API type and implementation type differ,
+     * which on a reflective bridge is most of them; it was found writing vertex data from a FieldML
+     * frame body, where every value in sight is a buffer. `FieldMLHostBridge.invocable` re-resolves
+     * the call onto the nearest public supertype that declares it.
+     */
+    @Test
+    fun aPublicMethodIsCallableOnAValueWhoseRuntimeClassIsNotExported() {
+        val direct = java.nio.ByteBuffer.allocateDirect(16).asFloatBuffer()
+        // The premise, so that a JDK change which makes this class exported fails here loudly rather
+        // than quietly turning the test below into a tautology.
+        assertTrue(
+            !java.lang.reflect.Modifier.isPublic(direct.javaClass.modifiers) ||
+                !direct.javaClass.module.isExported(direct.javaClass.packageName),
+            "${direct.javaClass.name} is now reachable directly; this test no longer tests anything",
+        )
+
+        box.setPropertyRaw("directBuffer", direct, false)
+        run(
+            """
+            let buf = thisBox |> hostCall "getPropertyRaw" ("directBuffer", hostNull)
+
+            buf |> hostCall1 "put" 1.5 |> hostCall1 "put" 2.5 |> hostCall1 "put" 3.5
+            """,
+        )
+
+        assertEquals(listOf(1.5f, 2.5f, 3.5f), (0..2).map { direct.get(it) })
+        assertEquals(3, direct.position(), "three relative puts should have advanced the position")
+    }
+
     // ---- harness -----------------------------------------------------------------------------
 
     private fun typeOf(source: String): String = TypePrinter().print(compileOk(source).typed!!.type)
