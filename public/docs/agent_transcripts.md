@@ -40,8 +40,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 66 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
-not in the same way, and the difference is worth knowing before you trust one. 47 of them are
+All 67 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+not in the same way, and the difference is worth knowing before you trust one. 48 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
 error-kind output line. (Almost always that is every box in the file. A transcript may deliberately
@@ -708,6 +708,21 @@ three stacked bands: the target, a seed missing every waypoint by 7.72, and the 
 three at 4.7e-15. Move a waypoint and re-run to watch it re-solve; move one somewhere
 `amp·trig(rate·t + phase) + centre` cannot reach and the caption reports the honest miss instead.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/rectsl_inverse_animation/metadata.edn)
+
+**rectsl_heading_fit** — The same backend one refusal later. `->face-travel` builds a `HeadingTrack`,
+which is `atan2` of a central finite difference, and until `Fn` had an `atan2` it was the *only* thing
+the differentiable backend still refused — 116 of the gallery corpus's 2754 tracks, and every refusal in
+it that was not a pattern track. The first box is the picture that makes the fix checkable rather than
+asserted: one figure-of-eight trajectory drawn three times, with the sampler's own rotation on top, the
+lowered `Fn`'s beneath it, and `atan(dy/dx)` with the quadrant thrown away at the bottom. Bands one and
+two are the same picture — 0 differing pixels, measured — and in band three half the darts point
+backwards. Each dart wears a nose pip, which is not decoration: a bare rect is symmetric under a half
+turn, so the one glyph that has to show a half turn could not. The second box turns the arrow round and
+solves *through* the `atan2` — how steep a climb makes the dart point at 45 degrees — descending the
+exact gradient from 0.15 to 1.0000000000000244 with the residual falling 0.637 to 4.7e-15. It also prints
+the θ-slot map, which is the surprising part of the machinery: a heading reads each position track twelve
+times, so one named parameter occupies 36 slots and the fitter has to move all of them as one variable.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/rectsl_heading_fit/metadata.edn)
 
 **faust_voice** — Five boxes around [Faust](faust.md), whose compiler Field ships as WebAssembly, so
 nothing is installed to run any of them. *Faust voice* is the one to click: a `#faust` region returned as

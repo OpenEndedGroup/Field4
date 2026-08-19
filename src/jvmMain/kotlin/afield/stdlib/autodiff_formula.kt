@@ -154,6 +154,48 @@ sealed interface FnExpr {
     /** Hyperbolic tangent. */
     data class Tanh(val a: FnExpr) : FnExpr
 
+    /**
+     * `kotlin.math.atan` — the principal arc tangent, in `(-pi/2, pi/2)`.
+     *
+     * Smooth at every double, with derivative `1/(1+x²)`, and that is the rarity worth pointing at.
+     * The last two kinds added to this family report a derivative of **zero** — [Floor] everywhere,
+     * [Abs] at its kink — honestly, and uselessly on their own. An angle built out of this one
+     * carries a real gradient, so a fit can descend through a heading rather than stalling on it.
+     *
+     * It is **not** how [Atan2] is built. See that entry for why not.
+     */
+    data class Atan(val a: FnExpr) : FnExpr
+
+    /**
+     * `kotlin.math.atan2(y, x)` — the quadrant-correct angle of the vector `(x, y)`, in `[-pi, pi]`.
+     *
+     * A kind of its own rather than `Atan(y/x)` plus a quadrant fix-up, and the reason is a signed
+     * zero. `RectSLSimplify`'s rule table already records that `atan2(+0.0, -1.0)` is `+pi` while
+     * `atan2(-0.0, -1.0)` is `-pi` — half a turn apart — and that a rewrite which loses the sign of a
+     * zero can therefore spin a rectangle through 180 degrees. The composed form loses it in its
+     * first operation: `-0.0 / -1.0` is `+0.0`, so `atan(y/x) + pi` answers `+pi` where the truth is
+     * `-pi`, and nothing downstream can recover it, because every comparison an [FnExpr] can make
+     * treats `+0.0` and `-0.0` as equal. `AutoDiffFnBridgeTest` measures that failure rather than
+     * leaving this paragraph as a claim.
+     *
+     * The partials are `∂/∂y = x/(x²+y²)` and `∂/∂x = -y/(x²+y²)` — finite and correctly signed as
+     * `x` crosses zero, which is the other reason `atan(y/x)` is the wrong shape for a differentiated
+     * angle.
+     */
+    data class Atan2(val y: FnExpr, val x: FnExpr) : FnExpr
+
+    /**
+     * `kotlin.math.hypot` — `√(a²+b²)`, computed without an intermediate overflow.
+     *
+     * Here because a *threshold test* has to be transcribed exactly to be worth anything.
+     * `afield.rectsl.HeadingTrack` widens its sampling window while `hypot(dx, dy) <= 1e-9`, and
+     * `sqrt(dx*dx + dy*dy)` is a different function from `Math.hypot` by up to an ulp — enough to
+     * take the other branch within an ulp of the threshold, which is a visible half-frame of the
+     * wrong rotation rather than a rounding error. The derivative is the unit vector `(a, b)/hypot`,
+     * and zero at the origin, where there is no direction to report.
+     */
+    data class Hypot(val a: FnExpr, val b: FnExpr) : FnExpr
+
     /** `Math.pow(a, b)` — spelled as the real call, so a literal exponent of 2.0 stays bit-identical
      *  to the hand-written `.pow(2.0)` rather than being quietly rewritten as `a * a`. */
     data class Pow(val a: FnExpr, val b: FnExpr) : FnExpr
@@ -255,6 +297,14 @@ object FnFormulas {
         // period arithmetic of the piecewise oscillators is missing, and it is what lets RectSL's
         // `loop-time` and `pingpong-time` lower into an Fn at all.
         put("floor", FnExpr.Floor(child("source")))
+        // The angle family. `atan` is the smooth one — a real derivative at every double, which is
+        // what `floor` and `sign` are not — and `atan2` is a primitive rather than `atan(y/x)` with a
+        // quadrant fix-up, because the fix-up is half a turn wrong at a negative zero. `hypot` came
+        // with it: RectSL's HeadingTrack decides *which* atan2 to take by comparing a length to
+        // 1e-9, and a length that is an ulp out takes the other branch. See the FnExpr entries.
+        put("atan", FnExpr.Atan(child("source")))
+        put("atan2", FnExpr.Atan2(child("source"), child("x")))
+        put("hypot", FnExpr.Hypot(child("source"), child("y")))
         put("clamp", FnExpr.CoerceIn(child("source"), child("min"), child("max")))
         put(
             "softclip",
@@ -384,6 +434,15 @@ fun evalFormula(
     is FnExpr.Exp -> kotlin.math.exp(evalFormula(expr.a, x, alpha, childValue))
     is FnExpr.Ln -> kotlin.math.ln(evalFormula(expr.a, x, alpha, childValue))
     is FnExpr.Tanh -> kotlin.math.tanh(evalFormula(expr.a, x, alpha, childValue))
+    is FnExpr.Atan -> kotlin.math.atan(evalFormula(expr.a, x, alpha, childValue))
+    is FnExpr.Atan2 -> kotlin.math.atan2(
+        evalFormula(expr.y, x, alpha, childValue),
+        evalFormula(expr.x, x, alpha, childValue)
+    )
+    is FnExpr.Hypot -> kotlin.math.hypot(
+        evalFormula(expr.a, x, alpha, childValue),
+        evalFormula(expr.b, x, alpha, childValue)
+    )
     is FnExpr.Pow -> Math.pow(
         evalFormula(expr.a, x, alpha, childValue),
         evalFormula(expr.b, x, alpha, childValue)
@@ -459,6 +518,18 @@ fun evalFormulaAD(
     is FnExpr.Exp -> exp(evalFormulaAD(expr.a, x, alpha, childValue))
     is FnExpr.Ln -> ln(evalFormulaAD(expr.a, x, alpha, childValue))
     is FnExpr.Tanh -> tanh(evalFormulaAD(expr.a, x, alpha, childValue))
+    // All three are already in `autodiff.kt` with the right partials — `atan` at :330, `atan2` at
+    // :471 and `hypot` at :481 — so this side of the table is a lookup, not a transcription. That
+    // asymmetry is the point of the file: the gradient of a new op is free once its formula exists.
+    is FnExpr.Atan -> atan(evalFormulaAD(expr.a, x, alpha, childValue))
+    is FnExpr.Atan2 -> atan2(
+        evalFormulaAD(expr.y, x, alpha, childValue),
+        evalFormulaAD(expr.x, x, alpha, childValue)
+    )
+    is FnExpr.Hypot -> hypot(
+        evalFormulaAD(expr.a, x, alpha, childValue),
+        evalFormulaAD(expr.b, x, alpha, childValue)
+    )
     is FnExpr.Pow -> pow(
         evalFormulaAD(expr.a, x, alpha, childValue),
         evalFormulaAD(expr.b, x, alpha, childValue)

@@ -161,14 +161,16 @@ class FirstClassShaperOpsTest {
      * `opsInFamily(family)[rng.nextInt(targets.size)]` (`FunctionEvolve.kt:63-65`), so the *size* of a
      * family is part of every seeded `evolve` run's random stream. Adding four ops to `transform` took
      * it from 15 to 19 and therefore changes which op a given seed picks; `floor` took it to 20 on
-     * 2026-08-06 — see `dev_docs/stdlib_behaviour_changes.md`. Asserting the size here makes the next
-     * addition a conscious decision rather than a silent reproducibility break.
+     * 2026-08-06, and the angle family (`atan`, `atan2`, `hypot`) to 23 on 2026-08-19 — see
+     * `dev_docs/stdlib_behaviour_changes.md`. Asserting the size here makes the next addition a
+     * conscious decision rather than a silent reproducibility break, which is exactly what it did
+     * both times.
      */
     @Test
     fun theTransformFamilySizeIsPinnedBecauseSeededEvolveDrawsFromIt() {
         val transform = OpRegistry.opsInFamily("transform")
         assertEquals(
-            20, transform.size,
+            23, transform.size,
             "the transform family changed size, which reseeds every evolve run that mutates a " +
                 "transform node — declare it in dev_docs/stdlib_behaviour_changes.md: $transform"
         )

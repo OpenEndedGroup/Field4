@@ -1,0 +1,245 @@
+name: rectsl_heading_fit
+description: >
+  A heading is now differentiable, and this is what that buys. RectSL's `->face-travel` builds a
+  HeadingTrack — atan2 of a central finite difference — which was the last thing the Fn backend
+  refused, and 116 of the gallery corpus's 2754 tracks. Box one draws the proof: one figure-of-eight
+  trajectory, three bands, the sampler's own rotation on top, the lowered Fn's underneath (0 differing
+  pixels), and `atan(dy/dx)` with the quadrant thrown away at the bottom, where half the darts point
+  backwards. Each dart carries a nose pip because a bare rect is symmetric under a half turn, which is
+  exactly the error being shown. Box two turns the arrow round and *solves* through the atan2: it asks
+  how steep a climb makes the dart point at 45 degrees, and descends the exact gradient from 0.15 to
+  1.0000000000000244. Open or replay this into a fresh Field4 and look at box one: bands one and two
+  are the same picture, band three is what losing a quadrant looks like.
+operations:
+  - create:
+      box: rectsl_heading_lowering
+      name: a heading, and the half turn it avoids
+      frame: { x: 80.0, y: 60.0, w: 280.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.rectsl.*
+          import afield.stdlib.Functions
+          import afield.stdlib.extractParameters
+          import java.util.Base64
+          import kotlin.math.PI
+          import kotlin.math.atan
+
+          val duration = 4.0
+          fun clock(): Track<Double> =
+              LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(duration, duration)))
+          fun wave(rate: Double, amplitude: Double): Track<Double> =
+              BinaryDoubleTrack(
+                  MappedDoubleTrack(
+                      BinaryDoubleTrack(clock(), constantTrack(rate), TrackOp2.MUL), TrackOp1.SIN
+                  ),
+                  constantTrack(amplitude), TrackOp2.MUL
+              )
+
+          // A figure of eight: wide, and travelling leftwards for half its length, which is where
+          // atan2's branch cut is and therefore where a lost quadrant shows.
+          val omega = 2.0 * PI / duration
+          val x = wave(omega, 8.0)
+          val y = wave(2.0 * omega, 2.6)
+
+          // The rotation, three ways.
+          val heading = HeadingTrack(x, y)
+          val lowered = heading.toFn(Functions.Domain(0.0, duration)).orThrow()
+          val quadrantLess: (Double) -> Double = { t ->
+              val h = heading.eps
+              atan((y.sample(t + h) - y.sample(t - h)) / (x.sample(t + h) - x.sample(t - h)))
+          }
+
+          val strobe = (0..15).map { it * duration / 15.0 }
+          val worst = strobe.maxOf { kotlin.math.abs(heading.sample(it) - lowered.eval(it)) }
+          val halfTurns = strobe.count {
+              kotlin.math.abs(kotlin.math.abs(heading.sample(it) - quadrantLess(it)) - PI) < 1e-6
+          }
+
+          val png = RectSLFitFigure.render(
+              bands = listOf(
+                  RectSLFitFigure.Band(
+                      "sampler", x, y, afield.Color4(0.86, 0.88, 0.91),
+                      note = "headingtrack.sample", rotation = heading::sample
+                  ),
+                  RectSLFitFigure.Band(
+                      "lowered", x, y, afield.Color4(0.29, 0.83, 0.7),
+                      note = "fn err %.0e".format(worst), rotation = lowered::eval
+                  ),
+                  RectSLFitFigure.Band(
+                      "atan only", x, y, afield.Color4(1.0, 0.42, 0.28),
+                      note = "$halfTurns half turns", rotation = quadrantLess
+                  )
+              ),
+              markers = emptyList(),
+              wall = WallSpec(19.0, 7.0, UnitKind.Meters),
+              rectSize = Vec2d(1.35, 0.4),
+              times = strobe,
+              bandHeight = 230
+          )
+          display(
+              "figure",
+              "<img src='data:image/png;base64,${Base64.getEncoder().encodeToString(png)}' " +
+                  "style='width:100%;border-radius:5px;display:block'/>"
+          )
+
+          """worst |sampler - lowered| over ${strobe.size} strobes: $worst
+          |the quadrant-less form is a half turn out at $halfTurns of them
+          |lowered graph: ${lowered.extractParameters().size} numeric leaves""".trimMargin()
+  - execute:
+      box: rectsl_heading_lowering
+      property: code
+      type: fragment
+      code: |
+          import afield.rectsl.*
+          import afield.stdlib.Functions
+          import afield.stdlib.extractParameters
+          import java.util.Base64
+          import kotlin.math.PI
+          import kotlin.math.atan
+
+          val duration = 4.0
+          fun clock(): Track<Double> =
+              LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(duration, duration)))
+          fun wave(rate: Double, amplitude: Double): Track<Double> =
+              BinaryDoubleTrack(
+                  MappedDoubleTrack(
+                      BinaryDoubleTrack(clock(), constantTrack(rate), TrackOp2.MUL), TrackOp1.SIN
+                  ),
+                  constantTrack(amplitude), TrackOp2.MUL
+              )
+
+          val omega = 2.0 * PI / duration
+          val x = wave(omega, 8.0)
+          val y = wave(2.0 * omega, 2.6)
+
+          val heading = HeadingTrack(x, y)
+          val lowered = heading.toFn(Functions.Domain(0.0, duration)).orThrow()
+          val quadrantLess: (Double) -> Double = { t ->
+              val h = heading.eps
+              atan((y.sample(t + h) - y.sample(t - h)) / (x.sample(t + h) - x.sample(t - h)))
+          }
+
+          val strobe = (0..15).map { it * duration / 15.0 }
+          val worst = strobe.maxOf { kotlin.math.abs(heading.sample(it) - lowered.eval(it)) }
+          val halfTurns = strobe.count {
+              kotlin.math.abs(kotlin.math.abs(heading.sample(it) - quadrantLess(it)) - PI) < 1e-6
+          }
+
+          val png = RectSLFitFigure.render(
+              bands = listOf(
+                  RectSLFitFigure.Band(
+                      "sampler", x, y, afield.Color4(0.86, 0.88, 0.91),
+                      note = "headingtrack.sample", rotation = heading::sample
+                  ),
+                  RectSLFitFigure.Band(
+                      "lowered", x, y, afield.Color4(0.29, 0.83, 0.7),
+                      note = "fn err %.0e".format(worst), rotation = lowered::eval
+                  ),
+                  RectSLFitFigure.Band(
+                      "atan only", x, y, afield.Color4(1.0, 0.42, 0.28),
+                      note = "$halfTurns half turns", rotation = quadrantLess
+                  )
+              ),
+              markers = emptyList(),
+              wall = WallSpec(19.0, 7.0, UnitKind.Meters),
+              rectSize = Vec2d(1.35, 0.4),
+              times = strobe,
+              bandHeight = 230
+          )
+          display(
+              "figure",
+              "<img src='data:image/png;base64,${Base64.getEncoder().encodeToString(png)}' " +
+                  "style='width:100%;border-radius:5px;display:block'/>"
+          )
+
+          """worst |sampler - lowered| over ${strobe.size} strobes: $worst
+          |the quadrant-less form is a half turn out at $halfTurns of them
+          |lowered graph: ${lowered.extractParameters().size} numeric leaves""".trimMargin()
+  - await:
+      wait: pending
+  - wait:
+      millis: 600
+
+  # Spaced by the height of what box one RENDERS (a ~980x750 figure), not by its 50px frame.
+  - create:
+      box: rectsl_heading_solve
+      name: solve for where it points
+      frame: { x: 80.0, y: 900.0, w: 280.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.rectsl.*
+          import afield.stdlib.Functions
+          import kotlin.math.PI
+
+          // A dart running right at unit speed while climbing at an unknown rate. Its heading is
+          // atan2(rise, 1), so asking for 45 degrees is asking for rise = 1 — an answer you can
+          // check by hand, which is the point of choosing it.
+          val duration = 4.0
+          fun clock(): Track<Double> =
+              LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(duration, duration)))
+
+          val rise = FreeParamTrack("rise", 0.15)
+          val heading = HeadingTrack(clock(), BinaryDoubleTrack(clock(), rise, TrackOp2.MUL))
+
+          // A heading reads each of its position tracks twice per probe and widens six times, so one
+          // named parameter lands in several theta slots. The fitter moves them as one variable.
+          val graph = heading.toFn(Functions.Domain(0.0, duration)).orThrow()
+          val slots = freeParameterSlots(graph)
+
+          val fit = heading.fitParameters(
+              listOf(TrackFitTarget(1.0, PI / 4.0), TrackFitTarget(3.0, PI / 4.0)),
+              over = Functions.Domain(0.0, duration),
+              iterations = 600
+          )
+
+          val agreement = heading.gradientAgreement(
+              (1..8).map { 0.4 * it }, over = Functions.Domain(0.0, duration)
+          )
+
+          """IR:            ${heading.describe()}
+          |theta slots:   ${slots.mapValues { it.value.size }}
+          |free params:   ${heading.freeParameters()}
+          |solved:        ${fit.parameters}   (pi/4 wants rise = 1)
+          |residual:      ${fit.initialResidual} -> ${fit.finalResidual}
+          |heading(2.0):  ${fit.fitted.sample(2.0)}  vs  ${PI / 4.0}
+          |exact gradient vs central difference: $agreement""".trimMargin()
+  - execute:
+      box: rectsl_heading_solve
+      property: code
+      type: fragment
+      code: |
+          import afield.rectsl.*
+          import afield.stdlib.Functions
+          import kotlin.math.PI
+
+          val duration = 4.0
+          fun clock(): Track<Double> =
+              LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(duration, duration)))
+
+          val rise = FreeParamTrack("rise", 0.15)
+          val heading = HeadingTrack(clock(), BinaryDoubleTrack(clock(), rise, TrackOp2.MUL))
+
+          val graph = heading.toFn(Functions.Domain(0.0, duration)).orThrow()
+          val slots = freeParameterSlots(graph)
+
+          val fit = heading.fitParameters(
+              listOf(TrackFitTarget(1.0, PI / 4.0), TrackFitTarget(3.0, PI / 4.0)),
+              over = Functions.Domain(0.0, duration),
+              iterations = 600
+          )
+
+          val agreement = heading.gradientAgreement(
+              (1..8).map { 0.4 * it }, over = Functions.Domain(0.0, duration)
+          )
+
+          """IR:            ${heading.describe()}
+          |theta slots:   ${slots.mapValues { it.value.size }}
+          |free params:   ${heading.freeParameters()}
+          |solved:        ${fit.parameters}   (pi/4 wants rise = 1)
+          |residual:      ${fit.initialResidual} -> ${fit.finalResidual}
+          |heading(2.0):  ${fit.fitted.sample(2.0)}  vs  ${PI / 4.0}
+          |exact gradient vs central difference: $agreement""".trimMargin()
+  - await:
+      wait: pending
+  - wait:
+      millis: 400

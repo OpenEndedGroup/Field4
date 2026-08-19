@@ -194,7 +194,18 @@ object OpRegistry {
         OpSpec("abs", "transform", setOf("absoluteValue")) { buildUnary(it) { f -> f.abs() } },
         OpSpec("floor", "transform", setOf("floorY")) { buildUnary(it) { f -> f.floor() } },
         OpSpec("flip", "transform", setOf("negate")) { buildUnary(it) { f -> f.flip() } },
-        OpSpec("sign", "transform", setOf("signum")) { buildUnary(it) { f -> f.sign() } }
+        OpSpec("sign", "transform", setOf("signum")) { buildUnary(it) { f -> f.sign() } },
+        // The angle family, which arrived with RectSL's differentiable heading. `atan2` and `hypot`
+        // read their second operand as a child so a transmutation can put a signal there, and the
+        // defaults are the ones that make each degenerate into something recognisable: `atan2(y, 1)`
+        // is `atan(y)` up to the quadrant, and `hypot(a, 0)` is `|a|`.
+        OpSpec("atan", "transform", setOf("arctan")) { buildUnary(it) { f -> f.atan() } },
+        OpSpec("atan2", "transform", setOf("arctan2")) {
+            buildUnary(it) { f -> f.atan2(it.childOr(1.0, "x")) }
+        },
+        OpSpec("hypot", "transform", setOf("length")) {
+            buildUnary(it) { f -> f.hypot(it.childOr(0.0, "y")) }
+        }
     )
 
     private val specByName: Map<String, OpSpec> = buildMap {

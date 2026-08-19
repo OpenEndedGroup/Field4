@@ -29,6 +29,7 @@ define("bithero/fnrewrite", ["require", "vs/editor/editor.api"], function (requi
                 "rectify", "quantize", "crush", "bitCrush",
                 "exp", "abs", "absoluteValue", "flip", "negate", "sign", "signum",
                 "floor", "floorY",
+                "atan", "arctan", "atan2", "arctan2", "hypot", "length",
                 "delay", "mirror", "repeat", "warp", "timeline",
         ])
 

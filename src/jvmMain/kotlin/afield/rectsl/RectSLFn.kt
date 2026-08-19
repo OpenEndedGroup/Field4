@@ -60,22 +60,19 @@ import kotlin.math.abs
  * the first refusal it meets. This is the same discipline `FnNonDifferentiable` already applies
  * inside the stdlib, and for the same reason: the gap has to be readable, or it grows in silence.
  *
- * What is refused, and why. **This list shrank once**, when `Fn` gained a first-class differentiable
- * `floor` (`autodiff_formula.kt:257`) and `clamp01(floor(x) + 1)` turned out to be an *exact* step —
- * 1 at and above 0, 0 below, at every double including `-0.0`. Every hard edge in an animation
- * language is a step, so most of the original refusals went away. What is left:
+ * What is refused, and why. **This list has shrunk twice**, first when `Fn` gained a first-class
+ * differentiable `floor` and `clamp01(floor(x) + 1)` turned out to be an *exact* step — 1 at and
+ * above 0, 0 below, at every double including `-0.0` — and then when it gained `atan2`. Every hard
+ * edge in an animation language is a step, so the first pass took most of the original refusals;
+ * [HeadingTrack] took the rest. What is left:
  *
- * - [HeadingTrack] — `atan2` has no `Fn` op. Closable: it needs an `FnExpr.Atan` plus atan2's
- *   quadrant fix-up, which the exact step can now supply. This is the whole of the residual
- *   refusal rate on the gallery.
- * - `TrackOp2.MOD` with a non-constant divisor — Kotlin's `%` truncates toward zero and `trunc` is
- *   not `floor`, so rebuilding it needs a sign primitive `Fn` does not have. A statically constant
- *   pair still folds.
- * - The near-zero guards on `TrackOp2.DIV` and `TrackOp3.SMOOTHSTEP`. RectSL's `/` returns 0 where
- *   `|divisor| <= 1e-12` and its `smoothstep` returns 0 for coincident edges. The *indicator* is
- *   now expressible, but the false branch still evaluates `a/b`, so the product is `0·inf` = NaN
- *   rather than 0. Where the divisor (or the edge pair) is statically constant the guard is folded
- *   and the lowering is exact; where it is not, the op is refused rather than silently dropped.
+ * - `TrackOp2.MOD` — and the reason on this line was **wrong until 2026-08-19**, which is the
+ *   argument for measuring a refusal rather than reasoning one out. It said `%` needed a sign
+ *   primitive; it does not, since `trunc(z) = s·floor(z) - (1-s)·floor(-z)` with `s = fnStepFrom(z)`
+ *   is exact at every double. What actually defeats it is that Kotlin's `%` on doubles is the
+ *   *exact* remainder, and `a - b·trunc(a/b)` in double arithmetic is a different function once the
+ *   quotient outgrows 53 bits: `1e17 % 3` is `1.0` and the reconstruction says `0.0`. Silently, and
+ *   as a zero, which is indistinguishable from the guard having fired. A constant pair still folds.
  * - The pattern tracks ([PatTrack] and friends) — an interpreter over a mini-notation tree, not an
  *   expression of fixed shape. The same reason `FnNonDifferentiable` files `pat` itself, and the
  *   only refusal here that is not closable.
@@ -95,6 +92,18 @@ import kotlin.math.abs
  *   included.
  * - The expo and elastic easings, whose closed forms do not reach their own endpoints; see
  *   `withExactEndpoints` below.
+ * - [HeadingTrack] — the entry this file used to describe as "the whole of the residual refusal rate
+ *   on the gallery", and it was: 116 of the corpus's 2754 tracks, and every non-pattern refusal in
+ *   it. The refusal text predicted `FnExpr.Atan` plus a quadrant fix-up; the fix-up turned out to be
+ *   half a turn wrong at a negative zero, so what landed is a first-class `FnExpr.Atan2` (with
+ *   `Atan` and `Hypot` beside it). See [lowerHeading], which also records the one signed-zero corner
+ *   where it still parts company with the sampler.
+ * - The near-zero guards on `TrackOp2.DIV` and `TrackOp3.SMOOTHSTEP`, whose stated obstacle was that
+ *   masking the result still evaluates `a/b`, so `0·inf` is NaN rather than 0. True, and the answer
+ *   was to stop masking the result: guard the *divisor* instead, as `b·live + (1 - live)`, which is
+ *   `b` where the guard passes and exactly `1.0` where it does not, so no infinity is ever created.
+ *   The sign of the zero is then repaired by adding [fnZeroSelector]'s `-0.0`/`+0.0`, since `x + -0.0`
+ *   is the true additive identity and `x + +0.0` is not. See [fnGuardedQuotient].
  *
  * # How the fidelity is checked
  *
@@ -225,6 +234,76 @@ internal fun fnTime(): Functions.Fn = with(Functions) { identity(Functions.Domai
  */
 internal fun fnStepFrom(x: Functions.Fn): Functions.Fn =
     with(Functions) { fnClamp01(x.floor() + 1.0) }
+
+/**
+ * The additive identity on `Double`, as an `Fn` expression selected by an exact 0/1 indicator:
+ * `-0.0` where [live] is 1, `+0.0` where it is 0.
+ *
+ * This tiny thing is what makes a *guarded* op lower exactly, and it is worth its own function
+ * because the reason is not obvious. `x + (+0.0)` is not the identity — it turns `-0.0` into `+0.0`.
+ * `x + (-0.0)` **is**, for every double including both zeros. So a masked expression `q·live` can be
+ * repaired to match a guard that returns literal `0.0`:
+ *
+ * ```
+ * q·live + zeroSelector(live)
+ * ```
+ *
+ * is `q` exactly where the guard passes (adding `-0.0` changes nothing, even for `q = -0.0`) and
+ * `+0.0` exactly where it fails (`q·0.0` is `±0.0`, and `±0.0 + 0.0` is `+0.0`). Without it a
+ * negative numerator under a suppressed divisor would come out as `-0.0` where the sampler says
+ * `0.0`, and `RectSLSimplify`'s rule table is explicit about what a stray signed zero can cost here.
+ *
+ * The construction is `-((live - 1)·0)`: `live = 1` gives `-(0·0) = -0.0`, `live = 0` gives
+ * `-(-1·0) = +0.0`.
+ */
+internal fun fnZeroSelector(live: Functions.Fn): Functions.Fn =
+    with(Functions) { ((live - 1.0) * 0.0).flip() }
+
+/**
+ * `if (|b| <= 1e-12) 0.0 else a / b` — [TrackOp2.DIV]'s near-zero guard, as arithmetic.
+ *
+ * This refusal outlived the others because the obvious form does not work. The *indicator* has been
+ * expressible since [fnStepFrom] existed, but `[|b| > 1e-12] · (a/b)` still evaluates `a/b` on the
+ * branch it means to suppress, and `0 · inf` is NaN rather than 0. The fix is to make the suppressed
+ * branch harmless before dividing rather than to mask its result: the divisor itself becomes
+ * `b·live + (1 - live)`, which is `b` where the guard passes and exactly `1.0` where it does not, so
+ * nothing ever divides by a near-zero and no infinity is created to be masked.
+ *
+ * `+ fnZeroSelector(live)` then repairs the sign of the zero. Exact at every double.
+ *
+ * The one case where this parts company with the sampler is a **non-finite numerator under a
+ * suppressed divisor**: `a = inf, |b| <= 1e-12` gives `inf·0 = NaN` here and `0.0` there. A track
+ * that produces an infinity is outside what any of the three backends agrees on, and a NaN is loud;
+ * it is recorded rather than repaired because repairing it would cost a `clamp` on every quotient.
+ */
+internal fun fnGuardedQuotient(a: Functions.Fn, b: Functions.Fn): Functions.Fn = with(Functions) {
+    val live = 1.0 - fnStepFrom(fnLeaf(1e-12) - b.abs())
+    val safeDivisor = b * live + (1.0 - live)
+    a / safeDivisor * live + fnZeroSelector(live)
+}
+
+/**
+ * `smoothstep(low, high, x)` with [TrackOp3.SMOOTHSTEP]'s coincident-edge guard — the same shape of
+ * problem as [fnGuardedQuotient], and slightly easier.
+ *
+ * `Functions.smoothStep` and RectSL's are different functions (the stdlib op reads the *sample
+ * position* and sorts its edges; RectSL's reads a third track and does not), so this is transcribed
+ * from `TrackOp3.SMOOTHSTEP.eval` rather than delegated to the stdlib op. The guarded denominator is
+ * the identical trick; the sign repair is not needed, because `u` is clamped to `0..1` and therefore
+ * never negative, so the suppressed `u · 0.0` is `+0.0` on its own — and `u·u` is a square, which is
+ * `+0.0` for either zero anyway.
+ */
+internal fun fnGuardedSmoothstep(
+    low: Functions.Fn,
+    high: Functions.Fn,
+    x: Functions.Fn
+): Functions.Fn = with(Functions) {
+    val denominator = high - low
+    val live = 1.0 - fnStepFrom(fnLeaf(1e-12) - denominator.abs())
+    val safeDenominator = denominator * live + (1.0 - live)
+    val u = fnClamp01((x - low) / safeDenominator) * live
+    u * u * (3.0 - u * 2.0)
+}
 
 /**
  * The floored modulo `x - period·floor(x / period)` — `positiveModulo`'s closed form.
@@ -607,19 +686,132 @@ private fun lowerTrackToFn(
             }
         }
 
-        is HeadingTrack -> RectSLFnLowering.Refused(
-            "a heading is atan2 of a finite difference, and Fn has no atan2 op",
-            closable = true,
-            missing = "an FnExpr.Atan (derivative 1/(1+x^2)) plus the quadrant fix-up atan2 needs, " +
-                "which the exact step from fnStepFrom can now supply; the finite difference itself " +
-                "is already just two lookups of the same lowered track"
-        )
+        is HeadingTrack -> lowerHeading(track, window)
 
         is CycleGateTrack, is CycleSwitchTrack, is DegradeGateTrack, is PatTrack, is PatHoldTrack ->
             RectSLFnLowering.Refused(
                 "a pattern track is an interpreter over a mini-notation tree, not an expression of " +
                     "fixed shape — the same reason FnNonDifferentiable refuses `pat` itself"
             )
+    }
+}
+
+/** How many times [HeadingTrack.sample] widens its probe before it gives up. */
+private const val HEADING_WIDENINGS: Int = 6
+
+/** The velocity length below which [HeadingTrack.sample] calls the point stationary and widens. */
+private const val HEADING_MOTION_EPSILON: Double = 1e-9
+
+/**
+ * A heading — the direction of travel of `(x(t), y(t))` — as one differentiable expression.
+ *
+ * This was the last closable refusal on the gallery, and the last one worth anything: 116 of the
+ * corpus's 2754 tracks, and **every** refusal that was not a pattern track. What it needed was not a
+ * cleverer identity but a primitive, and the primitive turned out to be `atan2` itself rather than
+ * the `atan` + quadrant fix-up this file's own refusal text had been predicting. The fix-up is half
+ * a turn wrong at a negative zero — `-0.0 / -1.0` is `+0.0`, so `atan(y/x) + pi` answers `+pi` where
+ * `atan2(-0.0, -1.0)` is `-pi` — and `RectSLSimplify`'s rule table is explicit that half a turn is
+ * exactly the size of error a lost signed zero produces here. So `FnExpr.Atan2` is a kind of its
+ * own, `Fn.atan2` calls the same `kotlin.math.atan2` [HeadingTrack.sample] does, and the sign of a
+ * zero is inherited rather than reconstructed. `FnExpr.Atan` exists too, because it is a genuinely
+ * missing smooth primitive, but nothing here goes through it.
+ *
+ * The rest is the widening search, as arithmetic. [HeadingTrack.sample] is not one `atan2`; it is
+ * six, tried in turn until the central difference shows real motion:
+ *
+ * ```kotlin
+ * var h = eps
+ * repeat(6) {
+ *     val dx = x.sample(t + h) - x.sample(t - h)
+ *     val dy = y.sample(t + h) - y.sample(t - h)
+ *     if (hypot(dx, dy) > 1e-9) return atan2(dy, dx) + offset
+ *     h *= 4.0
+ * }
+ * return offset
+ * ```
+ *
+ * Every part of that is already expressible:
+ *
+ * - `x(t ± h)` is `x.shift(∓h)`. `shift`'s formula is `AtX(X - dx, source)`, so `t - (-h)` is
+ *   *bit-identically* the sampler's `t + h`. [fnLookupAt] would have done it too, and its own KDoc
+ *   admits two extra roundings; a finite difference is the last place to spend them.
+ * - `hypot(dx, dy) > 1e-9` is `1 - fnStepFrom(1e-9 - hypot(dx, dy))`, since [fnStepFrom] is 1 exactly
+ *   when its argument is at or above zero. That lands the strict inequality the right way round, and
+ *   it is why `Fn` gained a real `hypot` rather than `pow(dx² + dy², 0.5)`: the two differ by up to
+ *   an ulp, which is a different branch within an ulp of the threshold.
+ * - "the first one that moves" is a nest, built from the widest probe inward:
+ *   `Rₖ = mₖ·atan2(dyₖ, dxₖ) + (1 - mₖ)·Rₖ₊₁`, with `R₆ = 0`.
+ *
+ * The nest is safe in a way the still-refused [TrackOp2.DIV] guard is not: `atan2` is finite for
+ * every finite input, so the unselected side is `0 · finite = ±0.0` and not `0 · inf = NaN`. The
+ * selected side is `1.0 · atan2ₖ`, which preserves a `-0.0`, and adding `±0.0` to a non-zero is
+ * exact — so it reproduces the sampler bit for bit, which
+ * `RectSLHeadingTest.theLoweredHeadingFollowsTheSamplerAroundTheWholeCircle` measures at 4001 of
+ * 4001 samples around a winding circle.
+ *
+ * **The one divergence, stated rather than hidden.** The sampler returns a bare `offset` when
+ * nothing moves and `atan2 + offset` when something does; this always adds. Those agree for every
+ * `offset` except `-0.0`, where the sum's `+0.0 + (-0.0)` is `+0.0` and the sampler's is `-0.0`. No
+ * RectSL program can spell a negative-zero offset (`->face-travel` passes 0.0 and
+ * `->face-travel-at` a parsed literal), and the value is a rotation in radians, where the two zeros
+ * render identically. It is recorded because the alternative to recording it is discovering it.
+ *
+ * The gradient is the derivative of the branch actually taken: `selₖ` runs through [fnStepFrom],
+ * whose `floor` is a tape constant, so it contributes no adjoint of its own and the chain rule sees
+ * `selₖ · d atan2ₖ`. That is the true derivative of this piecewise function everywhere except on a
+ * switch-over — the same convention `FnExpr.IfLt` already uses.
+ */
+private fun lowerHeading(
+    track: HeadingTrack,
+    window: Functions.Domain
+): RectSLFnLowering<Functions.Fn> {
+    // A point that never moves has no heading, and the sampler says so by falling through all six
+    // probes to the bare offset. Answering that here is not an optimisation for its own sake: it is
+    // the same fold [trackConstantValue] performs for every other track shape, and without it a
+    // hundred-copy array of stationary rects becomes twenty-four lookups of a literal, a hundred
+    // times over. (It stays local rather than going into [trackConstantValue] because that function
+    // is shared with the GLSL emitter, and this backend is the only one that needs it.)
+    val constantX = trackConstantValue(track.x, foldFreeParameters = false)
+    val constantY = trackConstantValue(track.y, foldFreeParameters = false)
+    if (constantX != null && constantY != null) return lowered(fnLeaf(track.offset))
+
+    // The probes read the sources at `t ± h` for h as wide as `eps · 4⁵`, so the sources have to
+    // lower over a window that holds the widest of them. Asking for the caller's window would let a
+    // gate or a loop fold on a branch the difference actually straddles — the fold would be correct
+    // for the heading's own instant and wrong for the two it looks at.
+    val reach = track.eps * Math.pow(4.0, (HEADING_WIDENINGS - 1).toDouble())
+    val probeWindow = if (window.isFinite) {
+        Functions.Domain(window.start - reach, window.endInclusive + reach)
+    } else {
+        window
+    }
+
+    val x = lowerTrackToFn(track.x, probeWindow)
+    if (x is RectSLFnLowering.Refused) return refused("the x of this heading — ${x.why}")
+    val y = lowerTrackToFn(track.y, probeWindow)
+    if (y is RectSLFnLowering.Refused) return refused("the y of this heading — ${y.why}")
+    val xFn = (x as RectSLFnLowering.Lowered).value
+    val yFn = (y as RectSLFnLowering.Lowered).value
+
+    // The half-widths the sampler tries, in the order it tries them.
+    val halfWidths = (0 until HEADING_WIDENINGS).map { level -> track.eps * Math.pow(4.0, level.toDouble()) }
+
+    return with(Functions) {
+        // Built from the widest probe inward, so the selection is a **nest** rather than a sum of
+        // masked terms: each probe either answers or defers to the next wider one, and the widest
+        // defers to zero, which with the `+ offset` below is the sampler's fall-through. Written as
+        // a sum it would need a running "no earlier probe has claimed this" product, and that
+        // product's own reuse grows the graph as O(n²) in the number of widenings — measured, on a
+        // heading with one free parameter, as 54 θ slots against this form's 36.
+        var answer: Functions.Fn = fnLeaf(0.0)
+        for (h in halfWidths.reversed()) {
+            val dx = xFn.shift(fnLeaf(-h)) - xFn.shift(fnLeaf(h))
+            val dy = yFn.shift(fnLeaf(-h)) - yFn.shift(fnLeaf(h))
+            // Exactly 1 where the sampler would answer (`hypot > 1e-9`), exactly 0 where it widens.
+            val moving = 1.0 - fnStepFrom(fnLeaf(HEADING_MOTION_EPSILON) - dx.hypot(dy))
+            answer = moving * dy.atan2(dx) + (1.0 - moving) * answer
+        }
+        lowered(answer + fnLeaf(track.offset))
     }
 }
 
@@ -635,17 +827,17 @@ private fun lowerBinary(
     track: BinaryDoubleTrack,
     window: Functions.Domain
 ): RectSLFnLowering<Functions.Fn> {
-    // `/` and `%` guard a near-zero divisor by returning 0, which is a discontinuity. A statically
-    // constant divisor settles the branch here and the lowering stays exact; anything else is
-    // refused rather than quietly losing the guard. (`%` is refused either way — see TrackOp2.MOD.)
+    // `/` guards a near-zero divisor by returning 0. [fnGuardedQuotient] expresses that exactly, so
+    // this is now a *fold* rather than the difference between lowering and refusing: a statically
+    // constant divisor settles the branch at build time and leaves a bare division, which is a
+    // smaller graph and one fewer step under a fitted parameter. (`%` is still refused either way —
+    // see TrackOp2.MOD, whose obstacle is the rounding in `a - b*trunc(a/b)`, not the guard.)
     if (track.op == TrackOp2.DIV) {
         val divisor = trackConstantValue(track.b, foldFreeParameters = false)
-            ?: return refused(
-                "TrackOp2.DIV — ${(track.op.fn as RectSLFnLowering.Refused).why}, and this " +
-                    "divisor is not statically constant"
-            )
-        if (abs(divisor) <= 1e-12) return lowered(fnLeaf(0.0))
-        return lowerTrackToFn(track.a, window).map { a -> with(Functions) { a / fnLeaf(divisor) } }
+        if (divisor != null) {
+            if (abs(divisor) <= 1e-12) return lowered(fnLeaf(0.0))
+            return lowerTrackToFn(track.a, window).map { a -> with(Functions) { a / fnLeaf(divisor) } }
+        }
     }
 
     val op = track.op.fn
@@ -667,22 +859,18 @@ private fun lowerTernary(
     track: TernaryDoubleTrack,
     window: Functions.Domain
 ): RectSLFnLowering<Functions.Fn> {
-    // smoothstep's coincident-edge guard is the same shape of problem as DIV's: constant edges
-    // settle it, anything else loses it.
+    // smoothstep's coincident-edge guard is the same shape of problem as DIV's, and now the same
+    // fold: constant edges settle it here, anything else goes through [fnGuardedSmoothstep].
     if (track.op == TrackOp3.SMOOTHSTEP) {
         val low = trackConstantValue(track.a, foldFreeParameters = false)
         val high = trackConstantValue(track.b, foldFreeParameters = false)
-        if (low == null || high == null) {
-            return refused(
-                "TrackOp3.SMOOTHSTEP — ${(track.op.fn as RectSLFnLowering.Refused).why}, and these " +
-                    "edges are not statically constant"
-            )
-        }
-        if (abs(high - low) <= 1e-12) return lowered(fnLeaf(0.0))
-        return lowerTrackToFn(track.c, window).map { x ->
-            with(Functions) {
-                val u = fnClamp01((x - fnLeaf(low)) / fnLeaf(high - low))
-                u * u * (3.0 - u * 2.0)
+        if (low != null && high != null) {
+            if (abs(high - low) <= 1e-12) return lowered(fnLeaf(0.0))
+            return lowerTrackToFn(track.c, window).map { x ->
+                with(Functions) {
+                    val u = fnClamp01((x - fnLeaf(low)) / fnLeaf(high - low))
+                    u * u * (3.0 - u * 2.0)
+                }
             }
         }
     }
@@ -838,8 +1026,28 @@ internal const val FREE_PARAM_GRAPH_PREFIX: String = "rectsl.param:"
  * — so index *i* here is index *i* there. A label node contains exactly one leaf, so the index
  * assigned while descending into it is the one the name belongs to.
  */
-fun freeParameterIndices(fn: Functions.Fn): Map<String, Int> {
-    val out = LinkedHashMap<String, Int>()
+fun freeParameterIndices(fn: Functions.Fn): Map<String, Int> =
+    freeParameterSlots(fn).mapValues { (_, indices) -> indices.first() }
+
+/**
+ * **Every** θ index each named free parameter occupies, in graph order — the honest form of
+ * [freeParameterIndices], which can only report one.
+ *
+ * One IR parameter can become several θ leaves, because a lowering is free to use the same sub-`Fn`
+ * more than once and `FnAutoDiff.leafIndices` keys by *path*: two occurrences of one node are two
+ * paths and therefore two indices. `x + x` over a single [FreeParamTrack] has always had this shape;
+ * [lowerHeading] made it the common case, since a heading reads each of its position tracks twelve
+ * times (two probes, six widenings).
+ *
+ * The distinction matters because the two spellings disagree about what a fit *is*. Moving one of a
+ * parameter's twelve slots and leaving eleven does not fit the track — it produces a lowered graph
+ * that no longer corresponds to any [substituteParameters] of the IR, so [TrackFitResult.fitted] and
+ * [TrackFitResult.fittedFn] would sample differently. Treating the slots as one variable, with the
+ * gradient summed over them and the step applied to all of them, is the ordinary chain rule for a
+ * repeated occurrence and is what [Track.fitParameters] does.
+ */
+fun freeParameterSlots(fn: Functions.Fn): Map<String, List<Int>> {
+    val out = LinkedHashMap<String, MutableList<Int>>()
     var counter = 0
     fun walk(f: Functions.Fn) {
         val node = f.graphNode()
@@ -850,7 +1058,7 @@ fun freeParameterIndices(fn: Functions.Fn): Map<String, Int> {
         if (node.op == "name" && label != null && label.startsWith(FREE_PARAM_GRAPH_PREFIX) &&
             counter == before + 1
         ) {
-            out[label.removePrefix(FREE_PARAM_GRAPH_PREFIX)] = before
+            out.getOrPut(label.removePrefix(FREE_PARAM_GRAPH_PREFIX)) { mutableListOf() } += before
         }
     }
     walk(fn)

@@ -122,6 +122,18 @@ class AutoDiffFnBridgeTest {
             // The user-reported acceptance shape: an abs in the middle of a product, which is what
             // `fitGradient(gradient = EXACT)` used to refuse outright.
             "cos.abs*sin" to (cos(1.9).abs() * sin(1.3, amplitude = 1.0)),
+            // The angle family, added 2026-08-19 for RectSL's differentiable heading. `atan` gets a
+            // source sweeping well past ±1, so both the near-linear middle and the flattening tails
+            // sit inside the oracle's grid.
+            "atan" to sin(1.15, amplitude = 4.0, offset = 0.3).atan(),
+            // `atan2` is deliberately given an x component that **crosses zero**, which is the whole
+            // reason it is a primitive rather than `atan(y/x)` with a fix-up: the branch cut is at
+            // x < 0, and a graph that never reached negative x would check nothing the composed form
+            // would not also pass.
+            "atan2" to sin(1.3, amplitude = 0.9).atan2(cos(0.9, amplitude = 1.1)),
+            // `hypot` on the same pair, offset so it passes near the origin without landing on it —
+            // the length that gates a heading's widening search.
+            "hypot" to sin(1.3, amplitude = 0.9, offset = 0.2).hypot(cos(0.9, amplitude = 1.1)),
             // x-domain transforms.
             "scaleX" to sin(2.0, amplitude = 0.6).scaleX(1.5, 0.25),
             "warp" to sin(2.0, amplitude = 0.6).warp(cos(1.0), 0.1),

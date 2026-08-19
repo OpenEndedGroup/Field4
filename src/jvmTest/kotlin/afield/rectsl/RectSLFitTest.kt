@@ -233,19 +233,22 @@ class RectSLFitTest {
 
     @Test
     fun aFitRefusesATrackThatDoesNotLower() {
-        // Division by a track rather than by a constant: the near-zero guard is a discontinuity, and
-        // only a statically constant divisor folds it.
-        val divided = BinaryDoubleTrack(
+        // `%` by a track rather than by a constant. This used to be the DIV case; DIV lowers as of
+        // 2026-08-19, and `MOD` is now the single remaining op-level refusal — not because of its
+        // near-zero guard, which is the same one DIV's lowering handles, but because Kotlin's `%` on
+        // doubles is the *exact* remainder and `a - b*trunc(a/b)` is a different function once the
+        // quotient outgrows 53 bits. See TrackOp2.MOD, which carries the measurement.
+        val remainder = BinaryDoubleTrack(
             BinaryDoubleTrack(ramp(), FreeParamTrack("gain", 1.0), TrackOp2.MUL),
             LinearScalarTrack(listOf(TcbKey(0.0, 1.0), TcbKey(2.0, 3.0))),
-            TrackOp2.DIV
+            TrackOp2.MOD
         )
         val failure = runCatching {
-            divided.fitParameters(listOf(TrackFitTarget(0.5, 1.0), TrackFitTarget(1.5, 2.0)))
+            remainder.fitParameters(listOf(TrackFitTarget(0.5, 1.0), TrackFitTarget(1.5, 2.0)))
         }.exceptionOrNull()
         assertNotNull(failure, "a fit on a non-lowering track must refuse")
         assertTrue(
-            "guard" in (failure.message ?: ""),
+            "remainder" in (failure.message ?: ""),
             "the refusal should carry the lowering's own reason: ${failure.message}"
         )
     }
