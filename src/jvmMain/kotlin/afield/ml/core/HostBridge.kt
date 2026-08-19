@@ -518,16 +518,83 @@ object FieldMLHostBridge {
 
     private fun invoke(executable: Executable, target: Any?, arguments: List<Any?>): Any? {
         val coerced = coerceAll(executable, arguments)
-        executable.tryOpen()
+        val callable = if (executable is Method) invocable(executable) else executable
+        callable.tryOpen()
         return try {
-            when (executable) {
-                is Constructor<*> -> executable.newInstance(*coerced)
-                is Method -> executable.invoke(target, *coerced)
+            when (callable) {
+                is Constructor<*> -> callable.newInstance(*coerced)
+                is Method -> callable.invoke(target, *coerced)
+                else -> error("neither a method nor a constructor: $callable")
             }
         } catch (invocation: InvocationTargetException) {
             // The FieldML box should see what the Kotlin code complained about, not a wrapper.
             throw invocation.targetException ?: invocation
         }
+    }
+
+    /**
+     * The same method, re-resolved onto a type this code can actually invoke through.
+     *
+     * Candidates are found on `target.javaClass`, and a value's **runtime** class is very often not
+     * the type its API is declared on. `FloatBuffer.put(float)` is a public method of a public
+     * class, but the object `MemoryUtil.memFloatBuffer` hands back is a `java.nio.DirectFloatBufferU`
+     * — package-private, in a package `java.base` does not export. So `Class.getMethods` returns a
+     * `Method` whose `declaringClass` is *that*, `setAccessible` cannot open it, and `Method.invoke`
+     * throws `IllegalAccessException`. Inside a [Proxy] that arrives as an
+     * `UndeclaredThrowableException` with a null message, which is about as unhelpful as a failure
+     * gets — the box reports the wrapper and the cause exists only in the server log. That is how
+     * this was found: writing vertex data from a FieldML `eachFrame` body, where every value in
+     * sight is a JDK buffer.
+     *
+     * The fix is deliberately not to force access. `java.base` is closed on purpose and
+     * `--add-opens` is not something a FieldML box should need. It is to *ask a different type*:
+     * walk the public supertypes breadth-first, so the nearest one wins, and take the first that
+     * declares the same name and parameters somewhere invocable. For the buffer that is
+     * `java.nio.FloatBuffer` — exactly the type the author had in mind.
+     *
+     * Best effort by design: when nothing public declares it the original comes back and the call
+     * fails as it did before, because a poor diagnostic is still better than the wrong method.
+     */
+    fun invocable(method: Method): Method {
+        if (isInvocable(method.declaringClass)) return method
+        return invocableMethods.getOrPut(method) {
+            publicSupertypes(method.declaringClass)
+                .firstNotNullOfOrNull { owner ->
+                    runCatching { owner.getMethod(method.name, *method.parameterTypes) }
+                        .getOrNull()
+                        ?.takeIf { isInvocable(it.declaringClass) }
+                }
+                ?: method
+        }
+    }
+
+    private val invocableMethods = java.util.concurrent.ConcurrentHashMap<Method, Method>()
+
+    /**
+     * Whether reflection may invoke a member declared on [type]: it has to be public *and* its
+     * package exported from its module. The second half is the half that bites — a public class in
+     * a non-exported package of a named module is unreachable however public the member is.
+     */
+    private fun isInvocable(type: Class<*>): Boolean {
+        if (!Modifier.isPublic(type.modifiers)) return false
+        val module = type.module ?: return true
+        if (!module.isNamed) return true
+        return module.isExported(type.packageName)
+    }
+
+    /** Superclasses and interfaces, breadth-first, so the closest usable declaration wins. */
+    private fun publicSupertypes(type: Class<*>): List<Class<*>> {
+        val seen = linkedSetOf<Class<*>>()
+        val queue = ArrayDeque<Class<*>>()
+        type.superclass?.let { queue += it }
+        queue += type.interfaces
+        while (queue.isNotEmpty()) {
+            val next = queue.removeFirst()
+            if (!seen.add(next)) continue
+            next.superclass?.let { queue += it }
+            queue += next.interfaces
+        }
+        return seen.toList()
     }
 
     private fun coerceAll(executable: Executable, arguments: List<Any?>): Array<Any?> {
