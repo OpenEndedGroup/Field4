@@ -262,6 +262,9 @@ The handles are the point of the whole design, not a convenience bolted on after
 glyph's own visual centre — so a bare `rotation = 0.3` spins each letter about itself and looks like
 what you meant. One layout, computed once, and a function of elapsed seconds written into it.
 
+(`animate { }` and the `AnimationClock` it reads are Field's frame model; if you want to know what a
+frame actually is, and what stops one, see [Frames, and what a frame is](animation_time_model.md).)
+
 ```diffstatic_runner {data-lang=kotlin video="assets/typography_examples/kinetic.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="900" embed=true name="typography-kinetic" alt="the word KINETIC with a travelling wave of rotation, scale and vertical lift running left to right through the letters, each letter turning about its own centre inside a frame that never moves"}
 :::static
 :::fold the face, the layout, and a window fixed from the widest the wave will ever get

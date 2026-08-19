@@ -263,6 +263,10 @@ diagram snaps back to straight lines. That snap is real rather than a rendering 
 every boundary piece is decided by an *exact* equality of weights, so it is genuinely discontinuous in
 the geometry while looking continuous in the picture.
 
+The sweep below is an `animate { }` reading `AnimationClock` — Field's frame model, described in
+[Frames, and what a frame is](animation_time_model.md). Writing the sweep against the clock rather
+than against `frameNumber` is what makes the recorded clip identical on every build.
+
 ```diffstatic_runner {data-lang=kotlin video="assets/spatial_geometry_examples/apollonius_sweep.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="240" w="760" embed=true name="apollonius-weight-sweep" alt="an Apollonius diagram of five sites with one site's weight rising from 1.0 to 2.7 and falling back, its straight bisectors bowing into circular arcs that grow until two neighbouring cells pinch shut into complete discs, then re-open and flatten"}
 :::static
 :::fold the same five sites, a fixed window, the palette, and the clock
