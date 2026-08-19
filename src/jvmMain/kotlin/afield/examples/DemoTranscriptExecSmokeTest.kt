@@ -221,6 +221,11 @@ object DemoTranscriptExecSmokeTest {
         // rasterises target/seed/fitted with TriMesh.renderPng into display(). `toFn` and the Adam
         // fitter are plain arithmetic over Fn — no shader, no Window, no Renderer.
         "rectsl_inverse_animation",
+        // The same backend one refusal later: `->face-travel` lowers now, so a heading can be drawn
+        // beside its own lowering and beside the quadrant-less form it is *not*, and then solved
+        // through. CPU raster into display() and an Adam descent over an Fn — no Window, no
+        // Renderer, and no atan2 anywhere except the one in the graph under test.
+        "rectsl_heading_fit",
         // The three control-surface affordances: slider laws, a momentary button, a meter fed by a
         // `source` lambda. Pure arithmetic and one daemon sampler thread — no Window, no Renderer, no
         // audio device — so the whole transcript runs to completion here.
