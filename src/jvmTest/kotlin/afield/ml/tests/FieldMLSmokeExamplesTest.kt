@@ -276,18 +276,50 @@ class FieldMLSmokeExamplesTest {
         )
     }
 
-    /** The `:code "…"` values of a saved Field document, with EDN's string escapes undone. */
-    private fun ednCodeStrings(text: String): List<String> =
-        Regex(""":code\s+"((?:[^"\\]|\\.)*)"""")
-            .findAll(text)
-            .map { match ->
-                match.groupValues[1]
-                    .replace("\\n", "\n")
-                    .replace("\\t", "\t")
-                    .replace("\\\"", "\"")
-                    .replace("\\\\", "\\")
+    /**
+     * The `:code "…"` values of a saved Field document, with EDN's string escapes undone.
+     *
+     * Scanned by hand rather than with `Regex(""":code\s+"((?:[^"\\]|\\.)*)"""")`, which is what
+     * this was and which **overflowed the stack**. Java compiles a `*` over a group into a
+     * recursive `Pattern$Loop.match`, so a quoted string costs one JVM frame per character; a box's
+     * `:code` runs to thousands. It passed run alone and threw `StackOverflowError` inside the full
+     * suite, where the stack is already deep — the worst shape of failure, because the test looks
+     * flaky and the stack trace names `java.util.regex`, not this line. A single forward pass has
+     * no such limit. (Found on 2026-08-19 by the first full `jvmTest` run after the merge.)
+     */
+    private fun ednCodeStrings(text: String): List<String> {
+        val key = ":code"
+        val out = mutableListOf<String>()
+        var i = 0
+        while (true) {
+            val at = text.indexOf(key, i)
+            if (at < 0) break
+            var j = at + key.length
+            while (j < text.length && text[j].isWhitespace()) j++
+            if (j >= text.length || text[j] != '"') { i = at + key.length; continue }
+            j++
+            val sb = StringBuilder()
+            while (j < text.length && text[j] != '"') {
+                val c = text[j]
+                if (c == '\\' && j + 1 < text.length) {
+                    when (val escaped = text[j + 1]) {
+                        'n' -> sb.append('\n')
+                        't' -> sb.append('\t')
+                        '"' -> sb.append('"')
+                        '\\' -> sb.append('\\')
+                        else -> sb.append('\\').append(escaped)
+                    }
+                    j += 2
+                } else {
+                    sb.append(c)
+                    j++
+                }
             }
-            .toList()
+            out += sb.toString()
+            i = if (j < text.length) j + 1 else text.length
+        }
+        return out
+    }
 
     private fun compileOk(name: String, source: String): CompilationResult {
         val result = FieldMLCompiler.compile(source.trimIndent())
