@@ -23,7 +23,7 @@ There is one fact to put first, because everything else follows from it and almo
 
 `Runloop.start()` — `src/jvmMain/kotlin/afield/Runloop.kt` — is the whole scheduler:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 while (true) {
     preRun.update()
     main.frame()          // ← every Frames in the document advances here
@@ -42,7 +42,7 @@ here waits for a display.
 lines of it. `dispatch` appends the runnable to a queue. `frame()` atomically swaps in a fresh queue
 and runs everything that was in the old one, inline, to completion:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 fun frame(): Int {
     val currentList = synchronized(queueLock) {
         val current = nextList; nextList = LinkedTransferQueue(); current
@@ -62,7 +62,7 @@ frame is one drain of the dispatcher's queue.** Everything below is a consequenc
 A `Frames` is inert. Building one runs no code and schedules nothing. What starts it is *returning*
 it as the value of your box:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val n = expensiveSetup()      // runs once, when you hit run
 animate { drawFrameOf(n) }    // the box's value — Field launches this
 ```
@@ -74,14 +74,14 @@ once, on the run; the block runs once per frame after that.
 
 The corollary catches people: if `animate { }` is not the returned expression, nothing happens.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 animate { drawFrameOf(n) }    // not the last expression …
 println("set up")             // … so this is the box's value, and nothing animates
 ```
 
 `animate` itself is not syntax and not a rewrite. It is three lines in `stdlib.kt`:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 fun animate(block: suspend Frames.() -> Unit): Frames = eachFrame(block)
 ```
 
@@ -174,7 +174,7 @@ This is the question a reader actually arrives with, and it has more than one an
 them lands in the same place — `Frames.frame()`, which is the only suspension point a well-behaved
 frame body has:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 suspend fun frame(): Boolean {
     job = coroutineContext[Job]
     if (stillborn && job != null) { job?.cancel(); … }
