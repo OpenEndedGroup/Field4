@@ -60,14 +60,12 @@ import kotlin.math.abs
  * the first refusal it meets. This is the same discipline `FnNonDifferentiable` already applies
  * inside the stdlib, and for the same reason: the gap has to be readable, or it grows in silence.
  *
- * What is refused, and why. **This list shrank once**, when `Fn` gained a first-class differentiable
- * `floor` (`autodiff_formula.kt:257`) and `clamp01(floor(x) + 1)` turned out to be an *exact* step —
- * 1 at and above 0, 0 below, at every double including `-0.0`. Every hard edge in an animation
- * language is a step, so most of the original refusals went away. What is left:
+ * What is refused, and why. **This list has shrunk twice**, first when `Fn` gained a first-class
+ * differentiable `floor` and `clamp01(floor(x) + 1)` turned out to be an *exact* step — 1 at and
+ * above 0, 0 below, at every double including `-0.0` — and then when it gained `atan2`. Every hard
+ * edge in an animation language is a step, so the first pass took most of the original refusals;
+ * [HeadingTrack] took the rest. What is left:
  *
- * - [HeadingTrack] — `atan2` has no `Fn` op. Closable: it needs an `FnExpr.Atan` plus atan2's
- *   quadrant fix-up, which the exact step can now supply. This is the whole of the residual
- *   refusal rate on the gallery.
  * - `TrackOp2.MOD` with a non-constant divisor — Kotlin's `%` truncates toward zero and `trunc` is
  *   not `floor`, so rebuilding it needs a sign primitive `Fn` does not have. A statically constant
  *   pair still folds.
@@ -95,6 +93,12 @@ import kotlin.math.abs
  *   included.
  * - The expo and elastic easings, whose closed forms do not reach their own endpoints; see
  *   `withExactEndpoints` below.
+ * - [HeadingTrack] — the entry this file used to describe as "the whole of the residual refusal rate
+ *   on the gallery", and it was: 116 of the corpus's 2754 tracks, and every non-pattern refusal in
+ *   it. The refusal text predicted `FnExpr.Atan` plus a quadrant fix-up; the fix-up turned out to be
+ *   half a turn wrong at a negative zero, so what landed is a first-class `FnExpr.Atan2` (with
+ *   `Atan` and `Hypot` beside it). See [lowerHeading], which also records the one signed-zero corner
+ *   where it still parts company with the sampler.
  *
  * # How the fidelity is checked
  *
@@ -607,19 +611,128 @@ private fun lowerTrackToFn(
             }
         }
 
-        is HeadingTrack -> RectSLFnLowering.Refused(
-            "a heading is atan2 of a finite difference, and Fn has no atan2 op",
-            closable = true,
-            missing = "an FnExpr.Atan (derivative 1/(1+x^2)) plus the quadrant fix-up atan2 needs, " +
-                "which the exact step from fnStepFrom can now supply; the finite difference itself " +
-                "is already just two lookups of the same lowered track"
-        )
+        is HeadingTrack -> lowerHeading(track, window)
 
         is CycleGateTrack, is CycleSwitchTrack, is DegradeGateTrack, is PatTrack, is PatHoldTrack ->
             RectSLFnLowering.Refused(
                 "a pattern track is an interpreter over a mini-notation tree, not an expression of " +
                     "fixed shape — the same reason FnNonDifferentiable refuses `pat` itself"
             )
+    }
+}
+
+/** How many times [HeadingTrack.sample] widens its probe before it gives up. */
+private const val HEADING_WIDENINGS: Int = 6
+
+/** The velocity length below which [HeadingTrack.sample] calls the point stationary and widens. */
+private const val HEADING_MOTION_EPSILON: Double = 1e-9
+
+/**
+ * A heading — the direction of travel of `(x(t), y(t))` — as one differentiable expression.
+ *
+ * This was the last closable refusal on the gallery, and the last one worth anything: 116 of the
+ * corpus's 2754 tracks, and **every** refusal that was not a pattern track. What it needed was not a
+ * cleverer identity but a primitive, and the primitive turned out to be `atan2` itself rather than
+ * the `atan` + quadrant fix-up this file's own refusal text had been predicting. The fix-up is half
+ * a turn wrong at a negative zero — `-0.0 / -1.0` is `+0.0`, so `atan(y/x) + pi` answers `+pi` where
+ * `atan2(-0.0, -1.0)` is `-pi` — and `RectSLSimplify`'s rule table is explicit that half a turn is
+ * exactly the size of error a lost signed zero produces here. So `FnExpr.Atan2` is a kind of its
+ * own, `Fn.atan2` calls the same `kotlin.math.atan2` [HeadingTrack.sample] does, and the sign of a
+ * zero is inherited rather than reconstructed. `FnExpr.Atan` exists too, because it is a genuinely
+ * missing smooth primitive, but nothing here goes through it.
+ *
+ * The rest is the widening search, as arithmetic. [HeadingTrack.sample] is not one `atan2`; it is
+ * six, tried in turn until the central difference shows real motion:
+ *
+ * ```kotlin
+ * var h = eps
+ * repeat(6) {
+ *     val dx = x.sample(t + h) - x.sample(t - h)
+ *     val dy = y.sample(t + h) - y.sample(t - h)
+ *     if (hypot(dx, dy) > 1e-9) return atan2(dy, dx) + offset
+ *     h *= 4.0
+ * }
+ * return offset
+ * ```
+ *
+ * Every part of that is already expressible:
+ *
+ * - `x(t ± h)` is `x.shift(∓h)`. `shift`'s formula is `AtX(X - dx, source)`, so `t - (-h)` is
+ *   *bit-identically* the sampler's `t + h`. [fnLookupAt] would have done it too, and its own KDoc
+ *   admits two extra roundings; a finite difference is the last place to spend them.
+ * - `hypot(dx, dy) > 1e-9` is `1 - fnStepFrom(1e-9 - hypot(dx, dy))`, since [fnStepFrom] is 1 exactly
+ *   when its argument is at or above zero. That lands the strict inequality the right way round, and
+ *   it is why `Fn` gained a real `hypot` rather than `pow(dx² + dy², 0.5)`: the two differ by up to
+ *   an ulp, which is a different branch within an ulp of the threshold.
+ * - "the first one that moves" is `selₖ = mₖ · Π_{j<k} (1 - mⱼ)`, exactly one of which is 1.
+ *
+ * The masked sum `Σ selₖ · atan2(dyₖ, dxₖ)` is safe in a way the still-refused [TrackOp2.DIV] guard
+ * is not: `atan2` is finite for every finite input, so a masked-off term is `0 · finite = ±0.0` and
+ * not `0 · inf = NaN`. The live term is `1.0 · atan2ₖ`, which preserves a `-0.0`, and adding `±0.0`
+ * to a non-zero is exact — so the sum reproduces the sampler bit for bit.
+ *
+ * **The one divergence, stated rather than hidden.** The sampler returns a bare `offset` when
+ * nothing moves and `atan2 + offset` when something does; this always adds. Those agree for every
+ * `offset` except `-0.0`, where the sum's `+0.0 + (-0.0)` is `+0.0` and the sampler's is `-0.0`. No
+ * RectSL program can spell a negative-zero offset (`->face-travel` passes 0.0 and
+ * `->face-travel-at` a parsed literal), and the value is a rotation in radians, where the two zeros
+ * render identically. It is recorded because the alternative to recording it is discovering it.
+ *
+ * The gradient is the derivative of the branch actually taken: `selₖ` runs through [fnStepFrom],
+ * whose `floor` is a tape constant, so it contributes no adjoint of its own and the chain rule sees
+ * `selₖ · d atan2ₖ`. That is the true derivative of this piecewise function everywhere except on a
+ * switch-over — the same convention `FnExpr.IfLt` already uses.
+ */
+private fun lowerHeading(
+    track: HeadingTrack,
+    window: Functions.Domain
+): RectSLFnLowering<Functions.Fn> {
+    // A point that never moves has no heading, and the sampler says so by falling through all six
+    // probes to the bare offset. Answering that here is not an optimisation for its own sake: it is
+    // the same fold [trackConstantValue] performs for every other track shape, and without it a
+    // hundred-copy array of stationary rects becomes twenty-four lookups of a literal, a hundred
+    // times over. (It stays local rather than going into [trackConstantValue] because that function
+    // is shared with the GLSL emitter, and this backend is the only one that needs it.)
+    val constantX = trackConstantValue(track.x, foldFreeParameters = false)
+    val constantY = trackConstantValue(track.y, foldFreeParameters = false)
+    if (constantX != null && constantY != null) return lowered(fnLeaf(track.offset))
+
+    // The probes read the sources at `t ± h` for h as wide as `eps · 4⁵`, so the sources have to
+    // lower over a window that holds the widest of them. Asking for the caller's window would let a
+    // gate or a loop fold on a branch the difference actually straddles — the fold would be correct
+    // for the heading's own instant and wrong for the two it looks at.
+    val reach = track.eps * Math.pow(4.0, (HEADING_WIDENINGS - 1).toDouble())
+    val probeWindow = if (window.isFinite) {
+        Functions.Domain(window.start - reach, window.endInclusive + reach)
+    } else {
+        window
+    }
+
+    val x = lowerTrackToFn(track.x, probeWindow)
+    if (x is RectSLFnLowering.Refused) return refused("the x of this heading — ${x.why}")
+    val y = lowerTrackToFn(track.y, probeWindow)
+    if (y is RectSLFnLowering.Refused) return refused("the y of this heading — ${y.why}")
+    val xFn = (x as RectSLFnLowering.Lowered).value
+    val yFn = (y as RectSLFnLowering.Lowered).value
+
+    return with(Functions) {
+        // The angle contributed so far, and the indicator that no earlier probe has claimed the
+        // answer. Both are exactly 0 or exactly 1 at every sample, never in between.
+        var angle: Functions.Fn? = null
+        var unclaimed = fnLeaf(1.0)
+        var h = track.eps
+        repeat(HEADING_WIDENINGS) {
+            val dx = xFn.shift(fnLeaf(-h)) - xFn.shift(fnLeaf(h))
+            val dy = yFn.shift(fnLeaf(-h)) - yFn.shift(fnLeaf(h))
+            // 1 where the sampler would widen (`hypot <= 1e-9`), 0 where it would answer.
+            val stalled = fnStepFrom(fnLeaf(HEADING_MOTION_EPSILON) - dx.hypot(dy))
+            val take = unclaimed * (1.0 - stalled)
+            val term = take * dy.atan2(dx)
+            angle = angle?.let { it + term } ?: term
+            unclaimed *= stalled
+            h *= 4.0
+        }
+        lowered(angle!! + fnLeaf(track.offset))
     }
 }
 
