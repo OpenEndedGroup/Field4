@@ -172,6 +172,47 @@ class FieldMLSmokeExamplesTest {
     }
 
     /**
+     * The mesh-writing demo — the wall past the moving one, and the last thing
+     * `dev_docs/FIELDML_HOST_BRIDGE.md` named as out of reach downstream of a device.
+     *
+     * Its subject is a vertex shader with **real inputs** whose data is recomputed in FieldML every
+     * frame, so the drift guards are on exactly that: it must still declare two `layout(location = …)
+     * in` variables, still write both of them through `Mesh.write`, and still use one positional and
+     * one **named** call to do it — the named one being the shape that omits `Mesh.write`'s
+     * `inside` default, which is why mechanisms B and C had to close before this box could be
+     * written the way it is.
+     *
+     * Run on 2026-08-19 against a real Vulkan device; `ring-*.png` beside it are the captures.
+     */
+    @Test
+    fun theMeshDemoTypeChecksAndKeepsItsSubject() {
+        val demo = Path.of("public/docs/assets/fieldml_mesh_demo/metadata.edn")
+        val sources = ednCodeStrings(demo.toFile().readText())
+
+        assertEquals(2, sources.size, "expected a Kotlin scaffolding box and a FieldML box in $demo")
+        val fieldML = sources[1]
+
+        val result = compileOk("$demo FieldML box", fieldML)
+        assertNotNull(result.core, "$demo FieldML box: core")
+        assertTrue("hostAs \"" !in fieldML, "$demo uses hostAs, which these demos exist to show is unnecessary")
+        listOf("layout(location = 0) in vec2 pos;", "layout(location = 1) in float hue;").forEach { input ->
+            assertTrue(
+                input in fieldML,
+                "$demo must keep declaring `$input` — a vertex shader with real inputs is its whole subject",
+            )
+        }
+        assertTrue(
+            """hostCall "write" (0, 2,""" in fieldML,
+            "$demo must keep writing location 0 positionally, three arguments with a trailing lambda",
+        )
+        assertTrue(
+            """hostCall "write" {name = "hue", builder =""" in fieldML,
+            "$demo must keep writing location 1 BY NAME — that call omits Mesh.write's `inside` " +
+                "default, which is the thing no positional call can do",
+        )
+    }
+
+    /**
      * The lambda demo's promise is specifically that it needs no `hostAs` — so if one drifts back in
      * the demo has stopped showing the thing it exists to show, even though every box still runs.
      *
