@@ -4,6 +4,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -148,6 +149,39 @@ class FramesSemanticsTest {
         repeat(3) { framer.frame() }
 
         assertEquals(before, calls, "no further body calls once the Job itself is cancelled")
+    }
+
+    /**
+     * `.end { }` is **not** a `finally`. [Frames.atEnd] is invoked from exactly one place —
+     * [Frames.frame]'s `catch`, reached when the pending `yield()` throws a cancellation. A body
+     * that throws its own exception never goes through that path.
+     */
+    @Test
+    fun theEndBlockDoesNotRunWhenTheBodyThrows() {
+        var cleanedUp = false
+        var calls = 0
+        val f = eachFrame {
+            calls++
+            if (calls == 3) error("boom")
+        }.end { cleanedUp = true }
+
+        pump(f, 8)
+        assertEquals(3, calls)
+        assertFalse(cleanedUp, ".end { } must not run when the body throws — it is not a finally")
+    }
+
+    /** Nor does it run when the body simply returns: there is no cancellation to catch. */
+    @Test
+    fun theEndBlockDoesNotRunWhenTheBodyReturnsNormally() {
+        var cleanedUp = false
+        var calls = 0
+        val f = frames {
+            repeat(3) { calls++; frame() }
+        }.end { cleanedUp = true }
+
+        pump(f, 8)
+        assertEquals(3, calls)
+        assertFalse(cleanedUp, ".end { } runs on cancellation, not on completion")
     }
 
     @Test

@@ -22,6 +22,7 @@ nav:
   - Kotlin Overview: kotlin_overview.md
   - Kotlin in the Head: kotlin_in_the_head.md
   - How Box Code Runs: box_code_pipeline.md
+  - Frames, and What a Frame Is: animation_time_model.md
   - Building & Testing: building_and_testing.md
   - Reference:
     - What's Already in the Box: reference/index.md
