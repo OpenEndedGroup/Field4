@@ -185,7 +185,7 @@ curl -sk https://localhost:9092/api/docs-improvement
 | `AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE` | unset | lets **annotation** requests come from other devices. Browser URLs must still use a literal IP (or also opt into cross-site annotations for a custom hostname). Logged as a warning at startup. Never affects the spawn. |
 | `AFIELD_DOCS_ANNOTATIONS_ALLOW_CROSS_SITE` | unset | lets **annotation** requests come from other *websites*. A different axis from the row above, and the same rule: warned about at startup, never affects the spawn. |
 | `AFIELD_DOCS_ANNOTATIONS_STORE` (`-Dafield.docsAnnotations.store`) | `~/.afield/docs-annotations.json` | selects the annotation notebook. Relative paths are resolved from Field's working directory, so automation can use `.field-backdoor/docs-annotations.json` without touching the human's global notes. The property wins over the environment. |
-| `AFIELD_API_REQUIRE_SAME_SITE` (`-Dafield.api.requireSameSite`) | unset | refuses cross-site writes across Field's **whole** API, not just this feature. Browser URLs must name `localhost` or a literal IP. Off by default; see the last section for what it does and — mostly — does not close. |
+| `AFIELD_API_REQUIRE_SAME_SITE` (`-Dafield.api.requireSameSite`) | unset | refuses cross-site HTTP writes and browser upgrades to Field's two command WebSockets, not just this feature. Browser URLs must name `localhost` or a literal IP. Off by default; see the last section for what it does and — mostly — does not close. |
 
 Five independent conditions guard the spawn, each separately sufficient to stop the
 attack above:
@@ -341,15 +341,15 @@ loses its guard.
 **36 of 40 state-changing HTTP routes have no route-specific access control**, and there is no
 `install(Authentication)` anywhere in the tree.
 
-## Two exposures, which are worth not conflating
+## Three exposures, which are worth not conflating
 
 |  | reached by | closed by | status |
 | --- | --- | --- | --- |
 | **another website, HTTP** | a page in your browser, via `anyHost()` | `AFIELD_API_REQUIRE_SAME_SITE=1`, or per-route guards | switchable, **off by default** |
-| **another website, WebSocket** | a page that opens `/ws` or `/controllers/ws` | authentication or a guard on the upgrade | **open; not covered by the HTTP switch** |
+| **another website, WebSocket** | a page that opens `/ws` or `/controllers/ws` | `AFIELD_API_REQUIRE_SAME_SITE=1` on the upgrade | switchable, **off by default** |
 | **another host** | `curl` from the Wi-Fi, via `httpsHost = "0.0.0.0"` | authentication, or a narrower bind | **open** |
 
-The second row is the one to read twice. Ktor's CORS plugin does not run for a request
+The third row is the one to read twice. Ktor's CORS plugin does not run for a request
 with no `Origin` header, and `isSameSiteRequest` treats such a request as same-site on
 purpose — refusing it would break every non-browser client Field has, including the `curl`
 recipes on this page. So `AFIELD_API_REQUIRE_SAME_SITE`, switched fully on, closes **none**
@@ -397,12 +397,13 @@ the write interceptor's mutating-method branch:
 
 | route | role | guard |
 | --- | --- | --- |
-| `/ws` | main editor command channel | **none** |
-| `/controllers/ws` | remote control commands | **none** |
+| `/ws` | main editor command channel | same-site when `AFIELD_API_REQUIRE_SAME_SITE=1` |
+| `/controllers/ws` | remote control commands | same-site when `AFIELD_API_REQUIRE_SAME_SITE=1` |
 | `/welcome-events` | server-to-client refresh notifications; incoming data ignored | none |
 
 So `AFIELD_API_REQUIRE_SAME_SITE=1` refuses cross-site **HTTP writes**, including Field
-Audio, but it does not refuse the browser half of the two WebSocket command surfaces.
+Audio, and cross-site browser upgrades to both WebSocket command surfaces. It still permits
+native/LAN clients that send no browser origin headers and is not authentication.
 
 ## What was measured, 2026-08-11, real Chromium, real foreign origin
 
@@ -464,8 +465,9 @@ What 2026-08-12 did instead was cheaper and pushes the decision to where the kno
 
 - **per-route guards** on the four routes whose exposure is specific and understood — the
   annotation and improvement routes, above;
-- **`AFIELD_API_REQUIRE_SAME_SITE`**, an application-wide refusal of cross-site writes with
-  `/api/import-offline-doc` exempted, **off by default**. Same shape as everything else
+- **`AFIELD_API_REQUIRE_SAME_SITE`**, an application-wide refusal of cross-site HTTP writes
+  and command WebSocket browser upgrades, with `/api/import-offline-doc` exempted, **off by
+  default**. Same shape as everything else
   here — safe default, documented hatch — except that "safe" points the other way: the
   default is the old behaviour, because turning a refusal on across 36 routes is how you
   find out at 4am which of them the human's own tooling was quietly using;
@@ -477,12 +479,12 @@ route same-origin is unaffected; the `OPTIONS` preflight for `/api/import-offlin
 still returns **200** with `Access-Control-Allow-Origin: *`; and `GET /api/instance-info`
 with no `Origin` still returns **200**, which is the limitation, not an oversight.
 
-An allow-list on `anyHost()` remains the better long-term answer for the *browser* half.
+An allow-list on `anyHost()` remains the better long-term answer for the browser HTTP half.
 Neither it nor this switch touches the network half.
 
 ## Where the tests are
 
-Four files, 45 tests. Two of them start a real Ktor application; two read source.
+Five files, 49 tests. Three of them start a real Ktor application; two read source.
 
 - `src/jvmTest/kotlin/afield/server/DocsAnnotationRouteSecurityTest.kt` — **15 tests**,
   route-level, through the real CORS configuration. This file exists because of a measured
@@ -495,6 +497,10 @@ Four files, 45 tests. Two of them start a real Ktor application; two read source
   `AFIELD_API_REQUIRE_SAME_SITE`, including one whose entire job is to assert the
   *limitation*: a request with no `Origin` is not refused, so the switch does nothing about
   the network.
+- `src/jvmTest/kotlin/afield/server/FieldWebSocketWriteGuardTest.kt` — **4 route-level
+  tests** proving that the default remains compatible, the switch closes a foreign browser
+  upgrade with a policy violation, Field's own browser still connects, and a native client
+  without browser-origin headers remains compatible.
 - `src/jvmTest/kotlin/afield/server/DocsAnnotationSecurityTest.kt` — **18 tests** over the
   guard functions as pure functions of a `DocsAccessPolicy` value, which is what makes
   reverting one and re-running a two-minute experiment.

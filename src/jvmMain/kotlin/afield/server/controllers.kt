@@ -23,6 +23,7 @@ import afield.SessionInformation
 import afield.Set_output
 import afield.updateControllerControlValue
 import afield.updateControllerControlValueInMemory
+import afield.refuseCrossSiteFieldWebSocket
 import io.ktor.http.ContentType
 import io.ktor.server.application.call
 import io.ktor.server.response.respondText
@@ -140,6 +141,7 @@ fun Route.installControllerRoutes(preferences: () -> FieldPreferences) {
         }
 
         webSocket("/ws") {
+            if (refuseCrossSiteFieldWebSocket("/controllers/ws")) return@webSocket
             val targetDocument = call.request.queryParameters["file"]
                 ?: call.request.queryParameters["document"]
                 ?: ""

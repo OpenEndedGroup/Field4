@@ -4370,6 +4370,7 @@ class Server {
                         }
 
                         webSocket("/ws") {
+                            if (refuseCrossSiteFieldWebSocket("/ws")) return@webSocket
                             val ts = this
                             thisSession.set(ts)
                             try {
@@ -4961,6 +4962,44 @@ internal const val FIELD_API_REQUIRE_SAME_SITE_ENV = "AFIELD_API_REQUIRE_SAME_SI
 /** `-D` equivalent of [FIELD_API_REQUIRE_SAME_SITE_ENV], and it wins when both are set. */
 internal const val FIELD_API_REQUIRE_SAME_SITE_PROPERTY = "afield.api.requireSameSite"
 
+/** Current posture of the application-wide browser-origin guard. */
+internal fun fieldApiRequiresSameSite(): Boolean = docsFlagEnabled(
+    System.getProperty(FIELD_API_REQUIRE_SAME_SITE_PROPERTY),
+    System.getenv(FIELD_API_REQUIRE_SAME_SITE_ENV),
+)
+
+/**
+ * Applies the HTTP write guard's browser-origin policy to a command WebSocket upgrade.
+ *
+ * WebSockets begin as GET requests, so [installFieldApiWriteGuard] deliberately skips them with
+ * ordinary reads. Command channels call this inside their upgrade instead. A native client with no
+ * browser origin headers remains allowed; the switch still does not authenticate the LAN surface.
+ */
+internal suspend fun DefaultWebSocketServerSession.refuseCrossSiteFieldWebSocket(path: String): Boolean {
+    if (!fieldApiRequiresSameSite()) return false
+    if (isSameSiteRequest(
+            call.request.headers[SEC_FETCH_SITE_HEADER],
+            call.request.headers[HttpHeaders.Origin],
+            call.request.headers[HttpHeaders.Host],
+        )
+    ) {
+        return false
+    }
+    lprintln(
+        "warning,server",
+        "Refused a cross-site WebSocket upgrade for $path from " +
+            "origin=${call.request.headers[HttpHeaders.Origin] ?: "<none>"} " +
+            "($FIELD_API_REQUIRE_SAME_SITE_ENV is set)",
+    )
+    close(
+        CloseReason(
+            CloseReason.Codes.VIOLATED_POLICY,
+            "Cross-site WebSocket refused by $FIELD_API_REQUIRE_SAME_SITE_ENV",
+        )
+    )
+    return true
+}
+
 /**
  * Paths that must keep working cross-origin when the guard is on. Exactly one, and it is the
  * reason `anyHost()` is in the CORS block at all: the offline viewer POSTs a document here
@@ -4978,7 +5017,8 @@ private val fieldApiSameSiteExemptPaths = setOf("/api/import-offline-doc")
  * state-changing HTTP routes have no route-specific access control**, `POST
  * /api/shutdown-instance` among them, and there is no `install(Authentication)` anywhere
  * in the tree. The same test separately inventories three WebSocket channels; `/ws` and
- * `/controllers/ws` accept commands without authentication. Two separate
+ * `/controllers/ws` accept commands without authentication, but apply this same-site policy to
+ * browser upgrades when the switch is on. Two separate
  * exposures follow, and it is worth not conflating them:
  *
  *  - **another website**, via the CORS block above. That is what this guard closes.
@@ -4995,10 +5035,7 @@ private val fieldApiSameSiteExemptPaths = setOf("/api/import-offline-doc")
  * failure mode this whole area is about is capability you did not know you had.
  */
 internal fun Application.installFieldApiWriteGuard() {
-    val required = docsFlagEnabled(
-        System.getProperty(FIELD_API_REQUIRE_SAME_SITE_PROPERTY),
-        System.getenv(FIELD_API_REQUIRE_SAME_SITE_ENV),
-    )
+    val required = fieldApiRequiresSameSite()
     if (!required) {
         lprintln(
             "warning,server",
@@ -5007,8 +5044,8 @@ internal fun Application.installFieldApiWriteGuard() {
                 "unauthenticated. " +
                 "The connector binds 0.0.0.0, and CORS allows any origin. Any host on this network can call " +
                 "them with curl, and any website you have open can call them from your browser. Set " +
-                "$FIELD_API_REQUIRE_SAME_SITE_ENV=1 to refuse cross-site HTTP writes; it does not cover the " +
-                "WebSocket command channels or the network half. The latter needs authentication or a bind " +
+                "$FIELD_API_REQUIRE_SAME_SITE_ENV=1 to refuse cross-site HTTP writes and browser upgrades " +
+                "to both WebSocket command channels; it does not cover the network half. That needs authentication or a bind " +
                 "address change, which would break the visionOS shell. See dev_docs/DOCS_IMPROVEMENT_AGENT.md.",
         )
         return
@@ -5016,8 +5053,8 @@ internal fun Application.installFieldApiWriteGuard() {
     lprintln(
         "server",
         "$FIELD_API_REQUIRE_SAME_SITE_ENV is set: cross-site HTTP writes are refused, except " +
-            "${fieldApiSameSiteExemptPaths.joinToString()}. The /ws and /controllers/ws WebSocket command " +
-            "channels are not covered and remain unauthenticated. This does NOT authenticate the API — a " +
+            "${fieldApiSameSiteExemptPaths.joinToString()}, and cross-site browser upgrades to /ws and " +
+            "/controllers/ws are refused. This does NOT authenticate the API — a " +
             "client that sends no Origin, which includes every curl on this network, is unaffected.",
     )
     intercept(ApplicationCallPipeline.Plugins) {

@@ -250,9 +250,8 @@ class FieldApiCorsExposureTest {
 
     /**
      * WebSockets are their own exposure surface: CORS does not govern an upgrade, and the
-     * application write guard deliberately skips GET before it can inspect the handshake.
-     * The old HTTP-only inventory omitted all three channels, which made the startup claim
-     * that the switch refused "the browser half" false for the two command channels.
+     * HTTP interceptor deliberately skips GET. The two command handlers therefore apply
+     * the shared origin policy inside their upgrades; the notification-only channel stays open.
      */
     @Test
     fun everyWebSocketRouteAndItsWriteRoleIsPinned() {
@@ -278,7 +277,7 @@ class FieldApiCorsExposureTest {
                         "rawHandlers.values" in handler ||
                         "handle(message)" in handler
                     ) "commands" else "server notifications"
-                    val guard = if ("isSameSiteRequest(" in handler) "same-site" else "none"
+                    val guard = if ("refuseCrossSiteFieldWebSocket(" in handler) "same-site" else "none"
                     found[path] = "$role; $guard"
                 }
             }
@@ -286,8 +285,8 @@ class FieldApiCorsExposureTest {
         assertEquals(
             EXPECTED_WEBSOCKET_SURFACE,
             found,
-            "The WebSocket surface changed. Command channels are browser-writable even when " +
-                "$FIELD_API_REQUIRE_SAME_SITE_ENV is set unless their upgrade performs its own guard.",
+            "The WebSocket surface changed. Command channels must apply the same browser-origin policy " +
+                "as $FIELD_API_REQUIRE_SAME_SITE_ENV inside their upgrade.",
         )
         assertTrue(
             Regex("""HttpMethod\.Get,\s*HttpMethod\.Head,\s*HttpMethod\.Options""").containsMatchIn(serverSource),
@@ -364,9 +363,9 @@ class FieldApiCorsExposureTest {
         )
 
         val EXPECTED_WEBSOCKET_SURFACE = sortedMapOf(
-            "/controllers/ws" to "commands; none",
+            "/controllers/ws" to "commands; same-site",
             "/welcome-events" to "server notifications; none",
-            "/ws" to "commands; none",
+            "/ws" to "commands; same-site",
         )
     }
 }
