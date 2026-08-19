@@ -430,24 +430,24 @@ enum class TrackOp2(
     DIV(
         { a, b -> if (abs(b) <= 1e-12) 0.0 else a / b },
         { a, b -> "(abs($b) <= 1e-12 ? 0.0 : $a / $b)" },
-        RectSLFnLowering.Refused(
-            "the near-zero guard (0 rather than an infinity) is a discontinuity no Fn op can " +
-                "express, so only a statically constant divisor lowers",
-            closable = true,
-            missing = "the guard is `[|b| > 1e-12]`, and fnStepFrom can now build an exact " +
-                "indicator; what stops it is that the false branch still evaluates a/b, so the " +
-                "product is 0*inf = NaN rather than 0"
-        )
+        RectSLFnLowering.Lowered({ a, b -> fnGuardedQuotient(a, b) })
     ),
     MOD(
         { a, b -> if (abs(b) <= 1e-12) 0.0 else a % b },
         { a, b -> "(abs($b) <= 1e-12 ? 0.0 : $a - $b * trunc($a / $b))" },
         RectSLFnLowering.Refused(
-            "Kotlin's `%` truncates toward zero, and `trunc` is not `floor` — rebuilding it needs a " +
-                "sign primitive, which Fn does not have. A statically constant pair still folds",
+            "Kotlin's `%` on doubles is the EXACT remainder — the JLS computes `a - b*q` with an " +
+                "exactly-determined integer q and no rounding — and `a - b*trunc(a/b)` in double " +
+                "arithmetic is not the same function once the quotient outgrows 53 bits. A " +
+                "statically constant pair still folds",
             closable = true,
-            missing = "either an FnExpr.Trunc, or a sign built from two exact steps: " +
-                "`2*step(x) - 1` is +/-1 with the wrong answer only at x = 0, where trunc is 0 anyway"
+            missing = "an exact-remainder FnExpr, not a sign primitive. The sign is no longer the " +
+                "obstacle: `trunc(z)` is `s*floor(z) - (1-s)*floor(-z)` with s = fnStepFrom(z), " +
+                "which is exact at every double including both zeros. What defeats the " +
+                "reconstruction is the rounding in the division, and it fails *silently as a zero*, " +
+                "which is indistinguishable from the near-zero guard having fired. Measured on " +
+                "2026-08-19: 1e17 % 3 is 1.0 and the reconstruction says 0.0; 1e15 % 0.1 is " +
+                "0.04448884876874218 and it says 0.0; it is exact for every quotient below ~2^53"
         )
     ),
     POW(
@@ -492,13 +492,7 @@ enum class TrackOp3(
             u * u * (3.0 - 2.0 * u)
         },
         { low, high, x -> "(abs($high - $low) <= 1e-12 ? 0.0 : smoothstep($low, $high, $x))" },
-        RectSLFnLowering.Refused(
-            "the coincident-edge guard (0 rather than dividing by zero) is a discontinuity no Fn " +
-                "op can express, so only statically constant edges lower",
-            closable = true,
-            missing = "the same 0*inf problem TrackOp2.DIV has: an exact indicator exists, but the " +
-                "branch it is meant to suppress still evaluates and returns a NaN"
-        )
+        RectSLFnLowering.Lowered({ low, high, x -> fnGuardedSmoothstep(low, high, x) })
     )
 }
 

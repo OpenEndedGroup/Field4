@@ -244,10 +244,9 @@ class RectSLFnBackendTest {
 
     @Test
     fun everyRefusalSaysWhyAndWhetherItIsPermanent() {
-        // The op-level refusals that remain. Everything else in the four enums lowers.
-        val refusals = listOf<RectSLFnLowering<*>>(
-            TrackOp2.DIV.fn, TrackOp2.MOD.fn, TrackOp3.SMOOTHSTEP.fn
-        )
+        // The op-level refusal that remains — one, since 2026-08-19. Everything else in the four
+        // enums lowers.
+        val refusals = listOf<RectSLFnLowering<*>>(TrackOp2.MOD.fn)
         for (refusal in refusals) {
             val r = refusal as RectSLFnLowering.Refused
             assertTrue(r.why.length > 40, "a refusal should explain itself: '${r.why}'")
@@ -260,15 +259,15 @@ class RectSLFnBackendTest {
             }
         }
 
-        // Everything that is not one of those three lowers. Stated as a whole-enum sweep rather than
-        // as a list, so adding an op to any of them forces a decision here.
+        // Everything that is not `MOD` lowers. Stated as a whole-enum sweep rather than as a list,
+        // so adding an op to any of them forces a decision here.
         for (op in TrackOp1.entries) {
             assertTrue(op.fn.valueOrNull() != null, "$op should lower")
         }
-        for (op in TrackOp2.entries - setOf(TrackOp2.DIV, TrackOp2.MOD)) {
+        for (op in TrackOp2.entries - setOf(TrackOp2.MOD)) {
             assertTrue(op.fn.valueOrNull() != null, "$op should lower")
         }
-        for (op in TrackOp3.entries - setOf(TrackOp3.SMOOTHSTEP)) {
+        for (op in TrackOp3.entries) {
             assertTrue(op.fn.valueOrNull() != null, "$op should lower")
         }
         for (warp in TimeWarpKind.entries) {
@@ -279,10 +278,104 @@ class RectSLFnBackendTest {
         val refused = BinaryDoubleTrack(
             LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(1.0, 4.0))),
             LinearScalarTrack(listOf(TcbKey(0.0, 1.0), TcbKey(1.0, 2.0))),
-            TrackOp2.DIV
+            TrackOp2.MOD
         )
         val why = refused.toFn(Functions.Domain(0.0, 1.0)).refusalOrNull()
-        assertTrue(why != null && "DIV" in why, "the refusal should name DIV: $why")
+        assertTrue(why != null && "MOD" in why, "the refusal should name MOD: $why")
+    }
+
+    /**
+     * The two near-zero guards, on operands that are **not** statically constant — which is the case
+     * that used to be refused, and the case whose obvious lowering is wrong.
+     *
+     * `[|b| > 1e-12] · (a/b)` still divides on the branch it means to suppress, so it is NaN rather
+     * than 0. [fnGuardedQuotient] guards the divisor instead. Both fixtures are arranged so the
+     * divisor (and the edge gap) passes *exactly through zero* at a sample on the grid, and the
+     * numerator is negative there, so a lowering that got the sign of the suppressed zero wrong
+     * would fail too — `RectSLSimplify`'s rule table is explicit that a stray `-0.0` here is a real
+     * bug, not a curiosity.
+     *
+     * Asserted **bit for bit**, because both of these are transcriptions rather than
+     * re-associations: there is nothing here that rounding is allowed to move.
+     */
+    @Test
+    fun theNearZeroGuardsLowerExactlyOnNonConstantOperands() {
+        val window = Functions.Domain(0.0, 2.0)
+        val grid = (0..2000).map { it / 1000.0 }
+
+        // b crosses zero exactly at t = 1.0, which is on the grid; a is negative throughout, so the
+        // suppressed branch is the one that would produce -0.0 under a naive mask.
+        val a = LinearScalarTrack(listOf(TcbKey(0.0, -1.0), TcbKey(2.0, -5.0)))
+        val b = LinearScalarTrack(listOf(TcbKey(0.0, 1.0), TcbKey(2.0, -1.0)))
+        val quotient = BinaryDoubleTrack(a, b, TrackOp2.DIV)
+        val quotientFn = assertNotNull(
+            quotient.toFn(window).valueOrNull(),
+            "a non-constant divisor should lower now: ${quotient.toFn(window).refusalOrNull()}"
+        )
+        var suppressed = 0
+        for (t in grid) {
+            val expected = quotient.sample(t)
+            if (expected == 0.0) suppressed++
+            assertEquals(
+                expected.toRawBits(),
+                quotientFn.eval(t).toRawBits(),
+                "guarded quotient at t=$t: sampler=$expected lowered=${quotientFn.eval(t)}"
+            )
+        }
+        assertTrue(suppressed > 0, "the fixture never reached the guard — it proves nothing")
+        // And the suppressed value really is a *positive* zero, in both.
+        assertEquals(0.0.toRawBits(), quotient.sample(1.0).toRawBits(), "the sampler's guard is +0.0")
+        assertEquals(0.0.toRawBits(), quotientFn.eval(1.0).toRawBits(), "so the lowering's must be")
+
+        // The edges coincide exactly at t = 1.0, where the sampler's smoothstep returns 0.
+        val low = LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(2.0, 2.0)))
+        val high = LinearScalarTrack(listOf(TcbKey(0.0, 2.0), TcbKey(2.0, 0.0)))
+        // `x` is constant on purpose: the keyed lowering is a telescoping sum, which is exact
+        // arithmetic but not the sampler's bit-for-bit spelling at a key time, and this test is
+        // about the guard rather than about that (already-measured, ~1e-16) difference.
+        val x = constantTrack(1.7)
+        val smooth = TernaryDoubleTrack(low, high, x, TrackOp3.SMOOTHSTEP)
+        val smoothFn = assertNotNull(
+            smooth.toFn(window).valueOrNull(),
+            "non-constant edges should lower now: ${smooth.toFn(window).refusalOrNull()}"
+        )
+        var coincident = 0
+        for (t in grid) {
+            val expected = smooth.sample(t)
+            if (kotlin.math.abs(high.sample(t) - low.sample(t)) <= 1e-12) coincident++
+            assertEquals(
+                expected.toRawBits(),
+                smoothFn.eval(t).toRawBits(),
+                "guarded smoothstep at t=$t: sampler=$expected lowered=${smoothFn.eval(t)}"
+            )
+        }
+        assertTrue(coincident > 0, "the fixture never reached the coincident-edge guard")
+        println(
+            "guarded ops: quotient suppressed at $suppressed of ${grid.size} samples, " +
+                "smoothstep edges coincident at $coincident — all bit-identical"
+        )
+    }
+
+    /**
+     * The gradient of a guarded op, against a central finite difference, on the live branch.
+     *
+     * The value being exact says nothing about the derivative: the guard is built out of a `floor`,
+     * whose adjoint is zero, so the *whole* question is whether the surviving path is `d(a/b)` and
+     * not `d(a/b · something)`. Sampled away from the crossing, where the function really is
+     * differentiable.
+     */
+    @Test
+    fun theGuardedQuotientsGradientAgreesWithACentralDifference() {
+        val clock = LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(2.0, 2.0)))
+        val numerator = BinaryDoubleTrack(clock, FreeParamTrack("gain", 1.7), TrackOp2.MUL)
+        val divisor = BinaryDoubleTrack(clock, constantTrack(3.0), TrackOp2.ADD)
+        val quotient = BinaryDoubleTrack(numerator, divisor, TrackOp2.DIV)
+        val worst = quotient.gradientAgreement(
+            (1..8).map { it * 0.2 },
+            over = Functions.Domain(0.0, 2.0)
+        )
+        println("guarded quotient gradient vs central difference: worst relative $worst")
+        assertTrue(worst < 1e-6, "the guarded quotient's gradient disagrees by $worst")
     }
 
     /**

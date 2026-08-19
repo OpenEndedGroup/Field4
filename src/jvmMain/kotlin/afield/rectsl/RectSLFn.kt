@@ -66,14 +66,13 @@ import kotlin.math.abs
  * edge in an animation language is a step, so the first pass took most of the original refusals;
  * [HeadingTrack] took the rest. What is left:
  *
- * - `TrackOp2.MOD` with a non-constant divisor — Kotlin's `%` truncates toward zero and `trunc` is
- *   not `floor`, so rebuilding it needs a sign primitive `Fn` does not have. A statically constant
- *   pair still folds.
- * - The near-zero guards on `TrackOp2.DIV` and `TrackOp3.SMOOTHSTEP`. RectSL's `/` returns 0 where
- *   `|divisor| <= 1e-12` and its `smoothstep` returns 0 for coincident edges. The *indicator* is
- *   now expressible, but the false branch still evaluates `a/b`, so the product is `0·inf` = NaN
- *   rather than 0. Where the divisor (or the edge pair) is statically constant the guard is folded
- *   and the lowering is exact; where it is not, the op is refused rather than silently dropped.
+ * - `TrackOp2.MOD` — and the reason on this line was **wrong until 2026-08-19**, which is the
+ *   argument for measuring a refusal rather than reasoning one out. It said `%` needed a sign
+ *   primitive; it does not, since `trunc(z) = s·floor(z) - (1-s)·floor(-z)` with `s = fnStepFrom(z)`
+ *   is exact at every double. What actually defeats it is that Kotlin's `%` on doubles is the
+ *   *exact* remainder, and `a - b·trunc(a/b)` in double arithmetic is a different function once the
+ *   quotient outgrows 53 bits: `1e17 % 3` is `1.0` and the reconstruction says `0.0`. Silently, and
+ *   as a zero, which is indistinguishable from the guard having fired. A constant pair still folds.
  * - The pattern tracks ([PatTrack] and friends) — an interpreter over a mini-notation tree, not an
  *   expression of fixed shape. The same reason `FnNonDifferentiable` files `pat` itself, and the
  *   only refusal here that is not closable.
@@ -99,6 +98,12 @@ import kotlin.math.abs
  *   half a turn wrong at a negative zero, so what landed is a first-class `FnExpr.Atan2` (with
  *   `Atan` and `Hypot` beside it). See [lowerHeading], which also records the one signed-zero corner
  *   where it still parts company with the sampler.
+ * - The near-zero guards on `TrackOp2.DIV` and `TrackOp3.SMOOTHSTEP`, whose stated obstacle was that
+ *   masking the result still evaluates `a/b`, so `0·inf` is NaN rather than 0. True, and the answer
+ *   was to stop masking the result: guard the *divisor* instead, as `b·live + (1 - live)`, which is
+ *   `b` where the guard passes and exactly `1.0` where it does not, so no infinity is ever created.
+ *   The sign of the zero is then repaired by adding [fnZeroSelector]'s `-0.0`/`+0.0`, since `x + -0.0`
+ *   is the true additive identity and `x + +0.0` is not. See [fnGuardedQuotient].
  *
  * # How the fidelity is checked
  *
@@ -229,6 +234,76 @@ internal fun fnTime(): Functions.Fn = with(Functions) { identity(Functions.Domai
  */
 internal fun fnStepFrom(x: Functions.Fn): Functions.Fn =
     with(Functions) { fnClamp01(x.floor() + 1.0) }
+
+/**
+ * The additive identity on `Double`, as an `Fn` expression selected by an exact 0/1 indicator:
+ * `-0.0` where [live] is 1, `+0.0` where it is 0.
+ *
+ * This tiny thing is what makes a *guarded* op lower exactly, and it is worth its own function
+ * because the reason is not obvious. `x + (+0.0)` is not the identity — it turns `-0.0` into `+0.0`.
+ * `x + (-0.0)` **is**, for every double including both zeros. So a masked expression `q·live` can be
+ * repaired to match a guard that returns literal `0.0`:
+ *
+ * ```
+ * q·live + zeroSelector(live)
+ * ```
+ *
+ * is `q` exactly where the guard passes (adding `-0.0` changes nothing, even for `q = -0.0`) and
+ * `+0.0` exactly where it fails (`q·0.0` is `±0.0`, and `±0.0 + 0.0` is `+0.0`). Without it a
+ * negative numerator under a suppressed divisor would come out as `-0.0` where the sampler says
+ * `0.0`, and `RectSLSimplify`'s rule table is explicit about what a stray signed zero can cost here.
+ *
+ * The construction is `-((live - 1)·0)`: `live = 1` gives `-(0·0) = -0.0`, `live = 0` gives
+ * `-(-1·0) = +0.0`.
+ */
+internal fun fnZeroSelector(live: Functions.Fn): Functions.Fn =
+    with(Functions) { ((live - 1.0) * 0.0).flip() }
+
+/**
+ * `if (|b| <= 1e-12) 0.0 else a / b` — [TrackOp2.DIV]'s near-zero guard, as arithmetic.
+ *
+ * This refusal outlived the others because the obvious form does not work. The *indicator* has been
+ * expressible since [fnStepFrom] existed, but `[|b| > 1e-12] · (a/b)` still evaluates `a/b` on the
+ * branch it means to suppress, and `0 · inf` is NaN rather than 0. The fix is to make the suppressed
+ * branch harmless before dividing rather than to mask its result: the divisor itself becomes
+ * `b·live + (1 - live)`, which is `b` where the guard passes and exactly `1.0` where it does not, so
+ * nothing ever divides by a near-zero and no infinity is created to be masked.
+ *
+ * `+ fnZeroSelector(live)` then repairs the sign of the zero. Exact at every double.
+ *
+ * The one case where this parts company with the sampler is a **non-finite numerator under a
+ * suppressed divisor**: `a = inf, |b| <= 1e-12` gives `inf·0 = NaN` here and `0.0` there. A track
+ * that produces an infinity is outside what any of the three backends agrees on, and a NaN is loud;
+ * it is recorded rather than repaired because repairing it would cost a `clamp` on every quotient.
+ */
+internal fun fnGuardedQuotient(a: Functions.Fn, b: Functions.Fn): Functions.Fn = with(Functions) {
+    val live = 1.0 - fnStepFrom(fnLeaf(1e-12) - b.abs())
+    val safeDivisor = b * live + (1.0 - live)
+    a / safeDivisor * live + fnZeroSelector(live)
+}
+
+/**
+ * `smoothstep(low, high, x)` with [TrackOp3.SMOOTHSTEP]'s coincident-edge guard — the same shape of
+ * problem as [fnGuardedQuotient], and slightly easier.
+ *
+ * `Functions.smoothStep` and RectSL's are different functions (the stdlib op reads the *sample
+ * position* and sorts its edges; RectSL's reads a third track and does not), so this is transcribed
+ * from `TrackOp3.SMOOTHSTEP.eval` rather than delegated to the stdlib op. The guarded denominator is
+ * the identical trick; the sign repair is not needed, because `u` is clamped to `0..1` and therefore
+ * never negative, so the suppressed `u · 0.0` is `+0.0` on its own — and `u·u` is a square, which is
+ * `+0.0` for either zero anyway.
+ */
+internal fun fnGuardedSmoothstep(
+    low: Functions.Fn,
+    high: Functions.Fn,
+    x: Functions.Fn
+): Functions.Fn = with(Functions) {
+    val denominator = high - low
+    val live = 1.0 - fnStepFrom(fnLeaf(1e-12) - denominator.abs())
+    val safeDenominator = denominator * live + (1.0 - live)
+    val u = fnClamp01((x - low) / safeDenominator) * live
+    u * u * (3.0 - u * 2.0)
+}
 
 /**
  * The floored modulo `x - period·floor(x / period)` — `positiveModulo`'s closed form.
@@ -752,17 +827,17 @@ private fun lowerBinary(
     track: BinaryDoubleTrack,
     window: Functions.Domain
 ): RectSLFnLowering<Functions.Fn> {
-    // `/` and `%` guard a near-zero divisor by returning 0, which is a discontinuity. A statically
-    // constant divisor settles the branch here and the lowering stays exact; anything else is
-    // refused rather than quietly losing the guard. (`%` is refused either way — see TrackOp2.MOD.)
+    // `/` guards a near-zero divisor by returning 0. [fnGuardedQuotient] expresses that exactly, so
+    // this is now a *fold* rather than the difference between lowering and refusing: a statically
+    // constant divisor settles the branch at build time and leaves a bare division, which is a
+    // smaller graph and one fewer step under a fitted parameter. (`%` is still refused either way —
+    // see TrackOp2.MOD, whose obstacle is the rounding in `a - b*trunc(a/b)`, not the guard.)
     if (track.op == TrackOp2.DIV) {
         val divisor = trackConstantValue(track.b, foldFreeParameters = false)
-            ?: return refused(
-                "TrackOp2.DIV — ${(track.op.fn as RectSLFnLowering.Refused).why}, and this " +
-                    "divisor is not statically constant"
-            )
-        if (abs(divisor) <= 1e-12) return lowered(fnLeaf(0.0))
-        return lowerTrackToFn(track.a, window).map { a -> with(Functions) { a / fnLeaf(divisor) } }
+        if (divisor != null) {
+            if (abs(divisor) <= 1e-12) return lowered(fnLeaf(0.0))
+            return lowerTrackToFn(track.a, window).map { a -> with(Functions) { a / fnLeaf(divisor) } }
+        }
     }
 
     val op = track.op.fn
@@ -784,22 +859,18 @@ private fun lowerTernary(
     track: TernaryDoubleTrack,
     window: Functions.Domain
 ): RectSLFnLowering<Functions.Fn> {
-    // smoothstep's coincident-edge guard is the same shape of problem as DIV's: constant edges
-    // settle it, anything else loses it.
+    // smoothstep's coincident-edge guard is the same shape of problem as DIV's, and now the same
+    // fold: constant edges settle it here, anything else goes through [fnGuardedSmoothstep].
     if (track.op == TrackOp3.SMOOTHSTEP) {
         val low = trackConstantValue(track.a, foldFreeParameters = false)
         val high = trackConstantValue(track.b, foldFreeParameters = false)
-        if (low == null || high == null) {
-            return refused(
-                "TrackOp3.SMOOTHSTEP — ${(track.op.fn as RectSLFnLowering.Refused).why}, and these " +
-                    "edges are not statically constant"
-            )
-        }
-        if (abs(high - low) <= 1e-12) return lowered(fnLeaf(0.0))
-        return lowerTrackToFn(track.c, window).map { x ->
-            with(Functions) {
-                val u = fnClamp01((x - fnLeaf(low)) / fnLeaf(high - low))
-                u * u * (3.0 - u * 2.0)
+        if (low != null && high != null) {
+            if (abs(high - low) <= 1e-12) return lowered(fnLeaf(0.0))
+            return lowerTrackToFn(track.c, window).map { x ->
+                with(Functions) {
+                    val u = fnClamp01((x - fnLeaf(low)) / fnLeaf(high - low))
+                    u * u * (3.0 - u * 2.0)
+                }
             }
         }
     }
