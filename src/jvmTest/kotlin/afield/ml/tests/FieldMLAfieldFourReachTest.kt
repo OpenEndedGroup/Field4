@@ -269,17 +269,40 @@ class FieldMLAfieldFourReachTest {
     // ---- the survey ------------------------------------------------------------------------------
 
     /**
-     * Every statement of the three `threebox-2` boxes, with what FieldML can do about it. A translation
-     * is compiled — not run, because most of these need a device — so `expressible` means "the bridge
-     * and the type checker accept this shape", which is exactly the claim being made.
+     * One statement of the three `threebox-2` boxes, with what FieldML can do about it — and, when it
+     * can do nothing, which *mechanism* is in the way.
+     *
+     * A translation is compiled, not run, because most of these need a device, so `expressible` means
+     * "the bridge and the type checker accept this shape", which is exactly the claim being made.
+     *
+     * [residue] exists because "13 of 19" is a much weaker statement than the truth. Counting
+     * statements measures the sample; naming the mechanism measures the bridge. With B, C and D
+     * closed on 2026-08-19 the six remaining refusals are not a long tail, and
+     * [theResidueIsOneMechanism] asserts that rather than leaving a reader to notice it.
      */
-    private data class Statement(val kotlin: String, val fieldML: String?, val note: String)
+    private data class Statement(
+        val kotlin: String,
+        val fieldML: String?,
+        val note: String,
+        val residue: Residue? = null,
+        /** Where the statement's *effect* is reached without its spelling, when it is. */
+        val effect: String? = null,
+    )
+
+    private enum class Residue {
+        /** Mechanism A: a rewrite over Kotlin *source*, so there is no JVM member to reflect on. */
+        SOURCE_MACRO,
+
+        /** Not a limitation at all — the statement has no work to do in FieldML. */
+        NOT_NEEDED,
+    }
 
     private val statementSurvey = listOf(
         Statement(
             "import afield.four.util.Options",
             null,
             "not needed: FieldML has no imports, every class is named in full by hostClass",
+            residue = Residue.NOT_NEEDED,
         ),
         Statement(
             "prop<Window>(window)",
@@ -287,6 +310,8 @@ class FieldMLAfieldFourReachTest {
             "SOURCE MACRO (macros.kt:355 -> props.kt:66): generates `var Box.window by Inheritance<Window>()` " +
                 "into the box preamble. `Box.prop` itself throws MacroNotExpandedException (props.kt:39). " +
                 "Its *effect* is reachable — see theBoxPropertySlotThatPropIsSugarOverIsFullyReachable",
+            residue = Residue.SOURCE_MACRO,
+            effect = "theBoxPropertySlotThatPropIsSugarOverIsFullyReachable",
         ),
         Statement(
             "Options.enableHDR = false",
@@ -298,6 +323,8 @@ class FieldMLAfieldFourReachTest {
             null,
             "MACRO-GENERATED DELEGATE: `Once` (scratch.kt:15) plus a `val Once.renderer by Onceing<Renderer>()` " +
                 "that prop's expansion wrote. Reachable as get-or-compute over getPropertyRaw/setPropertyRaw",
+            residue = Residue.SOURCE_MACRO,
+            effect = "theOnceSlotIsExpressibleAsGetOrComputeAndStore",
         ),
         Statement(
             "window = Window(\"Field three-box\")",
@@ -328,6 +355,7 @@ class FieldMLAfieldFourReachTest {
             null,
             "SOURCE MACRO (macros.kt:344): expands to `_computeModuleHere(...)` *and* writes shader source " +
                 "into box properties at expansion time. The call half is reachable; the document mutation is not",
+            residue = Residue.SOURCE_MACRO,
         ),
         Statement(
             "var m = ComputeMesh()",
@@ -365,6 +393,7 @@ class FieldMLAfieldFourReachTest {
             "SOURCE MACRO. The named argument half of this stopped being a blocker on 2026-08-19 — " +
                 "`hostCall \"display\" {name = \"probe\"}` is now an ordinary call — but `fieldProbeHere` " +
                 "is a macro (mechanism A) and there is still no JVM member to name parameters of",
+            residue = Residue.SOURCE_MACRO,
         ),
         Statement(
             "m.x = N / 64",
@@ -380,6 +409,8 @@ class FieldMLAfieldFourReachTest {
             "moduleHere { primitiveType = triangles }",
             null,
             "SOURCE MACRO (macros.kt:340), and `triangles` is another name the expansion declares",
+            residue = Residue.SOURCE_MACRO,
+            effect = "public/docs/assets/fieldml_mesh_demo — parameters(renderer) { … } plus Module(params), on a real device",
         ),
         Statement(
             "m.aspectRatio = { window.width/window.height.toFloat() }",
@@ -439,6 +470,53 @@ class FieldMLAfieldFourReachTest {
         statementSurvey.filter { it.fieldML == null }.forEach {
             assertTrue(it.note.isNotBlank(), "${it.kotlin} has no reason recorded")
         }
+    }
+
+    /**
+     * The closing statement this survey exists to be able to make.
+     *
+     * "13 of 19" measures the sample. What measures the *bridge* is which mechanisms are left, and
+     * after 2026-08-19 the answer is one: every statement FieldML still cannot express is a **source
+     * macro** — a rewrite over Kotlin text, applied before the compiler runs, with no JVM member for
+     * reflection to find — except the `import`, which is not a limitation because FieldML names every
+     * class in full and has nothing for an import to do.
+     *
+     * That is a different kind of claim from a count, and it is the one worth guarding: a new
+     * refusal for a *bridge* reason would fail here even if the count stayed the same, which is
+     * exactly the regression a count cannot see. Mechanism A is a language-design question — a
+     * FieldML macro layer — and not something the bridge can answer.
+     */
+    @Test
+    fun theResidueIsOneMechanism() {
+        val refused = statementSurvey.filter { it.fieldML == null }
+        val byResidue = refused.groupBy { it.residue }
+
+        val report = buildString {
+            appendLine("what is left, by mechanism:")
+            byResidue.forEach { (residue, statements) ->
+                appendLine("  ${residue ?: "UNCLASSIFIED"}: ${statements.size}")
+                statements.forEach { appendLine("    ${it.kotlin}${it.effect?.let { e -> "   [effect reached: $e]" } ?: ""}") }
+            }
+        }
+        println(report)
+
+        assertTrue(refused.none { it.residue == null }, "every refusal must name its mechanism\n$report")
+        assertEquals(
+            setOf(Residue.SOURCE_MACRO, Residue.NOT_NEEDED),
+            byResidue.keys,
+            "a refusal for a reason other than a source macro is a bridge regression\n$report",
+        )
+        // 5 and 1 as of 2026-08-19. Asserted exactly, because this is the claim: the residue is one
+        // mechanism, and it is not shrinking or growing quietly.
+        assertEquals(5, byResidue[Residue.SOURCE_MACRO]?.size, "expected five source macros\n$report")
+        assertEquals(1, byResidue[Residue.NOT_NEEDED]?.size, "expected one non-limitation\n$report")
+        // Three of the five have their *effect* reached anyway, each pointing at a test or an
+        // artifact rather than at a claim.
+        assertEquals(
+            3,
+            refused.count { it.effect != null },
+            "three of the macro statements should record where their effect is reached\n$report",
+        )
     }
 
     // ---- harness ---------------------------------------------------------------------------------
