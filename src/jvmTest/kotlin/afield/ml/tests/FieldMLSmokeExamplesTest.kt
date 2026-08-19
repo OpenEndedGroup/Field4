@@ -131,6 +131,47 @@ class FieldMLSmokeExamplesTest {
     }
 
     /**
+     * The *moving* `afield.four` demo — the same still life plus mechanism D — and it cannot be
+     * evaluated here either, for the same reason.
+     *
+     * Two things are checked beyond "it compiles", and both are drift guards on the demo's *point*
+     * rather than on its syntax. It has to still reach a suspend function type, or it is the
+     * still-life demo again with a longer comment; and it has to keep declaring, in the box a reader
+     * opens first, why the scaffolding box is Kotlin. A demo that quietly loses its subject is worse
+     * than one that fails to compile, because nothing tells you.
+     *
+     * It was *run* on 2026-08-19 in a `field_backdoor.py` session against a real Vulkan device;
+     * `spin-0.png` … `spin-3.png` beside it are four frames of the result, and they differ.
+     */
+    @Test
+    fun theFramesDemoTypeChecksAndKeepsItsSubject() {
+        val demo = Path.of("public/docs/assets/fieldml_frames_demo/metadata.edn")
+        val sources = ednCodeStrings(demo.toFile().readText())
+
+        assertEquals(2, sources.size, "expected a Kotlin scaffolding box and a FieldML box in $demo")
+        val scaffolding = sources[0]
+        val fieldML = sources[1]
+
+        val result = compileOk("$demo FieldML box", fieldML)
+        assertNotNull(result.core, "$demo FieldML box: core")
+        assertTrue(
+            "hostAs \"" !in fieldML,
+            "$demo uses hostAs, which is the thing these demos exist to show is unnecessary",
+        )
+        listOf("eachFrame", "launchFrames").forEach { name ->
+            assertTrue(
+                name in fieldML,
+                "$demo no longer calls $name, so it no longer demonstrates a suspend function type",
+            )
+        }
+        assertTrue(
+            "suspend" in scaffolding && "SOURCE MACRO" in scaffolding,
+            "$demo's Kotlin box must keep saying why it is Kotlin: `prop`/`once` are macros and " +
+                "`Renderer.run` is a suspend member the bridge can satisfy but not call into",
+        )
+    }
+
+    /**
      * The lambda demo's promise is specifically that it needs no `hostAs` — so if one drifts back in
      * the demo has stopped showing the thing it exists to show, even though every box still runs.
      *
