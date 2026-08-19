@@ -10,6 +10,8 @@ When you run a box, Field does **not** hand your text straight to the Kotlin com
 
 Most of the day-to-day magic — `prop`, `once`, inherited `renderer`/`window`, the typed accessors you get from `moduleHere { }`, `@exported` helpers — is built on this pipeline. This page explains the machinery. For the gentle user-level tour of `connect`/`prop`/`once` see the [Feature Overview](funFeatures.md); for the graphics-box API see [afield.four Graphics](afield_four_graphics.md). This page is the layer underneath both.
 
+This page stops where the last fragment finishes evaluating. What happens to the *value* it produced — and in particular what happens when that value is a `Frames`, as it is for every `animate { }` box — is [Frames, and what a frame is](animation_time_model.md).
+
 There are two distinct "code that writes code" mechanisms, and it helps to keep them straight from the start:
 
 - **Macros** run *before* compilation. They are a source→source rewrite of your text (plus a side-effect: they can inject glue into the preamble, and even set box properties).

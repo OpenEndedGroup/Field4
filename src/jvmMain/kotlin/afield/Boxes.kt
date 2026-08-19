@@ -16,6 +16,7 @@ import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import java.util.IdentityHashMap
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CopyOnWriteArraySet
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
@@ -244,6 +245,23 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     val cachedLaunchReturns: MutableMap<String, CachedLaunchReturn> = ConcurrentHashMap()
     val currentRunningStates: MutableMap<String, RunningState> = ConcurrentHashMap()
     internal val launchEpoch = AtomicInteger(0)
+
+    /**
+     * Teardown that [stopTrackedJobs] runs for resources the end phase cannot be trusted to release.
+     *
+     * `Frames.atEnd` — what `.end { }` appends to — is deliberately *not* a stop-time hook, and this
+     * list exists because of that. Stop is a barrier: it bumps [launchEpoch] first, so
+     * [registerLaunchJob] cancels the end job precisely *because* its epoch is already stale. That
+     * fence is what makes the launch/stop race safe, so it stays. Anything holding an OS resource
+     * registers here instead, through [registerStopHook], and stop drains these synchronously.
+     *
+     * This generalises a workaround the tree already had: `Server.stop` disposes an `afield.four`
+     * renderer explicitly, outside the end phase, for exactly this reason.
+     *
+     * See `dev_docs/frames_stop_end_phase.md` for the measurement, and [Box.streamProcess] for the
+     * one caller that needs it today.
+     */
+    internal val stopHooks: MutableCollection<Runnable> = CopyOnWriteArrayList()
 
     override var children by Delegation<MutableSet<Box>>()
     override var parents by Delegation<MutableSet<Box>>()
@@ -1125,6 +1143,18 @@ internal fun Box.registerLaunchJob(job: Job, epoch: Int): Boolean {
     return true
 }
 
+/**
+ * Register [hook] to run on the next [stopTrackedJobs]; returns the handle that unregisters it.
+ *
+ * Hooks run once — stop drains the list — so a resource whose owner ends normally should unregister
+ * through the returned handle rather than rely on the drain. Keep a hook short and idempotent: it
+ * runs synchronously on whichever thread called stop, usually the main runloop.
+ */
+internal fun Box.registerStopHook(hook: Runnable): Runnable {
+    stopHooks.add(hook)
+    return Runnable { stopHooks.remove(hook) }
+}
+
 /** Stop is a barrier: invalidate every strand before snapshotting jobs that are already registered. */
 internal fun Box.stopTrackedJobs() {
     launchEpoch.incrementAndGet()
@@ -1141,6 +1171,15 @@ internal fun Box.stopTrackedJobs() {
     jobs.clear()
     clearRunningStates()
     jobsToCancel.forEach { it.cancel() }
+    // After cancelling, matching the order the end phase would have used: cancel the producer, then
+    // release what it held. One hook throwing must not strand the rest, so each is isolated.
+    val hooksToRun = stopHooks.toList()
+    stopHooks.clear()
+    hooksToRun.forEach { hook ->
+        runCatching { hook.run() }.onFailure {
+            lprintln("warning,box", "A stop hook threw while stopping box $id: $it")
+        }
+    }
 }
 
 fun syncExecutionStatus() {

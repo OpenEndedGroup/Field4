@@ -405,6 +405,10 @@ The marker remembers a little state and renders HTML back into the editor gutter
 
 Histograms answer “what values have I seen?”, history answers “how did the value move?”, and stats gives you the quick executive summary.
 
+The live examples below are all `loop { }` bodies, which is Field's frame loop: the body runs, then
+the frame advances, once per Runloop tick. What that tick is, and what stops one of these, is
+[Frames, and what a frame is](animation_time_model.md).
+
 <!--
 FIELD_TEST
 id: docs.visualizers.inline-metrics

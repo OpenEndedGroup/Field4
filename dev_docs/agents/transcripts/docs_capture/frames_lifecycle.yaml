@@ -1,0 +1,312 @@
+name: frames_lifecycle
+description: >
+  The frame loop, running, in a fresh document — the companion to
+  `public/docs/animation_time_model.md`.
+
+  Replay this into a blank Field and four boxes appear, three of them already launched. Between
+  them they show the whole lifecycle a reader has questions about:
+
+    1. "runs until you stop it" — an `animate { }` with no end condition. A disc travels a
+       Lissajous figure and the box's running indicator stays lit. Press stop and it stops.
+    2. "stops itself" — the same loop with `if (elapsed >= 6.0) end()`, and an `.end { }` that
+       redraws the last frame in red. Watch it for six seconds and it freezes. This is the box to
+       watch if you only watch one: something visibly moves, and then it visibly stops.
+    3. "re-run replaces" — run it, then run it AGAIN without stopping it first. The frame counter
+       restarts and the colour changes, because re-running bumps the box's run generation and the
+       previous `Frames` cancels itself at the top of its next `frame()`. You never get two loops.
+       It also prints its own frame rate, which is the fastest way to see that `frameNumber` counts
+       work rather than seconds: it runs into the tens of thousands within a few seconds, and it is
+       a different number on every machine and every run.
+    4. "cleanup, and what actually triggers it" — not launched, because the point is that you drive
+       it. It is the box that corrected the page: pressing **stop** does NOT run `.end { }`.
+       `stopTrackedJobs` bumps the box's launch epoch before the end phase registers, and
+       `registerLaunchJob` cancels the end job on a stale epoch. So:
+
+         * press stop inside the eight-second window  -> only the `finally` line;
+         * let the eight seconds elapse               -> only the `finally` line (no cancellation);
+         * **re-run** it while it is still running    -> BOTH lines, `.end { }` first.
+
+       That last one is the contrast worth seeing, and box 2 shows the other way to reach it: a
+       body that calls `end()` on itself. `.end { }` means "retired or replaced", not "stopped".
+       (`afield.FramesSemanticsTest.boxStopCancelsTheEndBlockBeforeItCanRun` and
+       `reRunningTheBoxStillRunsTheEndBlock` pin both halves.)
+
+  Two things every box here does that are worth copying:
+
+    * **It redraws on a clock, not on every frame.** Measured on the machine this was written on,
+      the Runloop reaches several thousand frames a second with these boxes running. Drawing once
+      per frame floods the output socket and buys nothing a person can see, so each body gates its
+      redraw to 30/s (10/s for the text ones) and lets `frameNumber` count freely underneath.
+      Box 1 also caps how much geometry each redraw carries, for the same reason: an over-long
+      trail is bandwidth, and an ungated one saturated the output socket at ~33 MB/s while this
+      was being written.
+    * **It draws through a lambda, not a named `fun`.** `lines(...)` and `display(...)` are `Box`
+      extensions, and K2 cannot currently codegen a named function that captures a script's
+      implicit `Box` receiver. Named helpers that only build an `FLine` are fine.
+
+  Demo/capture-only, so it lives under transcripts/docs_capture/: AgentTranscriptMaterializer scans
+  the transcripts/ directory itself and would expect a committed starting-point bundle for anything
+  directly inside it.
+operations:
+  - create:
+      box: frames_lifecycle_forever
+      name: 1 · runs until you stop it
+      frame:
+        x: 60.0
+        y: 60.0
+        w: 560.0
+        h: 150.0
+      properties:
+        code: |
+          // An animate { } with no end condition. It runs until you press stop, or until you
+          // re-run this box. The running indicator on the box stays lit the whole time.
+          val started = AnimationClock.nowSeconds()
+          // Trail length and resolution are a bandwidth decision, not a taste one: every redraw
+          // serialises the whole trail to SVG and pushes it down the output socket. 8 s at 0.06
+          // is ~130 points; 12 s at 0.02 was ~600 and measurably saturated the connection.
+          val trailSeconds = 8.0
+          val trailStep = 0.06
+          var nextDraw = 0.0
+
+          fun disc(cx: Double, cy: Double, r: Double, rgba: Vec4) = fline {
+              (0..28).forEach { i ->
+                  val a = i / 28.0 * 2.0 * kotlin.math.PI
+                  val px = cx + r * kotlin.math.cos(a)
+                  val py = cy + r * kotlin.math.sin(a)
+                  if (i == 0) moveTo(px, py) else lineTo(px, py)
+              }
+              close(); color = rgba; filled = true; stroked = false
+          }
+
+          fun border(rgba: Vec4) = fline {
+              moveTo(8.0, 8.0); lineTo(552.0, 8.0); lineTo(552.0, 312.0); lineTo(8.0, 312.0); close()
+              color = rgba; thickness = 1.2; stroked = true; filled = false
+          }
+
+          fun atX(s: Double) = 280.0 + 230.0 * kotlin.math.cos(s * 1.1)
+          fun atY(s: Double) = 160.0 + 120.0 * kotlin.math.sin(s * 1.7)
+
+          val draw: (Double) -> Unit = { t ->
+              val trail = fline {
+                  var s = kotlin.math.max(0.0, t - trailSeconds)
+                  var first = true
+                  while (s <= t) {
+                      if (first) { moveTo(atX(s), atY(s)); first = false } else lineTo(atX(s), atY(s))
+                      s += trailStep
+                  }
+                  color = vec(0.30, 0.52, 0.68, 0.55); thickness = 1.2
+              }
+              lines(
+                  border(vec(0.45, 0.52, 0.62, 0.6)), trail,
+                  disc(atX(t), atY(t), 13.0, vec(0.48, 0.85, 1.0, 1.0)),
+                  channel = "main", w = 560.0, h = 320.0, fitToSize = true,
+              )
+          }
+
+          animate {
+              val t = AnimationClock.nowSeconds() - started
+              // Gate the redraw on the clock. The loop still advances every Runloop frame —
+              // frameNumber proves it — but nobody can see 3000 pictures a second.
+              if (t >= nextDraw) {
+                  draw(t)
+                  nextDraw = t + 1.0 / 30.0
+              }
+          }
+  - create:
+      box: frames_lifecycle_stops
+      name: 2 · stops itself after six seconds
+      frame:
+        x: 700.0
+        y: 60.0
+        w: 620.0
+        h: 150.0
+      properties:
+        code: |
+          // The same loop, with an end condition and a cleanup block. Watch it for six seconds:
+          // the disc travels, the bar fills, and then everything freezes and turns red. Nothing
+          // after that is the animation — it is the last frame the .end { } block painted.
+          val started = AnimationClock.nowSeconds()
+          val stopAfter = 6.0
+          var nextDraw = 0.0
+
+          fun disc(cx: Double, cy: Double, r: Double, rgba: Vec4) = fline {
+              (0..28).forEach { i ->
+                  val a = i / 28.0 * 2.0 * kotlin.math.PI
+                  val px = cx + r * kotlin.math.cos(a)
+                  val py = cy + r * kotlin.math.sin(a)
+                  if (i == 0) moveTo(px, py) else lineTo(px, py)
+              }
+              close(); color = rgba; filled = true; stroked = false
+          }
+
+          val draw: (Double, Boolean) -> Unit = { elapsed, stopped ->
+              val accent = if (stopped) vec(1.0, 0.28, 0.30, 1.0) else vec(0.48, 0.85, 1.0, 1.0)
+              val quiet = if (stopped) vec(1.0, 0.28, 0.30, 0.55) else vec(0.55, 0.62, 0.72, 0.7)
+              val border = fline {
+                  moveTo(6.0, 6.0); lineTo(594.0, 6.0); lineTo(594.0, 244.0); lineTo(6.0, 244.0); close()
+                  color = quiet; thickness = 1.4; stroked = true; filled = false
+              }
+              val track = fline {
+                  moveTo(60.0, 90.0); lineTo(540.0, 90.0)
+                  color = quiet; thickness = 1.4
+              }
+              val gutter = fline {
+                  moveTo(60.0, 165.0); lineTo(540.0, 165.0); lineTo(540.0, 205.0); lineTo(60.0, 205.0)
+                  close(); color = quiet; thickness = 1.0; stroked = true; filled = false
+              }
+              // How far through the six seconds we are. It fills, and then it stops filling.
+              val progress = fline {
+                  val w = 480.0 * (elapsed / stopAfter).coerceIn(0.0, 1.0)
+                  moveTo(60.0, 165.0); lineTo(60.0 + w, 165.0); lineTo(60.0 + w, 205.0)
+                  lineTo(60.0, 205.0); close()
+                  color = accent; filled = true; stroked = false
+              }
+              // Position from the clock, not from frameNumber — so it moves at the same speed
+              // whatever rate this machine's Runloop happens to be ticking at.
+              val x = 60.0 + 480.0 * (0.5 - 0.5 * kotlin.math.cos(elapsed * 0.55))
+              lines(
+                  border, track, gutter, progress, disc(x, 90.0, 14.0, accent),
+                  channel = "main", w = 600.0, h = 250.0, fitToSize = true,
+              )
+          }
+
+          animate {
+              val elapsed = AnimationClock.nowSeconds() - started
+              if (elapsed >= nextDraw) {
+                  draw(elapsed, false)
+                  nextDraw = elapsed + 1.0 / 30.0
+              }
+              if (elapsed >= stopAfter) end()
+          }.end {
+              // .end { } runs on cancellation — which end() has just caused. Two frames of it, so
+              // the red state is definitely painted before the job goes away.
+              repeat(2) {
+                  draw(AnimationClock.nowSeconds() - started, true)
+                  frame()
+              }
+          }
+  - create:
+      box: frames_lifecycle_rerun
+      name: 3 · re-run replaces, it does not stack
+      frame:
+        x: 60.0
+        y: 620.0
+        w: 560.0
+        h: 150.0
+      properties:
+        code: |
+          // Run this box. Then run it AGAIN, without stopping it first.
+          //
+          // The counter restarts and the colour changes, and there is still exactly one loop.
+          // Running a box bumps its run generation; the Frames from the previous run closes over
+          // the OLD generation, notices the mismatch at the top of its next frame(), and cancels.
+          //
+          // It gets one more body call before that happens, because shouldend is read at the top of
+          // frame() and the suspended body is already halfway through a call that will return true.
+          //
+          // Read the rate line too. That is the whole reason AnimationClock exists: frameNumber
+          // counts work, and the amount of work a second holds is not a constant.
+          //
+          // nanoTime, not Random(): a fresh script context can hand out the same first random value
+          // twice, which would make this demo silently claim nothing.
+          val hue = ((System.nanoTime() / 1_000_000L) % 360L).toInt()
+          val swatch = "hsl($hue 70% 60%)"
+          val started = AnimationClock.nowSeconds()
+          var nextDraw = 0.0
+
+          val show: (Int, Double) -> Unit = { n, elapsed ->
+              val rate = if (elapsed > 0.5) "%,.0f frames a second".format(n / elapsed) else "measuring"
+              val count = "%,d".format(n)
+              val secs = "%.1f".format(elapsed)
+              display("main",
+                  "<div style='font:13px monospace;color:#c3ccd9;padding:10px'>" +
+                  "<div style='display:flex;align-items:center;gap:14px'>" +
+                  "<div style='width:58px;height:58px;border-radius:6px;background:$swatch'></div>" +
+                  "<div>" +
+                  "<div style='font-size:22px;color:$swatch'>frame $count</div>" +
+                  "<div style='color:#7f8c9b'>$rate &nbsp;&middot;&nbsp; $secs s elapsed</div>" +
+                  "<div style='color:#7f8c9b'>this launch's colour is $swatch</div>" +
+                  "</div></div></div>")
+          }
+
+          animate {
+              val elapsed = AnimationClock.nowSeconds() - started
+              if (elapsed >= nextDraw) {
+                  show(frameNumber, elapsed)
+                  nextDraw = elapsed + 0.1
+              }
+          }
+  - create:
+      box: frames_lifecycle_cleanup
+      name: 4 · cleanup — stop it, wait it out, then re-run it
+      frame:
+        x: 700.0
+        y: 620.0
+        w: 620.0
+        h: 150.0
+      properties:
+        code: |
+          // NOT launched by the transcript, because the point is that you drive this one yourself.
+          // Three things to try, in this order:
+          //
+          //   1. Run it and press STOP inside the eight seconds.
+          //      -> only the finally line. Pressing stop does NOT run .end { }: stopTrackedJobs
+          //         bumps the box's launch epoch first, and registerLaunchJob then cancels the end
+          //         job it is handed because that epoch is stale.
+          //   2. Run it and let the eight seconds elapse.
+          //      -> only the finally line. The body returned; there was no cancellation to catch.
+          //   3. Run it, and while it is still counting, RUN IT AGAIN.
+          //      -> both lines, with .end { } first. A re-run bumps the strand generation and
+          //         leaves the launch epoch alone, so the end job registers and runs — and it runs
+          //         from inside frame()'s catch, before the cancellation unwinds the body's finally.
+          //
+          // So .end { } means "when this animation retires or is replaced", not "when it stops".
+          val started = AnimationClock.nowSeconds()
+          val runFor = 8.0
+          val notes = mutableListOf<String>()
+          var nextDraw = 0.0
+
+          val show: (String) -> Unit = { headline ->
+              display("main", "<pre style='font:13px monospace;color:#c3ccd9;padding:10px;margin:0'>" +
+                  headline + "</pre>")
+          }
+
+          // Cleanup goes to its OWN channel. Re-running the box immediately repaints "main" from
+          // the new launch, which would clobber the old launch's cleanup line before you could
+          // read it -- and the re-run case is the whole point of instruction 3.
+          val note: (String) -> Unit = { line ->
+              notes += line
+              display("cleanup", "<pre style='font:13px monospace;color:#8fff9a;padding:10px;margin:0'>" +
+                  notes.joinToString("\n") + "</pre>")
+          }
+
+          frames {
+              try {
+                  var elapsed = AnimationClock.nowSeconds() - started
+                  while (elapsed < runFor) {
+                      if (elapsed >= nextDraw) {
+                          show("running - %.1f s of %.0f, frame %,d".format(elapsed, runFor, frameNumber))
+                          nextDraw = elapsed + 0.1
+                      }
+                      frame()
+                      elapsed = AnimationClock.nowSeconds() - started
+                  }
+                  show("the body returned normally at frame %,d".format(frameNumber))
+                  note("returned, not cancelled - so .end { } will not run")
+              } finally {
+                  note("finally inside the body - runs whatever happens")
+              }
+          }.end {
+              note(".end { } - only on a re-run or a self-end, and it runs first")
+          }
+  - launch:
+      box: frames_lifecycle_forever
+      property: code
+  - launch:
+      box: frames_lifecycle_stops
+      property: code
+  - launch:
+      box: frames_lifecycle_rerun
+      property: code
+  - wait:
+      millis: 500
