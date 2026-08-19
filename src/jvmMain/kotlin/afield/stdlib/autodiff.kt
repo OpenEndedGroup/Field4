@@ -477,10 +477,19 @@ fun atan2(y: AD, x: AD): AD {
     )
 }
 
-/** `√(x²+y²)` without intermediate overflow; the partials are the components of the unit vector. */
+/**
+ * `√(x²+y²)` without intermediate overflow; the partials are the components of the unit vector.
+ *
+ * The value is `kotlin.math.hypot` and not `sqrt(x*x + y*y)`, which is what the doc comment said all
+ * along and the body did not: the naive form squares before it adds, so it overflows for components
+ * above ~1.3e154 and underflows below ~1.5e-162, and it is up to an ulp away from the correctly
+ * rounded answer everywhere else. That last ulp is not cosmetic — `FnExpr.Hypot` exists so a
+ * *threshold test* on a length can be transcribed exactly, and an interpreter computing a different
+ * length would be exactly the silent divergence `FnAutoDiff.agrees` is there to catch.
+ */
 fun hypot(x: AD, y: AD): AD {
     require(x.tape === y.tape) { "cannot combine AD values from different tapes" }
-    val v = kotlin.math.sqrt(x.value * x.value + y.value * y.value)
+    val v = kotlin.math.hypot(x.value, y.value)
     val dx = if (v == 0.0) 0.0 else x.value / v
     val dy = if (v == 0.0) 0.0 else y.value / v
     return AD(x.tape, x.tape.push(v, x.index, dx, y.index, dy))

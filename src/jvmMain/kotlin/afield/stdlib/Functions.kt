@@ -7110,6 +7110,90 @@ canvas {
         node("sign", children = listOf(fnEdge("source", this)), rebuild = { it[0].sign() })
     ) { x -> kotlin.math.sign(eval(x)) }
 
+    // ---- the angle family --------------------------------------------------------------------
+    // Three ops that arrived together, in 2026-08-19, because RectSL's `->face-travel` could not be
+    // differentiated without all three. A heading is `atan2` of a central finite difference, and
+    // `RectSLFn.kt`'s refusal catalogue had been calling that "the whole of the residual refusal
+    // rate on the gallery" — 116 of 2754 tracks, and every remaining refusal in the corpus.
+    //
+    // The interesting one is that `atan2` is a *primitive* rather than `atan(y/x)` with a quadrant
+    // fix-up. See `FnExpr.Atan2`: the fix-up is half a turn wrong at a negative zero, and no
+    // arithmetic downstream can recover a sign the division has already discarded.
+
+    /**
+     * The arc tangent of every value, in radians, in `(-pi/2, pi/2)`.
+     *
+     * Differentiable everywhere, with derivative `1/(1+v²)` — worth saying plainly, because the two
+     * ops immediately above it are the opposite. [sign] has no derivative worth reporting and
+     * [floor]'s is zero almost everywhere; this one is smooth at every double and bounded, so it is
+     * the natural way to squash an unbounded signal into a range without a hard clip.
+     *
+     * For the angle of a *vector* use [atan2], which is quadrant-correct and stays well conditioned
+     * as the x component crosses zero.
+     */
+    fun Fn.atan(): Fn = graphFn(
+        domain,
+        name,
+        node("atan", children = listOf(fnEdge("source", this)), rebuild = { it[0].atan() })
+    ) { x -> kotlin.math.atan(eval(x)) }
+
+    /**
+     * The quadrant-correct angle of the vector whose **y** component is this signal and whose **x**
+     * component is [x] — `atan2(this, x)`, in radians, in `[-pi, pi]`.
+     *
+     * The receiver is the *y* component, matching `Math.atan2`'s argument order rather than reading
+     * left to right; `dy.atan2(dx)` is the spelling to keep in your head.
+     *
+     * Differentiable, with `∂/∂y = x/(x²+y²)` and `∂/∂x = -y/(x²+y²)`. Both stay finite as `x`
+     * crosses zero, which `atan(y/x)` does not — and the composed form is not merely worse
+     * conditioned but *wrong* at a negative zero, half a turn out. `FnExpr.Atan2` carries the
+     * argument and the measurement.
+     */
+    fun Fn.atan2(x: Fn = param(1.0)): Fn {
+        val d = intersectDomains(domain, x)
+        return graphFn(
+            d,
+            name,
+            node(
+                "atan2",
+                children = listOf(fnEdge("source", this), fnEdge("x", x)),
+                rebuild = { it[0].atan2(it[1]) }
+            )
+        ) { at -> kotlin.math.atan2(eval(at), x.eval(at)) }
+    }
+
+    /** The angle of the vector `(x, this)`, in radians. See the [Fn] overload. */
+    fun Fn.atan2(x: Number): Fn = atan2(param(x))
+
+    /**
+     * The length of the vector whose components are this signal and [y] — `sqrt(this² + y²)`,
+     * computed as `Math.hypot` so it neither overflows for large components nor underflows for tiny
+     * ones.
+     *
+     * Spelled as its own op rather than as `(a.pow(2) + b.pow(2)).pow(0.5)` because the two are
+     * *different functions* by up to an ulp, and a length is very often compared against a
+     * threshold. RectSL's heading widens its sampling window while the velocity's length is at or
+     * below `1e-9`; an ulp there is a different branch, which is a visibly different rotation.
+     *
+     * Differentiable, with the unit vector as its partials, and zero at the origin where there is no
+     * direction to report.
+     */
+    fun Fn.hypot(y: Fn = param(0.0)): Fn {
+        val d = intersectDomains(domain, y)
+        return graphFn(
+            d,
+            name,
+            node(
+                "hypot",
+                children = listOf(fnEdge("source", this), fnEdge("y", y)),
+                rebuild = { it[0].hypot(it[1]) }
+            )
+        ) { at -> kotlin.math.hypot(eval(at), y.eval(at)) }
+    }
+
+    /** The length of the vector `(this, y)`. See the [Fn] overload. */
+    fun Fn.hypot(y: Number): Fn = hypot(param(y))
+
     /**
      * Raises every value to the power [exponent], which may itself be a signal.
      *
