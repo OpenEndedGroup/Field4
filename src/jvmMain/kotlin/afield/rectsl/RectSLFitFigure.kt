@@ -33,7 +33,19 @@ object RectSLFitFigure {
         /** A measured number to print beside the label — the figure should carry its own evidence. */
         val note: String = "",
         /** False for a band that shows only the markers, which is what "target" means. */
-        val strobe: Boolean = true
+        val strobe: Boolean = true,
+        /**
+         * The rect's rotation in radians at a time, or null for an axis-aligned strobe.
+         *
+         * A **function of time** rather than a [Track] on purpose: the pair most worth drawing here
+         * is a [HeadingTrack] beside the lowered `Fn` of that same heading, and the second of those
+         * is not a track at all. `track::sample` and `fn::eval` both fit.
+         *
+         * It matters that a figure can show this at all. A heading is the one channel where a
+         * lowering can be wrong by half a turn while every number it produces stays plausible, and
+         * half a turn is something an eye catches instantly and a tolerance does not.
+         */
+        val rotation: ((Double) -> Double)? = null
     )
 
     /** A place the animation was asked to pass through, drawn as an outlined square on every band. */
@@ -125,13 +137,37 @@ object RectSLFitFigure {
             val y = band.y.sample(t)
             val halfW = rectSize.x * 0.5 * scale
             val halfH = rectSize.y * 0.5 * scale
-            fillRectClipped(
-                pixels, width,
-                (px(x) - halfW).toInt(), (py(y) - halfH).toInt(),
-                (px(x) + halfW).toInt(), (py(y) + halfH).toInt(),
-                left + 1, top + 1, right - 1, bottom - 1,
-                blend(band.colour, fade)
-            )
+            val rotation = band.rotation?.invoke(t)
+            if (rotation == null) {
+                fillRectClipped(
+                    pixels, width,
+                    (px(x) - halfW).toInt(), (py(y) - halfH).toInt(),
+                    (px(x) + halfW).toInt(), (py(y) + halfH).toInt(),
+                    left + 1, top + 1, right - 1, bottom - 1,
+                    blend(band.colour, fade)
+                )
+            } else {
+                fillRotatedRectClipped(
+                    pixels, width,
+                    px(x), py(y), halfW, halfH, rotation,
+                    left + 1, top + 1, right - 1, bottom - 1,
+                    blend(band.colour, fade)
+                )
+                // A nose pip, ahead of the body along its own local +x. Without it the glyph is a
+                // rectangle, and a rectangle is *symmetric under a half turn* — which is precisely
+                // the error a heading lowering makes when it loses a quadrant, so the one picture
+                // that has to show that error would be the one picture that cannot. The pip is what
+                // makes "pointing backwards" visible, to a reader and to a pixel diff alike.
+                val nose = kotlin.math.max(halfH * 1.6, 3.0)
+                fillRotatedRectClipped(
+                    pixels, width,
+                    px(x) + (halfW + nose) * kotlin.math.cos(rotation),
+                    py(y) - (halfW + nose) * kotlin.math.sin(rotation),
+                    nose, nose, rotation,
+                    left + 1, top + 1, right - 1, bottom - 1,
+                    blend(band.colour, fade)
+                )
+            }
         }
 
         for (marker in markers) {
@@ -191,6 +227,44 @@ object RectSLFitFigure {
     ) {
         for (y in maxOf(y0, clipY0) until minOf(y1, clipY1)) {
             for (x in maxOf(x0, clipX0) until minOf(x1, clipX1)) {
+                val i = y * width + x
+                pixels[i] = over(pixels[i], colour)
+            }
+        }
+    }
+
+    /**
+     * A rect rotated by [angle] radians about ([cx], [cy]), filled by half-plane test.
+     *
+     * Screen y grows downward while a RectSL rotation is counter-clockwise in world space, so the
+     * rotation is applied with the sine negated — the same handedness flip [drawBand]'s `py` makes
+     * for positions. Get it wrong and every dart mirrors about the horizontal, which
+     * `RectSLHeadingFigureTest` would catch as a heading pointing the wrong side of its own path.
+     *
+     * No anti-aliasing, because the figure is read by a test as well as by a person and a hard edge
+     * is a countable one.
+     */
+    private fun fillRotatedRectClipped(
+        pixels: IntArray, width: Int,
+        cx: Double, cy: Double, halfW: Double, halfH: Double, angle: Double,
+        clipX0: Int, clipY0: Int, clipX1: Int, clipY1: Int,
+        colour: Int
+    ) {
+        val cos = kotlin.math.cos(angle)
+        val sin = -kotlin.math.sin(angle)
+        val reach = kotlin.math.hypot(halfW, halfH)
+        val x0 = maxOf((cx - reach).toInt(), clipX0)
+        val x1 = minOf((cx + reach).toInt() + 1, clipX1)
+        val y0 = maxOf((cy - reach).toInt(), clipY0)
+        val y1 = minOf((cy + reach).toInt() + 1, clipY1)
+        for (y in y0 until y1) {
+            for (x in x0 until x1) {
+                val dx = x + 0.5 - cx
+                val dy = y + 0.5 - cy
+                // Rotate the sample point back into the rect's own frame, then test the two axes.
+                val local = dx * cos + dy * sin
+                val across = -dx * sin + dy * cos
+                if (kotlin.math.abs(local) > halfW || kotlin.math.abs(across) > halfH) continue
                 val i = y * width + x
                 pixels[i] = over(pixels[i], colour)
             }

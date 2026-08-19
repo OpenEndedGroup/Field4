@@ -81,3 +81,33 @@ same problem: `clamp01(floor(x) + 1)` is an exact step function.
 
 Not a change: `Fn.eval` for every existing graph, every existing formula, and the finite-difference
 fit path are all untouched.
+
+## 2026-08-19 — the angle family: `Fn.atan()`, `Fn.atan2()`, `Fn.hypot()`
+
+Three ops added, one arithmetic fix, and one declared reproducibility consequence — the same shape of
+entry as the `floor` pass above, and for the same underlying reason: RectSL needed a primitive.
+
+`RectSL`'s `->face-travel` builds a `HeadingTrack`, which is `atan2` of a central finite difference,
+and it was the last closable refusal in the differentiable backend — 116 of the gallery corpus's 2754
+tracks, and every refusal in that corpus that was not a pattern track. Closing it took an `atan2`
+that `Fn` did not have.
+
+Worth recording *why* it is a primitive rather than the composition the old refusal text predicted
+(`FnExpr.Atan` plus a quadrant fix-up). `atan(y/x) ± pi` discards the sign of a zero in its first
+operation — `-0.0 / -1.0` is `+0.0` — so it answers `+pi` where `atan2(-0.0, -1.0)` is `-pi`. Half a
+turn, from two inputs that compare equal, and no `FnExpr` comparison can tell them apart afterwards.
+`RectSLHeadingTest.theQuadrantFixUpIsHalfATurnOutAtANegativeZero` keeps that as a measurement.
+
+| surface | change | who notices | how to spot it |
+| --- | --- | --- | --- |
+| `OpRegistry.opsInFamily("transform")` | size 20 -> 23 | **seeded `evolve` runs that mutate a transform node**, exactly as in the 2026-08-06 entry: `FnMutations.substituteOp` indexes the family by `rng.nextInt(size)`, so the same seed now picks a different replacement op. Fitness and output change; nothing throws. | any `evolve(..., rngSeed = n)` whose trace touches a transform node |
+| `FnAutoDiff.differentiableOps` | 32 -> 35 (of 127 canonical ops, 27.6%) | `fitGradient(gradient = EXACT)` now accepts a graph containing an angle op instead of refusing it. Unlike `floor`, these carry a *real* derivative, so this is a straightforward gain | `EXACT` on a graph with an `atan`/`atan2`/`hypot` |
+| `RectSLFnLowering` for `HeadingTrack` | refusal -> exact lowering | `Track.toFn` and `Track.fitParameters` now succeed on any track containing a `->face-travel`, where they used to throw with a stated reason. The gallery differential went 95.8% -> 100% of tracks lowered | any RectSL scene with `->face-travel` or `->face-travel-at` |
+| `RectSL` `Track.fitParameters` | a named free parameter occupying several θ slots is now moved as one variable (gradients summed, step applied to all slots) | a fit whose parameter appeared more than once in the *lowered graph* used to move only the last occurrence, so `TrackFitResult.fitted` and `.fittedFn` could disagree. Reachable before today only through a track like `x + x` over one `FreeParamTrack`; a heading makes it the common case (36 slots) | any fit where `freeParameterSlots(fn)` reports a list longer than 1 |
+| `afield.stdlib.hypot(AD, AD)` | the value is `Math.hypot`, not `sqrt(x*x + y*y)`, which is what its own KDoc had always claimed | overflowed for components above ~1.3e154 and underflowed below ~1.5e-162; up to one ulp elsewhere. Anything reading a tracked length moves by at most an ulp | `hypot` on extreme components |
+| `fnrewrite.js` `opWords` | gains `atan`, `arctan`, `atan2`, `arctan2`, `hypot`, `length` | the editor highlights and completes them after `op=` | typing `op="atan2"` in a rewrite rule |
+| `RectSLFitFigure.Band` | gains an optional `rotation: ((Double) -> Double)?`, drawing the strobed rect rotated with a nose pip | additive; a band without it draws exactly as before | passing `rotation =` |
+
+Not a change: `Fn.eval` for every existing graph, every existing formula, the sampled output of every
+existing RectSL scene (the CPU sampler and the GLSL emitter are untouched), and the finite-difference
+fit path.
