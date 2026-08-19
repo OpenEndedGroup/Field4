@@ -160,9 +160,24 @@ object FieldMLHostBridge {
      * `kotlinFunction` is null for a Java method and for the `name$default` synthetics the compiler
      * emits, and it *throws* on a few shapes it cannot model — both are "this member has no named
      * parameters", so both are simply not candidates.
+     *
+     * Cached, for the reason [FieldMLHostTypes.nullableFunctionArguments] is: reading Kotlin metadata
+     * costs far more than the reflective call it precedes, this runs once per candidate per call
+     * site, and completion re-compiles on every keystroke. `Method` has value-equal `hashCode`, and
+     * the map is bounded by the number of distinct methods a document actually names.
      */
+    fun kotlinFunctionOf(method: Method): KFunction<*>? =
+        kotlinFunctions
+            .getOrPut(method) { runCatching { method.kotlinFunction }.getOrNull() ?: absentKotlinFunction }
+            .let { it as? KFunction<*> }
+
+    private val kotlinFunctions = java.util.concurrent.ConcurrentHashMap<Method, Any>()
+
+    /** A `ConcurrentHashMap` cannot hold a null, so "there is no Kotlin view" needs a stand-in. */
+    private val absentKotlinFunction = Any()
+
     private fun kotlinCandidates(methods: List<Method>): List<KFunction<*>> =
-        methods.mapNotNull { runCatching { it.kotlinFunction }.getOrNull() }
+        methods.mapNotNull { kotlinFunctionOf(it) }
 
     /**
      * The one candidate whose value parameters the given names satisfy, or null.

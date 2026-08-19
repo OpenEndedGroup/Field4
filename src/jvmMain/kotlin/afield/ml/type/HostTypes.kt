@@ -250,8 +250,9 @@ object FieldMLHostTypes {
         return Resolution.Found(valueType(owner))
     }
 
+    /** Through the bridge's cache, so the two sides of a named call read the metadata once between them. */
     private fun kotlinFunctionsOf(methods: List<java.lang.reflect.Method>): List<KFunction<*>> =
-        methods.mapNotNull { runCatching { it.kotlinFunction }.getOrNull() }
+        methods.mapNotNull { FieldMLHostBridge.kotlinFunctionOf(it) }
 
     private fun resolveNamed(
         candidates: List<KFunction<*>>,
