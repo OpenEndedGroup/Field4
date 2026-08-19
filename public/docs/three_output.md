@@ -14,7 +14,7 @@ the viewer grew stopped dead at the mesh boundary.
 meshes as well as FLines, in one orbitable scene, and lays several views out side by side when you
 ask for a contact sheet.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 three(channel = "car", height = 460) {
     mesh(car, wireframe = false)
     lines(measurements)                       // annotations in the same space as the solid
@@ -191,7 +191,7 @@ turn it on. If you want the numbers under each panel, either call `threeGrid` di
 use the `List<ThreeMeshPanel>` overload, which exists precisely because a gallery usually has
 something specific to say about each cell that the generic sentence is not:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 threeGrid(
     listOf(
         ThreeMeshPanel("cuboctahedron", solid, facts = "12 vertices · 24 edges · 14 faces (8 triangles, 6 squares)"),

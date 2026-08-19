@@ -118,7 +118,7 @@ displayOpen("main")
 
 The companion question is the one that matters at two in the morning: **is this about to wedge?**
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 net.willDeadlock()      // false — it loops
 net.deadTransitions()   // [] — every voice is sounding
 
@@ -190,7 +190,7 @@ displayOpen("main")
 
 To play it, hand it to `respond` like any other pattern:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 kit.emits().respond(cps = 2.0) { event -> dirt(event.value) }
 ```
 
@@ -243,7 +243,7 @@ displayOpen("main")
 what makes it work. Under timed semantics a firing *takes* its duration, so a transition with `@4`
 genuinely holds a four-cycle section open rather than passing a token along instantly:
 
-```
+```diffstatic {data-lang=text}
 #petri
 !timing timed
 
@@ -267,7 +267,7 @@ A place's token count over time is a step function, and a step function is a sig
 accumulating in a place can drive a filter, and the structure and the sound stop being two
 separate things bolted together.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val net = petri("""
     !grid 1/4
     src     : 8
@@ -296,7 +296,7 @@ three times past the top.
 Everything above is the pure half — a function of time, safe for the combinators to re-query. A
 performance is not a function of time, so it lives somewhere else on purpose.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val live = net.live()
 
 showPetriNet(live)                 // click a place to inject a token, a transition to fire it
@@ -462,7 +462,7 @@ Three things follow that the deterministic analysis cannot say:
 Applied to the table above, the two analyses disagree in a way that is a diagnosis rather than a
 bug:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val net = table(reverseLast = true)      // asymmetric, PetriConflict.ORDER
 net.deadTransitions()                    // [grab.4, eat.4, done.4]  ← starved by the policy
 net.stateSpace().neverFires()            // []                       ← the *net* is fine
@@ -503,7 +503,7 @@ Almost all of that 2.41ⁿ is the same firings shuffled. Five philosophers each 
 fork is one event five times over, and a full search dutifully visits all 5! orderings of it. A
 **partial-order reduction** explores one ordering and proves that is enough:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 net.stateSpace(reduction = PetriReduction.STUBBORN)
 ```
 
@@ -546,7 +546,7 @@ An unbounded net has infinitely many markings, so the exhaustive search can only
 construction: a marking that can be pumped is written with an **ω** in the growing place, which
 makes the graph finite for *every* net.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val leak = petri {
     place("run", tokens = 1)
     t("make") { from("run"); to("run"); to("queue") }

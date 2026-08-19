@@ -8,7 +8,7 @@ express — and the DSL can do more, because it can take a lambda. What the nota
 whole net fits on screen and one arc is one line, which is the difference between a net you can
 edit while it plays and one you cannot.
 
-```
+```diffstatic {data-lang=text}
 #petri
 !grid 1/16
 

@@ -139,7 +139,7 @@ hostStaticCall "max" ([5, 1, 9, 3], fun a b -> b - a) Collections
 
 Reachability is not correctness. A bridge that chose the wrong overload, put an argument in the wrong slot, or lost precision converting a result would still report a high "callable" number — so the coverage measurement calls every method **twice**: once through the bridge, once through plain `Method.invoke` with argument values of exactly the right JVM types, and compares the results.
 
-```
+```diffstatic {data-lang=text}
 callable now:         344 / 362 (95.0%)
 reachable before:     166 / 362 (45.9%)
 calls run both ways:  341

@@ -216,14 +216,14 @@ one square-wave blip, in one bar.
 
 `describe()` prints exactly which, which is what a demo box should say out loud:
 
-```
+```diffstatic {data-lang=text}
 Dirt samples: bd hh — synth voice for zzzznotadrum
 ```
 
 and for the whole-render fallback, the same call names the override rather than failing
 quietly:
 
-```
+```diffstatic {data-lang=text}
 synth voice (no Dirt-Samples found; set FIELD_DIRT_SAMPLES to use real samples)
 ```
 
@@ -267,7 +267,7 @@ Install the quark (`Quarks.install("Dirt-Samples")` in SuperCollider, or clone
 [tidalcycles/Dirt-Samples](https://github.com/tidalcycles/Dirt-Samples)) and then change one
 call:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 // the stand-in
 showPatAudio(pat("bd ~ sd ~, hh*8") with gain(0.9))
 
@@ -284,7 +284,7 @@ which voice it found rather than leaving you to guess from the sound.
 
 If you want to be sure, force it:
 
-```bash
+```diffstatic {data-lang=bash}
 FIELD_DIRT_SAMPLES=/path/to/Dirt-Samples ./field.sh
 ```
 

@@ -153,6 +153,8 @@
   {"doc": "rectsl_dataviz", "box": "dataviz_renderer", "codeSha256": "1f43e051ea109e05", "codeLines": 14, "receivers": ["afield.Box"], "preamble": "rectsl_dataviz__dataviz_renderer.preamble.kt"},
   {"doc": "rectsl_glsl_sdf", "box": "sdf_lower", "codeSha256": "29a68f8ddfb9c755", "codeLines": 35, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "rectsl_glsl_sdf", "box": "sdf_use", "codeSha256": "a9e2bb2e38708f53", "codeLines": 52, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "rectsl_heading_fit", "box": "rectsl_heading_lowering", "codeSha256": "87eab92615431933", "codeLines": 68, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "rectsl_heading_fit", "box": "rectsl_heading_solve", "codeSha256": "87567cb0cd6ed31a", "codeLines": 36, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "rectsl_inverse_animation", "box": "rectsl_free_param_word", "codeSha256": "88a81b723c04ad75", "codeLines": 39, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "rectsl_inverse_animation", "box": "rectsl_inverse_fit", "codeSha256": "878e6dbbdb2d0be0", "codeLines": 78, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "rectsl_musicality", "box": "music_groove", "codeSha256": "1932406a02af7834", "codeLines": 107, "receivers": ["afield.Box"], "preamble": "rectsl_musicality__music_groove.preamble.kt"},

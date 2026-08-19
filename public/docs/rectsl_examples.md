@@ -845,7 +845,7 @@ The array primitives above multiply a shape across *space*. This section multipl
 The reason this is a thin bridge rather than a translation is that both languages are already the
 same shape underneath. A RectSL track is a pure function of time; so is a pattern:
 
-```
+```diffstatic {data-lang=text}
 RectSL   interface Track<out T> { fun sample(t: Double): T }
 Pattern  class PatPattern<A>    { fun events(arc: PatArc): List<PatEvent<A>> }
 ```

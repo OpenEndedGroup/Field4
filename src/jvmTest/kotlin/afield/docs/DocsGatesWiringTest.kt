@@ -15,6 +15,7 @@ class DocsGatesWiringTest {
             "afield.docs.SmallLanguageAnatomyTest",
             "afield.graphics.CloseNodeCitationDriftTest",
             "afield.docs.DocsGatesWiringTest",
+            "afield.docs.DocsFenceTreatmentTest",
         )
 
         expected.forEach { className ->

@@ -87,7 +87,7 @@ exercises it, so it is listed as a path and not as a measurement.
 
 There is exactly one signature everything realtime meets at:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 fun render(outL: FloatArray, outR: FloatArray, numFrames: Int, ctx: SynthContext)
 ```
 

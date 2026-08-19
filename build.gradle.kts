@@ -1144,6 +1144,7 @@ val citationGuardTestClasses = listOf(
     "afield.docs.SmallLanguageAnatomyTest",
     "afield.graphics.CloseNodeCitationDriftTest",
     "afield.docs.DocsGatesWiringTest",
+    "afield.docs.DocsFenceTreatmentTest",
 )
 
 val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationGates") {
@@ -1156,6 +1157,15 @@ val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationG
         citationGuardTestClasses.forEach(::includeTestsMatching)
         isFailOnNoMatchingTests = true
     }
+    // These guards read documentation, not just classes, so Gradle must be told: without this the
+    // task is UP-TO-DATE after a pure Markdown edit and the guards "pass" without running. Measured
+    // on 2026-08-19 — a deliberately planted bad fence went green until `--rerun-tasks`. A guard
+    // that can pass stale is worse than no guard, because it reads as evidence.
+    inputs.files(fileTree("public/docs") { include("**/*.md") })
+        .withPropertyName("publishedDocs")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file("public/docs_hooks.py").withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file("build.gradle.kts").withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 tasks.named("compileKotlinJvm") {

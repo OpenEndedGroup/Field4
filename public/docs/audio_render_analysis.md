@@ -8,7 +8,7 @@ analysis jobs, follows progress and returns durable results.
 
 This closes a useful feedback loop:
 
-```text
+```diffstatic {data-lang=text}
 Field code (Pat / Dirt / Dough / Faust / Sonic Pi)
     → finite WAV + Field-owned render provenance
     → content-addressed Field Audio asset

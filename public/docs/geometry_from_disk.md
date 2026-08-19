@@ -434,7 +434,7 @@ the step after "I loaded a mesh" is usually "I want to boolean it", and
 Two calls. `diagnose()` says *why*; `repairToSolid()` fixes what it can and tells you what it could
 not.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val mesh = meshFromAnyFile("scan.glb")
 println(mesh.diagnose().report())          // why, worst first
 val fixed = mesh.repairToSolid()

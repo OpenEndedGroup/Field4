@@ -142,7 +142,7 @@ then fix the winding, then try `repaired()` — which is a decision tree the rea
 the commonest case of all (a hole) none of the entries was the answer. The refusal now carries
 `TriMesh.diagnose()`'s report, so it names the defect:
 
-```
+```diffstatic {data-lang=text}
 this TriMesh is not a valid manifold: NOT_MANIFOLD.
 mesh: 8 vertices, 10 triangles, chi=1, 1 component(s)
 1 blocking defect(s) — Manifold will refuse this mesh.
@@ -543,7 +543,7 @@ problem, and the `Cleaner` sits behind it.
 Manifold is **optional**. A clone of Field builds, tests and runs without it; only boxes that reach for
 `Solid` need it, and each one says so when it is missing.
 
-```bash
+```diffstatic {data-lang=bash}
 brew install manifold
 ```
 
@@ -555,6 +555,6 @@ cheap enough to branch on in a box.
 Verify it end to end with the smoke, which checks 123 closed-form facts and skips cleanly, exit code 0,
 if the library is absent:
 
-```bash
+```diffstatic {data-lang=bash}
 ./gradlew smokeManifold
 ```

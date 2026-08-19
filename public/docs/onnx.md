@@ -448,7 +448,7 @@ Kotlin and NumPy construct a byte-identical image. That last detail is what lets
 
 Run them the usual way — see [building and testing](building_and_testing.md):
 
-```bash
+```diffstatic {data-lang=bash}
 python3 tools/run_field_tests.py --id onnx.depth.smoke --id onnx.clip.smoke
 ```
 
@@ -459,7 +459,7 @@ What is **not** covered: anything involving a camera. `WebcamPerceptionDemo` is 
 `FIELD_TEST` because it needs hardware and a human to point it at something. It does have a
 still-image path, which is the runnable no-webcam route from a shell:
 
-```bash
+```diffstatic {data-lang=bash}
 # second argument is a path rather than a camera index -> still-image mode
 run-jvm-main afield.examples.onnx.WebcamPerceptionDemo \
     --arg /tmp/out.png --arg public/docs/assets/vision/fline-viewer.jpg

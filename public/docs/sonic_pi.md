@@ -16,7 +16,7 @@ set `FIELD_SONIC_PI_APPIMAGE=/absolute/path/to/Sonic-Pi.AppImage` before startin
 The v5.0.0 Linux image's bundled Ruby extension for YAML links to `libyaml-0.so.2`. On Arch Linux
 and CachyOS, install that small runtime dependency once:
 
-```bash
+```diffstatic {data-lang=bash}
 sudo pacman -S --needed libyaml
 ```
 

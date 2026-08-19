@@ -71,7 +71,7 @@ Here is the part you can control. A class can name the members that answer *"wha
 with one of these"*, in the order a person reaches for them, with `@CommonMembers`. `FLine` is the
 first type in Field to do it:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 @CommonMembers("moveTo", "lineTo", "cubicTo", "close", "here", "rot", "scale", "copy")
 class FLine : HasProperties {
 ```
@@ -113,7 +113,7 @@ is in the payload and is nowhere on screen.
 
 The rendering step is one line:
 
-```javascript
+```diffstatic {data-lang=javascript}
 orderItemsForGroupedDisplay(rankItems(...).slice(0, MAX_VISIBLE_ITEMS))
 ```
 
@@ -211,7 +211,7 @@ served a completion, and everything downstream believed the config rather than t
 and `AaCompletionClient` engages only when that URL is configured. So every completion figure in these
 docs was a photograph of the K1 fallback, and each capture's own log said so:
 
-```text
+```diffstatic {data-lang=text}
 [info,completion] completion backend=K1 box='Untitled'(__docs_drive__) 2ms (AA→K1: no-sidecar-url)
 ```
 
@@ -229,7 +229,7 @@ not just to a build, because K1 serves every completion until the sidecar's sess
 the first `ctrl-space` after launch. Two consecutive completions on one caret, from an ordinary session's
 log:
 
-```text
+```diffstatic {data-lang=text}
 completion backend=K1 … (AA→K1: empty: session building (warming up; using K1 meanwhile))
 completion backend=AA … 1616ms (44 candidates)
 ```
@@ -320,7 +320,7 @@ display("main", """
 The two calls that table is built from are the whole public surface, and you can point them at your
 own class:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val ranks = afield.CommonMemberPrior.ranksFor("afield.graphics.FLine")  // name -> 1-based position
 val score = afield.CommonMemberPrior.scoreOf(ranks["moveTo"] ?: 0)      // position -> points
 ```
@@ -367,7 +367,7 @@ cases.
 If you write a class in a Field box, or anywhere on Field's classpath, you can give the popup its
 first page yourself.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 import afield.CommonMembers
 
 @CommonMembers("advance", "reset", "value")
@@ -411,7 +411,7 @@ A rank on its own tells you the answer moved without telling you what moved abov
 enough to tell a ranking bug from a ranking decision. So the presentation probe can dump the rows a
 person would actually see, with the two inputs that placed them:
 
-```
+```diffstatic {data-lang=text}
 FIELD_RANK_DUMP=14 FIELD_RANK_DUMP_CASE='FLine bare dot' \
   ./gradlew jvmTest --tests "afield.FieldSuggestPresentationTest"
 ```
@@ -425,7 +425,7 @@ so far down" question.
 Run at `ee2d0655b`, that command says this — 249 candidates sent, 80 rendered, and the first eight of
 them are `FLine`'s eight `@CommonMembers` in declared order:
 
-```text
+```diffstatic {data-lang=text}
   case                    sent  visible      rank       was     ms
   FLine bare dot           249       80         1         1   16.1
     -- FLine bare dot: first 14 of 80 visible
