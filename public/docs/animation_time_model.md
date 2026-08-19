@@ -317,6 +317,54 @@ docs runner blocks the Runloop while Playwright paints and screenshots each fram
 whatever rate that takes, and `nowSeconds()` advances by exactly 1/20 s per captured frame regardless.
 Motion written against it is identical every build.
 
+Live, though, the rate is whatever the machine can manage. This is the page's opening claim,
+measured — a frame body that does nothing but stamp the clock, for two seconds, plotted:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/animation_time_model/cadence.png" execution="launch" wait="4.0" wait-output="true" capture="box" open-outputs="true" w="1100" timeout="90" name="animation-cadence"}
+// One wall-clock reading per frame for two seconds, then plot the gaps between them. Nothing here
+// is frame-indexed: a screenshot capture leaves AnimationClock on monotonic real time, unlike the
+// frame-synchronous video recorder.
+val t0 = AnimationClock.nowSeconds()
+val stamps = ArrayList<Double>(400_000)
+
+animate {
+    val now = AnimationClock.nowSeconds()
+    stamps += now
+    if (now - t0 >= 2.0) end()
+}.end {
+    val gapsUs = (1 until stamps.size).map { (stamps[it] - stamps[it - 1]) * 1_000_000.0 }
+    val elapsed = stamps.last() - stamps.first()
+
+    // A 100-frame running mean, so the trend is readable under the spikes.
+    val window = 100
+    val smooth = gapsUs.indices.map { i ->
+        val lo = maxOf(0, i - window + 1)
+        gapsUs.subList(lo, i + 1).average()
+    }
+
+    val perSecond = gapsUs.size / elapsed
+    val median = gapsUs.sorted()[gapsUs.size / 2]
+    showSignals(
+        "gap between frames (µs)" to gapsUs,
+        "100-frame running mean" to smooth,
+        channel = "main",
+        title = "%,d frames in %.2f s — %,.0f a second, median gap %,.0f µs".format(
+            gapsUs.size, elapsed, perSecond, median),
+        xTitle = "frame",
+        yTitle = "µs",
+    )
+}
+```
+
+![A per-frame interval plot titled 1,407 frames in 1.95 s. A dense band of gaps filling everything between zero and about 1,700 microseconds, five spikes reaching 2,500 to 3,500, and a 100-frame running mean that wanders between 1,200 and 1,500 rather than holding any constant value](assets/animation_time_model/cadence.png)
+
+Read the title, and then read the spikes. That number is not a property of Field; it is a property
+of this machine, this build, and whatever else the Runloop was carrying at the time — the figure was
+captured inside the docs build, with a browser attached and other boxes idle in the same process.
+Run the [demo document](#where-this-lives) and you will get a different one, and a different one
+again on the second run. Nothing in that plot is a frame *rate* you could schedule against, which is
+the entire reason to write motion against seconds.
+
 ## An animation, and the moment it stops
 
 Here is the loop actually running, recorded frame by frame. The disc's position comes from
