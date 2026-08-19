@@ -155,19 +155,46 @@ It earned its keep on the first run. `Vector2f` has both `void set(int, float)` 
 
 `afield.four` is Field's Vulkan layer and the reason this bridge exists — the live workspaces are hundreds of Kotlin boxes driving it. FieldML can now express most of it, and the honest accounting matters more than the headline.
 
-Taking `threebox-2`, the minimal complete `afield.four` scene (a window, a compute shader over 100 000 particles, a draw pass), **12 of its 19 statements are expressible in FieldML**. Five run headlessly and are checked against the same call in Kotlin — including `defaultBuffer { size = N.vec4s }`, whose argument is a Kotlin *receiver* lambda and whose `vec4s` is a member extension property that only exists inside it. Everything downstream of a Vulkan device is expressible but untested here, because a headless test JVM has no device and a demo that pretended otherwise would be worth nothing.
+Taking `threebox-2`, the minimal complete `afield.four` scene (a window, a compute shader over 100 000 particles, a draw pass), **13 of its 19 statements are expressible in FieldML**. Six run headlessly and are checked against the same call in Kotlin — including `defaultBuffer { size = N.vec4s }`, whose argument is a Kotlin *receiver* lambda and whose `vec4s` is a member extension property that only exists inside it, and the per-frame builders, because `Frames` is a plain object with no Vulkan in it. Everything downstream of a Vulkan device is expressible but untested here, because a headless test JVM has no device and a demo that pretended otherwise would be worth nothing.
 
-The seven that are not expressible are worth knowing by name, because they are all the same kind of thing:
+The six that are not expressible are worth knowing by name, because they are all the same kind of thing:
 
 | Statement | Why not |
 | --- | --- |
 | `prop<Window>(window)` | a **source macro**: it generates `var Box.window by Inheritance<Window>()` into the box's preamble. `prop` itself throws if it is ever really called |
 | `once.renderer { … }` | a **macro-generated property delegate** — the name does not exist until the generated preamble is compiled |
 | `moduleHere { … }`, `computeModuleHere { }`, `fieldProbeHere(…)` | source macros that also write shader source into box properties at expansion time |
-| `start(renderer::run)` | a **suspend** function type: it erases to a `Function2` taking a `Continuation`, which a dynamic proxy cannot satisfy |
 | `import …` | not needed — FieldML names every class in full |
 
 Macros are the whole story: nine of Field's box-code names are registered rewrites over Kotlin *source*, applied before the compiler runs, so there is no JVM member for reflection to find. What is reachable is what they are sugar *over* — `prop` is a named slot on a box, and `getPropertyRaw`/`setPropertyRaw` are ordinary methods, so a FieldML box can read an inherited property with a four-line recursive walk over `parents`. `once` is get-or-compute-and-store over the same pair. Both of those run today.
+
+## Every frame
+
+Field animates by handing Kotlin a `suspend` lambda: `eachFrame { … }`, `loop { … }`, `forever { … }`, `animate { … }` — and, underneath all of them, `Box.launchFrames`. Every one of those has a parameter typed `suspend Frames.() -> Unit`, and that used to be the one shape a FieldML closure could not fill. A FieldML box could build a shader module and put a triangle on the screen; it could not change anything afterwards.
+
+It can now. Write the lambda the way the *source* reads, one parameter:
+
+```diffstatic {data-lang=fieldml}
+let Phased = hostClass "afield.PhasedKt"
+
+// `f` is a Frames, typed off the JVM signature -- so `f.frameNumber` is checked
+// here, not on the first frame.
+let animation =
+  hostStaticCall "eachFrame" (fun f -> f |> hostGet "frameNumber") Phased
+
+// ...and run it on Field's Runloop, with this box as the owner: Stop on this box
+// stops the animation, and re-running the box replaces it rather than stacking a
+// second one.
+thisBox |> hostExt Phased "launchFrames" (animation, "spin", "frames", true)
+```
+
+The `Continuation` in the compiled signature is not something you write. A `suspend Frames.() -> Unit` is really a `Function2` whose second parameter is a continuation and whose return is erased, and the bridge reads that shape, drops the continuation, and coerces your result to the type declared *inside* it — which is what makes `forever`'s `Boolean` actually stop the loop.
+
+One thing this does not buy: your FieldML body cannot itself suspend. `Frames.frame()` and `Frames.delay()` are `suspend` members and stay out of reach, so `frames { }` — whose contract is that the body drives `frame()` — is not the one to reach for. `eachFrame`, `loop` and `forever` all keep the suspension in Kotlin and hand you a plain per-frame body, which is what you want anyway.
+
+![four captures of a native Vulkan window, a second apart: a large filled triangle in the middle of a black frame, at a different rotation in each and shading from green-teal through cyan](assets/fieldml_frames_demo/spin-frames.png)
+
+Those are four frames of the demo below, from a real device.
 
 ## What it still will not do
 
@@ -177,7 +204,8 @@ Worth knowing before you fight it:
 - **Named arguments are invisible** for the same reason: a reflective call is positional.
 - **A callback written inside a helper has untyped parameters.** The expected type comes from the receiver, so `line |> hostCall1 "transform" (fun p -> …)` in a pipeline is typed and the same call inside `let warp line = …` is not — `line` is a function parameter and there is no class to reflect on. `hostAs "Vec3"` is still the way through that one. The same is true of anything whose type reflection genuinely cannot read: an erased generic, a nullable Kotlin parameter.
 - **A lambda's *result* is not checked** against what the JVM wants. The proxy coerces it, which is why `fun x y -> 0` satisfies a `Function2<…, Float>` — but a body that returns the wrong shape entirely still fails at run time.
-- **`suspend` function types cannot be satisfied.** They need coroutine machinery, not a proxy. This is now the largest single thing between FieldML and the rest of `afield.four`: the geometry and the shader modules are reachable, the per-frame loop is not.
+- **A `suspend` *member* cannot be called.** Satisfying a suspend function *type* works — see "Every frame" below — but going the other way does not. `Renderer.run` is `suspend`, which on the JVM means `run(Continuation)`, and there is no continuation to pass and nowhere to resume one. So the box that owns your window and renderer is still Kotlin.
+- **Two overloads that differ only in how many parameters their lambda takes will tie.** `start` is declared over both `suspend Frames.() -> Unit` and `suspend () -> Unit`; the call works either way, but the callback's parameter goes untyped because nothing can say which one you meant. `eachFrame`, `loop` and `forever` are each declared once, so prefer those.
 - **`internal` Kotlin members are unreachable** under their source names, because the compiler mangles them.
 - **Buffers, kernels and anchors** — anything FieldML has no way to construct and no constructor to call — are still out of reach. In the coverage measurement those are most of the remaining 5%.
 
@@ -204,6 +232,18 @@ And a third, for a machine with a GPU: **a whole `afield.four` scene described f
 
 [Open ↗](/offline.html?file=/field4/assets/fieldml_afield_four_demo/metadata.edn) — or open `public/docs/assets/fieldml_afield_four_demo/metadata.edn` from a Field workspace.
 
+And a fourth, the same scene with a `Frames` loop on it — **the triangle from the captures above**. This one is self-contained: three boxes, and the first is a small Kotlin box that opens the window and owns the `Renderer`, so there is nothing to wire up. Open it, run `window and renderer`, then run the FieldML box.
+
+[Open ↗](/offline.html?file=/field4/assets/fieldml_frames_demo/metadata.edn) — or open `public/docs/assets/fieldml_frames_demo/metadata.edn` from a Field workspace.
+
+| In | Change | What happens |
+| --- | --- | --- |
+| the FieldML box | `* 0.04` → `* 0.2` | it spins five times faster, and the colour cycles with it |
+| the FieldML box | `spin |> hostCall "set" (t, 0.0, 0.0, 1.0)` → `(0.0, 0.0, 0.0, 1.0)` | it stops dead: the loop still runs, it just writes the same value |
+| the FieldML box | `"eachFrame"` → `"loop"` | no visible difference — `loop` advances a frame only when the body did not |
+| the FieldML box | `f |> hostGet "frameNumber"` → `f |> hostGet "frameNumbr"` | a type error naming `Frames`, before the box runs: the callback parameter has a type |
+| the fragment shader | `vec3(0.0, 2.1, 4.2)` → `vec3(0.0, 0.0, 0.0)` | it cycles through greys instead of hues |
+
 The second is about the lambda parameters specifically — a warp with no `hostAs` in it, a raster whose two callbacks have six typed parameters between them, a box of inferred types, and a box that says where the inference still declines to say anything.
 
 [Open ↗](/offline.html?file=/field4/assets/fieldml_lambda_demo/metadata.edn) — or open `public/docs/assets/fieldml_lambda_demo/metadata.edn` from a Field workspace.
@@ -219,4 +259,4 @@ The second is about the lambda parameters specifically — a warp with no `hostA
 
 ## Where to look
 
-The reflection lives in `afield.ml.core.FieldMLHostBridge` (candidates, scoring, coercion, SAM proxies) and `afield.ml.type.FieldMLHostTypes` (JVM types to FieldML types, member and overload resolution at type-check time). `Inferencer.refineHostIntrinsic` is where the two meet, and `Inferencer.preInferHostSpine` is what threads a JVM parameter type into a lambda's parameters. `FieldMLHostBridgeTest` has one test per capability, `FieldMLHostSurfaceCoverageTest` is the reachability-and-agreement measurement, `FieldMLHostAgreementTest` holds the semantically interesting calls beside the Kotlin they should equal, `FieldMLLambdaExpectedTypeTest` covers the typed callback parameters and the cases that deliberately stay untyped, and `FieldMLAfieldFourReachTest` is the `threebox-2` survey with its citations.
+The reflection lives in `afield.ml.core.FieldMLHostBridge` (candidates, scoring, coercion, SAM proxies) and `afield.ml.type.FieldMLHostTypes` (JVM types to FieldML types, member and overload resolution at type-check time). `Inferencer.refineHostIntrinsic` is where the two meet, and `Inferencer.preInferHostSpine` is what threads a JVM parameter type into a lambda's parameters. `FieldMLHostBridgeTest` has one test per capability, `FieldMLHostSurfaceCoverageTest` is the reachability-and-agreement measurement, `FieldMLHostAgreementTest` holds the semantically interesting calls beside the Kotlin they should equal, `FieldMLLambdaExpectedTypeTest` covers the typed callback parameters and the cases that deliberately stay untyped, `FieldMLSuspendCallbackTest` is the per-frame surface — every test in it asserts that the closure *ran*, not that a proxy exists — and `FieldMLAfieldFourReachTest` is the `threebox-2` survey with its citations.
