@@ -40,7 +40,7 @@ opaque `Host` as **unknown**, which must never refuse a candidate, because infer
 pinned an argument down yet and reporting a correct call as a type error is the worst failure mode
 available here.
 
-## The five decisions worth understanding
+## The six decisions worth understanding
 
 ### 1. Refinement replaces the result type; it does not unify with it
 
@@ -206,6 +206,61 @@ the floor is all of them rather than a percentage. The surface is small enough t
 partial answer would not be a partial capability — it would be one signature where the type checker
 quietly refuses the correct lambda.
 
+### 6. Named arguments and Kotlin defaults are one mechanism, spelled as a record
+
+Added 2026-08-19; this is mechanisms B and C in the table below, and the reason they close together
+is the interesting part.
+
+They read as two rows — "reflection cannot see a default", "reflection cannot see a name" — and they
+are one fact. Plain reflection has neither, `kotlin-reflect` has both out of the same metadata
+(`KParameter.name`, `KParameter.isOptional`), and `KCallable.callBy` is the single entry point that
+acts on them: every parameter absent from the map it is given gets the default the source declared.
+Which means naming the arguments is not a convenience *beside* defaults — it is the thing that makes
+defaults reachable, because a positional call has no way to say which parameter it is skipping.
+
+The spelling is a **record** where a tuple would go:
+
+```
+hostNew {mainWindow = w} (hostClass "afield.four.Renderer")
+img |> hostCall "index" {x = 1, y = 0}
+```
+
+`FieldMLHostBridge.spreadArguments` already dispatches on the *shape* of the argument — a tuple and a
+list spread, `Unit` is no arguments, anything else is one — so a record spreading by name continues
+that rule rather than adding to it. No new prelude name, no new cheatsheet row, and the same rule at
+every call shape including `hostExt`, where the piped value becomes the extension receiver (bound by
+`KParameter.Kind`, since Kotlin gives it no name a `callBy` map would accept).
+
+Three choices worth being able to argue with:
+
+- **Coercion stays in the bridge.** `callBy` type-checks against the declared `KType` and will not
+  narrow a FieldML `Float` — a JVM `Double` — into a `Float` parameter, so every supplied value goes
+  through `coerce` against the erased parameter class first. That is also what keeps SAM conversion
+  working inside a named call.
+- **An ambiguous name set is refused, not guessed.** Two overloads that both accept the names given
+  is exactly where picking one is a coin toss, and a wrong reflective call is far harder to diagnose
+  than a diagnostic listing the candidates with a `?` on each optional parameter.
+- **The type level resolves on names alone**, ignoring argument types, and is therefore *weaker* than
+  its positional counterpart. A name set is usually far more selective than an arity, and a third
+  scorer that had to be kept in step with the two that already exist is a worse trade than degrading
+  to `Host` when two candidates take the same names. It is weak in the only safe direction: the type
+  checker never refuses a call the runtime would have made.
+
+The measurement is `FieldMLNamedArgumentTest.everyKotlinDefaultOnTheCoveredSurfaceCanBeOmittedByName`:
+over the same seven types the coverage test uses, 60 members have at least one Kotlin default, and
+all 60 are reachable naming only their *required* parameters. `FLine.tessellate(samplesPerCubic?,
+coplanarity?, meshAcceptor)` is the shape that shows this is not just brevity — the required parameter
+is **last**, so no positional call can shorten it at all.
+
+Two costs, both tested rather than asserted:
+
+- a JVM `Map` comes back through `hostToFieldMLValue` as a `RecordValue`, so "a record I got from the
+  host" and "a record of argument names" are the same FieldML shape. `hostCall1`, which never
+  spread, is the escape — and always was, for lists.
+- **a lambda inside a named record does not get its parameters typed.** `preInferHostSpine` looks for
+  a lambda *literal* among a spine's arguments, and a record is one argument with a lambda inside it.
+  So a callback is still better written positionally, and the demo boxes do.
+
 ## `afield.four`: what blocks it, with citations
 
 This is the roadmap, and `FieldMLAfieldFourReachTest` is its executable form — it walks the 19
@@ -221,9 +276,9 @@ the next night can diff this table rather than re-derive it.
 | # | Mechanism | Status 2026-08-19 | Evidence | Can the *effect* be reached? |
 | --- | --- | --- | --- | --- |
 | A | **Source macros.** Nine box-code names are rewrites over Kotlin *source*, applied before the compiler runs: `moduleHere`, `meshModuleHere`, `computeModuleHere`, `fieldStatsHere`, `shadertoyHere`, `prop`, `rootProp`, `sourceBlock`, `print`/`println` | **UNCHANGED.** A language-design question, not a bridge one | `MacroRegistry.callRewrite`, `macros.kt:328#val callRewrite = mutableMapOf`. `Box.prop` throws `MacroNotExpandedException` if actually called, `props.kt:39#prop should not be callable directly` | Partly. `prop<T>(name)` expands to `var Box.<name> by Inheritance<T>()` (`props.kt:71#return Insert(`) — a *generated declaration*, so there is nothing to call. But `Inheritance.getValue` (`stdlib.kt:265#operator fun getValue(f: Box, property: KProperty<*>)`) is just `getPropertyRaw` plus a breadth-first walk over `parents`, and both of those are ordinary methods. FieldML does it in four lines, tested. `once` (`scratch.kt:10#val Box.once`, `Onceing.getValue` `scratch.kt:26#operator fun getValue(f: Once, property`) is get-or-compute-and-store over the same pair, also tested |
-| B | **Kotlin default arguments** are invisible to reflection | **UNCHANGED** | `Renderer(Window, List)` (`Renderer.kt:147#class Renderer(`) — `additionalWindows = emptyList()` must be written out. `ComputeMesh(Renderer)` (`ComputeMesh.kt:295#class ComputeMesh(var renderer`) — `renderer = fromContext()` likewise | Yes, by spelling every parameter. `hostNull` covers the nullable ones |
-| C | **Named arguments** are invisible for the same reason | **UNCHANGED** | `fieldProbeHere(samples = 100000)` | Yes, positionally |
-| D | **`suspend` function types** erase to a `Function` taking a `Continuation`, which a dynamic proxy cannot satisfy | **DONE, 2026-08-19 — for satisfying one. Calling *into* a suspend member is the part that remains, and it is a different problem** | `FieldMLHostBridge.suspendShape` (`HostBridge.kt:446#fun suspendShape(iface: Class<*>, generic:`) and the drop in `samProxy` (`HostBridge.kt:523#Drop the continuation, and only when one really arrived`); the type-level twin in `FieldMLHostTypes.samParameterTypes` (`HostTypes.kt:337#fun samParameterTypes(parameter: HostParameter)`). Sixteen suspend callback slots measured and floored in `FieldMLSuspendCallbackTest.everySuspendCallbackSlotOnFieldsPerFrameSurfaceReportsTheWrittenArity`. Pixels: `public/docs/assets/fieldml_frames_demo/spin-frames.png` | **Yes, and it was.** `eachFrame`, `loop`, `forever`, `Frames.end`, `Frames.body`/`atEnd`, `animate`, both `start`s and `Box.launchFrames` all take a FieldML closure now, and a FieldML box drives a spinning, colour-cycling triangle on a real device. What is *not* reachable is a suspend **member** — `Renderer.run` is `run(Continuation)`, arity one, and the bridge has no continuation to pass and nowhere to resume |
+| B | **Kotlin default arguments** are invisible to reflection | **DONE, 2026-08-19 — and B and C turned out to be one mechanism** | `FieldMLHostBridge.callMethodNamed` (`HostBridge.kt:123#fun callMethodNamed(name: String, target: Any`), `FieldMLHostTypes.namedMethodResultType` (`HostTypes.kt:214#fun namedMethodResultType(receiver: Type`). Measured and floored in `FieldMLNamedArgumentTest.everyKotlinDefaultOnTheCoveredSurfaceCanBeOmittedByName`: 60 defaulted members over the coverage test's seven types, all 60 omittable. Original citations: `Renderer(Window, List)` (`Renderer.kt:147#class Renderer(`), `ComputeMesh(Renderer)` (`ComputeMesh.kt:295#class ComputeMesh(var renderer`) | **Yes — a record of arguments is a named call, and a named call is the only shape that can leave a default unwritten.** `hostNew {mainWindow = w} Renderer` needs no `additionalWindows`. The positional form is unchanged, and `hostNull` still covers the nullable parameters you *do* want to pass |
+| C | **Named arguments** are invisible for the same reason | **DONE, 2026-08-19 — the same change; see B** | `img \|> hostCall "index" {x = 1, y = 0}`, and the refusals in `FieldMLNamedArgumentTest`. The cited case, `fieldProbeHere(samples = 100000)`, is *still* out of reach — but as a source macro (A), not as a named argument | **Yes, by name.** Order is not position, and a name reflection does not know is a compile error naming what was given |
+| D | **`suspend` function types** erase to a `Function` taking a `Continuation`, which a dynamic proxy cannot satisfy | **DONE, 2026-08-19 — for satisfying one. Calling *into* a suspend member is the part that remains, and it is a different problem** | `FieldMLHostBridge.suspendShape` (`HostBridge.kt:624#fun suspendShape(iface: Class<*>, generic:`) and the drop in `samProxy` (`HostBridge.kt:701#Drop the continuation, and only when one really arrived`); the type-level twin in `FieldMLHostTypes.samParameterTypes` (`HostTypes.kt:447#fun samParameterTypes(parameter: HostParameter)`). Sixteen suspend callback slots measured and floored in `FieldMLSuspendCallbackTest.everySuspendCallbackSlotOnFieldsPerFrameSurfaceReportsTheWrittenArity`. Pixels: `public/docs/assets/fieldml_frames_demo/spin-frames.png` | **Yes, and it was.** `eachFrame`, `loop`, `forever`, `Frames.end`, `Frames.body`/`atEnd`, `animate`, both `start`s and `Box.launchFrames` all take a FieldML closure now, and a FieldML box drives a spinning, colour-cycling triangle on a real device. What is *not* reachable is a suspend **member** — `Renderer.run` is `run(Continuation)`, arity one, and the bridge has no continuation to pass and nowhere to resume |
 | E | **A Vulkan device.** `Window`, `Renderer`, `.buffer`, `Mesh`, `Module` cannot be *run* in a headless test JVM | **DONE, 2026-08-08** | `public/docs/assets/fieldml_afield_four_demo/` — captured, and the capture is `triangle.png` beside it | **Yes, and it was.** A FieldML box in a `field_backdoor.py --graphics-context` session built `parameters(renderer) { vertex = …; fragment = … }`, a `Module`, a `ModulePointer`, a `Mesh` resized on the device, and attached it to `renderer.renderTargetFor(0)`. A light blue triangle came out of the native window. No `hostAs` anywhere |
 
 Two smaller findings from the same walk, both fixed:
@@ -236,10 +291,10 @@ Two smaller findings from the same walk, both fixed:
   statement.
 
 The lambda-parameter typing that used to sit beside these is **done** — see decision 4 above and the
-"Known holes" entry below for what is left of it. D is **done** as of 2026-08-19 (decision 5 below).
-That leaves B and C, which are one problem — reflection cannot see a Kotlin parameter's default or
-its name — and A, which is a language design question (a FieldML macro layer) rather than a bridge
-one.
+"Known holes" entry below for what is left of it. So are D (decision 5) and B/C (decision 6), all on
+2026-08-19. **A is the only mechanism left**, and it is a language design question — a FieldML macro
+layer — rather than a bridge one. What remains inside the bridge is not a mechanism but a list of
+named holes, and that list is below.
 
 **E is done, and it is worth saying what "done" means.** `public/docs/assets/fieldml_afield_four_demo/`
 is one FieldML box that, in a `field_backdoor.py --graphics-context` session, walks up its parents to
@@ -393,9 +448,13 @@ error rather than a first-run one. Asserted in
 ## The demo documents
 
 Four. Two need nothing but a Field, and are FieldML roots (`mainLanguage "fieldml"`,
-`isFieldMLRoot true`) with four child boxes each:
+`isFieldMLRoot true`):
 
-- `public/docs/assets/fieldml_host_bridge_demo/metadata.edn` — the bridge itself.
+- `public/docs/assets/fieldml_host_bridge_demo/metadata.edn` — the bridge itself, five boxes. The
+  fifth is named arguments and Kotlin defaults, and it is the *production* evidence for decision 6:
+  `FieldMLSmokeExamplesTest.demoDocumentBoxesCompileAndEvaluate` runs it on every build, and it was
+  run in a real Field on 2026-08-19, printing
+  `{defaulted = 3, reordered = 5, colouredChannels = 3, …}` with the whole record type inferred.
 - `public/docs/assets/fieldml_lambda_demo/metadata.edn` — typed callback parameters. Three of its
   boxes contain no `hostAs`; the fourth is the one that names what still does.
 
