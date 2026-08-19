@@ -1,7 +1,10 @@
 # `Box.stop` cancels the `Frames` end phase before it runs
 
-**Status:** measured, not fixed. Choosing the contract is a human call — see
-[Two candidate contracts](#two-candidate-contracts).
+**Status:** **FIXED 2026-08-19 — contract B.** The leak is closed; the end phase is unchanged.
+`Box.stopHooks` (Boxes.kt) is a synchronous teardown list that `stopTrackedJobs` drains after
+cancelling jobs, and `streamProcess` registers its `proc.destroy()` there instead of relying on
+`Frames.atEnd`. **`.end { }` is still best-effort and is still skipped by stop** — that was the
+deliberate half of the choice. See [What was done](#what-was-done).
 
 **Found:** 2026-08-19, while writing `public/docs/animation_time_model.md`. The page
 first claimed the opposite; the demo document
@@ -41,18 +44,20 @@ alone, so the end job registers and `atEnd` runs normally.
 
 ## The evidence
 
+_As originally measured, before the fix in [What was done](#what-was-done)._
 `src/jvmTest/kotlin/afield/StreamProcessStopLeakTest.kt` and the two lifecycle cases
-in `FramesSemanticsTest`. All assert **current** behaviour, so they fail if this is
-ever fixed, and name this file when they do.
+in `FramesSemanticsTest`. All asserted **then-current** behaviour, so they would fail
+if it was ever fixed, and name this file when they do — which is exactly what
+happened to the third row.
 
 | test | asserts |
 | --- | --- |
 | `FramesSemanticsTest.boxStopCancelsTheEndBlockBeforeItCanRun` | after `KotlinExecution().stop(box)`, the `.end { }` block never runs |
 | `FramesSemanticsTest.reRunningTheBoxStillRunsTheEndBlock` | after a generation bump only, it does |
-| `StreamProcessStopLeakTest.stopLeavesTheProcessRunning` | a real `/bin/sleep` launched through `Box.streamProcess` is **still alive** after `stop` |
+| `StreamProcessStopLeakTest.stopLeavesTheProcessRunning` | a real `/bin/sleep` launched through `Box.streamProcess` is **still alive** after `stop` — **inverted on 2026-08-19 and renamed `stopKillsTheProcess`** |
 | `StreamProcessStopLeakTest.reRunningTheBoxKillsTheProcess` | the same process is destroyed by a re-run |
 
-`stopLeavesTheProcessRunning` is the one that makes this concrete rather than
+That third test is the one that made this concrete rather than
 theoretical: it observes the child through `ProcessHandle.current().descendants()`,
 and refuses to pass unless the child actually started first, so it cannot succeed
 vacuously. Both tests reap whatever they spawn in an `@AfterTest`.
@@ -152,19 +157,51 @@ explicit hook in `Server.stop`, or a `ProcessHandle` registry the stop path drai
 *Cost:* every future "release this on stop" need has to be wired by hand into the
 stop path, and `.end { }` stays a footgun that reads like `finally`.
 
-**This is a human's call.** A docs branch is the wrong place to change stop
-semantics, so nothing here is fixed. `public/docs/animation_time_model.md` currently
-documents contract B as observed behaviour, in a section titled "`Box.stop` skips the
-end block", and points at these tests.
+## What was done
 
-## If you fix it
+**Contract B, on 2026-08-19**, for the reason the cost analysis above gives: contract A is a
+design change to what stop *means*, and the barrier it would weaken is load-bearing. Draining
+end phases inside stop means pumping the Runloop from stop, and end blocks can call `frame()`.
+That is not a change to make in passing.
 
-1. `StreamProcessStopLeakTest.stopLeavesTheProcessRunning` and
-   `FramesSemanticsTest.boxStopCancelsTheEndBlockBeforeItCanRun` will fail. That is
-   intended — invert them.
-2. Update the "`Box.stop` skips the end block" section of
-   `public/docs/animation_time_model.md`, the `Frames.atEnd` and `Frames.end` rows of
-   its guarded ledger, and box 4 of
-   `dev_docs/agents/transcripts/docs_capture/frames_lifecycle.yaml`.
-3. Fix `streamProcess`'s KDoc either way — today it promises a kill that a stop does
-   not deliver.
+So the fence stayed and the resource moved off the end phase:
+
+1. **`Box.stopHooks` + `Box.registerStopHook`** (`Boxes.kt`). A `CopyOnWriteArrayList<Runnable>`
+   drained by `stopTrackedJobs` **after** `jobsToCancel.forEach { it.cancel() }` — the same order
+   the end phase used, so a hook never races a reader coroutine that is still pumping output.
+   Each hook is isolated with `runCatching`, because `streamProcess`'s blocks for up to 500 ms and
+   a box may own several.
+2. **`streamProcess` registers its kill there** (`outputs.kt`). The teardown is extracted into a
+   non-suspending, idempotent `terminateProcess()` with two callers that can race — the stop hook
+   and `atEnd` — and the hook is unregistered from inside `reportEnd`.
+3. **The unregister lives in `reportEnd`, not in `atEnd`**, and that distinction was found by a
+   test rather than by reading: a process that exits on its own **never reaches the end phase at
+   all**. The body reports the exit and returns, so `frame()` is never called again and `atEnd`
+   never runs. Unregistering only from `atEnd` left a stale hook on the box for every completed
+   process. `reportEnd` is the single funnel both paths pass through.
+4. **`streamProcess`'s KDoc** now states what actually happens, including that the suspending
+   `atEnd` *user callback* is still skipped on stop.
+
+### What is still true, deliberately
+
+`.end { }` does not run on stop. `FramesSemanticsTest.boxStopCancelsTheEndBlockBeforeItCanRun` and
+`reRunningTheBoxStillRunsTheEndBlock` are **unchanged and still pass**, and box 4 of
+`dev_docs/agents/transcripts/docs_capture/frames_lifecycle.yaml` still shows the cleanup line not
+appearing — because that is still the contract. Only the leak is gone.
+
+The remaining gap, stated plainly: a box author's own `atEnd` callback still does not run on stop.
+Closing that means running suspending user code from the stop path, which is contract A's problem
+again. **Contract A remains open** if `.end { }` should ever mean "whenever this stops, for any
+reason".
+
+### The tests
+
+| test | asserts |
+| --- | --- |
+| `StreamProcessStopLeakTest.stopKillsTheProcess` | a real `/bin/sleep` is **dead** after `stop` (was: still alive) |
+| `StreamProcessStopLeakTest.reRunningTheBoxKillsTheProcess` | the end-phase route still works |
+| `StreamProcessStopLeakTest.theStopHookIsUnregisteredWhenTheProcessEndsOnItsOwn` | no stale hook after a natural exit — the case in point 3 |
+| `BoxStopHookTest` (5) | hooks run, run **once**, are drained, unregister, one throwing does not strand the others, and the drain happens **after** job cancellation |
+
+39 tests green across `BoxStopHookTest`, `StreamProcessStopLeakTest`, `FramesSemanticsTest` and
+`PhasedPageCoverageTest`.

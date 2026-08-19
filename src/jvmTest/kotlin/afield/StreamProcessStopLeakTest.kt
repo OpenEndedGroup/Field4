@@ -17,12 +17,14 @@ import kotlin.test.assertTrue
  * assignment to `Frames.atEnd` anywhere in `src/` outside `Phased.kt` itself.
  *
  * [FramesSemanticsTest.boxStopCancelsTheEndBlockBeforeItCanRun] shows in the abstract that a full
- * stop cancels the end job before it is dispatched. These two tests ask the question that actually
- * matters: **does a real external process outlive a stop?**
+ * stop cancels the end job before it is dispatched — **and that is still true**. These tests ask the
+ * question that actually matters: **does a real external process outlive a stop?** It used to. It
+ * does not now, because the kill moved off the end phase and onto `Box.stopHooks`, which
+ * `stopTrackedJobs` drains.
  *
- * They assert current behaviour, so they are a regression fence in both directions. If someone
- * decides `stop` should run the end phase, [stopLeavesTheProcessRunning] fails and names the file
- * to update.
+ * The pairing is the point: [stopKillsTheProcess] and [reRunningTheBoxKillsTheProcess] reach the
+ * same outcome by two different routes — a stop hook and the end phase respectively — so a
+ * regression in either route fails one test and not the other.
  */
 class StreamProcessStopLeakTest {
 
@@ -83,25 +85,58 @@ class StreamProcessStopLeakTest {
     }
 
     /**
-     * **The leak, measured.** `Box.stop` bumps `launchEpoch`; `registerLaunchJob` then cancels the
-     * end job it is handed; `runner.atEnd` — which is the `proc.destroy()` — never runs. The
-     * external process outlives the box that owns it.
+     * **The leak, fixed.** `Box.stop` still bumps `launchEpoch` and `registerLaunchJob` still
+     * cancels the end job — that fence is deliberate — so `runner.atEnd` still does not run. The
+     * process dies anyway, because `streamProcess` registers a `Box.stopHooks` entry that
+     * `stopTrackedJobs` drains synchronously.
      *
-     * `streamProcess`'s own KDoc says "ending the Frames will kill the process". Pressing stop does
-     * end the Frames. The process is still there.
+     * This asserted the opposite until 2026-08-19; see `dev_docs/frames_stop_end_phase.md` for the
+     * measurement that produced the fix and for why the end phase itself was left alone.
      */
     @Test
-    fun stopLeavesTheProcessRunning() {
-        val box = Box("stream-stop-leak")
+    fun stopKillsTheProcess() {
+        val box = Box("stream-stop-kills")
         val (framer, _, sleeper) = startSleeper(box)
 
         KotlinExecution().stop(box)
-        repeat(60) { framer.frame(); Thread.sleep(5) }
+        // The hook runs synchronously inside stop, so the kill has already happened here; the pump
+        // only gives the OS time to reap, so `isAlive` reflects it.
+        for (attempt in 0 until 60) {
+            if (!sleeper.isAlive) break
+            framer.frame()
+            Thread.sleep(5)
+        }
 
         assertTrue(
-            sleeper.isAlive,
-            "current behaviour is that stop orphans the process; if this now fails, stop has been " +
-                "taught to run the end phase and dev_docs/frames_stop_end_phase.md needs closing out"
+            !sleeper.isAlive,
+            "stop must kill the child: the end phase is still cancelled by the epoch fence, so the " +
+                "Box.stopHooks drain in stopTrackedJobs is the only thing that can do it"
+        )
+    }
+
+    /**
+     * The hook must not outlive the launch that installed it. A process that ends on its own runs
+     * the end phase, which unregisters — otherwise every `streamProcess` call would leave a stale
+     * entry on the box, and a later stop would walk a list of dead processes forever.
+     */
+    @Test
+    fun theStopHookIsUnregisteredWhenTheProcessEndsOnItsOwn() {
+        val box = Box("stream-hook-unregister")
+        val (framer, _, quick) = startSleeper(box)
+        assertEquals(1, box.stopHooks.size, "streamProcess should have installed exactly one hook")
+
+        // Let it exit on its own terms rather than through stop, then pump so the end phase runs.
+        quick.destroy()
+        for (attempt in 0 until 400) {
+            framer.frame()
+            if (box.stopHooks.isEmpty()) break
+            Thread.sleep(5)
+        }
+
+        assertEquals(
+            0,
+            box.stopHooks.size,
+            "the end phase ran, so its stop hook is stale and must have been unregistered"
         )
     }
 
@@ -137,7 +172,12 @@ class StreamProcessStopLeakTest {
             "outputs.kt no longer installs Frames.atEnd; re-run the sweep in " +
                 "dev_docs/frames_stop_end_phase.md before trusting its caller count"
         )
-        assertTrue("proc.destroy()" in source, "outputs.kt's atEnd no longer destroys the process")
+        assertTrue("proc.destroy()" in source, "outputs.kt no longer destroys the process")
+        assertTrue(
+            "registerStopHook" in source,
+            "outputs.kt no longer registers a stop hook, so a stop would orphan the child again — " +
+                "this is the fix dev_docs/frames_stop_end_phase.md describes"
+        )
         assertEquals(
             1,
             Regex("""\batEnd\s*=\s*suspend\s*\{""").findAll(source).count(),

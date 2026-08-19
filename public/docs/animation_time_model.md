@@ -303,14 +303,24 @@ and can still draw. It is registered with the box as well, and fenced by its own
     when the animation retires itself or gets replaced, not for releasing something that must be
     released when a person presses stop.** Put that in a `finally`.
 
-    **This bites one thing in the standard library.** `Box.streamProcess` runs an external command
-    and streams its output into a box, and it is the only place in Field's source that installs an
-    `atEnd` — the block that calls `proc.destroy()`. Its KDoc says *"ending the Frames will kill the
-    process"*. Pressing stop does end the Frames, and
-    `StreamProcessStopLeakTest.stopLeavesTheProcessRunning` shows a real `/bin/sleep` outliving it.
-    Re-running the box kills it correctly. If you launch a subprocess from a box, do not rely on
-    stop to reap it. The mechanism, the full caller sweep and the two candidate fixes are written up
-    in `dev_docs/frames_stop_end_phase.md`; which one Field adopts is not settled.
+    **This bit one thing in the standard library, and the fix is worth knowing about.**
+    `Box.streamProcess` runs an external command and streams its output into a box, and it is the
+    only place in Field's source that installs an `atEnd` — the block that calls `proc.destroy()`.
+    Its KDoc promised *"ending the Frames will kill the process"*, and pressing stop did end the
+    Frames while leaving a real `/bin/sleep` running.
+
+    That leak is fixed, but **not** by making stop run the end phase. The epoch fence is what makes
+    the launch/stop race safe, so it stays, and `.end { }` stays best-effort exactly as described
+    above. Instead a box now carries `stopHooks`: a short, synchronous teardown list that
+    `stopTrackedJobs` drains after cancelling jobs, and `streamProcess` registers its kill there.
+    So the child dies on stop, while the suspending `atEnd` *user callback* — which belongs to the
+    end phase — is still skipped. `StreamProcessStopLeakTest` pins both routes:
+    `stopKillsTheProcess` (via the hook) and `reRunningTheBoxKillsTheProcess` (via the end phase).
+
+    The rule for your own code is unchanged, and is the reason the hook exists: **if something must
+    be released when a person presses stop, do not put it in `.end { }`.** The mechanism, the full
+    caller sweep and why this contract was chosen over the alternative are in
+    `dev_docs/frames_stop_end_phase.md`.
 
 ## Time, if you actually meant seconds
 

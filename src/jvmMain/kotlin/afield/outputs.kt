@@ -416,7 +416,13 @@ data class StreamProcessEnd(
 
 /**
  * Launches an external process and streams stdout/stderr into an output area.
- * The returned Frames ends when the process exits; ending the Frames will kill the process.
+ *
+ * The returned Frames ends when the process exits, and ending the Frames kills the process. So does
+ * pressing stop on the box, but by a different route and with one difference worth knowing: stop
+ * cancels the Frames end phase before it can run (see `Box.stopHooks` and
+ * `dev_docs/frames_stop_end_phase.md`), so the child is killed by a stop hook while the suspending
+ * [atEnd] callback — a box author's own teardown — is skipped. Ending the Frames in code, or letting
+ * the process exit, runs [atEnd] normally.
  */
 fun Box.streamProcess(
     name: String,
@@ -433,9 +439,19 @@ fun Box.streamProcess(
     var process: Process? = null
     var reportedEnd = false
 
+    /**
+     * Removes the stop hook installed further down. Assigned late, but [reportEnd] is the single
+     * funnel through which "this process is finished" passes, so the removal belongs there: a
+     * process that exits on its own never reaches the Frames end phase at all — the body reports
+     * and returns, and `frame()` is never called again — so unregistering only from `atEnd` would
+     * leave a stale hook on the box for every completed process.
+     */
+    var unregisterStopHook: Runnable? = null
+
     suspend fun reportEnd(exitCode: Int, terminated: Boolean = false) {
         if (reportedEnd) return
         reportedEnd = true
+        unregisterStopHook?.run()
         box.atEnd(
             StreamProcessEnd(
                 name = name,
@@ -568,21 +584,43 @@ fun Box.streamProcess(
         }
     }
 
+    /**
+     * Kill the child, if it is still running, and say so in the output area.
+     *
+     * Idempotent and non-suspending, because it has two callers that can race: the end phase below,
+     * and the stop hook. Returns whether this call was the one that terminated it, which is the
+     * `terminated` flag [StreamProcessEnd] carries.
+     */
+    fun terminateProcess(): Boolean {
+        val proc = process ?: return false
+        if (!proc.isAlive) return false
+        proc.destroy()
+        if (!proc.waitFor(250, TimeUnit.MILLISECONDS)) {
+            proc.destroyForcibly()
+            proc.waitFor(250, TimeUnit.MILLISECONDS)
+        }
+        box.display(
+            outputChannel,
+            """<pre class="process-line stop" style="margin:0;font-family:monospace;">[$label] terminated</pre>"""
+        )
+        return true
+    }
+
+    // Pressing stop does NOT run the end phase — `stopTrackedJobs` bumps the launch epoch before the
+    // body's cancellation can register an end job, so `registerLaunchJob` cancels it while it is
+    // still queued. That fence is load-bearing and stays; see Box.stopHooks. Without this hook the
+    // `destroy()` below simply never happened and the child outlived the box, which is the leak
+    // measured in dev_docs/frames_stop_end_phase.md. The hook releases the OS resource only: the
+    // suspending `atEnd` user callback still belongs to the end phase and is still skipped on stop.
+    unregisterStopHook = box.registerStopHook(Runnable { terminateProcess() })
+
     runner.atEnd = suspend {
-        process?.let { proc ->
-            var terminated = false
-            if (proc.isAlive) {
-                terminated = true
-                proc.destroy()
-                if (!proc.waitFor(250, TimeUnit.MILLISECONDS)) {
-                    proc.destroyForcibly()
-                    proc.waitFor(250, TimeUnit.MILLISECONDS)
-                }
-                box.display(
-                    outputChannel,
-                    """<pre class="process-line stop" style="margin:0;font-family:monospace;">[$label] terminated</pre>"""
-                )
-            }
+        val proc = process
+        if (proc == null) {
+            // Nothing was ever spawned, so there is no reportEnd to carry the removal.
+            unregisterStopHook?.run()
+        } else {
+            val terminated = terminateProcess()
             val exitCode = runCatching { proc.exitValue() }.getOrDefault(-1)
             reportEnd(exitCode, terminated = terminated)
         }
