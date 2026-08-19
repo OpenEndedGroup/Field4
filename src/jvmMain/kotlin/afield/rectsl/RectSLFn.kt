@@ -664,12 +664,15 @@ private const val HEADING_MOTION_EPSILON: Double = 1e-9
  *   when its argument is at or above zero. That lands the strict inequality the right way round, and
  *   it is why `Fn` gained a real `hypot` rather than `pow(dx² + dy², 0.5)`: the two differ by up to
  *   an ulp, which is a different branch within an ulp of the threshold.
- * - "the first one that moves" is `selₖ = mₖ · Π_{j<k} (1 - mⱼ)`, exactly one of which is 1.
+ * - "the first one that moves" is a nest, built from the widest probe inward:
+ *   `Rₖ = mₖ·atan2(dyₖ, dxₖ) + (1 - mₖ)·Rₖ₊₁`, with `R₆ = 0`.
  *
- * The masked sum `Σ selₖ · atan2(dyₖ, dxₖ)` is safe in a way the still-refused [TrackOp2.DIV] guard
- * is not: `atan2` is finite for every finite input, so a masked-off term is `0 · finite = ±0.0` and
- * not `0 · inf = NaN`. The live term is `1.0 · atan2ₖ`, which preserves a `-0.0`, and adding `±0.0`
- * to a non-zero is exact — so the sum reproduces the sampler bit for bit.
+ * The nest is safe in a way the still-refused [TrackOp2.DIV] guard is not: `atan2` is finite for
+ * every finite input, so the unselected side is `0 · finite = ±0.0` and not `0 · inf = NaN`. The
+ * selected side is `1.0 · atan2ₖ`, which preserves a `-0.0`, and adding `±0.0` to a non-zero is
+ * exact — so it reproduces the sampler bit for bit, which
+ * `RectSLHeadingTest.theLoweredHeadingFollowsTheSamplerAroundTheWholeCircle` measures at 4001 of
+ * 4001 samples around a winding circle.
  *
  * **The one divergence, stated rather than hidden.** The sampler returns a bare `offset` when
  * nothing moves and `atan2 + offset` when something does; this always adds. Those agree for every
@@ -715,24 +718,25 @@ private fun lowerHeading(
     val xFn = (x as RectSLFnLowering.Lowered).value
     val yFn = (y as RectSLFnLowering.Lowered).value
 
+    // The half-widths the sampler tries, in the order it tries them.
+    val halfWidths = (0 until HEADING_WIDENINGS).map { level -> track.eps * Math.pow(4.0, level.toDouble()) }
+
     return with(Functions) {
-        // The angle contributed so far, and the indicator that no earlier probe has claimed the
-        // answer. Both are exactly 0 or exactly 1 at every sample, never in between.
-        var angle: Functions.Fn? = null
-        var unclaimed = fnLeaf(1.0)
-        var h = track.eps
-        repeat(HEADING_WIDENINGS) {
+        // Built from the widest probe inward, so the selection is a **nest** rather than a sum of
+        // masked terms: each probe either answers or defers to the next wider one, and the widest
+        // defers to zero, which with the `+ offset` below is the sampler's fall-through. Written as
+        // a sum it would need a running "no earlier probe has claimed this" product, and that
+        // product's own reuse grows the graph as O(n²) in the number of widenings — measured, on a
+        // heading with one free parameter, as 54 θ slots against this form's 36.
+        var answer: Functions.Fn = fnLeaf(0.0)
+        for (h in halfWidths.reversed()) {
             val dx = xFn.shift(fnLeaf(-h)) - xFn.shift(fnLeaf(h))
             val dy = yFn.shift(fnLeaf(-h)) - yFn.shift(fnLeaf(h))
-            // 1 where the sampler would widen (`hypot <= 1e-9`), 0 where it would answer.
-            val stalled = fnStepFrom(fnLeaf(HEADING_MOTION_EPSILON) - dx.hypot(dy))
-            val take = unclaimed * (1.0 - stalled)
-            val term = take * dy.atan2(dx)
-            angle = angle?.let { it + term } ?: term
-            unclaimed *= stalled
-            h *= 4.0
+            // Exactly 1 where the sampler would answer (`hypot > 1e-9`), exactly 0 where it widens.
+            val moving = 1.0 - fnStepFrom(fnLeaf(HEADING_MOTION_EPSILON) - dx.hypot(dy))
+            answer = moving * dy.atan2(dx) + (1.0 - moving) * answer
         }
-        lowered(angle!! + fnLeaf(track.offset))
+        lowered(answer + fnLeaf(track.offset))
     }
 }
 

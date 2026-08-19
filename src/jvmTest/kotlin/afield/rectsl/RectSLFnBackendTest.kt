@@ -177,9 +177,38 @@ class RectSLFnBackendTest {
             "every gallery program should contribute at least one comparable channel; these did " +
                 "not: " + perProgram.filterValues { it.third == 0 }.keys
         )
+
+        // ---- the ratchet -----------------------------------------------------------------------
+        // The lowering rate above was printed and not asserted for as long as it was interesting,
+        // which is the wrong way round: a printed figure nobody checks is a figure that can quietly
+        // fall over. On 2026-08-19 the rate reached 100% — `HeadingTrack` was the last closable
+        // refusal and it was 116 of these 2754 tracks — so the honest floor is *zero refusals*, and
+        // that is what is asserted.
+        //
+        // This will fail the day the gallery gains a program built on a pattern track, because a
+        // `pat` genuinely has no differentiable form. That is not a false alarm: it is a deliberate
+        // decision to make, here, with the refusal reasons the run just printed in front of you.
+        // Lower the floor on purpose or not at all.
+        assertEquals(
+            0,
+            totalRefused,
+            "the Fn backend lowered $totalLowered of ${totalLowered + totalRefused} gallery tracks " +
+                "(" + "%.1f".format(100.0 * totalLowered / (totalLowered + totalRefused)) + "%); " +
+                "it lowered all of them on 2026-08-19. Refusals: " +
+                refusals.entries.joinToString("; ") { "${it.value}x ${it.key}" }
+        )
+        assertTrue(
+            comparedValues >= 333_000,
+            "the differential comparison covered $comparedValues channel values; it covered " +
+                "333207 on 2026-08-19, when every track lowered"
+        )
+
         // Then agreement. The lowering is exact arithmetic, not an approximation, so the only error
         // permitted is float rounding: a telescoping sum of key deltas, `pow(x, 0.5)` where the
-        // sampler calls `sqrt`, and the odd re-association.
+        // sampler calls `sqrt`, and the odd re-association. A heading widens that budget on purpose:
+        // it divides nothing, but it *differences* two positions a 240th of a second apart, so an
+        // absolute error of an ulp in a position is a relative error ~1e-14 in the velocity and
+        // therefore in the angle. Measured worst on 2026-08-19: 7.7e-14, in a rotation channel.
         assertTrue(worstRelative < 1e-12, "worst relative disagreement $worstRelative at $worstWhere")
     }
 
