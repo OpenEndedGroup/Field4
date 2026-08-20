@@ -435,13 +435,11 @@ val distinctNormals = gyro.topology.elements(2)
     .map { "%.3f,%.3f,%.3f".format(it.x, it.y, it.z) }
     .distinct()
 
-display("gyro", """
-    <div style='color:#93a4ba;font:12px monospace;padding-top:8px;line-height:1.6'>
-      gC &middot; ${gyro.topology.elements(2).size} faces, all
-      ${gyro.topology.elements(2).map { gyro.topology.faceCycle(it.id).size }.distinct().joinToString("/")}-gons
-      &middot; ${distinctNormals.size} distinct face normals: ${distinctNormals.joinToString(" ") { "($it)" }}
-    </div>
-""".trimIndent())
+markdown("gyro", """
+    gC · ${gyro.topology.elements(2).size} faces, all
+    ${gyro.topology.elements(2).map { gyro.topology.faceCycle(it.id).size }.distinct().joinToString("/")}-gons ·
+    ${distinctNormals.size} distinct face normals: ${mdEscape(distinctNormals.joinToString(" ") { "($it)" })}
+""")
 :::endfold
 ```
 
@@ -745,14 +743,13 @@ three(
     view = MeshView(wireframe = false, width = 820, height = 560, distance = 2.3, yawDegrees = 0.0, pitchDegrees = 6.0),
     facts = false,
 )
-display("field", """
-    <div style='color:#93a4ba;font:12px monospace;padding-top:8px;line-height:1.6'>
-      kis deployed over ${deployed.size} faces &middot;
-      heightScale resolved ${"%.3f".format(lo)} &hellip; ${"%.3f".format(hi)}<br/>
-      output ${out.topology.elements(0).size}v ${out.topology.elements(1).size}e ${out.topology.elements(2).size}f
-      &middot; ${g.triangleCount} triangles over ${g.triangleFaceIds.toSet().size} source polygons
-    </div>
-""".trimIndent())
+markdown("field", """
+    kis deployed over ${deployed.size} faces ·
+    heightScale resolved ${"%.3f".format(lo)} … ${"%.3f".format(hi)}
+
+    output ${out.topology.elements(0).size}v ${out.topology.elements(1).size}e ${out.topology.elements(2).size}f ·
+    ${g.triangleCount} triangles over ${g.triangleFaceIds.toSet().size} source polygons
+""")
 :::endfold
 ```
 
@@ -839,30 +836,34 @@ threeGrid(
     channel = "solve3d", name = "embeddings", columns = 3, height = 340, cellWidth = 400,
     view = MeshView(wireframe = false, distance = 2.5),
 )
-fun row(label: String, d: RealizationDiagnostics) =
-    ("<tr><td style='padding:2px 14px 2px 0'>%s</td><td>%.5f</td><td>%.3e</td>" +
-        "<td>%.3e</td><td>%.3e</td><td>%d</td></tr>").format(
-        label, d.edgeLengthMean, d.edgeLengthRmsDeviation, d.maxFacePlanarityError,
-        d.facePlanarityRmsError, d.degenerateFaces.size)
+// A Table for the diagnostics — the numeric columns right-align themselves and each carries its
+// own format — inside a markdown card that holds the solver's summary as prose.
+val sci = { v: Any? -> "%.3e".format(v) }
+fun row(label: String, d: RealizationDiagnostics) = listOf(
+    label, d.edgeLengthMean, d.edgeLengthRmsDeviation, d.maxFacePlanarityError,
+    d.facePlanarityRmsError, d.degenerateFaces.size,
+)
 
-display("solve", """
-    <table style='color:#c3ccd9;font:12px monospace;border-collapse:collapse;padding-top:10px;margin-top:10px'>
-      <thead style='color:#6d7787'><tr>
-        <th style='text-align:left;padding-right:14px'>embedding</th><th>edge mean</th>
-        <th>edge RMS dev</th><th>max planarity err</th><th>planarity RMS</th><th>degenerate</th>
-      </tr></thead>
-      <tbody>
-        ${row("aC as built", clean.geometryDiagnostics())}
-        ${row("jittered", solved.initialDiagnostics)}
-        ${row("after solveRealization()", solved.finalDiagnostics)}
-      </tbody>
-    </table>
-    <div style='color:#93a4ba;font:12px monospace;padding-top:8px'>
-      converged = ${solved.converged} &middot; iterations = ${solved.iterations} &middot;
-      rmsResidual = ${"%.3e".format(solved.rmsResidual)} &middot; reason = ${solved.reason} &middot;
-      topology object identical = ${solved.polyhedron.topology === jittered.topology}
-    </div>
-""".trimIndent())
+val metrics = Table(listOf(
+    "embedding", "edge mean", "edge RMS dev", "max planarity err", "planarity RMS", "degenerate",
+))
+    .rows(listOf(
+        row("aC as built", clean.geometryDiagnostics()),
+        row("jittered", solved.initialDiagnostics),
+        row("after solveRealization()", solved.finalDiagnostics),
+    ))
+    .format("edge mean") { "%.5f".format(it) }
+    .format("edge RMS dev", sci)
+    .format("max planarity err", sci)
+    .format("planarity RMS", sci)
+
+markdown("solve", """
+    ${metrics.h}
+
+    converged = ${solved.converged} · iterations = ${solved.iterations} ·
+    rmsResidual = ${sci(solved.rmsResidual)} · reason = ${solved.reason} ·
+    topology object identical = ${solved.polyhedron.topology === jittered.topology}
+""")
 :::endfold
 ```
 
@@ -920,36 +921,36 @@ threeGrid(
     channel = "canon3d", name = "embeddings", columns = 2, height = 380, cellWidth = 430,
     view = MeshView(wireframe = false, distance = 3.2),
 )
-fun row(label: String, d: CanonicalDiagnostics) =
-    ("<tr><td style='padding:2px 14px 2px 0'>%s</td><td>%.3e</td><td>%.3e</td>" +
-        "<td>%.3e</td><td>%.4f</td><td>%.3e</td></tr>").format(
-        label, d.tangencyRadiusSpread, d.tangencyCentroidOffset, d.maxFacePlanarityError,
-        d.dihedralAngleMean, d.dihedralAngleSpread)
+val sci = { v: Any? -> "%.3e".format(v) }
+fun row(label: String, d: CanonicalDiagnostics) = listOf(
+    label, d.tangencyRadiusSpread, d.tangencyCentroidOffset, d.maxFacePlanarityError,
+    d.dihedralAngleMean, d.dihedralAngleSpread,
+)
+fun degrees(o: PolyhedralObject) =
+    o.topology.elements(2).mapNotNull { o.topology.faceCycleOrNull(it.id)?.size }.distinct().sorted()
 
-display("canon", """
-    <table style='color:#c3ccd9;font:12px monospace;border-collapse:collapse;margin-top:12px'>
-      <thead style='color:#6d7787'><tr>
-        <th style='text-align:left;padding-right:14px'>embedding</th>
-        <th>tangency radius spread</th><th>tangency centroid offset</th>
-        <th>max planarity err</th><th>dihedral mean</th><th>dihedral spread</th>
-      </tr></thead>
-      <tbody>
-        ${row("as built", run.initialDiagnostics)}
-        ${row("canonical", run.finalDiagnostics)}
-      </tbody>
-    </table>
-    <div style='color:#93a4ba;font:12px monospace;padding-top:8px'>
-      converged = ${run.converged} &middot; reason = ${run.reason} &middot;
-      reciprocal iterations = ${run.reciprocalIterations} &middot;
-      relaxation iterations = ${run.relaxationIterations} &middot;
-      reseeded = ${run.reseeded}
-      <br/>distinct face degrees, before and after =
-      ${before.topology.elements(2).mapNotNull { before.topology.faceCycleOrNull(it.id)?.size }.distinct().sorted()}
-      &rarr;
-      ${after.topology.elements(2).mapNotNull { after.topology.faceCycleOrNull(it.id)?.size }.distinct().sorted()}
-      &middot; topology object identical = ${run.polyhedron.topology === built.topology}
-    </div>
-""".trimIndent())
+val metrics = Table(listOf(
+    "embedding", "tangency radius spread", "tangency centroid offset", "max planarity err",
+    "dihedral mean", "dihedral spread",
+))
+    .rows(listOf(row("as built", run.initialDiagnostics), row("canonical", run.finalDiagnostics)))
+    .format("tangency radius spread", sci)
+    .format("tangency centroid offset", sci)
+    .format("max planarity err", sci)
+    .format("dihedral mean") { "%.4f".format(it) }
+    .format("dihedral spread", sci)
+
+markdown("canon", """
+    ${metrics.h}
+
+    converged = ${run.converged} · reason = ${run.reason} ·
+    reciprocal iterations = ${run.reciprocalIterations} ·
+    relaxation iterations = ${run.relaxationIterations} · reseeded = ${run.reseeded}
+
+    distinct face degrees, before and after = ${mdEscape(degrees(before))} →
+    ${mdEscape(degrees(after))} · topology object identical =
+    ${run.polyhedron.topology === built.topology}
+""")
 :::endfold
 ```
 
@@ -1032,28 +1033,32 @@ threeGrid(
     channel = "kkc3d", name = "embeddings", columns = 3, height = 340, cellWidth = 380,
     view = MeshView(wireframe = false, distance = 3.2),
 )
-fun row(label: String, p: PolyhedralObject): String {
+val sci = { v: Any? -> "%.3e".format(v) }
+fun row(label: String, p: PolyhedralObject): List<Any?> {
     val d = p.canonicalDiagnostics()
-    return ("<tr><td style='padding:2px 14px 2px 0'>%s</td><td>%.3e</td><td>%.3e</td><td>%.3e</td>" +
-        "<td>%.3f</td></tr>").format(
+    return listOf(
         label, d.tangencyRadiusSpread, d.tangencyCentroidOffset, d.maxFacePlanarityError,
-        d.dihedralAngleMin)
+        d.dihedralAngleMin,
+    )
 }
 
-display("kkc", """
-    <table style='color:#c3ccd9;font:12px monospace;border-collapse:collapse;margin-top:12px'>
-      <thead style='color:#6d7787'><tr>
-        <th style='text-align:left;padding-right:14px'>embedding</th>
-        <th>tangency radius spread</th><th>tangency centroid offset</th>
-        <th>max planarity err</th><th>min dihedral</th>
-      </tr></thead>
-      <tbody>${panels.joinToString("") { (label, p) -> row(label, p) }}</tbody>
-    </table>
-    <div style='color:#93a4ba;font:12px monospace;padding-top:8px'>
-      canonicalize(): converged = ${iterated.converged} &middot; reason = ${iterated.reason}
-      <br/>relaxWithCeres(): ${solved.summary}
-    </div>
-""".trimIndent())
+val metrics = Table(listOf(
+    "embedding", "tangency radius spread", "tangency centroid offset", "max planarity err",
+    "min dihedral",
+))
+    .rows(panels.map { (label, p) -> row(label, p) })
+    .format("tangency radius spread", sci)
+    .format("tangency centroid offset", sci)
+    .format("max planarity err", sci)
+    .format("min dihedral") { "%.3f".format(it) }
+
+markdown("kkc", """
+    ${metrics.h}
+
+    canonicalize(): converged = ${iterated.converged} · reason = ${iterated.reason}
+
+    relaxWithCeres(): ${mdEscape(solved.summary)}
+""")
 :::endfold
 ```
 
@@ -1113,30 +1118,37 @@ threeGrid(
     view = MeshView(wireframe = false, distance = 3.2),
 )
 val dev = recovered.polyhedron.symmetryDeviation()
-display("spectral", """
-    <div style='color:#c3ccd9;font:12px monospace;padding-top:12px;line-height:1.7'>
-      1 &middot; spectral only &rarr; tangency spread
-      ${"%.3e".format(spectral.canonicalDiagnostics().tangencyRadiusSpread)},
-      dihedral mean ${"%.4f".format(spectral.canonicalDiagnostics().dihedralAngleMean)} rad
-      <br/>2 &middot; from combinatorics alone &rarr; tangency spread
-      ${"%.3e".format(recovered.finalDiagnostics.tangencyRadiusSpread)},
-      dihedral mean ${"%.4f".format(recovered.finalDiagnostics.dihedralAngleMean)} rad
-      <br/>3 &middot; from the operator's coordinates &rarr; tangency spread
-      ${"%.3e".format(fromOperator.finalDiagnostics.tangencyRadiusSpread)},
-      dihedral mean ${"%.4f".format(fromOperator.finalDiagnostics.dihedralAngleMean)} rad
-      <br/><span style='color:#6d7787'>2 and 3 agree on the dihedral mean to</span>
-      ${"%.2e".format(
-          Math.abs(recovered.finalDiagnostics.dihedralAngleMean -
-              fromOperator.finalDiagnostics.dihedralAngleMean))} rad
-      <br/><br/><span style='color:#6d7787'>symmetry readout of the recovered solid</span>
-      <br/>vertex-radius spread ${"%.3e".format(dev.vertexRadiusSpread)} &middot;
-      edge-length spread ${"%.3e".format(dev.edgeLengthSpread)} &middot;
-      face-distance spread ${"%.3e".format(dev.faceDistanceSpread)}
-      <br/>combinatorial classes &mdash; vertices ${dev.orbits.vertexClassSizes} &middot;
-      edges ${dev.orbits.edgeClassSizes} &middot; faces ${dev.orbits.faceClassSizes} &middot;
-      fully transitive = ${dev.orbits.fullyTransitive}
-    </div>
-""".trimIndent())
+// The three routes were prose pretending to be a table; they are a table.
+val spectralOnly = spectral.canonicalDiagnostics()
+val sci = { v: Any? -> "%.3e".format(v) }
+val routes = Table(listOf("route", "tangency spread", "dihedral mean (rad)"))
+    .rows(listOf(
+        listOf("1 · spectral only", spectralOnly.tangencyRadiusSpread, spectralOnly.dihedralAngleMean),
+        listOf("2 · from combinatorics alone",
+            recovered.finalDiagnostics.tangencyRadiusSpread, recovered.finalDiagnostics.dihedralAngleMean),
+        listOf("3 · from the operator's coordinates",
+            fromOperator.finalDiagnostics.tangencyRadiusSpread, fromOperator.finalDiagnostics.dihedralAngleMean),
+    ))
+    .format("tangency spread", sci)
+    .format("dihedral mean (rad)") { "%.4f".format(it) }
+
+markdown("spectral", """
+    ${routes.h}
+
+    {muted:2 and 3 agree on the dihedral mean to} ${"%.2e".format(
+        Math.abs(recovered.finalDiagnostics.dihedralAngleMean -
+            fromOperator.finalDiagnostics.dihedralAngleMean))} rad
+
+    {muted:symmetry readout of the recovered solid}
+
+    vertex-radius spread ${sci(dev.vertexRadiusSpread)} ·
+    edge-length spread ${sci(dev.edgeLengthSpread)} ·
+    face-distance spread ${sci(dev.faceDistanceSpread)}
+
+    combinatorial classes — vertices ${mdEscape(dev.orbits.vertexClassSizes)} ·
+    edges ${mdEscape(dev.orbits.edgeClassSizes)} · faces ${mdEscape(dev.orbits.faceClassSizes)} ·
+    fully transitive = ${dev.orbits.fullyTransitive}
+""")
 :::endfold
 ```
 
@@ -1196,13 +1208,20 @@ val seeds = listOf("5-cell" to fiveCell(), "tesseract" to tesseract(),
 val projection = RotatedProjection4(
     a = 0, b = 3, angle = 0.30, then = PerspectiveProjection4(eye = 4.2))
 
-val rows = seeds.joinToString("") { (name, p) ->
-    val s = p.summary()
-    val manifold = runCatching { p.topology.validate(checkManifold = true).isValid }.getOrDefault(false)
-    "<tr><td style='padding:2px 16px 2px 0'>$name</td><td>${s.vertices}</td><td>${s.edges}</td>" +
-        "<td>${s.polygons}</td><td>${s.cells}</td><td>${s.eulerCharacteristic}</td>" +
-        "<td>${s.cellPolygonCounts}</td><td>$manifold</td></tr>"
-}
+val counts = Table(listOf(
+    "seed", "V", "E", "F", "C", "V-E+F-C", "polygons per cell", "closed 2-manifold?",
+))
+    .rows(seeds.map { (name, p) ->
+        val s = p.summary()
+        val manifold = runCatching { p.topology.validate(checkManifold = true).isValid }.getOrDefault(false)
+        listOf(name, s.vertices, s.edges, s.polygons, s.cells, s.eulerCharacteristic,
+            s.cellPolygonCounts, manifold)
+    })
+    // Both claims the paragraph under this figure makes, as expectations rather than as prose to
+    // check by eye. The manifold one asserts *false*: a 4-polytope is not a surface, so a validator
+    // answering true would be the bug.
+    .expect("V-E+F-C", because = "the Euler relation for a convex 4-polytope") { it == 0 }
+    .expect("closed 2-manifold?", because = "a 4-polytope is not a surface") { it == false }
 
 :::fold draw the tesseract's projected wireframe and print the four seeds' derived counts
 val lines = tesseract().toEdgeFLines(projection) { _, line ->
@@ -1214,15 +1233,7 @@ threeLines(lines, channel = "rank4", name = "tesseract, rotated perspective proj
     height = 430, autoFrame = true, editable = false)
 displayOpen("rank4")
 
-markdown("counts", """
-<table style='color:#c3ccd9;font:12px monospace;border-collapse:collapse'>
-  <thead style='color:#6d7787'><tr>
-    <th style='text-align:left;padding-right:16px'>seed</th><th>V</th><th>E</th><th>F</th><th>C</th>
-    <th>V-E+F-C</th><th>polygons per cell</th><th>closed 2-manifold?</th>
-  </tr></thead>
-  <tbody>$rows</tbody>
-</table>
-""".trimIndent())
+markdown("counts", counts.h)
 :::endfold
 ```
 
