@@ -4,6 +4,7 @@ import afield.four.synth.PatArc
 import afield.four.synth.PatPattern
 import afield.four.synth.PatQ
 import afield.petri.PETRI_LABEL_LIMIT
+import afield.petri.PETRI_STATE_DRAW_LIMIT
 import afield.petri.PetriCombinators
 import afield.petri.PetriConflict
 import afield.petri.PetriHalt
@@ -23,8 +24,12 @@ import afield.petri.petriLabelsRenderable
 import afield.petri.petriParse
 import afield.petri.report
 import afield.petri.settle
+import afield.petri.stateSpace
+import afield.petri.summaryHtml
 import afield.petri.tInvariants
+import afield.petri.toFLines
 import afield.petri.toSvg
+import afield.petri.tooDenseToDraw
 import afield.petri.unfold
 import afield.petri.willDeadlock
 import java.io.File
@@ -97,6 +102,23 @@ object PetriGallery {
         check(runTests(args.firstOrNull()?.let(::File))) { "petri gallery failed" }
     }
 
+    /**
+     * Every net the gallery builds, by name — the notation programs and the Kotlin-DSL ones.
+     *
+     * Public because it is the honest corpus for anything that wants to sweep "every net the
+     * documentation actually shows a reader" rather than a handful chosen by whoever is writing the
+     * sweep. `PetriDeadTransitionsSweepTest` uses it for exactly that: a semantic change to a public
+     * analysis function has to be checked against the nets the callers really pass, and this is where
+     * most of them live.
+     */
+    fun nets(): List<Pair<String, PetriNet>> =
+        EXAMPLES.map { example ->
+            example.name to (
+                petriParse(example.source).net
+                    ?: error("gallery example '${example.name}' does not parse")
+                )
+        } + DSL_EXAMPLES.map { it.name to it.build() }
+
     fun runTests(outputDir: File? = null): Boolean = try {
         val dir = outputDir ?: Files.createTempDirectory("petri-gallery-").toFile()
         dir.mkdirs()
@@ -123,6 +145,7 @@ object PetriGallery {
             println("  ${example.name.padEnd(22)} $finding")
         }
 
+        checkStateFigures(dir)
         checkCheatsheetCoverage()
         println("petri gallery passed (${EXAMPLES.size + DSL_EXAMPLES.size} worked examples)")
         if (outputDir != null) println("wrote figures to ${dir.absolutePath}")
@@ -483,6 +506,124 @@ object PetriGallery {
                         "-XstartOnFirstThread plus non-headless AWT parks CFontManager.loadFonts on a " +
                         "run loop nothing here pumps. See Typefaces.warm and requiredAgentJvmArgs."
                 })
+        }
+    }
+
+    // ── the state-space figures, and the node bound ───────────────────────────────────────
+
+    /**
+     * One state-space figure: a net, the size it is drawn at, and whether the drawing is expected to
+     * refuse it.
+     *
+     * The three of them are the three regimes, and they are here rather than in a unit test because
+     * they go through the same call the boxes and the docs page do — [afield.petri.toSvg], which is
+     * [afield.petri.toFLines] — so a change that only breaks the *drawing* rather than the numbers
+     * still fails something.
+     */
+    private class StateFigure(
+        val name: String,
+        val blurb: String,
+        val build: () -> PetriNet,
+        val w: Double,
+        val h: Double,
+        val declined: Boolean,
+    )
+
+    /** Five philosophers is 82 markings; nine is 2 786. The same net at two sizes is the whole test. */
+    private fun philosophers(n: Int) = petri {
+        conflict = PetriConflict.ORDER
+        grid = cyc(1, 4)
+        for (i in 0 until n) place("fork.$i", tokens = 1)
+        for (i in 0 until n) {
+            val left = i
+            val right = (i + 1) % n
+            t("grab.$i") { from("fork.$left"); to("holding.$i") }
+            t("eat.$i") { from("holding.$i"); from("fork.$right"); to("eating.$i") }
+            t("done.$i") { from("eating.$i"); to("fork.$left"); to("fork.$right") }
+        }
+    }
+
+    private val STATE_FIGURES: List<StateFigure> = listOf(
+        StateFigure(
+            name = "state-graph-small",
+            blurb = "the bounded buffer — small enough that every marking is a dot you can point at",
+            build = {
+                petri {
+                    grid = cyc(1, 8)
+                    place("free", tokens = 4)
+                    place("items", capacity = 4)
+                    place("producer", tokens = 1)
+                    place("consumer", tokens = 1)
+                    t("produce") { from("producer"); from("free"); to("items"); to("producer") }
+                    t("consume") { from("consumer"); from("items"); to("free"); to("consumer") }
+                }
+            },
+            w = 900.0,
+            h = 320.0,
+            declined = false,
+        ),
+        StateFigure(
+            name = "state-graph-dense",
+            blurb = "five philosophers, 82 markings — dense, and the case the limit is tuned to allow",
+            build = { philosophers(5) },
+            w = 1100.0,
+            h = 640.0,
+            declined = false,
+        ),
+        StateFigure(
+            name = "state-graph-declined",
+            blurb = "nine philosophers, 2 786 markings — declined, and it says so on the figure",
+            build = { philosophers(9) },
+            w = 1100.0,
+            h = 640.0,
+            declined = true,
+        ),
+    )
+
+    /**
+     * Draws all three and checks the node bound did what it claims, in both directions.
+     *
+     * The assertions are deliberately *counterfactual with a number on them* rather than "the two
+     * differ": under the limit the drawing has to carry at least one FLine per marking, over it at
+     * most a tenth of that — and, separately, **at least twenty FLines and one arrow per firing of
+     * the counterexample**, because an empty picture would otherwise satisfy "far fewer than 2 786"
+     * perfectly and a blank SVG is the failure mode a node bound is most likely to introduce.
+     */
+    private fun checkStateFigures(dir: File) {
+        for (figure in STATE_FIGURES) {
+            val net = figure.build()
+            val graph = net.stateSpace()
+            check(graph.complete) { "${figure.name}: the search did not finish, so the figure is of a prefix" }
+            check(graph.tooDenseToDraw() == figure.declined) {
+                "${figure.name}: ${graph.stateCount} markings against a limit of $PETRI_STATE_DRAW_LIMIT, " +
+                    "expected declined=${figure.declined}"
+            }
+
+            val drawn = graph.toFLines(w = figure.w, h = figure.h)
+            check(drawn.isNotEmpty()) { "${figure.name}: nothing was drawn at all" }
+            if (figure.declined) {
+                check(drawn.size >= 20) { "${figure.name}: only ${drawn.size} FLines — the summary is blank" }
+                check(drawn.size * 10 < graph.stateCount) {
+                    "${figure.name}: ${drawn.size} FLines for ${graph.stateCount} markings — it drew the hairball"
+                }
+                val trace = graph.deadlockTrace()
+                check(trace != null && trace.length >= 9) { "${figure.name}: no counterexample to show" }
+                check(graph.summaryHtml().contains("drawing declined")) {
+                    "${figure.name}: the card does not admit the drawing was declined"
+                }
+            } else {
+                check(drawn.size >= graph.stateCount) {
+                    "${figure.name}: ${drawn.size} FLines for ${graph.stateCount} markings — a dot each is the minimum"
+                }
+                check(!graph.summaryHtml().contains("drawing declined")) {
+                    "${figure.name}: the card claims a refusal that did not happen"
+                }
+            }
+
+            File(dir, "${figure.name}.svg").writeText(graph.toSvg(w = figure.w, h = figure.h))
+            println(
+                "  ${figure.name.padEnd(22)} ${graph.stateCount} markings, ${drawn.size} FLines — ${figure.blurb}"
+            )
         }
     }
 

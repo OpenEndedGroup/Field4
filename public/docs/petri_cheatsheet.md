@@ -141,8 +141,10 @@ Not notation — the API around it.
 | `trace.verify()` | re-fires the counterexample through the engine; null means it holds up |
 | `net.stateSpace(reduction = PetriReduction.STUBBORN)` | partial-order reduction — 73× on eleven philosophers, deadlock only |
 | `graph.exact` | `complete && reduction == NONE`; everything but deadlock needs it |
+| `graph.tooDenseToDraw()` | above `PETRI_STATE_DRAW_LIMIT` the drawing summarises instead of drawing |
 | `graph.proves { … }` | true / false / null — the three-valued form of `invariant` |
 | `net.coverability()` | Karp-Miller with ω — terminates even when the state space does not |
 | `box.showPetriStateSpace(graph)` | the state graph, with the counterexample drawn over it |
+| `box.showPetriStateSpace(graph, maxNodes = …)` | raise the node bound, or `Int.MAX_VALUE` to insist |
 | `box.showPetriNet(live)` | the picture, clickable: click a place to inject, a transition to fire |
 | `live.play(cps = 2.0) { … }` | plays a live net in a box, on the beat |

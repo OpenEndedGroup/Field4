@@ -444,6 +444,15 @@ marking, the shortest route to the deadlock in orange with its transitions writt
 ring on the marking it gets stuck in. Every philosopher picking up one fork — five firings, and
 there is nothing shorter.
 
+Eighty-two markings is about as far as that picture goes, and it stops going rather than degrading
+quietly. Above `PETRI_STATE_DRAW_LIMIT` — 400 markings — the dot radius has bottomed out at two
+pixels and the layers overlap, so the drawing **declines**: it shows the counterexample alone, laid
+out one firing per column, over a histogram of how many markings sit at each breadth-first depth, and
+it writes on the figure that it did so. `graph.tooDenseToDraw()` answers the question in advance, and
+`maxNodes` on `toFLines`, `toSvg` and `showPetriStateSpace` moves the line — `Int.MAX_VALUE` insists
+on the hairball if you have measured that you want it. A grey rectangle with an orange line in it is
+not a denser version of the information; it is the absence of it wearing the same shape.
+
 Three things follow that the deterministic analysis cannot say:
 
 - **A "no" means something.** `canDeadlock` is `true`, `false` or `null`, and `null` means the
@@ -533,11 +542,55 @@ Three limits, and they are the whole reason to trust it:
   and `proves { }` all return `null` on a reduced graph. `canDeadlock` and `deadlockTrace` do not.
 - **It is not a shortest path.** The reduced search reaches a deadlock that really is reachable, by a
   route at least as long as the true shortest. Every trace still passes `verify()`; it is just not
-  guaranteed minimal. (On every net tested here the two lengths are in fact equal.)
+  guaranteed minimal. Measured, that gap has never yet opened: over 758 generated nets where both
+  searches found a counterexample, the two lengths were equal every time — but the theorem does not
+  promise it, so do not build on it.
 - **A colour-dependent net is not reduced.** The closure reasons about arcs, and a guard or an
   `enabledIf` is an arbitrary predicate no arc analysis can see, so `stateSpace(reduction = STUBBORN)`
   on such a net quietly returns an unreduced — and therefore still `exact` — graph, with
   `graph.reduction == PetriReduction.NONE` saying so.
+
+#### What the reduction is measured to do, rather than claimed to
+
+The three limits above are what the theorem says. The reduction is about eighty lines of code
+deciding what *not* to explore, and a theorem does not check code, so the honest question is what has
+actually been compared.
+
+Both searches are run over generated nets and made to agree, and the comparison is deliberately
+sharper than "does a deadlock exist" — existence is the weakest possible oracle, because a net with
+three deadlocks agrees on existence while the reduction loses two of them. What is compared is the
+**set** of reachable terminal markings, the length of the counterexample, containment of the reduced
+state set in the full one, and every accessor gated on `exact` refusing. The corpus is 1 497 nets
+over six families across a fixed seed list, half of them plain place/transition nets as a control and
+half saturated with the read arcs, inhibitor arcs, capacities and arc weights that are this model's
+additions to the classical one — which is precisely where the classical argument stops being free.
+
+The numbers, so that "measured" means something:
+
+| | |
+| --- | ---: |
+| nets compared | 1 497 |
+| reachable markings across the corpus | 137 001 |
+| markings the reduced search visited | 27 727 — **20.2%** |
+| nets strictly pruned | 840 |
+| nets that can deadlock / cannot | 758 / 739 |
+| nets with two or more distinct deadlocks | 247 |
+| widest single net | 3 465 markings |
+| disagreements | 0 |
+
+That last row is only worth reading because it was not always zero. The first run of the comparison
+found eight disagreements, and they were **two mechanisms**: a stubborn set has to be closed under
+"this transition may disable that one" as well as the reverse, and only the reverse was implemented.
+That is free in a plain place/transition net — if firing `t` disables `t'` they must share an input
+place, so `t'` was already in the set — and it is *not* free once a transition can starve a **read**
+arc it does not consume from, or arm an **inhibitor** arc by producing into its place. The first cost
+a whole reachable deadlock while `canDeadlock` still agreed; the second made the reduced search call
+a net deadlock-free that the full search wedges in five firings, which is the one direction of error
+this whole layer is built not to make. Both are fixed, both are pinned as three- and
+four-transition nets, and the corpus is what found them.
+
+The pruning ratio is itself asserted at a floor just under its measured value, because a reduction
+that quietly stopped reducing would agree with the full search perfectly and prove nothing at all.
 
 #### When the state space is infinite
 

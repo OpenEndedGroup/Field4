@@ -987,12 +987,44 @@ fun PetriRun.asciiTimeline(steps: Int = 16): String {
  firings — and the shortest path to the deadlock runs across it as a bright line with its transition
  names written on it. The rest of the space is drawn thin and quiet. What you should be able to see
  at a glance is: how wide the net's future is, how few steps it takes to ruin it, and which way.
+
+ Above a node count that stops working, and the honest thing is to say so rather than draw it anyway.
+ [PETRI_STATE_DRAW_LIMIT] is where. Eighty markings is dense and still readable, because the path is
+ bright and the rest is context. A few thousand is a grey rectangle with an orange line somewhere in
+ it, and the grey rectangle is not information, it is ink — `nodeRadius` has already bottomed out at
+ two pixels and the layers are overlapping each other. Past the limit the drawing declines the nodes
+ and keeps the two things that survive being summarised: the counterexample, drawn *larger* because
+ it is now the whole subject, and one bar per breadth-first layer whose height is that layer's
+ population, which is the only thing the hairball was ever really saying. And it writes on the figure
+ that it declined, because a picture that has quietly stopped showing you the data is worse than no
+ picture.
 */
 
 private val STATE_DEAD = hsl(0.01, 0.80, 0.58, 0.98)
 private val STATE_EDGE = hsl(0.58, 0.22, 0.52, 0.34)
 private val STATE_BACK = hsl(0.52, 0.30, 0.50, 0.30)
 private val STATE_NODE = hsl(0.58, 0.28, 0.60, 0.75)
+
+/**
+ * How many markings [PetriStateGraph.toFLines] will draw one dot each for before it declines.
+ *
+ * Four hundred is not a taste judgement, it is where the layout runs out of pixels. `nodeRadius`
+ * floors itself at two pixels, and at a default 1200×700 with a margin the widest layer can hold
+ * about a hundred and fifty two-pixel dots before they touch; four hundred markings in a graph five
+ * or six layers deep is already past that on some layer. Below the limit the picture is dense and
+ * readable — the eighty-two-marking dining table is the case it is tuned around. Above it, the dots
+ * are noise and [PetriStateGraph.tooDenseToDraw] is true.
+ */
+const val PETRI_STATE_DRAW_LIMIT: Int = 400
+
+/**
+ * True when this graph has more markings than [maxNodes], and so [toFLines] will summarise rather
+ * than draw it.
+ *
+ * Worth asking before building a figure round the drawing: the answer changes what the picture is
+ * *of*, from a state space with a path through it to a path with a state space behind it.
+ */
+fun PetriStateGraph.tooDenseToDraw(maxNodes: Int = PETRI_STATE_DRAW_LIMIT): Boolean = stateCount > maxNodes
 
 /**
  * The state graph as a picture: BFS layers left to right, one dot per reachable marking, and the
@@ -1006,6 +1038,10 @@ private val STATE_NODE = hsl(0.58, 0.28, 0.60, 0.75)
  * node was tried and is unreadable at eighty states: a dining table's marking is fifteen places
  * long and the labels overlap into a grey band. The path names are the part a reader can act on,
  * and the summary card next to the drawing has the numbers.
+ *
+ * Above [maxNodes] markings this hands off to a **declared summary** instead of drawing the nodes —
+ * see [PETRI_STATE_DRAW_LIMIT] and the section comment above. Pass a larger [maxNodes] to insist,
+ * or `Int.MAX_VALUE` to get the old behaviour back for a figure you have measured yourself.
  */
 fun PetriStateGraph.toFLines(
     highlight: PetriTrace? = deadlockTrace(),
@@ -1013,8 +1049,10 @@ fun PetriStateGraph.toFLines(
     h: Double = 700.0,
     labels: Boolean = true,
     labelSize: Double = 13.0,
+    maxNodes: Int = PETRI_STATE_DRAW_LIMIT,
 ): List<FLine> {
     if (stateCount == 0) return emptyList()
+    if (stateCount > maxNodes) return declinedDrawing(highlight, w, h, labels, labelSize, maxNodes)
     val position = layeredPositions(w, h)
     val radius = nodeRadius(w, h)
     val out = mutableListOf<FLine>()
@@ -1119,7 +1157,169 @@ fun PetriStateGraph.toSvg(
     w: Double = 1200.0,
     h: Double = 700.0,
     labels: Boolean = true,
-): String = drawToSVG(toFLines(highlight, w, h, labels), w, h)
+    maxNodes: Int = PETRI_STATE_DRAW_LIMIT,
+): String = drawToSVG(toFLines(highlight, w, h, labels, maxNodes = maxNodes), w, h)
+
+/**
+ * What gets drawn instead of the hairball: the counterexample in the top band, one bar per
+ * breadth-first layer in the bottom band, and a caption saying that is what happened.
+ *
+ * Four decisions, and the first two are the ones that matter:
+ *
+ * - it is **two panels, not an overlay**. The first version drew the path straight over the layer
+ *   bars, and that was wrong for exactly the reason the node bound exists: a line over grey is what
+ *   the hairball already looked like, so the summary was indistinguishable from the thing it was
+ *   replacing. Splitting them makes the picture visibly a *different kind* of picture, before any
+ *   caption has been read.
+ * - the **refusal is marked without words**. `label` returns nothing rather than throwing when no
+ *   font resolves — a real case, and the case the docs pipeline and headless runs are in — so a
+ *   caption alone would silently vanish in precisely the environments that generate figures. The
+ *   dashed rule under the caption is the font-free signature: a broken line across the top of a
+ *   figure reads as "cut", and it is always drawn.
+ * - the **path is laid out from the trace**, not from the graph's own layered positions, which is
+ *   what makes it legible: one step per column across the full width, so a twelve-firing
+ *   counterexample gets a twelfth of the picture per firing instead of whatever the barycentre
+ *   heuristic left over. It is a different drawing, not a zoom.
+ * - the **layer bars are the only surviving statement about size**, drawn from a baseline so they
+ *   read as a histogram. Height is population against the widest layer, so their shape is the shape
+ *   of the state space's growth — the one thing the fan of dots was saying before it ran out of
+ *   pixels.
+ */
+private fun PetriStateGraph.declinedDrawing(
+    highlight: PetriTrace?,
+    w: Double,
+    h: Double,
+    labels: Boolean,
+    labelSize: Double,
+    maxNodes: Int,
+): List<FLine> {
+    val out = mutableListOf<FLine>()
+    val left = STATE_MARGIN
+    val right = w - STATE_MARGIN
+    val top = STATE_MARGIN * 0.55 + labelSize * 3.2
+    val floor = h - STATE_MARGIN
+    val pathY = top + (floor - top) * 0.20
+    val barTop = top + (floor - top) * 0.38
+
+    // The font-free mark: a dashed rule across the top, always. See the KDoc.
+    val dashes = max(8, ((right - left) / 26.0).toInt())
+    for (dash in 0 until dashes) {
+        val a = left + (right - left) * dash / dashes
+        val b = a + (right - left) / dashes * 0.55
+        out += fline {
+            moveTo(vec(a, top - labelSize * 0.8)); lineTo(vec(b, top - labelSize * 0.8))
+            stroked = true; filled = false
+            // 2.2 is not arbitrary: it is a weight nothing else in either drawing uses, so the
+            // refusal rule is countable on its own. `PetriStateDrawingTest` counts on that.
+            thickness = 2.2
+            color = STATE_DEAD
+        }
+    }
+
+    // The histogram: one bar per BFS layer, from a baseline, height proportional to population.
+    val sizes = layerSizes()
+    val widest = max(1, sizes.maxOrNull() ?: 1)
+    val step = if (sizes.size > 1) (right - left) / (sizes.size - 1) else 0.0
+    val barHalf = min(16.0, max(1.5, step * 0.34))
+    out += fline {
+        moveTo(vec(left, floor)); lineTo(vec(right, floor))
+        stroked = true; filled = false
+        thickness = 1.0
+        color = STATE_EDGE
+    }
+    for ((layer, count) in sizes.withIndex()) {
+        if (count == 0) continue
+        val x = left + layer * step
+        // A floor of two pixels, so a layer of one marking against a layer of seven hundred is a
+        // visible nub rather than nothing at all — "no bar" and "one marking" must not look alike.
+        val head = floor - max(2.0, (floor - barTop) * count.toDouble() / widest)
+        out += fline {
+            moveTo(vec(x - barHalf, head))
+            lineTo(vec(x + barHalf, head))
+            lineTo(vec(x + barHalf, floor))
+            lineTo(vec(x - barHalf, floor))
+            lineTo(vec(x - barHalf, head))
+            filled = true; stroked = false
+            color = STATE_BACK
+        }
+    }
+    // The widest layer gets its number, because "how wide does this get" is the question the bars
+    // are answering and a shape without a scale only half answers it.
+    if (labels) sizes.withIndex().maxByOrNull { it.value }?.let { (layer, count) ->
+        out += label(
+            "$count markings at depth $layer",
+            vec(left + layer * step, barTop - labelSize),
+            labelSize * 0.85,
+            STATE_NODE,
+        )
+    }
+
+    // The counterexample, laid out on its own terms, in its own band.
+    val radius = 9.0
+    if (highlight != null && highlight.length > 0) {
+        val columns = highlight.markings.size
+        val across = if (columns > 1) (right - left) / (columns - 1) else 0.0
+        fun at(index: Int) = vec(left + index * across, pathY)
+        val wedged = canDeadlock == true
+        for (index in 0 until columns - 1) {
+            val a = at(index)
+            val b = at(index + 1)
+            val length = (b.x - a.x).toDouble()
+            if (length <= radius * 2.2) continue
+            out += arrow(
+                Vec2(vec(a.x + radius, a.y)),
+                Vec2(vec(b.x - radius - 2.0, b.y)),
+                color = LIVE, thickness = 3.0, headLength = 9.0, headWidth = 6.0,
+            )
+        }
+        for (index in 0 until columns) {
+            val centre = at(index)
+            val last = index == columns - 1
+            out += fline {
+                circle(centre.x.toDouble(), centre.y.toDouble(), radius, 24)
+                filled = true; stroked = false
+                color = if (last && wedged) STATE_DEAD else if (index == 0) READY else LIVE
+            }
+            if (index == 0 || last) out += fline {
+                circle(centre.x.toDouble(), centre.y.toDouble(), radius + 4.0, 28)
+                filled = false; stroked = true
+                thickness = 1.8
+                color = if (last && wedged) STATE_DEAD else READY
+            }
+        }
+        if (labels) {
+            for ((index, name) in highlight.transitions.withIndex()) {
+                val a = at(index)
+                val b = at(index + 1)
+                out += label(name, vec((a.x + b.x) / 2.0, pathY - labelSize * 1.5), labelSize, LIVE)
+            }
+            out += label("start", vec(at(0).x, pathY + radius + labelSize * 1.4), labelSize, READY)
+            out += label(
+                if (wedged) "stuck" else "end",
+                vec(at(columns - 1).x, pathY + radius + labelSize * 1.4),
+                labelSize,
+                if (wedged) STATE_DEAD else READY,
+            )
+        }
+    }
+
+    // The caption, drawn whatever `labels` says: it is about the *figure*, not about the transition
+    // names, and a summary that does not admit to being one is the bug this path exists to fix.
+    val what = if (highlight == null || highlight.length == 0) {
+        "no counterexample to draw — the bars below are the population of each layer"
+    } else {
+        "the ${highlight.length}-firing counterexample above, per-layer population below"
+    }
+    out += label(
+        "$stateCount markings, $edgeCount firings — too dense to draw (limit $maxNodes)",
+        vec(w / 2.0, STATE_MARGIN * 0.5),
+        labelSize * 1.1,
+        STATE_DEAD,
+    )
+    out += label(what, vec(w / 2.0, STATE_MARGIN * 0.5 + labelSize * 1.7), labelSize * 0.95, STATE_NODE)
+
+    return out.filter { it.nodes.isNotEmpty() }
+}
 
 /**
  * How big a dot can be before the widest layer collides with itself.
@@ -1256,10 +1456,11 @@ fun Box.showPetriStateSpace(
     w: Double = 1200.0,
     h: Double = 700.0,
     labels: Boolean = true,
+    maxNodes: Int = PETRI_STATE_DRAW_LIMIT,
 ): List<FLine> {
-    val rendered = graph.toFLines(highlight, w, h, labels)
+    val rendered = graph.toFLines(highlight, w, h, labels, maxNodes = maxNodes)
     lines(rendered, channel = channel, w = w, h = h, fitToSize = true)
-    summaryChannel?.let { display(it, graph.summaryHtml(highlight)) }
+    summaryChannel?.let { display(it, graph.summaryHtml(highlight, maxNodes)) }
     return rendered
 }
 
@@ -1271,13 +1472,24 @@ fun Box.showPetriStateSpace(
     w: Double = 1200.0,
     h: Double = 700.0,
     budget: Int = PETRI_STATE_BUDGET,
-): List<FLine> = showPetriStateSpace(net.stateSpace(budget), channel = channel, summaryChannel = summaryChannel, w = w, h = h)
+    maxNodes: Int = PETRI_STATE_DRAW_LIMIT,
+): List<FLine> = showPetriStateSpace(
+    net.stateSpace(budget),
+    channel = channel,
+    summaryChannel = summaryChannel,
+    w = w,
+    h = h,
+    maxNodes = maxNodes,
+)
 
 /**
  * The card beside the picture: how big the space is, what the search proved, and — when there is
  * one — the counterexample written out as a firing sequence.
  */
-fun PetriStateGraph.summaryHtml(highlight: PetriTrace? = deadlockTrace()): String {
+fun PetriStateGraph.summaryHtml(
+    highlight: PetriTrace? = deadlockTrace(),
+    maxNodes: Int = PETRI_STATE_DRAW_LIMIT,
+): String {
     fun chip(text: String, tint: String) =
         """<span style="display:inline-block;margin:2px 4px 2px 0;padding:2px 7px;border-radius:9px;background:$tint;color:#eee;font-size:11px">${escape(text)}</span>"""
 
@@ -1293,6 +1505,10 @@ fun PetriStateGraph.summaryHtml(highlight: PetriTrace? = deadlockTrace()): Strin
         isLive?.let { add((if (it) "live" else "not live") to if (it) "#123a1c" else "#4a2010") }
         isReversible?.let { add((if (it) "reversible" else "not reversible") to "#242424") }
         if (!complete) add("BUDGET EXHAUSTED — every 'no' above is 'unknown'" to "#5a1010")
+        // The card and the picture have to agree about what the picture is. A reader who takes the
+        // summarised figure for a drawing of the space has been misled by the pair of them, not by
+        // one of them.
+        if (tooDenseToDraw(maxNodes)) add("drawing declined above $maxNodes markings — path only" to "#4a3a10")
     }.joinToString("") { (text, tint) -> chip(text, tint) }
 
     val counterexample = highlight?.let { trace ->
