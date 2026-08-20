@@ -1127,6 +1127,17 @@ tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
 // the default correctness contract is fast and deterministic.
 val jvmTestTask = tasks.named<org.gradle.api.tasks.testing.Test>("jvmTest") {
     exclude("**/*Measurements.class")
+    // `ServerSurfaceLedgerTest` compares Field's route and `/ws` command surface against tables in
+    // this Markdown page, which makes the page a test *input* Gradle cannot infer. Without this line
+    // an edit to the page leaves `jvmTest` UP-TO-DATE and the ledger "passes" without running —
+    // measured 2026-08-20, a stale-row edit at 02:55 was still reporting the 02:41 result. Same
+    // lesson and same fix as the `publishedDocs` input on `citationGates` below.
+    //
+    // The Kotlin side needs no declaration: the test reads `src/jvmMain/kotlin/afield/**`, and an
+    // edit there changes the compiled classpath this task already depends on.
+    inputs.file("dev_docs/server_surface_inventory.md")
+        .withPropertyName("serverSurfaceLedger")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 tasks.register<org.gradle.api.tasks.testing.Test>("jvmMeasurements") {
@@ -1145,6 +1156,10 @@ val citationGuardTestClasses = listOf(
     "afield.graphics.CloseNodeCitationDriftTest",
     "afield.docs.DocsGatesWiringTest",
     "afield.docs.DocsFenceTreatmentTest",
+    // A documentation guard like the rest: it holds dev_docs/server_surface_inventory.md to the
+    // route and /ws command surface it claims to inventory, in both directions. It belongs in the
+    // docs gate because a docs-only branch that edits that page must not be able to go green.
+    "afield.server.ServerSurfaceLedgerTest",
 )
 
 val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationGates") {
@@ -1166,6 +1181,11 @@ val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationG
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file("public/docs_hooks.py").withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file("build.gradle.kts").withPathSensitivity(PathSensitivity.RELATIVE)
+    // The dev_docs pages these guards read, for the same reason as the line above: the citation
+    // corpus and the server-surface ledger both live under dev_docs, which is not `public/docs`.
+    inputs.files(fileTree("dev_docs") { include("**/*.md") })
+        .withPropertyName("guardedDevDocs")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 tasks.named("compileKotlinJvm") {
