@@ -1477,9 +1477,16 @@ completionSidecarCompileForWarnings.configure {
 
 tasks.register("warningGates") {
     group = "verification"
-    description = "Force-compiles Field and its standalone default completion backend for a complete warning audit."
+    description = "Force-compiles Field and its standalone default completion backend for a source warning audit."
     dependsOn(warningCompileTasks)
     dependsOn(completionSidecarCompileForWarnings)
+    doFirst {
+        println(
+            "warningGates scope: Kotlin source sets only (JVM, JS, JVM tests, completion sidecar). " +
+                "Gradle caches Kotlin DSL compilation independently of --rerun-tasks, so this command " +
+                "does not certify build.gradle.kts compiler warnings."
+        )
+    }
 }
 
 // Field Audio is a pinned companion service, not part of Field's build-time dependency graph.

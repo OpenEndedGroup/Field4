@@ -72,7 +72,7 @@ the matrix below as the quick command crib.
 | Situation | Command | Intent |
 | --- | --- | --- |
 | Backdoor sanity check | `uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 --command status` | Verify the agent can start or attach to an isolated Field. |
-| Complete compiler-warning audit | `./gradlew --no-daemon --rerun-tasks warningGates` | Force all root compiler passes plus the standalone default-completion backend into one warning census. |
+| Complete source-warning audit | `./gradlew --no-daemon --rerun-tasks warningGates` | Force all root source passes plus the standalone default-completion backend into one warning census; the task explicitly excludes cached Kotlin DSL script diagnostics. |
 | Smoke catalog | `uv run --project . --group backdoor python tools/run_field_tests.py --refresh-catalog` | Exercise annotated Field examples through the backdoor. |
 | Browser UI regressions | `uv run --project . --group backdoor python tools/run_ui_regressions.py --port 9490 --timeout 45` | Run Playwright-backed UI workflows and retain screenshots under `build/ui-regressions/artifacts/`. |
 | One browser screenshot smoke | `uv run --project . --group backdoor python tools/field_backdoor.py --json --with-playwright --port 9477 --command 'new-box --name Visual' --command 'run @last --value "display(\"main\", \"<div>hello</div>\")"' --command 'screenshot-box @last /tmp/field-smoke.png'` | Capture a real browser screenshot without relying on Python Playwright. |

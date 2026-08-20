@@ -75,6 +75,10 @@ The `--rerun-tasks` on the aggregate forces Field's three audited source sets;
 the task separately force-compiles `tools/code-use-semantic-sidecar`, whose own
 Gradle settings make it invisible to root compile tasks. That sidecar is the
 default completion backend, so a warning count that omits it is incomplete.
+The task prints its remaining boundary explicitly: Gradle caches Kotlin DSL
+script compilation independently of `clean` and `--rerun-tasks`, and offers no
+supported force-recompile switch, so this is a Kotlin **source** warning census;
+it does not certify compiler diagnostics from `build.gradle.kts` itself.
 
 Gradle process ownership and daemon cleanup rules live in `AGENTS.md`.
 Do not replace runtime checks with Gradle-only checks when the change affects
