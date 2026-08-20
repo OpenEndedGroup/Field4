@@ -291,7 +291,7 @@ object DemoTranscriptExecSmokeTest {
     fun main(args: Array<String>) {
         // First line, before anything can touch an AWT class, and for the same reason every jvm-main
         // gallery does it: this harness runs under `-XstartOnFirstThread` (added for GLFW by
-        // `requiredAgentJvmArgs` in agent_backdoor.kt:830) and opens no window, so nothing pumps the
+        // `requiredAgentJvmArgs` in agent_backdoor.kt:856) and opens no window, so nothing pumps the
         // process's first-thread run loop. Non-headless AWT then hangs the moment a box asks for a
         // glyph outline — `sun.font.CFontManager.loadFonts` dispatches there and waits. Headless AWT
         // does not, and this harness has no use for a screen. See `Typefaces.warm`.

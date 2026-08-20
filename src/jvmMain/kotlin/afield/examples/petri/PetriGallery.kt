@@ -3,6 +3,7 @@ package afield.examples.petri
 import afield.four.synth.PatArc
 import afield.four.synth.PatPattern
 import afield.four.synth.PatQ
+import afield.petri.PETRI_LABEL_LIMIT
 import afield.petri.PetriCombinators
 import afield.petri.PetriConflict
 import afield.petri.PetriHalt
@@ -18,6 +19,7 @@ import afield.petri.pattern
 import afield.petri.pInvariants
 import afield.petri.period
 import afield.petri.petri
+import afield.petri.petriLabelsRenderable
 import afield.petri.petriParse
 import afield.petri.report
 import afield.petri.settle
@@ -56,6 +58,11 @@ expect:
  *    Without that, adding a word to the notation and forgetting to demonstrate it is a silent
  *    documentation rot rather than a build failure. The RectSL gallery does the same thing, for the
  *    same reason.
+ *
+ * 3. **Every figure has words in it.** [writeFigure] fails on a figure that came out captionless.
+ *    That is not a hypothetical: a `jvm-main` child JVM missing `-Djava.awt.headless=true` cannot
+ *    read a glyph outline, and `PetriVisual.label` answers that by drawing the diagram without any
+ *    names — so the gallery wrote twelve wordless, valid, plausible SVGs and exited 0.
  *
  * Writes nothing committed. Pass an output directory as `args[0]` to regenerate the SVG figures.
  */
@@ -104,7 +111,7 @@ object PetriGallery {
             }
             val net = parsed.net!!
             val finding = example.check(net)
-            File(dir, "${example.name}.svg").writeText(net.frame().toSvg(900.0, 560.0))
+            writeFigure(dir, example.name, net)
             File(dir, "${example.name}.petri").writeText(example.source.trimIndent().trim() + "\n")
             println("  ${example.name.padEnd(22)} $finding")
         }
@@ -112,7 +119,7 @@ object PetriGallery {
         for (example in DSL_EXAMPLES) {
             val net = example.build()
             val finding = example.check(net)
-            File(dir, "${example.name}.svg").writeText(net.frame().toSvg(900.0, 560.0))
+            writeFigure(dir, example.name, net)
             println("  ${example.name.padEnd(22)} $finding")
         }
 
@@ -430,6 +437,54 @@ object PetriGallery {
             "${invariants.size} conservation laws; items + free stays ${totals.single()} across 40 steps"
         },
     )
+
+    // ── the figures, and the guard that they have words in them ───────────────────────────
+
+    private const val FIGURE_W = 900.0
+    private const val FIGURE_H = 560.0
+
+    /**
+     * Write one figure, and refuse to have written a wordless one.
+     *
+     * **This is the guard, not the writing.** `PetriVisual.label` treats "no font in this JVM" as
+     * "draw the diagram without names", on purpose — an anonymous diagram beats none. The cost is
+     * that a JVM which cannot read glyph outlines writes twelve plausible, captionless, *wrong*
+     * figures and exits 0, which is exactly what the `jvm-main` child did until
+     * `requiredAgentJvmArgs` (agent_backdoor.kt) started passing `-Djava.awt.headless=true`:
+     * `-XstartOnFirstThread` with non-headless AWT parks the macOS font manager on a run loop that
+     * a windowless child never pumps. Nothing in the run said so — not the exit code, not stderr,
+     * not the SVG, which is valid and pretty.
+     *
+     * So the figure is compared against the same drawing rendered with `labels = false`. Those two
+     * differ by exactly the glyph geometry, which makes the check self-calibrating: no glyph counts,
+     * no path-element names, nothing that depends on how Skiko chooses to batch paints. When the
+     * fonts are gone they are byte-identical.
+     */
+    private fun writeFigure(dir: File, name: String, net: PetriNet) {
+        val drawing = net.frame()
+        val svg = drawing.toSvg(FIGURE_W, FIGURE_H)
+        File(dir, "$name.svg").writeText(svg)
+
+        // Big nets are anonymous by design — 30 names in one picture read as a grey haze, and
+        // `toFLines` drops them whatever the caller asked for. Ask the same question it does.
+        val nodes = net.places.size + net.transitions.size
+        if (nodes > PETRI_LABEL_LIMIT) return
+
+        val wordless = drawing.toSvg(FIGURE_W, FIGURE_H, labels = false)
+        check(svg != wordless) {
+            "'$name.svg' came out with no text in it: $nodes labelled nodes, and the figure is " +
+                "byte-identical to the same drawing rendered with labels = false. " +
+                (if (petriLabelsRenderable()) {
+                    "This JVM can read glyph outlines, so the labels are being dropped somewhere in " +
+                        "PetriDrawing.toFLines rather than by a missing font."
+                } else {
+                    "This JVM cannot read glyph outlines at all. If it was forked (the backdoor's " +
+                        "run-jvm-main path), it needs -Djava.awt.headless=true on the command line: " +
+                        "-XstartOnFirstThread plus non-headless AWT parks CFontManager.loadFonts on a " +
+                        "run loop nothing here pumps. See Typefaces.warm and requiredAgentJvmArgs."
+                })
+        }
+    }
 
     // ── cheatsheet coverage guard ─────────────────────────────────────────────────────────
 

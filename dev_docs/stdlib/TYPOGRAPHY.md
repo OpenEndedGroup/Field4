@@ -131,22 +131,38 @@ sun.font.CFontManager.loadFonts <- sun.font.SunFontManager.findFont2D <- java.aw
 
 `CFontManager.loadFonts` dispatches to the process's **first** thread and waits. macOS GLFW requires
 `-XstartOnFirstThread`, so `requiredAgentJvmArgs` passes it to every jvm-main child
-(`src/jvmMain/kotlin/afield/agent_backdoor.kt:830`) — and a child that opens no window never services
+(`src/jvmMain/kotlin/afield/agent_backdoor.kt:856`) — and a child that opens no window never services
 that dispatch.
 
 > A JVM that wants glyph outlines and passes `-XstartOnFirstThread` must also pass
 > `-Djava.awt.headless=true`, **set before any AWT class initialises**. Headless AWT does not route
 > the font manager through the main thread at all.
 
+`requiredAgentJvmArgs` now passes it unconditionally, right next to `-XstartOnFirstThread`, the way
+`requiredRunJvmArgs()` in `build.gradle.kts` always has for the app JVM. Before that it did not, and
+the per-gallery `System.setProperty("java.awt.headless", "true")` calls were the only thing standing
+between an entrypoint and a wordless figure — which held exactly as long as every author remembered
+the line. `PetriGallery` never had it, and `PetriVisual.label` treats a missing font as "draw the
+diagram without names", so the petri gallery wrote twelve captionless SVGs and exited 0 for as long
+as that was true. The galleries keep their `setProperty` lines: they also cover an IDE run
+configuration or a hand-rolled `java` line, neither of which goes through the backdoor.
+
 Where that leaves each caller:
 
 | context | state |
 |---|---|
-| jvm-main galleries | fine — every one of them sets the property in the first line of `main` |
+| jvm-main children | fine — `requiredAgentJvmArgs` passes `-Djava.awt.headless=true`, so an entrypoint no longer has to know |
+| jvm-main galleries | fine twice over — most also set the property in the first line of `main` |
 | `DemoTranscriptExecSmokeTest` | fine — now sets it too, first line, with the reasoning inline. Verified not to disturb any of the 30 pre-existing demos |
 | `jvmTest` | fine — Gradle's test JVM has no `-XstartOnFirstThread` |
 | an interactive Field window | **expected** fine (`glfwPollEvents` pumps the run loop) but **not covered by a test** |
 | any other headless JVM with the GLFW flag | needs the property; `warm()` throws in 4s with the flag in the message |
+
+One more lesson, which is not about typography: a caller that swallows `warm()`'s exception turns a
+diagnosable failure back into a silent one. `warm()` throwing is only useful if somebody reads it.
+`PetriGallery.writeFigure` is the shape that works — it compares each figure against the same
+drawing rendered with `labels = false` and fails when they are byte-identical, so "this JVM has no
+fonts" cannot pass as "this net has no names".
 
 Two designs were tried and removed, so nobody re-tries them:
 

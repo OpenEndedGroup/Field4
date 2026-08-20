@@ -424,6 +424,15 @@ private val QUIET = hsl(0.58, 0.30, 0.62, 0.80)
 private val INK = vec(0.87, 0.89, 0.92, 0.95)
 
 /**
+ * Default label budget for [toFLines]: how many places-plus-transitions can carry names.
+ *
+ * Named rather than inline because a caller who needs to know whether a given drawing *should* have
+ * words in it — the petri gallery's figure guard, for one — must ask the same question this file
+ * answers, and two copies of `28` is how that stops being true.
+ */
+const val PETRI_LABEL_LIMIT = 28
+
+/**
  * The picture — hand it to `lines(...)` or use [Box.showPetriNet].
  *
  * [labels] draws place and transition names as real glyph outlines. It needs a font, so it is
@@ -437,7 +446,7 @@ private val INK = vec(0.87, 0.89, 0.92, 0.95)
 fun PetriDrawing.toFLines(
     labels: Boolean = true,
     labelSize: Double = 15.0,
-    labelLimit: Int = 28,
+    labelLimit: Int = PETRI_LABEL_LIMIT,
 ): List<FLine> {
     @Suppress("NAME_SHADOWING")
     val labels = labels && net.places.size + net.transitions.size <= labelLimit
@@ -674,6 +683,12 @@ private fun PetriDrawing.arcLine(
  *
  * Returns nothing rather than throwing when no font can be resolved: a diagram without labels beats
  * no diagram at all, and a headless environment with no fonts is a real place this code runs.
+ *
+ * It says so on stderr, though, once per JVM. Falling back silently is how the whole petri gallery
+ * came to write plausible-looking wordless figures and exit 0 for as long as the `jvm-main` child
+ * was missing `-Djava.awt.headless=true` (see `requiredAgentJvmArgs` in `agent_backdoor.kt`, and
+ * [petriLabelsRenderable]); a fallback nobody can see is indistinguishable from a net whose places
+ * and transitions have no names.
  */
 private fun label(text: String, centre: Vec2, size: Double, tint: afield.stdlib.Vec4 = INK): List<FLine> {
     if (text.isEmpty()) return emptyList()
@@ -702,6 +717,7 @@ private fun label(text: String, centre: Vec2, size: Double, tint: afield.stdlib.
                 }
         }
     } catch (ex: Throwable) {
+        reportLabelFailure("laying out '$text'", ex)
         emptyList()
     }
 }
@@ -709,15 +725,37 @@ private fun label(text: String, centre: Vec2, size: Double, tint: afield.stdlib.
 @Volatile
 private var labelFaceFailed = false
 
+private val labelFailureReported = java.util.concurrent.atomic.AtomicBoolean(false)
+
 private fun petriLabelTypeface(size: Double): afield.stdlib.Typeface? {
     if (labelFaceFailed) return null
     return try {
         typeface(Font.MONOSPACED, size)
     } catch (ex: Throwable) {
         labelFaceFailed = true
+        reportLabelFailure("resolving ${Font.MONOSPACED}", ex)
         null
     }
 }
+
+/** Say once, on stderr, that this JVM is drawing petri figures without any words in them. */
+private fun reportLabelFailure(what: String, ex: Throwable) {
+    if (!labelFailureReported.compareAndSet(false, true)) return
+    System.err.println(
+        "afield.petri: no glyph outlines in this JVM ($what failed: ${ex.message}). " +
+            "Every figure drawn from here will be correct but wordless. " +
+            "If this is a forked JVM, it needs -Djava.awt.headless=true."
+    )
+}
+
+/**
+ * Whether this JVM can turn a label into glyph outlines at all.
+ *
+ * The one thing worth asserting before believing a figure: [label] is deliberately forgiving, so
+ * "the fonts are gone" and "this net has short names" produce the same picture. Cheap after the
+ * first call — the answer is a cached outline either way.
+ */
+fun petriLabelsRenderable(): Boolean = label("Mg", vec(0.0, 0.0), 12.0).isNotEmpty()
 
 private fun colourOf(colour: Any?): afield.stdlib.Vec4 {
     val hash = colour?.hashCode() ?: 0

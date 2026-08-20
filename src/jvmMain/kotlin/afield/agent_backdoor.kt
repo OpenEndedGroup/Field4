@@ -819,6 +819,13 @@ private fun currentJavaExecutable(): String {
     return File(File(javaHome, "bin"), executable).absolutePath
 }
 
+/**
+ * The JVM args every `jvm-main` child gets, whatever it is.
+ *
+ * This is the subprocess mirror of `requiredRunJvmArgs()` in build.gradle.kts, and the two blocks
+ * have to stay in step for the same reasons that one is commented: an arg that is load-bearing for
+ * the app is load-bearing here too, because the child runs the same code.
+ */
 private fun requiredAgentJvmArgs(): List<String> {
     val os = (System.getProperty("os.name") ?: "").lowercase()
     val onWindowsOrLinux = os.contains("windows") || os.contains("linux")
@@ -829,6 +836,22 @@ private fun requiredAgentJvmArgs(): List<String> {
         add("--sun-misc-unsafe-memory-access=allow")
         add("-Dorg.lwjgl.system.stackSize=256")
         add("-Xlog:gc*,safepoint:file=build/gc-safepoint.log:time,uptime,level,tags")
+        // Mandatory alongside -XstartOnFirstThread (below), and the reason it is unconditional
+        // rather than inside the `if`: it must be a -D on the command line, since AWT reads it once
+        // when the first AWT class initialises, and by then a gallery is already drawing.
+        //
+        // With -XstartOnFirstThread and non-headless AWT, `CFontManager.loadFonts` dispatches to
+        // the process's first thread and waits — and a child that opens no window never pumps that
+        // run loop, so the first `Font.createGlyphVector` never returns. `Typefaces.warm` refuses
+        // to block and throws instead (see its KDoc), which is why the symptom was not a hang but
+        // *figures with no text in them*: a caller that treats a missing font as "draw the diagram
+        // without labels" produces a plausible, wordless picture and exits 0.
+        //
+        // Headless AWT keeps the entire font/glyph/raster stack — which afield.stdlib.typography is
+        // built on — and drops only the windowing toolkit, which nothing in Field uses: it renders
+        // through GLFW/Vulkan and its UI is Electron. See requiredRunJvmArgs() in build.gradle.kts,
+        // which has carried this arg for the app JVM all along.
+        add("-Djava.awt.headless=true")
         if (!onWindowsOrLinux) {
             add("-XstartOnFirstThread")
             add("-Dorg.lwjgl.util.Debug=true")

@@ -237,7 +237,7 @@ object Typefaces {
      *
      * `CFontManager.loadFonts` dispatches to the process's **first** thread and waits. macOS GLFW
      * requires `-XstartOnFirstThread`, so Field passes it to every jvm-main child
-     * (`agent_backdoor.kt:830`) — and in a child that opens no window, nothing ever services that
+     * (`agent_backdoor.kt:856`) — and in a child that opens no window, nothing ever services that
      * dispatch. Running it inline on the caller does not help either; the caller is not that thread.
      *
      * The fix is `java.awt.headless=true`, and it has to be set **before AWT initialises**: headless
