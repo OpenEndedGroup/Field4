@@ -240,17 +240,21 @@ afield.UserKeybindingsManager.watchFile(null)
 
 val live = afield.UserKeybindingsManager.resolved
 val ids = listOf("new-box", "open-command-palette", "show-cheatsheet", "execute-fragment", "connect")
-val rows = ids.joinToString("") { id ->
-    val specs = (live.effective[id] ?: live.bindings[id])?.joinToString(" or ") ?: "not registered yet"
-    "<tr><td style=\"padding:1px 16px 1px 0\">$id</td><td>$specs</td></tr>"
-}
-display("main", """
-  <div style="font:12px/1.6 ui-monospace,monospace;color:#cfd8e3;padding:10px 12px">
-    <div style="opacity:0.65">${live.path}</div>
-    <div style="opacity:0.65">${live.problems.size} problem(s) in it</div>
-    <table style="margin-top:8px;border-collapse:collapse">$rows</table>
-  </div>
-""")
+// A command with no binding yet is the interesting row, so it says so in a role rather than
+// looking like any other cell.
+val bound = Table(listOf("command", "bound to"))
+    .rows(ids.map { id ->
+        listOf(id, (live.effective[id] ?: live.bindings[id])?.joinToString(" or ") ?: "not registered yet")
+    })
+    .roleBy("bound to") { if (it == "not registered yet") CellRole.WARN else null }
+
+markdown("main", """
+    {muted:${mdEscape(live.path)}}
+
+    {muted:${live.problems.size} problem(s) in it}
+
+    ${bound.h}
+""", width = 560)
 ```
 
 `effective` is the answer for every command Field has seen this run, override or default

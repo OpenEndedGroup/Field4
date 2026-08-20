@@ -978,7 +978,7 @@ a string returned from a `Table.format` lambda is trusted HTML and inserted as-i
 
 `src/jvmMain/kotlin/afield/visualization/tables.kt`
 
-**Used in:** [Frames, and what a frame is](../animation_time_model.md)
+**Used in:** [Frames, and what a frame is](../animation_time_model.md), [How the popup decides](../how_the_popup_decides.md), [Keyboard shortcuts, and how to change them](../keybindings.md)
 
 ### Top-level functions { #tables-kt-functions }
 
