@@ -1428,6 +1428,50 @@ tasks.register<Exec>("checkPythonTools") {
     commandLine("python3", "tools/run_python_tests.py")
 }
 
+// The Analysis-API completion sidecar is Field's default completion backend, but it is a standalone
+// Gradle build (`tools/code-use-semantic-sidecar/settings.gradle.kts`). Consequently none of the root
+// Kotlin compile tasks sees its source or warnings. Keep the builds separate, while giving warning
+// audits one entry point that cannot silently reuse an incremental sidecar compile: the nested build
+// always receives --rerun-tasks. Invoke the aggregate itself with --rerun-tasks so the three root
+// source-set compiles are forced as well:
+//   ./gradlew --no-daemon --rerun-tasks warningGates
+val completionSidecarCompileForWarnings = tasks.register<Exec>("completionSidecarCompileForWarnings") {
+    group = "verification"
+    description = "Force-compiles the standalone default completion backend so its warnings enter the warning audit."
+    workingDir = rootDir
+    val wrapper = if (osName.startsWith("Windows")) {
+        listOf("cmd", "/c", "gradlew.bat")
+    } else {
+        listOf("./gradlew")
+    }
+    commandLine(
+        wrapper + listOf(
+            "--no-daemon",
+            "--console=plain",
+            "-p", "tools/code-use-semantic-sidecar",
+            "compileKotlin",
+            "--rerun-tasks",
+        )
+    )
+}
+
+val warningCompileTasks = listOf(
+    "compileKotlinJvm",
+    "compileKotlinJs",
+    "compileTestKotlinJvm",
+)
+
+completionSidecarCompileForWarnings.configure {
+    mustRunAfter(warningCompileTasks)
+}
+
+tasks.register("warningGates") {
+    group = "verification"
+    description = "Force-compiles Field and its standalone default completion backend for a complete warning audit."
+    dependsOn(warningCompileTasks)
+    dependsOn(completionSidecarCompileForWarnings)
+}
+
 // Field Audio is a pinned companion service, not part of Field's build-time dependency graph.
 // These tasks are intentionally absent from `check`: a normal Field clone can compile, test and
 // build the public docs from the committed contract snapshot without initializing the private

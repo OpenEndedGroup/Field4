@@ -16,6 +16,7 @@ fails, that is not a valid reason to skip `--with-playwright`,
 | Situation | Command | What it proves |
 | --- | --- | --- |
 | Kotlin/JVM compile check | `./gradlew compileKotlinJvm` | Source compiles without starting the full app UI. |
+| Complete compiler-warning audit | `./gradlew --no-daemon --rerun-tasks warningGates` | Force-compiles the JVM, JS, JVM-test, and standalone default-completion source sets so incremental caching cannot hide warnings. |
 | Deterministic repository check | `./gradlew check` | JVM/JS tests, generated-source drift guards, and Python tool tests pass without running benchmark/measurement fixtures. |
 | Generated artifacts before commit | `python3 tools/check_staged_generated_artifacts.py` | Selects every generated-artifact guard affected by staged paths and rejects a worktree/index mismatch. Install it as the shared pre-commit hook with `python3 tools/install_git_hooks.py`. |
 | All generated artifacts | `python3 tools/check_staged_generated_artifacts.py --all` | Runs all generated-artifact guards with Gradle `--continue`, so independent drift is reported in one pass. |
@@ -61,6 +62,12 @@ an explicit integration operation: `./gradlew fieldAudioDocsRefresh`, followed b
 Use `./gradlew compileKotlinJvm` for ordinary Kotlin/JVM compile confidence.
 For frontend-sensitive work, remember that the UI is Kotlin/JS plus resource
 JavaScript; a compile pass does not prove browser behavior.
+
+For a warning census, use `./gradlew --no-daemon --rerun-tasks warningGates`.
+The `--rerun-tasks` on the aggregate forces Field's three audited source sets;
+the task separately force-compiles `tools/code-use-semantic-sidecar`, whose own
+Gradle settings make it invisible to root compile tasks. That sidecar is the
+default completion backend, so a warning count that omits it is incomplete.
 
 Gradle process ownership and daemon cleanup rules live in `AGENTS.md`.
 Do not replace runtime checks with Gradle-only checks when the change affects
