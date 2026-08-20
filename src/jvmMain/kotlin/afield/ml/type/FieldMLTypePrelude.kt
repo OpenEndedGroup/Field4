@@ -64,6 +64,26 @@ object FieldMLTypePrelude {
     private fun float1(): Scheme = Scheme(emptySet(), fn(TFloat, TFloat))
     private fun float2(): Scheme = Scheme(emptySet(), fn(TFloat, TFloat, TFloat))
 
+    /**
+     * The shape of a macro expansion: `afield.macros.Insert`, minus the fields an interpreter has
+     * nothing to do with (`standaloneHere`, `afterImports`, `target`).
+     *
+     * `call` is the leading identifier of the rewritten call site — the `Box` extension the macro
+     * rewrote to, or `""` when the rewrite is not a call. `declarations` is the generated Kotlin a
+     * Kotlin box would have compiled; for a FieldML box it is text to read.
+     */
+    private val macroExpansion = TRecord(
+        linkedMapOf(
+            "call" to TString,
+            "arguments" to TString,
+            "here" to TString,
+            "preamble" to TString,
+            "declarations" to TString,
+            "start" to TString,
+            "end" to TString,
+        ),
+    )
+
     val schemes: Map<String, Scheme> = linkedMapOf(
         "Unit" to Scheme(emptySet(), TUnit),
         "thisBox" to Scheme(emptySet(), box),
@@ -193,6 +213,23 @@ object FieldMLTypePrelude {
         "hostAsBool" to Scheme(setOf(-48), fn(TVar(-48), TBool)),
         "hostAsString" to Scheme(setOf(-49), fn(TVar(-49), TString)),
         "hostAsList" to Scheme(setOf(-53), fn(TVar(-53), TList(hostAny))),
+
+        // Source macros — mechanism A. `hostMacroExpand` is the one prelude name whose result is a
+        // *record* type rather than `Host`: the shape is fixed by `afield.macros.Insert`, so unlike a
+        // reflective call there is something honest to say, and `expansion.call` is checked where it is
+        // written. `hostMacro`'s result cannot be — a macro rewrites to whichever function it likes.
+        "hostMacroExpand" to Scheme(setOf(-54), fn(TString, fn(TVar(-54), macroExpansion))),
+        "hostMacro" to Scheme(setOf(-55, -56), fn(TString, fn(TVar(-55), fn(TVar(-56), hostAny)))),
+
+        // The `prop` family. A slot holds `Any`, so reading one is `Host` and the author says what it
+        // is — the same rule as `hostGet`, and for the same reason: a guess here would be the one
+        // dishonest type. Writing is different, and typed: `setProp` hands back exactly what it stored.
+        "prop" to Scheme(emptySet(), fn(TString, hostAny)),
+        "propOr" to Scheme(setOf(-57), fn(TString, fn(TVar(-57), hostAny))),
+        "setProp" to Scheme(setOf(-58), fn(TString, fn(TVar(-58), TVar(-58)))),
+        "rootProp" to Scheme(emptySet(), fn(TString, hostAny)),
+        "setRootProp" to Scheme(setOf(-59), fn(TString, fn(TVar(-59), TVar(-59)))),
+        "once" to Scheme(setOf(-60, -61), fn(TString, fn(TFun(TVar(-60), TVar(-61)), hostAny))),
     )
 
     private fun fn(vararg parts: Type): Type {

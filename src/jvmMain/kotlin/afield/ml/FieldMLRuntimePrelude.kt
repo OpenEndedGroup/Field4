@@ -17,6 +17,7 @@ import afield.ml.type.FieldMLHostTypes
 import afield.ml.type.THost
 import afield.stdlib.color
 import afield.stdlib.filled
+import afield.stdlib.inheritedPropertyRaw
 import afield.stdlib.pointSize
 import afield.stdlib.pointed
 import afield.stdlib.stroked
@@ -453,7 +454,160 @@ object FieldMLRuntimePrelude {
             // A JVM collection that is not a `List` — `Box.parents` is a `Set` — has no FieldML shape,
             // because `hostToFieldMLValue` only unwraps lists. This is the way in for the rest.
             "hostAsList" to native1("hostAsList") { value -> FieldMLValue.ListValue(value.coerceToElements()) },
+
+            // ---- source macros -------------------------------------------------------------------
+            //
+            // Mechanism A. A Field source macro is a rewrite over Kotlin *text*, and FieldML has no
+            // Kotlin compiler — but the call-shaped macros rewrite to an ordinary `Box` extension
+            // function, so what is actually needed is the *expansion* (for its side effects on the box)
+            // plus a reflective call. See FieldMLMacroLayer for the argument, and for what is left.
+            "hostMacroExpand" to native2("hostMacroExpand") { name, argumentTexts ->
+                val insert = FieldMLMacroLayer.expand(
+                    requireBox(box, "hostMacroExpand"),
+                    name.asString("macro name"),
+                    argumentTexts.asMacroArgumentTexts(),
+                )
+                FieldMLValue.RecordValue(
+                    linkedMapOf(
+                        "call" to FieldMLValue.StringValue(FieldMLMacroLayer.calleeOf(insert.here) ?: ""),
+                        "arguments" to FieldMLValue.StringValue(FieldMLMacroLayer.argumentTextOf(insert.here)),
+                        "here" to FieldMLValue.StringValue(insert.here),
+                        "preamble" to FieldMLValue.StringValue(insert.preamble),
+                        "declarations" to FieldMLValue.StringValue(insert.preambleAfterImports),
+                        "start" to FieldMLValue.StringValue(insert.start),
+                        "end" to FieldMLValue.StringValue(insert.end),
+                    ),
+                )
+            },
+            // A **record** of arguments is a named call, and a named call is the only shape that can
+            // leave a Kotlin default unwritten — which matters more here than anywhere else, because a
+            // macro's runtime function is usually all-defaults (`_fieldStatsHere` declares seven).
+            "hostMacro" to native3("hostMacro") { name, argumentTexts, arguments ->
+                val target = requireBox(box, "hostMacro")
+                val macro = name.asString("macro name")
+                val texts = argumentTexts.asMacroArgumentTexts()
+                if (arguments is FieldMLValue.RecordValue) {
+                    FieldMLMacroLayer.invokeNamed(target, macro, texts, arguments.hostFields())
+                } else {
+                    FieldMLMacroLayer.invoke(target, macro, texts, FieldMLHostBridge.spreadArguments(arguments))
+                }
+            },
+
+            // The `prop` family, native. `prop<T>(name)` generates a delegate *declaration* rather than
+            // a call, so there is nothing for `hostMacro` to invoke — but the delegate is
+            // `afield.stdlib.inheritedPropertyRaw`, and calling that *is* reading the slot the generated
+            // Kotlin would have read. A Kotlin box's `speed` and a FieldML box's `prop "speed"` are one
+            // property, not two.
+            "prop" to native1("prop") { name ->
+                val slot = name.asString("property name")
+                val target = requireBox(box, "prop")
+                hostToFieldMLValue(inheritedPropertyRaw(target, slot) ?: error(missingPropMessage(target, slot)))
+            },
+            "propOr" to native2("propOr") { name, fallback ->
+                val slot = name.asString("property name")
+                inheritedPropertyRaw(requireBox(box, "propOr"), slot)
+                    ?.let { hostToFieldMLValue(it) }
+                    ?: fallback
+            },
+            "setProp" to native2("setProp") { name, value ->
+                writeProp(requireBox(box, "setProp"), name.asString("property name"), value)
+            },
+            // `rootProp` differs from `prop` only in where the slot lives: on the document root, so every
+            // box in the document shares the one value wherever it is read from (props.kt:88).
+            "rootProp" to native1("rootProp") { name ->
+                val slot = name.asString("property name")
+                val target = requireBox(box, "rootProp").root
+                hostToFieldMLValue(inheritedPropertyRaw(target, slot) ?: error(missingPropMessage(target, slot)))
+            },
+            "setRootProp" to native2("setRootProp") { name, value ->
+                writeProp(requireBox(box, "setRootProp").root, name.asString("property name"), value)
+            },
+            // `once.name { … }` is `Onceing.getValue` (scratch.kt:26): read the slot, and only if it is
+            // null run the computation and store it. `null` is the empty sentinel rather than a cached
+            // value, which is why a computation that yields nothing can run again.
+            "once" to native2("once") { name, compute ->
+                val slot = name.asString("property name")
+                val target = requireBox(box, "once")
+                val existing = target.getPropertyRaw(slot)
+                if (existing != null) {
+                    hostToFieldMLValue(existing)
+                } else {
+                    val made = applyFieldMLFunction(compute, FieldMLValue.UnitValue)
+                    fieldMLValueToHost(made)?.let { target.setPropertyRaw(slot, it, true) }
+                    made
+                }
+            },
         )
+
+    /**
+     * A macro's arguments as the Kotlin pass would have handed them over: source *text*, one string per
+     * PSI sibling after the callee — a type-argument group like `<Int>` and/or an argument list like
+     * `(4096)` or `{ vertex = … }`.
+     *
+     * A bare string is the single-argument case, which is what nearly every call site looks like; a
+     * tuple is how the `prop<Int>(speed)` shape is written, as `("<Int>", "(speed)")`.
+     */
+    private fun FieldMLValue.asMacroArgumentTexts(): List<String> =
+        when (this) {
+            is FieldMLValue.StringValue -> listOf(value)
+            is FieldMLValue.TupleValue -> elements.map { it.coerceToString() }
+            is FieldMLValue.ListValue -> elements.map { it.coerceToString() }
+            FieldMLValue.UnitValue -> emptyList()
+            else -> error(
+                "A macro's arguments are source text: expected a String or a tuple of Strings, " +
+                    "found ${renderFieldMLValue(this)}",
+            )
+        }
+
+    /**
+     * The write half of `prop`, which is always **local**: it shadows an ancestor's value for this box
+     * and everything below it rather than changing theirs (`Inheritance.setValue`, `stdlib.kt:307`).
+     *
+     * `doResync = true` is the difference between a slot and a *visible* slot — it is what queues the
+     * property for the next UI resync, so the inspector shows what a FieldML box wrote.
+     */
+    private fun writeProp(target: Box, name: String, value: FieldMLValue): FieldMLValue {
+        val host = fieldMLValueToHost(value)
+            ?: error("setProp cannot store Unit in '$name' — an absent slot is how `prop` and `once` spell 'not set yet'")
+        target.setPropertyRaw(name, narrowToTheWidthAlreadyThere(inheritedPropertyRaw(target, name), host), true)
+        return value
+    }
+
+    /**
+     * Keep a shared slot at the width the *Kotlin* side declared.
+     *
+     * This is the sharp edge of sharing a `prop` between a Kotlin box and a FieldML one, and it does not
+     * fail where you would look. FieldML has one integer type and one float type, so its `5` is a JVM
+     * `Long` and its `0.5` a `Double`. A Kotlin box that wrote `prop<Int>(depth)` reads the slot through
+     * `Inheritance<Int>`, whose `getValue` returns an erased `T` — so the *call site* inserts a checkcast
+     * to `Integer` and a `Long` in the slot makes the **Kotlin** box throw `ClassCastException`, on a
+     * line that mentions neither FieldML nor the write.
+     *
+     * There is nothing in the slot that says what type was declared, but there is something better: what
+     * is already in it. If an ancestor's `prop<Int>` seeded the slot with an `Int`, an incoming FieldML
+     * integer is stored as an `Int` and the Kotlin reader keeps working. An empty slot has no width to
+     * preserve, and then FieldML's own widths are the right answer.
+     *
+     * Deliberately only narrowing, and only between the JVM widths of one FieldML type: this never turns
+     * a Float into an Int or a number into something else.
+     */
+    private fun narrowToTheWidthAlreadyThere(existing: Any?, incoming: Any): Any =
+        when {
+            incoming is Long && existing is Int -> incoming.toInt()
+            incoming is Long && existing is Short -> incoming.toShort()
+            incoming is Long && existing is Byte -> incoming.toByte()
+            incoming is Double && existing is Float -> incoming.toFloat()
+            else -> incoming
+        }
+
+    /**
+     * The same diagnosis `MissingInheritedPropertyException` gives, in FieldML's voice: nothing up the
+     * graph has the slot, which is nearly always a box that has not run yet rather than a typo.
+     */
+    private fun missingPropMessage(target: Box, name: String): String =
+        "No value for inherited property '$name' in '${target.name.ifBlank { target.id }}' or any of its " +
+            "${target.parents.size} parent boxes. Has the box that writes it run yet? " +
+            "`propOr \"$name\" fallback` reads it without failing."
 
     /**
      * Class lookup with the two spellings a FieldML author is likely to try: the JVM binary name and
