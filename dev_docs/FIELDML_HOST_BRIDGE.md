@@ -611,7 +611,7 @@ Five. Three need nothing but a Field, and are FieldML roots (`mainLanguage "fiel
   pixels differ, and `theDemoCapturesShowTheParameterActuallyChangingTheDrawing` floors that at 5.0%
   with an ink guard on each, so a re-capture that pasted the same image twice fails.
 
-Two need a GPU:
+Three need a GPU:
 
 - `public/docs/assets/fieldml_afield_four_demo/metadata.edn` — mechanism E, the still life. One box,
   which expects an ancestor that already owns a `Renderer`.
@@ -620,6 +620,35 @@ Two need a GPU:
   FieldML box. Open it, run the Kotlin box, run the FieldML box. No `--graphics-context`, no
   connecting anything up. That is the difference worth copying — a demo the reader has to wire up is a
   demo most readers do not see.
+- `public/docs/assets/fieldml_macro_module_demo/metadata.edn` — **mechanism A on a real device, and
+  the prize this table named for closing it.** The other three GPU demos hand-build their pipeline:
+  `parameters(renderer) { vertex = …; fragment = … }`, `Module(params)`, `.pointer()`. This one calls
+  Field's `moduleHere` instead — the macro a Kotlin graphics box actually uses — so the GLSL lives in
+  the box's own `vertex`/`fragment` properties, where a Kotlin box keeps it, with the box's include
+  resolvers, source names and shader-error reporting attached. Self-contained: run the Kotlin
+  `window and renderer` box, then the scene box.
+
+  Its *second* subject is the one only mechanism A could give it: a **live parameter**. A fourth box
+  writes `spinRate` with `setRootProp`, the scene's `eachFrame` body reads it with `propOr` on every
+  frame, and so the speed of a running Vulkan scene changes from a sibling box without the scene box
+  being re-run or recompiled. Run on 2026-08-20 through `field_backdoor.py --port 9601`: the scene
+  reported `{builtBy = "_moduleHere", vertices = 3, pushConstantBytes = 16, …}` — a 16-byte
+  push-constant block is a real pipeline and not a description of one — and the live box, run twice
+  three seconds apart, took `spinRate` from 0.04 to 0.3 while `framesDrawn` went 3309 → 5859. That
+  is 2550 frames drawn between two reads, each of them re-reading the shared slot.
+
+  **There is no capture beside it, on purpose.** The native-window capture path timed out in that
+  session, and so did the *trusted control* — the existing `fieldml_frames_demo`, whose committed
+  captures prove it worked before, failed identically at
+  `native-screenshot`/`wait-native-renderer` with "Timed out waiting for native renderer". That
+  control is what says the fault is the capture path in this environment and not the scene, and it is
+  also what stopped an hour being spent debugging the wrong thing. A synthesised image would have
+  been worse than the gap. The next night with a working capture path should take `spin-*.png`-style
+  frames of it, and the frame counter above is the measurement to reproduce first.
+  `FieldMLSmokeExamplesTest.theModuleHereDemoTypeChecksAndKeepsItsSubject` guards both subjects, the
+  live-parameter one **bidirectionally** — the slot the live box writes has to be the slot the scene
+  reads, and it has to be read *inside* `eachFrame`, because read once at build time it is a constant.
+
 - `public/docs/assets/fieldml_mesh_demo/metadata.edn` — **the wall past the moving one**, landed
   2026-08-19 and missing from this page until 2026-08-20. Its subject is a vertex shader with *real
   inputs*: two `layout(location = …) in` variables whose data FieldML recomputes every frame and

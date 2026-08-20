@@ -272,7 +272,7 @@ Worth knowing before you fight it:
 
 ## Open it
 
-There are five Field documents for this page. **If you only open one, open the macro demo** — it needs no GPU and nothing wired up.
+There are six Field documents for this page. **If you only open one, open the macro demo** — it needs no GPU and nothing wired up.
 
 `public/docs/assets/fieldml_macro_demo/metadata.edn` has four boxes: a `prop` written in one and inherited by another that draws a spiral from it, Field's own `println` macro expanded and called, and the generated Kotlin of `prop` and `sourceBlock` as readable text. Run the parameter box, run the drawing box, then change `swirl` or `turns` in the first and run both again.
 
@@ -325,7 +325,23 @@ And a fourth, the same scene with a `Frames` loop on it — **the triangle from 
 | the FieldML box | `f |> hostGet "frameNumber"` → `f |> hostGet "frameNumbr"` | a type error naming `Frames`, before the box runs: the callback parameter has a type |
 | the fragment shader | `vec3(0.0, 2.1, 4.2)` → `vec3(0.0, 0.0, 0.0)` | it cycles through greys instead of hues |
 
-And a fifth, the wall past the moving one: **a vertex shader with real inputs**, whose data FieldML recomputes every frame. Two `layout(location = …) in` variables, both written through `Mesh.write` — one call positional, one named, and the named one is the shape that omits `Mesh.write`'s `inside` default. Self-contained the same way the frames demo is.
+And one where the **macro builds the scene**, which is what mechanism A bought: instead of hand-writing `parameters(renderer) { vertex = …; fragment = … }` and `Module(params)`, the box calls Field's `moduleHere` — so its GLSL lives in the box's own `vertex` and `fragment` properties, exactly where a Kotlin graphics box keeps it. Self-contained: run the Kotlin `window and renderer` box, then the scene box.
+
+Then run the fourth box while it is spinning. It writes `spinRate` with `setRootProp`, and the scene reads that slot on *every frame* — so the speed of a running Vulkan scene changes from a different box, with the scene box untouched. That is a thing FieldML could not do at all before `prop` was reachable.
+
+[Open ↗](/offline.html?file=/field4/assets/fieldml_macro_module_demo/metadata.edn) — or open `public/docs/assets/fieldml_macro_module_demo/metadata.edn` from a Field workspace.
+
+| In | Change | What happens |
+| --- | --- | --- |
+| the live box | `setRootProp "spinRate" 0.30` → `0.02` | the triangle slows, immediately, without the scene box being run |
+| the live box | run it twice | `framesDrawn` grows — that is the per-frame body reporting from inside the render loop |
+| the scene box | `propOr "spinRate" 0.04` inside `eachFrame` → move it above the lambda | it becomes a constant: changing the live box does nothing |
+| the scene box | edit the `fragment` string's `vec3(0.0, 2.1, 4.2)` | different hues, because `moduleHere` recompiles from the box's properties |
+| the scene box | break the GLSL on purpose | the shader error is reported onto *this box*, which is the thing `moduleHere` gives you over hand-built parameters |
+
+There is no picture of this one. The native-window capture path timed out in the session it was verified in — and so did the frames demo, whose committed captures prove it used to work, which is how we know it was the capture path and not the scene. Its evidence is numbers instead: `builtBy = "_moduleHere"`, a 16-byte push-constant block, and 2550 frames drawn between two reads of the shared slot.
+
+And another, the wall past the moving one: **a vertex shader with real inputs**, whose data FieldML recomputes every frame. Two `layout(location = …) in` variables, both written through `Mesh.write` — one call positional, one named, and the named one is the shape that omits `Mesh.write`'s `inside` default. Self-contained the same way the frames demo is.
 
 [Open ↗](/offline.html?file=/field4/assets/fieldml_mesh_demo/metadata.edn) — or open `public/docs/assets/fieldml_mesh_demo/metadata.edn` from a Field workspace.
 

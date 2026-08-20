@@ -266,6 +266,99 @@ class FieldMLSmokeExamplesTest {
     }
 
     /**
+     * The demo where a **source macro** builds the whole scene — mechanism A on a real device, and the
+     * thing `dev_docs/FIELDML_HOST_BRIDGE.md` named as the prize for closing it.
+     *
+     * The still-life and frames demos hand-build their pipeline: `parameters(renderer) { vertex = …
+     * }`, `Module(params)`, `.pointer()`. This one calls Field's `moduleHere` instead — the macro a
+     * Kotlin graphics box actually uses — so the GLSL lives in the box's own `vertex` and `fragment`
+     * properties, with the box's include resolvers and shader-error reporting attached to it. That
+     * difference *is* the subject, so the drift guards are on it: lose `hostMacro "moduleHere"`, or
+     * stop writing the shaders into the box's properties, and this is the still life again.
+     *
+     * The second subject is a **live parameter**, and it gets a bidirectional guard because a
+     * one-sided one would pass on a demo that had quietly stopped being connected: the slot the live
+     * box writes with `setRootProp` must be the slot the scene's per-frame body reads, and the scene
+     * must read it *inside* `eachFrame` rather than once at build time — reading it once is the
+     * difference between a parameter and a constant.
+     *
+     * Run on 2026-08-20 against a real Vulkan device, through `field_backdoor.py --port 9601`. The
+     * scene box reported `{builtBy = "_moduleHere", vertices = 3, pushConstantBytes = 16, spinRate =
+     * 0.04, animating = StandaloneCoroutine{Active}}` — a 16-byte push-constant block is a real
+     * pipeline, not a description of one. Then the live box was run twice, three seconds apart:
+     * `spinRate` went 0.04 → 0.3 on the *running* scene, and `framesDrawn` went 3309 → 5859, so the
+     * per-frame body drew 2550 frames between the two reads while re-reading the shared slot on every
+     * one of them.
+     *
+     * **There is no capture beside this demo, and that is deliberate.** The native-window capture path
+     * timed out in that session — and so did the trusted control, the existing `fieldml_frames_demo`
+     * whose committed captures prove it worked before, which is what says the fault is the capture
+     * path and not this scene. A synthesised image would have been worse than the gap.
+     */
+    @Test
+    fun theModuleHereDemoTypeChecksAndKeepsItsSubject() {
+        val demo = Path.of("public/docs/assets/fieldml_macro_module_demo/metadata.edn")
+        val sources = ednCodeStrings(demo.toFile().readText())
+
+        assertEquals(3, sources.size, "expected a Kotlin scaffolding box and two FieldML boxes in $demo")
+        val (scaffolding, scene, live) = sources
+
+        listOf("scene" to scene, "live" to live).forEach { (label, source) ->
+            val result = compileOk("$demo $label box", source)
+            assertNotNull(result.core, "$demo $label box: core")
+            assertTrue("hostAs \"" !in source, "$demo's $label box uses hostAs, which these demos exist to show is unnecessary")
+        }
+
+        // Subject one: the pipeline is built *by the macro*, from the box's own shader properties.
+        assertTrue(
+            """hostMacro "moduleHere"""" in scene,
+            "$demo no longer calls moduleHere, so it no longer demonstrates mechanism A",
+        )
+        listOf("\"vertex\"", "\"fragment\"").forEach { stage ->
+            assertTrue(
+                "write $stage" in scene,
+                "$demo must keep writing $stage into the box's own properties — that is what moduleHere " +
+                    "expands against, and the reason to prefer it over parameters(renderer) { … }",
+            )
+        }
+        assertTrue(
+            "parameters" in scene && "hostNew (params)" !in scene,
+            "$demo must not fall back to hand-building the Module; the macro returns the ModulePointer",
+        )
+
+        // Subject two: the live parameter, guarded from both ends.
+        val slot = Regex("""setRootProp "([A-Za-z]+)" [0-9]""").find(live)?.groupValues?.get(1)
+        assertNotNull(slot, "$demo's live box must write a shared slot with setRootProp; it is the whole point of it")
+        assertTrue(
+            """propOr "$slot"""" in scene,
+            "$demo's live box writes '$slot' and the scene box never reads it — the two halves have " +
+                "come apart, and the demo would look like it worked",
+        )
+        val perFrameBody = scene.substringAfter("\"eachFrame\"", "")
+        assertTrue(
+            """propOr "$slot"""" in perFrameBody,
+            "$demo's scene must read '$slot' *inside* eachFrame. Read once at build time it is a " +
+                "constant, and changing it would do nothing",
+        )
+        assertTrue(
+            "setRootProp \"framesDrawn\"" in scene && "propOr \"framesDrawn\"" in live,
+            "$demo must keep the frame counter that is its only evidence the loop is running, written " +
+                "by the scene and read by the live box",
+        )
+
+        // And the scaffolding box has to keep saying why it is Kotlin — which is now one reason, not two.
+        assertTrue(
+            "suspend" in scaffolding && "Renderer.run" in scaffolding,
+            "$demo's Kotlin box must keep naming `Renderer.run` as the reason it is Kotlin",
+        )
+        assertTrue(
+            "reachable from" in scaffolding && "2026-08-20" in scaffolding,
+            "$demo's Kotlin box must keep saying that `prop`/`once` are no longer a reason — otherwise " +
+                "it reads as though mechanism A were still open",
+        )
+    }
+
+    /**
      * The mesh-writing demo — the wall past the moving one, and the last thing
      * `dev_docs/FIELDML_HOST_BRIDGE.md` named as out of reach downstream of a device.
      *
