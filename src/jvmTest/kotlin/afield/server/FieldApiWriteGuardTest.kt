@@ -5,7 +5,6 @@ import afield.FIELD_API_REQUIRE_SAME_SITE_PROPERTY
 import afield.installFieldApiCors
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.options
 import io.ktor.client.request.post
@@ -52,8 +51,8 @@ import kotlin.test.assertTrue
  *    `theOfflineViewerImportIsExemptBecauseItIsTheReasonAnyHostIsThere`. That is a test
  *    catching a *feature* being eaten rather than a hole being opened, which is the failure
  *    a security switch is likeliest to have.
- *  - **`Get`/`Head`/`Options` no longer skipped**: 1 of 7 —
- *    `readsAndPreflightsArePassedThrough`.
+ *  - **`Options` no longer skipped**: 1 of 7 — `preflightsArePassedThrough`. (`Get`/`Head` used
+ *    to be skipped here too; that was the read gap, and [FieldApiReadGuardTest] now covers them.)
  *
  * Nothing reverted here moves `theGuardDoesNothingAboutTheNetworkAndThisTestSaysSoOutLoud`,
  * and that is exactly its point: no arrangement of this switch closes the network exposure.
@@ -99,14 +98,20 @@ class FieldApiWriteGuardTest {
     }
 
     /**
-     * Reads pass, and so does the preflight — which matters more than it looks. An
-     * `OPTIONS` refused here would never reach the CORS plugin, so a browser could not
-     * complete a preflight for `/api/import-offline-doc` either, and the exemption below
-     * would be exempting a request the browser had already given up on.
+     * The preflight passes — which matters more than it looks. An `OPTIONS` refused here would
+     * never reach the CORS plugin, so a browser could not complete a preflight for
+     * `/api/import-offline-doc` either, and the exemption above would be exempting a request the
+     * browser had already given up on.
+     *
+     * **This test used to assert that cross-site *reads* passed too, and that assertion was the
+     * read gap written down as a guarantee.** `nightly/2026-08-20/3-server-surface-threat-model`
+     * measured a foreign origin reading the absolute path of the checkout out of
+     * `GET /api/instance-info` with this switch fully on. Reads are now held to the same rule;
+     * [FieldApiReadGuardTest] owns that half, including the three read shapes still deliberately
+     * allowed. Only the preflight assertion belongs here.
      */
     @Test
-    fun readsAndPreflightsArePassedThrough() = guardedApp(on = true) {
-        assertEquals(HttpStatusCode.OK, get("/api/anything") { fromEvilPage() }.status)
+    fun preflightsArePassedThrough() = guardedApp(on = true) {
         val preflight = options("/api/import-offline-doc") {
             header(HttpHeaders.Host, "localhost")
             header(HttpHeaders.Origin, "https://somewhere-else.example")

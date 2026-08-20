@@ -4953,10 +4953,10 @@ internal fun Application.installFieldApiCors() {
         allowMethod(HttpMethod.Delete)
         anyHost()
     }
-    installFieldApiWriteGuard()
+    installFieldApiSameSiteGuard()
 }
 
-/** Turns [installFieldApiWriteGuard] on. Off by default, and the default is the exposure. */
+/** Turns [installFieldApiSameSiteGuard] on. Off by default, and the default is the exposure. */
 internal const val FIELD_API_REQUIRE_SAME_SITE_ENV = "AFIELD_API_REQUIRE_SAME_SITE"
 
 /** `-D` equivalent of [FIELD_API_REQUIRE_SAME_SITE_ENV], and it wins when both are set. */
@@ -4969,11 +4969,13 @@ internal fun fieldApiRequiresSameSite(): Boolean = docsFlagEnabled(
 )
 
 /**
- * Applies the HTTP write guard's browser-origin policy to a command WebSocket upgrade.
+ * Applies the same-site guard's browser-origin policy to a command WebSocket upgrade.
  *
- * WebSockets begin as GET requests, so [installFieldApiWriteGuard] deliberately skips them with
- * ordinary reads. Command channels call this inside their upgrade instead. A native client with no
- * browser origin headers remains allowed; the switch still does not authenticate the LAN surface.
+ * WebSockets begin as GET requests, and [installFieldApiSameSiteGuard] deliberately leaves
+ * `Sec-Fetch-Mode: websocket` alone so the refusal happens *here* instead — where it can close with
+ * a reason a client can read (`101` then `1008`) rather than answering a bare 403. Command channels
+ * call this inside their upgrade. A native client with no browser origin headers remains allowed;
+ * the switch still does not authenticate the LAN surface.
  */
 internal suspend fun DefaultWebSocketServerSession.refuseCrossSiteFieldWebSocket(path: String): Boolean {
     if (!fieldApiRequiresSameSite()) return false
@@ -5008,8 +5010,76 @@ internal suspend fun DefaultWebSocketServerSession.refuseCrossSiteFieldWebSocket
 private val fieldApiSameSiteExemptPaths = setOf("/api/import-offline-doc")
 
 /**
- * An opt-in refusal of cross-site writes across the whole API, and — whether you opt in or
- * not — one line at startup saying what this server is currently offering the network.
+ * The browser-set signal for *how* a request was initiated. Like `Sec-Fetch-Site` it is a
+ * forbidden header name, so a page cannot forge it.
+ */
+internal const val SEC_FETCH_MODE_HEADER = "Sec-Fetch-Mode"
+
+/**
+ * Reads that stay exempt from the same-site guard, and the reason each one is — because the
+ * decision "this read needs no guard" is worth recording somewhere a reviewer can find it.
+ *
+ * `docsAnnotations.kt` guards its own reads with [refuseCrossSiteDocsRequest], and it owns a
+ * deliberate opt-in hatch — `DOCS_ANNOTATIONS_ALLOW_CROSS_SITE` — that *permits* cross-site
+ * `GET /api/docs-annotations` so a docs page served from somewhere else can list annotations.
+ * A blanket refusal here would quietly close that hatch while its own switch still claimed to
+ * hold it open, which is the "guard eats a feature" failure `FieldApiWriteGuardTest` warns is
+ * likeliest for a switch like this one. So these paths defer to the route that already decided.
+ */
+private val fieldApiSelfGuardedReadPrefixes = listOf("/api/docs-annotations", "/api/docs-improvement")
+
+/**
+ * Whether a *read* should be held to the same-site rule.
+ *
+ * The exposure this closes is a page you have open **reading** Field's answer: `anyHost()` in
+ * [installFieldApiCors] makes every `GET /api/…` response readable cross-origin, so a `fetch`
+ * from `evil.example` gets the body. That shape is `Sec-Fetch-Mode: cors` (or `same-origin`,
+ * or absent-with-an-`Origin`), and it is the shape refused here.
+ *
+ * Two modes are deliberately *not* refused, and neither is an oversight:
+ *
+ *  - **`navigate`.** A cross-site GET navigation — clicking a link into Field, or `window.open`
+ *    — sends `Sec-Fetch-Site: cross-site` and **no `Origin`**, so [isSameSiteRequest] calls it
+ *    cross-site and would refuse it. But the response lands in a *Field-origin* document; the
+ *    page that initiated it cannot read a byte. Refusing would break every link into Field
+ *    (including the `Open ↗` links the docs pages are built around) and close nothing.
+ *  - **`websocket`.** Upgrades are GETs, and [refuseCrossSiteFieldWebSocket] already applies
+ *    this same policy at the upgrade, where it can close with a reason a client can read
+ *    (`101` then `1008`). Refusing here instead would turn that documented handshake into a
+ *    bare 403 and move the check away from the code that explains it.
+ *
+ * A request with no `Sec-Fetch-Mode` at all falls through to the ordinary same-site test, which
+ * treats "no `Origin`, no `Sec-Fetch-Site`" as same-site — so `curl`, the visionOS shell and
+ * every other non-browser client are unaffected here exactly as they are for writes.
+ */
+private fun fieldApiReadNeedsSameSite(secFetchMode: String?, path: String): Boolean {
+    when (secFetchMode?.trim()?.lowercase()) {
+        "navigate", "websocket" -> return false
+        else -> Unit
+    }
+    return fieldApiSelfGuardedReadPrefixes.none { path == it || path.startsWith("$it/") }
+}
+
+/**
+ * An opt-in refusal of cross-site writes **and reads** across the whole API, and — whether you
+ * opt in or not — one line at startup saying what this server is currently offering the network.
+ *
+ * ## The read half, and why it was missing
+ *
+ * Until 2026-08-20 this guard skipped `GET`/`HEAD` outright, on the stated grounds that it "is
+ * about writes". That was a real gap rather than a conservative choice, and it was demonstrated
+ * rather than argued: with this switch fully on, a page on a foreign origin still got **200 and
+ * the absolute path of the checkout** from `GET /api/instance-info`.
+ *
+ * The reason a read is not a lesser exposure than a write is [installFieldApiCors]. `anyHost()`
+ * plus `allowMethod(Get)` makes every read's *response body* readable cross-origin, so the
+ * attacker does not merely reach the route, it gets the answer: `/api/instance-info` leaks the
+ * path of your work, `/api/welcome-changelog` your commit messages, `/api/source` and
+ * `/api/workspace-search` source text. Hardening here had been organised around mutation — the
+ * CORS census counts mutating routes, this interceptor skipped reads — so "unguarded" was the
+ * default for reads and nothing recorded the decision that a given read did not need a guard.
+ * [fieldApiSelfGuardedReadPrefixes] and [fieldApiReadNeedsSameSite] are where that decision now
+ * lives.
  *
  * ## Why this is off by default, which is the uncomfortable part
  *
@@ -5034,35 +5104,48 @@ private val fieldApiSameSiteExemptPaths = setOf("/api/import-offline-doc")
  * discover which of them the human's own tooling was using. Loud either way, because the
  * failure mode this whole area is about is capability you did not know you had.
  */
-internal fun Application.installFieldApiWriteGuard() {
+internal fun Application.installFieldApiSameSiteGuard() {
     val required = fieldApiRequiresSameSite()
     if (!required) {
         lprintln(
             "warning,server",
             "Field's HTTP API is unauthenticated: 36 of its 40 state-changing routes have no route-specific " +
                 "access control, and the /ws and /controllers/ws WebSocket command channels are also " +
-                "unauthenticated. " +
-                "The connector binds 0.0.0.0, and CORS allows any origin. Any host on this network can call " +
+                "unauthenticated. Its reads are not guarded either, and CORS allows any origin to read the " +
+                "answer: GET /api/instance-info returns the path of your checkout, /api/welcome-changelog " +
+                "your recent commit messages, and /api/source and /api/workspace-search reach source text. " +
+                "The connector binds 0.0.0.0. Any host on this network can call " +
                 "them with curl, and any website you have open can call them from your browser. Set " +
-                "$FIELD_API_REQUIRE_SAME_SITE_ENV=1 to refuse cross-site HTTP writes and browser upgrades " +
-                "to both WebSocket command channels; it does not cover the network half. That needs authentication or a bind " +
-                "address change, which would break the visionOS shell. See dev_docs/DOCS_IMPROVEMENT_AGENT.md.",
+                "$FIELD_API_REQUIRE_SAME_SITE_ENV=1 to refuse cross-site HTTP writes AND reads, plus browser " +
+                "upgrades to both WebSocket command channels; it does not cover the network half. That needs " +
+                "authentication or a bind address change, which would break the visionOS shell. " +
+                "See dev_docs/DOCS_IMPROVEMENT_AGENT.md and public/docs/server_surface.md.",
         )
         return
     }
     lprintln(
         "server",
-        "$FIELD_API_REQUIRE_SAME_SITE_ENV is set: cross-site HTTP writes are refused, except " +
-            "${fieldApiSameSiteExemptPaths.joinToString()}, and cross-site browser upgrades to /ws and " +
-            "/controllers/ws are refused. This does NOT authenticate the API — a " +
+        "$FIELD_API_REQUIRE_SAME_SITE_ENV is set: cross-site HTTP writes and reads are refused, except " +
+            "${fieldApiSameSiteExemptPaths.joinToString()}, top-level navigations, and the routes that guard " +
+            "themselves (${fieldApiSelfGuardedReadPrefixes.joinToString()}); cross-site browser upgrades to " +
+            "/ws and /controllers/ws are refused at the upgrade. This does NOT authenticate the API — a " +
             "client that sends no Origin, which includes every curl on this network, is unaffected.",
     )
     intercept(ApplicationCallPipeline.Plugins) {
-        // Reads only, and the CORS preflight, pass untouched: this is about writes, and a
-        // preflight the plugin above is going to answer must not be intercepted first.
-        if (call.request.httpMethod in setOf(HttpMethod.Get, HttpMethod.Head, HttpMethod.Options)) return@intercept
+        // The CORS preflight passes untouched: a preflight the plugin above is going to answer
+        // must not be intercepted first, or the exemption below would be exempting a request the
+        // browser had already given up on.
+        if (call.request.httpMethod == HttpMethod.Options) return@intercept
         val path = call.request.path()
         if (path in fieldApiSameSiteExemptPaths) return@intercept
+        // Reads used to pass untouched here, on the grounds that this guard "is about writes".
+        // That was the read gap: `anyHost()` makes every read's *response* readable cross-origin,
+        // so a page you have open could `fetch` the checkout path out of `GET /api/instance-info`
+        // with this switch fully on. Reads are now held to the same rule, minus the shapes that
+        // cannot leak or that guard themselves — see [fieldApiReadNeedsSameSite].
+        if (call.request.httpMethod == HttpMethod.Get || call.request.httpMethod == HttpMethod.Head) {
+            if (!fieldApiReadNeedsSameSite(call.request.headers[SEC_FETCH_MODE_HEADER], path)) return@intercept
+        }
         if (isSameSiteRequest(
                 call.request.headers[SEC_FETCH_SITE_HEADER],
                 call.request.headers[HttpHeaders.Origin],
@@ -5077,9 +5160,14 @@ internal fun Application.installFieldApiWriteGuard() {
                 "origin=${call.request.headers[HttpHeaders.Origin] ?: "<none>"} " +
                 "($FIELD_API_REQUIRE_SAME_SITE_ENV is set)",
         )
+        val kind = if (call.request.httpMethod == HttpMethod.Get || call.request.httpMethod == HttpMethod.Head) {
+            "reads"
+        } else {
+            "writes"
+        }
         call.respond(
             HttpStatusCode.Forbidden,
-            "Field is refusing cross-site writes because $FIELD_API_REQUIRE_SAME_SITE_ENV is set. Unset it to " +
+            "Field is refusing cross-site $kind because $FIELD_API_REQUIRE_SAME_SITE_ENV is set. Unset it to " +
                 "restore the default, which is that any website you have open can call this route.",
         )
         finish()
