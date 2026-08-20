@@ -2,7 +2,7 @@
 
 FieldML is a small language with a large host. The prelude covers geometry — `fline`, `vec3`, `draw`, `animate` — but Field itself is thousands of Kotlin functions, and the bridge is how a FieldML box reaches them. This page is that bridge: what it can do, what it refuses, and where it deliberately stops short.
 
-The short version: **a FieldML box can call a Kotlin method with any number of arguments, positionally or by name, pass a FieldML function where Kotlin wants a lambda — including a `suspend` one — and get a real type back on both sides of that lambda.** The measurement in `FieldMLHostSurfaceCoverageTest` puts the first part at 344 of the 362 public methods of `FLine`, `Img`, the three linalg vectors and Field's two imaging extension files — 95%, against a modelled 166 for the narrower bridge this replaced. The second part is 21 of the 23 callback argument slots across the same types — 91.3%: a lambda handed to a JVM method has its parameters typed from that method's signature, and the two that stay untyped are one erased generic and one nullable Kotlin parameter, both of which would be lies.
+The short version: **a FieldML box can call a Kotlin method with any number of arguments, positionally or by name, pass a FieldML function where Kotlin wants a lambda — including a `suspend` one — get a real type back on both sides of that lambda, and reach Field's box-code *macros*: `prop`, `moduleHere`, `println` and the rest, which are rewrites over Kotlin source and used to be the one thing an interpreter could not touch.** The measurement in `FieldMLHostSurfaceCoverageTest` puts the first part at 344 of the 362 public methods of `FLine`, `Img`, the three linalg vectors and Field's two imaging extension files — 95%, against a modelled 166 for the narrower bridge this replaced. The second part is 21 of the 23 callback argument slots across the same types — 91.3%: a lambda handed to a JVM method has its parameters typed from that method's signature, and the two that stay untyped are one erased generic and one nullable Kotlin parameter, both of which would be lies.
 
 ## The one that proves it
 
@@ -155,18 +155,51 @@ It earned its keep on the first run. `Vector2f` has both `void set(int, float)` 
 
 `afield.four` is Field's Vulkan layer and the reason this bridge exists — the live workspaces are hundreds of Kotlin boxes driving it. FieldML can now express most of it, and the honest accounting matters more than the headline.
 
-Taking `threebox-2`, the minimal complete `afield.four` scene (a window, a compute shader over 100 000 particles, a draw pass), **13 of its 19 statements are expressible in FieldML**. Six run headlessly and are checked against the same call in Kotlin — including `defaultBuffer { size = N.vec4s }`, whose argument is a Kotlin *receiver* lambda and whose `vec4s` is a member extension property that only exists inside it, and the per-frame builders, because `Frames` is a plain object with no Vulkan in it. Everything downstream of a Vulkan device is expressible but untested here, because a headless test JVM has no device and a demo that pretended otherwise would be worth nothing.
+Taking `threebox-2`, the minimal complete `afield.four` scene (a window, a compute shader over 100 000 particles, a draw pass), **18 of its 19 statements are expressible in FieldML** — it was 13 before source macros were reachable. Six run headlessly and are checked against the same call in Kotlin — including `defaultBuffer { size = N.vec4s }`, whose argument is a Kotlin *receiver* lambda and whose `vec4s` is a member extension property that only exists inside it, and the per-frame builders, because `Frames` is a plain object with no Vulkan in it. Everything downstream of a Vulkan device is expressible but untested here, because a headless test JVM has no device and a demo that pretended otherwise would be worth nothing.
 
-The six that are not expressible are worth knowing by name, because they are all the same kind of thing:
+The one that is not expressible is the `import`, and that is not a limitation: FieldML names every class in full and has nothing for an import to do. What used to sit in this list was five source macros, and the section below is what happened to them.
 
-| Statement | Why not |
+## Source macros
+
+Some of Field's most useful box-code names are not functions at all. `prop<Double>(speed)`, `moduleHere { }`, `computeModuleHere { }`, `println(x)` — these are **macros**: registered rewrites over Kotlin *source*, applied before the Kotlin compiler runs. `prop` throws if it is ever really called. For a long time this was the wall, because FieldML is an interpreter — lex, parse, infer, evaluate — with no Kotlin compile anywhere in its path, so a macro that hands back generated Kotlin has nothing to be compiled by.
+
+It turned out not to need one. Every macro that rewrites a **call** rewrites it to an ordinary `Box` extension function: `moduleHere` becomes `_moduleHere`, `println` becomes `_printlnHere`. And a macro's real work happens while it *expands* — `moduleHere` seeds this box's `vertex` and `fragment` properties, preprocesses both shaders and compiles them; `fieldStatsHere` builds the whole statistics block. So reaching such a macro is two steps, and a compiler is neither of them: run the expansion, then call what it rewrote to.
+
+```diffstatic {data-lang=fieldml}
+// `prop<Double>(swirl)` in a Kotlin box declares an inheritable slot. FieldML has
+// no declarations, and does not need one -- the slot is made by writing it, and
+// reading it is the same breadth-first walk up `parents` the generated delegate does.
+let _ = setProp "swirl" 0.85
+let swirl = prop "swirl" |> hostAsFloat
+
+// Field's own `println` macro, expanded and then called. The 7 is the line number
+// the Kotlin pass would have supplied.
+let _ = hostMacro "println" "(x)" (7, "from a FieldML box")
+
+// And when there is nothing to call, the generated Kotlin comes back as text.
+(hostMacroExpand "prop" ("<Double>", "(speed)")).declarations
+```
+
+That last line is `var Box.speed by Inheritance<Double>()` plus its `Once` twin — the exact text a Kotlin box would have had compiled into its preamble.
+
+Two shapes, because the macros come in two kinds:
+
+| Name | For |
 | --- | --- |
-| `prop<Window>(window)` | a **source macro**: it generates `var Box.window by Inheritance<Window>()` into the box's preamble. `prop` itself throws if it is ever really called |
-| `once.renderer { … }` | a **macro-generated property delegate** — the name does not exist until the generated preamble is compiled |
-| `moduleHere { … }`, `computeModuleHere { }`, `fieldProbeHere(…)` | source macros that also write shader source into box properties at expansion time |
-| `import …` | not needed — FieldML names every class in full |
+| `hostMacroExpand "name" args` | any registered macro. Runs the expansion against this box, side effects and all, and hands the rewrite back as a record: `.call`, `.here`, `.declarations`, `.preamble` |
+| `hostMacro "name" args values` | the macros that rewrite a call. Expands, then calls the `Box` extension it rewrote to, with `values` as the arguments |
+| `prop` `propOr` `setProp` `rootProp` `setRootProp` `once` | the macros that generate a *declaration*. No expansion involved: these read and write the same box slot the generated delegate would have |
 
-Macros are the whole story: nine of Field's box-code names are registered rewrites over Kotlin *source*, applied before the compiler runs, so there is no JVM member for reflection to find. What is reachable is what they are sugar *over* — `prop` is a named slot on a box, and `getPropertyRaw`/`setPropertyRaw` are ordinary methods, so a FieldML box can read an inherited property with a four-line recursive walk over `parents`. `once` is get-or-compute-and-store over the same pair. Both of those run today.
+A macro's arguments are **source text**, because that is what a macro consumes — `hostMacroExpand "prop" ("<Double>", "(speed)")` is the `prop<Double>(speed)` call site, one string per piece. `hostMacro` takes those *and* the values for the rewritten call, because only the first can be text in an interpreter. Those values can be a record, which makes it a named call: `_fieldStatsHere` declares a default for every one of its seven parameters, so naming one is the difference between changing one number and writing all seven.
+
+The `prop` family is worth its own sentence, because it is the one that changes what a document can look like. **A Kotlin box's `speed` and a FieldML box's `prop "speed"` are one property** — not two implementations that agree, but the same slot read through the same code, since the inheritance walk itself is now shared. So a FieldML box can hold a live parameter that a Kotlin box downstream consumes, or read one a Kotlin box exports, and the property inspector sees either.
+
+Of the 19 macros Field registers, **15 are reachable**. The four that are not all generate Kotlin *declarations* and nothing else — `sourceBlock` (a lambda whose body is your Kotlin), `jsonParser` (a generated class), `graphLens` (a property reference synthesised from a path) and `ai`. `hostMacroExpand` still hands their generated source back as text, which is as far as an interpreter goes.
+
+Two things to know before you reach for this:
+
+- **You do not get the macro's generated accessors.** `moduleHere`'s expansion also returns a preamble of typed Kotlin — `val Mesh.pos by FromInput()`, a `Structure` accessor per push-constant member, the `triangles` constant. A FieldML box gets none of that, and does not need it: every host value is typed `Host`, which is dynamic, so the same members come through `hostGet` and `hostCall`. That is the trade.
+- **A FieldML integer is a JVM `Long`.** Writing one into a slot a Kotlin box declared as `prop<Int>` would change what is *in* the slot even though the Kotlin read still works, so `setProp` keeps the width that is already there. Nothing protects you from a value too large for the declared type; that truncates silently, as it would in Kotlin.
 
 ## Every frame
 
@@ -239,9 +272,27 @@ Worth knowing before you fight it:
 
 ## Open it
 
-There are two Field documents for this page.
+There are five Field documents for this page. **If you only open one, open the macro demo** — it needs no GPU and nothing wired up.
 
-The first has five boxes: the raster above, a line warped by a FieldML lambda through `FLine.transform`, a box whose host member types are all inferred, one that exercises overload resolution, varargs and `hostNull`, and one that calls Kotlin by name and leaves its defaults alone.
+`public/docs/assets/fieldml_macro_demo/metadata.edn` has four boxes: a `prop` written in one and inherited by another that draws a spiral from it, Field's own `println` macro expanded and called, and the generated Kotlin of `prop` and `sourceBlock` as readable text. Run the parameter box, run the drawing box, then change `swirl` or `turns` in the first and run both again.
+
+[Open ↗](/offline.html?file=/field4/assets/fieldml_macro_demo/metadata.edn) — or open `public/docs/assets/fieldml_macro_demo/metadata.edn` from a Field workspace.
+
+![two captures of the same FieldML box side by side on black: on the left a wide four-turn cyan spiral filling the frame, on the right a tight nine-turn spiral about half the diameter](assets/fieldml_macro_demo/spiral-pair.png)
+
+| In | Change | What happens |
+| --- | --- | --- |
+| the parameter box | `setProp "turns" 4` → `setProp "turns" 9` | re-run both boxes: nine turns instead of four. The drawing box is unchanged — it inherits the value |
+| the parameter box | `setProp "swirl" 0.85` → `0.35` | a tighter spiral; the `swirl` scales the radius |
+| the parameter box | run it twice | `firstRunAt` does not move. That is `once`: computed on the first read and stored |
+| the parameter box | `propOr "neverWritten" "not set"` → `prop "neverWritten"` | an error naming the slot, because nothing up the graph has it. `propOr` is the read that does not fail |
+| the println box | `(4, "…")` → `(12, "…")` | the output claims to come from line 12, and the gutter marker moves |
+| the println box | `{line = 5}` → `{line = 5, a = "named"}` | the vararg named rather than omitted |
+| the expansion box | `"prop"` → `"rootProp"` | the call site becomes `root.speed` instead of `speed` |
+| the expansion box | `"sourceBlock"` → `"jsonParser"` | ...and an error: `jsonParser` wants a type argument and a schema string |
+| the drawing box | disconnect it from the FieldML root | it silently becomes a **Kotlin** box, and reports Kotlin errors. Only the *direct* children of a FieldML root are FieldML, which is why it has two parents |
+
+The next has five boxes: the raster above, a line warped by a FieldML lambda through `FLine.transform`, a box whose host member types are all inferred, one that exercises overload resolution, varargs and `hostNull`, and one that calls Kotlin by name and leaves its defaults alone.
 
 [Open ↗](/offline.html?file=/field4/assets/fieldml_host_bridge_demo/metadata.edn) — or open `public/docs/assets/fieldml_host_bridge_demo/metadata.edn` from a Field workspace.
 
@@ -274,7 +325,13 @@ And a fourth, the same scene with a `Frames` loop on it — **the triangle from 
 | the FieldML box | `f |> hostGet "frameNumber"` → `f |> hostGet "frameNumbr"` | a type error naming `Frames`, before the box runs: the callback parameter has a type |
 | the fragment shader | `vec3(0.0, 2.1, 4.2)` → `vec3(0.0, 0.0, 0.0)` | it cycles through greys instead of hues |
 
-The second is about the lambda parameters specifically — a warp with no `hostAs` in it, a raster whose two callbacks have six typed parameters between them, a box of inferred types, and a box that says where the inference still declines to say anything.
+And a fifth, the wall past the moving one: **a vertex shader with real inputs**, whose data FieldML recomputes every frame. Two `layout(location = …) in` variables, both written through `Mesh.write` — one call positional, one named, and the named one is the shape that omits `Mesh.write`'s `inside` default. Self-contained the same way the frames demo is.
+
+[Open ↗](/offline.html?file=/field4/assets/fieldml_mesh_demo/metadata.edn) — or open `public/docs/assets/fieldml_mesh_demo/metadata.edn` from a Field workspace.
+
+![four captures of a native Vulkan window a second apart, each a ring of coloured triangles on black, the hues rotating between frames](assets/fieldml_mesh_demo/ring-frames.png)
+
+One more is about the lambda parameters specifically — a warp with no `hostAs` in it, a raster whose two callbacks have six typed parameters between them, a box of inferred types, and a box that says where the inference still declines to say anything.
 
 [Open ↗](/offline.html?file=/field4/assets/fieldml_lambda_demo/metadata.edn) — or open `public/docs/assets/fieldml_lambda_demo/metadata.edn` from a Field workspace.
 
@@ -289,4 +346,4 @@ The second is about the lambda parameters specifically — a warp with no `hostA
 
 ## Where to look
 
-The reflection lives in `afield.ml.core.FieldMLHostBridge` (candidates, scoring, coercion, SAM proxies) and `afield.ml.type.FieldMLHostTypes` (JVM types to FieldML types, member and overload resolution at type-check time). `Inferencer.refineHostIntrinsic` is where the two meet, and `Inferencer.preInferHostSpine` is what threads a JVM parameter type into a lambda's parameters. `FieldMLHostBridgeTest` has one test per capability, `FieldMLHostSurfaceCoverageTest` is the reachability-and-agreement measurement, `FieldMLHostAgreementTest` holds the semantically interesting calls beside the Kotlin they should equal, `FieldMLLambdaExpectedTypeTest` covers the typed callback parameters and the cases that deliberately stay untyped, `FieldMLSuspendCallbackTest` is the per-frame surface — every test in it asserts that the closure *ran*, not that a proxy exists — and `FieldMLAfieldFourReachTest` is the `threebox-2` survey with its citations.
+The reflection lives in `afield.ml.core.FieldMLHostBridge` (candidates, scoring, coercion, SAM proxies) and `afield.ml.type.FieldMLHostTypes` (JVM types to FieldML types, member and overload resolution at type-check time). `Inferencer.refineHostIntrinsic` is where the two meet, and `Inferencer.preInferHostSpine` is what threads a JVM parameter type into a lambda's parameters. `FieldMLHostBridgeTest` has one test per capability, `FieldMLHostSurfaceCoverageTest` is the reachability-and-agreement measurement, `FieldMLHostAgreementTest` holds the semantically interesting calls beside the Kotlin they should equal, `FieldMLLambdaExpectedTypeTest` covers the typed callback parameters and the cases that deliberately stay untyped, `FieldMLSuspendCallbackTest` is the per-frame surface — every test in it asserts that the closure *ran*, not that a proxy exists — and `FieldMLAfieldFourReachTest` is the `threebox-2` survey with its citations. The macro layer is `afield.ml.FieldMLMacroLayer` — expansion, the callee extraction, and the ledger of which macro is reachable how — with `FieldMLSourceMacroTest` holding that ledger to the live contents of `afield.macros.MacroRegistry` in both directions. `afield.stdlib.inheritedPropertyRaw` is the walk `prop` and Kotlin's `Inheritance` delegate share. The design notes, including why a sibling Kotlin compile was refused, are in `dev_docs/FIELDML_HOST_BRIDGE.md`.

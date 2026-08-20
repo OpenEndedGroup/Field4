@@ -8,6 +8,30 @@
       "generator": "src/jvmMain/kotlin/afield/examples/sonicpi/SonicPiPatternProbe.kt",
       "command": "FIELD_SONIC_PI_REQUIRED=1 uv run --project . --group backdoor python tools/run_field_tests.py --id sonicpi.pattern.timing",
       "artifact": "sonicpi_pattern_onsets.png in the artifacts directory printed by the probe; inspect it before replacing the committed asset"
+    },
+    {
+      "asset": "public/docs/assets/fieldml_macro_demo/spiral-pair.png",
+      "page": "fieldml_host_bridge.md",
+      "owner": "fieldml.macro.demo",
+      "generator": "public/docs/assets/fieldml_macro_demo/metadata.edn",
+      "command": "cp -r public/docs/assets/fieldml_macro_demo <ws>/FieldMLMacroDemo && python3 tools/field_backdoor.py --workspace <ws> --with-playwright --command 'open FieldMLMacroDemo' --command 'run fieldml-macro-parameter' --command 'run fieldml-macro-drawing' --command 'screenshot-box fieldml-macro-drawing spiral.png' --command 'set fieldml-macro-parameter code --file <swirl 0.35 / turns 9 variant>' --command 'run fieldml-macro-parameter' --command 'run fieldml-macro-drawing' --command 'screenshot-box fieldml-macro-drawing spiral-edited.png'",
+      "artifact": "spiral.png and spiral-edited.png, joined side by side with a 16px black gutter. The pair is the *counterfactual*: the two captures must differ, and FieldMLSourceMacroTest.theDemoCapturesShowTheParameterActuallyChangingTheDrawing floors that at 5.0% of pixels with an ink guard on each. The docs runner cannot make these because they need a live Field driving a document across two edits of a shared box property."
+    },
+    {
+      "asset": "public/docs/assets/fieldml_frames_demo/spin-frames.png",
+      "page": "fieldml_host_bridge.md",
+      "owner": "fieldml.frames.demo",
+      "generator": "public/docs/assets/fieldml_frames_demo/metadata.edn",
+      "command": "cp -r public/docs/assets/fieldml_frames_demo <ws>/FieldMLFramesDemo && python3 tools/field_backdoor.py --workspace <ws> --graphics-context --command 'open FieldMLFramesDemo' --command \"run window and renderer\" --command 'run <the FieldML box>' --command 'native-screenshot spin-0.png' --command 'sleep 1' --command 'native-screenshot spin-1.png' (and so on for 2 and 3)",
+      "artifact": "spin-0.png \u2026 spin-3.png, four captures a second apart, joined into spin-frames.png. Needs a real Vulkan device: the subject is a triangle spinning under a Frames loop, so consecutive frames must *differ* \u2014 measured up to 28.5% of pixels on 2026-08-19. An identical set of four means the per-frame body did not run."
+    },
+    {
+      "asset": "public/docs/assets/fieldml_mesh_demo/ring-frames.png",
+      "page": "fieldml_host_bridge.md",
+      "owner": "fieldml.mesh.demo",
+      "generator": "public/docs/assets/fieldml_mesh_demo/metadata.edn",
+      "command": "cp -r public/docs/assets/fieldml_mesh_demo <ws>/FieldMLMeshDemo && python3 tools/field_backdoor.py --workspace <ws> --graphics-context --command 'open FieldMLMeshDemo' --command \"run window and renderer\" --command 'run <the FieldML box>' --command 'native-screenshot ring-0.png' --command 'sleep 1' --command 'native-screenshot ring-1.png' (and so on for 2 and 3)",
+      "artifact": "ring-0.png \u2026 ring-3.png joined into ring-frames.png. Needs a real Vulkan device. The subject is a vertex shader with real inputs whose data FieldML rewrites every frame, so the hues must rotate between captures; a static ring means Mesh.write did not land."
     }
   ]
 }
