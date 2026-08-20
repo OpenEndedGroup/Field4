@@ -617,8 +617,11 @@ fun Box.streamProcess(
     runner.atEnd = suspend {
         val proc = process
         if (proc == null) {
-            // Nothing was ever spawned, so there is no reportEnd to carry the removal.
-            unregisterStopHook?.run()
+            // Nothing was ever spawned, so there is no reportEnd to carry the removal. The hook is
+            // registered unconditionally above and never reassigned, so it is non-null here — no
+            // safe call, and a future conditional registration becomes a compile error, not a
+            // silently skipped unregister.
+            unregisterStopHook.run()
         } else {
             val terminated = terminateProcess()
             val exitCode = runCatching { proc.exitValue() }.getOrDefault(-1)

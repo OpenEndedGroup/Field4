@@ -560,8 +560,12 @@ object ManifoldSmokeTest {
         }
         truth("and with check = true it throws instead", thrown is IllegalStateException)
         truth(
-            "naming the status and what to try (got: ${thrown?.message?.take(60)})",
-            thrown?.message?.contains("NOT_MANIFOLD") == true && thrown.message?.contains("weld") == true,
+            // The excerpt is wide and single-line on purpose: the advice this check is about lives
+            // *after* the diagnosis, so a 60-character take showed the status and nothing else, and
+            // a failure here read as "got: NOT_MANIFOLD. mesh: 3" with no clue what was missing.
+            "naming the status and what to try (got: ${thrown?.message?.replace('\n', ' ')?.take(240)})",
+            thrown?.message?.contains("NOT_MANIFOLD") == true &&
+                thrown.message?.contains("repairToSolid") == true,
         )
     }
 
