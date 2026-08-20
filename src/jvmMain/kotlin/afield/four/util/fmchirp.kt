@@ -19,6 +19,9 @@ import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.sin
 import java.util.Locale
+import afield.Align
+import afield.FieldMarkdown
+import afield.facts
 
 val FM_CHIRP_GLSL = """
 // ============================================================================
@@ -1222,21 +1225,18 @@ object FMChirpCurves {
                 "outputPow" to outputPow
             )
 
-            val rows = cells.joinToString("") { (label, value) ->
-                """
-                <tr>
-                  <td style="padding:1px 10px 1px 0;color:#8a8a8a;">$label</td>
-                  <td style="padding:1px 0;text-align:right;color:#f2f2f2;">${fmt(value)}</td>
-                </tr>
-                """.trimIndent()
-            }
+            // The numbers are pre-formatted by `fmt`, so they arrive as strings and the column is
+            // right-aligned explicitly rather than by Table's numeric inference.
+            val params = facts(cells.map { (label, value) -> label to fmt(value) })
+                .align("value", Align.RIGHT)
 
-            return """
-            <div style="display:inline-block;background:#050505;color:#e8e8e8;border:1px solid #303030;border-radius:4px;padding:7px 9px;font-family:Iosevka, ui-monospace, SFMono-Regular, Menlo, monospace;font-size:12px;line-height:1.35;">
-              <div style="margin-bottom:4px;color:#ffffff;">FMChirp <span style="color:#777;">Params</span></div>
-              <table style="border-collapse:collapse;">$rows</table>
-            </div>
-            """.trimIndent()
+            return FieldMarkdown.card(
+                """
+                FMChirp {muted:Params}
+
+                ${params.toHTML()}
+                """
+            )
         }
 
         fun curveSvg(

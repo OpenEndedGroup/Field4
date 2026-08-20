@@ -31,6 +31,8 @@ import org.lwjgl.vulkan.VkImageSubresourceRange
 import java.nio.ByteBuffer
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import afield.Table
+import afield.CellRole
 
 private const val H2_FRAMEBUFFERGROUP_MAX_FLOATS = 65_536
 
@@ -683,24 +685,30 @@ fun registerFourVisualizers() {
 
     // ── Structure ────────────────────────────────────────────────────
     registerValuePrinter<Structure> { s ->
-        val memberRows = s.members.take(12).joinToString("") { m ->
-            val off = s.offsets[m.name] ?: m.offset
-            val sz = s.sizes[m.name] ?: m.memberSize().toInt()
-            val bound = if (m.name in s.bindings) badge("#af6", "bound")
-                else if (m.name in s.values) badge("#fc8", "set")
-                else ""
-            "<tr><td style='padding-right:6px;color:$CLR_DIM'>+$off</td>" +
-            "<td style='padding-right:6px'>${name(m.name)}</td>" +
-            "<td style='padding-right:6px;color:$CLR_NUM'>${sz}B</td>" +
-            "<td>$bound</td></tr>"
-        }
-        val overflow = if (s.members.size > 12) "<tr><td colspan='4' style='color:$CLR_DIM'>…${s.members.size - 12} more</td></tr>" else ""
+        // maxRows replaces the hand-written "…N more" row, and the two markup columns are formatted
+        // rather than escaped — the same opt-in `table()` above uses.
+        val members = Table(listOf("offset", "member", "size", "bound"))
+            .rows(
+                s.members.map { m ->
+                    listOf(
+                        "+${s.offsets[m.name] ?: m.offset}",
+                        name(m.name),
+                        "${s.sizes[m.name] ?: m.memberSize().toInt()}B",
+                        if (m.name in s.bindings) badge("#af6", "bound")
+                        else if (m.name in s.values) badge("#fc8", "set")
+                        else "",
+                    )
+                }
+            )
+            .role("offset", CellRole.DIM)
+            .format("member") { it?.toString() ?: "" }
+            .format("bound") { it?.toString() ?: "" }
+        members.maxRows = 12
         val proxyNote = if (s.proxying != null) " → " + dim("proxied") else ""
         "<div $S>${cls("Structure")} ${dim("${s.members.size} members")}$proxyNote" +
         (if (s.dirty) " " + badge("#f88", "dirty") else "") +
-        "<table style='border-collapse:collapse;margin:2px 0;font-size:11px'>" +
-        memberRows + overflow +
-        "</table></div>"
+        members.toHTML() +
+        "</div>"
     }
 
     // ── Parameters ───────────────────────────────────────────────────

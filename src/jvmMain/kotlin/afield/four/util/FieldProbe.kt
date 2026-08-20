@@ -39,6 +39,8 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
+import afield.Table
+import afield.FieldMarkdown
 
 const val FIELD_PROBE_BUFFER_NAME = "FieldProbeBuffer"
 const val FIELD_PROBE_INCLUDE_NAME = "fieldProbe"
@@ -415,17 +417,21 @@ data class FieldProbeSnapshot(
     ): String {
         if (componentStats.isEmpty()) return noDataHtml(widthPx, background, textColor)
 
-        val rows = componentStats.mapIndexed { index, (name, stats) ->
-            """
-            <tr>
-                <td style="padding:2px 8px 2px 0;opacity:0.7;">$name</td>
-                <td style="padding:2px 8px 2px 0;">${formatNumber(exactMin.getOrElse(index) { Double.NaN }, decimals)}</td>
-                <td style="padding:2px 8px 2px 0;">${formatNumber(stats.mean, decimals)}</td>
-                <td style="padding:2px 8px 2px 0;">${formatNumber(stats.median, decimals)}</td>
-                <td style="padding:2px 0 2px 0;">${formatNumber(exactMax.getOrElse(index) { Double.NaN }, decimals)}</td>
-            </tr>
-            """.trimIndent()
-        }.joinToString("\n")
+        val num = { v: Any? -> formatNumber((v as Number).toDouble(), decimals) }
+        val components = Table(listOf("component", "exact min", "sample mean", "sample median", "exact max"))
+            .rows(componentStats.mapIndexed { index, (name, stats) ->
+                listOf(
+                    name,
+                    exactMin.getOrElse(index) { Double.NaN },
+                    stats.mean,
+                    stats.median,
+                    exactMax.getOrElse(index) { Double.NaN },
+                )
+            })
+            .format("exact min", num)
+            .format("sample mean", num)
+            .format("sample median", num)
+            .format("exact max", num)
 
         val lengthHistogram = histogramToSvg(
             hist = buildHistogram(lengths),
@@ -446,22 +452,15 @@ data class FieldProbeSnapshot(
             barStroke = textColor
         )
 
-        return """
-            <div style="margin-bottom:8px;opacity:0.7;">vec${dimensions}</div>
-            <table style="border-collapse:collapse;margin-bottom:10px;">
-                <thead>
-                    <tr>
-                        <th style="text-align:left;padding:0 8px 4px 0;opacity:0.6;">component</th>
-                        <th style="text-align:left;padding:0 8px 4px 0;opacity:0.6;">exact min</th>
-                        <th style="text-align:left;padding:0 8px 4px 0;opacity:0.6;">sample mean</th>
-                        <th style="text-align:left;padding:0 8px 4px 0;opacity:0.6;">sample median</th>
-                        <th style="text-align:left;padding:0 0 4px 0;opacity:0.6;">exact max</th>
-                    </tr>
-                </thead>
-                <tbody>$rows</tbody>
-            </table>
+        return FieldMarkdown.card(
+            """
+            {muted:vec${dimensions}}
+
+            ${components.toHTML()}
+
             $lengthHistogram
-        """.trimIndent()
+            """
+        )
     }
 }
 

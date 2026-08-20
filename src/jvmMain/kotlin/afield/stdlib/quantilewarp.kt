@@ -16,6 +16,8 @@ import kotlin.math.floor
 import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.sqrt
+import afield.Table
+import afield.FieldMarkdown
 
 /**
  * Reshapes a scalar signal's distribution by fitting a monotone 8-knot PCHIP curve from the
@@ -730,40 +732,29 @@ private fun shaderFieldQuantileWarpSummaryHtml(
 ): String {
     fun format(value: Double): String = String.format(Locale.US, "%.4f", value)
 
-    val rows = warp.probabilities.indices.joinToString("") { index ->
-        """
-        <tr>
-            <td style="padding:2px 12px 2px 0;opacity:0.72;">${format(warp.probabilities[index])}</td>
-            <td style="padding:2px 12px 2px 0;">${format(warp.inputKnots[index])}</td>
-            <td style="padding:2px 0 2px 0;">${format(warp.targetKnots[index])}</td>
-        </tr>
-        """.trimIndent()
-    }
+    val knots = Table(listOf("p", "input x", "target y"))
+        .rows(warp.probabilities.indices.map { i ->
+            listOf(warp.probabilities[i], warp.inputKnots[i], warp.targetKnots[i])
+        })
+        .format("p") { format(it as Double) }
+        .format("input x") { format(it as Double) }
+        .format("target y") { format(it as Double) }
 
     val p10 = batch.snapshot.percentile(0.10)
     val p50 = batch.snapshot.percentile(0.50)
     val p90 = batch.snapshot.percentile(0.90)
 
-    return """
-        <div style="padding:12px;background:#07131b;color:#8fd8ff;font-family:Iosevka, monospace;font-size:11px;line-height:1.35;">
-            <div style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:10px;">
-                <span><span style="opacity:0.65;">samples</span> ${batch.batch.samples.size}</span>
-                <span><span style="opacity:0.65;">history</span> ${warp.historySampleCount}</span>
-                <span><span style="opacity:0.65;">clip</span> ${format(batch.batch.clipRate)}</span>
-                <span><span style="opacity:0.65;">p10/p50/p90</span> ${format(p10)} / ${format(p50)} / ${format(p90)}</span>
-            </div>
-            <table style="border-collapse:collapse;">
-                <thead>
-                    <tr>
-                        <th style="text-align:left;padding:0 12px 4px 0;opacity:0.6;">p</th>
-                        <th style="text-align:left;padding:0 12px 4px 0;opacity:0.6;">input x</th>
-                        <th style="text-align:left;padding:0 0 4px 0;opacity:0.6;">target y</th>
-                    </tr>
-                </thead>
-                <tbody>$rows</tbody>
-            </table>
-        </div>
-    """.trimIndent()
+    // The chip strip was a flex row of <span><span style="opacity:0.65">label</span> value</span>
+    // pairs; as markdown it is one line, and the labels take the muted token.
+    return FieldMarkdown.card(
+        """
+        {muted:samples} ${batch.batch.samples.size} · {muted:history} ${warp.historySampleCount} ·
+        {muted:clip} ${format(batch.batch.clipRate)} ·
+        {muted:p10/p50/p90} ${format(p10)} / ${format(p50)} / ${format(p90)}
+
+        ${knots.toHTML()}
+        """
+    )
 }
 
 private fun packQuantileWarpPushConstants(inputKnots: DoubleArray, targetKnots: DoubleArray): FloatArray {

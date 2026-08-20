@@ -18,6 +18,9 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.random.Random
+import afield.Table
+import afield.CellRole
+import afield.Align
 
 /**
  * Interaction nets as a live-codeable medium: a graph whose nodes rewrite each other wherever two of them
@@ -834,19 +837,20 @@ class Net internal constructor(
      */
     fun summaryHtml(title: String = "Interaction net", maxNodes: Int = 8): String {
         val active = activePairs()
-        val nodeRows = nodes
-            .sortedWith(compareByDescending<Node> { it.state.energy }.thenBy { it.id })
-            .take(maxNodes)
-            .joinToString("") { node ->
-                """
-                    <tr>
-                        <td style="padding:4px 6px;border-bottom:1px solid #202b38;color:#f5f8fd;">${escapeInteractionHtml(node.id)}</td>
-                        <td style="padding:4px 6px;border-bottom:1px solid #202b38;color:#9dc1ff;">${escapeInteractionHtml(node.type.name)}</td>
-                        <td style="padding:4px 6px;border-bottom:1px solid #202b38;text-align:right;color:#f2d28b;">${fmt(node.state.energy)}</td>
-                        <td style="padding:4px 6px;border-bottom:1px solid #202b38;text-align:right;color:#b9d7ff;">${fmt(node.state.age)}</td>
-                    </tr>
-                """.trimIndent()
-            }
+        // Table escapes the ids and types, and right-aligns energy and age because they are numbers —
+        // the two things the hand-written rows had to say per cell.
+        val nodeTable = Table(listOf("node", "type", "energy", "age"))
+            .rows(
+                nodes
+                    .sortedWith(compareByDescending<Node> { it.state.energy }.thenBy { it.id })
+                    .take(maxNodes)
+                    .map { node -> listOf(node.id, node.type.name, node.state.energy, node.state.age) }
+            )
+            .role("type", CellRole.MUTED)
+            .format("energy") { fmt(it as Double) }
+            .format("age") { fmt(it as Double) }
+            .align("energy", Align.RIGHT)
+            .align("age", Align.RIGHT)
         val activeHtml = if (active.isEmpty()) {
             """<div style="margin-top:10px;color:#91a4ba;">No active principal-principal pairs.</div>"""
         } else {
@@ -877,17 +881,7 @@ class Net internal constructor(
                     ${interactionMetric("total energy", fmt(totalEnergy()))}
                     ${interactionMetric("mean age", fmt(averageAge()))}
                 </div>
-                <table style="width:100%;margin-top:12px;border-collapse:collapse;font-size:12px;">
-                    <thead>
-                        <tr style="text-align:left;color:#91a4ba;">
-                            <th style="padding:4px 6px;border-bottom:1px solid #2b3a4d;">node</th>
-                            <th style="padding:4px 6px;border-bottom:1px solid #2b3a4d;">type</th>
-                            <th style="padding:4px 6px;border-bottom:1px solid #2b3a4d;text-align:right;">energy</th>
-                            <th style="padding:4px 6px;border-bottom:1px solid #2b3a4d;text-align:right;">age</th>
-                        </tr>
-                    </thead>
-                    <tbody>$nodeRows</tbody>
-                </table>
+                ${nodeTable.toHTML()}
                 $more
                 $activeHtml
             """.trimIndent()

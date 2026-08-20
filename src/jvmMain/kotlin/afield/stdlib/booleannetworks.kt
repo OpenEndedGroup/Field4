@@ -8,6 +8,8 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
+import afield.Table
+import afield.CellRole
 
 /**
  * Synchronous Boolean networks and the pictures you draw of them. A [BooleanNetwork] is a list of
@@ -534,30 +536,20 @@ fun drawRhythmGrid(
 }
 
 /** Generate an HTML table of nodes, input wiring, and update rules. */
-fun BooleanNetwork.notateHtml(): String = buildString {
-    appendLine(
-        "<table style='font-family:monospace;font-size:13px;border-collapse:collapse;" +
-            "background:#16181f;color:#ccc;'>"
-    )
-    appendLine(
-        "<tr>" +
-            "<th style='padding:4px 10px;text-align:left;border-bottom:1px solid #444;color:#aaa'>Node</th>" +
-            "<th style='padding:4px 10px;text-align:left;border-bottom:1px solid #444;color:#aaa'>Inputs</th>" +
-            "<th style='padding:4px 10px;text-align:left;border-bottom:1px solid #444;color:#aaa'>Update rule</th>" +
-            "</tr>"
-    )
-    nodes.forEach { n ->
-        val inputNames = n.inputs.joinToString(", ") { nodes[it].name }
-        appendLine(
-            "<tr>" +
-                "<td style='padding:3px 10px;color:#7ec8e3'><b>${n.name}</b></td>" +
-                "<td style='padding:3px 10px;color:#f0a070'>${inputNames.ifEmpty { "—" }}</td>" +
-                "<td style='padding:3px 10px'>${n.rule}</td>" +
-                "</tr>"
+fun BooleanNetwork.notateHtml(): String =
+    Table(listOf("node", "inputs", "update rule"))
+        .rows(
+            nodes.map { n ->
+                listOf(
+                    n.name,
+                    n.inputs.joinToString(", ") { nodes[it].name }.ifEmpty { "—" },
+                    n.rule.toString(),
+                )
+            }
         )
-    }
-    appendLine("</table>")
-}
+        // A node with no inputs is a constant, which is the thing worth spotting in the wiring.
+        .roleBy("inputs") { if (it == "—") CellRole.WARN else null }
+        .toHTML()
 
 /** Generate an HTML summary of attractor type, cycle states, and basin sizes. */
 fun BooleanNetwork.notateAttractorsHtml(attractors: List<Attractor>): String = buildString {

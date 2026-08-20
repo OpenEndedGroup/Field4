@@ -43,6 +43,9 @@ import java.util.WeakHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.Locale
+import afield.mdEscape
+import afield.Table
+import afield.FieldMarkdown
 
 /**
  * The bridge between a box's text and a live Vulkan pipeline: shader source lives in box
@@ -1364,46 +1367,34 @@ private fun shaderFieldAutoSummaryHtml(
     fun format(value: Double): String = String.format(Locale.US, "%.4f", value)
 
     val activeParams = output.params(useNominalParams)
-    val parameterRows = parameterNames.indices.joinToString("") { index ->
-        val name = parameterNames[index]
-        """
-        <tr>
-            <td style="padding:2px 12px 2px 0;opacity:0.72;">$name</td>
-            <td style="padding:2px 12px 2px 0;">${format(output.nominalParams[index])}</td>
-            <td style="padding:2px 0 2px 0;">${format(output.appliedParams[index])}</td>
-        </tr>
-        """.trimIndent()
-    }
+    val parameters = Table(listOf("parameter", "nominal", "applied"))
+        .rows(parameterNames.indices.map { i ->
+            listOf(parameterNames[i], output.nominalParams[i], output.appliedParams[i])
+        })
+        .format("nominal") { format(it as Double) }
+        .format("applied") { format(it as Double) }
 
     val featureError = output.diagnostics.filteredFeatureError.joinToString(", ") { format(it) }
     val p10 = batch.snapshot.percentile(0.10)
     val p50 = batch.snapshot.percentile(0.50)
     val p90 = batch.snapshot.percentile(0.90)
 
-    return """
-        <div style="padding:12px;background:#081019;color:#9fd9ff;font-family:Iosevka, monospace;font-size:11px;line-height:1.35;">
-            <div style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:10px;">
-                <span><span style="opacity:0.65;">updates</span> ${output.diagnostics.pushIndex}</span>
-                <span><span style="opacity:0.65;">objective</span> ${format(output.diagnostics.objective)}</span>
-                <span><span style="opacity:0.65;">confidence</span> ${format(output.diagnostics.confidence)}</span>
-                <span><span style="opacity:0.65;">clip</span> ${format(batch.batch.clipRate)}</span>
-                <span><span style="opacity:0.65;">samples</span> ${batch.batch.samples.size}</span>
-                <span><span style="opacity:0.65;">p10/p50/p90</span> ${format(p10)} / ${format(p50)} / ${format(p90)}</span>
-            </div>
-            <div style="margin-bottom:8px;opacity:0.72;">filtered feature error = [$featureError]</div>
-            <div style="margin-bottom:6px;opacity:0.72;">active params = [${activeParams.joinToString(", ") { format(it) }}]</div>
-            <table style="border-collapse:collapse;">
-                <thead>
-                    <tr>
-                        <th style="text-align:left;padding:0 12px 4px 0;opacity:0.6;">parameter</th>
-                        <th style="text-align:left;padding:0 12px 4px 0;opacity:0.6;">nominal</th>
-                        <th style="text-align:left;padding:0 0 4px 0;opacity:0.6;">applied</th>
-                    </tr>
-                </thead>
-                <tbody>$parameterRows</tbody>
-            </table>
-        </div>
-    """.trimIndent()
+    return FieldMarkdown.card(
+        """
+        {muted:updates} ${output.diagnostics.pushIndex} ·
+        {muted:objective} ${format(output.diagnostics.objective)} ·
+        {muted:confidence} ${format(output.diagnostics.confidence)} ·
+        {muted:clip} ${format(batch.batch.clipRate)} ·
+        {muted:samples} ${batch.batch.samples.size} ·
+        {muted:p10/p50/p90} ${format(p10)} / ${format(p50)} / ${format(p90)}
+
+        {muted:filtered feature error} = [${mdEscape(featureError)}]
+
+        {muted:active params} = [${mdEscape(activeParams.joinToString(", ") { format(it) })}]
+
+        ${parameters.toHTML()}
+        """
+    )
 }
 
 // ------------------------------

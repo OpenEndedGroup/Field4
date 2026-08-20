@@ -1015,7 +1015,7 @@ One cell that failed a `Table.expect` check: its row index, column name, value, 
 
 ### CellRole { #tables-kt-cellrole }
 
-<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">CellRole</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">cssClass</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">CellRole</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">cssClass</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">cssVar</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>
 
 The semantic colour roles, shared with `markdown()`'s `{role:text}` spans — same six names, same `field-md-*` classes, so the same `--field-*` design token backs both. A cell that means "good" and a markdown span that means "good" are therefore the same colour by construction, and neither spells a hex literal.
 

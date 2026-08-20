@@ -36,7 +36,13 @@ class MeshVisualizerPixelTest {
         val start = html.indexOf(marker)
         assertTrue(start >= 0, "the card must embed an inline PNG; got:\n$html")
         val from = start + marker.length
-        val end = html.indexOf('\'', from).let { if (it < 0) html.indexOf('"', from) else it }
+        // Whichever quote closes the attribute, not "a single quote if one exists anywhere later":
+        // the card now contains single-quoted styles further down, so the old form ran past the
+        // payload and swallowed half the table.
+        val end = listOfNotNull(
+            html.indexOf('\'', from).takeIf { it >= 0 },
+            html.indexOf('"', from).takeIf { it >= 0 },
+        ).minOrNull() ?: -1
         assertTrue(end > from, "the base64 payload must be delimited; got:\n${html.take(400)}")
         val bytes = Base64.getDecoder().decode(html.substring(from, end))
 

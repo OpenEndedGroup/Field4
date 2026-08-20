@@ -13,6 +13,8 @@ import afield.graphics.threeGrid
 import afield.graphics.threeTurntable
 import java.util.Base64
 import kotlin.math.max
+import afield.FieldMarkdown
+import afield.facts
 
 /**
  * What makes the mesh family *Field's* rather than a generic geometry library: the bridges out of
@@ -491,18 +493,19 @@ internal fun meshThumbnailHtml(mesh: TriMesh): String {
     rows += "at" to "(%.2f, %.2f, %.2f)…(%.2f, %.2f, %.2f)".format(b[0], b[1], b[2], b[3], b[4], b[5])
     if (shown !== mesh) rows += "note" to "picture decimated to ${shown.triangleCount} tris"
 
-    val facts = rows.joinToString("") { (label, value) ->
-        "<tr><td style=\"color:#6d7787;padding:0 8px 2px 0;vertical-align:top\">$label</td>" +
-                "<td style=\"color:#c3ccd9;padding:0 0 2px 0\">$value</td></tr>"
-    }
-    return """
-        <div style="font-family:monospace;font-size:11px;line-height:1.45;display:flex;gap:10px;align-items:flex-start">
-          <img src="data:image/png;base64,$b64" width="$MESH_THUMBNAIL_WIDTH" height="$MESH_THUMBNAIL_HEIGHT"
-               style="border:1px solid #3a3f4b;border-radius:3px;display:block;flex:0 0 auto"
-               alt="shaded render of a ${mesh.triangleCount}-triangle mesh"/>
-          <table style="border-collapse:collapse"><tbody>$facts</tbody></table>
-        </div>
-    """.trimIndent()
+    // The thumbnail beside the summary, as a `:::row` card rather than a hand-rolled flex div. The
+    // <img> stays raw HTML: a base64 render is data, which is what passthrough is for.
+    val summary = facts(rows)
+    return FieldMarkdown.card(
+        FieldMarkdown.row(
+            listOf(
+                """<img src="data:image/png;base64,$b64" width="$MESH_THUMBNAIL_WIDTH" """ +
+                    """height="$MESH_THUMBNAIL_HEIGHT" style="border-radius:3px;display:block" """ +
+                    """alt="shaded render of a ${mesh.triangleCount}-triangle mesh"/>""",
+                summary.toHTML(),
+            )
+        )
+    )
 }
 
 // ==============================================================================================

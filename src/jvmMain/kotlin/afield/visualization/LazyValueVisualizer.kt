@@ -594,47 +594,46 @@ private class FloatBufferRowsBrowsable(
             return "<div>${escapeHtml(heading())}</div>"
         }
 
-        return buildString {
-            append("<div style='font-family:\"Iosevka Web\",monospace;font-size:11px;line-height:1.3;'>")
-            append("<div style='margin-bottom:6px;color:#bbb;'>")
-            append("rows ")
-            append(safeStart)
-            append("..")
-            append(safeEnd - 1)
-            append(" | stride ")
-            append(safeStride)
-            append("</div>")
-            append("<table style='border-collapse:collapse;width:100%;'>")
-            append("<thead><tr>")
-            append("<th style='text-align:left;padding:2px 6px;border-bottom:1px solid #333;color:#aaa;'>row</th>")
-            for (c in 0 until safeStride) {
-                append("<th style='text-align:right;padding:2px 6px;border-bottom:1px solid #333;color:#aaa;'>")
-                append(c)
-                append("</th>")
-            }
-            append("</tr></thead><tbody>")
+        return FieldMarkdown.card(
+            """
+            {muted:rows $safeStart..${safeEnd - 1} | stride $safeStride}
 
-            for (row in safeStart until safeEnd) {
-                append("<tr>")
-                append("<td style='padding:2px 6px;border-bottom:1px solid #222;color:#9cf;'>")
-                append(row)
-                append("</td>")
-                for (c in 0 until safeStride) {
-                    val index = row * safeStride + c
-                    append("<td style='padding:2px 6px;border-bottom:1px solid #222;text-align:right;color:#ddd;'>")
-                    if (index < totalValues) {
-                        append(escapeHtml(fmtFloat(buffer.get(index))))
-                    } else {
-                        append("&nbsp;")
-                    }
-                    append("</td>")
-                }
-                append("</tr>")
-            }
-
-            append("</tbody></table></div>")
-        }
+            ${bufferPageTable(safeStart, safeEnd, safeStride, totalValues) { fmtFloat(buffer.get(it)) }}
+            """
+        )
     }
+}
+
+/**
+ * One page of a strided buffer as a table: a row index, then [stride] right-aligned cells drawn by
+ * [cell], with anything past [total] left blank.
+ *
+ * The Float and Int browsers below had a copy of this each, identical but for the cell formatter.
+ * `maxRows` is pinned to the page height because the pager has already done the bounding — Table's
+ * own elision would silently cut a page short.
+ */
+private fun bufferPageTable(
+    start: Int,
+    end: Int,
+    stride: Int,
+    total: Int,
+    cell: (Int) -> String,
+): String {
+    val columns = (0 until stride).map { it.toString() }
+    val page = Table(listOf("row") + columns)
+        .rows(
+            (start until end).map { row ->
+                listOf<Any?>(row) + columns.indices.map { c ->
+                    val index = row * stride + c
+                    if (index < total) cell(index) else null
+                }
+            }
+        )
+        .role("row", CellRole.ACCENT)
+        .align("row", Align.LEFT)
+    columns.forEach { page.align(it, Align.RIGHT) }
+    page.maxRows = (end - start).coerceAtLeast(1)
+    return page.toHTML()
 }
 
 private class IntBufferBrowsable(
@@ -719,46 +718,13 @@ private class IntBufferRowsBrowsable(
             return "<div>${escapeHtml(heading())}</div>"
         }
 
-        return buildString {
-            append("<div style='font-family:\"Iosevka Web\",monospace;font-size:11px;line-height:1.3;'>")
-            append("<div style='margin-bottom:6px;color:#bbb;'>")
-            append("rows ")
-            append(safeStart)
-            append("..")
-            append(safeEnd - 1)
-            append(" | stride ")
-            append(safeStride)
-            append("</div>")
-            append("<table style='border-collapse:collapse;width:100%;'>")
-            append("<thead><tr>")
-            append("<th style='text-align:left;padding:2px 6px;border-bottom:1px solid #333;color:#aaa;'>row</th>")
-            for (c in 0 until safeStride) {
-                append("<th style='text-align:right;padding:2px 6px;border-bottom:1px solid #333;color:#aaa;'>")
-                append(c)
-                append("</th>")
-            }
-            append("</tr></thead><tbody>")
+        return FieldMarkdown.card(
+            """
+            {muted:rows $safeStart..${safeEnd - 1} | stride $safeStride}
 
-            for (row in safeStart until safeEnd) {
-                append("<tr>")
-                append("<td style='padding:2px 6px;border-bottom:1px solid #222;color:#9cf;'>")
-                append(row)
-                append("</td>")
-                for (c in 0 until safeStride) {
-                    val index = row * safeStride + c
-                    append("<td style='padding:2px 6px;border-bottom:1px solid #222;text-align:right;color:#ddd;'>")
-                    if (index < totalValues) {
-                        append(buffer.get(index))
-                    } else {
-                        append("&nbsp;")
-                    }
-                    append("</td>")
-                }
-                append("</tr>")
-            }
-
-            append("</tbody></table></div>")
-        }
+            ${bufferPageTable(safeStart, safeEnd, safeStride, totalValues) { buffer.get(it).toString() }}
+            """
+        )
     }
 }
 

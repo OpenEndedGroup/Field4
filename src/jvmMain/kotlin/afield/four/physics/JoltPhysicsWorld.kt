@@ -34,6 +34,10 @@ import kotlin.math.acos
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.sqrt
+import afield.mdEscape
+import afield.Table
+import afield.FieldMarkdown
+import afield.CellRole
 
 sealed interface JoltShape {
     data class Cuboid(val width: Double, val height: Double, val depth: Double) : JoltShape
@@ -1080,30 +1084,30 @@ private fun JoltPhysicsWorld.summaryHtml(): String {
     val states = states()
     val dynamicCount = states.count { state -> isDynamic(state.name) }
     val grabbed = grabbedBodyName
-    val sample = states.take(6).joinToString("") { state ->
-        val mass = mass(state.name)?.let { " m=${fmtNumber(it)}" } ?: ""
-        val tags = tags(state.name).takeIf { it.isNotEmpty() }
-            ?.joinToString(prefix = " tags=", separator = ",") { escHtml(it) }
-            ?: ""
-        "<tr>" +
-            "<td style='padding-right:8px;color:#8f8'>'${escHtml(state.name)}'</td>" +
-            "<td style='padding-right:8px;color:#8cf'>${fmtVec(state.position)}</td>" +
-            "<td style='color:#888'>v=${fmtVecPlain(state.linearVelocity)}$mass$tags</td>" +
-        "</tr>"
-    }
-    val overflow = if (states.size > 6) {
-        "<tr><td colspan='3' style='color:#666'>...${states.size - 6} more</td></tr>"
-    } else {
-        ""
-    }
+    // maxRows does the truncation Table already knows how to report, so the hand-written
+    // "...N more" row goes away; `position` is HTML from fmtVec, so that column is formatted.
+    val bodies = Table(listOf("body", "position", "state"))
+        .rows(
+            states.map { state ->
+                val mass = mass(state.name)?.let { " m=${fmtNumber(it)}" } ?: ""
+                val tags = tags(state.name).takeIf { it.isNotEmpty() }
+                    ?.joinToString(prefix = " tags=", separator = ",") { it }
+                    ?: ""
+                listOf("'${state.name}'", fmtVec(state.position), "v=${fmtVecPlain(state.linearVelocity)}$mass$tags")
+            }
+        )
+        .format("position") { it?.toString() ?: "" }
+        .role("state", CellRole.MUTED)
+    bodies.maxRows = 6
 
-    return "<div style='font-family:\"Iosevka Web\",monospace;font-size:12px;color:#ccc;line-height:1.4'>" +
-        "<div><span style='color:#cc8'>JoltPhysicsWorld</span> " +
-        "<span style='color:#888'>${states.size} bodies, $dynamicCount dynamic</span>" +
-        (if (grabbed != null) " <span style='color:#fc8'>grabbed '${escHtml(grabbed)}'</span>" else "") +
-        "</div>" +
-        "<table style='border-collapse:collapse;margin-top:3px;font-size:11px'>$sample$overflow</table>" +
-        "</div>"
+    return FieldMarkdown.card(
+        """
+        {accent:JoltPhysicsWorld} {muted:${states.size} bodies, $dynamicCount dynamic}""" +
+            (if (grabbed != null) """ {warn:grabbed '${mdEscape(grabbed)}'}""" else "") + """
+
+        ${bodies.toHTML()}
+        """
+    )
 }
 
 private fun JoltBodyState.summaryHtml(): String =

@@ -32,6 +32,10 @@ import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.name
+import afield.facts
+import afield.Table
+import afield.FieldMarkdown
+import afield.CellRole
 
 /**
  * Snapshot, interpolate and persist the live state of a running sketch. A [KeyframeScope] is a set
@@ -1094,47 +1098,46 @@ data class KeyDiff(
      * `KeyDiff` is the value on screen.
      */
     override fun toHTML(): String {
-        val rows = entries.joinToString("\n") { entry ->
-            val mark = when (entry.kind) {
+        // The two value columns are named by the caller, so they are disambiguated before reaching
+        // Table, which rejects a duplicate column name rather than half-decorating one of them.
+        val leftCol = leftName
+        val rightCol = if (rightName == leftName) "$rightName (right)" else rightName
+        val markOf = { kind: KeyDiffKind ->
+            when (kind) {
                 KeyDiffKind.ADDED -> "+"
                 KeyDiffKind.REMOVED -> "-"
                 KeyDiffKind.CHANGED -> "~"
             }
-            val color = when (entry.kind) {
-                KeyDiffKind.ADDED -> "#8f8"
-                KeyDiffKind.REMOVED -> "#f88"
-                KeyDiffKind.CHANGED -> "#fc8"
+        }
+        val diff = Table(listOf("change", "key", leftCol, rightCol))
+            .rows(
+                entries.map { entry ->
+                    listOf(
+                        markOf(entry.kind),
+                        entry.name,
+                        keyframeValueHtml(entry.left),
+                        keyframeValueHtml(entry.right),
+                    )
+                }
+            )
+            // added / removed / changed as roles, so the marker colours come from the design tokens.
+            .roleBy("change") {
+                when (it) {
+                    "+" -> CellRole.OK
+                    "-" -> CellRole.BAD
+                    else -> CellRole.WARN
+                }
             }
+            .format(leftCol) { it?.toString() ?: "" }
+            .format(rightCol) { it?.toString() ?: "" }
+        val body = if (entries.isEmpty()) "{muted:No key differences.}" else diff.toHTML()
+        return FieldMarkdown.card(
             """
-            <tr>
-              <td style="padding:2px 8px 2px 0;color:$color;">$mark</td>
-              <td style="padding:2px 10px 2px 0;color:#9cdcfe">${keyframeEsc(entry.name)}</td>
-              <td style="padding:2px 10px 2px 0;">${keyframeValueHtml(entry.left)}</td>
-              <td style="padding:2px 0;">${keyframeValueHtml(entry.right)}</td>
-            </tr>
-            """.trimIndent()
-        }
-        val body = if (entries.isEmpty()) {
-            "<div style='color:#888;'>No key differences.</div>"
-        } else {
+            {accent:Key diff(${entries.size} changes)}
+
+            $body
             """
-            <table style="border-collapse:collapse;">
-              <tr>
-                <th></th>
-                <th style="text-align:left;color:#777;padding-right:10px;">key</th>
-                <th style="text-align:left;color:#777;padding-right:10px;">${keyframeEsc(leftName)}</th>
-                <th style="text-align:left;color:#777;">${keyframeEsc(rightName)}</th>
-              </tr>
-              $rows
-            </table>
-            """.trimIndent()
-        }
-        return """
-        <div style="font:12px/1.45 Iosevka, Menlo, Consolas, monospace; color:#d4d4d4;">
-          <div style="margin-bottom:4px;color:#c586c0;">Key diff(${entries.size} changes)</div>
-          $body
-        </div>
-        """.trimIndent()
+        )
     }
 }
 
@@ -1285,19 +1288,16 @@ private fun keyframeValueText(v: Any?): String = when (v) {
 }
 
 private fun keyframeKeyHtml(values: Map<String, Any?>): String {
-    val rows = values.entries.sortedBy { it.key }.joinToString("\n") { (name, value) ->
-        """
-        <tr>
-          <td style="padding:2px 10px 2px 0;color:#9cdcfe">${keyframeEsc(name)}</td>
-          <td style="padding:2px 0;color:#d4d4d4">${keyframeValueHtml(value)}</td>
-        </tr>
-        """.trimIndent()
-    }
+    // keyframeValueHtml returns markup (a vector gets an axis widget), so the value column is
+    // formatted rather than escaped.
+    val listing = facts(values.entries.sortedBy { it.key }.map { (name, value) -> name to keyframeValueHtml(value) })
+        .format("value") { it?.toString() ?: "" }
 
-    return """
-    <div style="font:12px/1.45 Iosevka, Menlo, Consolas, monospace; color:#d4d4d4;">
-      <div style="margin-bottom:4px;color:#c586c0;">Key(${values.size} values)</div>
-      <table style="border-collapse:collapse;">$rows</table>
-    </div>
-    """.trimIndent()
+    return FieldMarkdown.card(
+        """
+        {accent:Key(${values.size} values)}
+
+        ${listing.toHTML()}
+        """
+    )
 }

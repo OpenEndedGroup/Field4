@@ -8,6 +8,8 @@ import afield.stdlib.Vec2
 import afield.stdlib.Vec3
 import afield.stdlib.Vec4
 import kotlin.math.*
+import afield.Table
+import afield.CellRole
 
 /**
  * A compact, extensible FORTH interpreter used by Field4 for live coding.
@@ -1167,17 +1169,16 @@ class ForthInterpreter {
         .replace("\"", "&quot;")
         .replace("'", "&#39;")
 
-    private fun stackHtml(): String {
-        val rows = stack.toList().mapIndexed { index, value ->
-            val depth = stack.size - index - 1
-            "<tr><td style='padding:2px 8px;color:#777;text-align:right'>$depth</td>" +
-                "<td style='padding:2px 8px'><code>${escapeHtml(shortValue(value))}</code></td>" +
-                "<td style='padding:2px 8px;color:#777'>${escapeHtml(value::class.simpleName ?: "value")}</td></tr>"
-        }.asReversed().joinToString("")
-        return "<table style='border-collapse:collapse;font:12px/1.35 monospace'>" +
-            "<thead><tr><th style='text-align:right;padding:2px 8px'>depth</th><th style='text-align:left;padding:2px 8px'>value</th><th style='text-align:left;padding:2px 8px'>type</th></tr></thead>" +
-            "<tbody>$rows</tbody></table>"
-    }
+    // `depth` is an Int, so Table right-aligns it without being told; the cells are plain text, so
+    // Table escapes them and the local escapeHtml is not needed here any more.
+    private fun stackHtml(): String = Table(listOf("depth", "value", "type"))
+        .rows(
+            stack.toList().mapIndexed { index, value ->
+                listOf(stack.size - index - 1, shortValue(value), value::class.simpleName ?: "value")
+            }.asReversed()
+        )
+        .role("type", CellRole.MUTED)
+        .toHTML()
 
     private fun barHtml(value: Double, max: Double): String {
         val denom = if (max == 0.0) 1.0 else max

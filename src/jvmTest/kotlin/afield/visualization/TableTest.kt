@@ -153,7 +153,9 @@ class TableTest {
     fun `facts is a headerless label-value listing with muted labels`() {
         val html = facts("triangles" to 1280, "watertight" to true).toHTML()
         assertFalse("<thead" in html, "a label-value summary has no header worth showing:\n$html")
-        assertTrue("field-md-muted" in html, "labels are muted so it reads as a listing")
+        // Accent, matching `.field-md td:first-child` in field.css — which outranks a class on the
+        // cell, so a muted label would disagree with itself inside a markdown card.
+        assertTrue("field-md-accent" in html, "labels take the same accent a key column has everywhere")
         assertTrue("triangles" in html && "1280" in html && "true" in html, "the facts should be there")
     }
 
@@ -200,6 +202,17 @@ class TableTest {
     }
 
     @Test
+    fun `a role in the first column keeps its own colour despite the card css`() {
+        // field.css accents td:first-child, which outranks a class on the cell — so the role's colour
+        // is emitted inline too, or a BAD marker in column one would render as an accent.
+        val html = Table(listOf("change", "key")).row("-", "gone")
+            .roleBy("change") { CellRole.BAD }
+            .toHTML()
+        assertTrue("color:var(--field-danger)" in html, "the role's token must be inline:\n$html")
+        assertTrue(CellRole.BAD.cssClass in html, "and the class stays, for anything selecting on it")
+    }
+
+    @Test
     fun `naming a column that does not exist fails loudly rather than doing nothing`() {
         val t = Table(listOf("builder", "calls")).row("a", 1)
         for (op in listOf<(Table) -> Unit>(
@@ -217,6 +230,12 @@ class TableTest {
                 "the message should name the typo and list the real columns, got: ${e.message}"
             )
         }
+    }
+
+    @Test
+    fun `two columns sharing a name is an error, not a silently half-applied decorator`() {
+        val e = assertFailsWith<IllegalArgumentException> { Table(listOf("v", "v")) }
+        assertTrue("duplicate" in (e.message ?: ""), "the message should say what is wrong: ${e.message}")
     }
 
     @Test

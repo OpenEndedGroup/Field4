@@ -58,13 +58,13 @@ const val TABLE_TEXT: String = "#ccc"
  * and a markdown span that means "good" are therefore the same colour by construction, and neither
  * spells a hex literal.
  */
-enum class CellRole(internal val cssClass: String) {
-    ACCENT("field-md-accent"),
-    MUTED("field-md-muted"),
-    DIM("field-md-dim"),
-    OK("field-md-ok"),
-    WARN("field-md-warn"),
-    BAD("field-md-bad"),
+enum class CellRole(internal val cssClass: String, internal val cssVar: String) {
+    ACCENT("field-md-accent", "--field-accent-text"),
+    MUTED("field-md-muted", "--field-fg-muted"),
+    DIM("field-md-dim", "--field-fg-dim"),
+    OK("field-md-ok", "--field-success"),
+    WARN("field-md-warn", "--field-warning"),
+    BAD("field-md-bad", "--field-danger"),
 }
 
 /**
@@ -121,6 +121,10 @@ class Table(
 
     init {
         require(header.isNotEmpty()) { "a Table needs at least one column" }
+        // Every decorator addresses a column by name, and a lookup returns the first match — so two
+        // columns sharing a name would silently decorate one and leave the other alone. Loud instead.
+        val duplicates = header.groupingBy { it }.eachCount().filterValues { it > 1 }.keys
+        require(duplicates.isEmpty()) { "duplicate column name(s) $duplicates in $header" }
     }
 
     private fun columnIndex(column: String): Int {
@@ -337,7 +341,12 @@ class Table(
                 append("<td")
                 role?.let { append(" class='${it.cssClass}'") }
                 append(" style='padding:${padding(c)};text-align:${alignOf(name).css}")
-                if (role == null) colors[name]?.let { append(";color:$it") }
+                // The colour goes inline, not only on the class. `field.css` carries
+                // `.field-md td:first-child { color: var(--field-accent-text) }`, which outranks a
+                // class on the cell — so a BAD marker in column one came out accent, silently losing
+                // the one thing it was there to say. Same design token either way.
+                if (role != null) append(";color:var(${role.cssVar})")
+                else colors[name]?.let { append(";color:$it") }
                 append("'")
                 why?.let { append(" title='${escapeTableHtml(it)}'") }
                 append(">")
@@ -397,9 +406,14 @@ fun table(vararg columns: Pair<String, List<Any?>>): Table {
  * A label→value summary, which is the commonest figure shape there is: what a `toHTML()` writes
  * about its own object, what a probe reports, what sits beside a thumbnail.
  *
- * A headerless two-column [Table] with the labels muted — so it reads as a listing rather than a
- * spreadsheet — and everything else a Table can do still applies: [Table.role] a value column,
- * [Table.bar] a numeric one, [Table.expect] a claim about it.
+ * A headerless two-column [Table] with the labels in [CellRole.ACCENT], and everything else a Table
+ * can do still applies: [Table.role] a value column, [Table.bar] a numeric one, [Table.expect] a
+ * claim about it.
+ *
+ * Accent rather than muted on purpose. `field.css` already says
+ * `.field-md td:first-child { color: var(--field-accent-text) }` — a key column reads as accent
+ * across the whole design system — and that selector outranks a class on the cell, so a muted label
+ * would come out muted standalone and accent inside a `markdown()` card. Same token, one answer.
  *
  * ```
  * facts("triangles" to mesh.triangleCount, "watertight" to topo.isWatertight)
@@ -411,7 +425,7 @@ fun table(vararg columns: Pair<String, List<Any?>>): Table {
 fun facts(pairs: List<Pair<String, Any?>?>): Table =
     Table(listOf("label", "value"))
         .rows(pairs.filterNotNull().map { listOf(it.first, it.second) })
-        .role("label", CellRole.MUTED)
+        .role("label", CellRole.ACCENT)
         .also { it.showHeader = false }
 
 /** [facts] with the pairs written inline. */
