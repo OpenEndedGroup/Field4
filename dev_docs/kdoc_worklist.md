@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 5225 of 8697 public symbols in `afield.stdlib`, `afield.visualization` and `afield.four.synth` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 5294 of 8807 public symbols in `afield.stdlib`, `afield.visualization` and `afield.four.synth` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**466 undocumented entry points** (types, top-level functions and values) and 2769 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**466 undocumented entry points** (types, top-level functions and values) and 2802 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -45,6 +45,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SonicPiPatterns.kt](../src/jvmMain/kotlin/afield/four/synth/SonicPiPatterns.kt) | Audio | sonic_pi | 0 | 25 | 68% |
 | [alife_continuous.kt](../src/jvmMain/kotlin/afield/stdlib/alife_continuous.kt) | ALife | alife_examples | 0 | 25 | 57% |
 | [typography.kt](../src/jvmMain/kotlin/afield/stdlib/typography.kt) | Graphics | typography_examples, manifold | 0 | 23 | 70% |
+| [FaustPattern.kt](../src/jvmMain/kotlin/afield/four/synth/FaustPattern.kt) | Synthesis | faust | 0 | 22 | 56% |
 | [alife_lsystem.kt](../src/jvmMain/kotlin/afield/stdlib/alife_lsystem.kt) | ALife | alife_examples | 0 | 20 | 59% |
 | [alife_ca.kt](../src/jvmMain/kotlin/afield/stdlib/alife_ca.kt) | ALife | alife_examples | 0 | 19 | 71% |
 | [Transforms.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Transforms.kt) | Polytopes | polytope_examples | 0 | 19 | 76% |
@@ -115,6 +116,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Colormaps.kt](../src/jvmMain/kotlin/afield/visualization/Colormaps.kt) | Visualization | — | 0 | 17 | 19% |
 | [InteractiveSolving.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/InteractiveSolving.kt) | Solvers | — | 0 | 15 | 65% |
 | [Summaries.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Summaries.kt) | Polytopes | — | 0 | 15 | 74% |
+| [FaustPoly.kt](../src/jvmMain/kotlin/afield/four/synth/FaustPoly.kt) | Synthesis | — | 0 | 11 | 70% |
 | [fline_graph_connectivity.kt](../src/jvmMain/kotlin/afield/stdlib/fline_graph_connectivity.kt) | Graphics | — | 0 | 8 | 38% |
 | [jsonparsing.kt](../src/jvmMain/kotlin/afield/stdlib/jsonparsing.kt) | Data | — | 0 | 7 | 63% |
 | [FaustDsp.kt](../src/jvmMain/kotlin/afield/four/synth/FaustDsp.kt) | Synthesis | — | 0 | 6 | 53% |

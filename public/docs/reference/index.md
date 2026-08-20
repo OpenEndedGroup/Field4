@@ -4,7 +4,7 @@
 
 Field's standard library is large and, until now, invisible: the only ways to read it were to open the source or to already know the name you wanted. This section is a browsable map of it — every public declaration in `afield.stdlib`, `afield.visualization` and `afield.four.synth`, with the KDoc that sits next to it in the source.
 
-**8697 public symbols across 180 source files**, 5225 of them (60%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
+**8807 public symbols across 182 source files**, 5294 of them (60%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
 
 The "documented" column is the honest one: it is a coverage report on Field's own KDoc, not a claim about this page. Where a summary is blank the declaration has none yet.
 
@@ -19,7 +19,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [ALife](alife.md) | 7 | 328 | 205 (62%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization) — plus the measurement layer every one of them makes its claims through, because "it produced pixels" is not evidence. |
 | [Function](function.md) | 12 | 422 | 306 (72%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Visualization](visualization.md) | 9 | 314 | 285 (90%) | Turning a value into something you can look at, without leaving the box. |
-| [Synthesis](synthesis.md) | 23 | 948 | 306 (32%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
+| [Synthesis](synthesis.md) | 25 | 1058 | 375 (35%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 17 | 750 | 315 (42%) | Musical time, as a value. |
 | [Audio](audio.md) | 12 | 688 | 149 (21%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 13 | 351 | 276 (78%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
@@ -86,6 +86,8 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [FaustDsp.kt](synthesis.md#faustdsp-kt) | Synthesis | 15 | 8 |  |  |
 | [FaustEditorExtension.kt](synthesis.md#fausteditorextension-kt) | Synthesis | 5 | 1 |  |  |
 | [FaustEngine.kt](synthesis.md#faustengine-kt) | Synthesis | 51 | 23 |  | [Faust](../faust.md) |
+| [FaustPattern.kt](synthesis.md#faustpattern-kt) | Synthesis | 62 | 35 |  | [Faust](../faust.md) |
+| [FaustPoly.kt](synthesis.md#faustpoly-kt) | Synthesis | 48 | 34 |  |  |
 | [FieldAdapters.kt](polytopes.md#fieldadapters-kt) | Polytopes | 31 | 22 | The bridge from a polytope to the things Field can actually draw: `FLine`s and a `TriMesh`. | [Polytopes: topology first, coordinates later](../polytope_examples.md), [Agent transcript gallery](../agent_transcripts.md) |
 | [FieldAudioClient.kt](audio-ai.md#fieldaudioclient-kt) | Audio AI | 25 | 25 | The verbs of Field Audio: one client object whose every method is a request to the model service, plus the typed constructors for the two operations that ship with real controls. |  |
 | [FieldAudioEngine.kt](synthesis.md#fieldaudioengine-kt) | Synthesis | 22 | 0 |  |  |
@@ -149,7 +151,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [ParamQuery.kt](synthesis.md#paramquery-kt) | Synthesis | 57 | 4 | The synth-facing head of the graph-query layer: turn a `PathSet` into a set of *drivable parameters*. | [Querying object graphs](../graph_query.md) |
 | [PatAlgebra.kt](patterns.md#patalgebra-kt) | Patterns | 66 | 65 |  | [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md), [Sonic Pi](../sonic_pi.md) |
 | [PatClock.kt](patterns.md#patclock-kt) | Patterns | 14 | 0 |  |  |
-| [PatComposition.kt](patterns.md#patcomposition-kt) | Patterns | 53 | 53 |  | [Patterns: writing rhythm as a function of time](../pattern_language.md), [How the popup decides](../how_the_popup_decides.md) |
+| [PatComposition.kt](patterns.md#patcomposition-kt) | Patterns | 53 | 53 |  | [Patterns: writing rhythm as a function of time](../pattern_language.md), [Faust](../faust.md), [How the popup decides](../how_the_popup_decides.md) |
 | [PatFunctions.kt](patterns.md#patfunctions-kt) | Patterns | 48 | 6 |  |  |
 | [PatOnsetDetection.kt](patterns.md#patonsetdetection-kt) | Patterns | 14 | 8 |  |  |
 | [PatPatternReturnValue.kt](patterns.md#patpatternreturnvalue-kt) | Patterns | 1 | 0 |  |  |
