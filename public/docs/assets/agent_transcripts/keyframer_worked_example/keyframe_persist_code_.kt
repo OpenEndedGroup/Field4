@@ -46,34 +46,39 @@ newer.missingKey(1, "mode", "legacy-v1")   // only to files stamped schemaVersio
 val migrated = newer.loadKey(path, version = 0)
 println("version 0 migrated: " + migrated.values.toSortedMap())
 
-fun esc(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-val versionRows = versions.joinToString("") { v ->
-    "<tr><td style='padding:1px 14px 1px 0;color:#9cdcfe'>${v.index}</td>" +
-        "<td style='padding-right:14px;color:#888'>${v.file}</td>" +
-        "<td style='color:#d4d4d4'>${esc(v.note ?: "—")}</td></tr>"
+// Rows built with joinToString and spliced into an indented block: markdown()'s dedent
+// anchors on the first line, so the rows arriving at column 0 do not flatten the figure the
+// way trimIndent would. The values table stays flat text rather than `migrated.h` — the
+// Key's own HTML gives a Vector3f an interactive 3D axis widget, which reflows the card.
+val versionRows = versions.joinToString("\n") { v ->
+    "| ${v.index} | ${mdEscape(v.file)} | ${mdEscape(v.note ?: "—")} |"
 }
-// Rendered as flat text rather than through `migrated.h`: the Key's own HTML gives a
-// Vector3f an interactive 3D axis widget, which is lovely in a box and reflows the card.
-val migratedRows = migrated.values.entries.sortedBy { it.key }.joinToString("") { (k, v) ->
-    "<tr><td style='padding:1px 14px 1px 0;color:#9cdcfe'>" + esc(k) + "</td>" +
-        "<td style='color:#d4d4d4'>" + esc(v.toString()) + "</td></tr>"
+val migratedRows = migrated.values.entries.sortedBy { it.key }.joinToString("\n") { (k, v) ->
+    "| ${mdEscape(k)} | ${mdEscape(v)} |"
 }
 
-display(
-    "persist",
-    "<div style='font:12px/1.5 Iosevka, Menlo, monospace;color:#d4d4d4;display:grid;gap:14px;width:820px'>" +
-        "<div><div style='color:#c586c0;margin-bottom:4px'>version history after three saves</div>" +
-        "<table style='border-collapse:collapse'>" + versionRows + "</table></div>" +
-        "<div><div style='color:#c586c0;margin-bottom:4px'>third save: what survived</div>" +
-        "kept: <b>" + reloaded.values.keys.sorted().joinToString(", ") + "</b><br>" +
-        "dropped in silence: <b style='color:#f88'>" + dropped.joinToString(", ") + "</b></div>" +
-        "<div><div style='color:#c586c0;margin-bottom:4px'>version 0, reloaded into a scope that " +
-        "has since grown a 'wet' parameter (" + migrated.values.size + " values)</div>" +
-        "<table style='border-collapse:collapse'>" + migratedRows + "</table></div>" +
-        "<div><div style='color:#c586c0;margin-bottom:4px'>version 0 on disk, as written</div>" +
-        "<pre style='margin:0;padding:6px 8px;background:rgba(255,255,255,0.04);" +
-        "border-left:2px solid #555;white-space:pre-wrap;width:800px'>" +
-        esc(Files.readString(dir.resolve("look.json.versions").resolve("000000.json"))) +
-        "</pre></div>" +
-    "</div>"
-)
+markdown("persist", """
+    #### version history after three saves
+
+    | # | file | note |
+    | --- | --- | --- |
+    $versionRows
+
+    #### third save: what survived
+
+    kept: **${reloaded.values.keys.sorted().joinToString(", ")}**
+
+    dropped in silence: {bad:${dropped.joinToString(", ")}}
+
+    #### version 0, reloaded into a scope that has since grown a 'wet' parameter (${migrated.values.size} values)
+
+    | key | value |
+    | --- | --- |
+    $migratedRows
+
+    #### version 0 on disk, as written
+
+    ~~~json
+${Files.readString(dir.resolve("look.json.versions").resolve("000000.json"))}
+    ~~~
+""", width = 820)

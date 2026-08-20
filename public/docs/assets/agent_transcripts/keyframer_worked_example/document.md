@@ -19,7 +19,7 @@ write to. The simplest is a uniform Structure — and none of this needs a GPU, 
 Structure is constructible bare and bind/bindings are plain maps.
 
 ```edn [field-box id="keyframe_targets" role="properties"]
-{"id" "keyframe_targets" "index" 0 "name" "What a scope watches — capture, edit, apply" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What a scope watches — capture, edit, apply" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_targets_code_.kt" "lines" 80 "characters" 3839 "sha256" "f2628f4b09133d7a209991df3ac693f6216804331bbde11b64cc1c5a031cc0c0"}]}
+{"id" "keyframe_targets" "index" 0 "name" "What a scope watches — capture, edit, apply" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What a scope watches — capture, edit, apply" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_targets_code_.kt" "lines" 87 "characters" 3414 "sha256" "b691fc8dc6c3e799e5acd04c7a59f2bd7405f69dccaf9ab17d78b3d5f920d4f4"}]}
 ```
 
 ```kotlin [field-property box="keyframe_targets" name="code" path="keyframe_targets_code_.kt"]
@@ -75,34 +75,41 @@ println("bound -> " + trap["bound"] + " ; set -> " + trap["set"] + " (present: "
 captured()
 val restored = scope.capture()
 
-fun esc(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-fun row(k: String, v: Any?) =
-    "<tr><td style='padding:1px 14px 1px 0;color:#9cdcfe'>" + esc(k) +
-        "</td><td style='color:#d4d4d4'>" + esc(v.toString()) + "</td></tr>"
+// markdown() rather than a hand-built card: headings for the captions, GFM tables for the
+// key/value pairs, a fence for the multi-line diff. `key.h` and diffHtml() are HTML from
+// other Field APIs and are *meant* to pass through, so they interpolate directly; every
+// computed value goes through mdEscape, which a table cell effectively requires.
+fun bound(s: Structure, k: String) = mdEscape(s.bindings[k]?.invoke())
 
-display(
-    "keys",
-    "<div style='font:12px/1.5 Iosevka, Menlo, monospace;color:#d4d4d4;display:grid;gap:14px;width:800px'>" +
-        "<div><div style='color:#c586c0;margin-bottom:4px'>1 &mdash; capture()</div>" +
-        captured.h + "</div>" +
-        "<div><div style='color:#c586c0;margin-bottom:4px'>2 &mdash; edited, then applied</div>" +
-        captured.diffHtml(edited, "captured", "edited") + "</div>" +
-        "<div><div style='color:#c586c0;margin-bottom:4px'>3 &mdash; the live structures, read back</div>" +
-        "<table style='border-collapse:collapse'>" +
-        row("glow.radius", glow.bindings["radius"]?.invoke()) +
-        row("glow.intensity", glow.bindings["intensity"]?.invoke()) +
-        row("blur.radius", blur.bindings["radius"]?.invoke()) +
-        row("glow.glow@radius", glow.bindings["glow@radius"]?.invoke() ?: "<unbound>") +
-        "</table></div>" +
-        "<div><div style='color:#c586c0;margin-bottom:4px'>4 &mdash; the bindings/values trap</div>" +
-        "<table style='border-collapse:collapse'>" +
-        row("bound (via bind)", trap["bound"]) +
-        row("set (via values)", trap["set"].toString() + "  <- captured as null, silently") +
-        "</table></div>" +
-        "<div><div style='color:#c586c0;margin-bottom:4px'>5 &mdash; captured() again, then re-captured</div>" +
-        esc(captured.diffText(restored, "captured", "restored")) + "</div>" +
-    "</div>"
-)
+markdown("keys", """
+    #### 1 — capture()
+    ${captured.h}
+
+    #### 2 — edited, then applied
+    ${captured.diffHtml(edited, "captured", "edited")}
+
+    #### 3 — the live structures, read back
+
+    | binding | value |
+    | --- | --- |
+    | glow.radius | ${bound(glow, "radius")} |
+    | glow.intensity | ${bound(glow, "intensity")} |
+    | blur.radius | ${bound(blur, "radius")} |
+    | glow.glow@radius | ${mdEscape(glow.bindings["glow@radius"]?.invoke() ?: "<unbound>")} |
+
+    #### 4 — the bindings/values trap
+
+    | binding | value |
+    | --- | --- |
+    | bound (via bind) | ${mdEscape(trap["bound"])} |
+    | set (via values) | ${mdEscape(trap["set"])} {warn:← captured as null, silently} |
+
+    #### 5 — captured() again, then re-captured
+
+    ~~~
+${captured.diffText(restored, "captured", "restored")}
+    ~~~
+""", width = 800)
 ```
 
 ## 2. Saving is always additive history
@@ -118,7 +125,7 @@ saveKey writes pretty JSON — and, every single time, ALSO appends a numbered c
 hundred files. What survives the trip is a closed set; everything else is dropped silently.
 
 ```edn [field-box id="keyframe_persist" role="properties"]
-{"id" "keyframe_persist" "index" 1 "name" "Saving is always additive history" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Saving is always additive history" "_tombstone" false "frame" #afield/rect [1100.0 80.0 240.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_persist_code_.kt" "lines" 79 "characters" 4084 "sha256" "d06115ec621767d75fea40ec6d5c5c55a272c0c8171927c56b3855c3bfcc8c6e"}]}
+{"id" "keyframe_persist" "index" 1 "name" "Saving is always additive history" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Saving is always additive history" "_tombstone" false "frame" #afield/rect [1100.0 80.0 240.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_persist_code_.kt" "lines" 84 "characters" 3293 "sha256" "533fabd0b452c2b0c6fa26fd8006eee480a760676462334880dabb70c8a4ff43"}]}
 ```
 
 ```kotlin [field-property box="keyframe_persist" name="code" path="keyframe_persist_code_.kt"]
@@ -170,37 +177,42 @@ newer.missingKey(1, "mode", "legacy-v1")   // only to files stamped schemaVersio
 val migrated = newer.loadKey(path, version = 0)
 println("version 0 migrated: " + migrated.values.toSortedMap())
 
-fun esc(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-val versionRows = versions.joinToString("") { v ->
-    "<tr><td style='padding:1px 14px 1px 0;color:#9cdcfe'>${v.index}</td>" +
-        "<td style='padding-right:14px;color:#888'>${v.file}</td>" +
-        "<td style='color:#d4d4d4'>${esc(v.note ?: "—")}</td></tr>"
+// Rows built with joinToString and spliced into an indented block: markdown()'s dedent
+// anchors on the first line, so the rows arriving at column 0 do not flatten the figure the
+// way trimIndent would. The values table stays flat text rather than `migrated.h` — the
+// Key's own HTML gives a Vector3f an interactive 3D axis widget, which reflows the card.
+val versionRows = versions.joinToString("\n") { v ->
+    "| ${v.index} | ${mdEscape(v.file)} | ${mdEscape(v.note ?: "—")} |"
 }
-// Rendered as flat text rather than through `migrated.h`: the Key's own HTML gives a
-// Vector3f an interactive 3D axis widget, which is lovely in a box and reflows the card.
-val migratedRows = migrated.values.entries.sortedBy { it.key }.joinToString("") { (k, v) ->
-    "<tr><td style='padding:1px 14px 1px 0;color:#9cdcfe'>" + esc(k) + "</td>" +
-        "<td style='color:#d4d4d4'>" + esc(v.toString()) + "</td></tr>"
+val migratedRows = migrated.values.entries.sortedBy { it.key }.joinToString("\n") { (k, v) ->
+    "| ${mdEscape(k)} | ${mdEscape(v)} |"
 }
 
-display(
-    "persist",
-    "<div style='font:12px/1.5 Iosevka, Menlo, monospace;color:#d4d4d4;display:grid;gap:14px;width:820px'>" +
-        "<div><div style='color:#c586c0;margin-bottom:4px'>version history after three saves</div>" +
-        "<table style='border-collapse:collapse'>" + versionRows + "</table></div>" +
-        "<div><div style='color:#c586c0;margin-bottom:4px'>third save: what survived</div>" +
-        "kept: <b>" + reloaded.values.keys.sorted().joinToString(", ") + "</b><br>" +
-        "dropped in silence: <b style='color:#f88'>" + dropped.joinToString(", ") + "</b></div>" +
-        "<div><div style='color:#c586c0;margin-bottom:4px'>version 0, reloaded into a scope that " +
-        "has since grown a 'wet' parameter (" + migrated.values.size + " values)</div>" +
-        "<table style='border-collapse:collapse'>" + migratedRows + "</table></div>" +
-        "<div><div style='color:#c586c0;margin-bottom:4px'>version 0 on disk, as written</div>" +
-        "<pre style='margin:0;padding:6px 8px;background:rgba(255,255,255,0.04);" +
-        "border-left:2px solid #555;white-space:pre-wrap;width:800px'>" +
-        esc(Files.readString(dir.resolve("look.json.versions").resolve("000000.json"))) +
-        "</pre></div>" +
-    "</div>"
-)
+markdown("persist", """
+    #### version history after three saves
+
+    | # | file | note |
+    | --- | --- | --- |
+    $versionRows
+
+    #### third save: what survived
+
+    kept: **${reloaded.values.keys.sorted().joinToString(", ")}**
+
+    dropped in silence: {bad:${dropped.joinToString(", ")}}
+
+    #### version 0, reloaded into a scope that has since grown a 'wet' parameter (${migrated.values.size} values)
+
+    | key | value |
+    | --- | --- |
+    $migratedRows
+
+    #### version 0 on disk, as written
+
+    ~~~json
+${Files.readString(dir.resolve("look.json.versions").resolve("000000.json"))}
+    ~~~
+""", width = 820)
 ```
 
 ## 3. A captured look becomes source
@@ -276,7 +288,7 @@ SCREW MOTION, and between two cameras looking at the same subject it is a very d
 move from lerping the two positions. Draw both and the argument makes itself.
 
 ```edn [field-box id="keyframe_camera" role="properties"]
-{"id" "keyframe_camera" "index" 3 "name" "A camera move is a screw motion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A camera move is a screw motion" "_tombstone" false "frame" #afield/rect [80.0 540.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_camera_code_.kt" "lines" 103 "characters" 4383 "sha256" "f84ee18ca267c51c289778e0ffaa3953fa512e4b9ace0f4201aa5bcfd76ea804"}]}
+{"id" "keyframe_camera" "index" 3 "name" "A camera move is a screw motion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A camera move is a screw motion" "_tombstone" false "frame" #afield/rect [80.0 540.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_camera_code_.kt" "lines" 101 "characters" 4266 "sha256" "799e057adc38f85c6490cdc1103af5cf891ca514f1cd08348a982bf7c84fe045"}]}
 ```
 
 ```kotlin [field-property box="keyframe_camera" name="code" path="keyframe_camera_code_.kt"]
@@ -376,12 +388,10 @@ showPlaneGrid(
         listOf(dScrew, dChord),
     columns = 2, cellWidth = 440, cellHeight = 380
 )
-display(
+markdown(
     "aim",
-    "<div style='font:12px/1.5 Iosevka, Menlo, monospace;color:#d4d4d4;padding:8px 0'>" +
-        "worst-case aiming error along the sclerp path: <b>%.6f</b> world units &mdash; ".format(worstAim) +
-        "the subject never leaves the centre of frame." +
-    "</div>"
+    "worst-case aiming error along the sclerp path: **%.6f** world units — ".format(worstAim) +
+        "the subject never leaves the centre of frame."
 )
 ```
 

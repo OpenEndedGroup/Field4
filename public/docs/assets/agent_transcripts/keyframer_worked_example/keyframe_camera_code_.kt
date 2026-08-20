@@ -94,10 +94,8 @@ showPlaneGrid(
         listOf(dScrew, dChord),
     columns = 2, cellWidth = 440, cellHeight = 380
 )
-display(
+markdown(
     "aim",
-    "<div style='font:12px/1.5 Iosevka, Menlo, monospace;color:#d4d4d4;padding:8px 0'>" +
-        "worst-case aiming error along the sclerp path: <b>%.6f</b> world units &mdash; ".format(worstAim) +
-        "the subject never leaves the centre of frame." +
-    "</div>"
+    "worst-case aiming error along the sclerp path: **%.6f** world units — ".format(worstAim) +
+        "the subject never leaves the centre of frame."
 )

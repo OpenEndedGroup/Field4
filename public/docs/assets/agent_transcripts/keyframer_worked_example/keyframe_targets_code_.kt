@@ -50,31 +50,38 @@ println("bound -> " + trap["bound"] + " ; set -> " + trap["set"] + " (present: "
 captured()
 val restored = scope.capture()
 
-fun esc(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-fun row(k: String, v: Any?) =
-    "<tr><td style='padding:1px 14px 1px 0;color:#9cdcfe'>" + esc(k) +
-        "</td><td style='color:#d4d4d4'>" + esc(v.toString()) + "</td></tr>"
+// markdown() rather than a hand-built card: headings for the captions, GFM tables for the
+// key/value pairs, a fence for the multi-line diff. `key.h` and diffHtml() are HTML from
+// other Field APIs and are *meant* to pass through, so they interpolate directly; every
+// computed value goes through mdEscape, which a table cell effectively requires.
+fun bound(s: Structure, k: String) = mdEscape(s.bindings[k]?.invoke())
 
-display(
-    "keys",
-    "<div style='font:12px/1.5 Iosevka, Menlo, monospace;color:#d4d4d4;display:grid;gap:14px;width:800px'>" +
-        "<div><div style='color:#c586c0;margin-bottom:4px'>1 &mdash; capture()</div>" +
-        captured.h + "</div>" +
-        "<div><div style='color:#c586c0;margin-bottom:4px'>2 &mdash; edited, then applied</div>" +
-        captured.diffHtml(edited, "captured", "edited") + "</div>" +
-        "<div><div style='color:#c586c0;margin-bottom:4px'>3 &mdash; the live structures, read back</div>" +
-        "<table style='border-collapse:collapse'>" +
-        row("glow.radius", glow.bindings["radius"]?.invoke()) +
-        row("glow.intensity", glow.bindings["intensity"]?.invoke()) +
-        row("blur.radius", blur.bindings["radius"]?.invoke()) +
-        row("glow.glow@radius", glow.bindings["glow@radius"]?.invoke() ?: "<unbound>") +
-        "</table></div>" +
-        "<div><div style='color:#c586c0;margin-bottom:4px'>4 &mdash; the bindings/values trap</div>" +
-        "<table style='border-collapse:collapse'>" +
-        row("bound (via bind)", trap["bound"]) +
-        row("set (via values)", trap["set"].toString() + "  <- captured as null, silently") +
-        "</table></div>" +
-        "<div><div style='color:#c586c0;margin-bottom:4px'>5 &mdash; captured() again, then re-captured</div>" +
-        esc(captured.diffText(restored, "captured", "restored")) + "</div>" +
-    "</div>"
-)
+markdown("keys", """
+    #### 1 — capture()
+    ${captured.h}
+
+    #### 2 — edited, then applied
+    ${captured.diffHtml(edited, "captured", "edited")}
+
+    #### 3 — the live structures, read back
+
+    | binding | value |
+    | --- | --- |
+    | glow.radius | ${bound(glow, "radius")} |
+    | glow.intensity | ${bound(glow, "intensity")} |
+    | blur.radius | ${bound(blur, "radius")} |
+    | glow.glow@radius | ${mdEscape(glow.bindings["glow@radius"]?.invoke() ?: "<unbound>")} |
+
+    #### 4 — the bindings/values trap
+
+    | binding | value |
+    | --- | --- |
+    | bound (via bind) | ${mdEscape(trap["bound"])} |
+    | set (via values) | ${mdEscape(trap["set"])} {warn:← captured as null, silently} |
+
+    #### 5 — captured() again, then re-captured
+
+    ~~~
+${captured.diffText(restored, "captured", "restored")}
+    ~~~
+""", width = 800)
