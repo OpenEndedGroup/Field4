@@ -467,7 +467,9 @@ What 2026-08-12 did instead was cheaper and pushes the decision to where the kno
   annotation and improvement routes, above;
 - **`AFIELD_API_REQUIRE_SAME_SITE`**, an application-wide refusal of cross-site HTTP writes
   and command WebSocket browser upgrades, with `/api/import-offline-doc` exempted, **off by
-  default**. Same shape as everything else
+  default**. **As of 2026-08-20 it refuses cross-site *reads* too — see "The read half" below.
+  Until then it did not, which meant the mitigation chosen here did not cover the exposure
+  measured three sections above.** Same shape as everything else
   here — safe default, documented hatch — except that "safe" points the other way: the
   default is the old behaviour, because turning a refusal on across 36 routes is how you
   find out at 4am which of them the human's own tooling was quietly using;
@@ -482,9 +484,86 @@ with no `Origin` still returns **200**, which is the limitation, not an oversigh
 An allow-list on `anyHost()` remains the better long-term answer for the browser HTTP half.
 Neither it nor this switch touches the network half.
 
+## The read half, closed 2026-08-20 — and why it was open for eight days
+
+The experiment above measured that a foreign origin could **read** `/api/instance-info` and
+`/api/welcome-changelog`, and the switch taken instead of narrowing `anyHost()` refused only
+writes. So the document's own measurement and the document's own mitigation did not line up,
+and nothing in the tree made that visible: `FieldApiWriteGuardTest.readsAndPreflightsArePassedThrough`
+**asserted that cross-site reads passed**, which turned the gap into a written guarantee.
+
+`nightly/2026-08-20/3-server-surface-threat-model` found it the only way it was going to be
+found — by driving a real Field with the switch fully on rather than reading the code — and
+counted the surface: **31 of 34 read routes had no guard of any kind**.
+
+Why reads went missing is structural rather than careless, and worth stating because it will
+happen again in the next area organised this way: every census here counts *mutating* routes
+(`everyMutatingRouteAndItsGuardIsPinned` is in the name), the interceptor skipped `GET`/`HEAD`
+by construction, and a route has to opt *in* to a guard. So **"unguarded" was the default for
+reads, and there was nowhere that the decision "this read needs no guard" was recorded.**
+`fieldApiSelfGuardedReadPrefixes` and `fieldApiReadNeedsSameSite` in `Server.kt` are where
+that decision now lives.
+
+A read is not a lesser exposure than a write. It is a different one — `/api/instance-info`
+leaks the path of your work, `/api/welcome-changelog` your commit messages, `/api/source` and
+`/api/workspace-search` source text — and `anyHost()` is what makes the *body* readable rather
+than merely the route reachable.
+
+### The three shapes still allowed, which are exemptions and not leftovers
+
+Each has a test whose job is to go red if the guard eats it, because eating a feature is the
+likeliest failure of a switch like this:
+
+- **`Sec-Fetch-Mode: navigate`.** A cross-site GET navigation sends `Sec-Fetch-Site: cross-site`
+  and **no `Origin`**, so `isSameSiteRequest` already calls it cross-site and would refuse it.
+  What makes it safe is the destination, not the origin: the body lands in a Field-origin
+  document that the initiating page cannot read. Refusing would 403 every link into Field —
+  including the `Open ↗` links the docs pages are built around — and close nothing. Note this
+  matches what "Why it is still there" already observed about the offline viewer: its other
+  Field URLs are top-level navigations, which CORS does not govern either.
+- **`Sec-Fetch-Mode: websocket`.** Upgrades are GETs, and `refuseCrossSiteFieldWebSocket`
+  applies this same policy at the upgrade, where it can close with `1008` and a reason a client
+  can read instead of a bare 403.
+- **The routes that guard themselves** (`/api/docs-annotations`, `/api/docs-improvement`).
+  `DOCS_ANNOTATIONS_ALLOW_CROSS_SITE` is a deliberate opt-in hatch that *permits* cross-site
+  annotation reads. A blanket refusal here would have closed it while its own switch still
+  claimed to hold it open — a guard reaching behind another guard's back.
+
+`OPTIONS` still passes untouched, or the preflight would never reach the CORS plugin.
+
+### Verified live on port 9605, 2026-08-20, same build both ways
+
+| probe | switch **off** | switch **on** |
+| --- | --- | --- |
+| `GET /api/instance-info`, `Origin: https://evil.example`, `Sec-Fetch-Mode: cors` | **200**, `{"repoRoot":"/Users/marc/field4-worktrees/read-guard-posture",…}` | **403** "refusing cross-site **reads**" |
+| `GET /api/welcome-changelog`, same headers | 200 | **403** |
+| `GET /api/instance-info`, same-origin | 200 | 200 |
+| `GET /api/instance-info`, `Sec-Fetch-Mode: navigate`, cross-site | 200 | **200** — the exemption |
+| `GET /api/instance-info`, plain `curl`, no `Origin` | 200 | **200** — the limitation |
+| `POST /api/instance-info`, cross-site | 403 | 403 "refusing cross-site **writes**" |
+
+The counterfactual is the same binary with the environment variable unset, so the switch is
+what closed it. Red-first on the unit side, control 0 of 10: restoring the `GET`/`HEAD` skip
+turns 5 red; removing the `navigate`, `websocket` and self-guarded exemptions turns exactly 1
+red each, and each named the test predicted for it.
+
+### What this still does not do
+
+The same two exposures the write half leaves standing, unchanged:
+
+- **The network half.** `curl` from the LAN sends no `Origin`, `isSameSiteRequest` calls that
+  same-site on purpose, and every read refused to a website remains open to any host on the
+  network. `aClientWithNoOriginIsStillUnaffectedAndThatIsTheLimitation` asserts this out loud.
+- **The default.** Still permissive, for the reason this document already gives about 36 routes
+  at 4am. So on a default Field, the reads above are still readable by any page you have open;
+  the switch is what closes them. An allow-list replacing `anyHost()` remains the better
+  long-term answer for the browser half, and would close reads without an opt-in — the blocker
+  recorded above (enumerating the offline viewer's origins, including `file://` → `Origin: null`)
+  is unchanged.
+
 ## Where the tests are
 
-Five files, 49 tests. Three of them start a real Ktor application; two read source.
+Six files, 59 tests. Four of them start a real Ktor application; two read source.
 
 - `src/jvmTest/kotlin/afield/server/DocsAnnotationRouteSecurityTest.kt` — **15 tests**,
   route-level, through the real CORS configuration. This file exists because of a measured
@@ -497,6 +576,12 @@ Five files, 49 tests. Three of them start a real Ktor application; two read sour
   `AFIELD_API_REQUIRE_SAME_SITE`, including one whose entire job is to assert the
   *limitation*: a request with no `Origin` is not refused, so the switch does nothing about
   the network.
+- `src/jvmTest/kotlin/afield/server/FieldApiReadGuardTest.kt` — **10 tests** over the read
+  half, added 2026-08-20. It opens by asserting its own premise (that the guard refuses
+  *anything*), so the six tests that assert a `200` cannot pass vacuously if the switch is
+  ever unwired; it reproduces the measured leak including a check that the refusal does not
+  itself echo the checkout path; and three of its tests exist to catch the guard eating one of
+  the deliberate exemptions.
 - `src/jvmTest/kotlin/afield/server/FieldWebSocketWriteGuardTest.kt` — **4 route-level
   tests** proving that the default remains compatible, the switch closes a foreign browser
   upgrade with a policy violation, Field's own browser still connects, and a native client
