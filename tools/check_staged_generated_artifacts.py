@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the generated-artifact guards affected by the staged commit, or by a merge.
+"""Run artifact and documentation-contract guards affected by a staged commit or merge.
 
 The checks themselves operate on the working tree, not Git's index.  To avoid a
 false pass, this command refuses to check an artifact when an unstaged input or
@@ -17,6 +17,8 @@ that way.
 from __future__ import annotations
 
 import argparse
+import functools
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -68,6 +70,83 @@ def _completion_input(path: str) -> bool:
     )
 
 
+_CITATION_TEST_SOURCES = {
+    "src/jvmTest/kotlin/afield/docs/CitationContractTest.kt",
+    "src/jvmTest/kotlin/afield/docs/CitationGuard.kt",
+    "src/jvmTest/kotlin/afield/docs/DocsFenceTreatmentTest.kt",
+    "src/jvmTest/kotlin/afield/docs/DocsGatesWiringTest.kt",
+    "src/jvmTest/kotlin/afield/docs/SmallLanguageAnatomyTest.kt",
+    "src/jvmTest/kotlin/afield/graphics/CloseNodeCitationDriftTest.kt",
+    "src/jvmTest/kotlin/afield/server/ServerSurfaceLedgerTest.kt",
+}
+_CITATION_EXTENSIONS = "kt|js|md|py|kts|html|swift|glsl|json|yml|yaml"
+_CITATION_LEDGER_PATH = re.compile(
+    rf"`([A-Za-z0-9_./-]+\.(?:{_CITATION_EXTENSIONS})):\d+`\s*\|"
+)
+_CITATION_SYMBOL_PATH = re.compile(
+    rf"`([A-Za-z0-9_./-]+\.(?:{_CITATION_EXTENSIONS}))(?::\d+)?#[^`]+`"
+)
+_GUARDED_PAGE = re.compile(r'"(dev_docs/[^"\n]+\.md)"\s+to\s+\d+')
+_CLOSE_NODE_PATH = re.compile(
+    rf'Triple\("([A-Za-z0-9_./-]+\.(?:{_CITATION_EXTENSIONS}))",\s*\d+,'
+)
+
+
+@functools.lru_cache(maxsize=1)
+def _citation_input_paths() -> frozenset[str]:
+    """Read the citation registries instead of maintaining a second source-path list here."""
+    repo = Path(__file__).resolve().parents[1]
+    contract_source = repo / "src/jvmTest/kotlin/afield/docs/CitationContractTest.kt"
+    close_source = repo / "src/jvmTest/kotlin/afield/graphics/CloseNodeCitationDriftTest.kt"
+
+    guarded_pages = set(_GUARDED_PAGE.findall(contract_source.read_text()))
+    guarded_pages.add("dev_docs/fline_close_nodes.md")
+
+    cited_names: set[str] = set()
+    for page in guarded_pages:
+        page_file = repo / page
+        if not page_file.is_file():
+            # Keep the missing page itself in the input set. citationGates will explain the broken
+            # registry; selection must not crash before Gradle gets that chance.
+            continue
+        text = page_file.read_text()
+        cited_names.update(_CITATION_LEDGER_PATH.findall(text))
+        cited_names.update(_CITATION_SYMBOL_PATH.findall(text))
+    if close_source.is_file():
+        cited_names.update(_CLOSE_NODE_PATH.findall(close_source.read_text()))
+
+    # Read both the staged tree and HEAD. A deleted cited file is absent from `git ls-files` after
+    # `git add -u`, but its old path must still select the guard that reports the broken citation.
+    tracked = set(_git_paths(repo, "ls-files"))
+    tracked.update(_git_paths(repo, "ls-tree", "-r", "--name-only", "HEAD"))
+    resolved = set(guarded_pages)
+    for cited in cited_names:
+        # Full repo-relative citations take this branch. Abbreviated citations deliberately match
+        # every tracked suffix here: a newly ambiguous path must still select the guard that will
+        # reject it, rather than disappearing from the pre-commit input set.
+        if cited in tracked:
+            resolved.add(cited)
+        else:
+            suffix = f"/{cited}"
+            resolved.update(path for path in tracked if path.endswith(suffix))
+
+    resolved.update(_CITATION_TEST_SOURCES)
+    resolved.update({"build.gradle.kts", "public/docs_hooks.py"})
+    return frozenset(resolved)
+
+
+def _citation_input(path: str) -> bool:
+    if path in _citation_input_paths():
+        return True
+    # Two focused tests intentionally discover their inputs rather than cite a fixed list:
+    # DocsFenceTreatmentTest checks every published Markdown page, while ServerSurfaceLedgerTest
+    # inventories the complete server route/command source surface.
+    return (
+        (_under(path, "public/docs") and path.endswith(".md"))
+        or (_under(path, "src/jvmMain/kotlin/afield") and path.endswith(".kt"))
+    )
+
+
 @dataclass(frozen=True)
 class Guard:
     task: str
@@ -99,6 +178,11 @@ GUARDS = (
         "completion-corpus fixtures",
         _completion_input,
         ("tools/completion-corpus/boxes",),
+    ),
+    Guard(
+        "citationGates",
+        "citation and documentation contracts",
+        _citation_input,
     ),
 )
 
@@ -138,7 +222,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--all",
         action="store_true",
-        help="run every generated-artifact guard instead of selecting from staged paths",
+        help="run every registered repository guard instead of selecting from staged paths",
     )
     parser.add_argument(
         "--since",
@@ -163,7 +247,7 @@ def _run_merge_check(repo: Path, since: str) -> int:
         print(f"generated-artifact guard: no such revision {since}, skipping")
         return 0
 
-    changed = _git_paths(repo, "diff", "--name-only", "--diff-filter=ACMR", f"{since}..HEAD")
+    changed = _git_paths(repo, "diff", "--name-only", "--diff-filter=ACMRD", f"{since}..HEAD")
     selected = guards_for_paths(changed)
     if not selected:
         return 0
@@ -212,7 +296,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.since:
         return _run_merge_check(repo, args.since)
 
-    staged = _git_paths(repo, "diff", "--cached", "--name-only", "--diff-filter=ACMR")
+    staged = _git_paths(repo, "diff", "--cached", "--name-only", "--diff-filter=ACMRD")
     selected = list(GUARDS) if args.all else guards_for_paths(staged)
 
     if not selected:
@@ -220,7 +304,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if not args.all:
-        unstaged = _git_paths(repo, "diff", "--name-only", "--diff-filter=ACMR")
+        unstaged = _git_paths(repo, "diff", "--name-only", "--diff-filter=ACMRD")
         conflicts = conflicting_unstaged_paths(selected, unstaged)
         if conflicts:
             print(

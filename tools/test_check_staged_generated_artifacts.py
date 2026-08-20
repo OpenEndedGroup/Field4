@@ -21,8 +21,32 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
     def test_stdlib_change_selects_reference_and_kdoc_guards(self) -> None:
         self.assertEqual(
             task_names(["src/jvmMain/kotlin/afield/stdlib/Controls.kt"]),
-            ["checkCodebaseReference", "checkKDocAttachment"],
+            ["checkCodebaseReference", "checkKDocAttachment", "citationGates"],
         )
+
+    def test_source_cited_by_close_node_contract_selects_citation_gate(self) -> None:
+        self.assertEqual(
+            task_names(["src/jvmMain/kotlin/afield/graphics/someSkiko.kt"]),
+            ["checkKDocAttachment", "citationGates"],
+        )
+
+    def test_cited_frontend_resource_is_discovered_from_the_pages(self) -> None:
+        self.assertEqual(
+            task_names(["src/commonMain/resources/fieldSuggest.js"]),
+            ["citationGates"],
+        )
+
+    def test_guarded_citation_page_selects_citation_gate(self) -> None:
+        self.assertEqual(
+            task_names(["dev_docs/small_language_anatomy.md"]),
+            ["citationGates"],
+        )
+
+    def test_docs_fence_implementation_selects_citation_gate(self) -> None:
+        self.assertEqual(task_names(["public/docs_hooks.py"]), ["citationGates"])
+
+    def test_citation_task_wiring_selects_citation_gate(self) -> None:
+        self.assertEqual(task_names(["build.gradle.kts"]), ["citationGates"])
 
     def test_transcript_change_selects_bundle_and_index(self) -> None:
         self.assertEqual(
@@ -80,6 +104,7 @@ class MergeSelectionTests(unittest.TestCase):
                 "checkAgentTranscripts",
                 "checkAgentTranscriptIndex",
                 "checkCompletionCorpusFixtures",
+                "citationGates",
             ],
         )
 
