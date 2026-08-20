@@ -52,6 +52,9 @@ class CitationContractTest {
             "dev_docs/small_language_anatomy.md" to 134,
             "dev_docs/fline_fill_orientation.md" to 20,
             "dev_docs/completion_aa_sidecar.md" to 24,
+            // The server route/command ledger. All 9 anchors were chosen unique-in-file, so the
+            // corpus fragility ceiling below is unaffected by adding it.
+            "dev_docs/server_surface_inventory.md" to 9,
             "dev_docs/FIELDML_HOST_BRIDGE.md" to 9,
             "dev_docs/STDLIB_DRAWING_FACE_PACKAGING.md" to 6,
             "dev_docs/arc_length_spacing.md" to 4,

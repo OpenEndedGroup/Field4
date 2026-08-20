@@ -30,6 +30,10 @@ The desktop launcher opens Field's Electron shell. You can also open
 in a browser. The development certificate is self-signed, so the browser may require an explicit
 local-certificate exception. Press `?` for help, or consult the [survival guide](survivalGuide.md).
 
+That URL is a real web server, running inside Field and listening on your machine. If you share a
+network with anyone else, it is worth knowing what it exposes and what does — and does not —
+protect it: see [What Field Exposes, and What Stops It](server_surface.md).
+
 ### Troubleshooting
 
 _Field·4_ is still beta software. Report reproducible problems through the public repository's
