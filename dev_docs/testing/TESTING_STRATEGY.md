@@ -149,6 +149,22 @@ Supported runner shapes:
 - `jvm-main` for standalone smoke entrypoints
 - `backdoor-box` for scratch-box snippets
 
+### Deliberately accepted JVM test failures
+
+`./gradlew check` normally requires every JVM test to pass. If preserving a
+known production defect as a red test is an explicit decision, add its exact
+Gradle selector, reason, and durable documentation pointer to
+`dev_docs/testing/expected_test_failures.json`. Ordinary `jvmTest` excludes only
+those exact selectors; `expectedFailureTests` runs them separately, and
+`checkExpectedTestFailures` accepts the run only when every registered test
+still fails. A registered test that passes, is renamed, or does not execute makes
+the gate fail because the register is stale. Any test absent from the register
+still fails through ordinary `jvmTest`.
+
+The register is intentionally empty while `main` has no accepted red. Wildcards
+are forbidden: each entry must name one test, explain why its failure remains
+intentional, and point to a repository document that owns the decision.
+
 Add a `FIELD_TEST` when the behavior is primarily code/runtime correctness,
 example health, stdout/event assertions, or a simple capture connected to a
 snippet. Keep the annotation explicit and stable; discovery is marker-based,

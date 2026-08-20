@@ -1140,6 +1140,69 @@ val jvmTestTask = tasks.named<org.gradle.api.tasks.testing.Test>("jvmTest") {
         .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
+// A known red recorded only in CI prose has been misgraded three times: once as an ordinary
+// regression, once as green after its cause was fixed, and once as still expected after a different
+// deliberate red landed. Keep accepted reds executable and two-sided instead. Ordinary jvmTest
+// excludes only the exact committed selectors, so every unregistered failure remains a normal test
+// failure. The companion task runs those selectors and ignores Gradle's raw red only long enough for
+// check_expected_test_failures.py to prove that every registered test failed and that none passed or
+// disappeared. The register is empty when main has no deliberately accepted failing test.
+val expectedTestFailureRegistry = file("dev_docs/testing/expected_test_failures.json")
+val expectedTestFailureSelectors: List<String> = try {
+    val parsed = groovy.json.JsonSlurper().parse(expectedTestFailureRegistry) as Map<*, *>
+    val entries = parsed["expectedFailures"] as? List<*>
+        ?: throw GradleException("expected_test_failures.json needs an expectedFailures array")
+    entries.mapIndexed { index, raw ->
+        val entry = raw as? Map<*, *>
+            ?: throw GradleException("expected-test-failure entry ${index + 1} must be an object")
+        entry["test"] as? String
+            ?: throw GradleException("expected-test-failure entry ${index + 1} needs a test selector")
+    }
+} catch (error: Exception) {
+    throw GradleException("Cannot configure expected JVM test failures", error)
+}
+
+jvmTestTask.configure {
+    inputs.file(expectedTestFailureRegistry)
+        .withPropertyName("expectedTestFailures")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    filter {
+        expectedTestFailureSelectors.forEach(::excludeTestsMatching)
+    }
+}
+
+val expectedFailureTests = tasks.register<org.gradle.api.tasks.testing.Test>("expectedFailureTests") {
+    group = "verification"
+    description = "Runs only deliberately accepted JVM test failures for the two-sided registry check."
+    dependsOn("jvmTestClasses")
+    testClassesDirs = jvmTestTask.get().testClassesDirs
+    classpath = jvmTestTask.get().classpath
+    ignoreFailures = true
+    filter {
+        if (expectedTestFailureSelectors.isEmpty()) {
+            includeTestsMatching("__afield_no_expected_test_failures__")
+        } else {
+            expectedTestFailureSelectors.forEach(::includeTestsMatching)
+        }
+        isFailOnNoMatchingTests = expectedTestFailureSelectors.isNotEmpty()
+    }
+    shouldRunAfter(jvmTestTask)
+}
+
+val checkExpectedTestFailures = tasks.register<Exec>("checkExpectedTestFailures") {
+    group = "verification"
+    description = "Fails when a registered JVM test passes/disappears or an unregistered test enters the expected-failure task."
+    dependsOn(expectedFailureTests)
+    workingDir = rootDir
+    commandLine(
+        "python3",
+        "tools/check_expected_test_failures.py",
+        "--registry", expectedTestFailureRegistry.absolutePath,
+        "--results", layout.buildDirectory.dir("test-results/expectedFailureTests").get().asFile.absolutePath,
+        "--root", rootDir.absolutePath,
+    )
+}
+
 tasks.register<org.gradle.api.tasks.testing.Test>("jvmMeasurements") {
     group = "verification"
     description = "Runs opt-in JVM measurement fixtures excluded from the deterministic check task."
@@ -1450,6 +1513,7 @@ tasks.named("check") {
     dependsOn("checkAgentTranscriptIndex")
     dependsOn("checkCompletionCorpusFixtures")
     dependsOn("checkAgentDemos")
+    dependsOn(checkExpectedTestFailures)
 }
 
 // These documentation gates are attached to `check` with no ordering constraint, which means Gradle is free

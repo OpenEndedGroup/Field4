@@ -281,6 +281,13 @@ uv run --project . --group backdoor python tools/run_ui_regressions.py \
 
 Current testing layers and commands are summarized in `dev_docs/testing/TESTING_STRATEGY.md`. Browser UI coverage details are tracked in `dev_docs/testing/UI_REGRESSION_ROADMAP.md`: command palette, editor sync, insert stack mark, output areas, `/controllers` lines/control widgets, screenshot selection, history panel, macro/transcript panel, inline visualizers, and focus/keyboard contracts.
 
+Deliberately accepted JVM reds live only in
+`dev_docs/testing/expected_test_failures.json`. The `check` graph enforces that
+register in both directions: an unregistered failure is an ordinary `jvmTest`
+failure, while a registered test passing or disappearing fails
+`checkExpectedTestFailures`. Never describe a red as expected only in prose, and
+never use wildcard selectors in the register.
+
 ## Autonomous Docs/Test Loop
 
 - Agents are expected to make code changes, API changes, documentation fixes, and test-runner fixes autonomously when the docs/test pipeline exposes a real problem.
