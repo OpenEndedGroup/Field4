@@ -41,6 +41,12 @@ fails, that is not a valid reason to skip `--with-playwright`,
 Use custom high ports for automation. Avoid the default `9092` unless you
 explicitly want to attach to a developer-owned Field.
 
+Incremental capture keys hash capture-affecting syntax from
+`public/docs_hooks.py`, not its diagnostic prose, logging calls, or
+failure-report-only helpers. Those helpers have focused Python tests; editing a
+post-mortem no longer invalidates every successful capture, while operational
+runner edits still change the key.
+
 Run the command matrix **serially within one checkout**. The smoke, UI, and docs
 entrypoints acquire `.field-backdoor/verification.lock`; if another supported
 verification command is active, they print its owner and wait with heartbeats.

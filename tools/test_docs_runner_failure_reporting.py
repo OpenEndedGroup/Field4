@@ -178,5 +178,46 @@ class BackdoorClientLogSelectionTests(unittest.TestCase):
         self.assertIsNone(self.picker._latest_backdoor_client_error())
 
 
+class RunnerDigestScopeTests(unittest.TestCase):
+    """Diagnostics must be testable without invalidating every successful capture."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.source = (Path(__file__).resolve().parent.parent / "public/docs_hooks.py").read_bytes()
+
+    def material(self, source: bytes) -> bytes:
+        return docs_hooks.runner_digest_material("public/docs_hooks.py", source)
+
+    def test_failure_report_wording_does_not_change_the_capture_digest(self):
+        changed = self.source.replace(
+            b"Both-sides-of-WebSocket diagnosis saved to",
+            b"Full capture diagnosis saved to",
+        )
+        self.assertNotEqual(changed, self.source)
+        self.assertEqual(self.material(changed), self.material(self.source))
+
+    def test_an_operational_log_line_does_not_change_the_capture_digest(self):
+        changed = self.source.replace(
+            b"Field docs runner mode: %s",
+            b"Field docs capture mode: %s",
+        )
+        self.assertNotEqual(changed, self.source)
+        self.assertEqual(self.material(changed), self.material(self.source))
+
+    def test_capture_affecting_code_still_changes_the_digest(self):
+        changed = self.source.replace(
+            b"DEFAULT_RUNNER_PORT = 9477",
+            b"DEFAULT_RUNNER_PORT = 9478",
+        )
+        self.assertNotEqual(changed, self.source)
+        self.assertNotEqual(self.material(changed), self.material(self.source))
+
+    def test_other_runner_files_remain_byte_sensitive(self):
+        self.assertNotEqual(
+            docs_hooks.runner_digest_material("tools/field_backdoor.py", b"before"),
+            docs_hooks.runner_digest_material("tools/field_backdoor.py", b"after"),
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

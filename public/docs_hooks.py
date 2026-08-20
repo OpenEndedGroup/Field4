@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import atexit
+import ast
 import hashlib
 import json
 import logging
@@ -241,6 +242,30 @@ RUNNER_DIGEST_SOURCE_FILES = (
     "tools/field_backdoor.py",
     "tools/run_field_tests.py",
 )
+# Successful capture bytes cannot depend on these helpers: they only count, explain, persist, or
+# summarize a failure after one has already occurred. The docs-hooks digest omits their AST so making
+# a post-mortem more useful does not force ~50 minutes of unrelated recaptures. Their own focused
+# Python tests remain the verification surface for diagnostic behavior.
+RUNNER_DIAGNOSTIC_ONLY_DEFINITIONS = frozenset({
+    "handle_capture_error",
+    "diagnose_capture_failure",
+    "_collect_jvm_crash_dumps",
+    "_remember_capture_child_pid",
+    "_error_lines_in",
+    "_backdoor_client_log_for_pid",
+    "_latest_backdoor_client_error",
+    "_save_failure_report",
+    "log_summary",
+    "tail_text",
+    "head_text",
+    "tail_inline_text",
+    "process_output_text",
+    "format_completed_failure_details",
+    "format_timeout_failure_details",
+    "cache_status_label",
+    "format_cache_reason",
+    "compare_cache_metadata",
+})
 
 
 @dataclass(frozen=True)
@@ -2818,6 +2843,51 @@ def path_is_relative_to(path: Path, parent: Path) -> bool:
         return False
 
 
+class _RunnerDigestNormalizer(ast.NodeTransformer):
+    """Keep capture-affecting Python semantics while discarding diagnostics and prose."""
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> Any:
+        if node.name in RUNNER_DIAGNOSTIC_ONLY_DEFINITIONS:
+            return None
+        return self.generic_visit(node)
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> Any:
+        if node.name in RUNNER_DIAGNOSTIC_ONLY_DEFINITIONS:
+            return None
+        return self.generic_visit(node)
+
+    def visit_Expr(self, node: ast.Expr) -> Any:
+        # Docstrings and standalone explanatory strings do not affect execution.
+        if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+            return None
+        # LOG calls are diagnostics even when embedded in an operational method. Their arguments are
+        # intentionally ignored too: computing text for a log must not become capture semantics.
+        if isinstance(node.value, ast.Call):
+            function = node.value.func
+            if (
+                isinstance(function, ast.Attribute)
+                and isinstance(function.value, ast.Name)
+                and function.value.id == "LOG"
+                and function.attr in {"debug", "info", "warning", "error", "exception"}
+            ):
+                return None
+        return self.generic_visit(node)
+
+
+def runner_digest_material(relative: str, data: bytes) -> bytes:
+    """Bytes hashed for one runner source, normalized only for the large Python hook module."""
+    if relative != "public/docs_hooks.py":
+        return data
+    try:
+        tree = ast.parse(data.decode("utf-8"), filename=relative)
+    except (UnicodeDecodeError, SyntaxError):
+        # Broken source must still invalidate every cache entry; the later import will report the
+        # useful syntax error. Falling back to raw bytes is safer than hiding an unparseable edit.
+        return data
+    normalized = _RunnerDigestNormalizer().visit(tree)
+    return ast.dump(normalized, annotate_fields=True, include_attributes=False).encode("utf-8")
+
+
 def compute_runner_source_digest(repo_root: Path) -> str:
     hasher = hashlib.sha256()
     for relative in RUNNER_DIGEST_SOURCE_FILES:
@@ -2829,7 +2899,7 @@ def compute_runner_source_digest(repo_root: Path) -> str:
         except FileNotFoundError:
             hasher.update(b"<missing>")
             continue
-        hasher.update(hashlib.sha256(data).digest())
+        hasher.update(hashlib.sha256(runner_digest_material(relative, data)).digest())
     return hasher.hexdigest()
 
 
