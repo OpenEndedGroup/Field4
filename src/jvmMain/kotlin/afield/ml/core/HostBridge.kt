@@ -521,10 +521,12 @@ object FieldMLHostBridge {
         val callable = if (executable is Method) invocable(executable) else executable
         callable.tryOpen()
         return try {
+            // No `else`: `java.lang.reflect.Executable` is sealed and permits exactly `Method` and
+            // `Constructor`, so a third kind cannot exist and a defensive branch here would only be
+            // unreachable code. If the JDK ever widens it, let this fail to compile.
             when (callable) {
                 is Constructor<*> -> callable.newInstance(*coerced)
                 is Method -> callable.invoke(target, *coerced)
-                else -> error("neither a method nor a constructor: $callable")
             }
         } catch (invocation: InvocationTargetException) {
             // The FieldML box should see what the Kotlin code complained about, not a wrapper.
