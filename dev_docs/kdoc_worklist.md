@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 5297 of 8810 public symbols in `afield.stdlib`, `afield.visualization` and `afield.four.synth` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 5300 of 8813 public symbols in `afield.stdlib`, `afield.visualization` and `afield.four.synth` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **466 undocumented entry points** (types, top-level functions and values) and 2802 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 

@@ -4,6 +4,7 @@ import afield.RunsAt
 import afield.H2ValueSnapshot
 import afield.newRoot
 import afield.registerH2Value
+import afield.facts
 import afield.registerValuePrinter
 import afield.four.buffers.*
 import afield.four.device.*
@@ -206,11 +207,17 @@ private fun name(v: String) = span(CLR_STR, "'${esc(v)}'")
 /** Format a vec3 compactly */
 private fun vec3(v: afield.stdlib.linalg.Vector3f) = "${span(CLR_NUM, "%.2f".format(v.x))}, ${span(CLR_NUM, "%.2f".format(v.y))}, ${span(CLR_NUM, "%.2f".format(v.z))}"
 
-private fun row(label: String, value: String) =
-    "<tr><td style='padding-right:8px;color:$CLR_DIM;white-space:nowrap'>$label</td><td>$value</td></tr>"
+// `row` and `table` now build a `facts` Table rather than `<tr><td style=…>` by hand. Their
+// signatures changed from String to Pair, which is what lets all ~120 `row("label", value)` call
+// sites in this file stay exactly as they were: a conditional row that used to collapse to "" is
+// now `null`, which `facts` drops.
+private fun row(label: String, value: String): Pair<String, String> = label to value
 
-private fun table(vararg rows: String) =
-    "<table style='border-collapse:collapse;margin:2px 0'>${ rows.joinToString("") }</table>"
+// The values in this file are already HTML — num(), badge(), cls(), vec3() all return coloured
+// spans — so the value column is formatted rather than escaped. `format` output is trusted, which
+// is the documented way to say "this cell is markup". Labels stay escaped: they are plain text.
+private fun table(vararg rows: Pair<String, String>?) =
+    facts(rows.asList()).format("value") { it?.toString() ?: "" }.toHTML()
 
 private fun badge(color: String, text: String) =
     "<span style='background:${color}22;color:$color;padding:0 4px;border-radius:3px;font-size:11px'>$text</span>"
@@ -533,7 +540,7 @@ fun registerFourVisualizers() {
             row("device", str(deviceName)),
             row("windows", num(windowCount)),
             row("swapchain", "${num(r.numImages)} images, current=${num(r.currentImage)}"),
-            sc?.let { row("extent", "${num(it.swapChainExtent.width())}×${num(it.swapChainExtent.height())}") } ?: "",
+            sc?.let { row("extent", "${num(it.swapChainExtent.width())}×${num(it.swapChainExtent.height())}") },
             row("upload", "${formatBytes(stats.totalBytes)} " + dim("(rec ${formatBytes(stats.recordedBytes)} + imm ${formatBytes(stats.immediateBytes)})"))
         )
     }
@@ -550,8 +557,8 @@ fun registerFourVisualizers() {
             row("distance", num(dist)),
             row("fov", num("%.1f°".format(proj.fov))),
             row("near / far", "${num("%.3f".format(proj.zNear))} / ${num("%.1f".format(proj.zFar))}"),
-            if (proj.orthoness > 0.0) row("orthoness", num("%.2f".format(proj.orthoness))) else "",
-            if (proj.ox != 0.0 || proj.oy != 0.0) row("offset", "${num("%.2f".format(proj.ox))}, ${num("%.2f".format(proj.oy))}") else ""
+            if (proj.orthoness > 0.0) row("orthoness", num("%.2f".format(proj.orthoness))) else null,
+            if (proj.ox != 0.0 || proj.oy != 0.0) row("offset", "${num("%.2f".format(proj.ox))}, ${num("%.2f".format(proj.oy))}") else null
         )
     }
 
@@ -635,10 +642,10 @@ fun registerFourVisualizers() {
             row("watermark", "${formatBytes(vb.watermark)} " + dim("/ ${formatBytes(vb.requestedSize)}")),
             if (vb.readWatermark >= 0 || vb.writeWatermark >= 0)
                 row("rw marks", "r=${formatBytes(vb.readWatermark)}  w=${formatBytes(vb.writeWatermark)}")
-            else "",
-            if (vb.gpuAddress > 0) row("devAddr", bool(true)) else "",
-            if (vb.cpuOnly) row("cpuOnly", bool(true)) else "",
-            if (vb.zeroBeforeComputation) row("zeroBefore", bool(true)) else ""
+            else null,
+            if (vb.gpuAddress > 0) row("devAddr", bool(true)) else null,
+            if (vb.cpuOnly) row("cpuOnly", bool(true)) else null,
+            if (vb.zeroBeforeComputation) row("zeroBefore", bool(true)) else null
         )
     }
 
@@ -670,7 +677,7 @@ fun registerFourVisualizers() {
             row("VertexBuffer", cls("VertexBuffer") + " " + badge("#6cf", formatBytes(vb.size))),
             row("usage", bufferUsageFlags(vb.usage)),
             row("watermark", "${num(vb.watermark)} " + if (dirty) badge("#f88", "dirty") else dim("clean")),
-            if (vb.cpu != null) row("cpu", badge("#af6", "mapped")) else ""
+            if (vb.cpu != null) row("cpu", badge("#af6", "mapped")) else null
         )
     }
 
@@ -707,7 +714,7 @@ fun registerFourVisualizers() {
             row("depthTest", bool(p.depthTest)),
             row("colors", "${num(p.color)} " + if (p.colorFormats.isNotEmpty()) dim(p.colorFormats.joinToString(",") { vkFormatName(it) }) else ""),
             row("imageFormat", badge("#fc8", vkFormatName(p.imageFormat))),
-            p.viewport?.let { row("viewport", "${num(it.x.toInt())},${num(it.y.toInt())} ${num(it.w.toInt())}×${num(it.h.toInt())}") } ?: ""
+            p.viewport?.let { row("viewport", "${num(it.x.toInt())},${num(it.y.toInt())} ${num(it.w.toInt())}×${num(it.h.toInt())}") }
         )
     }
 
@@ -720,7 +727,7 @@ fun registerFourVisualizers() {
             row("shaders", shaderBadges(vertex = m.parameters.vertex, fragment = m.parameters.fragment)),
             row("meshes", nameList(m.meshes.keys)),
             row("uniforms", nameList(m.liveUniformStructures.keys)),
-            if (m.pushConstantSize > 0) row("pushConst", "${num(m.pushConstantSize)}B") else ""
+            if (m.pushConstantSize > 0) row("pushConst", "${num(m.pushConstantSize)}B") else null
         )
     }
 
@@ -736,7 +743,7 @@ fun registerFourVisualizers() {
             row("shaders", shaderBadges(fragment = m.parameters.fragment, mesh = m.parameters.mesh, task = m.parameters.task)),
             row("meshes", nameList(m.meshes.keys)),
             row("uniforms", nameList(m.liveUniformStructures.keys)),
-            if (m.pushConstantSize > 0) row("pushConst", "${num(m.pushConstantSize)}B") else ""
+            if (m.pushConstantSize > 0) row("pushConst", "${num(m.pushConstantSize)}B") else null
         )
     }
 
@@ -752,7 +759,7 @@ fun registerFourVisualizers() {
             row("shaders", shaderBadges(compute = m.parameters.compute)),
             row("tasks", nameList(m.meshes.keys)),
             row("uniforms", nameList(m.liveUniformStructures.keys)),
-            if (m.pushConstantSize > 0) row("pushConst", "${num(m.pushConstantSize)}B") else "",
+            if (m.pushConstantSize > 0) row("pushConst", "${num(m.pushConstantSize)}B") else null,
             row("zeroBefore", if (m.zeroBefore.isEmpty()) dim("none") else nameList(m.zeroBefore.keys))
         )
     }
@@ -768,8 +775,8 @@ fun registerFourVisualizers() {
             row("triangles", num(m.numTriangle)),
             row("instances", num(m.instanceCount)),
             row("inputs", nameList(m.vn.keys)),
-            if (m.t != null) row("indexed", bool(true)) else "",
-            if (m.push.members.isNotEmpty()) row("pushConst", "${num(m.push.members.size)} members") else ""
+            if (m.t != null) row("indexed", bool(true)) else null,
+            if (m.push.members.isNotEmpty()) row("pushConst", "${num(m.push.members.size)} members") else null
         )
     }
 
@@ -806,7 +813,7 @@ fun registerFourVisualizers() {
             row("sampled", bool(p.colorSampled)),
             row("transferSrc", bool(p.colorTransferSrc)),
             row("transferDst", bool(p.colorTransferDst)),
-            if (p.mipLevels > 1) row("genMipmaps", bool(p.generateColorMipmaps)) else ""
+            if (p.mipLevels > 1) row("genMipmaps", bool(p.generateColorMipmaps)) else null
         )
     }
 
@@ -829,7 +836,7 @@ fun registerFourVisualizers() {
 
         val previewRow = if (preview != null) row("preview", preview)
                          else if (!hasTransferSrc) row("preview", dim("set colorTransferSrc=true to preview"))
-                         else ""
+                         else null
 
         table(
             row("RenderToTexture", cls("RenderToTexture") + " " + badge("#fc8", fmts)),
@@ -866,7 +873,7 @@ fun registerFourVisualizers() {
 
         val previewRow = if (preview != null) row("preview", preview)
                          else if (!hasTransferSrc) row("preview", dim("set colorTransferSrc=true to preview"))
-                         else ""
+                         else null
 
         table(
             row("MultiPingPongRTT", cls("MultiPingPongRTT") + " " + badge("#fc8", fmts)),

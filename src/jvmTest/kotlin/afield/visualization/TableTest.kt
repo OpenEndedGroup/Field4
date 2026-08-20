@@ -150,6 +150,56 @@ class TableTest {
     }
 
     @Test
+    fun `facts is a headerless label-value listing with muted labels`() {
+        val html = facts("triangles" to 1280, "watertight" to true).toHTML()
+        assertFalse("<thead" in html, "a label-value summary has no header worth showing:\n$html")
+        assertTrue("field-md-muted" in html, "labels are muted so it reads as a listing")
+        assertTrue("triangles" in html && "1280" in html && "true" in html, "the facts should be there")
+    }
+
+    @Test
+    fun `facts drops null pairs so a conditional fact needs no sentinel`() {
+        val t = facts("always" to 1, null, "also" to 2)
+        assertEquals(2, t.rows.size, "the null pair should be dropped, not rendered blank")
+        assertEquals(listOf<Any?>("also", 2), t.rows.last())
+    }
+
+    @Test
+    fun `facts is still a Table, so the rest of the vocabulary applies`() {
+        val html = facts("fast" to 12, "slow" to 40)
+            .bar("value")
+            .expect("value", because = "under budget") { (it as Int) < 30 }
+            .toHTML()
+        assertTrue("currentColor" in html, "bar() should work on a facts table")
+        assertTrue(CellRole.BAD.cssClass in html, "expect() should work on a facts table")
+        assertTrue("1 cell outside expectation" in html, "and its footnote")
+    }
+
+    @Test
+    fun `facts escapes values by default but a format opts a column into markup`() {
+        // The default: a value that looks like markup is shown, not interpreted.
+        val escaped = facts("at" to "<span style='color:red'>1.0</span>").toHTML()
+        assertTrue("&lt;span" in escaped, "an unformatted value must be escaped:\n$escaped")
+
+        // How a toHTML() whose values are already markup opts in — this is what FourVisualizers does.
+        val trusted = facts("at" to "<span style='color:red'>1.0</span>")
+            .format("value") { it?.toString() ?: "" }
+            .toHTML()
+        assertTrue("<span style='color:red'>" in trusted, "a formatted value is inserted as markup")
+        assertFalse("&lt;span" in trusted, "and is not double-escaped")
+    }
+
+    @Test
+    fun `showHeader off drops only the header, keeping the footnote and rows`() {
+        val t = Table(listOf("a", "b"), note = "a note").row(1, 2)
+        t.showHeader = false
+        val html = t.toHTML()
+        assertFalse("<thead" in html, "no header")
+        assertTrue("<tbody" in html && ">1<" in html, "rows survive")
+        assertTrue("a note" in html, "the footnote survives")
+    }
+
+    @Test
     fun `naming a column that does not exist fails loudly rather than doing nothing`() {
         val t = Table(listOf("builder", "calls")).row("a", 1)
         for (op in listOf<(Table) -> Unit>(

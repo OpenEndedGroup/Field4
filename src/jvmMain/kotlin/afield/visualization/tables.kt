@@ -105,6 +105,12 @@ class Table(
     /** How many rows to draw before eliding the tail. */
     var maxRows: Int = 64
 
+    /**
+     * Whether to draw the header row. A label→value summary built by [facts] has no header worth
+     * showing — "key" and "value" over two obvious columns is furniture — so that turns this off.
+     */
+    var showHeader: Boolean = true
+
     private val aligns = mutableMapOf<String, Align>()
     private val colors = mutableMapOf<String, String>()
     private val roles = mutableMapOf<String, CellRole>()
@@ -311,14 +317,16 @@ class Table(
         }
         append("<table style='border-collapse:collapse'>")
 
-        append("<thead><tr>")
-        header.forEachIndexed { c, name ->
-            append(
-                "<th style='padding:${padding(c)};color:$TABLE_MUTED;font-weight:normal;" +
-                    "text-align:${alignOf(name).css}'>${escapeTableHtml(name)}</th>"
-            )
+        if (showHeader) {
+            append("<thead><tr>")
+            header.forEachIndexed { c, name ->
+                append(
+                    "<th style='padding:${padding(c)};color:$TABLE_MUTED;font-weight:normal;" +
+                        "text-align:${alignOf(name).css}'>${escapeTableHtml(name)}</th>"
+                )
+            }
+            append("</tr></thead>")
         }
-        append("</tr></thead>")
 
         append("<tbody>")
         shown.forEachIndexed { r, row ->
@@ -384,6 +392,30 @@ fun table(vararg columns: Pair<String, List<Any?>>): Table {
     for (r in 0 until height) t.row(columns.map { it.second.getOrNull(r) })
     return t
 }
+
+/**
+ * A label→value summary, which is the commonest figure shape there is: what a `toHTML()` writes
+ * about its own object, what a probe reports, what sits beside a thumbnail.
+ *
+ * A headerless two-column [Table] with the labels muted — so it reads as a listing rather than a
+ * spreadsheet — and everything else a Table can do still applies: [Table.role] a value column,
+ * [Table.bar] a numeric one, [Table.expect] a claim about it.
+ *
+ * ```
+ * facts("triangles" to mesh.triangleCount, "watertight" to topo.isWatertight)
+ * ```
+ *
+ * A `null` pair is dropped, so a conditional fact can be written inline without a sentinel:
+ * `facts("volume".takeIf { watertight }?.let { it to v })`.
+ */
+fun facts(pairs: List<Pair<String, Any?>?>): Table =
+    Table(listOf("label", "value"))
+        .rows(pairs.filterNotNull().map { listOf(it.first, it.second) })
+        .role("label", CellRole.MUTED)
+        .also { it.showHeader = false }
+
+/** [facts] with the pairs written inline. */
+fun facts(vararg pairs: Pair<String, Any?>?): Table = facts(pairs.asList())
 
 /**
  * A [Table] over a list of records — a uniform list of data classes (columns from the primary

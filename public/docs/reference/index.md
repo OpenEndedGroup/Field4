@@ -4,7 +4,7 @@
 
 Field's standard library is large and, until now, invisible: the only ways to read it were to open the source or to already know the name you wanted. This section is a browsable map of it — every public declaration in `afield.stdlib`, `afield.visualization` and `afield.four.synth`, with the KDoc that sits next to it in the source.
 
-**8810 public symbols across 182 source files**, 5297 of them (60%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
+**8813 public symbols across 182 source files**, 5300 of them (60%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
 
 The "documented" column is the honest one: it is a coverage report on Field's own KDoc, not a claim about this page. Where a summary is blank the declaration has none yet.
 
@@ -18,7 +18,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [Imaging](imaging.md) | 6 | 255 | 209 (81%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 7 | 328 | 205 (62%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization) — plus the measurement layer every one of them makes its claims through, because "it produced pixels" is not evidence. |
 | [Function](function.md) | 12 | 422 | 306 (72%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
-| [Visualization](visualization.md) | 9 | 317 | 288 (90%) | Turning a value into something you can look at, without leaving the box. |
+| [Visualization](visualization.md) | 9 | 320 | 291 (90%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 25 | 1058 | 375 (35%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 17 | 750 | 315 (42%) | Musical time, as a value. |
 | [Audio](audio.md) | 12 | 688 | 149 (21%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
@@ -199,7 +199,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [Summaries.kt](polytopes.md#summaries-kt) | Polytopes | 58 | 43 | Small, plain data classes that reduce the library's big values to something worth reading. |  |
 | [Symmetry.kt](polytopes.md#symmetry-kt) | Polytopes | 32 | 17 | Symmetry as a combinatorial fact, and as something a solver can be asked for. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [synth.kt](synthesis.md#synth-kt) | Synthesis | 78 | 19 |  | [Making a sound in Field: every path there is](../sound_paths.md) |
-| [tables.kt](visualization.md#tables-kt) | Visualization | 32 | 32 | Tabular output — the structure, and the one renderer for it. | [Frames, and what a frame is](../animation_time_model.md), [How the popup decides](../how_the_popup_decides.md), [Keyboard shortcuts, and how to change them](../keybindings.md) |
+| [tables.kt](visualization.md#tables-kt) | Visualization | 35 | 35 | Tabular output — the structure, and the one renderer for it. | [Frames, and what a frame is](../animation_time_model.md), [How the popup decides](../how_the_popup_decides.md), [Keyboard shortcuts, and how to change them](../keybindings.md) |
 | [TidalPatterns.kt](patterns.md#tidalpatterns-kt) | Patterns | 170 | 35 |  | [Patterns: writing rhythm as a function of time](../pattern_language.md), [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md), [Sonic Pi](../sonic_pi.md) |
 | [timeseries.kt](math.md#timeseries-kt) | Math | 212 | 212 | Streaming, time-domain filters over `Float` signals — the sample-at-a-time counterpart to the frequency-domain code in `spectral.kt`. | [Timeseries examples](../timeseries_examples.md), [Spectral examples](../spectral_examples.md) |
 | [Topology.kt](polytopes.md#topology-kt) | Polytopes | 89 | 61 | The abstract incidence complex — the authoritative value in `afield.stdlib.polytope`, and the one layer that knows nothing about coordinates. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
