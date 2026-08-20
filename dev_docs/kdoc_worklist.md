@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 5224 of 8696 public symbols in `afield.stdlib`, `afield.visualization` and `afield.four.synth` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 5225 of 8697 public symbols in `afield.stdlib`, `afield.visualization` and `afield.four.synth` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **466 undocumented entry points** (types, top-level functions and values) and 2769 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -71,7 +71,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Conway.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Conway.kt) | Polytopes | polytope_examples | 0 | 5 | 64% |
 | [FaustBox.kt](../src/jvmMain/kotlin/afield/four/synth/FaustBox.kt) | Synthesis | faust | 0 | 4 | 73% |
 | [DoughDspSoundDocs.kt](../src/jvmMain/kotlin/afield/four/synth/DoughDspSoundDocs.kt) | Synthesis | dough_dsp_sound | 0 | 3 | 81% |
-| [stdlib.kt](../src/jvmMain/kotlin/afield/stdlib/stdlib.kt) | Workspace | box_code_pipeline, animation_time_model | 0 | 3 | 95% |
+| [stdlib.kt](../src/jvmMain/kotlin/afield/stdlib/stdlib.kt) | Workspace | box_code_pipeline, animation_time_model | 0 | 3 | 96% |
 | [FunctionRewritePattern.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionRewritePattern.kt) | Function | functions_examples | 0 | 2 | 84% |
 | [Canonical.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Canonical.kt) | Polytopes | polytope_examples | 0 | 2 | 95% |
 | [Realize.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Realize.kt) | Polytopes | polytope_examples | 0 | 1 | 93% |
