@@ -17,7 +17,7 @@ fails, that is not a valid reason to skip `--with-playwright`,
 | --- | --- | --- |
 | Kotlin/JVM compile check | `./gradlew compileKotlinJvm` | Source compiles without starting the full app UI. |
 | Complete compiler-warning audit | `./gradlew --no-daemon --rerun-tasks warningGates` | Force-compiles the JVM, JS, JVM-test, and standalone default-completion source sets so incremental caching cannot hide warnings. |
-| Deterministic repository check | `./gradlew check` | JVM/JS tests, generated-source drift guards, and Python tool tests pass without running benchmark/measurement fixtures. |
+| Deterministic repository check | `./gradlew check` | JVM/JS tests, documentation contracts, generated-source drift guards, and Python tool tests pass without running benchmark/measurement fixtures. |
 | Generated artifacts and documentation contracts before commit | `python3 tools/check_staged_generated_artifacts.py` | Selects every generated-artifact or citation/documentation guard affected by staged paths and rejects a worktree/index mismatch. Install it as the shared pre-commit hook with `python3 tools/install_git_hooks.py`. |
 | All artifact and documentation-contract guards | `python3 tools/check_staged_generated_artifacts.py --all` | Runs every registered guard with Gradle `--continue`, so independent failures are reported in one pass. |
 | Opt-in JVM measurements | `./gradlew jvmMeasurements -i` | Slow, non-asserting measurement fixtures regenerate publishable timing/search evidence. |
@@ -171,6 +171,11 @@ still fails through ordinary `jvmTest`.
 The register is intentionally empty while `main` has no accepted red. Wildcards
 are forbidden: each entry must name one test, explain why its failure remains
 intentional, and point to a repository document that owns the decision.
+
+Documentation-contract tests run through `citationGates`, which is a dependency
+of both `check` and `docsGates`. They are excluded from broad `jvmTest` so they run
+once, with their real Markdown, JavaScript, and build-script inputs declared;
+therefore a docs-only edit cannot inherit a stale JVM-test result.
 
 Add a `FIELD_TEST` when the behavior is primarily code/runtime correctness,
 example health, stdout/event assertions, or a simple capture connected to a

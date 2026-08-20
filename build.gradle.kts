@@ -1225,6 +1225,16 @@ val citationGuardTestClasses = listOf(
     "afield.server.ServerSurfaceLedgerTest",
 )
 
+// These tests read Markdown and JavaScript directly from the checkout. Keeping them inside the broad
+// jvmTest task lets a docs-only edit inherit an UP-TO-DATE result because Gradle sees no changed test
+// classpath. citationGates declares those non-classpath inputs below and is attached to `check`, so run
+// the contract tests there exactly once instead of making every docs edit rerun the entire JVM suite.
+jvmTestTask.configure {
+    filter {
+        citationGuardTestClasses.forEach(::excludeTestsMatching)
+    }
+}
+
 val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationGates") {
     group = "verification"
     description = "Runs the citation-contract guards without the rest of the JVM test suite."
@@ -1558,6 +1568,7 @@ tasks.named("check") {
     dependsOn("checkCompletionCorpusFixtures")
     dependsOn("checkAgentDemos")
     dependsOn(checkExpectedTestFailures)
+    dependsOn(citationGates)
 }
 
 // These documentation gates are attached to `check` with no ordering constraint, which means Gradle is free

@@ -34,6 +34,15 @@ class DocsGatesWiringTest {
             "docsGates no longer depends on the focused citationGates task",
         )
         assertTrue(
+            Regex("""tasks\.named\(\"check\"\)[\s\S]*?dependsOn\(citationGates\)""").containsMatchIn(build),
+            "check no longer depends on citationGates, so docs-only edits can inherit a stale jvmTest result",
+        )
+        assertTrue(
+            Regex("""jvmTestTask\.configure\s*\{[\s\S]*?citationGuardTestClasses\.forEach\(::excludeTestsMatching\)""")
+                .containsMatchIn(build),
+            "citation contract tests are no longer excluded from broad jvmTest and would execute twice",
+        )
+        assertTrue(
             "isFailOnNoMatchingTests = true" in build,
             "a misspelled citation test filter could become a green zero-test run",
         )
