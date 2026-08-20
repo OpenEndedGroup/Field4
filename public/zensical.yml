@@ -24,6 +24,7 @@ nav:
   - How Box Code Runs: box_code_pipeline.md
   - Frames, and What a Frame Is: animation_time_model.md
   - Building & Testing: building_and_testing.md
+  - What Field Exposes: server_surface.md
   - Reference:
     - What's Already in the Box: reference/index.md
     - Codebase Reference:

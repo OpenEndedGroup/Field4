@@ -11,6 +11,10 @@ powers three things you can use:
 - **The backdoor** — a command-line way for scripts and AI agents to drive a running
   Field: build documents, run code, capture output and errors, and take screenshots.
 
+The backdoor reaches Field over the same command channel Field's own editor uses, so anything
+it can do is, mechanically, something the channel can do. What guards that channel — and what
+does not — is [What Field Exposes, and What Stops It](server_surface.md).
+
 The documentation's executable capture fences use this machinery: Field builds and runs the
 example, then captures its real browser or native graphics output. A few reference images and
 component-specific test captures are maintained by their owning test or platform workflow instead.
