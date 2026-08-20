@@ -40,14 +40,32 @@ enum class Align { LEFT, RIGHT, CENTER }
 /** One cell that failed a [Table.expect] check: its row index, column name, value, and the reason given. */
 data class Deviation(val row: Int, val column: String, val value: Any?, val because: String?)
 
-/** Muted grey for headers, notes and elisions — the same `#888` the rest of value display uses. */
+/**
+ * Muted grey for headers, notes and elisions — the same `#888` the rest of value display uses.
+ *
+ * Still a hex literal, unlike [CellRole]. Moving these two defaults onto the `--field-*` tokens is
+ * the right end state and a small change, but it shifts the colour of every table already captured
+ * in the docs, so it wants its own pass rather than riding along with a figure.
+ */
 const val TABLE_MUTED: String = "#888"
 
-/** Default body text colour, matching `ValueVisualizer`'s wrapper. */
+/** Default body text colour, matching `ValueVisualizer`'s wrapper. See [TABLE_MUTED] on the hex. */
 const val TABLE_TEXT: String = "#ccc"
 
-/** Colour for cells that failed a [Table.expect] check (the last entry of [signalPalette]). */
-const val TABLE_WARN: String = "#ff7a9e"
+/**
+ * The semantic colour roles, shared with `markdown()`'s `{role:text}` spans — same six names, same
+ * `field-md-*` classes, so the same `--field-*` design token backs both. A cell that means "good"
+ * and a markdown span that means "good" are therefore the same colour by construction, and neither
+ * spells a hex literal.
+ */
+enum class CellRole(internal val cssClass: String) {
+    ACCENT("field-md-accent"),
+    MUTED("field-md-muted"),
+    DIM("field-md-dim"),
+    OK("field-md-ok"),
+    WARN("field-md-warn"),
+    BAD("field-md-bad"),
+}
 
 /**
  * Rows, columns, and the claims made about them.
@@ -89,6 +107,8 @@ class Table(
 
     private val aligns = mutableMapOf<String, Align>()
     private val colors = mutableMapOf<String, String>()
+    private val roles = mutableMapOf<String, CellRole>()
+    private val roleFns = mutableMapOf<String, (Any?) -> CellRole?>()
     private val formats = mutableMapOf<String, (Any?) -> String>()
     private val checks = mutableListOf<Triple<String?, String?, (Int, String, Any?) -> Boolean>>()
 
@@ -131,6 +151,17 @@ class Table(
         columns.forEachIndexed { i, c -> color(c, signalPalette[i % signalPalette.size]) }
     }
 
+    /** Gives a column's cells a semantic [CellRole] instead of a colour. */
+    fun role(column: String, role: CellRole): Table = apply { roles[header[columnIndex(column)]] = role }
+
+    /**
+     * Gives each cell of a column a [CellRole] chosen from its value — the per-*cell* counterpart of
+     * [color], for a column that means something different row by row (ran / did not run, converged
+     * / diverged). Return null to leave a cell alone.
+     */
+    fun roleBy(column: String, role: (Any?) -> CellRole?): Table =
+        apply { roleFns[header[columnIndex(column)]] = role }
+
     /**
      * Formats a column's cells. The returned string is **trusted HTML** and is not escaped, which is
      * how a cell gets a link, a unit, or a nested fragment; escape it yourself if it came from
@@ -140,7 +171,7 @@ class Table(
         apply { formats[header[columnIndex(column)]] = format }
 
     /**
-     * States a claim about one column: cells for which [ok] is false render in [TABLE_WARN], gain a
+     * States a claim about one column: cells for which [ok] is false take [CellRole.BAD], gain a
      * tooltip, are counted in the footnote, and appear in [deviations].
      */
     fun expect(column: String, because: String? = null, ok: (Any?) -> Boolean): Table {
@@ -180,6 +211,16 @@ class Table(
             }
         }
         return null
+    }
+
+    /**
+     * The role a cell carries: a failed [expect] outranks everything, then [roleBy], then [role].
+     * Takes [failed] rather than re-deriving it, so the checks run once per cell and not twice.
+     */
+    private fun roleOf(column: String, value: Any?, failed: Boolean): CellRole? {
+        if (failed) return CellRole.BAD
+        roleFns[column]?.invoke(value)?.let { return it }
+        return roles[column]
     }
 
     private fun alignOf(column: String): Align = aligns[column] ?: run {
@@ -248,9 +289,11 @@ class Table(
             append("<tr>")
             header.forEachIndexed { c, name ->
                 val why = failure(r, name, row[c])
-                val color = if (why != null) TABLE_WARN else colors[name]
-                append("<td style='padding:${padding(c)};text-align:${alignOf(name).css}")
-                color?.let { append(";color:$it") }
+                val role = roleOf(name, row[c], failed = why != null)
+                append("<td")
+                role?.let { append(" class='${it.cssClass}'") }
+                append(" style='padding:${padding(c)};text-align:${alignOf(name).css}")
+                if (role == null) colors[name]?.let { append(";color:$it") }
                 append("'")
                 why?.let { append(" title='${escapeTableHtml(it)}'") }
                 append(">")

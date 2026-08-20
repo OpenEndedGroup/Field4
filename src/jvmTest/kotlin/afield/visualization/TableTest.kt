@@ -69,7 +69,7 @@ class TableTest {
         assertEquals(Deviation(1, "frameNumber", 3, "one frame per pump"), t.deviations.single())
 
         val html = t.toHTML()
-        assertTrue(TABLE_WARN in html, "the failing cell should carry the warn colour")
+        assertTrue(CellRole.BAD.cssClass in html, "the failing cell should carry the bad role")
         assertTrue("one frame per pump" in html, "the reason should reach the tooltip")
         assertTrue(
             "1 cell outside expectation" in html,
@@ -84,8 +84,28 @@ class TableTest {
         val html = t.toHTML()
         assertTrue(t.deviations.isEmpty(), "no deviations expected")
         assertFalse("outside expectation" in html, "a satisfied claim adds nothing to the footnote")
-        assertFalse(TABLE_WARN in html, "nothing should be coloured as a failure")
+        assertFalse(CellRole.BAD.cssClass in html, "nothing should be marked as a failure")
         assertTrue("every builder advanced one frame per pump" in html, "the note survives verbatim")
+    }
+
+    @Test
+    fun `a role becomes a shared css class, not a hex literal, and expect outranks it`() {
+        val t = Table(listOf("ran", "n"))
+            .row(true, 1)
+            .row(false, 2)
+            .roleBy("ran") { if (it == true) CellRole.OK else CellRole.BAD }
+            .role("n", CellRole.MUTED)
+            .format("ran") { if (it == true) "yes" else "no" }
+        val html = t.toHTML()
+        assertTrue("field-md-ok" in html && "field-md-bad" in html, "both roles should render:\n$html")
+        assertTrue("field-md-muted" in html, "a whole-column role should render")
+        assertFalse("#" in html.substringAfter("<tbody>").substringBefore("</tbody>"), "no hex in the cells")
+
+        // A failed expect outranks a roleBy that says OK.
+        val claimed = Table(listOf("ran")).row(true)
+            .roleBy("ran") { CellRole.OK }
+            .expect("ran") { false }
+        assertTrue(CellRole.BAD.cssClass in claimed.toHTML(), "expect must win over roleBy")
     }
 
     @Test
@@ -96,6 +116,8 @@ class TableTest {
             { it.color("clals", "#fff") },
             { it.format("clals") { "x" } },
             { it.expect("clals") { true } },
+            { it.role("clals", CellRole.OK) },
+            { it.roleBy("clals") { CellRole.OK } },
         )) {
             val e = assertFailsWith<IllegalArgumentException> { op(t) }
             assertTrue(

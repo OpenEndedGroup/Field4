@@ -200,7 +200,7 @@ Two of those differ in a way you can measure, and the difference is one body cal
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-class Result(val how: String, val extraBodyCalls: String, val endBlockRan: Boolean, val note: String)
+class Result(val how: String, val extraBodyCalls: Int, val endBlockRan: Boolean, val note: String)
 
 // Each probe runs a frame body for three pumps, requests a stop, then pumps six more times and
 // reports what the body did afterwards. These are the stops box code can stage for itself; the
@@ -221,7 +221,7 @@ fun probe(
     val atRequest = calls
     request(f, job)
     repeat(6) { framer.frame() }
-    return Result(how, "${calls - atRequest}", cleaned, note)
+    return Result(how, calls - atRequest, cleaned, note)
 }
 
 val results = listOf(
@@ -239,20 +239,24 @@ val results = listOf(
         { c -> frames { repeat(2) { c(); frame() } } }, { _, _ -> }),
 )
 
-fun cell(v: Any, colour: String = "#c3ccd9", align: String = "left") =
-    "<td style='padding:3px 16px 3px 0;text-align:$align;color:$colour'>$v</td>"
+// `roleBy` rather than a hex literal: OK/BAD are the same `--field-*` tokens `markdown()`'s
+// `{ok:…}` spans use, so this column agrees with every other "ran / did not run" in the docs.
+showTable(
+    Table(listOf("how the Frames stopped", "further body calls", ".end { } ran", "why"))
+        .rows(results.map { listOf(it.how, it.extraBodyCalls, it.endBlockRan, it.note) })
+        .accent("further body calls")
+        .color("why", TABLE_MUTED)
+        // WARN, not BAD: two of these rows are correct completion behaviour, not errors — the
+        // figure wants a reader to notice them, not to read them as a failure.
+        .roleBy(".end { } ran") { if (it == true) CellRole.OK else CellRole.WARN }
+        .format(".end { } ran") { if (it == true) "yes" else "no" },
+    channel = "main",
+)
 
-display("main", """
-<table style='color:#c3ccd9;font:12px monospace;border-collapse:collapse'>
-  <tr>${listOf("how the Frames stopped", "further body calls", ".end { } ran", "why")
-      .joinToString("") { cell(it, "#7f8c9b") }}</tr>
-  ${results.joinToString("") { r ->
-      "<tr>" + cell(r.how) + cell(r.extraBodyCalls, "#7ad9ff", "right") +
-      cell(if (r.endBlockRan) "yes" else "no", if (r.endBlockRan) "#8fff9a" else "#ff9e4a") +
-      cell(r.note, "#7f8c9b") + "</tr>"
-  }}
-</table>
-""")
+// The two claims the paragraphs below make, as assertions rather than as prose a reader has to
+// check against the figure by eye.
+check(results.count { it.extraBodyCalls > 0 } == 1) { "only shouldend should cost a further body call" }
+check(results.count { it.endBlockRan } == 3) { ".end { } should run for the three cancellation cases" }
 ```
 
 ![A table of five ways a Frames stops, showing that flipping shouldend costs one further body call while cancelling the Job costs none, and that the .end block runs for the three cancellation cases and not for the two completion cases](assets/animation_time_model/stopping.png)
