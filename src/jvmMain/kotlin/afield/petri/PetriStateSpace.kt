@@ -1040,6 +1040,20 @@ private class PetriArcIndex(net: PetriNet) {
         }
     }
 
+    /** Transitions with a READ input arc on this place — they need its count up and do not lower it. */
+    val readers: Map<String, List<PetriTransition>> = net.places.associate { place ->
+        place.name to net.transitions.filter { transition ->
+            transition.inputs.any { it.place == place.name && it.kind == PetriArcKind.READ }
+        }
+    }
+
+    /** Transitions with an INHIBIT input arc on this place — raising its count blocks them. */
+    val inhibitors: Map<String, List<PetriTransition>> = net.places.associate { place ->
+        place.name to net.transitions.filter { transition ->
+            transition.inputs.any { it.place == place.name && it.kind == PetriArcKind.INHIBIT }
+        }
+    }
+
     /** Transitions with an output arc on this place — they can raise its count. */
     val producers: Map<String, List<PetriTransition>> = net.places.associate { place ->
         place.name to net.transitions.filter { transition -> transition.outputs.any { it.place == place.name } }
@@ -1095,6 +1109,48 @@ private class PetriArcIndex(net: PetriNet) {
     }
 
     /**
+     * Everything [transition] could itself stop from being enabled — the *other* direction, and the
+     * one a plain place/transition net lets you leave out.
+     *
+     * A stubborn set has to be closed under both directions. [mayDisable] buys the classical D2 (the
+     * key transition survives anything fired from outside the set); this buys D1, which needs a
+     * member that fires to leave the outside firing sequence still fireable. In a plain net that is
+     * free, and that is exactly why it is easy to omit: "t disables t'" there means they share an
+     * input place, which means t' consumes from `•t`, which means [mayDisable] already named it. The
+     * relation is symmetric and one call does both jobs.
+     *
+     * It is **not** symmetric here, and each asymmetry was a real missed deadlock before this
+     * function existed:
+     *
+     * - t consumes p and t' merely **reads** p. [consumers] is filtered to `NORMAL`, so `mayDisable`
+     *   never named t' — but draining p below t's read weight disables it just the same.
+     * - t **produces** into r and t' **inhibits** on r. `mayDisable` reads a transition's inputs, so
+     *   it cannot see t's outputs — but arming r disables t'.
+     *
+     * Capacity is the one case that was already symmetric: `fills` → [producers] names everybody
+     * writing to a capped place, and filling it is how they disable each other, in both directions.
+     *
+     * The counterexamples are pinned in `PetriReductionFuzzTest`, which is also where they came from:
+     * a generated net whose reduced search called a net deadlock-free that the full search wedges.
+     */
+    fun mayBeDisabledBy(transition: PetriTransition): List<PetriTransition> = buildList {
+        for (arc in transition.inputs) {
+            if (arc.kind != PetriArcKind.NORMAL) continue
+            // Consuming from a place starves everyone who needs tokens there, including the ones who
+            // only look. `consumers` is already reached via mayDisable's symmetric half; `readers` is
+            // not reachable any other way.
+            readers[arc.place]?.let { addAll(it) }
+        }
+        for (arc in transition.outputs) {
+            inhibitors[arc.place]?.let { addAll(it) }
+            // A capped place this writes to can be filled to the brim, which disables everyone else
+            // writing to it. Already in `mayDisable` via `fills`, and repeated here so that reading
+            // either function alone gives the whole of one direction.
+            if (fills[transition.name].orEmpty().containsKey(arc.place)) producers[arc.place]?.let { addAll(it) }
+        }
+    }
+
+    /**
      * One reason [transition] cannot fire at [marking], expressed as the transitions that could
      * remove that reason — or null when no single arc explains it, in which case the caller must
      * not reduce.
@@ -1126,9 +1182,15 @@ private class PetriArcIndex(net: PetriNet) {
  * reduced safely here.
  *
  * The closure: seed with one enabled transition; for every enabled member add everything that could
- * disable it, for every disabled member add everything that could remove one specific reason it is
- * blocked, and repeat. The result is a strong stubborn set containing at least one enabled
- * transition, which is exactly the hypothesis of the deadlock-preservation theorem.
+ * disable it *and everything it could disable*, for every disabled member add everything that could
+ * remove one specific reason it is blocked, and repeat. The result is a strong stubborn set
+ * containing at least one enabled transition, which is exactly the hypothesis of the
+ * deadlock-preservation theorem.
+ *
+ * Both directions on an enabled member, and the second one is not decoration: it is Valmari's D1,
+ * and it is free in a plain place/transition net and not free here. See
+ * [PetriArcIndex.mayBeDisabledBy], which exists because a randomised differential fuzz found a
+ * generated net this search called deadlock-free and the full search wedges.
  *
  * Every enabled transition is tried as the seed and the smallest answer wins, because the reduction
  * is only worth its cost when the set it finds is small and which seed produces the small one is not
@@ -1152,7 +1214,7 @@ private fun PetriNet.stubbornEnabled(
         while (work.isNotEmpty()) {
             val transition = work.removeFirst()
             val more = if (transition.name in enabledNames) {
-                index.mayDisable(transition)
+                index.mayDisable(transition) + index.mayBeDisabledBy(transition)
             } else {
                 index.mayEnable(transition, marking, this) ?: run { usable = false; null }
             } ?: break
