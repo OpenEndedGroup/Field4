@@ -31,6 +31,7 @@ fails, that is not a valid reason to skip `--with-playwright`,
 | Docs incremental captures | `FIELD_DOCS_RUNNER_MODE=incremental FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py` | Changed/missing examples recapture through Field. |
 | Docs strict recapture | `FIELD_DOCS_RUNNER_MODE=strict FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py` | Runner/API changes invalidate cached captures. |
 | Full docs recapture | `FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py --clean` | Every docs screenshot/video is regenerated. |
+| Capture freshness audit | `uv run --project . --group docs python tools/docs_capture_audit.py --repeat 2` | Separates identical/jitter, reproducible layout reflow, stale renders, and nondeterministic captures; `layout` remains a failing, non-adoptable verdict. |
 | Offline asset check | `uv run python tools/check_offline_assets.py` | Canonical offline viewer assets are present and generated copies are not tracked. |
 | Field Audio core | `./gradlew fieldAudioCoreTest fieldAudioDocsCheck` | Opt-in service tests and contract drift check; no worker environment or model checkpoint. |
 | Field Audio analysis | `./gradlew fieldAudioAnalysisTest` | Opt-in Python 3.10 librosa/Basic Pitch environment and import check. |

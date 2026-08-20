@@ -104,6 +104,14 @@ DEFAULT_VIDEO_MIN_SSIM = 0.995
 # The lower edge of the band where the same doc saw genuine re-renders. Only used to label a
 # delta in the report ("grey zone" between the noise floor and a confident re-render).
 DRIFT_PX_PCT = 0.25
+# A deterministic layout reflow can move tens of thousands of pixels while preserving almost all
+# rendered material. Measure that separately by comparing quantized RGB histograms (position-free):
+# the retained 2026-08-01 visualizers-imaging-panels evidence moved 3.0405% of spatial pixels but only
+# 0.0265% of its color mass, a ratio below 0.009. Keep the class deliberately strict and failing — it
+# says "same material appears to have moved", not "safe to publish without looking".
+LAYOUT_PALETTE_QUANTUM = 8
+LAYOUT_MAX_PALETTE_PX_PCT = 0.1
+LAYOUT_MAX_PALETTE_TO_SPATIAL_RATIO = 0.05
 
 PIXEL_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
 # First-frame-only for Pillow; flagged in the note so nobody reads a clean animation as proof.
@@ -129,6 +137,7 @@ class Delta:
     changed_px: int = 0
     all_changed_px_pct: float = 0.0  # including the sub-perceptual floor, for diagnosis only
     max_delta: int = 0
+    palette_changed_px_pct: float | None = None  # quantized RGB mass changed, ignoring position
     old_size: tuple[int, int] | None = None
     new_size: tuple[int, int] | None = None
     old_bytes: int = 0
@@ -150,7 +159,11 @@ class Delta:
             extra = ""
             if self.all_changed_px_pct > self.changed_px_pct + 0.005:
                 extra = f" ({self.all_changed_px_pct:.2f}% incl. the sub-perceptual floor)"
-            return f"{self.changed_px_pct:.4f}% px changed, maxΔ{self.max_delta}{extra}"
+            palette = (
+                f", paletteΔ{self.palette_changed_px_pct:.4f}%"
+                if self.palette_changed_px_pct is not None else ""
+            )
+            return f"{self.changed_px_pct:.4f}% px changed, maxΔ{self.max_delta}{palette}{extra}"
         if self.kind == "text":
             return f"{self.text_lines_changed} line(s) changed"
         if self.kind == "binary":
@@ -401,12 +414,41 @@ def compare_images(old: bytes, new: bytes, *, ignore_delta: int = DEFAULT_IGNORE
     all_changed = total - histogram[0]
     changed = sum(histogram[ignore_delta + 1 :])
     max_delta = max((value for value, count in enumerate(histogram) if count), default=0)
+    palette_changed_px_pct = None
+    if changed >= MIN_SIGNAL_PX and max_delta > DEFAULT_JITTER_DELTA:
+        # Only compute this comparatively expensive structural diagnostic for a signal already
+        # outside the measured AA/raster noise band. Each 5-bit RGB bucket counts how much rendered
+        # color exists, regardless of where it landed; half the L1 histogram distance is the minimum
+        # number of pixels whose color cannot be explained by relocation alone.
+        def palette_histogram(image: Any) -> list[int]:
+            counts = [0] * (32 * 32 * 32)
+            # Pillow 12.1 renamed getdata() to get_flattened_data(); Field's ordinary Python gate
+            # intentionally also supports the older ambient Pillow used by lightweight checkouts.
+            pixels = (
+                image.get_flattened_data()
+                if hasattr(image, "get_flattened_data")
+                else image.getdata()
+            )
+            for red, green, blue in pixels:
+                bucket = (
+                    (red // LAYOUT_PALETTE_QUANTUM) * 32 * 32
+                    + (green // LAYOUT_PALETTE_QUANTUM) * 32
+                    + blue // LAYOUT_PALETTE_QUANTUM
+                )
+                counts[bucket] += 1
+            return counts
+
+        old_palette = palette_histogram(old_rgb)
+        new_palette = palette_histogram(new_rgb)
+        unmatched = sum(abs(a - b) for a, b in zip(old_palette, new_palette)) / 2
+        palette_changed_px_pct = 100.0 * unmatched / total
     return Delta(
         "identical" if all_changed == 0 else "pixel",
         changed_px_pct=100.0 * changed / total,
         changed_px=changed,
         all_changed_px_pct=100.0 * all_changed / total,
         max_delta=max_delta,
+        palette_changed_px_pct=palette_changed_px_pct,
         old_size=old_size,
         new_size=new_size,
     )
@@ -431,6 +473,7 @@ VERDICT_ORDER = (
     "stale-size",
     "stale-text",
     "stale-binary",
+    "layout",
     "suspect",
     "unknown-failed",
     "nondeterministic",
@@ -507,6 +550,17 @@ def classify(
         band = "above the noise band" if drift.changed_px_pct < DRIFT_PX_PCT else "a different render"
         return "suspect", f"{band} on a single run ({drift.summary()}); re-run with --repeat 2 to confirm"
     if not unstable:
+        palette_delta = drift.palette_changed_px_pct
+        if (
+            palette_delta is not None
+            and palette_delta <= LAYOUT_MAX_PALETTE_PX_PCT
+            and palette_delta
+            <= LAYOUT_MAX_PALETTE_TO_SPATIAL_RATIO * max(drift.changed_px_pct, 1e-9)
+        ):
+            return "layout", (
+                "reproducible spatial reflow with nearly unchanged rendered color mass "
+                f"({drift.summary()})"
+            )
         return "stale", f"reproducible re-render disagreeing with the committed asset ({drift.summary()})"
     if self_delta.kind != "pixel":
         # The two runs differ in KIND (one changed size, say), so there is no ratio to take. The
@@ -1327,7 +1381,10 @@ def adopt_stale(report: dict[str, Any]) -> int:
         shutil.copy2(source, destination)
         adopted += 1
         print(f"  adopted {item['asset']} ({item['why']})")
-    print(f"[audit] adopted {adopted} stale asset(s); jitter and nondeterministic captures left alone.")
+    print(
+        f"[audit] adopted {adopted} stale asset(s); layout, jitter and nondeterministic "
+        "captures left alone."
+    )
     print("[audit] LOOK at each one before committing — `stale` means this environment does not")
     print("        reproduce the committed asset, which can be a code change OR a capture-environment change.")
     return adopted
@@ -1335,6 +1392,7 @@ def adopt_stale(report: dict[str, Any]) -> int:
 
 FAILING_VERDICTS = (
     "stale",
+    "layout",
     "suspect",
     "unknown-failed",
     "nondeterministic",

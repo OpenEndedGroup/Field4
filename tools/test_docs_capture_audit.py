@@ -113,6 +113,25 @@ class StaleVersusNondeterministicTests(unittest.TestCase):
     def test_single_run_cannot_confirm(self) -> None:
         self.assertEqual(verdict(pixel(2.25, 249)), "suspect")
 
+    def test_historical_deterministic_panel_reflow_has_its_own_failing_class(self) -> None:
+        # visualizers-imaging-panels.png on 2026-08-01: the pixels moved by 3.0405%, but the
+        # position-free quantized palette changed by only 0.0265%. It was the concrete #26 false
+        # `stale` that forced an operator to compare every number and panel by eye.
+        reflow = pixel(3.0405, 249)
+        reflow.palette_changed_px_pct = 0.0265
+        self.assertEqual(
+            verdict(reflow, other=reflow, self_delta=Delta("identical")),
+            "layout",
+        )
+
+    def test_a_different_render_is_not_laundered_as_layout(self) -> None:
+        changed = pixel(3.0405, 249)
+        changed.palette_changed_px_pct = 0.8
+        self.assertEqual(
+            verdict(changed, other=changed, self_delta=Delta("identical")),
+            "stale",
+        )
+
 
 class OtherSignalTests(unittest.TestCase):
     def test_output_height_change_is_its_own_signal(self) -> None:
@@ -222,6 +241,29 @@ class SubPerceptualFloorTests(unittest.TestCase):
         self.assertEqual(delta.max_delta, 250)
         self.assertFalse(delta.within(px_pct=DEFAULT_JITTER_PX_PCT, max_delta=DEFAULT_JITTER_DELTA))
 
+    def test_palette_distance_recognises_relocated_rendered_material(self) -> None:
+        from PIL import Image, ImageDraw
+
+        base = Image.new("RGB", (200, 100), (0, 0, 0))
+        shifted = base.copy()
+        ImageDraw.Draw(base).rectangle((20, 20, 80, 60), fill=(220, 180, 30))
+        ImageDraw.Draw(shifted).rectangle((27, 20, 87, 60), fill=(220, 180, 30))
+        buffers = []
+        for image in (base, shifted):
+            import io
+
+            handle = io.BytesIO()
+            image.save(handle, format="PNG")
+            buffers.append(handle.getvalue())
+
+        delta = compare_images(buffers[0], buffers[1])
+        self.assertGreater(delta.changed_px_pct, 1.0)
+        self.assertEqual(delta.palette_changed_px_pct, 0.0)
+        self.assertEqual(
+            verdict(delta, other=delta, self_delta=Delta("identical")),
+            "layout",
+        )
+
     def test_a_handful_of_pixels_is_not_a_changed_figure(self) -> None:
         stray = Delta("pixel", changed_px_pct=0.0001, changed_px=MIN_SIGNAL_PX - 1, max_delta=250)
         self.assertTrue(stray.within(px_pct=DEFAULT_JITTER_PX_PCT, max_delta=DEFAULT_JITTER_DELTA))
@@ -316,7 +358,7 @@ class ExitCodeTests(unittest.TestCase):
         self.assertEqual(failing_exit_code({"counts": {"unknown-failed": 1, "jitter": 4}}), 1)
 
     def test_stale_and_suspect_fail_the_gate(self) -> None:
-        for verdict in ("stale", "stale-size", "stale-text", "stale-binary", "suspect"):
+        for verdict in ("stale", "stale-size", "stale-text", "stale-binary", "layout", "suspect"):
             self.assertEqual(failing_exit_code({"counts": {verdict: 1}}), 1, verdict)
 
     def test_run_to_run_disagreement_fails_the_gate(self) -> None:
