@@ -566,13 +566,15 @@ class PetriStateSpaceTest {
         // replays the old behaviour beside the new one on the nets those boxes build. If it ever
         // starts differing, that is a fact somebody needs to be told rather than discover.
         //
-        // `maxUnroll` is capped at 20 000 rather than left at the default 200 000, and the reason is
-        // itself part of the argument: replaying the old behaviour at its real ceiling exhausts the
-        // heap when this runs inside the full suite. `PetriRun` keeps every step and `PetriMarking.add`
-        // copies a place's token list, so a long replay costs quadratic memory — which is exactly the
-        // trap the fix removes from `report()`. So this proves the narrower, affordable claim: no
-        // transition in these nets first fires between `within` and 20 000 steps, so nothing the
-        // document prints moves.
+        // `maxUnroll` is capped at 20 000 rather than left at the default 200 000, so what this
+        // proves is the narrower claim: no transition in these nets first fires between `within` and
+        // twenty thousand steps, so nothing the document prints moves.
+        //
+        // The cap was originally there because the replay *could not be afforded* — a marking per
+        // step, each copying a place's token list, cost quadratic memory and exhausted the heap
+        // inside the full suite. Markings now share their token storage (see [SharedTokenList]), so
+        // the ceiling is affordable in memory and the cap survives only to keep this test off nine
+        // extra seconds of replay. It is a budget now, not a workaround.
         fun before(net: PetriNet, within: Int): List<String> {
             val run = net.run(maxUnroll = 20_000)
             run.lasso(within)
