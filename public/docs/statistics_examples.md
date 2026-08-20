@@ -150,7 +150,7 @@ val svgs = listOf(
     histogramToSvg(buildHistogram(skewed), widthPx = 470, heightPx = 270, padTop = 26, title = "exp(0.6 g), n=500", decimals = 3),
     histogramToSvg(buildHistogram(bimodal), widthPx = 470, heightPx = 270, padTop = 26, title = "two modes at -2 and +2, n=500", decimals = 3),
 )
-display("histograms", "<div style='display:flex;gap:12px'>" + svgs.joinToString("") { "<div>$it</div>" } + "</div>")
+showRow("histograms", svgs)
 markdown("the rule, re-derived", """
     {muted:$skewedNote}
 
@@ -590,7 +590,7 @@ val svgs = listOf(
         title = "after the warp: skew ${"%.3f".format(after.skewness)}",
     ),
 )
-display("distributions", "<div style='display:flex;gap:12px'>" + svgs.joinToString("") { "<div>$it</div>" } + "</div>")
+showRow("distributions", svgs)
 // before/after over the same four moments: a table says it in a quarter of the characters.
 markdown("numbers", """
     | held-out | mean | sd | skew | excess kurtosis |

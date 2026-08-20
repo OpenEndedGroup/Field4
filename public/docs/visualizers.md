@@ -328,10 +328,11 @@ tags: [docs, visualizers, imaging, cv]
 timeoutSec: 90
 waitSec: 1.5
 # Measured, not guessed: the captured output pane sizes itself to its CONTENT, not to the
-# box frame — setting w/h here moved the box but not the pane. So the row is `nowrap` and
-# holds four panels (~1440px); a fifth ran off the right edge of the capture, and a
-# `flex-wrap:wrap` row collapsed to one panel per line because the intrinsic width is then
-# small. ComponentLabelling has its own figure above, so four is the honest fit.
+# box frame — setting w/h here moved the box but not the pane. `showRow` lays the panels out
+# with `:::row`, which is a grid of equal-width columns (grid-auto-flow:column, 1fr) and
+# never wraps, so the wrap-collapse the hand-rolled flex row had to avoid cannot happen here.
+# The columns still share the width, so four panels is the count that stays readable, and
+# ComponentLabelling has its own figure above.
 w: 1120
 h: 420
 expect:
@@ -356,16 +357,15 @@ val scene = Img.generateRGB(180, 132) { x, y ->
 }
 val gray = scene.luma()
 
-// Four stages of one pipeline, four different value types, one `.h` each. A flex row
-// keeps them in a single output channel instead of four tall ones.
+// Four stages of one pipeline, four different value types, one `.h` each. showRow keeps
+// them in a single output channel instead of four tall ones.
 val panels = listOf(
     scene.h,                                                // direct mode, 3 channels
     gray.sobel().dx.h,                                      // signed -> coolwarm diverging
     gray.gaussianPyramid(4).h,                              // rungs at true relative scale
     gray.harrisCorners(minDistance = 6, maxCount = 20).h    // scatter, strength-coded
 )
-display("panels", "<div style='display:flex;gap:14px;flex-wrap:nowrap;align-items:flex-start'>" +
-    panels.joinToString("") + "</div>")
+showRow("panels", panels)
 
 println("imaging visualizers ready")
 ```
