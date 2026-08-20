@@ -249,9 +249,20 @@ class FieldApiCorsExposureTest {
     }
 
     /**
-     * WebSockets are their own exposure surface: CORS does not govern an upgrade, and the
-     * HTTP interceptor deliberately skips GET. The two command handlers therefore apply
-     * the shared origin policy inside their upgrades; the notification-only channel stays open.
+     * WebSockets are their own exposure surface: CORS does not govern an upgrade, and the HTTP
+     * interceptor deliberately stands aside for one. The two command handlers therefore apply the
+     * shared origin policy inside their upgrades; the notification-only channel stays open.
+     *
+     * **Re-measured 2026-08-20.** The interceptor used to stand aside by skipping `GET`/`HEAD`
+     * wholesale, and this test pinned that literal as its proof. That blanket skip *was* the read
+     * gap — a foreign origin could read the checkout path out of `GET /api/instance-info` with
+     * `AFIELD_API_REQUIRE_SAME_SITE` fully on — so reads are now guarded and the exemption is
+     * narrower and explicit: `Sec-Fetch-Mode: websocket`. The invariant this test cares about is
+     * unchanged (an upgrade must reach `refuseCrossSiteFieldWebSocket`, which can close with
+     * `1008` and a readable reason, rather than being answered with a bare 403 by the
+     * interceptor); only the mechanism that delivers it moved, so the assertion below names the
+     * new mechanism. `FieldApiReadGuardTest.aWebSocketUpgradeIsLeftToItsOwnGuard` asserts the same
+     * invariant behaviourally, at route level, which is the stronger half of the pair.
      */
     @Test
     fun everyWebSocketRouteAndItsWriteRoleIsPinned() {
@@ -289,9 +300,13 @@ class FieldApiCorsExposureTest {
                 "as $FIELD_API_REQUIRE_SAME_SITE_ENV inside their upgrade.",
         )
         assertTrue(
-            Regex("""HttpMethod\.Get,\s*HttpMethod\.Head,\s*HttpMethod\.Options""").containsMatchIn(serverSource),
-            "The HTTP write guard no longer visibly skips WebSocket GET upgrades; re-measure the table instead " +
-                "of preserving this assertion mechanically.",
+            Regex(""""navigate",\s*"websocket"\s*->\s*return false""").containsMatchIn(serverSource),
+            "The HTTP same-site guard no longer visibly stands aside for a WebSocket upgrade, so an upgrade " +
+                "may now be answered with a bare 403 before refuseCrossSiteFieldWebSocket can close it with " +
+                "1008 and a reason. Re-measure the table instead of preserving this assertion mechanically — " +
+                "and see FieldApiReadGuardTest.aWebSocketUpgradeIsLeftToItsOwnGuard, which should be red too. " +
+                "If it is green while this is red, this assertion has drifted from the behaviour and should " +
+                "be rewritten rather than patched.",
         )
     }
 
