@@ -214,19 +214,21 @@ operations:
           val started = AnimationClock.nowSeconds()
           var nextDraw = 0.0
 
+          // showRow puts the swatch beside the readout. The swatch stays a raw <span>: it is a
+          // colour *sample*, so the hex in it is this launch's data rather than styling — which is
+          // exactly the case markdown's raw-HTML passthrough is for.
           val show: (Int, Double) -> Unit = { n, elapsed ->
               val rate = if (elapsed > 0.5) "%,.0f frames a second".format(n / elapsed) else "measuring"
-              val count = "%,d".format(n)
-              val secs = "%.1f".format(elapsed)
-              display("main",
-                  "<div style='font:13px monospace;color:#c3ccd9;padding:10px'>" +
-                  "<div style='display:flex;align-items:center;gap:14px'>" +
-                  "<div style='width:58px;height:58px;border-radius:6px;background:$swatch'></div>" +
-                  "<div>" +
-                  "<div style='font-size:22px;color:$swatch'>frame $count</div>" +
-                  "<div style='color:#7f8c9b'>$rate &nbsp;&middot;&nbsp; $secs s elapsed</div>" +
-                  "<div style='color:#7f8c9b'>this launch's colour is $swatch</div>" +
-                  "</div></div></div>")
+              showRow("main",
+                  "<span style='display:inline-block;width:58px;height:58px;border-radius:6px;background:$swatch'></span>",
+                  """
+                  ### frame ${"%,d".format(n)}
+
+                  {muted:$rate · ${"%.1f".format(elapsed)} s elapsed}
+
+                  {muted:this launch's colour is $swatch}
+                  """,
+              )
           }
 
           animate {
@@ -266,18 +268,16 @@ operations:
           val notes = mutableListOf<String>()
           var nextDraw = 0.0
 
-          val show: (String) -> Unit = { headline ->
-              display("main", "<pre style='font:13px monospace;color:#c3ccd9;padding:10px;margin:0'>" +
-                  headline + "</pre>")
-          }
+          val show: (String) -> Unit = { headline -> markdown("main", mdEscape(headline)) }
 
           // Cleanup goes to its OWN channel. Re-running the box immediately repaints "main" from
           // the new launch, which would clobber the old launch's cleanup line before you could
           // read it -- and the re-run case is the whole point of instruction 3.
+          // The green was semantic — these are the lines that prove cleanup ran — so it becomes the
+          // {ok:} role rather than a hex literal, and survives a theme change.
           val note: (String) -> Unit = { line ->
               notes += line
-              display("cleanup", "<pre style='font:13px monospace;color:#8fff9a;padding:10px;margin:0'>" +
-                  notes.joinToString("\n") + "</pre>")
+              markdown("cleanup", notes.joinToString("\n\n") { "{ok:${mdEscape(it)}}" })
           }
 
           frames {

@@ -18,6 +18,44 @@ class FieldMarkdownTest {
     // ------------------------------------------------------- the shapes replaced
 
     @Test
+    fun rowBuildsTheBlockThatShowRowCards() {
+        val html = render(FieldMarkdown.row(listOf("#### before", "#### after")))
+        assertContains(html, "field-md-row")
+        assertEquals(2, Regex("field-md-col").findAll(html).count(), "one column per part:\n$html")
+        assertContains(html, "before")
+        assertContains(html, "after")
+    }
+
+    @Test
+    fun rowDedentsEachPartSoAnIndentedKotlinBlockIsNotReadAsCode() {
+        // What a caller actually writes: a `"""` part indented to match its surrounding Kotlin.
+        val part = """
+                ### frame 2,631
+
+                {muted:396 frames a second}
+        """
+        val html = render(FieldMarkdown.row(listOf("<span id='swatch'></span>", part)))
+        assertContains(html, "<h3>")
+        assertContains(html, "field-md-muted")
+        assertFalse("### frame" in html, "the heading must be parsed, not shown as code:\n$html")
+        assertFalse("{muted:" in html, "the role must be parsed, not shown as code")
+    }
+
+    @Test
+    fun rowPassesRawHtmlPartsThroughSoSvgStripsWork() {
+        val html = render(FieldMarkdown.row(listOf("<svg id='a'></svg>", "<svg id='b'></svg>")))
+        assertContains(html, "<svg id='a'>")
+        assertContains(html, "<svg id='b'>")
+        assertEquals(2, Regex("field-md-col").findAll(html).count(), "two figures, two columns")
+    }
+
+    @Test
+    fun rowDropsBlankPartsRatherThanDrawingAnEmptyColumn() {
+        val html = render(FieldMarkdown.row(listOf("one", "", "two")))
+        assertEquals(2, Regex("field-md-col").findAll(html).count(), "the blank part is dropped:\n$html")
+    }
+
+    @Test
     fun tablesRenderSoKeyValueFiguresNeedNoHandBuiltRows() {
         val html = render(
             """

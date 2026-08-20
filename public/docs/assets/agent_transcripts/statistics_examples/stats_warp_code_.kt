@@ -83,4 +83,4 @@ val svgs = listOf(
         title = "after the warp: skew ${"%.3f".format(after.skewness)}",
     ),
 )
-display("distributions", "<div style='display:flex;gap:12px'>" + svgs.joinToString("") { "<div>$it</div>" } + "</div>")
+showRow("distributions", svgs)

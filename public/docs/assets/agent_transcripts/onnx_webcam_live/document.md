@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="onnx_webcam" index="0" -->
 
 ```edn [field-box id="onnx_webcam" role="properties"]
-{"id" "onnx_webcam" "index" 0 "name" "Webcam perception" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Webcam perception" "_tombstone" false "frame" #afield/rect [80.0 80.0 260.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "onnx_webcam_code_.kt" "lines" 115 "characters" 5473 "sha256" "ac3a29f33cd4b1c07aa5c9e70cef6cbb1ba7453debc6f98caaf238efc781aff1"}]}
+{"id" "onnx_webcam" "index" 0 "name" "Webcam perception" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Webcam perception" "_tombstone" false "frame" #afield/rect [80.0 80.0 260.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "onnx_webcam_code_.kt" "lines" 114 "characters" 5308 "sha256" "390065f4d018fd10e8759f1c3db2db0d46dabcbcc9fc7d3049cb290d6433ff5e"}]}
 ```
 
 ```kotlin [field-property box="onnx_webcam" name="code" path="onnx_webcam_code_.kt"]
@@ -109,22 +109,21 @@ try {
     }
     val b64 = java.util.Base64.getEncoder().encodeToString(PngEncoder.encode(px, outW, outH))
 
-    val rows = ranked.joinToString("") { (label, p) ->
-        val pct = (p * 100).toInt()
-        "<tr><td style='padding:2px 10px 2px 0'>$label</td>" +
-            "<td style='width:180px'><div style='height:9px;background:#7fd1ff;width:${pct}%'></div></td>" +
-            "<td style='padding-left:8px;color:#9fb6c9'>${"%.1f".format(p * 100)}%</td></tr>"
-    }
-    display("main", """
-        <div style="font-family:inherit;color:#dfe7ee">
-          <img src="data:image/png;base64,$b64" style="width:100%;border-radius:3px"/>
-          <div style="margin:8px 0 4px;color:#8fa6b8;font-size:12px">
-            ${w}x$h &middot; depth ${depth.lastInferenceMs}ms, raw [${"%.2f".format(stats.rawMin)}, ${"%.2f".format(stats.rawMax)}]
-            &middot; brighter = nearer
-          </div>
-          <table style="border-collapse:collapse;font-size:13px">$rows</table>
-        </div>
-    """.trimIndent())
+    // `bar(max = 1.0)` so the bars read as "of the whole", not "of the best one this
+    // frame" — a top-1 at 12% should look like 12%, not like a full bar.
+    val top = Table(listOf("label", "confidence"))
+        .rows(ranked.map { (label, p) -> listOf(label, p) })
+        .role("confidence", CellRole.ACCENT)
+        .bar("confidence", max = 1.0, width = 180)
+        .format("confidence") { "%.1f%%".format((it as Number).toDouble() * 100) }
+
+    markdown("main", """
+        <img src="data:image/png;base64,$b64" style="width:100%;border-radius:3px"/>
+
+        {muted:${w}x$h · depth ${depth.lastInferenceMs}ms, raw [${"%.2f".format(stats.rawMin)}, ${"%.2f".format(stats.rawMax)}] · brighter = nearer}
+
+        ${top.h}
+    """)
     println("depth ${depth.lastInferenceMs}ms  best=${ranked.first().first} ${"%.1f".format(ranked.first().second * 100)}%")
 } finally {
     runCatching { grabber.stop() }

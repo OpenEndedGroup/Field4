@@ -19,7 +19,7 @@ Freedman-Diaconis, Scott and Sturges widths, floored so the count cannot exceed 
 Re-derive the whole decision from the public stats and predict the bin count.
 
 ```edn [field-box id="stats_histogram" role="properties"]
-{"id" "stats_histogram" "index" 0 "name" "Histograms, and the rule that picks the bins" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Histograms, and the rule that picks the bins" "_tombstone" false "frame" #afield/rect [80.0 470.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_histogram_code_.kt" "lines" 51 "characters" 3109 "sha256" "c7d8a9ce1f761e78f059793ea6779f84a7e227ae5875dde5b4cb42e082645e48"}]}
+{"id" "stats_histogram" "index" 0 "name" "Histograms, and the rule that picks the bins" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Histograms, and the rule that picks the bins" "_tombstone" false "frame" #afield/rect [80.0 470.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_histogram_code_.kt" "lines" 51 "characters" 3020 "sha256" "914f87a61faf182233abe1ccaebf117b2d5e0b8ef9e1f2b888799753165e111d"}]}
 ```
 
 ```kotlin [field-property box="stats_histogram" name="code" path="stats_histogram_code_.kt"]
@@ -73,7 +73,7 @@ val svgs = listOf(
     histogramToSvg(hSkewed, widthPx = 380, heightPx = 230, padTop = 26, title = "exp(0.6 g), n=500", decimals = 3),
     histogramToSvg(hBimodal, widthPx = 380, heightPx = 230, padTop = 26, title = "two modes at -2 and +2, n=500", decimals = 3),
 )
-display("histograms", "<div style='display:flex;gap:12px'>" + svgs.joinToString("") { "<div>$it</div>" } + "</div>")
+showRow("histograms", svgs)
 ```
 
 ## 2. Six questions, six answers — and is the answer big?
@@ -344,7 +344,7 @@ quantilewarp.kt does not measure anything. It fits a monotone 8-knot PCHIP curve
 the measured quantiles of recent samples onto the quantiles of a target distribution.
 
 ```edn [field-box id="stats_warp" role="properties"]
-{"id" "stats_warp" "index" 4 "name" "Reshaping a distribution with an 8-knot warp" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Reshaping a distribution with an 8-knot warp" "_tombstone" false "frame" #afield/rect [80.0 860.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_warp_code_.kt" "lines" 86 "characters" 4601 "sha256" "f928c84377d5711a1a6b1fe3cb15be49c1b469aa7413794aad1116da8615b846"}]}
+{"id" "stats_warp" "index" 4 "name" "Reshaping a distribution with an 8-knot warp" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Reshaping a distribution with an 8-knot warp" "_tombstone" false "frame" #afield/rect [80.0 860.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_warp_code_.kt" "lines" 86 "characters" 4512 "sha256" "c7dd22014478302a4b0226be830f75a243dfd65ca48de70dc463ce2ca2ced97c"}]}
 ```
 
 ```kotlin [field-property box="stats_warp" name="code" path="stats_warp_code_.kt"]
@@ -433,6 +433,6 @@ val svgs = listOf(
         title = "after the warp: skew ${"%.3f".format(after.skewness)}",
     ),
 )
-display("distributions", "<div style='display:flex;gap:12px'>" + svgs.joinToString("") { "<div>$it</div>" } + "</div>")
+showRow("distributions", svgs)
 ```
 

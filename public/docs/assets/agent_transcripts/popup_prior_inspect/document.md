@@ -25,7 +25,7 @@ of where a row appears on screen. That answer belongs to KotlinCompletionSupport
 a `category=` beside every visible row. See public/docs/how_the_popup_decides.md.
 
 ```edn [field-box id="agent_popup_prior_inspect" role="properties"]
-{"id" "agent_popup_prior_inspect" "index" 0 "name" "What prior does the popup have" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What prior does the popup have" "_tombstone" false "frame" #afield/rect [80.0 80.0 680.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_popup_prior_inspect_code_.kt" "lines" 34 "characters" 1741 "sha256" "ed63a03d22e892d1965001a2f20197bdf7f6e89b28d1414f66aac0478f2848ce"}]}
+{"id" "agent_popup_prior_inspect" "index" 0 "name" "What prior does the popup have" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What prior does the popup have" "_tombstone" false "frame" #afield/rect [80.0 80.0 680.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_popup_prior_inspect_code_.kt" "lines" 31 "characters" 1747 "sha256" "553fa8468ee4d5d00dc3359240dc055a6c99395721748609b36402470932e3c8"}]}
 ```
 
 ```kotlin [field-property box="agent_popup_prior_inspect" name="code" path="agent_popup_prior_inspect_code_.kt"]
@@ -41,27 +41,24 @@ a `category=` beside every visible row. See public/docs/how_the_popup_decides.md
 val receiver = "afield.graphics.FLine"
 val ranks = afield.CommonMemberPrior.ranksFor(receiver)
 
-val cell = "padding:2px 20px 2px 0"
-val rows = ranks.entries.joinToString("") { (member, position) ->
-    val score = afield.CommonMemberPrior.scoreOf(position)
-    "<tr><td style=\"$cell\">$position</td>" +
-        "<td style=\"$cell\"><b>$member</b></td>" +
-        "<td style=\"padding:2px 0\">$score</td></tr>"
-}
+// Sorted by position rather than trusting the map's iteration order, so the figure is the
+// same every time it is drawn.
+val prior = Table(listOf("position", "member", "prior score"))
+    .rows(ranks.entries.sortedBy { it.value }.map { (member, position) ->
+        listOf(position, member, afield.CommonMemberPrior.scoreOf(position))
+    })
+    .role("member", CellRole.ACCENT)
 
-display("main", """
-  <div style="font:12px/1.7 ui-monospace,monospace;color:#cfd8e3;padding:10px 14px">
-    <div style="opacity:0.72">@CommonMembers on $receiver — ${ranks.size} members, first scores
-      ${afield.CommonMemberPrior.BASE}, less ${afield.CommonMemberPrior.STEP} per position</div>
-    <table style="margin-top:9px;border-collapse:collapse">
-      <tr style="opacity:0.62;text-align:left">
-        <th style="$cell">position</th>
-        <th style="$cell">member</th>
-        <th style="padding:2px 0">prior score</th>
-      </tr>
-      $rows
-    </table>
-  </div>
+// The arithmetic the heading claims, as an assertion rather than a sentence.
+check(ranks.all { (_, position) ->
+    afield.CommonMemberPrior.scoreOf(position) ==
+        afield.CommonMemberPrior.BASE - afield.CommonMemberPrior.STEP * (position - 1)
+}) { "the prior is no longer BASE less STEP per position" }
+
+markdown("main", """
+    {muted:@CommonMembers on ${mdEscape(receiver)} — ${ranks.size} members, first scores ${afield.CommonMemberPrior.BASE}, less ${afield.CommonMemberPrior.STEP} per position}
+
+    ${prior.h}
 """)
 ```
 

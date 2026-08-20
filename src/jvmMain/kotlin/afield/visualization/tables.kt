@@ -108,6 +108,7 @@ class Table(
     private val aligns = mutableMapOf<String, Align>()
     private val colors = mutableMapOf<String, String>()
     private val roles = mutableMapOf<String, CellRole>()
+    private val bars = mutableMapOf<String, Pair<Double?, Int>>()
     private val roleFns = mutableMapOf<String, (Any?) -> CellRole?>()
     private val formats = mutableMapOf<String, (Any?) -> String>()
     private val checks = mutableListOf<Triple<String?, String?, (Int, String, Any?) -> Boolean>>()
@@ -161,6 +162,19 @@ class Table(
      */
     fun roleBy(column: String, role: (Any?) -> CellRole?): Table =
         apply { roleFns[header[columnIndex(column)]] = role }
+
+    /**
+     * Draws a numeric column's cells as proportional bars *as well as* text — the shape a ranked
+     * score wants: top-k labels, vote tallies, per-stage timings.
+     *
+     * The bar is drawn in `currentColor`, so it inherits whatever [role] or [color] the column
+     * carries and brings no palette of its own. [max] defaults to the column's own largest
+     * magnitude, which is what you want for a tally; pass `1.0` for a probability, so the bar means
+     * "of the whole" rather than "of the biggest one present". Composes with [format], which still
+     * owns the text.
+     */
+    fun bar(column: String, max: Double? = null, width: Int = 120): Table =
+        apply { bars[header[columnIndex(column)]] = max to width }
 
     /**
      * Formats a column's cells. The returned string is **trusted HTML** and is not escaped, which is
@@ -223,10 +237,32 @@ class Table(
         return roles[column]
     }
 
-    private fun alignOf(column: String): Align = aligns[column] ?: run {
+    private fun barMax(column: String): Double {
+        val c = header.indexOf(column)
+        return cells.mapNotNull { (it[c] as? Number)?.toDouble()?.let(::abs) }.maxOrNull() ?: 0.0
+    }
+
+    /** The bar graphic for one cell, or "" when the column has none or the value is not a number. */
+    private fun barHtml(column: String, value: Any?): String {
+        val (explicitMax, width) = bars[column] ?: return ""
+        val v = (value as? Number)?.toDouble() ?: return ""
+        val max = explicitMax ?: barMax(column)
+        if (max <= 0.0 || !max.isFinite() || !v.isFinite()) return ""
+        val pct = String.format(Locale.US, "%.2f", (abs(v) / max * 100.0).coerceIn(0.0, 100.0))
+        return "<span style='display:inline-block;vertical-align:middle;width:${width}px;height:8px;" +
+            "background:color-mix(in srgb,currentColor 16%,transparent)'>" +
+            "<span style='display:block;height:100%;width:$pct%;background:currentColor'></span>" +
+            "</span> "
+    }
+
+    // A barred column left-aligns unless told otherwise: right-aligned bars would end together and
+    // start ragged, which is the one arrangement that cannot be read.
+    private fun alignOf(column: String): Align {
+        aligns[column]?.let { return it }
+        if (column in bars) return Align.LEFT
         val c = header.indexOf(column)
         val values = cells.mapNotNull { it[c] }
-        if (values.isNotEmpty() && values.all { it is Number }) Align.RIGHT else Align.LEFT
+        return if (values.isNotEmpty() && values.all { it is Number }) Align.RIGHT else Align.LEFT
     }
 
     private fun text(column: String, value: Any?): String =
@@ -297,6 +333,7 @@ class Table(
                 append("'")
                 why?.let { append(" title='${escapeTableHtml(it)}'") }
                 append(">")
+                append(barHtml(name, row[c]))
                 append(text(name, row[c]))
                 append("</td>")
             }

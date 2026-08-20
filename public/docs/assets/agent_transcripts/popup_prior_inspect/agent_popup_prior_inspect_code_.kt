@@ -10,25 +10,22 @@
 val receiver = "afield.graphics.FLine"
 val ranks = afield.CommonMemberPrior.ranksFor(receiver)
 
-val cell = "padding:2px 20px 2px 0"
-val rows = ranks.entries.joinToString("") { (member, position) ->
-    val score = afield.CommonMemberPrior.scoreOf(position)
-    "<tr><td style=\"$cell\">$position</td>" +
-        "<td style=\"$cell\"><b>$member</b></td>" +
-        "<td style=\"padding:2px 0\">$score</td></tr>"
-}
+// Sorted by position rather than trusting the map's iteration order, so the figure is the
+// same every time it is drawn.
+val prior = Table(listOf("position", "member", "prior score"))
+    .rows(ranks.entries.sortedBy { it.value }.map { (member, position) ->
+        listOf(position, member, afield.CommonMemberPrior.scoreOf(position))
+    })
+    .role("member", CellRole.ACCENT)
 
-display("main", """
-  <div style="font:12px/1.7 ui-monospace,monospace;color:#cfd8e3;padding:10px 14px">
-    <div style="opacity:0.72">@CommonMembers on $receiver — ${ranks.size} members, first scores
-      ${afield.CommonMemberPrior.BASE}, less ${afield.CommonMemberPrior.STEP} per position</div>
-    <table style="margin-top:9px;border-collapse:collapse">
-      <tr style="opacity:0.62;text-align:left">
-        <th style="$cell">position</th>
-        <th style="$cell">member</th>
-        <th style="padding:2px 0">prior score</th>
-      </tr>
-      $rows
-    </table>
-  </div>
+// The arithmetic the heading claims, as an assertion rather than a sentence.
+check(ranks.all { (_, position) ->
+    afield.CommonMemberPrior.scoreOf(position) ==
+        afield.CommonMemberPrior.BASE - afield.CommonMemberPrior.STEP * (position - 1)
+}) { "the prior is no longer BASE less STEP per position" }
+
+markdown("main", """
+    {muted:@CommonMembers on ${mdEscape(receiver)} — ${ranks.size} members, first scores ${afield.CommonMemberPrior.BASE}, less ${afield.CommonMemberPrior.STEP} per position}
+
+    ${prior.h}
 """)

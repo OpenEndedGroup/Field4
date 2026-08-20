@@ -111,6 +111,20 @@ object FieldMarkdown {
      * [width], in CSS pixels, pins the card. Leave it null and the card sizes to its content, which
      * is right in a live box and wrong for a `capture="box"` docs screenshot — see [FieldMarkdown].
      */
+    /**
+     * [parts] as one `:::row` block — the source a [Box.showRow] card is built from, separate so a
+     * caller composing a larger figure can splice a row into the middle of it.
+     *
+     * Each part is dedented on its own. It has to be: the block's own first line is `:::row` at
+     * column zero, so [dedent] over the finished card would find no margin to strip, and a
+     * multi-line part written inside indented Kotlin would reach markdown still carrying its
+     * indentation — which markdown reads as a code block and shows verbatim, roles and headings and
+     * all. Every caller writing a `"""` part hits that, so it is handled here rather than being a
+     * rule to remember.
+     */
+    fun row(parts: List<String>): String =
+        parts.joinToString("\n---\n", ":::row\n", "\n:::end") { dedent(it) }
+
     fun card(text: String, width: Int? = null): String {
         val style = width?.let { """ style="width:${it}px;max-width:${it}px"""" } ?: ""
         return """<div class="field-md"$style>${render(text)}</div>"""
@@ -468,6 +482,31 @@ fun Box.markdown(channel: String, text: String, width: Int? = null, open: Boolea
     display(channel, FieldMarkdown.card(text, width))
     if (open) displayOpen(channel)
 }
+
+/**
+ * Puts [parts] side by side in one card — the `:::row` block without the string plumbing.
+ *
+ * Each part is markdown, so raw HTML passes through exactly as it does anywhere else in a figure:
+ * an SVG from `histogramToSvg`, a base64 `img`, a `Table.h`. This is the shape a
+ * before/after or a strip of small figures wants, and the alternative people reach for is a
+ * hand-rolled `<div style='display:flex;gap:12px'>` — which is a second layout vocabulary, and one
+ * that does not wrap or theme with the rest of the card.
+ *
+ * ```kotlin
+ * showRow("histograms", samples.map { histogramToSvg(it) })
+ * ```
+ *
+ * @param channel output disclosure that receives the card, and its title
+ * @param parts one column each, in order; blank parts are dropped, as `:::row` itself drops them
+ * @param width pins the card, as in [Box.markdown]
+ */
+fun Box.showRow(channel: String, parts: List<String>, width: Int? = null) {
+    markdown(channel, FieldMarkdown.row(parts), width)
+}
+
+/** [showRow] with the columns written inline rather than collected into a list. */
+fun Box.showRow(channel: String, vararg parts: String, width: Int? = null) =
+    showRow(channel, parts.asList(), width)
 
 /** Shows [text] as markdown on the default `output` channel. See [Box.markdown]. */
 fun Box.markdown(text: String, width: Int? = null, open: Boolean = true) {

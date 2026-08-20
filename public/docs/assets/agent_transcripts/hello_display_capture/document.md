@@ -11,10 +11,10 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_hello_display_capture" index="0" -->
 
 ```edn [field-box id="agent_hello_display_capture" role="properties"]
-{"id" "agent_hello_display_capture" "index" 0 "name" "Agent Hello Display Capture" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Agent Hello Display Capture" "_tombstone" false "frame" #afield/rect [80.0 80.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_hello_display_capture_code_.kt" "lines" 1 "characters" 142 "sha256" "68bc38a9db6fbcbb684a4ec33b4f3208d3ac653078cf3e9c91d9b4179ae88bca"}]}
+{"id" "agent_hello_display_capture" "index" 0 "name" "Agent Hello Display Capture" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Agent Hello Display Capture" "_tombstone" false "frame" #afield/rect [80.0 80.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_hello_display_capture_code_.kt" "lines" 1 "characters" 51 "sha256" "52aba6c6149281dc8951d3bbe9a0ee3f9a706db68be67a72ab8c304248338b2a"}]}
 ```
 
 ```kotlin [field-property box="agent_hello_display_capture" name="code" path="agent_hello_display_capture_code_.kt"]
-display("main", "<div style=\"padding:16px;border:1px solid #6b8fb3;background:#eef7ff;color:#1b2a38\">hello from OperationTranscript</div>")
+markdown("main", "hello from OperationTranscript")
 ```
 

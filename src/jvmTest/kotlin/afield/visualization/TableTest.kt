@@ -109,6 +109,47 @@ class TableTest {
     }
 
     @Test
+    fun `a bar is proportional, inherits currentColor, and leaves the text to format`() {
+        val t = Table(listOf("label", "score"))
+            .row("a", 1.0)
+            .row("b", 0.5)
+            .row("c", 0.0)
+            .bar("score")
+            .format("score") { "%.0f%%".format((it as Double) * 100) }
+        val html = t.toHTML()
+
+        // Proportional to the column max, so 1.0 -> 100% and 0.5 -> 50%.
+        assertTrue("width:100.00%" in html, "the largest value should fill the bar:\n$html")
+        assertTrue("width:50.00%" in html, "half the max should be half the bar")
+        assertTrue("currentColor" in html, "the bar must inherit the cell colour, not carry its own")
+        assertFalse("#" in html.substringAfter("<tbody>"), "no hex literal in a bar")
+        // format still owns the text.
+        assertTrue("100%" in html && "50%" in html, "the formatted text should survive alongside the bar")
+    }
+
+    @Test
+    fun `an explicit bar max means of-the-whole rather than of-the-biggest`() {
+        val ofBiggest = Table(listOf("p")).row(0.2).row(0.1).bar("p").toHTML()
+        assertTrue("width:100.00%" in ofBiggest, "with no max, the biggest value fills the bar")
+
+        val ofWhole = Table(listOf("p")).row(0.2).row(0.1).bar("p", max = 1.0).toHTML()
+        assertTrue("width:20.00%" in ofWhole, "with max = 1.0, 0.2 is a fifth of the bar")
+        assertFalse("width:100.00%" in ofWhole, "nothing should fill it")
+    }
+
+    @Test
+    fun `a barred column left-aligns, and degenerate columns draw no bar`() {
+        assertTrue("text-align:left" in Table(listOf("n")).row(1).row(2).bar("n").toHTML(),
+            "bars must start together, so a barred column left-aligns")
+
+        // All zero, and a non-numeric cell: no bar rather than a division by zero or a stray span.
+        val zeros = Table(listOf("n")).row(0).row(0).bar("n").toHTML()
+        assertFalse("currentColor" in zeros, "an all-zero column has nothing to draw")
+        val text = Table(listOf("n")).row("x").row("y").bar("n").toHTML()
+        assertFalse("currentColor" in text, "a non-numeric cell draws no bar")
+    }
+
+    @Test
     fun `naming a column that does not exist fails loudly rather than doing nothing`() {
         val t = Table(listOf("builder", "calls")).row("a", 1)
         for (op in listOf<(Table) -> Unit>(
@@ -118,6 +159,7 @@ class TableTest {
             { it.expect("clals") { true } },
             { it.role("clals", CellRole.OK) },
             { it.roleBy("clals") { CellRole.OK } },
+            { it.bar("clals") },
         )) {
             val e = assertFailsWith<IllegalArgumentException> { op(t) }
             assertTrue(
