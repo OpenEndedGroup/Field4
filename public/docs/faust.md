@@ -212,7 +212,7 @@ sweep a filter and never change a note.
 
 A program that does not declare them is refused, with the message a person can act on rather than silence:
 
-```
+```diffstatic {data-lang=text}
 Faust: 'box_a1b2c3' cannot be played polyphonically — a polyphonic program must declare `gate`,
 which is Faust's own convention (the same names `-nvoices` looks for). It declares:
 cutoff (hslider), freq (hslider).
