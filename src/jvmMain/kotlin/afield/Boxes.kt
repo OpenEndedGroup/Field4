@@ -205,6 +205,17 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
      * long-lived sessions that create/run/delete many boxes (e.g. the docs capture
      * loop). Safe to call repeatedly; a later `ki` access lazily recreates a fresh
      * engine.
+     *
+     * Also forgets the `_preamble` cache, because the cache records what was applied to *that*
+     * engine and the engine is now gone. [makeKI] does clear it when rebuilding, but on the runloop
+     * inside its async bootstrap, while `executeInBox` runs `checkPreambleAndExecute` on its own
+     * schedule. When the preamble check wins that race it compares the gathered preamble against a
+     * cache that still lists every line, computes an empty `extra`, and executes nothing — so a
+     * brand-new engine never receives the declarations. Measured on 2026-08-20 via
+     * `afield.SharedTypes`: a box whose engine had just been recycled failed with
+     * `Unresolved reference '_particle'`, with no preamble execution logged between the rebuild and
+     * the compile. Clearing here, synchronously with the disposal, makes the ordering irrelevant —
+     * and covers every recycling caller, [reloadPersonal] included, not just the one that found it.
      */
     fun disposeKi() {
         if (!kiDelegate.isInitialized) return
@@ -217,6 +228,10 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
         // first init, so reset() with the default arg would leave `ki` unrecoverable
         // ("Initializer cleared"). This keeps a later `ki` access able to rebuild.
         kiDelegate.reset { makeKI(this, reason = "box.ki re-initialization after disposeKi") }
+        // The engine that ran this preamble no longer exists; see the KDoc above for the race this
+        // closes. Deliberately after the reset, so "engine gone" and "preamble not applied" become
+        // true together and no caller can observe one without the other.
+        properties.remove("_preamble")
     }
 
     var frame by Delegation<Rect>(defaultValue = { Rect(0.0, 0.0, 0.0, 0.0) }, hook = ::onFrameChange)

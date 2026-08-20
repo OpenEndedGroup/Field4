@@ -763,9 +763,9 @@ class KotlinInterface(
 
             val params = function.parameters.filter { it.kind != kotlin.reflect.KParameter.Kind.INSTANCE }
             val paramTypes = params.joinToString(", ") { param ->
-                simplifyTypeForExport(param.type.toString())
+                ExportedTypeNames.render(param.type, ki.classLoader)
             }
-            val returnType = simplifyTypeForExport(function.returnType.toString())
+            val returnType = ExportedTypeNames.render(function.returnType, ki.classLoader)
 
             val functionType = if (params.isEmpty()) {
                 "() -> $returnType"
@@ -806,7 +806,7 @@ class KotlinInterface(
 
         private fun generatePropertyDeclaration(property: KProperty<*>, exportedName: String): String {
             val keyword = if (property is KMutableProperty<*>) "var" else "val"
-            val typeName = simplifyTypeForExport(property.returnType.toString())
+            val typeName = ExportedTypeNames.render(property.returnType, ki.classLoader)
             return "$keyword Box.$exportedName by InheritanceFromContext<$typeName>() /**/"
         }
 
@@ -916,41 +916,6 @@ class KotlinInterface(
                         "Unsupported proxy method '${method.name}' for @exported function '${function.name}'"
                     )
                 }
-            }
-        }
-
-        private fun simplifyTypeForExport(typeName: String): String {
-            // Whitelist of types that are known to be imported in other code boxes
-            val whitelistedPrefixes = setOf(
-                "kotlin.",
-                "afield.",
-                // Common Kotlin types
-                "Int", "Long", "Short", "Byte",
-                "Float", "Double",
-                "Boolean", "Char", "String",
-                "Unit", "Any", "Nothing",
-                // Collections
-                "List", "Set", "Map", "Array",
-                "MutableList", "MutableSet", "MutableMap",
-                "Sequence", "Iterable", "Collection",
-                // Common function types are already in format (A, B) -> C
-            )
-
-            // Check if the type is whitelisted
-            if (whitelistedPrefixes.any { typeName.startsWith(it) }) {
-                return typeName
-            }
-
-            // For non-whitelisted types, try to find a generic supertype
-            // This is a simplified approach - we'll look for common patterns
-            return when {
-                typeName.contains("List") -> "List<*>"
-                typeName.contains("Set") -> "Set<*>"
-                typeName.contains("Map") -> "Map<*, *>"
-                typeName.contains("Collection") -> "Collection<*>"
-                typeName.contains("Iterable") -> "Iterable<*>"
-                typeName.contains("Sequence") -> "Sequence<*>"
-                else -> "Any?" // Fallback to the most generic type
             }
         }
 

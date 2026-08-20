@@ -90,6 +90,11 @@ object DemoTranscriptExecSmokeTest {
         "hello_display",
         "hello_display_capture",
         "two_box_context",
+        // Compiles a data class onto the shared classloader and uses it from three other boxes, one
+        // of them through @rootExported. Slower than its neighbours — box 1 shells out to
+        // K2JVMCompiler and then recycles the other boxes' engines — but it is pure compute, and the
+        // second run of box 1 is what holds the two engine-recycling regressions down.
+        "shared_types_demo",
         "spectral_examples",
         "imaging_cv_examples",
         "imaging_vector_kernels",

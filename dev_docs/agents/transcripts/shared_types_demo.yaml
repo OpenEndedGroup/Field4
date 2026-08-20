@@ -1,0 +1,123 @@
+name: shared_types_demo
+description: >
+  Declares Kotlin types once and uses them from three other boxes. Box 1 publishes
+  shared.Particle with sharedTypes(); box 2 shows the data-class fidelity survived
+  (named arguments, copy, destructuring); box 3 exports a value; box 4 reads .x and
+  .momentum off it, which only compiles because the TYPE crossed the box boundary.
+
+  Needs a long --timeout: box 1 compiles the declarations in a subprocess and then
+  rebuilds the other three boxes' engines, which is well past the backdoor's 20s default.
+  The four `wait: pending` barriers are reported as `skipped` in the applied/skipped
+  tally; that is normal, not an error.
+operations:
+  - create:
+      box: shared_types_declare
+      name: 1 - Declare shared types
+      frame:
+        x: 40.0
+        y: 40.0
+        w: 430.0
+        h: 260.0
+      properties:
+        code: |
+          // One publish, and every box in this document can name these types. They are
+          // compiled as ordinary Kotlin into a directory on the shared classloader, NOT
+          // declared in this box's snippet -- which is why they escape this box at all.
+          println(sharedTypes("""
+          package shared
+
+          data class Particle(val x: Double, val y: Double, val mass: Double) {
+              val momentum: Double get() = mass * kotlin.math.hypot(x, y)
+          }
+          """))
+  - create:
+      box: shared_types_use
+      name: 2 - Use it, with full fidelity
+      frame:
+        x: 500.0
+        y: 40.0
+        w: 430.0
+        h: 260.0
+      properties:
+        code: |
+          // Named arguments, copy, destructuring and the data-class toString all work,
+          // because shared.Particle is a real compiled class with real metadata -- not a
+          // type name re-spelled as text.
+          val p = shared.Particle(x = 3.0, y = 4.0, mass = 2.0)
+          println("toString: " + p)
+          println("copy: " + p.copy(mass = 10.0))
+          val (x, y, m) = p
+          println("destructured: $x $y $m")
+          println("momentum: " + p.momentum)
+  - create:
+      box: shared_types_export
+      name: 3 - Export a value
+      frame:
+        x: 40.0
+        y: 330.0
+        w: 430.0
+        h: 230.0
+      properties:
+        code: |
+          // @rootExported publishes the value to the document root, so any box can reach
+          // it. Before shared types the *value* crossed but its type did not.
+          @rootExported
+          val particle = shared.Particle(x = 1.5, y = 2.5, mass = 4.0)
+
+          println("exported: " + particle)
+  - create:
+      box: shared_types_receive
+      name: 4 - Receive it, still typed
+      frame:
+        x: 500.0
+        y: 330.0
+        w: 430.0
+        h: 230.0
+      properties:
+        code: |
+          // _particle arrives from box 3. These lines only COMPILE because the type crossed
+          // the box boundary: a box-declared class lands here as Any?, and .x does not
+          // resolve on Any?.
+          println("received: " + _particle)
+          println("x + y = " + (_particle.x + _particle.y))
+          println("momentum = " + _particle.momentum)
+  # Box 1 first: publishing disposes the other boxes' engines so they rebuild against the
+  # new generation. An engine only ever indexes its classpath roots once, at creation, so a
+  # class file appearing later is invisible to an engine that already exists.
+  - execute:
+      box: shared_types_declare
+      property: code
+      type: fragment
+  - wait: pending
+  - execute:
+      box: shared_types_use
+      property: code
+      type: fragment
+  - wait: pending
+  - execute:
+      box: shared_types_export
+      property: code
+      type: fragment
+  - wait: pending
+  - execute:
+      box: shared_types_receive
+      property: code
+      type: fragment
+  - wait: pending
+  # Regression: executing box 1 a SECOND time used to fail. By now box 3 has @rootExported a
+  # shared.Particle, so the root preamble carries
+  #   val Box._particle by InheritanceFromContext<shared.Particle>()
+  # and every box inherits it via gatherPreambleUpwards. Box 1 was the one box excluded from
+  # engine invalidation (it is the publisher, executing inside its own engine), so its engine
+  # still predated the publish and was the only one that could not resolve `shared`. The caller's
+  # engine is now rebuilt too, deferred to after this run.
+  - execute:
+      box: shared_types_declare
+      property: code
+      type: fragment
+  - wait: pending
+  - execute:
+      box: shared_types_receive
+      property: code
+      type: fragment
+  - wait: pending

@@ -137,6 +137,17 @@ metadata_store/*
 !metadata_store/example_template/
 !metadata_store/simple_hello/
 !metadata_store/agent_demo/
+!metadata_store/shared_types_demo/
+# Compiled shared-type generations (see afield.SharedTypes) are build output, per document.
+metadata_store/*/.field-shared-types/
+# Runtime artefacts Field writes into a workspace, and the per-workspace agent guides
+# ensureAgentGuides seeds: derived, not part of the demo document.
+metadata_store/*/backups/
+metadata_store/*/history_metrics.edn
+metadata_store/*/transcript.edn
+metadata_store/*/document.md
+metadata_store/*/AGENTS.md
+metadata_store/*/README.md
 
 # Telemetry data
 metadata_server_telemetry.json

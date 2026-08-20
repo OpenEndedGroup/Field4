@@ -40,8 +40,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 68 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
-not in the same way, and the difference is worth knowing before you trust one. 49 of them are
+All 69 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+not in the same way, and the difference is worth knowing before you trust one. 50 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
 error-kind output line. (Almost always that is every box in the file. A transcript may deliberately
@@ -80,6 +80,16 @@ screenshot. Capture is a transport concern, so it lives in backdoor commands, no
 **two_box_context** — Creates a parent/child pair and verifies the child inherits graph context from
 its parent.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/two_box_context/metadata.edn)
+
+**shared_types_demo** — A `data class` every box can name. Box 1 calls `sharedTypes(...)` to compile
+`shared.Particle` as ordinary Kotlin onto the shared classloader; box 2 shows the metadata survived
+(`Particle(x=3.0, y=4.0, mass=2.0)`, `copy(mass = 10.0)`, destructuring); box 3 `@rootExported` a
+value and box 4 reads `momentum = 11.661903789690601` off it. That last number is the point: a class
+declared *inside* a box is nested in that box's snippet loader and crosses `@exported` as `Any?`, so
+`.momentum` would not resolve. Box 1 runs twice, because the second run is what caught two
+engine-recycling bugs — the publisher kept a pre-publish classpath snapshot, and a recycled engine
+could skip its preamble entirely.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/shared_types_demo/metadata.edn)
 
 **linalg_thumbnails_demo** — Each box evaluates one `afield.stdlib.linalg` value; on execute its
 output shows the terse text head plus a small inline SVG thumbnail the `ValueVisualizer` draws — an

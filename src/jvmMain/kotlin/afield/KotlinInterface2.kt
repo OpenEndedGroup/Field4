@@ -3082,9 +3082,9 @@ class KotlinInterface2(
         private fun generateFunctionDeclaration(function: KFunction<*>, exportedName: String): String {
             val params = function.parameters.filter { it.kind != kotlin.reflect.KParameter.Kind.INSTANCE }
             val paramTypes = params.joinToString(", ") { param ->
-                simplifyTypeForExport(param.type.toString())
+                ExportedTypeNames.render(param.type, ki.classLoader)
             }
-            val returnType = simplifyTypeForExport(function.returnType.toString())
+            val returnType = ExportedTypeNames.render(function.returnType, ki.classLoader)
 
             val functionType = if (params.isEmpty()) {
                 "() -> $returnType"
@@ -3124,7 +3124,7 @@ class KotlinInterface2(
 
         private fun generatePropertyDeclaration(property: KProperty<*>, exportedName: String): String {
             val keyword = if (property is KMutableProperty<*>) "var" else "val"
-            val typeName = simplifyTypeForExport(property.returnType.toString())
+            val typeName = ExportedTypeNames.render(property.returnType, ki.classLoader)
             return "$keyword Box.$exportedName by InheritanceFromContext<$typeName>() /**/"
         }
 
@@ -3230,34 +3230,6 @@ class KotlinInterface2(
                         "Unsupported proxy method '${method.name}' for @exported function '${function.name}'"
                     )
                 }
-            }
-        }
-
-        private fun simplifyTypeForExport(typeName: String): String {
-            val whitelistedPrefixes = setOf(
-                "kotlin.",
-                "afield.",
-                "Int", "Long", "Short", "Byte",
-                "Float", "Double",
-                "Boolean", "Char", "String",
-                "Unit", "Any", "Nothing",
-                "List", "Set", "Map", "Array",
-                "MutableList", "MutableSet", "MutableMap",
-                "Sequence", "Iterable", "Collection",
-            )
-
-            if (whitelistedPrefixes.any { typeName.startsWith(it) }) {
-                return typeName
-            }
-
-            return when {
-                typeName.contains("List") -> "List<*>"
-                typeName.contains("Set") -> "Set<*>"
-                typeName.contains("Map") -> "Map<*, *>"
-                typeName.contains("Collection") -> "Collection<*>"
-                typeName.contains("Iterable") -> "Iterable<*>"
-                typeName.contains("Sequence") -> "Sequence<*>"
-                else -> "Any?"
             }
         }
 
