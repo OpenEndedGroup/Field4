@@ -37,13 +37,15 @@ import kotlin.test.assertTrue
  * **What is only type-checked.** Everything downstream of a device — `Window`, `Renderer`, `.buffer`,
  * `Mesh`, `Module` — is compiled to prove FieldML can *express* the call, and deliberately not run.
  *
- * **What cannot be expressed at all.** Nine of the names in those three boxes are not JVM members:
- * they are source macros registered in `afield.macros.MacroRegistry.callRewrite` (`macros.kt:338`),
- * expanded by rewriting Kotlin source *before* it is compiled. `prop<Window>(window)` generates
- * `var Box.window by Inheritance<Window>()` into the box's preamble (`props.kt:71`) and the function
- * called `prop` throws `MacroNotExpandedException` if it is ever really invoked (`props.kt:39`).
- * A reflective bridge cannot reach a declaration that does not exist yet, and this test says so with
- * a citation rather than with a shrug. [statementSurvey] is the roadmap.
+ * **The source macros, which used to be what could not be expressed at all.** Several names in those
+ * three boxes are not JVM members: they are macros registered in
+ * `afield.macros.MacroRegistry.callRewrite` (`macros.kt:340`), expanded by rewriting Kotlin source
+ * *before* it is compiled. As of 2026-08-20 they are reachable — see `FieldMLSourceMacroTest` and
+ * `afield.ml.FieldMLMacroLayer` — two different ways, and the survey records which:
+ * `moduleHere`/`computeModuleHere` through `hostMacro`, which expands the macro and then calls the
+ * `Box` extension it rewrote to; `prop`/`once` through native prelude forms over the same slot the
+ * generated delegate would have read. [statementSurvey] is the roadmap, and it no longer has a
+ * mechanism in it.
  */
 class FieldMLAfieldFourReachTest {
     // ---- what actually runs ---------------------------------------------------------------------
@@ -147,6 +149,13 @@ class FieldMLAfieldFourReachTest {
             box = child,
         )
         assertEquals(3.5, inherited)
+
+        // And since 2026-08-20 there is a prelude name for it, which must agree with the four lines
+        // above. Keeping the longhand *and* comparing is the point: the longhand is what proves the
+        // primitives are reachable, and the comparison is what proves `prop` did not quietly become
+        // something else — a local-only read would pass on its own and fail here.
+        assertEquals(inherited, evaluate("""prop "speed"""", box = child))
+        assertEquals(3.5, evaluate("""propOr "speed" 0.0""", box = child))
     }
 
     @Test
@@ -287,6 +296,13 @@ class FieldMLAfieldFourReachTest {
         val residue: Residue? = null,
         /** Where the statement's *effect* is reached without its spelling, when it is. */
         val effect: String? = null,
+        /**
+         * The FieldML mechanism that reaches this statement's **source macro**, for the statements
+         * that are one. Recorded positively, so [everySourceMacroStatementSaysHowItIsReached] is a
+         * ratchet on what is present rather than on what is absent — which is the shape a claim about
+         * a *closed* mechanism has to take.
+         */
+        val viaMacroLayer: String? = null,
     )
 
     private enum class Residue {
@@ -306,12 +322,15 @@ class FieldMLAfieldFourReachTest {
         ),
         Statement(
             "prop<Window>(window)",
-            null,
-            "SOURCE MACRO (macros.kt:355 -> props.kt:66): generates `var Box.window by Inheritance<Window>()` " +
-                "into the box preamble. `Box.prop` itself throws MacroNotExpandedException (props.kt:39). " +
-                "Its *effect* is reachable — see theBoxPropertySlotThatPropIsSugarOverIsFullyReachable",
-            residue = Residue.SOURCE_MACRO,
-            effect = "theBoxPropertySlotThatPropIsSugarOverIsFullyReachable",
+            """prop "window"""",
+            "SOURCE MACRO, reached natively since 2026-08-20. The Kotlin statement *declares* — it " +
+                "generates `var Box.window by Inheritance<Window>()` into the preamble (props.kt:71) — and " +
+                "FieldML has no declarations, so there is nothing to translate it to. There does not need " +
+                "to be: the slot is made by writing it, and reading it is the same breadth-first walk " +
+                "(afield.stdlib.inheritedPropertyRaw), which both `Inheritance.getValue` and FieldML's " +
+                "`prop` now call. `setProp` is the write, `propOr` the read that does not fail",
+            effect = "FieldMLSourceMacroTest.propAgreesWithTheGeneratedKotlinDelegateOnTheSameGraph",
+            viaMacroLayer = "prop / setProp / propOr",
         ),
         Statement(
             "Options.enableHDR = false",
@@ -320,11 +339,13 @@ class FieldMLAfieldFourReachTest {
         ),
         Statement(
             "once.renderer { Renderer(window) }",
-            null,
-            "MACRO-GENERATED DELEGATE: `Once` (scratch.kt:15) plus a `val Once.renderer by Onceing<Renderer>()` " +
-                "that prop's expansion wrote. Reachable as get-or-compute over getPropertyRaw/setPropertyRaw",
-            residue = Residue.SOURCE_MACRO,
+            """once "renderer" (fun ignored -> hostNew {mainWindow = hostNull} (hostClass "afield.four.Renderer"))""",
+            "MACRO-GENERATED DELEGATE — `Once` (scratch.kt:15) plus the `val Once.renderer by " +
+                "Onceing<Renderer>()` that prop's expansion wrote — and a prelude name since 2026-08-20. " +
+                "Get, or compute and store; `null` is the empty sentinel rather than a cached value. " +
+                "Expressible; NOT RUN, because the computation needs a real Window",
             effect = "theOnceSlotIsExpressibleAsGetOrComputeAndStore",
+            viaMacroLayer = "once",
         ),
         Statement(
             "window = Window(\"Field three-box\")",
@@ -352,10 +373,13 @@ class FieldMLAfieldFourReachTest {
         ),
         Statement(
             "computeModuleHere {}",
-            null,
-            "SOURCE MACRO (macros.kt:344): expands to `_computeModuleHere(...)` *and* writes shader source " +
-                "into box properties at expansion time. The call half is reachable; the document mutation is not",
-            residue = Residue.SOURCE_MACRO,
+            """hostMacro "computeModuleHere" "{}" (fun p -> Unit)""",
+            "SOURCE MACRO (macros.kt:346), reached since 2026-08-20. Both halves, not one: `hostMacro` " +
+                "runs the expansion — which is what writes the shader source into the box's properties and " +
+                "compiles the stages — and *then* calls `_computeModuleHere` (shaders.kt:4577), the `Box` " +
+                "extension the rewrite names. Expressible; NOT RUN, because the expansion compiles a " +
+                "compute stage and the call allocates on the device",
+            viaMacroLayer = "hostMacro",
         ),
         Statement(
             "var m = ComputeMesh()",
@@ -389,11 +413,14 @@ class FieldMLAfieldFourReachTest {
         ),
         Statement(
             "fieldProbeHere(samples = 100000).display(\"probe\")",
-            null,
-            "SOURCE MACRO. The named argument half of this stopped being a blocker on 2026-08-19 — " +
-                "`hostCall \"display\" {name = \"probe\"}` is now an ordinary call — but `fieldProbeHere` " +
-                "is a macro (mechanism A) and there is still no JVM member to name parameters of",
-            residue = Residue.SOURCE_MACRO,
+            """thisBox |> hostExt (hostClass "afield.stdlib.ShadersKt") "fieldProbeHere" {samples = 100000} """ +
+                """|> hostCall "display" {channel = "probe"}""",
+            "NOT A MACRO AT ALL, and this row said it was until 2026-08-20 — a stale claim worth " +
+                "recording as one. `Box.fieldProbeHere` is an ordinary function (shaders.kt:945); the " +
+                "macro with a similar name is `fieldStatsHere` (macros.kt:349). So this is a named " +
+                "extension call, which mechanisms B and C made ordinary: `samples` is named and the other " +
+                "four parameters keep their Kotlin defaults, and `display(channel = \"probe\")` (FieldProbe" +
+                ".kt:587) is the same. Expressible; NOT RUN — the probe allocates an SSBO",
         ),
         Statement(
             "m.x = N / 64",
@@ -407,10 +434,15 @@ class FieldMLAfieldFourReachTest {
         ),
         Statement(
             "moduleHere { primitiveType = triangles }",
-            null,
-            "SOURCE MACRO (macros.kt:340), and `triangles` is another name the expansion declares",
-            residue = Residue.SOURCE_MACRO,
+            """hostMacro "moduleHere" "{ primitiveType = triangles }" (fun p -> Unit)""",
+            "SOURCE MACRO (macros.kt:340), reached since 2026-08-20 — expansion (which seeds this box's " +
+                "vertex/fragment properties and compiles both stages, shaders.kt:4039) and then " +
+                "`_moduleHere` (shaders.kt:4242). What `hostMacro` does *not* bring across is the " +
+                "preamble the expansion also returns: the typed `val Mesh.pos by FromInput()` accessors, " +
+                "and `triangles`. FieldML does not need them — every host value is `Host`, which is " +
+                "dynamic, so the same members are reached through hostGet/hostSet. Expressible; NOT RUN",
             effect = "public/docs/assets/fieldml_mesh_demo — parameters(renderer) { … } plus Module(params), on a real device",
+            viaMacroLayer = "hostMacro",
         ),
         Statement(
             "m.aspectRatio = { window.width/window.height.toFloat() }",
@@ -459,11 +491,11 @@ class FieldMLAfieldFourReachTest {
         println(report)
 
         assertTrue(refused.isEmpty(), "translations that do not compile\n$report")
-        // 13 of 19 as of 2026-08-19, when mechanism D closed and `start(renderer::run)` moved across.
-        // The floor is the measurement minus nothing: a statement that stops being expressible is a
-        // regression, and there is no reason to leave slack in a number that only ever goes up.
+        // 18 of 19 as of 2026-08-20, when mechanism A closed. It was 13 on 2026-08-19. The floor is
+        // the measurement minus nothing: a statement that stops being expressible is a regression, and
+        // there is no reason to leave slack in a number that only ever goes up.
         assertTrue(
-            expressible.size >= 13,
+            expressible.size >= 18,
             "only ${expressible.size} of ${statementSurvey.size} statements are expressible\n$report",
         )
         // The rest are the roadmap, and each carries a file-and-line citation.
@@ -473,21 +505,24 @@ class FieldMLAfieldFourReachTest {
     }
 
     /**
-     * The closing statement this survey exists to be able to make.
+     * The closing statement this survey exists to be able to make, and as of 2026-08-20 it is a
+     * stronger one than it has ever been: **there is no mechanism left**.
      *
-     * "13 of 19" measures the sample. What measures the *bridge* is which mechanisms are left, and
-     * after 2026-08-19 the answer is one: every statement FieldML still cannot express is a **source
-     * macro** — a rewrite over Kotlin text, applied before the compiler runs, with no JVM member for
-     * reflection to find — except the `import`, which is not a limitation because FieldML names every
-     * class in full and has nothing for an import to do.
+     * "18 of 19" measures the sample. What measures the *bridge* is which mechanisms are in the way,
+     * and after mechanism A closed the answer is none. The one statement with no FieldML translation
+     * is the `import`, and that is not a limitation — FieldML names every class in full and has
+     * nothing for an import to do.
      *
-     * That is a different kind of claim from a count, and it is the one worth guarding: a new
-     * refusal for a *bridge* reason would fail here even if the count stayed the same, which is
-     * exactly the regression a count cannot see. Mechanism A is a language-design question — a
-     * FieldML macro layer — and not something the bridge can answer.
+     * This is deliberately kept as an **exact set** rather than a count, and the direction it guards
+     * has flipped. It used to catch a new refusal for a *bridge* reason hiding behind a steady count.
+     * Now it catches something else: a statement sliding back into `SOURCE_MACRO`, which is what a
+     * regression in `FieldMLMacroLayer` or in the `prop` family would look like from here. The
+     * positive half of the claim — that five statements are reached *through* the macro layer and say
+     * which part of it — is [everySourceMacroStatementSaysHowItIsReached], because an absence is a
+     * weak thing to assert about a mechanism you have just closed.
      */
     @Test
-    fun theResidueIsOneMechanism() {
+    fun theResidueIsNoMechanismAtAll() {
         val refused = statementSurvey.filter { it.fieldML == null }
         val byResidue = refused.groupBy { it.residue }
 
@@ -502,20 +537,55 @@ class FieldMLAfieldFourReachTest {
 
         assertTrue(refused.none { it.residue == null }, "every refusal must name its mechanism\n$report")
         assertEquals(
-            setOf(Residue.SOURCE_MACRO, Residue.NOT_NEEDED),
+            setOf(Residue.NOT_NEEDED),
             byResidue.keys,
-            "a refusal for a reason other than a source macro is a bridge regression\n$report",
+            "every remaining refusal must be a non-limitation; a SOURCE_MACRO here means mechanism A " +
+                "has regressed\n$report",
         )
-        // 5 and 1 as of 2026-08-19. Asserted exactly, because this is the claim: the residue is one
-        // mechanism, and it is not shrinking or growing quietly.
-        assertEquals(5, byResidue[Residue.SOURCE_MACRO]?.size, "expected five source macros\n$report")
+        // 1 as of 2026-08-20, and it is the `import`. Asserted exactly: this is the claim.
         assertEquals(1, byResidue[Residue.NOT_NEEDED]?.size, "expected one non-limitation\n$report")
-        // Three of the five have their *effect* reached anyway, each pointing at a test or an
-        // artifact rather than at a claim.
+        assertEquals(0, byResidue[Residue.SOURCE_MACRO]?.size ?: 0, "no statement should be blocked on a macro\n$report")
+    }
+
+    /**
+     * The positive half of the same claim: five of `threebox-2`'s statements are source macros, and
+     * each one records **which part** of the macro layer reaches it.
+     *
+     * Worth separating from [theResidueIsNoMechanismAtAll] because they fail differently. That test
+     * fails if a statement becomes unreachable; this one fails if a statement stops being *labelled*,
+     * which is what happens when someone rewrites a translation to avoid the macro layer and the
+     * survey quietly stops being about mechanism A at all. The two mechanisms are named because they
+     * are genuinely different answers — `hostMacro` expands and calls, `prop`/`once` do not expand
+     * anything — and a survey that blurred them would be claiming more than is true.
+     */
+    @Test
+    fun everySourceMacroStatementSaysHowItIsReached() {
+        val reached = statementSurvey.filter { it.viaMacroLayer != null }
+
+        val report = buildString {
+            appendLine("threebox-2 statements reached through the macro layer:")
+            reached.forEach { appendLine("  ${it.kotlin}\n      via ${it.viaMacroLayer}") }
+        }
+        println(report)
+
+        // 5 as of 2026-08-20: prop, once, computeModuleHere, moduleHere, and — no. Four macros plus
+        // `prop` counted once; `fieldProbeHere` is deliberately *not* here, because it turned out not
+        // to be a macro at all.
+        assertTrue(reached.size >= 4, "only ${reached.size} statements record a macro-layer route\n$report")
+        reached.forEach { statement ->
+            assertTrue(statement.fieldML != null, "${statement.kotlin} claims a route but has no translation")
+            assertTrue(
+                FieldMLCompiler.compile(statement.fieldML!!).successful,
+                "${statement.kotlin}'s translation does not compile: ${statement.fieldML}",
+            )
+        }
+        // Both mechanisms must still be represented. One of them disappearing would mean the survey
+        // had drifted onto whichever was easier, and stopped testing the other.
         assertEquals(
-            3,
-            refused.count { it.effect != null },
-            "three of the macro statements should record where their effect is reached\n$report",
+            setOf("hostMacro", "once", "prop / setProp / propOr"),
+            reached.mapNotNull { it.viaMacroLayer }.toSet(),
+            "the survey must keep exercising both halves of the macro layer — expansion-and-call, and " +
+                "the native delegate forms\n$report",
         )
     }
 

@@ -106,6 +106,100 @@ class FieldMLSmokeExamplesTest {
     }
 
     /**
+     * The source-macro demo, run with its **own topology** rather than a fresh box per box.
+     *
+     * It gets its own test because its subject *is* the topology: the drawing box never writes
+     * `swirl`, it inherits it, so running it against a fresh box would prove the opposite of the
+     * demo's point. Boxes are run in document order down the real parent chain, and the geometry the
+     * inherited parameter produced is measured — the drawn line has to have the 320 nodes the
+     * `linspace` asked for, which is the cheapest check that the parameter arrived as a number and not
+     * as an error.
+     *
+     * The counterfactual is the second half: the drawing box run **without** its parent having written
+     * the slot must fail, and fail naming the slot. That is what makes the inheritance load-bearing
+     * rather than decorative.
+     */
+    @Test
+    fun theSourceMacroDemoRunsDownItsOwnParentChain() {
+        val demo = Path.of("public/docs/assets/fieldml_macro_demo/metadata.edn")
+        val sources = ednCodeStrings(demo.toFile().readText())
+        assertEquals(4, sources.size, "expected four FieldML boxes in $demo")
+        val (parameter, drawing, printing, expanding) = sources
+
+        // The document's shape. Every content box is a *direct* child of the FieldML root, because
+        // `applyRuntimeToggle` only converts direct children (LanguageRuntimeSupport.kt:57) and a
+        // grandchild would silently run as Kotlin — which is how this demo first failed in a real
+        // Field while passing here. The second parent is what carries the inherited parameter.
+        val root = Box("fieldml-macro-root")
+        val parameterBox = Box("fieldml-macro-parameter")
+        val drawingBox = Box("fieldml-macro-drawing")
+        val printingBox = Box("fieldml-macro-println")
+        val expandingBox = Box("fieldml-macro-expansion")
+        parameterBox.parents.add(root)
+        drawingBox.parents.addAll(listOf(root, parameterBox))
+        printingBox.parents.add(root)
+        expandingBox.parents.addAll(listOf(root, printingBox))
+
+        // And a drift guard on the *document*, which is what actually broke: every content box has to
+        // appear in the FieldML root's own `:children`, or Field will run it as Kotlin however the
+        // rest of the graph is wired. This is not checkable from the code strings, so it reads the edn.
+        val rootChildren = Regex(""":children\s*#\{([^}]*)\}""")
+            .find(demo.toFile().readText())!!
+            .groupValues[1]
+        listOf(parameterBox, drawingBox, printingBox, expandingBox).forEach { box ->
+            assertTrue(
+                "\"${box.id}\"" in rootChildren,
+                "${box.id} is not a direct child of the FieldML root in $demo, so Field will run it as " +
+                    "Kotlin (LanguageRuntimeSupport.kt:57). Root children are: $rootChildren",
+            )
+        }
+
+        fun run(name: String, source: String, box: Box): Any? =
+            afield.ml.core.fieldMLValueToHost(
+                Evaluator(FieldMLRuntimePrelude.values(box = box)).evaluate(compileOk(name, source).core!!),
+            )
+
+        // The drawing box before the parameter box has run: the slot is empty all the way up.
+        val premature = runCatching { run("$demo drawing (early)", drawing, drawingBox) }.exceptionOrNull()
+        assertNotNull(premature, "reading an unwritten prop should fail — otherwise inheritance is not the subject")
+        assertTrue(
+            "swirl" in premature.message.orEmpty(),
+            "the refusal should name the slot, got: ${premature.message}",
+        )
+
+        run("$demo parameter", parameter, parameterBox)
+        assertEquals(0.85, parameterBox.getPropertyRaw("swirl"), "the parameter box should have written the slot")
+        assertEquals(null, drawingBox.getPropertyRaw("swirl"), "and only on itself — the child inherits it")
+
+        val line = run("$demo drawing", drawing, drawingBox)
+        val nodes = line?.javaClass?.getMethod("getNodes")?.invoke(line) as? List<*>
+        assertEquals(320, nodes?.size, "the inherited parameter should have driven 320 nodes of geometry")
+
+        // The two macro boxes, whose subject is `hostMacro`/`hostMacroExpand` rather than inheritance.
+        val printed = mutableListOf<Any?>()
+        printingBox.output.proxy = { payload, _, _ -> printed += payload }
+        val printResult = run("$demo println", printing, printingBox)
+        assertTrue(
+            printed.any { it == "this line came out of Field's println macro" },
+            "the demo's println box must actually print through Field's macro, got $printed",
+        )
+        assertTrue(
+            "_printlnHere" in printResult.toString(),
+            "the box should report the function the macro rewrote to, got $printResult",
+        )
+
+        val expandResult = run("$demo expand", expanding, expandingBox).toString()
+        assertTrue(
+            "by Inheritance<Double>()" in expandResult,
+            "the expansion box should show the Kotlin `prop` generates, got $expandResult",
+        )
+        assertTrue(
+            "SourceBackedBlock" in expandResult,
+            "and the bound it cannot cross, got $expandResult",
+        )
+    }
+
+    /**
      * The `afield.four` demo is the one document here that *cannot* be evaluated: it needs a Vulkan
      * device, and a headless test JVM has none. So it is compiled and type-checked only — which is
      * still worth doing, because everything that went wrong while it was being written went wrong at
@@ -168,6 +262,99 @@ class FieldMLSmokeExamplesTest {
             "suspend" in scaffolding && "SOURCE MACRO" in scaffolding,
             "$demo's Kotlin box must keep saying why it is Kotlin: `prop`/`once` are macros and " +
                 "`Renderer.run` is a suspend member the bridge can satisfy but not call into",
+        )
+    }
+
+    /**
+     * The demo where a **source macro** builds the whole scene — mechanism A on a real device, and the
+     * thing `dev_docs/FIELDML_HOST_BRIDGE.md` named as the prize for closing it.
+     *
+     * The still-life and frames demos hand-build their pipeline: `parameters(renderer) { vertex = …
+     * }`, `Module(params)`, `.pointer()`. This one calls Field's `moduleHere` instead — the macro a
+     * Kotlin graphics box actually uses — so the GLSL lives in the box's own `vertex` and `fragment`
+     * properties, with the box's include resolvers and shader-error reporting attached to it. That
+     * difference *is* the subject, so the drift guards are on it: lose `hostMacro "moduleHere"`, or
+     * stop writing the shaders into the box's properties, and this is the still life again.
+     *
+     * The second subject is a **live parameter**, and it gets a bidirectional guard because a
+     * one-sided one would pass on a demo that had quietly stopped being connected: the slot the live
+     * box writes with `setRootProp` must be the slot the scene's per-frame body reads, and the scene
+     * must read it *inside* `eachFrame` rather than once at build time — reading it once is the
+     * difference between a parameter and a constant.
+     *
+     * Run on 2026-08-20 against a real Vulkan device, through `field_backdoor.py --port 9601`. The
+     * scene box reported `{builtBy = "_moduleHere", vertices = 3, pushConstantBytes = 16, spinRate =
+     * 0.04, animating = StandaloneCoroutine{Active}}` — a 16-byte push-constant block is a real
+     * pipeline, not a description of one. Then the live box was run twice, three seconds apart:
+     * `spinRate` went 0.04 → 0.3 on the *running* scene, and `framesDrawn` went 3309 → 5859, so the
+     * per-frame body drew 2550 frames between the two reads while re-reading the shared slot on every
+     * one of them.
+     *
+     * **There is no capture beside this demo, and that is deliberate.** The native-window capture path
+     * timed out in that session — and so did the trusted control, the existing `fieldml_frames_demo`
+     * whose committed captures prove it worked before, which is what says the fault is the capture
+     * path and not this scene. A synthesised image would have been worse than the gap.
+     */
+    @Test
+    fun theModuleHereDemoTypeChecksAndKeepsItsSubject() {
+        val demo = Path.of("public/docs/assets/fieldml_macro_module_demo/metadata.edn")
+        val sources = ednCodeStrings(demo.toFile().readText())
+
+        assertEquals(3, sources.size, "expected a Kotlin scaffolding box and two FieldML boxes in $demo")
+        val (scaffolding, scene, live) = sources
+
+        listOf("scene" to scene, "live" to live).forEach { (label, source) ->
+            val result = compileOk("$demo $label box", source)
+            assertNotNull(result.core, "$demo $label box: core")
+            assertTrue("hostAs \"" !in source, "$demo's $label box uses hostAs, which these demos exist to show is unnecessary")
+        }
+
+        // Subject one: the pipeline is built *by the macro*, from the box's own shader properties.
+        assertTrue(
+            """hostMacro "moduleHere"""" in scene,
+            "$demo no longer calls moduleHere, so it no longer demonstrates mechanism A",
+        )
+        listOf("\"vertex\"", "\"fragment\"").forEach { stage ->
+            assertTrue(
+                "write $stage" in scene,
+                "$demo must keep writing $stage into the box's own properties — that is what moduleHere " +
+                    "expands against, and the reason to prefer it over parameters(renderer) { … }",
+            )
+        }
+        assertTrue(
+            "parameters" in scene && "hostNew (params)" !in scene,
+            "$demo must not fall back to hand-building the Module; the macro returns the ModulePointer",
+        )
+
+        // Subject two: the live parameter, guarded from both ends.
+        val slot = Regex("""setRootProp "([A-Za-z]+)" [0-9]""").find(live)?.groupValues?.get(1)
+        assertNotNull(slot, "$demo's live box must write a shared slot with setRootProp; it is the whole point of it")
+        assertTrue(
+            """propOr "$slot"""" in scene,
+            "$demo's live box writes '$slot' and the scene box never reads it — the two halves have " +
+                "come apart, and the demo would look like it worked",
+        )
+        val perFrameBody = scene.substringAfter("\"eachFrame\"", "")
+        assertTrue(
+            """propOr "$slot"""" in perFrameBody,
+            "$demo's scene must read '$slot' *inside* eachFrame. Read once at build time it is a " +
+                "constant, and changing it would do nothing",
+        )
+        assertTrue(
+            "setRootProp \"framesDrawn\"" in scene && "propOr \"framesDrawn\"" in live,
+            "$demo must keep the frame counter that is its only evidence the loop is running, written " +
+                "by the scene and read by the live box",
+        )
+
+        // And the scaffolding box has to keep saying why it is Kotlin — which is now one reason, not two.
+        assertTrue(
+            "suspend" in scaffolding && "Renderer.run" in scaffolding,
+            "$demo's Kotlin box must keep naming `Renderer.run` as the reason it is Kotlin",
+        )
+        assertTrue(
+            "reachable from" in scaffolding && "2026-08-20" in scaffolding,
+            "$demo's Kotlin box must keep saying that `prop`/`once` are no longer a reason — otherwise " +
+                "it reads as though mechanism A were still open",
         )
     }
 

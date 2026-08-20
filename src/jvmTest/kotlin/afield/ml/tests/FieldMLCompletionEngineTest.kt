@@ -151,6 +151,86 @@ class FieldMLCompletionEngineTest {
         assertTrue(response.html.contains("FieldML constructor"), response.html)
     }
 
+    /**
+     * The eight source-macro prelude names, at the rank a person actually **sees**.
+     *
+     * Completion reads `FieldMLTypePrelude.schemes` directly, so a new name is offered the moment it
+     * is added — which means "is it offered" is not worth asserting on its own. What is worth
+     * asserting is the two things that can silently be wrong: the *signature* shown beside the name
+     * (it comes from the same `printSignature` the cheatsheet coverage guard compares against, so a
+     * retyped scheme shows up in both places), and the *position*. A name at index 200 of a 250-item
+     * list is not discoverable, and this project has been burned by exactly that before.
+     */
+    @Test
+    fun theSourceMacroPreludeNamesAreOfferedWhereTheyCanBeSeen() {
+        val expected = mapOf(
+            "prop" to "String -> Host",
+            "propOr" to "String -> 'a -> Host",
+            "setProp" to "String -> 'a -> 'a",
+            "rootProp" to "String -> Host",
+            "setRootProp" to "String -> 'a -> 'a",
+            "once" to "String -> ('a -> 'b) -> Host",
+            "hostMacro" to "String -> 'a -> 'b -> Host",
+        )
+
+        // Typed far enough to be a real prefix, which is how a person meets these.
+        val fromP = complete("pro").metadata.map { it.displayText }
+        println("completion after 'pro': ${fromP.size} items, prop at ${fromP.indexOf("prop")}, propOr at ${fromP.indexOf("propOr")}; first 10 ${fromP.take(10)}")
+        assertTrue(
+            fromP.indexOf("prop") in 0..5,
+            "`prop` is at ${fromP.indexOf("prop")} of ${fromP.size} after typing 'pro': ${fromP.take(8)}",
+        )
+        assertTrue(fromP.indexOf("propOr") in 0..5, "`propOr` is at ${fromP.indexOf("propOr")}: ${fromP.take(8)}")
+
+        val fromMacro = complete("hostMacro").metadata.map { it.displayText }
+        println("completion after 'hostMacro': ${fromMacro.size} items, first 10 ${fromMacro.take(10)}")
+        assertTrue(
+            fromMacro.indexOf("hostMacro") in 0..5 && fromMacro.indexOf("hostMacroExpand") in 0..5,
+            "the macro names are at ${fromMacro.indexOf("hostMacro")} and " +
+                "${fromMacro.indexOf("hostMacroExpand")} of ${fromMacro.size}: ${fromMacro.take(8)}",
+        )
+
+        // And every one of them, with the signature the cheatsheet also has to carry.
+        val all = complete("")
+        val labels = all.metadata.map { it.displayText }
+        println(
+            "completion at an empty caret: ${labels.size} items; " +
+                expected.keys.joinToString { "$it at ${labels.indexOf(it)}" } +
+                "; hostGet at ${labels.indexOf("hostGet")}, hostTap at ${labels.indexOf("hostTap")}",
+        )
+
+        // The unfiltered list is where rank decides whether a name is *seen*, and it is the honest
+        // number: 130 items, `prop` at 72. Floored at 90 rather than at "present", because present
+        // at index 129 is not discoverable. This is not a good position and the worklog says so; it
+        // comes from the existing `preludeRank` buckets, not from anything added here.
+        assertTrue(
+            labels.indexOf("prop") in 0..90,
+            "`prop` is at ${labels.indexOf("prop")} of ${labels.size} at an empty caret",
+        )
+        // For the `host…` names the useful assertion is *relative*: they must not rank worse than the
+        // host names that were already there. An absolute floor would just re-encode `preludeRank`,
+        // and a change to that policy should move this whole family together or fail here.
+        val hostGet = labels.indexOf("hostGet")
+        assertTrue(hostGet >= 0, "hostGet should be offered at an empty caret")
+        listOf("hostMacro", "hostMacroExpand").forEach { name ->
+            val at = labels.indexOf(name)
+            assertTrue(at >= 0, "'$name' is not offered at an empty caret")
+            assertTrue(
+                at <= hostGet + 12,
+                "'$name' is at $at, well behind hostGet at $hostGet — it has dropped out of the host family's band",
+            )
+        }
+
+        // And every one of them, with the signature the cheatsheet also has to carry.
+        expected.forEach { (name, signature) ->
+            val item = assertHas(all, name)
+            assertTrue(
+                signature in item.documentation,
+                "completion shows a different signature for '$name': expected '$signature' in ${item.documentation}",
+            )
+        }
+    }
+
     private fun complete(source: String): Completion {
         val code = source.trimIndent()
         return completeAt(code, code.length)

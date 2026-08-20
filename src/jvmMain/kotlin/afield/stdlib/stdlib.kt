@@ -243,6 +243,46 @@ private fun missingContextualInheritedPropertyMessage(box: Box, propertyName: St
 }
 
 /**
+ * The lookup [Inheritance] performs, without a `KProperty` to perform it through: this box's own raw
+ * property, then breadth-first up `parents` until some ancestor has one. `null` means nothing up the
+ * graph has it.
+ *
+ * Extracted so a *second* reader of the same slot cannot drift from the first. FieldML is that second
+ * reader — an interpreter has no generated `var Box.<name> by Inheritance<T>()` to read through, so
+ * `prop` in a FieldML box calls this, and the two agree by construction rather than by comment. Any
+ * third reader (a UI inspector, an agent tool) should do the same.
+ *
+ * Note this deliberately has **no** `defaultValue` and throws nothing: the delegate's failure
+ * behaviour depends on the declared property's nullability, which only the delegate can see.
+ */
+fun inheritedPropertyRaw(from: Box, name: String): Any? = inheritedPropertyWalk(from, name).first
+
+/**
+ * [inheritedPropertyRaw] plus the number of *ancestors examined*, which is the only other thing
+ * [Inheritance] needs — [missingInheritedPropertyMessage] reports it so a missing property reads as
+ * the timing problem it usually is.
+ */
+internal fun inheritedPropertyWalk(from: Box, name: String): Pair<Any?, Int> {
+    from.getPropertyRaw(name)?.let { return it to 0 }
+    val seen = mutableSetOf<Box>()
+    seen.add(from)
+    var fringe = setOf(from)
+    var num = 0
+    while (fringe.isNotEmpty()) {
+        val nextFringe = fringe.flatMap { it.parents }.toSet() - seen
+        seen.addAll(nextFringe)
+
+        nextFringe.forEach {
+            val a = it.getPropertyRaw(name)
+            num++
+            if (a != null) return a to num
+        }
+        fringe = nextFringe
+    }
+    return null to num
+}
+
+/**
  * The property delegate that makes a value *inherited*: reading it looks in this box, then breadth-first
  * up through `parents` until some ancestor has it.
  *
@@ -253,6 +293,8 @@ private fun missingContextualInheritedPropertyMessage(box: Box, propertyName: St
  * Breadth-first, so with two ancestors defining the same name the nearer one wins and equally distant ones
  * resolve arbitrarily. When nothing has it: [defaultValue] if you gave one, else null for a nullable
  * property, else [MissingInheritedPropertyException].
+ *
+ * The walk itself is [inheritedPropertyWalk], shared with FieldML's `prop`.
  */
 class Inheritance<T>(val defaultValue: T? = null) {
     /**
@@ -263,23 +305,8 @@ class Inheritance<T>(val defaultValue: T? = null) {
      * run yet.
      */
     operator fun getValue(f: Box, property: KProperty<*>): T {
-        val a = f.getPropertyRaw(property.name)
-        if (a != null) return a as T
-        val seen = mutableSetOf<Box>()
-        seen.add(f)
-        var fringe = setOf(f)
-        var num = 0
-        while (fringe.isNotEmpty()) {
-            val nextFringe = fringe.flatMap { it.parents }.toSet() - seen
-            seen.addAll(nextFringe)
-
-            nextFringe.forEach {
-                val a = it.getPropertyRaw(property.name)
-                num++
-                if (a != null) return a as T
-            }
-            fringe = nextFringe
-        }
+        val (found, num) = inheritedPropertyWalk(f, property.name)
+        if (found != null) return found as T
         if (defaultValue != null) return defaultValue as T
         if (!property.returnType.isMarkedNullable) {
             throw MissingInheritedPropertyException(missingInheritedPropertyMessage(f, property.name, num))
