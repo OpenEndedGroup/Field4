@@ -95,6 +95,23 @@ object PetriGallery {
         check(runTests(args.firstOrNull()?.let(::File))) { "petri gallery failed" }
     }
 
+    /**
+     * Every net the gallery builds, by name — the notation programs and the Kotlin-DSL ones.
+     *
+     * Public because it is the honest corpus for anything that wants to sweep "every net the
+     * documentation actually shows a reader" rather than a handful chosen by whoever is writing the
+     * sweep. `PetriDeadTransitionsSweepTest` uses it for exactly that: a semantic change to a public
+     * analysis function has to be checked against the nets the callers really pass, and this is where
+     * most of them live.
+     */
+    fun nets(): List<Pair<String, PetriNet>> =
+        EXAMPLES.map { example ->
+            example.name to (
+                petriParse(example.source).net
+                    ?: error("gallery example '${example.name}' does not parse")
+                )
+        } + DSL_EXAMPLES.map { it.name to it.build() }
+
     fun runTests(outputDir: File? = null): Boolean = try {
         val dir = outputDir ?: Files.createTempDirectory("petri-gallery-").toFile()
         dir.mkdirs()
