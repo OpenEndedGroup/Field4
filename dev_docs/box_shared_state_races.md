@@ -73,9 +73,10 @@ The concurrency regression surface is:
 - the `BoxJobList` concurrency tests
 - transcript and runtime smoke tests that exercise real server scheduling
 
-The tests use barriers, owned churn ranges, snapshot/view assertions, and sufficiently large
-collections to create a controlled overlap. They must not depend on an unbounded loop eventually
-winning a scheduling race.
+The tests use a fixed number of barrier-phased reader/writer rounds, owned churn ranges, snapshot/view
+assertions, and sufficiently large collections to create controlled overlap. A loaded machine may take
+longer to finish those rounds, but it must not fail because it missed a throughput floor in a fixed
+wall-clock window. They also must not depend on an unbounded loop eventually winning a scheduling race.
 
 Run the focused JVM tests while editing these containers, then run the normal repository check and
 runtime smoke surface:

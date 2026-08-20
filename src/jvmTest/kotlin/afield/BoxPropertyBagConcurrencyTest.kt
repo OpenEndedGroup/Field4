@@ -1,5 +1,6 @@
 package afield
 
+import java.util.concurrent.BrokenBarrierException
 import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
@@ -29,7 +30,7 @@ import kotlin.test.assertTrue
  * resync/save/file-proxy loop and the AI auto-namer write into the very box being replayed.
  *
  * At `4f55fc4e`, with `Box.properties` a plain `mutableMapOf()`, [replayAndResyncDoNotRaceOnTheBag]
- * fails within milliseconds. With the bag behind [PropertyBag] it runs to its deadline clean.
+ * fails within milliseconds. With the bag behind [PropertyBag] it completes the fixed stress plan.
  */
 class BoxPropertyBagConcurrencyTest {
 
@@ -59,6 +60,33 @@ class BoxPropertyBagConcurrencyTest {
         return box
     }
 
+    private fun worker(
+        name: String,
+        rounds: Int,
+        phase: CyclicBarrier,
+        failure: AtomicReference<Throwable?>,
+        body: () -> Unit
+    ) = Thread({
+        try {
+            repeat(rounds) {
+                if (failure.get() != null) return@Thread
+                phase.await()
+                body()
+            }
+        } catch (t: Throwable) {
+            if (t !is BrokenBarrierException || failure.get() == null) failure.compareAndSet(null, t)
+            phase.reset()
+        }
+    }, name)
+
+    private fun runWorkers(vararg workers: Thread) {
+        workers.forEach { it.start() }
+        workers.forEach { it.join(30_000) }
+        val stuck = workers.filter { it.isAlive }
+        stuck.forEach { it.interrupt() }
+        assertTrue(stuck.isEmpty(), "stress worker(s) did not finish fixed work: ${stuck.map { it.name }}")
+    }
+
     /**
      * Two `resyncAll`/`resyncAllExcept` walkers against two writers inserting and removing fresh keys —
      * i.e. structural modification, which is what invalidates a `LinkedHashMap` iterator.
@@ -70,28 +98,19 @@ class BoxPropertyBagConcurrencyTest {
     fun replayAndResyncDoNotRaceOnTheBag() {
         val box = stressBox("resync-race")
 
-        val deadline = System.currentTimeMillis() + 2_000
+        val rounds = 500
         val failure = AtomicReference<Throwable?>(null)
         val walks = AtomicLong(0)
         val writes = AtomicLong(0)
         val threadCount = 4
-        val start = CyclicBarrier(threadCount)
-
-        fun worker(name: String, body: () -> Unit) = Thread({
-            start.await()
-            try {
-                while (System.currentTimeMillis() < deadline && failure.get() == null) body()
-            } catch (t: Throwable) {
-                failure.compareAndSet(null, t)
-            }
-        }, name)
+        val phase = CyclicBarrier(threadCount)
 
         val walkers = listOf(
-            worker("resync-walker-all") {
+            worker("resync-walker-all", rounds, phase, failure) {
                 box.resyncAll()
                 walks.incrementAndGet()
             },
-            worker("resync-walker-except") {
+            worker("resync-walker-except", rounds, phase, failure) {
                 box.resyncAllExcept(setOf("code"))
                 walks.incrementAndGet()
             }
@@ -99,7 +118,7 @@ class BoxPropertyBagConcurrencyTest {
         val writers = (0 until 2).map { slot ->
             val window = 64
             var n = 0
-            worker("bag-writer-$slot") {
+            worker("bag-writer-$slot", rounds, phase, failure) {
                 // A fresh key every time: this is the `ai4_auto_name` / `file_proxy_error` /
                 // Delegation-default-writeback shape, and it bumps the backing map's modCount.
                 box.setPropertyRaw("churn_${slot}_$n", n, doResync = false)
@@ -109,9 +128,7 @@ class BoxPropertyBagConcurrencyTest {
             }
         }
 
-        val all = walkers + writers
-        all.forEach { it.start() }
-        all.forEach { it.join(30_000) }
+        runWorkers(*(walkers + writers).toTypedArray())
 
         // The race first, so a failure reports the exception and where it came from rather than the
         // did-anything-run guard below (at base the walkers die on their very first walk, so the
@@ -125,8 +142,8 @@ class BoxPropertyBagConcurrencyTest {
         )
         // And then the other failure mode this loop keeps rediscovering: a race test that passes
         // because nothing actually ran.
-        assertTrue(walks.get() > 100, "the resync walkers barely ran (${walks.get()} walks)")
-        assertTrue(writes.get() > 100, "the bag writers barely ran (${writes.get()} writes)")
+        assertEquals((rounds * walkers.size).toLong(), walks.get(), "resync walkers did not finish fixed work")
+        assertEquals((rounds * writers.size).toLong(), writes.get(), "bag writers did not finish fixed work")
     }
 
     /**
@@ -180,36 +197,26 @@ class BoxPropertyBagConcurrencyTest {
         val box = Box("running-states-race")
         stressedBoxes += box
 
-        val deadline = System.currentTimeMillis() + 1_500
+        val rounds = 1_000
         val failure = AtomicReference<Throwable?>(null)
         val walks = AtomicLong(0)
         val writes = AtomicLong(0)
-        val start = CyclicBarrier(2)
-
-        fun worker(name: String, body: () -> Unit) = Thread({
-            start.await()
-            try {
-                while (System.currentTimeMillis() < deadline && failure.get() == null) body()
-            } catch (t: Throwable) {
-                failure.compareAndSet(null, t)
-            }
-        }, name)
+        val phase = CyclicBarrier(2)
 
         // What syncExecutionStatus (Boxes.kt) does to each box, 500ms apart, on the main runloop.
-        val walker = worker("execution-status-walker") {
+        val walker = worker("execution-status-walker", rounds, phase, failure) {
             box.currentRunningStates.toMap().forEach { (_, state) -> state.watermark }
             walks.incrementAndGet()
         }
         var n = 0
-        val writer = worker("strand-writer") {
+        val writer = worker("strand-writer", rounds, phase, failure) {
             box.currentRunningStates["strand_$n"] = RunningState(n, "launch")
             if (n >= 32) box.currentRunningStates.remove("strand_${n - 32}")
             n++
             writes.incrementAndGet()
         }
 
-        listOf(walker, writer).forEach { it.start() }
-        listOf(walker, writer).forEach { it.join(30_000) }
+        runWorkers(walker, writer)
 
         val raised = failure.get()
         assertNull(
@@ -218,8 +225,8 @@ class BoxPropertyBagConcurrencyTest {
                 "${raised?.javaClass?.name} at:\n" +
                 raised?.stackTrace?.take(4)?.joinToString("\n") { "    $it" }
         )
-        assertTrue(walks.get() > 100, "the status walker barely ran (${walks.get()} walks)")
-        assertTrue(writes.get() > 100, "the strand writer barely ran (${writes.get()} writes)")
+        assertEquals(rounds.toLong(), walks.get(), "status walker did not finish fixed work")
+        assertEquals(rounds.toLong(), writes.get(), "strand writer did not finish fixed work")
     }
 
     /** The bag holds nulls; `ConcurrentHashMap` would have thrown here. */

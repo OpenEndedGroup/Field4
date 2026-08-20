@@ -7,6 +7,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import java.util.concurrent.BrokenBarrierException
 import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
@@ -69,25 +70,45 @@ class BoxTopologyConcurrencyTest {
         thisSessionInfo.remove()
     }
 
-    /** Runs [body] until [deadline] or first failure, on its own thread, with a session bound. */
+    /** Runs fixed, barrier-phased work on its own thread, with a session bound. */
     private fun worker(
         name: String,
         session: SessionInformation,
-        start: CyclicBarrier,
-        deadline: Long,
+        rounds: Int,
+        phase: CyclicBarrier,
         failure: AtomicReference<Throwable?>,
         body: () -> Unit
     ) = Thread({
         thisSessionInfo.set(session)
-        start.await()
         try {
-            while (System.currentTimeMillis() < deadline && failure.get() == null) body()
+            repeat(rounds) {
+                if (failure.get() != null) return@Thread
+                // Readers and writers begin every round together. A loaded machine can stretch a
+                // round, but cannot fail the test merely because it completed fewer rounds per second.
+                phase.await()
+                body()
+            }
         } catch (t: Throwable) {
-            failure.compareAndSet(null, t)
+            if (t !is BrokenBarrierException || failure.get() == null) {
+                failure.compareAndSet(null, t)
+            }
+            phase.reset()
         }
     }, name)
 
-    private fun assertNoRace(failure: AtomicReference<Throwable?>, what: String, vararg counters: Pair<String, AtomicLong>) {
+    private fun runWorkers(vararg workers: Thread) {
+        workers.forEach { it.start() }
+        workers.forEach { it.join(30_000) }
+        val stuck = workers.filter { it.isAlive }
+        stuck.forEach { it.interrupt() }
+        assertTrue(stuck.isEmpty(), "stress worker(s) did not finish fixed work: ${stuck.map { it.name }}")
+    }
+
+    private fun assertNoRace(
+        failure: AtomicReference<Throwable?>,
+        what: String,
+        vararg counters: Triple<String, AtomicLong, Long>
+    ) {
         val raised = failure.get()
         assertNull(
             raised,
@@ -95,8 +116,8 @@ class BoxTopologyConcurrencyTest {
                 counters.joinToString { "${it.first}=${it.second.get()}" } + ", at:\n" +
                 raised?.stackTrace?.take(5)?.joinToString("\n") { "    $it" }
         )
-        counters.forEach { (label, counter) ->
-            assertTrue(counter.get() > 50, "$label barely ran (${counter.get()})")
+        counters.forEach { (label, counter, expected) ->
+            assertEquals(expected, counter.get(), "$label did not complete its fixed stress work")
         }
     }
 
@@ -115,13 +136,13 @@ class BoxTopologyConcurrencyTest {
         thisSessionInfo.set(session)
         pool.take(1_200).forEach { root.connect(it) }
 
-        val deadline = System.currentTimeMillis() + 2_000
+        val rounds = 200
         val failure = AtomicReference<Throwable?>(null)
         val resyncs = AtomicLong(0)
         val edges = AtomicLong(0)
-        val start = CyclicBarrier(3)
+        val phase = CyclicBarrier(3)
 
-        val resyncer = worker("resync-loop", session, start, deadline, failure) {
+        val resyncer = worker("resync-loop", session, rounds, phase, failure) {
             // Keep the queue fed the way the server does, then drain it exactly as the runloop does.
             needsResync.add(root to "children")
             needsResync.add(root to "actions")
@@ -130,11 +151,11 @@ class BoxTopologyConcurrencyTest {
         }
         val connectors = (0 until 2).map { slot ->
             var n = 0
-            worker("edge-churn-$slot", session, start, deadline, failure) {
+            worker("edge-churn-$slot", session, rounds, phase, failure) {
                 // Alternate on the *same* box, in a range this thread owns: connecting an
                 // already-connected box (or disconnecting an absent one) returns early without
                 // touching the set, and a churn loop that saturates into no-ops is a test that
-                // passes for the wrong reason. Measured: 18M "edges", ~300 real mutations.
+                // passes for the wrong reason. Each paired round here is one add and one remove.
                 val child = pool[1_200 + slot * 150 + ((n / 2) % 150)]
                 if (n % 2 == 0) root.connect(child) else root.disconnect(child)
                 n++
@@ -142,11 +163,14 @@ class BoxTopologyConcurrencyTest {
             }
         }
 
-        val all = listOf(resyncer) + connectors
-        all.forEach { it.start() }
-        all.forEach { it.join(30_000) }
+        runWorkers(resyncer, *connectors.toTypedArray())
 
-        assertNoRace(failure, "doResync() while boxes connect and disconnect", "resyncs" to resyncs, "edges" to edges)
+        assertNoRace(
+            failure,
+            "doResync() while boxes connect and disconnect",
+            Triple("resyncs", resyncs, rounds.toLong()),
+            Triple("edges", edges, (rounds * connectors.size).toLong())
+        )
     }
 
     /**
@@ -165,20 +189,20 @@ class BoxTopologyConcurrencyTest {
         ancestors.take(1_200).forEach { leaf.parents.add(it) }
         leaf.actions["own"] = Action("own", "detail") { }
 
-        val deadline = System.currentTimeMillis() + 2_000
+        val rounds = 200
         val failure = AtomicReference<Throwable?>(null)
         val gathers = AtomicLong(0)
         val edges = AtomicLong(0)
-        val start = CyclicBarrier(3)
+        val phase = CyclicBarrier(3)
 
-        val gatherer = worker("gather-loop", session, start, deadline, failure) {
+        val gatherer = worker("gather-loop", session, rounds, phase, failure) {
             leaf.gather<MutableMap<String, Action>>("actions")
             leaf.visitParents { }
             gathers.incrementAndGet()
         }
         val churners = (0 until 2).map { slot ->
             var n = 0
-            worker("parent-churn-$slot", session, start, deadline, failure) {
+            worker("parent-churn-$slot", session, rounds, phase, failure) {
                 val ancestor = ancestors[1_200 + slot * 150 + ((n / 2) % 150)]
                 // The shape used by attachRootToMetaroot, history.kt's topology restore and the
                 // completion probes: mutate the edge set directly.
@@ -188,11 +212,14 @@ class BoxTopologyConcurrencyTest {
             }
         }
 
-        val all = listOf(gatherer) + churners
-        all.forEach { it.start() }
-        all.forEach { it.join(30_000) }
+        runWorkers(gatherer, *churners.toTypedArray())
 
-        assertNoRace(failure, "gather()/visitParents() while parent edges churn", "gathers" to gathers, "edges" to edges)
+        assertNoRace(
+            failure,
+            "gather()/visitParents() while parent edges churn",
+            Triple("gathers", gathers, rounds.toLong()),
+            Triple("edges", edges, (rounds * churners.size).toLong())
+        )
     }
 
     /**
@@ -211,18 +238,18 @@ class BoxTopologyConcurrencyTest {
         // entries is far too short a window to catch anything.
         repeat(1_500) { ancestor.actions["preinstalled-$it"] = Action("a$it", "detail") { } }
 
-        val deadline = System.currentTimeMillis() + 1_500
+        val rounds = 250
         val failure = AtomicReference<Throwable?>(null)
         val gathers = AtomicLong(0)
         val registrations = AtomicLong(0)
-        val start = CyclicBarrier(2)
+        val phase = CyclicBarrier(2)
 
-        val gatherer = worker("actions-gather", session, start, deadline, failure) {
+        val gatherer = worker("actions-gather", session, rounds, phase, failure) {
             leaf.gather<MutableMap<String, Action>>("actions")
             gathers.incrementAndGet()
         }
         var n = 0
-        val registrar = worker("actions-register", session, start, deadline, failure) {
+        val registrar = worker("actions-register", session, rounds, phase, failure) {
             // Alternate on the same key so every iteration is a real structural modification.
             val key = "churn-${n / 2}"
             if (n % 2 == 0) ancestor.actions[key] = Action(key, "detail") { } else ancestor.actions.remove(key)
@@ -230,12 +257,12 @@ class BoxTopologyConcurrencyTest {
             registrations.incrementAndGet()
         }
 
-        listOf(gatherer, registrar).forEach { it.start() }
-        listOf(gatherer, registrar).forEach { it.join(30_000) }
+        runWorkers(gatherer, registrar)
 
         assertNoRace(
             failure, "gather(\"actions\") while actions are registered",
-            "gathers" to gathers, "registrations" to registrations
+            Triple("gathers", gathers, rounds.toLong()),
+            Triple("registrations", registrations, rounds.toLong())
         )
     }
 
@@ -258,41 +285,42 @@ class BoxTopologyConcurrencyTest {
         val parked = CompletableDeferred<Unit>()
         repeat(1_500) { box.jobs.add(scope.launch { parked.await() }) }
 
-        val deadline = System.currentTimeMillis() + 1_500
+        val rounds = 1_000
         val failure = AtomicReference<Throwable?>(null)
         val walks = AtomicLong(0)
         val completions = AtomicLong(0)
-        val start = CyclicBarrier(2)
+        val phase = CyclicBarrier(2)
 
         // Exactly Server.kt's and agent_backdoor's expression.
         val walker = Thread({
-            start.await()
             try {
-                while (System.currentTimeMillis() < deadline && failure.get() == null) {
+                repeat(rounds) {
+                    phase.await()
                     box.jobs.any { !it.isCancelled && it.isActive }
                     walks.incrementAndGet()
                 }
             } catch (t: Throwable) {
-                failure.compareAndSet(null, t)
+                if (t !is BrokenBarrierException || failure.get() == null) failure.compareAndSet(null, t)
+                phase.reset()
             }
         }, "jobs-walker")
 
         val churner = Thread({
-            start.await()
             try {
-                while (System.currentTimeMillis() < deadline && failure.get() == null) {
+                repeat(rounds) {
+                    phase.await()
                     // Completes almost immediately on Dispatchers.Default, so its completion handler
                     // calls removeCompleted from a pool thread while the walker iterates.
                     box.jobs.add(scope.launch { })
                     completions.incrementAndGet()
                 }
             } catch (t: Throwable) {
-                failure.compareAndSet(null, t)
+                if (t !is BrokenBarrierException || failure.get() == null) failure.compareAndSet(null, t)
+                phase.reset()
             }
         }, "jobs-churner")
 
-        listOf(walker, churner).forEach { it.start() }
-        listOf(walker, churner).forEach { it.join(30_000) }
+        runWorkers(walker, churner)
         parked.complete(Unit)
         scope.cancel()
 
@@ -303,8 +331,8 @@ class BoxTopologyConcurrencyTest {
                 "walks=${walks.get()} launches=${completions.get()}, at:\n" +
                 raised?.stackTrace?.take(5)?.joinToString("\n") { "    $it" }
         )
-        assertTrue(walks.get() > 50, "the jobs walker barely ran (${walks.get()})")
-        assertTrue(completions.get() > 50, "the job churner barely ran (${completions.get()})")
+        assertEquals(rounds.toLong(), walks.get(), "the jobs walker did not complete its fixed stress work")
+        assertEquals(rounds.toLong(), completions.get(), "the job churner did not complete its fixed stress work")
     }
 
     /**
