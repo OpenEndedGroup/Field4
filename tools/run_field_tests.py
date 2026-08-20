@@ -21,6 +21,8 @@ from PIL import Image, ImageChops, ImageStat
 from discover_field_tests import DEFAULT_ROOTS, discover
 from field_backdoor import gradle_command, health_check, make_unverified_ssl_context
 from verification_runtime import (
+    automation_server_environment,
+    automation_workspace,
     field_instance_info,
     field_instance_problem,
     run_with_watchdog,
@@ -420,7 +422,12 @@ def reap_stale_field_jvms(port: int, *, grace: float = 8.0, dry_run: bool = Fals
         )
 
 
-def ensure_persistent_field(port: int, *, boot_timeout: float = 180.0) -> subprocess.Popen[Any] | None:
+def ensure_persistent_field(
+    port: int,
+    *,
+    workspace: str | None = None,
+    boot_timeout: float = 180.0,
+) -> subprocess.Popen[Any] | None:
     """Guarantee one warm, *responsive* Field for the whole run.
 
     Historically the first test's backdoor process cold-booted the JVM and then
@@ -456,26 +463,30 @@ def ensure_persistent_field(port: int, *, boot_timeout: float = 180.0) -> subpro
     log_path.parent.mkdir(parents=True, exist_ok=True)
     GENERATED_DOC_ASSETS_ROOT.mkdir(parents=True, exist_ok=True)
     log_file = log_path.open("w", encoding="utf-8")
+    resolved_workspace = workspace or str(automation_workspace(REPO_ROOT))
+    command = gradle_command("runJvm")
+    command.append(f"--args=--workspace {shlex.quote(resolved_workspace)}")
     popen_kwargs: dict[str, Any] = {
         "cwd": str(REPO_ROOT),
         "stdout": log_file,
         "stderr": subprocess.STDOUT,
         "stdin": subprocess.DEVNULL,
         "text": True,
-        "env": {
-            **os.environ,
-            "PORT": str(port),
+        "env": automation_server_environment(
+            port,
+            extra={
             # Gallery smoke tests must never rewrite tracked docs captures. The
             # production docs runner leaves this unset and continues to own
             # public/docs/assets.
-            "AFIELD_GENERATED_DOC_ASSET_ROOT": str(GENERATED_DOC_ASSETS_ROOT),
-        },
+                "AFIELD_GENERATED_DOC_ASSET_ROOT": str(GENERATED_DOC_ASSETS_ROOT),
+            },
+        ),
     }
     if os.name == "nt":
         popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
     else:
         popen_kwargs["start_new_session"] = True
-    proc = subprocess.Popen(gradle_command("runJvm"), **popen_kwargs)
+    proc = subprocess.Popen(command, **popen_kwargs)
     deadline = time.monotonic() + boot_timeout
     while time.monotonic() < deadline:
         if proc.poll() is not None:
@@ -1529,7 +1540,7 @@ def run(args: argparse.Namespace) -> int:
     if tests and not args.no_prewarm:
         if not args.no_reap:
             reap_stale_field_jvms(args.port)
-        field_proc = ensure_persistent_field(args.port)
+        field_proc = ensure_persistent_field(args.port, workspace=args.workspace)
         progress(f"Started persistent Field on port {args.port} for this run")
 
     try:
@@ -1557,7 +1568,7 @@ def run(args: argparse.Namespace) -> int:
                 progress(f"  recycling Field after graphics-context test (GPU state reset)")
                 ctx = make_unverified_ssl_context()
                 recycle_field(args.port, ctx)
-                field_proc = ensure_persistent_field(args.port)
+                field_proc = ensure_persistent_field(args.port, workspace=args.workspace)
     finally:
         stop_persistent_field(field_proc, port=args.port)
 

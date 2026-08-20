@@ -32,6 +32,7 @@ import argparse
 import asyncio
 import json
 import os
+import shlex
 import subprocess
 import sys
 import time
@@ -323,11 +324,13 @@ def _start_persistent_field(port: int, timeout: float) -> subprocess.Popen[Any]:
     log_path = fb.LOG_ROOT / f"bench-persistent-field-{port}.log"
     fb.LOG_ROOT.mkdir(parents=True, exist_ok=True)
     log_file = log_path.open("w", encoding="utf-8")
+    workspace = str(fb.automation_workspace(fb.REPO_ROOT))
     cmd = fb.gradle_command("runJvm")
+    cmd.append(f"--args=--workspace {shlex.quote(workspace)}")
     proc = subprocess.Popen(
         cmd, cwd=str(fb.REPO_ROOT), stdout=log_file, stderr=subprocess.STDOUT,
         stdin=subprocess.DEVNULL, text=True,
-        env={**os.environ, "PORT": str(port)},
+        env=fb.automation_server_environment(port),
         start_new_session=True,
     )
     ssl_ctx = fb.make_unverified_ssl_context()

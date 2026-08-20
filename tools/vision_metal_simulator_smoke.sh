@@ -67,7 +67,9 @@ if curl -sk --max-time 3 "https://localhost:$PORT/health" 2>/dev/null | grep -q 
     say "reusing the Field server already on $PORT"
 else
     say "starting Field on $PORT…"
-    (cd "$REPO" && PORT="$PORT" ./gradlew runJvm > "$SERVER_LOG" 2>&1) &
+    WORKSPACE="$OUT/workspace"
+    (cd "$REPO" && PORT="$PORT" AFIELD_SKIP_WORKSPACE_PERSIST=1 \
+        ./gradlew runJvm --args="--workspace $WORKSPACE" > "$SERVER_LOG" 2>&1) &
     SERVER_PID=$!
     STARTED_SERVER=1
     i=0

@@ -26,7 +26,13 @@ import ssl
 TOOLS_DIR = Path(__file__).resolve().parent.parent / "tools"
 if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
-from verification_runtime import field_instance_info, field_instance_problem, run_with_watchdog
+from verification_runtime import (
+    automation_server_environment,
+    automation_workspace,
+    field_instance_info,
+    field_instance_problem,
+    run_with_watchdog,
+)
 
 # Shared with tools/discover_field_tests.py; see public/fabricate_docs_scenes.py.
 # public/ is already on sys.path when the Zensical build imports this module, so
@@ -898,9 +904,8 @@ class RunnerState:
         """
         gradle_wrapper = "gradlew.bat" if os.name == "nt" else "./gradlew"
         cmd = [str(self.repo_root / gradle_wrapper), "runJvm"]
-        workspace = os.environ.get(RUNNER_WORKSPACE_ENV)
-        if workspace:
-            cmd.append(f"--args=--workspace {workspace}")
+        workspace = os.environ.get(RUNNER_WORKSPACE_ENV) or str(automation_workspace(self.repo_root))
+        cmd.append(f"--args=--workspace {shlex.quote(workspace)}")
 
         self.shared_log_path.parent.mkdir(parents=True, exist_ok=True)
         log_handle = self.shared_log_path.open("w", encoding="utf-8")
@@ -908,7 +913,7 @@ class RunnerState:
         # The completion backend is decided by this env, at JVM start, and cannot be changed later: the
         # sidecar URL is read from `System.getenv`. So it has to be resolved BEFORE the server starts,
         # not lazily at the first completion capture.
-        server_env = {**os.environ, "PORT": str(self.backdoor_port)}
+        server_env = automation_server_environment(self.backdoor_port)
         sidecar_url = self._ensure_semantic_sidecar()
         if sidecar_url:
             server_env[SIDECAR_URL_ENV] = sidecar_url

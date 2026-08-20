@@ -64,7 +64,12 @@ def _reexec_under_repo_env_if_needed() -> None:
 _reexec_under_repo_env_if_needed()
 
 import websockets  # noqa: E402  (guaranteed importable after the shim above)
-from verification_runtime import field_instance_info, field_instance_problem  # noqa: E402
+from verification_runtime import (  # noqa: E402
+    automation_server_environment,
+    automation_workspace,
+    field_instance_info,
+    field_instance_problem,
+)
 
 try:
     import yaml
@@ -334,7 +339,10 @@ class SessionLogger:
 class FieldBackdoor:
     def __init__(self, *, port: int, workspace: str | None, default_timeout: float, logger: SessionLogger) -> None:
         self.port = port
-        self.workspace = workspace
+        # A backdoor-managed Field is automation, even when the caller omitted
+        # --workspace. Never let it inherit the machine-global interactive
+        # preference, which may name a deleted sibling worktree.
+        self.workspace = workspace or str(automation_workspace(REPO_ROOT))
         self.default_timeout = default_timeout
         self.logger = logger
         self.session_id = logger.session_id
@@ -394,9 +402,8 @@ class FieldBackdoor:
         self.managed_log_file = self.managed_log_path.open("w", encoding="utf-8")
 
         cmd = gradle_command("runJvm")
-        if self.workspace:
-            quoted_workspace = shlex.quote(self.workspace)
-            cmd.append(f"--args=--workspace {quoted_workspace}")
+        quoted_workspace = shlex.quote(self.workspace)
+        cmd.append(f"--args=--workspace {quoted_workspace}")
 
         # Enable remote debugging for backdoor-launched Field so agent probes work.
         # Honors an explicit AFIELD_JDWP_PORT already in the env (incl. "off"), so
@@ -414,11 +421,10 @@ class FieldBackdoor:
             "stderr": subprocess.STDOUT,
             "stdin": subprocess.DEVNULL,
             "text": True,
-            "env": {
-                **os.environ,
-                "PORT": str(self.port),
-                "AFIELD_JDWP_PORT": jdwp_port if jdwp_port is not None else "off",
-            },
+            "env": automation_server_environment(
+                self.port,
+                extra={"AFIELD_JDWP_PORT": jdwp_port if jdwp_port is not None else "off"},
+            ),
         }
         if os.name == "nt":
             popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]

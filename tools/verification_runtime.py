@@ -14,7 +14,35 @@ import urllib.error
 import urllib.request
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Callable, Iterator, Sequence
+from typing import Callable, Iterator, Mapping, Sequence
+
+
+def automation_workspace(repo_root: Path) -> Path:
+    """Checkout-local workspace for automated Field servers.
+
+    Automation must not inherit ``~/.afield/last-workspace.txt``: that file is an
+    interactive, machine-global preference and can point into a deleted sibling
+    worktree. Keeping scratch documents under this checkout's ignored ``build``
+    directory also makes ownership explicit and cleanup unsurprising.
+    """
+    return repo_root.resolve() / "build" / "field-automation-workspace"
+
+
+def automation_server_environment(
+    port: int,
+    *,
+    base: Mapping[str, str] | None = None,
+    extra: Mapping[str, str] | None = None,
+) -> dict[str, str]:
+    """Environment for an automated Field server without preference side effects."""
+    environment = dict(os.environ if base is None else base)
+    environment.update({
+        "PORT": str(port),
+        "AFIELD_SKIP_WORKSPACE_PERSIST": "1",
+    })
+    if extra is not None:
+        environment.update(extra)
+    return environment
 
 
 def field_instance_info(

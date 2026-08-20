@@ -4,12 +4,15 @@ import sys
 import unittest
 from pathlib import Path
 
-from tools.field_backdoor import BackdoorError, CommandParseError, FieldBackdoor, parse_command
-
 # `run_field_tests.py` imports its siblings by bare name (`from discover_field_tests import ...`), the
 # way it does when run as a script from `tools/`. Put that directory on the path before importing it
 # under its package name, rather than reaching into the module's own imports.
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+REPO_PATH = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_PATH))
+sys.path.insert(0, str(REPO_PATH / "tools"))
+
+from tools.field_backdoor import BackdoorError, CommandParseError, FieldBackdoor, REPO_ROOT, parse_command
+from tools.verification_runtime import automation_workspace
 
 from tools.run_field_tests import build_backdoor_command  # noqa: E402  (path set up just above)
 
@@ -30,6 +33,13 @@ class BoxReferenceTests(unittest.TestCase):
             logger=_Logger(),
         )
         self.client.scratch = True
+
+    def test_managed_server_defaults_to_a_checkout_local_workspace(self) -> None:
+        self.assertEqual(
+            self.client.workspace,
+            str(automation_workspace(REPO_ROOT)),
+        )
+        self.assertIn(str(REPO_ROOT), self.client.workspace)
 
     def test_unknown_scratch_box_explains_invocation_lifetime(self) -> None:
         with self.assertRaises(BackdoorError) as raised:

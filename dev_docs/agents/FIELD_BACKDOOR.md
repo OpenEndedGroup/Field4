@@ -42,6 +42,13 @@ and managed-server log paths. A backdoor-owned Field enables JDWP on port 5005
 unless `AFIELD_JDWP_PORT` overrides or disables it. A plain
 `./gradlew runJvm` does not enable JDWP by default.
 
+When the backdoor starts Field, it always supplies an explicit checkout-local
+workspace under `build/field-automation-workspace` unless `--workspace` was
+given. Automated servers also decline to update the interactive
+`~/.afield/last-workspace.txt` preference. This is deliberate: a machine-global
+preference can name a deleted sibling worktree, while scratch state belongs to
+the checkout that launched it.
+
 Do not use the default Field port for isolated verification: an already-running
 server is reused, and it may contain stale code or human work. Reuse one custom
 port within a test session; choose a new one when a fresh JVM matters.
