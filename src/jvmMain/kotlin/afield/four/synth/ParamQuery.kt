@@ -6,7 +6,6 @@ import afield.ToHTML
 import afield.graphquery.GraphPathRef
 import afield.graphquery.GraphWalkOptions
 import afield.graphquery.PathSet
-import afield.graphquery.escapeHtml
 import afield.graphquery.formatGraphFloat
 import afield.graphquery.graphPaths
 import afield.graphquery.groupRefsBySlot
@@ -303,13 +302,13 @@ class ParamSet internal constructor(
     override fun toHTML(): String = renderGraphTable(
         title = "ParamSet",
         count = size,
-        headers = listOf("path", "base", "state"),
+        columns = listOf(
+            "path" to afield.graphquery.PATH_COLOUR,
+            "base" to afield.graphquery.VALUE_COLOUR,
+            "state" to afield.graphquery.MUTED_COLOUR
+        ),
         rows = entries.map { entry ->
-            listOf(
-                escapeHtml(entry.path) to afield.graphquery.PATH_COLOUR,
-                formatGraphFloat(entry.base) to afield.graphquery.VALUE_COLOUR,
-                describeState(entry) to afield.graphquery.MUTED_COLOUR
-            )
+            listOf(entry.path, formatGraphFloat(entry.base), describeState(entry))
         }
     )
 

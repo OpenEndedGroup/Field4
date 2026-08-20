@@ -1,0 +1,234 @@
+package afield
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+/**
+ * [Table] is the one tabular renderer, so what matters here is not the exact markup but the four
+ * things a caller depends on: columns keep the order they were declared in, cell text is escaped
+ * unless a [Table.format] lambda opted out, a named column that does not exist fails loudly rather
+ * than silently doing nothing, and a [Table.expect] claim shows up in all three places it promises
+ * to — the colour, the footnote, and [Table.deviations].
+ */
+class TableTest {
+
+    private data class Sample(val name: String, val calls: Int, val ratio: Double)
+
+    @Test
+    fun `columns keep their declared order and numeric columns right-align`() {
+        val html = Table(listOf("builder", "calls"))
+            .row("eachFrame { }", 7)
+            .row("loop { }", 8)
+            .toHTML()
+
+        assertTrue(html.indexOf("builder") < html.indexOf("calls"), "declared column order")
+        // The string column left-aligns, the numeric one right-aligns.
+        assertTrue("text-align:left" in html, "expected a left-aligned label column")
+        assertTrue("text-align:right" in html, "expected a right-aligned numeric column")
+    }
+
+    @Test
+    fun `default cell text escapes, and a format lambda is trusted HTML`() {
+        val hostile = Table(listOf("value")).row("<script>alert(1)</script>")
+        assertTrue("&lt;script&gt;" in hostile.toHTML(), "a hostile cell must be escaped")
+        assertFalse("<script>" in hostile.toHTML(), "no raw script tag may survive")
+
+        val formatted = Table(listOf("value"))
+            .row("x")
+            .format("value") { "<b>bold</b>" }
+        assertTrue("<b>bold</b>" in formatted.toHTML(), "a format lambda's HTML is inserted as-is")
+    }
+
+    @Test
+    fun `whole-valued floats lose their decimal point and others keep four places`() {
+        val cells = Table(listOf("v")).row(1.0).row(1.5).row(1.0 / 3.0).toText()
+            .trim().lines().drop(1).map { it.trim() }
+        assertEquals(listOf("1", "1.5", "0.3333"), cells, "unexpected default number formatting")
+    }
+
+    @Test
+    fun `a magnitude four decimals would destroy goes to scientific notation, not to zero`() {
+        val cells = Table(listOf("cost")).row(1e-9).row(0.0).row(-2.5e-7).toText()
+            .trim().lines().drop(1).map { it.trim() }
+        assertEquals(listOf("1.000e-09", "0", "-2.500e-07"), cells, "a converged residual must not print as 0")
+    }
+
+    @Test
+    fun `an expect claim colours the cell, counts it in the footnote, and lists it in deviations`() {
+        val t = Table(listOf("builder", "frameNumber"))
+            .row("frames { }", 7)
+            .row("broken { }", 3)
+            .expect("frameNumber", because = "one frame per pump") { it == 7 }
+        t.note = "cells are cumulative body calls"
+
+        assertEquals(1, t.deviations.size, "exactly one row breaks the claim")
+        assertEquals(Deviation(1, "frameNumber", 3, "one frame per pump"), t.deviations.single())
+
+        val html = t.toHTML()
+        assertTrue(TABLE_WARN in html, "the failing cell should carry the warn colour")
+        assertTrue("one frame per pump" in html, "the reason should reach the tooltip")
+        assertTrue(
+            "1 cell outside expectation" in html,
+            "the footnote should state the failure in words, so a static capture reads correctly:\n$html"
+        )
+    }
+
+    @Test
+    fun `a satisfied claim leaves the footnote alone and colours nothing`() {
+        val t = Table(listOf("frameNumber")).row(7).row(7).expect("frameNumber") { it == 7 }
+        t.note = "every builder advanced one frame per pump"
+        val html = t.toHTML()
+        assertTrue(t.deviations.isEmpty(), "no deviations expected")
+        assertFalse("outside expectation" in html, "a satisfied claim adds nothing to the footnote")
+        assertFalse(TABLE_WARN in html, "nothing should be coloured as a failure")
+        assertTrue("every builder advanced one frame per pump" in html, "the note survives verbatim")
+    }
+
+    @Test
+    fun `naming a column that does not exist fails loudly rather than doing nothing`() {
+        val t = Table(listOf("builder", "calls")).row("a", 1)
+        for (op in listOf<(Table) -> Unit>(
+            { it.align("clals", Align.RIGHT) },
+            { it.color("clals", "#fff") },
+            { it.format("clals") { "x" } },
+            { it.expect("clals") { true } },
+        )) {
+            val e = assertFailsWith<IllegalArgumentException> { op(t) }
+            assertTrue(
+                "clals" in (e.message ?: "") && "builder" in (e.message ?: ""),
+                "the message should name the typo and list the real columns, got: ${e.message}"
+            )
+        }
+    }
+
+    @Test
+    fun `a row wider than the header is an error, and a short row is padded`() {
+        assertFailsWith<IllegalArgumentException> { Table(listOf("a")).row(1, 2) }
+        val t = Table(listOf("a", "b", "c")).row(1)
+        assertEquals(listOf<Any?>(1, null, null), t.rows.single())
+    }
+
+    @Test
+    fun `rendering is bounded and says how much it elided`() {
+        val t = Table(listOf("i"))
+        repeat(100) { t.row(it) }
+        t.maxRows = 10
+        val html = t.toHTML()
+        assertTrue("… 90 more rows" in html, "expected an elision line, got:\n$html")
+        assertFalse(">99<" in html, "row 99 should not have been drawn")
+    }
+
+    @Test
+    fun `the column-major factory transposes and pads ragged columns`() {
+        val t = table("pump" to listOf(1, 2, 3), "calls" to listOf(10, 20))
+        assertEquals(listOf("pump", "calls"), t.header)
+        assertEquals(3, t.rows.size)
+        assertEquals(listOf<Any?>(3, null), t.rows.last())
+    }
+
+    @Test
+    fun `recordTable takes data classes in constructor order, not alphabetical order`() {
+        val t = recordTable(listOf(Sample("a", 1, 0.5), Sample("b", 2, 0.25)))
+        assertEquals(listOf("name", "calls", "ratio"), t?.header, "memberProperties order would be alphabetical")
+        assertEquals(listOf<Any?>("b", 2, 0.25), t?.rows?.last())
+    }
+
+    @Test
+    fun `recordTable takes uniform maps and equal-length lists, and declines everything else`() {
+        val maps = recordTable(listOf(mapOf("x" to 1, "y" to 2), mapOf("x" to 3, "y" to 4)))
+        assertEquals(listOf("x", "y"), maps?.header)
+
+        val lists = recordTable(listOf(listOf(1, 2), listOf(3, 4)))
+        assertEquals(listOf("0", "1"), lists?.header)
+
+        assertNull(recordTable(listOf(listOf(1, 2), listOf(3))), "ragged rows are not a table")
+        assertNull(recordTable(listOf(1, 2, 3)), "a list of scalars is a column, not a table of records")
+        assertNull(recordTable(listOf(Sample("a", 1, 0.0))), "one record is not worth a table")
+        assertNull(recordTable(listOf<Any?>(Sample("a", 1, 0.0), null)), "a null row is not a record")
+    }
+
+    @Test
+    fun `a missing key in one map becomes an empty cell rather than a shifted row`() {
+        val t = recordTable(listOf(mapOf("x" to 1, "y" to 2), mapOf("x" to 3)))
+        assertEquals(listOf("x", "y"), t?.header)
+        assertEquals(listOf<Any?>(3, null), t?.rows?.last())
+    }
+
+    @Test
+    fun `a Table renders through value display, so display and h need no extra wiring`() {
+        val html = Table(listOf("builder")).row("eachFrame { }").h
+        assertTrue("value-viz" in html, "ValueVisualizer should have wrapped it")
+        assertTrue("<table" in html, "ToHTML should have been dispatched ahead of reflection")
+        assertTrue("eachFrame { }" in html, "the cell should be there")
+    }
+
+    // ── the value-display intercept: `rows.h` draws columns, but only where a table is an
+    // improvement on what ValueVisualizer already does ──────────────────────────────────────────
+
+    private data class Nested(val name: String, val values: List<Int>)
+
+    private enum class Phase { WARM, COLD }
+
+    @Test
+    fun `a list of records renders as a table through plain value display`() {
+        val html = listOf(Sample("a", 1, 0.5), Sample("b", 2, 0.25)).h
+        assertTrue("<table" in html, "a uniform record list should table, got:\n$html")
+        assertTrue(html.indexOf("name") < html.indexOf("calls"), "constructor column order")
+        assertFalse("value-viz'>[" in html, "it should not also render as an inline list")
+    }
+
+    @Test
+    fun `a list of uniform maps tables, and enums count as scalar cells`() {
+        val html = listOf(
+            mapOf("phase" to Phase.WARM, "ms" to 12),
+            mapOf("phase" to Phase.COLD, "ms" to 900),
+        ).h
+        assertTrue("<table" in html, "uniform maps should table")
+        assertTrue("WARM" in html && "900" in html, "cells should be there")
+    }
+
+    @Test
+    fun `the intercept declines where the ordinary rendering is better`() {
+        // A record holding a list has no useful single-cell text.
+        assertFalse("<table" in listOf(Nested("a", listOf(1, 2)), Nested("b", listOf(3))).h, "nested values")
+        // Pairs keep their denser inline form.
+        assertFalse("<table" in listOf("a" to 1, "b" to 2).h, "kotlin.Pair")
+        // A list of lists keeps its nesting, and with it a sparkline per row.
+        assertFalse("<table" in listOf(listOf(1, 2, 3), listOf(4, 5, 6)).h, "list of lists")
+        // Scalars are a column, not a table.
+        assertFalse("<table" in listOf(1, 2, 3).h, "list of numbers")
+        assertFalse("<table" in listOf("a", "b", "c").h, "list of strings")
+    }
+
+    @Test
+    fun `a record list nested inside a struct keeps the struct tree`() {
+        val wrapper = mapOf("runs" to listOf(Sample("a", 1, 0.5), Sample("b", 2, 0.25)))
+        assertFalse("<table" in wrapper.h, "there is no width to spend on columns below the top level")
+    }
+
+    @Test
+    fun `the intercept is bounded and says how much it elided`() {
+        val many = (1..100).map { Sample("row$it", it, it / 100.0) }
+        val html = many.h
+        assertTrue("<table" in html, "a long record list still tables")
+        assertTrue("more rows" in html, "expected an elision line, got the tail of:\n${html.takeLast(400)}")
+        assertFalse("row99" in html, "row 99 is past the bound")
+    }
+
+    @Test
+    fun `toText aligns columns for a terminal`() {
+        val text = Table(listOf("builder", "calls"))
+            .row("frames { }", 7)
+            .row("eachFrame { }", 123)
+            .toText()
+        val lines = text.trim().lines()
+        assertEquals(3, lines.size, "header plus two rows, got:\n$text")
+        // Right-aligned numerics line up on their last character.
+        assertTrue(lines[1].endsWith("  7"), "expected 7 right-aligned under a 5-wide column: '${lines[1]}'")
+        assertTrue(lines[2].endsWith("123"), "expected 123 flush right: '${lines[2]}'")
+    }
+}

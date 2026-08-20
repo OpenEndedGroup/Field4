@@ -149,6 +149,7 @@ object ValueVisualizer {
     private const val SPARKLINE_MIN_POINTS = 3
     private const val INLINE_STRUCT_MAX_FIELDS = 3
     private const val INLINE_STRUCT_MAX_CHARS = 64
+    private const val RECORD_TABLE_MAX_ROWS = 24
     private const val INDENT_STEP_PX = 12
     private const val BOX_SYMBOL = "\u25A1"
     private val UNDERSCORE_UUID_REGEX = Regex(
@@ -1676,6 +1677,35 @@ object ValueVisualizer {
         }
     }
 
+    /**
+     * [recordTable] applied to value display, or null to fall through to the ordinary list
+     * rendering. Deliberately narrower than [recordTable] itself, because here it is *replacing* a
+     * rendering that already works:
+     *
+     *  - every cell must be a scalar — a record holding a list or a nested struct has no useful
+     *    single-cell text, and the struct tree shows it better than a table would;
+     *  - `kotlin.Pair` / `Triple` keep their denser inline `a → b` form;
+     *  - a list of lists keeps its nesting, which carries a sparkline per row that columns would
+     *    swallow (`recordTable` still tables one on request);
+     *  - a type that renders itself, via [ToHTML] or a registered printer, is never flattened into
+     *    cells.
+     */
+    private fun recordTableHtml(list: List<*>): String? {
+        val first = list.firstOrNull() ?: return null
+        if (first is ToHTML || ValuePrinterRegistry.getPrinter(first) != null) return null
+        if (first::class.java.name.startsWith("kotlin.")) return null
+        if (list.all { it is List<*> }) return null
+
+        val table = recordTable(list) ?: return null
+        if (table.rows.any { row -> row.any { !isScalarCell(it) } }) return null
+        table.maxRows = RECORD_TABLE_MAX_ROWS
+        return table.toHTML()
+    }
+
+    private fun isScalarCell(value: Any?): Boolean =
+        value == null || value is Number || value is Boolean || value is Char ||
+            value is CharSequence || value is Enum<*>
+
     private fun formatList(
         list: List<*>,
         depth: Int,
@@ -1689,6 +1719,10 @@ object ValueVisualizer {
         // A homogeneous list of imaging detections (corners, Hough peaks, flow vectors, images) is a
         // picture, not a table of records. Returns null for every other list.
         ImagingVisualizer.formatList(list)?.let { return it }
+
+        // And a list that *is* a table of records gets drawn as one. Top level only: nested inside a
+        // struct there is no width to spend on columns.
+        if (depth == 0) recordTableHtml(list)?.let { return it }
 
         val size = list.size
         val previewCount = previewCountForListLike(size)

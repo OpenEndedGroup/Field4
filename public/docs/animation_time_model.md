@@ -113,7 +113,7 @@ fun trace(pumps: Int, build: (() -> Unit) -> Frames): Pair<List<Int>, Int> {
 }
 
 val pumps = 8
-val rows = listOf(
+val builders = listOf(
     "frames { while (frame()) … }" to trace(pumps) { body -> frames { while (frame()) body() } },
     "eachFrame { } — and so animate { }" to trace(pumps) { body -> eachFrame { body() } },
     "loop { }" to trace(pumps) { body -> loop { body() } },
@@ -122,23 +122,23 @@ val rows = listOf(
     "afield.forever { … ; true }" to trace(pumps) { body -> afield.forever { body(); true } },
 )
 
-fun num(v: Any, dim: Boolean = false) =
-    "<td style='padding:3px 12px;text-align:right${if (dim) ";color:#7f8c9b" else ""}'>$v</td>"
+// The claim this figure makes is `expect`, not the footnote: a frameNumber that broke it would
+// colour itself and the footnote would count it, rather than waiting for a reader to check the
+// arithmetic by eye.
+val figure = showTable(
+    Table(
+        listOf("after pump #") + (1..pumps).map { "$it" } + "frameNumber",
+        note = "cells are cumulative body calls",
+    )
+        .rows(builders.map { (label, r) -> listOf(label) + r.first + r.second })
+        .accent("frameNumber")
+        .expect("frameNumber", because = "one frame per pump") { it == pumps - 1 },
+    channel = "main",
+)
 
-display("main", """
-<table style='color:#c3ccd9;font:12px monospace;border-collapse:collapse'>
-  <tr><td style='padding:3px 22px 3px 0;color:#7f8c9b'>after pump #</td>
-      ${(1..pumps).joinToString("") { num(it, dim = true) }}
-      <td style='padding:3px 22px;color:#7f8c9b'>frameNumber</td></tr>
-  ${rows.joinToString("") { (label, r) ->
-      "<tr><td style='padding:3px 22px 3px 0'>$label</td>" +
-      r.first.joinToString("") { num(it) } +
-      "<td style='padding:3px 22px;text-align:right;color:#7ad9ff'>${r.second}</td></tr>"
-  }}
-  <tr><td colspan='${pumps + 2}' style='padding:10px 0 0 0;color:#7f8c9b'>
-      cells are cumulative body calls; every builder advanced exactly one frame per pump</td></tr>
-</table>
-""")
+// And the same claim as a build failure, so a regression in the builders cannot quietly ship a
+// figure that contradicts the paragraph under it.
+check(figure.deviations.isEmpty()) { "a builder no longer advances one frame per pump" }
 ```
 
 ![A table of cumulative body calls per pump for the four Frames builders, showing loop and forever one call ahead of frames and eachFrame, and all four ending on frameNumber 7](assets/animation_time_model/builders.png)

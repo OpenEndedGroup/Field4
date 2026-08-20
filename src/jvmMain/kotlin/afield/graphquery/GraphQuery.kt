@@ -1,5 +1,6 @@
 package afield.graphquery
 
+import afield.Table
 import afield.ToHTML
 import java.util.IdentityHashMap
 import java.util.concurrent.ConcurrentHashMap
@@ -226,13 +227,8 @@ class PathSet internal constructor(
     override fun toHTML(): String = renderGraphTable(
         title = "PathSet",
         count = size,
-        headers = listOf("path", "value"),
-        rows = refs.map { ref ->
-            listOf(
-                escapeHtml(ref.path) to PATH_COLOUR,
-                escapeHtml(shortValue(ref.get())) to VALUE_COLOUR
-            )
-        }
+        columns = listOf("path" to PATH_COLOUR, "value" to VALUE_COLOUR),
+        rows = refs.map { ref -> listOf(ref.path, shortValue(ref.get())) }
     )
 }
 
@@ -315,14 +311,14 @@ class LensSet<T : Any> internal constructor(
     override fun toString(): String = "LensSet<${type.simpleName}>(${size})"
 
     override fun toHTML(): String = renderGraphTable(
-        title = "LensSet&lt;${escapeHtml(type.simpleName ?: "?")}&gt;",
+        title = "LensSet<${type.simpleName ?: "?"}>",
         count = size,
-        headers = listOf("path", "value", "state"),
+        columns = listOf("path" to PATH_COLOUR, "value" to VALUE_COLOUR, "state" to MUTED_COLOUR),
         rows = lenses.map { lens ->
             listOf(
-                escapeHtml(lens.path) to PATH_COLOUR,
-                escapeHtml(shortValue(lens.get())) to VALUE_COLOUR,
-                (if (lens.writable) "writable" else "read-only") to MUTED_COLOUR
+                lens.path,
+                shortValue(lens.get()),
+                if (lens.writable) "writable" else "read-only"
             )
         }
     )
@@ -802,37 +798,24 @@ internal const val VALUE_COLOUR = "#ccc"
 internal const val MUTED_COLOUR = "#888"
 private const val MAX_HTML_ROWS = 24
 
-/** One table renderer for every result type, so the docs captures look consistent. */
+/**
+ * One table renderer for every result type, so the docs captures look consistent — now a thin
+ * adapter over [Table], which is the repo-wide one.
+ *
+ * [columns] is each column's name paired with the colour its cells take, and [rows] holds plain
+ * text: [Table] escapes it, so callers must **not** pre-escape, and the `<script>` case in
+ * `GraphQuerySmokeTest` covers that.
+ */
 internal fun renderGraphTable(
     title: String,
     count: Int,
-    headers: List<String>,
-    rows: List<List<Pair<String, String>>>
-): String = buildString {
-    append("<div style='font-family:\"Iosevka Web\",monospace;font-size:12px;color:#ccc;'>")
-    append("<div style='color:#0af;margin-bottom:6px;'>$title ($count)</div>")
-    append("<table style='border-collapse:collapse;width:100%;'>")
-    append("<tr>")
-    headers.forEachIndexed { index, header ->
-        val padding = if (index == headers.lastIndex) "2px 0" else "2px 6px 2px 0"
-        append("<th style='text-align:left;color:#0af;padding:$padding;'>$header</th>")
-    }
-    append("</tr>")
-    rows.take(MAX_HTML_ROWS).forEach { row ->
-        append("<tr>")
-        row.forEachIndexed { index, (text, colour) ->
-            val padding = if (index == row.lastIndex) "2px 0" else "2px 6px 2px 0"
-            append("<td style='padding:$padding;vertical-align:top;color:$colour;'>$text</td>")
-        }
-        append("</tr>")
-    }
-    if (rows.size > MAX_HTML_ROWS) {
-        append(
-            "<tr><td colspan='${headers.size}' style='padding-top:4px;color:$MUTED_COLOUR;'>" +
-                    "… ${rows.size - MAX_HTML_ROWS} more</td></tr>"
-        )
-    }
-    append("</table></div>")
+    columns: List<Pair<String, String>>,
+    rows: List<List<String>>
+): String {
+    val table = Table(columns.map { it.first }, title = "$title ($count)")
+    table.maxRows = MAX_HTML_ROWS
+    columns.forEach { (name, colour) -> table.color(name, colour) }
+    return table.rows(rows).toHTML()
 }
 
 internal fun shortValue(value: Any?): String = when (value) {
@@ -843,12 +826,6 @@ internal fun shortValue(value: Any?): String = when (value) {
     is String -> if (value.length > 80) value.take(77) + "..." else value
     else -> value::class.simpleName ?: value.toString()
 }
-
-internal fun escapeHtml(text: String): String = text
-    .replace("&", "&amp;")
-    .replace("<", "&lt;")
-    .replace(">", "&gt;")
-    .replace("\"", "&quot;")
 
 internal fun formatGraphFloat(value: Float): String {
     val abs = kotlin.math.abs(value)

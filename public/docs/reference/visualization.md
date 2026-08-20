@@ -4,7 +4,7 @@
 
 Turning a value into something you can look at, without leaving the box.
 
-8 source file(s), 285 public symbol(s), 256 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+9 source file(s), 314 public symbol(s), 285 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -950,5 +950,93 @@ The `PlotlyRenderer` behind `toHtml`: it emits a bare `div` plus a `Plotly.react
 | --- | --- |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nc">FlowContent</span><span class="p">.</span><span class="nf">renderPlot</span><span class="p">(</span><span class="n">plot</span><span class="p">:</span> <span class="nc">Plot</span><span class="p">,</span> <span class="n">plotId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="nc">PlotlyConfig</span><span class="p">)</span><span class="p">:</span> <span class="nc">Plot</span></code> | Emit `plot` into the surrounding `kotlinx.html` flow as a div with id `plotId`, followed by an inline script handing the trace data, layout and `config` to `Plotly.react`. Returns the plot unchanged. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">renderFragment</span><span class="p">(</span><span class="n">fragment</span><span class="p">:</span> <span class="nc">PlotlyFragment</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | Render a whole `PlotlyFragment` — a piece of `kotlinx.html` that may hold several plots and ordinary markup between them — to an HTML string, with every plot inside it going through this renderer. The result is wrapped in a single enclosing div; the same "Plotly must already be loaded" caveat applies as for `toHtml`. |
+
+## tables.kt { #tables-kt }
+
+Tabular output — the structure, and the one renderer for it.
+
+[`Table`](visualization.md#tables-kt-table) is the counterpart of `showSignals` for data that is rows and columns rather than a
+signal: build it, hand it to `Box.showTable` (or just let a box's last expression be one), and it
+arrives on screen in the repo's output style. It implements [`ToHTML`](visualization.md#valuevisualizer-kt-tohtml), so `ValueVisualizer`
+dispatches it ahead of everything else — `display(channel, table)`, `table.h`, and a returned
+`Table` all render through `Table.toHTML` with no extra wiring.
+
+Why this exists: a box that wants a table has, until now, hand-rolled
+`<table style='border-collapse:collapse…'>` with its own font stack, paddings and greys. A dozen
+files under `src/` do exactly that and no two agree, which is a lot of markup standing between a
+reader and what the box is actually saying.
+
+The part that is not just formatting is `Table.expect`. A table in a doc or a live box usually
+carries a *claim* — "every builder advanced one frame per pump", "no residual exceeds 1e-6" — and
+a reader is otherwise asked to verify it by scanning cells. State the claim and the cells that
+break it colour themselves, the footnote says how many did, and `Table.deviations` hands the same
+list back to a test. That is the difference between showing a grid and showing an assertion you
+can watch fail.
+
+Trust model, same as the rest of value display: text produced by default formatting is escaped;
+a string returned from a `Table.format` lambda is trusted HTML and inserted as-is.
+
+`src/jvmMain/kotlin/afield/visualization/tables.kt`
+
+**Used in:** [Frames, and what a frame is](../animation_time_model.md)
+
+### Top-level functions { #tables-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">table</span><span class="p">(</span><span class="k">vararg</span> <span class="n">columns</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Table</span></code> | A [`Table`](visualization.md#tables-kt-table) from named columns — the column-major entry point, shaped like `showSignals`: `table("pump" to pumps, "calls" to calls)`. Columns of unequal length are padded with `null`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">recordTable</span><span class="p">(</span><span class="n">items</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Table</span><span class="o">?</span></code> | A [`Table`](visualization.md#tables-kt-table) over a list of records — a uniform list of data classes (columns from the primary constructor), of maps (columns from the keys), or of equal-length lists (columns by index). |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showTable</span><span class="p">(</span><span class="n">table</span><span class="p">:</span> <span class="nc">Table</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;output&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Table</span></code> | Put a [`Table`](visualization.md#tables-kt-table) on the screen and hand it back — the terse "this table, on screen, now" helper, the tabular counterpart of `showSignals`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showTable</span><span class="p">(</span><span class="k">vararg</span> <span class="n">columns</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;output&quot;</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">note</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Table</span></code> | Builds a [`Table`](visualization.md#tables-kt-table) from named columns with `table` and displays it. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showTable</span><span class="p">(</span><span class="n">items</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;output&quot;</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">note</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Table</span></code> | Displays a list of records as a table via `recordTable`, falling back to a single `value` column when the list is not uniform enough to have columns. |
+
+### Top-level values { #tables-kt-values }
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">TABLE&#95;MUTED</span><span class="p">:</span> <span class="nc">String</span></code> | Muted grey for headers, notes and elisions — the same `#888` the rest of value display uses. |
+| <code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">TABLE&#95;TEXT</span><span class="p">:</span> <span class="nc">String</span></code> | Default body text colour, matching `ValueVisualizer`'s wrapper. |
+| <code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">TABLE&#95;WARN</span><span class="p">:</span> <span class="nc">String</span></code> | Colour for cells that failed a `Table.expect` check (the last entry of `signalPalette`). |
+
+### Align { #tables-kt-align }
+
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">Align</span></code>
+
+Horizontal alignment of a [`Table`](visualization.md#tables-kt-table) column. Numeric columns default to `RIGHT`, everything else `LEFT`.
+
+Constants: `LEFT`, `RIGHT`, `CENTER`.
+
+### Deviation { #tables-kt-deviation }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Deviation</span><span class="p">(</span><span class="k">val</span> <span class="n">row</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">column</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">because</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">)</span></code>
+
+One cell that failed a `Table.expect` check: its row index, column name, value, and the reason given.
+
+### Table { #tables-kt-table }
+
+<code class="highlight"><span class="k">class</span> <span class="nf">Table</span><span class="p">(</span><span class="n">header</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">var</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">var</span> <span class="n">note</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ToHTML</span></code>
+
+Rows, columns, and the claims made about them.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">var</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | Optional line drawn above the table, in the accent colour. |
+| <code class="highlight"><span class="k">var</span> <span class="n">note</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | Optional footnote spanning every column. Deviation counts are appended to it. |
+| <code class="highlight"><span class="k">val</span> <span class="n">header</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> | The column names, in order. |
+| <code class="highlight"><span class="k">val</span> <span class="n">rows</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span><span class="p">&gt;</span></code> | The rows appended so far, each padded to `header`'s width. |
+| <code class="highlight"><span class="k">var</span> <span class="n">maxRows</span><span class="p">:</span> <span class="nc">Int</span></code> | How many rows to draw before eliding the tail. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">row</span><span class="p">(</span><span class="k">vararg</span> <span class="n">values</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Table</span></code> | Appends one row. Short rows are padded with `null`; a row wider than `header` is an error. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">row</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Table</span></code> | Appends one row from a list. Short rows are padded with `null`; too-wide rows are an error. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">rows</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Table</span></code> | Appends many rows. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">align</span><span class="p">(</span><span class="n">column</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">align</span><span class="p">:</span> <span class="nc">Align</span><span class="p">)</span><span class="p">:</span> <span class="nc">Table</span></code> | Overrides the inferred alignment of a column. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">color</span><span class="p">(</span><span class="n">column</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Table</span></code> | Colours a column's cells. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">accent</span><span class="p">(</span><span class="k">vararg</span> <span class="n">columns</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Table</span></code> | Colours these columns from `signalPalette`, in order — so a table and a plot of the same quantities agree on which colour means which series. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">format</span><span class="p">(</span><span class="n">column</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">format</span><span class="p">:</span> <span class="p">(</span><span class="nc">Any</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Table</span></code> | Formats a column's cells. The returned string is **trusted HTML** and is not escaped, which is how a cell gets a link, a unit, or a nested fragment; escape it yourself if it came from outside. |
+| <code class="highlight"><span class="k">fun</span> <span class="k">expect</span><span class="p">(</span><span class="n">column</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">because</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">ok</span><span class="p">:</span> <span class="p">(</span><span class="nc">Any</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Boolean</span><span class="p">)</span><span class="p">:</span> <span class="nc">Table</span></code> | States a claim about one column: cells for which `ok` is false render in `TABLE_WARN`, gain a tooltip, are counted in the footnote, and appear in `deviations`. |
+| <code class="highlight"><span class="k">fun</span> <span class="k">expect</span><span class="p">(</span><span class="n">because</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">ok</span><span class="p">:</span> <span class="p">(</span><span class="n">row</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">column</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Boolean</span><span class="p">)</span><span class="p">:</span> <span class="nc">Table</span></code> | States a claim about every cell, given its row index, column name and value. |
+| <code class="highlight"><span class="k">val</span> <span class="n">deviations</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Deviation</span><span class="p">&gt;</span></code> | Every cell that failed an `expect` check — the same list the rendering colours, so a test can assert on the claim the figure makes rather than on its markup. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">toText</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | A plain-text rendering, for a terminal, a log, or a test's failure message. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toHTML</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | The rendered table — dispatched by `ValueVisualizer` for `display`, `.h` and box return values. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | A shape summary; `toText` is the one that prints the contents. |
 
 </div>

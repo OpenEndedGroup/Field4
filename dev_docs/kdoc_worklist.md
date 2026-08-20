@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 5195 of 8667 public symbols in `afield.stdlib`, `afield.visualization` and `afield.four.synth` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 5224 of 8696 public symbols in `afield.stdlib`, `afield.visualization` and `afield.four.synth` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **466 undocumented entry points** (types, top-level functions and values) and 2769 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -157,10 +157,10 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `Flanger` | class | `src/jvmMain/kotlin/afield/four/synth/Effects.kt:788` |
 | `RingModulator` | class | `src/jvmMain/kotlin/afield/four/synth/Effects.kt:843` |
 | `BreakpointEnvelope` | class | `src/jvmMain/kotlin/afield/four/synth/Envelopes.kt:251` |
-| `ParamModulationMode` | class | `src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt:47` |
-| `ParamPath` | class | `src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt:115` |
-| `ParamSet` | class | `src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt:168` |
-| `ParamSetScope` | class | `src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt:329` |
+| `ParamModulationMode` | class | `src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt:46` |
+| `ParamPath` | class | `src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt:114` |
+| `ParamSet` | class | `src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt:167` |
+| `ParamSetScope` | class | `src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt:328` |
 | `ScheduledNote` | class | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:26` |
 | `NoteWindowSnapshot` | class | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:87` |
 | `NoteSequenceScope` | class | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:113` |
