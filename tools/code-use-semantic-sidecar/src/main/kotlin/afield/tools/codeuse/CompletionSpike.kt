@@ -26,7 +26,7 @@ import kotlin.io.path.exists
  * against the produced candidates. Out-of-process on purpose (the standalone AA classpath must stay
  * out of the live Field runtime).
  *
- * Usage: --workspace <root> --corpus <tsv> --classpath-file <file>. Corpus rows are
+ * Usage: --workspace <root> --corpus <tsv> --classpath-file <file> [--require-all]. Corpus rows are
  * `label\tbase64(code-with-‸)\tmember`.
  */
 /** One AA candidate as dumped for the K1-vs-AA differential (Stage B). */
@@ -61,6 +61,7 @@ object CompletionSpike {
         var corpus = "tools/completion-corpus/scraped.tsv"
         var classpathFile = ""
         var jsonOut = ""
+        var requireAll = false
         var i = 0
         while (i < args.size) {
             when (args[i]) {
@@ -68,6 +69,7 @@ object CompletionSpike {
                 "--corpus" -> corpus = args[++i] // may be a comma-separated list of TSVs
                 "--classpath-file" -> classpathFile = args[++i]
                 "--json-out" -> jsonOut = args[++i] // dump raw AA candidates per fixture for the differential
+                "--require-all" -> requireAll = true
             }
             i++
         }
@@ -139,7 +141,8 @@ object CompletionSpike {
                 val isDot = before.dropLast(prefix.length).trimEnd().endsWith(".")
 
                 val result = completer.complete(before + after, before.length)
-                val hit = result.candidates.any { it.name == member }
+                val hit = if (member.isEmpty()) result.candidates.isEmpty()
+                    else result.candidates.any { it.name == member }
                 if (hit) surfaced++
                 dump += AaDumpFixture(label, member, isDot, prefix, result.note,
                     result.candidates.map { AaDumpCandidate(it.name, it.kind.name, it.returnType, it.container) })
@@ -168,6 +171,6 @@ object CompletionSpike {
         // that keep the forked JVM alive after our work is done, so gradle's JavaExec hangs and each
         // run leaks a ~300MB process. Force a clean exit now that results are printed.
         System.out.flush()
-        kotlin.system.exitProcess(0)
+        kotlin.system.exitProcess(if (requireAll && surfaced != total) 1 else 0)
     }
 }

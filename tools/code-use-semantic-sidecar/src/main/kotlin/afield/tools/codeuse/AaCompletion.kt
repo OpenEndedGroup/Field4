@@ -12,11 +12,13 @@ import org.jetbrains.kotlin.analysis.api.components.KaExtensionApplicabilityResu
 import org.jetbrains.kotlin.analysis.api.components.KaScopeKind
 import org.jetbrains.kotlin.analysis.api.diagnostics.KaSeverity
 import org.jetbrains.kotlin.analysis.api.resolution.KaFunctionCall
+import org.jetbrains.kotlin.analysis.api.resolution.symbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassKind
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaDeclarationSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaEnumEntrySymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaPropertySymbol
@@ -651,6 +653,14 @@ private val RETURN_TAIL = Regex("""(?:^|[^A-Za-z0-9_.])return$""")
 private const val RECEIVER_INDEX_CAP = 800
 
 /**
+ * Named-argument completion needs declaration names, not a call-site-substituted signature. Keeping
+ * this separate from [KaFunctionCall.valueArgumentMapping] makes that distinction explicit and avoids
+ * the deprecated `partiallyAppliedSymbol` container.
+ */
+private fun <S : KaFunctionSymbol> KaFunctionCall<S>.declaredValueParameters() =
+    symbol.valueParameters
+
+/**
  * K2 Analysis-API completion candidate generation. Reusable across the spike harness (Stage A/B) and
  * the sidecar HTTP endpoint (Stage C). Construct once per session with a [contextFile] from that
  * session (used to contextualize in-memory dangling snippet files) and a prebuilt [index].
@@ -1218,10 +1228,11 @@ class AaCompleter(
              * Two sources, in order:
              *  1. `expectedType` on the expression at the caret — the real answer, and the only one that
              *     is substituted (`f<Scheme>(‸)`) and slot-shape aware.
-             *  2. For an argument slot only: the parameter types from `resolveToCallCandidates`, unioned
-             *     over overloads. This is the fallback for a call that does not fully resolve — which is
-             *     the normal state of code being typed — where (1) returns null because FIR has no
-             *     argument→parameter mapping to read. Named argument by name, positional by index.
+             *  2. For an argument slot only: the current expression's parameter signature from each
+             *     `resolveToCallCandidates` candidate's `valueArgumentMapping`. This is the fallback for
+             *     a call that does not fully resolve — the normal state of code being typed — and the
+             *     mapping retains call-site type substitution without the deprecated partially-applied
+             *     call container.
              */
             fun expectedTypesAt(): List<KaType> {
                 val ref = PsiTreeUtil.getParentOfType(leaf, KtSimpleNameExpression::class.java)
@@ -1231,14 +1242,11 @@ class AaCompleter(
                 val arg = PsiTreeUtil.getParentOfType(leaf, KtValueArgument::class.java) ?: return emptyList()
                 val list = arg.parent as? KtValueArgumentList ?: return emptyList()
                 val call = PsiTreeUtil.getParentOfType(list, KtCallExpression::class.java) ?: return emptyList()
-                val named = arg.getArgumentName()?.asName?.asString()
-                val at = list.arguments.indexOf(arg)
+                val expression = arg.getArgumentExpression() ?: return emptyList()
                 return runCatching { call.resolveToCallCandidates() }.getOrDefault(emptyList())
                     .mapNotNull { it.candidate as? KaFunctionCall<*> }
                     .mapNotNull { c ->
-                        val ps = c.partiallyAppliedSymbol.signature.valueParameters
-                        val p = if (named != null) ps.firstOrNull { it.symbol.name.asString() == named }
-                        else ps.getOrNull(at)
+                        val p = c.valueArgumentMapping[expression]
                         runCatching { p?.returnType }.getOrNull()
                     }
                     .distinctBy { runCatching { it.toString() }.getOrDefault("?") }
@@ -1798,7 +1806,7 @@ class AaCompleter(
                             (fromScope + fromIndex).filterIsInstance<KaNamedFunctionSymbol>()
                         }
                     }
-                    (callCands.flatMap { it.partiallyAppliedSymbol.signature.valueParameters }.map { it.symbol } +
+                    (callCands.flatMap { it.declaredValueParameters() } +
                         byCalleeName.filterIsInstance<KaNamedFunctionSymbol>().flatMap { it.valueParameters })
                         .distinctBy { it.name.asString() }
                         .filter { it.name.asString() !in supplied }
