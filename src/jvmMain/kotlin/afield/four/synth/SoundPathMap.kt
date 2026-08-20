@@ -445,6 +445,7 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/four/audio/WavFloatArrayWriter.kt" to "wav-file",
                 "src/jvmMain/kotlin/afield/four/synth/DirtRender.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/four/synth/PatSoundDocs.kt" to "pat-stand-in",
+                "src/jvmMain/kotlin/afield/four/synth/FaustPattern.kt" to "faust",
             ),
         ),
     )

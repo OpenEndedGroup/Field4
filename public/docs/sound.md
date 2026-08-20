@@ -3,17 +3,22 @@
 `pat("bd ~ sd ~")` is a schedule. It says *kick, rest, snare, rest* and it says exactly
 when — but a schedule makes no sound. Something has to turn each event into samples.
 
-Field has **two** things that turn a *pattern's* events into samples, offline, with no audio device
+Field has **three** things that turn a *pattern's* events into samples, offline, with no audio device
 and no realtime engine, and they sound nothing alike. One is a tiny synthesiser that ships in the
-source tree. The other is the genuine Tidal drum library, if you happen to have it. This page
-follows one pattern all the way down both, and — because this is the whole point — **every audio
-figure below says which of the two produced it.**
+source tree. The second is the genuine Tidal drum library, if you happen to have it. The third is a
+**Faust program compiled at runtime and played polyphonically** — a pattern's notes become
+`freq`/`gate`/`gain` writes on a bank of voices, scheduled to the sample. This page follows one
+pattern all the way down the **first two**, and — because this is the whole point — **every audio
+figure below says which of them produced it.** The third has its own depth, in
+[Faust: a box that is a signal processor](faust.md#a-pattern-plays-it); it is here in the
+count because the count is the thing that keeps going stale.
 
-Two is the count of *pattern voices*, and it is worth being exact about that, because this page's
-first draft said Field had two things that make a sound at all. It has
-[six](sound_paths.md) — the `Signal` graph, Faust, the dough wasm engine and Sonic Pi are four more
-ways to produce samples, none of them driven by a pattern. [Making a sound in Field: every path
-there is](sound_paths.md) maps all of them and helps you pick; this page is the depth on these two.
+Three is the count of *pattern voices*, and it is worth being exact about that, because this page has
+now had that number wrong twice. Its first draft said Field had two things that make a sound at all —
+it has [six](sound_paths.md). The correction then said the other four were "none of them driven by a
+pattern", which was true when it was written and stopped being true when Faust gained a voice bank.
+[Making a sound in Field: every path there is](sound_paths.md) maps all six and helps you pick; this
+page is the depth on the two pattern voices that predate Faust.
 
 Some of the audio figures elsewhere in these docs are the first voice below — a third of the
 published corpus, not all of it. This page's first draft said all of them, on the strength of a

@@ -152,6 +152,7 @@ object StdlibReferenceGenerator {
         "src/jvmMain/kotlin/afield/four/synth/DocsAudioProvenance.kt",
         "src/jvmMain/kotlin/afield/four/synth/DoughDspPlotGallery.kt",
         "src/jvmMain/kotlin/afield/four/synth/DoughDspSmokeTest.kt",
+        "src/jvmMain/kotlin/afield/four/synth/FaustPolySmokeTest.kt",
         "src/jvmMain/kotlin/afield/four/synth/FaustSmokeTest.kt",
         "src/jvmMain/kotlin/afield/four/synth/PrettyPrint.kt",
         "src/jvmMain/kotlin/afield/four/synth/SonicPiActivity.kt",
