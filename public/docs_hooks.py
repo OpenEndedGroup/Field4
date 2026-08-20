@@ -1451,10 +1451,10 @@ class RunnerState:
         self.summary_logged = True
         elapsed = time.monotonic() - self.started_at
         regenerated = self.screenshots_run + self.videos_run
-        skipped = self.cache_hits + self.assets_reused + self.missing_assets + len(self.failures)
+        skipped = self.cache_hits + self.assets_reused + self.missing_assets
         LOG.info(
             "Field docs runner summary: regenerated=%s (screenshots=%s videos=%s), "
-            "skipped=%s (cache_hits=%s reused_existing=%s missing=%s failures=%s), "
+            "skipped=%s (cache_hits=%s reused_existing=%s missing=%s), failures=%s, "
             "server_starts=%s server_restarts=%s elapsed=%.1fs",
             regenerated,
             self.screenshots_run,

@@ -91,6 +91,42 @@ class CaptureFailureAccountingTests(unittest.TestCase):
         self.assertEqual(len(state.failures), 2)
 
 
+class _SummaryRecorder:
+    """The diagnostic state read by `log_summary`, without starting Field."""
+
+    def __init__(self):
+        self.summary_logged = False
+        self.started_at = time.monotonic()
+        self.screenshots_run = 2
+        self.videos_run = 3
+        self.cache_hits = 5
+        self.assets_reused = 7
+        self.missing_assets = 11
+        self.failures = ["fallback", "broken"]
+        self.fallback_failures = ["fallback"]
+        self.broken_failures = ["broken"]
+        self.server_starts = 1
+        self.server_restarts = 0
+        self._sidecar_started_by_runner = False
+        self._sidecar_url = None
+        self.shared_log_path = Path("/tmp/field-docs-runner.log")
+
+    log_summary = docs_hooks.RunnerState.log_summary
+
+
+class RunnerSummaryAccountingTests(unittest.TestCase):
+    def test_failures_are_reported_separately_from_skipped_assets(self):
+        state = _SummaryRecorder()
+        with self.assertLogs(docs_hooks.LOG, level="INFO") as captured:
+            state.log_summary()
+
+        summary = next(line for line in captured.output if "runner summary" in line)
+        self.assertIn("regenerated=5", summary)
+        self.assertIn("skipped=23 (cache_hits=5 reused_existing=7 missing=11)", summary)
+        self.assertIn("failures=2", summary)
+        self.assertNotIn("skipped=25", summary)
+
+
 class _LogPicker:
     """Just enough RunnerState to exercise the client-log selection."""
 
