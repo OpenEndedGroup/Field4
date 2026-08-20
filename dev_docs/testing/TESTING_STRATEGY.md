@@ -123,6 +123,16 @@ the developer-owned `9092` port. Gallery/video smoke artifacts are redirected to
 `build/field-tests/generated-doc-assets/`; only the docs runner writes the tracked
 captures under `public/docs/assets/`.
 
+Unfiltered catalog runs record each completed verdict in
+`build/field-tests/coverage-state.json`. The next run puts tests with no recorded
+verdict first, followed by the least-recently-completed tests. Thus stopping a
+long run does not make every later partial run recheck the same catalog prefix
+while leaving the tail stale. Targeted `--id`, `--tag`, and `--runner` runs retain
+catalog order and do not rewrite this full-catalog ledger. Use `--catalog-order`
+for an unfiltered diagnostic run that deliberately preserves discovery order.
+Progress and `results.json` report the unseen count and oldest-verdict age at the
+start of a coverage-ordered run.
+
 When an image expectation names a concrete output path, the runner deletes the
 old output before launch and waits for the new file to become stable. It does not
 also sleep for `waitSec`: the artifact is the readiness signal. `waitSec` remains
@@ -131,6 +141,7 @@ the bounded settle mechanism for tests that have no concrete file evidence.
 Artifacts:
 - catalog: `build/field-tests/catalog.json`
 - results: `build/field-tests/results.json`
+- coverage ledger: `build/field-tests/coverage-state.json`
 - generated snippets: `build/field-tests/generated/`
 - captures: `build/field-tests/captures/`
 

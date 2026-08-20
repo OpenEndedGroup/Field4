@@ -252,6 +252,12 @@ The smoke runner defaults to dedicated port `9477` (not developer port `9092`),
 prints per-test heartbeats, applies an outer process watchdog, and kills the whole
 child process group if a completed backdoor command refuses to exit. Use another
 high `--port` only when you need a separate automation session.
+Unfiltered runs persist completed verdicts in
+`build/field-tests/coverage-state.json` and schedule unseen, then
+least-recently-completed tests first. This keeps successive partial runs moving
+through the catalog instead of repeatedly covering the same prefix. Targeted
+`--id`/`--tag`/`--runner` runs keep catalog order; `--catalog-order` opts an
+unfiltered diagnostic run out of coverage ordering.
 The smoke runner **prewarms one persistent Field** on `--port` for the whole run and tears it down once at the end, so tests do not cold-boot the JVM per test. It never reuses a prior run's server: a same-checkout server is recycled for a clean boot, while a foreign or unidentifiable server makes the run fail with an instruction to choose another port. `--no-prewarm` is diagnostic only and gives up that clean-run guarantee.
 
 To iterate on one or a few tests instead of the whole catalog, filter by `--id <catalog-id>` (repeatable; the `id:` from a `FIELD_TEST` block, e.g. `rectsl.language.workout`), `--tag smoke`, or `--runner jvm-main`. This is the correct way to verify a single `jvm-main` smoke — do **not** reach for a raw `java`/`gradlew JavaExec` launcher (see the JVM-args note under *Field Backdoor* above).

@@ -35,6 +35,7 @@ TOOLS_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = TOOLS_ROOT.parent
 DEFAULT_CATALOG_PATH = REPO_ROOT / "build" / "field-tests" / "catalog.json"
 DEFAULT_RESULTS_PATH = REPO_ROOT / "build" / "field-tests" / "results.json"
+DEFAULT_COVERAGE_STATE_PATH = REPO_ROOT / "build" / "field-tests" / "coverage-state.json"
 GENERATED_SNIPPETS_ROOT = REPO_ROOT / "build" / "field-tests" / "generated"
 CAPTURES_ROOT = REPO_ROOT / "build" / "field-tests" / "captures"
 GENERATED_DOC_ASSETS_ROOT = REPO_ROOT / "build" / "field-tests" / "generated-doc-assets"
@@ -542,6 +543,94 @@ def filter_tests(
             continue
         selected.append(test)
     return selected
+
+
+def load_coverage_state(path: Path) -> dict[str, Any]:
+    """Load the build-local smoke coverage ledger.
+
+    The ledger is deliberately separate from ``results.json``: an interrupted run
+    never writes its final report, but each completed test still needs to influence
+    the next run's order. Refuse corrupt state instead of silently returning to the
+    catalog prefix and recreating the coverage blind spot this file closes.
+    """
+    if not path.exists():
+        return {"version": 1, "tests": {}}
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RunnerError(f"Cannot read smoke coverage state {path}: {exc}") from exc
+    if not isinstance(raw, dict) or raw.get("version") != 1:
+        raise RunnerError(f"Unsupported smoke coverage state in {path}; expected version 1")
+    records = raw.get("tests")
+    if not isinstance(records, dict):
+        raise RunnerError(f"Invalid smoke coverage state in {path}: 'tests' must be an object")
+    for test_id, record in records.items():
+        completed_at = record.get("completedAt") if isinstance(record, dict) else None
+        if not isinstance(test_id, str) or not isinstance(completed_at, (int, float)):
+            raise RunnerError(
+                f"Invalid smoke coverage record in {path}: each test needs numeric completedAt"
+            )
+    return raw
+
+
+def order_tests_by_coverage(
+    tests: list[dict[str, Any]], state: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """Put unseen tests first, then oldest completed, preserving catalog ties."""
+    records = state.get("tests") or {}
+
+    def coverage_key(item: tuple[int, dict[str, Any]]) -> tuple[int, float, int]:
+        index, test = item
+        record = records.get(str(test.get("id") or ""))
+        if not isinstance(record, dict):
+            return (0, 0.0, index)
+        return (1, float(record["completedAt"]), index)
+
+    return [test for _, test in sorted(enumerate(tests), key=coverage_key)]
+
+
+def coverage_snapshot(
+    tests: list[dict[str, Any]], state: dict[str, Any], *, now: float
+) -> dict[str, Any]:
+    records = state.get("tests") or {}
+    timestamps = [
+        float(records[test_id]["completedAt"])
+        for test in tests
+        if (test_id := str(test.get("id") or "")) in records
+    ]
+    return {
+        "unseen": len(tests) - len(timestamps),
+        "oldestCompletedAgeSec": max(0.0, now - min(timestamps)) if timestamps else None,
+    }
+
+
+def record_coverage_result(
+    state: dict[str, Any], *, test_id: str, ok: bool, completed_at: float
+) -> None:
+    records = state.setdefault("tests", {})
+    records[test_id] = {"completedAt": completed_at, "ok": bool(ok)}
+
+
+def write_coverage_state(
+    path: Path, state: dict[str, Any], *, current_test_ids: set[str]
+) -> None:
+    """Atomically persist current-catalog records after every completed test."""
+    records = state.get("tests") or {}
+    payload = {
+        "version": 1,
+        "tests": {
+            test_id: records[test_id]
+            for test_id in sorted(current_test_ids)
+            if test_id in records
+        },
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        temporary.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        os.replace(temporary, path)
+    except OSError as exc:
+        raise RunnerError(f"Cannot persist smoke coverage state {path}: {exc}") from exc
 
 
 def unmatched_ids(selected: list[dict[str, Any]], requested: set[str]) -> set[str]:
@@ -1416,6 +1505,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--catalog", default=str(DEFAULT_CATALOG_PATH))
     parser.add_argument("--results", default=str(DEFAULT_RESULTS_PATH))
+    parser.add_argument("--coverage-state", default=str(DEFAULT_COVERAGE_STATE_PATH))
     parser.add_argument("--refresh-catalog", action="store_true")
     parser.add_argument(
         "--no-reap",
@@ -1446,6 +1536,14 @@ def parse_args() -> argparse.Namespace:
         help=f"Dedicated Field port (default: {DEFAULT_AUTOMATION_PORT}; never the developer port 9092).",
     )
     parser.add_argument("--fail-fast", action="store_true")
+    parser.add_argument(
+        "--catalog-order",
+        action="store_true",
+        help=(
+            "Preserve discovery order and do not update the build-local coverage ledger. "
+            "Targeted --id/--tag/--runner runs already preserve discovery order."
+        ),
+    )
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--heartbeat-interval", type=float, default=15.0)
     parser.add_argument(
@@ -1463,6 +1561,9 @@ def run(args: argparse.Namespace) -> int:
     results_path = Path(args.results)
     if not results_path.is_absolute():
         results_path = REPO_ROOT / results_path
+    coverage_state_path = Path(getattr(args, "coverage_state", DEFAULT_COVERAGE_STATE_PATH))
+    if not coverage_state_path.is_absolute():
+        coverage_state_path = REPO_ROOT / coverage_state_path
 
     catalog = load_or_refresh_catalog(
         catalog_path=catalog_path,
@@ -1528,6 +1629,31 @@ def run(args: argparse.Namespace) -> int:
         else:
             tests.append(test)
 
+    coverage_ordering = not (
+        requested_ids
+        or args.tags
+        or args.runners
+        or getattr(args, "catalog_order", False)
+    )
+    coverage_state: dict[str, Any] = {"version": 1, "tests": {}}
+    coverage_at_start: dict[str, Any] | None = None
+    if coverage_ordering and tests:
+        coverage_state = load_coverage_state(coverage_state_path)
+        coverage_at_start = coverage_snapshot(tests, coverage_state, now=time.time())
+        tests = order_tests_by_coverage(tests, coverage_state)
+        unseen = int(coverage_at_start["unseen"])
+        if unseen:
+            progress(
+                f"Smoke coverage order: {unseen}/{len(tests)} runnable tests have no recorded "
+                f"verdict; unseen then least-recently-completed first ({coverage_state_path})"
+            )
+        else:
+            age = float(coverage_at_start["oldestCompletedAgeSec"] or 0.0)
+            progress(
+                f"Smoke coverage order: least-recently-completed first; oldest runnable "
+                f"verdict is {age / 3600.0:.1f}h old ({coverage_state_path})"
+            )
+
     results: list[dict[str, Any]] = []
     passed = 0
     failed = 0
@@ -1557,6 +1683,18 @@ def run(args: argparse.Namespace) -> int:
                 passed += 1
             else:
                 failed += 1
+            if coverage_ordering:
+                record_coverage_result(
+                    coverage_state,
+                    test_id=str(test.get("id") or ""),
+                    ok=bool(result["ok"]),
+                    completed_at=time.time(),
+                )
+                write_coverage_state(
+                    coverage_state_path,
+                    coverage_state,
+                    current_test_ids={str(item.get("id") or "") for item in tests},
+                )
             progress(f"[{index}/{total}] {format_result_line(result)}")
             for failure in result["failures"]:
                 progress(f"  {failure}")
@@ -1582,6 +1720,15 @@ def run(args: argparse.Namespace) -> int:
             {"id": t.get("id"), "reason": f"skipOn {platform_skip_reason(t)} on {sys.platform}"}
             for t in skipped
         ],
+        "coverageOrder": {
+            "enabled": coverage_ordering,
+            "strategy": "unseen-then-least-recently-completed" if coverage_ordering else None,
+            "state": str(coverage_state_path) if coverage_ordering else None,
+            "unseenAtStart": coverage_at_start["unseen"] if coverage_at_start else None,
+            "oldestCompletedAgeSecAtStart": (
+                coverage_at_start["oldestCompletedAgeSec"] if coverage_at_start else None
+            ),
+        },
         "results": results,
     }
     results_path.parent.mkdir(parents=True, exist_ok=True)
