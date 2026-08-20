@@ -643,6 +643,74 @@ class FieldMLSourceMacroTest {
         assertEquals(1, runs.get(), "the computation must not run again")
     }
 
+    // ---- the live artifact -----------------------------------------------------------------------
+
+    /**
+     * The demo's two captures, held to the claim they are made to support: **the `prop` is live**.
+     *
+     * `spiral.png` and `spiral-edited.png` are the same FieldML box in the same real Field, the only
+     * difference being the number its parent box wrote into the shared slot (`swirl` 0.85 / `turns` 4
+     * versus 0.35 / 9). Both were taken through `field_backdoor.py --port 9601` on 2026-08-20, and the
+     * FLine the box returned went from 187×176 bounds to 91×89 between them.
+     *
+     * The test is here rather than in prose because prose cannot notice a re-capture that pasted the
+     * same image twice. Three guards, in the order that matters:
+     *
+     * - the two images have to be the **same size**, or a difference measurement is meaningless;
+     * - each has to have **ink** in it — a blank capture agrees with a blank capture at zero
+     *   differences, which is the way this measurement fails without failing;
+     * - and then they have to **differ**, floored at a number rather than at "not identical".
+     */
+    @Test
+    fun theDemoCapturesShowTheParameterActuallyChangingTheDrawing() {
+        val folder = java.nio.file.Path.of("public/docs/assets/fieldml_macro_demo")
+        val before = javax.imageio.ImageIO.read(folder.resolve("spiral.png").toFile())
+        val after = javax.imageio.ImageIO.read(folder.resolve("spiral-edited.png").toFile())
+
+        assertNotNull(before, "spiral.png is missing or unreadable")
+        assertNotNull(after, "spiral-edited.png is missing or unreadable")
+        assertEquals(before.width to before.height, after.width to after.height, "the two captures must be the same size")
+
+        fun ink(image: java.awt.image.BufferedImage): Double {
+            var lit = 0
+            for (y in 0 until image.height) for (x in 0 until image.width) {
+                val rgb = image.getRGB(x, y)
+                val brightest = maxOf((rgb shr 16) and 0xff, (rgb shr 8) and 0xff, rgb and 0xff)
+                if (brightest > 40) lit++
+            }
+            return 100.0 * lit / (image.width * image.height)
+        }
+
+        var differing = 0
+        for (y in 0 until before.height) for (x in 0 until before.width) {
+            val a = before.getRGB(x, y)
+            val b = after.getRGB(x, y)
+            val delta = maxOf(
+                Math.abs(((a shr 16) and 0xff) - ((b shr 16) and 0xff)),
+                Math.abs(((a shr 8) and 0xff) - ((b shr 8) and 0xff)),
+                Math.abs((a and 0xff) - (b and 0xff)),
+            )
+            if (delta > 16) differing++
+        }
+        val differingPercent = 100.0 * differing / (before.width * before.height)
+        val inkBefore = ink(before)
+        val inkAfter = ink(after)
+        println(
+            "fieldml_macro_demo captures: %.2f%% of pixels differ; ink %.2f%% -> %.2f%%"
+                .format(differingPercent, inkBefore, inkAfter),
+        )
+
+        assertTrue(inkBefore >= 1.5, "spiral.png has only %.2f%% ink — a blank capture proves nothing".format(inkBefore))
+        assertTrue(inkAfter >= 1.5, "spiral-edited.png has only %.2f%% ink".format(inkAfter))
+        // Measured 7.13% on 2026-08-20. Floored under it rather than at "they are not identical",
+        // which two re-captures of the same drawing would also satisfy.
+        assertTrue(
+            differingPercent >= 5.0,
+            "the two captures differ in only %.2f%% of pixels — the parameter is not driving the drawing"
+                .format(differingPercent),
+        )
+    }
+
     // ---- harness ---------------------------------------------------------------------------------
 
     private fun evaluate(source: String, box: Box = Box("fieldml-source-macro")): Any? {

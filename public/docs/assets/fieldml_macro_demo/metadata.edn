@@ -1,0 +1,42 @@
+{:version 2
+ :boxes [{:id "fieldml-macro-root"
+          :properties {:name "FieldML — Field's source macros"
+                       :frame #afield/rect [40.0 40.0 300.0 90.0]
+                       :children #{#afield/box "fieldml-macro-parameter"
+                                   #afield/box "fieldml-macro-drawing"
+                                   #afield/box "fieldml-macro-expansion"
+                                   #afield/box "fieldml-macro-println"}
+                       :parents #{#afield/box "root"}
+                       :mainLanguage "fieldml"
+                       :isFieldMLRoot true}}
+
+         {:id "fieldml-macro-parameter"
+          :properties {:name "prop — a live, inheritable parameter"
+                       :frame #afield/rect [400.0 40.0 440.0 300.0]
+                       :children #{#afield/box "fieldml-macro-drawing"}
+                       :parents #{#afield/box "fieldml-macro-root"}
+                       :code "// A LIVE PARAMETER, WITH NO KOTLIN ANYWHERE.\n//\n// `prop<Double>(swirl)` in a Kotlin box is a source macro: it generates\n// `var Box.swirl by Inheritance<Double>()` into the box's preamble. There is no\n// function to call, so FieldML implements the delegate instead — the same\n// breadth-first walk over `parents`, the same slot, the same box property the\n// inspector shows. A Kotlin box's `swirl` and this box's `prop \"swirl\"` are one\n// property.\n//\n// EDIT EITHER NUMBER AND RE-RUN THIS BOX, then re-run the box below.\nlet _ = setProp \"swirl\" 0.85\nlet _ = setProp \"turns\" 4\n\n// `once` is the other generated delegate — get, or compute and store. Re-running\n// this box does not change it, because the slot is no longer empty.\nlet firstRun =\n  once \"firstRunAt\" (fun ignored ->\n    hostClass \"afield.AnimationClock\" |> hostGet \"INSTANCE\" |> hostCall0 \"nowSeconds\"\n  )\n\n{\n  swirl = prop \"swirl\" |> hostAsFloat\n  turns = prop \"turns\" |> hostAsInt\n  firstRunAt = firstRun |> hostAsFloat\n  // `propOr` is the read that does not fail when nothing up the graph has it.\n  missing = propOr \"neverWritten\" \"not set\" |> hostAsString\n}"}}
+
+         {:id "fieldml-macro-drawing"
+          :properties {:name "the inherited parameter, drawn"
+                       :frame #afield/rect [400.0 420.0 440.0 250.0]
+                       :children #{}
+                       :parents #{#afield/box "fieldml-macro-root"
+                                  #afield/box "fieldml-macro-parameter"}
+                       :code "// THE SAME PARAMETER, INHERITED.\n//\n// This box never writes `swirl`. It reads it, and the read walks up `parents`\n// until an ancestor has it — which is what makes `prop` worth having over a\n// plain variable. Run the box above with a different number and run this one\n// again; nothing here changes.\n//\n// One thing about the wiring, because it is not guessable: this box has TWO parents.\n// `swirl` comes down from the box above, but the FieldML runtime is only applied to the\n// *direct* children of a FieldML root (LanguageRuntimeSupport.kt:57), so a grandchild\n// would quietly run as Kotlin. Being a child of both is what makes it FieldML *and*\n// an inheritor.\nlet swirl = prop \"swirl\" |> hostAsFloat\nlet turns = prop \"turns\" |> hostAsInt\n\nlinspace 0.0 1.0 320\n  |> map (fun t ->\n       polar (t * tau * toFloat turns) (10.0 + t * 105.0 * swirl) + vec2 125.0 125.0\n     )\n  |> fold (fun line point -> line |> lineToV point) fline\n  |> stroked true\n  |> filled false\n  |> color (vec4 0.42 0.86 1.0 1.0)\n  |> thickness 2.0\n  |> drawSized \"main\" 250.0 250.0"}}
+
+         {:id "fieldml-macro-println"
+          :properties {:name "hostMacro — expand, then call"
+                       :frame #afield/rect [900.0 40.0 460.0 300.0]
+                       :children #{#afield/box "fieldml-macro-expansion"}
+                       :parents #{#afield/box "fieldml-macro-root"}
+                       :code "// FIELD'S OWN `println` MACRO, RUN FROM FIELDML.\n//\n// `println(x)` in a Kotlin box is a source macro too: it rewrites to\n// `_printHere(__line__+1, x)` — an ordinary `Box` extension function. So FieldML\n// does not need a Kotlin compiler to reach it. It needs the *expansion* (which\n// is where a macro does its work) and then a reflective call, and the host\n// bridge already had the second half.\n//\n// The line below really goes through Field's macro. The number is the line the\n// output claims to come from — change it and watch the gutter marker move.\nlet _ = hostMacro \"println\" \"(x)\" (4, \"this line came out of Field's println macro\")\n\n// A record of arguments is a *named* call, which is the only shape that can\n// leave a Kotlin default unwritten. `_printlnHere(line, vararg a)` with only\n// `line` named prints an empty line.\nlet _ = hostMacro \"println\" \"(x)\" {line = 5}\n\n// And the expansion itself, which is what routed both of those.\nlet expansion = hostMacroExpand \"println\" \"(x)\"\n{ rewritesTo = expansion.call, callSite = expansion.here }"}}
+
+         {:id "fieldml-macro-expansion"
+          :properties {:name "hostMacroExpand — the generated Kotlin, as text"
+                       :frame #afield/rect [900.0 420.0 460.0 300.0]
+                       :children #{}
+                       :parents #{#afield/box "fieldml-macro-println"}
+                       :code "// THE ESCAPE HATCH, AND WHERE IT STOPS.\n//\n// `hostMacroExpand` runs any registered macro's expansion against this box and\n// hands the rewrite back as a typed record — so a macro's generated Kotlin is\n// readable from FieldML even when it is not runnable. `.declarations` below is\n// the exact text `prop<Double>(speed)` would have put in a Kotlin box.\nlet asProp = hostMacroExpand \"prop\" (\"<Double>\", \"(speed)\")\n\n// `sourceBlock` is the honest bound. It *is* call-shaped, and still unreachable:\n// the callee is a constructor taking a lambda whose body is the original Kotlin.\n// So `.call` is empty, and the reason is visible in `.here` rather than asserted\n// in a comment.\nlet asBlock = hostMacroExpand \"sourceBlock\" \"{ 2 + 2 }\"\n\n{\n  propGenerates = asProp.declarations\n  propCallSiteBecomes = asProp.here\n  blockCallSiteBecomes = asBlock.here\n  blockIsNotCallable = asBlock.call == \"\"\n}"}}
+
+]}

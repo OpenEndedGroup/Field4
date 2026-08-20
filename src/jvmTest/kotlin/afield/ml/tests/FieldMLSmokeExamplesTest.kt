@@ -106,6 +106,100 @@ class FieldMLSmokeExamplesTest {
     }
 
     /**
+     * The source-macro demo, run with its **own topology** rather than a fresh box per box.
+     *
+     * It gets its own test because its subject *is* the topology: the drawing box never writes
+     * `swirl`, it inherits it, so running it against a fresh box would prove the opposite of the
+     * demo's point. Boxes are run in document order down the real parent chain, and the geometry the
+     * inherited parameter produced is measured — the drawn line has to have the 320 nodes the
+     * `linspace` asked for, which is the cheapest check that the parameter arrived as a number and not
+     * as an error.
+     *
+     * The counterfactual is the second half: the drawing box run **without** its parent having written
+     * the slot must fail, and fail naming the slot. That is what makes the inheritance load-bearing
+     * rather than decorative.
+     */
+    @Test
+    fun theSourceMacroDemoRunsDownItsOwnParentChain() {
+        val demo = Path.of("public/docs/assets/fieldml_macro_demo/metadata.edn")
+        val sources = ednCodeStrings(demo.toFile().readText())
+        assertEquals(4, sources.size, "expected four FieldML boxes in $demo")
+        val (parameter, drawing, printing, expanding) = sources
+
+        // The document's shape. Every content box is a *direct* child of the FieldML root, because
+        // `applyRuntimeToggle` only converts direct children (LanguageRuntimeSupport.kt:57) and a
+        // grandchild would silently run as Kotlin — which is how this demo first failed in a real
+        // Field while passing here. The second parent is what carries the inherited parameter.
+        val root = Box("fieldml-macro-root")
+        val parameterBox = Box("fieldml-macro-parameter")
+        val drawingBox = Box("fieldml-macro-drawing")
+        val printingBox = Box("fieldml-macro-println")
+        val expandingBox = Box("fieldml-macro-expansion")
+        parameterBox.parents.add(root)
+        drawingBox.parents.addAll(listOf(root, parameterBox))
+        printingBox.parents.add(root)
+        expandingBox.parents.addAll(listOf(root, printingBox))
+
+        // And a drift guard on the *document*, which is what actually broke: every content box has to
+        // appear in the FieldML root's own `:children`, or Field will run it as Kotlin however the
+        // rest of the graph is wired. This is not checkable from the code strings, so it reads the edn.
+        val rootChildren = Regex(""":children\s*#\{([^}]*)\}""")
+            .find(demo.toFile().readText())!!
+            .groupValues[1]
+        listOf(parameterBox, drawingBox, printingBox, expandingBox).forEach { box ->
+            assertTrue(
+                "\"${box.id}\"" in rootChildren,
+                "${box.id} is not a direct child of the FieldML root in $demo, so Field will run it as " +
+                    "Kotlin (LanguageRuntimeSupport.kt:57). Root children are: $rootChildren",
+            )
+        }
+
+        fun run(name: String, source: String, box: Box): Any? =
+            afield.ml.core.fieldMLValueToHost(
+                Evaluator(FieldMLRuntimePrelude.values(box = box)).evaluate(compileOk(name, source).core!!),
+            )
+
+        // The drawing box before the parameter box has run: the slot is empty all the way up.
+        val premature = runCatching { run("$demo drawing (early)", drawing, drawingBox) }.exceptionOrNull()
+        assertNotNull(premature, "reading an unwritten prop should fail — otherwise inheritance is not the subject")
+        assertTrue(
+            "swirl" in premature.message.orEmpty(),
+            "the refusal should name the slot, got: ${premature.message}",
+        )
+
+        run("$demo parameter", parameter, parameterBox)
+        assertEquals(0.85, parameterBox.getPropertyRaw("swirl"), "the parameter box should have written the slot")
+        assertEquals(null, drawingBox.getPropertyRaw("swirl"), "and only on itself — the child inherits it")
+
+        val line = run("$demo drawing", drawing, drawingBox)
+        val nodes = line?.javaClass?.getMethod("getNodes")?.invoke(line) as? List<*>
+        assertEquals(320, nodes?.size, "the inherited parameter should have driven 320 nodes of geometry")
+
+        // The two macro boxes, whose subject is `hostMacro`/`hostMacroExpand` rather than inheritance.
+        val printed = mutableListOf<Any?>()
+        printingBox.output.proxy = { payload, _, _ -> printed += payload }
+        val printResult = run("$demo println", printing, printingBox)
+        assertTrue(
+            printed.any { it == "this line came out of Field's println macro" },
+            "the demo's println box must actually print through Field's macro, got $printed",
+        )
+        assertTrue(
+            "_printlnHere" in printResult.toString(),
+            "the box should report the function the macro rewrote to, got $printResult",
+        )
+
+        val expandResult = run("$demo expand", expanding, expandingBox).toString()
+        assertTrue(
+            "by Inheritance<Double>()" in expandResult,
+            "the expansion box should show the Kotlin `prop` generates, got $expandResult",
+        )
+        assertTrue(
+            "SourceBackedBlock" in expandResult,
+            "and the bound it cannot cross, got $expandResult",
+        )
+    }
+
+    /**
      * The `afield.four` demo is the one document here that *cannot* be evaluated: it needs a Vulkan
      * device, and a headless test JVM has none. So it is compiled and type-checked only — which is
      * still worth doing, because everything that went wrong while it was being written went wrong at
