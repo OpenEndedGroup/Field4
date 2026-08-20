@@ -1513,14 +1513,16 @@ private val meterMinIntervalNanos = 1_000_000_000L / meterUpdateHz
  */
 class MeterHandle internal constructor(
     /** The control id this handle drives; useful when a box wants to log what it is feeding. */
-    val controlId: String
+    val controlId: String,
+    /** Exact document route captured while the control group is built. */
+    internal val targetDocument: String?
 ) {
     private val lastSentNanos = java.util.concurrent.atomic.AtomicLong(0)
     private val lastValue = java.util.concurrent.atomic.AtomicReference<Double?>(null)
     private val sent = java.util.concurrent.atomic.AtomicLong(0)
     private val dropped = java.util.concurrent.atomic.AtomicLong(0)
 
-    /** How many updates have reached the browser, and how many were coalesced away. */
+    /** How many updates passed this meter's rate gate, and how many it coalesced locally. */
     val counts: Pair<Long, Long> get() = sent.get() to dropped.get()
 
     /**
@@ -1545,9 +1547,9 @@ class MeterHandle internal constructor(
         lastValue.set(value)
         val updated = updateControllerControlValueInMemory(controlId) { it.copy(value = value) }
         if (updated.isEmpty()) return false
-        // No target document: a control id is a UUID, so a broadcast cannot land on the wrong control,
-        // and a box has no session filename to hand in from its own thread.
-        broadcastControllerControlUpdates(updated)
+        // The owner carries its SessionInformation even on audio/render threads, where thisSessionInfo
+        // is absent. An unattached box has no browser to notify; never turn that case into a broadcast.
+        targetDocument?.let { broadcastControllerControlUpdates(updated, it) }
         sent.incrementAndGet()
         return true
     }
@@ -2128,7 +2130,8 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
             lawCenter = spec.center,
             significantDigits = significantDigits
         )
-        val handle = MeterHandle(identity.id)
+        val targetDocument = box.takeIf { it.isInsideInitialized() }?.inside?.filename
+        val handle = MeterHandle(identity.id, targetDocument)
         if (source != null) {
             registerMeterSampler(controllerControlGroupKey(box.id, channel), handle, source)
         }

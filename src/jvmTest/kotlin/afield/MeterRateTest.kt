@@ -161,6 +161,37 @@ class MeterRateTest {
         assertEquals(0L to 0L, meter.counts, "a non-finite level moved a counter")
     }
 
+    @Test
+    fun `a meter carries its owning document onto sampler threads`() {
+        val root = Box("meter-document-root")
+        val session = SessionInformation(
+            filename = "/tmp/workspaces/document-a",
+            documentName = "document-a",
+            root = root,
+            ephemeral = true
+        )
+        root.inside = session
+        val handles = mutableListOf<MeterHandle>()
+
+        root.controlGroup("levels") {
+            handles += meter("level")
+        }
+
+        assertEquals(session.filename, handles.single().targetDocument)
+    }
+
+    @Test
+    fun `a meter on an unattached box has no broadcast route`() {
+        val root = Box("unattached-meter-root")
+        val handles = mutableListOf<MeterHandle>()
+
+        root.controlGroup("levels") {
+            handles += meter("level")
+        }
+
+        assertEquals(null, handles.single().targetDocument)
+    }
+
     /**
      * A meter is not in the box's value cache, so it cannot be restored across a rerun — and neither
      * can a button press.

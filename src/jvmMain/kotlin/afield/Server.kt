@@ -79,6 +79,7 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import javax.management.Notification
@@ -951,6 +952,85 @@ private val outputBackPressureLogIntervalMillis: Long =
     if (outputBackPressureTraceLogEnabled) 500L else 5_000L
 private val outputBackPressureLogTimes = ConcurrentHashMap<String, Long>()
 
+/**
+ * One bounded sender for ephemeral values such as meters.
+ *
+ * A render/audio loop can update many controls faster than a browser can consume websocket frames.
+ * Keep only the newest value per control id and run at most one drain coroutine: memory is bounded by
+ * the number of live controls, and a slow client cannot create one coroutine per update.
+ */
+internal class ConflatedMessagePump(
+    private val scope: CoroutineScope,
+    private val sender: suspend (String) -> Unit
+) {
+    private val pending = ConcurrentHashMap<String, String>()
+    private val draining = AtomicBoolean(false)
+    private val closed = AtomicBoolean(false)
+
+    fun offer(key: String, message: String) {
+        if (closed.get()) return
+        pending[key] = message
+        if (closed.get()) {
+            pending.remove(key, message)
+            return
+        }
+        startDrain()
+    }
+
+    internal fun pendingCount(): Int = pending.size
+    internal fun isDraining(): Boolean = draining.get()
+
+    private fun startDrain() {
+        if (!draining.compareAndSet(false, true)) return
+        scope.launch {
+            try {
+                while (pending.isNotEmpty()) {
+                    val batch = pending.entries.map { it.key to it.value }
+                    for ((key, message) in batch) {
+                        // If a newer value replaced this snapshot, leave it for the next pass.
+                        if (!pending.remove(key, message)) continue
+                        try {
+                            sender(message)
+                        } catch (_: Exception) {
+                            closed.set(true)
+                            pending.clear()
+                            return@launch
+                        }
+                    }
+                }
+            } finally {
+                draining.set(false)
+                // Close the offer-vs-finally race: an offer can land after the loop saw empty but
+                // before draining became false.
+                if (!closed.get() && pending.isNotEmpty()) startDrain()
+            }
+        }
+    }
+}
+
+private val controlUpdateScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+private val sessionControlUpdatePumps = ConcurrentHashMap<WebSocketSession, ConflatedMessagePump>()
+
+private fun controlUpdateId(message: Message): String? =
+    message.payload?.let { payload ->
+        runCatching { Json.decodeFromJsonElement<ControllerControl>(payload).id }
+            .getOrNull()
+            ?.takeIf { it.isNotBlank() }
+    }
+
+private fun sendConflatedControlUpdate(session: WebSocketSession, message: Message, encoded: String) {
+    val controlId = controlUpdateId(message) ?: return
+    sessionControlUpdatePumps.computeIfAbsent(session) {
+        ConflatedMessagePump(
+            scope = controlUpdateScope,
+            sender = {
+                NetStats.sent(it.length)
+                session.send(it)
+            }
+        )
+    }.offer(controlId, encoded)
+}
+
 private fun isBackPressuredOutputMessage(message: Message): Boolean {
     return message.name == "set-output" ||
             message.name == "output" ||
@@ -999,6 +1079,10 @@ private fun sendWithOutputBackPressure(
     message: Message,
     encoded: String = Json.encodeToString(message)
 ) {
+    if (message.name == "control-value-update") {
+        sendConflatedControlUpdate(session, message, encoded)
+        return
+    }
     NetStats.sent(encoded.length) // one text frame per session; _send() fans out through here
     if (!isBackPressuredOutputMessage(message)) {
         GlobalScope.launch {
@@ -4433,6 +4517,7 @@ class Server {
                                 afield.graphics.detachVisionMetalGlobalListener(ts)
                                 // Clean up back pressure state for this session.
                                 sessionOutputPressure.remove(ts)
+                                sessionControlUpdatePumps.remove(ts)
                             }
                         }
                         route("/dir") {

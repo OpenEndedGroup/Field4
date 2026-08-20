@@ -103,6 +103,13 @@ output area gets the full 30 Hz; the remote tablet polls at **450 ms ≈ 2.2 Hz*
 indicator rather than a VU meter. Making the tablet faster is a change to its polling loop and was left
 alone.
 
+Delivery is bounded after that per-meter rate gate. A `MeterHandle` captures its box's exact document
+route, so an update is encoded only for browsers viewing that document. Each browser session has one
+conflating sender which keeps only the newest value per control id; a slow or hidden browser therefore
+costs at most one drain coroutine and one pending value per live control, rather than one coroutine per
+30 Hz update. This is deliberately separate from ordinary output backpressure: meter churn cannot evict
+a terminal text or plot output from that channel's rolling buffer.
+
 Two consequences that look like details and are not:
 
 * `updateControllerControlValueInMemory` exists because the ordinary update path writes the box's value
