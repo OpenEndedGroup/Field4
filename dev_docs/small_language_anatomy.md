@@ -12,25 +12,28 @@ there too, against a set derived from the code rather than a number typed in. So
 wrong, the build is red. See "What the guard checks" at the end for exactly how far that goes, and
 `dev_docs/citation_contracts.md` for how the citation machinery works and how to use it elsewhere.
 
-## The spine: two routes, and they are not variants of each other
+## The spine: two integration routes, independent of implementation shape
 
 `public/docs/language_extensions.md` draws the distinction that organises everything else, and
 §"The Other Side Of Promotion: FieldML" (`public/docs/language_extensions.md:280-304`) is the part to
 read first. The two routes are:
 
-**Route A — an embedded-region extension.** The language lives in one browser-side `.js` file, gets
-registered with `window.FieldLanguageExtensions`, and appears *inside* another language's source: a
-RectSL program is a Kotlin triple-quoted string whose first line is `#rectsl`. It ships as a
-resource, can change shape in an afternoon, and never becomes part of the editor bindings. Its
-diagnostics are lexical because that is all a `.js` file in the browser can see.
+**Route A — an embedded-region extension.** The editor integration lives in one browser-side `.js`
+file, gets registered with `window.FieldLanguageExtensions`, and appears *inside* another language's
+source: a RectSL program is a Kotlin triple-quoted string whose first line is `#rectsl`. The language
+implementation may be JavaScript or a full Kotlin compiler; Route A only describes how it reaches the
+editor. It ships as a resource, can change shape in an afternoon, and never becomes part of the main
+language bindings. Browser-only diagnostics are lexical, while a Kotlin-backed implementation can
+also report compiler diagnostics when its host code runs.
 
 **Route B — a promoted main language.** The language is what a *box* is written in. It has a
 `BoxExecution` on the JVM, a registered Monaco language, and its completion comes from the server —
 which means completion can know inferred types, because the same compiler answers it.
 
-The two are not points on a spectrum; they use disjoint machinery. Route A never touches
-`BoxExecution`, and Route B never touches the extension registry. `language_extensions.md:267-278`
-("When To Promote") is the decision.
+The two are not points on a spectrum; they use disjoint integration machinery. Route A never touches
+`BoxExecution`, and Route B never touches the extension registry. Whether the language itself is a
+small JavaScript parser, a Kotlin compiler or host syntax erased before compilation is a separate
+axis. `language_extensions.md:267-278` ("When To Promote") is the route decision.
 
 ### Who is on which route
 
@@ -66,8 +69,8 @@ Kotlin is the ninth and is the *absence* of an entry: `mainLanguage = null` mean
 
 **RectSL, StackSL and Brief are not on this list**, and that is the single most useful fact on this
 page. None is a main language. None has a `BoxExecution`. They are Route A extensions with a Kotlin
-compiler behind them, which is a third shape the two-route story does not quite predict — see
-"The third shape" below.
+compiler behind them: a third implementation shape, but not a third integration route. See "The third
+implementation shape" below.
 
 ## The integration points
 
@@ -294,13 +297,13 @@ main-language list: `msl`, `stacksl`, `rectsl`, `fnrewrite`, `brief`, `sonicpi` 
 editor modules and no `BoxExecution`; `clojure`, `python` and `remotejs` have a `BoxExecution` and no
 module of their own. Neither asymmetry is a bug — it is what "small language" covers here.
 
-## The third shape: a compiler behind a browser extension
+## The third implementation shape: a compiler behind a browser extension
 
-RectSL and StackSL break the two-route story, and knowing how saves you from looking for a
-`BoxExecution` that is not there. Both have a *full Kotlin implementation* — RectSL is a tokenizer, a
-word-table VM and three backends — and both reach the editor through Route A, because a RectSL program
-is not what a box is written in. It is a Kotlin triple-quoted string starting `#rectsl` inside a Kotlin
-box.
+RectSL and StackSL expand the implementation taxonomy without adding an integration route, and knowing
+that saves you from looking for a `BoxExecution` that is not there. Both have a *full Kotlin
+implementation* — RectSL is a tokenizer, a word-table VM and three backends — and both reach the editor
+through Route A, because a RectSL program is not what a box is written in. It is a Kotlin triple-quoted
+string starting `#rectsl` inside a Kotlin box.
 
 | what | site | anchor |
 | --- | --- | --- |
@@ -368,7 +371,7 @@ Monarch grammar (`stacksl.js:2134`); both work, but see the warning below.
 > reports "editor not synced yet". `bootstrapMonaco.js:52-57` is the comment left behind by that. If
 > you add a Monarch grammar, this is the failure you are signing up for.
 
-## The fourth shape: the host's own syntax, erased
+## The fourth implementation shape: the host's own syntax, erased
 
 `rewrite { }` is a small language whose surface syntax *is* Kotlin, and whose implementation deletes
 itself before the compiler runs.
