@@ -1,0 +1,127 @@
+name: dataframe_typed_columns
+description: >
+  Kotlin DataFrame's compiler plugin inside Field. The plugin statically interprets a
+  DataFrame call and gives the result a type whose members ARE the columns, so `people.age`
+  resolves with no `df["age"]`, no cast and no codegen step. Box 2 is the one that proves
+  it is real: `decade` exists only because the plugin interpreted `add`.
+
+  The fourth box is created but deliberately NOT executed. It carries the measured limit —
+  the refined type is local to the expression that produced it, so a value left in a box
+  decays to `DataFrame<Any>` for the next run. Keep a chain in one execution and it works;
+  split it and it does not. See `kotlin.dataframe-plugin.spike` for the measurements.
+operations:
+  - create:
+      box: dataframe_typed
+      name: 1 - Typed columns, no strings
+      frame:
+        x: 40.0
+        y: 40.0
+        w: 440.0
+        h: 270.0
+      properties:
+        code: |
+          import org.jetbrains.kotlinx.dataframe.api.*
+
+          // No @DataSchema, no generated accessors checked into the project. The plugin reads this
+          // call at compile time and types the result by the columns it produces.
+          val people = dataFrameOf("name", "age")(
+              "Alice", 15,
+              "Bob", 30,
+              "Cara", 45,
+          )
+
+          println("names: " + people.name.toList())
+          println("ages: " + people.age.toList())
+          println("mean age: " + people.age.toList().average())
+  - create:
+      box: dataframe_derived
+      name: 2 - A schema that changes
+      frame:
+        x: 510.0
+        y: 40.0
+        w: 440.0
+        h: 270.0
+      properties:
+        code: |
+          import org.jetbrains.kotlinx.dataframe.api.*
+
+          // `decade` is not in the source data and is not a string lookup: `add` returns a NEW
+          // schema, and the plugin worked out what that schema is. `age` resolving inside both
+          // lambdas is the same mechanism one step earlier.
+          val adults = dataFrameOf("name", "age")(
+              "Alice", 15,
+              "Bob", 30,
+              "Cara", 45,
+          )
+              .filter { age >= 18 }
+              .add("decade") { age / 10 }
+
+          println("kept: " + adults.name.toList())
+          println("decade: " + adults.decade.toList())
+  - create:
+      box: dataframe_one_pass
+      name: 3 - The whole chain in one pass
+      frame:
+        x: 40.0
+        y: 340.0
+        w: 440.0
+        h: 250.0
+      properties:
+        code: |
+          import org.jetbrains.kotlinx.dataframe.api.*
+
+          // The shape that works: derive and consume inside a single execution, so the refined
+          // type never has to outlive the expression that created it.
+          val summary = dataFrameOf("name", "age")(
+              "Alice", 15,
+              "Bob", 30,
+              "Cara", 45,
+          )
+              .add("adult") { age >= 18 }
+              .let { d -> d.name.toList().zip(d.adult.toList()) }
+
+          println(summary)
+  - create:
+      box: dataframe_boundary
+      name: 4 - The limit (do not run)
+      frame:
+        x: 510.0
+        y: 340.0
+        w: 440.0
+        h: 250.0
+      properties:
+        code: |
+          import org.jetbrains.kotlinx.dataframe.api.*
+
+          // MEASURED LIMIT — this box is here to be read, not run. Executing it fails with
+          //   <empty compile time schema>
+          //   Unresolved reference 'age' on receiver of type 'DataFrame<Any>'
+          //
+          // The plugin rewrites a refined call into `run { class Token; ...; call() as
+          // DataFrame<Token> }` with LOCAL classes, because its extension point works at
+          // body-resolve and cannot create top-level declarations. A local class cannot appear in
+          // the type of a snippet's property, so the refinement is erased at the boundary.
+          //
+          // Naming a @DataSchema does not rescue it either: the type then survives as
+          // DataFrame<Person> with a known schema, but TopLevelExtensionsGenerator finds schemas
+          // through K2's predicate-based provider, which is source-only — so a schema compiled
+          // elsewhere generates no accessors. The designed route is the plugin's `schemasPath`
+          // option plus ImportedSchemasGenerator, which Field does not wire yet.
+          val df = dataFrameOf("name", "age")("Alice", 15)
+          // ... then, in a LATER execution of this same box:
+          // df.age.toList()      // <- does not compile
+  - execute:
+      box: dataframe_typed
+      property: code
+      type: fragment
+  - wait: pending
+  - execute:
+      box: dataframe_derived
+      property: code
+      type: fragment
+  - wait: pending
+  - execute:
+      box: dataframe_one_pass
+      property: code
+      type: fragment
+  - wait: pending

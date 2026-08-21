@@ -95,6 +95,9 @@ object DemoTranscriptExecSmokeTest {
         // K2JVMCompiler and then recycles the other boxes' engines — but it is pure compute, and the
         // second run of box 1 is what holds the two engine-recycling regressions down.
         "shared_types_demo",
+        // Kotlin DataFrame's compiler plugin. Three boxes are replayed; the fourth is created
+        // and deliberately not executed, because it documents a compile error on purpose.
+        "dataframe_typed_columns",
         "spectral_examples",
         "imaging_cv_examples",
         "imaging_vector_kernels",

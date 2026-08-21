@@ -25,3 +25,4 @@ public/docs/assets/agent_transcripts/**/document.md whitespace=-blank-at-eof
 libs/kotlin-compiler-embeddable-2.4.255-SNAPSHOT.jar filter=lfs diff=lfs merge=lfs -text
 # Kotlin/JS stdlib klib for the Kotlin->JS RemoteJS spike (must match the compiler fork version)
 libs/kotlin-stdlib-js-2.4.255-SNAPSHOT.klib filter=lfs diff=lfs merge=lfs -text
+libs/dataframe-plugin.jar filter=lfs diff=lfs merge=lfs -text

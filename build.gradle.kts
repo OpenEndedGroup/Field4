@@ -941,6 +941,15 @@ kotlin {
                 //   compiler via -Xplugin (see KotlinInterface2 init)
                 implementation(files("libs/wither-annotations.jar"))
                 implementation(files("libs/wither-plugin.jar"))
+
+                // Kotlin DataFrame. The RUNTIME goes on the classpath here; the compiler PLUGIN
+                // deliberately does not — libs/dataframe-plugin.jar vendors ~1000 classes of the
+                // DataFrame runtime of its own, so putting it here would give box code two copies of
+                // `DataFrame`. KotlinInterface2 hands that jar to the compiler via -Xplugin instead,
+                // which loads it in the compiler's own plugin classloader. The plugin was built from
+                // our 2.4.255-SNAPSHOT fork, whose libs.versions.toml pins this runtime version;
+                // the plugin statically interprets the runtime's API, so the two must stay in step.
+                implementation("org.jetbrains.kotlinx:dataframe-core:1.0.0-Beta2")
                 implementation("org.apache.maven:maven-core:3.8.8")
                 implementation("org.apache.maven.resolver:maven-resolver-api:1.9.22")
                 implementation("org.apache.maven.resolver:maven-resolver-connector-basic:1.9.22")

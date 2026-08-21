@@ -193,7 +193,7 @@ class KotlinInterface2(
                 _languageVersion.put(fieldKotlinLanguageVersion)
                 // Every independent K2 compilation state needs the plugin argument, but locating
                 // the process-wide jar (and announcing it) only needs to happen once per JVM.
-                compilerOptions.put(fieldKotlinJvmCompilerOptions + witherPluginArgs)
+                compilerOptions.put(fieldKotlinJvmCompilerOptions + compilerPluginArgs)
 
                 dependenciesFromClassloader(
                     classLoader = classLoader!!, wholeClasspath = true, unpackJarCollections = true
@@ -2930,6 +2930,52 @@ class KotlinInterface2(
     companion object {
 
         var sharedClassLoader: ClassLoader? = null
+
+        /**
+         * Every `-Xplugin=` argument this JVM's K2 compilation states get.
+         *
+         * The two plugins are located differently on purpose. Wither's jar is *on* the app classpath
+         * — it carries annotations that box code names, so it has to be — and is found there. The
+         * DataFrame plugin's jar deliberately is not: it vendors ~1000 classes of the DataFrame
+         * runtime, which alongside the real `dataframe-core` dependency would put two copies of
+         * `DataFrame` in front of box code. `-Xplugin` loads it in the compiler's own plugin
+         * classloader, so only the compiler ever sees it.
+         */
+        val compilerPluginArgs: List<String> by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+            witherPluginArgs + dataFramePluginArgs
+        }
+
+        /**
+         * The DataFrame compiler plugin, from `libs/` rather than the classpath (see
+         * [compilerPluginArgs]). Disable with `-Dafield.dataframePlugin=false`; override the jar
+         * location with `-Dafield.dataframePlugin.jar=<path>`.
+         *
+         * Its extension point (`FirFunctionCallRefinementExtension`) is documented in the compiler
+         * as "highly unstable and not recommended to use", and it generates *local* classes at
+         * body-resolve, so what it can and cannot do across a REPL snippet boundary is a live
+         * question — see `DataFramePluginSpike`.
+         */
+        private val dataFramePluginArgs: List<String> by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+            if (System.getProperty("afield.dataframePlugin", "true") != "true") {
+                lprintln("kotlin", "dataframe: plugin disabled by -Dafield.dataframePlugin=false")
+                return@lazy emptyList()
+            }
+            val override = System.getProperty("afield.dataframePlugin.jar")?.let { java.io.File(it) }
+            val candidates = listOfNotNull(
+                override,
+                java.io.File("libs/dataframe-plugin.jar"),
+                java.io.File(System.getProperty("user.dir"), "libs/dataframe-plugin.jar"),
+            )
+            candidates.firstOrNull { it.exists() }
+                ?.absoluteFile
+                ?.let {
+                    lprintln("kotlin", "dataframe: enabling DataFrame compiler plugin from ${it.path}")
+                    listOf("-Xplugin=${it.path}")
+                }
+                ?: emptyList<String>().also {
+                    lprintln("kotlin", "dataframe: plugin jar not found in libs/; not enabled")
+                }
+        }
 
         private val witherPluginArgs: List<String> by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
             System.getProperty("java.class.path").orEmpty()

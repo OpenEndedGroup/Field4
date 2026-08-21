@@ -40,8 +40,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 69 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
-not in the same way, and the difference is worth knowing before you trust one. 50 of them are
+All 70 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+not in the same way, and the difference is worth knowing before you trust one. 51 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
 error-kind output line. (Almost always that is every box in the file. A transcript may deliberately
@@ -90,6 +90,18 @@ declared *inside* a box is nested in that box's snippet loader and crosses `@exp
 engine-recycling bugs — the publisher kept a pre-publish classpath snapshot, and a recycled engine
 could skip its preamble entirely.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/shared_types_demo/metadata.edn)
+
+**dataframe_typed_columns** — Kotlin DataFrame's compiler plugin, which types a DataFrame by the
+columns it actually contains: `people.age` with no `df["age"]`, no cast and no generated accessors in
+the project. Box 2 is the one that cannot pass by accident — `filter { age >= 18 }` drops Alice and
+`add("decade") { age / 10 }` prints `[3, 4]` for a column that exists only because the plugin
+interpreted the call at compile time. Box 4 is created but never run, and carries the measured limit:
+the refined type is built from *local* classes at body-resolve, so it cannot appear in a snippet
+property's type and a frame left in a box decays to `DataFrame<Any>` for the next execution. Naming a
+`@DataSchema` keeps the type but not the accessors, because the generator discovers schemas through
+K2's source-only predicate provider. Chains that derive and consume in one pass work; split ones do
+not.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/dataframe_typed_columns/metadata.edn)
 
 **linalg_thumbnails_demo** — Each box evaluates one `afield.stdlib.linalg` value; on execute its
 output shows the terse text head plus a small inline SVG thumbnail the `ValueVisualizer` draws — an
