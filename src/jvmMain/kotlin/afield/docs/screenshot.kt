@@ -1204,11 +1204,12 @@ suspend fun captureWindowVideo(info: SessionInformation, request: AgentWindowVid
             viewport = prepResponse.viewport
         )
     }.onFailure {
-        lprintln("warning,video", "Window video failed for ${request.path}: ${it.message}")
+        lprintln("warning,video", "Window video failed for ${request.path}: ${it.videoFailureDescription()}")
+        it.printStackTrace()
     }.getOrElse {
         failedAgentVideo(
             info = info, kind = kind, path = outputPath.toString(), uid = request.uid,
-            message = it.message ?: "Video recording failed"
+            message = it.videoFailureDescription()
         )
     }
 }
@@ -1293,13 +1294,36 @@ suspend fun captureBoxVideo(info: SessionInformation, request: AgentBoxVideo): A
             viewport = prepResponse.viewport
         )
     }.onFailure {
-        lprintln("warning,video", "Box video failed for ${request.uid}: ${it.message}")
+        lprintln("warning,video", "Box video failed for ${request.uid}: ${it.videoFailureDescription()}")
+        it.printStackTrace()
     }.getOrElse {
         failedAgentVideo(
             info = info, kind = "box", path = outputPath.toString(), uid = request.uid,
-            message = it.message ?: "Video recording failed"
+            message = it.videoFailureDescription()
         )
     }
+}
+
+/**
+ * A failed video capture named so a docs build can act on it.
+ *
+ * `it.message` alone is not enough, and on 2026-08-21 that cost a nightly CI docs build its
+ * diagnosis: `animated_rose.mp4` failed and the only trace anywhere — server log, post-mortem and
+ * the `record-box` command result — was `Box video failed for 7377f8d9-...: null`, because the
+ * throwable's message was null and both the log line and the response fell back to a constant. An
+ * exception with no message is common (NPE, cancellation, several Playwright faults) and is exactly
+ * the case where the *type* is the whole signal, so keep it. The cause chain matters for the same
+ * reason: a Playwright timeout wrapped in a runtime exception says something different from an
+ * `IllegalStateException` about frame counts.
+ */
+private fun Throwable.videoFailureDescription(): String {
+    val chain = generateSequence(this) { previous -> previous.cause.takeIf { it !== previous } }
+        .take(4)
+        .joinToString(" <- ") { link ->
+            val name = link::class.simpleName ?: link::class.java.name
+            link.message?.takeIf { it.isNotBlank() }?.let { "$name: $it" } ?: name
+        }
+    return "Video recording failed ($chain)"
 }
 
 private data class ScreencastResult(val frameCount: Int)
