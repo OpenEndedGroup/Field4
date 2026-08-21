@@ -60,7 +60,29 @@ FENCE_NAMES = sorted(RUNNER_TARGETS, key=len, reverse=True)
 SCRIPT_VERSION = 18
 # One invocation is the verification contract. Repeating an unchanged capture can turn an
 # infrastructure defect into a green build and destroy the first failure's evidence.
-RUNNER_SUBPROCESS_GRACE_SEC = 5.0
+# What this covers is *process overhead*, not capture work: interpreter start, the Playwright
+# attach, the WebSocket connect, and — for a graphics-context capture — the shared Field server
+# restart each one performs. `options.timeout` budgets the per-command work inside the child; this
+# is everything outside it, and at 5.0 it did not cover it.
+#
+# Measured 2026-08-21 on `afield_four_graphics.md`, six consecutive graphics-context captures with
+# `options.timeout = 10.0` (so an outer limit of 15.2s): 14s, 12s, 12s, **15s**, 11s, 13s. The 15s
+# one is `02-camera-matrices.png`, which cleared the old budget by about 0.2s — and which failed
+# the nightly CI docs build twice that morning, once at 0/7 command results and once at 0/7 again
+# from a different position in the run. A 1.01x margin on a gate that runs ~486 times is not a
+# margin, and the symptom is a false red on correct code: the same six captures pass, and produce
+# byte-identical PNGs, when the budget is not the binding constraint.
+#
+# Why it hid for so long: `PLAYWRIGHT_FIRST_RUN_HEADROOM_SEC` raises the outer limit to 3m05s while
+# `.field-backdoor/playwright-ready` is absent, so a fresh worktree's *first* capture — the one that
+# creates the marker — always has room, and only captures 2..N feel the real budget.
+#
+# 20.0 keeps the fail-fast property this file cares about (a genuine hang is killed in ~30s, not
+# 180s) while leaving ~2x headroom over the worst measured capture. It is deliberately not derived
+# from the child's Playwright attach budget: `playwright_attach_budget` honours the caller's timeout
+# once the browser is warm, so the two are consistent, and the remaining question is only how much
+# non-command overhead a capture is allowed.
+RUNNER_SUBPROCESS_GRACE_SEC = float(os.environ.get("FIELD_DOCS_SUBPROCESS_GRACE", "20"))
 # Frame-synchronous video is intentionally allowed to run slower than playback. Budget aggregate
 # wall time from frame count, not media seconds: sustained GPU/CI load may make one exact browser
 # screenshot take substantially longer than 1/fps without making the capture unhealthy.
