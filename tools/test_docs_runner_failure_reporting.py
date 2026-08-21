@@ -7,6 +7,7 @@ file it declined to open.
 """
 
 import json
+import subprocess
 import sys
 import time
 import unittest
@@ -257,3 +258,94 @@ class RunnerDigestScopeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TimeoutDiagnosisOrderingTests(unittest.TestCase):
+    """A capture *timeout* must diagnose before it restarts, like every other failure.
+
+    The regression this pins, found by the 2026-08-21 nightly CI run: all four capture
+    timeout handlers read
+
+        except subprocess.TimeoutExpired as exc:
+            self._restart_shared_field_server(...)      # <-- reopens the log in "w" mode
+            raise RuntimeError(...)                     # <-- no diagnosis, exc.stderr dropped
+
+    while every adjacent non-timeout branch called `diagnose_capture_failure` first and
+    carried a comment explaining that the restart erases the server-side log. So a timeout,
+    which is the most common way a capture fails, was the one mode that destroyed its own
+    evidence — and `log_summary` still told the reader a post-mortem had been saved. That
+    run's docs build aborted and could not be graded because of it.
+    """
+
+    def setUp(self):
+        self.tmp = TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        self.log = self.root / "field.log"
+        self.log.write_text("server log line\n", encoding="utf-8")
+
+    def _stub(self):
+        calls = []
+
+        class _Stub:
+            shared_log_path = self.log
+            _timeout_failure = docs_hooks.RunnerState._timeout_failure
+
+            def diagnose_capture_failure(inner, *, page_path, output_path):
+                calls.append("diagnose")
+                return "BOTH-SIDES-DIAGNOSIS"
+
+            def _restart_shared_field_server(inner, *, reason):
+                calls.append("restart")
+
+        return _Stub(), calls
+
+    def _timeout(self):
+        return subprocess.TimeoutExpired(
+            ["field_backdoor.py"],
+            15.2,
+            output="",
+            stderr="Docs capture watchdog: only 8/11 command results arrived before the outer limit.",
+        )
+
+    def test_diagnosis_happens_before_the_restart(self):
+        stub, calls = self._stub()
+        stub._timeout_failure(
+            exc=self._timeout(),
+            page_path=Path("afield_four_graphics.md"),
+            output_path=self.root / "02-camera-matrices.png",
+            command=["field_backdoor.py", "--command", "native-screenshot"],
+            what="",
+            restart_reason="timeout while capturing",
+        )
+        # Both must happen, and in this order — the restart truncates what the diagnosis reads.
+        self.assertEqual(calls, ["diagnose", "restart"])
+
+    def test_the_watchdog_verdict_survives_into_the_message(self):
+        stub, _ = self._stub()
+        error = stub._timeout_failure(
+            exc=self._timeout(),
+            page_path=Path("p.md"),
+            output_path=self.root / "a.png",
+            command=["field_backdoor.py"],
+            what="",
+            restart_reason="r",
+        )
+        text = str(error)
+        # The one line that distinguishes "too slow" from "finished but would not exit".
+        self.assertIn("only 8/11 command results arrived", text)
+        self.assertIn("BOTH-SIDES-DIAGNOSIS", text)
+        self.assertIn("Timed out after 15.2s", text)
+
+    def test_the_subject_line_names_the_capture_kind(self):
+        stub, _ = self._stub()
+        for what, expected in (("", "runner timed out"), ("video", "runner video timed out")):
+            error = stub._timeout_failure(
+                exc=self._timeout(),
+                page_path=Path("p.md"),
+                output_path=self.root / "a.png",
+                command=["field_backdoor.py"],
+                what=what,
+                restart_reason="r",
+            )
+            self.assertIn(expected, str(error))

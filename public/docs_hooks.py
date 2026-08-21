@@ -255,6 +255,7 @@ RUNNER_DIAGNOSTIC_ONLY_DEFINITIONS = frozenset({
     "_backdoor_client_log_for_pid",
     "_latest_backdoor_client_error",
     "_save_failure_report",
+    "_timeout_failure",
     "log_summary",
     "tail_text",
     "head_text",
@@ -758,6 +759,53 @@ class RunnerState:
                     "\n".join(error_lines[-12:]),
                 )
         return None
+
+    def _timeout_failure(
+        self,
+        *,
+        exc: subprocess.TimeoutExpired,
+        page_path: Path,
+        output_path: Path,
+        command: list[str],
+        what: str,
+        restart_reason: str,
+    ) -> RuntimeError:
+        """Diagnose a capture timeout, *then* restart, then build the error to raise.
+
+        The order is the whole point. `_restart_shared_field_server` reopens
+        `shared_log_path` in "w" mode, so restarting first erases the server-side log for
+        the capture that just failed — which is why every non-timeout failure branch in
+        this class already diagnoses before restarting, with a comment saying so. Until
+        2026-08-21 none of the four *timeout* branches did, so a timeout — the most common
+        capture failure there is — was the single mode that destroyed its own evidence and
+        then reported, in the run summary, that a post-mortem had been saved. On that date a
+        nightly CI docs build aborted on `02-camera-matrices.png` and could not be graded:
+        no post-mortem was written, and the server log had been truncated eight seconds
+        after the failure.
+
+        `_run_capture_child` puts the watchdog's verdict in `exc.stderr` — "only N/M command
+        results arrived before the outer limit" versus "all command results arrived, but
+        field_backdoor.py did not exit within 10s". That one line is what separates a slow
+        capture from a child that finished its work and would not exit, i.e. whether the
+        budget or the lifecycle is at fault, so carry it into the message rather than
+        dropping it with the exception.
+
+        `format_timeout_failure_details` is what surfaces it, and it already existed for
+        precisely this: it tails the backdoor stdout/stderr and the Field server log. It had
+        **zero callers** until this function — the same shape the 2026-08-07 build hit and
+        that `tools/test_docs_runner_failure_reporting.py` was written about, "the underlying
+        diagnosis was sitting in a file it declined to open". Note it must run before the
+        restart too, since it tails `shared_log_path`.
+        """
+        details = format_timeout_failure_details(
+            exc, command=command, field_log_path=self.shared_log_path
+        )
+        diagnosis = self.diagnose_capture_failure(page_path=page_path, output_path=output_path)
+        self._restart_shared_field_server(reason=restart_reason)
+        subject = " ".join(part for part in ("Field docs runner", what, "timed out") if part)
+        return RuntimeError(
+            f"{subject} for {page_path.name} -> {output_path}.\n{details}\n\n{diagnosis}"
+        )
 
     def _save_failure_report(self, *, output_path: Path, report: str) -> str | None:
         """Write the full both-sides post-mortem to a per-failure file; best-effort."""
@@ -1635,13 +1683,13 @@ class RunnerState:
                 input_text=code,
             )
         except subprocess.TimeoutExpired as exc:
-            self._restart_shared_field_server(
-                reason=f"timeout while recording {page_path.name} -> {video_path}"
-            )
-            raise RuntimeError(
-                f"Field docs runner video timed out for {page_path.name} -> {video_path}.\n"
-                f"Command: {shlex.join(command)}\n"
-                f"Timed out after {exc.timeout:.1f}s"
+            raise self._timeout_failure(
+                exc=exc,
+                page_path=page_path,
+                output_path=video_path,
+                command=command,
+                what="video",
+                restart_reason=f"timeout while recording {page_path.name} -> {video_path}",
             ) from exc
         deterministic = deterministic_execution_error(
             completed, page_path=page_path, output_path=video_path, command=command
@@ -1788,10 +1836,13 @@ class RunnerState:
                 input_text=generated_code,
             )
         except subprocess.TimeoutExpired as exc:
-            self._restart_shared_field_server(reason=f"timeout while rendering audio {audio_path}")
-            raise RuntimeError(
-                f"Field docs runner audio timed out for {page_path.name} -> {audio_path}.\n"
-                f"Command: {shlex.join(command)}\nTimed out after {exc.timeout:.1f}s"
+            raise self._timeout_failure(
+                exc=exc,
+                page_path=page_path,
+                output_path=audio_path,
+                command=command,
+                what="audio",
+                restart_reason=f"timeout while rendering audio {audio_path}",
             ) from exc
         if completed.returncode != 0:
             details = format_completed_failure_details(completed, command=command, field_log_path=self.shared_log_path)
@@ -1878,10 +1929,13 @@ class RunnerState:
                 is_video=True,
             )
         except subprocess.TimeoutExpired as exc:
-            self._restart_shared_field_server(reason=f"timeout ui drive {primary}")
-            raise RuntimeError(
-                f"Field docs runner ui drive timed out for {page_path.name} -> {primary}.\n"
-                f"Command: {shlex.join(command)}\nTimed out after {exc.timeout:.1f}s"
+            raise self._timeout_failure(
+                exc=exc,
+                page_path=page_path,
+                output_path=primary,
+                command=command,
+                what="ui drive",
+                restart_reason=f"timeout ui drive {primary}",
             ) from exc
         deterministic = deterministic_execution_error(
             completed, page_path=page_path, output_path=primary, command=command
@@ -2059,13 +2113,13 @@ class RunnerState:
                     input_text=code,
                 )
             except subprocess.TimeoutExpired as exc:
-                self._restart_shared_field_server(
-                    reason=f"timeout while capturing {page_path.name} -> {screenshot_path}"
-                )
-                raise RuntimeError(
-                    f"Field docs runner timed out for {page_path.name} -> {screenshot_path}.\n"
-                    f"Command: {shlex.join(command)}\n"
-                    f"Timed out after {exc.timeout:.1f}s"
+                raise self._timeout_failure(
+                    exc=exc,
+                    page_path=page_path,
+                    output_path=screenshot_path,
+                    command=command,
+                    what="",
+                    restart_reason=f"timeout while capturing {page_path.name} -> {screenshot_path}",
                 ) from exc
         deterministic = deterministic_execution_error(
             completed, page_path=page_path, output_path=screenshot_path, command=command
