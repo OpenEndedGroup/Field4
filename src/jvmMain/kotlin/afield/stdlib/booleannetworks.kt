@@ -543,7 +543,7 @@ fun BooleanNetwork.notateHtml(): String =
                 listOf(
                     n.name,
                     n.inputs.joinToString(", ") { nodes[it].name }.ifEmpty { "—" },
-                    n.rule.toString(),
+                    n.rule,
                 )
             }
         )

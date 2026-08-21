@@ -106,12 +106,6 @@ object FieldMarkdown {
     }
 
     /**
-     * Renders [text] wrapped in the `field-md` card that carries the stylesheet (see `field.css`).
-     *
-     * [width], in CSS pixels, pins the card. Leave it null and the card sizes to its content, which
-     * is right in a live box and wrong for a `capture="box"` docs screenshot — see [FieldMarkdown].
-     */
-    /**
      * [parts] as one `:::row` block — the source a [Box.showRow] card is built from, separate so a
      * caller composing a larger figure can splice a row into the middle of it.
      *
@@ -125,6 +119,12 @@ object FieldMarkdown {
     fun row(parts: List<String>): String =
         parts.joinToString("\n---\n", ":::row\n", "\n:::end") { dedent(it) }
 
+    /**
+     * Renders [text] wrapped in the `field-md` card that carries the stylesheet (see `field.css`).
+     *
+     * [width], in CSS pixels, pins the card. Leave it null and the card sizes to its content, which
+     * is right in a live box and wrong for a `capture="box"` docs screenshot — see [FieldMarkdown].
+     */
     fun card(text: String, width: Int? = null): String {
         val style = width?.let { """ style="width:${it}px;max-width:${it}px"""" } ?: ""
         return """<div class="field-md"$style>${render(text)}</div>"""

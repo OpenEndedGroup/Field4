@@ -575,7 +575,7 @@ class FieldMLAfieldFourReachTest {
         reached.forEach { statement ->
             assertTrue(statement.fieldML != null, "${statement.kotlin} claims a route but has no translation")
             assertTrue(
-                FieldMLCompiler.compile(statement.fieldML!!).successful,
+                FieldMLCompiler.compile(statement.fieldML).successful,
                 "${statement.kotlin}'s translation does not compile: ${statement.fieldML}",
             )
         }

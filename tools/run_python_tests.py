@@ -12,11 +12,12 @@ by existing. A module that cannot even be imported is reported as a failure rath
 an unimportable test is exactly as broken as a failing one, and quietly dropping it is how a
 suite stops covering anything.
 
-Run directly with:  python3 tools/run_python_tests.py
+Run directly with:  uv run --project . python tools/run_python_tests.py
 """
 
 from __future__ import annotations
 
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -24,12 +25,62 @@ from pathlib import Path
 TOOLS_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = TOOLS_ROOT.parent
 
+# Fallback only. The real floor is `requires-python` in pyproject.toml, read at runtime by
+# declared_python_floor() so this constant cannot drift away from the project's own declaration.
+FALLBACK_PYTHON_FLOOR = (3, 12)
+
+
+def declared_python_floor() -> tuple[int, ...]:
+    """The `requires-python` floor from pyproject.toml, parsed without tomllib.
+
+    tomllib arrived in 3.11, and the whole point of this check is to run on interpreters older
+    than the floor, so the floor has to be readable without it.
+    """
+    try:
+        text = (REPO_ROOT / "pyproject.toml").read_text()
+    except OSError:
+        return FALLBACK_PYTHON_FLOOR
+    match = re.search(r'^requires-python\s*=\s*"[><=~^]*\s*([0-9]+(?:\.[0-9]+)*)"', text, re.M)
+    if not match:
+        return FALLBACK_PYTHON_FLOOR
+    return tuple(int(part) for part in match.group(1).split("."))
+
+
+def check_interpreter() -> str | None:
+    """None if this interpreter can run the suites, else why it cannot.
+
+    These suites are not interpreter-agnostic — they exercise `tools/` modules that use PEP 604
+    (`str | None`) unguarded and construct `asyncio.Condition()` outside a running loop, which
+    3.9 evaluates differently. Run under an interpreter below the floor, the suites do not report
+    a defect in the code under test; they report six unrelated-looking import and setUp errors.
+    That is worse than not running: on 2026-08-21 it read, to a nightly CI run, exactly like a
+    regression on `main`, because the failing gate shells bare `python3` and PATH decides which
+    interpreter that is (`/usr/bin/python3` is 3.9.6 on macOS; a login shell here resolves 3.11+).
+    So say so, in one line, instead of erupting.
+    """
+    floor = declared_python_floor()
+    if sys.version_info[: len(floor)] >= floor:
+        return None
+    running = ".".join(str(part) for part in sys.version_info[:3])
+    wanted = ".".join(str(part) for part in floor)
+    return (
+        f"this suite needs Python >= {wanted} (pyproject.toml requires-python) but is running "
+        f"{running} from {sys.executable}.\n"
+        "Run it the way every other Python entry point in this repo is run:\n"
+        "  uv run --project . python tools/run_python_tests.py"
+    )
+
 
 def suite_module_names() -> list[str]:
     return sorted(f"tools.{path.stem}" for path in TOOLS_ROOT.glob("test_*.py"))
 
 
 def main() -> int:
+    complaint = check_interpreter()
+    if complaint is not None:
+        print(complaint)
+        return 1
+
     # The suites import each other as `tools.<module>` (a PEP 420 namespace package — there is no
     # tools/__init__.py), so the repo root has to lead sys.path however this script was invoked.
     sys.path.insert(0, str(REPO_ROOT))

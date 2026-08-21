@@ -1440,11 +1440,20 @@ tasks.register<JavaExec>("regenerateAgentDemos") {
 // existing), runs them, prints each suite's pass count and exits non-zero if any test fails or any
 // suite cannot be imported. No inputs are declared on purpose: the whole thing takes well under a
 // second, and a "cached" verification task is worth less than the second it saves.
+// Through `uv`, not bare `python3`, and that is the whole point. `Exec` inherits the PATH of
+// whatever shell started Gradle, and on macOS `/usr/bin/python3` is 3.9.6 while this project
+// declares `requires-python = ">=3.12"`. So the same commit graded green from a login shell
+// (which resolves a 3.11+ python first) and red from a non-interactive one, and the red arrived
+// as five `asyncio.Condition()` setUp errors from March plus one unloadable module — six failures
+// that look like a regression in the code under test and are not. `uv run --project .` resolves
+// the interpreter from pyproject.toml instead of from the ambient PATH, which is how every other
+// Python entry point in this repo is invoked (see the two fieldAudio* gates below), and
+// run_python_tests.py carries the matching floor check for anyone who runs it by hand.
 tasks.register<Exec>("checkPythonTools") {
     group = "verification"
     description = "Runs the tools/test_*.py unittest suites — the backdoor argument emitter, the docs-capture freshness classifier and the worktree-scoped JVM reaper — and prints each suite's pass count."
     workingDir = rootDir
-    commandLine("python3", "tools/run_python_tests.py")
+    commandLine("uv", "run", "--project", ".", "--frozen", "python", "tools/run_python_tests.py")
 }
 
 // The Analysis-API completion sidecar is Field's default completion backend, but it is a standalone
