@@ -4949,6 +4949,11 @@ class Server {
             afield.logger.PinnedConsole.installWithStartup()
             lprintln("info,startup", "booting Field…")
 
+            // Kotlin DataFrame is a third-party type, so it reaches `.h`/`.h2`/`display` through the
+            // value registries rather than by implementing ToHTML. Idempotent; see
+            // [DataFrameVisualizer].
+            DataFrameVisualizer.install()
+
             // src/personal is not on -cp; it hangs off the app loader in its own layer. Make that
             // layer the context classloader before anything else starts, so the things that reach
             // for it by convention -- ClassGraph scans, ServiceLoader, Clojure's dynamic loader,

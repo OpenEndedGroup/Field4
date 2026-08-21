@@ -57,6 +57,8 @@ object DataFramePluginSpike {
     private var acrossSnippets = false
     private var refinedOperation = false
     private var sharedSchemaSurvives = false
+    private var snippetSchemaSameSnippet = false
+    private var snippetSchemaAcrossSnippets = false
 
     fun runTests(): Boolean {
         return try {
@@ -69,6 +71,7 @@ object DataFramePluginSpike {
             probeRefinedOperation()
             probeAcrossSnippets()
             probeSharedDataSchema()
+            probeSnippetDeclaredSchema()
 
             println("DataFrame plugin spike complete")
             report()
@@ -212,6 +215,42 @@ object DataFramePluginSpike {
         println("  probe D (snippet 2 reads people.age): survived=$sharedSchemaSurvives outcome=$second")
     }
 
+    /**
+     * Decides how much codegen a live-coding story would need.
+     *
+     * `TopLevelExtensionsGenerator` discovers schemas through K2's predicate-based provider, which is
+     * source-only — that is why probe D's compiled schema generated nothing. A schema declared *in a
+     * snippet* is source, so it should work within that snippet. The question is the next one: does a
+     * previous snippet's declaration still count as source to the provider, or is each snippet its own
+     * compilation as far as predicates are concerned?
+     *
+     *  - both true  → Field need only emit `@DataSchema interface X { ... }` from a frame's runtime
+     *    schema and eval it; the plugin generates every accessor.
+     *  - first only → Field must emit the accessors itself (plain `val DataFrame<X>.age get() =
+     *    this["age"] as DataColumn<Int>`), which is more source but needs no plugin cooperation.
+     */
+    private fun probeSnippetDeclaredSchema() {
+        val ki = KotlinInterface2(filePrefix = "dataframe-spike-snippet-schema")
+        val schema = """
+            $IMPORTS
+            import org.jetbrains.kotlinx.dataframe.annotations.DataSchema
+
+            @DataSchema
+            interface Rows { val a: Int; val b: Int }
+        """.trimIndent()
+
+        val together = eval(
+            ki,
+            schema + "\n" + """val d = dataFrameOf("a", "b")(1, 2).cast<Rows>(); d.a.toString()"""
+        )
+        snippetSchemaSameSnippet = together.contains("1")
+        println("  probe E1 (@DataSchema declared and used in ONE snippet): fired=$snippetSchemaSameSnippet outcome=$together")
+
+        val later = eval(ki, """val d2 = dataFrameOf("a", "b")(3, 4).cast<Rows>(); d2.a.toString()""")
+        snippetSchemaAcrossSnippets = later.contains("3")
+        println("  probe E2 (same schema used in a LATER snippet): fired=$snippetSchemaAcrossSnippets outcome=$later")
+    }
+
     private fun report() {
         println(
             if (!withinOneSnippet) {
@@ -242,8 +281,25 @@ object DataFramePluginSpike {
             }
         )
         println(
+            if (snippetSchemaAcrossSnippets) {
+                "VERDICT (live-coding route): a @DataSchema declared in an EARLIER snippet still gets " +
+                    "accessors generated — so Field can make this live-codeable by emitting just the " +
+                    "interface from a frame's runtime schema and evaluating it into the box's engine."
+            } else if (snippetSchemaSameSnippet) {
+                "VERDICT (live-coding route): a snippet-declared @DataSchema works only in the snippet " +
+                    "that declares it, so predicate discovery does not reach REPL history. Field would " +
+                    "have to emit the accessors as ordinary Kotlin too — more generated source, but no " +
+                    "plugin cooperation needed, and it persists like any other declaration."
+            } else {
+                "VERDICT (live-coding route): even a snippet-declared @DataSchema generates nothing; " +
+                    "read probe E1 before designing anything on top of the plugin."
+            }
+        )
+        println(
             "  summary: withinOneSnippet=$withinOneSnippet refinedOperation=$refinedOperation " +
-                "acrossSnippets=$acrossSnippets sharedSchemaSurvives=$sharedSchemaSurvives"
+                "acrossSnippets=$acrossSnippets sharedSchemaSurvives=$sharedSchemaSurvives " +
+                "snippetSchemaSameSnippet=$snippetSchemaSameSnippet " +
+                "snippetSchemaAcrossSnippets=$snippetSchemaAcrossSnippets"
         )
     }
 

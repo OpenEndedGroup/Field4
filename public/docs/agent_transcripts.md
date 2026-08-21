@@ -95,12 +95,13 @@ could skip its preamble entirely.
 columns it actually contains: `people.age` with no `df["age"]`, no cast and no generated accessors in
 the project. Box 2 is the one that cannot pass by accident — `filter { age >= 18 }` drops Alice and
 `add("decade") { age / 10 }` prints `[3, 4]` for a column that exists only because the plugin
-interpreted the call at compile time. Box 4 is created but never run, and carries the measured limit:
-the refined type is built from *local* classes at body-resolve, so it cannot appear in a snippet
-property's type and a frame left in a box decays to `DataFrame<Any>` for the next execution. Naming a
-`@DataSchema` keeps the type but not the accessors, because the generator discovers schemas through
-K2's source-only predicate provider. Chains that derive and consume in one pass work; split ones do
-not.
+interpreted the call at compile time. Box 4 is the one that makes it live-codeable, and it runs
+twice. The plugin's inferred type is built from *local* classes at body-resolve, so it cannot appear
+in a snippet property's type and a frame left in a box would come back as `DataFrame<Any>` — fatal
+for a loop whose whole point is to load once and then poke at the result. `typed("People")` reads the
+frame's runtime columns and writes `@DataSchema interface People { … }` into the box's preamble, and a
+schema declared in an earlier snippet *is* one the plugin generates accessors for. So the second
+execution prints `ages: [15, 30, 45]` off a frame it never reloaded.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/dataframe_typed_columns/metadata.edn)
 
 **linalg_thumbnails_demo** — Each box evaluates one `afield.stdlib.linalg` value; on execute its

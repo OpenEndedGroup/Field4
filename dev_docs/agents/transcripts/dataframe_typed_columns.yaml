@@ -5,10 +5,11 @@ description: >
   resolves with no `df["age"]`, no cast and no codegen step. Box 2 is the one that proves
   it is real: `decade` exists only because the plugin interpreted `add`.
 
-  The fourth box is created but deliberately NOT executed. It carries the measured limit —
-  the refined type is local to the expression that produced it, so a value left in a box
-  decays to `DataFrame<Any>` for the next run. Keep a chain in one execution and it works;
-  split it and it does not. See `kotlin.dataframe-plugin.spike` for the measurements.
+  Box 4 is the one that makes it usable. The plugin's inferred type is built from local classes
+  and cannot cross a compile boundary, so `typed()` publishes a real `@DataSchema` read from the
+  frame's runtime columns. It runs in a single execution because Field re-runs the preamble setup
+  before each `//%-` fragment — remove the marker and the box stops compiling. See
+  `kotlin.dataframe-plugin.spike` for what the plugin does and does not carry on its own.
 operations:
   - create:
       box: dataframe_typed
@@ -82,34 +83,42 @@ operations:
 
           println(summary)
   - create:
-      box: dataframe_boundary
-      name: 4 - The limit (do not run)
+      box: dataframe_live
+      name: 4 - Typed across the boundary
       frame:
         x: 510.0
         y: 340.0
         w: 440.0
-        h: 250.0
+        h: 340.0
       properties:
         code: |
           import org.jetbrains.kotlinx.dataframe.api.*
 
-          // MEASURED LIMIT — this box is here to be read, not run. Executing it fails with
-          //   <empty compile time schema>
-          //   Unresolved reference 'age' on receiver of type 'DataFrame<Any>'
+          // The plugin's inferred type cannot outlive the expression that made it: it is built from
+          // LOCAL classes, which cannot appear in the type of a snippet's property, so on its own
+          // `people` would come back as DataFrame<Any> the moment it crossed a compile boundary.
           //
-          // The plugin rewrites a refined call into `run { class Token; ...; call() as
-          // DataFrame<Token> }` with LOCAL classes, because its extension point works at
-          // body-resolve and cannot create top-level declarations. A local class cannot appear in
-          // the type of a snippet's property, so the refinement is erased at the boundary.
+          // `typed()` fixes that by reading the frame's RUNTIME columns — the data is already
+          // loaded, so they are exactly right — and writing a real schema into this box's preamble:
+          //   @DataSchema interface Peach { val name: String; val age: Int }
+          val people = dataFrameOf("name", "age")(
+              "Alice", 15,
+              "Bob", 30,
+              "Cara", 45,
+          ).typed("Peach")
+
+          // `//%-` is what makes this work in ONE execution. Field splits the box there and runs the
+          // halves in order, re-running the preamble setup before compiling each one (the
+          // per-fragment runLaunchSetupBlocks in execution.kt), so `Peach` is declared by the time
+          // the half below is compiled. Delete the marker and this box stops compiling: with a
+          // single fragment the schema is written only after that fragment was already compiled.
           //
-          // Naming a @DataSchema does not rescue it either: the type then survives as
-          // DataFrame<Person> with a known schema, but TopLevelExtensionsGenerator finds schemas
-          // through K2's predicate-based provider, which is source-only — so a schema compiled
-          // elsewhere generates no accessors. The designed route is the plugin's `schemasPath`
-          // option plus ImportedSchemasGenerator, which Field does not wire yet.
-          val df = dataFrameOf("name", "age")("Alice", 15)
-          // ... then, in a LATER execution of this same box:
-          // df.age.toList()      // <- does not compile
+          // The same thing works across separate executions — load once here, then select and run
+          // the lines below as often as you like without reloading.
+          //%-
+          val p = people.cast<Peach>()
+          println("ages: " + p.age.toList())
+          println("adults: " + p.filter { age >= 18 }.name.toList())
   - execute:
       box: dataframe_typed
       property: code
@@ -122,6 +131,11 @@ operations:
   - wait: pending
   - execute:
       box: dataframe_one_pass
+      property: code
+      type: fragment
+  - wait: pending
+  - execute:
+      box: dataframe_live
       property: code
       type: fragment
   - wait: pending

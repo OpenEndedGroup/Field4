@@ -56,34 +56,42 @@ println("kept: " + adults.name.toList())
 println("decade: " + adults.decade.toList())
 ```
 
-## 3. 4 - The limit (do not run)
+## 3. 4 - Typed across the boundary
 
-<!-- field-box id="dataframe_boundary" index="2" -->
+<!-- field-box id="dataframe_live" index="2" -->
 
-```edn [field-box id="dataframe_boundary" role="properties"]
-{"id" "dataframe_boundary" "index" 2 "name" "4 - The limit (do not run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - The limit (do not run)" "_tombstone" false "frame" #afield/rect [510.0 340.0 440.0 250.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataframe_boundary_code_.kt" "lines" 19 "characters" 1122 "sha256" "1179cdec8697ab3d5b8162872f597c007fa040186574e8bc090b85c25dd19b76"}]}
+```edn [field-box id="dataframe_live" role="properties"]
+{"id" "dataframe_live" "index" 2 "name" "4 - Typed across the boundary" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - Typed across the boundary" "_tombstone" false "frame" #afield/rect [510.0 340.0 440.0 340.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataframe_live_code_.kt" "lines" 27 "characters" 1384 "sha256" "5b854d7e58211bb4b9279d78034b70e60ef61ddc1ec50962d103de909f84b3b1"}]}
 ```
 
-```kotlin [field-property box="dataframe_boundary" name="code" path="dataframe_boundary_code_.kt"]
+```kotlin [field-property box="dataframe_live" name="code" path="dataframe_live_code_.kt"]
 import org.jetbrains.kotlinx.dataframe.api.*
 
-// MEASURED LIMIT — this box is here to be read, not run. Executing it fails with
-//   <empty compile time schema>
-//   Unresolved reference 'age' on receiver of type 'DataFrame<Any>'
+// The plugin's inferred type cannot outlive the expression that made it: it is built from
+// LOCAL classes, which cannot appear in the type of a snippet's property, so on its own
+// `people` would come back as DataFrame<Any> the moment it crossed a compile boundary.
 //
-// The plugin rewrites a refined call into `run { class Token; ...; call() as
-// DataFrame<Token> }` with LOCAL classes, because its extension point works at
-// body-resolve and cannot create top-level declarations. A local class cannot appear in
-// the type of a snippet's property, so the refinement is erased at the boundary.
+// `typed()` fixes that by reading the frame's RUNTIME columns — the data is already
+// loaded, so they are exactly right — and writing a real schema into this box's preamble:
+//   @DataSchema interface Peach { val name: String; val age: Int }
+val people = dataFrameOf("name", "age")(
+    "Alice", 15,
+    "Bob", 30,
+    "Cara", 45,
+).typed("Peach")
+
+// `//%-` is what makes this work in ONE execution. Field splits the box there and runs the
+// halves in order, re-running the preamble setup before compiling each one (the
+// per-fragment runLaunchSetupBlocks in execution.kt), so `Peach` is declared by the time
+// the half below is compiled. Delete the marker and this box stops compiling: with a
+// single fragment the schema is written only after that fragment was already compiled.
 //
-// Naming a @DataSchema does not rescue it either: the type then survives as
-// DataFrame<Person> with a known schema, but TopLevelExtensionsGenerator finds schemas
-// through K2's predicate-based provider, which is source-only — so a schema compiled
-// elsewhere generates no accessors. The designed route is the plugin's `schemasPath`
-// option plus ImportedSchemasGenerator, which Field does not wire yet.
-val df = dataFrameOf("name", "age")("Alice", 15)
-// ... then, in a LATER execution of this same box:
-// df.age.toList()      // <- does not compile
+// The same thing works across separate executions — load once here, then select and run
+// the lines below as often as you like without reloading.
+//%-
+val p = people.cast<Peach>()
+println("ages: " + p.age.toList())
+println("adults: " + p.filter { age >= 18 }.name.toList())
 ```
 
 ## 4. 3 - The whole chain in one pass
