@@ -1,6 +1,19 @@
 package afield.server
 
 import afield.FIELD_API_REQUIRE_SAME_SITE_ENV
+import io.ktor.client.request.delete
+import io.ktor.client.request.get
+import io.ktor.client.request.post
+import io.ktor.client.request.put
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpStatusCode
+import io.ktor.server.application.call
+import io.ktor.server.request.httpMethod
+import io.ktor.server.response.respondText
+import io.ktor.server.routing.get
+import io.ktor.server.routing.route
+import io.ktor.server.routing.routing
+import io.ktor.server.testing.testApplication
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -171,24 +184,43 @@ class FieldApiCorsExposureTest {
      * tree, because there is no `install(Authentication)` in it either. So `"none"` here
      * means precisely `"none"`.
      *
-     * Its limits are real. It sees declarations with a quoted path and joins a relative
-     * path to the nearest preceding `route("…")` prefix in the same file. That covers the
-     * `/field-audio/{...}` wildcard writes that the old literal-only census missed, but it
-     * is not a Kotlin parser. It attributes a guard by textual containment between one
-     * declaration and the next, so a guard mentioned in a comment would count. It is a
-     * tripwire on growth and on regression, not a proof.
+     * It reads **three** declaration shapes, and until 2026-08-22 it read only the first:
+     *
+     *  - `post("/api/…") { … }` — a verb call with a quoted path. 40 of these;
+     *  - `route("/welcome") { handle { … } }` — a route that names **no verb**, and
+     *    therefore answers every one of them. Thirteen of these, all in `Server.kt`, and
+     *    every one of them was missing from this table while the table's headline number
+     *    was published as the honest answer to "is Field's API authenticated". They are
+     *    filed here as `ANY <path>`, and
+     *    [aVerblessRouteReallyAnswersEveryMethodWhichIsWhyItIsInTheTable] measures that the
+     *    verb really is every verb rather than taking Ktor's word for it;
+     *  - `route("/history-screenshot") { get { … } }` — a verb with no path argument. Two
+     *    of these, both reads, so they belong to `ServerSurfaceLedgerTest` rather than here;
+     *    this census still has to *see* them, because the handler window is "up to the next
+     *    declaration" and a declaration it cannot see is not a boundary.
+     *
+     * Its limits are real, and one of them was a wrong answer rather than a missing one.
+     * Path resolution now asks [KotlinRouteScan] *which `route(…)` blocks a declaration is
+     * lexically inside of*, over sanitised source, rather than "what is the nearest
+     * preceding `route(…)`". The old form returned early on any path starting with `/`, so
+     * `post("/stream")` inside `route("/vision")` was filed as `POST /stream` — a path Field
+     * does not serve. It is still not a Kotlin parser: it attributes a guard by textual
+     * containment between one declaration and the next, so a guard mentioned in a comment
+     * would count. A tripwire on growth and on regression, not a proof.
      *
      * ## What the table says, and it is the honest answer to "is Field's API authenticated"
      *
-     * **36 of 40 mutating routes have no route-specific guard of any kind**, including
-     * `POST /api/shutdown-instance`, which a foreign origin was measured stopping the
-     * server with, and `POST /api/agent-worktrees/delete`. The HTTPS connector binds
-     * `0.0.0.0` — deliberately, so the visionOS shell and other devices can reach Field —
-     * and Ktor's CORS plugin does not apply to a request with no `Origin` header at all.
-     * So every one of these is reachable with `curl` from any host on the same network,
-     * today, and this branch did not change that. Narrowing the bind address would break a
-     * real workflow overnight; it is the human's call, not a nightly agent's. What is in
-     * scope for a test is refusing to let the number grow quietly.
+     * **49 of 53 state-changing routes have no route-specific guard of any kind** — 36 of 40
+     * before the verbless shape was counted — including `POST /api/shutdown-instance`, which
+     * a foreign origin was measured stopping the server with, `POST /api/agent-worktrees/delete`,
+     * and now `ANY /lazy-value-fragment`, which takes four query parameters straight into
+     * `ValueVisualizer.renderLazyFragment`. The HTTPS connector binds `0.0.0.0` —
+     * deliberately, so the visionOS shell and other devices can reach Field — and Ktor's CORS
+     * plugin does not apply to a request with no `Origin` header at all. So every one of these
+     * is reachable with `curl` from any host on the same network, today, and this branch did
+     * not change that. Narrowing the bind address would break a real workflow overnight; it is
+     * the human's call, not a nightly agent's. What is in scope for a test is refusing to let
+     * the number grow quietly — and refusing to let thirteen routes stay outside the count.
      */
     @Test
     fun everyMutatingRouteAndItsGuardIsPinned() {
@@ -206,23 +238,35 @@ class FieldApiCorsExposureTest {
         val order = listOf("loopback", "same-site", "enabled+token")
 
         val found = sortedMapOf<String, String>()
-        File(repositoryRoot(), "src/jvmMain/kotlin/afield").walkTopDown()
-            .filter { it.isFile && it.extension == "kt" }
-            .forEach { file ->
-                val text = file.readText()
-                val declarations = declaration.findAll(text).toList()
-                declarations.forEachIndexed { index, match ->
-                    if (match.groupValues[1] == "get") return@forEachIndexed
-                    val path = qualifyRoutePath(text, match.range.first, match.groupValues[2])
-                    val handler = text.substring(
-                        match.range.last + 1,
-                        declarations.getOrNull(index + 1)?.range?.first ?: text.length,
-                    )
-                    val atoms = guardAtoms.filterKeys { it in handler }.values.flatten().distinct()
-                    found["${match.groupValues[1].uppercase()} $path"] =
-                        if (atoms.isEmpty()) "none" else order.filter { it in atoms }.joinToString(" + ")
+        var verbless = 0
+        KotlinRouteScan.serverKotlinFiles(repositoryRoot()).forEach { file ->
+            val text = file.readText()
+            val scan = KotlinRouteScan(text)
+            // The three shapes merged in source order. Order matters for more than tidiness:
+            // the handler window runs to the *next* declaration, so a shape this census
+            // cannot see is a boundary it cannot honour, and one route's guard leaks into
+            // the row above it.
+            val declarations = buildList {
+                declaration.findAll(text).forEach {
+                    add(Declaration(it.range, it.groupValues[1], it.groupValues[2]))
                 }
+                scan.allMethodHandlers().forEach { add(Declaration(it.range, ALL_METHODS, null)) }
+                scan.bodylessVerbs().forEach { add(Declaration(it.range, it.groupValues[1], null)) }
+            }.sortedBy { it.range.first }
+
+            declarations.forEachIndexed { index, declared ->
+                if (declared.verb == "get") return@forEachIndexed
+                if (declared.verb == ALL_METHODS) verbless++
+                val path = routePath(scan, file, declared)
+                val handler = text.substring(
+                    declared.range.last + 1,
+                    declarations.getOrNull(index + 1)?.range?.first ?: text.length,
+                )
+                val atoms = guardAtoms.filterKeys { it in handler }.values.flatten().distinct()
+                found["${declared.verb.uppercase()} $path"] =
+                    if (atoms.isEmpty()) "none" else order.filter { it in atoms }.joinToString(" + ")
             }
+        }
 
         assertEquals(
             EXPECTED_MUTATING_SURFACE, found,
@@ -230,6 +274,9 @@ class FieldApiCorsExposureTest {
                 "If you added a route: decide whether it needs protecting before adding the row. Every " +
                 "\"none\" is reachable by curl from any host on the LAN (the connector binds 0.0.0.0) and " +
                 "from any website you have open (the CORS config says anyHost()).\n\n" +
+                "An `ANY` row is a `route(\"…\") { handle { … } }`, which answers every HTTP method — see " +
+                "aVerblessRouteReallyAnswersEveryMethodWhichIsWhyItIsInTheTable. If you meant it to serve " +
+                "a page to a browser, write `get { … }` and it leaves this table for the read ledger.\n\n" +
                 "If a row went from a guard to \"none\": that is a regression, and " +
                 "DocsAnnotationRouteSecurityTest should be red too. If it is not, that test needs a case.\n\n" +
                 "Current:\n" + found.entries.joinToString("\n") { "  ${it.key} -> ${it.value}" },
@@ -239,13 +286,78 @@ class FieldApiCorsExposureTest {
         // wholesale update of the map above.
         val unguarded = found.count { it.value == "none" }
         assertEquals(
-            36, unguarded,
-            "The complete census has 36 mutating routes with no route-specific access control, out of " +
-                "${found.size}. If this went down, say so in dev_docs/DOCS_IMPROVEMENT_AGENT.md — it is the " +
-                "headline number in that page. If it went up, you added an unauthenticated write.",
+            49, unguarded,
+            "The complete census has 49 state-changing routes with no route-specific access control, out " +
+                "of ${found.size}. If this went down, say so in dev_docs/DOCS_IMPROVEMENT_AGENT.md — it is " +
+                "the headline number in that page. If it went up, you added an unauthenticated write.",
         )
-        listOf("POST /api/shutdown-instance", "POST /api/agent-worktrees/delete", "POST /api/projects/delete")
-            .forEach { assertEquals("none", found[it], "$it is expected to still be unguarded, and to be named") }
+        // A floor on the verbless shape specifically. Without it, a regression in
+        // KotlinRouteScan.allMethodHandlers would present as thirteen `stale` rows above,
+        // which reads like thirteen deletions rather than like a broken census.
+        assertTrue(
+            verbless >= 13,
+            "only $verbless verbless `route(…) { handle { … } }` declarations were discovered (floor 13, " +
+                "measured 2026-08-22, all in Server.kt). Either they were rewritten with explicit verbs — " +
+                "which is an improvement and wants this floor lowered deliberately — or " +
+                "KotlinRouteScan.allMethodHandlers has stopped matching, which is the failure this floor " +
+                "exists to catch.",
+        )
+        listOf(
+            "POST /api/shutdown-instance",
+            "POST /api/agent-worktrees/delete",
+            "POST /api/projects/delete",
+            // The verbless route with the largest reach: four query parameters into
+            // ValueVisualizer.renderLazyFragment, on any method, from any origin.
+            "ANY /lazy-value-fragment",
+            // The row the old nearest-preceding-prefix resolution got wrong: this was
+            // published as `POST /stream`, which Field does not serve.
+            "POST /vision/stream",
+        ).forEach { assertEquals("none", found[it], "$it is expected to still be unguarded, and to be named") }
+    }
+
+    /**
+     * The premise the thirteen `ANY` rows above rest on, measured rather than assumed.
+     *
+     * `route("/welcome") { handle { … } }` installs a handler with no `HttpMethodRouteSelector`,
+     * so in principle it answers every method. "In principle" is how a census becomes a
+     * tautology: if a future Ktor made `handle` a `GET`-only convenience, those thirteen rows
+     * would silently become wrong in the *dangerous* direction — a table claiming write
+     * exposure that does not exist, next to real exposure it would then be trusted about.
+     *
+     * So this stands a `route { handle { } }` and a `route { get { } }` up in a real
+     * application and asks both the same four questions. Measured against Ktor
+     * **3.5.2** (`build.gradle.kts:61`) on 2026-08-22: the verbless route answered `GET`,
+     * `POST`, `PUT` and `DELETE` with the method name in the body; the named one answered
+     * `GET` and returned `405 Method Not Allowed` to the other three.
+     */
+    @Test
+    fun aVerblessRouteReallyAnswersEveryMethodWhichIsWhyItIsInTheTable() = testApplication {
+        application {
+            routing {
+                route("/verbless") { handle { call.respondText("verbless ${call.request.httpMethod.value}") } }
+                route("/named") { get { call.respondText("named GET") } }
+            }
+        }
+
+        assertEquals("verbless GET", client.get("/verbless").bodyAsText())
+        assertEquals("verbless POST", client.post("/verbless").bodyAsText())
+        assertEquals("verbless PUT", client.put("/verbless").bodyAsText())
+        assertEquals("verbless DELETE", client.delete("/verbless").bodyAsText())
+
+        // The counterfactual, and the reason the two bodyless `get { }` routes in the tree
+        // stay out of the mutating table: a verb, even without a path, still restricts.
+        assertEquals("named GET", client.get("/named").bodyAsText())
+        listOf(
+            "POST" to client.post("/named"),
+            "PUT" to client.put("/named"),
+            "DELETE" to client.delete("/named"),
+        ).forEach { (method, response) ->
+            assertEquals(
+                HttpStatusCode.MethodNotAllowed, response.status,
+                "a `get { }` answered $method. If Ktor's routing changed this, the read/write split in " +
+                    "both server-surface censuses needs re-deriving, not patching.",
+            )
+        }
     }
 
     /**
@@ -310,14 +422,29 @@ class FieldApiCorsExposureTest {
         )
     }
 
-    private fun qualifyRoutePath(source: String, declarationStart: Int, rawPath: String): String {
-        if (rawPath.startsWith('/')) return rawPath
-        val prefix = Regex("""^[ \t]*route\(\s*"(/[^"]*)"""", RegexOption.MULTILINE)
-            .findAll(source.substring(0, declarationStart))
-            .lastOrNull()
-            ?.groupValues?.get(1)
-        assertTrue(prefix != null, "relative route '$rawPath' has no preceding route prefix")
-        return prefix.trimEnd('/') + "/" + rawPath.trimStart('/')
+    /**
+     * One discovered declaration: where it is, what verb it names, and the path it wrote.
+     *
+     * [rawPath] is `null` for the two shapes that write no path — `handle { }` and a bodyless
+     * `get { }` — and for those the path *is* the enclosing `route(…)` prefix.
+     */
+    private class Declaration(val range: IntRange, val verb: String, val rawPath: String?)
+
+    private fun routePath(scan: KotlinRouteScan, file: File, declared: Declaration): String {
+        val resolved = if (declared.rawPath == null) {
+            scan.enclosingRoutePath(declared.range.first)
+        } else {
+            scan.qualify(declared.range.first, declared.rawPath)
+        }
+        assertTrue(
+            resolved != null,
+            "In ${file.name}:${scan.lineOf(declared.range.first)}, the ${declared.verb} declaration " +
+                "'${declared.rawPath ?: "(no path)"}' has no resolvable path: either it is relative with no " +
+                "enclosing route(…), or an enclosing route(…) argument is neither a string literal nor a " +
+                "`const val` in the same file. Extend KotlinRouteScan rather than letting a route into this " +
+                "census under a made-up path — which is exactly how POST /stream got published.",
+        )
+        return resolved
     }
 
     private fun qualifyWebSocketPath(file: File, rawPath: String): String =
@@ -331,8 +458,30 @@ class FieldApiCorsExposureTest {
     }
 
     private companion object {
+        /**
+         * The verb column for a `route(…) { handle { … } }`, which names no verb and answers
+         * all of them. Not an HTTP method name: it is a statement that every method applies.
+         */
+        const val ALL_METHODS = "ANY"
+
         /** Four route-specific guards; the application-wide switch is off by default. */
         val EXPECTED_MUTATING_SURFACE = sortedMapOf(
+            // Thirteen verbless routes, every one of them a page-serving `handle { }` that
+            // also accepts POST, PUT and DELETE. `/lazy-value-fragment` is the one with real
+            // reach — four query parameters into ValueVisualizer.renderLazyFragment.
+            "ANY /browse" to "none",
+            "ANY /code-use" to "none",
+            "ANY /dir" to "none",
+            "ANY /h2-explorer" to "none",
+            "ANY /history" to "none",
+            "ANY /inspect" to "none",
+            "ANY /keyframe" to "none",
+            "ANY /lazy-value-fragment" to "none",
+            "ANY /logs" to "none",
+            "ANY /threejs" to "none",
+            "ANY /tree" to "none",
+            "ANY /vision" to "none",
+            "ANY /welcome" to "none",
             "DELETE /api/docs-annotations/{id}" to "loopback + same-site",
             "DELETE /api/maven-dependencies" to "none",
             "DELETE /api/maven-repositories" to "none",
@@ -371,7 +520,9 @@ class FieldApiCorsExposureTest {
             "POST /api/starting-points/open" to "none",
             "POST /api/workspace-switch" to "none",
             "POST /field-audio/{...}" to "none",
-            "POST /stream" to "none",
+            // Nested inside `route("/vision")`, and published as `POST /stream` until
+            // 2026-08-22 because path resolution returned early on a leading slash.
+            "POST /vision/stream" to "none",
             "PUT /api/docs-annotations/{id}/resolve" to "loopback + same-site",
             "PUT /api/document-tags" to "none",
             "PUT /field-audio/{...}" to "none",
