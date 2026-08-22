@@ -16,16 +16,49 @@ the constraint. It never scatters a correction to the neighbor. Non-overlapping
 particle ranges can therefore run concurrently when each worker has its own
 `ConstraintScratch`.
 
-`afield.examples.ClothSimulationExample` demonstrates the layout. Its optional
-curvature generator moves interior particles toward the mean of their four axis
-neighbors; `enableCurvatureForce` is **true by default**. Its interactive wrapper
-uses PID position controllers for grabbing rather than teleporting particles.
+## `Cloth`
+
+`afield.four.physics.Cloth` is the reusable consumer: `sim.addCloth(width, height)`
+appends a grid patch to a simulation that may already hold other particles, wires
+the four slots, and hands back a handle that speaks grid coordinates
+(`cloth[col, row]`, `pin`, `teleport`, `grabNearest`, `lines`). Three things about
+that shape are load-bearing rather than incidental:
+
+- **One constraint set per simulation, not per cloth.** The solver walks
+  `0 until state.size` and indexes the slot arrays by *particle* index, so a cloth
+  can't own a set covering only itself. A cloth therefore adopts
+  `SimdVerlet.constraints4` if one is present and otherwise publishes the one it
+  creates — two cloths in one simulation share a single set — and `Cloth.step`
+  calls `DirectedConstraints4.ensureCapacity(state.size)` so that a simulation
+  which grew after the cloth was built doesn't trip the solver's size `require`.
+  The slot arrays are `var` precisely so that growth is in-place and every holder
+  of the set keeps seeing it.
+- **Curvature is one bulk pass, not a generator per particle.** Flattening a
+  particle toward the mean of its four axis neighbors is a whole-patch force, and
+  the per-particle generator API would charge `width * height` coroutine resumes
+  per frame for it. It is registered in `SimdVerlet.bulkForces` instead — a named
+  whole-state pass run by `step()` in the same slot as its `accumulateForces`
+  argument, but registered on the simulation, so it survives plain
+  `sim.step(...)` calls made by code that has never heard of the cloth.
+  `cloth.curvatureStrength = 0f` switches it off live.
+- **A cloth does not survive particle removal below its top index.** Its particles
+  are the contiguous range `[base, base + count)` and both the slots and the
+  curvature sweep are written in those terms; `applyQueuedRemovalsSwap` compacts
+  and renumbers. Appending particles after a cloth is fine.
+
+Grabbing goes through `addPidPositionController`, so a drag pulls through the
+constraint solve instead of teleporting a particle out of the sheet.
 
 Runnable entry points:
 
 - `afield.examples.TestDirectedConstraints4`: minimal four-slot smoke.
-- `afield.examples.ClothSimulationExample`: cloth and interaction example.
+- `afield.examples.ClothSimulationExample`: thin demo over `Cloth` — frame
+  sequence, grabbed-particle crosshair, and the process-level handle an
+  interactive box can call without holding the simulation.
 - `afield.examples.SimdVerletTinyExample`: earlier three-slot example.
+- `ClothTest` (`jvmTest`): grid wiring, curvature definition, constraint-set
+  growth and sharing. It adds its cloths to *non-empty* simulations on purpose —
+  `base == 0` hides every offset bug in the wiring.
 - `./gradlew runSimdVerletBulkKernelsExample`: the repository's dedicated
   `JavaExec` example task.
 

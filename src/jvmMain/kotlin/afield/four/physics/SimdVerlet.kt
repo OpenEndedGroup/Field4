@@ -30,6 +30,32 @@ class SimdVerlet(
     var constraints: DirectedConstraints3? = null
 ) {
 
+    /**
+     * The 4-slot constraint set this simulation belongs to, if any. [step]'s 4-slot overload
+     * still takes its constraints explicitly (defaulting it would make the two overloads
+     * ambiguous), so this is a place for a builder -- e.g. [Cloth] -- to hand its constraint
+     * set to whoever ends up driving the simulation:
+     *
+     *   sim.step(dt, damping, gravity, iterations, sim.constraints4)
+     *
+     * Only one of [constraints] / [constraints4] can be solved per step; setting this one does
+     * not make the 3-slot overload see it.
+     */
+    var constraints4: DirectedConstraints4? = null
+
+    /**
+     * Named whole-state force passes, run on every [step] after gravity and the per-particle
+     * force generators and before the constraint solve -- the same slot as step()'s
+     * `accumulateForces` argument, but registered on the simulation rather than per call, so a
+     * force that belongs to a *group* of particles (see [Cloth]'s curvature force) can be added
+     * once and then survive plain `sim.step(...)` calls made by somebody else.
+     *
+     * Each pass accumulates into `state.ax/ay/az` exactly like `accumulateForces`; see [step]
+     * for the accumulator contract. Register with [addBulkForce], drop with [removeBulkForce].
+     * Don't add or remove entries from inside a pass -- the map is iterated live.
+     */
+    val bulkForces: MutableMap<String, (state: State3, dt: Float) -> Unit> = LinkedHashMap()
+
     class ForceContext(
         val state: State3,
         var index: Int,
@@ -57,6 +83,22 @@ class SimdVerlet(
     fun addForceGenerator(index: Int, name: String, generator: Generator<ForceContext, Unit>) {
         require(index in 0 until state.size) { "index out of bounds" }
         state.forceGenerators[index][name] = generator
+    }
+
+    /** Drops the [name]d force generator from particle [index], if it has one. */
+    fun removeForceGenerator(index: Int, name: String) {
+        require(index in 0 until state.size) { "index out of bounds" }
+        state.forceGenerators[index].remove(name)
+    }
+
+    /** Registers (or replaces) a named whole-state force pass. See [bulkForces]. */
+    fun addBulkForce(name: String, force: (state: State3, dt: Float) -> Unit) {
+        bulkForces[name] = force
+    }
+
+    /** Drops the [name]d whole-state force pass, if it is registered. See [bulkForces]. */
+    fun removeBulkForce(name: String) {
+        bulkForces.remove(name)
     }
 
     fun addPidPositionController(
@@ -144,7 +186,12 @@ class SimdVerlet(
     }
 
     fun applyQueuedRemovalsSwap() {
-        state.applyQueuedRemovalsSwap(constraints)
+        val c4 = constraints4
+        if (c4 != null) {
+            state.applyQueuedRemovalsSwap(c4)
+        } else {
+            state.applyQueuedRemovalsSwap(constraints)
+        }
     }
 
     /**
@@ -189,6 +236,10 @@ class SimdVerlet(
             forceGenerators[i].updateNoCollect(ctx)
         }
 
+        for (force in bulkForces.values) {
+            force(state, dt)
+        }
+
         accumulateForces?.invoke(state, dt)
 
         if (constraints != null && iterations > 0) {
@@ -229,6 +280,10 @@ class SimdVerlet(
             ctx.index = i
             ctx.dt = dt
             forceGenerators[i].updateNoCollect(ctx)
+        }
+
+        for (force in bulkForces.values) {
+            force(state, dt)
         }
 
         accumulateForces?.invoke(state, dt)
@@ -674,6 +729,8 @@ class SimdVerlet(
      *
      * API surface:
      * - [setSlot] (index, slot 0..3, neighbor, restLength, stiffness) — populate one slot.
+     * - [clearSlots] (index) — return one particle to having no outgoing constraints.
+     * - [ofCapacity] / [ensureCapacity] — allocate, and grow in place as the state grows.
      * - `swapConstraints` / `remapNeighbors` (internal) — keep the swap-remove
      *   compaction in [State.applyQueuedRemovalsSwap] consistent when particles
      *   are deleted.
@@ -686,26 +743,29 @@ class SimdVerlet(
      * position — there are no scatter writes to neighbors — so non-overlapping
      * particle ranges can be solved on separate threads with one scratch each.
      *
-     * Runnable usage lives next to the code: `afield.examples.ClothSimulationExample`
-     * (grid cloth, optional curvature flattening force, interactive grabbing via
-     * PID position controllers), `afield.examples.TestDirectedConstraints4`, and
+     * The reusable consumer is [Cloth], which wires a whole grid patch of these slots
+     * into an existing simulation (optional curvature flattening force, interactive
+     * grabbing via PID position controllers). Runnable usage:
+     * `afield.examples.ClothSimulationExample` (a thin demo over [Cloth]),
+     * `afield.examples.TestDirectedConstraints4`, and
      * `afield.examples.SimdVerletTinyExample` (the 3-slot warmup).
      */
     class DirectedConstraints4(
-        val n0: IntArray,
-        val n1: IntArray,
-        val n2: IntArray,
-        val n3: IntArray,
-        val r0: FloatArray,
-        val r1: FloatArray,
-        val r2: FloatArray,
-        val r3: FloatArray,
-        val s0: FloatArray,
-        val s1: FloatArray,
-        val s2: FloatArray,
-        val s3: FloatArray
+        var n0: IntArray,
+        var n1: IntArray,
+        var n2: IntArray,
+        var n3: IntArray,
+        var r0: FloatArray,
+        var r1: FloatArray,
+        var r2: FloatArray,
+        var r3: FloatArray,
+        var s0: FloatArray,
+        var s1: FloatArray,
+        var s2: FloatArray,
+        var s3: FloatArray
     ) {
-        val size: Int = n0.size
+        var size: Int = n0.size
+            private set
 
         init {
             require(n1.size == size && n2.size == size && n3.size == size) { "neighbor slot size mismatch" }
@@ -772,6 +832,77 @@ class SimdVerlet(
                     s3[index] = stiffness
                 }
                 else -> error("slot must be 0, 1, 2, or 3")
+            }
+        }
+
+        /** Clears every slot of particle [index] back to unused (neighbor -1, zero stiffness). */
+        fun clearSlots(index: Int) {
+            require(index in 0 until size) { "index out of bounds" }
+            for (slot in 0 until 4) {
+                setSlot(index, slot, -1, 0f, 0f)
+            }
+        }
+
+        /**
+         * Grows every slot array so it covers at least [minCapacity] particles, which is what
+         * [solveDirectedDist4InPlace] requires of a constraint set stepped alongside a growing
+         * [State3] (it solves `0 until state.size` and indexes these arrays by particle index).
+         *
+         * Existing entries and *this object's identity* are preserved -- the arrays are `var` so
+         * that everyone already holding this constraint set (a [SimdVerlet.constraints4], several
+         * [Cloth]es sharing one set) keeps seeing the grown arrays. New entries are the unused
+         * slot: neighbor -1, zero rest length, zero stiffness.
+         */
+        fun ensureCapacity(minCapacity: Int) {
+            if (minCapacity <= size) return
+            val newSize = max(minCapacity, size + max(1, size / 2))
+            val oldSize = size
+
+            fun growNeighbors(src: IntArray): IntArray {
+                val dst = IntArray(newSize) { -1 }
+                System.arraycopy(src, 0, dst, 0, oldSize)
+                return dst
+            }
+
+            fun growFloats(src: FloatArray): FloatArray {
+                val dst = FloatArray(newSize)
+                System.arraycopy(src, 0, dst, 0, oldSize)
+                return dst
+            }
+
+            n0 = growNeighbors(n0)
+            n1 = growNeighbors(n1)
+            n2 = growNeighbors(n2)
+            n3 = growNeighbors(n3)
+            r0 = growFloats(r0)
+            r1 = growFloats(r1)
+            r2 = growFloats(r2)
+            r3 = growFloats(r3)
+            s0 = growFloats(s0)
+            s1 = growFloats(s1)
+            s2 = growFloats(s2)
+            s3 = growFloats(s3)
+            size = newSize
+        }
+
+        companion object {
+            /** An all-slots-unused constraint set covering [capacity] particles. */
+            fun ofCapacity(capacity: Int): DirectedConstraints4 {
+                require(capacity >= 0) { "capacity must be >= 0" }
+                return DirectedConstraints4(
+                    n0 = IntArray(capacity) { -1 },
+                    n1 = IntArray(capacity) { -1 },
+                    n2 = IntArray(capacity) { -1 },
+                    n3 = IntArray(capacity) { -1 },
+                    r0 = FloatArray(capacity),
+                    r1 = FloatArray(capacity),
+                    r2 = FloatArray(capacity),
+                    r3 = FloatArray(capacity),
+                    s0 = FloatArray(capacity),
+                    s1 = FloatArray(capacity),
+                    s2 = FloatArray(capacity),
+                    s3 = FloatArray(capacity)
+                )
             }
         }
     }
