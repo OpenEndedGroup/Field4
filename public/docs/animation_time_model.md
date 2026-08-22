@@ -466,6 +466,90 @@ animate {
 }
 ```
 
+## A physics system in the loop
+
+The disc above is written against `AnimationClock.nowSeconds()` on purpose, so that it means the same
+thing live and under capture whatever rate frames arrive at. An integrator is the opposite case.
+`cloth.step(dt = 1f / 60f, ...)` hands the solver a **fixed** dt, so one turn of the loop is one tick
+of physics and the frame boundary and the integration step become the same event.
+
+That is the point rather than a compromise. This solve is force-based — positions advance by
+`v * damping + a * dt²` — so a dt that jittered with the frame rate would change the sheet's own
+stiffness and damping from frame to frame, and the stability limit lives in
+`stiffness × iterations × dt²`: measured at dt = 1/60, `60 × 16` settles and `150 × 16` diverges to
+NaN, so the same setting with a dt half again as large lands in the band that already blew up. Fixed
+dt buys the solver a constant it can be tuned against. What it costs is wall-clock honesty: recorded
+at 20 fps below, this sheet moves slower than it does live and behaves *identically* in simulation
+time. Anything coupled to the simulation therefore has to be on the simulation's clock too, which is
+why the drag is driven by the step count and not by `nowSeconds()`.
+
+```diffstatic_runner {data-lang=kotlin video="assets/animation_time_model/cloth_loop.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="960" h="120" embed=true name="animation-cloth-loop" alt="a wireframe cloth of 20 by 10 particles hanging from five red pins along its top edge, drawn as cyan constraint segments with pale dots at the particles and short green velocity whiskers; an invisible hand drags its bottom-right corner in a slow loop, and the sheet stretches, swings and folds after it while the caption counts frames upward"}
+:::static
+import afield.four.physics.*
+
+// The physics system. State3 is the SoA particle store; the simulation owns it and grows it as
+// things are added, so it starts empty.
+val sim = SimdVerlet(SimdVerlet.State3.empty())
+
+// 20 wide, 10 tall. addCloth appends the particles to whatever is already in `sim`, wires the
+// four-slot distance constraints, pins what `pinned` selects, and registers the curvature force.
+//
+// The plane view has y growing DOWN the screen, so the sheet hangs from row 0 and gravity is +y.
+// Every fourth column of that row is a nail; the rest of it swings.
+val cloth = sim.addCloth(
+    width = 20,
+    height = 10,
+    spacing = 0.5f,
+    stiffness = 60f,
+    curvatureStrength = 100f,
+    pinned = { col, row -> row == 0 && col % 4 == 0 },
+)
+
+// Grab the free bottom-right corner. This is a PID position controller on that one particle, so the
+// drag pulls *through* the constraint solve rather than teleporting a particle out of the sheet.
+cloth.grabNearest(cloth.position(19, 9).x, cloth.position(19, 9).y)
+
+// One window for every frame. Without it the view re-fits to whatever the cloth happens to occupy,
+// and the sheet looks still while the world shrinks around it.
+val view = Rect(-1.5, -1.0, 13.5, 9.0)
+
+var frames = 0
+loop {
+    // One frame of physics for the whole simulation: gravity, the per-particle force generators,
+    // the registered bulk forces (the cloth's curvature pass), then `iterations` passes of the
+    // constraint solve, then Verlet integration.
+    cloth.step(dt = 1f / 60f, damping = 0.99f, gravity = 2f, iterations = 16)
+    frames++
+
+    // Simulation seconds, not wall-clock seconds: the drag is part of the simulation, so putting it
+    // on nowSeconds() would change its shape whenever the frame rate did — including under capture.
+    val t = frames / 60.0
+    cloth.moveGrabbed(
+        (9.5 + 2.2 * sin(t * 2.0)).toFloat(),
+        (4.5 + 1.8 * (1.0 - cos(t * 1.3))).toFloat(),
+    )
+
+    // What the solver holds, not what the scene means: a segment per distance constraint, a dot per
+    // particle, the pins in red, a whisker per particle's velocity.
+    showPlane(
+        sim.debugLines(velocityScale = 30f),
+        window = view,
+        width = 900,
+        height = 600,
+        title = "20 x 10 cloth — SimdVerlet, 4-slot distance constraints",
+        caption = "frame $frames · cyan: constraints · green: velocity · red: pinned",
+    )
+}
+```
+
+Everything above except the grab and the two lines that drive it is
+[`cloth_simdverlet_start`](agent_transcripts.md), which is an openable document rather than a
+snippet: take it from the welcome screen and the sheet is already hanging. `Cloth` is the builder —
+it puts a grid of particles into a `SimdVerlet` you already have, including the curvature force — and
+`SimdVerlet.debugLines()` is the view of the solver's own state that makes a mis-wired constraint or
+an unpinned pin obvious. `dev_docs/physics/SIMDVERLET_4_CONSTRAINTS.md` carries the tuning table the
+two numbers above come from.
+
 ## The generator layer
 
 `Phased.kt` carries a second, quite different mechanism, and it is not a curiosity. A `Generator` is
