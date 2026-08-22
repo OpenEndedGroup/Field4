@@ -29,6 +29,19 @@ import javax.imageio.ImageIO
 private const val SCREENSHOT_PREP_TIMEOUT_MS = 12_000
 private const val SCREENSHOT_POLL_INTERVAL_MS = 60
 private const val SCREENSHOT_OUTPUT_GRACE_MS = 2_500
+
+/**
+ * How long to wait for a box's output layout to STOP MOVING before measuring and shooting.
+ *
+ * `wait=` in a fence is an author's guess at how long content takes to appear, and a guess that is
+ * too short produces two failures at once: the picture is of a half-built widget, and the clip is
+ * measured from a container that had not finished growing. Both shipped -- a waveform published as a
+ * blur, and a signal-panel capture with a thousand pixels of empty black below its content.
+ */
+private const val SCREENSHOT_STABLE_TIMEOUT_MS = 8_000
+
+/** Consecutive equal geometry samples that count as "layout has settled". */
+private const val SCREENSHOT_STABLE_SAMPLES = 3
 private const val PLAYWRIGHT_SCREENSHOT_TIMEOUT_MS = 15_000.0
 private const val PLAYWRIGHT_VIDEO_FRAME_TIMEOUT_MS = 120_000.0
 
@@ -544,6 +557,65 @@ private fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest): BoxScre
               return true;
             }
           };
+          /**
+           * A GEOMETRY signature of the laid-out output: sizes only, never pixel content.
+           *
+           * Sizes are what a clip is computed from, so this is exactly the quantity that must stop
+           * changing before a shot is taken. Deliberately blind to pixels, so a widget that animates
+           * inside a fixed-size canvas -- a meter, a scrolling history, a playhead -- reads as stable
+           * and does not stall the capture waiting for motion that never stops.
+           */
+          const contentSignature = (root) => {
+            const outputArea = root.querySelector(".outputArea");
+            if (!outputArea) return null;
+            const parts = [];
+            const push = (el) => {
+              const r = el.getBoundingClientRect();
+              parts.push(Math.round(r.width) + "x" + Math.round(r.height));
+            };
+            push(outputArea);
+            Array.from(outputArea.querySelectorAll(".disclosure, canvas, svg, img, iframe")).forEach(push);
+            parts.push(outputArea.scrollWidth + "/" + outputArea.scrollHeight);
+            return parts.join(",");
+          };
+          /**
+           * The status text a READER can actually see, which is the only kind that should hold a shot.
+           *
+           * Two halves matter equally. The selector must include `[role="status"]` and
+           * `[aria-busy="true"]`, because a widget that announces busy-ness the standard ARIA way was
+           * invisible to a `.status`/`#status` scan -- that is how the recorded-audio capture shipped
+           * as a blur while a "loading waveform" badge sat in the corner of the very same picture. And
+           * the visibility filter is not optional: these badges stay in the DOM with `aria-hidden` set
+           * once they finish, so matching their text alone would block every audio capture forever.
+           */
+          const visibleStatusTexts = (outputArea) => {
+            const selector = 'svg text, .status, #status, [role="status"], [aria-busy="true"]';
+            return Array.from(outputArea.querySelectorAll(selector))
+              .filter((node) => {
+                if (node.getAttribute && node.getAttribute("aria-hidden") === "true") return false;
+                const rect = node.getBoundingClientRect ? node.getBoundingClientRect() : null;
+                if (rect && rect.width < 1 && rect.height < 1) return false;
+                const view = node.ownerDocument && node.ownerDocument.defaultView;
+                const style = view && view.getComputedStyle ? view.getComputedStyle(node) : null;
+                if (style && (style.display === "none" || style.visibility === "hidden" || style.opacity === "0")) {
+                  return false;
+                }
+                return true;
+              })
+              .map((node) => String(node.textContent || "").trim())
+              .filter((text) => text.length > 0);
+          };
+          /** Has the output actually been laid out, as opposed to existing at zero size? */
+          const contentLaidOut = (root) => {
+            const outputArea = root.querySelector(".outputArea");
+            if (!outputArea) return false;
+            if (outputArea.style.visibility === "hidden") return true;
+            const r = outputArea.getBoundingClientRect();
+            if (r.width < 1 || r.height < 1) return false;
+            const imgs = Array.from(outputArea.querySelectorAll("img"));
+            if (imgs.some((img) => !img.complete || img.naturalWidth === 0)) return false;
+            return true;
+          };
           const outputsReady = (root) => {
             if (!root) {
               return false;
@@ -557,10 +629,7 @@ private fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest): BoxScre
             if (iframes.some((iframe) => !iframeNavigated(iframe) || !iframeReady(iframe))) {
               return false;
             }
-            const statusTexts = Array.from(outputArea.querySelectorAll("svg text, .status, #status"))
-              .map((node) => String(node.textContent || "").trim())
-              .filter((text) => text.length > 0);
-            return !statusTexts.some(blockedStatusText);
+            return !visibleStatusTexts(outputArea).some(blockedStatusText);
           };
           const deadline = Date.now() + ${SCREENSHOT_PREP_TIMEOUT_MS};
           let lastMessage = "Timed out waiting for box screenshot prep";
@@ -586,6 +655,32 @@ private fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest): BoxScre
                 if (currentBox && outputsReady(currentBox)) {
                   break;
                 }
+                await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+              }
+              // Ready is not the same as settled. Wait for the GEOMETRY to stop changing before
+              // anything is measured or shot, so the clip is computed from finished layout rather
+              // than from a container still growing under it.
+              const stableDeadline = Date.now() + ${SCREENSHOT_STABLE_TIMEOUT_MS};
+              let previousSignature = null;
+              let stableSamples = 0;
+              while (Date.now() < stableDeadline) {
+                if (!pageReady()) {
+                  break;
+                }
+                const currentBox = findBox(request.uid);
+                if (!currentBox) {
+                  break;
+                }
+                const signature = contentSignature(currentBox);
+                if (contentLaidOut(currentBox) && signature !== null && signature === previousSignature) {
+                  stableSamples += 1;
+                  if (stableSamples >= ${SCREENSHOT_STABLE_SAMPLES}) {
+                    break;
+                  }
+                } else {
+                  stableSamples = 0;
+                }
+                previousSignature = signature;
                 await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
               }
             }
@@ -752,6 +847,65 @@ private fun requestWindowScreenshot(page: Page, req: WindowScreenshotRequest): W
               return true;
             }
           };
+          /**
+           * A GEOMETRY signature of the laid-out output: sizes only, never pixel content.
+           *
+           * Sizes are what a clip is computed from, so this is exactly the quantity that must stop
+           * changing before a shot is taken. Deliberately blind to pixels, so a widget that animates
+           * inside a fixed-size canvas -- a meter, a scrolling history, a playhead -- reads as stable
+           * and does not stall the capture waiting for motion that never stops.
+           */
+          const contentSignature = (root) => {
+            const outputArea = root.querySelector(".outputArea");
+            if (!outputArea) return null;
+            const parts = [];
+            const push = (el) => {
+              const r = el.getBoundingClientRect();
+              parts.push(Math.round(r.width) + "x" + Math.round(r.height));
+            };
+            push(outputArea);
+            Array.from(outputArea.querySelectorAll(".disclosure, canvas, svg, img, iframe")).forEach(push);
+            parts.push(outputArea.scrollWidth + "/" + outputArea.scrollHeight);
+            return parts.join(",");
+          };
+          /**
+           * The status text a READER can actually see, which is the only kind that should hold a shot.
+           *
+           * Two halves matter equally. The selector must include `[role="status"]` and
+           * `[aria-busy="true"]`, because a widget that announces busy-ness the standard ARIA way was
+           * invisible to a `.status`/`#status` scan -- that is how the recorded-audio capture shipped
+           * as a blur while a "loading waveform" badge sat in the corner of the very same picture. And
+           * the visibility filter is not optional: these badges stay in the DOM with `aria-hidden` set
+           * once they finish, so matching their text alone would block every audio capture forever.
+           */
+          const visibleStatusTexts = (outputArea) => {
+            const selector = 'svg text, .status, #status, [role="status"], [aria-busy="true"]';
+            return Array.from(outputArea.querySelectorAll(selector))
+              .filter((node) => {
+                if (node.getAttribute && node.getAttribute("aria-hidden") === "true") return false;
+                const rect = node.getBoundingClientRect ? node.getBoundingClientRect() : null;
+                if (rect && rect.width < 1 && rect.height < 1) return false;
+                const view = node.ownerDocument && node.ownerDocument.defaultView;
+                const style = view && view.getComputedStyle ? view.getComputedStyle(node) : null;
+                if (style && (style.display === "none" || style.visibility === "hidden" || style.opacity === "0")) {
+                  return false;
+                }
+                return true;
+              })
+              .map((node) => String(node.textContent || "").trim())
+              .filter((text) => text.length > 0);
+          };
+          /** Has the output actually been laid out, as opposed to existing at zero size? */
+          const contentLaidOut = (root) => {
+            const outputArea = root.querySelector(".outputArea");
+            if (!outputArea) return false;
+            if (outputArea.style.visibility === "hidden") return true;
+            const r = outputArea.getBoundingClientRect();
+            if (r.width < 1 || r.height < 1) return false;
+            const imgs = Array.from(outputArea.querySelectorAll("img"));
+            if (imgs.some((img) => !img.complete || img.naturalWidth === 0)) return false;
+            return true;
+          };
           const outputsReady = (root) => {
             if (!root) {
               return false;
@@ -765,10 +919,7 @@ private fun requestWindowScreenshot(page: Page, req: WindowScreenshotRequest): W
             if (iframes.some((iframe) => !iframeNavigated(iframe) || !iframeReady(iframe))) {
               return false;
             }
-            const statusTexts = Array.from(outputArea.querySelectorAll("svg text, .status, #status"))
-              .map((node) => String(node.textContent || "").trim())
-              .filter((text) => text.length > 0);
-            return !statusTexts.some(blockedStatusText);
+            return !visibleStatusTexts(outputArea).some(blockedStatusText);
           };
           if (request.showEditor && !request.uid) {
             return JSON.stringify({
@@ -802,6 +953,30 @@ private fun requestWindowScreenshot(page: Page, req: WindowScreenshotRequest): W
                   if (currentBox && outputsReady(currentBox)) {
                     break;
                   }
+                  await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+                }
+                // Ready is not settled -- see the box path. Wait for geometry to stop moving.
+                const stableDeadline = Date.now() + ${SCREENSHOT_STABLE_TIMEOUT_MS};
+                let previousSignature = null;
+                let stableSamples = 0;
+                while (Date.now() < stableDeadline) {
+                  if (!pageReady()) {
+                    break;
+                  }
+                  const currentBox = findBox(request.uid);
+                  if (!currentBox) {
+                    break;
+                  }
+                  const signature = contentSignature(currentBox);
+                  if (contentLaidOut(currentBox) && signature !== null && signature === previousSignature) {
+                    stableSamples += 1;
+                    if (stableSamples >= ${SCREENSHOT_STABLE_SAMPLES}) {
+                      break;
+                    }
+                  } else {
+                    stableSamples = 0;
+                  }
+                  previousSignature = signature;
                   await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
                 }
               }
