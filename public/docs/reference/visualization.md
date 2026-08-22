@@ -4,7 +4,7 @@
 
 Turning a value into something you can look at, without leaving the box.
 
-11 source file(s), 416 public symbol(s), 379 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+12 source file(s), 418 public symbol(s), 381 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -740,6 +740,36 @@ Perceptually-uniform colormaps as named colour ramps — matplotlib's viridis / 
 | <code class="highlight"><span class="k">fun</span> <span class="nf">stops</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Color4</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">sample</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Color4</span></code> | Look up colormap `name` at parameter `t` in `[0,1]` (clamped). |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">sampleStops</span><span class="p">(</span><span class="n">stops</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Color4</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Color4</span></code> | Linearly interpolate an evenly-spaced list of control points at `t` in `[0,1]` (clamped). |
+
+## DataFrameCharts.kt { #dataframecharts-kt }
+
+A typed frame, charting its own columns.
+
+`DataFrameVisualizer` already teaches a frame to render as a [`Table`](visualization.md#tables-kt-table) for `.h` and to stream its
+rows for `.h2`, which is the right compact form: a frame is rows and columns first. What it had no
+answer for is the other question a reader has about a numeric column, which is *what shape is it*.
+
+This is that answer, and it is deliberately thin — nine lines of column selection over [`Chart`](visualization.md#charts-kt-chart).
+The interesting decision is which columns, and the rule is the one that makes `frame.chart()` with
+no arguments do the obvious thing:
+
+ - a **numeric** x column and the rest numeric: lines against it, one series per column;
+ - a **categorical** first column (strings, or anything not numeric) and one numeric column: bars,
+   with the category names on the axis — which is what a `groupBy(...).count()` looks like, and the
+   commonest frame anyone actually plots;
+ - no x column named and none obvious: the row index.
+
+Non-numeric cells inside a numeric column become gaps rather than zeroes. A missing measurement is
+not a measurement of zero, and drawing it as one is the single most common way a plot lies.
+
+`src/jvmMain/kotlin/afield/visualization/DataFrameCharts.kt`
+
+### Top-level functions { #dataframecharts-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">DataFrame</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">chart</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | A [`Chart`](visualization.md#charts-kt-chart) of this frame's numeric columns. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showChart</span><span class="p">(</span><span class="n">frame</span><span class="p">:</span> <span class="nc">DataFrame</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;output&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | A `DataFrame` charted straight into an output channel — the plot counterpart of letting a frame be a box's last expression, which gives you the table. |
 
 ## DataFrameVisualizer.kt { #dataframevisualizer-kt }
 
