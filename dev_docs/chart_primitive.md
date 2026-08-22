@@ -10,6 +10,16 @@ the DataFrame entry point in [`DataFrameCharts.kt`](../src/jvmMain/kotlin/afield
 A loadable document is at [`dev_docs/agents/demos/chart_primitive/`](agents/demos/chart_primitive/) —
 open its `metadata.edn` in Field.
 
+**The reader-facing page is [`public/docs/chart.md`](../public/docs/chart.md)** ("Charts as FLines" in
+the nav), and it is where the gallery's figures are now published and audited — its five captures are
+registered in [`docs_capture_owners.json`](docs_capture_owners.json), so `docs_capture_audit.py`
+inventories them. This file keeps the rationale, the Plotly comparison and the negative results; the
+public page keeps the API and the pictures. Two figure sets here are **stale and were deliberately not
+republished**: `box1`–`box4` were captured at 03:23 on 2026-08-22, before `9aca904af` fixed the label
+fill, the label sizes and the default aspect at 13:19, so they show the defect rather than the fix; and
+`gallery-histogram`/`gallery-log-scale`/`gallery-marks` predate the `chart-*.png` naming the gallery
+emits today.
+
 ## READ THIS FIRST — the rendering order is Plotly, then FLine, then raster
 
 **Reviewed 2026-08-22 with the human, and this section supersedes the rationale below it.** The brief

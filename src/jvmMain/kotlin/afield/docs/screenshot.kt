@@ -45,6 +45,25 @@ private const val SCREENSHOT_STABLE_SAMPLES = 3
 private const val PLAYWRIGHT_SCREENSHOT_TIMEOUT_MS = 15_000.0
 private const val PLAYWRIGHT_VIDEO_FRAME_TIMEOUT_MS = 120_000.0
 
+/** Fraction of a recording's consecutive frame pairs that must differ materially. */
+private const val MIN_VIDEO_MOVED_FRACTION = 0.20
+
+/**
+ * Thumbnail width used to compare frames, chosen by measurement rather than taste.
+ *
+ * Too coarse and the change vanishes: an inline visualizer decoration occupies a tiny part of a
+ * 1680x2440 editor capture, and at 32 wide a replica of this metric scored the *fixed* recordings
+ * 0 of 35 -- it would have failed every video. At 128 the same replica separates cleanly, scoring
+ * the broken recordings 3 of 35 and the fixed ones 15-17 of 35 against a floor of 7.
+ */
+private const val SIGNATURE_WIDTH = 128
+
+/** Per-cell grey difference that counts as a change, out of 255. */
+private const val SIGNATURE_CELL_TOLERANCE = 8
+
+/** Fraction of thumbnail cells that must change for a frame pair to count as moved. */
+private const val SIGNATURE_MOVED_FRACTION = 0.005
+
 data class UniformEdgeTrimResult(
     val trimmed: Boolean,
     val left: Int = 0,
@@ -1845,6 +1864,85 @@ private fun videoCapturePreparation(
 }
 
 /**
+ * Refuse to publish a recording that barely moves.
+ *
+ * "0 frames" was the only failure this encoder could report, so a recording could be perfectly
+ * frame-accurate and still be worthless: the three `visualizers-inline-*` movies each held 36 frames
+ * and exactly **3** distinct pictures, because capture is one image per runloop frame and the demo
+ * they recorded only pushed a value every 12th frame. A near-static mp4 looks like a still until you
+ * watch it, so nobody noticed for months.
+ *
+ * **The obvious metric is vacuous and was very nearly shipped here.** Counting distinct JPEG *bytes*
+ * passes the broken recordings: those 36 near-identical frames were all byte-distinct, because
+ * encoder noise differs frame to frame even when the picture does not. So this decodes each frame to
+ * a coarse [SIGNATURE_WIDTH]-wide grey thumbnail and counts CONSECUTIVE pairs that differ
+ * materially. The thumbnail is what makes it cheap and what makes it robust: it discards exactly the
+ * high-frequency noise that made the byte comparison lie.
+ */
+internal fun assertVideoMoved(frames: List<ByteArray>, outputPath: Path) {
+    if (frames.size < 4) return
+    val signatures = frames.mapNotNull { coarseFrameSignature(it) }
+    if (signatures.size < 4) return
+    var moved = 0
+    for (index in 1 until signatures.size) {
+        val a = signatures[index - 1]
+        val b = signatures[index]
+        var delta = 0
+        for (cell in a.indices) {
+            if (kotlin.math.abs(a[cell].toInt() - b[cell].toInt()) > SIGNATURE_CELL_TOLERANCE) delta += 1
+        }
+        if (delta > a.size * SIGNATURE_MOVED_FRACTION) moved += 1
+    }
+    val floor = maxOf(2, ((signatures.size - 1) * MIN_VIDEO_MOVED_FRACTION).toInt())
+    if (moved < floor) {
+        throw IllegalStateException(
+            "Video capture of ${outputPath.fileName} has ${frames.size} frame(s) but only $moved " +
+                "consecutive pair(s) changed materially, floor is $floor. The recording is very nearly " +
+                "a still. Either the recorded box updates far more slowly than the capture rate -- a " +
+                "`visualizerFrame % N` throttle against one-image-per-runloop-frame capture is the " +
+                "usual cause -- or nothing animated at all."
+        )
+    }
+}
+
+/**
+ * Decode one JPEG frame to a small grey thumbnail, or null if it will not decode.
+ *
+ * Cells are BOX-AVERAGED rather than point-sampled. Nearest-neighbour subsampling of a 1680-wide
+ * frame skips 12 of every 13 columns, which can step straight over a one-pixel trace line that is
+ * the only thing moving; averaging cannot miss it.
+ */
+private fun coarseFrameSignature(jpeg: ByteArray): IntArray? = runCatching {
+    val image = ImageIO.read(jpeg.inputStream()) ?: return@runCatching null
+    if (image.width < 1 || image.height < 1) return@runCatching null
+    val cols = minOf(SIGNATURE_WIDTH, image.width)
+    val rows = maxOf(1, (cols.toLong() * image.height / image.width).toInt())
+    val out = IntArray(cols * rows)
+    for (row in 0 until rows) {
+        val y0 = (row.toLong() * image.height / rows).toInt()
+        val y1 = maxOf(y0 + 1, ((row + 1).toLong() * image.height / rows).toInt())
+        for (col in 0 until cols) {
+            val x0 = (col.toLong() * image.width / cols).toInt()
+            val x1 = maxOf(x0 + 1, ((col + 1).toLong() * image.width / cols).toInt())
+            var sum = 0L
+            var count = 0
+            for (y in y0 until minOf(y1, image.height)) {
+                for (x in x0 until minOf(x1, image.width)) {
+                    val rgb = image.getRGB(x, y)
+                    val r = (rgb shr 16) and 0xff
+                    val g = (rgb shr 8) and 0xff
+                    val b = rgb and 0xff
+                    sum += (r * 299 + g * 587 + b * 114) / 1000
+                    count += 1
+                }
+            }
+            out[row * cols + col] = if (count == 0) 0 else (sum / count).toInt()
+        }
+    }
+    out
+}.getOrNull()
+
+/**
  * Encode an ordered list of JPEG frames to an H.264/MP4 file via ffmpeg.
  *
  * Frames are piped over stdin as concatenated JPEGs (image2pipe/mjpeg) and
@@ -1855,6 +1953,7 @@ internal fun encodeJpegFramesToMp4(frames: List<ByteArray>, outputPath: Path, fp
     if (frames.isEmpty()) {
         throw IllegalStateException("Video capture sampled 0 frames")
     }
+    assertVideoMoved(frames, outputPath)
     val safeFps = fps.coerceAtLeast(1)
     val ffmpeg = FFMPEG
 

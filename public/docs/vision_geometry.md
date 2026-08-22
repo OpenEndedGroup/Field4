@@ -302,6 +302,16 @@ per tick and you can watch the shape move:
 ![Four frames of a helix whose winding count and radius drift, rebuilt from scratch each
 frame](assets/vision_geometry/vision-geometry-animated-filmstrip.png)
 
+Or all ninety of them, at the rate the head would have rebuilt them. The stats line under the mesh is
+recomputed per frame, so the vertex count and the winding agreement are live rather than measured once
+at the start — which is how you notice a rebuild that only goes wrong at one phase of the motion:
+
+<video src="../assets/vision_geometry/vision-geometry-animated.mp4" poster="../assets/vision_geometry/vision-geometry-animated.png"
+       autoplay loop muted playsinline
+       aria-label="a teal helix rebuilt from scratch every frame, its winding count and radius drifting as it turns, with a live stats line reading vertex and triangle counts, extent in metres, yaw and pitch, and winding 100% agrees with normals"
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
 ### Winding, and why a mesh can be invisible
 
 The preview culls back faces because the head does. That reproduces the most common way a mesh goes
@@ -312,6 +322,12 @@ solid — you are looking at the inside of its far side. So the preview also mea
 itself: for every triangle it compares the winding's implied direction with the `normal()` you
 declared, and reports the fraction that agree. A clean mesh reads 100%. Anything less will have holes
 in it on the device, and the number is printed on the frame.
+
+Here is the pair. The same lantern built correctly — a sphere on a ring, 952 vertices, **winding 100%
+agrees with normals** — and then with the ring wound backwards, drawn with culling disabled so you can
+see what the head would have thrown away:
+
+![The lantern built correctly: an orange sphere resting on a blue ring with grey posts, its stats line reading "winding 100% agrees with normals"](assets/vision_geometry/vision-geometry-lantern.png)
 
 ![A ring of quads wound backwards, drawn with culling disabled, its stats line reading "winding 0%
 agrees with normals" in amber](assets/vision_geometry/vision-geometry-lantern-inverted.png)
@@ -368,6 +384,30 @@ Kotlin→JavaScript pipeline, so none of the code above is aspirational.
   and draws it in its own output, the next builds the same ring wound backwards so you can see what
   the winding check catches.
   [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/vision_geometry_desk_preview/metadata.edn)
+
+## Where the pictures come from
+
+Every preview on this page is a **committed capture** from the `vision.geometry-preview` FIELD_TEST,
+and each one took the same route a live box takes: the box's Kotlin compiled by the real
+`KotlinToJsCompiler`, the emitted JavaScript run under `node` against a mirror of
+`LiveMetalJavaScript.swift`, and the resulting packed vertex array rasterized. Nothing here
+reimplements `MeshBuilder`, and four of the entries take their Kotlin verbatim out of the shipped
+[agent transcripts](agent_transcripts.md), so the gallery cannot drift away from what you would load.
+
+```bash
+VISION_GEOMETRY_PREVIEW_DIR=/tmp/vision-preview python3 tools/run_field_tests.py --id vision.geometry-preview
+```
+
+Render to a temp directory and copy the files in afterwards. Writing them straight into the working
+tree while the runner's Field server is watching it takes the child process down mid-run, for no
+reason the output ever explains.
+
+As a FIELD_TEST it asserts rather than just draws: the mesh invariants, the analytic vertex and
+triangle counts of every shape primitive, the packed stride against **both** `VISION_METAL_VERTEX_FLOATS`
+and the Swift `LiveMetalVertex` declaration, and image-level facts about each raster — painted
+fraction, colour spread, and for the sphere the roundness and area of its silhouette. That is what
+makes the winding check above a guard rather than an anecdote: the three shapes it caught wound
+backwards fail the build if they come back.
 
 ## Further reading
 

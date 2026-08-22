@@ -445,7 +445,7 @@ loop {
     tick += 0.4
     visualizerFrame += 1
 
-    if (visualizerFrame % 12 == 0) {
+    if (visualizerFrame % 2 == 0) {
         val value = sin(tick * 0.22) * 0.7 +
             cos(tick * 0.11) * 0.2 +
             tick * 0.01
@@ -511,7 +511,7 @@ var visualizerFrame = 0
 
 loop {
     visualizerFrame += 1
-    if (visualizerFrame % 12 == 0) {
+    if (visualizerFrame % 2 == 0) {
         val y = sin(phase * 0.8) + 0.2 * sin(phase * 7.0)
         __m("live").history(y, dur = 120)
     }
@@ -579,10 +579,10 @@ var visualizerFrame = 0
 
 loop {
     visualizerFrame += 1
-    if (visualizerFrame % 12 == 0) {
+    if (visualizerFrame % 2 == 0) {
         __m("arp").pianoRoll(arp.at(playhead))
     }
-    playhead += 0.08
+    playhead += 0.35
     frame()
 }
 ```

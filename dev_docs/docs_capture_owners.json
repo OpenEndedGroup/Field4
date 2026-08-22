@@ -23,7 +23,7 @@
       "owner": "fieldml.frames.demo",
       "generator": "public/docs/assets/fieldml_frames_demo/metadata.edn",
       "command": "cp -r public/docs/assets/fieldml_frames_demo <ws>/FieldMLFramesDemo && python3 tools/field_backdoor.py --workspace <ws> --graphics-context --command 'open FieldMLFramesDemo' --command \"run window and renderer\" --command 'run <the FieldML box>' --command 'native-screenshot spin-0.png' --command 'sleep 1' --command 'native-screenshot spin-1.png' (and so on for 2 and 3)",
-      "artifact": "spin-0.png \u2026 spin-3.png, four captures a second apart, joined into spin-frames.png. Needs a real Vulkan device: the subject is a triangle spinning under a Frames loop, so consecutive frames must *differ* \u2014 measured up to 28.5% of pixels on 2026-08-19. An identical set of four means the per-frame body did not run."
+      "artifact": "spin-0.png … spin-3.png, four captures a second apart, joined into spin-frames.png. Needs a real Vulkan device: the subject is a triangle spinning under a Frames loop, so consecutive frames must *differ* — measured up to 28.5% of pixels on 2026-08-19. An identical set of four means the per-frame body did not run."
     },
     {
       "asset": "public/docs/assets/fieldml_mesh_demo/ring-frames.png",
@@ -31,7 +31,223 @@
       "owner": "fieldml.mesh.demo",
       "generator": "public/docs/assets/fieldml_mesh_demo/metadata.edn",
       "command": "cp -r public/docs/assets/fieldml_mesh_demo <ws>/FieldMLMeshDemo && python3 tools/field_backdoor.py --workspace <ws> --graphics-context --command 'open FieldMLMeshDemo' --command \"run window and renderer\" --command 'run <the FieldML box>' --command 'native-screenshot ring-0.png' --command 'sleep 1' --command 'native-screenshot ring-1.png' (and so on for 2 and 3)",
-      "artifact": "ring-0.png \u2026 ring-3.png joined into ring-frames.png. Needs a real Vulkan device. The subject is a vertex shader with real inputs whose data FieldML rewrites every frame, so the hues must rotate between captures; a static ring means Mesh.write did not land."
+      "artifact": "ring-0.png … ring-3.png joined into ring-frames.png. Needs a real Vulkan device. The subject is a vertex shader with real inputs whose data FieldML rewrites every frame, so the hues must rotate between captures; a static ring means Mesh.write did not land."
+    },
+    {
+      "asset": "public/docs/assets/chart_gallery/chart-marks-lines-and-points.png",
+      "page": "chart.md",
+      "owner": "visualization.chart-gallery",
+      "generator": "src/jvmMain/kotlin/afield/examples/visualization/ChartGallery.kt",
+      "command": "CHART_GALLERY_DIR=/tmp/chart_gallery python3 tools/run_field_tests.py --id visualization.chart-gallery && cp /tmp/chart_gallery/* public/docs/assets/chart_gallery/",
+      "artifact": "Five figures, rendered Chart.toFLines() -> Skia raster -> PNG with no AWT, GPU or Field window. The test's own floors cover ink in the plot and in both label gutters plus a different-data counterfactual, so a chart that lost its glyph outlines cannot pass. Eyeball the tick labels before replacing the committed assets: the label path is the part with a history of regressing."
+    },
+    {
+      "asset": "public/docs/assets/chart_gallery/chart-bars-categorical.png",
+      "page": "chart.md",
+      "owner": "visualization.chart-gallery",
+      "generator": "src/jvmMain/kotlin/afield/examples/visualization/ChartGallery.kt",
+      "command": "CHART_GALLERY_DIR=/tmp/chart_gallery python3 tools/run_field_tests.py --id visualization.chart-gallery && cp /tmp/chart_gallery/* public/docs/assets/chart_gallery/",
+      "artifact": "Five figures, rendered Chart.toFLines() -> Skia raster -> PNG with no AWT, GPU or Field window. The test's own floors cover ink in the plot and in both label gutters plus a different-data counterfactual, so a chart that lost its glyph outlines cannot pass. Eyeball the tick labels before replacing the committed assets: the label path is the part with a history of regressing."
+    },
+    {
+      "asset": "public/docs/assets/chart_gallery/chart-histogram-sturges.png",
+      "page": "chart.md",
+      "owner": "visualization.chart-gallery",
+      "generator": "src/jvmMain/kotlin/afield/examples/visualization/ChartGallery.kt",
+      "command": "CHART_GALLERY_DIR=/tmp/chart_gallery python3 tools/run_field_tests.py --id visualization.chart-gallery && cp /tmp/chart_gallery/* public/docs/assets/chart_gallery/",
+      "artifact": "Five figures, rendered Chart.toFLines() -> Skia raster -> PNG with no AWT, GPU or Field window. The test's own floors cover ink in the plot and in both label gutters plus a different-data counterfactual, so a chart that lost its glyph outlines cannot pass. Eyeball the tick labels before replacing the committed assets: the label path is the part with a history of regressing."
+    },
+    {
+      "asset": "public/docs/assets/chart_gallery/chart-log-scale-decades.png",
+      "page": "chart.md",
+      "owner": "visualization.chart-gallery",
+      "generator": "src/jvmMain/kotlin/afield/examples/visualization/ChartGallery.kt",
+      "command": "CHART_GALLERY_DIR=/tmp/chart_gallery python3 tools/run_field_tests.py --id visualization.chart-gallery && cp /tmp/chart_gallery/* public/docs/assets/chart_gallery/",
+      "artifact": "Five figures, rendered Chart.toFLines() -> Skia raster -> PNG with no AWT, GPU or Field window. The test's own floors cover ink in the plot and in both label gutters plus a different-data counterfactual, so a chart that lost its glyph outlines cannot pass. Eyeball the tick labels before replacing the committed assets: the label path is the part with a history of regressing."
+    },
+    {
+      "asset": "public/docs/assets/chart_gallery/chart-expect-a-claim-you-can-watch-fail.png",
+      "page": "chart.md",
+      "owner": "visualization.chart-gallery",
+      "generator": "src/jvmMain/kotlin/afield/examples/visualization/ChartGallery.kt",
+      "command": "CHART_GALLERY_DIR=/tmp/chart_gallery python3 tools/run_field_tests.py --id visualization.chart-gallery && cp /tmp/chart_gallery/* public/docs/assets/chart_gallery/",
+      "artifact": "Five figures, rendered Chart.toFLines() -> Skia raster -> PNG with no AWT, GPU or Field window. The test's own floors cover ink in the plot and in both label gutters plus a different-data counterfactual, so a chart that lost its glyph outlines cannot pass. Eyeball the tick labels before replacing the committed assets: the label path is the part with a history of regressing."
+    },
+    {
+      "asset": "public/docs/assets/mesh_gallery/01-primitives.png",
+      "page": "mesh_examples.md",
+      "owner": "mesh.gallery",
+      "generator": "src/jvmMain/kotlin/afield/examples/mesh/MeshGallery.kt",
+      "command": "MESH_GALLERY_DIR=/tmp/mesh_gallery python3 tools/run_field_tests.py --id mesh.gallery && cp /tmp/mesh_gallery/* public/docs/assets/mesh_gallery/",
+      "artifact": "Composited from renderPixels, so these are the CPU rasterizer deliberately and always will be. The gallery renders eleven figures and this page publishes six; the other five are the ones the page's diffstatic_runner fences already cover live. Byte-identical between runs, so a diff here means the mesh family moved."
+    },
+    {
+      "asset": "public/docs/assets/mesh_gallery/07-derived-generators.png",
+      "page": "mesh_examples.md",
+      "owner": "mesh.gallery",
+      "generator": "src/jvmMain/kotlin/afield/examples/mesh/MeshGallery.kt",
+      "command": "MESH_GALLERY_DIR=/tmp/mesh_gallery python3 tools/run_field_tests.py --id mesh.gallery && cp /tmp/mesh_gallery/* public/docs/assets/mesh_gallery/",
+      "artifact": "Composited from renderPixels, so these are the CPU rasterizer deliberately and always will be. The gallery renders eleven figures and this page publishes six; the other five are the ones the page's diffstatic_runner fences already cover live. Byte-identical between runs, so a diff here means the mesh family moved."
+    },
+    {
+      "asset": "public/docs/assets/mesh_gallery/08-voronoi-bridge.png",
+      "page": "mesh_examples.md",
+      "owner": "mesh.gallery",
+      "generator": "src/jvmMain/kotlin/afield/examples/mesh/MeshGallery.kt",
+      "command": "MESH_GALLERY_DIR=/tmp/mesh_gallery python3 tools/run_field_tests.py --id mesh.gallery && cp /tmp/mesh_gallery/* public/docs/assets/mesh_gallery/",
+      "artifact": "Composited from renderPixels, so these are the CPU rasterizer deliberately and always will be. The gallery renders eleven figures and this page publishes six; the other five are the ones the page's diffstatic_runner fences already cover live. Byte-identical between runs, so a diff here means the mesh family moved."
+    },
+    {
+      "asset": "public/docs/assets/mesh_gallery/09-measure-and-query.png",
+      "page": "mesh_examples.md",
+      "owner": "mesh.gallery",
+      "generator": "src/jvmMain/kotlin/afield/examples/mesh/MeshGallery.kt",
+      "command": "MESH_GALLERY_DIR=/tmp/mesh_gallery python3 tools/run_field_tests.py --id mesh.gallery && cp /tmp/mesh_gallery/* public/docs/assets/mesh_gallery/",
+      "artifact": "Composited from renderPixels, so these are the CPU rasterizer deliberately and always will be. The gallery renders eleven figures and this page publishes six; the other five are the ones the page's diffstatic_runner fences already cover live. Byte-identical between runs, so a diff here means the mesh family moved."
+    },
+    {
+      "asset": "public/docs/assets/mesh_gallery/10-shading-and-io.png",
+      "page": "mesh_examples.md",
+      "owner": "mesh.gallery",
+      "generator": "src/jvmMain/kotlin/afield/examples/mesh/MeshGallery.kt",
+      "command": "MESH_GALLERY_DIR=/tmp/mesh_gallery python3 tools/run_field_tests.py --id mesh.gallery && cp /tmp/mesh_gallery/* public/docs/assets/mesh_gallery/",
+      "artifact": "Composited from renderPixels, so these are the CPU rasterizer deliberately and always will be. The gallery renders eleven figures and this page publishes six; the other five are the ones the page's diffstatic_runner fences already cover live. Byte-identical between runs, so a diff here means the mesh family moved."
+    },
+    {
+      "asset": "public/docs/assets/mesh_gallery/11-inline-visualizer.png",
+      "page": "mesh_examples.md",
+      "owner": "mesh.gallery",
+      "generator": "src/jvmMain/kotlin/afield/examples/mesh/MeshGallery.kt",
+      "command": "MESH_GALLERY_DIR=/tmp/mesh_gallery python3 tools/run_field_tests.py --id mesh.gallery && cp /tmp/mesh_gallery/* public/docs/assets/mesh_gallery/",
+      "artifact": "Composited from renderPixels, so these are the CPU rasterizer deliberately and always will be. The gallery renders eleven figures and this page publishes six; the other five are the ones the page's diffstatic_runner fences already cover live. Byte-identical between runs, so a diff here means the mesh family moved."
+    },
+    {
+      "asset": "public/docs/assets/vision_geometry/vision-geometry-shapes.png",
+      "page": "vision_geometry.md",
+      "owner": "vision.geometry-preview",
+      "generator": "src/jvmMain/kotlin/afield/examples/VisionGeometryPreviewGallery.kt",
+      "command": "VISION_GEOMETRY_PREVIEW_DIR=/tmp/vision_geometry python3 tools/run_field_tests.py --id vision.geometry-preview && cp /tmp/vision_geometry/* public/docs/assets/vision_geometry/",
+      "artifact": "The box's Kotlin compiled by the real KotlinToJsCompiler, its JavaScript run under node against a mirror of LiveMetalJavaScript.swift, and the packed vertex array rasterized with a stand-in lambert shade (every caption says so). Render to a temp dir and copy in: writing into the working tree while the runner's Field server watches it takes the child down mid-run with no explanation in the output. The mp4 needs ffmpeg."
+    },
+    {
+      "asset": "public/docs/assets/vision_geometry/vision-geometry-animated-filmstrip.png",
+      "page": "vision_geometry.md",
+      "owner": "vision.geometry-preview",
+      "generator": "src/jvmMain/kotlin/afield/examples/VisionGeometryPreviewGallery.kt",
+      "command": "VISION_GEOMETRY_PREVIEW_DIR=/tmp/vision_geometry python3 tools/run_field_tests.py --id vision.geometry-preview && cp /tmp/vision_geometry/* public/docs/assets/vision_geometry/",
+      "artifact": "The box's Kotlin compiled by the real KotlinToJsCompiler, its JavaScript run under node against a mirror of LiveMetalJavaScript.swift, and the packed vertex array rasterized with a stand-in lambert shade (every caption says so). Render to a temp dir and copy in: writing into the working tree while the runner's Field server watches it takes the child down mid-run with no explanation in the output. The mp4 needs ffmpeg."
+    },
+    {
+      "asset": "public/docs/assets/vision_geometry/vision-geometry-animated.mp4",
+      "page": "vision_geometry.md",
+      "owner": "vision.geometry-preview",
+      "generator": "src/jvmMain/kotlin/afield/examples/VisionGeometryPreviewGallery.kt",
+      "command": "VISION_GEOMETRY_PREVIEW_DIR=/tmp/vision_geometry python3 tools/run_field_tests.py --id vision.geometry-preview && cp /tmp/vision_geometry/* public/docs/assets/vision_geometry/",
+      "artifact": "The box's Kotlin compiled by the real KotlinToJsCompiler, its JavaScript run under node against a mirror of LiveMetalJavaScript.swift, and the packed vertex array rasterized with a stand-in lambert shade (every caption says so). Render to a temp dir and copy in: writing into the working tree while the runner's Field server watches it takes the child down mid-run with no explanation in the output. The mp4 needs ffmpeg."
+    },
+    {
+      "asset": "public/docs/assets/vision_geometry/vision-geometry-animated.png",
+      "page": "vision_geometry.md",
+      "owner": "vision.geometry-preview",
+      "generator": "src/jvmMain/kotlin/afield/examples/VisionGeometryPreviewGallery.kt",
+      "command": "VISION_GEOMETRY_PREVIEW_DIR=/tmp/vision_geometry python3 tools/run_field_tests.py --id vision.geometry-preview && cp /tmp/vision_geometry/* public/docs/assets/vision_geometry/",
+      "artifact": "The box's Kotlin compiled by the real KotlinToJsCompiler, its JavaScript run under node against a mirror of LiveMetalJavaScript.swift, and the packed vertex array rasterized with a stand-in lambert shade (every caption says so). Render to a temp dir and copy in: writing into the working tree while the runner's Field server watches it takes the child down mid-run with no explanation in the output. The mp4 needs ffmpeg."
+    },
+    {
+      "asset": "public/docs/assets/vision_geometry/vision-geometry-lantern-inverted.png",
+      "page": "vision_geometry.md",
+      "owner": "vision.geometry-preview",
+      "generator": "src/jvmMain/kotlin/afield/examples/VisionGeometryPreviewGallery.kt",
+      "command": "VISION_GEOMETRY_PREVIEW_DIR=/tmp/vision_geometry python3 tools/run_field_tests.py --id vision.geometry-preview && cp /tmp/vision_geometry/* public/docs/assets/vision_geometry/",
+      "artifact": "The box's Kotlin compiled by the real KotlinToJsCompiler, its JavaScript run under node against a mirror of LiveMetalJavaScript.swift, and the packed vertex array rasterized with a stand-in lambert shade (every caption says so). Render to a temp dir and copy in: writing into the working tree while the runner's Field server watches it takes the child down mid-run with no explanation in the output. The mp4 needs ffmpeg."
+    },
+    {
+      "asset": "public/docs/assets/vision_geometry/vision-geometry-lantern.png",
+      "page": "vision_geometry.md",
+      "owner": "vision.geometry-preview",
+      "generator": "src/jvmMain/kotlin/afield/examples/VisionGeometryPreviewGallery.kt",
+      "command": "VISION_GEOMETRY_PREVIEW_DIR=/tmp/vision_geometry python3 tools/run_field_tests.py --id vision.geometry-preview && cp /tmp/vision_geometry/* public/docs/assets/vision_geometry/",
+      "artifact": "The box's Kotlin compiled by the real KotlinToJsCompiler, its JavaScript run under node against a mirror of LiveMetalJavaScript.swift, and the packed vertex array rasterized with a stand-in lambert shade (every caption says so). Render to a temp dir and copy in: writing into the working tree while the runner's Field server watches it takes the child down mid-run with no explanation in the output. The mp4 needs ffmpeg."
+    },
+    {
+      "asset": "public/docs/assets/vision_geometry/vision-geometry-heightfield.png",
+      "page": "vision_geometry.md",
+      "owner": "vision.geometry-preview",
+      "generator": "src/jvmMain/kotlin/afield/examples/VisionGeometryPreviewGallery.kt",
+      "command": "VISION_GEOMETRY_PREVIEW_DIR=/tmp/vision_geometry python3 tools/run_field_tests.py --id vision.geometry-preview && cp /tmp/vision_geometry/* public/docs/assets/vision_geometry/",
+      "artifact": "The box's Kotlin compiled by the real KotlinToJsCompiler, its JavaScript run under node against a mirror of LiveMetalJavaScript.swift, and the packed vertex array rasterized with a stand-in lambert shade (every caption says so). Render to a temp dir and copy in: writing into the working tree while the runner's Field server watches it takes the child down mid-run with no explanation in the output. The mp4 needs ffmpeg."
+    },
+    {
+      "asset": "public/docs/assets/vision_geometry/vision-geometry-cube-turntable.png",
+      "page": "vision_geometry.md",
+      "owner": "vision.geometry-preview",
+      "generator": "src/jvmMain/kotlin/afield/examples/VisionGeometryPreviewGallery.kt",
+      "command": "VISION_GEOMETRY_PREVIEW_DIR=/tmp/vision_geometry python3 tools/run_field_tests.py --id vision.geometry-preview && cp /tmp/vision_geometry/* public/docs/assets/vision_geometry/",
+      "artifact": "The box's Kotlin compiled by the real KotlinToJsCompiler, its JavaScript run under node against a mirror of LiveMetalJavaScript.swift, and the packed vertex array rasterized with a stand-in lambert shade (every caption says so). Render to a temp dir and copy in: writing into the working tree while the runner's Field server watches it takes the child down mid-run with no explanation in the output. The mp4 needs ffmpeg."
+    },
+    {
+      "asset": "public/docs/assets/functions_gallery/functions-waveshaper-transfer.png",
+      "page": "functions_examples.md",
+      "owner": "functions.plot-gallery",
+      "generator": "src/jvmMain/kotlin/afield/examples/functions/FunctionsPlotGallery.kt",
+      "command": "FUNCTIONS_PLOT_DIR=/tmp/functions_gallery python3 tools/run_field_tests.py --id functions.plot-gallery && cp /tmp/functions_gallery/* public/docs/assets/functions_gallery/",
+      "artifact": "Every plotted (x, y) is a real Fn.evalSafe(...) of a genuine Functions graph and the fit series is a real fitGradient run; only the line between real samples is synthetic. The mp4 is one fresh truncated fitGradient run per frame rather than a cached trajectory, and it is best-effort: a machine without ffmpeg prints a skip note instead of failing."
+    },
+    {
+      "asset": "public/docs/assets/functions_gallery/functions-waveshaper-on-sine.png",
+      "page": "functions_examples.md",
+      "owner": "functions.plot-gallery",
+      "generator": "src/jvmMain/kotlin/afield/examples/functions/FunctionsPlotGallery.kt",
+      "command": "FUNCTIONS_PLOT_DIR=/tmp/functions_gallery python3 tools/run_field_tests.py --id functions.plot-gallery && cp /tmp/functions_gallery/* public/docs/assets/functions_gallery/",
+      "artifact": "Every plotted (x, y) is a real Fn.evalSafe(...) of a genuine Functions graph and the fit series is a real fitGradient run; only the line between real samples is synthetic. The mp4 is one fresh truncated fitGradient run per frame rather than a cached trajectory, and it is best-effort: a machine without ffmpeg prints a skip note instead of failing."
+    },
+    {
+      "asset": "public/docs/assets/functions_gallery/functions-composed-pipeline.png",
+      "page": "functions_examples.md",
+      "owner": "functions.plot-gallery",
+      "generator": "src/jvmMain/kotlin/afield/examples/functions/FunctionsPlotGallery.kt",
+      "command": "FUNCTIONS_PLOT_DIR=/tmp/functions_gallery python3 tools/run_field_tests.py --id functions.plot-gallery && cp /tmp/functions_gallery/* public/docs/assets/functions_gallery/",
+      "artifact": "Every plotted (x, y) is a real Fn.evalSafe(...) of a genuine Functions graph and the fit series is a real fitGradient run; only the line between real samples is synthetic. The mp4 is one fresh truncated fitGradient run per frame rather than a cached trajectory, and it is best-effort: a machine without ffmpeg prints a skip note instead of failing."
+    },
+    {
+      "asset": "public/docs/assets/functions_gallery/functions-fit-before-after.png",
+      "page": "functions_examples.md",
+      "owner": "functions.plot-gallery",
+      "generator": "src/jvmMain/kotlin/afield/examples/functions/FunctionsPlotGallery.kt",
+      "command": "FUNCTIONS_PLOT_DIR=/tmp/functions_gallery python3 tools/run_field_tests.py --id functions.plot-gallery && cp /tmp/functions_gallery/* public/docs/assets/functions_gallery/",
+      "artifact": "Every plotted (x, y) is a real Fn.evalSafe(...) of a genuine Functions graph and the fit series is a real fitGradient run; only the line between real samples is synthetic. The mp4 is one fresh truncated fitGradient run per frame rather than a cached trajectory, and it is best-effort: a machine without ffmpeg prints a skip note instead of failing."
+    },
+    {
+      "asset": "public/docs/assets/functions_gallery/functions-fit-convergence.mp4",
+      "page": "functions_examples.md",
+      "owner": "functions.plot-gallery",
+      "generator": "src/jvmMain/kotlin/afield/examples/functions/FunctionsPlotGallery.kt",
+      "command": "FUNCTIONS_PLOT_DIR=/tmp/functions_gallery python3 tools/run_field_tests.py --id functions.plot-gallery && cp /tmp/functions_gallery/* public/docs/assets/functions_gallery/",
+      "artifact": "Every plotted (x, y) is a real Fn.evalSafe(...) of a genuine Functions graph and the fit series is a real fitGradient run; only the line between real samples is synthetic. The mp4 is one fresh truncated fitGradient run per frame rather than a cached trajectory, and it is best-effort: a machine without ffmpeg prints a skip note instead of failing."
+    },
+    {
+      "asset": "public/docs/assets/pat_transcription/pat-transcription-roundtrip.svg",
+      "page": "sound.md",
+      "owner": "synth.pat.transcription",
+      "generator": "src/jvmMain/kotlin/afield/four/synth/PatTranscriptionGallery.kt",
+      "command": "PAT_TRANSCRIPTION_DIR=/tmp/pat_transcription python3 tools/run_field_tests.py --id synth.pat.transcription && cp /tmp/pat_transcription/* public/docs/assets/pat_transcription/",
+      "artifact": "SVG, emitted directly by the gallery rather than converted. The test asserts every rectangle in each file corresponds to a reference note, a recovered note or a declined span, that no coordinate is non-finite, and that the panels which are supposed to disagree do. Check the recovered-note counts in the panel headings against the page's prose before replacing these."
+    },
+    {
+      "asset": "public/docs/assets/pat_transcription/pat-transcription-opposite-failures.svg",
+      "page": "sound.md",
+      "owner": "synth.pat.transcription",
+      "generator": "src/jvmMain/kotlin/afield/four/synth/PatTranscriptionGallery.kt",
+      "command": "PAT_TRANSCRIPTION_DIR=/tmp/pat_transcription python3 tools/run_field_tests.py --id synth.pat.transcription && cp /tmp/pat_transcription/* public/docs/assets/pat_transcription/",
+      "artifact": "SVG, emitted directly by the gallery rather than converted. The test asserts every rectangle in each file corresponds to a reference note, a recovered note or a declined span, that no coordinate is non-finite, and that the panels which are supposed to disagree do. Check the recovered-note counts in the panel headings against the page's prose before replacing these."
+    },
+    {
+      "asset": "public/docs/assets/pat_transcription/pat-transcription-refusals-and-limits.svg",
+      "page": "sound.md",
+      "owner": "synth.pat.transcription",
+      "generator": "src/jvmMain/kotlin/afield/four/synth/PatTranscriptionGallery.kt",
+      "command": "PAT_TRANSCRIPTION_DIR=/tmp/pat_transcription python3 tools/run_field_tests.py --id synth.pat.transcription && cp /tmp/pat_transcription/* public/docs/assets/pat_transcription/",
+      "artifact": "SVG, emitted directly by the gallery rather than converted. The test asserts every rectangle in each file corresponds to a reference note, a recovered note or a declined span, that no coordinate is non-finite, and that the panels which are supposed to disagree do. Check the recovered-note counts in the panel headings against the page's prose before replacing these."
     }
   ]
 }

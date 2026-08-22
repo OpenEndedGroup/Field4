@@ -81,6 +81,43 @@ full measurement tables and the several things this got wrong before it got them
 version is the
 [pitch_transcription_roundtrip](agent_transcripts.md) starting point.
 
+### What that looks like
+
+Every panel below plots the notation you wrote as a **hollow outline** and what the detector heard back
+out of the render as a **solid bar**, on one shared MIDI axis — so the exceptions are the only thing you
+have to look at. Vertical position and left edge are measurements; bar *length* is not, because a
+recovered note ends where its pitch stopped being stable, and that reaches into the previous note's
+decay.
+
+The clean case first: a stepped scale, wide leaps over three octaves, and a run detuned by 25/50/75/50
+cents. The bars sit on the outlines, and in the third panel they sit off them by exactly the detuning.
+
+![Three panels of notated-against-recovered piano rolls: a stepped scale at 15 of 16 notes recovered, wide leaps at 16 of 16 with the pitch order intact, and a detuned run at 8 of 8 whose bars sit slightly off their outlines](assets/pat_transcription/pat-transcription-roundtrip.svg)
+
+Segmentation is where it gets interesting, and the two available criteria fail in **opposite**
+directions rather than one being better than the other. A flat-envelope Dough render has no energy
+transients to cut on (energy recall 0.13) but clean pitch steps (0.86); a line that strikes each pitch
+twice has the transients but no pitch change at half of them (energy 0.13, pitch 0.81, 0.88 merged):
+
+![Two panels: a legato Dough render where the energy detector finds almost nothing while the pitch steps are clean, and a repeated-pitch line where the reverse holds](assets/pat_transcription/pat-transcription-opposite-failures.svg)
+
+And this is the figure behind the "0 confidently wrong" count — what a **refusal** looks like. Three
+simultaneous pitches gives 0 of 12 notes, a `POLYPHONIC` verdict and `pat("~")`: the outlines have no
+bars in them at all, and that is the correct answer rather than a failure. The same audio at 31 ms per
+note recovers 23 of 32 when it is *told* its register and 0 of 32 when it is not — because the analysis
+window is then longer than the notes, and the honest output is again `pat("~")` rather than a plausible
+parseable wrong one:
+
+![Three panels: a chord triad recovering zero of twelve notes and emitting pat tilde, a fast line recovering 23 of 32 when told its register, and the same audio recovering zero of 32 when not told, its whole span struck out by a declined band](assets/pat_transcription/pat-transcription-refusals-and-limits.svg)
+
+Those three are **committed captures** from the `synth.pat.transcription` FIELD_TEST, which asserts
+that every rectangle in each file corresponds to a reference note, a recovered note or a declined
+span, that no coordinate is non-finite, and that the panels which are supposed to disagree do:
+
+```bash
+PAT_TRANSCRIPTION_DIR=/tmp/pat-transcription python3 tools/run_field_tests.py --id synth.pat.transcription
+```
+
 ---
 
 ## The events, before anything makes a sound

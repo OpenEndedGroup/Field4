@@ -187,6 +187,30 @@ with(Functions) {
 
 The thin orange (fitted) curve lands right on top of the thick cyan (target) — the restarts found the true frequencies, and `run` reports the RMSE collapsing from ~0.72 to ~0.006. Returning `run` in the box prints a compact summary with a loss-trajectory sparkline. Reach for `fitBest` when you have a shape in mind and just need the numbers dialed in; reach for `evolve(...)` / `fitHybrid(...)` when the *structure* itself (which operators) is still unknown.
 
+### Watching the descent
+
+The capture above is the *endpoint*. The plainer case — a single `fitGradient` with no restarts, on a
+target whose amplitude and offset are wrong but whose frequency is right — shows all three curves at
+once: the target, the seed it started from, and where it ended up.
+
+![Three curves: a thick orange target, a dashed grey seed at about a fifth of the amplitude and offset the wrong way, and a cyan fitted curve lying exactly on the target](assets/functions_gallery/functions-fit-before-after.png)
+
+And the descent itself, one frame every 8 iterations from 0 to 320. Each frame is a **fresh
+`fitGradient` run truncated at that iteration count**, not a replay of a cached trajectory, so the
+error in the title is the error that run really reached:
+
+<video src="../assets/functions_gallery/functions-fit-convergence.mp4"
+       controls autoplay loop muted playsinline preload="metadata"
+       aria-label="a cyan curve starting far below a thick orange target sine, growing in amplitude and sliding into place over successive iterations until it lies exactly on the target, the title counting the iteration and the falling error"
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
+The thing worth watching is *which* parameter moves first, because the error number alone hides it.
+Amplitude is essentially found by iteration 8 — the peaks already match — and the error is still
+0.1030, because what is left is the vertical offset (the troughs sit shallow) and a small phase lead.
+Those take the remaining three hundred iterations to close: 0.0248 by iteration 48, 0.0044 at 320.
+A single error figure would have read as "nearly converged" three hundred iterations early.
+
 ## 2D stack: separate x(t) and y(t) Functions
 
 Once a function stack is no longer limited to "height over x", it can steer a path. One stack controls horizontal position; another controls vertical position.
@@ -578,6 +602,32 @@ type — which is exactly what the editor's completion leans on (below). For the
 [`over ... vs stretch ...`](#over-vs-stretch) above; here we only use them to place a
 finished pipeline on a timeline.
 
+### What the shapers actually do
+
+The fastest way to know a waveshaper is to look at its **transfer curve** — push a rising ramp
+through it, and the plotted result *is* the shape it imposes on whatever you send it. Four of them,
+over an input sweep of `-1.5..1.5`, against the ramp itself as a dashed reference:
+
+```diffstatic {data-lang=kotlin}
+val sweep = ramp(-1.5, 1.5) over Functions.Domain.of(0.0, 1.0)
+
+sweep.fold(0.7)                            // reflects back at the threshold
+sweep.softClip(2.5)                        // a bounded S, smooth everywhere
+sweep.chebyshev(3)                         // the 3rd Chebyshev polynomial
+sweep.rectify(Functions.RectifyMode.FULL)  // absolute value, folded about zero
+```
+
+![Four transfer curves against a dashed input ramp: fold reflecting into a zig-zag, softClip as a smooth bounded S, chebyshev(3) as a cubic with two turning points, and rectify as a V](assets/functions_gallery/functions-waveshaper-transfer.png)
+
+`fold` reflects rather than flattens, so it keeps adding harmonics where a clipper stops; `softClip`
+is bounded and smooth everywhere, so it has no corner to alias off; `chebyshev(3)` is a polynomial,
+so it maps a unit cosine to a *pure* third harmonic rather than a smear.
+
+On real signal rather than on a ramp — a 1.2-amplitude sine, so each shaper has something to bite on.
+`clip` is in this one and not the last, because it is the only member of the family with corners in it:
+
+![The same shapers applied to a sine of amplitude 1.2 over two cycles: softClip rounding the peaks, fold turning each peak inside out into a dip, and clip flattening them to hard plateaux with visible corners](assets/functions_gallery/functions-waveshaper-on-sine.png)
+
 ### Building up a pipeline
 
 Start with a source and send it `through` a single transform. `gain` scales the signal:
@@ -627,6 +677,12 @@ Every builder used above (`gain`, `bias`, `delay`, `hold`, `lowPass`, `softClipB
 `turbulence`, `mirror`, `stretch`, …) returns a `FnTransform`, so any of them slots into a
 `through` / `/` / `then` chain interchangeably. The full set lives in the
 [reference below](#algebra-and-mapping) and under [`FnTransform`](#fntransform).
+
+Because every stage returns an `Fn`, you can plot the pipeline **at each stage** rather than only at
+the end, which is how you find out which stage did the thing you did not want. A carrier times an
+envelope, then folded, then soft-clipped:
+
+![The same signal at three stages: the carrier-times-envelope in dashed grey, the same after fold(0.75) pulled its peaks in, and after softClip(2.0) pushed them back out and rounded them](assets/functions_gallery/functions-composed-pipeline.png)
 
 ### The editor helps you discover operators
 
@@ -3981,3 +4037,28 @@ Finally, rewrite rules run during graph copy, bottom-up through children before 
 - 2D use-case: build x(t) and y(t) stacks, then sample into a path FLine.
 - Start with the simplest constructor that expresses the shape you want, then add modulation, windowing, and clipping only as needed.
 - When a stack starts to feel hard to read, draw intermediate stages side by side instead of hiding everything inside the final curve.
+
+## Where the pictures come from
+
+Two routes, and they cost different amounts:
+
+| figure | how |
+|---|---|
+| `assets/functions_examples/*.png` | **executed by the docs build** — `diffstatic_runner` fences, so the image under each is that box's own output |
+| `assets/functions_gallery/*` (four plots and the mp4) | **committed captures** from the `functions.plot-gallery` FIELD_TEST |
+
+Regenerate the second set with:
+
+```bash
+FUNCTIONS_PLOT_DIR=/tmp/functions-plots python3 tools/run_field_tests.py --id functions.plot-gallery
+```
+
+Render to a temp directory and copy the files in, rather than writing into the working tree while the
+runner's Field server is watching it.
+
+Every plotted `(x, y)` in those is a real `Fn.evalSafe(…)` of a genuine `Functions` graph, and the fit
+series is the output of a real `fitGradient` run — only "draw a line between real samples" is
+synthetic. As a FIELD_TEST the gallery asserts rather than just draws: painted fraction, finite
+samples, that the fit genuinely converges (`finalError < 0.25 × initialError`) and that the fitted
+curve tracks its target to within 0.15. The mp4 is best-effort and skipped with a printed note if
+`ffmpeg` is not on the machine, so a missing encoder cannot fail the build.
