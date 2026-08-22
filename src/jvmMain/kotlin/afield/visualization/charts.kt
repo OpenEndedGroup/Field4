@@ -198,7 +198,13 @@ fun niceNumber(x: Double, round: Boolean): Double {
 fun niceTicks(lo: Double, hi: Double, target: Int = 6): List<Double> {
     if (!lo.isFinite() || !hi.isFinite()) return emptyList()
     if (hi <= lo) return listOf(lo)
-    val step = niceNumber(niceNumber(hi - lo, false) / max(1, target - 1), true)
+    // Heckbert's *tight* pairing, not his loose one. The loose variant rounds the span up first
+    // (`niceNumber(hi - lo, false)`) because it goes on to widen the axis to `floor(lo/step)*step ..
+    // ceil(hi/step)*step`; every private copy in this repo does the first half and then clips to the
+    // caller's range instead of widening, which loses ticks — over -3..3 asking for six it can only
+    // offer three. Clipping is the right call for a chart whose domain the caller chose, so the step
+    // is derived from the real span to match.
+    val step = niceNumber((hi - lo) / max(1, target - 1), true)
     if (step <= 0.0 || !step.isFinite()) return listOf(lo, hi)
     val first = ceil(lo / step - 1e-9).toLong()
     val last = floor(hi / step + 1e-9).toLong()
@@ -244,11 +250,34 @@ fun logTicks(lo: Double, hi: Double, maxTicks: Int = 12): List<Double> {
  * the same reason [defaultCellText] does, and for the same kind of number: a tick at `1e-9` on a
  * residual plot must not read `0`.
  */
-fun tickLabel(value: Double, step: Double = 0.0): String {
-    if (!value.isFinite()) return value.toString()
+fun tickLabel(value: Double, step: Double = 0.0): String =
+    tickLabel(value, step, scientific = needsScientific(value))
+
+/**
+ * Whether a fixed-point rendering of [value] would be unreadable — too small to survive four
+ * decimals, or too long to fit under a tick.
+ */
+private fun needsScientific(value: Double): Boolean {
     val magnitude = abs(value)
-    if (magnitude != 0.0 && (magnitude < 1e-4 || magnitude >= 1e6)) {
-        return String.format(Locale.US, "%.1e", value)
+    return magnitude != 0.0 && (magnitude < 1e-4 || magnitude >= 1e6)
+}
+
+/**
+ * The labels for a whole axis, in **one** notation.
+ *
+ * Deciding per value put `100000` and `1.0e+06` next to each other on the same log axis, which reads
+ * as two different quantities. One tick needing scientific notation puts the whole axis in it.
+ */
+fun tickLabels(values: List<Double>, step: Double = 0.0): List<String> {
+    val scientific = values.any { needsScientific(it) }
+    return values.map { tickLabel(it, step, scientific) }
+}
+
+private fun tickLabel(value: Double, step: Double, scientific: Boolean): String {
+    if (!value.isFinite()) return value.toString()
+    if (scientific) {
+        // Zero has no exponent worth printing, and "0.0e+00" under a tick is noise.
+        return if (value == 0.0) "0" else String.format(Locale.US, "%.1e", value)
     }
     val absStep = abs(step)
     val decimals =
@@ -687,6 +716,11 @@ class Chart(
     /**
      * Every datum that failed an [expect] check — the same list the drawing recolours, so a test can
      * assert on the claim the figure makes rather than on its geometry.
+     *
+     * `distinct` matters here, and the reason is the commonest way to draw a series: a `line` mark
+     * *and* a `points` mark over the same numbers, so the trend reads and the samples are clickable.
+     * Those are two marks and one datum, and without the dedupe the figure's own footnote said "8
+     * points outside expectation" over four visibly red dots.
      */
     val deviations: List<ChartDeviation>
         get() = buildList {
@@ -702,7 +736,7 @@ class Chart(
                     }
                 }
             }
-        }
+        }.distinct()
 
     private fun failed(mark: ChartMark, index: Int): String? {
         val bx = mark.x[index]
@@ -784,32 +818,16 @@ class Chart(
      */
     fun toFLines(): List<FLine> {
         val out = mutableListOf<FLine>()
-        val (dx0, dx1) = resolvedXDomain()
-        val (dy0, dy1) = resolvedYDomain()
-
-        val xTicks = tickValuesX(dx0, dx1)
-        val yTicks = tickValuesY(dy0, dy1)
-        val yStep = if (yTicks.size >= 2) yTicks[1] - yTicks[0] else 0.0
-        val xStep = if (xTicks.size >= 2) xTicks[1] - xTicks[0] else 0.0
-
-        val yTickText = yTicks.map { tickLabel(it, yStep) }
-        val xTickText = categories ?: xTicks.map { tickLabel(it, xStep) }
-
-        val padLeft = 12.0 + (if (yLabel != null) LABEL_SIZE + 6.0 else 0.0) +
-            (yTickText.maxOfOrNull { measure(it) } ?: 0.0) + 8.0
-        val padRight = 12.0 + (xTickText.lastOrNull()?.let { measure(it) / 2.0 } ?: 0.0)
-        val padTop = 10.0 + (if (title != null) TITLE_SIZE + 12.0 else 0.0) +
-            (if (drawLegend()) LABEL_SIZE + 8.0 else 0.0)
-        val padBottom = 12.0 + LABEL_SIZE + 8.0 + (if (xLabel != null) LABEL_SIZE + 6.0 else 0.0) +
-            (if (footnote() != null) LABEL_SIZE + 8.0 else 0.0)
-
-        val plot = Rect(
-            padLeft, padTop,
-            max(24.0, width - padLeft - padRight),
-            max(24.0, height - padTop - padBottom)
-        )
-        val sx = Scale(dx0, dx1, plot.x, plot.x + plot.w, xKind)
-        val sy = Scale(dy0, dy1, plot.y + plot.h, plot.y, yKind)
+        val l = layout()
+        val plot = l.plot
+        val sx = l.x
+        val sy = l.y
+        val xTicks = l.xTicks
+        val yTicks = l.yTicks
+        val xTickText = l.xTickText
+        val yTickText = l.yTickText
+        val dy0 = sy.lo
+        val dy1 = sy.hi
 
         // Bands first: they are the background the data is judged against.
         markList.filter { it.kind == MarkKind.BAND }.forEach { out += bandLines(it, plot, sy) }
@@ -863,6 +881,65 @@ class Chart(
 
     // ── rendering internals ───────────────────────────────────────────────────────
 
+    /** Everything the drawing needs that the domains and the label widths decide between them. */
+    internal class Layout(
+        val plot: Rect,
+        val x: Scale,
+        val y: Scale,
+        val xTicks: List<Double>,
+        val yTicks: List<Double>,
+        val xTickText: List<String>,
+        val yTickText: List<String>,
+    )
+
+    /**
+     * The plot area, in figure pixels — the rectangle the axes bound and the data is clipped to.
+     *
+     * Public because the insets are *derived*, not configured: they come from the widest tick label,
+     * whether there is a title, a legend, an axis label, a footnote. A caller overlaying an
+     * annotation, or a test asking whether the tick labels drew, has no other way to know where the
+     * frame ended up.
+     */
+    fun plotRect(): Rect = layout().plot
+
+    /**
+     * Domains, ticks, label widths, insets, scales — computed together because each one needs the
+     * one before it. The ticks come first: they depend only on the domain, and the *widest tick
+     * label* is what decides the left inset, which decides the pixel range the scales map onto.
+     */
+    internal fun layout(): Layout {
+        val (dx0, dx1) = resolvedXDomain()
+        val (dy0, dy1) = resolvedYDomain()
+
+        val xTicks = tickValuesX(dx0, dx1)
+        val yTicks = tickValuesY(dy0, dy1)
+        val xStep = if (xTicks.size >= 2) xTicks[1] - xTicks[0] else 0.0
+        val yStep = if (yTicks.size >= 2) yTicks[1] - yTicks[0] else 0.0
+
+        val yTickText = tickLabels(yTicks, yStep)
+        val xTickText = categories ?: tickLabels(xTicks, xStep)
+
+        val padLeft = 12.0 + (if (yLabel != null) LABEL_SIZE + 6.0 else 0.0) +
+            (yTickText.maxOfOrNull { measure(it) } ?: 0.0) + 8.0
+        val padRight = 12.0 + (xTickText.lastOrNull()?.let { measure(it) / 2.0 } ?: 0.0)
+        val padTop = 10.0 + (if (title != null) TITLE_SIZE + 12.0 else 0.0) +
+            (if (drawLegend()) LABEL_SIZE + 8.0 else 0.0)
+        val padBottom = 12.0 + LABEL_SIZE + 8.0 + (if (xLabel != null) LABEL_SIZE + 6.0 else 0.0) +
+            (if (footnote() != null) LABEL_SIZE + 8.0 else 0.0)
+
+        val plot = Rect(
+            padLeft, padTop,
+            max(24.0, width - padLeft - padRight),
+            max(24.0, height - padTop - padBottom)
+        )
+        return Layout(
+            plot,
+            Scale(dx0, dx1, plot.x, plot.x + plot.w, xKind),
+            Scale(dy0, dy1, plot.y + plot.h, plot.y, yKind),
+            xTicks, yTicks, xTickText, yTickText
+        )
+    }
+
     private fun tickValuesX(lo: Double, hi: Double): List<Double> =
         categories?.indices?.map { it.toDouble() }
             ?: Scale(lo, hi, 0.0, 1.0, xKind).ticks(xTickTarget)
@@ -870,8 +947,7 @@ class Chart(
     private fun tickValuesY(lo: Double, hi: Double): List<Double> =
         Scale(lo, hi, 0.0, 1.0, yKind).ticks(yTickTarget)
 
-    private fun drawLegend(): Boolean =
-        legend && markList.count { it.label.isNotEmpty() && it.kind.carriesData } > 1
+    private fun drawLegend(): Boolean = legend && legendEntries().size > 1
 
     private fun gridLine(x0: Double, y0: Double, x1: Double, y1: Double): FLine = fline {
         moveTo(x0, y0); lineTo(x1, y1)
@@ -1120,16 +1196,31 @@ class Chart(
         if (drawLegend()) {
             var x = plot.x + plot.w
             val y = padTopForLegend()
-            markList.reversed().forEach { mark ->
-                if (mark.label.isEmpty() || !mark.kind.carriesData) return@forEach
-                val w = measure(mark.label)
-                out += labelLines(mark.label, x, y, Anchor.RIGHT, colour = mark.color)
+            legendEntries().reversed().forEach { (name, colour) ->
+                val w = measure(name)
+                out += labelLines(name, x, y, Anchor.RIGHT, colour = colour)
                 x -= w + 6.0
-                out += filledRect(x - 8.0, y - LABEL_SIZE * 0.55, 7.0, 7.0, mark.color)
+                out += filledRect(x - 8.0, y - LABEL_SIZE * 0.55, 7.0, 7.0, colour)
                 x -= 16.0
             }
         }
         return out
+    }
+
+    /**
+     * One entry per *series*, not per mark.
+     *
+     * A `line` plus a `points` mark over the same numbers is the ordinary way to draw a clickable
+     * trend, and it was putting the same name in the legend twice with two different colours. First
+     * mark of a name wins the swatch, which is the one that was drawn first and so the one underneath.
+     */
+    private fun legendEntries(): List<Pair<String, Vec4>> {
+        val seen = LinkedHashMap<String, Vec4>()
+        markList.forEach { mark ->
+            if (mark.label.isEmpty() || !mark.kind.carriesData) return@forEach
+            seen.putIfAbsent(mark.label, mark.color)
+        }
+        return seen.map { (k, v) -> k to v }
     }
 
     private fun padTopForLegend(): Double =
