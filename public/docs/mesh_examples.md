@@ -52,6 +52,16 @@ than "it renders": a cube is 8 vertices and 12 triangles, not 24 and 12.
 
 ![Generator panel: box, UV sphere, icosphere, torus, cylinder, cone, capsule and all five platonic solids](assets/mesh_gallery/01-primitives.png)
 
+Four more generators build a mesh out of something you already have rather than out of parameters:
+`extrudeMesh` (real ear clipping, so a *concave* polygon works and does not fan), `revolveMesh` (a
+lathe), `tubeMesh` (a rotation-minimising sweep along a 3D path) and `heightfieldMesh` — which has a
+lambda form and an `Img.toHeightfieldMesh()` form, and that second one is the bridge from the
+[imaging family](imaging_examples.md) into this one. The two heightfields are the only panels here
+that are open surfaces (χ=1) rather than closed solids, which is the honest reading of what a
+heightfield is.
+
+![Five derived generators: an extruded concave L, a lathed goblet, a helical tube, a heightfield from a lambda, and a heightfield read out of an image — each headed with its call, triangle count, Euler characteristic and genus](assets/mesh_gallery/07-derived-generators.png)
+
 ## Modelling with a field
 
 The centrepiece of the family is the SDF path, because it is the one that makes a shape feel like an
@@ -386,6 +396,14 @@ the index structure, so a watertight mesh round-trips watertight. **STL is trian
 three unshared vertices per triangle, no indices at all — so it comes back with 3× the vertices and
 `isWatertight()` false until you `weld(1e-5)` it. Both recover the volume exactly.
 
+Shading normals are a **choice rather than a property**, and the choice changes the vertex count,
+which is the part that surprises people. A generator ships without normals when its vertices sit on a
+crease, and then `flatShaded()` splits every one, `shadedNormals(creaseAngleDegrees = 35.0)` splits
+only across creases, and `withVertexNormals()` shares them all — 144, 50 and 26 vertices for the same
+12-sided cylinder, from a hard-faceted tube to one with a rounded-off rim:
+
+![Top row: the same 12-sided cylinder flat shaded at 144 vertices, crease-shaded at 50 and smooth at 26, going from hard facets to a rounded rim. Bottom row: an icosphere after an OBJ round trip, after a binary STL round trip and weld, and the source — all three at 642 vertices and the same volume](assets/mesh_gallery/10-shading-and-io.png)
+
 Those two are the whole *dependency-free* story, and they are not the whole story: PLY, glTF and GLB
 read as well. [Geometry from disk](geometry_from_disk.md) is the route from any format to pixels — one
 call per format, a measured table of what each one loses in each direction, and an honest list of what
@@ -541,7 +559,7 @@ amounts to produce:
 | figure | how |
 |---|---|
 | the five `diffstatic_runner` fences above | **executed by the docs build**; the image under each is that box's own output, drawn by the Three.js viewer — which is what `showMeshGrid` now uses |
-| `assets/mesh_gallery/*.png` (four figures) | **committed captures** from the `mesh.gallery` FIELD_TEST: `python3 tools/run_field_tests.py --id mesh.gallery --port 9700`. These are composited from `renderPixels`, so they are the **CPU rasterizer** and always will be — that is the point of them |
+| `assets/mesh_gallery/*.png` (six figures) | **committed captures** from the `mesh.gallery` FIELD_TEST: `MESH_GALLERY_DIR=public/docs/assets/mesh_gallery python3 tools/run_field_tests.py --id mesh.gallery --port 9700`. These are composited from `renderPixels`, so they are the **CPU rasterizer** and always will be — that is the point of them. The gallery renders eleven figures; the five not shown here are the ones the `diffstatic_runner` fences above already cover live, and they stay in `dev_docs/assets/mesh_gallery/` |
 
 Read both routes as "real output, as of when it was taken", and regenerate deliberately after changing
 the family. What guards the family continuously is the gallery itself: it is a FIELD_TEST
@@ -555,7 +573,7 @@ matching 2πχ, or if the Voronoi cells stop tiling their clip box.
     that decision comes from a fixed digest list — `RUNNER_DIGEST_SOURCE_FILES` in `public/docs_hooks.py` —
     which covers the runner's own machinery and no stdlib source at all. So editing `mesh_*.kt` leaves every
     digest unchanged, an incremental build is a cache hit, and the fences are not re-run;
-    `FIELD_DOCS_RUNNER_MODE=always` forces them. The four gallery figures are committed PNGs with the same
+    `FIELD_DOCS_RUNNER_MODE=always` forces them. The six gallery figures are committed PNGs with the same
     property: they need `mesh.gallery` re-run to reflect a change.
 
 There is a third route for playing with it rather than reading it: replay

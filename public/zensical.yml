@@ -47,6 +47,7 @@ nav:
     - FLine Examples: fline_examples.md
     - Field's 3D Output: three_output.md
     - Visualizers & Controls: visualizers.md
+    - Charts as FLines: chart.md
     - DataFrames in a Box: dataframe.md
     - Querying Object Graphs: graph_query.md
     - Rewriting Your Own Syntax: pattern_rewrite.md
