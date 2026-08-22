@@ -313,7 +313,7 @@ Three measurement helpers come with it, and the third is the one that matters:
 * `faustSpectrumPeaks` — the only thing here that can tell polyphony from monophony. Counting attacks
   cannot: a single voice stealing itself produces the same number of them.
 
-!!! note "The assertion that proves polyphony"
+??? aside "The assertion that proves polyphony"
     `pat("[c4,e4,g4]")` is one chord — three events on the same arc, so three notes on the same frame —
     whose fundamentals are 130.81, 164.81 and 196.00 Hz. The band 100–230 Hz can hold nothing else, since
     the lowest second harmonic in the chord is 261.6 Hz, so every peak in it is somebody's fundamental.

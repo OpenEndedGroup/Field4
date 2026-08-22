@@ -106,7 +106,7 @@ The numbers under the picture are the interesting part:
   came out of a modeller, and do not reach for `repaired()` unless you actually need watertightness
   (for a volume, a boolean, or a printer).
 
-That the picture is right is not a matter of opinion — `MeshFromDiskTest` asserts that this file
+That the picture is right is not a matter of opinion. The build asserts that this file
 produces exactly 77,429 vertices and 108,936 triangles, that no `NaN` survives the transform bake,
 that the model has real extent on all three axes rather than being heaped at the origin, and that a
 render of it paints more than 5% of its pixels.
@@ -125,9 +125,9 @@ render of it paints more than 5% of its pixels.
 Which means flattening one into a single `TriMesh` has a domain, and you should know where its edges
 are. A glTF file is a node hierarchy: each node carries a **full 4×4 transform**, several nodes can
 reference the same mesh, and each mesh carries its own material. Here is what `meshFromAnyFile` does
-with all of that, measured on a four-node scene that `AssimpSceneBridgeTest` builds from scratch — one
-asymmetric triangle instanced by an identity node, a translated node, a *child* of that translated node,
-and a **mirrored** node with `scale (-1, 1, 1)`.
+with all of that, measured on a four-node scene built from scratch for the purpose — one asymmetric
+triangle instanced by an identity node, a translated node, a *child* of that translated node, and a
+**mirrored** node with `scale (-1, 1, 1)`.
 
 | the scene has | the bridge does |
 |---|---|
@@ -220,7 +220,7 @@ The pictures differ, and each difference is a format telling you what it cannot 
 ## What each format loses
 
 Measured on `icosphereMesh(3, 1.0).withColor(0.3, 0.7, 1.0)` — 642 vertices, 1280 triangles, area
-12.506493, volume 4.152741 — and asserted, row by row, by `MeshFromDiskTest`:
+12.506493, volume 4.152741 — and asserted row by row, so a regression in any cell fails the build:
 
 | | verts | tris | normals | uvs | colours | χ | closed | area | volume |
 |---|---|---|---|---|---|---|---|---|---|
@@ -230,7 +230,7 @@ Measured on `icosphereMesh(3, 1.0).withColor(0.3, 0.7, 1.0)` — 642 vertices, 1
 | **via `.stl`, `weld(1e-5)`** | 642 | 1280 | **no** | no | no | 2 | watertight | 12.506493 | 4.152741 |
 
 ¹ uvs survive OBJ when the mesh has them; this sphere does not. A `heightfieldMesh` round-trips its
-uvs to within 1e-5, which is also asserted (in `MeshIoTest`).
+uvs to within 1e-5, which is also asserted.
 
 Reading down the columns:
 
@@ -687,22 +687,25 @@ negative volume. `fixWinding()` is the fix.
 ## Where the pictures come from
 
 All three figures above are produced by the docs build executing the fence above them in a real box:
-the image is that box's own output area. Two caveats, the same ones
-[`mesh_examples.md`](mesh_examples.md#where-the-pictures-come-from) carries:
+the image is that box's own output area. One caveat worth knowing if you are reading the numbers
+closely: the ToyCar figure depends on a committed 5.4 MB binary, `assets/fabricate_demo/ToyCar.glb`. If
+that file is ever replaced, this page's counts and `MeshFromDiskTest` go wrong together — which is the
+intended arrangement, since the test says so out loud.
 
-- A fence is re-executed only when the build decides its capture is stale, from a digest over the
-  runner machinery plus the **stdlib** source files the fence's code names. `MeshFromDisk.kt` is in
-  `afield.four`, not `afield.stdlib`, so editing *it* does not invalidate these captures on its own.
-  Force them with `FIELD_DOCS_RUNNER_MODE=always` after changing the bridges.
-- The ToyCar figure depends on a committed 5.4 MB binary, `assets/fabricate_demo/ToyCar.glb`. If that
-  file is ever replaced, this page's counts and `MeshFromDiskTest` both go wrong at once — which is
-  the intended arrangement, since the test says so out loud.
+??? aside "When these captures go stale, and how to force them"
+    A fence is re-executed only when the build decides its capture is stale, from a digest over the runner
+    machinery plus the **stdlib** source files the fence's code names. `MeshFromDisk.kt` is in
+    `afield.four`, not `afield.stdlib`, so editing *it* does not invalidate these captures on its own.
+    Force them with `FIELD_DOCS_RUNNER_MODE=always` after changing the bridges. `mesh_examples.md` carries
+    the same caveat.
 
-What keeps the page honest is `src/jvmTest/kotlin/afield/stdlib/MeshFromDiskTest.kt`: sixteen tests,
-every number quoted here asserted as an exact value, including the ToyCar counts, the fidelity table
+Every number quoted on this page is asserted as an exact value: the ToyCar counts, the fidelity table
 row by row, the `84 + 50n` STL size, the five shading counts, and the fact that `.step` still fails.
-`MeshIoTest.kt` covers the OBJ/STL readers themselves — quads, negative indices, the
-`solid`-prefixed-binary sniff trap, uv survival.
+
+??? aside "Where those assertions live"
+    `src/jvmTest/kotlin/afield/stdlib/MeshFromDiskTest.kt`, sixteen tests. `MeshIoTest.kt` covers the
+    OBJ/STL readers themselves — quads, negative indices, the `solid`-prefixed-binary sniff trap, uv
+    survival.
 
 ## Playing with it instead of reading it
 
@@ -712,8 +715,8 @@ The three fences above are also a loadable document. Replay
 the same three boxes live. Point the first box's `path` at a mesh file of your own and re-run it;
 change the second box's weld tolerance, or the third's corner colours, and watch the numbers and the
 picture move together. Boxes two and three write only into a temp directory they delete themselves.
-That transcript is classified `EXECUTE` in `DemoTranscriptExecSmokeTest`, so the GLB path on this page
-is re-run by CI on every build rather than asserted once and forgotten.
+That transcript is re-executed on every build, so the GLB path on this page is checked continuously
+rather than asserted once and forgotten.
 
 ## Reference
 

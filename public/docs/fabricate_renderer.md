@@ -2,9 +2,14 @@
 
 `StandardRenderer` is the quick path into the fabricated renderer. A new scene should be lit already. Metalness should visibly change the material. Shadows should land where objects touch the ground. Ambient occlusion should add contact darkening, not mystery noise.
 
-These examples are also `FIELD_TEST` smoke tests, so the page doubles as a small renderer checklist. The docs runner uses `StandardRendererDocsHarness` behind the scenes to make deterministic captures; the screenshot harness now builds `FabricateNode` and `FabricateMaterial` state, binds renderer meshes to node world transforms, asks `FabricateScenePlanner` for draw/material queues, then attaches the `FabricateFrameGraph` for capture.
+Every example below is also a `FIELD_TEST` smoke test, so the page doubles as a renderer checklist: if a picture here is wrong, the build says so.
 
-The current "make it feel like Three.js" target asset is `assets/fabricate_demo/ToyCar.glb`, paired with `assets/fabricate_demo/venice_sunset_1k.exr`. ToyCar is intentionally more demanding than our hand-built torus scenes: it carries transmission, clearcoat, sheen, tangent-space normal maps, texture transforms, and multiple texture semantics. Venice Sunset drives the first image-based-lighting path through `LoadedTexture.fromExrFile(...)`, which decodes EXR channels into RGBA32F, can build GGX-prefiltered radiance mips, and samples that mip chain by roughness. A cubemap target and BRDF LUT are still the next quality jumps.
+The most demanding scene on the page is `assets/fabricate_demo/ToyCar.glb`, paired with the `venice_sunset_1k.exr` environment. ToyCar carries transmission, clearcoat, sheen, tangent-space normal maps, texture transforms, and multiple texture semantics — considerably more than a hand-built torus asks for. Venice Sunset drives the image-based-lighting path through `LoadedTexture.fromExrFile(...)`, which decodes EXR channels into RGBA32F, can build GGX-prefiltered radiance mips, and samples that mip chain by roughness. A cubemap target and a BRDF LUT are the next quality jumps.
+
+??? aside "How the captures on this page are made"
+    The docs runner drives `StandardRendererDocsHarness`: it builds `FabricateNode` and `FabricateMaterial`
+    state, binds renderer meshes to node world transforms, asks `FabricateScenePlanner` for the draw and
+    material queues, then attaches the `FabricateFrameGraph` for capture.
 
 The common pattern is:
 

@@ -2,9 +2,9 @@
 
 Field's Forth support is intentionally small: one data stack, a mutable dictionary, a few control-flow words, vector helpers, a reflection bridge into JVM objects, and enough `FLine` vocabulary to sketch geometry quickly.
 
-The original examples live in `src/jvmMain/kotlin/afield/forth/ForthInterpreter.kt`. The docs version expands a few and keeps the runnable ones under test.
+The original examples live in `src/jvmMain/kotlin/afield/forth/ForthInterpreter.kt`; the ones here expand on a few of them.
 
-In a live Field document, Forth boxes usually sit under a parent box whose `isForthRoot` property is `true`. The examples below are still authored as raw Forth, but the docs runner executes them through the same `ForthInterpreter` class so the code blocks can stay readable.
+In a live Field document, Forth boxes usually sit under a parent box whose `isForthRoot` property is `true`. The examples below are written as raw Forth, and every one of them was run through the same `ForthInterpreter` your boxes use.
 
 ## A tiny stack language
 
@@ -323,7 +323,7 @@ That is the useful split: Forth orchestrates, the host owns the resource.
 
 ## Launch mode and `frame`
 
-The interpreter also has a cooperative `frame` primitive for launch-mode animation. This example is lifted almost directly from the interpreter docs and is meant to run in a real Forth box inside Field, not inside the docs build.
+The interpreter also has a cooperative `frame` primitive for launch-mode animation. This one needs a real, launched Forth box to do anything — it animates, so there is nothing to print.
 
 ```diffstatic {data-lang=forth}
 variable tick

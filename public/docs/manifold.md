@@ -33,7 +33,7 @@ display(part.toTriMesh())
 This is the part that changes how the API feels. Manifold measures the **solid**, not a sum over float
 triangles, so the primitives come back to the last digit — and that means you can do arithmetic with
 the results and assert on them, rather than eyeballing a render. Every figure in this table is asserted
-in `ManifoldTest`:
+on every build:
 
 | what | Field says | closed form |
 |---|---|---|
@@ -58,7 +58,7 @@ The whole point is that a chain of these cannot silently stop being a solid. Not
 rather than folding `+` — Manifold plans the whole batch instead of nesting *n−1* operations — and
 `Solid.scope { }`, which releases the intermediates rather than leaving them to a `Cleaner`.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/booleans.png" wait="4" capture="box" open-outputs="true" padding="20" requires="manifold"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/booleans.png" wait="4" capture="box" open-outputs="true" padding="20" requires="manifold" name="booleans" embed=true}
 :::static
 import afield.manifold.*
 
@@ -198,7 +198,7 @@ happens at a corner.
 That single operation is a fillet, a wall thickness, a tool radius, a clearance, a press fit, and a
 stroke that is a *shape* rather than a rendering hint.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/offsets.png" wait="4" capture="box" open-outputs="true" padding="20" requires="manifold"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/offsets.png" wait="4" capture="box" open-outputs="true" padding="20" requires="manifold" name="offsets" embed=true}
 :::static
 import afield.manifold.*
 
@@ -283,7 +283,7 @@ the guarantee: whatever the field did — a sheet thinner than the grid, a surfa
 feature below the cell size — **the output is a valid closed manifold**, and therefore something you
 can immediately subtract from.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/levelset.png" wait="8" capture="box" open-outputs="true" padding="20" requires="manifold"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/levelset.png" wait="8" capture="box" open-outputs="true" padding="20" requires="manifold" name="levelset" embed=true}
 :::static
 import afield.manifold.*
 import kotlin.math.abs
@@ -368,7 +368,7 @@ nothing looks different.
 `slice(z)` is a real cross section, not a silhouette — the primitive under every fabrication path.
 Each layer is a `Section`, so it offsets, which is how a layer outline becomes a toolpath.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/slices.png" wait="6" capture="box" open-outputs="true" padding="20" requires="manifold"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/slices.png" wait="6" capture="box" open-outputs="true" padding="20" requires="manifold" name="slices" embed=true}
 :::static
 import afield.graphics.FLine
 import afield.manifold.*
@@ -535,8 +535,8 @@ problem, and the `Cleaner` sits behind it.
     first read aborts the process inside libc++ with `mutex lock failed` and no Java stack at all. And
     `manifold_ray_cast` reports its hit distance as a **fraction of the origin-to-end segment**, so a
     hit 4 units away on a ray of length `1e4` arrives as `4.0e-4` — a number that looks like "at the
-    origin" and is not wrong enough to notice. That is why almost every assertion in `ManifoldTest` is
-    a closed form rather than a tolerance.
+    origin" and is not wrong enough to notice. That is why almost every assertion behind this page is a
+    closed form rather than a tolerance.
 
 ## Installing it
 

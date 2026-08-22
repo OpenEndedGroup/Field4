@@ -114,11 +114,10 @@ drawables without knowing that meshes exist.
 The same names and the same meanings are the point: a docs figure written against `MeshView` has to
 survive the switch of renderer. The viewer reimplements the yaw/pitch/distance → eye-position
 conversion in JavaScript, which is a second implementation of something with a sign convention in
-it; it is marked `// [viewer-region camera-preset]` in `threejs_viewer.html` and held against the
-Kotlin original by `ThreeCameraPresetParityTest`.
+it; it is marked `// [viewer-region camera-preset]` in `threejs_viewer.html`, and the build holds the
+two implementations to each other.
 
-!!! warning "`distance` does not mean the same thing in the viewer, and this is not written down anywhere else"
-
+!!! warning "`distance` does not mean the same thing in the viewer"
     The preset supplies the camera's **direction**. It does not supply its **distance**. Having
     placed the eye, the viewer runs a zoom-to-fit (`fitCameraToBounds`) that slides the eye along the
     view direction until the geometry's own sampled points fit the frame the viewer was actually
@@ -296,11 +295,10 @@ hard they are to work around:
 
 **It is deterministic, and a GPU is not.** This is the load-bearing one. The pixel-exact proofs
 compare against it, and a GPU capture cannot play that role — driver, vendor and antialiasing all
-move under you. Six test classes assert on its output today:
-`MeshDefectRenderTest`, `SolidSLRenderProofTest`, `MeshIoTest`, `MeshFromDiskTest`,
-`AssimpSceneBridgeTest` and `MeshVisualizerPixelTest`. They are pixel *statistics* — counts of red
-defect-overlay pixels, coverage fractions, painted-area bounds, outward-versus-flipped diffs — rather
-than golden images, but every one of them needs the same input to produce the same number twice.
+move under you. Six test classes assert on its output today, and what they assert is pixel *statistics* —
+counts of red defect-overlay pixels, coverage fractions, painted-area bounds, outward-versus-flipped
+diffs — rather than golden images. Every one of them needs the same input to produce the same number
+twice, which only the CPU rasterizer can promise.
 
 **It needs no WebGL context.** The inline value-visualizer card that appears when a box ends on a
 `TriMesh` uses it, because an iframe per mesh in a list of values is a bad trade — and it is exactly
@@ -434,13 +432,15 @@ it is, put a `TriMesh` you want to *interrogate* through `toFLines(...)` and han
 ## What is deliberately unchanged
 
 `ThreeGeometryPayload`'s `lines` / `fills` / `points` are untouched, and a payload with an empty
-`drawables` list serialises byte for byte as it did before any of this existed. Two tests in
-`ThreeSceneTest` hold it there — *an FLine payload carries none of the new keys* and *a mesh scene
-does carry them*. (`Three.kt` and `ThreeJsViewer.kt` both name a `ThreeScenePayloadCompatibilityTest`
-for this; no such class exists in the tree at the time of writing, and those two tests are what the
-KDoc means.) That is what lets the editable path, the
-inspector and the tests that pin the current payload carry on without a second thought, and it
-is why no FLine capture in the docs moved when the mesh path landed.
+`drawables` list serialises byte for byte as it did before any of this existed. Both halves are held
+there on every build — *an FLine payload carries none of the new keys* and *a mesh scene does carry
+them*. That is what lets the editable path, the inspector and the tests that pin the current payload
+carry on without a second thought, and it is why no FLine capture in these docs moved when the mesh
+path landed.
+
+??? aside "A KDoc reference that points at nothing"
+    `Three.kt` and `ThreeJsViewer.kt` both name a `ThreeScenePayloadCompatibilityTest` for this. No such
+    class exists in the tree; the two `ThreeSceneTest` cases described above are what that KDoc means.
 
 Three.js itself is **vendored**, not fetched: `src/commonMain/resources/vendor/three/0.184.0/`. A
 viewer works offline and a docs capture does not depend on a CDN.
@@ -466,15 +466,15 @@ All five figures on this page are `diffstatic_runner` fences: the docs build run
 in a real Field box and the image underneath is that box's own output, captured from the browser.
 Nothing here is drawn by hand, and nothing here is a mock-up of an output area.
 
-`tools/docs_capture_audit.py --page three_output.md --repeat 2` re-derives all five from the code
-twice and compares per pixel: **five identical, no failures.** That is worth two sentences of nuance
-rather than a boast. It says these captures are deterministic *on one machine, one GPU, one driver,
-run to run* — which is the useful property for a docs build. It does not say they are reproducible
-*across* machines, and a WebGL capture is not: that is the whole reason the CPU half of the
-renderer-comparison figure exists, and the whole reason the rasterizer is still in the tree.
+A WebGL capture is deterministic on one machine, one GPU and one driver, but not *across* machines —
+which is the whole reason the CPU half of the renderer-comparison figure exists, and the whole reason
+the rasterizer is still in the tree.
 
-One wrinkle worth knowing if you write a fence like these. The runner's output validator treats a
-bare `lines(` in the code as a call to `Box.lines(...)`, the 2D SVG path, and then fails the capture
-because no `<svg>` appeared. Inside `three { }`, `lines(…)` is the scene builder's and emits an
-iframe. `// FIELD_DOCS_EXPECT_SVG: false` in the fence is the documented escape hatch, and the first
-figure on this page carries it.
+??? aside "Two things to know if you write a fence like these"
+    `tools/docs_capture_audit.py --page three_output.md --repeat 2` re-derives all five figures from the
+    code twice and compares per pixel: five identical, no failures.
+
+    The runner's output validator treats a bare `lines(` in the code as a call to `Box.lines(...)`, the 2D
+    SVG path, and then fails the capture because no `<svg>` appeared. Inside `three { }`, `lines(…)` is the
+    scene builder's and emits an iframe — `// FIELD_DOCS_EXPECT_SVG: false` in the fence is the escape
+    hatch, and the first figure on this page carries it.

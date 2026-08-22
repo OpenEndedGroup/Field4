@@ -543,19 +543,20 @@ amounts to produce:
 | the five `diffstatic_runner` fences above | **executed by the docs build**; the image under each is that box's own output, drawn by the Three.js viewer — which is what `showMeshGrid` now uses |
 | `assets/mesh_gallery/*.png` (four figures) | **committed captures** from the `mesh.gallery` FIELD_TEST: `python3 tools/run_field_tests.py --id mesh.gallery --port 9700`. These are composited from `renderPixels`, so they are the **CPU rasterizer** and always will be — that is the point of them |
 
-The distinction is smaller than it looks, and neither route notices on its own when the code moves
-underneath it. A `diffstatic_runner` fence is re-executed only when the build decides its capture is out
-of date, and that decision comes from a fixed digest list — `RUNNER_DIGEST_SOURCE_FILES` in
-`public/docs_hooks.py` — which covers the runner's own machinery and **no stdlib source at all**. So
-editing `mesh_*.kt` leaves every digest unchanged, an incremental build is a cache hit, and the fences
-are not re-run. The four gallery figures are committed PNGs with the same property: they need
-`mesh.gallery` re-run to reflect a change. Read both routes as "real output, as of when it was taken",
-and regenerate deliberately after changing the family — `FIELD_DOCS_RUNNER_MODE=always` for the fences,
-the FIELD_TEST for the gallery. What *does* guard the family is the gallery itself: it is a FIELD_TEST
+Read both routes as "real output, as of when it was taken", and regenerate deliberately after changing
+the family. What guards the family continuously is the gallery itself: it is a FIELD_TEST
 rather than a script, so
 it **fails** if the invariants break — if a generator stops being watertight, if a marched sphere's
 volume error stops falling with resolution, if a decimation misses its budget, if Gauss–Bonnet stops
 matching 2πχ, or if the Voronoi cells stop tiling their clip box.
+
+??? aside "Neither route notices on its own when the code moves underneath it"
+    A `diffstatic_runner` fence is re-executed only when the build decides its capture is out of date, and
+    that decision comes from a fixed digest list — `RUNNER_DIGEST_SOURCE_FILES` in `public/docs_hooks.py` —
+    which covers the runner's own machinery and no stdlib source at all. So editing `mesh_*.kt` leaves every
+    digest unchanged, an incremental build is a cache hit, and the fences are not re-run;
+    `FIELD_DOCS_RUNNER_MODE=always` forces them. The four gallery figures are committed PNGs with the same
+    property: they need `mesh.gallery` re-run to reflect a change.
 
 There is a third route for playing with it rather than reading it: replay
 `dev_docs/agents/transcripts/mesh_geometry_examples.yaml` into a fresh Field with the agent backdoor

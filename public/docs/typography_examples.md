@@ -491,7 +491,7 @@ A JVM that reads glyph outlines and passes `-XstartOnFirstThread` must also pass
 `-XstartOnFirstThread` — which GLFW requires — that thread only services the dispatch if something is
 pumping its run loop. `Typefaces.warm()` detects this in four seconds and throws with the flag in the
 message rather than hanging. Field's own desktop JVM sets it (`build.gradle.kts`, `requiredRunJvmArgs`),
-which is why the captures on this page exist at all.
+so you only meet this in a JVM you launched yourself.
 
 ## Run it yourself
 

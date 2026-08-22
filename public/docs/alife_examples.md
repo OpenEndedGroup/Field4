@@ -638,8 +638,7 @@ neighbour counting must agree **bit for bit**.
 difference over 20 generations of a glider is `0.0`. Moving the growth window one neighbour count
 diverges completely.
 
-Be precise about what that proves, because an earlier draft of this page was not: it called the two
-"separately written steppers", and they are not independent implementations of Conway's Life.
+Be precise about what that proves. These are not two independent implementations of Conway's Life:
 `leniaFromLifeRule` reads the very same `B3/S23` birth and survive sets that the integer stepper reads,
 so a wrong table would produce two wrong steppers in perfect agreement. What the bit-for-bit result
 cross-validates is the two **update mechanisms** — a float convolution, an additive `A + dt·G` step, the

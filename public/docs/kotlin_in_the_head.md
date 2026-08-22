@@ -236,9 +236,9 @@ disposes the audio nodes so a relaunch doesn't stack a second arpeggio on top.
 
 !!! warning "Audio needs a real head + a gesture"
     Web audio will not start without a user gesture, and there is nothing to hear in a headless build.
-    So this example is verified only up to *"the emitted JS calls these Tone names"* — which the
-    `KotlinJsHeadProfilesSmokeTest` proves by executing the compiled module under Node against a mock
-    `Tone`. To actually hear it, run it in a browser head and click.
+    So this example is verified only up to *"the emitted JS calls these Tone names"*, which is proved by
+    executing the compiled module under Node against a mock `Tone`. To actually hear it, run it in a
+    browser head and click.
 
 ## Worked example 4 — visionmetal (native Metal on Vision Pro)
 

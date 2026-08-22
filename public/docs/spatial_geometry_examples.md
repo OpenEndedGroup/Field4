@@ -237,9 +237,8 @@ a cell with holes, not a polygon, and not even simply connected.
 That is why `CellBoundary.toFLines(...)` returns **one `FLine` per piece rather than one per cell**.
 Joining them into a single path would be a lie about the topology. It is also why the analytic answer
 is worth checking, and does check out: for two sites at `p_i`, `p_j` with weight ratio `k = w_j/w_i`,
-the Apollonius circle is centred at `(k² p_i − p_j) / (k² − 1)`, and
-`SpatialGeometryTest.aHeavySiteSwallowsItsNeighbourIntoACompleteDisc` asserts exactly that against
-`arc.support.center`.
+the Apollonius circle is centred at `(k² p_i − p_j) / (k² − 1)` — and that closed form is asserted
+against `arc.support.center` on every build.
 
 ### Watch the bisector bow
 
@@ -570,8 +569,7 @@ There is a matching invariant in the other direction, and it is the one I got wr
 `{−f = 0}` are the same set of points, so a marcher that moved the curve would be reporting two
 different answers for one curve. It works out because the two flips cancel — negation swaps which
 corners are inside *and* flips the sign of the saddle value, and the decider compares the two. Both
-properties, and the control-arm run confirming the pre-fix marcher fails the first, are in
-`SpatialGeometryTest.theSaddleDeciderReadsTheCornerMagnitudesNotTheirSigns`.
+properties are asserted, with a control arm confirming that the pre-fix marcher fails the first.
 
 Both halves of that — the decision and the tie — fit in one figure, because a single cell with four
 prescribed corner values is a complete input to `generateIsoContours`.
@@ -702,8 +700,8 @@ side of `iso` the saddle falls on. Nothing but the four corner values went in, s
 corner values can have decided it: that is the property that lets two cells sharing an edge agree
 about the crossing on it, and the one a fixed pairing cannot promise.
 
-The box also prints the invariant from the other side, which is the claim an earlier draft of this
-page got backwards: negating *every* corner value leaves the crossing exactly where it was. It has to,
+The box also prints the invariant from the other side, and it is the easy one to get backwards: negating
+*every* corner value leaves the crossing exactly where it was. It has to,
 because `{f = 0}` and `{−f = 0}` are the same curve — and it does, because negation flips which
 corners are inside *and* the sign of the saddle, and the decider compares the two.
 
@@ -905,8 +903,7 @@ whole mechanism is that one *squaring*: a point three times further away is nine
 
 That prediction is testable, and it holds: the threshold should sit at `d = √(81.2 / 0.966) = 9.17`,
 and moving the stray inward, the cut flips from `1 / 28 / 56` to `28 / 28 / 29` between
-**d = 8.32 and d = 9.72** — the two sampled distances that bracket 9.17.
-`SpatialGeometryTest.oneStrayPointBuysAWardClusterButNotAMedoidOne` asserts it.
+**d = 8.32 and d = 9.72** — the two sampled distances that bracket 9.17, and that bracket is asserted.
 
 **k-medoids and k-medians both shrug the stray off, and they are the right answer here.** Both minimise
 a sum of *distances*, so that point costs 9.72 rather than 94.5, and absorbing it as one eccentric
@@ -1219,8 +1216,7 @@ exactly symmetric input, where seven bisectors really do meet at each corner of 
 **And honestly, the residual.** This is a `Float` clipper and the guarantee is not absolute. On the
 sweep that ratcheted the fix: **4 of 465 bounded cells** and **12 of 447 clipped cells** still fail
 the strict closure check — every edge walked by exactly two faces in opposite directions. Those
-counts are pinned with `<=` in `VoronoiFaceTopologyTest`, so they can improve but cannot regress
-silently. Cell volumes tile the clip box to 1 × 10⁻⁴ relative, and cells of a cubic lattice come out
+counts are pinned with `<=`, so they can improve but cannot regress silently. Cell volumes tile the clip box to 1 × 10⁻⁴ relative, and cells of a cubic lattice come out
 as exact unit cubes. If you are building a mesh from the faces, use
 `VoronoiCell3.toTriMesh(shrink)` / `VoronoiLattice.toTriMesh(...)` from
 [Meshes & 3D Geometry](mesh_examples.md), which is where the pictures of 3D cells live and where the
@@ -1254,22 +1250,21 @@ bridge does its own repair.
 
 ## Where the pictures come from
 
-Every figure on this page is the output of the `diffstatic_runner` fence above it, executed by the
-docs build inside a real Field box — there are no committed captures and no hand-drawn diagrams here.
-
-That is worth stating precisely, because "the docs build was green" is *not* evidence that a figure
-matches the code. A fence is re-executed only when the build decides its capture is stale, and that
-decision comes from a fixed digest list — `RUNNER_DIGEST_SOURCE_FILES` in `public/docs_hooks.py` —
-which covers the runner's own machinery and **no stdlib source at all**. Edit `contours.kt` or
-`clustering.kt` and every digest is unchanged, so an incremental build is a cache hit and these
-fences do not run. Every figure here was generated with `FIELD_DOCS_RUNNER_MODE=always`, which
-bypasses the cache, and that is the only way to be sure. `dev_docs/docs_capture_staleness.md` has the
-details.
+Every figure on this page is the output of the `diffstatic_runner` fence above it, executed inside a real
+Field box — there are no committed captures and no hand-drawn diagrams here.
 
 What guards the *claims* rather than the pictures is
-`src/jvmTest/kotlin/afield/stdlib/SpatialGeometryTest.kt` — 21 tests over four files that had none
-between them, including the Euler counts, the Apollonius circle's analytic centre, the score-tie
-invariant on every weighted cell boundary, and both of the marching-squares regressions above.
+`src/jvmTest/kotlin/afield/stdlib/SpatialGeometryTest.kt`: the Euler counts, the Apollonius circle's
+analytic centre, the score-tie invariant on every weighted cell boundary, and both of the
+marching-squares regressions above.
+
+??? aside "A green docs build is not evidence that a figure matches the code"
+    A fence is re-executed only when the build decides its capture is stale, and that decision comes from a
+    fixed digest list — `RUNNER_DIGEST_SOURCE_FILES` in `public/docs_hooks.py` — which covers the runner's
+    own machinery and no stdlib source at all. Edit `contours.kt` or `clustering.kt` and every digest is
+    unchanged, so an incremental build is a cache hit and these fences do not run. Every figure here was
+    generated with `FIELD_DOCS_RUNNER_MODE=always`, which bypasses the cache, and that is the only way to
+    be sure; `dev_docs/docs_capture_staleness.md` has the details.
 
 ## Reference
 

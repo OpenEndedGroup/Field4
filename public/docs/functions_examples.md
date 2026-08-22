@@ -3761,7 +3761,7 @@ run.best.browseGraph(channel = "evolved")
 
 #### A worked run (CPU-only, reproducible)
 
-Prose is easy to distrust, so here is an actual run — no GPU, no window, just the harness. The worked example lives in `afield.examples.functions.EvolveWorkedExample`; it runs this exact search on the CPU, and `EvolveWorkedExampleTest` asserts the numbers below reproduce exactly under the fixed seed (and match the values printed here). The figure that follows is a live capture of the same run plotted in a box.
+Prose is easy to distrust, so here is an actual run — no GPU, no window, just the harness. The worked example lives in `afield.examples.functions.EvolveWorkedExample`; it runs this exact search on the CPU, and every number below is asserted to reproduce exactly under the fixed seed. The figure that follows is a live capture of the same run plotted in a box.
 
 The setup is deliberately adversarial in two independent ways at once. The **target** is a half-amplitude sine, `sin(frequency = 1.0, amplitude = 0.5)`. The **seed** is a full-amplitude *cosine*, `cos(frequency = 1.0, amplitude = 1.0)` — the wrong op *and* the wrong amplitude. To reach the target a run must both transmute the operator (via `substituteOp`, staying inside the oscillator family) and dial in the numeric leaves (via `jitter`/`nudge`), with `prune` trimming structure for parsimony. Everything runs under a fixed `rngSeed = 3`.
 

@@ -158,15 +158,17 @@ between "advance, then run" and "run, then advance". The `loop`/`forever` condit
 part worth internalising: a body that calls `frame()` or `delay(ms)` itself does not get a second
 advance bolted on afterwards.
 
-!!! note "`forever { }` needs qualifying, and has no callers in the tree."
-
+!!! note "`forever { }` needs qualifying"
     A box imports both `afield.*` and `afield.four.util.*`, and each declares a `forever` — one
     returning a `Frames`, one returning a `Sequence<Boolean>`. A bare `forever { }` in box code is
     therefore an overload resolution ambiguity, which is why the figure above says
-    `afield.forever { }`. Nothing in Field's own source calls either the `Frames` `forever` or the
-    parallel-composition operator `Frames.plus`; both are public and both work — the figure drives
-    `forever` and it behaves exactly as documented — but they carry less exposure to change than
-    the other three builders.
+    `afield.forever { }`.
+
+??? aside "`forever` and `Frames.plus` have no callers in the tree"
+    Nothing in Field's own source calls either the `Frames` `forever` or the parallel-composition
+    operator `Frames.plus`. Both are public and both work — the figure above drives `forever` and it
+    behaves exactly as documented — but they carry less exposure to change than the other three
+    builders.
 
 ## What stops one
 
@@ -278,8 +280,8 @@ happen either way, use a Kotlin `try`/`finally` inside the body.
 
 And when both are present and a cancellation arrives, **`.end { }` runs first** — `frame()` calls it
 from inside its own `catch`, before rethrowing, so the cancellation has not yet unwound the body's
-`finally`. That is the opposite of the order you would guess from the nesting.
-(`FramesSemanticsTest.theEndBlockRunsBeforeTheBodysOwnFinally`.)
+`finally`. That is the opposite of the order you would guess from the nesting, and it is asserted rather
+than incidental.
 
 When `atEnd` does run, it runs properly: `frame()` re-enters through `withContext(NonCancellable)`
 on a fresh `Job` that inherits the dispatcher and the box context, so the end block still gets frames
@@ -302,8 +304,7 @@ and can still draw. It is registered with the box as well, and fenced by its own
     Re-running the box is different: that bumps the strand *generation* and leaves `launchEpoch`
     alone, so the end job registers and `.end { }` runs normally.
 
-    Both halves are pinned by `FramesSemanticsTest.boxStopCancelsTheEndBlockBeforeItCanRun` and
-    `reRunningTheBoxStillRunsTheEndBlock`. The practical rule: **`.end { }` is for cleanup you want
+    Both halves are pinned on every build. The practical rule: **`.end { }` is for cleanup you want
     when the animation retires itself or gets replaced, not for releasing something that must be
     released when a person presses stop.** Put that in a `finally`.
 
@@ -318,8 +319,8 @@ and can still draw. It is registered with the box as well, and fenced by its own
     above. Instead a box now carries `stopHooks`: a short, synchronous teardown list that
     `stopTrackedJobs` drains after cancelling jobs, and `streamProcess` registers its kill there.
     So the child dies on stop, while the suspending `atEnd` *user callback* — which belongs to the
-    end phase — is still skipped. `StreamProcessStopLeakTest` pins both routes:
-    `stopKillsTheProcess` (via the hook) and `reRunningTheBoxKillsTheProcess` (via the end phase).
+    end phase — is still skipped. Both routes are pinned: the child dying via the hook on stop, and dying
+    via the end phase on a re-run.
 
     The rule for your own code is unchanged, and is the reason the hook exists: **if something must
     be released when a person presses stop, do not put it in `.end { }`.** The mechanism, the full
@@ -335,10 +336,9 @@ it is monotonic wall time. Its second mode is the reason it exists:
 > Field frame has been painted and copied into the movie. Code using `nowSeconds` therefore becomes
 > frame-indexed during offline capture without changing its live, interactive pacing.
 
-That is what makes an animation reproducible. During the capture that produced the video below, the
-docs runner blocks the Runloop while Playwright paints and screenshots each frame; real time runs at
-whatever rate that takes, and `nowSeconds()` advances by exactly 1/20 s per captured frame regardless.
-Motion written against it is identical every build.
+That is what makes an animation reproducible. During an offline capture, real time runs at whatever rate
+the capture takes while `nowSeconds()` advances by exactly `1 / fps` per captured frame — so motion
+written against it comes out identical every time, including in the video below.
 
 Live, though, the rate is whatever the machine can manage. This is the page's opening claim,
 measured — a frame body that does nothing but stamp the clock, for two seconds, plotted:
@@ -381,11 +381,10 @@ animate {
 
 ![A per-frame interval plot titled 1,407 frames in 1.95 s. A dense band of gaps filling everything between zero and about 1,700 microseconds, five spikes reaching 2,500 to 3,500, and a 100-frame running mean that wanders between 1,200 and 1,500 rather than holding any constant value](assets/animation_time_model/cadence.png)
 
-Read the title, and then read the spikes. That number is not a property of Field; it is a property
-of this machine, this build, and whatever else the Runloop was carrying at the time — the figure was
-captured inside the docs build, with a browser attached and other boxes idle in the same process.
-Run the [demo document](#where-this-lives) and you will get a different one, and a different one
-again on the second run. Nothing in that plot is a frame *rate* you could schedule against, which is
+Read the title, and then read the spikes. That number is not a property of Field; it is a property of one
+machine, one build, and whatever else the Runloop happened to be carrying — in this case a browser
+attached and other boxes idle in the same process. Run the [demo document](#where-this-lives) and you will
+get a different one, and a different one again on the second run. Nothing in that plot is a frame *rate* you could schedule against, which is
 the entire reason to write motion against seconds.
 
 ## An animation, and the moment it stops

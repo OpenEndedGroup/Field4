@@ -93,7 +93,7 @@ Kotlin sampling a distance field and summing signed tetrahedra over `Float` tria
 Manifold's C++ kernel integrating a solid in `double`. There is no bug that makes both wrong in the
 same direction.
 
-Eleven shapes, at a march cell of `size/90`, all asserted in `SolidSLCrossValidationTest`:
+Eleven shapes, at a march cell of `size/90`, every row of it asserted:
 
 | case | path | volume rel | area rel | dev/size | genus |
 |---|---|---|---|---|---|
@@ -367,8 +367,8 @@ write a *reader* for.
 
 Which is the whole point. shaderc proves the text is *valid* — 29 of 29 raymarch shaders produce
 SPIR-V — but a dropped negation, a swapped `min` and `max`, or an argument in the wrong position all
-compile perfectly. So `SolidSLGlslTest` parses the emitted characters back with a recursive-descent
-evaluator written from the grammar rather than from the emitter, and runs it:
+compile perfectly. So the build parses the emitted characters back with a recursive-descent evaluator
+written from the grammar rather than from the emitter, and runs it:
 
 > **29 shapes, 58,000 point comparisons, worst relative disagreement `6.3e-15`.** Nineteen of the 29
 > are bit-identical.

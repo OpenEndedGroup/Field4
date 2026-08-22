@@ -86,8 +86,7 @@ another tool, `SummaryStats` matches NumPy and SciPy *exactly* — `q1`/`median`
 `numpy.percentile`'s default linear interpolation, `mad` is `median(|y − median(y)|)`,
 `sampleStdDev` is `numpy.std(ddof=1)`, and `skewness`/`kurtosisExcess` are `scipy.stats.skew`
 and `scipy.stats.kurtosis` at their *default* `bias=True`. That is not a claim about intent: it is
-checked to ten decimal places against SciPy 1.15.2 on a deliberately tie-heavy ten-point dataset
-in `StatsSummaryTest`, `src/jvmTest/kotlin/afield/stdlib/StatsSummaryTest.kt`.
+checked to ten decimal places against SciPy 1.15.2 on a deliberately tie-heavy ten-point dataset.
 
 Three more edges, all guarded rather than propagated, so you get a number instead of a NaN:
 
@@ -525,8 +524,7 @@ and double-centres them (`correlations.kt:415`–`correlations.kt:495`). Two gen
 algorithms, and on the final window they agree to **5×10⁻¹⁵**. The KDoc at
 `correlations.kt:667`–`correlations.kt:669` warns that the incremental sums drift over a long run,
 and they do — but the drift is small: over **200 000** pushes with a window of 64, the largest
-disagreement sampled against the batch call was **8.6×10⁻¹⁴**. Both bounds are pinned in
-`RollingDependenceTest`.
+disagreement sampled against the batch call was **8.6×10⁻¹⁴**. Both bounds are pinned.
 
 ## Reshaping a distribution: `quantilewarp.kt`
 

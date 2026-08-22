@@ -1,14 +1,16 @@
 # Making a sound in Field: every path there is
 
-You want to hear something. There is more than one way, and until this page existed there was no
-way to find out how many.
+You want to hear something. There is more than one way, and this page is the complete map of them.
 
 **Six things in Field make samples. Five things carry samples out of the process. Four bring them
-in.** Six, not two — [Sound: from a pattern to something you can hear](sound.md) opened by saying
-Field had "two" things that turn a pattern's events into samples, which was true of *patterns* and
-was never true of *sound*. Faust arrived and made it visibly false. This page is the map, and the
-numbers on it are held by a guard rather than by memory: `SoundPathMap.SOURCE_COUNT` is `6` and
+in.** Those numbers are held by a guard rather than by memory: `SoundPathMap.SOURCE_COUNT` is `6` and
 [the build fails](#the-map-is-derived-not-remembered) if `PATHS` disagrees.
+
+??? aside "Why the count is six and not two"
+    [Sound: from a pattern to something you can hear](sound.md) opened by saying Field had "two" things
+    that turn a pattern's events into samples. That was true of *patterns* and was never true of *sound*,
+    and Faust arriving made it visibly false — which is why the number is now derived rather than
+    remembered.
 
 ---
 
@@ -74,8 +76,8 @@ auditable at all.
 
 Link Audio is how `sonic-pi` and Field reach each other without a virtual cable — but be precise
 about which direction is *known* to work. **Field → Sonic Pi is measured**: Field publishes a channel
-through `enableAudioOutput` and Sonic Pi v5's `link_audio` subscribes to it, and
-`SonicPiLinkAudioProbe` puts a 440 Hz tone in one end and looks for it at the other. See
+through `enableAudioOutput` and Sonic Pi v5's `link_audio` subscribes to it; a probe puts a 440 Hz tone in
+one end and looks for it at the other. See
 [Sonic Pi](sonic_pi.md), including the Link visibility toggle that defaults to Off and gives you
 silence with nothing to explain it. **Sonic Pi → Field** is supported by both APIs — Sonic Pi has
 `link_audio_publish_set!` and Field has `linkAudioIn(channelName)` — and nothing in this tree
@@ -207,8 +209,7 @@ A hand-maintained list of render paths is exactly the artifact that rots, so thi
 against the code in `check`, in the shape [`DocsAudioProvenance`](sound.md#and-the-same-question-asked-of-every-clip-in-the-docs)
 already established: declare, re-derive from the tree, fail on disagreement.
 
-`SoundPathMap` declares the paths. `SoundPathMapGuardTest` and the `synth.sound.path.map` smoke
-then assert five things:
+`SoundPathMap` declares the paths, and the `synth.sound.path.map` smoke then asserts five things:
 
 1. **The counts.** `SOURCE_COUNT = 6`, `SINK_COUNT = 5`, `INPUT_COUNT = 4`, `SEAM_COUNT = 7`. The
    last one is the interesting ratchet: if a later change adds a path *beside* the seam rather than

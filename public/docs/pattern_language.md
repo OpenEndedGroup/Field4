@@ -30,7 +30,7 @@ clip in these docs is which.
 An **event** is a value with a span of time. A **query** is a span you ask about. The whole
 language is functions from queries to lists of events.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/first-query.png" wait="1.5" capture="box" open-outputs="true" name="pat-doc-first-query"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/first-query.png" wait="1.5" capture="box" open-outputs="true" name="pat-doc-first-query" embed=true}
 // Nothing is stored. Ask the same pattern three different questions.
 val drums = pat("bd sd hh hh")
 
@@ -198,7 +198,7 @@ events did not know better.
 They do. Every event carries both the **part** you can see and the **whole** it was clipped
 from:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/whole-and-part.png" wait="1.5" capture="box" open-outputs="true" name="pat-doc-whole-part"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/whole-and-part.png" wait="1.5" capture="box" open-outputs="true" name="pat-doc-whole-part" embed=true}
 val crossing = pat("a b c").slow(2)
 
 val lines = buildList {
@@ -415,8 +415,8 @@ crosses bar lines plays correctly without the consumer knowing anything about cy
   [`dev_docs/PATTERN_LANGUAGE.md`](https://github.com/) in the repository, including the
   whole/part model, the contract sweep, and the three behaviours that were measured rather
   than assumed.
-- **The capture harnesses** — `dev_docs/PAT_GALLERY.md` documents the nine piano rolls and
-  eight `.wav` scenes, all of which regenerate headlessly.
+- **Every roll and clip on this page, regenerated** — the nine piano rolls and eight `.wav` scenes
+  are built headlessly; `dev_docs/PAT_GALLERY.md` documents the harness.
 - **A loadable document** — the *Pattern language* starting point in the welcome screen
   opens eight boxes covering signals, structure choice, parameters, voice leading, groove
   and mini-notation, each with a live roll and most with audio. Edit any string and re-run.

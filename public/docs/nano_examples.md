@@ -14,7 +14,7 @@ The embedded viewer's "Open in Field4" button opens a prepared Nano document wit
     allowfullscreen>
 </iframe>
 
-In a fresh document, Nano boxes live under a parent box whose `isNanoRoot` property is `true`. The examples below are authored as Nano assembly, but the docs runner assembles and executes them through Field and then renders the resulting state as HTML.
+In a fresh document, Nano boxes live under a parent box whose `isNanoRoot` property is `true`. The examples below are written as Nano assembly, and each was assembled and executed by Field; the state you see under it is what came out.
 
 ## Registers, output, and the first RAM write
 

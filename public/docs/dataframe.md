@@ -243,6 +243,11 @@ Field builds one compiler engine per box, so anything added to the compilation s
 
 Engine cost is dominated by warm-up rather than by either addition: the first engine costs ~4.6 s to construct and ~13 s to first-evaluate, the second and third ~200 ms and ~1–3 s.
 
+??? aside "The scare that produced that probe"
+    A 243-box test appeared to go from a 39–43 s pass to a 284 s failure when the plugin landed. The real
+    cause was two Field JVMs and a Gradle daemon competing for the machine; run alone, the same test passes
+    in ~103 s. Treat any timing taken on a busy machine as noise until it is reproduced idle.
+
 ---
 
 ## Where to go next

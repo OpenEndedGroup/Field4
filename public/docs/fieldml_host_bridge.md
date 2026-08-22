@@ -339,7 +339,12 @@ Then run the fourth box while it is spinning. It writes `spinRate` with `setRoot
 | the scene box | edit the `fragment` string's `vec3(0.0, 2.1, 4.2)` | different hues, because `moduleHere` recompiles from the box's properties |
 | the scene box | break the GLSL on purpose | the shader error is reported onto *this box*, which is the thing `moduleHere` gives you over hand-built parameters |
 
-There is no picture of this one. The native-window capture path timed out in the session it was verified in — and so did the frames demo, whose committed captures prove it used to work, which is how we know it was the capture path and not the scene. Its evidence is numbers instead: `builtBy = "_moduleHere"`, a 16-byte push-constant block, and 2550 frames drawn between two reads of the shared slot.
+There is no picture of this one; its evidence is numbers instead — `builtBy = "_moduleHere"`, a 16-byte push-constant block, and 2550 frames drawn between two reads of the shared slot.
+
+??? aside "Why there is no picture"
+    The native-window capture path timed out in the session this demo was verified in, and so did the frames
+    demo above, whose committed captures prove it used to work — which is how we know the capture path was
+    at fault rather than the scene.
 
 And another, the wall past the moving one: **a vertex shader with real inputs**, whose data FieldML recomputes every frame. Two `layout(location = …) in` variables, both written through `Mesh.write` — one call positional, one named, and the named one is the shape that omits `Mesh.write`'s `inside` default. Self-contained the same way the frames demo is.
 
@@ -362,4 +367,13 @@ One more is about the lambda parameters specifically — a warp with no `hostAs`
 
 ## Where to look
 
-The reflection lives in `afield.ml.core.FieldMLHostBridge` (candidates, scoring, coercion, SAM proxies) and `afield.ml.type.FieldMLHostTypes` (JVM types to FieldML types, member and overload resolution at type-check time). `Inferencer.refineHostIntrinsic` is where the two meet, and `Inferencer.preInferHostSpine` is what threads a JVM parameter type into a lambda's parameters. `FieldMLHostBridgeTest` has one test per capability, `FieldMLHostSurfaceCoverageTest` is the reachability-and-agreement measurement, `FieldMLHostAgreementTest` holds the semantically interesting calls beside the Kotlin they should equal, `FieldMLLambdaExpectedTypeTest` covers the typed callback parameters and the cases that deliberately stay untyped, `FieldMLSuspendCallbackTest` is the per-frame surface — every test in it asserts that the closure *ran*, not that a proxy exists — and `FieldMLAfieldFourReachTest` is the `threebox-2` survey with its citations. The macro layer is `afield.ml.FieldMLMacroLayer` — expansion, the callee extraction, and the ledger of which macro is reachable how — with `FieldMLSourceMacroTest` holding that ledger to the live contents of `afield.macros.MacroRegistry` in both directions. `afield.stdlib.inheritedPropertyRaw` is the walk `prop` and Kotlin's `Inheritance` delegate share. The design notes, including why a sibling Kotlin compile was refused, are in `dev_docs/FIELDML_HOST_BRIDGE.md`.
+The reflection lives in `afield.ml.core.FieldMLHostBridge` (candidates, scoring, coercion, SAM proxies) and `afield.ml.type.FieldMLHostTypes` (JVM types to FieldML types, member and overload resolution at type-check time). `Inferencer.refineHostIntrinsic` is where the two meet, and `Inferencer.preInferHostSpine` is what threads a JVM parameter type into a lambda's parameters. The macro layer is `afield.ml.FieldMLMacroLayer` — expansion, the callee extraction, and the ledger of which macro is reachable how. `afield.stdlib.inheritedPropertyRaw` is the walk `prop` and Kotlin's `Inheritance` delegate share. The design notes, including why a sibling Kotlin compile was refused, are in `dev_docs/FIELDML_HOST_BRIDGE.md`.
+
+??? aside "Which test holds which claim"
+    `FieldMLHostBridgeTest` has one test per capability. `FieldMLHostSurfaceCoverageTest` is the
+    reachability-and-agreement measurement. `FieldMLHostAgreementTest` holds the semantically interesting
+    calls beside the Kotlin they should equal. `FieldMLLambdaExpectedTypeTest` covers the typed callback
+    parameters and the cases that deliberately stay untyped. `FieldMLSuspendCallbackTest` is the per-frame
+    surface — every test in it asserts that the closure *ran*, not that a proxy exists.
+    `FieldMLAfieldFourReachTest` is the `threebox-2` survey with its citations, and `FieldMLSourceMacroTest`
+    holds the macro ledger to the live contents of `afield.macros.MacroRegistry` in both directions.

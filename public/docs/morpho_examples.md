@@ -123,9 +123,9 @@ the netlists are checked two independent ways, and neither is "it looks right".
 
 ### Arithmetic
 
-An adder that does not add is broken no matter what any reference says. `MorphoBridgeTest` compiles
-each design through GraalJS, extracts the netlist into Kotlin, and simulates it against integer
-arithmetic — exhaustively where that is possible.
+An adder that does not add is broken no matter what any reference says. So every design on this page is
+compiled through GraalJS, its netlist extracted into Kotlin, and simulated against integer arithmetic —
+exhaustively where that is possible.
 
 | design | check | vectors |
 | --- | --- | --- |
@@ -914,7 +914,11 @@ The ratio is the point. Getting a language *registered* in Field is nearly free.
 deciding what the language should *do* when it is running, and — if you are bridging rather than
 porting — reading the other implementation carefully enough to not quietly disagree with it.
 
-*Every claim on this page is checked by `MorphoBridgeTest`, `MorphoLanguageTest`,
-`MorphoRegistrationTest` and `MorphoSearchTest` — 38 tests — or measured by `MorphoMeasurements` and
-`MorphoSearchMeasurements`. The search layer's design notes, and what to try next on the adder, are
-in `dev_docs/morpho_circuit_search.md`.*
+*Every claim on this page is either checked on every build or measured; none of it is a description of
+code nobody ran.*
+
+??? aside "Which harness holds what"
+    The checks are `MorphoBridgeTest`, `MorphoLanguageTest`, `MorphoRegistrationTest` and
+    `MorphoSearchTest` — 38 tests between them. The numbers that are measurements rather than assertions
+    come from `MorphoMeasurements` and `MorphoSearchMeasurements`. The search layer's design notes, and
+    what to try next on the adder, are in `dev_docs/morpho_circuit_search.md`.

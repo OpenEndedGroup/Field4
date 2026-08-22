@@ -68,8 +68,7 @@ The command is honest about not being able to answer. If you unpacked Field from
 of cloning it, if `HEAD` is detached, if there is no `origin`, or if the network is down, it says
 which of those happened rather than reporting that you are up to date.
 
-!!! note "For maintainers: making an update announce itself"
-
+??? aside "For maintainers: making an update announce itself"
     Most commits should pass without comment — the count is enough. When a commit needs everyone
     who pulls it to *do* something, give it a `Field-Notice` trailer:
 

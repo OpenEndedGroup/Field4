@@ -75,10 +75,10 @@ wrong, and a case with any warning classifies as refused. So the claim is that n
 *silently* — which is the property that matters, since a plausible parseable wrong answer gets believed
 where a flagged one does not — and not that nothing is wrong.
 
-The floors behind these figures are asserted in `PatPitchTranscriptionTest`; the figures themselves are
-measurements, and `dev_docs/pitch_transcription_roundtrip.md` marks which are ratchets. The mechanism, the full
-measurement tables and the several things this got wrong before it got them right are in
-`dev_docs/pitch_transcription_roundtrip.md`; the runnable version is the
+The floors behind these figures are asserted; the figures themselves are measurements. The mechanism, the
+full measurement tables and the several things this got wrong before it got them right are in
+`dev_docs/pitch_transcription_roundtrip.md`, which also marks which figures are ratchets; the runnable
+version is the
 [pitch_transcription_roundtrip](agent_transcripts.md) starting point.
 
 ---
@@ -236,10 +236,10 @@ synth voice (no Dirt-Samples found; set FIELD_DIRT_SAMPLES to use real samples)
 
 ## What this means for the audio elsewhere in these docs
 
-`DirtRender`'s KDoc said that "every audio figure in the documentation" uses `patVoice`, and
-the first draft of this page repeated it. **It is not true.** The audit described at the
-bottom of this page swept every published clip and measured each one; the corpus is fifteen
-clips across four pages and it breaks down like this:
+`DirtRender`'s KDoc says that "every audio figure in the documentation" uses `patVoice`.
+**That is not true.** The audit described at the bottom of this page sweeps every published
+clip and measures each one; the corpus is fifteen clips across four pages, and it breaks down
+like this:
 
 | how many | family | where |
 | --- | --- | --- |
@@ -256,8 +256,8 @@ standing in for anything, it *is* the thing that page is about.
 
 Where the stand-in genuinely is the voice — the five clips in the first row — the reason is
 the one given above: it needs no assets, so the figure regenerates anywhere, and its claims
-can be measured in the audio rather than asserted in a caption. That is a good default and a
-bad secret. Hence this page.
+can be measured in the audio rather than asserted in a caption. That is a good default, and
+worth saying out loud rather than leaving to be inferred.
 
 One more piece of audio ships with the site, and a sweep for "figures" misses it: the
 homepage banner loop carries a 49.5-second soundtrack. No reader ever hears it — the player
@@ -303,8 +303,8 @@ A loadable Field document with all of this side by side is committed at
 
 Every sentence on this page in the form *"Voice: …"* is a machine-readable claim.
 
-`SoundRenderPathDocs` declares a `Voice` per figure. `SoundProvenanceGuardTest` then reads
-*this file*, pairs each audio fence with its figure, and requires:
+`SoundRenderPathDocs` declares a `Voice` per figure, and a build guard then reads *this file*, pairs each
+audio fence with its figure, and requires:
 
 * every fence names a figure the renderer knows, and every figure appears on the page once;
 * the figure's declared label appears verbatim beside its fence — so the prose and the code
@@ -321,10 +321,9 @@ notice by reading the page.
 
 ### And the same question, asked of every clip in the docs
 
-`DocsAudioProvenance` widens all of that to the whole corpus, and
-`DocsAudioProvenanceGuardTest` runs it in `check`. It sweeps every page for `audio=` fences,
-re-renders each asset through the *same* `renderWav(name, path)` contract the docs build
-drives over the backdoor, and correlates the result against the committed bytes. Three
+`DocsAudioProvenance` widens all of that to the whole corpus, and runs on every build. It sweeps every
+page for `audio=` fences, re-renders each asset through the *same* `renderWav(name, path)` contract the
+docs build drives over the backdoor, and correlates the result against the committed bytes. Three
 assertions:
 
 * **nothing ships unclassified** — the fence count is pinned, so a new clip fails the build
@@ -334,9 +333,10 @@ assertions:
 * **the list of audio that cannot be re-derived is pinned by key and by reason**, so it
   cannot quietly become a place to put problems. It has one entry, the banner loop.
 
-That middle assertion is the one with a track record. Three days before this page was
-written, `56b124131` had to repair two published figures that the code had stopped
-producing — caught by a human running an audit by hand. This is that audit, in the build.
+??? aside "Why the middle assertion is there"
+    Two published figures had already had to be repaired by hand once, in `56b124131`, after the code
+    that produced them changed underneath them — caught by a person running an audit manually. This is
+    that audit, in the build.
 
 The corpus audit prints its whole table:
 `run_field_tests.py --id synth.docs.audio.provenance`.

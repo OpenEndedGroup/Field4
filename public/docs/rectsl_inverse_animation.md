@@ -4,11 +4,10 @@ A RectSL animation is normally read forwards: you write the tracks, and the samp
 the rectangles went. This page is about running that arrow backwards — saying **where a rect should
 be, and when**, and letting a gradient work out the numbers that put it there.
 
-The figure below is not an illustration of that idea; it is the idea, run. The box is executed on every
-docs build and photographed with its output open, so the numbers in the captions are the numbers this
-page's own code produced — nothing here was drawn by hand or kept up to date by remembering to.
+The figure below is not an illustration of that idea; it is the idea, run. Every number in its captions
+was produced by the code beside it — nothing here was drawn by hand.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-fit-box.png" wait="9.0" capture="box" open-outputs="true" w="1020" h="1080" padding="14"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-fit-box.png" wait="9.0" capture="box" open-outputs="true" w="1020" h="1080" padding="14" name="inverse-animation-fit-box" embed=true}
 import afield.rectsl.*
 import afield.stdlib.Functions
 import java.util.Base64
@@ -98,9 +97,9 @@ fifth more than the wall rather than cropping the answer.
 
 ## The three backends
 
-`ddf732260` made the RectSL track IR symbolic, and said why: a Kotlin closure "cannot be printed,
-compared, serialized, rewritten, or emitted as GLSL". Every scalar op in the IR now names itself, and
-each one owns three columns:
+RectSL's track IR is **symbolic**: every scalar op in it names itself rather than hiding in a Kotlin
+closure. A closure cannot be printed, compared, serialized, rewritten, or emitted as GLSL; a named op
+can be all five. Each one owns three columns:
 
 | column | what it is | where it runs |
 | --- | --- | --- |
@@ -123,7 +122,7 @@ arithmetic. There is no `sin`: `Functions.sin` is an *oscillator* over the sampl
 `offset + amplitude·sin(2π·frequency·x + phase)`, which is not a composition. But its `phase` child
 is evaluated **at x**, so
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-sin-identity.png" wait="4.0" capture="box" open-outputs="true" w="1000" h="330" padding="14"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-sin-identity.png" wait="4.0" capture="box" open-outputs="true" w="1000" h="330" padding="14" name="inverse-animation-sin-identity" embed=true}
 import afield.stdlib.Functions
 
 // `Fn` has no "apply sin to another Fn" op. But `sin`'s `phase` child is evaluated at x, so a
@@ -190,7 +189,7 @@ residual near 0.1 — a 97% reduction, which would satisfy a "did it improve?" c
 near solved. Given 2000 iterations the same call lands on the closed-form answer. **Read the residual,
 not the fact that a fit returned.**
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-api.png" wait="5.0" capture="box" open-outputs="true" w="1000" h="360" padding="14"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-api.png" wait="5.0" capture="box" open-outputs="true" w="1000" h="360" padding="14" name="inverse-animation-api" embed=true}
 import afield.rectsl.*
 
 // The Kotlin API under the RectSL word: any Track carrying FreeParamTrack leaves can be solved
@@ -242,7 +241,7 @@ gradient has chosen for you.
 `gain=4.0, bias=-8.0` is the analytic answer to `t·gain + bias` through both waypoints, so the solver is
 not being graded against its own output.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-free-param.png" wait="7.0" capture="box" open-outputs="true" w="1020" h="1240" padding="14"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-free-param.png" wait="7.0" capture="box" open-outputs="true" w="1020" h="1240" padding="14" name="inverse-animation-free-param" embed=true}
 import afield.rectsl.*
 import afield.stdlib.Functions
 import java.util.Base64
@@ -330,19 +329,18 @@ shape over a **mask**: only the named parameters ever move. Everything under the
 the gradient is `Fn.gradientAt`, one backward sweep through the same `FnFormulas` table `Fn.eval` is
 pinned against.
 
-## One step, and most of the refusals go away
+## One primitive, and every hard edge in the language
 
-The first version of this backend refused 14.2% of the gallery's tracks in five different ways. Four
-of those five turned out to be the *same* missing primitive, and it was a primitive the stdlib had
-already written down as its own biggest gap: `FnNonDifferentiable`'s KDoc said, in as many words,
-that the piecewise oscillators "need only an `FnExpr.Floor`".
+Five different things could stop a track from lowering, and four of them were the *same* missing
+primitive — one the stdlib had already named as its own biggest gap. `FnNonDifferentiable`'s KDoc said,
+in as many words, that the piecewise oscillators "need only an `FnExpr.Floor`".
 
 So `Fn` gained a `floor`. It is a first-class node **and** differentiable, which reads like a
 contradiction and is not: the derivative of a staircase is zero everywhere it exists, and zero is
 what it reports. On its own that makes it a dead end, exactly as `sign` is. Inside something else it
 is the opposite, and the reason is one line of arithmetic:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-exact-step.png" wait="4.0" capture="box" open-outputs="true" w="1000" h="360" padding="14"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-exact-step.png" wait="4.0" capture="box" open-outputs="true" w="1000" h="360" padding="14" name="inverse-animation-exact-step" embed=true}
 import afield.stdlib.Functions
 
 // clamp01(floor(x) + 1) is claimed to be an EXACT step: 1 where x >= 0, 0 below it, for every x.
@@ -377,7 +375,9 @@ reach their own endpoints (`expo-in` is 2⁻¹⁰ at u=0, not 0) and which in a 
 their time exactly at those endpoints. `closed(u)·(1−floor(u))·(1−floor(1−u)) + floor(u)` is that
 branch structure written as arithmetic.
 
-| | before `floor` | after `floor` | after `atan2` |
+Two primitives account for the whole of it, and it is worth seeing which unlocked what:
+
+| | no `floor` | with `floor` | with `atan2` |
 | --- | --- | --- | --- |
 | gallery tracks that lower | 2363 / 2754 (85.8%) | 2638 / 2754 (95.8%) | **2754 / 2754 (100%)** |
 | channel values compared | 302,293 | 328,451 of 333,207 (98.6%) | **333,207 of 333,207 (100%)** |
@@ -385,19 +385,19 @@ branch structure written as arithmetic.
 | distinct refusal reasons | 5 | 1 | **0** |
 | worst relative disagreement | 6.6·10⁻¹⁶ | 6.6·10⁻¹⁶ | 7.7·10⁻¹⁴ |
 
-The third column is 2026-08-19, and it closed the list the second column left. `->face-travel` builds
-a `HeadingTrack` — `atan2` of a central finite difference — and it was the *whole* of that residual
-4.2%: 116 tracks, every refusal in the corpus that was not a pattern track. `Fn` gained `atan`,
-`atan2` and `hypot`, and the near-zero guards on `/` and `smoothstep` went with them.
+The last 4.2% was one construction. `->face-travel` builds a `HeadingTrack` — `atan2` of a central
+finite difference — and that was *every* remaining refusal in the corpus that was not a pattern track:
+116 tracks. `Fn` gained `atan`, `atan2` and `hypot`, and the near-zero guards on `/` and `smoothstep`
+came with them.
 
-Two things in that column are worth not glossing. The worst disagreement rose two orders of
+Two things in that last column are worth not glossing. The worst disagreement rose two orders of
 magnitude, and it should have: a heading *differences* two positions a 240th of a second apart, so a
 one-ulp error in a position is a ~10⁻¹⁴ error in the angle. It is amplification, not a new
 approximation — a heading over an unnested trajectory is bit-identical at all 4001 samples of a
 winding circle. And `atan2` is a **primitive** rather than `atan(y/x)` with a quadrant fix-up, which
 is what the refusal text had predicted: the fix-up divides first, `-0.0 / -1.0` is `+0.0`, and the
-answer comes out `+pi` where the truth is `-pi`. Half a turn, from two inputs that compare equal.
-`RectSLHeadingTest` keeps that as a measurement rather than as a remark.
+answer comes out `+pi` where the truth is `-pi`. Half a turn, from two inputs that compare equal — and
+that failure is kept as a measurement rather than as a remark.
 
 ## What is still refused, and whether that is permanent
 
@@ -408,18 +408,24 @@ and `closable` is the distinction a reader actually needs, borrowed from the std
 
 | refused | closable? | why, and what it would take |
 | --- | --- | --- |
-| `mod` | yes | and the reason on this line was **wrong until 2026-08-19**, which is the argument for measuring a refusal instead of reasoning one out. It used to say `%` needed a sign primitive. It does not: `trunc(z) = s·floor(z) − (1−s)·floor(−z)` with `s` the exact step is exact at every double. What defeats it is that Kotlin's `%` on doubles is the *exact* remainder, and `a − b·trunc(a/b)` is a different function once the quotient outgrows 53 bits — `1e17 % 3` is `1.0` and the reconstruction says `0.0`, silently, *as a zero*, which is indistinguishable from the near-zero guard having fired. A constant pair still folds. |
+| `mod` | yes | not for want of a sign primitive — `trunc(z) = s·floor(z) − (1−s)·floor(−z)` with `s` the exact step is exact at every double. What defeats it is that Kotlin's `%` on doubles is the *exact* remainder, and `a − b·trunc(a/b)` is a different function once the quotient outgrows 53 bits: `1e17 % 3` is `1.0` and the reconstruction says `0.0`, silently, *as a zero* — indistinguishable from the near-zero guard having fired. A constant pair still folds. |
 | `bounce-*` easings | yes | four parabolic arcs, each join needing its own clamped ramp. Expressible with the machinery that is now here; not yet expressed. |
 | the pattern tracks | **no** | an interpreter over a mini-notation tree, not an expression of fixed shape — the same reason `FnNonDifferentiable` refuses `pat` itself. |
 
-What left this table on 2026-08-19, besides the headings: `/` by a non-constant and `smoothstep` with
-non-constant edges. Both were blocked on a real observation with the wrong conclusion — masking the
+Two entries that used to be on this table are not: `/` by a non-constant, and `smoothstep` with
+non-constant edges. Both had looked impossible for the same wrong reason — masking the
 *result* (`[|b| > 1e-12] · (a/b)`) does still divide on the suppressed branch, so `0·inf` is NaN. The
 answer is to guard the *divisor*: `b·live + (1 − live)` is `b` where the guard passes and exactly
 `1.0` where it does not, so no infinity is ever created to be masked. The sign of the suppressed zero
 is then repaired by adding `−0.0`, which is the true additive identity on doubles where `+0.0` is
 not — without it a negative numerator lowers to `−0.0` where the sampler says `0.0`, and a stray
 signed zero is exactly what can spin a `->face-travel` rect through half a turn.
+
+??? aside "Why the refusals are measured rather than reasoned out"
+    Three of the rows above have carried a wrong reason at some point, `mod`'s for longest: it said `%`
+    needed a sign primitive, and the exact-step identity had made that false for months. `/` and
+    `smoothstep` were refused on a real observation with the wrong conclusion drawn from it. Each was
+    closed by trying the lowering and comparing it against the sampler, not by arguing about it.
 
 There is a matching honesty rule in the fitter. A staircase's derivative really is zero, so a
 parameter reachable *only* through a `floor`, a gate or a hold has no path to the value at all —
@@ -429,11 +435,10 @@ under a floor it is refused, beside a gate it solves from residual 3.0 to 6.2·1
 
 ## How much of it is checked
 
-`ddf732260` shipped a 37,057-line characterization golden: every sampled rect of all 34 gallery
-programs at 41 times each, to full double precision, **generated from pre-refactor code**. So it is
-an oracle with no code path in common with the symbolic IR, let alone with a backend written after
-it. `RectSLFnBackendTest` reads it as data and recomputes each rect's nine numeric channels through
-Fn-lowered tracks:
+Everything on this page is checked against an oracle that shares **no code** with it: a full
+double-precision capture of every sampled rect of all 34 gallery programs, at 41 times each, taken
+before the symbolic IR existed. The differentiable backend recomputes each rect's nine numeric channels
+and is held to that capture:
 
 | measurement | value |
 | --- | --- |
@@ -449,35 +454,37 @@ Fn-lowered tracks:
 | a heading whose velocity vanishes | **bit-identical at 801 of 801**, with 400 of them needing a wider probe than the first |
 | the guarded `/` and `smoothstep` | **bit-identical at 2001 of 2001 each**, including the sample where the guard fires |
 
-The lowering rate is now *asserted*, not printed. It sat in a `println` for as long as it was
-interesting, which is the shape of failure where an impressive number quietly rots; the test fails if
-a single gallery track refuses.
+The first row is an assertion rather than a report: the build fails if a single gallery track refuses to
+lower.
 
-That last row is the one that matters for a fit. Agreeing on values proves nothing about a
+The last few rows are the ones that matter for a fit. Agreeing on values proves nothing about a
 derivative — a second interpreter can reproduce `eval` everywhere and still differentiate the wrong
 function — so the gradient is checked against a central finite difference, which is its only oracle
 that does not involve trusting the gradient. 7.1·10⁻¹¹ is the finite difference's own truncation
 error at a 1e-6 relative step, not the gradient's.
 
-Two honest notes about the evidence. The differential test has to compose group and rect transforms
-somewhere, and the `Fn` backend is scalar-only, so that composition is transcribed from
-`SceneProgram.sample`; a companion test runs the same transcription with the *original* tracks and
-requires bit-equality with the golden across 333,207 channel values, which is what stops the
-transcription from rotting. And the figure at the top of this page is a CPU raster rather than a GPU
-capture — every rectangle in it is real geometry sampled from the real track at a real instant, but
-it is not the shader's own answer.
+One caveat on the figure at the top of this page: it is a CPU raster rather than a GPU capture. Every
+rectangle in it is real geometry sampled from the real track at a real instant, but it is not the
+shader's own answer.
+
+??? aside "Where the oracle is, and the one seam in it"
+    The golden is a 37,057-line characterization corpus generated from pre-refactor code, and
+    `RectSLFnBackendTest` reads it as data. The one seam: the differential test has to compose group and
+    rect transforms somewhere, and the `Fn` backend is scalar-only, so that composition is transcribed
+    from `SceneProgram.sample`. A companion test runs the same transcription with the *original* tracks
+    and requires bit-equality with the golden across all 333,207 channel values, which is what stops the
+    transcription from rotting.
 
 ## The rest of what a symbolic IR bought
 
-`ddf732260` named five things a closure cannot be: printed, compared, serialized, rewritten, or
-emitted as GLSL. GLSL shipped with it; this page is the differentiable backend; and the remaining
-three are small once the IR is data.
+Of the five things a closure cannot be — printed, compared, serialized, rewritten, emitted as GLSL —
+GLSL and this page's differentiable backend are the two big ones. The remaining three come almost free
+once the IR is data.
 
 - `Track.describe()` prints a tree as its algebra —
   `ADD(MUL(linear[0.0=0.0 4.0=4.0], ?gain=1.0), ?bias=0.0)` — rather than as nested constructors.
 - **Comparison came free.** The IR is data classes, so two tracks built by the same `array` body are
-  already `==`; the GLSL emitter's function deduplication has been relying on that since the refactor
-  without anyone writing it down.
+  already `==` — which is what the GLSL emitter's function deduplication runs on.
 - `Track.simplify()` is the general rewriter, and `substituteParameters` the targeted one a fit uses.
 
 The simplifier is worth a paragraph because of what it *refuses*. Its contract is that a rewritten
@@ -487,18 +494,46 @@ observable here — `HeadingTrack` takes `atan2`, and `atan2(+0.0, -1.0)` is `+�
 `atan2(-0.0, -1.0)` is `-π`, half a turn apart — so a rewrite that "only" changes the sign of a zero
 can spin a rectangle through 180°. Five reflexive rewrites are therefore refused and asserted as
 refused: `x + 0`, `0 - x`, and all three `mix` degeneracies (`mix(a, b, 1)` is `a + (b - a)`, which is
-simply not `b` in floating point). What survives still takes the gallery from 8197 nodes to 6442
-(21.4% smaller), because the constant fold does the heavy lifting.
+simply not `b` in floating point). What survives still takes the gallery from 10,621 nodes to 8865
+(16.5% smaller), because the constant fold does the heavy lifting.
 
-## A limitation worth knowing
+## Keys are tracks too
 
-`TcbKey` holds a `Double`, so a keyed track's key *values* cannot themselves be free parameters.
-Parameters compose *around* a keyed track — gain, bias, phase, frequency, a `mix` weight — rather
-than inside one. Making keys track-valued is a larger change to the IR and has not been made.
+`TcbKey` holds a `Track<Double>` rather than a `Double`, so a key *value* can be a free parameter and
+a fit can reach *inside* a keyed track rather than only composing around one. Written in RectSL, the
+top of a ramp is the unknown:
 
-TCB tangents are also baked at lowering time. They are derived from the key values and times, so a
-fit that moved a key value ought to move the tangents with it; the lowered derivative is exact for
-the spline whose tangents are the ones it baked.
+```diffstatic {data-lang=text}
+'( 0=0  2=4 free-param peak ) linear
+```
+
+Any time-invariant track will do — a constant, a `free-param`, or arithmetic over them — and that is
+checked when the key is built, because a key whose value varied with time would have no answer to
+"the value *at* this key". Every CPU sampler and the shader read only the number the key currently
+stands at, so a scene with an unknown in it plays and renders exactly as written; the differentiable
+backend is the only thing that looks at the value's tree, where a `FreeParamTrack` arrives as a
+*named* leaf and the gradient with respect to it falls out of the same backward sweep as everything
+else.
+
+For linear, eased and hold tracks that is exact by construction: the lowering is
+`v₀ + Σ shape(u)·(vᵢ₊₁ - vᵢ)`, which is linear in the key values, and the same clamped-ramp sum that
+was already there carries them.
+
+TCB needed more care, and it is the interesting half. A TCB tangent is *derived* from the
+neighbouring key values, so **baking** it — which this backend has always done, and which the shader
+still does — stops being faithful the moment a key can move: a fit would solve for the key, `fitted`
+would recompute its tangents from the solved value, `fittedFn` would still carry the seed ones, and
+one fit would have two answers. A fitter that returns two animations for one solve is worse than one
+that refuses, so a TCB track with a parameterised key lowers its **tangents symbolically too**, and a
+moved key moves its tangents the way the sampler says it should. That is a second transcription of
+the TCB formula, which is exactly the kind of thing that drifts, so the two paths are pinned against
+each other on constant keys where both are defined: on a four-key spline with per-key tension,
+continuity and bias they agree to the last bit across 401 instants, and the fitted graph and the
+fitted track now differ by 2·10⁻¹⁶ rather than by a spline.
+
+What is still a plain `Double` is a key's *time*. A keyed track sorts by time and selects a span from
+it, so a parameterised time would have to move the *structure* of the track rather than only its
+numbers — a different kind of change from this one, and not made.
 
 ## See it moving
 

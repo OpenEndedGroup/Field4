@@ -793,11 +793,11 @@ through AWT, so it throws on a headless JVM and it replaces whatever the user ha
 
 ### What is actually tested
 
-`KeyframerTest` is 70 tests written against this page, so every number stated here is asserted
-there. A companion ledger, `KeyframerCoverageTest`, reflects over the **members of a hand-listed set
-of `keyframer.kt`'s classes** and requires every public one to be classified as either covered or
-unreachable-with-a-stated-reason. That half genuinely cannot rot: add a method or a property to one
-of those classes and the build fails until it is accounted for.
+Every number stated on this page is asserted by a suite of 70 tests written against it. A companion
+ledger reflects over the **members of a hand-listed set of `keyframer.kt`'s classes** and requires every
+public one to be classified as either covered or unreachable-with-a-stated-reason. That half genuinely
+cannot rot: add a method or a property to one of those classes and the build fails until it is accounted
+for.
 
 It is worth being exact about what that does *not* guarantee, because the mechanism reads as
 stronger than it is. The enumeration *within* the listed classes is measured; the class list itself,

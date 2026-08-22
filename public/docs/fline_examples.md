@@ -428,7 +428,7 @@ Everything clips: fills, strokes and point sprites. `MeshStandardMaterial` gets 
 
 `public/docs/assets/three_inspector_demo/metadata.edn` is a loadable Field document with one Kotlin box: a wall detail with four skins and five conduit runs, two authored dimensions, and all three controls live. Open it in a fresh Field, run the box, and drag the explode slider.
 
-The fence below runs that document's box **verbatim** — `ThreeInspectorDemoDriftTest` asserts the two are character-for-character identical, so the screenshot underneath is a picture of the demo you would open and not of a tidied-up cousin of it.
+The fence below runs that document's box **verbatim** — the build asserts the two are character-for-character identical, so the screenshot underneath is a picture of the demo you would open and not of a tidied-up cousin of it.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_inspector_demo/opened.png" wait="3.0" capture="box" open-outputs="true" w="1200"}
 :::static
@@ -633,7 +633,7 @@ In practice this is useful for picking diagram elements, selecting generated for
 
 #### 3D callbacks
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/callbacks_3d.png" wait="1.0" capture="box" open-outputs="true" w="1200" name="fline-callbacks-3d"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/callbacks_3d.png" wait="1.0" capture="box" open-outputs="true" w="1200" name="fline-callbacks-3d" embed=true}
 :::static
 
 val status: (String) -> Unit = { message ->

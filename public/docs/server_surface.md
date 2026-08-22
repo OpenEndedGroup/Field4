@@ -103,8 +103,9 @@ only two:
   page's preflight fails before the request is sent. `anyHeader()` in that block would
   quietly convert an agent-spawning endpoint into something a web page can reach.
 
-*Pinned by* `FieldApiCorsExposureTest.theCorsConfigurationIsExactlyWhatWeThinkItIs` and
-`theImprovementTokenHeaderIsNotReachableFromAWebPage`.
+??? aside "Pinned by"
+    `FieldApiCorsExposureTest.theCorsConfigurationIsExactlyWhatWeThinkItIs`, and
+    `theImprovementTokenHeaderIsNotReachableFromAWebPage` for the second bullet.
 
 ## Defence 2 — the read/write split, and the switch that closes the writes
 
@@ -138,10 +139,12 @@ from the inventory that counts Field's write surface, so that count read 40 when
 53. It now reads 53, and the thirteen are listed with their guards in
 `dev_docs/server_surface_inventory.md`.
 
-*Pinned by* `FieldApiWriteGuardTest` — seven tests, one of which exists purely to assert the
-*limitation*: a request with no `Origin` header is **not** refused, so the switch does nothing
-about the network half. And by `ServerSurfaceLedgerTest`, which is where the read routes are
-counted.
+**The limitation, stated plainly:** a request carrying no `Origin` header at all is **not** refused. The
+switch closes the browser half of the problem and does nothing about the network half.
+
+??? aside "Pinned by"
+    `FieldApiWriteGuardTest` — seven tests, one of which exists purely to assert that limitation — and
+    `ServerSurfaceLedgerTest`, which is where the read routes are counted.
 
 ## Defence 3 — the DNS-rebinding check, which is the subtle one
 
@@ -189,10 +192,10 @@ That last point is the limitation, stated plainly: this guard closes the *browse
 does nothing about a request from another machine, because such a request simply sends no
 `Origin` and is therefore, correctly, not a cross-site browser request.
 
-*Pinned by* `DocsAnnotationSecurityTest` over the predicate and `DocsAnnotationRouteSecurityTest`
-through the real routes. The rebinding row was watched fail first: `Host == Origin` plus
-`Sec-Fetch-Site: same-origin` returned 200 until the literal-host allow-list was moved ahead
-of those signals.
+??? aside "Pinned by"
+    `DocsAnnotationSecurityTest` over the predicate, and `DocsAnnotationRouteSecurityTest` through the real
+    routes. The rebinding row was watched fail first: `Host == Origin` plus `Sec-Fetch-Site: same-origin`
+    returned 200 until the literal-host allow-list was moved ahead of those signals.
 
 ## Defence 4 — the WebSocket upgrade guard, and why it needed one of its own
 
@@ -234,9 +237,10 @@ message is processed. A foreign page's `onopen` may therefore fire, followed imm
 `onclose`. No command ever reaches a handler, which is the property that matters — but
 "the upgrade is refused" would be the wrong mental model to debug from.
 
-*Pinned by* `FieldWebSocketWriteGuardTest` — four route-level tests: the default still allows
-a cross-site upgrade, the switch closes one with a policy violation, Field's own browser still
-connects, and a native client sending no browser-origin headers still connects.
+??? aside "Pinned by"
+    `FieldWebSocketWriteGuardTest` — four route-level tests: the default still allows a cross-site upgrade,
+    the switch closes one with a policy violation, Field's own browser still connects, and a native client
+    sending no browser-origin headers still connects.
 
 ## Defence 5 — route isolation for the documentation-annotation feature
 
@@ -281,7 +285,7 @@ proxy, the H2 database explorer, the box-execution commands and the agent backdo
 `/ws`, and there are **105 of them** — about twice the HTTP write surface. A second, smaller
 table on the same socket carries **9 more** "raw" channels, which receive the whole frame and
 parse it themselves: the H2 explorer, the file browser, the log stream, the spreadsheet, the
-three.js and Metal viewers, and the RemoteJS bridge. Nothing had counted those nine until
+three.js and Metal viewers, and the RemoteJS bridge. Those nine went uncounted by any census until
 2026-08-22.
 
 Among them, `launch-all`, `launch-batch` and `launch-fragment` run the code in your document,

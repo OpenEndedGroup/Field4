@@ -1504,10 +1504,9 @@ four cost real time while it was being written — none of them are WFC-specific
 
 Everything above as a Field document you can open and edit:
 [**wfc_worked_example**](/offline.html?file=/field4/assets/agent_transcripts/wfc_worked_example/metadata.edn)
-— six connected boxes, one per section, each of which runs on its own. The transcript that builds it
-is `dev_docs/agents/transcripts/wfc_worked_example.yaml`, and it is executed on every build by the
-`examples.demo-transcript.exec` smoke test, so the boxes in it are known to compile and run rather
-than merely to have been typed.
+— six connected boxes, one per section, each of which runs on its own. The transcript that builds it,
+`dev_docs/agents/transcripts/wfc_worked_example.yaml`, is executed on every build, so the boxes in it
+are known to compile and run rather than merely to have been typed.
 
 The figures on this page are rendered and *verified* by
 `afield.examples.stdlib.WfcGallery` (`stdlib.wfc.gallery`), which asserts for every grid that every
