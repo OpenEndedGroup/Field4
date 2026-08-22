@@ -932,6 +932,11 @@ end
 ;
 ```
 
+<video src="../assets/rectsl/rectsl-musicality-four-to-the-floor.mp4" poster="../assets/rectsl/rectsl-musicality-four-to-the-floor.png"
+       autoplay loop muted playsinline
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
 Read the last two blocks together: `"bd*4"` and `"bd [sd sd] hh*4"` are the same notation, and
 `pat` and `strip` are the same reproduction. One spends the subdivision on *when*, the other on
 *where*. That is what "visual music" means literally rather than metaphorically, and it is the
@@ -971,6 +976,11 @@ nothing to do with rhythm.
 "sometimes" rect  0.7 ->square  0xc678dd solid ->fill
   "bd*4" mini 0.5 '( press ) sometimes-by '( f0 14 * 7 -  -4.6  ->xy ) pat ;
 ```
+
+<video src="../assets/rectsl/rectsl-musicality-variation.mp4" poster="../assets/rectsl/rectsl-musicality-variation.png"
+       autoplay loop muted playsinline
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
 
 `swing` is worth singling out. It delays every second subdivision of a `2n` grid in **exact
 rational time**, so a swung figure is still perfectly quantised — just not straight. That is the
@@ -1029,6 +1039,11 @@ continuous motion into the *held-then-snapped* quality that reads as musical. Al
   0.25 ->degrade
 ;
 ```
+
+<video src="../assets/rectsl/rectsl-musicality-signals.mp4" poster="../assets/rectsl/rectsl-musicality-signals.png"
+       autoplay loop muted playsinline
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
 
 ### The rest of the surface
 
@@ -1114,6 +1129,11 @@ pattern transforms, and the per-event context words.
 "asText" rect  0.4 ->square  0xcfc9c2 solid ->fill
   "0 1" mini nums texts '( f 16 * 8 -  -6 ->xy ) pat ;
 ```
+
+<video src="../assets/rectsl/rectsl-musicality-surface.mp4" poster="../assets/rectsl/rectsl-musicality-surface.png"
+       autoplay loop muted playsinline
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
 
 ## Data visualization
 

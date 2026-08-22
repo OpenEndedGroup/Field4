@@ -1,0 +1,48 @@
+#rectsl
+->wall 16 9 abstract
+->tempo 120
+->beats-per-cycle 4
+->duration-cycles 4
+->fps 30
+->background 0x0a0a12
+
+# The accent: a full-wall flash, behind everything, on every fourth bar only.
+"accent" rect
+  16 9 ->wh
+  0 0 ->xy
+  0xffffff solid ->fill
+  0 ->alpha
+  ->back
+  selected 4 '( 0.14 ->alpha ) ->every
+;
+
+# The ring: sixteen slots, five of them sounding, the whole figure turning once a bar.
+"ring" group
+  "hat" rect
+    0.26 1.0 ->wh
+    0x7cf5d0 solid ->fill
+    16 '( f0 tau * ->rot  f0 tau * 3.2 ->polar ) array
+    5 16 0 ->euclid
+  ;
+end
+"ring" ->select
+  saw tau * ->rotate
+;
+
+# The kick: one copy per event, each authored in its own local time.
+"kick" rect
+  1.3 ->square
+  0xff5a3c solid ->fill
+  "bd*4" '(
+      step 1.5 - 4.2 *  ->x
+      '( 0=5.5  0.34=0 ) ease-out ->y
+      '( 0=0  0.10=1  0.5=0 ) linear ->alpha
+  ) pat
+;
+
+# The score: the same kind of string, read as a ruler instead of as a rhythm.
+"tick" rect
+  0.34 ->square
+  0x3c8cff solid ->fill
+  "bd [sd sd] hh*4" '( -3.9 ->y  0.55 ->alpha ) strip
+;
