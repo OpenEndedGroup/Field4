@@ -23,6 +23,19 @@ from collections import deque
 from pathlib import Path
 from typing import Any, TextIO
 
+def _is_running_interpreter(candidate: Path) -> bool:
+    """True if ``candidate`` is the interpreter executing this process.
+
+    ``os.path.samefile`` rather than string comparison: a venv ships ``python``, ``python3`` and
+    ``python3.12`` as links to one binary, so the path a caller constructs rarely matches the
+    spelling in ``sys.executable``.
+    """
+    try:
+        return os.path.samefile(str(candidate), sys.executable)
+    except OSError:
+        return False
+
+
 def _reexec_under_repo_env_if_needed() -> None:
     """Self-heal the "wrong Python interpreter" trap.
 
@@ -47,7 +60,16 @@ def _reexec_under_repo_env_if_needed() -> None:
     entry = os.path.abspath(sys.argv[0]) if sys.argv and sys.argv[0] else str(Path(__file__).resolve())
     env = {**os.environ, "FIELD_BACKDOOR_REEXEC": "1"}
     venv_py = repo_root / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python3")
-    if venv_py.exists():
+    # Only re-exec the repo venv if we are not *already* running it. `uv run` without a
+    # `--group` builds a base-only `.venv` and then runs `.venv/bin/python`, so websockets is
+    # missing in the very interpreter this branch would re-exec into: the re-exec cannot help,
+    # and because the module runs this at import time it re-runs the whole *entry script* first.
+    # On 2026-08-22 that entry script was `tools/run_python_tests.py`, so the twelve tool suites
+    # ran a second time and the runner then died inside an import, discarding its own summary —
+    # the gate reported three PIL errors and no totals for what was really a missing dependency
+    # group. Compare by inode, not by path: `sys.executable` is `.venv/bin/python` while this
+    # builds `.venv/bin/python3`, two names for one file.
+    if venv_py.exists() and not _is_running_interpreter(venv_py):
         os.execve(str(venv_py), [str(venv_py), entry, *sys.argv[1:]], env)
     uv = shutil.which("uv")
     if uv:

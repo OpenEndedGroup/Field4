@@ -1449,11 +1449,17 @@ tasks.register<JavaExec>("regenerateAgentDemos") {
 // the interpreter from pyproject.toml instead of from the ambient PATH, which is how every other
 // Python entry point in this repo is invoked (see the two fieldAudio* gates below), and
 // run_python_tests.py carries the matching floor check for anyone who runs it by hand.
+// And `--group backdoor`, which is equally load-bearing: three of these suites need `pillow`,
+// `pyyaml` and `websockets`, and all three live in the `backdoor`/`docs` dependency groups rather
+// than in the base `dependencies`. Without the flag `uv` builds a base-only `.venv` and the suites
+// report a missing PIL as three test *errors* — a dependency-declaration problem wearing the
+// costume of a code defect. 2026-08-21 verified this gate against an already-populated `.venv` and
+// so could not see it; 2026-08-22's fresh worktree created the venv with this task and did.
 tasks.register<Exec>("checkPythonTools") {
     group = "verification"
     description = "Runs the tools/test_*.py unittest suites — the backdoor argument emitter, the docs-capture freshness classifier and the worktree-scoped JVM reaper — and prints each suite's pass count."
     workingDir = rootDir
-    commandLine("uv", "run", "--project", ".", "--frozen", "python", "tools/run_python_tests.py")
+    commandLine("uv", "run", "--project", ".", "--group", "backdoor", "--frozen", "python", "tools/run_python_tests.py")
 }
 
 // The Analysis-API completion sidecar is Field's default completion backend, but it is a standalone
