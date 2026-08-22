@@ -34,6 +34,15 @@ registered with `registerValuePrinter` are extension points whose returned HTML 
 trusted. Every image in this section was captured straight from the real renderer
 — nothing here is a mock-up.
 
+`registerValuePrinter` is how a **third-party** type joins in without knowing Field
+exists, and the worked example is a Kotlin DataFrame: a frame, a column, a row and a
+`GroupBy` all render as ordinary Field tables, and `.h2` pages a million-row frame
+through the same offset machinery this page's `.h2` uses everywhere else. See
+[DataFrames in a Box](dataframe.md#looking-at-a-frame). That page also
+records the dispatch bug the arrangement had — a printer registered for an interface
+the implementation reached *transitively* could never fire — which was found by
+looking at one of its captures, not by a test.
+
 ### The reflective tree
 
 Give the visualizer an ordinary object — a data class, a map, anything with

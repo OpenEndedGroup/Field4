@@ -291,10 +291,15 @@ already attaches maven artifacts (`DataFramePluginCostProbe.kt:38#Fix: make it o
    would not be for a printer that wanted to specialise on a type argument. Noted, not needed.
    (conjecture, 2026-08-22: nothing has asked for it.)
 2. **`DemoTranscriptExecSmokeTest`'s comment on this transcript was stale** and is fixed on this
-   branch. `d7d8dccc2` replaced the transcript's fourth box (`dataframe_boundary`, deliberately not
-   executed, documenting a compile error) with `dataframe_live` (the `typed()` demo, which *is*
-   executed — `dataframe_typed_columns.yaml:138#box: dataframe_live`) and updated
+   branch (`DemoTranscriptExecSmokeTest.kt:98#All FOUR boxes are executed`). `d7d8dccc2` replaced the
+   transcript's fourth box (`dataframe_boundary`, deliberately not executed, documenting a compile
+   error) with `dataframe_live` (the `typed()` demo, which *is* executed —
+   `dataframe_typed_columns.yaml:138#box: dataframe_live`) and updated
    `public/docs/agent_transcripts.md`, but left the classification comment describing the old shape.
+   Worth noting where that comment lives: `EXECUTE` / `COMPILE_ONLY` are `internal` rather than
+   private precisely so `AgentTranscriptIndexGuard` can read them and hold the public index page to
+   the verification level they declare — so a stale *comment* beside a correct *set* is the one part
+   of that arrangement nothing can check.
 3. **`public/docs/agent_transcripts.md`'s paragraph on this transcript is inaccurate in two places**
    and is deliberately *not* edited here, because a concurrent agent may be registering a transcript in
    that file tonight. It says box 4 "runs twice" and that "the second execution prints

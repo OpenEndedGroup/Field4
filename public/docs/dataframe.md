@@ -116,7 +116,7 @@ Redeclaring is safe here in a way it is not for `sharedTypes`: nothing is loaded
 
 **What you do not get.** Flat value columns get their real element type. A **column group** or **frame column** would need a nested interface to type properly, so it is declared `Any?` — you still get the column, just not its shape — and the log names which ones landed that way (`DataFrameSchemas.kt:67`). Calling `typed()` with no box in context logs a warning and does nothing (`DataFrameSchemas.kt:58`).
 
-### One execution, two halves: the `//%-` marker
+### One execution, two halves: the `//%-` marker { #fragment-marker }
 
 `typed()` publishes to the preamble, so the naive reading is "you have to run the box twice". You do not — and the reason is a detail of Field's execution model that is worth knowing for its own sake.
 
@@ -144,7 +144,7 @@ Once it has run, the second half is independently re-runnable: select those line
 
 ---
 
-## Looking at a frame: `.h` and `.h2`
+## Looking at a frame: `.h` and `.h2` { #looking-at-a-frame }
 
 A DataFrame is a first-class Field value: it renders through [the value visualizer](visualizers.md#the-value-visualizer-what-h-draws) like anything else. `DataFrame` is a third-party interface, so it cannot implement `ToHTML` the way Field's own `Table` and `Img` do — which is exactly what `ValuePrinterRegistry` and `H2ValueRegistry` exist for (`DataFrameVisualizer.kt:55`, `DataFrameVisualizer.kt:62`).
 
