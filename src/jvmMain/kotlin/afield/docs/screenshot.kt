@@ -497,6 +497,41 @@ private fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest): BoxScre
               text.includes("waiting for audio") ||
               text.includes("waiting for state");
           };
+          const materialiseDeferredFrame = (iframe) => {
+            // A `loading="lazy"` frame outside the viewport never fetches, and its untouched
+            // about:blank document reports readyState "complete" -- so it reads as READY while
+            // being empty, and the status checks never see the frame's own "connecting..."
+            // because about:blank has no #status element. Promote it and let the browser start.
+            // Everything after this is the existing readiness logic, which is right once reached.
+            if (iframe.getAttribute("loading") === "lazy") {
+              iframe.setAttribute("loading", "eager");
+              try {
+                iframe.scrollIntoView({ block: "center", inline: "nearest" });
+              } catch (error) {
+                /* scrollIntoView options are advisory */
+              }
+              const src = iframe.getAttribute("src");
+              if (src) {
+                iframe.setAttribute("src", src);
+              }
+            }
+          };
+          const iframeNavigated = (iframe) => {
+            const src = iframe.getAttribute("src");
+            if (!src || src === "about:blank") {
+              return true;
+            }
+            try {
+              const doc = iframe.contentDocument;
+              if (!doc) {
+                return true;
+              }
+              const url = String(doc.URL || "");
+              return url !== "" && url !== "about:blank";
+            } catch (error) {
+              return true;
+            }
+          };
           const iframeReady = (iframe) => {
             try {
               const doc = iframe.contentDocument;
@@ -518,7 +553,8 @@ private fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest): BoxScre
               return false;
             }
             const iframes = Array.from(outputArea.querySelectorAll("iframe"));
-            if (iframes.some((iframe) => !iframeReady(iframe))) {
+            iframes.forEach(materialiseDeferredFrame);
+            if (iframes.some((iframe) => !iframeNavigated(iframe) || !iframeReady(iframe))) {
               return false;
             }
             const statusTexts = Array.from(outputArea.querySelectorAll("svg text, .status, #status"))
@@ -669,6 +705,41 @@ private fun requestWindowScreenshot(page: Page, req: WindowScreenshotRequest): W
               text.includes("waiting for audio") ||
               text.includes("waiting for state");
           };
+          const materialiseDeferredFrame = (iframe) => {
+            // A `loading="lazy"` frame outside the viewport never fetches, and its untouched
+            // about:blank document reports readyState "complete" -- so it reads as READY while
+            // being empty, and the status checks never see the frame's own "connecting..."
+            // because about:blank has no #status element. Promote it and let the browser start.
+            // Everything after this is the existing readiness logic, which is right once reached.
+            if (iframe.getAttribute("loading") === "lazy") {
+              iframe.setAttribute("loading", "eager");
+              try {
+                iframe.scrollIntoView({ block: "center", inline: "nearest" });
+              } catch (error) {
+                /* scrollIntoView options are advisory */
+              }
+              const src = iframe.getAttribute("src");
+              if (src) {
+                iframe.setAttribute("src", src);
+              }
+            }
+          };
+          const iframeNavigated = (iframe) => {
+            const src = iframe.getAttribute("src");
+            if (!src || src === "about:blank") {
+              return true;
+            }
+            try {
+              const doc = iframe.contentDocument;
+              if (!doc) {
+                return true;
+              }
+              const url = String(doc.URL || "");
+              return url !== "" && url !== "about:blank";
+            } catch (error) {
+              return true;
+            }
+          };
           const iframeReady = (iframe) => {
             try {
               const doc = iframe.contentDocument;
@@ -690,7 +761,8 @@ private fun requestWindowScreenshot(page: Page, req: WindowScreenshotRequest): W
               return false;
             }
             const iframes = Array.from(outputArea.querySelectorAll("iframe"));
-            if (iframes.some((iframe) => !iframeReady(iframe))) {
+            iframes.forEach(materialiseDeferredFrame);
+            if (iframes.some((iframe) => !iframeNavigated(iframe) || !iframeReady(iframe))) {
               return false;
             }
             const statusTexts = Array.from(outputArea.querySelectorAll("svg text, .status, #status"))

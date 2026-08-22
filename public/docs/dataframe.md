@@ -22,7 +22,7 @@ people.age            // resolves. Not people["age"], not a cast, not a generate
 This page is about the shape that works, the boundary the shape has, *why* the boundary is where it is, and the one call — `typed()` — that gets you across it.
 
 !!! tip "Run it, don't read it"
-    Everything here is in the shipped, replayable example `dataframe_typed_columns` — four boxes, in the [Agent Transcript Gallery](agent_transcripts.md). The source of truth for behaviour is `dev_docs/agents/transcripts/dataframe_typed_columns.yaml`; the wiring detail lives in `dev_docs/DATAFRAME_PLUGIN.md`.
+    Everything here is in the shipped, replayable example `dataframe_typed_columns` — four boxes, in the [Agent Transcript Gallery](agent_transcripts.md).
 
 ---
 
@@ -55,33 +55,31 @@ println("decade: " + adults.decade.toList())
 
 ## Why that is surprising, and where the boundary comes from
 
-The plugin hangs off `FirFunctionCallRefinementExtension` — an extension point the Kotlin compiler itself describes as *"highly unstable and not recommended to use"*. At a call to a `@Refine`-annotated function it interprets the arguments, computes the resulting schema, and then **rewrites the call**:
+The plugin hangs off `FirFunctionCallRefinementExtension` — an extension point the Kotlin compiler itself describes as *"highly unstable and not recommended to use"*. At a call to a `@Refine`-annotated function it statically interprets the arguments, computes the resulting schema, and then **rewrites the call**: `call()` becomes `run { class Token; class Scope; call() as DataFrame<Token> }`. `Token` and `Scope` are **local** classes — the extension runs at body-resolve and cannot create top-level declarations — and the column accessors are not declarations anywhere at all. They are a per-call-site local type plus an implicit extension receiver.
 
-> At a call to a `@Refine`-annotated function it statically interprets the arguments, computes the resulting schema, and rewrites `call()` into `run { class Token; class Scope; call() as DataFrame<Token> }` — with **local** classes, because the extension runs at body-resolve and cannot create top-level declarations. The column accessors are not declarations anywhere: they are a per-call-site local type plus an implicit extension receiver injected by `ReturnTypeBasedReceiverInjector`.
->
-> — `DataFramePluginSpike.kt:22`
+That is the whole boundary, and it sits one step earlier than most people guess. Typed columns do not survive a compile boundary, but not because Field forgets, or the REPL resets, or the schema is thrown away. It is that *a local class cannot appear in the type of a snippet's property*. So the moment a frame is stored in a `val` that outlives the expression, its type decays: declare `val df = dataFrameOf("a","b")(1,2)` in one snippet, read `df.a` in the next, and the frame comes back as `DataFrame<Any>` with an empty compile-time schema. For live coding — where the entire point is to load once and then poke at the result — that is fatal.
 
-That single sentence is the whole boundary, and it is one step earlier than most people guess. The reason typed columns do not survive a compile boundary is **not** that Field forgets, or that the REPL resets, or that the schema is thrown away. It is that the type the plugin invents is built out of **local classes**, and *a local class cannot appear in the type of a snippet's property*. So the moment a frame is stored in a `val` that outlives the expression, its type decays.
-
-Measured, in `probeAcrossSnippets` (`DataFramePluginSpike.kt:147`): declare `val df = dataFrameOf("a","b")(1,2)` in one snippet, read `df.a` in the next, and the frame comes back as `DataFrame<Any>` with `<empty compile time schema>` (`DataFramePluginSpike.kt:161`). For live coding — where the entire point is to load once and then poke at the result — that is fatal.
+??? aside "Where the rewrite and the decay were established"
+    Both halves are recorded in `DataFramePluginSpike.kt`: the call rewrite and the
+    `ReturnTypeBasedReceiverInjector` that supplies the receiver at `:22`, and `probeAcrossSnippets` at
+    `:147`, which is what prints the `<empty compile time schema>` result at `:161`.
 
 ### Naming a `@DataSchema` does not, by itself, rescue it
 
 The obvious repair is to declare a real named schema and cast to it. In Field the obvious way to do that is [`sharedTypes(...)`](reference/index.md), which compiles a `@DataSchema interface` onto the shared classloader so every box can name it. **The type crosses. The accessors do not.**
 
-That is a more interesting failure than "it doesn't work", because the frame really does arrive as `DataFrame<Person>` with a known schema. What is missing is the generated `people.age` extension, and the reason is a discovery mechanism:
-
-> The cause is `TopLevelExtensionsGenerator`, which finds schemas with `session.predicateBasedProvider.getSymbolsByPredicate(annotated(DataSchema))`. K2's predicate-based provider indexes **source** declarations only, so a `@DataSchema` compiled into a directory on the classpath — which is exactly what `SharedTypes` produces — is invisible to it. Adding `import shared.*` does not help; the generated callables were never created.
->
-> — `DataFramePluginSpike.kt:164`
-
-An `import` cannot help, because there is nothing to import.
+That is a more interesting failure than "it doesn't work", because the frame really does arrive as `DataFrame<Person>` with a known schema. What is missing is the generated `people.age` extension, and the reason is a discovery mechanism. The accessors come from `TopLevelExtensionsGenerator`, which asks K2's predicate-based provider for everything annotated `@DataSchema` — and that provider indexes **source** declarations only. A `@DataSchema` compiled into a directory on the classpath, which is exactly what `sharedTypes` produces, is invisible to it. Adding `import shared.*` does not help either: an `import` cannot conjure callables that were never created.
 
 ### The route that upstream designed for this is not wired here
 
-Kotlin DataFrame does ship a second, separate mechanism for schemas arriving from outside the module: `ImportedSchemasGenerator` plus `ImportedSchemasService`, gated on the plugin's `schemasPath` option pointing at a directory of schema JSON produced by a build-time generator (`DataFramePluginSpike.kt:171`).
+Kotlin DataFrame does ship a second, separate mechanism for schemas arriving from outside the module: `ImportedSchemasGenerator` plus `ImportedSchemasService`, gated on the plugin's `schemasPath` option pointing at a directory of schema JSON produced by a build-time generator.
 
-**Field does not wire it.** That is a named open path, not a defect — the `typed()` route below does the same job without a build step, which is the right trade for a live-coding environment. If persistent typed columns for schemas defined *outside* a box are ever wanted, `schemasPath` is where to start, and it is not reachable by declaring a schema and hoping.
+**Field does not wire it**, and does not need to: the `typed()` route below does the same job without a build step, which is the right trade for a live-coding environment. The thing to take from this section is the negative result — typed columns for a schema defined *outside* a box are not reachable by declaring the schema and hoping.
+
+??? aside "If the imported-schemas route is ever wanted"
+    `schemasPath` is where to start, and the mechanism is read in `DataFramePluginSpike.kt:171`. It wants a
+    build-time schema generator writing JSON into a directory — which is precisely the step `typed()`
+    exists to avoid.
 
 ---
 
@@ -169,9 +167,6 @@ display("grouped", people.groupBy("city").h)  // how many groups, keyed by what
 
 Nothing here is a bespoke widget. `.h` renders all four through the **existing** `table()` and `facts()` primitives, so DataFrame output matches every other table in Field rather than introducing a second style.
 
-!!! note "This capture is why the column panel works"
-    The **column** row above is here because it was, for eight months, broken — and the picture is what found it. `ValuePrinterRegistry` used to resolve a printer by checking the exact class, then the superclass chain, then only the interfaces the *runtime class declares directly*. DataFrame's columns are the shape that defeats that: `ValueColumnImpl : DataColumnImpl(), ValueColumn` and `ValueColumn : DataColumn`, so `DataColumn` sat one interface further out than the lookup looked, `register(DataColumn::class.java)` was dead code, and a column rendered as the bare `toString()` `ValueColumnImpl age 0 15 1 30 2 45 3 22`. The registry now walks the whole interface closure (`ValueVisualizer.kt:97`), and the smoke test asserts the part a `toString()` cannot fake — the column's element type (`DataFrameVisualizerSmokeTest.kt:203`). `GroupBy` was the case that named the risk in the first place and keeps its own regression (`DataFrameVisualizerSmokeTest.kt:152`).
-
 ### A head is a head, even for a million rows
 
 The compact `.h` form shows the first **10** rows (`DataFrameVisualizer.kt:44`) and says how much it is hiding. The interesting part is *how* it takes them: cell by cell, **by index**, never `toList()` on the frame and never `take` on a column (`DataFrameVisualizer.kt:101`). So printing a very large frame costs what printing ten rows costs — which matters, because this is the form that appears in a box output on **every** execution.
@@ -190,34 +185,41 @@ display("cost", ("the compact form of a " + big.rowsCount() + "-row frame is " +
     compact.length + " characters").h)
 ```
 
-The capture above is the claim, measured: **1,143 characters for 200,000 rows.**
+The capture above is the claim, measured: **1,143 characters for 200,000 rows.** The same rendering of a 5,000-row frame is 1,141 characters — the two extra characters are `200000` being two digits longer than `5000` in the shape line, and nothing else grows.
 
-And it is a checked claim rather than a number in a document. `kotlin.dataframe-visualizer.smoke` renders those two frames — 5,000 rows and the 200,000 the capture shows — and **fails** unless their compact forms differ by no more than 40 characters (`DataFrameVisualizerSmokeTest.kt:137`). Measured on the same run that produced the picture: **1,141 characters at 5,000 rows and 1,143 at 200,000, a difference of 2** — which is exactly `200000` being two digits longer than `5000` in the shape line. A rendering that were linear in rows with a small constant would satisfy a plain size ceiling at 5,000 and blow past it at 200,000, which is why the assertion is a comparison and not a bound. The bound is there too: no last row, under 4,000 characters (`DataFrameVisualizerSmokeTest.kt:105`).
+??? aside "Why that claim is pinned by a comparison rather than a size limit"
+    `kotlin.dataframe-visualizer.smoke` renders both frames and fails unless their compact forms differ by
+    no more than 40 characters (`DataFrameVisualizerSmokeTest.kt:137`). A rendering that was linear in rows
+    with a small constant would satisfy a plain size ceiling at 5,000 rows and blow past it at 200,000, so a
+    ceiling alone would not catch the regression that matters. There is a ceiling as well — under 4,000
+    characters, no last row (`DataFrameVisualizerSmokeTest.kt:105`).
 
 ### `.h2` is a real scroller, for free
 
-`.h2` does not produce a bigger HTML dump. It *adapts* the frame into a lazily-indexed row view — a `List<Map<String, Any?>>` that materialises a row only when asked (`DataFrameVisualizer.kt:136`) — and the **h2 explorer** streams windows of that view by index. The server holds the **frame** behind an `.h2` token, not a rendering of it, and each scroll builds only the window being looked at.
+`.h2` does not produce a bigger HTML dump. It *adapts* the frame into a lazily-indexed row view — a `List<Map<String, Any?>>` that materialises a row only when asked (`DataFrameVisualizer.kt:136`) — and the **h2 explorer** streams windows of that view by index. The server holds the **frame** behind an `.h2` token, not a rendering of it, so each scroll builds only the window being looked at.
 
-Concretely, the `.h2` output is an `<iframe>` onto `/h2-explorer?root=h2-<token>` (`h2explorer.kt:559#fun installH2ExplorerHandler`), and the explorer asks for its windows over the `/ws` `__h2_explorer__` channel. It is worth naming that path precisely, because it is **not** `renderListContinuation` (`ValueVisualizer.kt:2269`) — that serves `/lazy-value-fragment`, a different renderer for expanding a value in place.
+```diffstatic_runner {data-lang=kotlin screenshot="assets/dataframe-h2-scroller.png" wait="4.5" capture="box" open-outputs="true" w="900" h="560" padding="8" timeout="150" embed=true name="dataframe-h2-scroller"}
+:::static
+import org.jetbrains.kotlinx.dataframe.api.*
 
-A list of same-shaped maps is rendered as a **table**, one column per key, in the row's own key order (`h2explorer.kt:180#fun recordCells`). That is what makes a frame's rows look like rows.
+// 15,000 rows, and nothing below pages them: `.h2` hands the whole FRAME to the
+// explorer, which asks for the window it is showing and for nothing else. A spread
+// argument is one the plugin cannot statically interpret, so this frame is
+// deliberately schema-less — what is on show here is the rendering, not the typing.
+val n = 15_000
+val big = dataFrameOf("i", "sq")(
+    *Array<Any?>(n * 2) { k ->
+        val r = k / 2
+        if (k % 2 == 0) r else r.toLong() * r
+    }
+)
 
-!!! warning "This is the second thing on this page that a picture found, not a test"
-    Until 2026-08-22 every row of a `.h2` frame rendered as the literal string `Map(size=3)`, and the
-    reason is the mis-attribution corrected two paragraphs above: the smoke test drove
-    `renderLazyFragment` — the `/lazy-value-fragment` renderer — believing it was the `.h2` path, so it
-    asserted the *paging* (window offsets, the last window reaching the last row) against a renderer the
-    widget never uses, and the *cells* had no oracle at all. `h2explorer.kt` had **no tests of any kind**.
-    It now has `H2ExplorerRecordRowsTest`, which asserts the premise (that this shape is classified as a
-    table), the cell values, the behaviour under paging at offset 9,000, and a floor of 40 distinct cells
-    across 20 rows — the regression produced exactly one.
+display("scroller", big.h2)
+```
 
-!!! note "Why there is no screenshot here"
-    The iframe carries `loading='lazy'`, so in a headless docs capture the frame is never scrolled into
-    view and never fetched — a 5-second and a 20-second settle produce the identical empty pane. The
-    server is not the slow part: fetched directly from the page, `/h2-explorer?root=…` answers **200 in
-    5 ms**. Forcing `loading='eager'` and scrolling it into view produces a correct capture in about a
-    second, so this is a capture-harness gap rather than a product one.
+Three things in that picture are worth naming. The header is the frame's real shape, `15000 rows × 2 columns`, not the size of what was sent. The rows are a **table** — one column per key, in the row's own key order (`h2explorer.kt:180#fun recordCells`) — because a list of same-shaped maps is a table and not a column of summaries. And `i` and `sq` are the frame's own column names, arriving from the data rather than from anything this page declared.
+
+Mechanically, the `.h2` output is an `<iframe>` onto `/h2-explorer?root=h2-<token>` (`h2explorer.kt:559#fun installH2ExplorerHandler`), and the explorer asks for its windows over the `/ws` `__h2_explorer__` channel. That is a different path from `/lazy-value-fragment`, which `renderListContinuation` (`ValueVisualizer.kt:2269`) serves when a value is expanded in place — worth keeping straight, because the two are easy to confuse and only one of them is what `.h2` opens.
 
 Doing it this way rather than with a bespoke widget has a second payoff: a frame nested *inside* another value — a list of frames, a data class with a frame field — expands with the same machinery.
 
@@ -239,7 +241,7 @@ The runtime version is pinned to `1.0.0-Beta2`, and **it is a pin rather than a 
 
 Field builds one compiler engine per box, so anything added to the compilation state is paid per box rather than per DataFrame user. That is worth a number, and it has one, from `kotlin.dataframe-plugin-cost.probe`: toggling the plugin moves per-engine cost by **~4%** — 7449 ms against 7785 ms over three engines — and `dataframe-core` adds four entries to a 471-entry classpath (`DataFramePluginCostProbe.kt:27`).
 
-The probe is also a cautionary tale, and the more useful half of it. A 243-box test appeared to go from a 39–43 s pass to a 284 s failure when the plugin landed; the real cause was two Field JVMs and a Gradle daemon competing for the machine, and the same test passes in ~103 s run alone. Engine cost is dominated by warm-up, not by either addition: the first engine costs ~4.6 s to construct and ~13 s to first-evaluate, the second and third ~200 ms and ~1–3 s. **Treat any perf number taken on a shared machine as noise until it is reproduced idle.**
+Engine cost is dominated by warm-up rather than by either addition: the first engine costs ~4.6 s to construct and ~13 s to first-evaluate, the second and third ~200 ms and ~1–3 s.
 
 ---
 

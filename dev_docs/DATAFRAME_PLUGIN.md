@@ -352,3 +352,50 @@ object's own prose does appear on `visualization.md`; only the index row is empt
 overview above the block would fill it. Deliberately not done here, so that the drift this branch
 causes stays the single `Used in:` change named in the worklog rather than a second, larger edit to a
 generated artifact.
+
+## Two rendering defects, and what found them both
+
+Neither of these was found by a test. Both were found by looking at what a box actually drew, and both
+are the same shape: a value reached the renderer and dispatched to a generic fallback instead of a table.
+They are recorded here rather than on `public/docs/dataframe.md`, which is a page about using DataFrames.
+
+**A column rendered as its own `toString()`, for eight months.** `ValuePrinterRegistry` resolved a printer
+by exact class, then the superclass chain, then only the interfaces the *runtime class declares directly*.
+DataFrame's columns defeat that: `ValueColumnImpl : DataColumnImpl(), ValueColumn` and
+`ValueColumn : DataColumn`, so `DataColumn` sat one interface further out than the lookup reached,
+`register(DataColumn::class.java)` was dead code, and a column drew as
+`ValueColumnImpl age 0 15 1 30 2 45 3 22`. The registry now walks the whole interface closure
+(`ValueVisualizer.kt:97`), and the smoke test asserts the part a `toString()` cannot fake — the column's
+element type (`DataFrameVisualizerSmokeTest.kt:203`). `GroupBy` was the case that *named* this risk when
+the feature landed and it keeps its own regression (`DataFrameVisualizerSmokeTest.kt:152`); the column case
+was the same hazard, known and documented, shipping one live instance of itself.
+
+**Every row of a `.h2` frame rendered as the string `Map(size=3)`.** `.h2` adapts a frame into `LazyRows`,
+a `List<Map<String, Any?>>`, and the explorer's `ListSource` had three modes — GENERIC, VECTOR,
+NUMERIC_STREAM. A list of maps fell to GENERIC, where each element becomes `preview()`, which for a `Map`
+is its size. A RECORD mode now sits beside VECTOR, which already did this job for a uniform element shape:
+sample the prefix, and if every element is a `Map` with the same key sequence, those keys are the columns
+(`h2explorer.kt:180#fun recordCells`). It generalises past DataFrame — any `List<Map<String, Any?>>` is a
+common Field shape.
+
+**The cause of the second one was a mis-stated mechanism, which is the transferable part.** Both this
+file and the public page said `.h2` streamed through `renderListContinuation`. It does not:
+`renderListContinuation` (`ValueVisualizer.kt:2269`) serves `/lazy-value-fragment`, which expands a value
+in place, while `.h2` opens an iframe onto `/h2-explorer` fed by the `__h2_explorer__` channel. The smoke
+test drove the former believing it was the latter, so it asserted *paging* — window offsets, the last
+window reaching the last row — against a renderer the widget never opens, and the *cells* had no oracle at
+all. `h2explorer.kt` had no tests of any kind. It now has `H2ExplorerRecordRowsTest`.
+
+**A capture-harness bug hid it from the docs build too.** The `.h2` iframe carries `loading="lazy"`, so in
+a headless box capture the frame was never scrolled into view and never fetched — and its untouched
+`about:blank` document reports `readyState === "complete"`, so `iframeReady` read it as READY while it was
+empty. The frame's own "connecting…" never blocked the shot either, because `about:blank` has no `#status`
+element for `blockedStatusText` to inspect. The box-capture prep now promotes a deferred frame to
+`loading="eager"`, scrolls it in, and refuses to call an un-navigated frame ready
+(`docs/screenshot.kt:500#materialiseDeferredFrame`). The existing readiness logic was correct; it was never
+reached.
+
+**A timing scare worth not repeating.** A 243-box test appeared to go from a 39–43 s pass to a 284 s
+failure when the plugin landed. The cause was two Field JVMs and a Gradle daemon competing for the
+machine; run alone the same test passes in ~103 s. Treat any timing taken on a busy machine as noise
+until it is reproduced idle.
