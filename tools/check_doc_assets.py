@@ -36,7 +36,7 @@ import os
 import re
 import subprocess
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 ASSET_EXTS = (".png", ".svg", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".mp4", ".webm", ".wav")
 
@@ -96,6 +96,38 @@ def resolve_candidates(page: Path, ref: str) -> list[Path]:
     ]
 
 
+DIFFSTATIC_FENCE = re.compile(r"```diffstatic_runner \{([^}]*)\}")
+FENCE_ASSET = re.compile(r'(?:screenshot|video|audio)="([^"]+)"')
+
+
+def orphaned_capture_fences(text: str) -> list[str]:
+    """Assets a fence generates that the page then shows nowhere.
+
+    `embed` defaults to FALSE in `public/docs_hooks.py`, and the `<img>`/`<video>` is only emitted
+    when it is true. So a fence declaring `screenshot="..."` without `embed=true` runs its code,
+    spends the capture budget, writes the PNG -- and the reader sees nothing. That is invisible from
+    either end: the asset exists on disk so the tracked-asset check above is happy, and the page
+    renders without error. It shipped on two whole pages (`rectsl_inverse_animation`, `manifold`)
+    plus three stragglers before anyone opened them and noticed the code had no pictures.
+
+    Referencing the asset by hand instead -- an ordinary `![](...)` line -- is a legitimate second
+    convention and is not reported.
+    """
+    shown = set(re.findall(r"!\[[^\]]*\]\(([^)]+)\)", text)) | set(re.findall(r'src="([^"]+)"', text))
+    shown_names = {PurePosixPath(r.strip()).name for r in shown}
+    orphans: list[str] = []
+    for match in DIFFSTATIC_FENCE.finditer(text):
+        attrs = match.group(1)
+        asset = FENCE_ASSET.search(attrs)
+        if asset is None or "embed=" in attrs:
+            continue
+        path = asset.group(1).strip()
+        if path in shown or PurePosixPath(path).name in shown_names:
+            continue
+        orphans.append(path)
+    return orphans
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--docs-root", default="public/docs", help="Docs directory (default: public/docs).")
@@ -127,6 +159,7 @@ def main() -> int:
             return None
 
     problems: list[tuple[str, str, str]] = []
+    orphans: list[tuple[str, str]] = []
     checked_pages = 0
     checked_refs = 0
     for page in pages:
@@ -134,6 +167,9 @@ def main() -> int:
         if page_rel is None or page.relative_to(docs_root).as_posix() in ignore:
             continue
         checked_pages += 1
+        page_text = page.read_text(encoding="utf-8", errors="ignore")
+        for asset in orphaned_capture_fences(page_text):
+            orphans.append((page_rel, asset))
         for ref in extract_refs(page.read_text(encoding="utf-8", errors="ignore")):
             r = ref.strip()
             if not r or r.startswith(EXTERNAL) or not r.lower().endswith(ASSET_EXTS):
@@ -149,8 +185,20 @@ def main() -> int:
 
     print(f"checked {checked_pages} page(s), {checked_refs} asset ref(s) "
           f"[{'all md' if args.all else 'nav-published only'}]")
+    if orphans:
+        print(f"\nFAIL — {len(orphans)} capture fence(s) generate an asset the page never shows:\n")
+        for page_rel, asset in orphans:
+            print(f"  {asset}")
+            print(f"      in:    {page_rel}")
+            print("      cause: the fence declares it but has no `embed=true`, and no markdown "
+                  "reference shows it")
+        print("\nFix: add `embed=true` to the fence, or reference the asset with an ordinary "
+              "![](...) line.")
+        if not problems:
+            return 1
+
     if not problems:
-        print("OK — every referenced asset is committed.")
+        print("OK — every referenced asset is committed, and every capture is shown.")
         return 0
 
     print(f"\nFAIL — {len(problems)} referenced asset(s) not tracked in git:\n")
