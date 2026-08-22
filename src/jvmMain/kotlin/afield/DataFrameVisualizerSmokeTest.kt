@@ -37,6 +37,16 @@ object DataFrameVisualizerSmokeTest {
 
     private const val ROWS = 5_000
 
+    /**
+     * The row count `public/docs/dataframe.md` shows a capture of, and the figure in its prose.
+     *
+     * Named here rather than left as a literal because that page's claim — "printing a very large
+     * frame costs what printing ten rows costs" — is asserted by
+     * [testCompactFormDoesNotGrowWithRowCount] below, so the number in the document has a task that
+     * declares it. A number no task declares is decoration.
+     */
+    private const val DOCS_PAGE_ROWS = 200_000
+
     fun runTests(): Boolean {
         return try {
             println("Running DataFrame visualizer smoke...")
@@ -45,6 +55,7 @@ object DataFrameVisualizerSmokeTest {
 
             testFrameDispatchesToTheRegistry()
             testCompactFormIsBounded()
+            testCompactFormDoesNotGrowWithRowCount()
             testGroupByDispatches()
             testRowAndColumnRender()
             testScrollingThroughWindows()
@@ -103,6 +114,36 @@ object DataFrameVisualizerSmokeTest {
         }
         println("  .h2 first payload is ${lazy.length} chars and is a window, not the whole frame")
     }
+
+    /**
+     * The claim the documentation page makes, asserted as the invariant it actually is.
+     *
+     * A 4,000-character ceiling at 5,000 rows (above) says the output is *bounded*. It does not say
+     * the output is bounded **independently of row count**, which is the interesting property and the
+     * one `public/docs/dataframe.md` states in prose beside a capture of a
+     * [DOCS_PAGE_ROWS]-row frame. A rendering that were linear in rows, with a small constant, would
+     * satisfy the ceiling at 5,000 and blow past it at 200,000 — and nothing would have said so.
+     *
+     * So: render two frames 40× apart in length and require the compact forms to differ by no more
+     * than [SHAPE_LINE_SLACK] characters. The only legitimate difference between them is the digits
+     * of the row count in the shape line, which is why the slack is tens of characters rather than a
+     * ratio. Measured 2026-08-22: 1,141 characters at 5,000 rows and 1,143 at 200,000 — a difference
+     * of 2, which is exactly `200000` being two characters longer than `5000`.
+     */
+    private fun testCompactFormDoesNotGrowWithRowCount() {
+        val small = dataFrameOf("i")(*Array(ROWS) { it }).h.length
+        val large = dataFrameOf("i")(*Array(DOCS_PAGE_ROWS) { it }).h.length
+        val grew = large - small
+        require(grew in -SHAPE_LINE_SLACK..SHAPE_LINE_SLACK) {
+            "the compact form grew by $grew characters going from $ROWS to $DOCS_PAGE_ROWS rows " +
+                "($small -> $large). Only the shape line's digits should change, so the head is no " +
+                "longer the only thing being rendered — which is the claim on public/docs/dataframe.md"
+        }
+        println("  .h is $small chars at $ROWS rows and $large at $DOCS_PAGE_ROWS: grew by $grew")
+    }
+
+    /** Room for the row count getting longer in the shape line, and nothing else. */
+    private const val SHAPE_LINE_SLACK = 40
 
     /**
      * `GroupBy` was the dispatch case this test was written for: [ValuePrinterRegistry] used to check
