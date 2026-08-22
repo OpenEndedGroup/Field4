@@ -461,8 +461,7 @@ is why it can run in CI at all.
 
 **arclength_spacing_demo** — Two boxes on the difference between spacing a curve by its *parameter*
 and spacing it by its *arc length*. A cubic can be perfectly straight and still be parameterised so
-unevenly that `t = 0.5` is four fifths of the way along it, and until 2026-07-31 Field's arc-length
-table was blind to exactly that case. *Dashes* dashes the same two curves twice — marching `t` in
+unevenly that `t = 0.5` is four fifths of the way along it. *Dashes* dashes the same two curves twice — marching `t` in
 equal steps down the left column, `byDashing` down the right — and captions each panel with the
 shortest and longest dash it actually drew (18.8 .. 25.0 against a requested 22.0 for a mere S-curve;
 far worse for the collinear one). *Ticks* puts 24 equal steps of parameter beside 24 equal steps of
@@ -483,9 +482,8 @@ argument: `arrow(a, b, startHead = true, endHead = true)` from the stdlib is ten
 `Close` nodes in it, at indices 5 and 9 — so exactly one of them is interior, and no user cleverness
 was needed to build one. It runs ten public operations over that arrow
 under `runCatching` — reverse, subdivide, simplify, convex hull, filter, winding number, contains,
-centroid, bounds, dash — and prints `ok` or `THREW` for each. Every one of them threw
-`IndexOutOfBoundsException` on that exact line before 2026-08-01. Both boxes draw with
-`showPlaneGrid`, so no AWT and no GPU.
+centroid, bounds, dash — and prints `ok` or `THREW` for each. Both boxes draw with `showPlaneGrid`, so
+no AWT and no GPU.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/close_node_demo/metadata.edn)
 
 **dynamic_graph_systems_examples** — [Graphs that change while you
@@ -665,8 +663,7 @@ counterfactual, rendered by `threeGrid(...)` with back-face culling on, which ma
 winding test as well as a hole test: a mis-wound rim triangle would be *missing*. *Every
 composite chains now* runs eight composite operators off one ambo — join, needle, zip, ortho, expand,
 snub, meta, bevel — prints what it asked for beside what actually ran, and closes with a composite
-still refusing a single realization policy. Until 2026-08-05 none of these compiled; needle, zip and
-ortho had no named function at all.
+still refusing a single realization policy.
 
 ![A table listing the windowed face's rings, its two Euler characteristics, the failed manifold check with four one-sided window edges, and four refused calls each with its exception message](assets/polytope_examples/face_with_a_hole.png)
 

@@ -718,15 +718,6 @@ manifest can go wrong: `aCorruptManifestNeitherLosesHistoryNorReusesAVersionInde
 `aVersionFileTheManifestNeverRecordedIsNotOverwritten` and
 `aDeletedManifestStillLeavesTheFilesAsTheHistory`.
 
-??? aside "Until 2026-08-01 this was a data-loss bug"
-
-    `keyVersions` used to read the manifest inside a `runCatching` that swallowed the failure and
-    returned an empty list, and `saveKey` numbered itself from that — so a manifest that could not be
-    parsed made the next save call itself version 0 and **overwrite `000000.json`**, with no
-    exception and no log line. If you have a `.versions` directory that predates this fix, its
-    numbering may already have been walked over; the files that are there are still readable, but the
-    history may have gaps.
-
 ## A captured look becomes source
 
 The last step of the loop closes it. `Key.updateCode()` emits the snapshot as pasteable Kotlin —

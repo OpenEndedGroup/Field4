@@ -446,8 +446,8 @@ In rough order of how often each turns out to be the answer:
 
 1. **It is in another section.** Check the header above it. Ranking cannot cross a section boundary.
 2. **The section it landed in was inferred, not read.** On a freshly launched Field the first request
-   or two are served by K1 while the sidecar builds its session. The prior applies on that path too
-   (it did not until 2026-08-18), but a K1 result carries no `declaredIn`, so its category is guessed
+   or two are served by K1 while the sidecar builds its session. The prior applies on that path too,
+   but a K1 result carries no `declaredIn`, so its category is guessed
    from the row's name and type — and a row in the wrong section cannot be lifted out of it. Ask
    again a second later. Your Field's own log names the backend and the reason on every request —
    `completion backend=AA … (N candidates)` or `backend=K1 … (AA→K1: <why>)`.

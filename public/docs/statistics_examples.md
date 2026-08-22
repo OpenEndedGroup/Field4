@@ -297,15 +297,11 @@ looking, then use something else to describe what you found.
     heavy ties with a real relationship still read high (a ten-block staircase reads **0.891**),
     while heavy ties with no relationship read ~0.
 
-    Inputs whose `x` values are all distinct are unaffected, bit for bit, so every number elsewhere
-    on this page is a tie-free case and reads the same as it always did.
+    Inputs whose `x` values are all distinct never reach the tie path at all, so every number
+    elsewhere on this page is a tie-free case.
 
-    **If you have xi values recorded on tied `x` from before 2026-07-30, they are wrong.** Until
-    then x-ties broke by input index, which silently scored how nearly `y` was a function of *the
-    order the samples arrived in*: a constant predictor read **0.970**, and so did a two-valued
-    predictor of nothing but the arrival index (n=300) — near-perfect scores for predictors carrying
-    no information at all. Every other coefficient here refuses that input outright: `pearson`,
-    `spearman` and `kendallTauB` return NaN on a constant, and `distanceCorrelation` returns 0.0.
+    For contrast, the other coefficients here refuse a constant predictor outright rather than scoring
+    it: `pearson`, `spearman` and `kendallTauB` return NaN, and `distanceCorrelation` returns 0.0.
 
 ## Is 0.193 big? The permutation test nobody wrote for you
 
