@@ -57,7 +57,7 @@ Chart(title = "residual per iteration", xLabel = "iteration", yLabel = "|r|")
 - **Ticks.** `niceTicks(lo, hi, target)`, `logTicks`, `niceNumber`, `tickLabel`, `tickLabels`. Values
   are snapped to their own step, so nothing ever reads `0.30000000000000004`, and `tickLabels`
   chooses one notation for a whole axis.
-- **Marks.** `points`, `line`, `area`, `bars`, `histogram`, `rule`, `vrule`, `band`.
+- **Marks.** `points`, `line`, `area`, `bars`, `histogram`, `boxes`, `rule`, `vrule`, `band`.
 - **`toFLines()`** lowers the whole figure to `List<FLine>` in pixel space; `plotRect()` reports the
   frame the derived insets landed on.
 - **`toHTML()`** goes through `afield.graphics.linesToHTML`, which is the markup `Box.lines` builds.
@@ -98,6 +98,38 @@ Two marks over the same numbers — a `line` for the trend and `points` to make 
 datum, so `deviations` is `distinct()`. Before that it said "8 points outside expectation" above four
 visibly red dots.
 
+### Distributions: `boxes`, and why not `plotly.violin`
+
+Until now the only way to show a *distribution* in Field was `plotly.violin` (`plotly.kt:130`), which
+is a Plotly HTML/JS payload: the shape is computed and drawn in a browser, so nothing about it is
+available to a test, a headless build or an SVG export. `Chart.boxes` answers the same question in
+geometry, and `boxStats` does the arithmetic separately so a caller can assert on it.
+
+Two conventions are deliberate and pinned by tests:
+
+- **Type-7 quartiles** (linear interpolation between order statistics — NumPy's and R's default), so
+  a four-element sample has a median between its middle two rather than snapping to one.
+  `boxStats(1..9)` is exactly `3 | 5 | 7`; the difference between 3 and 3.5 is a box a quarter the
+  wrong height.
+- **Tukey fences at 1.5 × IQR.** The whiskers reach the furthest datum *inside* the fence and
+  everything past it is an individual point. Drawing whiskers to the extremes instead makes every
+  distribution look like its worst sample, which is the reading a box plot exists to avoid.
+
+An empty sample throws rather than returning a box of zeroes — a box plot of nothing and a box plot
+of zeroes look identical and only one of them is a fact.
+
+### Small multiples: `ChartGrid`, and `shareY`
+
+`chartGrid(a, b, c, d, columns = 2)` lays panels out as one figure. The layout is not the point;
+`shareY` is. Panels side by side with independently autoscaled y axes are the classic way to build a
+figure that lies, and the two captures below are the same four sines a thousandfold apart, with and
+without it.
+
+The shared domain is applied *before* the panels lay themselves out, because each panel's left inset
+comes from its own widest tick label — so sharing the domain is also what makes the plot frames line
+up with each other. Panels keep their own titles, labels and expectations, and an interactive mark
+inside a panel is still interactive.
+
 ## Captures
 
 All of these are real output. The four box screenshots come out of a live Field driven through the
@@ -130,15 +162,27 @@ capture harness rather than a box.
 
 ![a histogram](assets/chart_primitive/gallery-histogram.png)
 
+**Box-and-whisker over four samples** with the same median and visibly different spreads, one of them
+carrying three planted outliers. A bar of the mean would have drawn four equal bars.
+
+![box and whisker](assets/chart_primitive/gallery-boxes.png)
+
+**Small multiples, and the reason `shareY` defaults to true.** Same four sines, a thousandfold apart.
+Shared, that is what they are. Free, they are four identical-looking curves — the figure that lies.
+
+![small multiples, shared y](assets/chart_primitive/gallery-grid-shared.png)
+
+![small multiples, free y](assets/chart_primitive/gallery-grid-free.png)
+
 ## Verifying it
 
 Two harnesses, deliberately split: `ChartTest` owns the arithmetic, `ChartGallery` owns the pixels.
 
 ```bash
-# 20 assertions: ticks, mapping, log refusals, loudness, expectations
+# 23 assertions: ticks, mapping, log refusals, loudness, expectations, box stats, grids
 ./gradlew jvmTest --no-daemon --tests 'afield.ChartTest'
 
-# five figures rendered to real PNGs, with ink floors and a floored counterfactual
+# six figures plus two grids rendered to real PNGs, with ink floors and two counterfactuals
 CHART_GALLERY_DIR=/tmp/chart-gallery-out \
   python3 tools/run_field_tests.py --id visualization.chart-gallery --port 9477
 ```
@@ -151,6 +195,7 @@ CHART_GALLERY_DIR=/tmp/chart-gallery-out \
 | left gutter ink | 400 px | 490–978 |
 | bottom gutter ink | 500 px | 606–2411 |
 | counterfactual | 8000 px moved | 10193 of 243200 |
+| grid `shareY` effect | 15000 px moved | 20550 of 256000 |
 | tick spacing spread | < 1e-3 px | 0.00e+00 |
 
 The gutters are measured against `Chart.plotRect()` rather than a hard-coded strip, because the

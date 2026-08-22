@@ -246,6 +246,84 @@ class ChartTest {
         assertTrue(quiet.toFLines().none { it.onClick != null || it.hoverColor != null })
     }
 
+    // ── distributions ─────────────────────────────────────────────────────────────
+
+    @Test
+    fun `box stats use type-7 quartiles, and Tukey fences hold the whisker in`() {
+        // 1..9 has exact type-7 quartiles, so this pins the interpolation convention rather than
+        // accepting whatever it happens to be: 3 versus 3.5 is a box a quarter the wrong height.
+        val s = boxStats((1..9).toList())
+        assertEquals(3.0, s.q1)
+        assertEquals(5.0, s.median)
+        assertEquals(7.0, s.q3)
+        assertEquals(4.0, s.iqr)
+        assertEquals(1.0, s.low)
+        assertEquals(9.0, s.high)
+        assertTrue(s.outliers.isEmpty())
+        assertEquals(9, s.count)
+
+        // The whole reason for Tukey's convention: one far value becomes a point and pulls the
+        // whisker IN, instead of stretching it and making the sample look uniformly wide.
+        val tailed = boxStats((1..9).toList() + listOf(60))
+        assertEquals(listOf(60.0), tailed.outliers)
+        assertTrue(tailed.high < 60.0, "the whisker must stop short of the outlier")
+
+        // A single value is a degenerate box, not a crash; an empty sample is an error, not zeroes.
+        val one = boxStats(listOf(4.0))
+        assertEquals(4.0, one.median)
+        assertEquals(0.0, one.iqr)
+        assertFailsWith<IllegalArgumentException> { boxStats(emptyList()) }
+    }
+
+    @Test
+    fun `a boxes mark reaches its own whiskers and outliers`() {
+        // The mark's `y` is only the medians, so a domain taken from `y` alone would crop the tails —
+        // which are the reason to draw a box plot at all.
+        val chart = Chart().boxes(
+            "s", listOf("a", "b"),
+            listOf(listOf(1, 2, 3, 4, 5), listOf(10, 11, 12, 13, 99)),
+        )
+        val (lo, hi) = chart.resolvedYDomain()
+        assertTrue(lo <= 1.0, "the low whisker must be in frame, domain started at $lo")
+        assertTrue(hi >= 99.0, "the outlier must be in frame, domain ended at $hi")
+        assertEquals(listOf("a", "b"), chart.xCategories)
+        assertEquals(listOf(99.0), chart.marks.first().boxes!![1].outliers)
+    }
+
+    // ── small multiples ───────────────────────────────────────────────────────────
+
+    @Test
+    fun `a grid shares its y domain, and that is what changes the picture`() {
+        fun panels() = listOf(1.0, 0.001).map { scale ->
+            Chart(title = "x $scale").also { it.width = 320.0; it.height = 200.0 }
+                .line("v", (0..20).map { it }, (0..20).map { it * scale })
+        }
+
+        val shared = ChartGrid(panels(), columns = 2, shareY = true)
+        assertEquals(640.0, shared.width)
+        assertEquals(200.0, shared.height)
+        assertEquals(1, shared.rows)
+
+        // Shared: the small panel's curve is flat near the bottom. Free: it fills its own frame.
+        // Compare the drawn y extents rather than the domains, so this is about the picture.
+        fun spanOf(grid: ChartGrid, panel: Int): Double {
+            grid.toFLines()
+            val ys = grid.charts[panel].toFLines().first { it.label == "v" }
+                .nodes.mapNotNull { it.toOrNull }.map { it.y.toDouble() }
+            return ys.maxOrNull()!! - ys.minOrNull()!!
+        }
+
+        val sharedSmall = spanOf(shared, 1)
+        val freeSmall = spanOf(ChartGrid(panels(), columns = 2, shareY = false), 1)
+        assertTrue(
+            freeSmall > sharedSmall * 100,
+            "unshared, the thousandfold-smaller panel should fill its frame: $freeSmall vs $sharedSmall"
+        )
+        assertTrue(sharedSmall < 2.0, "shared, it should be nearly flat, spanned $sharedSmall px")
+
+        assertFailsWith<IllegalArgumentException> { ChartGrid(emptyList()) }
+    }
+
     // ── DataFrame ─────────────────────────────────────────────────────────────────
 
     @Test

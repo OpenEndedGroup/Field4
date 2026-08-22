@@ -3,8 +3,9 @@ package afield.examples.visualization
 import afield.CHART_BAD
 import afield.Chart
 import afield.FLineClick
-import afield.MarkKind
+import afield.ChartGrid
 import afield.ScaleKind
+import afield.boxStats
 import afield.chart
 import afield.getFLineClickCallback
 import afield.graphics.linesToHTML
@@ -97,6 +98,15 @@ object ChartGallery {
     /** Inked pixels required below the plot frame: x labels, axis title, footnote. */
     private const val MIN_BOTTOM_GUTTER_INK = 500
 
+    /**
+     * How many pixels sharing a grid's y domain must move.
+     *
+     * Measured 20550 of 256000 over four panels a thousandfold apart, so this is a floor near the
+     * measurement. It is high on purpose: a grid that silently stopped sharing would still render
+     * four plausible panels, and only the *amount* of difference distinguishes that from working.
+     */
+    private const val MIN_GRID_SHARING_PIXELS = 15_000
+
     /** One named figure. */
     private class Figure(val name: String, val build: () -> Chart)
 
@@ -172,7 +182,38 @@ object ChartGallery {
                 .points("residual", iterations, residual)
                 .expect(max = 1e-6, because = "converged below 1e-6")
         },
+
+        Figure("boxes-distributions") {
+            // Four samples with the same median and visibly different spreads, plus one with real
+            // outliers — the arrangement a bar of the mean would flatten into four equal bars.
+            val samples = listOf(
+                gaussian(240, spread = 0.35, seed = 11L),
+                gaussian(240, spread = 1.10, seed = 12L),
+                gaussian(240, spread = 0.35, seed = 13L) + listOf(4.4, -4.1, 5.0),
+                gaussian(60, spread = 0.70, seed = 14L),
+            )
+            Chart(
+                title = "four samples, same median, different everything else",
+                yLabel = "value",
+                note = "Tukey fences at 1.5 x IQR",
+            )
+                .boxes("sample", listOf("tight", "wide", "tight + tails", "small n"), samples)
+        },
     )
+
+    /** A deterministic Gaussian sample: Box-Muller on a fixed LCG, so the figure never moves. */
+    private fun gaussian(n: Int, spread: Double, seed: Long): List<Double> {
+        var state = seed
+        fun next(): Double {
+            state = state * 6364136223846793005L + 1442695040888963407L
+            return (state ushr 11).toDouble() / (1L shl 53).toDouble()
+        }
+        return (0 until n).map {
+            val u1 = next().coerceAtLeast(1e-12)
+            val u2 = next()
+            sqrt(-2.0 * ln(u1)) * cos(6.28318 * u2) * spread
+        }
+    }
 
     // ── entry point ───────────────────────────────────────────────────────────────
 
@@ -205,8 +246,10 @@ object ChartGallery {
         checkCounterfactual(dir)
         checkPixelMapping()
         checkInteractivePath()
+        checkBoxStats()
+        renderGrid(dir)
 
-        println("chart gallery rendered ${FIGURES.size} figure(s) into ${dir.absolutePath}")
+        println("chart gallery rendered ${FIGURES.size + 1} figure(s) into ${dir.absolutePath}")
     }
 
     // ── assertions ────────────────────────────────────────────────────────────────
@@ -341,6 +384,69 @@ object ChartGallery {
     }
 
     /**
+     * The five-number summary, against a sample whose quartiles are arithmetic and not opinion.
+     *
+     * `1..9` has exact type-7 quartiles at 3, 5 and 7, so this pins the interpolation convention
+     * rather than accepting whatever it happens to be — the difference between 3 and 3.5 on a real
+     * figure is a box a quarter the wrong height.
+     */
+    private fun checkBoxStats() {
+        val s = boxStats((1..9).toList())
+        check(s.q1 == 3.0 && s.median == 5.0 && s.q3 == 7.0) { "type-7 quartiles of 1..9: $s" }
+        check(s.low == 1.0 && s.high == 9.0) { "no fence should exclude anything here: $s" }
+        check(s.outliers.isEmpty()) { "a uniform run has no outliers: $s" }
+        check(s.count == 9 && s.iqr == 4.0) { "$s" }
+
+        // One value far outside the fence becomes an outlier and pulls the whisker in, rather than
+        // stretching it — which is the whole reason to use Tukey's convention instead of the extremes.
+        val withTail = boxStats((1..9).toList() + listOf(60))
+        check(withTail.outliers == listOf(60.0)) { "60 must be an outlier, got $withTail" }
+        check(withTail.high < 60.0) { "the whisker must stop short of the outlier: $withTail" }
+
+        val single = boxStats(listOf(4.0))
+        check(single.q1 == 4.0 && single.median == 4.0 && single.high == 4.0) { "$single" }
+        runCatching { boxStats(emptyList()) }.let {
+            check(it.isFailure) { "an empty sample must throw, not return a box of zeroes" }
+        }
+        println("  boxStats: type-7 quartiles exact, Tukey fence holds the whisker in")
+    }
+
+    /**
+     * Small multiples, and the reason they exist: a shared y domain.
+     *
+     * Rendered twice — shared and unshared — and the two must differ by a floored number of pixels.
+     * Unshared, three of these four panels autoscale to a hundredth of the fourth's range and every
+     * one of them looks the same size, which is the figure that lies.
+     */
+    private fun renderGrid(dir: File) {
+        fun panels() = listOf(1.0, 0.1, 0.01, 0.001).mapIndexed { i, scale ->
+            Chart(title = "x $scale", xLabel = if (i >= 2) "t" else null, yLabel = "v")
+                .also { it.width = 320.0; it.height = 200.0; it.legend = false }
+                .line("v", (0..60).map { it }, (0..60).map { sin(it * 0.15) * scale })
+        }
+
+        val shared = ChartGrid(panels(), columns = 2, shareY = true)
+        val free = ChartGrid(panels(), columns = 2, shareY = false)
+        check(shared.width == 640.0 && shared.height == 400.0) {
+            "a 2x2 grid of 320x200 panels should be 640x400, got ${shared.width}x${shared.height}"
+        }
+
+        val a = renderLines(shared.toFLines(), shared.width, shared.height)
+        val b = renderLines(free.toFLines(), free.width, free.height)
+        var moved = 0
+        for (i in a.pixels.indices) if (a.pixels[i] != b.pixels[i]) moved++
+        check(inkFraction(a) >= MIN_INK_FRACTION) { "the shared grid drew almost nothing" }
+        check(inkFraction(b) >= MIN_INK_FRACTION) { "the free grid drew almost nothing" }
+        check(moved >= MIN_GRID_SHARING_PIXELS) {
+            "sharing the y domain moved only $moved pixels, floor is $MIN_GRID_SHARING_PIXELS — " +
+                "either the panels are not sharing or they had nothing to share"
+        }
+        File(dir, "chart-grid-shared-y.png").writeBytes(a.png)
+        File(dir, "chart-grid-free-y.png").writeBytes(b.png)
+        println("  small multiples: $shared, sharing y moved $moved pixel(s) (floor $MIN_GRID_SHARING_PIXELS)")
+    }
+
+    /**
      * Ink outside the plot frame proves the *labels* drew, not only the data.
      *
      * A chart that silently lost its glyph outlines still passes an overall ink floor, because the
@@ -386,15 +492,18 @@ object ChartGallery {
      * antialiasing to the viewer, but a raster capture without it turns every glyph stem and
      * diagonal into a staircase, which is exactly the detail a reader is being asked to judge.
      */
-    private fun render(chart: Chart): Raster {
-        val w = chart.width.toInt()
-        val h = chart.height.toInt()
+    private fun render(chart: Chart): Raster =
+        renderLines(chart.toFLines(), chart.width, chart.height)
+
+    private fun renderLines(lines: List<afield.graphics.FLine>, wd: Double, ht: Double): Raster {
+        val w = wd.toInt()
+        val h = ht.toInt()
         val surface = Surface.makeRasterN32Premul(w, h)
         val bitmap = Bitmap()
         try {
             val canvas = surface.canvas
             canvas.clear(BACKGROUND)
-            chart.toFLines().forEach { outputTo(it, canvas, antiAlias = true) }
+            lines.forEach { outputTo(it, canvas, antiAlias = true) }
             val png = surface.makeImageSnapshot().encodeToData(EncodedImageFormat.PNG)?.bytes
                 ?: error("Skia declined to encode the figure as PNG")
             bitmap.allocPixels(ImageInfo.makeN32Premul(w, h))
