@@ -4,7 +4,7 @@
 
 Turning a value into something you can look at, without leaving the box.
 
-9 source file(s), 320 public symbol(s), 291 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+10 source file(s), 323 public symbol(s), 294 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -740,6 +740,21 @@ Perceptually-uniform colormaps as named colour ramps — matplotlib's viridis / 
 | <code class="highlight"><span class="k">fun</span> <span class="nf">stops</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Color4</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">sample</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Color4</span></code> | Look up colormap `name` at parameter `t` in `[0,1]` (clamped). |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">sampleStops</span><span class="p">(</span><span class="n">stops</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Color4</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Color4</span></code> | Linearly interpolate an evenly-spaced list of control points at `t` in `[0,1]` (clamped). |
+
+## DataFrameVisualizer.kt { #dataframevisualizer-kt }
+
+`src/jvmMain/kotlin/afield/visualization/DataFrameVisualizer.kt`
+
+### DataFrameVisualizer { #dataframevisualizer-kt-dataframevisualizer }
+
+<code class="highlight"><span class="k">object</span> <span class="nc">DataFrameVisualizer</span></code>
+
+Makes Kotlin DataFrame values render as Field values — `.h`, `.h2`, `display` and box return values — without DataFrame having to know Field exists.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">HEAD&#95;ROWS</span><span class="p">:</span> <span class="nc">Int</span></code> | Rows shown in the compact `.h` form. `.h2` streams the whole frame instead. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">install</span><span class="p">(</span><span class="p">)</span></code> | Register every DataFrame renderer. Idempotent, and safe to call from any thread. |
 
 ## ImagingVisualizer.kt { #imagingvisualizer-kt }
 
