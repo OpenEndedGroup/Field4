@@ -295,10 +295,10 @@ hard they are to work around:
 
 **It is deterministic, and a GPU is not.** This is the load-bearing one. The pixel-exact proofs
 compare against it, and a GPU capture cannot play that role — driver, vendor and antialiasing all
-move under you. Six test classes assert on its output today, and what they assert is pixel *statistics* —
-counts of red defect-overlay pixels, coverage fractions, painted-area bounds, outward-versus-flipped
-diffs — rather than golden images. Every one of them needs the same input to produce the same number
-twice, which only the CPU rasterizer can promise.
+move under you. What the pixel-exact proofs assert is *statistics* — counts of red defect-overlay
+pixels, coverage fractions, painted-area bounds, outward-versus-flipped diffs — rather than golden
+images, and every one of them needs the same input to produce the same number twice. Only the CPU
+rasterizer can promise that.
 
 **It needs no WebGL context.** The inline value-visualizer card that appears when a box ends on a
 `TriMesh` uses it, because an iframe per mesh in a list of values is a bad trade — and it is exactly

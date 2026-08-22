@@ -343,30 +343,27 @@ The trade is timing. Each event is a UDP message plus Sonic Pi's own scheduling 
 carry a roughly constant offset and a few milliseconds of jitter, where a compiled `live_loop` is
 sample-accurate. A constant offset is not a sequencer problem — every event carries the same one.
 
-### Measured, not assumed
+### The timing holds on the real engine
 
-`synth.sonic-pi.patterns` is a differential oracle, and it reads the emitted *text* rather than the
-emitter's own event list. That distinction is the whole test: comparing the emitter against the
-pattern only proves the emitter can enumerate, while everything that can reach a listener lives in
-the gap between that list and the text — a third rendered as `0.333333`, a `sleep` delta that does
-not accumulate back to the position it came from, a missing pad at the end of the loop so the second
-bar arrives early. So the program is parsed back and compared to the pattern's own `PatQ` positions,
-with no floating point anywhere in the comparison.
+Emitting a correct program is one thing; Sonic Pi then *doing* what the program says is another, and
+that is measured on the real engine with `pat("bd ~ [bd bd bd] bd")` at a quarter cycle per second — a
+triplet inside a binary bar, chosen so that a detector cannot pass by accident. It runs twice: once
+silently, reading Sonic Pi's own line-activity reports, and once audible, recorded through Sonic Pi's
+recorder and analysed in process.
 
-```diffstatic {data-lang=text}
-:::static
-55 patterns x 3 tempos, 346 events, agreement exact in PatQ
-53/53 = 100.0% of the Sonic Pi-meaningful Pat surface
-44 aliases: 40 sample, 2 synth — all present
-```
+??? aside "Why the program is parsed back rather than compared to the event list"
+    `synth.sonic-pi.patterns` is a differential oracle, and it reads the emitted *text* rather than the
+    emitter's own event list. That distinction is the whole test: comparing the emitter against the pattern
+    only proves the emitter can enumerate, while everything that can reach a listener lives in the gap
+    between that list and the text — a third rendered as `0.333333`, a `sleep` delta that does not
+    accumulate back to the position it came from, a missing pad at the end of the loop so the second bar
+    arrives early. So the program is parsed back and compared to the pattern's own `PatQ` positions, with no
+    floating point anywhere in the comparison: 55 patterns across 3 tempos, 346 events, exact agreement;
+    53 of 53 of the Sonic Pi-meaningful `Pat` surface; all 44 aliases present.
 
-None of that says Sonic Pi then *does* what the program says. `sonicpi.pattern.timing` answers that
-on the real engine with `pat("bd ~ [bd bd bd] bd")` at a quarter cycle per second — a triplet inside
-a binary bar, chosen so that a detector cannot pass by accident. It runs twice: once at `amp: 0`,
-measuring Sonic Pi's own line-activity reports, and once audible at a master volume of 0.15,
-recorded through Sonic Pi's recorder and analysed in process. It skips loudly on machines without
-Sonic Pi; `FIELD_SONIC_PI_REQUIRED=1` turns that skip (or a boot that never becomes ready) into a
-failure on machines whose job is to exercise the external engine.
+    The timing run skips loudly on machines without Sonic Pi. `FIELD_SONIC_PI_REQUIRED=1` turns that skip
+    — or a boot that never becomes ready — into a failure, for machines whose job is to exercise the
+    external engine.
 
 ```diffstatic {data-lang=text}
 :::static

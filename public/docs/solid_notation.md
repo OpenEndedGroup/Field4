@@ -114,12 +114,11 @@ excluded from the exact statistic, because a refused shape gets *two marchers on
 catches a broken lowering but says nothing about whether that field is the shape the notation meant.
 "Eleven of eleven agree" where three of them agreed with themselves is not the claim being made.
 
-### That split is measured, not read off the package's own bookkeeping
+### How to tell whether your own shape lowered exactly
 
-Asserting it from `SolidBuild.isExact` would only be this package restating its own records. The
-discriminator used instead is a property the two paths cannot share: **the exact lowering has no
-`edgeLength` input at all.** Refine the march by 2.5× and a genuinely exact solid cannot move; a
-level set must.
+There is a test you can run on any shape, and it does not involve asking the package what it thinks it
+did: **the exact lowering has no `edgeLength` input at all.** Refine the march by 2.5× and a genuinely
+exact solid cannot move — same volume, same triangle count. A level set must.
 
 | case | declared | volume @ h=1/40 | volume @ h=1/100 | tris @40 | tris @100 |
 |---|---|---|---|---|---|
