@@ -39,6 +39,31 @@ argument). Plotly wins on every axis visible in that capture:
   of it. That is a real defect in this primitive, not a matter of taste.
 - **Auto-ranged axes** with more useful ticks.
 
+### Three of those four are now fixed, and the fourth is structural
+
+![The same comparison after the fixes](assets/chart_primitive/fline-vs-plotly-after.png)
+
+- **Text is filled.** `labelLines` asked `toFLines` for `filled = false, stroked = true`, which draws a
+  hollow letterform at label size. `toFLines` is per-glyph and honours holes by default, so
+  `filled = true, stroked = false` gives real type with its counters intact — measured in the emitted
+  markup as **212 filled glyph paths** carrying `fill="#…"` and no stroke.
+- **Labels are legible.** `LABEL_SIZE` 11 → 14 and `TITLE_SIZE` 13 → 18. Both feed the padding
+  computation, so the layout adapts rather than colliding.
+- **The figure uses its panel.** Default aspect 640×380 (1.68:1) → 900×420 (2.14:1), which is close to a
+  box output panel's ~2.36:1.
+- **The margins that remain are structural and will not go away.** A `Chart` is FIXED geometry: the output
+  area fits it uniformly and centres it, so any aspect mismatch is empty margin. A Plotly plot reflows to
+  whatever shape it is given. Likewise FLine text is *geometry* and scales with the fit, where Plotly's is
+  screen-relative — so "how big is the label" has no single answer for a Chart. **Neither is a bug, and
+  both are reasons the general chart path should be Plotly.**
+
+**A negative result worth recording so nobody repeats it.** The obvious fix for the margins — give the
+emitted `<svg>` a `viewBox` and `width="100%"` — was implemented, verified present in the markup, and is
+**inert inside Field**. The output area does not use the SVG's own sizing at all: it parses
+`data-afield-bounds-*`, mounts the figure in a pan/zoom viewport, and applies its own measured fit
+(`outputareas.kt#fitToContent`, which has no upper clamp and was already scaling the figure up by ~1.15×).
+The change was reverted rather than left in as decoration.
+
 ### What survives the comparison
 
 Three things, and none of them needs a plotting engine — they need marks-as-FLines plus a scale:

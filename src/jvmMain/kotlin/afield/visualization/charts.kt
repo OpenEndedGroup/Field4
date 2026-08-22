@@ -60,8 +60,9 @@ import kotlin.math.sin
  * Field already had most of the pieces: `List<FLine>.fitInto`, `planeFigureHtml`'s window→frame
  * mapping, and `MorphoSearchFLines.plotFrame`'s FLine gridlines. What it did not have — and says so
  * in a comment at `MorphoSearchFLines.kt:51` — is **an axis with text on it**, because
- * `showPlaneGrid` has nowhere to put a label. So the labels here are real glyph outlines
- * ([labelLines]), which is what makes this a chart rather than a grid.
+ * `showPlaneGrid` has nowhere to put a label. So the labels here are real glyph geometry
+ * ([labelLines]) -- filled, with their counters intact -- which is what makes this a chart rather
+ * than a grid.
  *
  * ### Marks pick themselves up
  *
@@ -499,11 +500,20 @@ class Chart(
     var note: String? = null,
 ) : ToHTML {
 
-    /** Figure width in pixels. */
-    var width: Double = 640.0
+    /**
+     * Figure width in pixels.
+     *
+     * The default aspect is chosen to sit close to a box output panel's, because a Chart is FIXED
+     * geometry: the output area fits it uniformly and centres it, so any mismatch between this
+     * aspect and the panel's shows up as empty margin. A Plotly plot has no such problem -- it is
+     * HTML and reflows to whatever shape it is given. That asymmetry is structural, not a bug, and
+     * it is one of the reasons the general chart path should be Plotly. Set both fields when you
+     * know the shape you are drawing into.
+     */
+    var width: Double = 900.0
 
-    /** Figure height in pixels. */
-    var height: Double = 380.0
+    /** Figure height in pixels. See [width] on why the default aspect is panel-shaped. */
+    var height: Double = 420.0
 
     /** The x axis's arithmetic. */
     var xKind: ScaleKind = ScaleKind.LINEAR
@@ -1446,10 +1456,10 @@ private val MarkKind.carriesData: Boolean
 // ==============================================================================================
 
 /** Tick and legend text size in pixels. */
-private const val LABEL_SIZE = 11.0
+private const val LABEL_SIZE = 14.0
 
 /** Title text size in pixels. */
-private const val TITLE_SIZE = 13.0
+private const val TITLE_SIZE = 18.0
 
 /** Where a label's given position sits relative to the text. */
 private enum class Anchor { LEFT, CENTRE, RIGHT }
@@ -1485,7 +1495,11 @@ private fun labelLines(
             Anchor.CENTRE -> x - layout.advanceWidth / 2.0
             Anchor.RIGHT -> x - layout.advanceWidth
         }
-        layout.toFLines(color = colour, thickness = 0.85, filled = false, stroked = true)
+        // Filled, not stroked. `toFLines` is per-glyph and honours holes by default, so a filled
+        // glyph keeps its counters -- the `o` stays an `o`. Stroking an outline at label size draws
+        // a hollow letterform standing in for filled type, which is what made these labels read as
+        // outlines beside a Plotly plot's real text.
+        layout.toFLines(color = colour, thickness = 0.0, filled = true, stroked = false)
             .map { line -> line.transform { p -> vec(p.x + dx, p.y + y, p.z) } }
     }.getOrElse { emptyList() }
 }
