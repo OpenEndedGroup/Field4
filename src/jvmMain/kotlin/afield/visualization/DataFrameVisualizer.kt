@@ -25,10 +25,17 @@ import org.jetbrains.kotlinx.dataframe.api.GroupBy
  *
  * [H2ValueSnapshot] *adapts* one value into another for the lazy renderer, rather than producing
  * HTML. So `.h2` on a frame adapts it into [LazyRows] — a `List<Map<String, Any?>>` view that reads a
- * row only when asked — and the existing `renderListContinuation` offset paging streams it. That is
- * what makes this a real scroller for a large frame rather than a big HTML dump: the server holds the
- * frame (not a rendering of it) behind an `.h2` token, and each scroll materialises only the window
- * being looked at.
+ * row only when asked — and the h2 **explorer** (`h2explorer.kt`, reached as an iframe onto
+ * `/h2-explorer?root=<token>` and fed over the `/ws` `__h2_explorer__` channel) streams windows of it
+ * by index. That is what makes this a real scroller for a large frame rather than a big HTML dump: the
+ * server holds the frame (not a rendering of it) behind an `.h2` token, and each scroll materialises
+ * only the window being looked at.
+ *
+ * Do not confuse that path with `ValueVisualizer.renderListContinuation`, which serves
+ * `/lazy-value-fragment` — a *different* renderer for expanding a value in place. This KDoc named the
+ * wrong one until 2026-08-22, and the cost was concrete: the smoke test exercised
+ * `renderLazyFragment` believing it was the `.h2` path, so every row of a `.h2` frame rendered as the
+ * string `Map(size=3)` in the actual widget and nothing failed.
  *
  * Doing it this way rather than with a bespoke widget also means a frame nested *inside* another
  * value — a list of frames, a data class with a frame field — expands with the same machinery.

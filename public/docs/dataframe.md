@@ -196,7 +196,28 @@ And it is a checked claim rather than a number in a document. `kotlin.dataframe-
 
 ### `.h2` is a real scroller, for free
 
-`.h2` does not produce a bigger HTML dump. It *adapts* the frame into a lazily-indexed row view — a `List<Map<String, Any?>>` that materialises a row only when asked (`DataFrameVisualizer.kt:136`) — and hands that to the offset paging Field's lazy renderer already has (`renderListContinuation`, `DataFrameVisualizer.kt:28`). The server holds the **frame** behind an `.h2` token, not a rendering of it, and each scroll builds only the window being looked at.
+`.h2` does not produce a bigger HTML dump. It *adapts* the frame into a lazily-indexed row view — a `List<Map<String, Any?>>` that materialises a row only when asked (`DataFrameVisualizer.kt:136`) — and the **h2 explorer** streams windows of that view by index. The server holds the **frame** behind an `.h2` token, not a rendering of it, and each scroll builds only the window being looked at.
+
+Concretely, the `.h2` output is an `<iframe>` onto `/h2-explorer?root=h2-<token>` (`h2explorer.kt:559#fun installH2ExplorerHandler`), and the explorer asks for its windows over the `/ws` `__h2_explorer__` channel. It is worth naming that path precisely, because it is **not** `renderListContinuation` (`ValueVisualizer.kt:2269`) — that serves `/lazy-value-fragment`, a different renderer for expanding a value in place.
+
+A list of same-shaped maps is rendered as a **table**, one column per key, in the row's own key order (`h2explorer.kt:180#fun recordCells`). That is what makes a frame's rows look like rows.
+
+!!! warning "This is the second thing on this page that a picture found, not a test"
+    Until 2026-08-22 every row of a `.h2` frame rendered as the literal string `Map(size=3)`, and the
+    reason is the mis-attribution corrected two paragraphs above: the smoke test drove
+    `renderLazyFragment` — the `/lazy-value-fragment` renderer — believing it was the `.h2` path, so it
+    asserted the *paging* (window offsets, the last window reaching the last row) against a renderer the
+    widget never uses, and the *cells* had no oracle at all. `h2explorer.kt` had **no tests of any kind**.
+    It now has `H2ExplorerRecordRowsTest`, which asserts the premise (that this shape is classified as a
+    table), the cell values, the behaviour under paging at offset 9,000, and a floor of 40 distinct cells
+    across 20 rows — the regression produced exactly one.
+
+!!! note "Why there is no screenshot here"
+    The iframe carries `loading='lazy'`, so in a headless docs capture the frame is never scrolled into
+    view and never fetched — a 5-second and a 20-second settle produce the identical empty pane. The
+    server is not the slow part: fetched directly from the page, `/h2-explorer?root=…` answers **200 in
+    5 ms**. Forcing `loading='eager'` and scrolling it into view produces a correct capture in about a
+    second, so this is a capture-harness gap rather than a product one.
 
 Doing it this way rather than with a bespoke widget has a second payoff: a frame nested *inside* another value — a list of frames, a data class with a frame field — expands with the same machinery.
 
