@@ -390,9 +390,9 @@ finite difference — and that was *every* remaining refusal in the corpus that 
 116 tracks. `Fn` gained `atan`, `atan2` and `hypot`, and the near-zero guards on `/` and `smoothstep`
 came with them.
 
-Two things in that last column are worth not glossing. The worst disagreement rose two orders of
-magnitude, and it should have: a heading *differences* two positions a 240th of a second apart, so a
-one-ulp error in a position is a ~10⁻¹⁴ error in the angle. It is amplification, not a new
+The worst disagreement in that last column rose two orders of magnitude, and it should have: a
+heading *differences* two positions a 240th of a second apart, so a one-ulp error in a position is a
+~10⁻¹⁴ error in the angle. It is amplification, not a new
 approximation — a heading over an unnested trajectory is bit-identical at all 4001 samples of a
 winding circle. And `atan2` is a **primitive** rather than `atan(y/x)` with a quadrant fix-up, which
 is what the refusal text had predicted: the fix-up divides first, `-0.0 / -1.0` is `+0.0`, and the
