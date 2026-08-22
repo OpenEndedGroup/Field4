@@ -1307,13 +1307,18 @@ private fun applyEdit(editor: dynamic, range: dynamic, text: String) {
     editor.executeEdits("field-fix", arrayOf(edit))
 }
 
-/** Insert `import <fqn>` after the last existing import (or package, or at the top). No-op if already present. */
-private fun insertImportLine(editor: dynamic, fqn: String) {
-    if (fqn.isBlank()) return
-    val model = editor.getModel() ?: return
+/**
+ * Insert `import <fqn>` after the last existing import (or package, or at the top).
+ * Returns the 1-based line the import ends up on — the existing one if it was already there —
+ * or -1 if there was nothing to do.
+ */
+private fun insertImportLine(editor: dynamic, fqn: String): Int {
+    if (fqn.isBlank()) return -1
+    val model = editor.getModel() ?: return -1
     val importLine = "import $fqn"
     val lines = (model.getValue() as String).split("\n")
-    if (lines.any { val t = it.trim(); t == importLine || t == "$importLine;" }) return
+    val already = lines.indexOfFirst { val t = it.trim(); t == importLine || t == "$importLine;" }
+    if (already >= 0) return already + 1
 
     var lastImport = -1
     var packageLine = -1
@@ -1334,9 +1339,39 @@ private fun insertImportLine(editor: dynamic, fqn: String) {
     if (ln > lineCount) {
         val lastLen = (model.getLineMaxColumn(lineCount) as Number).toInt()
         applyEdit(editor, newRange(lineCount, lastLen, lineCount, lastLen), "\n$importLine")
-    } else {
-        applyEdit(editor, newRange(ln, 1, ln, 1), "$importLine\n")
+        return lineCount + 1
     }
+    applyEdit(editor, newRange(ln, 1, ln, 1), "$importLine\n")
+    return ln
+}
+
+/**
+ * Execute the one `import …` line an "add import" fix just wrote, in the box's own
+ * KotlinInterface2 — so the code that errored can be re-run as-is, instead of the user having to
+ * jump to the top of the box, execute the import by hand, and come back down again.
+ */
+private fun executeImportLine(uid: String, property: String, line: Int, code: String) {
+    if (uid.isBlank() || line < 1) return
+    val prop = property.ifBlank { "code" }
+
+    val payload = js("{}")
+    payload.uid = uid
+    payload.type = "fragment"
+    payload.line = line - 1
+    payload.code = code
+    payload.singleLine = true
+    payload.property = prop
+
+    val w = js("window")
+    val handler = w.handleOutput
+    val callback: (dynamic, dynamic) -> Boolean = { message, response ->
+        handler(response, message, uid)
+        true
+    }
+    if (w.LineHeatmap != null && w.LineHeatmap != undefined) {
+        w.LineHeatmap.recordExecutionRange(uid, prop, line, line)
+    }
+    sendWithReply("execute-fragment", payload, "exec_$uid", callback.asDynamic())
 }
 
 /** The numeric literal (with any type suffix) spanning [line]/[column], as (range, text), or null. */
@@ -1375,7 +1410,7 @@ private fun rewriteNumericLiteral(text: String, helper: String): String? {
     }
 }
 
-private fun applyFixSuggestion(editor: dynamic, s: OutputSuggestion) {
+private fun applyFixSuggestion(editor: dynamic, s: OutputSuggestion, boxUid: String, boxProperty: String) {
     when (s.kind) {
         "rename" -> {
             val range = fixWordRangeAt(editor, s.line, s.column, s.token)
@@ -1390,8 +1425,9 @@ private fun applyFixSuggestion(editor: dynamic, s: OutputSuggestion) {
                 if (range == null) { notifyFixCantApply(); return }
                 applyEdit(editor, range, s.replacement)
             }
-            insertImportLine(editor, s.importFqn)
+            val importedAt = insertImportLine(editor, s.importFqn)
             editor.focus()
+            executeImportLine(boxUid, boxProperty, importedAt, "import ${s.importFqn}")
         }
         "wrap" -> {
             val model = editor.getModel() ?: run { notifyFixCantApply(); return }
@@ -1496,7 +1532,7 @@ private fun appendErrorSuggestions(
         apply.setAttribute("title", "Apply this fix directly")
         apply.addEventListener("click", { e: dynamic ->
             e.stopPropagation(); e.preventDefault()
-            applyFixSuggestion(editor, s)
+            applyFixSuggestion(editor, s, boxUid, boxProperty)
         })
         row.appendChild(apply)
 

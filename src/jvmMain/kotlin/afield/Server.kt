@@ -1031,6 +1031,112 @@ private fun sendConflatedControlUpdate(session: WebSocketSession, message: Messa
     }.offer(controlId, encoded)
 }
 
+/**
+ * One "outputs skipped" toast per session per interval, carrying the running total.
+ *
+ * A loop that draws faster than the browser can consume skips an output on nearly every frame, and
+ * one toast per skip is one websocket frame plus one forced layout in notify.js at frame rate —
+ * enough CPU to be visible next to the animation it is describing. Accumulate instead: how many were
+ * dropped is the interesting part, not when each one was.
+ *
+ * A gap longer than [burstResetMillis] ends a burst, so the next toast counts from zero rather than
+ * from whatever an earlier animation left behind. The trailing [schedule] makes sure the last skips
+ * of a burst still get reported once the loop stops.
+ */
+internal class SkippedOutputNotifier(
+    private val intervalMillis: Long,
+    private val burstResetMillis: Long,
+    private val clock: () -> Long = System::currentTimeMillis,
+    private val schedule: (Long, () -> Unit) -> Unit,
+    private val emit: (Long) -> Unit
+) {
+    private val lock = Any()
+    private var burstTotal = 0L      // skipped in the current burst
+    private var reportedTotal = 0L   // of those, how many a delivered toast has mentioned
+    private var lastNoteAt = 0L
+    private var lastEmitAt = 0L
+    private var flushScheduled = false
+
+    fun note(count: Int) {
+        if (count <= 0) return
+        val now = clock()
+        var emitTotal = 0L
+        var waitMillis = -1L
+        synchronized(lock) {
+            if (lastNoteAt != 0L && now - lastNoteAt > burstResetMillis) {
+                burstTotal = 0
+                reportedTotal = 0
+            }
+            lastNoteAt = now
+            burstTotal += count
+            val sinceEmit = now - lastEmitAt
+            if (lastEmitAt == 0L || sinceEmit >= intervalMillis) {
+                lastEmitAt = now
+                reportedTotal = burstTotal
+                emitTotal = burstTotal
+            } else if (!flushScheduled) {
+                flushScheduled = true
+                waitMillis = intervalMillis - sinceEmit
+            }
+        }
+        if (emitTotal > 0) emit(emitTotal) else if (waitMillis >= 0) schedule(waitMillis) { flush() }
+    }
+
+    private fun flush() {
+        var emitTotal = 0L
+        synchronized(lock) {
+            flushScheduled = false
+            if (burstTotal > reportedTotal) {
+                reportedTotal = burstTotal
+                lastEmitAt = clock()
+                emitTotal = burstTotal
+            }
+        }
+        if (emitTotal > 0) emit(emitTotal)
+    }
+}
+
+private val skippedOutputNotifyScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+private val sessionSkippedOutputNotifiers = ConcurrentHashMap<WebSocketSession, SkippedOutputNotifier>()
+
+/** How long a session waits between "outputs skipped" toasts. 0 sends every one, as it used to. */
+private val skippedOutputNotifyIntervalMillis: Long =
+    (System.getenv("AFIELD_OUTPUT_SKIP_NOTIFY_MS") ?: System.getProperty("afield.outputSkipNotifyMs"))
+        ?.trim()?.toLongOrNull()?.coerceAtLeast(0L) ?: 3_000L
+
+/** A quiet gap this long ends one burst of skipping. */
+private const val skippedOutputBurstResetMillis = 5_000L
+
+@OptIn(DelicateCoroutinesApi::class)
+private fun sendSkippedOutputNotify(session: WebSocketSession, total: Long) {
+    val text = if (total == 1L) "(1 output skipped)" else "($total outputs skipped)"
+    val encoded = Json.encodeToString(Message("notify").payload(Notify(text, "output-backpressure")))
+    skippedOutputNotifyScope.launch {
+        runCatching { session.send(encoded) }
+    }
+}
+
+/**
+ * Record outputs the browser never saw. Nothing is sent here unless a toast is due — see
+ * [SkippedOutputNotifier].
+ */
+private fun noteSkippedOutputs(session: WebSocketSession, skipCount: Int) {
+    if (skipCount <= 0) return
+    sessionSkippedOutputNotifiers.computeIfAbsent(session) { s ->
+        SkippedOutputNotifier(
+            intervalMillis = skippedOutputNotifyIntervalMillis,
+            burstResetMillis = skippedOutputBurstResetMillis,
+            schedule = { waitMillis, action ->
+                skippedOutputNotifyScope.launch {
+                    delay(waitMillis)
+                    action()
+                }
+            },
+            emit = { total -> sendSkippedOutputNotify(s, total) }
+        )
+    }.note(skipCount)
+}
+
 private fun isBackPressuredOutputMessage(message: Message): Boolean {
     return message.name == "set-output" ||
             message.name == "output" ||
@@ -1110,15 +1216,9 @@ private fun sendWithOutputBackPressure(
             force = true
         )
     }
+    noteSkippedOutputs(session, skipCount)
     GlobalScope.launch {
         try {
-            if (skipCount > 0) {
-                session.send(
-                    Json.encodeToString(
-                        Message("notify").payload(Notify("($skipCount outputs skipped)", "output-backpressure"))
-                    )
-                )
-            }
             for (bufferedMsg in buffered) {
                 session.send(bufferedMsg)
             }
@@ -1150,15 +1250,11 @@ private fun releaseAndFlushOutputBackPressure(session: WebSocketSession) {
     )
     if (skipCount <= 0 && buffered.isEmpty()) return
 
+    noteSkippedOutputs(session, skipCount)
+    // Skips alone have nothing to send here — the accumulator decides when a toast is due.
+    if (buffered.isEmpty()) return
     GlobalScope.launch {
         try {
-            if (skipCount > 0) {
-                session.send(
-                    Json.encodeToString(
-                        Message("notify").payload(Notify("($skipCount outputs skipped)", "output-backpressure"))
-                    )
-                )
-            }
             for (bufferedMsg in buffered) {
                 session.send(bufferedMsg)
             }
@@ -4518,6 +4614,7 @@ class Server {
                                 // Clean up back pressure state for this session.
                                 sessionOutputPressure.remove(ts)
                                 sessionControlUpdatePumps.remove(ts)
+                                sessionSkippedOutputNotifiers.remove(ts)
                             }
                         }
                         route("/dir") {

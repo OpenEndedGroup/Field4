@@ -87,6 +87,38 @@ private fun parseLinesWrapperBounds(wrapper: HTMLElement): LinesBounds? {
     return LinesBounds(x, y, width, height)
 }
 
+/**
+ * The title, caption and card styling a plane figure asks the viewer to draw around its picture.
+ *
+ * `afield.stdlib.planeFigureHtml` owns this look — the strings here are its own, carried over on the
+ * wrapper rather than re-typed on this side, so the live figure and the still card cannot drift
+ * apart. A plain `Box.lines` output carries none of these attributes and gets [chrome] `null`, which
+ * is the bare viewport this file has always drawn.
+ */
+private data class LinesFigureChrome(
+    val title: String?,
+    val caption: String?,
+    val cardStyle: String,
+    val titleStyle: String,
+    val captionStyle: String,
+    val width: Double,
+    val height: Double,
+)
+
+private fun parseLinesFigureChrome(wrapper: HTMLElement): LinesFigureChrome? {
+    val width = parsePositiveDouble(wrapper.getAttribute("data-afield-figure-width")) ?: return null
+    val height = parsePositiveDouble(wrapper.getAttribute("data-afield-figure-height")) ?: return null
+    return LinesFigureChrome(
+        title = wrapper.getAttribute("data-afield-figure-title")?.takeIf { it.isNotBlank() },
+        caption = wrapper.getAttribute("data-afield-figure-caption")?.takeIf { it.isNotBlank() },
+        cardStyle = wrapper.getAttribute("data-afield-figure-card-style") ?: "",
+        titleStyle = wrapper.getAttribute("data-afield-figure-title-style") ?: "",
+        captionStyle = wrapper.getAttribute("data-afield-figure-caption-style") ?: "",
+        width = width,
+        height = height,
+    )
+}
+
 private fun usableLinesBounds(bounds: LinesBounds?): LinesBounds? {
     bounds ?: return null
     if (!bounds.x.isFinite() || !bounds.y.isFinite() || !bounds.width.isFinite() || !bounds.height.isFinite()) return null
@@ -181,6 +213,27 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
         minHeight = "0"
     }
 
+    // Chrome for a plane figure: created empty for every viewer and left hidden unless an output
+    // asks for it, because one viewer is reused for every output on the channel — a box that draws
+    // `lines(...)` and then `showPlane(...)` into the same channel gets the same shell both times,
+    // and rebuilding it per output would mean re-binding the pointer handlers and starting a second
+    // `watchViewportSize` loop on every frame of an animation.
+    val header = document.createElement("div") as HTMLElement
+    header.className = "afield-lines-output-header"
+    header.style.display = "none"
+
+    val figureTitle = document.createElement("div") as HTMLElement
+    figureTitle.className = "afield-lines-output-title"
+    figureTitle.style.display = "none"
+
+    val figureCaption = document.createElement("div") as HTMLElement
+    figureCaption.className = "afield-lines-output-caption"
+    figureCaption.style.display = "none"
+
+    header.appendChild(figureTitle)
+    header.appendChild(figureCaption)
+    root.appendChild(header)
+
     val viewport = document.createElement("div") as HTMLElement
     viewport.className = "afield-lines-output-viewport"
     viewport.style.apply {
@@ -211,8 +264,6 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
     viewport.appendChild(stage)
     root.appendChild(viewport)
     contentRoot.appendChild(root)
-    contentRoot.asDynamic().dataset.afieldAutoSizeMode = "fixed"
-    contentRoot.style.padding = "0px"
 
     val view = js("({})")
     view.root = root
@@ -234,6 +285,14 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
     view.lastMeasuredWidth = -1.0
     view.lastMeasuredHeight = -1.0
     view.lastStrokeFadeScale = null
+    view.header = header
+    view.figureTitle = figureTitle
+    view.figureCaption = figureCaption
+    view.figureChrome = null
+    // Null means "derive the margin from the viewport", which is what a bare `lines` output wants.
+    // A plane figure has already fitted its geometry into a padded frame and hands that frame over
+    // as its bounds, so a second margin here would shrink the picture away from the still.
+    view.fitPad = null
 
     fun updateTransform() {
         val scale = (view.scale as Double)
@@ -262,7 +321,8 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
         updateViewportMetrics()
         val viewportWidth = max(1.0, view.viewportWidth as Double)
         val viewportHeight = max(1.0, view.viewportHeight as Double)
-        val pad = max(12.0, min(viewportWidth, viewportHeight) * 0.06)
+        val pad = (view.fitPad as? Number)?.toDouble()
+            ?: max(12.0, min(viewportWidth, viewportHeight) * 0.06)
         val availableWidth = max(1.0, viewportWidth - pad * 2.0)
         val availableHeight = max(1.0, viewportHeight - pad * 2.0)
         val scale = min(
@@ -375,6 +435,92 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
     return view
 }
 
+/**
+ * Dress the viewer as a plane-figure card, or strip it back to the bare `lines` viewport.
+ *
+ * Called on every output rather than once at construction, because the viewer is per channel and the
+ * outputs on a channel need not agree: `showPlane` then `lines` on the same channel must not leave a
+ * card frame around the second one. Only text and style attributes move — never the elements
+ * themselves — so an animation calling `showPlane` every frame keeps its pointer handlers, its
+ * pan/zoom state and its single resize watcher.
+ *
+ * The two sizing modes are the substance of it. A bare `lines` output fills the disclosure, which the
+ * user resizes ("fixed", both axes 100%). A figure is a fixed-size picture like the still it mirrors,
+ * so it asks for content auto-sizing and pins the viewport to the figure's own pixels — which also
+ * makes the viewer's initial fit the identity transform, and the first frame the still exactly.
+ */
+private fun applyLinesFigureChrome(contentRoot: HTMLElement, view: dynamic, chrome: LinesFigureChrome?) {
+    val root = view.root as HTMLElement
+    val viewport = view.viewport as HTMLElement
+    val header = view.header as HTMLElement
+    val figureTitle = view.figureTitle as HTMLElement
+    val figureCaption = view.figureCaption as HTMLElement
+
+    if (chrome == null) {
+        if (view.figureChrome != null) {
+            root.removeAttribute("style")
+            root.style.apply {
+                position = "relative"
+                width = "100%"
+                height = "100%"
+                minWidth = "0"
+                minHeight = "0"
+            }
+            header.style.display = "none"
+            viewport.style.apply {
+                width = "100%"
+                height = "100%"
+                border = "1px solid rgba(255,255,255,0.07)"
+                background = "rgba(0,0,0,0.16)"
+            }
+            view.fitPad = null
+            view.figureChrome = null
+        }
+        contentRoot.asDynamic().dataset.afieldAutoSizeMode = "fixed"
+        contentRoot.style.padding = "0px"
+        return
+    }
+
+    // Typed rather than left dynamic, so the comparisons below are Kotlin's and not JavaScript's.
+    val previous: LinesFigureChrome? = view.figureChrome as? LinesFigureChrome
+    if (previous == null ||
+        previous.cardStyle != chrome.cardStyle ||
+        previous.width != chrome.width ||
+        previous.height != chrome.height
+    ) {
+        root.setAttribute("style", chrome.cardStyle)
+        root.style.apply {
+            position = "relative"
+            width = "fit-content"
+            height = "fit-content"
+        }
+        viewport.style.apply {
+            width = "${chrome.width}px"
+            height = "${chrome.height}px"
+            // The card supplies the frame and the backdrop; a second border here would double it.
+            border = "none"
+            background = "none"
+        }
+    }
+
+    header.style.display = "block"
+    if (previous?.titleStyle != chrome.titleStyle) figureTitle.setAttribute("style", chrome.titleStyle)
+    if (previous?.captionStyle != chrome.captionStyle) figureCaption.setAttribute("style", chrome.captionStyle)
+    if (previous?.title != chrome.title) {
+        figureTitle.textContent = chrome.title ?: ""
+        figureTitle.style.display = if (chrome.title == null) "none" else "block"
+    }
+    if (previous?.caption != chrome.caption) {
+        figureCaption.textContent = chrome.caption ?: ""
+        figureCaption.style.display = if (chrome.caption == null) "none" else "block"
+    }
+
+    view.fitPad = 0.0
+    view.figureChrome = chrome
+    contentRoot.asDynamic().dataset.afieldAutoSizeMode = "content"
+    contentRoot.style.padding = "0px"
+}
+
 private fun applyNonScalingStroke(root: Element) {
     root.setAttribute("vector-effect", "non-scaling-stroke")
     forEachStrokeFadeElement(root) { element ->
@@ -436,6 +582,7 @@ private fun updatePersistentLinesOutput(contentRoot: HTMLElement, htmlString: St
     val wrapper = parseLinesWrapper(htmlString) ?: return false
     val sourceSvg = wrapper.querySelector("svg") ?: return false
     val view = ensureLinesOutputView(contentRoot)
+    applyLinesFigureChrome(contentRoot, view, parseLinesFigureChrome(wrapper))
     val stageGroup = view.stageGroup as Element
 
     while (stageGroup.firstChild != null) {

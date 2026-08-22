@@ -123,7 +123,7 @@ object AudioVisualizer {
         val waveformUrl = source.waveformUrl.orEmpty().audioHtmlEscaped()
         val inlineWaveform = source.inlineWaveformWavBase64.orEmpty().audioHtmlEscaped()
         return """
-            <div class="field-audio-visualizer"
+            <div class="field-audio-visualizer" aria-busy="true"
               data-waveform-url="$waveformUrl"
               data-inline-waveform-wav="$inlineWaveform"
               data-duration="${duration?.let { "%.9f".format(Locale.US, it) }.orEmpty()}"
@@ -301,6 +301,10 @@ object AudioVisualizer {
           const setLoading=loading=>{
             root.classList.toggle('fav-loading',loading);
             busy.setAttribute('aria-hidden',String(!loading));
+            // aria-busy starts true in the markup and is only cleared once a load has actually
+            // completed. Without that, "not started yet" and "finished" are indistinguishable from
+            // outside, and a docs capture taken in the gap before the fetch begins looks ready.
+            root.setAttribute('aria-busy',String(loading));
           };
           const drawStatic=()=>{
             const {dpr,w,h}=dimensions(), c=staticLayer.getContext('2d');

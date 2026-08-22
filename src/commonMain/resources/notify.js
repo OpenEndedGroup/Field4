@@ -75,12 +75,15 @@ var notify = (text, cat = "") => {
                 if (startup) {
                         base += startup.getBoundingClientRect().height + 6;
                 }
-                for (const node of bubbles) {
-                        if (!document.body.contains(node)) continue;
-                        const rect = node.getBoundingClientRect();
+                // Measure every bubble before moving any of them: the toasts are position:fixed, so
+                // their heights do not depend on `bottom`, and interleaving the read with the write
+                // forces one layout per bubble.
+                const live = bubbles.filter((node) => document.body.contains(node));
+                const heights = live.map((node) => node.getBoundingClientRect().height);
+                live.forEach((node, i) => {
                         node.style.bottom = `${base}px`;
-                        base += rect.height + 6;
-                }
+                        base += heights[i] + 6;
+                });
         }
 
         const purgeCategory = cat && cat.startsWith("*");

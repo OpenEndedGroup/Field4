@@ -1184,4 +1184,55 @@ class SpatialGeometryTest {
         // The lines were fitted into the frame, so nothing is drawn far outside it.
         assertTrue(html.length > 500, "an SVG of 30+ edges should not be tiny; got ${html.length} chars")
     }
+
+    /**
+     * `Box.showPlane`'s default output is the live `lines` viewer, and the browser half of that
+     * (`afield/outputareas.kt`) reads the whole figure off this markup. Which makes the markup a
+     * contract, and this the JVM-side half of `tools/run_ui_regressions.py --id
+     * show-plane-interactive`: that regression drives the real pan, zoom and double-click-refit in a
+     * browser, and this pins what it is driving.
+     *
+     * The two claims that matter are geometric. **One SVG**, because the viewer clones the children
+     * of one source SVG and dots in a second one would be dropped on the floor. **Bounds that are
+     * the frame** rather than the ink's own extent, because that is what makes the viewer's opening
+     * transform the identity — the interactive figure opens as exactly the still card, `window` keeps
+     * meaning what it says, and an animation calling `showPlane` per frame cannot jitter.
+     */
+    @Test
+    fun theInteractiveFigureIsOneSvgFramedByItsOwnWindow() {
+        val points = jitteredGrid(3, 3, seed = 7)
+        val html = planeFigureHtml(
+            listOf(vec2DelaunayGraph(points).toFLine(points), pointCloudFLine(points)),
+            title = "delaunay",
+            caption = "9 sites",
+            width = 320,
+            height = 240,
+            interactive = true,
+        )
+
+        assertTrue("data-afield-lines-output=\"true\"" in html, "the viewer only picks up its own wrapper")
+        assertEquals(1, Regex("<svg").findAll(html).count(), "the dots belong inside the geometry's own SVG")
+        assertEquals(points.size, Regex("<circle ").findAll(html).count(), "one <circle> per point, still")
+
+        // The frame, not the ink: a fitted figure's bounds are the box it was fitted into.
+        assertTrue("data-afield-bounds-x=\"0\" data-afield-bounds-y=\"0\"" in html)
+        assertTrue("data-afield-bounds-w=\"320\" data-afield-bounds-h=\"240\"" in html)
+        assertTrue("data-afield-figure-width=\"320\" data-afield-figure-height=\"240\"" in html)
+
+        // The chrome travels as data, and the styles are the still card's own.
+        assertTrue("data-afield-figure-title=\"delaunay\"" in html)
+        assertTrue("data-afield-figure-caption=\"9 sites\"" in html)
+        val card = planeFigureHtml(listOf(pointCloudFLine(points)), width = 320, height = 240)
+        for (token in listOf("#0d1219", "#202b38", "#91a4ba", "#7f92a8", "width:320px")) {
+            assertTrue(token in html, "the interactive chrome lost `$token`")
+            assertTrue(token in card, "the still card lost `$token`")
+        }
+
+        // A figure with no dots must still be one well-formed SVG — the splice has nothing to splice.
+        val ringOnly = planeFigureHtml(
+            listOf(vec2DelaunayGraph(points).toFLine(points)), width = 64, height = 64, interactive = true,
+        )
+        assertEquals(1, Regex("<svg").findAll(ringOnly).count())
+        assertEquals(0, Regex("<circle ").findAll(ringOnly).count())
+    }
 }

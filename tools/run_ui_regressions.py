@@ -85,6 +85,161 @@ val staticLine = fline {
 lines(staticLine, w = 360.0, h = 220.0, fitToSize = true)
 """
 
+SHOW_PLANE_INTERACTIVE_SNIPPET = """\
+import afield.graphics.*
+import afield.stdlib.*
+
+val ring = fline {
+    color = vec(0.42, 0.78, 1.0, 1.0)
+    thickness = 2.0
+    moveTo(vec(0.0, 0.0, 0.0))
+    lineTo(vec(120.0, 40.0, 0.0))
+    lineTo(vec(60.0, 150.0, 0.0))
+    lineTo(vec(0.0, 0.0, 0.0))
+}
+val sites = pointCloudFLine(listOf(vec(0.0, 0.0), vec(120.0, 40.0), vec(60.0, 150.0)))
+showPlane(
+    listOf(ring, sites),
+    title = "show plane regression",
+    caption = "three sites, one closed ring",
+    width = 360,
+    height = 260,
+)
+"""
+
+# `Box.showPlane` used to freeze its figure into a static card, which cost it everything the live
+# `lines` viewer does: no panning, no wheel zoom, no double-click-to-refit. It now emits the viewer's
+# own `afield-lines-output` wrapper and carries its title, caption and card styling across as data
+# attributes. Both halves have to hold at once, which is what this checks:
+#
+#  - the chrome is really there (title and caption text, the card's background on the shell);
+#  - the picture is the still, exactly — the figure is pre-fitted into its 360x260 frame and hands
+#    that frame over as its bounds, so the viewer's opening transform must be the identity. A figure
+#    that opens at any other scale means the two paths have drifted, and an animation calling
+#    `showPlane` per frame would jitter;
+#  - the gestures work, and double-click puts the view back to that identity.
+SHOW_PLANE_INTERACTIVE_JS = r"""
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const errors = [];
+const onError = (event) => errors.push(String((event.error && (event.error.stack || event.error.message)) || event.message || event));
+window.addEventListener("error", onError);
+
+const numbers = (transform) => String(transform || "")
+  .replace(/[^0-9eE+\-.]+/g, " ")
+  .trim()
+  .split(/\s+/)
+  .map(Number)
+  .filter((value) => Number.isFinite(value));
+
+try {
+  let shell = null;
+  const deadline = Date.now() + 30000;
+  while (!shell && Date.now() < deadline) {
+    shell = document.querySelector(".afield-lines-output-shell");
+    if (!shell) await delay(200);
+  }
+  if (!shell) return { ok: false, reason: "showPlane never produced a lines viewer shell", errors };
+
+  const contentRoot = shell.parentElement;
+  const viewport = shell.querySelector(".afield-lines-output-viewport");
+  const group = shell.querySelector(".nested-svg-stage > g");
+  const titleNode = shell.querySelector(".afield-lines-output-title");
+  const captionNode = shell.querySelector(".afield-lines-output-caption");
+  if (!viewport || !group || !titleNode || !captionNode) {
+    return { ok: false, reason: "the viewer is missing its viewport, stage or chrome", errors };
+  }
+
+  const shellStyle = getComputedStyle(shell);
+  const viewportBox = viewport.getBoundingClientRect();
+  const opening = numbers(group.getAttribute("transform"));
+  const result = {
+    title: (titleNode.textContent || "").trim(),
+    caption: (captionNode.textContent || "").trim(),
+    titleVisible: getComputedStyle(titleNode).display !== "none",
+    captionVisible: getComputedStyle(captionNode).display !== "none",
+    // The card, not the bare viewport: `planeFigureHtml`'s own border and gradient, applied here.
+    cardBorderTop: shellStyle.borderTopWidth,
+    cardHasBackdrop: shellStyle.backgroundImage !== "none" || shellStyle.backgroundColor !== "rgba(0, 0, 0, 0)",
+    autoSizeMode: contentRoot ? contentRoot.dataset.afieldAutoSizeMode || "" : "",
+    viewportWidth: Math.round(viewportBox.width),
+    viewportHeight: Math.round(viewportBox.height),
+    pathCount: group.querySelectorAll("path").length,
+    circleCount: group.querySelectorAll("circle").length,
+    opening,
+  };
+
+  // Wheel up over the middle of the picture: zoom in about the cursor.
+  viewport.dispatchEvent(new WheelEvent("wheel", {
+    deltaY: -120,
+    clientX: viewportBox.left + viewportBox.width / 2,
+    clientY: viewportBox.top + viewportBox.height / 2,
+    bubbles: true,
+    cancelable: true,
+  }));
+  await delay(120);
+  result.zoomed = numbers(group.getAttribute("transform"));
+
+  // Drag to pan. `setPointerCapture` only accepts a live pointer id, so it is stubbed for the
+  // synthetic sequence — capture is not what is under test, the translation it protects is.
+  const capture = viewport.setPointerCapture;
+  viewport.setPointerCapture = () => {};
+  try {
+    const at = (type, x, y) => viewport.dispatchEvent(new PointerEvent(type, {
+      pointerId: 7,
+      button: 0,
+      buttons: type === "pointerup" ? 0 : 1,
+      clientX: x,
+      clientY: y,
+      bubbles: true,
+      cancelable: true,
+    }));
+    const startX = viewportBox.left + 40;
+    const startY = viewportBox.top + 40;
+    at("pointerdown", startX, startY);
+    at("pointermove", startX + 55, startY + 25);
+    at("pointerup", startX + 55, startY + 25);
+  } finally {
+    viewport.setPointerCapture = capture;
+  }
+  await delay(120);
+  result.panned = numbers(group.getAttribute("transform"));
+
+  // Double-click refits, which for a figure means back to the still.
+  viewport.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, cancelable: true }));
+  await delay(200);
+  result.refitted = numbers(group.getAttribute("transform"));
+
+  const identity = (t) => t.length === 6 &&
+    Math.abs(t[0] - 1) < 0.01 &&
+    Math.abs(t[3] - 1) < 0.01 &&
+    Math.abs(t[4]) < 0.51 &&
+    Math.abs(t[5]) < 0.51;
+
+  result.errors = errors;
+  result.ok = result.title === "show plane regression" &&
+    result.caption === "three sites, one closed ring" &&
+    result.titleVisible &&
+    result.captionVisible &&
+    result.cardHasBackdrop &&
+    result.cardBorderTop === "1px" &&
+    result.autoSizeMode === "content" &&
+    result.viewportWidth === 360 &&
+    result.viewportHeight === 260 &&
+    result.pathCount > 0 &&
+    result.circleCount === 3 &&
+    identity(result.opening) &&
+    result.zoomed.length === 6 && result.zoomed[0] > result.opening[0] + 0.05 &&
+    result.panned.length === 6 &&
+    Math.abs(result.panned[4] - (result.zoomed[4] + 55)) < 1.0 &&
+    Math.abs(result.panned[5] - (result.zoomed[5] + 25)) < 1.0 &&
+    identity(result.refitted) &&
+    errors.length === 0;
+  return result;
+} finally {
+  window.removeEventListener("error", onError);
+}
+"""
+
 CONTROLLER_CONTROL_GROUP_SNIPPET = """\
 import afield.stdlib.linalg.Vector2f
 import afield.stdlib.linalg.Vector4f
@@ -444,6 +599,131 @@ display("main", \"\"\"
   document.body.setAttribute("data-ui-output-script-ran", String(window.__uiOutputScriptRan));
 </script>
 \"\"\".trimIndent())
+"""
+
+# `afield.morpho` is not in Field's REPL intro, so `MorphoCircuit` is an unresolved reference that the
+# error panel can genuinely fix with an import (see COMPLETION_OWN_IMPORT_SNIPPET for the other half of
+# that property). The constructor is private, so the fixture only names the type.
+ERROR_FIX_IMPORT_SNIPPET = """\
+val c: MorphoCircuit? = null
+println("morpho import probe " + c)
+"""
+
+# Applying an "add import" error fix writes `import foo.bar` at the top of the box. Writing it is not
+# enough: until that line is *executed*, the box's KotlinInterface2 has never seen the import, so
+# re-running the code that failed fails again and the user has to go to the top of the box, run the
+# import by hand, and come back down. This drives the real Apply button and then re-runs ONLY the line
+# that failed — the import line is deliberately left out of the fragment, so a pass cannot come from
+# re-running the import along with it.
+ERROR_FIX_IMPORT_EXECUTES_JS = r"""
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const ed = window.globalEditor;
+if (!ed) return { ok: false, reason: "globalEditor missing" };
+const model = ed.getModel();
+if (!model) return { ok: false, reason: "editor has no model" };
+
+const FQN = "afield.morpho.MorphoCircuit";
+const TARGET = "val c: MorphoCircuit? = null";
+
+const fixRows = () => Array.from(document.querySelectorAll(".field-fix-suggestions .field-fix-row"));
+const applyButtonFor = (fqn) => {
+  for (const row of fixRows()) {
+    const label = row.querySelector(".field-fix-label");
+    if (label && String(label.textContent || "").trim() === fqn) return row.querySelector(".field-fix-apply");
+  }
+  return null;
+};
+const lineContaining = (needle) => {
+  for (let i = 1; i <= model.getLineCount(); i++) {
+    if (model.getLineContent(i).includes(needle)) return i;
+  }
+  return -1;
+};
+const domErrors = () =>
+  Array.from(document.querySelectorAll(".execution_output.error")).map((node) => (node.textContent || "").trim());
+
+// The failed run's error output, and the fix rows under it, arrive asynchronously.
+let apply = null;
+const applyDeadline = Date.now() + 30000;
+while (!apply && Date.now() < applyDeadline) {
+  apply = applyButtonFor(FQN);
+  if (!apply) await delay(200);
+}
+if (!apply) {
+  return {
+    ok: false,
+    reason: "no 'add import' fix row for " + FQN + " under the error output",
+    offered: fixRows().map((row) => (row.textContent || "").trim()),
+    domErrors: domErrors(),
+  };
+}
+
+// Watch what the engine actually answers, so the assertion is about the box's KotlinInterface2 and not
+// about whatever the DOM happens to look like afterwards.
+const seen = [];
+const originalHandleOutput = window.handleOutput;
+window.handleOutput = function (payload, message, uid) {
+  try {
+    seen.push({ kind: payload && payload.kind, html: String((payload && payload.html) || ""), line: payload && payload.line });
+  } catch (ignored) {}
+  return originalHandleOutput.apply(this, arguments);
+};
+
+try {
+  apply.click();
+  await delay(500);
+
+  const afterApply = model.getValue();
+  if (!afterApply.includes("import " + FQN)) {
+    return { ok: false, reason: "Apply did not write the import line", text: afterApply };
+  }
+
+  const importLine = lineContaining("import " + FQN);
+  const targetLine = lineContaining(TARGET);
+  if (targetLine < 0) return { ok: false, reason: "the line that failed is gone from the model", text: afterApply };
+  if (importLine === targetLine) {
+    return { ok: false, reason: "import and failing code share a line, so re-running the line would be vacuous", text: afterApply };
+  }
+
+  // Let the import execution the click kicked off reach the engine.
+  await delay(3000);
+
+  seen.length = 0;
+  ed.focus();
+  ed.setSelection({
+    startLineNumber: targetLine,
+    startColumn: 1,
+    endLineNumber: targetLine,
+    endColumn: model.getLineMaxColumn(targetLine),
+  });
+  const action = ed.getAction("execute-fragment") ||
+    (ed.afieldActionMetadata && ed.afieldActionMetadata["execute-fragment"]);
+  if (!action || typeof action.run !== "function") {
+    return { ok: false, reason: "the editor has no execute-fragment action" };
+  }
+  await action.run(ed);
+
+  const runDeadline = Date.now() + 60000;
+  const spoke = () => seen.some((item) => item.html.length > 0);
+  while (Date.now() < runDeadline && !spoke()) await delay(200);
+
+  const failed = seen.filter((item) => item.kind !== "normal" && item.kind !== "ok" && item.html.length > 0);
+  if (!spoke()) {
+    return { ok: false, reason: "re-running the line that failed produced no output at all", seen, domErrors: domErrors() };
+  }
+  if (failed.length) {
+    return {
+      ok: false,
+      reason: "re-running the line still failed, so the applied import never reached the box's engine: " +
+        failed.map((item) => item.html).join(" | ").slice(0, 400),
+      seen,
+      domErrors: domErrors(),
+    };
+  }
+  return { ok: true, importLine, targetLine, outputs: seen.slice(0, 4), domErrors: domErrors() };
+} finally {
+  window.handleOutput = originalHandleOutput;
+}
 """
 
 COMMAND_PALETTE_THIS_BINDING_JS = r"""
@@ -2817,6 +3097,8 @@ def prepare_generated_files() -> dict[str, Path]:
         "stack_marker_snippet": write_generated_file("stack-marker.kt", STACK_MARKER_SNIPPET),
         "editable_lines_snippet": write_generated_file("editable-lines.kt", EDITABLE_LINES_SNIPPET),
         "static_lines_snippet": write_generated_file("static-lines.kt", STATIC_LINES_SNIPPET),
+        "show_plane_interactive_snippet": write_generated_file("show-plane-interactive.kt", SHOW_PLANE_INTERACTIVE_SNIPPET),
+        "show_plane_interactive_js": write_generated_file("show-plane-interactive.js", SHOW_PLANE_INTERACTIVE_JS),
         "controller_control_group_snippet": write_generated_file("controller-control-group.kt", CONTROLLER_CONTROL_GROUP_SNIPPET),
         "selection_screenshot_snippet": write_generated_file("selection-screenshot.kt", SELECTION_SCREENSHOT_SNIPPET),
         "history_panel_snippet": write_generated_file("history-panel.kt", HISTORY_PANEL_SNIPPET),
@@ -2827,6 +3109,8 @@ def prepare_generated_files() -> dict[str, Path]:
         "inline_visualizers_snippet": write_generated_file("inline-visualizers.kt", INLINE_VISUALIZERS_SNIPPET),
         "editor_sync_initial_snippet": write_generated_file("editor-sync-initial.kt", EDITOR_SYNC_INITIAL_SNIPPET),
         "output_area_basics_snippet": write_generated_file("output-area-basics.kt", OUTPUT_AREA_BASICS_SNIPPET),
+        "error_fix_import_snippet": write_generated_file("error-fix-import.kt", ERROR_FIX_IMPORT_SNIPPET),
+        "error_fix_import_executes_js": write_generated_file("error-fix-import-executes.js", ERROR_FIX_IMPORT_EXECUTES_JS),
         "this_binding_js": write_generated_file("command-palette-this-binding.js", COMMAND_PALETTE_THIS_BINDING_JS),
         "monaco_context_menu_actions_js": write_generated_file("monaco-context-menu-actions.js", MONACO_CONTEXT_MENU_ACTIONS_JS),
         "palette_smoke_sweep_js": write_generated_file("command-palette-smoke-sweep.js", COMMAND_PALETTE_SMOKE_SWEEP_JS),
@@ -2937,6 +3221,19 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "@last", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="error-fix-import-executes",
+            description="Applying an \"add import\" error fix executes the import in the box's engine, so re-running just the line that failed now compiles.",
+            commands=[
+                "new-box --name ErrorFixImportRegression",
+                "editor-open @last --property code",
+                "sleep 0.5",
+                shell_join(["run", "@last", "--file", str(files["error_fix_import_snippet"]), "--timeout", timeout_text]),
+                "sleep 1.0",
+                shell_join(["page-eval", "--body", "--file", str(files["error_fix_import_executes_js"]), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "@last", "--with-editor", "--no-pan", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="remote-ar-head",
             description="The bundled RemoteJS template assigns a real Javascript runtime, then the vendored head boots, connects, self-tests, executes Javascript, and turns real iframe pointer movement into FLine geometry.",
             commands=[
@@ -2987,6 +3284,17 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 shell_join(["page-eval", "--body", "--file", str(files["controllers_editable_lines_js"]), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="show-plane-interactive",
+            description="Box.showPlane draws its titled card through the live lines viewer: it opens on the still, and pans, zooms and double-click-refits.",
+            commands=[
+                "new-box --name ShowPlaneRegression",
+                shell_join(["run", "@last", "--file", str(files["show_plane_interactive_snippet"]), "--timeout", timeout_text]),
+                "sleep 0.5",
+                shell_join(["page-eval", "--body", "--file", str(files["show_plane_interactive_js"]), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "@last", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
         ),
         UiRegression(
             id="controllers-static-lines-output",

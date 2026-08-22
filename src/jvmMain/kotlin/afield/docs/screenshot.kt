@@ -610,19 +610,21 @@ private fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest): BoxScre
           const visibleStatusTexts = (outputArea) => {
             const selector = 'svg text, .status, #status, [role="status"], [aria-busy="true"]';
             return Array.from(outputArea.querySelectorAll(selector))
-              .filter((node) => {
-                if (node.getAttribute && node.getAttribute("aria-hidden") === "true") return false;
-                const rect = node.getBoundingClientRect ? node.getBoundingClientRect() : null;
-                if (rect && rect.width < 1 && rect.height < 1) return false;
-                const view = node.ownerDocument && node.ownerDocument.defaultView;
-                const style = view && view.getComputedStyle ? view.getComputedStyle(node) : null;
-                if (style && (style.display === "none" || style.visibility === "hidden" || style.opacity === "0")) {
-                  return false;
-                }
-                return true;
-              })
+              .filter(isVisibleNode)
               .map((node) => String(node.textContent || "").trim())
               .filter((text) => text.length > 0);
+          };
+          /** Is this node something a reader can actually see right now? */
+          const isVisibleNode = (node) => {
+            if (node.getAttribute && node.getAttribute("aria-hidden") === "true") return false;
+            const rect = node.getBoundingClientRect ? node.getBoundingClientRect() : null;
+            if (rect && rect.width < 1 && rect.height < 1) return false;
+            const view = node.ownerDocument && node.ownerDocument.defaultView;
+            const style = view && view.getComputedStyle ? view.getComputedStyle(node) : null;
+            if (style && (style.display === "none" || style.visibility === "hidden" || style.opacity === "0")) {
+              return false;
+            }
+            return true;
           };
           /** Has the output actually been laid out, as opposed to existing at zero size? */
           const contentLaidOut = (root) => {
@@ -648,6 +650,13 @@ private fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest): BoxScre
             if (iframes.some((iframe) => !iframeNavigated(iframe) || !iframeReady(iframe))) {
               return false;
             }
+            // An element that declares itself busy blocks on that alone. Text matching cannot
+            // distinguish "has not started loading yet" from "has finished", which is exactly how a
+            // half-drawn waveform got captured: the badge only appears once the fetch begins, so a
+            // check that ran a moment earlier saw nothing to wait for and shot anyway.
+            if (Array.from(outputArea.querySelectorAll('[aria-busy="true"]')).some(isVisibleNode)) {
+              return false;
+            }
             return !visibleStatusTexts(outputArea).some(blockedStatusText);
           };
           const deadline = Date.now() + ${SCREENSHOT_PREP_TIMEOUT_MS};
@@ -665,16 +674,22 @@ private fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest): BoxScre
               continue;
             }
             if (request.openOutputs) {
-              const outputDeadline = Date.now() + ${SCREENSHOT_OUTPUT_GRACE_MS};
-              while (Date.now() < outputDeadline) {
-                if (!pageReady()) {
-                  break;
-                }
-                const currentBox = findBox(request.uid);
-                if (currentBox && outputsReady(currentBox)) {
-                  break;
-                }
+              // READINESS IS A PRECONDITION, NOT A GRACE PERIOD. This used to wait
+              // SCREENSHOT_OUTPUT_GRACE_MS and then shoot regardless, so a correct "still loading"
+              // signal could not stop a capture -- which is how the recorded-audio figure published
+              // with a "loading waveform" badge sitting in the corner of the picture. An unready box
+              // now drops back to the outer prep loop, which retries until SCREENSHOT_PREP_TIMEOUT_MS
+              // and then FAILS naming what blocked it. A capture that cannot be taken correctly is
+              // worth more as an error than as a blurred asset nobody re-checks.
+              const notReadyBox = findBox(request.uid);
+              if (notReadyBox && !outputsReady(notReadyBox)) {
+                const area = notReadyBox.querySelector(".outputArea");
+                const blocking = area ? visibleStatusTexts(area).filter(blockedStatusText) : [];
+                lastMessage = blocking.length
+                  ? "output not ready: " + blocking.join(" | ")
+                  : "output not ready (an iframe has not navigated or finished loading)";
                 await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
+                continue;
               }
               // Ready is not the same as settled. Wait for the GEOMETRY to stop changing before
               // anything is measured or shot, so the clip is computed from finished layout rather
@@ -900,19 +915,21 @@ private fun requestWindowScreenshot(page: Page, req: WindowScreenshotRequest): W
           const visibleStatusTexts = (outputArea) => {
             const selector = 'svg text, .status, #status, [role="status"], [aria-busy="true"]';
             return Array.from(outputArea.querySelectorAll(selector))
-              .filter((node) => {
-                if (node.getAttribute && node.getAttribute("aria-hidden") === "true") return false;
-                const rect = node.getBoundingClientRect ? node.getBoundingClientRect() : null;
-                if (rect && rect.width < 1 && rect.height < 1) return false;
-                const view = node.ownerDocument && node.ownerDocument.defaultView;
-                const style = view && view.getComputedStyle ? view.getComputedStyle(node) : null;
-                if (style && (style.display === "none" || style.visibility === "hidden" || style.opacity === "0")) {
-                  return false;
-                }
-                return true;
-              })
+              .filter(isVisibleNode)
               .map((node) => String(node.textContent || "").trim())
               .filter((text) => text.length > 0);
+          };
+          /** Is this node something a reader can actually see right now? */
+          const isVisibleNode = (node) => {
+            if (node.getAttribute && node.getAttribute("aria-hidden") === "true") return false;
+            const rect = node.getBoundingClientRect ? node.getBoundingClientRect() : null;
+            if (rect && rect.width < 1 && rect.height < 1) return false;
+            const view = node.ownerDocument && node.ownerDocument.defaultView;
+            const style = view && view.getComputedStyle ? view.getComputedStyle(node) : null;
+            if (style && (style.display === "none" || style.visibility === "hidden" || style.opacity === "0")) {
+              return false;
+            }
+            return true;
           };
           /** Has the output actually been laid out, as opposed to existing at zero size? */
           const contentLaidOut = (root) => {
@@ -936,6 +953,13 @@ private fun requestWindowScreenshot(page: Page, req: WindowScreenshotRequest): W
             const iframes = Array.from(outputArea.querySelectorAll("iframe"));
             iframes.forEach(materialiseDeferredFrame);
             if (iframes.some((iframe) => !iframeNavigated(iframe) || !iframeReady(iframe))) {
+              return false;
+            }
+            // An element that declares itself busy blocks on that alone. Text matching cannot
+            // distinguish "has not started loading yet" from "has finished", which is exactly how a
+            // half-drawn waveform got captured: the badge only appears once the fetch begins, so a
+            // check that ran a moment earlier saw nothing to wait for and shot anyway.
+            if (Array.from(outputArea.querySelectorAll('[aria-busy="true"]')).some(isVisibleNode)) {
               return false;
             }
             return !visibleStatusTexts(outputArea).some(blockedStatusText);

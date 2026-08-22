@@ -613,13 +613,50 @@ data class ConstantTrack<T>(
     override fun sample(t: Double): T = value
 }
 
+/**
+ * One key of a keyed track: a time, and the value the track takes there.
+ *
+ * The value is a [Track] rather than a bare number, and that is the whole of what lets a fit reach
+ * *inside* a keyed track rather than only compose around one. Any time-invariant track will do — a
+ * constant, a [FreeParamTrack], or arithmetic over them — and that is checked at construction,
+ * because a key whose value varied with time would have no answer to "the value *at* this key" and
+ * would quietly mean whichever instant something happened to fold it at.
+ *
+ * `TcbKey(0.0, 1.0)` still writes an ordinary constant key: the [Double] constructor is the common
+ * case, and the reason several hundred existing keys did not have to be respelled.
+ */
 data class TcbKey(
     val time: Double,
-    val value: Double,
+    val valueTrack: Track<Double>,
     val tension: Double? = null,
     val continuity: Double? = null,
     val bias: Double? = null
-)
+) {
+    constructor(
+        time: Double,
+        value: Double,
+        tension: Double? = null,
+        continuity: Double? = null,
+        bias: Double? = null
+    ) : this(time, constantTrack(value), tension, continuity, bias)
+
+    /**
+     * The number this key currently stands at — [valueTrack] folded once, at construction.
+     *
+     * Every CPU sampler and the GLSL emitter read this and nothing else, so a parameterised key
+     * plays and renders exactly as the constant one it presently is, which is [FreeParamTrack]'s
+     * whole contract. The differentiable backend is the only thing that looks at [valueTrack].
+     */
+    val value: Double = trackConstantValue(valueTrack)
+        ?: throw RectLangException(
+            "a key value has to be time-invariant — a constant, a free parameter, or arithmetic " +
+                "over them — and this one varies with time: ${valueTrack.describe()}"
+        )
+
+    /** True when this key is a plain number, with no free parameter under it for a fit to move. */
+    val isConstantValue: Boolean
+        get() = trackConstantValue(valueTrack, foldFreeParameters = false) != null
+}
 
 /** One cubic Hermite span of a [TcbTrack], tangents already resolved. */
 data class HermiteSegment(
@@ -843,7 +880,14 @@ private fun Track<Double>.mapKeysOrSamples(
 ): Track<Double> =
     when (this) {
         is TcbTrack, is LinearScalarTrack, is HoldScalarTrack, is EasedScalarTrack ->
-            mapKeys(word) { it.copy(value = transform(it.value)) }
+            mapKeys(word) { key ->
+                // A constant key takes the plain arithmetic, so a scene with no parameters in it
+                // folds to exactly the numbers it always did. A parameterised key takes the
+                // symbolic spelling instead: folding `transform` into its current value would
+                // delete the unknown, which is the one thing a key holding a track is for.
+                if (key.isConstantValue) key.copy(valueTrack = constantTrack(transform(key.value)))
+                else key.copy(valueTrack = wrap(key.valueTrack))
+            }
         else -> wrap(this)
     }
 
@@ -3402,18 +3446,49 @@ class RectLangVm(
 
     enum class TrackMode { Tcb, Linear, Hold }
 
+    /**
+     * A track quote — `'( 0=0  2=4 )` — as keys.
+     *
+     * A key value may be followed by `free-param <name>`, which is the same spelling and the same
+     * meaning as the standalone word: the key plays at the number written, and says it would rather
+     * be solved for. `'( 0=0  2=4 free-param peak )` is a ramp whose *top* is the unknown.
+     */
     fun quoteToScalarTrack(quote: VQuote, mode: TrackMode): Track<Double> {
         // `time=value` reads more clearly than a bare space between the two, so the
         // `=` separator is accepted (and ignored) between the numbers of each pair.
-        val numbers = quote.tokens
-            .filterNot { it is Token.Word && it.name == "=" }
-            .map {
-                it as? Token.Number ?: throw RectLangException("Track quote expected only numbers, found $it")
-            }.map { it.value }
-        if (numbers.size < 2 || numbers.size % 2 != 0) {
+        val tokens = quote.tokens.filterNot { it is Token.Word && it.name == "=" }
+        val keys = ArrayList<TcbKey>()
+        var i = 0
+        while (i < tokens.size) {
+            val time = tokens[i] as? Token.Number
+                ?: throw RectLangException("Track quote expected only numbers, found ${tokens[i]}")
+            // Both spellings of the old refusal are kept where they applied: a dangling time is an
+            // unpaired key, anything else in a value slot is not a number.
+            val value = when (val v = tokens.getOrNull(i + 1)) {
+                is Token.Number -> v
+                null -> throw RectLangException("Track quote expected time/value pairs")
+                else -> throw RectLangException("Track quote expected only numbers, found $v")
+            }
+            i += 2
+            val marker = tokens.getOrNull(i)
+            keys += if (marker is Token.Word && marker.name == "free-param") {
+                // Word or string, the same two spellings [consumeName] takes for the standalone word.
+                val named = when (val n = tokens.getOrNull(i + 1)) {
+                    is Token.Word -> n.name
+                    is Token.StringLit -> n.value
+                    else -> throw RectLangException(
+                        "free-param in a track quote expected a name after it"
+                    )
+                }
+                i += 2
+                TcbKey(time.value, FreeParamTrack(named, value.value))
+            } else {
+                TcbKey(time.value, value.value)
+            }
+        }
+        if (keys.isEmpty()) {
             throw RectLangException("Track quote expected time/value pairs")
         }
-        val keys = numbers.chunked(2).map { TcbKey(it[0], it[1]) }
         return when (mode) {
             TrackMode.Tcb -> TcbTrack(keys)
             TrackMode.Linear -> LinearScalarTrack(keys)

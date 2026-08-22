@@ -66,7 +66,9 @@ import kotlin.math.abs
  *
  * `RectSLSimplifyTest` runs it over all 34 gallery programs and requires every rewritten channel to
  * sample **bit-identically** to the original at 41 times each, and to be a fixed point of a second
- * pass. Measured: 2754 channels, 8197 nodes down to 6442 (21.4% smaller), 112,914 samples compared.
+ * pass. Measured: 2754 channels, 10,621 nodes down to 8865 (16.5% smaller), 112,914 samples
+ * compared. (The node count rose from a previously reported 8197 when [TcbKey] began holding a
+ * track: a key value is a node now, and one the rewriter reaches.)
  *
  * A simplifier is exactly the kind of code where a plausible-looking rule is wrong in one corner, and
  * the corpus already assembled for the differentiable backend was the cheapest possible way to find
@@ -80,7 +82,7 @@ fun Track<Double>.nodeCount(): Int = 1 + trackChildren(this).sumOf { it.nodeCoun
  * This track with constants folded and the algebraic identities applied, bottom-up.
  *
  * A pure function returning a new tree; nothing mutates. Sampling is preserved bit-for-bit on the
- * whole gallery corpus (2754 channels, 21.4% fewer nodes, 112,914 samples compared) — see this
+ * whole gallery corpus (2754 channels, 16.5% fewer nodes, 112,914 samples compared) — see this
  * file's KDoc for how that is checked, and for the table of rewrites deliberately left out.
  */
 fun Track<Double>.simplify(): Track<Double> = mapTrack(this) { node -> rewriteNode(node) }

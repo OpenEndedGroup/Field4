@@ -346,6 +346,7 @@ fun planeFigureHtml(
     height: Int = 460,
     padding: Double = 14.0,
     window: Rect? = null,
+    interactive: Boolean = false,
 ): String {
     val frame = Rect(0.0, 0.0, width.toDouble(), height.toDouble())
     val fitted = if (window == null) lines.fitInto(frame, padding = padding)
@@ -368,6 +369,11 @@ fun planeFigureHtml(
     }
 
     val svg = drawToSVG(geometry, width.toDouble(), height.toDouble())
+    // The same fitted picture, handed to the box's live SVG viewer instead of being frozen into a
+    // card. Everything above this line is shared, so the interactive figure and the still are the
+    // same geometry in the same frame — which is the point: `interactive = true` must not be a
+    // second renderer that drifts away from the one the docs publish.
+    if (interactive) return interactivePlaneFigureHtml(svg, dots.toString(), title, caption, width, height)
     val dotLayer = if (dots.isEmpty()) "" else
         "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"$width\" height=\"$height\" " +
             "style=\"position:absolute;left:0;top:0;overflow:visible\">$dots</svg>"
@@ -379,9 +385,7 @@ fun planeFigureHtml(
     // column entirely. Pinned, the column's max-content is exactly the picture plus this card's
     // padding, whatever the caption says, and a long caption wraps onto another line instead.
     val titleHtml = title?.let {
-        "<div style=\"font-family:monospace;font-size:12px;font-weight:700;letter-spacing:0.04em;" +
-            "color:#91a4ba;margin-bottom:8px;width:${width}px;overflow-wrap:break-word\">" +
-            "${escapePlaneHtml(it)}</div>"
+        "<div style=\"${planeFigureTitleStyle(width)}\">${escapePlaneHtml(it)}</div>"
     } ?: ""
     // The caption goes *above* the picture, which looks like a subtitle and is deliberate: a docs
     // `capture="box"` screenshot crops to the output area's measured height, and that measurement
@@ -389,12 +393,9 @@ fun planeFigureHtml(
     // bottom row of a grid arrived sliced in half every time; above it, the only thing a short crop
     // can eat is the empty margin `fitInto` already leaves around the geometry.
     val captionHtml = caption?.let {
-        "<div style=\"font-family:monospace;font-size:11px;line-height:1.5;color:#7f92a8;" +
-            "margin:-2px 0 8px 0;width:${width}px;overflow-wrap:break-word\">" +
-            "${escapePlaneHtml(it)}</div>"
+        "<div style=\"${planeFigureCaptionStyle(width)}\">${escapePlaneHtml(it)}</div>"
     } ?: ""
-    return "<div style=\"padding:12px 12px 16px 12px;background:linear-gradient(180deg,#0d1219,#090d12);" +
-        "border:1px solid #202b38;border-radius:10px\">$titleHtml$captionHtml" +
+    return "<div style=\"$PLANE_FIGURE_CARD_STYLE\">$titleHtml$captionHtml" +
         // overflow:hidden matters: `fitInto` keeps the geometry inside the frame, but a caller who
         // adds a frame line on purpose (to pin the window, or to make several panels share an
         // extent) wants everything outside it *cut* rather than spilled over the caption below.
@@ -435,6 +436,13 @@ private fun svgColor(c: Vec4): String =
  * Push one plane figure to a box output channel.
  *
  * The AWT-free path (Skia SVG → `display`), so it is safe in a live box and in a headless build.
+ *
+ * @param interactive by default the figure is the same live SVG view `Box.lines` produces — drag to
+ *   pan, wheel to zoom about the cursor, double-click to refit — with the title and caption above
+ *   it. The initial view is exactly the still: the geometry is fitted into [width] x [height] here,
+ *   and the viewer starts at that fit, so nothing about the framing (including [window]) changes.
+ *   Pass `false` for the frozen card, which is what [Box.showPlaneGrid] uses and what you want when
+ *   the figure is destined for a file rather than a box.
  */
 fun Box.showPlane(
     lines: List<FLine>,
@@ -445,8 +453,9 @@ fun Box.showPlane(
     height: Int = 520,
     padding: Double = 14.0,
     window: Rect? = null,
+    interactive: Boolean = true,
 ) {
-    display(channel, planeFigureHtml(lines, title, caption, width, height, padding, window))
+    display(channel, planeFigureHtml(lines, title, caption, width, height, padding, window, interactive))
 }
 
 /**
@@ -497,3 +506,79 @@ private fun escapePlaneHtml(text: String): String = text
     .replace("<", "&lt;")
     .replace(">", "&gt;")
     .replace("\"", "&quot;")
+
+// ==============================================================================================
+// The card's own look, in one place
+//
+// A figure is drawn twice: frozen into a card by [planeFigureHtml], and live in the box's SVG
+// viewer by [interactivePlaneFigureHtml]. The live one cannot reuse the card's *markup*, because the
+// viewer builds its own DOM and only ever updates text and geometry inside it — so it reuses these
+// strings instead, carried across on the wrapper as `data-afield-figure-*-style` and applied
+// verbatim on the other side. One source of truth for the palette, and no second card to keep in
+// step in `outputareas.kt`.
+// ==============================================================================================
+
+private const val PLANE_FIGURE_CARD_STYLE =
+    "padding:12px 12px 16px 12px;background:linear-gradient(180deg,#0d1219,#090d12);" +
+        "border:1px solid #202b38;border-radius:10px"
+
+private fun planeFigureTitleStyle(width: Int): String =
+    "font-family:monospace;font-size:12px;font-weight:700;letter-spacing:0.04em;" +
+        "color:#91a4ba;margin-bottom:8px;width:${width}px;overflow-wrap:break-word"
+
+private fun planeFigureCaptionStyle(width: Int): String =
+    "font-family:monospace;font-size:11px;line-height:1.5;color:#7f92a8;" +
+        "margin:-2px 0 8px 0;width:${width}px;overflow-wrap:break-word"
+
+/**
+ * The fitted picture as the output the box's live SVG viewer drives — the interactive twin of the
+ * card [planeFigureHtml] returns.
+ *
+ * `Box.lines` hands the browser an `afield-lines-output` wrapper and gets pointer panning, wheel
+ * zoom about the cursor, double-click-to-refit and non-scaling strokes, all of it debugged, for
+ * free; a plain `<div>` of SVG gets none of it. So this emits exactly that wrapper, and the title,
+ * the caption and the card's styling ride along as data attributes for the viewer to re-create.
+ * `afield/outputareas.kt` is the other half.
+ *
+ * Two details make the interactive figure land on the same pixels as the still:
+ *
+ *  - **The bounds are the frame, not the geometry.** `data-afield-bounds-*` is `(0, 0, width,
+ *    height)` — the box the geometry was already fitted into — rather than the ink's own extent.
+ *    That makes the viewer's fit the identity, so the first frame is the card; it keeps the
+ *    `window` argument meaningful (a shared window across panels or animation frames stays shared,
+ *    instead of every frame re-fitting to whatever ink it happens to contain and jittering); and
+ *    double-click returns to *the picture*, not to a crop of it.
+ *  - **One SVG, not two.** The card overlays its dots as a second, absolutely positioned SVG. The
+ *    viewer clones the children of one source SVG, so the dots are spliced into the geometry's own
+ *    root here. Same coordinate space, same positions, nothing to lose.
+ */
+private fun interactivePlaneFigureHtml(
+    svg: String,
+    dots: String,
+    title: String?,
+    caption: String?,
+    width: Int,
+    height: Int,
+): String {
+    val merged = if (dots.isEmpty()) svg else {
+        val close = svg.lastIndexOf("</svg>")
+        // An empty figure comes back as a self-closed `<svg/>` with nothing to splice into. There is
+        // nothing to draw either, so dropping the dots is the whole of the recovery.
+        if (close < 0) svg else svg.substring(0, close) + dots + svg.substring(close)
+    }
+    val attributes = buildString {
+        append(" data-afield-bounds-x=\"0\" data-afield-bounds-y=\"0\"")
+        append(" data-afield-bounds-w=\"$width\" data-afield-bounds-h=\"$height\"")
+        append(" data-afield-figure-width=\"$width\" data-afield-figure-height=\"$height\"")
+        append(" data-afield-figure-card-style=\"$PLANE_FIGURE_CARD_STYLE\"")
+        if (title != null) {
+            append(" data-afield-figure-title=\"${escapePlaneHtml(title)}\"")
+            append(" data-afield-figure-title-style=\"${planeFigureTitleStyle(width)}\"")
+        }
+        if (caption != null) {
+            append(" data-afield-figure-caption=\"${escapePlaneHtml(caption)}\"")
+            append(" data-afield-figure-caption-style=\"${planeFigureCaptionStyle(width)}\"")
+        }
+    }
+    return "<div class=\"afield-lines-output\" data-afield-lines-output=\"true\"$attributes>$merged</div>"
+}

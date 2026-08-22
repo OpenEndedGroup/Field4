@@ -357,10 +357,13 @@ internal fun trackConstantValue(
         }
         // Warping the clock of something that ignores the clock changes nothing.
         is TimeWarpTrack -> rec(track.source)
-        is TcbTrack -> track.keys.singleOrNull()?.value
-        is LinearScalarTrack -> track.keys.singleOrNull()?.value
-        is HoldScalarTrack -> track.keys.singleOrNull()?.value
-        is EasedScalarTrack -> track.keys.singleOrNull()?.value
+        // A one-key track is that key, so it folds — but through the key's *value track*, or a
+        // lone parameterised key would fold to the number it presently is and the fit would have
+        // nothing left to solve for.
+        is TcbTrack -> track.keys.singleOrNull()?.let { rec(it.valueTrack) }
+        is LinearScalarTrack -> track.keys.singleOrNull()?.let { rec(it.valueTrack) }
+        is HoldScalarTrack -> track.keys.singleOrNull()?.let { rec(it.valueTrack) }
+        is EasedScalarTrack -> track.keys.singleOrNull()?.let { rec(it.valueTrack) }
         is GateTrack -> null
         is HeadingTrack -> null
         // Every pattern track is a function of the cycle, so none is constant.
@@ -621,7 +624,7 @@ private fun lowerTrackToFn(
 
         is TimeWarpTrack -> lowerWarp(track, window)
 
-        is LinearScalarTrack -> lowerKeyed(track.keys, "linear") { u, _ -> u }
+        is LinearScalarTrack -> lowerKeyed(track.keys, "linear", window) { u, _ -> u }
 
         is EasedScalarTrack -> {
             val ease = RECTSL_EASING_FNS[track.easeName]
@@ -629,10 +632,10 @@ private fun lowerTrackToFn(
                     "the '${track.easeName}' easing has no differentiable form " +
                         "(see RECTSL_EASING_FNS for which do and why the rest do not)"
                 )
-            lowerKeyed(track.keys, track.easeName) { u, _ -> ease(u) }
+            lowerKeyed(track.keys, track.easeName, window) { u, _ -> ease(u) }
         }
 
-        is TcbTrack -> lowerTcb(track)
+        is TcbTrack -> lowerTcb(track, window)
 
         // `v0 + sum_i (v_i - v_(i-1)) * [t >= t_i]` — the sampler's `lastOrNull { it.time <= t }`
         // written as arithmetic. Before its keys the sampler falls back to the first value, which is
@@ -643,11 +646,15 @@ private fun lowerTrackToFn(
             if (sorted.isEmpty()) {
                 refused("a hold track with no keys cannot be sampled at all")
             } else {
+                val values = when (val v = lowerKeyValues(sorted, window)) {
+                    is RectSLFnLowering.Refused -> return v
+                    is RectSLFnLowering.Lowered -> v.value
+                }
                 with(Functions) {
-                    var acc = fnLeaf(sorted.first().value)
+                    var acc = values.first()
                     for (i in 1 until sorted.size) {
-                        val rise = sorted[i].value - sorted[i - 1].value
-                        acc += fnStepFrom(fnTime() - fnLeaf(sorted[i].time)) * fnLeaf(rise)
+                        acc += fnStepFrom(fnTime() - fnLeaf(sorted[i].time)) *
+                            keyRise(sorted[i - 1], sorted[i], values[i - 1], values[i])
                     }
                     lowered(acc)
                 }
@@ -927,20 +934,71 @@ private fun lowerWarp(
 }
 
 /**
+ * Each key's value as an `Fn`, in the order given, or the first refusal one of them produced.
+ *
+ * A key value is time-invariant by construction, so what comes back is a constant-shaped graph: a
+ * bare leaf for a number, a *named* leaf for a [FreeParamTrack]. The name is the whole mechanism —
+ * it is how [freeParameterSlots] finds which theta slot a key value landed in.
+ */
+private fun lowerKeyValues(
+    keys: List<TcbKey>,
+    window: Functions.Domain
+): RectSLFnLowering<List<Functions.Fn>> {
+    val out = ArrayList<Functions.Fn>(keys.size)
+    for (key in keys) {
+        when (val v = lowerTrackToFn(key.valueTrack, window)) {
+            is RectSLFnLowering.Refused -> return v
+            is RectSLFnLowering.Lowered -> out += v.value
+        }
+    }
+    return RectSLFnLowering.Lowered(out)
+}
+
+/**
+ * A span's rise, `v(b) - v(a)`.
+ *
+ * Two spellings of the same number, and the constant one is not a micro-optimisation: it keeps a
+ * track with no parameters in it lowering to *exactly* the graph it lowered to when keys held bare
+ * doubles — one leaf holding the difference, same leaf count, same theta layout, same bits — which
+ * is what the characterization golden pins. Only a key with something to solve for pays for the
+ * symbolic difference, and it has to: `fnLeaf(b.value - a.value)` is the moment a parameterised key
+ * would stop being a parameter.
+ */
+private fun keyRise(
+    a: TcbKey,
+    b: TcbKey,
+    va: Functions.Fn,
+    vb: Functions.Fn
+): Functions.Fn =
+    if (a.isConstantValue && b.isConstantValue) fnLeaf(b.value - a.value)
+    else with(Functions) { vb - va }
+
+/**
  * A keyed track as the clamped-ramp sum described in this file's KDoc.
  *
  * [shape] turns a span's normalised parameter into its 0..1 progress; [LinearScalarTrack] passes it
  * through and an [EasedScalarTrack] runs its easing over it. The span index is handed along because
  * a TCB span needs it, though the two keyed callers here do not.
+ *
+ * The key *values* are lowered rather than read: a linear or eased track is `v0 + Σ shape(u) *
+ * (v(i+1) - v(i))`, which is linear in the key values, so a free parameter inside a key arrives in
+ * the graph as a live leaf and the exact gradient with respect to it falls out of the same backward
+ * sweep as everything else. No approximation anywhere — unlike the TCB case below, whose tangents
+ * are derived from the key values and need saying more carefully.
  */
 private fun lowerKeyed(
     keys: List<TcbKey>,
     label: String,
+    window: Functions.Domain,
     shape: (Functions.Fn, Int) -> Functions.Fn
 ): RectSLFnLowering<Functions.Fn> {
     val sorted = keys.sortedBy { it.time }
     if (sorted.isEmpty()) return refused("a $label track with no keys cannot be sampled at all")
-    if (sorted.size == 1) return lowered(fnLeaf(sorted.first().value))
+    val values = when (val v = lowerKeyValues(sorted, window)) {
+        is RectSLFnLowering.Refused -> return v
+        is RectSLFnLowering.Lowered -> v.value
+    }
+    if (sorted.size == 1) return lowered(values.first())
     for (i in 0 until sorted.size - 1) {
         val dt = sorted[i + 1].time - sorted[i].time
         if (abs(dt) <= 1e-12) {
@@ -951,12 +1009,12 @@ private fun lowerKeyed(
         }
     }
     return with(Functions) {
-        var acc = fnLeaf(sorted.first().value)
+        var acc = values.first()
         for (i in 0 until sorted.size - 1) {
             val a = sorted[i]
             val b = sorted[i + 1]
             val u = fnClamp01((identity(Functions.Domain.ALL) - fnLeaf(a.time)) / fnLeaf(b.time - a.time))
-            acc += shape(u, i) * fnLeaf(b.value - a.value)
+            acc += shape(u, i) * keyRise(a, b, values[i], values[i + 1])
         }
         lowered(acc)
     }
@@ -969,13 +1027,14 @@ private fun lowerKeyed(
  * span contributes `S(u) - p0` and the terms before the active span add up to exactly the key value
  * it starts from.
  *
- * The tangents are **baked at lowering time**. They are derived from the key values and times, so a
- * fit that moves a key value ought to move the tangents with it and this lowering will not; the
- * derivative is exact for the spline whose tangents are these, which is the right answer for
- * evaluation and an approximation for fitting a TCB key. Stated here because it is the one place in
- * this file where the differentiated function is not literally the sampled one.
+ * The tangents are **baked at lowering time**, and that is exactly right here: they are numbers
+ * derived from numbers, so nothing downstream can move them. It stops being right the moment a key
+ * value is a free parameter, which is what [lowerTcbSymbolic] is for — this path is taken only when
+ * every key value is a constant, and the two are pinned against each other by
+ * `RectSLKeyParamTest.bakedAndSymbolicTangentsAgreeOnConstantKeys`.
  */
-private fun lowerTcb(track: TcbTrack): RectSLFnLowering<Functions.Fn> {
+private fun lowerTcb(track: TcbTrack, window: Functions.Domain): RectSLFnLowering<Functions.Fn> {
+    if (track.keys.any { !it.isConstantValue }) return lowerTcbSymbolic(track, window)
     val segments = track.hermiteSegments()
     if (segments.isEmpty()) {
         return lowered(fnLeaf(track.keys.minByOrNull { it.time }?.value ?: 0.0))
@@ -1003,6 +1062,96 @@ private fun lowerTcb(track: TcbTrack): RectSLFnLowering<Functions.Fn> {
                 h01 * fnLeaf(segment.p1) +
                 h11 * fnLeaf(segment.dt * segment.m1)
             acc += value - fnLeaf(segment.p0)
+        }
+        lowered(acc)
+    }
+}
+
+/**
+ * A TCB track with a parameterised key value, lowered with its **tangents symbolic too**.
+ *
+ * A TCB tangent is derived from the neighbouring key values and times, so as soon as one of those
+ * values can move, baking the tangent stops being faithful in a way that matters: a fit would solve
+ * for the key, and [TrackFitResult.fitted] — whose CPU sampler recomputes the tangents from the
+ * solved value — would then sample differently from [TrackFitResult.fittedFn], which still carried
+ * the seed tangents. A fitter that returns two answers to the same question is worse than one that
+ * refuses, so the whole TCB formula is transcribed here over `Fn` arithmetic instead, and a moved key
+ * moves its tangents the way the sampler says it should.
+ *
+ * It mirrors [TcbTrack.hermiteSegments] and its two slope helpers term for term. The transcription is
+ * the risk, so it is pinned rather than trusted: on constant keys both this and the baked path above
+ * are defined, and `RectSLKeyParamTest` requires them to agree.
+ *
+ * `hermiteSegments` is deliberately *not* reused: it returns resolved doubles, which is the one thing
+ * this path cannot start from.
+ */
+private fun lowerTcbSymbolic(
+    track: TcbTrack,
+    window: Functions.Domain
+): RectSLFnLowering<Functions.Fn> {
+    val sorted = track.keys.sortedBy { it.time }
+    if (sorted.isEmpty()) return refused("a TCB track with no keys cannot be sampled at all")
+    val values = when (val v = lowerKeyValues(sorted, window)) {
+        is RectSLFnLowering.Refused -> return v
+        is RectSLFnLowering.Lowered -> v.value
+    }
+    if (sorted.size == 1) return lowered(values.first())
+    for (i in 0 until sorted.size - 1) {
+        if (abs(sorted[i + 1].time - sorted[i].time) <= 1e-12) {
+            return refused("two keys of this TCB track share a time (${sorted[i].time})")
+        }
+    }
+    return with(Functions) {
+        /** [TcbTrack]'s `slope`, over key value graphs rather than key values. */
+        fun slope(a: Int, b: Int): Functions.Fn {
+            val ia = a.coerceIn(sorted.indices)
+            val ib = b.coerceIn(sorted.indices)
+            if (ia == ib) return fnLeaf(0.0)
+            val dt = sorted[ib].time - sorted[ia].time
+            if (abs(dt) <= 1e-12) return fnLeaf(0.0)
+            return (values[ib] - values[ia]) / fnLeaf(dt)
+        }
+
+        // The tension/continuity/bias weights are authored numbers, not key values, so they stay
+        // folded into single leaves — only the slopes they weight are symbolic.
+        fun outgoingSlope(index: Int): Functions.Fn {
+            val key = sorted[index]
+            val t = key.tension ?: track.defaultTension
+            val c = key.continuity ?: track.defaultContinuity
+            val b = key.bias ?: track.defaultBias
+            return fnLeaf(0.5 * (1.0 - t)) *
+                (fnLeaf((1.0 + c) * (1.0 + b)) * slope(index - 1, index) +
+                    fnLeaf((1.0 - c) * (1.0 - b)) * slope(index, index + 1))
+        }
+
+        fun incomingSlope(index: Int): Functions.Fn {
+            val key = sorted[index]
+            val t = key.tension ?: track.defaultTension
+            val c = key.continuity ?: track.defaultContinuity
+            val b = key.bias ?: track.defaultBias
+            return fnLeaf(0.5 * (1.0 - t)) *
+                (fnLeaf((1.0 - c) * (1.0 + b)) * slope(index - 1, index) +
+                    fnLeaf((1.0 + c) * (1.0 - b)) * slope(index, index + 1))
+        }
+
+        var acc = values.first()
+        for (i in 0 until sorted.size - 1) {
+            val dt = sorted[i + 1].time - sorted[i].time
+            val u = fnClamp01(
+                (identity(Functions.Domain.ALL) - fnLeaf(sorted[i].time)) / fnLeaf(dt)
+            )
+            val u2 = u * u
+            val u3 = u2 * u
+            // TcbTrack.sample's basis again, with p0/p1 and both tangents as graphs.
+            val h00 = u3 * 2.0 - u2 * 3.0 + 1.0
+            val h10 = u3 - u2 * 2.0 + u
+            val h01 = u3 * -2.0 + u2 * 3.0
+            val h11 = u3 - u2
+            val value = h00 * values[i] +
+                h10 * (fnLeaf(dt) * outgoingSlope(i)) +
+                h01 * values[i + 1] +
+                h11 * (fnLeaf(dt) * incomingSlope(i + 1))
+            acc += value - values[i]
         }
         lowered(acc)
     }
@@ -1112,10 +1261,21 @@ internal fun trackChildren(track: Track<Double>): List<Track<Double>> = when (tr
     is TimeWarpTrack -> listOf(track.source)
     is HeadingTrack -> listOf(track.x, track.y)
     is CycleSwitchTrack -> listOf(track.before, track.after)
-    is ConstantTrack<*>, is FreeParamTrack, is TcbTrack, is LinearScalarTrack, is HoldScalarTrack,
-    is EasedScalarTrack, is GateTrack, is CycleGateTrack, is DegradeGateTrack, is PatTrack,
-    is PatHoldTrack -> emptyList()
+    // A keyed track's children are its key *values*. They used to be numbers and so used to be
+    // leaves; now that they are tracks, everything written over this walk — `freeParameters`,
+    // `substituteParameters`, `simplify`, `nodeCount` — reaches a parameter inside a key without
+    // knowing anything about keys.
+    is TcbTrack -> track.keys.map { it.valueTrack }
+    is LinearScalarTrack -> track.keys.map { it.valueTrack }
+    is HoldScalarTrack -> track.keys.map { it.valueTrack }
+    is EasedScalarTrack -> track.keys.map { it.valueTrack }
+    is ConstantTrack<*>, is FreeParamTrack, is GateTrack, is CycleGateTrack, is DegradeGateTrack,
+    is PatTrack, is PatHoldTrack -> emptyList()
 }
+
+/** This key with [f] applied through its value track, which is the only track a key holds. */
+private fun TcbKey.mapValue(f: (Track<Double>) -> Track<Double>): TcbKey =
+    copy(valueTrack = mapTrack(valueTrack, f))
 
 /**
  * Rebuilds [track] bottom-up, applying [f] to every node after its children have been rewritten.
@@ -1138,11 +1298,26 @@ internal fun mapTrack(track: Track<Double>, f: (Track<Double>) -> Track<Double>)
             before = mapTrack(track.before, f),
             after = mapTrack(track.after, f)
         )
-        is ConstantTrack<*>, is FreeParamTrack, is TcbTrack, is LinearScalarTrack,
-        is HoldScalarTrack, is EasedScalarTrack, is GateTrack, is CycleGateTrack,
+        // Same reason as [trackChildren]: a rewrite that stopped at a keyed track would leave the
+        // one place a parameter can now hide unrewritten, and `substituteParameters` would return a
+        // track that still reads its seed value.
+        is TcbTrack -> track.copy(keys = track.keys.map { it.mapValue(f) })
+        is LinearScalarTrack -> track.copy(keys = track.keys.map { it.mapValue(f) })
+        is HoldScalarTrack -> track.copy(keys = track.keys.map { it.mapValue(f) })
+        is EasedScalarTrack -> track.copy(keys = track.keys.map { it.mapValue(f) })
+        is ConstantTrack<*>, is FreeParamTrack, is GateTrack, is CycleGateTrack,
         is DegradeGateTrack, is PatTrack, is PatHoldTrack -> track
     }
     return f(rebuilt)
+}
+
+/**
+ * `time=value` per key, with a constant key printing as the bare number it always did and a
+ * parameterised one printing its algebra — `0.0=0.0 2.0=?peak=4.0` — so the one line says which
+ * keys a fit can move.
+ */
+private fun List<TcbKey>.describeKeys(): String = joinToString(" ") { key ->
+    "${key.time}=" + if (key.isConstantValue) "${key.value}" else key.valueTrack.describe()
 }
 
 /**
@@ -1162,10 +1337,10 @@ fun Track<Double>.describe(): String {
         is BinaryDoubleTrack -> "$op(${a.describe()}, ${b.describe()})"
         is TernaryDoubleTrack -> "$op(${a.describe()}, ${b.describe()}, ${c.describe()})"
         is TimeWarpTrack -> "$warp[$amount](${source.describe()})"
-        is TcbTrack -> "tcb[${keys.joinToString(" ") { "${it.time}=${it.value}" }}]"
-        is LinearScalarTrack -> "linear[${keys.joinToString(" ") { "${it.time}=${it.value}" }}]"
-        is HoldScalarTrack -> "hold[${keys.joinToString(" ") { "${it.time}=${it.value}" }}]"
-        is EasedScalarTrack -> "$easeName[${keys.joinToString(" ") { "${it.time}=${it.value}" }}]"
+        is TcbTrack -> "tcb[${keys.describeKeys()}]"
+        is LinearScalarTrack -> "linear[${keys.describeKeys()}]"
+        is HoldScalarTrack -> "hold[${keys.describeKeys()}]"
+        is EasedScalarTrack -> "$easeName[${keys.describeKeys()}]"
         is GateTrack -> "gate[$lo..$hi]"
         is HeadingTrack -> "heading(${x.describe()}, ${y.describe()})"
         is CycleSwitchTrack -> "every[$k](${before.describe()}, ${after.describe()})"
