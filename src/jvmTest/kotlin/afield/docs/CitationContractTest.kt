@@ -52,6 +52,13 @@ class CitationContractTest {
             "dev_docs/small_language_anatomy.md" to 134,
             "dev_docs/fline_fill_orientation.md" to 20,
             "dev_docs/completion_aa_sidecar.md" to 24,
+            // The DataFrame compiler-plugin wiring note. Written with 54 anchored citations, 52 of
+            // them unique in their file; the two that are not (`box: dataframe_live`, which the
+            // transcript writes once as a `create` and once as an `execute`) sit 52 lines apart, so
+            // neither comes near the fragility ceiling. Floored under the count on purpose — a page
+            // becoming a little less citation-dense should not fail a build, while deleting half of
+            // them should.
+            "dev_docs/DATAFRAME_PLUGIN.md" to 50,
             // The server route/command ledger. All 9 anchors were chosen unique-in-file, so the
             // corpus fragility ceiling below is unaffected by adding it.
             "dev_docs/server_surface_inventory.md" to 9,

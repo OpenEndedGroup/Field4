@@ -95,8 +95,13 @@ object DemoTranscriptExecSmokeTest {
         // K2JVMCompiler and then recycles the other boxes' engines — but it is pure compute, and the
         // second run of box 1 is what holds the two engine-recycling regressions down.
         "shared_types_demo",
-        // Kotlin DataFrame's compiler plugin. Three boxes are replayed; the fourth is created
-        // and deliberately not executed, because it documents a compile error on purpose.
+        // Kotlin DataFrame's compiler plugin. All FOUR boxes are executed. This comment used to say
+        // three were, with the fourth created and deliberately not executed because it documented a
+        // compile error on purpose — which was true of `dataframe_boundary`, the box d7d8dccc2
+        // replaced with `dataframe_live`. That commit added the fourth `execute` op and rewrote the
+        // public index paragraph, and did not touch this file, so the classification comment outlived
+        // what it described. Box 4 is the `typed()` demo: two `//%-` fragments in one execution, which
+        // is why running it here exercises the preamble re-entry path as well as the plugin.
         "dataframe_typed_columns",
         "spectral_examples",
         "imaging_cv_examples",

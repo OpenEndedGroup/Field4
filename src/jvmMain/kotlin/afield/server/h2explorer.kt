@@ -169,6 +169,23 @@ private fun vectorCells(value: Any?): List<String>? {
     }
 }
 
+/**
+ * One row of a list-of-maps, as one cell per declared column.
+ *
+ * Beyond the sampled prefix a row is not guaranteed to carry the same keys, so a missing key is an
+ * empty cell rather than a shifted row, and a row that is not a map at all keeps its summary in the
+ * first cell. Either way the cell count matches [ListSource.columns], which is what the client pads
+ * its table against.
+ */
+private fun recordCells(value: Any?, columns: List<String>): List<String> {
+    if (value !is Map<*, *>) {
+        return List(columns.size) { if (it == 0) preview(value) else "" }
+    }
+    val byName = LinkedHashMap<String, Any?>(value.size)
+    value.forEach { (k, v) -> byName[k.toString()] = v }
+    return columns.map { name -> if (byName.containsKey(name)) preview(byName[name]) else "" }
+}
+
 private class ScalarSource(private val value: Any?) : H2Source {
     override val kind: String = "scalar"
     override val title: String = value?.javaClass?.simpleName ?: "null"
@@ -292,18 +309,32 @@ private class NumericArraySource(
 }
 
 private class ListSource(private val list: List<*>) : H2Source {
-    private enum class Mode { GENERIC, VECTOR, NUMERIC_STREAM }
+    private enum class Mode { GENERIC, VECTOR, NUMERIC_STREAM, RECORD }
 
     private val mode: Mode
     private val vectorColumns: List<String>
+    private val recordColumns: List<String>
 
     init {
         var allNumeric = true
         var vectorDim: Int? = null
+        // A list of same-shaped maps is a table, not a column of summaries. Track whether every
+        // sampled element is a Map with the *same* key sequence; the first element's keys become
+        // the columns, in its iteration order, so a LinkedHashMap keeps the producer's ordering.
+        var recordKeys: List<String>? = null
+        var recordUniform = list.isNotEmpty()
         val sampleCount = minOf(list.size, 512)
         for (i in 0 until sampleCount) {
             val v = list[i]
             if (v !is Number) allNumeric = false
+            if (recordUniform) {
+                if (v is Map<*, *> && v.isNotEmpty()) {
+                    val keys = v.keys.map { it.toString() }
+                    if (recordKeys == null) recordKeys = keys else if (recordKeys != keys) recordUniform = false
+                } else {
+                    recordUniform = false
+                }
+            }
             val cells = vectorCells(v)
             val dim = cells?.size
             if (dim == null) {
@@ -316,8 +347,14 @@ private class ListSource(private val list: List<*>) : H2Source {
         }
 
         when {
+            recordUniform && recordKeys != null -> {
+                mode = Mode.RECORD
+                recordColumns = recordKeys
+                vectorColumns = emptyList()
+            }
             vectorDim != null && vectorDim > 1 -> {
                 mode = Mode.VECTOR
+                recordColumns = emptyList()
                 vectorColumns = (0 until vectorDim).map {
                     when (it) {
                         0 -> "x"
@@ -330,10 +367,12 @@ private class ListSource(private val list: List<*>) : H2Source {
             }
             allNumeric && list.isNotEmpty() -> {
                 mode = Mode.NUMERIC_STREAM
+                recordColumns = emptyList()
                 vectorColumns = emptyList()
             }
             else -> {
                 mode = Mode.GENERIC
+                recordColumns = emptyList()
                 vectorColumns = emptyList()
             }
         }
@@ -355,6 +394,7 @@ private class ListSource(private val list: List<*>) : H2Source {
     override fun columns(stride: Int): List<String> {
         return when (mode) {
             Mode.GENERIC -> listOf("value")
+            Mode.RECORD -> recordColumns
             Mode.VECTOR -> vectorColumns
             Mode.NUMERIC_STREAM -> (0 until stride.coerceAtLeast(1)).map { "c$it" }
         }
@@ -371,6 +411,11 @@ private class ListSource(private val list: List<*>) : H2Source {
             Mode.GENERIC -> {
                 for (row in safeStart until safeEnd) {
                     out.add(H2Row(index = row, cells = listOf(preview(list[row]))))
+                }
+            }
+            Mode.RECORD -> {
+                for (row in safeStart until safeEnd) {
+                    out.add(H2Row(index = row, cells = recordCells(list[row], recordColumns)))
                 }
             }
             Mode.VECTOR -> {
@@ -430,6 +475,24 @@ private class MapSource(private val map: Map<*, *>) : H2Source {
         }
         return out
     }
+}
+
+/**
+ * Test seam: the column names and the first [count] rows of cells the explorer would stream for
+ * [value], without a server, a socket or a browser.
+ *
+ * This exists because everything else in this file is private, so the row *content* — as opposed to
+ * the paging around it — had no reachable oracle. `.h2` on a DataFrame streamed `Map(size=3)` for
+ * every row for exactly that reason: the offset arithmetic was covered and the cells were not.
+ */
+internal fun h2ExplorerCellsForTesting(
+    value: Any?,
+    start: Int = 0,
+    count: Int = 4,
+): Pair<List<String>, List<List<String>>> {
+    val source = makeSource(value)
+    val stride = source.normalizeStride(null)
+    return source.columns(stride) to source.rows(start, count, stride).map { it.cells }
 }
 
 private fun makeSource(value: Any?): H2Source {

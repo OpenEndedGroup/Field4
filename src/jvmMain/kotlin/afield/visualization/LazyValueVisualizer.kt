@@ -61,19 +61,34 @@ object H2ValueRegistry {
         adapters[clazz] = adapter as (Any) -> H2ValueSnapshot
     }
 
+    /**
+     * The `.h2` adapter registered for [value]'s type, or null.
+     *
+     * Same resolution rule, and same fix, as [ValuePrinterRegistry.getPrinter]: the superclass chain
+     * most-derived first, and at each step that class's **whole** interface closure rather than only
+     * the interfaces the runtime class declares. Kept deliberately identical, because the two
+     * registries are the pair of extension points a third-party type reaches Field through, and
+     * having them disagree about what "registered for this type" means is the bug twice.
+     */
     internal fun adapt(value: Any): H2ValueSnapshot? {
-        adapters[value::class.java]?.let { return it(value) }
-
         var clazz: Class<*>? = value::class.java
         while (clazz != null) {
             adapters[clazz]?.let { return it(value) }
+            findInInterfaceClosure(clazz.interfaces)?.let { return it(value) }
             clazz = clazz.superclass
         }
+        return null
+    }
 
-        value::class.java.interfaces.forEach { iface ->
-            adapters[iface]?.let { return it(value) }
+    /** Breadth-first over [roots] and everything they extend, so declared interfaces win over theirs. */
+    private fun findInInterfaceClosure(roots: Array<Class<*>>): ((Any) -> H2ValueSnapshot)? {
+        val queue = ArrayDeque(roots.toList())
+        val seen = HashSet<Class<*>>(roots.toList())
+        while (queue.isNotEmpty()) {
+            val iface = queue.removeFirst()
+            adapters[iface]?.let { return it }
+            iface.interfaces.forEach { if (seen.add(it)) queue.addLast(it) }
         }
-
         return null
     }
 }

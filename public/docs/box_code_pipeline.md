@@ -242,6 +242,8 @@ Walk it through:
 
 So `//%-` is not cosmetic here — it is what makes "set some state, then run a macro that reads it" work. Interactive execution expands and evaluates fragments in sequence. A single Kotlin box launched through the transcript/multi-box path is also awaited fragment by fragment; mixed-language launch groups do not promise the same first-frame ordering across boxes.
 
+**A second worked example, for the preamble half rather than the macro half.** "Between fragments, the preamble/setup blocks are re-run too" (above) is easy to read past, and it is load-bearing on its own: `runLaunchSetupBlocks(box)` sits *inside* the fragment loop, not before it (`execution.kt:1400`). So a fragment that *writes* to the box's preamble at runtime has published a real source declaration by the time the next fragment is compiled. That is exactly how `DataFrame.typed("People")` makes typed columns survive into the second half of the same execution — see [DataFrames in a Box](dataframe.md#fragment-marker). Same shape as `once.vertex` before `moduleHere`, one layer down: not "set state a macro reads", but "declare a type the compiler reads".
+
 ---
 
 ## Putting it together
