@@ -9,6 +9,7 @@ import afield.four.synth.InlineAudioSummaryTarget
 import afield.logger.PinnedConsole
 import afield.logger.lprintln
 import afield.macros.checkAtticAndExecute
+import afield.macros.parseAtticBlock
 import afield.macros.checkIntroductionAndExecute
 import afield.macros.checkPreambleAndExecute
 import afield.macros.gatherPreambleUpwards
@@ -521,6 +522,40 @@ private fun buildRuntimeVariableSymbolContextHtml(
 }
 
 /**
+ * "🤖 ai-generated — view in attic" for a function whose body an `ai("…")` macro wrote, or "" for
+ * everything else.
+ *
+ * This is the only place the `// @ai-gen:` marker surfaces to a person: `ai()` parks the generated
+ * `__name` in the box's attic and replaces the call site with `return __name(…)`, so without the
+ * badge a call site says nothing about where its body came from or how to reach it.
+ *
+ * It shipped with the macro on 2026-04-05 and went dark six days later, when `ba36f5b30` moved
+ * completion to K2 and the scripting jars stopped exposing a `DeclarationDescriptor` — the badge sat
+ * behind `descriptor is FunctionDescriptor`. Nothing here needs a descriptor: a name and the box's
+ * own attic are enough.
+ *
+ * The lookup goes through [parseAtticBlock], the macro's own parser, rather than the
+ * `attic.contains("// @ai-gen: __name")` the original used — that substring matched `__nameOther`'s
+ * header too, and badged a function whose body nobody had generated.
+ */
+internal fun aiGeneratedAtticBadge(box: Box, symbolName: String): String {
+    val name = symbolName.substringBefore('<').substringBefore('(').substringAfterLast('.').trim()
+    if (name.isEmpty()) return ""
+    val attic = box.attic
+    if (attic.isBlank()) return ""
+    val atticName = if (name.startsWith("__")) name else "__$name"
+    if (parseAtticBlock(attic, atticName) == null) return ""
+    return buildString {
+        append("<div style='color:#b0b0ff; cursor:pointer; margin-top:2px;' ")
+        append("onclick=\"if(window.switchToProperty) window.switchToProperty('")
+        append(escapeNotifyHtml(box.id))
+        append("','attic')\">")
+        append("\uD83E\uDD16 ai-generated — <u>view in attic</u>")
+        append("</div>")
+    }
+}
+
+/**
  * The ambient badge for a symbol, from what completion could tell us about it.
  *
  * There is no `DeclarationDescriptor` to render: the K2 2.4 scripting jars do not expose one (see
@@ -528,6 +563,7 @@ private fun buildRuntimeVariableSymbolContextHtml(
  */
 private fun buildSymbolContextHtml(
     box: Box,
+    symbolName: String,
     fallbackDisplay: String,
     fallbackDocumentation: String,
     runtimeVariableInfo: KotlinVariableInfo? = null
@@ -550,7 +586,10 @@ private fun buildSymbolContextHtml(
     val type = fallbackDocumentation.lineSequence().firstOrNull()?.trim()?.removePrefix(":")?.trim().orEmpty()
     val typeSuffix = if (type.isNotBlank() && type != display && !display.contains(type))
         " <span style='color:#888;'>: ${escapeNotifyHtml(type)}</span>" else ""
-    return "<span style='color:#ddd;'><code>${escapeNotifyHtml(display)}</code>$typeSuffix</span>"
+    val body = "<span style='color:#ddd;'><code>${escapeNotifyHtml(display)}</code>$typeSuffix</span>"
+    val badge = aiGeneratedAtticBadge(box, symbolName)
+    if (badge.isEmpty()) return body
+    return "<div style='display:inline-block; max-width: 620px;'>$body$badge</div>"
 }
 
 private data class SymbolBounds(val start: Int, val end: Int, val text: String)
@@ -923,6 +962,7 @@ private fun fallbackRuntimeSymbolContext(box: Box, symbol: String): SymbolContex
             append("<div style='color:#777;'>defined in ")
             append(location.html)
             append("</div>")
+            append(aiGeneratedAtticBadge(box, symbol))
             append("</div>")
         }
         return symbolContextResponse(symbol = symbol, html = html)
@@ -2695,6 +2735,7 @@ class KotlinExecution : BoxExecution {
                             symbol = symbol,
                             html = buildSymbolContextHtml(
                                 box = inside,
+                                symbolName = symbol,
                                 fallbackDisplay = bestVariant.displayText,
                                 fallbackDocumentation = bestVariant.tail,
                                 runtimeVariableInfo = inside.ki.context.vars[symbol]
