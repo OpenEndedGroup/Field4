@@ -242,24 +242,17 @@ capture harness rather than a box.
 
 ![a histogram](assets/chart_primitive/gallery-histogram.png)
 
-**Box-and-whisker over four samples** with the same median and visibly different spreads, one of them
-carrying three planted outliers. A bar of the mean would have drawn four equal bars.
-
-![box and whisker](assets/chart_primitive/gallery-boxes.png)
-
-**Small multiples, and the reason `shareY` defaults to true.** Same four sines, a thousandfold apart.
-Shared, that is what they are. Free, they are four identical-looking curves — the figure that lies.
-
-![small multiples, shared y](assets/chart_primitive/gallery-grid-shared.png)
-
-![small multiples, free y](assets/chart_primitive/gallery-grid-free.png)
+**Box plots and small multiples are gone from here on purpose** — Plotly does both, and does them
+better: `plotly.kt:130` already exposes `violin`, and subplots need no code here at all. Their figures
+and their `ChartGallery` renderers were removed with them rather than left as unproducible pictures in
+a document.
 
 ## Verifying it
 
 Two harnesses, deliberately split: `ChartTest` owns the arithmetic, `ChartGallery` owns the pixels.
 
 ```bash
-# 23 assertions: ticks, mapping, log refusals, loudness, expectations, box stats, grids
+# 20 assertions: ticks, mapping, log refusals, loudness, expectations
 ./gradlew jvmTest --no-daemon --tests 'afield.ChartTest'
 
 # six figures plus two grids rendered to real PNGs, with ink floors and two counterfactuals

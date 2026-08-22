@@ -16,6 +16,12 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 /**
+ * This is the DEFAULT chart path in Field. `charts.kt`'s FLine `Chart` exists only for figures that
+ * must compose with other FLine geometry, be pickable through Field's interactive SVG, or draw an
+ * expectation band; anything else belongs here. Both capture headlessly through the docs runner —
+ * `public/docs/dough_dsp_sound.md` has a dozen `diffstatic_runner` fences over `showSignals`.
+ */
+/**
  * Plotly helpers — the short way to get a chart out of a box, wrapping `space.kscience.plotly`.
  *
  * `linePlot`, [scatter], [scatterSized] and [violin] cover the common shapes (lists of numbers,

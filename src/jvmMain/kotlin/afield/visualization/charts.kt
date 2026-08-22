@@ -33,6 +33,20 @@ import kotlin.math.round
 import kotlin.math.sin
 
 /**
+ * REACH FOR PLOTLY FIRST. `plotly.kt` — `showSignals`, `linePlot`, `scatter`, `violin` — is the
+ * default for a chart, and it is better at being one: real text rather than glyph geometry, a plot
+ * that reflows to its panel instead of being fitted and centred, and axis types (log, subplots, box)
+ * this file deliberately does not carry.
+ *
+ * What is here is the FLine tier, for the three things Plotly cannot do:
+ *  1. compose a chart with other FLine geometry in one drawing under a shared transform;
+ *  2. pick — `FLine.onClick`/`hoverColor` giving a hit record with the element and local `(u, v)`;
+ *  3. [Chart.expect] — an expectation band with its out-of-band points marked and counted.
+ *
+ * If a figure needs none of those three, it should be a Plotly plot. See
+ * `dev_docs/chart_primitive.md` for the comparison capture that settled this.
+ */
+/**
  * Plots — the structure, the scales, and the one renderer for them.
  *
  * [Chart] is to a plot what [Table] is to a grid: build it, and it arrives on screen in the repo's
@@ -320,77 +334,8 @@ enum class MarkKind {
     /** A shaded horizontal band between two y values. */
     BAND,
 
-    /** A box-and-whisker per category, from a whole sample rather than one number. */
-    BOXES,
 }
 
-/**
- * A sample's five-number summary and the points outside its whiskers.
- *
- * Tukey's convention: the whiskers reach the furthest datum within `whisker × IQR` of the box, and
- * everything past that is an [outliers] entry drawn individually. That matters more than it sounds —
- * a whisker drawn to the extreme instead makes every distribution look like its worst sample, which
- * is exactly the reading a box plot exists to avoid.
- */
-data class BoxStats(
-    /** The low whisker: the smallest datum still inside the fence. */
-    val low: Double,
-    /** First quartile. */
-    val q1: Double,
-    /** The median. */
-    val median: Double,
-    /** Third quartile. */
-    val q3: Double,
-    /** The high whisker: the largest datum still inside the fence. */
-    val high: Double,
-    /** Data outside the fences, drawn as individual points. */
-    val outliers: List<Double>,
-    /** How many finite data went in. */
-    val count: Int,
-) {
-    /** The interquartile range — the box's own height. */
-    val iqr: Double get() = q3 - q1
-
-    override fun toString(): String =
-        "BoxStats(n=$count, ${tickLabel(low)}|${tickLabel(q1)}|${tickLabel(median)}|" +
-            "${tickLabel(q3)}|${tickLabel(high)}, ${outliers.size} outlier(s))"
-}
-
-/**
- * The five-number summary of [values], with Tukey fences at [whisker] × IQR.
- *
- * Quartiles by linear interpolation between order statistics (the "type 7" convention, which is what
- * NumPy and R default to), so a four-element sample has a median between its middle two rather than
- * snapping to one of them. Non-finite values are dropped; an empty sample throws rather than
- * returning a box of zeroes, because a box plot of nothing is indistinguishable from a box plot of
- * zeroes and only one of those is a fact.
- */
-fun boxStats(values: List<Number>, whisker: Double = 1.5): BoxStats {
-    val sorted = values.map { it.toDouble() }.filter { it.isFinite() }.sorted()
-    require(sorted.isNotEmpty()) { "boxStats needs at least one finite value" }
-
-    fun quantile(p: Double): Double {
-        if (sorted.size == 1) return sorted[0]
-        val h = (sorted.size - 1) * p
-        val lo = floor(h).toInt()
-        val hi = ceil(h).toInt()
-        return sorted[lo] + (h - lo) * (sorted[hi] - sorted[lo])
-    }
-
-    val q1 = quantile(0.25)
-    val q3 = quantile(0.75)
-    val fence = whisker * (q3 - q1)
-    val inside = sorted.filter { it >= q1 - fence && it <= q3 + fence }
-    return BoxStats(
-        low = inside.firstOrNull() ?: q1,
-        q1 = q1,
-        median = quantile(0.5),
-        q3 = q3,
-        high = inside.lastOrNull() ?: q3,
-        outliers = sorted.filter { it < q1 - fence || it > q3 + fence },
-        count = sorted.size,
-    )
-}
 
 /**
  * One layer of a [Chart]: what to draw, the numbers to draw it from, and how it looks.
@@ -418,8 +363,6 @@ class ChartMark internal constructor(
     var size: Double,
     /** Stroke width, in pixels. */
     var thickness: Double,
-    /** Per-slot distributions, for [MarkKind.BOXES] only; `null` for every other kind. */
-    val boxes: List<BoxStats>? = null,
 ) {
     /** How many data points this mark has. */
     val count: Int get() = min(x.size, y.size)
@@ -427,7 +370,7 @@ class ChartMark internal constructor(
     /** Whether a reader can hover and click individual data of this mark. */
     val isPickable: Boolean get() =
         kind == MarkKind.POINTS || kind == MarkKind.BARS || kind == MarkKind.HISTOGRAM ||
-            kind == MarkKind.BOXES
+            false
 
     override fun toString(): String = "ChartMark($kind, \"$label\", $count)"
 }
@@ -734,51 +677,6 @@ class Chart(
         )
     }
 
-    /**
-     * A box-and-whisker per category — the distribution answer, and the FLine one.
-     *
-     * Until now the only way to show a *distribution* in Field was `plotly.violin`, which is a
-     * Plotly HTML/JS payload: the shape is computed and drawn in a browser, so nothing about it is
-     * available to a test, a headless build or an SVG export. This is the same question answered in
-     * geometry — [boxStats] does the arithmetic, and a caller can assert on it.
-     *
-     * Each box carries its own summary as a hover label and a click, so "which sample is that" is a
-     * question the figure answers rather than one the reader takes to the source.
-     *
-     * @param samples one list of numbers per category. Empty samples are an error, not an empty box.
-     */
-    fun boxes(
-        label: String,
-        categories: List<String>,
-        samples: List<List<Number>>,
-        color: Vec4? = null,
-        whisker: Double = 1.5,
-    ): Chart {
-        require(categories.isNotEmpty()) { "a boxes mark needs at least one category" }
-        require(categories.size == samples.size) {
-            "boxes got ${categories.size} categories and ${samples.size} samples"
-        }
-        val existing = this.categories
-        require(existing == null || existing == categories) {
-            "this chart's x axis already carries the categories $existing; a second categorical " +
-                "mark cannot relabel it with $categories"
-        }
-        this.categories = categories
-        val stats = samples.mapIndexed { i, sample ->
-            require(sample.isNotEmpty()) { "sample `${categories[i]}` is empty" }
-            boxStats(sample, whisker)
-        }
-        return add(
-            ChartMark(
-                MarkKind.BOXES, label,
-                DoubleArray(categories.size) { it.toDouble() },
-                DoubleArray(categories.size) { stats[it].median },
-                null, 0.55,
-                color ?: nextColor(), 2.5, 1.4,
-                boxes = stats,
-            )
-        )
-    }
 
     /** A horizontal reference line at [y], across the whole plot. */
     fun rule(y: Number, label: String = "", color: Vec4 = CHART_MUTED): Chart = add(
@@ -925,12 +823,6 @@ class Chart(
             if (mark.kind == MarkKind.VRULE) return@forEach
             for (i in 0 until mark.count) see(mark.y[i])
             mark.baseline?.forEach { see(it) }
-            // A boxes mark's `y` is only its medians. The whiskers and the outliers are the reason
-            // to draw one at all, so the domain has to reach them or the figure crops its own tails.
-            mark.boxes?.forEach { s ->
-                see(s.low); see(s.high); see(s.q1); see(s.q3)
-                s.outliers.forEach { see(it) }
-            }
         }
         // A drawn expectation is part of the figure's argument, so the band has to be visible even
         // when every point is comfortably inside it — otherwise the claim is cropped away.
@@ -992,7 +884,6 @@ class Chart(
                 MarkKind.AREA -> areaLines(mark, sx, sy)
                 MarkKind.POINTS -> pointLines(mark, sx, sy)
                 MarkKind.BARS, MarkKind.HISTOGRAM -> barLines(mark, sx, sy, plot)
-                MarkKind.BOXES -> boxLines(mark, sx, sy)
             }
         }
 
@@ -1250,75 +1141,6 @@ class Chart(
      * the group. Outliers are separate pickable dots, which is the whole reason to prefer this over
      * a bar of the mean: the points a bar would have averaged away are still individually there.
      */
-    private fun boxLines(mark: ChartMark, sx: Scale, sy: Scale): List<FLine> {
-        val stats = mark.boxes ?: return emptyList()
-        val out = mutableListOf<FLine>()
-        stats.forEachIndexed { i, s ->
-            val centre = sx.toPixel(mark.x[i])
-            val left = sx.toPixel(mark.x[i] - mark.binWidth / 2.0)
-            val right = sx.toPixel(mark.x[i] + mark.binWidth / 2.0)
-            val pLow = sy.toPixel(s.low)
-            val pQ1 = sy.toPixel(s.q1)
-            val pMed = sy.toPixel(s.median)
-            val pQ3 = sy.toPixel(s.q3)
-            val pHigh = sy.toPixel(s.high)
-            if (!listOf(centre, left, right, pLow, pQ1, pMed, pQ3, pHigh).all { it.isFinite() }) return@forEachIndexed
-
-            val capHalf = (right - left).let { if (it.isFinite()) abs(it) * 0.22 else 4.0 }
-            out += fline {
-                moveTo(centre, pHigh); lineTo(centre, pLow)
-                moveTo(centre - capHalf, pHigh); lineTo(centre + capHalf, pHigh)
-                moveTo(centre - capHalf, pLow); lineTo(centre + capHalf, pLow)
-                color = Vec4(mark.color)
-                thickness = mark.thickness
-            }
-
-            val bodyTop = min(pQ1, pQ3)
-            val body = filledRect(
-                min(left, right), bodyTop, abs(right - left), max(1.0, abs(pQ3 - pQ1)),
-                vec(mark.color.x, mark.color.y, mark.color.z, mark.color.w * 0.22)
-            )
-            body.stroked = true
-            body.thickness = mark.thickness
-            out += body
-
-            out += fline {
-                moveTo(min(left, right), pMed); lineTo(max(left, right), pMed)
-                color = Vec4(mark.color)
-                thickness = mark.thickness * 2.0
-            }
-
-            val summary = "${mark.label}: ${categories?.getOrNull(i) ?: tickLabel(mark.x[i])} " +
-                "n=${s.count} med=${tickLabel(s.median)} q1=${tickLabel(s.q1)} q3=${tickLabel(s.q3)}" +
-                if (s.outliers.isEmpty()) "" else " +${s.outliers.size} outlier(s)"
-            if (pickable) {
-                body.label = summary
-                body.hoverColor = vec(1.0, 1.0, 1.0, 0.95)
-                body.onClick = {
-                    val handler = onPick
-                    val pick = ChartPick(
-                        mark.label, i, mark.x[i], s.median, categories?.getOrNull(i), it
-                    )
-                    if (handler != null) handler(pick) else println(summary)
-                }
-            } else {
-                body.label = summary
-            }
-
-            s.outliers.forEach { v ->
-                val py = sy.toPixel(v)
-                if (!py.isFinite()) return@forEach
-                val dot = FLine()
-                dot.circle(centre, py, mark.size)
-                dot.color = vec(mark.color.x, mark.color.y, mark.color.z, mark.color.w * 0.8)
-                dot.filled = true
-                dot.stroked = false
-                dot.label = "${mark.label}: outlier ${tickLabel(v)}"
-                out += dot
-            }
-        }
-        return out
-    }
 
     /**
      * Give one datum's geometry its hover colour, its click callback and its label.
@@ -1449,7 +1271,7 @@ class Chart(
 /** Whether a mark kind carries data a claim can be made about, or is pure decoration. */
 private val MarkKind.carriesData: Boolean
     get() = this == MarkKind.POINTS || this == MarkKind.LINE || this == MarkKind.AREA ||
-        this == MarkKind.BARS || this == MarkKind.HISTOGRAM || this == MarkKind.BOXES
+        this == MarkKind.BARS || this == MarkKind.HISTOGRAM
 
 // ==============================================================================================
 // Text, geometry and colour helpers
@@ -1570,89 +1392,6 @@ private fun padDegenerate(lo: Double, hi: Double, kind: ScaleKind): Pair<Double,
 // Small multiples
 // ==============================================================================================
 
-/**
- * Several [Chart]s as one figure — small multiples.
- *
- * The point is not the layout, it is [shareY]. Panels drawn side by side with independently
- * autoscaled y axes are the classic way to build a figure that lies: four panels of visibly similar
- * curves, three of them a hundredth the size of the fourth. With a shared domain the comparison the
- * grid invites is the comparison the picture supports.
- *
- * Each panel keeps its own title, labels and expectations, and lowers through the same
- * [Chart.toFLines]; the grid only translates them into their cells. So an interactive mark inside a
- * panel is still interactive, and [toHTML] still takes `Box.lines`' interactive branch.
- */
-class ChartGrid(
-    charts: List<Chart>,
-    /** Panels per row. */
-    var columns: Int = 2,
-    /**
-     * Give every panel the union of their y domains.
-     *
-     * `true` by default: a grid whose panels cannot be compared is a stack of unrelated figures with
-     * extra alignment. Pass `false` when the panels genuinely measure different quantities.
-     */
-    var shareY: Boolean = true,
-) : ToHTML {
-
-    /** The panels, in reading order. */
-    val charts: List<Chart> = charts.toList()
-
-    init {
-        require(charts.isNotEmpty()) { "a ChartGrid needs at least one chart" }
-    }
-
-    /** Rows, given [columns]. */
-    val rows: Int get() = (charts.size + columns - 1) / columns
-
-    /** Total figure width: the widest panel times the filled columns. */
-    val width: Double get() = charts.maxOf { it.width } * min(columns, charts.size)
-
-    /** Total figure height: the tallest panel times [rows]. */
-    val height: Double get() = charts.maxOf { it.height } * rows
-
-    /**
-     * Every panel's geometry, translated into its cell.
-     *
-     * The shared domain is applied *before* the panels lay themselves out, because each panel's left
-     * inset comes from its own widest tick label — so sharing the domain is also what makes the
-     * panels' plot frames line up with each other.
-     */
-    fun toFLines(): List<FLine> {
-        if (shareY) {
-            var lo = Double.MAX_VALUE
-            var hi = -Double.MAX_VALUE
-            charts.forEach { c ->
-                val (a, b) = c.resolvedYDomain()
-                lo = min(lo, a); hi = max(hi, b)
-            }
-            if (lo <= hi) charts.forEach { it.yDomain = lo to hi }
-        }
-        val cellW = charts.maxOf { it.width }
-        val cellH = charts.maxOf { it.height }
-        return charts.flatMapIndexed { i, chart ->
-            val dx = (i % columns) * cellW
-            val dy = (i / columns) * cellH
-            if (dx == 0.0 && dy == 0.0) chart.toFLines()
-            else chart.toFLines().map { line -> line.transform { p -> vec(p.x + dx, p.y + dy, p.z) } }
-        }
-    }
-
-    /** The grid as one figure, through the markup `Box.lines` builds. */
-    override fun toHTML(): String = linesToHTML(toFLines(), width, height)
-
-    override fun toString(): String = "ChartGrid(${charts.size} panels, ${columns}x$rows)"
-}
-
-/** Small multiples from charts written inline. */
-fun chartGrid(vararg charts: Chart, columns: Int = 2, shareY: Boolean = true): ChartGrid =
-    ChartGrid(charts.asList(), columns, shareY)
-
-/** Put a [ChartGrid] on the screen and hand it back. */
-fun Box.showChartGrid(grid: ChartGrid, channel: String = "output"): ChartGrid {
-    display(channel, grid)
-    return grid
-}
 
 // ==============================================================================================
 // Entry points
