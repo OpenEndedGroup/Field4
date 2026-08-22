@@ -4,7 +4,7 @@
 
 Turning a value into something you can look at, without leaving the box.
 
-9 source file(s), 320 public symbol(s), 291 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+11 source file(s), 414 public symbol(s), 377 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -741,6 +741,21 @@ Perceptually-uniform colormaps as named colour ramps — matplotlib's viridis / 
 | <code class="highlight"><span class="k">fun</span> <span class="nf">sample</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Color4</span></code> | Look up colormap `name` at parameter `t` in `[0,1]` (clamped). |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">sampleStops</span><span class="p">(</span><span class="n">stops</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Color4</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Color4</span></code> | Linearly interpolate an evenly-spaced list of control points at `t` in `[0,1]` (clamped). |
 
+## DataFrameVisualizer.kt { #dataframevisualizer-kt }
+
+`src/jvmMain/kotlin/afield/visualization/DataFrameVisualizer.kt`
+
+### DataFrameVisualizer { #dataframevisualizer-kt-dataframevisualizer }
+
+<code class="highlight"><span class="k">object</span> <span class="nc">DataFrameVisualizer</span></code>
+
+Makes Kotlin DataFrame values render as Field values — `.h`, `.h2`, `display` and box return values — without DataFrame having to know Field exists.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">HEAD&#95;ROWS</span><span class="p">:</span> <span class="nc">Int</span></code> | Rows shown in the compact `.h` form. `.h2` streams the whole frame instead. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">install</span><span class="p">(</span><span class="p">)</span></code> | Register every DataFrame renderer. Idempotent, and safe to call from any thread. |
+
 ## ImagingVisualizer.kt { #imagingvisualizer-kt }
 
 `src/jvmMain/kotlin/afield/visualization/ImagingVisualizer.kt`
@@ -878,6 +893,210 @@ Render a Kotlin value as a compact, escaped HTML fragment for Field output areas
 | Declaration | Summary |
 | --- | --- |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">visualize</span><span class="p">(</span><span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">,</span> <span class="n">appendable</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | Visualize any value and return compact HTML representation |
+
+## charts.kt { #charts-kt }
+
+Plots — the structure, the scales, and the one renderer for them.
+
+[`Chart`](visualization.md#charts-kt-chart) is to a plot what [`Table`](visualization.md#tables-kt-table) is to a grid: build it, and it arrives on screen in the repo's
+style with no markup in the way. It implements [`ToHTML`](visualization.md#valuevisualizer-kt-tohtml), so `display(channel, chart)`, `chart.h`
+and a box whose last expression is a `Chart` all render through `Chart.toHTML`; `Box.showChart`
+is the terse form.
+
+### Why this exists
+
+The same argument [`Table`](visualization.md#tables-kt-table) was written for, one step further along. Measured on `d7d8dccc2`,
+sixteen files under `src/` draw their own axes and ticks across six unrelated media — AWT
+`Graphics2D` (`FunctionsPlotGallery`, `DoughDspPlotGallery`), SVG strings (`stats.kt`,
+`ValueVisualizer`, the `Pat*` galleries), raster pixels (`AlifeGallery`, `SonicPiPatternProbe`),
+JS inside an iframe (`Functions.kt`, `FunctionGraphBrowser`), RectSL rectangles (`RectSL.kt`), and
+FLines (`MorphoSearchFLines`, `AbletonSetDebugDrawing`) — and share no code at all.
+
+Worse than the drawing is the *arithmetic*. Heckbert's nice-number tick algorithm had been written
+**five** times over — `RectSL.kt:3138`, `FunctionsPlotGallery.kt:369`, `DoughDspPlotGallery.kt:575`,
+and twice more as JavaScript in `Functions.kt:3383` and `FunctionGraphBrowser.kt:487` — every copy
+`private` or embedded in a string literal, so no caller could reach one and two of them could
+silently disagree about where a gridline goes. `niceTicks` is that algorithm, once, in public.
+
+### What is actually new here
+
+Field already had most of the pieces: `List<FLine>.fitInto`, `planeFigureHtml`'s window→frame
+mapping, and `MorphoSearchFLines.plotFrame`'s FLine gridlines. What it did not have — and says so
+in a comment at `MorphoSearchFLines.kt:51` — is **an axis with text on it**, because
+`showPlaneGrid` has nowhere to put a label. So the labels here are real glyph outlines
+(`labelLines`), which is what makes this a chart rather than a grid.
+
+### Marks pick themselves up
+
+`Box.lines` switches to the interactive SVG renderer the moment any line carries
+`FLine.onClick` or `FLine.hoverColor` (`someSkiko.kt:37`). Point and bar marks set both, so
+hovering a bar and clicking a datum work *by construction* rather than by configuration — see
+`Chart.pickable` for the escape hatch and the cost.
+
+### The part that is not formatting
+
+`Chart.expect`, exactly as in [`Table`](visualization.md#tables-kt-table). A plot in a doc or a live box usually carries a claim —
+"no residual exceeds 1e-6", "every voice stayed inside the guard band" — and a reader is
+otherwise asked to verify it by eye. State the claim and it is *drawn* as a band, the data outside
+it recolours, the footnote says how many points broke it, and `Chart.deviations` hands the same
+list to a test.
+
+`src/jvmMain/kotlin/afield/visualization/charts.kt`
+
+### Top-level functions { #charts-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">niceNumber</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">round</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | Heckbert's "nice numbers": round `x` to one of 1, 2, 5 or 10 times a power of ten. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">niceTicks</span><span class="p">(</span><span class="n">lo</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">hi</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> | Round tick values covering `[lo, hi]`, about `target` of them — the one copy of the algorithm that five files had each written privately. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">logTicks</span><span class="p">(</span><span class="n">lo</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">hi</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">maxTicks</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> | Decade ticks covering `[lo, hi]`, with 1/2/5 mantissas while the span is small enough to fit. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">tickLabel</span><span class="p">(</span><span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">step</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | A tick's label: just enough decimals for `step`, trailing zeros trimmed, and never `-0`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">hexColor</span><span class="p">(</span><span class="n">hex</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec4</span></code> | `#rrggbb` or `#rrggbbaa` as a [`Vec4`](math.md#linalg-kt-vec4) in `0..1`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">chart</span><span class="p">(</span><span class="k">vararg</span> <span class="n">series</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Number</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Number</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">xLabel</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">yLabel</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">note</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | A [`Chart`](visualization.md#charts-kt-chart) of named series against a shared x — shaped like `table` and `showSignals`, so the same data can be a grid or a plot by changing one word. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showChart</span><span class="p">(</span><span class="n">chart</span><span class="p">:</span> <span class="nc">Chart</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;output&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | Put a [`Chart`](visualization.md#charts-kt-chart) on the screen and hand it back — the plot counterpart of `Box.showTable`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showChart</span><span class="p">(</span><span class="k">vararg</span> <span class="n">series</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Number</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;output&quot;</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Number</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">xLabel</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">yLabel</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">note</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | Builds a [`Chart`](visualization.md#charts-kt-chart) from named series with `chart` and displays it. |
+
+### Top-level values { #charts-kt-values }
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="nc">CHART&#95;MUTED</span><span class="p">:</span> <span class="nc">Vec4</span></code> | Muted grey for axes, ticks and notes — the plot counterpart of `TABLE_MUTED`. |
+| <code class="highlight"><span class="k">val</span> <span class="nc">CHART&#95;GRID</span><span class="p">:</span> <span class="nc">Vec4</span></code> | The gridline colour: the same grey at a tenth of the weight, so data always wins. |
+| <code class="highlight"><span class="k">val</span> <span class="nc">CHART&#95;BAD</span><span class="p">:</span> <span class="nc">Vec4</span></code> | What a failed `Chart.expect` recolours to, matching `CellRole.BAD`'s intent. |
+
+### ScaleKind { #charts-kt-scalekind }
+
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">ScaleKind</span></code>
+
+Which arithmetic a [`Scale`](visualization.md#charts-kt-scale) uses between data space and pixel space.
+
+Constants: `LINEAR`, `LOG`.
+
+### Scale { #charts-kt-scale }
+
+<code class="highlight"><span class="k">class</span> <span class="nf">Scale</span><span class="p">(</span><span class="k">val</span> <span class="n">lo</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">hi</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">pixelLo</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">pixelHi</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">ScaleKind</span> <span class="o">=</span> <span class="nc">ScaleKind</span><span class="p">.</span><span class="nc">LINEAR</span><span class="p">)</span></code>
+
+One axis: a data interval, a pixel interval, and the arithmetic between them.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">lo</span><span class="p">:</span> <span class="nc">Double</span></code> | The low end of the data interval. |
+| <code class="highlight"><span class="k">val</span> <span class="n">hi</span><span class="p">:</span> <span class="nc">Double</span></code> | The high end of the data interval. |
+| <code class="highlight"><span class="k">val</span> <span class="n">pixelLo</span><span class="p">:</span> <span class="nc">Double</span></code> | The pixel `lo` maps to. |
+| <code class="highlight"><span class="k">val</span> <span class="n">pixelHi</span><span class="p">:</span> <span class="nc">Double</span></code> | The pixel `hi` maps to. May be less than `pixelLo`; see the class note on y. |
+| <code class="highlight"><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">ScaleKind</span></code> | Linear by default. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">toPixel</span><span class="p">(</span><span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | Where `value` lands, in pixels. `NaN` when the value has no place on this scale. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">toData</span><span class="p">(</span><span class="n">pixel</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | The inverse of `toPixel` — what data value a pixel names. The thing a click needs. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">ticks</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> | Round tick values covering the domain: `niceTicks` when linear, `logTicks` when log. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">tickStep</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | How far apart `ticks` came out, for `tickLabel`'s benefit. Zero when there is one tick. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
+### MarkKind { #charts-kt-markkind }
+
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">MarkKind</span></code>
+
+What a [`ChartMark`](visualization.md#charts-kt-chartmark) draws.
+
+Constants: `each`, `plus`, `at`.
+
+### ChartMark { #charts-kt-chartmark }
+
+<code class="highlight"><span class="k">class</span> <span class="nc">ChartMark</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">MarkKind</span><span class="p">,</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">baseline</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">binWidth</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">var</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span><span class="p">,</span> <span class="k">var</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">var</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>
+
+One layer of a [`Chart`](visualization.md#charts-kt-chart): what to draw, the numbers to draw it from, and how it looks.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">MarkKind</span></code> | What this mark draws. |
+| <code class="highlight"><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span></code> | The series name: the legend entry, and the head of a datum's hover label. |
+| <code class="highlight"><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | Data-space x per datum. Integer positions `0 until n` for `MarkKind.BARS`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | Data-space y per datum. For `MarkKind.BAND` and `MarkKind.HRULE` the upper edge. |
+| <code class="highlight"><span class="k">val</span> <span class="n">baseline</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="o">?</span></code> | The lower edge, for `MarkKind.AREA`, `MarkKind.BARS`, `MarkKind.HISTOGRAM` and `MarkKind.BAND`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">binWidth</span><span class="p">:</span> <span class="nc">Double</span></code> | Bar/bin width in data units; 0 means "derive it from the spacing". |
+| <code class="highlight"><span class="k">var</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span></code> | Colour, RGBA in `0..1`. Defaults to this mark's slot in `signalPalette`. |
+| <code class="highlight"><span class="k">var</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Double</span></code> | Dot radius, in pixels. |
+| <code class="highlight"><span class="k">var</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span></code> | Stroke width, in pixels. |
+| <code class="highlight"><span class="k">val</span> <span class="n">count</span><span class="p">:</span> <span class="nc">Int</span></code> | How many data points this mark has. |
+| <code class="highlight"><span class="k">val</span> <span class="n">isPickable</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Whether a reader can hover and click individual data of this mark. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
+### ChartPick { #charts-kt-chartpick }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ChartPick</span><span class="p">(</span><span class="k">val</span> <span class="n">series</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">category</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">hit</span><span class="p">:</span> <span class="nc">FLineIntersection</span><span class="p">)</span></code>
+
+One datum of one mark, as reported to `Chart.onPick` when a reader clicks it.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">series</span><span class="p">:</span> <span class="nc">String</span></code> | The `ChartMark.label` of the series clicked. |
+| <code class="highlight"><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span></code> | Which datum of that series, by index. |
+| <code class="highlight"><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span></code> | Its data-space x. For a bar, its slot. |
+| <code class="highlight"><span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span></code> | Its data-space y. |
+| <code class="highlight"><span class="k">val</span> <span class="n">category</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | The category name, for a bar; `null` otherwise. |
+| <code class="highlight"><span class="k">val</span> <span class="n">hit</span><span class="p">:</span> <span class="nc">FLineIntersection</span></code> | What the interactive SVG renderer reported about the hit itself. |
+
+### ChartDeviation { #charts-kt-chartdeviation }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ChartDeviation</span><span class="p">(</span><span class="k">val</span> <span class="n">series</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">because</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">)</span></code>
+
+One datum that failed a `Chart.expect` check: which series and index, its value, and the reason.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">series</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">because</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+
+### Chart { #charts-kt-chart }
+
+<code class="highlight"><span class="k">class</span> <span class="nf">Chart</span><span class="p">(</span><span class="k">var</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">var</span> <span class="n">xLabel</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">var</span> <span class="n">yLabel</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">var</span> <span class="n">note</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ToHTML</span></code>
+
+Marks, axes, and the claims made about them.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">var</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | Drawn above the plot in the first palette colour. |
+| <code class="highlight"><span class="k">var</span> <span class="n">xLabel</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | Drawn under the x axis, centred. |
+| <code class="highlight"><span class="k">var</span> <span class="n">yLabel</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | Drawn to the left of the y axis, rotated a quarter turn. |
+| <code class="highlight"><span class="k">var</span> <span class="n">note</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | A footnote under the figure. Deviation counts are appended to it, as in `Table.note`. |
+| <code class="highlight"><span class="k">var</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Double</span></code> | Figure width in pixels. |
+| <code class="highlight"><span class="k">var</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Double</span></code> | Figure height in pixels. |
+| <code class="highlight"><span class="k">var</span> <span class="n">xKind</span><span class="p">:</span> <span class="nc">ScaleKind</span></code> | The x axis's arithmetic. |
+| <code class="highlight"><span class="k">var</span> <span class="n">yKind</span><span class="p">:</span> <span class="nc">ScaleKind</span></code> | The y axis's arithmetic. |
+| <code class="highlight"><span class="k">var</span> <span class="n">xDomain</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span></code> | An explicit x domain, or `null` to take it from the data. |
+| <code class="highlight"><span class="k">var</span> <span class="n">yDomain</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span></code> | An explicit y domain, or `null` to take it from the data. |
+| <code class="highlight"><span class="k">var</span> <span class="n">xTickTarget</span><span class="p">:</span> <span class="nc">Int</span></code> | About how many x ticks to aim for. |
+| <code class="highlight"><span class="k">var</span> <span class="n">yTickTarget</span><span class="p">:</span> <span class="nc">Int</span></code> | About how many y ticks to aim for. |
+| <code class="highlight"><span class="k">var</span> <span class="n">legend</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Whether to draw the series legend. Off automatically when there is one unnamed series. |
+| <code class="highlight"><span class="k">var</span> <span class="n">grid</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Whether to draw gridlines at the ticks. |
+| <code class="highlight"><span class="k">var</span> <span class="n">pickable</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Whether point, bar and bin marks are individually hoverable and clickable. |
+| <code class="highlight"><span class="k">var</span> <span class="n">pickLimit</span><span class="p">:</span> <span class="nc">Int</span></code> | Above this many data in one mark, that mark stops being individually pickable and is drawn as a single line — the dots are still there, they just share one path. |
+| <code class="highlight"><span class="k">var</span> <span class="n">maxPoints</span><span class="p">:</span> <span class="nc">Int</span></code> | How many data of one mark are drawn before the rest are elided, and the footnote says so — the plot counterpart of `Table.maxRows`. |
+| <code class="highlight"><span class="k">var</span> <span class="n">onPick</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="nc">ChartPick</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="o">?</span></code> | What a click on a datum calls. `null` means the datum's own label is printed, which is the behaviour that makes a fresh chart worth clicking before anyone has written a handler. |
+| <code class="highlight"><span class="k">val</span> <span class="n">marks</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ChartMark</span><span class="p">&gt;</span></code> | The layers added so far, in draw order. |
+| <code class="highlight"><span class="k">val</span> <span class="n">xCategories</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="o">?</span></code> | The category names on the x axis, when a `bars` mark put them there. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">points</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Number</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Number</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">3.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | A dot per datum. Pickable, so this is what makes a chart clickable. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">points</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Number</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">3.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | `points` against the sample index. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">line</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Number</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Number</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.6</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | A polyline through the data in the order given. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">line</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Number</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.6</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | `line` against the sample index — the shape `showSignals` draws. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">area</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Number</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Number</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">base</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | A `line` with the region down to `base` filled at a fifth of the alpha. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">bars</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">categories</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Number</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">base</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | One bar per category, which puts the category names on the x axis. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">bars</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">vararg</span> <span class="n">values</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Number</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | `bars` written inline: `bars("cost", "gates" to 12, "depth" to 4)`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">histogram</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Number</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">bins</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | `values` binned and drawn as bars on a numeric x axis. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">rule</span><span class="p">(</span><span class="n">y</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nc">CHART&#95;MUTED</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | A horizontal reference line at `y`, across the whole plot. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vrule</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nc">CHART&#95;MUTED</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | A vertical reference line at `x`, down the whole plot. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">band</span><span class="p">(</span><span class="n">lo</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">hi</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nc">CHART&#95;GRID</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | A shaded horizontal band between `lo` and `hi`. |
+| <code class="highlight"><span class="k">fun</span> <span class="k">expect</span><span class="p">(</span><span class="n">min</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="nc">Double</span><span class="p">.</span><span class="nc">NEGATIVE&#95;INFINITY</span><span class="p">,</span> <span class="n">max</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="nc">Double</span><span class="p">.</span><span class="nc">POSITIVE&#95;INFINITY</span><span class="p">,</span> <span class="n">series</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">because</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | States that every datum's y lies in `[min, max]`. |
+| <code class="highlight"><span class="k">fun</span> <span class="k">expect</span><span class="p">(</span><span class="n">series</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">because</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">ok</span><span class="p">:</span> <span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Boolean</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | States a claim about every datum, given its x and y — the general form, with no band to draw. |
+| <code class="highlight"><span class="k">val</span> <span class="n">deviations</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ChartDeviation</span><span class="p">&gt;</span></code> | Every datum that failed an `expect` check — the same list the drawing recolours, so a test can assert on the claim the figure makes rather than on its geometry. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">resolvedXDomain</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span></code> | The x domain that will actually be drawn: `xDomain` if set, else derived from the data. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">resolvedYDomain</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span></code> | The y domain that will actually be drawn: `yDomain` if set, else derived from the data. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">toFLines</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> | The whole figure, in pixels, as lines — the one output everything else is built on. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toHTML</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | The same HTML `Box.lines` would display for `toFLines` — how `.h` and `display` work. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">toText</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | A plain-text summary; the picture is the point, so this is for a log or a failure message. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ## heatmap.kt { #heatmap-kt }
 
