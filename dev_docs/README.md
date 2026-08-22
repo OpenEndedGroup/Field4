@@ -50,5 +50,6 @@ notes. The entries below point to the canonical note for each maintained subsyst
 - [`DOCUMENT_HISTORY.md`](./DOCUMENT_HISTORY.md) / [`HISTORY_TESTING_GUIDE.md`](./HISTORY_TESTING_GUIDE.md) — document history + its manual test guide
 - [`FileWatchManager.md`](./FileWatchManager.md) / [`FileWatchManager_Testing.md`](./FileWatchManager_Testing.md) — watcher ownership map and focused end-to-end checks; implementation detail lives in KDoc
 - [`physics/SIMDVERLET_4_CONSTRAINTS.md`](./physics/SIMDVERLET_4_CONSTRAINTS.md) — SIMD Verlet constraint solver
+- [`NVFLOW_BINDINGS.md`](./NVFLOW_BINDINGS.md) — reconnaissance, not a contract: what an `afield.flow` binding to NVIDIA Flow would involve, the two integration paths and the buffer-only interop constraint that separates them, and the platform fact (Windows/Linux only) that decides where any of it can run
 
 `AGENTS.md` remains in the repository root because agent tooling expects it there.
