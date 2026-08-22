@@ -30,7 +30,7 @@ This page is about the shape that works, the boundary the shape has, *why* the b
 
 The plugin's happy path is a chain written in one go. Every step re-types the frame, so the *next* step can name the columns the previous one produced:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/dataframe-typed-columns.png" wait="2.0" capture="box" open-outputs="true" w="900" h="330" padding="8" embed=true name="dataframe-typed-columns"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/dataframe-typed-columns.png" wait="3.0" capture="editor" padding="10" w="900" h="330" timeout="90" embed=true name="dataframe-typed-columns"}
 :::static
 import org.jetbrains.kotlinx.dataframe.api.*
 
@@ -73,7 +73,7 @@ That is a more interesting failure than "it doesn't work", because the frame rea
 
 > The cause is `TopLevelExtensionsGenerator`, which finds schemas with `session.predicateBasedProvider.getSymbolsByPredicate(annotated(DataSchema))`. K2's predicate-based provider indexes **source** declarations only, so a `@DataSchema` compiled into a directory on the classpath — which is exactly what `SharedTypes` produces — is invisible to it. Adding `import shared.*` does not help; the generated callables were never created.
 >
-> — `DataFramePluginSpike.kt:163`
+> — `DataFramePluginSpike.kt:164`
 
 An `import` cannot help, because there is nothing to import.
 
@@ -167,26 +167,32 @@ display("row", people[0].h)                   // label/value facts
 display("grouped", people.groupBy("city").h)  // how many groups, keyed by what
 ```
 
-Nothing here is a bespoke widget. `.h` renders all four through the **existing** `table()` and `facts()` primitives, so DataFrame output matches every other table in Field rather than introducing a second style. `GroupBy` needs its own registration because the registry's lookup walks the exact class, then superclasses, then only *direct* interfaces — an implementation reaching its interface transitively would silently fall through to `toString()` (`DataFrameVisualizerSmokeTest.kt:115`).
+Nothing here is a bespoke widget. `.h` renders all four through the **existing** `table()` and `facts()` primitives, so DataFrame output matches every other table in Field rather than introducing a second style.
+
+!!! note "This capture is why the column panel works"
+    The **column** row above is here because it was, for eight months, broken — and the picture is what found it. `ValuePrinterRegistry` used to resolve a printer by checking the exact class, then the superclass chain, then only the interfaces the *runtime class declares directly*. DataFrame's columns are the shape that defeats that: `ValueColumnImpl : DataColumnImpl(), ValueColumn` and `ValueColumn : DataColumn`, so `DataColumn` sat one interface further out than the lookup looked, `register(DataColumn::class.java)` was dead code, and a column rendered as the bare `toString()` `ValueColumnImpl age 0 15 1 30 2 45 3 22`. The registry now walks the whole interface closure (`ValueVisualizer.kt:97`), and the smoke test asserts the part a `toString()` cannot fake — the column's element type (`DataFrameVisualizerSmokeTest.kt:203`). `GroupBy` was the case that named the risk in the first place and keeps its own regression (`DataFrameVisualizerSmokeTest.kt:152`).
 
 ### A head is a head, even for a million rows
 
 The compact `.h` form shows the first **10** rows (`DataFrameVisualizer.kt:44`) and says how much it is hiding. The interesting part is *how* it takes them: cell by cell, **by index**, never `toList()` on the frame and never `take` on a column (`DataFrameVisualizer.kt:101`). So printing a very large frame costs what printing ten rows costs — which matters, because this is the form that appears in a box output on **every** execution.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/dataframe-big-head.png" wait="2.5" capture="box" open-outputs="true" w="900" h="420" padding="8" embed=true name="dataframe-big-head"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/dataframe-big-head.png" wait="3.0" capture="box" open-outputs="true" w="900" h="440" padding="8" timeout="120" embed=true name="dataframe-big-head"}
 :::static
 import org.jetbrains.kotlinx.dataframe.api.*
 
-val big = dataFrameOf("i", "root")(
-    *Array(200_000) { listOf(it, kotlin.math.sqrt(it.toDouble())) }.flatMap { it }.toTypedArray()
-)
+// 200,000 rows. A spread argument is one the plugin cannot statically interpret,
+// so this frame is deliberately schema-less — the point here is the RENDERING cost.
+val big = dataFrameOf("i")(*Array(200_000) { it })
 
 val compact = big.h
 display("head", compact)
-display("cost", "the compact form of a ${big.rowsCount()}-row frame is ${compact.length} characters".h)
+display("cost", ("the compact form of a " + big.rowsCount() + "-row frame is " +
+    compact.length + " characters").h)
 ```
 
-That bound is a checked claim, not a hope: `kotlin.dataframe-visualizer.smoke` renders a 5,000-row frame and **fails** if the output contains the last row or exceeds 4,000 characters (`DataFrameVisualizerSmokeTest.kt:37`, `DataFrameVisualizerSmokeTest.kt:93`).
+The capture above is the claim, measured: **1,143 characters for 200,000 rows.**
+
+And it is a checked claim rather than a number in a document. `kotlin.dataframe-visualizer.smoke` renders those two frames — 5,000 rows and the 200,000 the capture shows — and **fails** unless their compact forms differ by no more than 40 characters (`DataFrameVisualizerSmokeTest.kt:137`). Measured on the same run that produced the picture: **1,141 characters at 5,000 rows and 1,143 at 200,000, a difference of 2** — which is exactly `200000` being two digits longer than `5000` in the shape line. A rendering that were linear in rows with a small constant would satisfy a plain size ceiling at 5,000 and blow past it at 200,000, which is why the assertion is a comparison and not a bound. The bound is there too: no last row, under 4,000 characters (`DataFrameVisualizerSmokeTest.kt:105`).
 
 ### `.h2` is a real scroller, for free
 

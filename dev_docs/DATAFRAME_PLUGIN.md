@@ -193,26 +193,69 @@ which is what `ValuePrinterRegistry` (compact `.h`) and `H2ValueRegistry` (`.h2`
   `renderListContinuation` offset paging (`DataFrameVisualizer.kt:28#renderListContinuation`). The
   server holds the frame behind an `.h2` token, not a rendering of it. Side benefit: a frame nested
   inside another value expands with the same machinery.
-- **`GroupBy` needs its own registration** because `ValuePrinterRegistry` looks up the exact class,
-  then superclasses, then only **direct** interfaces — a transitively-reached interface would fall
-  through to `toString()` silently: `DataFrameVisualizerSmokeTest.kt:115#only walks DIRECT interfaces`.
+- **`GroupBy` has its own registration** because the registry's lookup was the design risk here, and
+  the regression that named it is kept: `DataFrameVisualizerSmokeTest.kt:152#the whole interface closure`.
 - `install()` is idempotent and called from `Server.main`; a bare `jvm-main` harness does not run that,
   so tests call it explicitly (`DataFrameVisualizer.kt:51#fun install()`).
 
+### The dispatch bug this page's captures found
+
+`register(DataColumn::class.java)` was **dead code**, and had been for as long as the registry has
+existed. `ValuePrinterRegistry.getPrinter` resolved a printer by checking the exact class, then the
+superclass chain, then **only the interfaces the runtime class declares directly**. DataFrame's
+columns are precisely the shape that defeats that:
+
+    ValueColumnImpl<T> : DataColumnImpl<T>(), ValueColumn<T>
+    ValueColumn<T>     : DataColumn<T>
+
+`DataColumn` is one interface further out than the lookup looked, so a column fell through to
+`toString()` and rendered as `ValueColumnImpl age 0 15 1 30 2 45 3 22`. `FrameColumnImpl` has the same
+shape. Fixed by walking the whole interface closure, breadth-first, at every step of the superclass
+chain — `ValueVisualizer.kt:97#internal fun getPrinter` and
+`ValueVisualizer.kt:108#private fun findInInterfaceClosure`. `H2ValueRegistry.adapt` had the identical
+bug and got the identical fix (`LazyValueVisualizer.kt:73#internal fun adapt`), deliberately kept
+character-for-character parallel: these two registries are the pair of extension points a third-party
+type reaches Field through, and having them disagree about what "registered for this type" means is
+the bug twice.
+
+Two things about *how* it was found are the reusable part.
+
+**No test noticed, because the assertion was vacuous.** `testRowAndColumnRender` asserted
+`column.contains("Alice")`, and `ValueColumnImpl name Alice Bob Cara` contains Alice. It is the same
+vacuity the class KDoc already warns about one function earlier, for the lambda-invocation count that
+passed with zero — and it recurred anyway, in the same file, which is the argument for asserting on
+something a fallback *cannot* produce rather than on something it happens to contain. The assertion
+now requires the column's declared element type, which only `columnHead` emits, and the absence of the
+impl class name: `DataFrameVisualizerSmokeTest.kt:203#it was **vacuous**`.
+
+**The mutation check, because a strengthened assertion that was never seen to fail is not evidence.**
+Reverting `getPrinter` to the direct-interfaces-only walk and re-running
+`kotlin.dataframe-visualizer.smoke` fails with the intended diagnosis — *"a column fell through to
+toString() — the registry did not reach DataColumn through ValueColumn, so register(DataColumn) is
+dead"* — and restoring it passes. Measured 2026-08-22 on port 9483: FAIL in 4157 ms, PASS in 4132 ms.
+
+**Blast radius, stated rather than assumed.** The change can only turn a value that previously fell
+through into one that dispatches; it cannot move a value from one registered printer to another,
+because any match the old walk found is still found first. In this repository there are exactly four
+registrations, all of them DataFrame's (`DataFrameVisualizer.kt:55#ValuePrinterRegistry.register(DataFrame::class.java)`
+and the three beside it), so no non-DataFrame value's rendering can change. The one box-side
+registration in the tree, `dev_docs/viz_demo.kt:58#registerValuePrinter<Point3D>`, is an exact-class
+match on a data class and is unaffected.
+
 ### The smoke test, and the vacuous assertion it replaced
 
-`kotlin.dataframe-visualizer.smoke` (`DataFrameVisualizerSmokeTest.kt:8#kotlin.dataframe-visualizer.smoke`)
+`kotlin.dataframe-visualizer.smoke` (`DataFrameVisualizerSmokeTest.kt:9#kotlin.dataframe-visualizer.smoke`)
 asserts *dispatch and laziness*, not markup, so it is not a change-detector on the table renderer.
-5,000 rows (`DataFrameVisualizerSmokeTest.kt:37#ROWS = 5_000`); the compact form must not contain the
-last row and must be under 4,000 characters (`DataFrameVisualizerSmokeTest.kt:93#rendered.length < 4_000`);
+5,000 rows (`DataFrameVisualizerSmokeTest.kt:38#ROWS = 5_000`); the compact form must not contain the
+last row and must be under 4,000 characters (`DataFrameVisualizerSmokeTest.kt:105#rendered.length < 4_000`);
 and `.h2` is paged the way the client pages it, through
 `ValueVisualizer.renderLazyFragment` at offsets 2,000 and `ROWS - 5`
-(`DataFrameVisualizerSmokeTest.kt:139#renderLazyFragment(token, "list", 2_000, 0)`).
+(`DataFrameVisualizerSmokeTest.kt:182#renderLazyFragment(token, "list", 2_000, 0)`).
 
 The KDoc records why the assertion is on output content: an earlier version counted lambda invocations
 on an added column and **passed with a count of zero**, because `add` materialises its column eagerly
 and cell access never re-invokes the lambda. The assertion was vacuous
-(`DataFrameVisualizerSmokeTest.kt:29#the assertion was`). Worth keeping in view whenever a laziness
+(`DataFrameVisualizerSmokeTest.kt:30#the assertion was`). Worth keeping in view whenever a laziness
 claim is tested by counting.
 
 ---
@@ -242,6 +285,11 @@ already attaches maven artifacts (`DataFramePluginCostProbe.kt:38#Fix: make it o
 ## 6. Known gaps, as of 2026-08-22
 
 1. **`schemasPath` / `ImportedSchemasGenerator` is unwired.** Named above. Open path, not defect.
+1b. **`ValuePrinterRegistry` / `H2ValueRegistry` still resolve by `Class`, so a printer registered for
+   a *generic* type is registered for its erasure.** `register(DataFrame::class.java)` cannot
+   distinguish `DataFrame<Person>` from `DataFrame<*>`, which is fine for these four printers and
+   would not be for a printer that wanted to specialise on a type argument. Noted, not needed.
+   (conjecture, 2026-08-22: nothing has asked for it.)
 2. **`DemoTranscriptExecSmokeTest`'s comment on this transcript was stale** and is fixed on this
    branch. `d7d8dccc2` replaced the transcript's fourth box (`dataframe_boundary`, deliberately not
    executed, documenting a compile error) with `dataframe_live` (the `typed()` demo, which *is*
