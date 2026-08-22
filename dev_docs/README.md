@@ -43,6 +43,7 @@ notes. The entries below point to the canonical note for each maintained subsyst
 - [`INTERACTIVE_GUIDES.md`](./INTERACTIVE_GUIDES.md) and [`GUIDE_CHAT_QUICKSTART.md`](./GUIDE_CHAT_QUICKSTART.md) — interactive onboarding + optional guide chat
 - [`SNAPPING_SYSTEM.md`](./SNAPPING_SYSTEM.md) — the snapping system (absorbed the former visual guides/examples)
 - [`VALUE_VISUALIZER.md`](./VALUE_VISUALIZER.md) — value visualizer (absorbed the implementation/quick-ref notes); runnable demo in [`viz_demo.kt`](./viz_demo.kt)
+- [`DATAFRAME_PLUGIN.md`](./DATAFRAME_PLUGIN.md) — Kotlin DataFrame's compiler plugin inside the K2 REPL: why the plugin jar is off the app classpath and the runtime version is a *pin*, the five spike probes and what each measured, why the inferred type cannot cross a compile boundary and why a compiled `@DataSchema` gives you the type but not the accessors, what `typed()` does instead, the `//%-` fragment/preamble re-entry fact, and the unwired `schemasPath` route. Public page: `public/docs/dataframe.md`
 - [`OFFLINE_VIEWER.md`](./OFFLINE_VIEWER.md) and [`OFFLINE_DEPLOYMENT.md`](./OFFLINE_DEPLOYMENT.md) — offline viewer + deployment (absorbed the offline quickstart)
 - [`LAYERS_TESTING.md`](./LAYERS_TESTING.md) — layers (absorbed the layers implementation note)
 - [`DOCUMENT_HISTORY.md`](./DOCUMENT_HISTORY.md) / [`HISTORY_TESTING_GUIDE.md`](./HISTORY_TESTING_GUIDE.md) — document history + its manual test guide

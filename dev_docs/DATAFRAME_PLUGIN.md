@@ -1,0 +1,264 @@
+# Kotlin DataFrame's compiler plugin in Field's K2 REPL: the wiring
+
+*2026-08-22. The public-facing page is `public/docs/dataframe.md`; this is the half a reader of that page does not need and a maintainer does.*
+
+Everything below carries a `path:line#anchor` citation, resolved by anchor rather than by line
+(`dev_docs/citation_contracts.md`). Anything not cited is marked `(conjecture, 2026-08-22)`.
+
+---
+
+## 1. Two plugins, located two different ways, on purpose
+
+Field passes two `-Xplugin=` arguments into every K2 compilation state it builds, and the *way each
+jar is found* is the load-bearing part:
+`KotlinInterface2.kt:2945#witherPluginArgs + dataFramePluginArgs`.
+
+| plugin | where the jar is found | why |
+|---|---|---|
+| Wither | on `java.class.path` | it carries annotations that **box code names**, so it has to be on the app classpath |
+| DataFrame | `libs/dataframe-plugin.jar`, off the classpath | it vendors ~1000 DataFrame runtime classes of its own |
+
+The DataFrame case is the one that would go wrong quietly if it were done the obvious way. The plugin
+jar contains its own copy of `DataFrame`; put it on the app classpath beside the real `dataframe-core`
+dependency and box code sees **two copies of the same type**:
+`KotlinInterface2.kt:2940#two copies of`. `-Xplugin` loads it into the compiler's own plugin
+classloader instead, so only the compiler ever sees it. The runtime goes on the classpath the ordinary
+way: `build.gradle.kts:952#dataframe-core:1.0.0-Beta2`.
+
+The jar is 9,758,425 bytes and is git-lfs tracked: `.gitattributes:28#libs/dataframe-plugin.jar filter=lfs`.
+
+### Switches
+
+| switch | effect | site |
+|---|---|---|
+| `-Dafield.dataframePlugin=false` | drop the `-Xplugin` argument entirely; logs that it did | `KotlinInterface2.kt:2959#System.getProperty("afield.dataframePlugin", "true")` |
+| `-Dafield.dataframePlugin.jar=<path>` | first candidate in the search list, ahead of `libs/` and `user.dir` | `KotlinInterface2.kt:2963#System.getProperty("afield.dataframePlugin.jar")` |
+
+Both are read through a `lazy`, so **they must be set before the first engine is built**. That is why
+the cost probe is an entrypoint rather than something a box can call:
+`DataFramePluginCostProbe.kt:45#which is why this is an entrypoint`.
+
+The property list was renamed in `8189cc649`: what used to be `witherPluginArgs` (the single source of
+`-Xplugin` arguments) is now `compilerPluginArgs`, with `witherPluginArgs` demoted to one of its two
+contributors.
+
+### The version pin is a pin
+
+`dataframe-core` is pinned to `1.0.0-Beta2`. The comment beside it states the constraint that makes
+this a pin rather than a preference: the plugin was built from Field's `2.4.255-SNAPSHOT` Kotlin fork,
+whose `libs.versions.toml` names that runtime version, and **the plugin statically interprets the
+runtime's API** — `build.gradle.kts:949#The plugin was built from`. So moving to a released DataFrame
+1.0 means re-syncing the fork and rebuilding the plugin. It is not a line edit.
+
+---
+
+## 2. What the plugin actually does, and therefore where it stops
+
+`FirFunctionCallRefinementExtension` — described by the Kotlin compiler itself as *"highly unstable
+and not recommended to use"*. At a `@Refine`-annotated call it statically interprets the arguments,
+computes the schema, and rewrites `call()` into
+`run { class Token; class Scope; call() as DataFrame<Token> }`, with **local** classes, because the
+extension runs at body-resolve and cannot create top-level declarations. The accessors are not
+declarations anywhere: a per-call-site local type plus an implicit extension receiver injected by
+`ReturnTypeBasedReceiverInjector` — `DataFramePluginSpike.kt:27#ReturnTypeBasedReceiverInjector`.
+
+That is the whole boundary. A local class cannot appear in the type of a snippet's property, so the
+inferred type cannot outlive the expression that produced it. Two mechanisms were candidates for
+making it work anyway and are worth naming because they are the reason this was *measured* rather than
+asserted: `addReceiversFromExtensions` bails unless the enclosing container is a `FirCallableSymbol` or
+`FirCodeFragmentSymbol`, and `FirReplSnippetSymbol` is neither
+(`DataFramePluginSpike.kt:37#is neither, so the injected receiver`); but the schema state rides on the FIR
+declaration via `FirDeclarationDataRegistry` rather than a session component, which could have carried
+it across (`DataFramePluginSpike.kt:39#FirDeclarationDataRegistry`).
+
+### The spike, and its five probes
+
+`kotlin.dataframe-plugin.spike`, runner `jvm-main`, entrypoint `afield.DataFramePluginSpike`
+(`DataFramePluginSpike.kt:8#kotlin.dataframe-plugin.spike`). It asserts two invariants loudly and then
+reports either way on five probes — the invariants exist because a spike that silently measures plain
+Kotlin is worse than no spike:
+
+| probe | question | site |
+|---|---|---|
+| A | does refinement fire here at all? `df.a` in the same snippet | `DataFramePluginSpike.kt:111#private fun probeWithinOneSnippet` |
+| C | `add("c") { a + b }` — a schema that *changes* | `DataFramePluginSpike.kt:129#private fun probeRefinedOperation` |
+| B | **the measurement**: `val df` in snippet 1, `df.a` in snippet 2 | `DataFramePluginSpike.kt:147#private fun probeAcrossSnippets` |
+| D | a `@DataSchema` published through `SharedTypes` | `DataFramePluginSpike.kt:176#private fun probeSharedDataSchema` |
+| E1/E2 | a `@DataSchema` declared **in a snippet**, used in that snippet and in a later one | `DataFramePluginSpike.kt:232#private fun probeSnippetDeclaredSchema` |
+
+Invariant 1 refuses to run if no `-Xplugin=…dataframe-plugin.jar` reached the compiler
+(`DataFramePluginSpike.kt:94#endsWith("dataframe-plugin.jar")`); invariant 2 refuses if
+`dataframe-core` is not resolvable (`DataFramePluginSpike.kt:105#dataframe-core is not on the classpath`).
+
+**Probe B's measured result**: `DataFrame<Any>` and `<empty compile time schema>`
+(`DataFramePluginSpike.kt:161#empty compile time schema`).
+
+**Probe D is the interesting negative.** The type crosses; the accessors do not. The cause is
+`TopLevelExtensionsGenerator`, which discovers schemas via
+`session.predicateBasedProvider.getSymbolsByPredicate(annotated(DataSchema))`, and K2's
+predicate-based provider indexes **source declarations only** — so a `@DataSchema` compiled into a
+directory, which is exactly what `SharedTypes` produces, is invisible to it. An `import` cannot help
+because the callables were never created:
+`DataFramePluginSpike.kt:165#getSymbolsByPredicate(annotated(DataSchema))`.
+
+**Probe E is what made `typed()` designable.** E1 and E2 both firing means Field need only emit the
+interface and let the plugin generate every accessor; E1 alone would have meant emitting the accessors
+by hand too (`DataFramePluginSpike.kt:227#both true`).
+
+### The route upstream designed for outside-the-module schemas, and its status
+
+`ImportedSchemasGenerator` + `ImportedSchemasService`, gated on the plugin's `schemasPath` option
+pointing at a directory of schema JSON produced by a build-time generator:
+`DataFramePluginSpike.kt:171#ImportedSchemasService`.
+
+**Not wired in Field.** State it as an open path, because that is what it is: `typed()` covers the
+live-coding case without a build step, and `schemasPath` is where to start if schemas defined outside
+a box are ever wanted. It is explicitly *not* reachable by declaring the schema and hoping.
+
+Upstream's own REPL work targets the Jupyter kernel, where cross-cell persistence is done by runtime
+codegen of real top-level `@DataSchema` interfaces with the plugin's top-level generator switched off
+to avoid duplicating them (KT-77437) — `DataFramePluginSpike.kt:46#(KT-77437)`. Field's `typed()` is the
+same shape of answer, minus the "switch the generator off" half, because Field wants the generator on
+for the within-execution case.
+
+---
+
+## 3. `typed()`
+
+`DataFrameSchemas.kt:50#fun <T> DataFrame<T>.typed`. Reads the frame's **runtime** columns — right by
+construction, because the data is already loaded — renders each column's element type through
+`ExportedTypeNames.render` and publishes one line into the calling box's preamble:
+`DataFrameSchemas.kt:67#ExportedTypeNames.render(it.type(), loader)`.
+
+Three design choices, all of which are about surviving a live-coding loop rather than working once:
+
+1. **Preamble, not an inline eval.** Execution is inside the box's own engine and the compile
+   dispatcher is a single thread, so evaluating another snippet from there risks deadlock; and
+   `checkPreambleAndExecute` only evaluates lines that *changed*, so an unchanged schema is free on
+   re-run — `DataFrameSchemas.kt:34#only evaluates lines that *changed*`.
+2. **One line, no block comment, no inheritance marker.** The preamble is line-oriented unless a block
+   is marked, and omitting the inheritance marker keeps the schema in this box rather than pushing it
+   onto every child — `DataFrameSchemas.kt:36#One line, no`.
+3. **Replace by name.** Matching is on the `interface <name> {` prefix, not the whole line, which is
+   what makes a re-run with a *changed* column set rewrite the declaration instead of accumulating a
+   second one — `DataFrameSchemas.kt:100#val marker = "interface $name {"`.
+
+Redeclaring is safe here where it is not for `SharedTypes`: nothing is loaded into a classloader, so a
+shape change is ordinary REPL shadowing rather than an unrepeatable event
+(`DataFrameSchemas.kt:41#ordinary REPL shadowing`).
+
+Degradations, both logged rather than silent: a column group or frame column would need a nested
+interface, so it is declared `Any?` via `ExportedTypeNames.OPAQUE` and the log names which ones landed
+that way (`DataFrameSchemas.kt:68#it.second == ExportedTypeNames.OPAQUE`); and no box in context is a warning and a
+no-op (`DataFrameSchemas.kt:58#no box in context`).
+
+### The fragment loop — the correction worth recording
+
+`typed()` publishes to the preamble, which reads like "you must run the box twice". You must not,
+because Field re-runs setup blocks before **every** `//%-` fragment, not once per execution:
+`runLaunchSetupBlocks(box)` sits *inside* the `for (breakIndex in breaks)` loop —
+`execution.kt:1400#runLaunchSetupBlocks(box) }`, defined at
+`execution.kt:1488#private suspend fun runLaunchSetupBlocks`, and it runs preamble, then introduction,
+then attic.
+
+So `typed()` in the first fragment is visible to the second in a single run, and **removing the marker
+stops the box compiling** — with one fragment the schema is written only after that fragment was
+already compiled.
+
+`d7d8dccc2`'s own commit message records that this correction came from Marc, against the agent's
+reading of the fragment loop. It is recorded here rather than left in a commit message because it is a
+fact about Field's execution model that generalises well past DataFrame: **a `//%-` marker is a
+preamble re-entry point, not just a text split.**
+
+---
+
+## 4. `DataFrameVisualizer`
+
+`src/jvmMain/kotlin/afield/visualization/DataFrameVisualizer.kt`, 148 lines, `package afield`.
+
+`DataFrame` is a third-party interface and cannot implement `ToHTML` the way `Table` and `Img` do,
+which is what `ValuePrinterRegistry` (compact `.h`) and `H2ValueRegistry` (`.h2`) exist for:
+`DataFrameVisualizer.kt:55#ValuePrinterRegistry.register(DataFrame::class.java)` and
+`DataFrameVisualizer.kt:62#H2ValueRegistry.register(DataFrame::class.java)`.
+
+- **`.h`** renders frame / column / row / `GroupBy` through the **existing** `table()` and `facts()`
+  primitives, so DataFrame output matches every other table rather than introducing a second style.
+- **The head is read by index**, 10 rows (`DataFrameVisualizer.kt:44#HEAD_ROWS: Int = 10`), one cell at
+  a time — never `toList()` on the frame and never `take` on a column, which is also ambiguous between
+  DataFrame's own `take` and `Iterable.take`: `DataFrameVisualizer.kt:101#private fun headCells`. A
+  million-row frame therefore costs what ten rows cost, which matters because `.h` is what a box output
+  shows on **every** execution.
+- **`.h2`** adapts the frame into a lazily-indexed `AbstractList<Map<String, Any?>>` row view
+  (`DataFrameVisualizer.kt:136#private class LazyRows`) and hands that to the existing
+  `renderListContinuation` offset paging (`DataFrameVisualizer.kt:28#renderListContinuation`). The
+  server holds the frame behind an `.h2` token, not a rendering of it. Side benefit: a frame nested
+  inside another value expands with the same machinery.
+- **`GroupBy` needs its own registration** because `ValuePrinterRegistry` looks up the exact class,
+  then superclasses, then only **direct** interfaces — a transitively-reached interface would fall
+  through to `toString()` silently: `DataFrameVisualizerSmokeTest.kt:115#only walks DIRECT interfaces`.
+- `install()` is idempotent and called from `Server.main`; a bare `jvm-main` harness does not run that,
+  so tests call it explicitly (`DataFrameVisualizer.kt:51#fun install()`).
+
+### The smoke test, and the vacuous assertion it replaced
+
+`kotlin.dataframe-visualizer.smoke` (`DataFrameVisualizerSmokeTest.kt:8#kotlin.dataframe-visualizer.smoke`)
+asserts *dispatch and laziness*, not markup, so it is not a change-detector on the table renderer.
+5,000 rows (`DataFrameVisualizerSmokeTest.kt:37#ROWS = 5_000`); the compact form must not contain the
+last row and must be under 4,000 characters (`DataFrameVisualizerSmokeTest.kt:93#rendered.length < 4_000`);
+and `.h2` is paged the way the client pages it, through
+`ValueVisualizer.renderLazyFragment` at offsets 2,000 and `ROWS - 5`
+(`DataFrameVisualizerSmokeTest.kt:139#renderLazyFragment(token, "list", 2_000, 0)`).
+
+The KDoc records why the assertion is on output content: an earlier version counted lambda invocations
+on an added column and **passed with a count of zero**, because `add` materialises its column eagerly
+and cell access never re-invokes the lambda. The assertion was vacuous
+(`DataFrameVisualizerSmokeTest.kt:29#the assertion was`). Worth keeping in view whenever a laziness
+claim is tested by counting.
+
+---
+
+## 5. What it costs every other box
+
+Field builds one `KotlinInterface2` per box, so anything added to the compilation state is paid per
+box, not per DataFrame user. `kotlin.dataframe-plugin-cost.probe`
+(`DataFramePluginCostProbe.kt:8#kotlin.dataframe-plugin-cost.probe`), run with `--arg on` / `--arg off`:
+
+- toggling the plugin moves per-engine cost by **~4%**: 7449 ms against 7785 ms over three engines,
+  and `dataframe-core` adds four entries to a 471-entry classpath —
+  `DataFramePluginCostProbe.kt:27#7449ms vs 7785ms`;
+- engine cost is dominated by **warm-up**, not by either addition: first engine ~4.6 s to construct and
+  ~13 s to first-evaluate, second and third ~200 ms and ~1–3 s
+  (`DataFramePluginCostProbe.kt:30#the first engine costs`);
+- the alarming number that started it — a 243-box materialize test apparently going from a 39–43 s pass
+  to a 284 s failure — was **machine contention**, two Field JVMs and a Gradle daemon; run alone the
+  same test passes in ~103 s (`DataFramePluginCostProbe.kt:23#examples.agent-transcripts.materialize`).
+
+If either cost ever does dominate, the two need different fixes and the probe says which:
+make the plugin opt-in per document, versus attaching `dataframe-core` on demand the way `@DependsOn`
+already attaches maven artifacts (`DataFramePluginCostProbe.kt:38#Fix: make it opt-in per document`).
+
+---
+
+## 6. Known gaps, as of 2026-08-22
+
+1. **`schemasPath` / `ImportedSchemasGenerator` is unwired.** Named above. Open path, not defect.
+2. **`DemoTranscriptExecSmokeTest`'s comment on this transcript was stale** and is fixed on this
+   branch. `d7d8dccc2` replaced the transcript's fourth box (`dataframe_boundary`, deliberately not
+   executed, documenting a compile error) with `dataframe_live` (the `typed()` demo, which *is*
+   executed — `dataframe_typed_columns.yaml:138#box: dataframe_live`) and updated
+   `public/docs/agent_transcripts.md`, but left the classification comment describing the old shape.
+3. **`public/docs/agent_transcripts.md`'s paragraph on this transcript is inaccurate in two places**
+   and is deliberately *not* edited here, because a concurrent agent may be registering a transcript in
+   that file tonight. It says box 4 "runs twice" and that "the second execution prints
+   `ages: [15, 30, 45]`", where the transcript executes box 4 exactly **once** and the two halves are
+   two `//%-` *fragments* of one execution
+   (`dataframe_typed_columns.yaml:138#box: dataframe_live` is the only `execute` op naming it); and it
+   writes `typed("People")` where the box writes `typed("Peach")`. Both are one-sentence edits for
+   whoever next owns that file.
+4. **`checkCodebaseReference` is red on `d7d8dccc2` itself**, independently of this branch. Measured
+   2026-08-22 in a clean worktree: `visualization.md` generates 10 files / 323 symbols against the 9 /
+   320 committed — `DataFrameVisualizer.kt` sits under the published source root
+   `StdlibReferenceGenerator.kt:115#kotlin/afield/visualization` and is not in `EXCLUDE_PREFIXES`, so the
+   commit that added it needed a `./gradlew generateCodebaseReference` and did not get one. `index.md`
+   and `dev_docs/kdoc_worklist.md` drift with it. Not regenerated here on purpose: a docs-only branch
+   regenerating that artifact collides with every sibling branch.
