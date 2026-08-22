@@ -76,7 +76,19 @@ Three things, and none of them needs a plotting engine — they need marks-as-FL
 3. **`expect()` as a drawn claim** — a shaded band with out-of-band points marked and counted, in the
    spirit of `Table.deviations()`. Plotly has no notion of it and it is the genuinely novel idea here.
 
-### Deletion candidates, if this is re-scoped to that
+### Decided 2026-08-22, with the human
+
+`ChartGrid`/`chartGrid`/`showChartGrid` and `BoxStats`/`boxStats`/`Chart.boxes()` are **removed** —
+Plotly does subplots and box/violin, and `plotly.kt:130` already exposes `violin`. Their gallery
+figures, captures and tests went with them.
+
+**`logTicks` and `ScaleKind.LOG` stay, by decision rather than by omission.** Plotly has log axes, so
+the rule points at removing them, but they are three lines of arithmetic inside `Scale` — which is
+part of the surviving tier — and cutting them would make the FLine scale arbitrarily incomplete
+rather than smaller. Nothing outside this file depends on them: `DoughDspPlotGallery` computes its own
+`log10` spacing.
+
+### The original candidate list, kept for the record
 
 Everything below duplicates something Plotly already does better. Named so the next pass argues about a
 list rather than re-deriving it: `logTicks` and `ScaleKind.LOG` (Plotly has log axes); `BoxStats`/

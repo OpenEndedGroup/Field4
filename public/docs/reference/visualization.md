@@ -4,7 +4,7 @@
 
 Turning a value into something you can look at, without leaving the box.
 
-12 source file(s), 443 public symbol(s), 404 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+12 source file(s), 418 public symbol(s), 381 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -926,51 +926,6 @@ Render a Kotlin value as a compact, escaped HTML fragment for Field output areas
 
 ## charts.kt { #charts-kt }
 
-Plots — the structure, the scales, and the one renderer for them.
-
-[`Chart`](visualization.md#charts-kt-chart) is to a plot what [`Table`](visualization.md#tables-kt-table) is to a grid: build it, and it arrives on screen in the repo's
-style with no markup in the way. It implements [`ToHTML`](visualization.md#valuevisualizer-kt-tohtml), so `display(channel, chart)`, `chart.h`
-and a box whose last expression is a `Chart` all render through `Chart.toHTML`; `Box.showChart`
-is the terse form.
-
-### Why this exists
-
-The same argument [`Table`](visualization.md#tables-kt-table) was written for, one step further along. Measured on `d7d8dccc2`,
-sixteen files under `src/` draw their own axes and ticks across six unrelated media — AWT
-`Graphics2D` (`FunctionsPlotGallery`, `DoughDspPlotGallery`), SVG strings (`stats.kt`,
-`ValueVisualizer`, the `Pat*` galleries), raster pixels (`AlifeGallery`, `SonicPiPatternProbe`),
-JS inside an iframe (`Functions.kt`, `FunctionGraphBrowser`), RectSL rectangles (`RectSL.kt`), and
-FLines (`MorphoSearchFLines`, `AbletonSetDebugDrawing`) — and share no code at all.
-
-Worse than the drawing is the *arithmetic*. Heckbert's nice-number tick algorithm had been written
-**five** times over — `RectSL.kt:3138`, `FunctionsPlotGallery.kt:369`, `DoughDspPlotGallery.kt:575`,
-and twice more as JavaScript in `Functions.kt:3383` and `FunctionGraphBrowser.kt:487` — every copy
-`private` or embedded in a string literal, so no caller could reach one and two of them could
-silently disagree about where a gridline goes. `niceTicks` is that algorithm, once, in public.
-
-### What is actually new here
-
-Field already had most of the pieces: `List<FLine>.fitInto`, `planeFigureHtml`'s window→frame
-mapping, and `MorphoSearchFLines.plotFrame`'s FLine gridlines. What it did not have — and says so
-in a comment at `MorphoSearchFLines.kt:51` — is **an axis with text on it**, because
-`showPlaneGrid` has nowhere to put a label. So the labels here are real glyph outlines
-(`labelLines`), which is what makes this a chart rather than a grid.
-
-### Marks pick themselves up
-
-`Box.lines` switches to the interactive SVG renderer the moment any line carries
-`FLine.onClick` or `FLine.hoverColor` (`someSkiko.kt:37`). Point and bar marks set both, so
-hovering a bar and clicking a datum work *by construction* rather than by configuration — see
-`Chart.pickable` for the escape hatch and the cost.
-
-### The part that is not formatting
-
-`Chart.expect`, exactly as in [`Table`](visualization.md#tables-kt-table). A plot in a doc or a live box usually carries a claim —
-"no residual exceeds 1e-6", "every voice stayed inside the guard band" — and a reader is
-otherwise asked to verify it by eye. State the claim and it is *drawn* as a band, the data outside
-it recolours, the footnote says how many points broke it, and `Chart.deviations` hands the same
-list to a test.
-
 `src/jvmMain/kotlin/afield/visualization/charts.kt`
 
 ### Top-level functions { #charts-kt-functions }
@@ -982,10 +937,7 @@ list to a test.
 | <code class="highlight"><span class="k">fun</span> <span class="nf">logTicks</span><span class="p">(</span><span class="n">lo</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">hi</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">maxTicks</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> | Decade ticks covering `[lo, hi]`, with 1/2/5 mantissas while the span is small enough to fit. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">tickLabel</span><span class="p">(</span><span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">step</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | A tick's label: just enough decimals for `step`, trailing zeros trimmed, and never `-0`. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">tickLabels</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">step</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> | The labels for a whole axis, in **one** notation. |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">boxStats</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Number</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">whisker</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.5</span><span class="p">)</span><span class="p">:</span> <span class="nc">BoxStats</span></code> | The five-number summary of `values`, with Tukey fences at `whisker` × IQR. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">hexColor</span><span class="p">(</span><span class="n">hex</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec4</span></code> | `#rrggbb` or `#rrggbbaa` as a [`Vec4`](math.md#linalg-kt-vec4) in `0..1`. |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">chartGrid</span><span class="p">(</span><span class="k">vararg</span> <span class="n">charts</span><span class="p">:</span> <span class="nc">Chart</span><span class="p">,</span> <span class="n">columns</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">shareY</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">ChartGrid</span></code> | Small multiples from charts written inline. |
-| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showChartGrid</span><span class="p">(</span><span class="n">grid</span><span class="p">:</span> <span class="nc">ChartGrid</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;output&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">ChartGrid</span></code> | Put a [`ChartGrid`](visualization.md#charts-kt-chartgrid) on the screen and hand it back. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">chart</span><span class="p">(</span><span class="k">vararg</span> <span class="n">series</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Number</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Number</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">xLabel</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">yLabel</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">note</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | A [`Chart`](visualization.md#charts-kt-chart) of named series against a shared x — shaped like `table` and `showSignals`, so the same data can be a grid or a plot by changing one word. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showChart</span><span class="p">(</span><span class="n">chart</span><span class="p">:</span> <span class="nc">Chart</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;output&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | Put a [`Chart`](visualization.md#charts-kt-chart) on the screen and hand it back — the plot counterpart of `Box.showTable`. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showChart</span><span class="p">(</span><span class="k">vararg</span> <span class="n">series</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Number</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;output&quot;</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Number</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">xLabel</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">yLabel</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">note</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | Builds a [`Chart`](visualization.md#charts-kt-chart) from named series with `chart` and displays it. |
@@ -1031,29 +983,11 @@ One axis: a data interval, a pixel interval, and the arithmetic between them.
 
 What a [`ChartMark`](visualization.md#charts-kt-chartmark) draws.
 
-Constants: `each`, `plus`, `at`, `from`.
-
-### BoxStats { #charts-kt-boxstats }
-
-<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">BoxStats</span><span class="p">(</span><span class="k">val</span> <span class="n">low</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">q1</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">median</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">q3</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">high</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">outliers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">count</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>
-
-A sample's five-number summary and the points outside its whiskers.
-
-| Declaration | Summary |
-| --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">low</span><span class="p">:</span> <span class="nc">Double</span></code> | The low whisker: the smallest datum still inside the fence. |
-| <code class="highlight"><span class="k">val</span> <span class="n">q1</span><span class="p">:</span> <span class="nc">Double</span></code> | First quartile. |
-| <code class="highlight"><span class="k">val</span> <span class="n">median</span><span class="p">:</span> <span class="nc">Double</span></code> | The median. |
-| <code class="highlight"><span class="k">val</span> <span class="n">q3</span><span class="p">:</span> <span class="nc">Double</span></code> | Third quartile. |
-| <code class="highlight"><span class="k">val</span> <span class="n">high</span><span class="p">:</span> <span class="nc">Double</span></code> | The high whisker: the largest datum still inside the fence. |
-| <code class="highlight"><span class="k">val</span> <span class="n">outliers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> | Data outside the fences, drawn as individual points. |
-| <code class="highlight"><span class="k">val</span> <span class="n">count</span><span class="p">:</span> <span class="nc">Int</span></code> | How many finite data went in. |
-| <code class="highlight"><span class="k">val</span> <span class="n">iqr</span><span class="p">:</span> <span class="nc">Double</span></code> | The interquartile range — the box's own height. |
-| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+Constants: `each`, `plus`, `at`.
 
 ### ChartMark { #charts-kt-chartmark }
 
-<code class="highlight"><span class="k">class</span> <span class="nc">ChartMark</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">MarkKind</span><span class="p">,</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">baseline</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">binWidth</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">var</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span><span class="p">,</span> <span class="k">var</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">var</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">boxes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BoxStats</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>
+<code class="highlight"><span class="k">class</span> <span class="nc">ChartMark</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">MarkKind</span><span class="p">,</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">baseline</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">binWidth</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">var</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span><span class="p">,</span> <span class="k">var</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">var</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>
 
 One layer of a [`Chart`](visualization.md#charts-kt-chart): what to draw, the numbers to draw it from, and how it looks.
 
@@ -1068,7 +1002,6 @@ One layer of a [`Chart`](visualization.md#charts-kt-chart): what to draw, the nu
 | <code class="highlight"><span class="k">var</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span></code> | Colour, RGBA in `0..1`. Defaults to this mark's slot in `signalPalette`. |
 | <code class="highlight"><span class="k">var</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Double</span></code> | Dot radius, in pixels. |
 | <code class="highlight"><span class="k">var</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span></code> | Stroke width, in pixels. |
-| <code class="highlight"><span class="k">val</span> <span class="n">boxes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BoxStats</span><span class="p">&gt;</span><span class="o">?</span></code> | Per-slot distributions, for `MarkKind.BOXES` only; `null` for every other kind. |
 | <code class="highlight"><span class="k">val</span> <span class="n">count</span><span class="p">:</span> <span class="nc">Int</span></code> | How many data points this mark has. |
 | <code class="highlight"><span class="k">val</span> <span class="n">isPickable</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Whether a reader can hover and click individual data of this mark. |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
@@ -1115,7 +1048,7 @@ Marks, axes, and the claims made about them.
 | <code class="highlight"><span class="k">var</span> <span class="n">yLabel</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | Drawn to the left of the y axis, rotated a quarter turn. |
 | <code class="highlight"><span class="k">var</span> <span class="n">note</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | A footnote under the figure. Deviation counts are appended to it, as in `Table.note`. |
 | <code class="highlight"><span class="k">var</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Double</span></code> | Figure width in pixels. |
-| <code class="highlight"><span class="k">var</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Double</span></code> | Figure height in pixels. |
+| <code class="highlight"><span class="k">var</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Double</span></code> | Figure height in pixels. See `width` on why the default aspect is panel-shaped. |
 | <code class="highlight"><span class="k">var</span> <span class="n">xKind</span><span class="p">:</span> <span class="nc">ScaleKind</span></code> | The x axis's arithmetic. |
 | <code class="highlight"><span class="k">var</span> <span class="n">yKind</span><span class="p">:</span> <span class="nc">ScaleKind</span></code> | The y axis's arithmetic. |
 | <code class="highlight"><span class="k">var</span> <span class="n">xDomain</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span></code> | An explicit x domain, or `null` to take it from the data. |
@@ -1138,7 +1071,6 @@ Marks, axes, and the claims made about them.
 | <code class="highlight"><span class="k">fun</span> <span class="nf">bars</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">categories</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Number</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">base</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | One bar per category, which puts the category names on the x axis. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">bars</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">vararg</span> <span class="n">values</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Number</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | `bars` written inline: `bars("cost", "gates" to 12, "depth" to 4)`. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">histogram</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Number</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">bins</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | `values` binned and drawn as bars on a numeric x axis. |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">boxes</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">categories</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Number</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">whisker</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.5</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | A box-and-whisker per category — the distribution answer, and the FLine one. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">rule</span><span class="p">(</span><span class="n">y</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nc">CHART&#95;MUTED</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | A horizontal reference line at `y`, across the whole plot. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">vrule</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nc">CHART&#95;MUTED</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | A vertical reference line at `x`, down the whole plot. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">band</span><span class="p">(</span><span class="n">lo</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">hi</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nc">CHART&#95;GRID</span><span class="p">)</span><span class="p">:</span> <span class="nc">Chart</span></code> | A shaded horizontal band between `lo` and `hi`. |
@@ -1152,24 +1084,6 @@ Marks, axes, and the claims made about them.
 | <code class="highlight"><span class="k">fun</span> <span class="nf">toText</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | A plain-text summary; the picture is the point, so this is for a log or a failure message. |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">plotRect</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Rect</span></code> | The plot area, in figure pixels — the rectangle the axes bound and the data is clipped to. |
-
-### ChartGrid { #charts-kt-chartgrid }
-
-<code class="highlight"><span class="k">class</span> <span class="nf">ChartGrid</span><span class="p">(</span><span class="n">charts</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Chart</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">var</span> <span class="n">columns</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="k">var</span> <span class="n">shareY</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ToHTML</span></code>
-
-Several [`Chart`](visualization.md#charts-kt-chart)s as one figure — small multiples.
-
-| Declaration | Summary |
-| --- | --- |
-| <code class="highlight"><span class="k">var</span> <span class="n">columns</span><span class="p">:</span> <span class="nc">Int</span></code> | Panels per row. |
-| <code class="highlight"><span class="k">var</span> <span class="n">shareY</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Give every panel the union of their y domains. |
-| <code class="highlight"><span class="k">val</span> <span class="n">charts</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Chart</span><span class="p">&gt;</span></code> | The panels, in reading order. |
-| <code class="highlight"><span class="k">val</span> <span class="n">rows</span><span class="p">:</span> <span class="nc">Int</span></code> | Rows, given `columns`. |
-| <code class="highlight"><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Double</span></code> | Total figure width: the widest panel times the filled columns. |
-| <code class="highlight"><span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Double</span></code> | Total figure height: the tallest panel times `rows`. |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">toFLines</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> | Every panel's geometry, translated into its cell. |
-| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toHTML</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | The grid as one figure, through the markup `Box.lines` builds. |
-| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ## heatmap.kt { #heatmap-kt }
 
@@ -1195,19 +1109,6 @@ A colour-mapped raster produced by `heatmapImage`: ARGB `pixels` laid out row-ma
 | <code class="highlight"><span class="k">fun</span> <span class="nf">png</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code> | Encode to PNG bytes (ARGB, sRGB) via `PngEncoder`. |
 
 ## plotly.kt { #plotly-kt }
-
-Plotly helpers — the short way to get a chart out of a box, wrapping `space.kscience.plotly`.
-
-`linePlot`, `scatter`, `scatterSized` and `violin` cover the common shapes (lists of numbers,
-`Vec2`, `Vec3`) and hand back a `Plot` already run through `darkMode`, the repo dark theme with
-data-first margins. `showSignals` goes one step further: pass `"label" to values` pairs and it
-traces them against a shared x with the `signalPalette`, optionally min-max normalized and with
-dashed reference marks, then displays the plot into a channel of a live `Box` — it is already on
-screen when it returns, so do not display it again.
-
-`toHtml` renders a `Plot` into an HTML fragment via [`PlotlyIntegration`](visualization.md#plotly-kt-plotlyintegration). That fragment calls
-`Plotly.react` in the browser, so the page has to have the Plotly library loaded already;
-without it the fragment logs to the console and draws nothing.
 
 `src/jvmMain/kotlin/afield/visualization/plotly.kt`
 
