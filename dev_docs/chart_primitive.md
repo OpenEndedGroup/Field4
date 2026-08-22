@@ -10,6 +10,61 @@ the DataFrame entry point in [`DataFrameCharts.kt`](../src/jvmMain/kotlin/afield
 A loadable document is at [`dev_docs/agents/demos/chart_primitive/`](agents/demos/chart_primitive/) —
 open its `metadata.edn` in Field.
 
+## READ THIS FIRST — the rendering order is Plotly, then FLine, then raster
+
+**Reviewed 2026-08-22 with the human, and this section supersedes the rationale below it.** The brief
+that produced this file cited the journal's "geometry/plots/graphs are FLines/SVG" line as settled and
+never asked what Plotly cannot do. That was the wrong question order. The rule is:
+
+> FLine is for what Plotly cannot do. Rasterisation is for what FLine cannot do.
+
+**The claim that justified building this — that Plotly cannot serve a headless docs capture — is false.**
+Plotly is HTML, Field's front end is a browser page, and the docs runner drives it headless.
+`public/docs/dough_dsp_sound.md` has 12 `diffstatic_runner` fences and several of them call
+`showSignals`; `statistics_examples.md`, `spectral_examples.md`, `autodiff_examples.md` and
+`timeseries_examples.md` do the same. Plotly has been captured headlessly in this repo all along.
+
+### The same figure, drawn both ways
+
+![FLine chart() above, Plotly showSignals() below, same three series](assets/chart_primitive/fline-vs-plotly.png)
+
+Identical data, identical call-site cost (`showChart(...)` and `showSignals(...)` take the same shape of
+argument). Plotly wins on every axis visible in that capture:
+
+- **Real filled text at a readable size.** Field's text-to-FLine path is `toFLines`, *stroked*, so every
+  label here is a hollow outline standing in for filled type. It also means no font fallback and no
+  shaping — rotated labels, ellipsis and RTL are all ours to build if ever wanted.
+- **A legend with line swatches**, against cramped colour chips.
+- **It fills its panel.** The FLine figure is letterboxed into the middle of a wide panel and wastes most
+  of it. That is a real defect in this primitive, not a matter of taste.
+- **Auto-ranged axes** with more useful ticks.
+
+### What survives the comparison
+
+Three things, and none of them needs a plotting engine — they need marks-as-FLines plus a scale:
+
+1. **Composition with other FLine geometry** in one drawing under a shared transform. Plotly owns its own
+   canvas and cannot participate. This is the only *architectural* reason and it is the strongest one.
+2. **The pick path into Field's interactive SVG** — `FLine.onClick`/`hoverColor` yielding a hit record
+   naming the element plus local `(u, v)`. Measured live on this branch:
+   `kind=FACE label="cost: adder → 27" u=0.5 v=0.5`.
+3. **`expect()` as a drawn claim** — a shaded band with out-of-band points marked and counted, in the
+   spirit of `Table.deviations()`. Plotly has no notion of it and it is the genuinely novel idea here.
+
+### Deletion candidates, if this is re-scoped to that
+
+Everything below duplicates something Plotly already does better. Named so the next pass argues about a
+list rather than re-deriving it: `logTicks` and `ScaleKind.LOG` (Plotly has log axes); `BoxStats`/
+`boxStats` and the box mark (Plotly has box and violin, and `plotly.kt:130` already exposes `violin`);
+`ChartGrid`/`chartGrid`/`showChartGrid` (Plotly subplots); the legend renderer; `hexColor`. The
+tick-algorithm consolidation is worth keeping regardless — Heckbert's had been written **five** times
+privately — as is the fact that two galleries were successfully migrated, though whether those galleries
+should be *Plotly* rather than FLine is now the open question. They were AWT, and nobody asked why.
+
+**One correction to the table below, for accuracy:** only **two** of the sixteen used AWT. Five emit SVG
+strings and two emit JS in an iframe — all browser-side, where Plotly is a direct substitute. So the
+Plotly question applies to most of the sixteen, not just to this primitive.
+
 ## Why it exists, and what was actually missing
 
 `Table` was written because a dozen files each hand-rolled `<table style=…>` and no two agreed. The
