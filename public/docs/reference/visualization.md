@@ -974,6 +974,8 @@ list to a test.
 
 `src/jvmMain/kotlin/afield/visualization/charts.kt`
 
+**Used in:** [Charts as FLines](../chart.md)
+
 ### Top-level functions { #charts-kt-functions }
 
 | Declaration | Summary |

@@ -4049,7 +4049,7 @@ Two routes, and they cost different amounts:
 
 Regenerate the second set with:
 
-```bash
+```diffstatic {data-lang=bash}
 FUNCTIONS_PLOT_DIR=/tmp/functions-plots python3 tools/run_field_tests.py --id functions.plot-gallery
 ```
 

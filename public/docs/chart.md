@@ -184,7 +184,7 @@ The five figures above are **committed captures** from the `visualization.chart-
 rendered through the real path — `Chart.toFLines()` → Skia's `outputTo` on a raster surface → PNG —
 with no AWT, no GPU and no Field window. Regenerate them with:
 
-```bash
+```diffstatic {data-lang=bash}
 CHART_GALLERY_DIR=public/docs/assets/chart_gallery python3 tools/run_field_tests.py --id visualization.chart-gallery
 ```
 
@@ -213,7 +213,7 @@ which `<g>` a click landed in; `tools/fline_hit_proof.py` covers that half.
 The arithmetic is tested separately from the pixels — `afield.ChartTest` owns ticks, mapping, log
 refusals and expectations:
 
-```bash
+```diffstatic {data-lang=bash}
 ./gradlew jvmTest --no-daemon --tests 'afield.ChartTest'
 ```
 

@@ -394,7 +394,7 @@ and each one took the same route a live box takes: the box's Kotlin compiled by 
 reimplements `MeshBuilder`, and four of the entries take their Kotlin verbatim out of the shipped
 [agent transcripts](agent_transcripts.md), so the gallery cannot drift away from what you would load.
 
-```bash
+```diffstatic {data-lang=bash}
 VISION_GEOMETRY_PREVIEW_DIR=/tmp/vision-preview python3 tools/run_field_tests.py --id vision.geometry-preview
 ```
 

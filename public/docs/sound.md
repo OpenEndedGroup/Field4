@@ -114,7 +114,7 @@ Those three are **committed captures** from the `synth.pat.transcription` FIELD_
 that every rectangle in each file corresponds to a reference note, a recovered note or a declined
 span, that no coordinate is non-finite, and that the panels which are supposed to disagree do:
 
-```bash
+```diffstatic {data-lang=bash}
 PAT_TRANSCRIPTION_DIR=/tmp/pat-transcription python3 tools/run_field_tests.py --id synth.pat.transcription
 ```
 
