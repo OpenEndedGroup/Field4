@@ -282,7 +282,34 @@ already attaches maven artifacts (`DataFramePluginCostProbe.kt:38#Fix: make it o
 
 ---
 
-## 6. Known gaps, as of 2026-08-22
+## 6. The page's captures, and the one that does not reproduce itself
+
+Three assets, all driven through the real runner (`FIELD_DOCS_RUNNER_PORT=9483
+tools/build_zensical_docs.py --page dataframe.md`), final run `failures=0 regenerated=3`.
+
+`tools/docs_capture_audit.py --page dataframe.md --repeat 2 --port 9483` — run 1 70.3 s, run 2
+53.7 s, both exit 0, and **all three match the committed asset**. Two land inside the measured noise
+band. One is classified `unstable`:
+
+    [unstable] public/docs/assets/dataframe-typed-columns.png
+        matches the committed asset, but does not reproduce itself
+        (0.0333% px changed, maxΔ225, paletteΔ0.0333%)
+
+That is worth naming exactly rather than leaving as a verdict, because the verdict sounds like a
+content problem and it is not. Differencing run 1 against the committed asset: **644 changed pixels
+of 1,932,000, all of them inside the box x∈[118,131], y∈[38,83]** — a 14×46 region at the very start
+of line 1. Cropping and looking at it: it is the editor's **text caret**, drawn in run 1 and not in
+run 2 or in the committed asset. Run 2 is byte-identical to what is committed
+(`runsVsHead: ["0.0333% px changed", "identical"]`).
+
+So the instability is a blinking cursor, and it is a property of `capture="editor"` rather than of
+this page. It trips the audit because the classifier's two thresholds are an *area* limit (1% of
+pixels — 0.033% passes easily) and a *delta* limit (maxΔ 19 — a caret against a dark editor is 225),
+and a caret is precisely the small-area/high-delta shape that satisfies one and fails the other.
+Recorded, not retuned: the thresholds are shared by every page and a docs branch should not move
+them to make its own figure green.
+
+## 7. Known gaps, as of 2026-08-22
 
 1. **`schemasPath` / `ImportedSchemasGenerator` is unwired.** Named above. Open path, not defect.
 1b. **`ValuePrinterRegistry` / `H2ValueRegistry` still resolve by `Class`, so a printer registered for
@@ -315,3 +342,13 @@ already attaches maven artifacts (`DataFramePluginCostProbe.kt:38#Fix: make it o
    commit that added it needed a `./gradlew generateCodebaseReference` and did not get one. `index.md`
    and `dev_docs/kdoc_worklist.md` drift with it. Not regenerated here on purpose: a docs-only branch
    regenerating that artifact collides with every sibling branch.
+
+## 8. One observation for whoever regenerates the codebase reference
+
+`DataFrameVisualizer.kt`'s row in `public/docs/reference/index.md` comes out with a **blank summary**,
+because the file's KDoc block is flush against `object DataFrameVisualizer` and therefore documents the
+object rather than the file — the rule is in `StdlibReferenceGenerator.kt:622#documents that`. The
+object's own prose does appear on `visualization.md`; only the index row is empty. A one-line file
+overview above the block would fill it. Deliberately not done here, so that the drift this branch
+causes stays the single `Used in:` change named in the worklog rather than a second, larger edit to a
+generated artifact.
