@@ -85,6 +85,11 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        // The one EXECUTE demo that *launches* rather than executes: its box is a `loop { }`, so the
+        // transcript launches it, runs 90 real runloop frames (startRunloopDaemon above is what
+        // advances them) and stops it. Safe here because the whole scene is CPU physics plus
+        // showPlane — Skia SVG -> display — so there is no Window and no Renderer to spin up.
+        "cloth_simdverlet_start",
         "fn_differentiable_fit_demo",
         "linalg_thumbnails_demo",
         "hello_display",

@@ -14,7 +14,8 @@ import kotlin.math.sqrt
  * grid — every interior particle spends all four of its slots on its axis neighbors — and
  * registers the optional curvature force on the simulation. What comes back is a handle that
  * knows the grid: `cloth[col, row]` is a particle index, [lines] is the wireframe, [pin] /
- * [teleport] / [grabNearest] address particles by grid coordinate.
+ * [teleport] / [grabNearest] address particles by grid coordinate. For the *solver's* view rather
+ * than the sheet's — a segment per constraint, the pins in their own colour — see [debugLines].
  *
  *   val sim = SimdVerlet(state)
  *   val cloth = sim.addCloth(width = 20, height = 20, spacing = 0.5f)
@@ -39,6 +40,15 @@ import kotlin.math.sqrt
  * resumes. The field is live: set it to `0f` to switch the force off for a frame or forever
  * (the pass stays registered and returns immediately). A cloth *built* with
  * `curvatureStrength = 0f` registers nothing at all — [enableCurvature] adds it later.
+ *
+ * Its useful scale is set by the springs it competes with, and that is easy to get wrong: the
+ * constraint solve is force-based (each of `step`'s `iterations` adds its correction to the same
+ * accumulator without moving anything in between), so the effective spring constant is
+ * `stiffness * iterations`, and the curvature force has to be within an order of magnitude or two
+ * of *that* to bend anything. Measured on a 20 x 10 sheet at `stiffness = 60`, `iterations = 16`:
+ * the 0.05 default is indistinguishable from off, 20 is visible, and 100 takes about 40 % of the
+ * kink out. The same product decides stability — 60 x 16 settles, 150 x 16 diverges to NaN at
+ * `dt = 1/60`.
  *
  * **Stability.** The cloth's particles are the contiguous range `[base, base + count)`, and
  * both the constraint slots and the curvature sweep are written in terms of those indices.

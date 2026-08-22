@@ -49,8 +49,38 @@ that shape are load-bearing rather than incidental:
 Grabbing goes through `addPidPositionController`, so a drag pulls through the
 constraint solve instead of teleporting a particle out of the sheet.
 
+## Tuning: the number that matters is `stiffness * iterations`
+
+The solve is force-based, not positional. `solveDirectedDist4InPlaceRange` runs
+`iterations` passes that each *add* their correction to `ax/ay/az`, and nothing
+moves in between, so N iterations of stiffness k are exactly one iteration of
+stiffness N·k. That is worth saying out loud because the two knobs read as
+independent — "more iterations = a better-converged solve" is the intuition from
+a Gauss-Seidel/PBD solver, and it is not what this one does.
+
+Measured on a 20 x 10 sheet hanging from five pins, `dt = 1/60`, `damping = 0.99`,
+400 frames (`cloth_simdverlet_start`'s scene):
+
+| `stiffness` x `iterations` | peak strain | outcome |
+| --- | --- | --- |
+| 0.8 x 8 | 1949 % | falls out of frame; a web, not a cloth |
+| 8 x 8 | 116 % | still visibly elastic |
+| 20 x 16 | 32 % | plausible |
+| 60 x 16 | 11 % | settles; the starting point's setting |
+| 150 x 16 | — | diverges to NaN |
+
+So the usable band at this timestep tops out somewhere between `k·iterations` of
+960 and 2400, which is the explicit-integration limit (`k·dt²/m < 1` predicts
+3600) reached earlier because gravity is loading the top row with forty particles'
+weight. The curvature force is on the same scale and has to be within an order of
+magnitude or two of the product to bend anything: at 60 x 16 the library's 0.05
+default is indistinguishable from off, and 100 takes ~40 % of the kink out.
+
 Runnable entry points:
 
+- `cloth_simdverlet_start` (transcript corpus): the openable starting place — a
+  20 x 10 cloth, an explicit `loop { }`, and `SimdVerlet.debugLines()` through
+  `showPlane`, with no Window and no Renderer.
 - `afield.examples.TestDirectedConstraints4`: minimal four-slot smoke.
 - `afield.examples.ClothSimulationExample`: thin demo over `Cloth` — frame
   sequence, grabbed-particle crosshair, and the process-level handle an

@@ -39,6 +39,7 @@
   {"doc": "autodiff_worked_example", "box": "autodiff_pack", "codeSha256": "c4d92948d8abc910", "codeLines": 60, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "close_node_demo", "box": "close_node_arrow", "codeSha256": "563a61feea08f105", "codeLines": 56, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "close_node_demo", "box": "close_node_reversal", "codeSha256": "1f040db58052b06c", "codeLines": 81, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "cloth_simdverlet_start", "box": "cloth_start", "codeSha256": "aeeae159d1bba7b4", "codeLines": 50, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "control_surface_laws", "box": "control_surface_button", "codeSha256": "dde07b1d9de6e49d", "codeLines": 24, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "control_surface_laws", "box": "control_surface_laws", "codeSha256": "610cabe982665ae3", "codeLines": 48, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "control_surface_laws", "box": "control_surface_meter", "codeSha256": "930b28ea1fb9cfb2", "codeLines": 30, "receivers": ["afield.Box"], "preamble": ""},

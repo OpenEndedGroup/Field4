@@ -508,6 +508,29 @@ class SimdVerlet(
             pendingRemovalCount += count
         }
 
+        companion object {
+            /**
+             * An empty state, ready to be filled with [addParticle] — the ten `FloatArray(0)`
+             * arguments the SoA constructor otherwise wants spelled out at every call site.
+             *
+             * @param capacity room to reserve up front; the arrays grow on demand either way.
+             * @param withInvMass allocate the optional `invMass` array. Keep it (the default):
+             *   without it every particle has unit mass and nothing can be pinned, because pinning
+             *   *is* an inverse mass of zero.
+             */
+            fun empty(capacity: Int = 0, withInvMass: Boolean = true): State3 {
+                require(capacity >= 0) { "capacity must be >= 0" }
+                val state = State3(
+                    x = FloatArray(0), y = FloatArray(0), z = FloatArray(0),
+                    px = FloatArray(0), py = FloatArray(0), pz = FloatArray(0),
+                    ax = FloatArray(0), ay = FloatArray(0), az = FloatArray(0),
+                    invMass = if (withInvMass) FloatArray(0) else null
+                )
+                if (capacity > 0) state.ensureCapacity(capacity)
+                return state
+            }
+        }
+
         fun applyQueuedRemovalsSwap(constraints: DirectedConstraints3? = null) {
             if (pendingRemovalCount == 0) return
 

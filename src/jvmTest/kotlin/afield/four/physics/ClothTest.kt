@@ -17,12 +17,7 @@ import kotlin.test.assertTrue
  */
 class ClothTest {
 
-    private fun emptyState() = SimdVerlet.State3(
-        x = FloatArray(0), y = FloatArray(0), z = FloatArray(0),
-        px = FloatArray(0), py = FloatArray(0), pz = FloatArray(0),
-        ax = FloatArray(0), ay = FloatArray(0), az = FloatArray(0),
-        invMass = FloatArray(0)
-    )
+    private fun emptyState() = SimdVerlet.State3.empty()
 
     /** A simulation with [preexisting] unrelated particles already in it. */
     private fun simWith(preexisting: Int): SimdVerlet {

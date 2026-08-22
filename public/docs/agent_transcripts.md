@@ -40,8 +40,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 70 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
-not in the same way, and the difference is worth knowing before you trust one. 51 of them are
+All 71 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+not in the same way, and the difference is worth knowing before you trust one. 52 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
 error-kind output line. (Almost always that is every box in the file. A transcript may deliberately
@@ -80,6 +80,17 @@ screenshot. Capture is a transport concern, so it lives in backdoor commands, no
 **two_box_context** — Creates a parent/child pair and verifies the child inherits graph context from
 its parent.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/two_box_context/metadata.edn)
+
+**cloth_simdverlet_start** — The starting place for cloth: a `SimdVerlet`, a 20 x 10 cloth put into
+it with `sim.addCloth(...)`, an explicit `loop { }` that runs the physics, and
+`sim.debugLines()` — a segment per distance constraint, a dot per particle, the pins in red, a
+whisker per velocity — through `showPlane`, so the whole scene is CPU physics and Skia SVG with no
+Window and no Renderer. The numbers in its comments are the ones worth having: the constraint solve
+is force-based, so `stiffness * iterations` is the spring constant that decides everything, and on
+this sheet 60 x 16 settles at 11 % peak strain while 150 x 16 diverges to NaN. It is also the one
+`execute` transcript that *launches* rather than executes — a frame loop cannot run to completion —
+so CI launches it, advances 90 real runloop frames, and stops it.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/cloth_simdverlet_start/metadata.edn)
 
 **shared_types_demo** — A `data class` every box can name. Box 1 calls `sharedTypes(...)` to compile
 `shared.Particle` as ordinary Kotlin onto the shared classloader; box 2 shows the metadata survived
