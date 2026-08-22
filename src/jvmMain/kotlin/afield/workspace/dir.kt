@@ -257,7 +257,11 @@ val defaultImportClassBlacklist = listOf(
     "*awt*",
     "javax.swing.*",
     "com.apple.eio.*",
-    "kotlin.reflect.jvm.internal.*"
+    "kotlin.reflect.jvm.internal.*",
+    // Field depends on org.clojure (see build.gradle.kts), so its classes are in the classpath
+    // index and would otherwise dominate a misspelt name's "did you mean" list. Nothing in Field
+    // is written in Clojure, so no box ever wants one of these imported.
+    "*clojure*"
 )
 
 @Serializable

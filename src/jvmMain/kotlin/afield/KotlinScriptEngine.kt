@@ -31,6 +31,14 @@ interface KotlinScriptEngine {
      * generation counter, and debug-script history.
      */
     val context: KotlinContext
+
+    /**
+     * The types whose members this engine's scripts can name without a receiver — `Box` for every
+     * box (see `makeKI`). Completion needs this: at a caret with no dot, a bare `frame` is either a
+     * local or a member of one of these, and nothing else in the reply says so.
+     */
+    val implicitReceivers: List<KotlinType> get() = emptyList()
+
     var associatedBox: Any?
     var compilerConfig: ScriptCompilationConfiguration
     var classLoader: ClassLoader?

@@ -2,6 +2,7 @@ package afield
 
 import afield.ai.Ai4GlslAutocomplete
 import afield.ai.KotlinSourceIndex
+import afield.ai.glslSpecForProperty
 import afield.ai.shaderSpecForProperty
 import afield.four.synth.AudioPatchSpec
 import afield.four.synth.InlineAudioSummaryTarget
@@ -24,9 +25,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
-import org.jetbrains.kotlin.descriptors.*
-import org.jetbrains.kotlin.descriptors.annotations.Annotated
-import org.jetbrains.kotlin.renderer.DescriptorRenderer
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -120,94 +118,6 @@ private fun simplifyTypeForOutput(type: String?): String {
     return type.replace("kotlin.", "")
 }
 
-private val completionDescriptorRenderer = DescriptorRenderer.COMPACT_WITH_SHORT_TYPES.withOptions {
-    withDefinedIn = false
-}
-
-private fun renderCompletionType(type: org.jetbrains.kotlin.types.KotlinType?): String {
-    if (type == null) return "Unit"
-    return runCatching { completionDescriptorRenderer.renderType(type) }
-        .getOrElse { simplifyTypeForOutput(type.toString()) }
-}
-
-private fun renderCompletionParameter(parameter: ValueParameterDescriptor): String {
-    val renderedType = renderCompletionType(parameter.varargElementType ?: parameter.type)
-    return buildString {
-        if (parameter.isCrossinline) append("crossinline ")
-        if (parameter.isNoinline) append("noinline ")
-        if (parameter.varargElementType != null) append("vararg ")
-        append(parameter.name.asString())
-        append(": ")
-        append(renderedType)
-        if (parameter.declaresDefaultValue()) append(" = ...")
-    }
-}
-
-private fun renderFunctionCompletionSignature(descriptor: FunctionDescriptor): String {
-    val receiver = descriptor.extensionReceiverParameter?.let { renderCompletionType(it.type) + "." }.orEmpty()
-    val prefix = buildString {
-        if (descriptor.isSuspend) append("suspend ")
-        append("fun ")
-        append(receiver)
-        append(descriptor.name.asString())
-    }
-    val parameters = descriptor.valueParameters.map(::renderCompletionParameter)
-    val returnType = renderCompletionType(descriptor.returnType)
-    val singleLine = "$prefix(${parameters.joinToString(", ")}): $returnType"
-
-    if (parameters.size <= 2 && singleLine.length <= 100) return singleLine
-
-    return buildString {
-        append(prefix)
-        append("(\n")
-        parameters.forEachIndexed { index, parameter ->
-            append("    ")
-            append(parameter)
-            if (index != parameters.lastIndex) append(',')
-            append('\n')
-        }
-        append("): ")
-        append(returnType)
-    }
-}
-
-private fun buildCompletionDocumentation(
-    descriptor: DeclarationDescriptor,
-    existingDocumentation: String
-): String {
-    if (descriptor !is FunctionDescriptor) return existingDocumentation.trim()
-
-    val sections = mutableListOf<String>()
-    sections += buildString {
-        append("```kotlin\n")
-        append(renderFunctionCompletionSignature(descriptor))
-        append("\n```")
-    }
-
-    existingDocumentation.trim().takeIf { it.isNotEmpty() }?.let { sections += it }
-
-    descriptor.valueParameters.takeIf { it.isNotEmpty() }?.let { parameters ->
-        sections += buildString {
-            append("**Parameters**\n")
-            parameters.forEach { parameter ->
-                append("- `")
-                append(renderCompletionParameter(parameter))
-                append("`\n")
-            }
-        }.trimEnd()
-    }
-
-    descriptor.extensionReceiverParameter?.let { receiver ->
-        sections += "**Receiver** `${renderCompletionType(receiver.type)}`"
-    }
-
-    descriptor.returnType?.let { returnType ->
-        sections += "**Returns** `${renderCompletionType(returnType)}`"
-    }
-
-    return sections.joinToString("\n\n").trim()
-}
-
 private fun completionIconLooksLikeValue(icon: String): Boolean {
     val key = icon.lowercase()
     return key in setOf("property", "field", "variable", "value", "constant", "local", "val", "var") ||
@@ -232,12 +142,38 @@ private fun renderCompletionFallbackSignature(displayText: String, tail: String,
     return display + separator + suffix
 }
 
+/**
+ * Opt in with `AFIELD_COMPLETION_TRACE=1`. This defaulted to *on* from the day it was written
+ * (`b3c99b4d0`, 2026-06-24) until it was measured.
+ *
+ * What 45 days of always-on tracing produced: 53 MB / 201,835 lines, of which 92.3% of the bytes are
+ * the two per-candidate kinds (`skip-enrich`, `category`) that say nothing about a failure, 77.5% of
+ * lines are exact duplicates of an earlier line once the timestamp is stripped, and the four kinds
+ * that exist to diagnose a failure — `error`, `exception`, `empty`, `infix-operand` — emitted
+ * *nothing at all*. No latency, no backend (K1 vs AA), no request id: none of what you would
+ * actually want. Meanwhile [completionTrace] opens, appends to and closes a 50 MB file once per
+ * candidate row on the completion path, peaking at 1,164 writes in one measured second while
+ * someone waits for a popup.
+ *
+ * So it is opt-in, and the failure kinds are logged through [completionFailure] instead, which this
+ * flag does not gate.
+ */
 private fun completionTraceEnabled(): Boolean =
     System.getenv("AFIELD_COMPLETION_TRACE")
         ?.trim()
         ?.lowercase()
         ?.let { it !in setOf("0", "false", "off", "no") }
-        ?: true
+        ?: false
+
+/**
+ * A completion that failed — an engine error, an exception, or an empty reply and why.
+ *
+ * Always logged, never written to the trace file: these fire only when something went wrong (zero
+ * lines in 45 days of tracing), so they cost nothing to keep, and gating them behind
+ * [completionTraceEnabled] would have meant turning the trace off also turned off the one thing
+ * worth reading.
+ */
+private fun completionFailure(message: String) = lprintln("info,completion", message)
 
 private fun completionTrace(message: String) {
     if (!completionTraceEnabled()) return
@@ -386,50 +322,6 @@ private fun prettifyContainerSummary(box: Box, rawContainer: String): ContainerS
         text = text,
         html = escapeNotifyHtml(text)
     )
-}
-
-private fun descriptorContainerSummary(box: Box, descriptor: DeclarationDescriptor): ContainerSummary? {
-    val container = descriptor.containingDeclaration ?: return null
-    val raw = when (container) {
-        is PackageViewDescriptor -> container.fqName.asString()
-        else -> completionDescriptorRenderer.render(container)
-            .lineSequence()
-            .firstOrNull()
-            ?.trim()
-            .orEmpty()
-    }
-    return prettifyContainerSummary(box, raw)
-}
-
-private fun buildFunctionSymbolContextHtml(box: Box, descriptor: FunctionDescriptor): String {
-    val container = descriptorContainerSummary(box, descriptor)
-    val funcName = descriptor.name.asString()
-    return buildString {
-        append("<div style='display:inline-block; max-width: 620px;'>")
-        append("<div style='color:#ddd; overflow-wrap:anywhere;'><code>")
-        append(escapeNotifyHtml(renderFunctionCompletionSignature(descriptor)))
-        append("</code></div>")
-        if (container != null && container.text.isNotBlank()) {
-            append("<div style='color:#777;'>declared in ")
-            append(container.html)
-            append("</div>")
-        }
-        // Check if this function was AI-generated (lives in the attic)
-        val attic = box.attic
-        if (attic.isNotBlank()) {
-            val atticName = if (funcName.startsWith("__")) funcName else "__$funcName"
-            if (attic.contains("// @ai-gen: $atticName")) {
-                val uid = box.id
-                append("<div style='color:#b0b0ff; cursor:pointer; margin-top:2px;' ")
-                append("onclick=\"if(window.switchToProperty) window.switchToProperty('")
-                append(escapeNotifyHtml(uid))
-                append("','attic')\">")
-                append("\uD83E\uDD16 ai-generated — <u>view in attic</u>")
-                append("</div>")
-            }
-        }
-        append("</div>")
-    }
 }
 
 private fun shouldShowVariableValueDisclosure(value: Any?): Boolean {
@@ -628,73 +520,27 @@ private fun buildRuntimeVariableSymbolContextHtml(
     }
 }
 
-private fun buildVariableSymbolContextHtml(
-    box: Box,
-    descriptor: VariableDescriptor,
-    runtimeInfo: KotlinVariableInfo? = null
-): String {
-    if (runtimeInfo != null) {
-        return buildRuntimeVariableSymbolContextHtml(
-            box = box,
-            info = runtimeInfo,
-            declarationOverride = completionDescriptorRenderer.render(descriptor),
-            locationLabel = "declared in"
-        )
-    }
-
-    val declaration = completionDescriptorRenderer.render(descriptor)
-    val container = descriptorContainerSummary(box, descriptor)
-    return buildString {
-        append("<div style='display:inline-block; max-width: 620px;'>")
-        append("<div style='color:#ddd; overflow-wrap:anywhere;'><code>")
-        append(escapeNotifyHtml(declaration))
-        append("</code></div>")
-        append(renderVariableLocationSection(label = "declared in", container = container, value = null))
-        append("</div>")
-    }
-}
-
+/**
+ * The ambient badge for a symbol, from what completion could tell us about it.
+ *
+ * There is no `DeclarationDescriptor` to render: the K2 2.4 scripting jars do not expose one (see
+ * [completionCandidateName]), so this reads the completion variant's own display text and type.
+ */
 private fun buildSymbolContextHtml(
     box: Box,
-    descriptor: DeclarationDescriptor?,
     fallbackDisplay: String,
     fallbackDocumentation: String,
     runtimeVariableInfo: KotlinVariableInfo? = null
 ): String {
     runtimeVariableInfo?.let {
-        val declarationOverride = (descriptor as? VariableDescriptor)?.let(completionDescriptorRenderer::render)
         return buildRuntimeVariableSymbolContextHtml(
             box = box,
             info = it,
-            declarationOverride = declarationOverride,
             locationLabel = "declared in"
         )
     }
 
-    descriptor?.let {
-        return when (it) {
-            is FunctionDescriptor -> buildFunctionSymbolContextHtml(box, it)
-            is VariableDescriptor -> buildVariableSymbolContextHtml(box, it, runtimeVariableInfo)
-            else -> {
-                val rendered = completionDescriptorRenderer.render(it)
-                val container = descriptorContainerSummary(box, it)
-                buildString {
-                    append("<div style='display:inline-block; max-width: 620px;'>")
-                    append("<div style='color:#ddd; overflow-wrap:anywhere;'><code>")
-                    append(escapeNotifyHtml(rendered))
-                    append("</code></div>")
-                    if (container != null && container.text.isNotBlank()) {
-                        append("<div style='color:#777;'>declared in ")
-                        append(container.html)
-                        append("</div>")
-                    }
-                    append("</div>")
-                }
-            }
-        }
-    }
-
-    // No descriptor (K2 scripting jars don't expose one): render the completion's display text plus its
+    // Render the completion's display text plus its
     // type (the variant's `tail`, e.g. `inside : ModulePointer`). The type is what makes the ambient
     // badge worth showing; completion already knows it, so surface it here for both K1 and AA candidates.
     val display = fallbackDisplay.ifBlank {
@@ -738,9 +584,13 @@ private fun findSymbolBoundsAt(code: String, position: Int): SymbolBounds? {
     return SymbolBounds(start = start, end = end, text = code.substring(start, end))
 }
 
+/**
+ * A completion candidate's bare symbol name, parsed out of its `text`.
+ *
+ * String-parsed on purpose: the K2 2.4 scripting jars expose no `DeclarationDescriptor` on a
+ * completion variant, so there is no structured name to ask for.
+ */
 private fun completionCandidateName(variant: SourceCodeCompletionVariant): String {
-    val descriptor: DeclarationDescriptor? = null // extraInfo not available in 2.4 scripting jars
-    if (descriptor != null) return descriptor.name.asString()
     return variant.text
         .substringBefore('<')
         .substringBefore('(')
@@ -2841,12 +2691,10 @@ class KotlinExecution : BoxExecution {
                         ?: completion.metadata.firstOrNull { completionCandidateName(it).startsWith(symbol) }
 
                     if (bestVariant != null) {
-                        val descriptor: DeclarationDescriptor? = null // extraInfo not available in 2.4 scripting jars
                         symbolContextResponse(
                             symbol = symbol,
                             html = buildSymbolContextHtml(
                                 box = inside,
-                                descriptor = descriptor,
                                 fallbackDisplay = bestVariant.displayText,
                                 fallbackDocumentation = bestVariant.tail,
                                 runtimeVariableInfo = inside.ki.context.vars[symbol]
@@ -3003,11 +2851,12 @@ class KotlinExecution : BoxExecution {
                         if (candidate.text.isNotBlank()) {
                             append("\n**Insertion**\n")
                             append("```")
-                            append(
-                                if (property.lowercase()
-                                        .endsWith("_s") || property == "vertex_fragment"
-                                ) "slang" else "glsl"
-                            )
+                            // Which shader language this property holds is the language registry's
+                            // answer, not something to re-derive from the property's spelling: the
+                            // Slang set is not just the `_s` suffix (`vertex_fragment` is Slang too),
+                            // and the registry is what `shaderSpecForProperty` above already agreed
+                            // with. This block only runs for a property that has a shader spec.
+                            append(if (glslSpecForProperty(property) != null) "glsl" else "slang")
                             append("\n")
                             append(candidate.text.trimEnd())
                             append("\n```\n")
@@ -3039,9 +2888,8 @@ class KotlinExecution : BoxExecution {
          * Builds completion [Metadata] (including documentation) for each candidate in a K2 scripting
          * completion result.
          *
-         * KDoc/documentation resolution: the K2 2.4 scripting jars do not expose a `DeclarationDescriptor`
-         * here (the `descriptor` below is permanently null, so the `afield.Doc`-annotation branch it guards
-         * is unreachable). Symbol names are therefore derived by string-parsing the completion item's
+         * KDoc/documentation resolution: the K2 2.4 scripting jars expose no `DeclarationDescriptor`
+         * here, so symbol names are derived by string-parsing the completion item's
          * `text`/`displayText`. Documentation is then resolved by: (1) `extraInfo["kdoc"]`, embedded during
          * reflection-based completion in [afield.KotlinInterface2] (including receiver-qualified
          * `ReceiverType.method` KDoc for dot-completion); then (2) `KotlinSourceIndex.getKDocForSymbol(...)`
@@ -3055,6 +2903,12 @@ class KotlinExecution : BoxExecution {
             // first completion after launch plus every completion while the AA session warms — so without
             // this the prior is absent for the popup a person meets first. Resolved once per request (one
             // caret has one receiver) and only if some row actually asks for it.
+            // `KotlinType.typeName` is fully qualified; the documentation lookup matches on simple
+            // names (`Box.frame`), and `null` when there is no implicit receiver simply leaves the
+            // hint unset, exactly as an unrecognised row does.
+            val implicitReceiverHint: String? =
+                inside.ki.implicitReceivers.firstOrNull()?.typeName?.substringAfterLast('.')
+
             val caretReceiverQualifiedName: String? by lazy(LazyThreadSafetyMode.NONE) {
                 KotlinCompletionSupport.receiverQualifiedNameAtCompletion(inside, allCode, position).also {
                     if (completionTraceEnabled()) {
@@ -3065,27 +2919,8 @@ class KotlinExecution : BoxExecution {
             return c.metadata.mapNotNull {
 //                println(it.extraInfo)
                 var extraDoc = ""
-                val descriptor: DeclarationDescriptor? = null // extraInfo not available in 2.4 scripting jars
-                var mainText = it.displayText
-                var symbolName: String? = null
-                val rawSymbolName = it.text.substringBefore('<').substringBefore('(').substringAfterLast('.').trim()
-
-                descriptor?.let {
-//                                                mainText = DescriptorRenderer.HTML.render(descriptor as DeclarationDescriptor)
-                    mainText = completionDescriptorRenderer.render(descriptor) + "\n"
-                    // Extract symbol name for KDoc lookup
-                    symbolName = descriptor.name.asString()
-                    (it as? Annotated)?.let {
-                        it.annotations.forEach {
-                            if (it.fqName.toString() == "afield.Doc") {
-                                extraDoc += it.allValueArguments.values.joinToString(separator = "\n")
-                                    .trim('\"')
-                            }
-                        }
-                    }
-                }
-
-                val candidateName = (symbolName ?: rawSymbolName).trim()
+                val mainText = it.displayText
+                val candidateName = it.text.substringBefore('<').substringBefore('(').substringAfterLast('.').trim()
                 val shouldEnrich = candidateName.isNotBlank() && (
                         (activeToken.isNotBlank() && candidateName.startsWith(activeToken)) ||
                                 candidateName == argumentCallable
@@ -3094,10 +2929,7 @@ class KotlinExecution : BoxExecution {
                 // Try to get KDoc from the source index for afield symbols.
                 // Skip for dot-completion (member access) since the simple name is ambiguous —
                 // e.g. "add" could be Vector3f.add or LittleHistory.add.
-                val isDotCompletion = c.bounds.start > 0 && allCode.let { code ->
-                    val charBefore = code.getOrNull(c.bounds.start - 1)
-                    charBefore == '.' || (charBefore == '?' && c.bounds.start > 1 && code[c.bounds.start - 2] == '.')
-                }
+                val isDotCompletion = KotlinCompletionSupport.isDotSelection(allCode, c.bounds.start)
 
                 // KDoc lookup for name completions (not dot-completion) — check extraInfo first, then index
                 if (extraDoc.isEmpty() && candidateName.isNotEmpty() && !isDotCompletion) {
@@ -3132,10 +2964,8 @@ class KotlinExecution : BoxExecution {
                     }
                 }
 
-                // For K2 without descriptor, build documentation from the display text (signature)
-                val documentation = if (descriptor != null) {
-                    buildCompletionDocumentation(descriptor, extraDoc)
-                } else if (it.displayText.isNotBlank()) {
+                // Build documentation from the display text (signature)
+                val documentation = if (it.displayText.isNotBlank()) {
                     // Build signature-based documentation for all K2 items
                     buildString {
                         append("```kotlin\n")
@@ -3173,15 +3003,22 @@ class KotlinExecution : BoxExecution {
                     runtimeDocumentationHtml = runtimeDocumentationHtml
                 )
 
+                // The receiver a documentation lookup should match against. The backend names it when
+                // it can; when it cannot and the caret is not after a dot, the receiver is the one the
+                // *engine* was built with — box code is compiled with `Box` as an implicit receiver, so
+                // a bare `frame` is either a local or a member of that type. Ask the engine rather than
+                // writing "Box" here, so this follows if a box is ever given another implicit receiver.
+                // (Only value-like rows: a callable takes the separate `resolveCallableInfo` path, which
+                // does its own receiver reasoning.)
                 val receiverTypeHint = it.extraInfo.get("receiverQualifiedName") as? String
                     ?: it.extraInfo.get("receiverType") as? String
-                    ?: if (!isDotCompletion && it.icon in setOf("property", "val", "var")) "Box" else null
+                    ?: if (!isDotCompletion && it.icon in setOf("property", "val", "var")) implicitReceiverHint
+                    else null
                 val descriptorText = it.extraInfo.get("original")?.toString()
                 val enrichedMetadata = if (shouldEnrich) {
                     val enriched = KotlinCompletionSupport.enrichMetadata(
                         box = inside,
                         allCode = allCode,
-                        symbolName = symbolName,
                         metadata = rawMetadata,
                         position = position,
                         receiverTypeHint = receiverTypeHint,
@@ -3275,29 +3112,6 @@ class KotlinExecution : BoxExecution {
             else return emptyList()
         }
 
-        fun fieldSnippetCompletions(activeToken: String): List<Metadata> {
-            val token = activeToken.trim()
-            if (token.isNotEmpty() && !"go".startsWith(token)) return emptyList()
-            return listOf(
-                Metadata(
-                    icon = "snippet",
-                    tail = "Field coroutine",
-                    text = "go {\n    \n}",
-                    displayText = "go { }",
-                    documentation = "```kotlin\n" +
-                        "go {\n" +
-                        "    \n" +
-                        "}\n" +
-                        "```\n\n" +
-                        "Launch a suspendable block on this box with Field error reporting.",
-                    category = "snippets",
-                    documentationSourceName = "afield.stdlib.go",
-                    documentationSourcePath = "src/jvmMain/kotlin/afield/stdlib/actors.kt",
-                    documentationSourceLine = 166
-                )
-            )
-        }
-
         fun emptyCompletion(): Completion =
             Completion(
                 boundsStart = position,
@@ -3306,9 +3120,7 @@ class KotlinExecution : BoxExecution {
             )
 
         fun replyEmpty(reason: String) {
-            if (completionTraceEnabled()) {
-                completionTrace("completion empty reason='$reason' uid='${inside.id}' property='$property' position=$position")
-            }
+            completionFailure("completion empty reason='$reason' uid='${inside.id}' property='$property' position=$position")
             reply(Message("complete").payload(emptyCompletion()))
         }
 
@@ -3317,7 +3129,7 @@ class KotlinExecution : BoxExecution {
                 val c = runCatching {
                     inside.ki.complete(allCode, position)
                 }.getOrElse {
-                    completionTrace(
+                    completionFailure(
                         "completion exception uid='${inside.id}' property='$property' position=$position error='${it.javaClass.simpleName}: ${it.message.orEmpty()}'"
                     )
                     replyEmpty("exception")
@@ -3340,7 +3152,11 @@ class KotlinExecution : BoxExecution {
                             tokenBounds.start.coerceIn(0, allCode.length),
                             tokenBounds.end.coerceIn(0, allCode.length)
                         )
-                        val fieldSnippets = fieldSnippetCompletions(typedToken)
+                        val fieldSnippets = KotlinCompletionSupport.fieldSnippetCompletions(
+                            activeToken = typedToken,
+                            allCode = allCode,
+                            tokenStart = tokenBounds.start
+                        )
                         val useTokenBounds = c.metadata.isEmpty() && fieldSnippets.isNotEmpty()
                         val boundsStart = synthetic?.bounds?.start ?: if (useTokenBounds) tokenBounds.start else c.bounds.start
                         val boundsEnd = synthetic?.bounds?.end ?: if (useTokenBounds) tokenBounds.end else c.bounds.end
@@ -3365,11 +3181,9 @@ class KotlinExecution : BoxExecution {
                         // Import ("(import) …") suggestions only make sense when completing a top-level
                         // name to bring into scope. At a dot/safe-dot position you're selecting a member of
                         // a known receiver, so they're pure noise — suppress them there.
-                        val isDotCompletion = c.bounds.start > 0 && run {
-                            val charBefore = allCode.getOrNull(c.bounds.start - 1)
-                            charBefore == '.' || (charBefore == '?' && c.bounds.start > 1 && allCode[c.bounds.start - 2] == '.')
-                        }
-                        val importHelp = if (isDotCompletion) emptyList() else importHelpFor(c)
+                        val importHelp =
+                            if (KotlinCompletionSupport.isDotSelection(allCode, c.bounds.start)) emptyList()
+                            else importHelpFor(c)
 
                         val completions = Completion(
                             boundsStart = boundsStart,
@@ -3390,7 +3204,7 @@ class KotlinExecution : BoxExecution {
                     }
 
                     is CompletionResult.Error -> {
-                        completionTrace(
+                        completionFailure(
                             "completion error uid='${inside.id}' property='$property' position=$position error='${c.errorName}: ${c.errorValue}'"
                         )
                         replyEmpty("error")
@@ -3833,12 +3647,11 @@ private fun collectImportHelpSymbols(missing: String): List<ErrorMessageSymbol> 
                 )
             }
 
-        val fuzzy = cache.asSequence()
+        val fuzzy = ImportResolution.index().asSequence()
             .filter { (simpleName, fqNames) ->
                 simpleName != missing &&
                         simpleName.firstOrNull()?.isUpperCase() == true &&
                         !simpleName.contains("$") &&
-                        !simpleName.lowercase().contains("clojure") &&
                         fqNames.any(::isUsefulImportCandidate)
             }
             .mapNotNull { (simpleName, fqNames) ->
@@ -3859,8 +3672,20 @@ private fun collectImportHelpSymbols(missing: String): List<ErrorMessageSymbol> 
     }.getOrDefault(emptyList())
 }
 
+/**
+ * The same test the import *macro* applies: [ImportResolution]'s blacklist, which is the user's
+ * `importClassBlacklist` preference — or [defaultImportClassBlacklist] under `AFIELD_IMPORT_HERMETIC`.
+ *
+ * This was a local `!fqName.lowercase().contains("clojure")`, which had the typo suggestions below
+ * answering to a different policy than the exact-name path through [findClassesNamed]: they would
+ * offer `add import java.awt.image.BufferedImage` while the blacklist's `*awt*` refused the same
+ * class one branch over, and they read the raw classpath index, so `AFIELD_IMPORT_HERMETIC=1` did
+ * not reach them (see `dev_docs/HERMETIC_COMPLETION_INPUTS.md`). Clojure — which really is on the
+ * classpath, and really does bury a typo's suggestions — now sits in [defaultImportClassBlacklist],
+ * where a person can see it and edit it.
+ */
 private fun isUsefulImportCandidate(fqName: String): Boolean =
-    fqName.contains(".") && !fqName.contains("$") && !fqName.lowercase().contains("clojure")
+    fqName.contains(".") && isImportableClassName(fqName, ImportResolution.blacklist())
 
 private fun importSuggestionDetail(fqName: String): String =
     "add import ${fqName.replace("$", ".")}"
@@ -4008,13 +3833,80 @@ private fun unresolvedTokenBounds(
 
         val lineStart = absoluteOffset(code, start.line, 1)
         val lineEnd = code.indexOf('\n', lineStart).let { if (it < 0) code.length else it }
-        val lineText = code.substring(lineStart, lineEnd)
-        val local = lineText.indexOf(missing)
-        if (local >= 0) return CompletionTokenBounds(lineStart + local, lineStart + local + missing.length)
+        val onDiagnosticLine = firstCodeOccurrence(code, missing, lineStart, lineEnd)
+        if (onDiagnosticLine >= 0) {
+            return CompletionTokenBounds(onDiagnosticLine, onDiagnosticLine + missing.length)
+        }
     }
 
-    val first = Regex("""\b${Regex.escape(missing)}\b""").find(code) ?: return null
-    return CompletionTokenBounds(first.range.first, first.range.last + 1)
+    val anywhere = firstCodeOccurrence(code, missing)
+    if (anywhere < 0) return null
+    return CompletionTokenBounds(anywhere, anywhere + missing.length)
+}
+
+/**
+ * The offset of the first place [missing] appears in [code] as a whole identifier **in code** —
+ * never inside a string or character literal, a line comment or a block comment. `-1` when there is
+ * no such place.
+ *
+ * This was `Regex("""\b…\b""").find(code)`, which matched just as happily inside `"no such widget"`
+ * or a `// widget goes here` note. The offset feeds a probe that cuts the token out of the source and
+ * runs completion in the hole ([collectAmbientCompletionSymbols]), so a match inside a literal asked
+ * the engine about a caret the compiler had never complained about — and answered with its
+ * suggestions. Returning -1 rather than a wrong offset costs a "did you mean" list nobody could have
+ * used.
+ *
+ * A string template's interpolation is treated as part of its string: skipping a real occurrence there
+ * loses a suggestion, which is the safe direction to be wrong in.
+ */
+internal fun firstCodeOccurrence(code: String, missing: String, from: Int = 0, until: Int = code.length): Int {
+    if (missing.isEmpty()) return -1
+    val end = until.coerceIn(0, code.length)
+    var i = from.coerceIn(0, end)
+    var blockCommentDepth = 0
+
+    fun isIdentifierPart(c: Char) = c.isLetterOrDigit() || c == '_'
+
+    while (i < end) {
+        val c = code[i]
+        val next = code.getOrNull(i + 1)
+        when {
+            blockCommentDepth > 0 -> {
+                if (c == '*' && next == '/') { blockCommentDepth--; i += 2 }
+                else if (c == '/' && next == '*') { blockCommentDepth++; i += 2 }
+                else i++
+            }
+
+            c == '/' && next == '/' -> {
+                val lineEnd = code.indexOf('\n', i)
+                i = if (lineEnd < 0) end else lineEnd
+            }
+
+            c == '/' && next == '*' -> { blockCommentDepth = 1; i += 2 }
+
+            c == '"' && code.startsWith("\"\"\"", i) -> {
+                val close = code.indexOf("\"\"\"", i + 3)
+                i = if (close < 0) end else close + 3
+            }
+
+            c == '"' || c == '\'' -> {
+                var j = i + 1
+                while (j < code.length) {
+                    if (code[j] == '\\') { j += 2; continue }
+                    if (code[j] == c || code[j] == '\n') break
+                    j++
+                }
+                i = (j + 1).coerceAtMost(end)
+            }
+
+            code.startsWith(missing, i) &&
+                !isIdentifierPart(code.getOrNull(i - 1) ?: ' ') &&
+                !isIdentifierPart(code.getOrNull(i + missing.length) ?: ' ') -> return i
+
+            else -> i++
+        }
+    }
+    return -1
 }
 
 private fun absoluteOffset(code: String, line: Int, col: Int): Int {

@@ -250,18 +250,15 @@ internal object KotlinCompletionSupport {
         box: Box,
         allCode: String,
         metadata: Metadata,
-        symbolName: String?,
         position: Int,
         receiverTypeHint: String? = null,
         requireReceiverOwnerMatch: Boolean = false,
         descriptorText: String? = null
     ): Metadata {
-        val name = symbolName
-            ?.substringBefore('<')
-            ?.substringBefore('(')
-            ?.substringAfterLast('.')
-            ?.trim()
-            ?: metadata.text.substringBefore('<').substringBefore('(').trim()
+        // There was a `symbolName` parameter here, taken from the completion item's
+        // `DeclarationDescriptor`. The K2 2.4 scripting jars expose no descriptor, so its only caller
+        // could only ever pass null and this fallback is the sole path.
+        val name = metadata.text.substringBefore('<').substringBefore('(').trim()
 
         if (name.isBlank()) return metadata
 
@@ -696,6 +693,66 @@ internal object KotlinCompletionSupport {
         if (closingFence == -1) return trimmed
         return trimmed.substring(0, closingFence + 3).trim()
     }
+
+    /**
+     * Field's own snippets, offered alongside whatever the engine found.
+     *
+     * These are top-level constructs: `go` is `Box.go`, a call you write bare inside a box. They
+     * only make sense where a *new* expression begins, so they are suppressed at a member selection
+     * — offering `go { }` on `"hello world".` was nonsense.
+     *
+     * [tokenStart] is the start of the identifier being typed (see `getTokenBounds`), not the
+     * engine's replacement bounds, so the gate still holds when the engine returned nothing.
+     */
+    fun fieldSnippetCompletions(activeToken: String, allCode: String, tokenStart: Int): List<Metadata> {
+        if (isMemberSelection(allCode, tokenStart)) return emptyList()
+        val token = activeToken.trim()
+        if (token.isNotEmpty() && !"go".startsWith(token)) return emptyList()
+        return listOf(
+            Metadata(
+                icon = "snippet",
+                tail = "Field coroutine",
+                text = "go {\n    \n}",
+                displayText = "go { }",
+                documentation = "```kotlin\n" +
+                    "go {\n" +
+                    "    \n" +
+                    "}\n" +
+                    "```\n\n" +
+                    "Launch a suspendable block on this box with Field error reporting.",
+                category = "snippets",
+                documentationSourceName = "afield.stdlib.go",
+                documentationSourcePath = "src/jvmMain/kotlin/afield/stdlib/actors.kt",
+                documentationSourceLine = 166
+            )
+        )
+    }
+
+    /**
+     * The caret is selecting a member of the expression to its left: it sits after a `.` or a `?.`
+     * (`endsWith(".")` covers both).
+     *
+     * Only spaces and tabs are skipped, never a newline. `x.` at the end of a line *is* one
+     * expression to Kotlin, but a comment ending in a full stop is far more common than that style,
+     * and treating `// done.` + newline as a member selection would suppress everything on the next
+     * line.
+     */
+    fun isDotSelection(allCode: String, offset: Int): Boolean =
+        codeBefore(allCode, offset).endsWith(".")
+
+    /**
+     * [isDotSelection], plus `::`. Anything that binds the caret to the expression on its left, and
+     * so rules out a fresh top-level construct.
+     *
+     * Kept separate from [isDotSelection] because the two answer different questions: a callable
+     * reference has no *members* to document or to look a receiver's KDoc up against, but it is
+     * still no place for a snippet.
+     */
+    fun isMemberSelection(allCode: String, offset: Int): Boolean =
+        codeBefore(allCode, offset).let { it.endsWith(".") || it.endsWith("::") }
+
+    private fun codeBefore(allCode: String, offset: Int): String =
+        allCode.substring(0, offset.coerceIn(0, allCode.length)).trimEnd(' ', '\t')
 
     fun namedArgumentCompletions(
         box: Box,

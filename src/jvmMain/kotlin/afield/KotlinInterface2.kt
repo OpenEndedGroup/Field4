@@ -76,7 +76,7 @@ import kotlin.system.measureNanoTime
 class KotlinInterface2(
     val propertyClasses: Map<String, KClass<*>> = emptyMap(),
     val properties: Map<String, Any?> = emptyMap(),
-    val implicitReceivers: List<KotlinType> = emptyList(),
+    override val implicitReceivers: List<KotlinType> = emptyList(),
     override var classLoader: ClassLoader? = null,
     val filePrefix: String = "EVAL_"
 ) : KotlinScriptEngine {
