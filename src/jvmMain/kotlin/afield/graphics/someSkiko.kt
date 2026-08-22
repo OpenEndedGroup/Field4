@@ -13,6 +13,44 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
+ * The exact HTML a non-editable [Box.lines] would display, without displaying it.
+ *
+ * Every `lines(...)` overload builds this and hands it to `display`, and the branch it takes is not
+ * a choice the caller makes: a line carrying [FLine.onClick] or [FLine.hoverColor] gets the
+ * interactive SVG (click callbacks registered, topology and picking metadata emitted), everything
+ * else gets Skia's SVG canvas. Both come back wrapped in the `afield-lines-output` div the box
+ * output panel measures itself from.
+ *
+ * It is a separate function because a value that renders *itself* — a [afield.ToHTML], and
+ * `afield.Chart` in particular — has no `Box` to display into, and had no way to reach this path
+ * without reimplementing it and losing the interactive branch. Every drawn figure in Field should
+ * be the same markup whether a box drew it or a value drew itself.
+ *
+ * @param w Output SVG width in pixels; `-1.0` derives it from the geometry's bounds.
+ * @param h Output SVG height in pixels; `-1.0` derives it from the geometry's bounds.
+ * @param fitToSize If true, uniformly scales and offsets the lines to fit inside [w]x[h] with padding.
+ */
+fun linesToHTML(
+    lines: List<FLine>,
+    w: Double = -1.0,
+    h: Double = -1.0,
+    fitToSize: Boolean = false,
+): String {
+    val renderable = lines.renderableLines()
+    val fit = computeFitTransform(renderable, w, h, fitToSize)
+    return if (renderable.any { it.onClick != null || it.hoverColor != null }) {
+        val pairs = renderable.map { it to it.applyFit(fit) }
+        wrapLinesOutput(
+            buildInteractiveSVG(pairs, w, h, fit),
+            pairs.map { it.second }.combinedRenderableBoundsOrNull()
+        )
+    } else {
+        val scaled = renderable.map { it.applyFit(fit) }
+        wrapLinesOutput(drawToSVG(scaled, w, h), renderedSvgBoundsFor(scaled, w, h))
+    }
+}
+
+/**
  * Render one or more [FLine]s to SVG and display them in an output channel.
  * If any FLine has [FLine.onClick] or [FLine.hoverColor] set, an interactive
  * SVG is generated instead of using the Skia canvas renderer.
@@ -33,20 +71,14 @@ fun Box.lines(
     liveDrawing: Boolean = false
 ): EditableFLineViewState? {
     val lines = m.asList().renderableLines()
-    val fit = computeFitTransform(lines, w, h, fitToSize)
-    val hasInteractive = lines.any { it.onClick != null || it.hoverColor != null }
     if (editable) {
+        val fit = computeFitTransform(lines, w, h, fitToSize)
         val pairs = lines.map { it to it.applyFit(fit) }
         val widget = buildEditableSVGWidget(pairs, fit, w, h, drawingEnabled = drawing, liveDrawingEnabled = liveDrawing)
         display(channel, widget.html)
         return widget.viewState
-    } else if (hasInteractive) {
-        val pairs = lines.map { it to it.applyFit(fit) }
-        display(channel, wrapLinesOutput(buildInteractiveSVG(pairs, w, h, fit), pairs.map { it.second }.combinedRenderableBoundsOrNull()))
-    } else {
-        val scaled = lines.map { it.applyFit(fit) }
-        display(channel, wrapLinesOutput(drawToSVG(scaled, w, h), renderedSvgBoundsFor(scaled, w, h)))
     }
+    display(channel, linesToHTML(lines, w, h, fitToSize))
     return null
 }
 
@@ -71,20 +103,14 @@ fun Box.lines(
     liveDrawing: Boolean = false
 ): EditableFLineViewState? {
     val lines = m.renderableLines()
-    val fit = computeFitTransform(lines, w, h, fitToSize)
-    val hasInteractive = lines.any { it.onClick != null || it.hoverColor != null }
     if (editable) {
+        val fit = computeFitTransform(lines, w, h, fitToSize)
         val pairs = lines.map { it to it.applyFit(fit) }
         val widget = buildEditableSVGWidget(pairs, fit, w, h, drawingEnabled = drawing, liveDrawingEnabled = liveDrawing)
         display(channel, widget.html)
         return widget.viewState
-    } else if (hasInteractive) {
-        val pairs = lines.map { it to it.applyFit(fit) }
-        display(channel, wrapLinesOutput(buildInteractiveSVG(pairs, w, h, fit), pairs.map { it.second }.combinedRenderableBoundsOrNull()))
-    } else {
-        val scaled = lines.map { it.applyFit(fit) }
-        display(channel, wrapLinesOutput(drawToSVG(scaled, w, h), renderedSvgBoundsFor(scaled, w, h)))
     }
+    display(channel, linesToHTML(lines, w, h, fitToSize))
     return null
 }
 

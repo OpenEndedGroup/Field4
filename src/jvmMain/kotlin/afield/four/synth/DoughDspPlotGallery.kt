@@ -1,5 +1,7 @@
 package afield.four.synth
 
+import afield.niceTicks
+import afield.tickLabels
 import java.awt.BasicStroke
 import java.awt.Color
 import java.awt.Font
@@ -454,21 +456,29 @@ object DoughDspPlotGallery {
 
         g.font = Font(Font.SANS_SERIF, Font.PLAIN, 11)
         g.stroke = BasicStroke(1f)
-        for (yt in niceTicks(ymin, ymax, 6)) {
+        // Linear tick selection and labelling come from `afield.charts`. The *audio* halves stay
+        // local on purpose: [LOG_TICKS] is the 20 Hz-20 kHz decade ladder a frequency response is
+        // read against, not a general log axis, and [fmtHz] spells 2000 as "2k".
+        val yTicks = niceTicks(ymin, ymax, 6)
+        val yText = tickLabels(yTicks, if (yTicks.size >= 2) yTicks[1] - yTicks[0] else 0.0)
+        yTicks.forEachIndexed { i, yt ->
             val py = yToPx(yt).toFloat()
             g.color = GRID
             g.draw(Line2D.Double(plotX.toDouble(), py.toDouble(), (plotX + plotW).toDouble(), py.toDouble()))
             g.color = TEXT
-            val str = fmt(yt)
+            val str = yText[i]
             g.drawString(str, (plotX - 8 - g.fontMetrics.stringWidth(str)).toFloat(), py + 4)
         }
         val xTicks = if (spec.logX) logTicks(xmin, xmax) else niceTicks(xmin, xmax, 6)
-        for (xt in xTicks) {
+        val xText =
+            if (spec.logX) xTicks.map { fmtHz(it) }
+            else tickLabels(xTicks, if (xTicks.size >= 2) xTicks[1] - xTicks[0] else 0.0)
+        xTicks.forEachIndexed { i, xt ->
             val px = xToPx(xt).toFloat()
             g.color = GRID
             g.draw(Line2D.Double(px.toDouble(), plotY.toDouble(), px.toDouble(), (plotY + plotH).toDouble()))
             g.color = TEXT
-            val str = if (spec.logX) fmtHz(xt) else fmt(xt)
+            val str = xText[i]
             g.drawString(str, px - g.fontMetrics.stringWidth(str) / 2f, (plotY + plotH + 18).toFloat())
         }
 
@@ -572,27 +582,15 @@ object DoughDspPlotGallery {
         return (lo - pad) to (hi + pad)
     }
 
-    private fun niceTicks(lo: Double, hi: Double, target: Int): List<Double> {
-        if (!lo.isFinite() || !hi.isFinite() || lo == hi) return listOf(lo)
-        val span = hi - lo
-        val raw = span / target
-        val mag = Math.pow(10.0, Math.floor(Math.log10(raw)))
-        val norm = raw / mag
-        val step = when { norm < 1.5 -> 1.0; norm < 3.0 -> 2.0; norm < 7.0 -> 5.0; else -> 10.0 } * mag
-        val start = Math.ceil(lo / step) * step
-        val ticks = mutableListOf<Double>()
-        var t = start
-        while (t <= hi + step * 1e-6 && ticks.size < 40) { ticks.add(t); t += step }
-        return ticks
-    }
-
+    /**
+     * The audio log ladder, deliberately *not* `afield.logTicks`.
+     *
+     * A frequency response is read against these ten landmarks — 20 Hz, 20 kHz, and the 1/2/5
+     * points between — not against whatever decades a general log axis would choose for the data's
+     * own extent. [fmtHz] labels them the way an EQ does.
+     */
     private val LOG_TICKS = doubleArrayOf(20.0, 50.0, 100.0, 200.0, 500.0, 1000.0, 2000.0, 5000.0, 10000.0, 20000.0)
     private fun logTicks(lo: Double, hi: Double): List<Double> = LOG_TICKS.filter { it in lo..hi }
-
-    private fun fmt(v: Double): String {
-        val r = if (abs(v) < 1e-9) 0.0 else v
-        return if (r == Math.rint(r) && abs(r) < 1e6) r.toInt().toString() else "%.2f".format(r)
-    }
 
     private fun fmtHz(v: Double): String = if (v >= 1000.0) "${(v / 1000.0).let { if (it == Math.rint(it)) it.toInt().toString() else "%.1f".format(it) }}k" else v.toInt().toString()
 

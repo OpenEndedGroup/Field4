@@ -1,7 +1,9 @@
 package afield.examples.functions
 
+import afield.niceTicks
 import afield.stdlib.Functions
 import afield.stdlib.fitGradient
+import afield.tickLabels
 import java.awt.BasicStroke
 import java.awt.Color
 import java.awt.Font
@@ -225,22 +227,29 @@ object FunctionsPlotGallery {
         // Gridlines + tick labels.
         g.font = Font(Font.SANS_SERIF, Font.PLAIN, 11)
         g.stroke = BasicStroke(1f)
+        // Tick selection and labelling come from `afield.charts` rather than from a private copy
+        // here. There were five of those copies in the repo; this one also did not snap its values,
+        // so `k * step` drift was only invisible because the old `fmt` rounded to two decimals — a
+        // finer axis would have printed 0.30000000000000004. `tickLabels` also gives the whole axis
+        // one notation, which the old formatter did not.
         val yTicks = niceTicks(ymin, ymax, 6)
-        for (yt in yTicks) {
+        val yText = tickLabels(yTicks, if (yTicks.size >= 2) yTicks[1] - yTicks[0] else 0.0)
+        yTicks.forEachIndexed { i, yt ->
             val py = yToPx(yt).toFloat()
             g.color = GRID
             g.draw(Line2D.Double(plotX.toDouble(), py.toDouble(), (plotX + plotW).toDouble(), py.toDouble()))
             g.color = TEXT
-            val s = fmt(yt)
+            val s = yText[i]
             g.drawString(s, (plotX - 8 - g.fontMetrics.stringWidth(s)).toFloat(), py + 4)
         }
         val xTicks = niceTicks(xmin, xmax, 6)
-        for (xt in xTicks) {
+        val xText = tickLabels(xTicks, if (xTicks.size >= 2) xTicks[1] - xTicks[0] else 0.0)
+        xTicks.forEachIndexed { i, xt ->
             val px = xToPx(xt).toFloat()
             g.color = GRID
             g.draw(Line2D.Double(px.toDouble(), plotY.toDouble(), px.toDouble(), (plotY + plotH).toDouble()))
             g.color = TEXT
-            val s = fmt(xt)
+            val s = xText[i]
             g.drawString(s, px - g.fontMetrics.stringWidth(s) / 2f, (plotY + plotH + 18).toFloat())
         }
 
@@ -364,27 +373,6 @@ object FunctionsPlotGallery {
         if (lo == hi) { lo -= 1.0; hi += 1.0 }
         val pad = (hi - lo) * 0.08
         return (lo - pad) to (hi + pad)
-    }
-
-    private fun niceTicks(lo: Double, hi: Double, target: Int): List<Double> {
-        if (!lo.isFinite() || !hi.isFinite() || lo == hi) return listOf(lo)
-        val span = hi - lo
-        val raw = span / target
-        val mag = Math.pow(10.0, Math.floor(Math.log10(raw)))
-        val norm = raw / mag
-        val step = when {
-            norm < 1.5 -> 1.0; norm < 3.0 -> 2.0; norm < 7.0 -> 5.0; else -> 10.0
-        } * mag
-        val start = Math.ceil(lo / step) * step
-        val ticks = mutableListOf<Double>()
-        var t = start
-        while (t <= hi + step * 1e-6 && ticks.size < 40) { ticks.add(t); t += step }
-        return ticks
-    }
-
-    private fun fmt(v: Double): String {
-        val r = if (abs(v) < 1e-9) 0.0 else v
-        return if (r == Math.rint(r) && abs(r) < 1e6) r.toInt().toString() else "%.2f".format(r)
     }
 
     /** Fraction of pixels differing from the background — a cheap "did anything render" guard. */
