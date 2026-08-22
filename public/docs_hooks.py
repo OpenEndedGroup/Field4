@@ -316,6 +316,7 @@ class RunnerOptions:
     fabricate_scene: str | None
     native_wait_frames: int
     trim_native: bool
+    trim: bool
     box_name: str
     box_x: float
     box_y: float
@@ -2193,7 +2194,7 @@ class RunnerState:
                 timeout_sec=options.timeout,
                 min_mtime=source_image_min_mtime,
             )
-        trim_native_graphics_screenshot(screenshot_path=screenshot_path, options=options)
+        trim_screenshot_border(screenshot_path=screenshot_path, options=options)
         visual_gap = validate_screenshot_pixels(screenshot_path=screenshot_path, options=options)
         if visual_gap is not None:
             raise RuntimeError(
@@ -2554,6 +2555,7 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         ),
         native_wait_frames=int(parse_float(first_attr(attrs, "native-wait-frames", "native_wait_frames"), default=30.0)),
         trim_native=parse_bool(first_attr(attrs, "trim-native", "trim_native", "native-trim", "native_trim", "auto-trim", "auto_trim"), default=False),
+        trim=parse_bool(first_attr(attrs, "trim", "crop", "auto-crop", "auto_crop"), default=False),
         box_name=first_attr(attrs, "name") or f"{page_path.stem}-{block_index}",
         box_x=parse_float(first_attr(attrs, "x"), default=24.0),
         box_y=parse_float(first_attr(attrs, "y"), default=24.0),
@@ -3723,20 +3725,117 @@ def validate_screenshot_pixels(*, screenshot_path: Path, options: RunnerOptions)
     return None
 
 
-def trim_native_graphics_screenshot(*, screenshot_path: Path, options: RunnerOptions) -> None:
-    if not options.trim_native or not options.graphics_context or effective_capture_mode(options) != "native-window" or options.source_image:
+def _content_profile_crop(image, tolerance: int = 16, min_fraction: float = 0.005, step: int = 4):
+    """Crop box for the region that actually carries ink, by row/column profile.
+
+    A bounding box of "any pixel unlike the corners" does not survive Field's canvas, whose empty
+    area carries a faint dot grid: on the signal-panels capture that mask reached row 1855 of 1984
+    and the crop was skipped as pointless. Counting per row and per column instead, and requiring a
+    row to be at least [min_fraction] ink before it counts, puts the content boundary at row 950 --
+    which is where the drawing actually ends.
+
+    The tolerance is measured, not guessed. At 6 the dot grid reads as content (rows 0..1855); at 28
+    real content is clipped (36..887); at 16 the grid sits below and the ink above (0..919).
+    """
+    from PIL import Image, ImageChops, ImageStat
+
+    width, height = image.size
+    if width <= 4 or height <= 4:
+        return None
+    rgb = image.convert("RGB")
+    sample = max(1, min(32, width // 12, height // 12))
+    corners = (
+        (0, 0, sample, sample),
+        (width - sample, 0, width, sample),
+        (0, height - sample, sample, height),
+        (width - sample, height - sample, width, height),
+    )
+    medians = [tuple(int(v) for v in ImageStat.Stat(rgb.crop(box)).median[:3]) for box in corners]
+    background = tuple(sorted(m[i] for m in medians)[len(medians) // 2] for i in range(3))
+    diff = ImageChops.difference(rgb, Image.new("RGB", rgb.size, background))
+    red, green, blue = diff.split()
+    peak = ImageChops.lighter(ImageChops.lighter(red, green), blue)
+    pixels = peak.load()
+
+    rows = [
+        y for y in range(height)
+        if sum(1 for x in range(0, width, step) if pixels[x, y] > tolerance) * step > width * min_fraction
+    ]
+    cols = [
+        x for x in range(width)
+        if sum(1 for y in range(0, height, step) if pixels[x, y] > tolerance) * step > height * min_fraction
+    ]
+    if not rows or not cols:
+        return None
+    margin = max(16, min(96, int(round(max(width, height) * 0.015))))
+    left = max(0, min(cols) - margin)
+    right = min(width, max(cols) + 1 + margin)
+    top = max(0, min(rows) - margin)
+    bottom = min(height, max(rows) + 1 + margin)
+    if right - left <= 4 or bottom - top <= 4:
+        return None
+    if (right - left) * (bottom - top) >= width * height * 0.96:
+        return None
+    return left, top, right, bottom
+
+
+def trim_screenshot_border(*, screenshot_path: Path, options: RunnerOptions) -> None:
+    """Crop uniform background border off a finished capture.
+
+    Two ways in. `trim-native` is the original, still limited to native-window graphics captures.
+    `trim` (also `crop`, `auto-crop`) is general and works for any capture mode, which is the cheaper
+    answer to a clip measured from a container rather than its content: the harness can be wrong about
+    how big the DOM is, and the pixels cannot. The 'Signal and synth visualizers' figure shipped
+    1164x1984 for ~950px of drawing because collectScreenshotRects unions the box's own rect; trimming
+    the finished PNG fixes the published figure without teaching the DOM measurement new tricks.
+
+    Background is the median of the four corners rather than an assumed colour, so a themed or
+    gradient-ish backdrop still trims. The 96%-area guard means a capture that is already tight is
+    left byte-identical instead of being rewritten every build.
+    """
+    if options.source_image:
+        return
+    native_trim = options.trim_native and options.graphics_context and effective_capture_mode(options) == "native-window"
+    if not native_trim and not options.trim:
+        return
+    if not native_trim:
+        # General `trim`: profile-based, and deliberately a separate path so enabling it here cannot
+        # move a single committed native-graphics capture.
+        try:
+            from PIL import Image
+        except Exception:
+            LOG.warning("Field docs runner skipped screenshot trim; Pillow is unavailable")
+            return
+        try:
+            with Image.open(screenshot_path) as source:
+                image = source.copy()
+        except Exception as exc:
+            LOG.warning("Field docs runner could not open screenshot for trimming %s: %s", screenshot_path, exc)
+            return
+        box = _content_profile_crop(image)
+        if box is None:
+            return
+        try:
+            image.crop(box).save(screenshot_path)
+        except Exception as exc:
+            LOG.warning("Field docs runner failed to trim screenshot %s: %s", screenshot_path, exc)
+            return
+        LOG.info(
+            "Field docs runner trimmed screenshot to content: %s (%dx%d -> %dx%d)",
+            screenshot_path, image.width, image.height, box[2] - box[0], box[3] - box[1],
+        )
         return
     try:
         from PIL import Image, ImageChops, ImageStat
     except Exception:
-        LOG.warning("Field docs runner skipped native screenshot trim; Pillow is unavailable")
+        LOG.warning("Field docs runner skipped screenshot trim; Pillow is unavailable")
         return
 
     try:
         with Image.open(screenshot_path) as source:
             image = source.copy()
     except Exception as exc:
-        LOG.warning("Field docs runner could not open native screenshot for trimming %s: %s", screenshot_path, exc)
+        LOG.warning("Field docs runner could not open screenshot for trimming %s: %s", screenshot_path, exc)
         return
 
     if image.width <= 4 or image.height <= 4:
@@ -3789,19 +3888,10 @@ def trim_native_graphics_screenshot(*, screenshot_path: Path, options: RunnerOpt
     try:
         image.crop((left, top, right, bottom)).save(screenshot_path)
     except Exception as exc:
-        LOG.warning("Field docs runner failed to trim native screenshot %s: %s", screenshot_path, exc)
+        LOG.warning("Field docs runner failed to trim screenshot %s: %s", screenshot_path, exc)
         return
     LOG.info(
-        "Field docs runner trimmed native screenshot: %s (%dx%d -> %dx%d)",
-        screenshot_path,
-        image.width,
-        image.height,
-        crop_width,
-        crop_height,
-    )
-
-    LOG.info(
-        "Field docs runner trimmed native graphics screenshot %s: %sx%s -> %sx%s",
+        "Field docs runner trimmed screenshot border: %s (%dx%d -> %dx%d)",
         screenshot_path,
         image.width,
         image.height,
