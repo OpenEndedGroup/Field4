@@ -1,5 +1,6 @@
 package afield
 
+import org.jetbrains.kotlinx.dataframe.DataColumn
 import org.jetbrains.kotlinx.dataframe.api.groupBy
 import org.jetbrains.kotlinx.dataframe.api.dataFrameOf
 
@@ -104,9 +105,10 @@ object DataFrameVisualizerSmokeTest {
     }
 
     /**
-     * `GroupBy` is the dispatch risk in this design: [ValuePrinterRegistry] checks the exact class,
-     * then superclasses, then only *direct* interfaces — so an implementation that reaches its
-     * interface transitively would silently fall through to `toString()`.
+     * `GroupBy` was the dispatch case this test was written for: [ValuePrinterRegistry] used to check
+     * the exact class, then superclasses, then only the *direct* interfaces of the runtime class, so
+     * an implementation reaching its interface transitively fell through to `toString()`. It now walks
+     * the whole interface closure; this stays as the regression that named the risk.
      */
     private fun testGroupByDispatches() {
         val grouped = smallFrame().groupBy("name")
@@ -153,15 +155,45 @@ object DataFrameVisualizerSmokeTest {
         println("  scroll: final window reaches row ${ROWS - 1}")
     }
 
+    /**
+     * A column and a row render *through the registry*, not through `toString()`.
+     *
+     * The interesting half is the column, and the assertion is deliberately not "the values are in
+     * there". It was, and it was **vacuous**: `frame.columns().first().h` returned
+     * `ValueColumnImpl name Alice Bob Cara` for eight months — a bare `toString()` — and
+     * `contains("Alice")` was satisfied by it. The registration for `DataColumn` could never fire,
+     * because `ValueColumnImpl : DataColumnImpl(), ValueColumn` reaches `DataColumn` one interface
+     * further out than the old lookup looked, and nothing said so. It was found by looking at a
+     * documentation capture.
+     *
+     * So this asserts the two things a `toString()` fallback cannot satisfy: the impl class name is
+     * absent, and the column's declared element type — which only [DataFrameVisualizer.columnHead]
+     * emits — is present. `FrameColumn` is checked too, because it has the same impl shape and is the
+     * other way the same bug can come back.
+     */
     private fun testRowAndColumnRender() {
         val frame = smallFrame()
 
         val column = frame.columns().first().h
         require(column.contains("Alice")) { "column render missing values: $column" }
+        require(!column.contains("ValueColumnImpl")) {
+            "a column fell through to toString() — the registry did not reach DataColumn through " +
+                "ValueColumn, so register(DataColumn) is dead: $column"
+        }
+        require(column.contains("String")) {
+            "column render is missing the element type, which is the part only columnHead emits — so " +
+                "this may be a toString() that merely happens to contain the values: $column"
+        }
+
+        // The other column kind with the same impl shape: FrameColumnImpl : DataColumnImpl(), FrameColumn.
+        val frameColumn = DataColumn.createFrameColumn("parts", listOf(frame, frame)).h
+        require(!frameColumn.contains("FrameColumnImpl")) {
+            "a frame column fell through to toString(): $frameColumn"
+        }
 
         val row = frame[0].h
         require(row.contains("Alice")) { "row render missing values: $row" }
         require(row.contains("age")) { "row render missing labels: $row" }
-        println("  column and row both render through the registry")
+        println("  column (with element type), frame column, and row all render through the registry")
     }
 }

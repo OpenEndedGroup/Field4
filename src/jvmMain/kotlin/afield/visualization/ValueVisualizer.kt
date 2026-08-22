@@ -70,24 +70,49 @@ object ValuePrinterRegistry {
     }
 
     /**
-     * Get custom printer for a value, checking class hierarchy
+     * The printer registered for [value]'s type, or null.
+     *
+     * Resolution walks the superclass chain most-derived first and, at each step, that class's
+     * **whole** interface closure — every interface it declares, and everything those extend.
+     *
+     * The interface closure is the part worth writing down, because for eight months this looked at
+     * `value::class.java.interfaces` only: the interfaces of the runtime class, declared directly.
+     * That is enough for a type whose impl says `class FooImpl : Foo`, and silently useless for one
+     * that says `class FooImpl : BarImpl(), SpecificFoo` where `SpecificFoo : Foo` — the registration
+     * for `Foo` can never fire, and the value falls through to `toString()` with no error anywhere.
+     *
+     * Measured on 2026-08-22 against Kotlin DataFrame, which is exactly that shape:
+     * `ValueColumnImpl<T> : DataColumnImpl<T>(), ValueColumn<T>` and `ValueColumn<T> : DataColumn<T>`,
+     * so `register(DataColumn::class.java)` in [afield.DataFrameVisualizer] was **dead code** and a
+     * column rendered as `ValueColumnImpl age 0 15 1 30 2 45 3 22`. `FrameColumnImpl` has the same
+     * shape. The bug was found by looking at a documentation capture, not by a test: the smoke test's
+     * column assertion was `contains("Alice")`, which a `toString()` fallback satisfies too.
+     *
+     * Ordering is defined rather than incidental, because a value can now match more than one
+     * registration: the most-derived class wins, and within one class its own declared interfaces are
+     * tried before their supertypes (breadth-first). This can only turn a value that previously fell
+     * through into one that dispatches — it cannot move a value from one registered printer to
+     * another, because a match found by the old walk is still found first by this one.
      */
     internal fun getPrinter(value: Any): ((Any) -> String)? {
-        // Check exact match first
-        printers[value::class.java]?.let { return it }
-
-        // Check superclasses and interfaces
         var clazz: Class<*>? = value::class.java
         while (clazz != null) {
             printers[clazz]?.let { return it }
+            findInInterfaceClosure(clazz.interfaces)?.let { return it }
             clazz = clazz.superclass
         }
+        return null
+    }
 
-        // Check interfaces
-        value::class.java.interfaces.forEach { iface ->
+    /** Breadth-first over [roots] and everything they extend, so declared interfaces win over theirs. */
+    private fun findInInterfaceClosure(roots: Array<Class<*>>): ((Any) -> String)? {
+        val queue = ArrayDeque(roots.toList())
+        val seen = HashSet<Class<*>>(roots.toList())
+        while (queue.isNotEmpty()) {
+            val iface = queue.removeFirst()
             printers[iface]?.let { return it }
+            iface.interfaces.forEach { if (seen.add(it)) queue.addLast(it) }
         }
-
         return null
     }
 }
