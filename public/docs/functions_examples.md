@@ -199,7 +199,7 @@ And the descent itself, one frame every 8 iterations from 0 to 320. Each frame i
 `fitGradient` run truncated at that iteration count**, not a replay of a cached trajectory, so the
 error in the title is the error that run really reached:
 
-<video src="../assets/functions_gallery/functions-fit-convergence.mp4"
+<video src="assets/functions_gallery/functions-fit-convergence.mp4"
        controls autoplay loop muted playsinline preload="metadata"
        aria-label="a cyan curve starting far below a thick orange target sine, growing in amplitude and sliding into place over successive iterations until it lies exactly on the target, the title counting the iteration and the falling error"
        style="width:100%;max-width:640px;border-radius:8px;">
@@ -4049,7 +4049,7 @@ Two routes, and they cost different amounts:
 
 Regenerate the second set with:
 
-```bash
+```diffstatic {data-lang=bash}
 FUNCTIONS_PLOT_DIR=/tmp/functions-plots python3 tools/run_field_tests.py --id functions.plot-gallery
 ```
 

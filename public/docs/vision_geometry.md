@@ -306,7 +306,7 @@ Or all ninety of them, at the rate the head would have rebuilt them. The stats l
 recomputed per frame, so the vertex count and the winding agreement are live rather than measured once
 at the start — which is how you notice a rebuild that only goes wrong at one phase of the motion:
 
-<video src="../assets/vision_geometry/vision-geometry-animated.mp4" poster="../assets/vision_geometry/vision-geometry-animated.png"
+<video src="assets/vision_geometry/vision-geometry-animated.mp4" poster="../assets/vision_geometry/vision-geometry-animated.png"
        autoplay loop muted playsinline
        aria-label="a teal helix rebuilt from scratch every frame, its winding count and radius drifting as it turns, with a live stats line reading vertex and triangle counts, extent in metres, yaw and pitch, and winding 100% agrees with normals"
        style="width:100%;max-width:640px;border-radius:8px;">
@@ -394,7 +394,7 @@ and each one took the same route a live box takes: the box's Kotlin compiled by 
 reimplements `MeshBuilder`, and four of the entries take their Kotlin verbatim out of the shipped
 [agent transcripts](agent_transcripts.md), so the gallery cannot drift away from what you would load.
 
-```bash
+```diffstatic {data-lang=bash}
 VISION_GEOMETRY_PREVIEW_DIR=/tmp/vision-preview python3 tools/run_field_tests.py --id vision.geometry-preview
 ```
 
