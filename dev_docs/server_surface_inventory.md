@@ -19,19 +19,28 @@ the category, which is enough to decide whether the new door wanted a guard.
 It is not the whole story of Field's exposure, and two other guards own the parts it leaves
 out:
 
-- **state-changing HTTP routes** — 40 of them — belong to
-  `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned`, which has pinned them
-  since 2026-08-12 and counts the unguarded remainder. This page does not duplicate that
-  table;
+- **state-changing HTTP routes** — 53 of them, 40 with a named verb and 13 that name no verb
+  at all — belong to `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned`, which
+  has pinned them since 2026-08-12 and counts the unguarded remainder (**49 of 53**). This
+  page does not duplicate that table, but it does count the thirteen verbless routes below,
+  because a door that answers every method has to appear in an inventory of doors;
 - **the CORS block and the three WebSocket channels** belong to the same file's other tests.
 
 What was uncovered before this page existed, and is what it adds:
 
 | surface | count | previously guarded by |
 | --- | --- | --- |
-| HTTP **read** routes | 34 | nothing — the mutating census skips `get` outright |
+| HTTP **read** routes | 36 | nothing — the mutating census skips `get` outright |
+| **all-method** routes (`route(…) { handle { … } }`) | 13 | nothing — they name no verb, so no verb regex saw them |
 | `staticFiles` directory mounts | 5 | nothing — invisible to every route regex in the tree |
-| `/ws` **command** names | 105 | nothing |
+| `/ws` **command** names (`handlers`) | 105 | nothing |
+| `/ws` **raw channels** (`rawHandlers`) | 9 | nothing — a second dispatch table nothing had counted |
+
+The second and fifth rows arrived on 2026-08-22, and the first row moved from 34 to 36 the
+same day. All three changes have the same cause, described under
+[what the guard does and does not prove](#what-the-guard-does-and-does-not-prove): both
+censuses were looking for a *verb call with a quoted path*, and Field declares routes three
+other ways.
 
 ## The thing to understand before reading the tables
 
@@ -53,7 +62,7 @@ default**. That inversion is the single most useful sentence on either page.
 
 ## HTTP read routes
 
-34 routes, 31 of them with no route-specific guard. `guard` is computed from the handler
+36 routes, 33 of them with no route-specific guard. `guard` is computed from the handler
 body by the same three-name vocabulary the mutating census uses
 (`docsAnnotations.kt:734#fun ApplicationCall.refuseUnlessSameSiteDocsClient`,
 `docsAnnotations.kt:718#fun ApplicationCall.refuseUnlessLocalDocsClient`,
@@ -96,14 +105,16 @@ mutation; it is a different one.
 | `GET /api/welcome-docs/stream` | `Server.kt` | none |
 | `GET /api/workspace-search` | `Server.kt` | none |
 | `GET /app-url` | `Server.kt` | none |
-| `GET /controls` | `controllers.kt` | none |
+| `GET /controllers` | `controllers.kt` | none |
+| `GET /controllers/controls` | `controllers.kt` | none |
+| `GET /controllers/outputs` | `controllers.kt` | none |
 | `GET /field-audio/{...}` | `fieldAudioProxy.kt` | none |
 | `GET /field-docs/{...}` | `docsAnnotations.kt` | loopback |
 | `GET /health` | `Server.kt` | none |
+| `GET /history-screenshot` | `Server.kt` | none |
 | `GET /index.html` | `Server.kt` | none |
 | `GET /local/{...}` | `Server.kt` | none |
 | `GET /min/{...}` | `Server.kt` | none |
-| `GET /outputs` | `controllers.kt` | none |
 | `GET /project/{...}` | `Server.kt` | none |
 
 ### The four that serve files off disk, which deserve reading twice
@@ -151,6 +162,58 @@ the moment somebody wires up the feature it was written for, and at that point t
 arrives with it. **If you add a caller to `addRoute`, add the canonical containment check
 that `/project` and `/min` already have in the same file.**
 
+## All-method routes
+
+Thirteen routes are declared as `route("/x") { handle { … } }`. `handle` installs a handler
+with **no** `HttpMethodRouteSelector`, so the route answers `GET`, `POST`, `PUT`, `DELETE` and
+everything else. That is not read off Ktor's documentation:
+`FieldApiCorsExposureTest.aVerblessRouteReallyAnswersEveryMethodWhichIsWhyItIsInTheTable`
+stands a `handle { }` and a `get { }` up in a real `testApplication` and asks both the same
+four questions. Against Ktor 3.5.2 (`build.gradle.kts:61`) the verbless route answered all
+four with the method name in the body; the named one answered `GET` and returned `405` to the
+other three.
+
+Until 2026-08-22 **none of these thirteen was in any census or on any page**, and that is
+worse than the read-route gap it sat next to. A read route leaks; these accept writes. The
+discovery on both sides was looking for `^\s*(get|post|put|delete|patch)\("…` — a verb call
+with a quoted path — and a verbless route matches none of it. Demonstrated rather than argued:
+an unguarded `route("/nightly-probe-verbless") { handle { … } }` planted in `Server.kt` left
+the mutating census **BUILD SUCCESSFUL** on `d7d8dccc2`.
+
+| route | declared in | guard |
+| --- | --- | --- |
+| `ANY /browse` | `Server.kt` | none |
+| `ANY /code-use` | `Server.kt` | none |
+| `ANY /dir` | `Server.kt` | none |
+| `ANY /h2-explorer` | `Server.kt` | none |
+| `ANY /history` | `Server.kt` | none |
+| `ANY /inspect` | `Server.kt` | none |
+| `ANY /keyframe` | `Server.kt` | none |
+| `ANY /lazy-value-fragment` | `Server.kt` | none |
+| `ANY /logs` | `Server.kt` | none |
+| `ANY /threejs` | `Server.kt` | none |
+| `ANY /tree` | `Server.kt` | none |
+| `ANY /vision` | `Server.kt` | none |
+| `ANY /welcome` | `Server.kt` | none |
+
+Twelve of the thirteen read one HTML file out of `src/commonMain/resources/` and respond with
+it through `filter()`. Serving a page to a `POST` is untidy rather than dangerous, and the
+honest reading of those twelve is that they are `get { }` written the short way.
+
+`ANY /lazy-value-fragment` is the exception and the one worth a decision. It takes four query
+parameters — `root`, `kind`, `offset`, `depth` — straight into
+`ValueVisualizer.renderLazyFragment`, on any method, from any origin, with no guard. It is how
+a box's output panel expands a large value lazily, so it is a real feature with a real client;
+it is also the only member of this table that does anything with its input.
+
+**Open question for the human, not for a nightly agent:** should these thirteen be `get { }`?
+Writing them as `get { }` would cost nothing — no client sends anything but `GET` — and would
+take thirteen rows off the state-changing census, which would then read 40 rather than 53. The
+reason this branch did not do it: it is a change to `Server.kt`'s behaviour rather than to a
+test's accuracy, the `/vision` block's sibling `POST /vision/stream` shows the prefix is used
+for more than pages, and nothing in the repository records whether any of these was ever
+*meant* to answer a `POST`. Recorded here rather than decided.
+
 ## Static directory mounts
 
 Five `staticFiles` mounts, all in `Server.kt`, and **none of them is visible to any route
@@ -173,8 +236,10 @@ than a second `/local`.
 
 ## The `/ws` command surface
 
-105 command names. This is the real command API, it is larger than the HTTP write surface by
-a factor of two and a half, and until this page nothing enumerated it.
+105 command names, in the `handlers` table. This is the real command API, it is roughly twice
+the size of the HTTP write surface, and until this page nothing enumerated it. It is not the
+only `/ws` dispatch table: nine more channels live in `rawHandlers` and are counted in
+[their own section](#the-other-ws-dispatch-table-rawhandlers) below.
 
 The `declared in` column is derived mechanically from where the `handlers[…]` assignment
 sits, and that is deliberate. An earlier draft of this page tried to compute a *reach* column
@@ -329,6 +394,41 @@ no sandbox between a `/ws` frame and that.
 | `transcript-line-activity` | `history.kt` |
 | `vec2-update` | `Server.kt` |
 
+## The other `/ws` dispatch table: `rawHandlers`
+
+Nine **raw channels**, and until 2026-08-22 the one server surface of the five with no row
+anywhere. `handlers` is keyed by a decoded message `address`; `rawHandlers` is keyed by a
+channel name, and `Server.kt#rawHandlers.values` fans the **whole frame text** out to every
+callback registered under it. So a `rawHandlers` channel is a `/ws` endpoint that parses the
+frame itself.
+
+Worth reading the near-miss rather than only the fix. The `handlers[…]` discovery regex was
+unanchored, which *looks* as though it would have swept these up by accident and mis-filed
+them. It did not: `rawHandlers` capitalises its H, so `handlers[` never matched it. The two
+tables were disjoint by accident of spelling, and nobody had counted the second one. Anchoring
+the regex (`ServerSurfaceLedgerTest#private val commandName`) therefore changed the command
+census from **105 to 105** — the fix that mattered was adding the table below, not the anchor.
+
+| channel | declared in |
+| --- | --- |
+| `rawHandlers["__browsing__"]` | `browsing.kt` |
+| `rawHandlers["__h2_explorer__"]` | `h2explorer.kt` |
+| `rawHandlers["__inspecting__"]` | `inspecting.kt` |
+| `rawHandlers["__keyframes__"]` | `keyframes.kt` |
+| `rawHandlers["__logs__"]` | `logstream.kt` |
+| `rawHandlers["__spreadsheet__"]` | `spreadsheet.kt` |
+| `rawHandlers["__threejs__"]` | `ThreeJsViewer.kt` |
+| `rawHandlers["__visionmetal__"]` | `VisionMetal.kt` |
+| `rawHandlers["remote"]` | `RemoteJS.kt` |
+
+Three of the nine are keyed by a `const val` rather than a literal — `H2_EXPLORER_CHANNEL`,
+`SPREADSHEET_CHANNEL`, `VISION_METAL_CHANNEL` — which is why the discovery resolves the key
+expression the same way it resolves a `route(…)` prefix, and fails loudly rather than filing a
+channel under a made-up name.
+
+These sit behind the same `/ws` upgrade as the 105 commands, so the same sentence applies: the
+guard arrived 2026-08-19 in `3aa64af4d` and is off by default.
+
 ## What the guard does and does not prove
 
 `ServerSurfaceLedgerTest` reads source with regular expressions. That is the same choice
@@ -336,10 +436,9 @@ no sandbox between a `/ws` frame and that.
 install in a test application is exactly the route an inventory needs to catch — and it has
 the same limits, which are worth stating rather than implying:
 
-- it is not a Kotlin parser. It sees a declaration whose path is a string literal, and joins
-  a relative path to the nearest preceding `route(…)` prefix in the same file, resolving a
-  `const val` prefix where the argument is not a literal (which is how `/field-docs/{...}`
-  resolves);
+- it is not a Kotlin parser. It sees three declaration shapes — a verb call with a quoted
+  path, `route(…) { handle { … } }`, and a bodyless `route(…) { get { … } }` — and resolves
+  each one's path from the `route(…)` blocks it is lexically **inside of**;
 - it attributes a guard by textual containment between one declaration and the next, so a
   guard named in a comment would count;
 - **a route whose path is a bare word — `get("resolve")` — would be invisible to it**, because
@@ -348,11 +447,56 @@ the same limits, which are worth stating rather than implying:
   four files that declare Ktor routes it requires that no verb call has a quoted path lacking
   a leading `/` or `{`. Add one and the test tells you the discovery would miss it.
 
-It also asserts a **floor** on every count and a set of **landmark** entries — `GET /health`,
-`File(home)`, `set-string`, `create-file-proxy-box`, `launch-all`. The floors and landmarks
+### The three things that were wrong on 2026-08-20, found on 2026-08-22
+
+Worth writing down, because two of the three were *wrong answers* rather than missing ones,
+and a wrong answer in an inventory is what a reader trusts:
+
+- **the verbless shape.** Covered above. Thirteen routes, in no table anywhere;
+- **the bodyless shape.** `route("/history-screenshot") { get { … } }` and
+  `route("/controllers") { get { … } }` write no path, so no path regex saw them. Two read
+  routes, which is why this page went from 34 to 36. Being invisible was not only a missing
+  row: the guard column is computed from the text between one declaration and *the next*, so a
+  shape the census cannot see is a boundary it cannot honour, and one route's guard can leak
+  into the row above it;
+- **the path resolution.** It used to join a relative path to the nearest *preceding*
+  `route(…)` and return early on anything starting with `/`. `route("/controllers") { get("/controls") }`
+  is served at `/controllers/controls`; it was filed as `/controls` here **and** written as
+  `/controls` on this page, so the assertion asserted their agreement rather than the truth of
+  either. Three declarations were wrong that way — `GET /controls`, `GET /outputs`, and
+  `POST /stream`, which is really `POST /vision/stream` and lives in the mutating census.
+
+Answering "which `route(…)` am I inside of" needs brace nesting, and brace nesting over Kotlin
+needs a lexer, because brace counting is wrong the moment it counts a brace inside a string.
+`KotlinRouteScan` blanks comments and literal *text* while preserving every offset, and
+`KotlinRouteScanTest.everyKotlinFileIsBraceBalancedAfterSanitising` asserts that all 755 `.kt`
+files under `src/jvmMain/kotlin/afield` come out brace-balanced with no underflow — the premise,
+over the real input. Two cases in this tree broke a naive version, and neither was the obvious
+one: `Server.kt:1622` is a `"…${` whose template expression continues on the *next line*, and
+`MarkdownOutput.kt:129` closes a raw string with four quotes, which Kotlin ends at the **last**
+`"""` of the run rather than the first.
+
+### Floors, landmarks, and what they cannot do
+
+It asserts a **floor** on every count and a set of **landmark** entries — `GET /health`,
+`GET /controllers/controls`, `ANY /lazy-value-fragment`, `File(home)`, `set-string`,
+`create-file-proxy-box`, `launch-all`, `rawHandlers["__logs__"]`. The floors and landmarks
 exist to separate the two ways a census can shrink: a route was deleted, which is fine and
 wants a ledger edit, or *the discovery regex stopped matching*, which is not fine and would
 otherwise present as a green tick over an empty set.
 
-Demonstrated rather than asserted, on 2026-08-20: a planted `get("/api/nightly-probe")` in
-`Server.kt` failed the test by name, and reverting it returned the suite to green.
+They are also not a completeness proof, and it is worth being blunt about that here because
+all of them were in place on 2026-08-20 and none of them found the verbless routes. A floor
+detects a census that **shrank**. It cannot detect a category the census never had a regex
+for, because that category was never in the number the floor was set below. What found these
+was a second, independently written census that disagreed on the totals. For a census, "I read
+the source carefully" is not a measurement; two implementations forced to agree is.
+
+Demonstrated rather than asserted:
+
+| probe, planted then reverted | result |
+| --- | --- |
+| `get("/api/nightly-probe")` in `Server.kt`, 2026-08-20 | failed by name; green again on revert |
+| `route("/nightly-probe-verbless") { handle { … } }` in `Server.kt`, 2026-08-22 | **green on `d7d8dccc2`** — that is the blind spot; after this change it fails naming `ANY /nightly-probe-verbless -> none` |
+| `rawHandlers["__nightly_probe__"]` in `logstream.kt`, 2026-08-22 | failed naming the channel and its file |
+| one ledger row's path edited by hand, 2026-08-22 | failed naming the row as both `missing` and `stale` |

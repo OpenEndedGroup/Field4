@@ -124,8 +124,19 @@ ordinary page load) and is also why reads need saying separately:
 
 > A read is not a lesser exposure than a write. It is a different one. `GET /api/instance-info`
 > leaks the path of your work, `GET /api/welcome-changelog` leaks your commit messages, and
-> `GET /api/source` and `GET /api/workspace-search` reach source text. **31 of Field's 34 read
+> `GET /api/source` and `GET /api/workspace-search` reach source text. **33 of Field's 36 read
 > routes have no guard at all**, and the same-site switch does not cover them.
+
+And a thirteen-route wrinkle found on 2026-08-22, because the switch's read/write split is
+only as good as knowing which routes are which. Thirteen of Field's routes are declared
+`route("/welcome") { handle { … } }` — a route that names **no** HTTP verb, and therefore
+answers all of them. Twelve serve one HTML page each and are `get { }` written the short way;
+the thirteenth, `/lazy-value-fragment`, takes four query parameters into a value renderer.
+They are not a new hole — the switch covers them exactly as it covers any other route, since
+it inspects the *request's* method rather than the route's declaration — but they were absent
+from the inventory that counts Field's write surface, so that count read 40 when the truth was
+53. It now reads 53, and the thirteen are listed with their guards in
+`dev_docs/server_surface_inventory.md`.
 
 *Pinned by* `FieldApiWriteGuardTest` — seven tests, one of which exists purely to assert the
 *limitation*: a request with no `Origin` header is **not** refused, so the switch does nothing
@@ -263,11 +274,15 @@ breaks the headset. **It is your network that is protecting you here.**
 **The `/ws` command surface, by default.** This is the part most likely to surprise, and it
 is the finding that reordered this page.
 
-Field's HTTP routes get all the attention — 74 of them, 40 state-changing, all inventoried
+Field's HTTP routes get all the attention — 89 of them, 53 state-changing, all inventoried
 and tested. But the code with the most reach is not behind an HTTP route at all. The file
 proxy, the H2 database explorer, the box-execution commands and the agent backdoor declare
-**no HTTP routes between them**. They are entries in a single message-dispatch table reached
-over `/ws`, and there are **105 of them** — two and a half times the HTTP write surface.
+**no HTTP routes between them**. They are entries in a message-dispatch table reached over
+`/ws`, and there are **105 of them** — about twice the HTTP write surface. A second, smaller
+table on the same socket carries **9 more** "raw" channels, which receive the whole frame and
+parse it themselves: the H2 explorer, the file browser, the log stream, the spreadsheet, the
+three.js and Metal viewers, and the RemoteJS bridge. Nothing had counted those nine until
+2026-08-22.
 
 Among them, `launch-all`, `launch-batch` and `launch-fragment` run the code in your document,
 in Field's JVM, with Field's privileges. There is no sandbox between a `/ws` frame and that.
@@ -323,9 +338,17 @@ Three start a real Ktor application; three read source.
 | `FieldWebSocketWriteGuardTest` | the upgrade guard, on the default and on the switch |
 | `DocsAnnotationRouteSecurityTest` | the four guarded routes, through the real CORS configuration |
 | `DocsAnnotationSecurityTest` | the guard predicates as pure functions |
-| `ServerSurfaceLedgerTest` | the read routes, the static mounts and all 105 `/ws` commands, against the ledger page |
+| `ServerSurfaceLedgerTest` | the read routes, the thirteen all-method routes, the static mounts, all 105 `/ws` commands and the 9 raw `/ws` channels, against the ledger page |
 
-For the full route-by-route inventory — every read route with its guard, every static
-directory mount, and every one of the 105 commands with the file it lives in — see
-`dev_docs/server_surface_inventory.md`. That page is asserted against the source in both
-directions, so a new door cannot appear without the build saying so.
+For the full route-by-route inventory — every read route with its guard, every all-method
+route, every static directory mount, every one of the 105 commands with the file it lives in,
+and the 9 raw channels — see `dev_docs/server_surface_inventory.md`. That page is asserted
+against the source in both directions, so a new door cannot appear without the build saying
+so.
+
+One caveat on how much that promise is worth, since the 2026-08-22 pass is the reason four of
+those categories exist: a census can only refuse a door it has a *shape* for. Both censuses
+were looking for a verb call with a quoted path, and Field declares routes three other ways —
+verbless, pathless, and nested inside another `route(…)`. Floors and landmarks catch a census
+that shrank; they cannot catch a category never counted. What caught these was a second,
+independently written census that disagreed on the totals, and both are now in the build.
