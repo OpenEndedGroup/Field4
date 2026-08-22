@@ -172,12 +172,12 @@ was the wrong trade for a 90Hz display.
 | FLine interactivity (tap → server callback) | **Working** |
 | FLine editing — node + Bézier control-point drag | **Working** |
 | Web UI as spatial docks (editor / canvas / welcome) | **Working** |
-| Shared dock selection + editor-to-canvas History panel routing | **Working, browser-regression tested** |
+| Shared dock selection + editor-to-canvas History panel routing | **Working** |
 | Live Metal — live shader + uniforms on the compositor clock | **Working on device** |
-| Live Metal — headset-built geometry, per-part reload, `msl` as a property | **Built and smoke-tested**; native side compiles, device check pending |
-| RTT video streaming (mono), world-locked + windowed | **Working, verified end-to-end** |
-| RTT stereo (per-eye present) | **Working, confirmed on device** |
-| On-device polish — spatial-input feel, present smoothness | **Working on device**; frame pacing and presentation clock fixed |
+| Live Metal — headset-built geometry, per-part reload, `msl` as a property | **Builds, but not yet tried on a headset** |
+| RTT video streaming (mono), world-locked + windowed | **Working** |
+| RTT stereo (per-eye present) | **Working on device** |
+| On-device polish — spatial-input feel, present smoothness | **Working on device** |
 
 ---
 

@@ -473,14 +473,15 @@ checks mean luma and fails instead.
 ## Which code on this page runs { #which-code-on-this-page-runs }
 
 Two of the Kotlin blocks on this page — the depth figure and the CLIP figure — are executed by the docs
-build every time, imports and all, and the image under each is that box's own output. The other three are
+build every time, imports and all, and the image under each is that box's own output. The other four are
 illustration, and are marked as such where they appear:
 
 | block | why it is not executed | what stands behind it |
 |---|---|---|
 | the orientation snippet | `rgbaBytes` is deliberately undefined | every call in it, via both smokes |
-| the session-cache do/don't | half of it is an anti-example that *must* not run | `OnnxSmokeTest.testSessionIsCached` |
-| the worker + `StreamingTexture` | needs a Vulkan device and a webcam | the ONNX half, via `testWorkerPublishesAFrame`; the buffer stride, via `testFp16BufferMatchesVulkanStride` |
+| the session-cache do/don't | half of it is an anti-example that *must* not run | the caching claim, asserted directly |
+| the worker + `StreamingTexture` | needs a Vulkan device and a webcam | the ONNX half end to end; the buffer stride against `ImageData` |
+| the hoist-a-prompt example | `rgbaBytes` again | `clipEncode` and `best`, via the CLIP smoke |
 
 The honest gap, stated once: **`StreamingTexture(...)` and `recordUpload(...)` are the only lines on this
 page that nothing in this repository checks.**
@@ -488,56 +489,36 @@ page that nothing in this repository checks.**
 ??? aside "Why this page keeps a census at all"
     Documentation rots in a specific way: a snippet nobody executes drifts from the API it describes, and
     looks exactly like one that works. This page had that bug during drafting — an orientation snippet
-    carried a confident `0.94f` that had never been computed. The census is 2 blocks and 112 non-blank
-    lines executed, 3 blocks and 19 lines not, plus two shell commands run by hand. Blocks are counted
+    carried a confident `0.94f` that had never been computed. Two blocks and 112 non-blank lines are
+    executed against four blocks that are not, plus two shell commands run by hand. Blocks are counted
     whole because an import that does not resolve is exactly the rot being measured; lines exclude the
     `:::static` / `:::fold` markers.
 
     The bar is deliberately narrow. If "covered" were allowed to mean "the API this snippet calls is
-    asserted somewhere", all five blocks would count — because that is already true today, and it is
+    asserted somewhere", every block would count — because that is already true today, and it is
     precisely the condition under which the invented `0.94f` survived review. Asserting `ClipImage.encode`
     in a smoke says nothing about whether a page's prose about it is right. Only the two capture fences are
     compiled and run *as written*.
 
-## The `clip()` macro that was built, and then removed
+## Encode a prompt once
 
-`afield.onnx` shipped in commit `a647ccbef` with a fourth piece: a `clip("…")` macro. A CLIP prompt in
-source is a constant, so the macro encoded it at *macro-expansion* time, wrote the 512 floats into the
-box's attic as base64 keyed by `hash(model, prompt)`, and replaced the call site with a reference. The
-242 MB text encoder would then never load at run time — not in that session, and not in any later one,
-because the attic is saved with the document. It was the same shape as the `ai()` macro's attic cache,
-with a distinct `@clip-gen` marker so the base64 was not fed to a language model as context.
+A CLIP prompt is a constant, and encoding one costs about 5 ms and needs the 242 MB text encoder
+resident. So hoist it out of anything that runs repeatedly:
 
-Commit `9d611b4cb`, the next day, **reverted the whole layer**: the macro, `ClipBakeTool`, the
-pre-baked attic in the shipped transcript, the macro half of `ClipSmokeTest`, and
-`MacroRegistry.isPreviewExpansion` along with the wrappers it had required around `applyMacros` in
-*both* REPL engines.
+```diffstatic {data-lang=kotlin}
+:::static
+// once, at the top of the box
+val prompts = mapOf(
+    "an empty room" to clipEncode("an empty room"),
+    "a person at a desk" to clipEncode("a person at a desk"),
+)
 
-The reasoning, since the idea is an attractive one and worth not re-attempting:
+// then, per frame, no encoder involved
+ClipImage().encode(rgbaBytes, 640, 480).best(prompts.values.toList())
+```
 
-- **Its stated justification was circular.** The claim was that baking is what let CI compile that box
-  without the network. But CI only reached for the text encoder *because* `clip()` ran during macro
-  expansion, and macro expansion is part of compilation. With prompts resolved at run time,
-  `clipEncode("storm")` is an ordinary call: `COMPILE_ONLY` compiles it and never evaluates it, the
-  session is `by lazy`, and the 242 MB is never opened. Baking created the problem that pre-baking
-  then solved.
-- **What was left after that was about 5ms a prompt** — hoistable into a `val`, and never in the
-  per-frame path to begin with — plus a reproducibility property nobody had asked for.
-- **Against which it cost** a macro, an attic block format, an orphaned-block wart, and a change to
-  *shared* macro infrastructure. That last one is the real price: `MacroRegistry.rewrite` runs during
-  preview expansion, which fires as the caret moves over half-typed source, so without a guard a
-  keystroke could bake `clip("s")`, `clip("st")`, `clip("sto")` — and could trigger a 242 MB download.
-  A feature that needs the macro system to grow a new safety concept in order to be safe is a feature
-  asking an expensive question.
-
-Everything that had been *measured* survived the revert: the session cache, the worker thread, the
-modality-gap-aware API, and `WebcamTexture.withLatestFrame`. `ClipVector.toBase64`/`fromBase64` stayed
-too — fifteen lines of pure function with an obvious use beyond the macro. The shipped transcript now
-reads `val prompts = mapOf("…" to clipEncode("…"), …)`, which is one line longer and needs no
-explanation at all.
-
-Encoding prompts once into a `val` is the whole technique. There is nothing cleverer to do, and the
-attempt to be cleverer is recorded here so it does not get made twice.
+That is the whole technique, and there is nothing cleverer to do — a macro that baked prompt vectors
+into the document was built and then removed, for reasons recorded in `dev_docs/ONNX_CLIP_MACRO.md`.
 
 ## Reference
 

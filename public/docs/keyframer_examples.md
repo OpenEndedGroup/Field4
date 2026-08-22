@@ -29,7 +29,7 @@ Almost everything below runs on the CPU. `Structure` is constructible bare
 (`Structure.kt:176`, `Structure.kt:136`), so a keyframe scope can be exercised — and tested —
 without a GPU anywhere in sight. The exception is
 [the GPU still](#the-same-thing-driving-a-live-gpu-uniform), which is a real Vulkan render, and the
-targets that need a renderer, which are listed at the [foot of the page](#what-is-actually-tested).
+targets that need a renderer, which are listed at the [foot of the page](#needs-a-renderer).
 
 ## What a scope watches
 
@@ -562,7 +562,7 @@ straight line — once each, where they are defined.
     `KeyframeScope.camera(camera)` takes a live `Camera`, and `Camera`'s constructor is
     `Camera(val renderer: Renderer = fromContext())` (`Camera.kt:16`) — it resolves a renderer from
     the box context. So the *registration* is one of the eight declarations no unit test reaches
-    (the full list is at the [foot of the page](#what-is-actually-tested)); the pose arithmetic
+    (the full list is at the [foot of the page](#needs-a-renderer)); the pose arithmetic
     above, which is all of the behaviour, is tested. Note also that the target accepts a
     `CameraPose` or a bare `DualQuaternionf` and **silently ignores any other type**
     (`keyframer.kt:647-650` is a `when` with no `else`), so a `Vector3f` "camera position" key will
@@ -791,33 +791,33 @@ through AWT, so it throws on a headless JVM and it replaces whatever the user ha
 - [Values over time](interpolants_examples.md#keyframes-morphing-a-whole-parameter-state-including-code)
   — blending two keys, including code values that step rather than smear.
 
-### What is actually tested
+### The calls that need a live renderer { #needs-a-renderer }
 
-Every number stated on this page is asserted by a suite of 70 tests written against it. A companion
-ledger reflects over the **members of a hand-listed set of `keyframer.kt`'s classes** and requires every
-public one to be classified as either covered or unreachable-with-a-stated-reason. That half genuinely
-cannot rot: add a method or a property to one of those classes and the build fails until it is accounted
-for.
+Most of the keyframer works anywhere — in a plain box, in a test, headless. Four things do not, because
+they reach for a `Renderer` in context:
 
-It is worth being exact about what that does *not* guarantee, because the mechanism reads as
-stronger than it is. The enumeration *within* the listed classes is measured; the class list itself,
-and the total below, are maintained by hand. A new **top-level** declaration is invisible to it —
-and `enum class KeyDiffKind` (`keyframer.kt:915`) is exactly that: public, absent from the ledger,
-and the suite is green. It is exercised by the tests; it simply is not counted, which pushes the
-figure below down rather than up.
-
-**93 of 101 public behavioural declarations are exercised (92.1%).** Data-class members the Kotlin
-compiler generates are excluded, on the same grounds the
-[codebase reference](reference/index.md) excludes them.
-
-The remaining **8** are the ones a unit test cannot reach, each for the same two reasons:
-
-| uncovered | why |
+| needs a live renderer | why |
 | --- | --- |
-| `target(ModulePointer/ComputeModulePointer/MeshModulePointer, name)` | resolves `module.current.liveUniformStructures`; needs a live `Renderer` |
-| `stackAuto(…)`, all three overloads | writes shader source through `stackAutoShaderSource`; needs a live `Renderer` |
+| `target(ModulePointer/ComputeModulePointer/MeshModulePointer, name)` | resolves `module.current.liveUniformStructures` |
+| `stackAuto(…)`, all three overloads | writes shader source through `stackAutoShaderSource` |
 | `camera(Camera, keyName)` | `Camera(val renderer: Renderer = fromContext())` (`Camera.kt:16`) |
-| `Key.copyUpdateCodeToClipboard(…)` | the AWT system clipboard throws on a headless JVM |
 
-That is the whole gap, and it is the same gap the two notes above describe. Closing it needs a
-renderer in the loop, not more unit tests.
+And one needs a desktop: `Key.copyUpdateCodeToClipboard(…)` throws on a headless JVM, because that is
+where the AWT system clipboard lives.
+
+Everything else on this page — every number in it — is asserted on every build.
+
+??? aside "What that coverage claim does and does not guarantee"
+    Every number on this page is asserted by a suite of 70 tests written against it, and a companion
+    ledger reflects over the members of a hand-listed set of `keyframer.kt`'s classes, requiring every
+    public one to be classified as either covered or unreachable-with-a-stated-reason. That half cannot
+    rot: add a method or a property to one of those classes and the build fails until it is accounted for.
+
+    The mechanism reads as stronger than it is. The enumeration *within* the listed classes is measured;
+    the class list itself is maintained by hand, so a new **top-level** declaration is invisible to it —
+    and `enum class KeyDiffKind` (`keyframer.kt:915`) is exactly that: public, absent from the ledger, and
+    the suite is green. It is exercised by the tests; it simply is not counted, which pushes the figure
+    down rather than up. The figure is **93 of 101 public behavioural declarations (92.1%)**, excluding
+    the members the Kotlin compiler generates for a data class, on the same grounds the
+    [codebase reference](reference/index.md) excludes them. The uncovered eight are the renderer and
+    clipboard cases above; closing that gap needs a renderer in the loop, not more unit tests.

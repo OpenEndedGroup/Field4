@@ -299,25 +299,25 @@ A loadable Field document with all of this side by side is committed at
 
 ---
 
-## The provenance claim is checked, not just written
+## You can trust the "Voice:" line under each clip
 
-Every sentence on this page in the form *"Voice: …"* is a machine-readable claim.
+Every clip on this page says which of the three voices made it, and that label is not a caption
+somebody typed — it is checked against the audio. A clip labelled as the stand-in synth has to
+correlate with a stand-in render of the same pattern; one labelled as real samples has to *not*; a
+mixed one has to have its fallback events audibly present. So the day a "real drums" figure quietly
+becomes bursts of white noise, the build says so — which is the one thing nobody would notice by
+reading the page.
 
-`SoundRenderPathDocs` declares a `Voice` per figure, and a build guard then reads *this file*, pairs each
-audio fence with its figure, and requires:
+??? aside "How the check works, and the numbers it measured"
+    `SoundRenderPathDocs` declares a `Voice` per figure, and a build guard reads *this file*, pairs each
+    audio fence with its figure, and requires: every fence names a figure the renderer knows and every
+    figure appears once; the figure's declared label appears verbatim beside its fence, so prose and code
+    cannot drift apart in silence; and the committed `.wav` decodes and correlates against a stand-in
+    render of the same pattern. Measured: 1.0000 for the stand-in figure, 0.0565 and 0.1588 for the
+    sample-backed events of the two above, 0.8074 for a mixed figure's fallback events.
 
-* every fence names a figure the renderer knows, and every figure appears on the page once;
-* the figure's declared label appears verbatim beside its fence — so the prose and the code
-  cannot drift apart in silence;
-* **the committed `.wav` is decoded and correlated against a stand-in render of the same
-  pattern.** A figure claiming the stand-in must match it (measured 1.0000). A figure claiming
-  samples must not (measured 0.0565 and 0.1588 for the sample-backed events of the two above);
-  and a mixed figure's fallback events must be audibly present in it (measured 0.8074).
-
-The correlation needs no sample library, which is the reason it is worth having: a build
-machine with no 400MB third-party download can still catch the day a "real drums" figure
-quietly becomes bursts of white noise. Which, at that point, is the one thing nobody would
-notice by reading the page.
+    The correlation needs no sample library, which is why it is worth having — a build machine with no
+    400 MB third-party download still catches the regression.
 
 ### And the same question, asked of every clip in the docs
 

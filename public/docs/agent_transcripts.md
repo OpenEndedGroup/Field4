@@ -37,30 +37,36 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json \
 The source corpus lives in the repository at `dev_docs/agents/transcripts/`, with a companion
 `README.md` covering the op vocabulary, capture commands, and the graphics-topology rule.
 
-## What CI checks, and what it does not
+## How far each of these is checked
+
+Every transcript here still compiles and runs against today's Field — that is checked on every build,
+so nothing in this gallery has quietly rotted. How *far* it is checked differs by what the example
+needs, and it is worth knowing which kind you are opening:
 
 <!-- transcript-index: totals -->
-All 71 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
-not in the same way, and the difference is worth knowing before you trust one. 52 of them are
-**replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
-pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
-error-kind output line. (Almost always that is every box in the file. A transcript may deliberately
-create a box it does not execute — one that wants a device the build does not have, or that fails on
-purpose to demonstrate a diagnostic — and only the ops it actually writes down are replayed.) 12 want
-something the lightweight build does not own — a GLFW window and Vulkan renderer, an external audio
-service, or a camera — so those are **built and compiled**: the graph is assembled through the real
-apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal evaluation —
-the line that would open the window or reach the device — skipped. The remaining 7 are Kotlin
-**compiled to JavaScript** for a browser or visionOS head, through the real head profile that the box's
-`// {{ marker }}` selects.
+Of 71 transcripts, 52 are **replayed end to end** — every box built and run, and one error line
+anywhere fails the build. 12 need something a headless build does not have (a window and a GPU, an
+audio service, a camera), so those are **built and compiled**: the graph is assembled for real and
+every box's Kotlin goes through the real compiler, with only the final line that would open the window
+or reach the device skipped. The remaining 7 are **compiled to JavaScript**, for a browser or a
+visionOS head.
 
-None of the three proves a picture is *right*; that is what the docs captures and the gallery
-FIELD_TESTs are for. What all three prove is that the code in these files still compiles against
-today's stdlib, which is the failure that actually happens: on 2026-07-18 `fn_differentiable_fit_demo`
-shipped with two compile errors in a box body and merged, because until then nothing in CI ran a box.
-A second guard, `checkAgentTranscripts`, materializes every transcript into a document and compares
-it byte-for-byte against the committed starting points, so the copy the welcome screen opens is the
-one the yaml produces today.
+So a replayed example is one you can trust to run. A compiled one is one you can trust to *build* —
+it needs your hardware to prove the rest.
+
+??? aside "What the three tiers do not prove, and the incident that added them"
+    None of the three proves a picture is *right*; that is what the docs captures and the gallery
+    FIELD_TESTs are for. What all three prove is that the code in these files still compiles against
+    today's stdlib, which is the failure that actually happens: on 2026-07-18 `fn_differentiable_fit_demo`
+    shipped with two compile errors in a box body and merged, because until then nothing in CI ran a box.
+    All three tiers are one harness, `DemoTranscriptExecSmokeTest`, which is where the classification
+    lives. A replayed transcript may still deliberately create a box it does not execute — one wanting a
+    device the build lacks, or failing on purpose to demonstrate a diagnostic — and only the ops it writes
+    down are replayed.
+
+    A second guard, `checkAgentTranscripts`, materializes every transcript into a document and compares it
+    byte-for-byte against the committed starting points, so the copy the welcome screen opens is the one
+    the yaml produces today.
 
 ## Pure-compute scenes
 

@@ -1,8 +1,10 @@
 # Field's server surface: the route and command inventory
 
-The maintainer's companion to `public/docs/server_surface.md`. That page explains the trust
-boundary and the defences; this one is the **ledger** — every door in the wall, counted, with
-the file it is declared in and the guard that runs on it.
+One of three pages on Field's exposure. `public/docs/server_surface.md` is the user-facing one:
+what can reach your Field and what the one switch closes. `dev_docs/SERVER_SURFACE_AUDIT.md`
+is the reasoning — the trust boundary, the five defences, the attack shape each one closes.
+This one is the **ledger** — every door in the wall, counted, with the file it is declared in
+and the guard that runs on it.
 
 Every table below is asserted against the source by
 `ServerSurfaceLedgerTest`, **in both directions**: a route or command that exists in the

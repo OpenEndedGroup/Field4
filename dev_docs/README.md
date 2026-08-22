@@ -50,5 +50,6 @@ notes. The entries below point to the canonical note for each maintained subsyst
 - [`DOCUMENT_HISTORY.md`](./DOCUMENT_HISTORY.md) / [`HISTORY_TESTING_GUIDE.md`](./HISTORY_TESTING_GUIDE.md) — document history + its manual test guide
 - [`FileWatchManager.md`](./FileWatchManager.md) / [`FileWatchManager_Testing.md`](./FileWatchManager_Testing.md) — watcher ownership map and focused end-to-end checks; implementation detail lives in KDoc
 - [`physics/SIMDVERLET_4_CONSTRAINTS.md`](./physics/SIMDVERLET_4_CONSTRAINTS.md) — SIMD Verlet constraint solver
+- [`SERVER_SURFACE_AUDIT.md`](./SERVER_SURFACE_AUDIT.md) — the reasoning behind Field's exposure story: the trust boundary, why "loopback only" is not a defence, the five defences and the attack shape each closes (including DNS rebinding), the `/ws` command surface, and a measured probe run against a real Field with `AFIELD_API_REQUIRE_SAME_SITE=1`. The route/command ledger is [`server_surface_inventory.md`](./server_surface_inventory.md); the user-facing page is `public/docs/server_surface.md`
 
 `AGENTS.md` remains in the repository root because agent tooling expects it there.
