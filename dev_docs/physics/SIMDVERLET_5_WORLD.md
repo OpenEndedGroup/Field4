@@ -375,11 +375,13 @@ all round — is what makes a crack start somewhere and go somewhere.
 
 ## Runnable entry points
 
-- **`dev_docs/agents/demos/simdverlet_world/`** — the openable document. Four boxes: one per
-  capability, plus a fourth where all five subsystems run in one simulation with a rope tied into
-  the sheet and a named knob whose measured table is itself a test. Each is an explicit `loop { }`
-  through `showPlane`. Open `metadata.edn` in Field, or replay `build.yaml`; see that folder's
-  `README.md`.
+- **`simdverlet_world`** — the openable document, and a **starting point**: it is in the agent
+  transcript corpus (`dev_docs/agents/transcripts/simdverlet_world.yaml`), so it is materialized into
+  `public/docs/assets/agent_transcripts/simdverlet_world/` and offered from Field's welcome screen
+  beside `cloth_simdverlet_start`, the cloth it adds a world to. Four boxes: one per capability, plus
+  a fourth where all five subsystems run in one simulation with a rope tied into the sheet and a named
+  knob whose measured table is itself a test. Each is an explicit `loop { }` through `showPlane`.
+  Pick it off the welcome screen, or replay the transcript.
 - `SimdVerletCollidersTest` (16 cases), `SimdVerletTearingTest` (11), `SimdVerletWindTest` (9),
   `StrandTest` (12), `SimdVerletWorldCaptureTest` (4) in `src/jvmTest/kotlin/afield/four/physics/`
   — 74 in the package, all green.

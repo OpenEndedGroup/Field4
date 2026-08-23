@@ -40,8 +40,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 71 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
-not in the same way, and the difference is worth knowing before you trust one. 52 of them are
+All 72 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+not in the same way, and the difference is worth knowing before you trust one. 53 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
 error-kind output line. (Almost always that is every box in the file. A transcript may deliberately
@@ -93,6 +93,18 @@ so CI launches it, advances 90 real runloop frames, and stops it.
 [Particles, Cloth & Constraints](physics.md) is the explainer behind it, and re-derives that ladder
 from scratch.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/cloth_simdverlet_start/metadata.edn)
+
+**simdverlet_world** — The world the cloth above hangs in: colliders, tearing and wind, plus a rope
+that can be knotted into a sheet. Four boxes — one each for draping over something, coming apart and
+flying, and a fourth where all of it runs in one simulation. A collider is a **post-solve position
+projection** rather than a force, and that is not a style choice: because the solve is force-based,
+a penalty collider runs once against springs acting at `stiffness * iterations`, so it either fails
+to hold or explodes. Box 4 is the one to touch — at the shipped `tearThreshold = 0.6f` the sheet
+holds and touches nothing, at `0.25f` a rip opens where the rope pulls and the pieces land on the
+sphere and the floor, and both ends of that sentence are asserted by
+`SimdVerletTearingTest.theWholeWorldLayerInOneSceneBehavesAsTheDemoSaysItWill`. Like the cloth, it
+`launch`es rather than executes.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/simdverlet_world/metadata.edn)
 
 **shared_types_demo** — A `data class` every box can name. Box 1 calls `sharedTypes(...)` to compile
 `shared.Particle` as ordinary Kotlin onto the shared classloader; box 2 shows the metadata survived

@@ -90,6 +90,12 @@ object DemoTranscriptExecSmokeTest {
         // advances them) and stops it. Safe here because the whole scene is CPU physics plus
         // showPlane — Skia SVG -> display — so there is no Window and no Renderer to spin up.
         "cloth_simdverlet_start",
+        // The world cloth_simdverlet_start hangs in: colliders, tearing, wind and a rope. Also a
+        // launcher rather than an executor, and for the same reason — four frame loops. All four
+        // boxes are launched together, which is the part worth holding down: four independent
+        // SimdVerlet worlds stepping in one runloop. Same no-Window, no-Renderer argument as the
+        // cloth — CPU physics plus showPlane, Skia SVG -> display.
+        "simdverlet_world",
         "fn_differentiable_fit_demo",
         "linalg_thumbnails_demo",
         "hello_display",

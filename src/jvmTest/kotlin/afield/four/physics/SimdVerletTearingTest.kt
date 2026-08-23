@@ -369,7 +369,7 @@ class SimdVerletTearingTest {
     /**
      * The whole world layer in one scene, and the claim the demo document makes about it.
      *
-     * `dev_docs/agents/demos/simdverlet_world/`'s fourth box is a sheet with a weighted rope tied
+     * The `simdverlet_world` transcript's fourth box is a sheet with a weighted rope tied
      * to it, a sphere and a floor under it, wind across it and tearing on it, and its comment tells
      * the reader what moving one named knob will do. That sentence is a promise, so it is a test:
      * the same scene, the same numbers, the two ends of the claim asserted.

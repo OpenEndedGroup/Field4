@@ -59,7 +59,13 @@ independent — "more iterations = a better-converged solve" is the intuition fr
 a Gauss-Seidel/PBD solver, and it is not what this one does.
 
 Measured on a 20 x 10 sheet hanging from five pins, `dt = 1/60`, `damping = 0.99`,
-400 frames (`cloth_simdverlet_start`'s scene):
+400 frames (`cloth_simdverlet_start`'s scene, which ships `curvatureStrength = 100f`).
+**These are settled values read off a live box, not peaks over the run** — the ladder
+on `public/docs/physics.md` takes a 400-frame maximum at `curvature = 0f` and so reads
+1.65-1.75x higher on every stable rung (196/52/19 against 116/32/11). Both are right;
+they answer different questions. That page has a committed harness and this table does
+not, so prefer it where they disagree, and it narrows the divergence ceiling below to
+between 1600 and 2400:
 
 | `stiffness` x `iterations` | peak strain | outcome |
 | --- | --- | --- |

@@ -9,14 +9,25 @@ description: >
   CPU physics into Skia SVG, so it runs headless and in a live Field the same way, exactly like
   `cloth_simdverlet_start`, which is the cloth these four add a world to.
 
-  What to turn. Box 1: `friction = 0f` on the sphere and the sheet slides off its shoulder
-  instead of gripping. Box 2: `threshold` between 0.15 and 0.4 is the difference between a sheet
-  that shreds and one the sphere merely dents. Box 3: comment out `cloth.addWind(wind)` and the
-  flag stops flying and starts leaning -- per-particle drag cannot tell which way the fabric is
-  facing. Box 4 has one named knob, `tearThreshold`, with the measured table of what each setting
-  does written above it.
+  What to turn, with what it measurably does. Box 1: `friction = 0f` on the sphere and the sheet
+  slides off its shoulder instead of gripping -- over 600 frames a 10 x 10 sheet's centroid ends at
+  0.789 with `friction = 0.9` and at -32.2 with `0f`. Box 2: `threshold` between 0.15 and 0.4 is the
+  difference between a sheet that shreds and one the sphere merely dents, and `maxBreaksPerStep` is a
+  *different* rip rather than a slower one -- a sheet failing a few edges at a time goes on carrying
+  load while it fails, so more of it reaches the threshold (14 edges unthrottled against 22 at one per
+  step). Box 3: comment out `cloth.addWind(wind)` and the same wind, same gusts, same seed leaves the
+  flag leaning instead of flying -- per-particle drag cannot tell which way the fabric is facing; and
+  `turbulence`/`seed` are deterministic weather, a 400-frame run bit-identical to itself and differing
+  from the next seed in 262 of 288 coordinates. Box 4 is the one to touch: at the shipped
+  `tearThreshold = 0.6f` the sheet holds and touches nothing (0 torn, 0 contacts), and at `0.25f` a rip
+  opens where the rope pulls (~50 edges) and the pieces land on the sphere and the floor (~236
+  contacts) -- both asserted by
+  `SimdVerletTearingTest.theWholeWorldLayerInOneSceneBehavesAsTheDemoSaysItWill`, so the comment table
+  above that knob is a test.
 
-  Replaying this transcript rebuilds `dev_docs/agents/demos/simdverlet_world/metadata.edn`.
+  The written-up version, with the design argument for why a collider is a projection and not a force,
+  is `dev_docs/physics/SIMDVERLET_5_WORLD.md`. Replayed end to end in CI: launch each box, run real
+  runloop frames, stop.
 operations:
   - create:
       box: world_drape
@@ -298,3 +309,18 @@ operations:
                       "${world.contacts} contacts · ${sim.liveEdgeCount()} edges left",
               )
           }
+
+  # Every box here is a frame loop, so — like cloth_simdverlet_start — CI launches rather than
+  # executes: a `loop { }` cannot run to completion. All four are launched together on purpose,
+  # because the thing worth regression-testing is four independent SimdVerlet worlds stepping in the
+  # same runloop without interfering. 90 frames is the same budget the cloth transcript uses.
+  - launch: { box: world_drape, property: code }
+  - launch: { box: world_tear, property: code }
+  - launch: { box: world_wind, property: code }
+  - launch: { box: world_all, property: code }
+  - await: { wait: pending }
+  - wait: { frames: 90 }
+  - stop: { box: world_drape }
+  - stop: { box: world_tear }
+  - stop: { box: world_wind }
+  - stop: { box: world_all }

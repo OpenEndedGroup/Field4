@@ -39,6 +39,11 @@ Two consequences worth knowing before you are surprised by them:
   into `ax` *before* calling `step()` is thrown away. Inject forces through a generator or through
   `accumulateForces`, never by pre-accumulating.
 
+  Two more stages run *after* integration, and they are not forces at all: every registered
+  `positionProjections` pass (colliders move particles directly), then every `constraintEdits` pass
+  (tearing removes constraint slots). See [the world layer](#also-in-the-box) below — the reason they
+  are projections and edits rather than forces is the equivalence this page is about.
+
 ## Constraints are directed, and there are four of them
 
 `DirectedConstraints4` gives every particle **four outgoing slots**: four neighbour indices, four
@@ -685,12 +690,19 @@ that a sheet has begun to vibrate before it becomes visible as motion.
 
 `afield.four.physics` holds more than the particle solver, and the rest is not covered here:
 
+- **The world layer** — `Collider`/`ColliderSet` (sphere, plane, box, capsule and a general signed
+  distance function), `Tearing`, `Wind`, and `Strand`, a rope that can be knotted to a cloth. These
+  are what let a sheet drape, come apart and fly. A collider is a **post-solve position projection**
+  rather than a force, and that choice falls straight out of the equivalence above: a penalty force
+  runs once against springs that are acting at `stiffness × iterations`, so it either fails to hold
+  or explodes. `dev_docs/physics/SIMDVERLET_5_WORLD.md` has the argument and the measurements.
 - **`OctreeBarnesHut`** — an octree with Barnes–Hut summarisation, for the *n*-body case where every
   particle pulls on every other one.
 - **`PointController`** — the PID machinery `grabNearest` is built on, usable on its own.
 - **`JoltPhysicsWorld`** and **`Dyn4jScene`** — bridges to a full rigid-body engine, in 3D and 2D
-  respectively. Different tool, different problem: `SimdVerlet` has no notion of a rigid body, a
-  contact or a collision.
+  respectively. Different tool, different problem: `SimdVerlet` has no notion of a rigid body. Its
+  colliders are one-way position projections against static shapes, not two-body contacts — nothing
+  the cloth touches is pushed back by it.
 - **`SimdVerletDyn4jBridge`** — the two of them talking.
 
 ## Where to look next
