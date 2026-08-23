@@ -192,7 +192,7 @@ guard unescapes it, so FieldML's `\|>` can be cited.
 
 A citation guard proves an anchor exists. It says nothing about the *sentence* around the anchor, and
 the arithmetic in that sentence is the part that rots. `ProseNumeralContractTest` closes that gap for
-the same 17<!--count:guardedCitationPages--> pages `GUARDED_PAGES` already covers — this one among
+the same 18<!--count:guardedCitationPages--> pages `GUARDED_PAGES` already covers — this one among
 them since 2026-08-23, because a page that documents the mechanism and then states three numbers
 derived by it should be the first thing the mechanism checks.
 
@@ -419,13 +419,10 @@ Read the citation task's **XML** — `build/test-results/citationGates/TEST-*.xm
   that carry a marker, and the count of those that do not is printed on every run so that the size of
   the gap is never in doubt.
 - **Anything in `public/docs/`.** Out of scope for all three guards.
-- **`kdoc_worklist.md`**, which carries 120 citations and is generated — it belongs to
-  `checkCodebaseReference`, not here.
 - **`kdoc_worklist.md`**, 120 citations, which is *generated* — it belongs to
   `checkCodebaseReference`, not here, and hand-anchoring it would be overwritten on the next
-  regeneration.
-- **`DOCS_IMPROVEMENT_AGENT.md`**, unguarded only because another branch owned it the night this was
-  written. It is two citations and should be folded in.
+  regeneration. (Listed twice here until 2026-08-23, in two wordings, which is its own small lesson
+  about hand-kept lists.)
 - **Moving `CloseNodeCitationDriftTest`'s 52-row table out of the test and into
   `fline_close_nodes.md`**, which would make it an ordinary guarded page and remove the last place
   where a citation table and the page it guards can disagree. Roughly an hour of careful

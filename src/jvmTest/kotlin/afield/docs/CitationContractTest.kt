@@ -80,6 +80,13 @@ class CitationContractTest {
             // beyond symmetry: `ProseNumeralContractTest` only scans pages on this list, and three
             // of its founding derivations state their numbers here.
             "dev_docs/citation_contracts.md" to 2,
+            // Folded in 2026-08-23, closing a TODO `citation_contracts.md` had been carrying since
+            // the guard was written: "unguarded only because another branch owned it the night this
+            // was written. It is two citations and should be folded in." It was three, and one of
+            // them was broken — `server_surface_inventory.md#all-method-routes` named a fragment id
+            // that page does not contain, which is precisely the class of error an unguarded page
+            // cannot report.
+            "dev_docs/DOCS_IMPROVEMENT_AGENT.md" to 3,
             "dev_docs/ALIFE.md" to 1,
             "dev_docs/COMPLETION_ENGINE.md" to 1,
             "dev_docs/autodiff.md" to 1,
