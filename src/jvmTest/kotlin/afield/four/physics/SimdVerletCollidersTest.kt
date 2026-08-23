@@ -503,4 +503,139 @@ class SimdVerletCollidersTest {
         assertTrue(s.state.y[0] < afterDisable, "a detached set must not run at all")
         assertTrue("colliders" !in s.positionProjections, "and must unregister itself")
     }
+
+    /**
+     * The stability band for the contact response: a projection may lose energy at a contact and
+     * must never gain any, at any restitution, friction or approach speed.
+     *
+     * This is the property that replaces "tune the stiffness". A penalty collider has a stability
+     * band because its restoring force can overshoot; a projection's cannot, and the way to say so
+     * as a test rather than as a claim is to bound the *total mechanical energy* of a bouncing
+     * particle over a long run and require that it never exceeds what it started with.
+     *
+     * Printed as the table the tuning question actually has: how much of a three-unit drop comes
+     * back, per restitution, and how long the particle keeps bouncing.
+     */
+    @Test
+    fun aProjectionNeverAddsEnergyAtAnyRestitution() {
+        class Row(val restitution: Float, val rebound: Float, val energyRatio: Float, val bounces: Int)
+
+        val g = 9.8f
+        val dt = 1f / 60f
+        val rows = ArrayList<Row>()
+        for (restitution in listOf(0f, 0.25f, 0.5f, 0.75f, 0.95f, 1f)) {
+            val s = sim()
+            s.addParticle(x0 = 0f, y0 = 3f)
+            s.addColliders(
+                PlaneCollider(0f, 1f, 0f, offset = 0f).also { it.restitution = restitution; it.friction = 0f }
+            )
+            // damping = 1 so that the only thing that can remove or add energy is the contact.
+            val e0 = g * 3f
+            var worst = 0f
+            var rebound = -1f
+            var bounces = 0
+            var wasFalling = true
+            var touched = false
+            repeat(3000) {
+                s.step(dt = dt, damping = 1f, gravity = -g, iterations = 0)
+                val y = s.state.y[0]
+                val v = (y - s.state.py[0]) / dt
+                val e = g * maxOf(y, 0f) + 0.5f * v * v
+                if (e > worst) worst = e
+                val falling = v < 0f
+                if (wasFalling && !falling) bounces++
+                wasFalling = falling
+                if (y < 1e-4f) touched = true
+                if (touched && y > rebound) rebound = y
+            }
+            assertTrue(touched, "premise: restitution $restitution must reach the floor")
+            rows += Row(restitution, rebound, worst / e0, bounces)
+        }
+
+        println("a particle dropped 3 units onto a plane, damping 1, 3000 frames at dt = 1/60")
+        println("  restitution   rebound peak   peak energy / initial   bounces")
+        for (r in rows) {
+            println("  %11.2f   %12.3f   %21.3f   %7d".format(r.restitution, r.rebound, r.energyRatio, r.bounces))
+        }
+
+        for (r in rows) {
+            assertTrue(r.rebound.isFinite(), "restitution ${r.restitution} must not diverge")
+            // The one that matters. A little over 1 is the discrete integrator's own half-step
+            // bookkeeping, not the collider: the tolerance is 2 % and the measured worst case is
+            // well inside it.
+            assertTrue(
+                r.energyRatio < 1.02f,
+                "a projection must never add energy: restitution ${r.restitution} reached " +
+                    "${r.energyRatio} of the initial energy"
+            )
+        }
+        assertTrue(rows.first().rebound < 0.02f, "restitution 0 must not bounce, ${rows.first().rebound}")
+        assertTrue(rows.last().rebound > 2.7f, "restitution 1 must very nearly return the drop, ${rows.last().rebound}")
+        // Monotone in restitution, which is the property that makes the knob mean something.
+        for (n in 1 until rows.size) {
+            assertTrue(
+                rows[n].rebound > rows[n - 1].rebound,
+                "rebound must rise with restitution: ${rows.map { it.rebound }}"
+            )
+        }
+    }
+
+    /**
+     * The friction band, in the shape the tuning question has: how far does a sheet slide on a
+     * slope before it stops, per coefficient — and does it stop at all.
+     *
+     * Coulomb friction has an angle of repose, and a position-based Coulomb bound has one too: a
+     * sheet on a slope of angle `θ` should hold for `μ > tan θ` and creep otherwise. The slope here
+     * is 30 degrees, so the crossing should be near `tan 30 = 0.577`, and that is asserted rather
+     * than admired — it is the check that `μ·depth` really is the Coulomb limit in displacement
+     * units, and not merely a bound that happens to look like one.
+     */
+    @Test
+    fun frictionHasAnAngleOfRepose() {
+        val slope = 30.0
+        val tanTheta = kotlin.math.tan(Math.toRadians(slope)).toFloat()
+        val nx = -kotlin.math.sin(Math.toRadians(slope)).toFloat()
+        val ny = kotlin.math.cos(Math.toRadians(slope)).toFloat()
+
+        val rows = ArrayList<Pair<Float, Float>>()
+        for (mu in listOf(0f, 0.3f, 0.5f, 0.7f, 1.0f)) {
+            val s = sim()
+            val cloth = s.addCloth(
+                width = 8, height = 8, spacing = 0.2f, stiffness = 60f, curvatureStrength = 0f,
+                position = { c, r -> afield.stdlib.vec(c * 0.2f * ny + 0.0f, c * 0.2f * -nx, r * 0.2f) },
+                pinned = { _, _ -> false }
+            )
+            s.addColliders(PlaneCollider(nx, ny, 0f, offset = 0f).also { it.friction = mu })
+            // Signed position along the slope's tangent; only the distance travelled is used, so
+            // which way the tangent happens to point does not matter.
+            fun downSlope(): Float {
+                var t = 0f
+                for (i in cloth.base until cloth.end) t += s.state.x[i] * ny + s.state.y[i] * nx
+                return t / cloth.count
+            }
+            val before = downSlope()
+            repeat(900) { cloth.step(dt = 1f / 60f, damping = 0.99f, gravity = -9.8f, iterations = 16) }
+            rows += mu to abs(downSlope() - before)
+        }
+
+        println("an 8 x 8 sheet on a %.0f-degree slope (tan = %.3f), 900 frames".format(slope, tanTheta))
+        println("  friction   distance slid down the slope")
+        for ((mu, slid) in rows) println("  %8.2f   %26.3f".format(mu, slid))
+
+        for ((mu, slid) in rows) assertTrue(slid.isFinite(), "friction $mu must not diverge")
+        assertTrue(rows.first().second > 5f, "premise: a frictionless sheet must slide away, ${rows.first().second}")
+        for (n in 1 until rows.size) {
+            assertTrue(
+                rows[n].second <= rows[n - 1].second + 1e-3f,
+                "more friction must not slide further: ${rows.map { it.second }}"
+            )
+        }
+        // Below tan(theta) it slides; above it, it holds. The band straddles 0.577.
+        val below = rows.first { it.first > 0f && it.first < tanTheta }
+        val above = rows.first { it.first > tanTheta }
+        println("  tan(theta) = %.3f: mu = %.2f slid %.3f, mu = %.2f slid %.3f".format(
+            tanTheta, below.first, below.second, above.first, above.second))
+        assertTrue(below.second > 1f, "below the angle of repose the sheet must slide, ${below.second}")
+        assertTrue(above.second < below.second * 0.5f, "above it, much less: ${below.second} vs ${above.second}")
+    }
 }
