@@ -347,7 +347,7 @@ verb and answers every one of them, and the discovery regex was looking for a ve
 quoted path. Twelve of the thirteen serve one HTML page each; the thirteenth,
 `/lazy-value-fragment`, takes four query parameters into a value renderer. Demonstrated rather
 than argued: an unguarded verbless route planted in `Server.kt` left the census
-**BUILD SUCCESSFUL** on `d7d8dccc2`. See `dev_docs/server_surface_inventory.md#all-method-routes`
+**BUILD SUCCESSFUL** on `d7d8dccc2`. See `server_surface_inventory.md:165### All-method routes`
 for the thirteen, and for the open question of whether they should simply be `get { }`.
 
 ## Three exposures, which are worth not conflating
@@ -452,9 +452,10 @@ and leaves same-origin use — which is all of Field's own UI — untouched.
 
 ## Why it is still there
 
-One consumer, found by tracing rather than guessing. `offline-viewer.js:878` POSTs to
+One consumer, found by tracing rather than guessing.
+`offline-viewer.js:878#/api/import-offline-doc` POSTs to
 `${localBase}/api/import-offline-doc` to transfer a document into a running Field, and
-`dev_docs/OFFLINE_DEPLOYMENT.md:34` documents exactly that. It is the only cross-origin
+`OFFLINE_DEPLOYMENT.md:34#/api/import-offline-doc` documents exactly that. It is the only cross-origin
 `fetch` at a Field host in the whole tree; the viewer's other Field URLs are top-level
 navigations, which CORS does not govern.
 

@@ -234,13 +234,38 @@ Reverting `getPrinter` to the direct-interfaces-only walk and re-running
 toString() — the registry did not reach DataColumn through ValueColumn, so register(DataColumn) is
 dead"* — and restoring it passes. Measured 2026-08-22 on port 9483: FAIL in 4157 ms, PASS in 4132 ms.
 
-**Blast radius, stated rather than assumed.** The change can only turn a value that previously fell
-through into one that dispatches; it cannot move a value from one registered printer to another,
-because any match the old walk found is still found first. In this repository there are exactly four
-registrations, all of them DataFrame's (`DataFrameVisualizer.kt:55#ValuePrinterRegistry.register(DataFrame::class.java)`
-and the three beside it), so no non-DataFrame value's rendering can change. The one box-side
-registration in the tree, `dev_docs/viz_demo.kt:58#registerValuePrinter<Point3D>`, is an exact-class
-match on a data class and is unaffected.
+**Blast radius — and the reason is structural, not arithmetical.** The change can only turn a value
+that previously fell through into one that dispatches; it cannot move a value from one registered
+printer to another, because any match the old walk found is still found first. The old walk was *exact
+class → superclass chain → the runtime class's **directly declared** interfaces*, so the keys the new
+walk can newly reach are exactly the registered **interfaces** that sat more than one hop out. A key
+that is a *class* was already reachable, at every step, by the superclass-chain walk both versions
+share (`ValueVisualizer.kt:97#internal fun getPrinter`). **No class-keyed registration's dispatch can
+have changed — whatever the total registrations happen to be.**
+
+That distinction is doing all the work, so the totals are stated separately and derived rather than
+counted. Compiled source carries 4<!--count:valuePrinterInterfaceKeys--> interface-keyed
+registrations, all DataFrame's and all in one file
+(`DataFrameVisualizer.kt:62#ValuePrinterRegistry.register(DataFrame::class.java)` and the three beside
+it), and 50<!--count:valuePrinterClassKeys--> class-keyed ones across `FourVisualizers.kt`,
+`PolytopeVisualizers.kt`, `four/synth/Visualizers.kt`, `JoltPhysicsWorld.kt` and `fmchirp.kt`. Every
+one of the latter goes through the reified wrapper `registerValuePrinter<T>`
+(`ValueVisualizer.kt:2578#inline fun <reified T : Any> registerValuePrinter`), which is why a grep for
+`ValuePrinterRegistry.register` sees only the first group — and why this paragraph, until 2026-08-23,
+claimed there were four registrations altogether.
+
+Both numbers are pinned to the code rather than remembered: the `<!--count:…-->` markers above are
+checked by `ProseNumeralContractTest.kt:291#fun everyMarkedNumeralMatchesItsDerivation`, and the
+structural claim itself — that the interface-keyed set is *exactly* DataFrame's four, and that the two
+sets partition the whole population with nothing left over — by
+`ProseNumeralContractTest.kt:404#fun everyValuePrinterRegistrationInTheTreeKeysAClassExceptDataFrames`.
+So a fifth interface-keyed registration fails the build with a message asking for this argument to be
+reread, rather than quietly making the paragraph false. The mechanism is written up at
+`citation_contracts.md:191### Pinning a number written in prose`.
+
+The one box-side registration in the tree, `dev_docs/viz_demo.kt:58#registerValuePrinter<Point3D>`, is
+outside both counts — it is a documentation box rather than compiled source — and is an exact-class
+match on a data class, so it is unaffected either way.
 
 ### The smoke test, and the vacuous assertion it replaced
 
