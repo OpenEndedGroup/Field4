@@ -1232,6 +1232,10 @@ val citationGuardTestClasses = listOf(
     // route and /ws command surface it claims to inventory, in both directions. It belongs in the
     // docs gate because a docs-only branch that edits that page must not be able to go green.
     "afield.server.ServerSurfaceLedgerTest",
+    // The prose half of the same contract: a number written in a *sentence* on a guarded page,
+    // pinned to a population derived from the code. Here for the same reason as the line above — a
+    // docs-only branch that restates a count must not be able to go green without recomputing it.
+    "afield.docs.ProseNumeralContractTest",
 )
 
 // These tests read Markdown and JavaScript directly from the checkout. Keeping them inside the broad

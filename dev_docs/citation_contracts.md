@@ -179,7 +179,7 @@ docs are in your blast radius.
    `` `private fun runNodeProbe` `` occurs once. Uniqueness is what buys unbounded headroom. If it
    cannot be unique, the advisory number will disambiguate, and the guard will tell you how much room
    you have.
-3. **Abbreviate the path if you like.** `` `FloatEarcut.kt:705#…` `` resolves by unique path-suffix
+3. **Abbreviate the path if you like.** `FloatEarcut.kt:703#private fun linkedList` resolves by unique path-suffix
    match, so prose does not have to carry forty-character paths. An ambiguous abbreviation is a
    failure, not a guess.
 4. **Add the page to `GUARDED_PAGES`** in `CitationContractTest`, with a floor for its citation count.
@@ -187,6 +187,101 @@ docs are in your blast radius.
 
 Anchors may contain spaces, quotes and parentheses. In a *table cell* a `|` must be written `\|`; the
 guard unescapes it, so FieldML's `\|>` can be cited.
+
+## Pinning a number written in prose
+
+A citation guard proves an anchor exists. It says nothing about the *sentence* around the anchor, and
+the arithmetic in that sentence is the part that rots. `ProseNumeralContractTest` closes that gap for
+the same 17<!--count:guardedCitationPages--> pages `GUARDED_PAGES` already covers — this one among
+them since 2026-08-23, because a page that documents the mechanism and then states three numbers
+derived by it should be the first thing the mechanism checks.
+
+### The defect it was built against
+
+`DATAFRAME_PLUGIN.md`, 2026-08-22, arguing the blast radius of a change to `ValuePrinterRegistry`:
+
+> In this repository there are exactly four registrations, all of them DataFrame's … so no
+> non-DataFrame value's rendering can change.
+
+There are 54<!--count:valuePrinterRegistrationsInSource--> in compiled source. The sentence carried a
+citation that **resolved perfectly**, on a page that passed
+`citationGates` — one of the 7<!--count:citationGuardTestClasses--> focused test classes that task
+runs — with every anchor green. The grep behind it saw `ValuePrinterRegistry.register` and
+missed the reified wrapper `registerValuePrinter<T>`, which is how all but four of them are written.
+The conclusion happened to survive, for a reason the page never gave — see the rewritten paragraph
+under *The dispatch bug this page's captures found* in that page, which now argues from *class versus
+registered interface* and is checked.
+
+The postscript is the part worth keeping. The nightly brief that commissioned this guard recounted the
+same population and produced six per-file numbers, **every one exactly one too high**, because
+`import afield.registerValuePrinter` matched the recount's grep. Two wrong counts, by the same
+mechanism, in the evidence for and against the same sentence. Derive; do not grep.
+
+### The marker
+
+```markdown
+Compiled source carries 4<!--count:valuePrinterInterfaceKeys--> interface-keyed
+registrations and 50<!--count:valuePrinterClassKeys--> class-keyed ones.
+```
+
+An HTML comment, so the rendered sentence is unchanged. Three rules:
+
+- **Adjacent.** The marker must abut its numeral — only `*`, `` ` ``, `_` and at most one space
+  between. "Nearest number on the line" is ambiguous the first time a sentence carries two, and these
+  sentences carry two constantly. A marker written after the *noun* is reported as dangling, not
+  silently mis-parsed.
+- **Digits or words.** `50`, `5,000`, or `four` — the sentence that motivated all of this said "four",
+  and a mechanism that forces prose to write `4` in order to be checkable has made the prose worse in
+  order to check it. The word list is `zero`…`twenty` plus the tens; anything else is a failure naming
+  the list.
+- **Never inside code.** Markers in inline code spans and fenced blocks are inert, which is why the
+  example above is a fence and why `` `Foo.kt:412` `` can never be pinned. That refusal is the same
+  one this page makes about advisory line numbers under *The two tiers*: 36% of commits touching cited
+  files insert more than the old ceiling, so a guard that pinned a line number would rebuild the merge
+  hazard under a new name. **Every derivable number here is a population size**, which no unrelated
+  insertion can move.
+
+### Adding one
+
+1. **Add a `Derivation`** to `ProseNumeralContractTest.derivations`: a key, the page that must state
+   it, a noun phrase for the failure message, a floor, a set of landmarks, and a function from the
+   repo root to the **population**.
+2. **Return a set, not an `Int`.** That is the whole design. An integer derivation that silently stops
+   matching after a refactor presents as a green tick over zero — the failure this repo has
+   rediscovered often enough to have a name for. A set can additionally be checked against its floor,
+   against its landmarks, and against a sibling derivation that partitions the same population.
+3. **Write the marker into the page.**
+4. **Run it**: `./gradlew --no-daemon citationGates --tests '*ProseNumeralContract*'`.
+
+### What it checks, and in which direction
+
+| assertion | direction | fails when |
+|---|---|---|
+| `everyMarkedNumeralMatchesItsDerivation` | value | the sentence says 4 and the code has 54 |
+| `everyMarkerNamesAKnownDerivation` | numeral → derivation | a marker names a key nobody derives |
+| `everyDerivationIsStillUsedByItsPage` | derivation → numeral | **the sentence was deleted** |
+| `everyMarkerIsAttachedToANumeral` | shape | a marker sits after the noun |
+| `everyDerivedPopulationClearsItsFloorAndLandmarks` | anti-vacuity | a scrape shrank, and says whether that is a deletion or a broken derivation |
+| `markedNumeralsAreFlooredAndUnmarkedOnesAreCounted` | anti-vacuity | every marker was deleted at once |
+
+The third row is the one that is easy to leave out and expensive to be without: without it, the
+cheapest repair for a red build is to delete the prose, and the class goes green over a page that no
+longer says anything.
+
+### The unchecked remainder, counted
+
+A guard over three numerals on a page of forty is a guarded *sentence*, not a guarded page. So the
+last assertion also prints, per page, how many numerals carry **no** marker. On the day the mechanism
+landed that remainder ran to several hundred, against a handful marked — and the exact figures are
+deliberately *not* written here, because a corpus-wide census total moves on every docs edit and
+pinning it would rebuild the merge hazard this page spends its first half refusing. Read it off the
+`citationGates` output instead; it is printed on every run.
+
+The ratio is not embarrassing, it is the point. Most of those digits are one-off measurements
+("1.617", "4157 ms") that no derivation could produce, and the honest thing is to say how many there
+are rather than to let a green tick imply a page's numbers are all checked. The census excludes table
+rows, fenced and inline code, ISO dates, bare years, ordered-list markers, heading anchors and link
+targets — categories whose digits are addresses rather than claims about the code.
 
 ## The failure modes, with dated examples
 
@@ -319,6 +414,10 @@ Read the citation task's **XML** — `build/test-results/citationGates/TEST-*.xm
   agent put it after a night of it, *"four for four, every bug was a false documentation sentence, and
   in three cases I copied it into my own prose before checking."* Falsify before you quote, including
   when the thing you are quoting is a guard's own KDoc.
+  Since 2026-08-23 one *slice* of this is checked: a **number** in a sentence can be pinned to a
+  population derived from the code — see *Pinning a number written in prose* above. Only the numerals
+  that carry a marker, and the count of those that do not is printed on every run so that the size of
+  the gap is never in doubt.
 - **Anything in `public/docs/`.** Out of scope for all three guards.
 - **`kdoc_worklist.md`**, which carries 120 citations and is generated — it belongs to
   `checkCodebaseReference`, not here.

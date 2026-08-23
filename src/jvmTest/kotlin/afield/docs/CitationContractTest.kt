@@ -40,7 +40,13 @@ import kotlin.test.fail
  */
 class CitationContractTest {
 
-    private companion object {
+    // `internal`, not `private`, for one reason: ProseNumeralContractTest guards the *prose* on the
+    // same list of pages, and two classes keeping two copies of "which pages are guarded" is the
+    // ledger-that-can-disagree-with-itself shape this whole area exists to refuse. A `//` comment
+    // rather than a KDoc block because KDocExtractor.parseDeclaration cannot read `internal companion
+    // object` and would publish this prose under whatever declaration parses next — checkKDocAttachment
+    // said so, on the first attempt to commit this.
+    internal companion object {
         /**
          * The pages under corpus-wide guard, and the floor of anchored citations each must keep.
          *
@@ -68,6 +74,12 @@ class CitationContractTest {
             "dev_docs/morpho_circuit_search.md" to 4,
             "dev_docs/FLineGeometry.md" to 2,
             "dev_docs/kdoc_reference_contract.md" to 2,
+            // The page that documents this machinery, brought under it 2026-08-23. Two anchored
+            // citations, both prose `path:line#anchor`; the page is mostly *about* citations rather
+            // than made of them, so the floor is the count. It needs to be guarded for a reason
+            // beyond symmetry: `ProseNumeralContractTest` only scans pages on this list, and three
+            // of its founding derivations state their numbers here.
+            "dev_docs/citation_contracts.md" to 2,
             "dev_docs/ALIFE.md" to 1,
             "dev_docs/COMPLETION_ENGINE.md" to 1,
             "dev_docs/autodiff.md" to 1,
