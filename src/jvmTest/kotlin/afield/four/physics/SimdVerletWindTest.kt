@@ -101,14 +101,17 @@ class SimdVerletWindTest {
     fun windLinesAreDrawableAndNonEmpty() {
         val sim = newSim()
         val wind = sim.addWind(velocityX = 3f, turbulence = 0.6f, seed = 11)
-        val lines = wind.windLines(0f, -3f, 6f, 0f, columns = 8, rows = 6)
+        val lines = wind.windLines(0f, -3f, 0f, 6f, 0f, 0f, columns = 8, rows = 6)
         assertTrue(lines.isNotEmpty(), "a non-zero wind must draw")
         val nodes = lines.sumOf { it.nodes.size }
         assertEquals(8 * 6 * 2, nodes, "one whisker per grid point")
         for (line in lines) for (node in line.nodes) {
             assertTrue(node.to.x.isFinite() && node.to.y.isFinite() && node.to.z.isFinite(), "finite geometry")
         }
-        assertTrue(sim.addWind(velocityX = 0f, name = "still").windLines(0f, 0f, 1f, 1f).isEmpty(), "still air draws nothing")
+        assertTrue(
+            sim.addWind(velocityX = 0f, name = "still").windLines(0f, 0f, 0f, 1f, 1f, 0f).isEmpty(),
+            "still air draws nothing"
+        )
     }
 
     // ------------------------------------------------------------------------------------------

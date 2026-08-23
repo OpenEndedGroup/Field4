@@ -381,8 +381,14 @@ class PlaneCollider(
     }
 
     /**
-     * A segment of the plane's XY trace, 40 units long, centred on the point of the plane nearest
-     * the origin — a plane has no extent, so the outline picks one.
+     * A 40-unit cross of two perpendicular in-plane directions, centred on the point of the plane
+     * nearest the origin — a plane has no extent, so the outline picks one.
+     *
+     * A cross rather than a single segment because the debug views are axis-aligned projections,
+     * and one tangent can land edge-on in the one you are looking through: a floor at `y = -2.4`
+     * first drew its trace along `z`, which is a single pixel in the XY view a draping cloth is
+     * watched in, so the floor was invisible in exactly the picture it mattered for. Two
+     * perpendicular tangents cannot both vanish.
      */
     override fun outline(color: Vec4, thickness: Double): List<FLine> {
         val nx = normalX.toDouble()
@@ -406,9 +412,15 @@ class PlaneCollider(
         val cx = nx * offset
         val cy = ny * offset
         val cz = nz * offset
+        // The second tangent: n x t, already unit length because n and t are and are orthogonal.
+        val ux = ny * tz - nz * ty
+        val uy = nz * tx - nx * tz
+        val uz = nx * ty - ny * tx
         val line = FLine()
         line.moveTo(cx - tx * 20.0, cy - ty * 20.0, cz - tz * 20.0)
         line.lineTo(cx + tx * 20.0, cy + ty * 20.0, cz + tz * 20.0)
+        line.moveTo(cx - ux * 20.0, cy - uy * 20.0, cz - uz * 20.0)
+        line.lineTo(cx + ux * 20.0, cy + uy * 20.0, cz + uz * 20.0)
         line.color = color
         line.thickness = thickness
         return listOf(line)

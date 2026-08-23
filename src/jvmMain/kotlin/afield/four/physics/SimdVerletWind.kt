@@ -426,19 +426,23 @@ class ClothWind internal constructor(
 }
 
 /**
- * The wind field itself, as `FLine` whiskers on a grid in the XY plane — what to draw underneath a
- * fluttering sheet so that the gusts are visible rather than inferred.
+ * The wind field itself, as `FLine` whiskers on a grid — what to draw underneath a fluttering
+ * sheet so that the gusts are visible rather than inferred.
  *
- * @param x0 / [y0] / [x1] / [y1] the region to sample, in world units.
- * @param columns / [rows] grid resolution.
+ * The grid runs corner to corner between the two points, [columns] steps along `x` and [rows]
+ * steps along `y` *and* `z` together. That covers both views a plane figure of this ever wants
+ * without a projection argument: hold `z` fixed for the front view, hold `y` fixed and let `z`
+ * run for the view from above — which is the only one a flag flapping in `z` is visible in, and
+ * the one where a front-view grid collapses every row onto the same point and draws fans.
+ *
  * @param scale seconds of wind travel a whisker represents, so the arrows are in the same units as
  *   the sheet they sit behind.
  */
 fun Wind.windLines(
-    x0: Float, y0: Float, x1: Float, y1: Float,
+    x0: Float, y0: Float, z0: Float,
+    x1: Float, y1: Float, z1: Float,
     columns: Int = 14,
     rows: Int = 10,
-    z: Float = 0f,
     scale: Float = 0.06f,
     color: Vec4 = vec(0.45, 0.95, 0.72, 0.30),
     thickness: Double = 1.0
@@ -452,11 +456,12 @@ fun Wind.windLines(
             val fy = if (rows == 1) 0.5f else r / (rows - 1f)
             val sx = x0 + (x1 - x0) * fx
             val sy = y0 + (y1 - y0) * fy
-            sampleInto(sx, sy, z, out)
+            val sz = z0 + (z1 - z0) * fy
+            sampleInto(sx, sy, sz, out)
             val len = sqrt(out[0] * out[0] + out[1] * out[1] + out[2] * out[2])
             if (len < 1e-6f) continue
-            line.moveTo(sx, sy, z)
-            line.lineTo(sx + out[0] * scale, sy + out[1] * scale, z + out[2] * scale)
+            line.moveTo(sx, sy, sz)
+            line.lineTo(sx + out[0] * scale, sy + out[1] * scale, sz + out[2] * scale)
         }
     }
     if (line.nodes.isEmpty()) return emptyList()
