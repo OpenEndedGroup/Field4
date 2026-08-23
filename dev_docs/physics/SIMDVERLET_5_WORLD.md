@@ -15,6 +15,7 @@ Three pieces, and one new pipeline stage each for the first two.
 | colliders | `SimdVerletColliders.kt` | `SimdVerlet.positionProjections` | after integration |
 | tearing | `SimdVerletTearing.kt` | `SimdVerlet.constraintEdits` | after the colliders |
 | wind | `SimdVerletWind.kt` | `SimdVerlet.bulkForces` | before the constraint solve |
+| rope | `Strand.kt` | its own slots, plus `positionProjections` for bending | with everything else |
 
 `step()` in full, now: queued removals, zero the accumulators, gravity, the per-particle force
 generators, `bulkForces`, `accumulateForces`, `iterations` of the constraint solve, Verlet
@@ -88,6 +89,59 @@ for free. A 10 x 10 sheet started slightly off-centre on top of a sphere, 600 fr
 | 0.0 | -32.240 (slid off, still falling) |
 | 0.9 | 0.789 (still on the pole) |
 
+### The stability band, measured
+
+A projection may lose energy at a contact and must never gain any. That is the property that
+replaces "tune the stiffness", and it is a test rather than a claim: a particle dropped three units
+onto a plane, `damping = 1` so the contact is the only thing that can change the energy, 3000
+frames.
+
+| `restitution` | rebound peak | peak energy / initial | bounces |
+| --- | --- | --- | --- |
+| 0.00 | 0.000 | 1.000 | 1 |
+| 0.25 | 0.172 | 1.000 | 3 |
+| 0.50 | 0.720 | 1.000 | 5 |
+| 0.75 | 1.644 | 1.000 | 10 |
+| 0.95 | 2.653 | 1.000 | 34 |
+| 1.00 | **2.943** | 1.002 | 42 |
+
+The 1.002 is the discrete integrator's own half-step bookkeeping, not the contact. The ratio is
+asserted under 1.02 at every setting, and the rebound asserted monotone.
+
+Friction has an angle of repose, and it is the right one — which is the check that `μ·d` really is
+the Coulomb limit in displacement units rather than a bound that merely looks like one. An 8 × 8
+sheet on a 30-degree slope, 900 frames:
+
+| `friction` | distance slid |
+| --- | --- |
+| 0.00 | 54.52 |
+| 0.30 | 26.51 |
+| 0.50 | 7.83 |
+| 0.70 | 0.61 |
+| 1.00 | 0.61 |
+
+The crossing straddles `tan 30° = 0.577` exactly where it should.
+
+### What it costs
+
+`SimdVerletWorldMeasurements` (`./gradlew jvmMeasurements`; a `*Measurements` class so `check`
+excludes it, and assertion-free on purpose — a wall-clock floor on a shared machine is a flake
+generator). Steady-state cost of one `projectRange` over 40 000 particles:
+
+| shape | ns / particle | | shape | ns / particle |
+| --- | --- | --- | --- | --- |
+| plane, vector | **0.77** | | capsule | 2.95 |
+| plane, scalar | 1.42 | | box, inside | 2.21 |
+| sphere, vector | **1.45** | | sdf, 1 step | 2.80 |
+| sphere, scalar | 9.03 | | box, outside | 12.18 |
+
+So the vector paths are worth 1.8× on the plane and 6.2× on the sphere. And the answer to "at what
+collider count does this stop being cheap" is: at these sizes it does not. Thirty-two spheres over a
+4096-particle cloth is a *predicted* 2.9 % of the step, and the measured "% over bare" column
+wanders between −3.3 and +2.7 with no trend — the collider cost is **below the noise floor of the
+constraint solve**, which is the honest reading and not the same thing as free. The wind and tear
+passes on a 2304-particle sheet are inside the same noise; one sphere is +11 %.
+
 ### The shapes
 
 `PlaneCollider` (half-space), `SphereCollider`, `CapsuleCollider`, `BoxCollider` (inside or out) and
@@ -155,6 +209,72 @@ settings twice each and compares the surviving constraint set *slot for slot*, n
 With a rate limit the candidates are ranked by strain descending and ties broken by
 `(particle, slot)` ascending — never by hash or float-equality luck.
 
+## Rope
+
+`Strand` is the 1-D sibling of `Cloth`: `sim.addStrand(count, spacing, stiffness)` appends a chain
+and hands back a handle that speaks node indices.
+
+A chain node spends slot 0 on its successor and slot 1 on its predecessor, which leaves **two free
+slots on every node of every rope** — and that is the design rather than an accident.
+`Strand.attachTo` spends one on each side, so a rope can be tied to a cloth corner, to another rope,
+or to any particle with a spare slot, and the join is an ordinary symmetric distance constraint that
+the solver, the colliders and `Tearing` all already understand. A knot is an edge: ramp the load and
+it is among the things that fail, with nothing written to make it a candidate. A cloth's *interior*
+node has all four slots spent, and `attachTo` says so with the particle index rather than failing
+quietly.
+
+### How long a rope this solver can hold
+
+A chain is far more demanding than a sheet, for a structural reason rather than a tuning one: in a
+cloth the load spreads across a pinned row, in a rope every segment carries everything below it. So
+the top segment's strain is `(n−1)·g / (k·iterations·spacing)`, and that model is asserted at a
+0.7×–1.4× band:
+
+| nodes | `stiffness × iters` | peak strain | predicted |
+| --- | --- | --- | --- |
+| 16 | 1600 | 0.712 | 0.766 |
+| 32 | 1600 | 1.458 | 1.582 |
+| 64 | 1600 | 3.329 | 3.216 |
+| 64 | 2400 | 2.135 | 2.144 |
+| 64 | 3600 | **22.757** | 1.429 |
+
+The last row is `150 × 24` and does not settle: the setting that would make a 64-node rope
+inextensible is past the stability ceiling. Past a few dozen nodes at `dt = 1/60` a hanging rope is
+elastic and no stiffness fixes it. A length, not a setting.
+
+### Bending, wrong twice before it was right
+
+`bendStiffness` was a *force* first, like `Cloth.curvatureStrength`. Tip droop on a clamped
+cantilever against bend strength:
+
+| bend | 0 | 300 | 1200 | 2000 | 2600 | 3000 | 3400 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 6 nodes | 0.602 | 0.602 | 0.602 | 0.602 | 0.602 | 0.602 | 0.601 |
+| 8 nodes | 0.904 | 0.904 | 0.904 | 0.903 | 0.903 | *flails* | NaN |
+| 12 nodes | 1.511 | 1.511 | 1.509 | 1.508 | *flails* | NaN | NaN |
+
+Three significant figures of nothing up to 2000, then the explicit integrator loses it — the
+*flails* entries hold the tip up at 112 and 124 degrees of joint angle, which is thrashing rather
+than stiffness. **The same trap as a penalty collider, arriving by a second road**, and fixed the
+same way: a mass-weighted position projection, `x` and `px` moved together so no velocity is
+injected, swept in three colours so overlapping stencils do not stack their corrections.
+
+Then the second negative result: **a cantilever is the wrong test for bending**. A rope hanging
+under gravity is already straight, so a curvature constraint has nothing to correct, and even the
+projection moves a 20-node clamped tip by 0.5 %. What bending controls is how tightly a rope can
+*fold*, which needs a rope in compression — 50 nodes heaped on a floor between two anchors:
+
+| `bendStiffness` | mean joint angle | sharpest joint |
+| --- | --- | --- |
+| 0.00 | 38.75° | 174.19° |
+| 0.20 | 16.99° | 145.74° |
+| 0.50 | 13.91° | 110.24° |
+| 1.00 | 8.26° | 90.74° |
+
+`bendStiffness` is `0..1` and 1 maps onto 0.6 of a correction, because a full one oscillates against
+the distance constraints — an uncapped 1.0 sent a 20-node cantilever's tip to (−17539, −94947). A
+documented range with a cliff in it is worse than a smaller range without one.
+
 ## Wind
 
 Two models, and they are not alternatives.
@@ -217,6 +337,25 @@ an empty frame, that each panel has ink but is not a solid block, and — the on
 the first and last panels differ on a floored fraction of pixels. A harness whose scene had quietly
 stopped simulating would otherwise produce five beautiful identical panels and pass.
 
+### What getting it wrong looks like
+
+A second strip, `what-goes-wrong.png`, is six panels: three failure modes, each beside the same
+scene done right, with a red cross or a green tick in the corner so it reads without captions. This
+is the capture the debug view's own argument demands — if "a mis-wired constraint looks obviously
+wrong here and like nothing at all in a shaded mesh" is true of the solver, it has to be true of the
+world on top of it, and the way to find out is to build the wrong versions on purpose.
+
+1. **A penalty collider** at `k = 400` against the projection. Left: an empty amber circle with the
+   sheet flat on the floor beneath it. Right: the sheet tented over the sphere.
+2. **Tunnelling**, one parameter apart: the same fast drop onto the same 0.06-thick ledge with
+   `margin = 0` and `margin = 0.25`. Left, part of the grid is three units past the ledge; right,
+   all of it resting on it. Free particles rather than a cloth, deliberately — at any interesting
+   speed a cloth's own springs would be the thing that failed first.
+3. **Tearing without dropping the curvature stencil.** Both panels break the same eight edges.
+   Without `Cloth.enableTearing`'s hook, **24 cloth nodes are still inside the hole the ball swept**
+   and the picture shows a cross of mesh filling the amber circle; with it, **0**, and a clean open
+   hole. Every one of those numbers is asserted.
+
 Two bugs no test would have caught:
 
 - `PlaneCollider.outline` drew a single tangent chosen by a cross product, and for a floor at
@@ -236,11 +375,15 @@ all round — is what makes a crack start somewhere and go somewhere.
 
 ## Runnable entry points
 
-- **`dev_docs/agents/demos/simdverlet_world/`** — the openable document. Three boxes, one per
-  capability, each an explicit `loop { }` through `showPlane`. Open `metadata.edn` in Field, or
-  replay `build.yaml`; see that folder's `README.md`.
-- `SimdVerletCollidersTest` (14 cases), `SimdVerletTearingTest` (10), `SimdVerletWindTest` (9),
-  `SimdVerletWorldCaptureTest` (3) in `src/jvmTest/kotlin/afield/four/physics/`.
+- **`dev_docs/agents/demos/simdverlet_world/`** — the openable document. Four boxes: one per
+  capability, plus a fourth where all five subsystems run in one simulation with a rope tied into
+  the sheet and a named knob whose measured table is itself a test. Each is an explicit `loop { }`
+  through `showPlane`. Open `metadata.edn` in Field, or replay `build.yaml`; see that folder's
+  `README.md`.
+- `SimdVerletCollidersTest` (16 cases), `SimdVerletTearingTest` (11), `SimdVerletWindTest` (9),
+  `StrandTest` (12), `SimdVerletWorldCaptureTest` (4) in `src/jvmTest/kotlin/afield/four/physics/`
+  — 74 in the package, all green.
+- `SimdVerletWorldMeasurements` via `./gradlew jvmMeasurements` — the timing tables above.
 - `cloth_simdverlet_start` (transcript corpus) — the cloth this adds a world to.
 
 ## Known gaps
@@ -253,4 +396,12 @@ all round — is what makes a crack start somewhere and go somewhere.
   or three walls, so `contacts` is a particle count rather than a contact count there.
 - **`ColliderSet` is serial.** Each collider is range-parallel safe on its own; the set is not, and
   nothing here uses `ForceExecutor` yet.
-- **No `Rope`/`Strand`.** The obvious sibling to `Cloth`, and the obvious next thing.
+- **A `Strand` in a wind that never stops eventually stretches.** Not a bug in the rope: a torn or
+  free piece under a steady force keeps accelerating until something stops it, and a room
+  (`BoxCollider(inside = true)`) is what stops it. The demo's fourth box says so in its comments.
+- **The per-quad aero pass is invisible in a front view**, because it acts along the sheet's normal
+  and a sheet in the x/y plane has its normal out of the screen. That is a property of the plane
+  figure, not of the model, and the fix is to pick the other projection — but it does mean a scene
+  mixing an XY view with per-quad wind will look like it is doing nothing until the sheet swings.
+- **Nothing here is parallel.** `Collider` is range-safe on its own and `ColliderSet` is serial;
+  `ForceExecutor` is unused by all of it.
