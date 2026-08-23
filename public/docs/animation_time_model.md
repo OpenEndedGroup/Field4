@@ -547,8 +547,14 @@ Everything above except the grab and the two lines that drive it is
 snippet: take it from the welcome screen and the sheet is already hanging. `Cloth` is the builder —
 it puts a grid of particles into a `SimdVerlet` you already have, including the curvature force — and
 `SimdVerlet.debugLines()` is the view of the solver's own state that makes a mis-wired constraint or
-an unpinned pin obvious. `dev_docs/physics/SIMDVERLET_4_CONSTRAINTS.md` carries the tuning table the
-two numbers above come from.
+an unpinned pin obvious.
+
+[Particles, Cloth & Constraints](physics.md) is the page about the solver rather than about the
+loop, and it is where the two numbers above come from. Its headline is one this page only gestures
+at: the constraint solve accumulates all of its `iterations` into the same force accumulator without
+moving anything in between, so `iterations` is not a convergence knob — N iterations at stiffness k
+are one iteration at stiffness N·k, and the sheet can only feel the product. That page runs the
+equivalence four ways and measures the gap.
 
 ## The generator layer
 
