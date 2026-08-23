@@ -88,6 +88,15 @@ class Cloth private constructor(
     var curvatureStrength: Float = curvatureStrength
 
     private val lock = Any()
+
+    /**
+     * Nodes whose curvature stencil has been switched off, indexed `particle - base`. Allocated by
+     * the first [suppressCurvatureAt] and null until then, so a cloth that never tears pays
+     * nothing for it and [accumulateCurvature] keeps its unconditional inner loop.
+     */
+    @Volatile
+    private var curvatureSuppressed: BooleanArray? = null
+
     private var grabbed = -1
     private var targetX = 0f
     private var targetY = 0f
@@ -171,10 +180,15 @@ class Cloth private constructor(
         val ax = state.ax
         val ay = state.ay
         val az = state.az
+        val suppressed = curvatureSuppressed
 
         for (row in 1 until height - 1) {
             var i = base + row * width + 1
             for (col in 1 until width - 1) {
+                if (suppressed != null && suppressed[i - base]) {
+                    i++
+                    continue
+                }
                 val left = i - 1
                 val right = i + 1
                 val below = i - width
@@ -185,6 +199,32 @@ class Cloth private constructor(
                 i++
             }
         }
+    }
+
+    /**
+     * Switches the curvature stencil off at one particle, permanently.
+     *
+     * This exists for tearing (see [enableTearing]) and is the hook that keeps a rip open. The
+     * curvature force is written from the *grid*, not from the constraint set, so retiring the
+     * distance constraint across an edge leaves the flattening force still pulling the two lips of
+     * the tear toward each other with no spring behind it — the sheet heals in the picture while
+     * the solver says it is torn. Suppressing both endpoints of a broken edge removes exactly the
+     * two stencils that spanned it.
+     *
+     * A no-op for a particle outside this cloth, and for the boundary nodes the curvature pass
+     * never touched anyway. There is no un-suppress: an intact stencil is the invariant, and a
+     * cloth that has been cut has lost it.
+     */
+    fun suppressCurvatureAt(particle: Int) {
+        if (particle !in this) return
+        val mask = curvatureSuppressed ?: BooleanArray(count).also { curvatureSuppressed = it }
+        mask[particle - base] = true
+    }
+
+    /** Whether [suppressCurvatureAt] has switched the curvature stencil off at [particle]. */
+    fun isCurvatureSuppressed(particle: Int): Boolean {
+        if (particle !in this) return false
+        return curvatureSuppressed?.get(particle - base) == true
     }
 
     /**

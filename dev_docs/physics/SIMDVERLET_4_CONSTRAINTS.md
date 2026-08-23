@@ -76,6 +76,11 @@ weight. The curvature force is on the same scale and has to be within an order o
 magnitude or two of the product to bend anything: at 60 x 16 the library's 0.05
 default is indistinguishable from off, and 100 takes ~40 % of the kink out.
 
+The world these constraints live in — colliders, tearing and wind — is
+`dev_docs/physics/SIMDVERLET_5_WORLD.md`, which is also where the force-based
+solve above turns out to matter most: a collider written as a penalty force
+inherits the `stiffness * iterations` scale and cannot be tuned out of it.
+
 Runnable entry points:
 
 - `cloth_simdverlet_start` (transcript corpus): the openable starting place — a

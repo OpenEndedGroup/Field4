@@ -56,6 +56,44 @@ class SimdVerlet(
      */
     val bulkForces: MutableMap<String, (state: State3, dt: Float) -> Unit> = LinkedHashMap()
 
+    /**
+     * Named position-projection passes, run by [step] **after** integration, in registration
+     * order — the world layer's slot, and the one place in the frame where positions may be
+     * written directly.
+     *
+     * This is where a collider goes, and the reason it is a stage of its own rather than one
+     * more entry in [bulkForces] is arithmetic rather than taste. The constraint solve is
+     * force-based: `solveDirectedDist4InPlaceRange` runs `iterations` passes that each *add*
+     * their correction to the same accumulator with nothing moving in between, so a cloth spring
+     * of stiffness `k` acts at `k * iterations`, while a penalty force registered in
+     * [bulkForces] runs exactly once. At the shipped `60 x 16` a penalty collider would be
+     * sixteen times softer than the springs it has to overpower, and stiffening it by sixteen
+     * walks into the same `k * dt^2 / m` divergence the stiffness table maps. A projection has
+     * no stiffness to get wrong: it puts the particle on the surface and rewrites its Verlet
+     * velocity, so it holds at any spring setting the cloth itself survives. Measured, with the
+     * numbers, in `dev_docs/physics/SIMDVERLET_5_WORLD.md`.
+     *
+     * Each pass gets `(state, dt)` and may write `x/y/z` and `px/py/pz` for indices in the
+     * active range. Register with [addPositionProjection], drop with [removePositionProjection].
+     * Don't add or remove entries from inside a pass -- the map is iterated live.
+     */
+    val positionProjections: MutableMap<String, (state: State3, dt: Float) -> Unit> = LinkedHashMap()
+
+    /**
+     * Named constraint-editing passes, run by [step] after [positionProjections], in
+     * registration order -- the last thing in a frame.
+     *
+     * This is where tearing goes. It runs *after* the colliders on purpose: an edge that a
+     * collider has just stretched over the shoulder of a sphere really is that stretched, and a
+     * tear model that measured strain before the projection would be describing a configuration
+     * the frame never ended in.
+     *
+     * Each pass gets `(state, dt)` and may retire slots in the simulation's constraint set. Same
+     * live-iteration caveat as [bulkForces]. Register with [addConstraintEdit], drop with
+     * [removeConstraintEdit].
+     */
+    val constraintEdits: MutableMap<String, (state: State3, dt: Float) -> Unit> = LinkedHashMap()
+
     class ForceContext(
         val state: State3,
         var index: Int,
@@ -99,6 +137,43 @@ class SimdVerlet(
     /** Drops the [name]d whole-state force pass, if it is registered. See [bulkForces]. */
     fun removeBulkForce(name: String) {
         bulkForces.remove(name)
+    }
+
+    /** Registers (or replaces) a named post-integration projection. See [positionProjections]. */
+    fun addPositionProjection(name: String, projection: (state: State3, dt: Float) -> Unit) {
+        positionProjections[name] = projection
+    }
+
+    /** Drops the [name]d position-projection pass, if it is registered. See [positionProjections]. */
+    fun removePositionProjection(name: String) {
+        positionProjections.remove(name)
+    }
+
+    /** Registers (or replaces) a named constraint-editing pass. See [constraintEdits]. */
+    fun addConstraintEdit(name: String, edit: (state: State3, dt: Float) -> Unit) {
+        constraintEdits[name] = edit
+    }
+
+    /** Drops the [name]d constraint-editing pass, if it is registered. See [constraintEdits]. */
+    fun removeConstraintEdit(name: String) {
+        constraintEdits.remove(name)
+    }
+
+    /**
+     * The two post-integration stages, in their fixed order: every [positionProjections] pass,
+     * then every [constraintEdits] pass. Both [step] overloads end here.
+     */
+    private fun runPostIntegration(dt: Float) {
+        if (positionProjections.isNotEmpty()) {
+            for (projection in positionProjections.values) {
+                projection(state, dt)
+            }
+        }
+        if (constraintEdits.isNotEmpty()) {
+            for (edit in constraintEdits.values) {
+                edit(state, dt)
+            }
+        }
     }
 
     fun addPidPositionController(
@@ -202,6 +277,12 @@ class SimdVerlet(
      * discarded — inject per-frame forces through a force generator (per particle) or through
      * [accumulateForces] (whole-range, e.g. the bulk SIMD kernels), never by pre-accumulating.
      *
+     * The whole frame, in order: queued removals, zero the accumulators, gravity, the
+     * per-particle force generators, [bulkForces], [accumulateForces], `iterations` of the
+     * constraint solve, Verlet integration, [positionProjections] (the colliders), and finally
+     * [constraintEdits] (tearing). Everything up to integration is force space; the last two
+     * stages are the only ones that touch positions directly.
+     *
      * @param accumulateForces optional bulk force pass invoked as `(state, dt)` after gravity and
      *   the per-particle generators but before the constraint solve, so its contribution feeds the
      *   solve and integration. This is the hook for the generated bulk kernels, e.g.
@@ -251,6 +332,7 @@ class SimdVerlet(
         }
 
         integrateVerlet3(state, dt = dt, damping = damping)
+        runPostIntegration(dt)
     }
 
     /** 4-slot-constraint variant of [step]; see that overload for the force-accumulation contract. */
@@ -297,6 +379,7 @@ class SimdVerlet(
         }
 
         integrateVerlet3(state, dt = dt, damping = damping)
+        runPostIntegration(dt)
     }
 
     /**
