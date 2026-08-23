@@ -1937,7 +1937,7 @@ internal fun assertVideoMoved(frames: List<ByteArray>, outputPath: Path) {
         val b = signatures[index]
         var delta = 0
         for (cell in a.indices) {
-            if (kotlin.math.abs(a[cell].toInt() - b[cell].toInt()) > SIGNATURE_CELL_TOLERANCE) delta += 1
+            if (kotlin.math.abs(a[cell] - b[cell]) > SIGNATURE_CELL_TOLERANCE) delta += 1
         }
         if (delta >= SIGNATURE_MOVED_CELLS) moved += 1
     }
