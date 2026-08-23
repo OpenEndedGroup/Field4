@@ -14,11 +14,18 @@ open its `metadata.edn` in Field.
 the nav), and it is where the gallery's figures are now published and audited — its five captures are
 registered in [`docs_capture_owners.json`](docs_capture_owners.json), so `docs_capture_audit.py`
 inventories them. This file keeps the rationale, the Plotly comparison and the negative results; the
-public page keeps the API and the pictures. Two figure sets here are **stale and were deliberately not
-republished**: `box1`–`box4` were captured at 03:23 on 2026-08-22, before `9aca904af` fixed the label
-fill, the label sizes and the default aspect at 13:19, so they show the defect rather than the fix; and
-`gallery-histogram`/`gallery-log-scale`/`gallery-marks` predate the `chart-*.png` naming the gallery
-emits today.
+public page keeps the API and the pictures.
+
+One figure set here is still **stale**: `box1`–`box4` were captured at 03:23 on 2026-08-22, before
+`9aca904af` fixed the label fill, the label sizes and the default aspect at 13:19, so they show the
+defect rather than the fix. They are the only pictures in this repository of the *live box* path —
+the production `.h`/`display` renderer driven through the backdoor — which is why they are kept
+rather than deleted, and why regenerating them needs a running Field rather than a harness. Read
+their label rendering as historical; read their layout and their interaction as current.
+
+The gallery figures below them **are** current: they were `gallery-histogram` / `gallery-log-scale` /
+`gallery-marks`, captured before the rename, and now point at the `chart-*.png` files `ChartGallery`
+actually emits.
 
 ## READ THIS FIRST — the rendering order is Plotly, then FLine, then raster
 
@@ -257,12 +264,16 @@ overshoots in `CHART_BAD`, and the footnote counting them.
 
 ![an expectation drawn](assets/chart_primitive/box4-expect.png)
 
-**A log-log axis with decade ticks**, and **a histogram binned by Sturges' rule** — both from the
-capture harness rather than a box.
+**A log-log axis with decade ticks**, **a histogram binned by Sturges' rule**, and **one frame
+holding a line, an area and points** — all three from the capture harness rather than a box, and all
+three exactly the files `ChartGallery` writes, so re-running the command in
+[Verifying it](#verifying-it) overwrites them in place.
 
-![a log axis](assets/chart_primitive/gallery-log-scale.png)
+![a log axis with decade ticks, plotted from 1e+01 to 1e+06 against seconds from below 0.001 to just over 1](assets/chart_primitive/chart-log-scale-decades.png)
 
-![a histogram](assets/chart_primitive/gallery-histogram.png)
+![a histogram of about six hundred samples in eleven Sturges bins, bimodal, peaking near 0 and again near 3](assets/chart_primitive/chart-histogram-sturges.png)
+
+![one chart frame carrying three legended series: a blue filled envelope decaying from 1 to 0.2, an orange damped sine ringing inside it, and green sample points on the sine](assets/chart_primitive/chart-marks-lines-and-points.png)
 
 **Box plots and small multiples are gone from here on purpose** — Plotly does both, and does them
 better: `plotly.kt:130` already exposes `violin`, and subplots need no code here at all. Their figures
