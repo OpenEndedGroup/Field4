@@ -322,10 +322,14 @@ showPlaneGrid(
 ![Four panels of the same cloth at stiffness-times-iterations products of 6, 64, 320 and 960, drawn on one shared window so the rungs are comparable. At product 6 the sheet has stretched into a tall narrow web that fills the frame; at 64 it is a recognisable but slack cloth; at 320 and 960 it is a sheet with shallow festoons between the pins. Each caption gives the product and the worst strain reached during four hundred frames, with and without the curvature force.](assets/physics/tuning_ladder.png)
 
 Everything in those captions was measured by the code above them when this page was built. What the
-run says: **971 %** peak strain at a product of 6 — a web, not a cloth, and the reason it fills the
-frame is that it has stretched to ten times its rest size — then **196 %** at 64, **52 %** at 320,
-and **19 %** at 960, which is what the starting point ships. Each fourfold increase in the product
-roughly halves the strain, which is what a linear spring should do.
+run says: **971 %** peak strain at a product of 6 — one spring at more than ten times its rest
+length, which is why that panel is a tall web rather than a cloth — then **196 %** at 64, **52 %**
+at 320, and **19 %** at 960, which is what the starting point ships.
+
+Note that strain falls *more slowly* than the product rises: 160 times the product, between the
+first rung and the last, buys 51 times less strain. These are peaks over the whole run, reached while
+the sheet is still falling, so they are not the equilibrium sag — which is a good reason to measure
+the number in your own scene rather than to interpolate this table.
 
 The second half of each caption tests an obvious guess and refutes it. The curvature force does *not*
 buy strain headroom: turning it up to 100 leaves the floppiest rung a bit tighter (971 % → 738 %) and
@@ -419,7 +423,7 @@ showSignals(
 
 ![A line plot of the worst strain in the sheet over four hundred frames for three settings, on a base-ten logarithmic scale. Two traces run flat just below zero for the whole four hundred frames. The third leaves them at around frame eighty and climbs almost vertically off the top of the plot, ending part way across.](assets/physics/divergence.png)
 
-Two of those three settle and stay settled, flat at about 19 % strain for four hundred frames. The
+Two of those three settle and stay settled, flat at about 20 % strain for four hundred frames. The
 third leaves them at frame 83, and by frame 161 the coordinates are `NaN` — **78 frames**, or 1.3
 seconds at 60 fps, between "visibly wrong" and "gone". Once it is past 100 % it never comes back: the
 climb from 10⁰ to 10²⁰ takes about seventy frames and nothing in the solver arrests it.
