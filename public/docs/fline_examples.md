@@ -684,7 +684,9 @@ var FLine.pointSize: Double
 var FLine.Node.pointSize: Double
 ```
 
-`color` is RGBA in [sRGB](https://en.wikipedia.org/wiki/SRGB) (`vec(r,g,b,a)` with numbers between 0 and 1). Setting `stroked` to true draws the outline (the default), `filled` fills closed shapes (not the default), and `pointed` draws a dot at every node (useful for debugging or particle systems).
+`color` is RGBA in [sRGB](https://en.wikipedia.org/wiki/SRGB) (`vec(r,g,b,a)` with numbers between 0 and 1). Setting `stroked` to true draws the outline (the default), `filled` fills closed shapes (not the default), and `pointed` draws a dot at every node (useful for debugging, or for
+[particle systems](physics.md#the-debug-view-draws-what-the-solver-holds), whose debug view is built
+out of exactly this).
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/styling_color_stroked_filled_pointed.png" embed=true}
 :::static

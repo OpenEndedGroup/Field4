@@ -90,6 +90,8 @@ is force-based, so `stiffness * iterations` is the spring constant that decides 
 this sheet 60 x 16 settles at 11 % peak strain while 150 x 16 diverges to NaN. It is also the one
 `execute` transcript that *launches* rather than executes — a frame loop cannot run to completion —
 so CI launches it, advances 90 real runloop frames, and stops it.
+[Particles, Cloth & Constraints](physics.md) is the explainer behind it, and re-derives that ladder
+from scratch.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/cloth_simdverlet_start/metadata.edn)
 
 **shared_types_demo** — A `data class` every box can name. Box 1 calls `sharedTypes(...)` to compile
