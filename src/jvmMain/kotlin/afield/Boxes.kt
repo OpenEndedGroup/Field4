@@ -1040,6 +1040,38 @@ private class BoxJobList(private val box: Box) : AbstractMutableList<Job>() {
     }
 
     /**
+     * Remove one occurrence, under [lock], without going through `AbstractCollection`.
+     *
+     * Overriding this is a crash fix, not a tidy-up. `AbstractMutableList` inherits `remove(E)` from
+     * `java.util.AbstractCollection`, which walks `iterator()` and calls `it.remove()` on the match —
+     * and the iterator below routed its `remove()` back here. The two mutually recursed until the
+     * stack died. It only *looked* rare: a job that has already completed was pulled by
+     * [removeCompleted], and `AbstractCollection.remove` never reaches `it.remove()` for an element it
+     * cannot find, so the ordinary `inside.jobs.remove(job)` that `Phased`, [stopTrackedJobs],
+     * `ReturnValueRegistry` and every synth return value do was usually a no-op. Remove a job that is
+     * still in the list and it was a `StackOverflowError` — which is how it killed the docs runner's
+     * `running_and_stopping.mp4` capture on 2026-08-23.
+     */
+    override fun remove(element: Job): Boolean {
+        val removed = removeTracked(element)
+        if (removed) box.syncJobRunningState()
+        return removed
+    }
+
+    /**
+     * The one removal-by-value path, shared by [remove] and the iterator, so neither can fall back to
+     * `AbstractCollection`'s iterator-driven implementation again.
+     */
+    private fun removeTracked(element: Job): Boolean = synchronized(lock) {
+        val index = delegate.indexOfFirst { it === element || it == element }
+        if (index < 0) return@synchronized false
+        val old = delegate.removeAt(index)
+        if (old !in delegate) untrack(old)
+        modCount++
+        true
+    }
+
+    /**
      * Iterate a snapshot, and route `remove()` back through the locked path.
      *
      * Every *method* in this class takes [lock] and bumps `modCount`, which reads as thread-safe and is
@@ -1062,7 +1094,7 @@ private class BoxJobList(private val box: Box) : AbstractMutableList<Job>() {
         override fun next(): Job = snapshot[index++].also { last = it }
         override fun remove() {
             val target = checkNotNull(last) { "BoxJobList iterator: remove() before next()" }
-            this@BoxJobList.remove(target)
+            if (removeTracked(target)) box.syncJobRunningState()
             last = null
         }
     }

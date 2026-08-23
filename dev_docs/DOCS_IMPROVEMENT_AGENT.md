@@ -453,7 +453,7 @@ and leaves same-origin use — which is all of Field's own UI — untouched.
 ## Why it is still there
 
 One consumer, found by tracing rather than guessing.
-`offline-viewer.js:878#/api/import-offline-doc` POSTs to
+`src/commonMain/resources/offline-viewer.js:878#/api/import-offline-doc` POSTs to
 `${localBase}/api/import-offline-doc` to transfer a document into a running Field, and
 `OFFLINE_DEPLOYMENT.md:34#/api/import-offline-doc` documents exactly that. It is the only cross-origin
 `fetch` at a Field host in the whole tree; the viewer's other Field URLs are top-level

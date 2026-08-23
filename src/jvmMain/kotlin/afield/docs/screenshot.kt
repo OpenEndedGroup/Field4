@@ -61,8 +61,24 @@ private const val SIGNATURE_WIDTH = 128
 /** Per-cell grey difference that counts as a change, out of 255. */
 private const val SIGNATURE_CELL_TOLERANCE = 8
 
-/** Fraction of thumbnail cells that must change for a frame pair to count as moved. */
-private const val SIGNATURE_MOVED_FRACTION = 0.005
+/**
+ * Thumbnail cells that must change for a frame pair to count as moved.
+ *
+ * An absolute count, not a fraction of the frame, and that distinction is the whole point. As a
+ * fraction (0.5% of the thumbnail) this asked "how much of the picture changed", which scales with
+ * how much *empty space* surrounds the animation: `running_and_stopping.mp4` is a 15px disc and a
+ * one-tick-per-four-frames row inside a 1130x622 capture, and its moving pairs change 10-28 of 8960
+ * cells -- 0.1-0.3%, against a threshold of 45 cells. It scored 4 of 159 and was refused, while
+ * being frame-for-frame exactly the movie the page describes.
+ *
+ * Four cells is measured against both ends. Signal: the 93 moving pairs of that recording sit at a
+ * median of 11 cells. Noise: its 66 deliberately frozen tail pairs -- same encoder, same tolerance,
+ * a genuinely static picture -- scored 0 cells, every one of them. That is the floor this has to
+ * clear, and it is zero, because [SIGNATURE_CELL_TOLERANCE] on a box-averaged thumbnail has already
+ * discarded the encoder noise that made a byte comparison lie. The recordings this guard was built
+ * to catch repeat the *same picture*, so they score at that same zero and are still caught.
+ */
+private const val SIGNATURE_MOVED_CELLS = 4
 
 data class UniformEdgeTrimResult(
     val trimmed: Boolean,
@@ -1653,6 +1669,8 @@ private fun stableEditorVideoClip(page: Page, padding: Double): Rect? {
 private data class FrameCaptureGate(
     val ready: () -> Boolean,
     val resetAtFirstBoundary: suspend () -> Unit = {},
+    /** What [ready] is actually looking at, sampled for the readiness-timeout message. */
+    val describe: () -> String = { "" },
 )
 
 internal fun videoFrameCount(durationSec: Double, fps: Int): Int =
@@ -1870,12 +1888,18 @@ private fun videoCapturePreparation(
             reply = {}
         )
 
+        val launchedAtEpoch = target.captureLaunchEpoch()
         val ready: () -> Boolean = {
             val state = target.currentRunningStates["default"]
             state != null && state.watermark > stoppedGeneration && state.mode != "launching"
         }
         FrameCaptureGate(
             ready = ready,
+            describe = {
+                "epoch=${target.captureLaunchEpoch()} (launched at $launchedAtEpoch) " +
+                    "stoppedGeneration=$stoppedGeneration runGeneration=${target.runGeneration} " +
+                    "currentRunningStates=${target.currentRunningStates} jobs=${target.jobs.size}"
+            },
             resetAtFirstBoundary = {
                 // Stop/relaunch becomes observable to the browser asynchronously. Reset once more
                 // at the exact first active runloop boundary: the old launch can no longer publish,
@@ -1915,7 +1939,7 @@ internal fun assertVideoMoved(frames: List<ByteArray>, outputPath: Path) {
         for (cell in a.indices) {
             if (kotlin.math.abs(a[cell].toInt() - b[cell].toInt()) > SIGNATURE_CELL_TOLERANCE) delta += 1
         }
-        if (delta > a.size * SIGNATURE_MOVED_FRACTION) moved += 1
+        if (delta >= SIGNATURE_MOVED_CELLS) moved += 1
     }
     val floor = maxOf(2, ((signatures.size - 1) * MIN_VIDEO_MOVED_FRACTION).toInt())
     if (moved < floor) {
@@ -2137,9 +2161,14 @@ private suspend fun recordFrameSynchronousToMp4(
     val completed = CompletableDeferred<Unit>()
     val gate = AtomicReference(FrameCaptureGate(ready = { false }))
     var resetAtFirstBoundary = false
+    var gateHasOpened = false
     var visibleOutputSeen = visibleOutputUid == null
     val hookName = "docs-video-${UUID.randomUUID()}"
     val readyDeadline = AtomicReference(Long.MAX_VALUE)
+    // A single sample at the deadline says what the state ended up as, not what it passed through --
+    // and "never ran" and "ran, then stopped again" are the same final state. Keep the distinct
+    // readings in order instead; the trace is what turns a readiness timeout into a diagnosis.
+    val readinessTrace = mutableListOf<String>()
     val clockToken = AnimationClock.beginFrameIndexed(safeFps)
 
     val screenshotOptions = Page.ScreenshotOptions()
@@ -2171,7 +2200,20 @@ private suspend fun recordFrameSynchronousToMp4(
         installed.complete(Unit)
         while (frames.size < targetFrames && !completed.isCompleted) {
             val currentGate = gate.get()
-            if (currentGate.ready()) {
+            // The gate answers "has the relaunched value reached its first active frame?" — a *start*
+            // condition. Re-asking it every frame quietly turned it into a requirement that the target
+            // stay running for the whole clip, and a docs movie is entitled to outlive its animation:
+            // `running_and_stopping.mp4` exists precisely to show four and a half seconds of motion and
+            // then three and a half of frozen red. Its animation calls `end()` at frame 91 of 160, the
+            // gate shut, and the recorder reported the long-expired *readiness* deadline — "timed out
+            // waiting for the relaunched video target to reach its first active frame" about a target
+            // that had reached it 91 frames earlier. Latch it: readiness is decided once.
+            //
+            // A target that dies early therefore yields a clip that freezes early rather than an error.
+            // That is the right split: `assertVideoMoved` already refuses to publish a recording
+            // that barely moves, and it can tell a frozen tail from a frozen movie. This gate cannot.
+            if (gateHasOpened || currentGate.ready()) {
+                gateHasOpened = true
                 try {
                     if (!resetAtFirstBoundary) {
                         runBlocking { currentGate.resetAtFirstBoundary() }
@@ -2202,11 +2244,18 @@ private suspend fun recordFrameSynchronousToMp4(
                     completed.completeExceptionally(t)
                     break
                 }
-            } else if (System.nanoTime() > readyDeadline.get()) {
-                completed.completeExceptionally(
-                    IllegalStateException("Timed out waiting for relaunched video target to reach its first active frame")
-                )
-                break
+            } else {
+                currentGate.describe().takeIf { it.isNotBlank() && it != readinessTrace.lastOrNull() }
+                    ?.let { if (readinessTrace.size < 24) readinessTrace += it }
+                if (System.nanoTime() > readyDeadline.get()) {
+                    completed.completeExceptionally(
+                        IllegalStateException(
+                            "Timed out waiting for relaunched video target to reach its first active frame" +
+                                readinessTrace.joinToString("") { "\n    $it" }
+                        )
+                    )
+                    break
+                }
             }
             yield(Unit)
         }
