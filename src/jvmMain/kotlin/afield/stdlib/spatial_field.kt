@@ -26,9 +26,9 @@ import afield.graphics.polylineFrom
  *     [pointCloudFLine]. Each returns styled, drawable lines and nothing else — no `Box`, no
  *     output, so they are usable from a test or a renderer as readily as from a box.
  *  2. **[FLine] → a captioned figure.** [Box.showPlane] and [Box.showPlaneGrid] rasterise lines to
- *     inline SVG with `drawToSVG` and push a titled card, or a grid of them, to a box output
- *     channel — the fastest way to see a whole pipeline at once, and the 2D twin of
- *     `Box.showMeshGrid`. [planeFigureHtml] is the markup on its own, for when you want the string.
+ *     inline SVG with `drawToSVG` and push a titled card — live and pannable for one figure, frozen
+ *     for a grid of them — to a box output channel: the fastest way to see a whole pipeline at once,
+ *     and the 2D twin of `Box.showMeshGrid`. [planeFigureHtml] is the markup on its own.
  *
  * The figure helpers are AWT-free (Skia's SVG canvas, same as `Box.lines`), so they work headless,
  * including inside the docs build.

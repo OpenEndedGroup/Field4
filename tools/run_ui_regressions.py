@@ -98,6 +98,17 @@ val ring = fline {
     lineTo(vec(0.0, 0.0, 0.0))
 }
 val sites = pointCloudFLine(listOf(vec(0.0, 0.0), vec(120.0, 40.0), vec(60.0, 150.0)))
+
+// Twice, because a docs animation is `animate { showPlane(...) }` — a new title into the same
+// channel every frame. The viewer must update its chrome in place and not rebuild the shell, which
+// would re-bind the pointer handlers and start a second resize watcher per frame.
+showPlane(
+    listOf(ring, sites),
+    title = "first frame",
+    caption = "replaced by the next call",
+    width = 360,
+    height = 260,
+)
 showPlane(
     listOf(ring, sites),
     title = "show plane regression",
@@ -150,6 +161,8 @@ try {
   }
 
   const shellStyle = getComputedStyle(shell);
+  // One viewer for both frames: the second showPlane retitled this shell rather than making another.
+  const shellCount = document.querySelectorAll(".afield-lines-output-shell").length;
   const viewportBox = viewport.getBoundingClientRect();
   const opening = numbers(group.getAttribute("transform"));
   const result = {
@@ -161,6 +174,7 @@ try {
     cardBorderTop: shellStyle.borderTopWidth,
     cardHasBackdrop: shellStyle.backgroundImage !== "none" || shellStyle.backgroundColor !== "rgba(0, 0, 0, 0)",
     autoSizeMode: contentRoot ? contentRoot.dataset.afieldAutoSizeMode || "" : "",
+    shellCount,
     viewportWidth: Math.round(viewportBox.width),
     viewportHeight: Math.round(viewportBox.height),
     pathCount: group.querySelectorAll("path").length,
@@ -216,7 +230,8 @@ try {
     Math.abs(t[5]) < 0.51;
 
   result.errors = errors;
-  result.ok = result.title === "show plane regression" &&
+  result.ok = result.shellCount === 1 &&
+    result.title === "show plane regression" &&
     result.caption === "three sites, one closed ring" &&
     result.titleVisible &&
     result.captionVisible &&

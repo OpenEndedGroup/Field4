@@ -1222,7 +1222,11 @@ class SpatialGeometryTest {
         // The chrome travels as data, and the styles are the still card's own.
         assertTrue("data-afield-figure-title=\"delaunay\"" in html)
         assertTrue("data-afield-figure-caption=\"9 sites\"" in html)
-        val card = planeFigureHtml(listOf(pointCloudFLine(points)), width = 320, height = 240)
+        // The same figure as a still, so the palette can be compared rather than asserted twice.
+        val card = planeFigureHtml(
+            listOf(pointCloudFLine(points)),
+            title = "delaunay", caption = "9 sites", width = 320, height = 240,
+        )
         for (token in listOf("#0d1219", "#202b38", "#91a4ba", "#7f92a8", "width:320px")) {
             assertTrue(token in html, "the interactive chrome lost `$token`")
             assertTrue(token in card, "the still card lost `$token`")
