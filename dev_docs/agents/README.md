@@ -35,6 +35,7 @@ detailed reference it points into.
 | **Build a document from nothing** | [`OPERATION_TRANSCRIPT.md`](./OPERATION_TRANSCRIPT.md) | `create` + `connect` + `launch` on a `--scratch` doc |
 | **Save what you built as a document** | [`OPERATION_TRANSCRIPT.md`](./OPERATION_TRANSCRIPT.md#save) | the `save` op writes a reopenable `metadata.edn` |
 | **Drive native `afield.four` graphics** | [`OPERATION_TRANSCRIPT.md`](./OPERATION_TRANSCRIPT.md#worked-example-b--afieldfour-vulkan-renderer--compute--draw), [`transcripts/`](./transcripts/) | launch a renderer parent, connect children beneath it |
+| **Write `afield.four` graphics code** | [`canonical_graphics/LESSONS.md`](../../public/docs/assets/canonical_graphics/LESSONS.md), [`afield_four_graphics.md`](../../public/docs/afield_four_graphics.md) | ~33 worked lessons against a live renderer; adapt one rather than inventing a call sequence |
 | **Understand a macro a user saved** | [`OPERATION_TRANSCRIPT.md`](./OPERATION_TRANSCRIPT.md#reading-and-rewriting-a-users-saved-macros) | `macro list` / `macro read <name>` |
 | **Rewrite a macro for your own ends** | [`OPERATION_TRANSCRIPT.md`](./OPERATION_TRANSCRIPT.md#reading-and-rewriting-a-users-saved-macros) | edit the YAML, `macro write`, `macro run` |
 | **Copy-paste a working example** | [`transcripts/README.md`](./transcripts/README.md) | curated, runnable transcript corpus |

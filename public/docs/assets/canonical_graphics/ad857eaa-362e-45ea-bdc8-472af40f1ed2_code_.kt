@@ -31,8 +31,6 @@ m.something = {
     x += 0.01
     x.f
 }
-
-
 prop<FrameBufferGroup>(outputPositions) = outData
 
 m.x = N / 64

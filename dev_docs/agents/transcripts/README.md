@@ -74,6 +74,15 @@ If a graphics example reports `must pass in a value for context parameter afield
 
 For renderer boxes, keep `start(renderer::run)` as the final expression of the launched code. Field uses the returned `Frames` object as the running job; adding logging or setup after `start(...)` can leave a constructed renderer whose frame counter never advances.
 
+### Where the worked graphics examples are
+
+This corpus holds the two *halves* of the topology rule, not a library of graphics techniques. For the techniques — cameras, compute shaders and compute particles, texturing, glTF, render-to-texture, ping-pong buffers, blur kernels, shader `#include` and Lygia, printf and texture-probe debugging, a GPU radix sort, Slang, DLA — read the `canonical_graphics` corpus, a snapshot of a real Field document with ~33 lessons that ran against a live renderer:
+
+- `public/docs/assets/canonical_graphics/LESSONS.md` — the index: lesson name → Kotlin and shader files, the parent chain each lesson needs, and a reverse index from Field API symbol to the lessons that use it. Generated from the corpus and guarded, so it cannot drift from the boxes.
+- `public/docs/afield_four_graphics.md` — the same curriculum as prose, with captured native-window images.
+
+Those boxes are read-only reference: they are a saved document, not transcripts. Adapting one into a `create` + `connect` + `launch` transcript is the normal way to build a new graphics scene, and the parent chain recorded in the index is what the `connect` ops need to reproduce — several lessons are producer/consumer pairs (`5. RTT` renders into a texture that `5. draw rtt` samples), so connecting only to the renderer is not enough.
+
 ## Files
 
 - `hello_display.yaml`: smallest useful blank-canvas transcript; creates one box, displays HTML, and can be undone.

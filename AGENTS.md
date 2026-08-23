@@ -119,6 +119,7 @@ builds can corrupt shared Kotlin class output and incremental-compiler backups.
 - To inspect a **live variable's value at runtime**, use the MCP tool `field_debug_probe` (see [`dev_docs/agents/FIELD_MCP.md#runtime-debug-probe`](dev_docs/agents/FIELD_MCP.md#runtime-debug-probe)). It installs a JDWP event-thread breakpoint and samples a symbol at a `src/` file+line (source mode) or in a running box (box mode) — e.g. `{"file":"Server.kt","line":1758,"symbol":"now"}`. Only the hitting thread is paused while JDI reads the value, and it is resumed immediately; high-hit probes can still perturb that thread. Backdoor-launched Field enables the required JDWP port (5005) automatically; a bare `./gradlew runJvm` does not, and the probe says so with an actionable error.
 - For semantic document automation, prefer `OperationTranscript` macro YAML over one-off command chains. Reusable agent examples live in `dev_docs/agents/transcripts/`; write them into the current document with `macro write <name> --file <path>`, then run them with `macro run <name>`.
 - For `afield.four` graphics automation, treat renderer access as graph topology. Run `dev_docs/agents/transcripts/graphics_renderer_launch.yaml`, wait with `wait-native-renderer agent_graphics_context --frames 3`, create the example box, connect `agent_graphics_context -> example_box`, then run the example. If code starts coroutine work with `start(...)`, resolve `val renderer: Renderer = fromContext()` before `start(...)` and pass it into async helpers explicitly.
+- **Before writing `afield.four` graphics code, read the worked lessons.** `public/docs/assets/canonical_graphics/` is a snapshot of a real Field document holding ~33 lessons that run against a live renderer — cameras, compute shaders and compute particles, texturing, glTF, render-to-texture, ping-pong buffers, blur kernels, shader `#include` and Lygia, printf and texture-probe debugging, a GPU radix sort, Slang, and a DLA system. Every file there is named by box uid, so start from [`public/docs/assets/canonical_graphics/LESSONS.md`](public/docs/assets/canonical_graphics/LESSONS.md): it maps each lesson to its Kotlin and shader files, records the parent chain the lesson needs in order to run, and carries a reverse index from Field API symbol (`RenderToTexture`, `LoadedTexture`, `computeModuleHere`, `GpuRadixSort`, …) to the lessons that use it. Prefer adapting a lesson over inventing a call sequence. The prose walkthrough with captured images is [`public/docs/afield_four_graphics.md`](public/docs/afield_four_graphics.md).
 
 Minimum hello world:
 
@@ -529,6 +530,17 @@ The Vulkan stack lives under `src/jvmMain/kotlin/afield/four/` and is built on *
 Start here:
 - `src/jvmMain/kotlin/afield/four/Renderer.kt`: owns instance/device/queues/swapchain, runs frame loop, executes targets/modules.
 - `src/jvmMain/kotlin/afield/four/util/Options.kt`: global toggles (validation, VR enablement, vsync, Vulkan SDK hints).
+
+**To write box-level graphics code, read the worked lessons before the engine source.** The
+`afield.four` API is designed for live coding, so the box-facing surface (`moduleHere`, `Mesh`,
+`ComputeMesh`, `RenderToTexture`, `fromContext()`, `prop<>`) reads very differently from the
+Vulkan plumbing beneath it, and inferring usage from `Renderer.kt` tends to produce code that
+compiles against the engine but is not how a box is written.
+- `public/docs/assets/canonical_graphics/LESSONS.md` — index of ~33 worked lessons in
+  `public/docs/assets/canonical_graphics/`: lesson name → Kotlin and shader files, the parent
+  chain each needs, and a Field-API-symbol reverse index. Generated and guarded.
+- `public/docs/afield_four_graphics.md` — the same curriculum as prose, with captured
+  native-window images.
 
 Deeper structure is documented in:
 - `src/VULKAN_GRAPHICS_SYSTEM.md` (file-by-file map of `afield.four`)

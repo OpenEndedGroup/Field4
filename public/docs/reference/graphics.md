@@ -1785,7 +1785,7 @@ continuous snapshot reads.
 
 `src/jvmMain/kotlin/afield/stdlib/quantilewarp.kt`
 
-**Used in:** [Which of these signals actually depend on each other?](../statistics_examples.md)
+**Used in:** [Which of these signals actually depend on each other?](../statistics_examples.md), [afield.four Graphics](../afield_four_graphics.md)
 
 ### Top-level functions { #quantilewarp-kt-functions }
 
@@ -1938,7 +1938,7 @@ generation-guarded async reload all key off it.
 
 `src/jvmMain/kotlin/afield/stdlib/shaders.kt`
 
-**Used in:** [How Box Code Runs](../box_code_pipeline.md), [afield.four Graphics](../afield_four_graphics.md), [Field Probes — instrumenting shaders](../field_probes.md)
+**Used in:** [afield.four Graphics](../afield_four_graphics.md), [How Box Code Runs](../box_code_pipeline.md), [Field Probes — instrumenting shaders](../field_probes.md)
 
 ### Top-level functions { #shaders-kt-functions }
 

@@ -1,6 +1,29 @@
-# Field4 Workspace
+# Field4 Workspace — the `afield.four` graphics corpus
 
-Welcome to this Field4 workspace! This directory contains boxes (code units) that can be edited live while Field is running.
+This particular workspace is not a blank one. It is a snapshot of `canonicalGraphics`: the
+`afield.four` graphics curriculum, ~33 worked lessons that run against a live Vulkan renderer,
+from a first triangle through cameras, compute shaders, texturing, glTF, render-to-texture,
+ping-pong buffers, blur kernels, shader `#include`, printf and texture-probe debugging, a GPU
+radix sort, Slang, and a diffusion-limited-aggregation system.
+
+**If you are writing `afield.four` code, this is the reference corpus to read first.** Two
+entry points:
+
+- **[LESSONS.md](LESSONS.md)** — the index. Every lesson by name, the parent chain it needs in
+  order to run, its Kotlin and shader files, and a reverse index from Field API symbol
+  (`RenderToTexture`, `LoadedTexture`, `computeModuleHere`, `GpuRadixSort`, …) to the lessons
+  that demonstrate it. Generated, so it cannot drift from the boxes.
+- **[afield.four Graphics](../../afield_four_graphics.md)** — the prose walkthrough of the same
+  lessons, with captured native-window images.
+
+Every file here is named by box uid, which is why the index exists: `grep RenderToTexture` in
+this directory alone lands you in shader source with no idea which lesson it belongs to.
+
+These boxes are **read-only reference**. Field resolves a box's `Renderer` through graph
+topology, so to run one, copy its Kotlin and shader properties into a box of your own beneath a
+renderer parent — see the graphics topology rule in `dev_docs/agents/transcripts/README.md`.
+
+The rest of this file is the generic workspace guide, which applies to any Field workspace.
 
 ## For AI Agents Working Here
 
