@@ -110,7 +110,8 @@ object DerivedCountGuard {
     private val ATTACHED: Regex by lazy {
         val words = WORD_NUMERALS.keys.sortedByDescending { it.length }.joinToString("|")
         Regex(
-            """\b([0-9][0-9,_]*|$words)([*`_]{0,3})[ ]?<!--\s*count:([A-Za-z][A-Za-z0-9_]*)\s*-->""",
+            """\b((?:$words)-(?:$words)|[0-9][0-9,_]*|$words)([*`_]{0,3})[ ]?""" +
+                """<!--\s*count:([A-Za-z][A-Za-z0-9_]*)\s*-->""",
             RegexOption.IGNORE_CASE,
         )
     }
@@ -266,11 +267,88 @@ object DerivedCountGuard {
         return PageScan(pageName, marked, dangling, unmarked)
     }
 
-    /** `50` / `5,000` / `four` → 50 / 5000 / 4; null for a word [WORD_NUMERALS] does not know. */
+    /**
+     * `50` / `5,000` / `four` / `thirty-two` → 50 / 5000 / 4 / 32; null for anything else.
+     *
+     * The hyphenated form is composed rather than tabulated. `dev_docs/autodiff.md` — the page whose
+     * op count drifted twice, in opposite directions, and which says in as many words that nothing
+     * generates it — spells its count "thirty-two", and eighty table entries so that one sentence
+     * could keep its house style would have been a worse trade than eight lines of arithmetic.
+     */
     fun parseNumeral(literal: String): Int? {
         val cleaned = literal.replace(",", "").replace("_", "")
         cleaned.toIntOrNull()?.let { return it }
-        return WORD_NUMERALS[cleaned.lowercase()]
+        val lower = cleaned.lowercase()
+        WORD_NUMERALS[lower]?.let { return it }
+        if ('-' !in lower) return null
+        val (tens, units) = lower.split('-', limit = 2)
+        val t = WORD_NUMERALS[tens] ?: return null
+        val u = WORD_NUMERALS[units] ?: return null
+        // Only `tens-unit` composes: "twenty-one" is 21, "one-twenty" and "twenty-thirty" are not
+        // numbers anybody writes and must not silently become 21 and 50.
+        if (t < 20 || t % 10 != 0 || u !in 1..9) return null
+        return t + u
+    }
+
+    /**
+     * The markdown section containing [line]: the nearest heading at or above it, down to the next
+     * heading of the same or higher level.
+     *
+     * Section scoping is what makes [codeSpanWords] mean anything. Measured 2026-08-23: with the
+     * whole page in scope, deleting `dev_docs/autodiff.md`'s entire *angle family* table row left the
+     * members check **green**, because `atan`, `atan2` and `hypot` also appear in the reverse-mode op
+     * vocabulary sixty lines higher up, in a paragraph about a different vocabulary entirely. A check
+     * that a real deletion cannot fail is not a check. The list has to be *next to* the count.
+     */
+    fun sectionBounds(pageFile: File, line: Int): IntRange {
+        val lines = pageFile.readLines()
+        val heading = Regex("""^(#{1,6})\s""")
+        var start = 0
+        var level = 1
+        for (i in (line - 1).coerceIn(0, lines.size - 1) downTo 0) {
+            val m = heading.find(lines[i]) ?: continue
+            start = i
+            level = m.groupValues[1].length
+            break
+        }
+        var end = lines.size - 1
+        for (i in start + 1 until lines.size) {
+            val m = heading.find(lines[i]) ?: continue
+            if (m.groupValues[1].length <= level) { end = i - 1; break }
+        }
+        return start..end
+    }
+
+    /**
+     * Every whole word that appears inside a code span or fenced block on [pageFile], optionally
+     * restricted to the 0-based line range [within].
+     *
+     * This is how a derivation asks *"is every member of my population actually named beside the
+     * number?"* — the check `SmallLanguageAnatomyTest` writes by hand as `` "`$it`" in page ``.
+     * Restricted to code because the alternative is unusable: the ops on `dev_docs/autodiff.md` are
+     * called `add`, `over`, `abs` and `shift`, and a whole-page word search would find every one of
+     * them in ordinary English prose and report a table with rows missing as complete.
+     *
+     * It remains the weakest check in the set, and honestly so: within its section, a name in *any*
+     * code span counts as named — a citation anchor would do. It catches the case that matters (an op
+     * exists in the code and appears nowhere near the count that claims to cover it).
+     */
+    fun codeSpanWords(pageFile: File, within: IntRange? = null): Set<String> {
+        val original = pageFile.readLines()
+        val stripped = stripCode(pageFile.readText())
+        val range = within ?: original.indices
+        val code = buildString {
+            for (i in range) {
+                if (i !in original.indices) continue
+                val o = original[i]
+                val b = stripped.getOrElse(i) { o }
+                // Whatever stripCode blanked is exactly the code; recover it by difference, character
+                // by character, which is why stripCode is position-preserving.
+                o.forEachIndexed { j, c -> append(if (b.getOrNull(j) == c) ' ' else c) }
+                append(' ')
+            }
+        }
+        return Regex("""[A-Za-z_][A-Za-z0-9_]*""").findAll(code).map { it.value }.toSet()
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -297,6 +375,10 @@ object DerivedCountGuard {
      *   deletion and wants a doc edit; a shrunken population *without* them is a broken derivation and
      *   wants a code fix. The messages have to say which, or a red build teaches nothing.
      * @param derive repo root → the population.
+     * @param membersNamedOnPage when true, every member must also appear inside a code span on
+     *   [page] ([codeSpanWords]). This is the *"and the table beside the number lists them"* half,
+     *   and it exists because `dev_docs/autodiff.md` records the count and the table drifting apart
+     *   **twice, in opposite directions**: a count-only guard would have caught neither.
      */
     data class Derivation(
         val key: String,
@@ -305,6 +387,7 @@ object DerivedCountGuard {
         val floor: Int,
         val landmarks: Set<String>,
         val derive: (File) -> Set<String>,
+        val membersNamedOnPage: Boolean = false,
     )
 
     /** Kotlin sources under [root], excluding foreign checkouts, for a derivation that scrapes code. */

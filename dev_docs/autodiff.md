@@ -108,14 +108,16 @@ of needing a special case.
 `node.children` in order, firing on any node carrying `numbers["value"]`), so index *i* here is the
 same leaf as index *i* in `extractParameters()`.
 
-`FnAutoDiff.differentiableOps` is a deliberate **subset** — thirty-two of `OpRegistry`'s 124
-canonical ops, which `FnOpCoverageTest` prints as **25.8%** rather than asking you to trust it:
+`FnAutoDiff.differentiableOps` is a deliberate **subset** — thirty-five<!--count:differentiableFnOps-->
+of `OpRegistry`'s 127<!--count:canonicalFnOps--> canonical ops, which `FnOpCoverageTest` prints as
+**27.6%** rather than asking you to trust it:
 
 | group | ops |
 | --- | --- |
 | leaves and label-only wrappers | `const param identity name over` |
 | pointwise arithmetic | `add subtract multiply divide` |
 | smooth oscillators | `sin cos` |
+| the angle family | `atan atan2 hypot` |
 | value transforms | `scaleY offsetY pow log exp clamp softClip abs flip` |
 | x-domain transforms | `shift scaleX warp` |
 | shapes and windows | `gaussian ramp remap smoothstep hannWindow hammingWindow` |
@@ -130,9 +132,18 @@ visibility gates, hold tracks and looped clocks lower exactly instead of being r
 
 (This said "twenty-five ops" until 2026-07-31 while the table below it already listed twenty-eight,
 and "thirty-one of 123 / 25.2%" until 2026-08-07 while the table was missing `floor` — the hand-kept
-count and the hand-kept table have now drifted apart twice, in opposite directions. Nothing generates
-this page: `./gradlew jvmTest --tests afield.stdlib.FnOpCoverageTest --rerun` prints the authoritative
-`OP COVERAGE:` line, and that is what to check **both** the count and the table against.)
+count and the hand-kept table drifted apart twice, in opposite directions. It drifted a **third** time
+and was found by machine rather than by eye: the angle family — `atan`, `atan2`, `hypot`
+(`autodiff_formula.kt:305#put("atan", FnExpr.Atan`) — landed on 2026-08-19 in `faa55dd56`, and this
+page was still saying "thirty-two of 124 / 25.8%" four days later. Both numbers above are now
+pinned to the code by the `<!--count:…-->` markers beside them
+(`ProseNumeralContractTest.kt:291#fun everyMarkedNumeralMatchesItsDerivation`), and — because on both
+of those occasions the count and the table were each internally consistent with *different* answers —
+so is the table: every op in `differentiableOps` must be named on this page
+(`ProseNumeralContractTest.kt#fun everyMemberOfANamedPopulationAppearsOnItsPage`). The percentage is
+still hand-kept and is still unchecked; `./gradlew jvmTest --tests afield.stdlib.FnOpCoverageTest
+--rerun` prints the authoritative `OP COVERAGE:` line. See
+`citation_contracts.md` under *Pinning a number written in prose*.)
 
 Not covered — and honestly reported by name by `unsupportedOps` — are the piecewise oscillators
 (`saw`, `triangle`, `square`, `pulseTrain`), everything table- or data-backed (`piecewise`,

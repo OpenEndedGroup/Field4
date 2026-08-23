@@ -69,8 +69,8 @@ class ProseNumeralContractTest {
         /**
          * Floor on the number of marked numerals in the corpus.
          *
-         * Measured 2026-08-23, on the day the mechanism landed: **5** markers across 2 guarded pages,
-         * against an unmarked remainder in the hundreds. Floored at 4 rather than pinned at 5,
+         * Measured 2026-08-23, on the day the mechanism landed: **7** markers across 3 guarded pages,
+         * against an unmarked remainder in the hundreds. Floored at 6 rather than pinned at 7,
          * because adding a marker should never need a second edit here and dropping below the
          * founding set should be a decision somebody makes on purpose.
          *
@@ -79,7 +79,7 @@ class ProseNumeralContractTest {
          * that deleting every marker cannot turn this class into six green ticks over nothing, which
          * is precisely how [CitationContractTest.MIN_ABBREVIATED_CITATIONS] earns its place.
          */
-        const val MIN_MARKED_NUMERALS = 4
+        const val MIN_MARKED_NUMERALS = 6
 
         /**
          * How many unmarked numerals to name in the census before the output stops being readable.
@@ -227,6 +227,42 @@ class ProseNumeralContractTest {
                 Regex(""""(afield\.[A-Za-z0-9_.]+)"""").findAll(body).map { it.groupValues[1] }.toSortedSet()
             },
         ),
+        DerivedCountGuard.Derivation(
+            key = "differentiableFnOps",
+            page = "dev_docs/autodiff.md",
+            what = "`Fn` ops with an exact derivative",
+            // 32 on 2026-08-23. Floored at 20: this page's whole argument is that the differentiable
+            // subset is large enough to be worth having, and the ops table below the number would
+            // need rewriting long before it reached twenty.
+            floor = 20,
+            // Lower-case, because `OpRegistry` canonicalises that way while the page writes
+            // `hannWindow` in its house style. The mismatch is real and is handled by comparing
+            // case-insensitively in everyMemberOfANamedPopulationAppearsOnItsPage, not by pretending
+            // it is not there.
+            landmarks = setOf("floor", "add", "gaussian", "atan2"),
+            derive = { afield.stdlib.FnAutoDiff.differentiableOps.toSortedSet() },
+            // The reason this derivation exists at all. `dev_docs/autodiff.md` says of itself:
+            // *"This said 'twenty-five ops' until 2026-07-31 while the table below it already listed
+            // twenty-eight, and 'thirty-one of 123' until 2026-08-07 while the table was missing
+            // `floor` — the hand-kept count and the hand-kept table have now drifted apart twice, in
+            // opposite directions."* A guard on the count alone would have caught neither drift,
+            // because in both cases the count and the table were each internally consistent.
+            membersNamedOnPage = true,
+        ),
+        DerivedCountGuard.Derivation(
+            key = "canonicalFnOps",
+            page = "dev_docs/autodiff.md",
+            what = "canonical ops in `OpRegistry`, aliases resolved",
+            // 124 on 2026-08-23, and the denominator of the coverage fraction the page prints. Read
+            // through the same canonicalisation FnOpCoverageTest uses, so the two cannot disagree.
+            floor = 80,
+            landmarks = setOf("floor", "sign", "quantize"),
+            derive = {
+                afield.stdlib.OpRegistry.knownOps
+                    .map { afield.stdlib.OpRegistry.canonical(it)?.lowercase() ?: it.lowercase() }
+                    .toSortedSet()
+            },
+        ),
     )
 
     private fun derivationsByKey() = derivations.associateBy { it.key }
@@ -371,6 +407,47 @@ class ProseNumeralContractTest {
             }
         }
         assertTrue(problems.isEmpty(), "derived populations are not what they claim:\n" + problems.joinToString("\n"))
+    }
+
+    /**
+     * The other half of a derived count: **the list beside it.**
+     *
+     * `dev_docs/autodiff.md` is the case that argues for this, in its own words — the count said
+     * "twenty-five" while the table listed twenty-eight, and later "thirty-one" while the table was
+     * missing `floor`. Both times the count was internally consistent and both times the table was
+     * too; they were consistent with *different* answers. A guard on the numeral alone would have
+     * passed on both days.
+     *
+     * Only for derivations that opt in with [DerivedCountGuard.Derivation.membersNamedOnPage], and
+     * only against code spans — see [DerivedCountGuard.codeSpanWords] for why a whole-page word
+     * search is unusable here and for the residual weakness this keeps.
+     */
+    @Test
+    fun everyMemberOfANamedPopulationAppearsOnItsPage() {
+        val marked = allMarked().groupBy { it.key }
+        val problems = derivations.filter { it.membersNamedOnPage }.mapNotNull { d ->
+            val f = pageFile(d.page)
+            // Scoped to the section the number is stated in, not to the whole page. With the page in
+            // scope this check was demonstrably unable to fail — see DerivedCountGuard.sectionBounds
+            // for the measurement that says so.
+            val scope = marked[d.key].orEmpty().map { DerivedCountGuard.sectionBounds(f, it.pageLine) }
+            // Case-insensitive, deliberately. `OpRegistry` canonicalises op names to lower case; the
+            // page writes `hannWindow` and `amplitudeMod`, which is the right way for a page to
+            // spell a Kotlin identifier. A case-sensitive comparison would report eight false
+            // absences and teach a reader to distrust the message.
+            val named = scope.flatMap { DerivedCountGuard.codeSpanWords(f, it) }
+                .map { it.lowercase() }.toSet()
+            val absent = d.derive(root).filterNot { it.lowercase() in named }.sorted()
+            if (absent.isEmpty()) null
+            else "  count:${d.key} — ${d.page} states the number but, in the same section, does not " +
+                "name ${absent.size} member(s) of ${d.what}: $absent"
+        }
+        assertTrue(
+            problems.isEmpty(),
+            "a page states a derived count without listing what it counted — the count and the list " +
+                "can then drift apart in opposite directions, which is what happened twice on " +
+                "dev_docs/autodiff.md:\n" + problems.joinToString("\n")
+        )
     }
 
     /**
@@ -659,6 +736,66 @@ class ProseNumeralContractTest {
             1, unknownWord.dangling.size,
             "…and must be reported as a misplaced marker, with the word list in the message"
         )
+    }
+
+    /**
+     * Hyphenated numerals, and the compositions that are not numerals.
+     *
+     * `dev_docs/autodiff.md` writes "thirty-two", so the parser composes tens and units rather than
+     * tabulating eighty more words. The refusals matter as much: "one-twenty" and "twenty-thirty" are
+     * not numbers anybody writes, and a parser that quietly returned 21 and 50 for them would be
+     * inventing agreement.
+     */
+    @Test
+    fun aHyphenatedNumeralComposesAndTheNonNumeralsDoNot() {
+        assertEquals(32, DerivedCountGuard.parseNumeral("thirty-two"))
+        assertEquals(99, DerivedCountGuard.parseNumeral("ninety-nine"))
+        assertEquals(21, DerivedCountGuard.parseNumeral("Twenty-One"), "case must not matter")
+        assertEquals(null, DerivedCountGuard.parseNumeral("one-twenty"), "units-tens is not a numeral")
+        assertEquals(null, DerivedCountGuard.parseNumeral("twenty-thirty"), "tens-tens is not a numeral")
+        assertEquals(null, DerivedCountGuard.parseNumeral("ten-two"), "ten is not a tens prefix")
+        assertEquals(null, DerivedCountGuard.parseNumeral("thirty-zero"), "there is no thirty-zero")
+    }
+
+    /**
+     * Section scoping, which is what makes [everyMemberOfANamedPopulationAppearsOnItsPage] able to
+     * fail at all.
+     *
+     * Measured on the real page before this existed: deleting `dev_docs/autodiff.md`'s whole *angle
+     * family* table row left the members check green, because `atan`, `atan2` and `hypot` also appear
+     * sixty lines higher in the reverse-mode op vocabulary — a different vocabulary, in a different
+     * section, in a paragraph that is not the list the count refers to.
+     */
+    @Test
+    fun aMembersListMustBeInTheSameSectionAsItsCount() {
+        val tmp = File.createTempFile("prose-section-", ".md")
+        try {
+            tmp.writeText(
+                """
+                # Title
+                ## Elsewhere
+                A different vocabulary: `atan hypot`.
+                ## The count
+                Thirty-two of them:
+                | group | ops |
+                | --- | --- |
+                | pointwise | `add subtract` |
+                ## After
+                `neverSeen`
+                """.trimIndent() + "\n"
+            )
+            // Line 5 (1-based) is inside "## The count".
+            val bounds = DerivedCountGuard.sectionBounds(tmp, 5)
+            val words = DerivedCountGuard.codeSpanWords(tmp, bounds)
+            assertTrue("add" in words, "the section's own list must be visible: $words")
+            assertTrue(
+                "atan" !in words && "hypot" !in words,
+                "a code span in a *different* section must not satisfy the check: $words"
+            )
+            assertTrue("neverSeen" !in words, "nor must one in the section after: $words")
+        } finally {
+            tmp.delete()
+        }
     }
 
     /**
