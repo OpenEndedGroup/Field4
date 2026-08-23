@@ -365,4 +365,66 @@ class SimdVerletTearingTest {
         assertEquals(torn, tear.brokenTotal, "a detached tearing pass must stop tearing")
         assertTrue("${a.name}.tearing" !in sim.constraintEdits, "and unregister itself")
     }
+
+    /**
+     * The whole world layer in one scene, and the claim the demo document makes about it.
+     *
+     * `dev_docs/agents/demos/simdverlet_world/`'s fourth box is a sheet with a weighted rope tied
+     * to it, a sphere and a floor under it, wind across it and tearing on it, and its comment tells
+     * the reader what moving one named knob will do. That sentence is a promise, so it is a test:
+     * the same scene, the same numbers, the two ends of the claim asserted.
+     */
+    @Test
+    fun theWholeWorldLayerInOneSceneBehavesAsTheDemoSaysItWill() {
+        class Row(val threshold: Float, val torn: Int, val contacts: Int)
+
+        fun run(threshold: Float): Row {
+            val sim = SimdVerlet(SimdVerlet.State3.empty())
+            val cloth = sim.addCloth(
+                width = 20, height = 12, spacing = 0.22f, stiffness = 60f, curvatureStrength = 0f,
+                position = { c, r -> vec(c * 0.22f, r * 0.22f, 0f) },
+                pinned = { _, r -> r == 0 }
+            )
+            val rope = sim.addStrand(
+                count = 16, spacing = 0.16f, stiffness = 150f, bendStiffness = 0.2f,
+                position = { n -> vec(10 * 0.22f, 11 * 0.22f + 0.16f * (n + 1), 0f) }
+            )
+            rope.attachTo(cloth[10, 11], node = 0)
+            sim.state.invMass!![rope[15]] = 1f / 24f
+            val world = sim.addColliders(
+                SphereCollider(1.1f, 4.6f, 0f, radius = 0.7f).also { it.friction = 0.6f },
+                // A room, not a floor: a torn-free piece under a steady wind leaves the frame and
+                // never comes back, which is fine for 900 frames and useless for a demo somebody
+                // leaves running. Measured: at frame 17654 the live document's picture was empty
+                // while the solver still held 443 edges.
+                BoxCollider(-0.9f, -0.4f, -1.6f, 7.4f, 6.4f, 1.6f, inside = true)
+                    .also { it.friction = 0.9f }
+            )
+            sim.addWind(velocityX = 3f, drag = 0.25f, turbulence = 0.8f, seed = 5)
+            val tear = sim.addTearing(threshold = threshold, maxBreaksPerStep = 2)
+            repeat(900) { cloth.step(dt = 1f / 60f, damping = 0.99f, gravity = 3f, iterations = 16) }
+            assertTrue(
+                (0 until sim.size).all { sim.state.y[it].isFinite() },
+                "threshold $threshold: five subsystems in one simulation must not diverge"
+            )
+            return Row(threshold, tear.brokenTotal, world.contacts)
+        }
+
+        val rows = listOf(0.15f, 0.25f, 0.40f, 0.60f).map(::run)
+        println("20 x 12 sheet + a 16-node rope with a mass-24 tip + a sphere + a floor + gusty wind, 900 frames")
+        println("  tearThreshold   edges torn   collider contacts in the last frame")
+        for (r in rows) println("  %13.2f   %10d   %34d".format(r.threshold, r.torn, r.contacts))
+
+        for (n in 1 until rows.size) {
+            assertTrue(
+                rows[n].torn < rows[n - 1].torn,
+                "the demo's knob must be monotone or its comment is a lie: ${rows.map { it.torn }}"
+            )
+        }
+        assertTrue(rows[0].torn > 100, "at 0.15 the sheet must shred, ${rows[0].torn} edges")
+        assertEquals(0, rows[3].torn, "at 0.60 it must hold, ${rows[3].torn} edges")
+        // And the second half of the promise: intact, the sheet never reaches what is under it.
+        assertEquals(0, rows[3].contacts, "an intact sheet must hang clear of the sphere and floor")
+        assertTrue(rows[0].contacts > 50, "a shredded one must land on them, ${rows[0].contacts} contacts")
+    }
 }
