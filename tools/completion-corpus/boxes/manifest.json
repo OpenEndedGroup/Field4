@@ -25,6 +25,8 @@
   {"doc": "audio_ai_analysis", "box": "analysis_guide", "codeSha256": "cfa93d9d19c245c6", "codeLines": 10, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "audio_ai_analysis", "box": "analysis_visualizer_gallery", "codeSha256": "4d938eeec8145ef7", "codeLines": 54, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "audio_ai_codec", "box": "encodec_reconstruction_microscope", "codeSha256": "5b206f81dfeba9b3", "codeLines": 27, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "audio_ai_corpus_microscope", "box": "corpus_microscope_guide", "codeSha256": "9b8e3ea5d70acec6", "codeLines": 10, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "audio_ai_corpus_microscope", "box": "index_and_explore_corpus", "codeSha256": "523bd2f6707ca539", "codeLines": 60, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "audio_ai_gesture_board", "box": "draw_the_gesture", "codeSha256": "0f4214b396f9f0c3", "codeLines": 23, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "audio_ai_gesture_board", "box": "generate_and_rank", "codeSha256": "8d843de02dd0cc56", "codeLines": 26, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "audio_render_analysis", "box": "analyse_dough_render", "codeSha256": "44b4a1aecc17fff5", "codeLines": 28, "receivers": ["afield.Box"], "preamble": ""},

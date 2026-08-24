@@ -788,6 +788,43 @@ data class AnalysisPreview(
     val analysis: JsonObject = JsonObject(emptyMap()),
 )
 
+/** One immutable, source-adjacent window in the indexed audio corpus. */
+@Serializable
+data class CorpusSegment(
+    val id: String,
+    @SerialName("asset_id") val assetId: String,
+    @SerialName("start_seconds") val startSeconds: Double,
+    @SerialName("duration_seconds") val durationSeconds: Double,
+    @SerialName("scale_seconds") val scaleSeconds: Double,
+    @SerialName("previous_segment_id") val previousSegmentId: String? = null,
+    @SerialName("next_segment_id") val nextSegmentId: String? = null,
+    @SerialName("descriptor_representation_id") val descriptorRepresentationId: String? = null,
+    val metadata: JsonObject = JsonObject(emptyMap()),
+)
+
+/** A retrieved corpus window together with its grouped distance and playable representations. */
+@Serializable
+data class CorpusNeighbour(
+    val segment: CorpusSegment,
+    val distance: Double,
+    @SerialName("group_distances") val groupDistances: Map<String, Double> = emptyMap(),
+    val audio: AssetRepresentation,
+    @SerialName("splice_preview") val splicePreview: AssetRepresentation? = null,
+)
+
+/** Bounded metadata for a corpus index or nearest-neighbour result. */
+@Serializable
+data class CorpusPreview(
+    val operation: String,
+    val query: AssetRegion,
+    @SerialName("scale_seconds") val scaleSeconds: Double? = null,
+    @SerialName("indexed_segment_count") val indexedSegmentCount: Int = 0,
+    val segments: List<CorpusSegment> = emptyList(),
+    val neighbours: List<CorpusNeighbour> = emptyList(),
+    val weights: Map<String, Double> = emptyMap(),
+    val summary: JsonObject = JsonObject(emptyMap()),
+)
+
 /**
  * One frame of a job's live narration, delivered over the WebSocket `FieldAudioClient.watch` opens.
  *

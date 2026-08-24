@@ -12,6 +12,7 @@ weights, and performs no inference.
 | --- | --- | --- | --- |
 | `GET` | `/health` | `-` | `-` |
 | `GET` | `/v1/analysis-results/{result_id}` | `-` | `AnalysisResult` |
+| `GET` | `/v1/analysis-results/{result_id}/corpus` | `-` | `CorpusPreview` |
 | `GET` | `/v1/analysis-results/{result_id}/preview` | `-` | `-` |
 | `POST` | `/v1/assets/import` | `Body` | `AudioAsset` |
 | `GET` | `/v1/assets/lookup` | `-` | `AudioAsset` |
@@ -44,6 +45,9 @@ Jobs also stream `ProgressEvent` objects over
 | `CandidateJudgement` | - |
 | `CandidateSet` | `id`, `operation_id`, `request_hash`, `candidates`, `created_at` |
 | `CodecReconstructionResult` | `id`, `operation_id`, `request_hash`, `source`, `model_input`, `tokens`, `reconstruction_native`, `reconstruction_proxy`, `metrics`, `codec`, `created_at` |
+| `CorpusNeighbour` | `segment`, `distance`, `audio` |
+| `CorpusPreview` | `operation`, `query` |
+| `CorpusSegment` | `id`, `asset_id`, `start_seconds`, `duration_seconds`, `scale_seconds` |
 | `ErrorCode` | - |
 | `GestureBinding` | `name`, `kind`, `delivery`, `target`, `explanation` |
 | `GestureBoard` | `duration_seconds` |

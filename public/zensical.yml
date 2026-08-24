@@ -111,6 +111,7 @@ nav:
         - Faust: faust.md
         - Audio AI Gesture Board: audio_ai_gesture_board.md
         - Beat and Pitch Analysis: audio_ai_analysis.md
+        - Corpus Microscope: audio_ai_corpus_microscope.md
         - Render Field Music, Then Analyse It: audio_render_analysis.md
         - EnCodec Reconstruction Microscope: audio_ai_codec.md
         - Colors Examples: colors_examples.md

@@ -78,5 +78,7 @@ parameter sweeps and candidate comparison around it. The complete
 progress, cached result retrieval and synchronized librosa/pYIN/Basic Pitch views without hiding
 the job boundary.
 
-Continue with the [EnCodec reconstruction microscope](audio_ai_codec.md) and the
+Move from analysis into source-derived navigation with the
+[corpus microscope](audio_ai_corpus_microscope.md), then continue with the
+[EnCodec reconstruction microscope](audio_ai_codec.md) and the
 [recorded-audio visualizers](visualizers.md#recorded-audio-waveform-player-playhead-and-navigation).

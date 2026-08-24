@@ -40,8 +40,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 72 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
-not in the same way, and the difference is worth knowing before you trust one. 53 of them are
+All 73 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+not in the same way, and the difference is worth knowing before you trust one. 54 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
 error-kind output line. (Almost always that is every box in the file. A transcript may deliberately
@@ -847,6 +847,13 @@ confidence, monophonic F0, voicing and polyphonic notes on synchronized timeline
 boxes are model-free and remain runnable without the analysis worker.
 Walkthrough: [Beat and pitch analysis](audio_ai_analysis.md).
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/audio_ai_analysis/metadata.edn)
+
+**audio_ai_corpus_microscope** — Resolve Nancy and Final Out at Candlestick Park, submit and monitor
+multi-scale segmentation and grouped descriptor jobs, then use a six-second Nancy window to retrieve
+related source windows. The resulting board aligns playheads and hover cursors in relative time,
+shows each descriptor-group distance, and provides an automatic query-to-neighbour splice audition.
+Walkthrough: [Corpus microscope: from recordings to related windows](audio_ai_corpus_microscope.md).
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/audio_ai_corpus_microscope/metadata.edn)
 
 
 ## External-service live-coding scenes

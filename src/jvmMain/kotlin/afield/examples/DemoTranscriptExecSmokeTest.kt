@@ -167,6 +167,9 @@ object DemoTranscriptExecSmokeTest {
         // The guide and synchronized preview gallery use deterministic embedded data. The third
         // box contains the complete service-backed analysis workflow but remains inert in CI.
         "audio_ai_analysis",
+        // The guide and durable monitor run headless. The second box contains the complete
+        // Librosa-backed indexing and retrieval workflow, and remains inert until run by a user.
+        "audio_ai_corpus_microscope",
         // Six independent pure-CPU WFC boxes; nothing opens a Window or a Renderer.
         "wfc_worked_example",
         // Five independent pure-CPU plane-geometry boxes; showPlaneGrid is drawToSVG -> display,

@@ -1136,6 +1136,23 @@ The same visualizer can begin with sound generated inside Field. `renderPatWav`,
 lane on one sync group. The [render-to-analysis walkthrough](audio_render_analysis.md) and
 `audio_render_analysis` transcript show all five paths through submission and progress monitoring.
 
+### Corpus neighbour microscope
+
+`corpusMicroscopeHtml(preview, queryAudio)` composes the same general `AudioVisualizer` into a
+source-relative A/B board. Each neighbour retains its real asset and source timestamp, but every
+player uses `syncOffsetSeconds = -segment.startSeconds`; shared time zero is therefore the start of
+the selected window even when two windows come from different recordings. Hover, zoom, seek and
+playhead callbacks remain ordinary `field-time-*` events.
+
+The board adds no waveform transport of its own. It supplies exact ranges, grouped distance bars,
+and the immutable query-to-neighbour splice preview returned by Field Audio. That makes it useful as
+a general pattern for comparing aligned excerpts: produce a `CorpusPreview`, choose the query WAV
+representation, and let the range-aware player request only the visible envelopes.
+
+The [corpus microscope walkthrough](audio_ai_corpus_microscope.md) and
+`audio_ai_corpus_microscope` transcript show the complete index → submit → monitor → query →
+visualize path.
+
 ### Waveform-summary endpoint contract
 
 `AudioVisualizer` is not coupled to Field Audio. Any HTTP service can provide `waveformUrl`. The

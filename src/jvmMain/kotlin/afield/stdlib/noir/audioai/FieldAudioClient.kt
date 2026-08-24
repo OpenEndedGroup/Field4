@@ -349,6 +349,13 @@ class FieldAudioClient(
         )
     }
 
+    /** Fetch bounded segment/neighbour metadata and playable handles for a corpus analysis result. */
+    fun corpusPreview(id: String): CompletableFuture<CorpusPreview> =
+        send(
+            HttpRequest.newBuilder(resolve("/v1/analysis-results/$id/corpus")).GET().build(),
+            CorpusPreview.serializer(),
+        )
+
     /**
      * Write a rating, selection flag and note back onto one candidate.
      *
