@@ -1192,7 +1192,20 @@ class KotlinExecution : BoxExecution {
                         }
                     }
                     evaluatedAny = true
-                    evaluateInterleavedBatchLaunch(request, reply)
+                    // One box throwing out of its launch (a macro expansion that fails outright, say)
+                    // used to abandon the rest of the chord — and every abandoned box kept the
+                    // "launching" annotation `prepareBatchLaunchRequests` had already sent for it,
+                    // stripy forever. Report it against that box and carry on down the batch.
+                    try {
+                        evaluateInterleavedBatchLaunch(request, reply)
+                    } catch (t: Throwable) {
+                        if (t is CancellationException) throw t
+                        lprintln(
+                            "error,execution",
+                            "batch launch of box ${request.box.id} threw ${t.javaClass.name}: ${t.message}"
+                        )
+                        lprintln("error,execution", t.stackTraceToString())
+                    }
                 }
             }
         }
@@ -1207,166 +1220,207 @@ class KotlinExecution : BoxExecution {
             reply: (Message) -> Unit
         ) {
             val box = request.box
-            clearPendingLaunch(request)
-            if (!box.isLaunchEpochCurrent(request.launchEpoch)) return
 
-            Box.withBoxContext(box) {
-                box.resetStdlibRandom()
-                resetLaunchSetupState(box)
-                configureOutputProxies(box, reply, request.originSession)
-                // Drop any stale pinned compile error up front; reportCompileDiagnostics re-pins on failure.
-                PinnedConsole.clearError(box.id)
+            // Hold the "launching" marker (the stripy annotation `prepareBatchLaunchRequests` sends
+            // for every box in the batch) until this box's own work is done and its launch state
+            // takes over. This mirrors the single-box path, where `launchAll`'s `finishedHandler`
+            // clears the pending marker in `executeInBox`'s `finally` -- i.e. after compile+eval.
+            // Clearing it up front, as this used to, meant the FIRST box in a chord showed the
+            // marker only for the few milliseconds it spent queued and then looked completely idle
+            // for its whole compile+eval, which reads as "that box died"; the later boxes appeared
+            // fine only because they were still waiting their turn. Cleared in a `finally` so no
+            // exit path (stale launch epoch, compile error, thrown exception) can strand it.
+            var pendingCleared = false
+            fun clearPendingOnce() {
+                if (pendingCleared) return
+                pendingCleared = true
+                clearPendingLaunch(request)
+            }
 
-                var hasError = false
-                val output = mutableListOf("")
+            try {
+                if (!box.isLaunchEpochCurrent(request.launchEpoch)) return
 
-                box.output.proxy = { content, nl, line ->
-                    val rendered = renderPrintedOutput(content)
-                    output[output.size - 1] = output[output.size - 1] + rendered
-                    if (nl) output.add("")
-                    dispatchExecutionOutput(
-                        box,
-                        reply,
-                        Output(
-                            uid = box.id,
-                            line = line.i,
-                            kind = "normal",
-                            html = rendered.trim() + (if (nl) "\n" else ""),
-                            frame = Runloop.runLoop.frame.toInt()
-                        ),
-                        originSession = request.originSession
-                    )
-                }
-                box.output.errorProxy = { content, property, line ->
-                    hasError = hasError || content != null
-                    dispatchExecutionOutput(
-                        box,
-                        reply,
-                        Output(
-                            uid = box.id,
-                            line = line.i,
-                            kind = "error",
-                            property = property,
-                            html = escapeForHtml(content?.toString()),
-                            frame = Runloop.runLoop.frame.toInt()
-                        ),
-                        originSession = request.originSession
-                    )
-                }
-                box.output.displayProxy = { channel, content ->
-                    send(
-                        Message("set-output").payload(
-                            Set_output(box.id, "outputarea", channel, renderDisplayContent(content))
-                        )
-                    )
-                }
+                Box.withBoxContext(box) {
+                    box.resetStdlibRandom()
+                    resetLaunchSetupState(box)
+                    configureOutputProxies(box, reply, request.originSession)
+                    // Drop any stale pinned compile error up front; reportCompileDiagnostics re-pins on failure.
+                    PinnedConsole.clearError(box.id)
 
-                val lines = request.normalizedCode.lines()
-                val breaks = lines.mapIndexedNotNull { index, line ->
-                    if (line.trim().startsWith("//%-") || line.trim().startsWith("/*%-*/")) index else null
-                } + lines.size
+                    var hasError = false
+                    val output = mutableListOf("")
 
-                var at = 0
-                var lineCounter = 0
-                val results = mutableListOf<ResultValue?>()
-
-                for (breakIndex in breaks) {
-                    val source = lines.subList(at, breakIndex).joinToString("\n")
-                    at = breakIndex
-
-                    // 1) macro-expand this fragment (off the main thread), rewriting __line__ markers with a
-                    //    running global line counter so error locations stay correct across fragments.
-                    val expanded = if (KotlinEngineConfig.offloadCompilation) {
-                        withContext(box.ki.compilationDispatcher) { box.ki.applyMacros(box, source) }
-                    } else {
-                        box.ki.applyMacros(box, source)
-                    }
-                    val compiledSource = expanded.split("\n").joinToString("\n") { line ->
-                        lineCounter++
-                        line.replace("__line__", "${lineCounter - 1}")
-                    }
-
-                    // 2) setup blocks (preamble/introduction/attic) on the main thread.
-                    val setupSucceeded = withContext(Runloop.runLoop.main) { runLaunchSetupBlocks(box) }
-                    if (!setupSucceeded) {
-                        hasError = true
-                        break
-                    }
-
-                    // 3) compile this fragment.
-                    val snippet = box.ki.withSourceProperty(request.exec.property) {
-                        box.ki.compileSnippet(
-                            compiledSource,
-                            implicits = listOf(box),
-                            onCompileError = { diagnostics ->
-                                reportCompileDiagnostics(
-                                    box = box,
-                                    reply = reply,
-                                    originSession = request.originSession,
-                                    code = request.normalizedCode,
-                                    diagnostics = diagnostics,
-                                    fallbackLine = request.exec.line + request.normalizedCode.lines().size,
-                                    property = request.exec.property
-                                )
-                            }
+                    box.output.proxy = { content, nl, line ->
+                        val rendered = renderPrintedOutput(content)
+                        output[output.size - 1] = output[output.size - 1] + rendered
+                        if (nl) output.add("")
+                        dispatchExecutionOutput(
+                            box,
+                            reply,
+                            Output(
+                                uid = box.id,
+                                line = line.i,
+                                kind = "normal",
+                                html = rendered.trim() + (if (nl) "\n" else ""),
+                                frame = Runloop.runLoop.frame.toInt()
+                            ),
+                            originSession = request.originSession
                         )
                     }
-                    if (snippet == null) {
-                        hasError = true
-                        break
+                    box.output.errorProxy = { content, property, line ->
+                        hasError = hasError || content != null
+                        dispatchExecutionOutput(
+                            box,
+                            reply,
+                            Output(
+                                uid = box.id,
+                                line = line.i,
+                                kind = "error",
+                                property = property,
+                                html = escapeForHtml(content?.toString()),
+                                frame = Runloop.runLoop.frame.toInt()
+                            ),
+                            originSession = request.originSession
+                        )
+                    }
+                    box.output.displayProxy = { channel, content ->
+                        send(
+                            Message("set-output").payload(
+                                Set_output(box.id, "outputarea", channel, renderDisplayContent(content))
+                            )
+                        )
                     }
 
-                    // 4) eval this fragment on the main thread. Its runtime effects (e.g. `once.vertex`
-                    //    setting the box's shader-source property) are visible to the NEXT fragment's
-                    //    macro expansion — which is the whole point of the `//%-` fragment break.
-                    var fragmentFailed = false
-                    val result = withContext(Runloop.runLoop.main) {
-                        snippet.eval(
-                            implicits = listOf(box),
-                            onEvalError = { diagnostics ->
-                                hasError = true
-                                fragmentFailed = true
-                                diagnostics.forEach {
-                                    lprintln("error,execution", "  ${it.code} ${it.message} ${it.location}")
+                    val lines = request.normalizedCode.lines()
+                    val breaks = lines.mapIndexedNotNull { index, line ->
+                        if (line.trim().startsWith("//%-") || line.trim().startsWith("/*%-*/")) index else null
+                    } + lines.size
+
+                    var at = 0
+                    var lineCounter = 0
+                    val results = mutableListOf<ResultValue?>()
+
+                    for (breakIndex in breaks) {
+                        val source = lines.subList(at, breakIndex).joinToString("\n")
+                        at = breakIndex
+
+                        // 1) macro-expand this fragment (off the main thread), rewriting __line__ markers with a
+                        //    running global line counter so error locations stay correct across fragments.
+                        val expanded = if (KotlinEngineConfig.offloadCompilation) {
+                            withContext(box.ki.compilationDispatcher) { box.ki.applyMacros(box, source) }
+                        } else {
+                            box.ki.applyMacros(box, source)
+                        }
+                        val compiledSource = expanded.split("\n").joinToString("\n") { line ->
+                            lineCounter++
+                            line.replace("__line__", "${lineCounter - 1}")
+                        }
+
+                        // 2) setup blocks (preamble/introduction/attic) on the main thread.
+                        val setupSucceeded = withContext(Runloop.runLoop.main) { runLaunchSetupBlocks(box) }
+                        if (!setupSucceeded) {
+                            hasError = true
+                            break
+                        }
+
+                        // 3) compile this fragment.
+                        val snippet = box.ki.withSourceProperty(request.exec.property) {
+                            box.ki.compileSnippet(
+                                compiledSource,
+                                implicits = listOf(box),
+                                onCompileError = { diagnostics ->
+                                    reportCompileDiagnostics(
+                                        box = box,
+                                        reply = reply,
+                                        originSession = request.originSession,
+                                        code = request.normalizedCode,
+                                        diagnostics = diagnostics,
+                                        fallbackLine = request.exec.line + request.normalizedCode.lines().size,
+                                        property = request.exec.property
+                                    )
                                 }
-                                pinEvalError(box, diagnostics)
-                            },
-                            onEvalException = { throwable ->
-                                hasError = true
-                                fragmentFailed = true
-                                reportEvalException(
-                                    box,
-                                    reply,
-                                    request.originSession,
-                                    throwable,
-                                    request.exec.line,
-                                    request.exec.property
-                                )
-                            }
-                        )
-                    }
-                    results += result
-                    if (fragmentFailed) break
-                }
+                            )
+                        }
+                        if (snippet == null) {
+                            hasError = true
+                            break
+                        }
 
-                if (!hasError) {
-                    val printedSize = output.sumOf { it.trim().length }
-                    results.forEach { returnValue ->
-                        reportReturnValueAndLaunch(
-                            box = box,
-                            reply = reply,
-                            originSession = request.originSession,
-                            returnValue = returnValue,
-                            printedSize = printedSize,
-                            line = request.exec.line + request.normalizedCode.lines().size,
-                            code = request.normalizedCode,
-                            strand = request.strand,
-                            launchEpoch = request.launchEpoch,
-                        )
+                        // 4) eval this fragment on the main thread. Its runtime effects (e.g. `once.vertex`
+                        //    setting the box's shader-source property) are visible to the NEXT fragment's
+                        //    macro expansion — which is the whole point of the `//%-` fragment break.
+                        var fragmentFailed = false
+                        val result = withContext(Runloop.runLoop.main) {
+                            snippet.eval(
+                                // Commit this snippet's declarations to the REPL context, exactly as the
+                                // exec path (`standardExecutionPractice` -> `KotlinInterface2.exec`) does.
+                                // `PreparedSnippet.eval` defaults to false, and with it false
+                                // `contextUpdater.update()` never runs -- so a batch (chorded) launch never
+                                // refreshed `context.vars`/`functions` and never processed `@exported`,
+                                // leaving a sibling box's `_a` unresolvable until the exporting box was
+                                // re-run through a non-batch path.
+                                updateContext = true,
+                                implicits = listOf(box),
+                                onEvalError = { diagnostics ->
+                                    hasError = true
+                                    fragmentFailed = true
+                                    diagnostics.forEach {
+                                        lprintln("error,execution", "  ${it.code} ${it.message} ${it.location}")
+                                    }
+                                    pinEvalError(box, diagnostics)
+                                },
+                                onEvalException = { throwable ->
+                                    hasError = true
+                                    fragmentFailed = true
+                                    reportEvalException(
+                                        box,
+                                        reply,
+                                        request.originSession,
+                                        throwable,
+                                        request.exec.line,
+                                        request.exec.property
+                                    )
+                                }
+                            )
+                        }
+                        results += result
+                        if (fragmentFailed) break
                     }
-                } else {
-                    lprintln("error,execution", "batch launch finished with errors")
+
+                    if (!hasError) {
+                        val printedSize = output.sumOf { it.trim().length }
+                        results.forEach { returnValue ->
+                            reportReturnValueAndLaunch(
+                                box = box,
+                                reply = reply,
+                                originSession = request.originSession,
+                                returnValue = returnValue,
+                                printedSize = printedSize,
+                                line = request.exec.line + request.normalizedCode.lines().size,
+                                code = request.normalizedCode,
+                                strand = request.strand,
+                                launchEpoch = request.launchEpoch,
+                            )
+                        }
+                    } else {
+                        lprintln("error,execution", "batch launch finished with errors")
+                    }
+
+                    // Retire the pending marker only now that the launch state has been published.
+                    // Deliberately after, not before: the launch state carries a strictly newer
+                    // watermark (`ReturnValueRegistry.launchPrepared` increments the generation), so
+                    // this stop is ignored by both the box's `currentRunningStates` guard and the
+                    // front end's `watermark < lastWatermark` check -- and the box never spends even
+                    // a frame looking idle between "compiling and launching" and "running".
+                    //
+                    // On the runloop, and therefore behind the handler's own `inMain`: a `Frames`
+                    // return value (what `loop { }` is) reports itself running from a main-thread
+                    // coroutine, so `reportReturnValueAndLaunch` returns *before* that happens.
+                    // Queueing this clear behind it keeps the hand-over ordered rather than racing.
+                    withContext(Runloop.runLoop.main) { clearPendingOnce() }
                 }
+            } finally {
+                clearPendingOnce()
             }
         }
 
