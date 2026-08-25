@@ -1,0 +1,16 @@
+{:version 2
+ :boxes [{:id "pd-broken"
+          :properties {:name "1. BROKEN: by provideDelegate"
+                       :code "import kotlin.properties.ReadWriteProperty\nimport kotlin.reflect.KProperty\n\nclass Provider {\n    operator fun provideDelegate(thisRef: Any?, property: KProperty<*>): ReadWriteProperty<Any?, Int> {\n        return object : ReadWriteProperty<Any?, Int> {\n            private var v = property.name.length\n            override fun getValue(thisRef: Any?, property: KProperty<*>): Int = v\n            override fun setValue(thisRef: Any?, property: KProperty<*>, value: Int) { v = value }\n        }\n    }\n}\n\n// A top-level delegated property reached through provideDelegate.\n// Same shape as the documented `var kc by keyCamera(camera=camera)`.\n// This does NOT compile: the box reports\n//   Kotlin compiler exception ... IrPropertySymbolImpl is unbound\n// and the println below never runs.\nvar abcd: Int by Provider()\nprintln(\"REACHED-RUNTIME abcd=\" + abcd)"
+                       :frame [50.0 50.0 380.0 260.0]
+                       :metadata "tags:\n  - delegate\n  - repl\n  - defect\ndescription: Top-level provideDelegate. Expected to fail to compile - that is the point."}}
+         {:id "pd-control"
+          :properties {:name "2. CONTROL: by without provideDelegate"
+                       :code "import kotlin.properties.ReadWriteProperty\nimport kotlin.reflect.KProperty\n\n// `by` delegation itself is fine. Both of these work.\nval viaLazy: Int by lazy { 42 }\n\nclass Holder : ReadWriteProperty<Any?, Int> {\n    private var v = 42\n    override fun getValue(thisRef: Any?, property: KProperty<*>): Int = v\n    override fun setValue(thisRef: Any?, property: KProperty<*>, value: Int) { v = value }\n}\nval viaReadWrite: Int by Holder()\n\nprintln(\"REACHED-RUNTIME lazy=\" + viaLazy + \" readWrite=\" + viaReadWrite)"
+                       :frame [460.0 50.0 380.0 260.0]
+                       :metadata "tags:\n  - delegate\n  - control\ndescription: The positive control - by lazy and a plain ReadWriteProperty both work, proving the boundary is provideDelegate specifically."}}
+         {:id "pd-workaround"
+          :properties {:name "3. WORKAROUND: construct directly"
+                       :code "import afield.four.util.*\nimport afield.four.*\n\n// The documented idiom `var kc by keyCamera(camera=camera)` is broken\n// (see box 1). Construct KeyCamera directly instead - no `by`, so no\n// provideDelegate, so no crash. `renderer` arrives via the constructor\n// default (fromContext()).\n//\n// You give up the delegate's automatic naming, which would have been\n// property.name + \"__\" + box.id - so pick a name unique to this box.\nval camera = Camera()\nval kc = KeyCamera(camera = camera, name = \"kc_workaround\")\n\nprintln(\"REACHED-RUNTIME workaround kc=\" + kc.javaClass.simpleName + \" name=\" + kc.name)"
+                       :frame [50.0 340.0 380.0 260.0]
+                       :metadata "tags:\n  - delegate\n  - workaround\n  - keycamera\ndescription: Verified working replacement for `var kc by keyCamera(...)`. Needs a graphics context."}}]}
