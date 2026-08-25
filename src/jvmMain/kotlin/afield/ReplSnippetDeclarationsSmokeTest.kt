@@ -41,7 +41,13 @@ expect:
  *     from the `ReplState` lookup. With (1) fixed there is no failed snippet, so the sequence is
  *     clean — but see [staleDeclarationShadowing], which is still open.
  *
- *  2. **A delegated property whose provider declares `provideDelegate`** — `var x by keyCamera()`.
+ *  2. **An expression-bodied function that reaches the receiver.** `fun f(a: Double) = println(a)`
+ *     failed at *resolution* — `Candidate 'fun Box._printlnHere(...)' is inapplicable because of a
+ *     receiver type mismatch` — while the same body in braces was fine. Only an inferred return type
+ *     takes the jumping-return-type path, whose designation looked for a `FirScript` and so never
+ *     found a `FirReplSnippet`, leaving the snippet's implicit receivers off the tower. Cases S, T, U.
+ *
+ *  3. **A delegated property whose provider declares `provideDelegate`** — `var x by keyCamera()`.
  *     Such a property is resolved through a disposable FIR copy of itself; the resolved delegate
  *     expression carries a `::x` reference to that copy, which gets no IR, so fir2ir failed with
  *     `IrPropertySymbolImpl is unbound`. Cases N, Q.
@@ -354,6 +360,31 @@ object ReplSnippetDeclarationsSmokeTest {
             x
             """.trimIndent(),
             expected = "= 1"
+        )
+
+        println("-- EXPRESSION-bodied functions that reach the receiver --")
+        // A third defect of the same family, fixed in the fork on 2026-08-25 and pre-dating the two
+        // above. `FirImplicitBodyResolve.resolveDeclaration` builds the designation for an INFERRED
+        // return type as file + script + outerClasses, finding the script with
+        // `firstIsInstanceOrNull<FirScript>()` -- which can never match a `FirReplSnippet`. Without
+        // the snippet in that designation the designated transformer never runs `withReplSnippet`,
+        // so the snippet's implicit receivers are absent from the tower and the box's own members
+        // come back "inapplicable because of a receiver type mismatch". Only inferred return types
+        // take that jump, which is why every case above (block bodies, all of them) resolved fine.
+        case(
+            "S expr body calling println", null,
+            "fun f(a : Double) = println(\"\"\" \${a} \"\"\")\nf(10.0)",
+            expected = "Unit"
+        )
+        case(
+            "T expr body reading a Box member", null,
+            "fun f(a : Double) = name + a\nf(10.0)",
+            expected = "= 10.0"
+        )
+        case(
+            "U expr body calling _printlnHere directly", null,
+            "fun f(a : Double) = _printlnHere(1, a)\nf(10.0)",
+            expected = "Unit"
         )
 
         println("-- the real keyCamera delegate, as five published sites spell it --")
