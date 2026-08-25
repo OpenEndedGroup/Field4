@@ -75,8 +75,37 @@ org.jetbrains.kotlin.fir.pipeline.IrGenerationExtensionException:
     at io.github.kyay10.wither.ir.WitherIrGenerationExtension.generate(WitherIrGenerationExtension.kt:30)
 ```
 
-Wither's `IrGenerationExtension` walks every statement container in the snippet and chokes on the
-synthetic accessor that a *local* delegated property generates.
+**Correction, and how it was found.** My first write-up of this said Wither "chokes on the synthetic
+accessor that a *local* delegated property generates". That was a plausible-sounding mechanism and
+it was **wrong**; I only caught it because the committed smoke's prior-snippet guard fired, showing
+that `PROVIDER_DECL` fails to compile *on its own*, never using `by` at all.
+
+The trigger is **an anonymous object implementing `kotlin.properties.ReadWriteProperty` created
+inside a function body**. It has nothing to do with `provideDelegate`, delegation, or local-ness —
+the idiomatic `provideDelegate` body just happens to be exactly that shape.
+
+Falsified along the way, each by a measured rung, so no-one repeats them:
+
+| hypothesis | verdict |
+|---|---|
+| anonymous objects in a function body, generally | ❌ 7 rungs pass (expression body, block body, top level, in a lambda, in a member fun, named-class control, SAM control) |
+| a *property* declared inside the anonymous object | ❌ 6 rungs pass (`var`, `val`, top level, capturing a local, no-property control, named-class control) |
+| the enclosing function being `operator fun` | ❌ passes (anon object inside `operator fun invoke`) |
+| implementing an interface with `operator` members | ❌ passes (snippet-declared `interface Op { operator fun getValue(...) }`) |
+| a captured local in the object's initialiser | ❌ fails with *and* without the capture |
+| the function being named `provideDelegate` | ❌ fails with an ordinary function name too |
+| any *precompiled* interface | ❌ `Runnable`, `Comparator`, `Iterator`, `CharSequence` all pass — **and so does `ReadOnlyProperty`** |
+
+`ReadWriteProperty` is the **only** interface of those tested that fails. The remaining difference
+between it and `ReadOnlyProperty` is the `setValue` half, i.e. the mutable accessor pair — but I did
+**not** get to a rung that discriminates "the `ReadWriteProperty` type specifically" from "any
+two-member get/set shape", so *why* Wither singles it out is **still open**. I am flagging that
+rather than inventing a fourth mechanism to sound finished.
+
+**Blast radius of defect B, restated:** any box code that creates an anonymous `ReadWriteProperty`
+inside a function — which is the canonical "custom delegate" idiom from the Kotlin documentation —
+fails to compile, whether or not `provideDelegate` or `by` is anywhere in sight. Named-class
+delegates are unaffected, and that is also the workaround.
 
 **Counterfactual, measured.** With the single line `build.gradle.kts:943` commented out, the local
 rung returns **`4`** and the class-member rung returns **`4`** — and `4` is the meaningful value,
