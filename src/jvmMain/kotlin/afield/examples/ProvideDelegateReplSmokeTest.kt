@@ -22,6 +22,16 @@ expect:
  * compile in Field's K2 REPL**, so the box idiom `var kc by keyCamera(camera=camera)` — which
  * `public/docs/afield_four_graphics.md:787` documents — cannot be run.
  *
+ * ## Status after the 2.4.20 uplift (2026-08-25)
+ *
+ * The alarm below fired, as designed. [DEFECT_A] was root-caused and patched in the fork, and this
+ * test was re-measured rather than re-asserted: `cross-snippet-provideDelegate` — the
+ * `by keyCamera(...)` shape — **now works**, so `var kc by keyCamera(...)` compiles in a box again.
+ * The five rungs that had been characterized as [DEFECT_A] now fail with [DEFECT_B] instead: they
+ * all embed [PROVIDER_DECL], whose anonymous `ReadWriteProperty` trips B on its own, so A was
+ * merely failing first. That leaves [DEFECT_B] as the whole of what is left, and it is still
+ * Field's own (the Wither jar reaching the compiler by ServiceLoader).
+ *
  * ## Why this test is GREEN while the feature is BROKEN
  *
  * This is a *characterization* test: it pins the behaviour that exists today, including the exact
@@ -42,12 +52,18 @@ expect:
  *
  * ## Two independent causes
  *
- * [DEFECT_A] **top-level** `by provideDelegate` — `IrPropertySymbolImpl is unbound` thrown inside
- * `org.jetbrains.kotlin.fir.backend.Fir2IrConverter.runSourcesConversion`, with **no Field frame
- * and no compiler-plugin frame** between `K2ReplCompiler.compileImpl` and the throw. This is in
- * the vendored Kotlin compiler fork. It is the one that breaks `by keyCamera(...)`, and it is
- * *not* fixable from Field's own source — see `dev_docs/k2_repl_provide_delegate.md` for the
- * isolation runs.
+ * [DEFECT_A] **FIXED 2026-08-25** — was `IrPropertySymbolImpl is unbound` thrown inside
+ * `org.jetbrains.kotlin.fir.backend.Fir2IrConverter.runSourcesConversion`, with no Field frame and
+ * no compiler-plugin frame between `K2ReplCompiler.compileImpl` and the throw. Correctly placed in
+ * the vendored fork, and the "not fixable from Field's own source" reading of that was too strong:
+ * it was fixable *in the fork*, once root-caused. A REPL-level delegated property is resolved
+ * through a disposable FIR copy of itself (`replSnippetDelegatedPropertyCopies`, which upstream
+ * needs because the Analysis API forbids resolving a sibling member mid-resolution) and the
+ * resolved delegate expression is then installed into the real property — but with `provideDelegate`
+ * that expression carries a `::x` callable reference resolved against the *copy*, which is not a
+ * snippet-class member and never gets IR. The fix records the original on the copy and maps back to
+ * it in `Fir2IrDeclarationStorage.prepareProperty`. Nothing carries this signature any more; the
+ * constant stays because the history is the point of a characterization test.
  *
  * [DEFECT_B] **local / class-member** `by provideDelegate` — `IrGenerationExtensionException:
  * IrFunctionImpl … has no callableId`, thrown out of the Wither plugin's
@@ -157,6 +173,21 @@ a
     )
 
     /**
+     * Working rungs that need a **prior snippet**, kept apart from [WORKING] only because they carry
+     * one; they are asserted identically.
+     *
+     * `cross-snippet-provideDelegate` moved here from [FAILING] on 2026-08-25, when DEFECT_A was
+     * root-caused and fixed in the vendored fork. It is the `by keyCamera(...)` shape — the provider
+     * is AOT-compiled outside the snippet being compiled — so this is the rung that says the
+     * user-facing idiom works again. It must keep using [NAMED_PROVIDER_DECL]: with [PROVIDER_DECL]
+     * it would trip [DEFECT_B], which is still open, and pass or fail for the wrong reason.
+     */
+    private val WORKING_WITH_PRIOR: Map<String, Pair<String, String>> = linkedMapOf(
+        "cross-snippet-provideDelegate" to
+            (NAMED_PROVIDER_DECL to "var abcd: Int by NamedProvider()\nabcd\n"),
+    )
+
+    /**
      * Rungs that must fail to compile, each with the signature it must fail with, and each with an
      * optional prior snippet evaluated first.
      *
@@ -168,11 +199,11 @@ a
      */
     private val FAILING: Map<String, Triple<String?, String, String>> = linkedMapOf(
         "toplevel-provideDelegate" to
-            Triple(null, PROVIDER_DECL + "var abcd: Int by Provider()\nabcd\n", DEFECT_A),
+            Triple(null, PROVIDER_DECL + "var abcd: Int by Provider()\nabcd\n", DEFECT_B),
         "factoryfn-provideDelegate" to
-            Triple(null, PROVIDER_DECL + "fun provider(): Provider = Provider()\nvar abcd: Int by provider()\nabcd\n", DEFECT_A),
+            Triple(null, PROVIDER_DECL + "fun provider(): Provider = Provider()\nvar abcd: Int by provider()\nabcd\n", DEFECT_B),
         "toplevel-val-provideDelegate" to
-            Triple(null, PROVIDER_DECL + "val abcd: Int by Provider()\nabcd\n", DEFECT_A),
+            Triple(null, PROVIDER_DECL + "val abcd: Int by Provider()\nabcd\n", DEFECT_B),
         "generic-provideDelegate" to Triple(
             null,
             """
@@ -191,7 +222,7 @@ class GProvider<T>(val initial: T) {
 var abcd: Int by GProvider(42)
 abcd
 """,
-            DEFECT_A,
+            DEFECT_B,
         ),
         "extension-provideDelegate" to Triple(
             null,
@@ -210,13 +241,8 @@ operator fun Plain.provideDelegate(thisRef: Any?, property: KProperty<*>): ReadW
 var abcd: Int by Plain()
 abcd
 """,
-            DEFECT_A,
+            DEFECT_B,
         ),
-        // Provider from an EARLIER snippet — the `by keyCamera(...)` shape. It must use the NAMED
-        // provider, because PROVIDER_DECL on its own already trips DEFECT_B (see below), which
-        // would make this rung pass for the wrong reason.
-        "cross-snippet-provideDelegate" to
-            Triple(NAMED_PROVIDER_DECL, "var abcd: Int by NamedProvider()\nabcd\n", DEFECT_A),
         // --- DEFECT_B rungs. Note the trigger is NOT `provideDelegate` and NOT local-ness. ---
         // The minimal trigger, with no delegate machinery in it at all: an anonymous object
         // implementing kotlin.properties.ReadWriteProperty, created inside a function body.
@@ -282,8 +308,9 @@ make().javaClass.simpleName.isNotEmpty()
      */
     private fun assertReplItselfWorks(observedWorking: MutableMap<String, String>) {
         println("  premise: the REPL and non-provideDelegate delegation still work...")
-        WORKING.forEach { (label, src) ->
-            val run = evaluate(label, src)
+        (WORKING.mapValues { (_, s) -> null to s } + WORKING_WITH_PRIOR).forEach { (label, spec) ->
+            val (prior, src) = spec
+            val run = evaluate(label, src, prior)
             require(run.diagnostics.isEmpty()) {
                 "PREMISE FAILED: rung '$label' should compile cleanly but reported " +
                     "${run.diagnostics.size} diagnostic(s): ${run.diagnostics}. " +
@@ -305,9 +332,32 @@ make().javaClass.simpleName.isNotEmpty()
      */
     private fun assertProvideDelegateStillBroken(observedFailing: MutableMap<String, String>) {
         println("  characterizing the provideDelegate failures...")
+        // Measure every rung, print the table, and only then judge. A compiler change moves rungs in
+        // GROUPS -- fixing DEFECT_A on 2026-08-25 moved one rung to working and re-pointed five more
+        // at DEFECT_B in a single step -- and failing on the first mismatch reports one rung while
+        // hiding the shape of the move, which is exactly what you need to update the ledger.
+        val measured = FAILING.mapValues { (_, spec) -> evaluate("measure", spec.second, spec.first) }
+        println("  measured ledger (what this compiler actually does):")
+        measured.forEach { (label, run) ->
+            val signature = FAILING.getValue(label).third
+            val joined = run.diagnostics.joinToString("\n")
+            println(
+                "    %-34s %s".format(
+                    label,
+                    when {
+                        run.value != null -> "NOW WORKS -> ${run.value}"
+                        run.diagnostics.isEmpty() -> "no value and no diagnostic (a third mode)"
+                        joined.contains(signature) -> "broken as characterized ($signature)"
+                        joined.contains(DEFECT_A) -> "fails with DEFECT_A, characterized as '$signature'"
+                        joined.contains(DEFECT_B) -> "fails with DEFECT_B, characterized as '$signature'"
+                        else -> "UNKNOWN signature: ${run.diagnostics.first().take(140)}"
+                    }
+                )
+            )
+        }
         FAILING.forEach { (label, spec) ->
-            val (prior, src, signature) = spec
-            val run = evaluate(label, src, prior)
+            val signature = spec.third
+            val run = measured.getValue(label)
             require(run.value == null) {
                 "rung '$label' now EVALUATES (got ${run.value}). If provideDelegate has been " +
                     "fixed, that is good news: move '$label' from FAILING to WORKING and update " +
@@ -333,7 +383,7 @@ make().javaClass.simpleName.isNotEmpty()
         observedFailing: Map<String, String>,
     ) {
         println("  ledger: missing / stale / set equality...")
-        val expectedWorking = WORKING.keys
+        val expectedWorking = WORKING.keys + WORKING_WITH_PRIOR.keys
         val expectedFailing = FAILING.keys
 
         val missingWorking = expectedWorking - observedWorking.keys
@@ -356,17 +406,19 @@ make().javaClass.simpleName.isNotEmpty()
         // that licenses "the defect is provideDelegate, not delegation". 8 failing = every
         // provideDelegate variant probed (val/var, member/extension, generic, cross-snippet,
         // local, class member).
-        require(observedWorking.size >= 7) { "expected at least 7 working rungs, got ${observedWorking.size}" }
-        require(observedFailing.size >= 10) { "expected at least 10 failing rungs, got ${observedFailing.size}" }
+        // Floors, not equalities: rungs may be added. 8 and 9, not 7 and 10, since 2026-08-25 —
+        // `cross-snippet-provideDelegate` moved from failing to working when DEFECT_A was fixed.
+        require(observedWorking.size >= 8) { "expected at least 8 working rungs, got ${observedWorking.size}" }
+        require(observedFailing.size >= 9) { "expected at least 9 failing rungs, got ${observedFailing.size}" }
 
-        // Exactly two distinct failure signatures = the two independent defects.
+        // One distinct failure signature since 2026-08-25: [DEFECT_A] is fixed in the fork, so
+        // [DEFECT_B] is the whole of what remains. The check stays an exact set rather than a
+        // subset — if DEFECT_A ever reappears here, that is a regression in the fork patch and this
+        // is where it should be caught, not absorbed as "still two defects, as documented".
         val signatures = observedFailing.values.toSet()
-        require(signatures.size == 2) {
-            "expected exactly 2 distinct failure signatures (the two independent defects), got " +
-                "${signatures.size}: $signatures"
-        }
-        require(signatures == setOf(DEFECT_A, DEFECT_B)) {
-            "failure signatures drifted from the characterized pair: $signatures"
+        require(signatures == setOf(DEFECT_B)) {
+            "failure signatures drifted from the characterized set (expected only DEFECT_B, since " +
+                "DEFECT_A was fixed in the fork on 2026-08-25): $signatures"
         }
         println("    working=${observedWorking.size} failing=${observedFailing.size} signatures=${signatures.size}")
     }

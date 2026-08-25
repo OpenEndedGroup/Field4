@@ -1,6 +1,9 @@
 # `provideDelegate` and the K2 REPL
 
 *Investigated 2026-08-25. Base commit `4c235bbeb`.*
+*Updated later the same day: Defect A is **FIXED** in the vendored fork — see
+[Defect A, fixed](#defect-a-fixed) — and the five rungs it was masking now show Defect B. The
+`by keyCamera(...)` idiom works again. Defect B is unchanged and still open.*
 
 ## TL;DR
 
@@ -11,13 +14,19 @@ documented at `public/docs/afield_four_graphics.md:787` —
 var kc by keyCamera(camera=camera)
 ```
 
-— **does not work in a box today.** Observed in a real box in a real Field, not inferred. The box
-reports a compiler exception and the following line never runs.
+— **did not work in a box** when this was written. Observed in a real box in a real Field, not
+inferred. The box reported a compiler exception and the following line never ran.
+
+**It works again as of the 2.4.20 fork uplift.** Defect A, the fork-side half, was root-caused and
+patched; `cross-snippet-provideDelegate` — the `by keyCamera(...)` shape, provider AOT-compiled
+outside the snippet — is now a *working* rung of `kotlin.repl.provide-delegate`. Everything below
+about the boundary and about Defect B still stands, and the rung table was re-measured rather than
+re-asserted.
 
 `by` delegation is *not* broken in general. The boundary is exactly `provideDelegate`.
 
-There are **two independent causes**. One is Field's (a compiler plugin on the app classpath); the
-other is in the vendored Kotlin compiler fork and cannot be fixed from Field's own source.
+There were **two independent causes**. One is Field's (a compiler plugin on the app classpath) and is
+still open; the other was in the vendored Kotlin compiler fork and has been fixed there.
 
 ## The boundary between working and failing
 
@@ -36,7 +45,12 @@ Measured through the real `KotlinInterface2` engine. Every row was observed; non
 The two delegate forms that work are the ones the compiler resolves to a `getValue` directly. The
 moment a *delegate provider* is involved, the compile crashes.
 
-## Defect A — top-level `by provideDelegate`. In the vendored fork. Not fixable here.
+## Defect A — top-level `by provideDelegate`. In the vendored fork. FIXED 2026-08-25. {#defect-a-fixed}
+
+> **Fixed.** Root cause, and the patch, are at the end of this section. The diagnosis below — the
+> stack, the isolation runs, the conclusion that it is fork-side — was all correct; only the
+> "not fixable here" reading was wrong, and it was wrong about *scope* rather than about placement:
+> it is not fixable from Field's Kotlin source, and it was entirely fixable in the fork we vendor.
 
 This is the one that breaks `by keyCamera(...)`, because a box's `var kc by …` is a script
 top-level property.
@@ -189,17 +203,50 @@ The one behaviour you give up is the automatic naming: the delegate provider nam
 `property.name + "__" + box.id`, so when writing it by hand pick a name that is unique per box —
 otherwise two boxes sharing a name will collide in the renderer's registry.
 
+**Since 2026-08-25 this workaround is no longer forced** — Defect A is fixed and
+`var kc by keyCamera(...)` compiles again. The five published sites this branch rewrote were left on
+the explicit form rather than reverted: it is correct, it is *more* explicit about the instance name,
+and re-editing published box code means re-capturing the pages. Reverting them is a free choice now,
+not a repair. What you must NOT do is write `var kc = keyCamera(...)` — assigning the provider
+without `by` compiles and silently does nothing, which is the second of the two bugs those five sites
+turned out to have.
+
 The same applies to `orbitControls()`: use
 `OrbitControls(camera = camera, mouseEvents = MouseEvents(renderer, name = "…__mouse__"), name = "…")`.
 
-## The refusal, on the record
+## The refusal, and its resolution
 
-**Defect A is not fixable from Field's own source.** The reproducer for that claim is
-`kotlin.repl.provide-delegate` (rungs `toplevel-provideDelegate`, `factoryfn-provideDelegate`) in
-`src/jvmMain/kotlin/afield/examples/ProvideDelegateReplSmokeTest.kt`, together with the
-wither-off-classpath isolation run described above. Fixing it means changing Fir2Ir's handling of a
-script-level delegated property in the vendored compiler fork, and building that fork was
-explicitly out of scope tonight (disk). I did not attempt a partial patch.
+**As written:** *"Defect A is not fixable from Field's own source. Fixing it means changing Fir2Ir's
+handling of a script-level delegated property in the vendored compiler fork, and building that fork
+was explicitly out of scope tonight (disk). I did not attempt a partial patch."*
+
+That refusal was right to decline a blind patch, and its prediction of where the fix would have to
+go was exactly right: Fir2Ir's handling of a script-level delegated property, in the fork.
+
+**Resolved 2026-08-25**, in the same session that uplifted the fork to 2.4.20-RC2 (so the fork was
+being built anyway, which is what changed the cost). The root cause is one step below where the
+stack trace stops:
+
+A REPL-level delegated property is resolved through a **disposable FIR copy** of itself
+(`replSnippetDelegatedPropertyCopies` — upstream needs the copy because the Analysis API forbids
+resolving a sibling member mid-resolution), and the resolved delegate expression is then installed
+into the real property. With `provideDelegate` that expression carries a `::x` callable reference
+**resolved against the copy**, and the copy is not a member of the snippet class, so it never gets
+IR — hence `IrPropertySymbolImpl is unbound`. The patch records the original on the copy and maps
+back to it in `Fir2IrDeclarationStorage.prepareProperty`, beside the synthetic-property
+canonicalisation already there. Upstream has no REPL test for `provideDelegate` at all, which is why
+this survived; the one `provideDelegate` codegen test is a *script* test on a class member.
+
+Consequences worth knowing, because they were measured, not predicted:
+
+- `cross-snippet-provideDelegate` moved from failing to working. That is the `by keyCamera(...)`
+  shape, so the documented idiom compiles again.
+- The five rungs previously characterized as Defect A now fail with **Defect B**. They all embed
+  `PROVIDER_DECL`, whose anonymous `ReadWriteProperty` trips B on its own; A was simply failing
+  first. This document already predicted that coupling — see the note on `NAMED_PROVIDER_DECL` —
+  and it is why the cross-snippet rung had to use the named provider.
+- Defect B is therefore now the *whole* of what remains, and the recommendation below stands
+  unchanged.
 
 **Defect B is fixable, but the fix is a product decision I did not take unilaterally.** Removing
 `implementation(files("libs/wither-plugin.jar"))` from `build.gradle.kts:943` demonstrably fixes it,
