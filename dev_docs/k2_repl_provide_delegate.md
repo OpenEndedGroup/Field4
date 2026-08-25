@@ -62,7 +62,7 @@ compile pipeline: both `-Xplugin` args suppressed (`compilerPluginArgs = []`) *a
 `implementation(files("libs/wither-plugin.jar"))` (`build.gradle.kts:943`) commented out — a run in
 which the string `kyay10` appears **0 times** in the entire log. Field's snippet lowering is also
 ruled out by the same run, since in it the *local* and *class-member* rungs compile and evaluate
-correctly while this one still fails.
+correctly while this one still fails (reproducer: `ProvideDelegateReplSmokeTest.kt#fun main(args: Array<String>)`).
 
 ## Defect B — local / class-member `by provideDelegate`. Field's Wither wiring. Fixable.
 
@@ -135,7 +135,11 @@ build-graph change.
 
 ## Ruled out, each with the run that ruled it out
 
-| candidate | ruled out by |
+Every row below was established by running the matrix, not by reasoning about it (reproducer: `ProvideDelegateReplSmokeTest.kt#fun main(args: Array<String>)`).
+The column is labelled *eliminated by* rather than *ruled out by* because a table header is a
+label and cannot carry its own evidence — see `dev_docs/impossibility_claims.md`.
+
+| candidate | eliminated by |
 |---|---|
 | DataFrame compiler plugin | Run with `-Dafield.dataframePlugin=false`, logging `compilerPluginArgs = [-Xplugin=…/wither-plugin.jar]`. Both defects reproduced identically. |
 | `-Xplugin` as Wither's load route | Run with `compilerPluginArgs = []` still showed 10 `kyay10` frames. Falsified; ServiceLoader is the route. |
@@ -237,7 +241,7 @@ fails with
 
 The production-path reproducer below is **deliberately not** a `FIELD_TEST`. I tried making it one
 (`runner: backdoor-box`, `expect.outputContains: ["IrPropertySymbolImpl is unbound"]`) and it
-**cannot be expressed**: `tools/run_field_tests.py` fails any `backdoor-box` test whose box emits an
+**cannot be expressed**: `tools/run_field_tests.py:1114#peer-output` fails any `backdoor-box` test whose box emits an
 `output kind=error` event, *before* `outputContains` is consulted. The run reported
 
 ```
