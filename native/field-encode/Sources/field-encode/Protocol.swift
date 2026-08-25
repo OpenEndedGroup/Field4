@@ -39,6 +39,11 @@ enum Command {
         var seq: UInt32        // producer's monotonic frame counter
         var ptsMicros: UInt64
         var forceIdr: Bool?
+        // Which head pose this frame was rendered from, when the producer knows. Both present or
+        // both absent; absent means "not rendered for a tracked head" and the wire says so with a
+        // cleared flagPoseValid rather than with a magic value.
+        var poseFrameId: UInt64?
+        var poseDisplayTimeNanos: UInt64?
     }
 
     /// Self-contained smoke test: the helper allocates its own IOSurfaces, fills them with an
@@ -86,9 +91,26 @@ struct Event: Encodable {
 
 // MARK: - Media wire format (see WIRE_FORMAT.md)
 
+/// The pose a frame was rendered from, as it rides the wire.
+///
+/// `displayTimeNanos` is the head's *own* clock, because that is the only clock that can be used:
+/// the receiver hands it straight back to ARKit as `queryDeviceAnchor(atTimestamp:)`, which is what
+/// lets it reproject the frame to where the head actually is. `frameId` is the head's compositor
+/// frame index, carried for association and logging — the timestamp is the operative field.
+struct PoseTag {
+    var frameId: UInt64
+    var displayTimeNanos: UInt64
+}
+
 enum Wire {
-    static let version: UInt8 = 1
-    static let headerSize = 20
+    /// **Version 2** adds the 16-byte pose tail (see `header`). Version 1 remains a valid stream and
+    /// the visionOS receiver still parses it: the Linux/NVENC sender has no uplinked pose to report
+    /// (its Linux host tracks locally through OpenXR) and stays on v1 deliberately. So this is not a
+    /// migration with an end date — both versions are live, and a v1 stream simply carries no pose.
+    static let version: UInt8 = 2
+    static let headerSize = 36
+    /// The version-1 header, still emitted by the Linux sender and still parsed by the receiver.
+    static let headerSizeV1 = 20
     static let maxPayload = 1200
 
     static let flagKeyframe: UInt8   = 1 << 0
@@ -98,22 +120,38 @@ enum Wire {
     // every fragment (stream-level fact) so a mid-stream joiner knows to present it per-eye. The
     // producer owns making the content actually SBS; this flag only carries the intent.
     static let flagStereoSbs: UInt8  = 1 << 3
+    /// The pose tail carries a real pose. Cleared means the two fields are zero and mean nothing —
+    /// a flag rather than a sentinel, because compositor frame index 0 is perfectly legitimate.
+    /// Set on every fragment, like the flags above.
+    static let flagPoseValid: UInt8   = 1 << 4
 
     static let codecHEVC: UInt8 = 0
     static let codecH264: UInt8 = 1
 
+    /// Build a version-2 header. The pose tail is always written — fixed-size headers keep the
+    /// receiver's parse a length check rather than a branch per packet — and `flagPoseValid` says
+    /// whether it means anything.
+    ///
+    /// Note what is deliberately *not* done here: the pose display time does not go into
+    /// `ptsMicros`. That field is stamped on the ideal grid by the producer, on purpose, because a
+    /// real timestamp bakes render-tick quantisation into the stream and a receiver scheduling
+    /// against it reproduces the irregularity. The pose time is a different quantity with a
+    /// different consumer, so it gets its own field.
     static func header(flags: UInt8, codec: UInt8, frameSeq: UInt32,
-                       fragIndex: UInt16, fragCount: UInt16, ptsMicros: UInt64) -> [UInt8] {
+                       fragIndex: UInt16, fragCount: UInt16, ptsMicros: UInt64,
+                       pose: PoseTag?) -> [UInt8] {
         var b = [UInt8]()
         b.reserveCapacity(headerSize)
         b.append(version)
-        b.append(flags)
+        b.append(pose == nil ? flags : (flags | flagPoseValid))
         b.append(codec)
         b.append(0) // reserved
         b.appendBE(frameSeq)
         b.appendBE(fragIndex)
         b.appendBE(fragCount)
         b.appendBE(ptsMicros)
+        b.appendBE(pose?.frameId ?? 0)
+        b.appendBE(pose?.displayTimeNanos ?? 0)
         return b
     }
 }

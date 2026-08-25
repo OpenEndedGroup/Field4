@@ -34,7 +34,7 @@ What was uncovered before this page existed, and is what it adds:
 | **all-method** routes (`route(…) { handle { … } }`) | 13 | nothing — they name no verb, so no verb regex saw them |
 | `staticFiles` directory mounts | 5 | nothing — invisible to every route regex in the tree |
 | `/ws` **command** names (`handlers`) | 105 | nothing |
-| `/ws` **raw channels** (`rawHandlers`) | 9 | nothing — a second dispatch table nothing had counted |
+| `/ws` **raw channels** (`rawHandlers`) | 10 | nothing — a second dispatch table nothing had counted |
 
 The second and fifth rows arrived on 2026-08-22, and the first row moved from 34 to 36 the
 same day. All three changes have the same cause, described under
@@ -238,7 +238,7 @@ than a second `/local`.
 
 105 command names, in the `handlers` table. This is the real command API, it is roughly twice
 the size of the HTTP write surface, and until this page nothing enumerated it. It is not the
-only `/ws` dispatch table: nine more channels live in `rawHandlers` and are counted in
+only `/ws` dispatch table: ten more channels live in `rawHandlers` and are counted in
 [their own section](#the-other-ws-dispatch-table-rawhandlers) below.
 
 The `declared in` column is derived mechanically from where the `handlers[…]` assignment
@@ -419,12 +419,24 @@ census from **105 to 105** — the fix that mattered was adding the table below,
 | `rawHandlers["__spreadsheet__"]` | `spreadsheet.kt` |
 | `rawHandlers["__threejs__"]` | `ThreeJsViewer.kt` |
 | `rawHandlers["__visionmetal__"]` | `VisionMetal.kt` |
+| `rawHandlers["__visionpose__"]` | `VisionPose.kt` |
 | `rawHandlers["remote"]` | `RemoteJS.kt` |
 
-Three of the nine are keyed by a `const val` rather than a literal — `H2_EXPLORER_CHANNEL`,
-`SPREADSHEET_CHANNEL`, `VISION_METAL_CHANNEL` — which is why the discovery resolves the key
-expression the same way it resolves a `route(…)` prefix, and fails loudly rather than filing a
-channel under a made-up name.
+Four of the ten are keyed by a `const val` rather than a literal — `H2_EXPLORER_CHANNEL`,
+`SPREADSHEET_CHANNEL`, `VISION_METAL_CHANNEL`, `VISION_POSE_CHANNEL` — which is why the discovery
+resolves the key expression the same way it resolves a `route(…)` prefix, and fails loudly rather
+than filing a channel under a made-up name.
+
+That failure is not hypothetical: `__visionpose__` arrived with a smoke test that reached the
+registered handler as `rawHandlers[VISION_POSE_CHANNEL]` from *another* file, where the constant
+cannot be resolved, and the guard refused the commit. The fix was to keep the reference beside its
+constant (`visionPoseRawHandler()` in `VisionPose.kt`) rather than to loosen the resolution — a
+channel reachable only through a name this page cannot follow is the case the table exists to catch.
+
+`__visionpose__` is also the only channel here that runs **device to host**: the visionOS head
+publishes head and per-eye viewing geometry up it, so the Mac can render the frame the headset is
+about to display. Everything else on `/ws` is the browser or a native client asking this process for
+something.
 
 These sit behind the same `/ws` upgrade as the 105 commands, so the same sentence applies: the
 guard arrived 2026-08-19 in `3aa64af4d` and is off by default.

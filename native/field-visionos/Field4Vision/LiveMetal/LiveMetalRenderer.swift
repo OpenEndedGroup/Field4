@@ -293,6 +293,9 @@ final class LiveMetalRenderer {
     private let inFlight = DispatchSemaphore(value: liveMetalBuffersInFlight)
     private let worldTracking = WorldTrackingProvider()
     private let javaScript = LiveMetalJavaScript()
+    /// Publishes the pose this renderer is *already* tracking up to the Field backend, so the
+    /// Mac's Vulkan renderer can draw for this head. See `Pose/PoseUplink.swift`.
+    private let poseUplink = PoseUplink()
 
     private var pipeline: MTLRenderPipelineState
     private var vertexBuffer: MTLBuffer
@@ -352,6 +355,8 @@ final class LiveMetalRenderer {
                 let renderer = try LiveMetalRenderer(layerRenderer: layerRenderer, mailbox: mailbox, reporter: reporter)
                 let session = ARKitSession()
                 try? await session.run([renderer.worldTracking])
+                renderer.poseUplink.start(viewCount: layerRenderer.properties.viewCount,
+                                          refreshHz: 90)
                 renderer.renderLoop()
             } catch {
                 reporter("runtime", 0, "renderer", false, error.localizedDescription, 0)
@@ -532,6 +537,7 @@ final class LiveMetalRenderer {
         while true {
             switch layerRenderer.state {
             case .invalidated:
+                poseUplink.stop()
                 javaScript.stop()
                 reporter(activeUID, activeRevision, "renderer", true, "Immersive renderer stopped", 0)
                 return
@@ -575,10 +581,14 @@ final class LiveMetalRenderer {
         javaScript.tick(time: time, deltaTime: delta, predictedDisplayTime: predictedTime)
 
         frame.startSubmission()
+        // One pose per compositor frame, assembled across however many drawables this layout hands
+        // us: `.layered` gives one drawable carrying both views, `.dedicated` one per eye.
+        poseUplink.beginFrame(frameIndex: frame.frameIndex)
         for drawable in drawables {
             render(drawable: drawable, commandBuffer: commandBuffer, frameIndex: frame.frameIndex,
                    time: time, delta: delta)
         }
+        poseUplink.endFrame(sentAt: LayerRenderer.Clock().now.timeInterval)
         commandBuffer.commit()
         frame.endSubmission()
     }
@@ -592,6 +602,11 @@ final class LiveMetalRenderer {
         let deviceAnchor = worldTracking.queryDeviceAnchor(atTimestamp: predictedTime)
         drawable.deviceAnchor = deviceAnchor
         let originFromAnchor = deviceAnchor?.originFromAnchorTransform ?? matrix_identity_float4x4
+        // Recorded here rather than re-queried in the uplink: what goes up the wire has to be the
+        // very pose this drawable was rendered from, or the frame/pose association the Mac relies on
+        // is a guess that happens to be close.
+        poseUplink.record(drawable: drawable, deviceAnchor: deviceAnchor,
+                          originFromDevice: originFromAnchor, predictedDisplayTime: predictedTime)
 
         let target = drawableTargets[drawable.target] ?? {
             let value = DrawableTarget(device: device)

@@ -19,7 +19,7 @@ Producer → helper (`stdin`):
 | `cmd`      | fields | meaning |
 |------------|--------|---------|
 | `open`     | `surfaces:[u32]`, `width`, `height`, `fps`, `bitrateKbps`, `dest:"host:port"`, `codec?:"hevc"\|"h264"`, `idrIntervalMs?` | Resolve the given global `IOSurfaceID`s, create the encoder, open the UDP socket. `surfaces` is a small ring (2–3) the producer renders into round-robin. `dest` is resolved with `getaddrinfo`, so `host` may be a DNS/Tailscale MagicDNS name (`mi2`), an IPv4 literal, or a bracketed IPv6 literal (`[fd7a:…]:9000`). |
-| `frame`    | `surface:int` (index into `surfaces`), `seq:u32`, `ptsMicros:u64`, `forceIdr?:bool` | Encode surface *i* now. `seq` is the producer's monotonic frame counter and rides through to the wire header. |
+| `frame`    | `surface:int` (index into `surfaces`), `seq:u32`, `ptsMicros:u64`, `forceIdr?:bool`, `poseFrameId?:u64`, `poseDisplayTimeNanos?:u64` | Encode surface *i* now. `seq` is the producer's monotonic frame counter and rides through to the wire header. The two pose fields identify the head pose this frame was rendered from and populate the v2 pose tail; supply **both or neither** (half a pose would set `POSE_VALID` over a zero timestamp and the receiver would reproject to the wrong instant). |
 | `bitrate`  | `kbps:int` | Retarget average bitrate live. |
 | `close`    | — | Flush, tear down. |
 
@@ -39,20 +39,53 @@ codes; on keyframes the VPS/SPS/PPS param sets are prepended inline so a mid-str
 can start at the next IDR), then split into MTU-sized fragments. Every fragment is one UDP
 datagram: a fixed 20-byte header + payload.
 
-### Packet header (20 bytes, big-endian)
+### Packet header (36 bytes for v2, 20 for v1, big-endian)
 
 ```
-offset size field       notes
-0      1    version     = 1
-1      1    flags       bit0 KEYFRAME  bit1 FRAME_END  bit2 PARAM_SETS(informational)  bit3 STEREO_SBS
-2      1    codec       0 = HEVC, 1 = H.264
-3      1    reserved    = 0
-4      4    frameSeq    u32, the producer's `seq`
-8      2    fragIndex   u16, 0-based fragment within this frame
-10     2    fragCount   u16, total fragments in this frame
-12     8    ptsMicros   u64, presentation timestamp (microseconds)
-20     …    payload     Annex-B byte range for this fragment
+offset size field                notes
+0      1    version              = 2 (see "Two live versions" below; 1 is still valid)
+1      1    flags                bit0 KEYFRAME  bit1 FRAME_END  bit2 PARAM_SETS(informational)
+                                 bit3 STEREO_SBS  bit4 POSE_VALID
+2      1    codec                0 = HEVC, 1 = H.264
+3      1    reserved             = 0
+4      4    frameSeq             u32, the producer's `seq`
+8      2    fragIndex            u16, 0-based fragment within this frame
+10     2    fragCount            u16, total fragments in this frame
+12     8    ptsMicros            u64, presentation timestamp (microseconds)
+--- v2 only, the "pose tail" ------------------------------------------------------------
+20     8    poseFrameId          u64, the head's compositor frame index
+28     8    poseDisplayTimeNanos u64, that frame's predicted display time in the HEAD's clock
+--------------------------------------------------------------------------------------
+36     …    payload              Annex-B byte range for this fragment (20 on a v1 packet)
 ```
+
+#### Two live versions, both permanent
+
+Version 2 appends the pose tail; version 1 has no tail. **Both are valid and neither is going away.**
+The macOS sender emits v2 because its head is a Vision Pro streaming its pose back up
+(`__visionpose__`); the Linux/NVENC sender emits v1 because its host tracks locally through OpenXR
+and has no uplinked pose to report. A receiver must parse both, keyed on the version byte, and reject
+anything else rather than misparse it.
+
+#### The pose tail
+
+`POSE_VALID` (bit 4) says whether the tail means anything — a flag, not a sentinel, because
+compositor frame index 0 is perfectly legitimate. The tail bytes are always written on a v2 packet
+even when the flag is clear, so a receiver's parse stays a length check rather than a per-packet
+branch. Like `KEYFRAME` and `STEREO_SBS`, the tail rides **every** fragment of a frame.
+
+`poseDisplayTimeNanos` is in the **head's own clock**, not the sender's, because the only thing that
+consumes it is the head: it hands the value straight back to
+`WorldTrackingProvider.queryDeviceAnchor(atTimestamp:)` and sets `drawable.deviceAnchor` from the
+result, which is how a streamed frame gets reprojected to where the head actually is instead of to
+where it was when the Mac started drawing.
+
+`ptsMicros` is deliberately **not** reused for this, even though it is nominally a presentation
+timestamp. The producer stamps it on the ideal cadence grid (`seq * interval`), not from a clock,
+because a real timestamp bakes render-tick quantisation into the stream and a receiver scheduling
+against it faithfully reproduces the irregularity — see the rationale at `FieldRTTStreamer`'s submit
+path. The two fields are different quantities with different consumers. `frameSeq` is likewise not
+reusable: it is also the ring-slot selector and the `ptsMicros` basis.
 
 Default payload ≤ **1200 bytes** (safe under a 1500 MTU; raise if jumbo frames are on).
 `KEYFRAME` is set on **every** fragment of an IDR frame; `FRAME_END` marks the last
@@ -64,7 +97,9 @@ L/R halves). The producer owns making the content actually SBS; the flag only ca
 ### Receiver reassembly
 
 - Accumulate fragments by `frameSeq`. When all `fragCount` are present, concatenate by
-  `fragIndex` → a complete Annex-B access unit → feed the decoder.
+  `fragIndex` → a complete Annex-B access unit → feed the decoder. Carry the pose tail onto the
+  completed frame, taking it from whichever fragment has it rather than overwriting from a later
+  one, so an interleaved v1 fragment from a restarted sender cannot erase a pose already held.
 - If a fragment is missing when `FRAME_END`'s frame should be complete (or a newer
   `frameSeq` arrives first), **discard the whole frame**. If the discarded frame was a
   reference, output freezes until the next `KEYFRAME` — bounded by `idrIntervalMs`.

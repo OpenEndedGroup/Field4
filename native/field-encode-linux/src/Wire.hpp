@@ -1,6 +1,13 @@
 #pragma once
-// Media wire format — must match native/field-encode/Sources/field-encode/Protocol.swift's
-// `Wire` enum byte-for-byte. See ../../field-encode/WIRE_FORMAT.md (the shared contract).
+// Media wire format — see ../../field-encode/WIRE_FORMAT.md (the shared contract).
+//
+// This sender speaks **version 1**, and that is deliberate, not stale. Version 2 exists only to add
+// the pose tail, which carries the head pose a frame was rendered from — and this host has no such
+// pose to carry: its headset tracks locally through OpenXR rather than uplinking to us. The macOS
+// sender speaks v2 because its head is a Vision Pro reporting its pose back over `__visionpose__`.
+// The receiver parses both on purpose. Do not "catch this up" to 2; there is nothing to put in the
+// tail here, and a POSE_VALID flag over a zero timestamp would make the receiver reproject a frame
+// to the wrong instant.
 #include <cstdint>
 #include <cstring>
 #include <vector>

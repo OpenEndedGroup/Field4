@@ -4611,6 +4611,7 @@ class Server {
                                 leaveSelectionContexts(ts)
                                 afield.graphics.detachThreeGlobalListener(ts)
                                 afield.graphics.detachVisionMetalGlobalListener(ts)
+                                afield.graphics.VisionPoseStream.detach(ts)
                                 // Clean up back pressure state for this session.
                                 sessionOutputPressure.remove(ts)
                                 sessionControlUpdatePumps.remove(ts)

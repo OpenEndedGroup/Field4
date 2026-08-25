@@ -87,6 +87,28 @@ class SideBySideStereoTarget(
     var currentEyeIndex: Int = -1
         private set
 
+    /**
+     * A remote head to render from, in preference to [openXR] and to [stereoCamera].
+     *
+     * Set this and the eye passes draw from whatever the source last latched — see [StereoPoseSource]
+     * for why a remote pose must be latched rather than read per eye.
+     */
+    var poseSource: StereoPoseSource? = null
+
+    /**
+     * Identity of the pose the most recent frame was rendered from, or -1 when [poseSource] is unset
+     * or has never latched.
+     *
+     * This is the frame/pose association: whatever ships the rendered image onward can say which pose
+     * it was drawn for, so a later stage can reproject it instead of assuming it is current.
+     */
+    var renderedPoseFrameId: Long = -1L
+        private set
+
+    /** The head's predicted display time for [renderedPoseFrameId], in *the head's* clock. */
+    var renderedPoseDisplayTime: Double = 0.0
+        private set
+
     // Simple mock controller fallback when OpenXR is absent.
     private val mockController = ControllerState(active = true, poseValid = true, position = vec(0.0, 0.0, 0.0))
     private var mouseControllerPos: Vector2f? = null
@@ -121,8 +143,11 @@ class SideBySideStereoTarget(
         target.copySideBySideToEyes(packed)
     }
 
-    /** Current eye view matrix (delegates to OpenXR when active). */
+    /** Current eye view matrix (a latched [poseSource] first, then OpenXR, then [stereoCamera]). */
     fun currentEyeViewMatrix(out: Matrix4f = Matrix4f()): Matrix4f {
+        poseSource?.takeIf { it.latchedFrameId >= 0 }?.let {
+            return it.eyeViewMatrix(currentEyeIndex.coerceIn(0, 1), out)
+        }
         val xr = openXR
         return if (xr != null && xr.currentEyeIndex >= 0) {
             xr.currentEyeViewMatrix(out)
@@ -139,8 +164,11 @@ class SideBySideStereoTarget(
         }
     }
 
-    /** Current eye projection matrix (delegates to OpenXR when active). */
+    /** Current eye projection matrix (a latched [poseSource] first, then OpenXR, then [stereoCamera]). */
     fun currentEyeProjectionMatrix(out: Matrix4f = Matrix4f()): Matrix4f {
+        poseSource?.takeIf { it.latchedFrameId >= 0 }?.let {
+            return it.eyeProjectionMatrix(currentEyeIndex.coerceIn(0, 1), out)
+        }
         val xr = openXR
         return if (xr != null && xr.currentEyeIndex >= 0) {
             xr.currentEyeProjectionMatrix(out)
@@ -162,6 +190,12 @@ class SideBySideStereoTarget(
      * right-hand controller positioned via [updateMockControllerFromRay] or [updateMockControllerFromCamera].
      */
     fun controllerState(hand: Hand = Hand.RIGHT, out: ControllerState = ControllerState()): ControllerState {
+        // Same precedence as the eye matrices: a latched remote head first, then OpenXR, then the
+        // mouse-driven mock. Taking input from the latched frame rather than live keeps it consistent
+        // with the image it will act on.
+        poseSource?.takeIf { it.latchedFrameId >= 0 }?.let { source ->
+            if (source.controller(hand, out)) return out
+        }
         val xr = openXR
         if (xr != null) return xr.controllerState(hand, out)
 
@@ -263,6 +297,15 @@ class SideBySideStereoTarget(
 
         // Keep stereo camera projection matched to eye render size.
         stereoCamera.base.p.resize(eyeWidth, eyeHeight)
+
+        // Latch the remote pose once, here, so both eye passes draw from the same head position. A
+        // per-eye read would let the pose move between them, which shows up as the two eyes
+        // disagreeing rather than as lag.
+        poseSource?.let { source ->
+            source.latch()
+            renderedPoseFrameId = source.latchedFrameId
+            renderedPoseDisplayTime = source.latchedDisplayTime
+        }
 
         // Render each eye into its own RTT.
         currentEyeIndex = 0
@@ -444,6 +487,10 @@ class SideBySideStereoTarget(
  * Shaders are expected to use `gl_ViewIndex` to select per-eye data. After the
  * multiview pass, layer 0 and layer 1 are copied into [packed] as left/right halves
  * so existing OpenXR side-by-side copy paths can still consume the result.
+ *
+ * Note: this variant has no [StereoPoseSource] hook. Remote-head rendering is the macOS/Vision Pro
+ * path, which is exactly where multiview is the awkward one — so the pose source lives on
+ * [SideBySideStereoTarget] only, rather than being duplicated here untested.
  *
  * This intentionally remains a separate class because MoltenVK/macOS multiview is
  * not reliable for Field's current path.

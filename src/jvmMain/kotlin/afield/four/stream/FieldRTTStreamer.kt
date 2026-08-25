@@ -85,6 +85,32 @@ class FieldRTTStreamer(
     private var seq: Long = 0
     private var lastSentNanos: Long = 0
 
+    /**
+     * The head pose the frame about to be submitted was rendered from, or null when there isn't one.
+     *
+     * Queried once per submitted frame and sent down the wire's version-2 pose tail, so the head can
+     * reproject the image to where it actually is rather than assume the pose is current. Null is the
+     * normal case for the desktop and OpenXR paths, and the wire says so explicitly.
+     *
+     * Set it yourself for an unusual source, or call [tagPosesFrom] for the common one.
+     */
+    var poseTag: (() -> StreamPose?)? = null
+
+    /**
+     * Tag each submitted frame with the pose [target] last latched.
+     *
+     * This is the whole point of the latch in [afield.four.targets.SideBySideStereoTarget]: the pose
+     * the eye passes drew from is still recorded when the encoded frame is handed over, so the two
+     * travel together instead of the head having to guess how old the image is.
+     */
+    fun tagPosesFrom(target: afield.four.targets.SideBySideStereoTarget) {
+        poseTag = {
+            val id = target.renderedPoseFrameId
+            if (id < 0) null
+            else StreamPose(id, (target.renderedPoseDisplayTime * 1_000_000_000.0).toLong())
+        }
+    }
+
     private val allocLatch = CountDownLatch(1)
     private val allocatedIds = AtomicReference<List<Long>>(emptyList())
 
@@ -269,8 +295,13 @@ class FieldRTTStreamer(
         // regular to schedule against, and delivery jitter is what it soaks up.
         val pts = s * 1_000_000L / maxOf(1, fps)
         val forceIdr = s == 0L
+        // Read the pose here, not in the deferred block: this is the tick that rendered the surface,
+        // so this is the pose it was drawn from. Reading it after the graphics frame completes would
+        // pick up whatever had arrived by then — a different pose, silently.
+        val pose = poseTag?.invoke()
         renderer.afterCurrentGraphicsFrameComplete {
-            encoder.frame(surface = slot, seq = s, ptsMicros = pts, forceIdr = forceIdr)
+            encoder.frame(surface = slot, seq = s, ptsMicros = pts, forceIdr = forceIdr,
+                          poseFrameId = pose?.frameId, poseDisplayTimeNanos = pose?.displayTimeNanos)
         }
         seq++
     }
@@ -292,3 +323,13 @@ class FieldRTTStreamer(
         }
     }
 }
+
+/**
+ * The head pose a streamed frame was rendered from, as the media wire carries it.
+ *
+ * [displayTimeNanos] is the **head's own** clock, because that is the only clock the receiver can use
+ * it in: it hands the value straight to `queryDeviceAnchor(atTimestamp:)`. It is deliberately not the
+ * same quantity as the wire's `ptsMicros`, which the producer stamps on an ideal cadence grid so the
+ * receiver has something regular to schedule against.
+ */
+data class StreamPose(val frameId: Long, val displayTimeNanos: Long)

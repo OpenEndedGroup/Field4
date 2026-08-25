@@ -18,6 +18,15 @@ struct Field4VisionApp: App {
     // Source, JavaScript and status bridge for the autonomous Compositor Services renderer.
     @State private var liveMetalClient = LiveMetalClient()
 
+    init() {
+        // The media wire parser has no XCTest target to live in, so it proves itself at launch: a few
+        // microseconds over hand-built v1/v2 datagrams, never fails the app. A wrong header offset
+        // produces plausible numbers rather than a crash, so "it compiled" is not evidence.
+        // Touching it here runs it; `PoseUplink` reports the verdict to the Mac, since neither the
+        // unified log nor `simctl --console-pty` reaches it from here.
+        _ = RTTWireSelfCheck.failures
+    }
+
     var body: some Scene {
         // Main window: the dock/tab manager.
         WindowGroup {

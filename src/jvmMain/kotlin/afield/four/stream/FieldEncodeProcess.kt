@@ -141,10 +141,31 @@ class FieldEncodeProcess(
             .put("stereo", stereo)
     )
 
-    /** Signal that ring surface [surface] is rendered and ready to encode now. */
-    fun frame(surface: Int, seq: Long, ptsMicros: Long, forceIdr: Boolean = false) = send(
+    /**
+     * Signal that ring surface [surface] is rendered and ready to encode now.
+     *
+     * [poseFrameId] and [poseDisplayTimeNanos] identify the head pose this frame was rendered from,
+     * for the wire's version-2 pose tail. Both or neither: half a pose sets the wire's POSE_VALID
+     * flag over a zero timestamp, and the receiver would reproject to the wrong instant — worse than
+     * carrying no pose at all. Omitting them is normal (the desktop and OpenXR paths have no
+     * uplinked pose) and the helper then clears the flag.
+     *
+     * A helper binary older than the pose tail decodes into properties it does not have and silently
+     * emits version-1 headers — which the receiver still accepts, so the symptom is a stream with no
+     * pose rather than a broken one. Rebuild the helper if a pose you set never arrives.
+     */
+    fun frame(
+        surface: Int, seq: Long, ptsMicros: Long, forceIdr: Boolean = false,
+        poseFrameId: Long? = null, poseDisplayTimeNanos: Long? = null,
+    ) = send(
         JSONObject().put("cmd", "frame").put("surface", surface)
             .put("seq", seq).put("ptsMicros", ptsMicros).put("forceIdr", forceIdr)
+            .also { json ->
+                if (poseFrameId != null && poseDisplayTimeNanos != null) {
+                    json.put("poseFrameId", poseFrameId)
+                        .put("poseDisplayTimeNanos", poseDisplayTimeNanos)
+                }
+            }
     )
 
     fun bitrate(kbps: Int) = send(JSONObject().put("cmd", "bitrate").put("kbps", kbps))

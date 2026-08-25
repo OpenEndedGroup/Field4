@@ -51,8 +51,8 @@ final class Engine {
         let idrFrames = max(1, ((idrIntervalMs ?? 1000) * max(1, fps)) / 1000)
         encoder = Encoder(width: width, height: height, fps: fps,
                           bitrateKbps: bitrateKbps, hevc: codecHEVC,
-                          idrIntervalFrames: idrFrames) { [weak self] annexB, keyframe, seq, pts in
-            self?.sendAccessUnit(annexB, keyframe: keyframe, seq: seq, pts: pts)
+                          idrIntervalFrames: idrFrames) { [weak self] annexB, keyframe, seq, pts, pose in
+            self?.sendAccessUnit(annexB, keyframe: keyframe, seq: seq, pts: pts, pose: pose)
         }
         guard encoder != nil else { emit(Event(ev: "error", msg: "encoder init failed")); return false }
         return true
@@ -162,11 +162,18 @@ final class Engine {
         guard f.surface >= 0, f.surface < surfaces.count else {
             emit(Event(ev: "error", msg: "bad surface index \(f.surface)")); return
         }
+        // Both pose fields or neither: half a pose is worse than none, because it would set
+        // flagPoseValid over a zero timestamp and the receiver would reproject to the wrong instant.
+        var pose: PoseTag? = nil
+        if let id = f.poseFrameId, let t = f.poseDisplayTimeNanos {
+            pose = PoseTag(frameId: id, displayTimeNanos: t)
+        }
         encoder?.encode(ioSurface: surfaces[f.surface], seq: f.seq,
-                        ptsMicros: f.ptsMicros, forceIdr: f.forceIdr ?? false)
+                        ptsMicros: f.ptsMicros, forceIdr: f.forceIdr ?? false, pose: pose)
     }
 
-    private func sendAccessUnit(_ annexB: [UInt8], keyframe: Bool, seq: UInt32, pts: UInt64) {
+    private func sendAccessUnit(_ annexB: [UInt8], keyframe: Bool, seq: UInt32, pts: UInt64,
+                                pose: PoseTag?) {
         guard let sender = sender, !annexB.isEmpty else { return }
         let codec = codecHEVC ? Wire.codecHEVC : Wire.codecH264
         let total = annexB.count
@@ -182,7 +189,8 @@ final class Engine {
             if frag == fragCount - 1 { flags |= Wire.flagFrameEnd }
             if stereoSbs { flags |= Wire.flagStereoSbs }
             var pkt = Wire.header(flags: flags, codec: codec, frameSeq: seq,
-                                  fragIndex: frag, fragCount: fragCount, ptsMicros: pts)
+                                  fragIndex: frag, fragCount: fragCount, ptsMicros: pts,
+                                  pose: pose)
             pkt.append(contentsOf: annexB[offset..<offset + chunk])
             sender.send(pkt)
             sent += pkt.count

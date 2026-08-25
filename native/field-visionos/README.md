@@ -77,6 +77,26 @@ This shell is the **receiver** end of that pipeline (see `RTT/` below).
     verified loading), with a mono `UnlitMaterial` fallback; per-eye separation is device-only to
     confirm (the sim renders one eye).
 
+- **Pose/** — the **uplink**, the only channel that runs device → Mac. Everything else on the wire
+  pushes *to* the head (a program on `__visionmetal__`, pixels on the RTT stream); nothing told the
+  Mac where the wearer is looking, so a streamed image could only ever be a world-locked surface.
+  This is what makes it a view. Kotlin end (authoritative): `afield/graphics/VisionPose.kt`.
+  - **PoseWire.swift** — `Encodable` mirrors of the `__visionpose__` messages
+    (`visionpose/hello` · `/frame` · `/bye`) and the column-major `simd_float4x4` → `[Float]`
+    flattening. Column-major is load-bearing: `simd_float4x4` and the Kotlin `Matrix4f` agree, so the
+    array crosses untransposed — and a transposed rigid transform still looks like a plausible pose,
+    which is the worst way for this to be wrong.
+  - **PoseUplink.swift** — the sender. Deliberately **not** `@MainActor`: it is driven from the
+    Compositor Services render thread, and hopping to the main actor would put tracking behind
+    SwiftUI. **Latest-wins, never queued** — when the socket is still busy the new pose is dropped,
+    because a queue here turns network jitter into accumulating pose delay (the failure that reads as
+    "tracking feels laggy" and cannot be found in the renderer). Counts sent/dropped;
+    `FIELD4_POSE_DIVISOR` thins the rate, `FIELD4_POSE_NAME` labels the head.
+  - Fed from `LiveMetal/LiveMetalRenderer.swift` — `beginFrame`/`endFrame` bracket the drawable loop
+    and `record` sits at the one line that already holds both the drawable and the device anchor, so
+    the pose that travels is the pose that drawable was rendered from. That association is the point;
+    re-querying ARKit in the uplink would make it a guess that happens to be close.
+
 ## What works (as of this handoff)
 
 - **Multiple windows** — floating editor / undock / `window.open` all open real windows via

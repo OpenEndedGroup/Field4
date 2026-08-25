@@ -8,8 +8,16 @@ struct ReassembledFrame {
     var isKeyframe: Bool
     /// The decoded frame is a side-by-side stereo pair (left|right) to present per-eye.
     var stereo: Bool
+    /// The head pose this frame was rendered from, when the sender knew one (wire v2 + flagPoseValid).
+    /// `poseDisplayTimeNanos` is *this device's* clock, so it can go straight to
+    /// `queryDeviceAnchor(atTimestamp:)` — which is how a frame gets reprojected to where the head
+    /// actually is rather than to where it was when the Mac started drawing.
+    var poseFrameId: UInt64?
+    var poseDisplayTimeNanos: UInt64?
     /// Full access unit: `00 00 00 01`-prefixed NAL units, with VPS/SPS/PPS inline on keyframes.
     var annexB: Data
+
+    var hasPose: Bool { poseDisplayTimeNanos != nil }
 }
 
 /// Reassembles UDP fragments into whole access units per `WIRE_FORMAT.md` → "Receiver reassembly",
@@ -43,6 +51,8 @@ final class FrameReassembler {
         var isKeyframe: Bool
         var stereo: Bool
         var ptsMicros: UInt64
+        var poseFrameId: UInt64?
+        var poseDisplayTimeNanos: UInt64?
         var fragments: [Data?]      // indexed by fragIndex; nil = not yet arrived
         var received: Int
     }
@@ -106,6 +116,8 @@ final class FrameReassembler {
             isKeyframe: pkt.isKeyframe,
             stereo: pkt.isStereoSbs,
             ptsMicros: pkt.ptsMicros,
+            poseFrameId: pkt.poseFrameId,
+            poseDisplayTimeNanos: pkt.poseDisplayTimeNanos,
             fragments: Array(repeating: nil, count: Int(pkt.fragCount)),
             received: 0
         )
@@ -114,6 +126,11 @@ final class FrameReassembler {
         partial.isKeyframe = partial.isKeyframe || pkt.isKeyframe
         partial.stereo = partial.stereo || pkt.isStereoSbs
         partial.ptsMicros = pkt.ptsMicros
+        // The pose tail also rides every fragment. Take it from any fragment that has it rather than
+        // overwriting with a later one's — they agree, but a v1 fragment interleaved from a restarted
+        // sender would otherwise erase a pose we already had.
+        if let id = pkt.poseFrameId { partial.poseFrameId = id }
+        if let t = pkt.poseDisplayTimeNanos { partial.poseDisplayTimeNanos = t }
 
         let idx = Int(pkt.fragIndex)
         if idx < partial.fragments.count, partial.fragments[idx] == nil {
@@ -130,6 +147,8 @@ final class FrameReassembler {
                                                    codec: partial.codec,
                                                    isKeyframe: partial.isKeyframe,
                                                    stereo: partial.stereo,
+                                                   poseFrameId: partial.poseFrameId,
+                                                   poseDisplayTimeNanos: partial.poseDisplayTimeNanos,
                                                    annexB: annexB)
             completedFrames += 1
             return releaseInOrder()

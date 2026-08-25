@@ -6,10 +6,11 @@ import IOSurface
 
 /// Wraps a VTCompressionSession for low-latency HEVC/H.264. Input is an IOSurface (the RTT
 /// the producer rendered SBS into); output is a complete Annex-B access unit delivered to
-/// `onAccessUnit`, with the seq/pts of the originating frame threaded through the encode
+/// `onAccessUnit`, with the seq/pts/pose of the originating frame threaded through the encode
 /// closure (so there is no shared mutable frame counter across the async callback).
 final class Encoder {
-    typealias AccessUnitHandler = (_ annexB: [UInt8], _ keyframe: Bool, _ seq: UInt32, _ pts: UInt64) -> Void
+    typealias AccessUnitHandler = (_ annexB: [UInt8], _ keyframe: Bool, _ seq: UInt32, _ pts: UInt64,
+                                   _ pose: PoseTag?) -> Void
 
     private var session: VTCompressionSession?
     private let codec: CMVideoCodecType
@@ -54,7 +55,8 @@ final class Encoder {
         VTCompressionSessionPrepareToEncodeFrames(session)
     }
 
-    func encode(ioSurface: IOSurfaceRef, seq: UInt32, ptsMicros: UInt64, forceIdr: Bool) {
+    func encode(ioSurface: IOSurfaceRef, seq: UInt32, ptsMicros: UInt64, forceIdr: Bool,
+                pose: PoseTag? = nil) {
         guard let session = session else { return }
         var pb: Unmanaged<CVPixelBuffer>?
         let st = CVPixelBufferCreateWithIOSurface(kCFAllocatorDefault, ioSurface, nil, &pb)
@@ -70,7 +72,7 @@ final class Encoder {
             duration: .invalid, frameProperties: props, infoFlagsOut: nil
         ) { [weak self] status, _, sample in
             guard let self = self, status == noErr, let sample = sample else { return }
-            self.emit(sample, seq: seq, pts: ptsMicros)
+            self.emit(sample, seq: seq, pts: ptsMicros, pose: pose)
         }
     }
 
@@ -97,7 +99,7 @@ final class Encoder {
 
     // MARK: - CMSampleBuffer -> Annex-B
 
-    private func emit(_ sample: CMSampleBuffer, seq: UInt32, pts: UInt64) {
+    private func emit(_ sample: CMSampleBuffer, seq: UInt32, pts: UInt64, pose: PoseTag?) {
         let keyframe = Encoder.isKeyframe(sample)
         let startCode: [UInt8] = [0, 0, 0, 1]
         var annexB = [UInt8]()
@@ -130,7 +132,7 @@ final class Encoder {
             i += nalLen
         }
 
-        onAccessUnit(annexB, keyframe, seq, pts)
+        onAccessUnit(annexB, keyframe, seq, pts, pose)
     }
 
     private static func isKeyframe(_ sample: CMSampleBuffer) -> Bool {
