@@ -11,7 +11,7 @@ val camera = Camera()
 mesh.p = camera.p
 mesh.m = camera.m
 
-var kc = keyCamera(camera=camera)
+var kc = KeyCamera(camera=camera, name="kc")
 mesh.set(4, 2) {
     val z = 0.0
     pos.add(-1,-1, z,

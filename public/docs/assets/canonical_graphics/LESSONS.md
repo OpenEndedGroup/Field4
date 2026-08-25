@@ -64,8 +64,7 @@ Field API names and GLSL features scanned out of the sources above — the rever
 - `FrameBufferGroup` — 3b. compute particles
 - `GpuRadixSort` — 6. radix sort
 - `HasImageView` — 5. PingPongTT, 5. draw blur, 5. draw pingpoing
-- `KeyCamera` — 2. hello keyboard camera, 4. gltf loading, 4. multi-textureing from a gltf, 4. texturing, 4b. multi-texture, 5. Bluring, 5. draw pingpoing, 5. draw rtt, 5. included, 5. lygia, 6. RTT- draw rtt, 6. debugging - Texture probe example, 6b. debugging / mapping - Texture probe example, 7b. slang — Texture
-- `keyCamera` — 5. PingPongTT, 5. RTT, 5. draw blur, 6. RTT - sending
+- `KeyCamera` — 2. hello keyboard camera, 4. gltf loading, 4. multi-textureing from a gltf, 4. texturing, 4b. multi-texture, 5. Bluring, 5. PingPongTT, 5. RTT, 5. draw blur, 5. draw pingpoing, 5. draw rtt, 5. included, 5. lygia, 6. RTT - sending, 6. RTT- draw rtt, 6. debugging - Texture probe example, 6b. debugging / mapping - Texture probe example, 7b. slang — Texture
 - `LoadedTexture` — 4. texturing, 4b. multi-texture, 6. debugging - Texture probe example, 6b. debugging / mapping - Texture probe example, 7b. slang — Texture
 - `mapAndRead` — 3. compute shader
 - `mapAndWrite` — 3. compute shader
