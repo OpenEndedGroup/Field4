@@ -19,9 +19,13 @@ import io.ktor.websocket.*
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -1131,23 +1135,104 @@ class KotlinExecution : BoxExecution {
             box.properties.remove("_attic")
         }
 
-        @OptIn(DelicateCoroutinesApi::class)
-        fun launchBatch(requests: List<Pair<Box, Execute>>, reply: (Message) -> Unit) {
-            if (requests.isEmpty()) return
+        /** One launch waiting its turn in [launchSequencer]: a chord, or a single box. */
+        private class QueuedLaunch(
+            val label: String,
+            val finished: CompletableDeferred<Unit>,
+            val run: suspend () -> Unit
+        )
 
+        /**
+         * Every batch launch in the session, in the order the front end asked for them.
+         *
+         * A chord is one batch, and within a batch boxes are strictly serialized (see
+         * [runPreparedBatchLaunches]) so a later box's macros and compile can see an earlier box's
+         * runtime effects. That guarantee used to stop at the batch boundary: each `launch-batch`
+         * got its own `GlobalScope.launch`, so chording a second group while the first was still
+         * running raced it — a small box in the second group could finish compiling and *evaluate*
+         * before boxes still queued in the first group, which for a child box whose parent is in
+         * that first group is reliably an error. Queueing every batch through a single consumer
+         * makes a second chord *extend* the sequence instead of competing with it.
+         *
+         * Unlimited and never closed: submission is synchronous and must not block the caller (the
+         * websocket handler), and dropping a launch on the floor would be worse than queueing it.
+         */
+        private val launchSequencer = Channel<QueuedLaunch>(Channel.UNLIMITED)
+
+        /**
+         * The single consumer of [launchSequencer]. Started on first use rather than at class-init,
+         * and deliberately never allowed to die: one batch throwing must not wedge every launch for
+         * the rest of the session, so anything short of this coroutine's own cancellation is logged
+         * and the queue moves on.
+         */
+        @OptIn(DelicateCoroutinesApi::class)
+        private val launchPump: Job by lazy {
+            GlobalScope.launch(Dispatchers.Default) {
+                for (queued in launchSequencer) {
+                    try {
+                        // Give everything launched so far a chance to actually get going before the
+                        // next entry evaluates -- the same courtesy `runPreparedBatchLaunches` pays
+                        // between boxes *inside* a chord. A launched return value starts running from
+                        // its own runloop coroutine (`ReturnValueRegistry`'s `inMain`), so without
+                        // this the next box can evaluate before the previous box's first frame, which
+                        // for a child box reading what its parent sets up on frame one is an error.
+                        withContext(Runloop.runLoop.main) {
+                            repeat(BATCH_LAUNCH_INTER_BOX_YIELDS) { yield() }
+                        }
+                        queued.run()
+                    } catch (t: Throwable) {
+                        if (t is CancellationException && !coroutineContext.isActive) throw t
+                        lprintln(
+                            "error,execution",
+                            "queued launch (${queued.label}) threw ${t.javaClass.name}: ${t.message}"
+                        )
+                        lprintln("error,execution", t.stackTraceToString())
+                    } finally {
+                        queued.finished.complete(Unit)
+                    }
+                }
+            }
+        }
+
+        /**
+         * Put [work] at the back of the launch queue, returning a handle that completes when it has
+         * run. [label] appears in the log if it throws.
+         *
+         * Callers do their *preparation* synchronously, before enqueueing, so watermarks — and
+         * therefore the "launching" annotations — are assigned in the order the gestures arrived and
+         * appear immediately, while each box waits its turn.
+         */
+        internal fun enqueueLaunch(label: String, work: suspend () -> Unit): CompletableDeferred<Unit> {
+            val finished = CompletableDeferred<Unit>()
+            launchPump // start the consumer if this is the first launch of the session
+            val queued = launchSequencer.trySend(QueuedLaunch(label, finished, work))
+            if (!queued.isSuccess) {
+                // Cannot happen with an UNLIMITED, never-closed channel; if it ever does, say so
+                // rather than silently losing the launch.
+                lprintln("error,execution", "could not queue launch ($label): ${queued.exceptionOrNull()}")
+                finished.complete(Unit)
+            }
+            return finished
+        }
+
+        private fun enqueueBatchLaunch(
+            requests: List<Pair<Box, Execute>>,
+            reply: (Message) -> Unit
+        ): CompletableDeferred<Unit> {
             val originSession = thisSession.get()
             val pending = prepareBatchLaunchRequests(requests, originSession)
+            val label = "chord of ${pending.size} box(es)"
+            return enqueueLaunch(label) { runPreparedBatchLaunches(pending, reply) }
+        }
 
-            GlobalScope.launch(Dispatchers.Default) {
-                runPreparedBatchLaunches(pending, reply)
-            }
+        fun launchBatch(requests: List<Pair<Box, Execute>>, reply: (Message) -> Unit) {
+            if (requests.isEmpty()) return
+            enqueueBatchLaunch(requests, reply)
         }
 
         suspend fun launchBatchAndWait(requests: List<Pair<Box, Execute>>, reply: (Message) -> Unit) {
             if (requests.isEmpty()) return
-            val originSession = thisSession.get()
-            val pending = prepareBatchLaunchRequests(requests, originSession)
-            runPreparedBatchLaunches(pending, reply)
+            enqueueBatchLaunch(requests, reply).await()
         }
 
         private fun prepareBatchLaunchRequests(
@@ -1991,7 +2076,16 @@ class KotlinExecution : BoxExecution {
             )
         )
 
-        inMain {
+        // Queued, not fired straight at the runloop. A single-box launch is the same kind of event
+        // as a chord -- the front end even reaches it *from* a chord, `canvasGestures` sending
+        // `launch-all` whenever the selection is one box (Main.kt) -- so it has to take its place in
+        // the same sequence. Fired directly, as it used to be, it would evaluate as soon as it
+        // compiled: launch a row of boxes and then a single box below it, and the single one runs
+        // before the slow-compiling box above it has evaluated, which is exactly the ordering a
+        // child box cannot survive. The prologue above stays synchronous, so this box's "launching"
+        // annotation is already showing while it waits.
+        enqueueLaunch("launch ${inside.id} strand=$strand") {
+            withContext(Runloop.runLoop.main) {
 
             inside.resetStdlibRandom()
             resetLaunchSetupState(inside)
@@ -2072,6 +2166,7 @@ class KotlinExecution : BoxExecution {
                         watermark = watermark
                     )
                 }
+            }
             }
         }
     }
