@@ -656,6 +656,35 @@ class RectSLSoftRasterTest {
         )
     }
 
+    /**
+     * The pictures. A raster written to a temp directory and read back, so "it compiles" cannot pass
+     * for verification — and checked for all three ways a raster silently fails: all-empty, all-solid,
+     * and hard-edged, i.e. not soft at all.
+     */
+    @Test
+    fun `the soft raster renders a non-degenerate picture`() {
+        // A rotated square, not an axis-aligned one: an axis-aligned edge at beta = 1px produces only
+        // as many grey levels as it has distinct sub-pixel offsets, which is four, and a test that
+        // demanded a smooth ramp from it would be demanding the wrong thing.
+        val program = squareScene(rotation = Math.toRadians(24.0), size = 7.83)
+        val field = program.toAdField()
+        val spec = spec(program, betaPixels = 1.5, CoverageKernel.LINEAR)
+        val raster = softRaster(field, spec, 0.0)
+        val distinct = raster.map { (it * 255).toInt() }.distinct().size
+        val interior = raster.count { it > 0.99 }
+        val outside = raster.count { it < 0.01 }
+        val edge = raster.count { it > 0.01 && it < 0.99 }
+        println("raster: $distinct distinct levels, $interior solid, $outside empty, $edge partial")
+        assertTrue(interior >= 1000, "the raster has almost no solid interior: $interior pixels")
+        assertTrue(outside >= 1000, "the raster is nearly all solid; it is not a picture of a square")
+        assertTrue(edge >= 300, "the raster has no soft edge at all: $edge pixels")
+        assertTrue(distinct >= 60, "the raster is effectively binary: $distinct levels")
+
+        val dir = Files.createTempDirectory("rectsl-soft-raster")
+        val png = dir.resolve("bias.png")
+        Files.write(png, RectSLSoftRasterFigure.renderBias(field, spec, 0.0))
+        assertTrue(Files.size(png) > 2000, "the PNG is suspiciously small: ${Files.size(png)} bytes")
+    }
 
     // ---------------------------------------------------------------------------------------
     // Fixtures
