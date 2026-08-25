@@ -532,7 +532,11 @@ class Instance(validate: Boolean) {
                 lprint("error,openxr", "missing required OpenXR extensions: $missing; supported=$supported")
                 return null
             }
-            return openXRVulkanExtensions.distinct()
+            val optional = listOf(
+                EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME,
+                EXTHandInteraction.XR_EXT_HAND_INTERACTION_EXTENSION_NAME,
+            ).filter { it in supported }
+            return (openXRVulkanExtensions + optional).distinct()
         }
 
         private fun enabledOpenXRApiLayers(): List<String> {

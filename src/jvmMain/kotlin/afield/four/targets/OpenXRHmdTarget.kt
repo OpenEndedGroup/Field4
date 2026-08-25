@@ -187,6 +187,32 @@ class OpenXRHmdTarget(
 
     enum class Hand { LEFT, RIGHT }
 
+    data class JointPose(
+        var position: Vec3 = Vec3(),
+        var orientation: Quat = Quat(),
+        var radius: Float = 0f,
+        var positionValid: Boolean = false,
+        var orientationValid: Boolean = false,
+    )
+
+    enum class HandJoint {
+        PALM, WRIST,
+        THUMB_METACARPAL, THUMB_PROXIMAL, THUMB_DISTAL, THUMB_TIP,
+        INDEX_METACARPAL, INDEX_PROXIMAL, INDEX_INTERMEDIATE, INDEX_DISTAL, INDEX_TIP,
+        MIDDLE_METACARPAL, MIDDLE_PROXIMAL, MIDDLE_INTERMEDIATE, MIDDLE_DISTAL, MIDDLE_TIP,
+        RING_METACARPAL, RING_PROXIMAL, RING_INTERMEDIATE, RING_DISTAL, RING_TIP,
+        LITTLE_METACARPAL, LITTLE_PROXIMAL, LITTLE_INTERMEDIATE, LITTLE_DISTAL, LITTLE_TIP;
+        companion object { const val COUNT = 26 }
+    }
+
+    class HandTrackingState {
+        val joints = Array(HandJoint.COUNT) { JointPose() }
+        var isActive: Boolean = false
+        var pinchStrength: Float = 0f
+
+        operator fun get(joint: HandJoint): JointPose = joints[joint.ordinal]
+    }
+
     data class ControllerState(
         var active: Boolean = false,
         var poseValid: Boolean = false,
@@ -253,7 +279,20 @@ class OpenXRHmdTarget(
     private var leftAimSpace: XrSpace? = null
     private var rightAimSpace: XrSpace? = null
 
+    private var handTrackingEnabled = false
+    private var leftHandTracker: XrHandTrackerEXT? = null
+    private var rightHandTracker: XrHandTrackerEXT? = null
+    private var leftJointsBuf: XrHandJointLocationEXT.Buffer? = XrHandJointLocationEXT.calloc(HandJoint.COUNT)
+    private var rightJointsBuf: XrHandJointLocationEXT.Buffer? = XrHandJointLocationEXT.calloc(HandJoint.COUNT)
+    private val leftHandState = HandTrackingState()
+    private val rightHandState = HandTrackingState()
+
     private var inputDebugPrinted = false
+
+    fun handState(hand: Hand): HandTrackingState? {
+        if (!handTrackingEnabled) return null
+        return if (hand == Hand.LEFT) leftHandState else rightHandState
+    }
 
     fun controllerState(hand: Hand, out: ControllerState = ControllerState()): ControllerState {
         val src = if (hand == Hand.LEFT) leftController else rightController
@@ -574,6 +613,9 @@ class OpenXRHmdTarget(
                         CPUSpan.time("xr_controllers") {
                             syncAndUpdateControllers(xrSessionLocal, xrSpaceLocal, frameState.predictedDisplayTime())
                         }
+                        if (handTrackingEnabled) CPUSpan.time("xr_hand_tracking") {
+                            syncHandTracking(xrSessionLocal, xrSpaceLocal, frameState.predictedDisplayTime())
+                        }
 
                         // Acquire all swapchain images first (CPU), then render, then submit+wait, then release.
                         if (acquiredIndicesScratch.size != swapchains.size) {
@@ -741,6 +783,7 @@ class OpenXRHmdTarget(
             xrSpace = XrSpace(spacePtr[0], session)
 
             initControllerActions(session)
+            initHandTracking(session)
 
             // Swapchain format selection (prefer SRGB)
             val formatCountBuf = stack.callocInt(1)
@@ -1322,6 +1365,90 @@ class OpenXRHmdTarget(
         val res = xrStringToPath(xrInstanceLocal, str, out)
         check(res == XR_SUCCESS) { "xrStringToPath('$str') failed: $res" }
         return out[0]
+    }
+
+    private fun initHandTracking(session: XrSession) {
+        if (session.getCapabilities().xrCreateHandTrackerEXT == 0L) return
+        MemoryStack.stackPush().use { stack ->
+            val createInfo = XrHandTrackerCreateInfoEXT.calloc(stack)
+                .type(EXTHandTracking.XR_TYPE_HAND_TRACKER_CREATE_INFO_EXT)
+                .hand(EXTHandTracking.XR_HAND_LEFT_EXT)
+                .handJointSet(EXTHandTracking.XR_HAND_JOINT_SET_DEFAULT_EXT)
+            val pTracker = stack.callocPointer(1)
+
+            var res = EXTHandTracking.xrCreateHandTrackerEXT(session, createInfo, pTracker)
+            if (res == XR_SUCCESS) leftHandTracker = XrHandTrackerEXT(pTracker[0], session)
+            else lprintln("warning,openxr", "xrCreateHandTrackerEXT (left) failed: $res")
+
+            createInfo.hand(EXTHandTracking.XR_HAND_RIGHT_EXT)
+            res = EXTHandTracking.xrCreateHandTrackerEXT(session, createInfo, pTracker)
+            if (res == XR_SUCCESS) rightHandTracker = XrHandTrackerEXT(pTracker[0], session)
+            else lprintln("warning,openxr", "xrCreateHandTrackerEXT (right) failed: $res")
+        }
+        handTrackingEnabled = leftHandTracker != null || rightHandTracker != null
+        if (handTrackingEnabled) lprintln("info,openxr", "hand tracking enabled")
+    }
+
+    private fun syncHandTracking(session: XrSession, space: XrSpace, predictedTime: Long) {
+        MemoryStack.stackPush().use { stack ->
+            val locateInfo = XrHandJointsLocateInfoEXT.calloc(stack)
+                .type(EXTHandTracking.XR_TYPE_HAND_JOINTS_LOCATE_INFO_EXT)
+                .baseSpace(space)
+                .time(predictedTime)
+            leftJointsBuf?.let { syncHandJoints(stack, leftHandTracker, locateInfo, it, leftHandState) }
+            rightJointsBuf?.let { syncHandJoints(stack, rightHandTracker, locateInfo, it, rightHandState) }
+        }
+    }
+
+    private fun syncHandJoints(
+        stack: MemoryStack,
+        tracker: XrHandTrackerEXT?,
+        locateInfo: XrHandJointsLocateInfoEXT,
+        buf: XrHandJointLocationEXT.Buffer,
+        state: HandTrackingState,
+    ) {
+        if (tracker == null) { state.isActive = false; return }
+        val locations = XrHandJointLocationsEXT.calloc(stack)
+            .type(EXTHandTracking.XR_TYPE_HAND_JOINT_LOCATIONS_EXT)
+            .jointLocations(buf)
+        val res = EXTHandTracking.xrLocateHandJointsEXT(tracker, locateInfo, locations)
+        if (res != XR_SUCCESS || !locations.isActive()) {
+            state.isActive = false
+            state.pinchStrength = 0f
+            return
+        }
+        state.isActive = true
+        for (i in 0 until HandJoint.COUNT) {
+            val src = buf[i]
+            val flags = src.locationFlags()
+            val dst = state.joints[i]
+            dst.positionValid = (flags and XR_SPACE_LOCATION_POSITION_VALID_BIT.toLong()) != 0L
+            dst.orientationValid = (flags and XR_SPACE_LOCATION_ORIENTATION_VALID_BIT.toLong()) != 0L
+            dst.radius = src.radius()
+            if (dst.positionValid) {
+                val p = src.pose().`position$`()
+                dst.position.x = p.x()
+                dst.position.y = p.y()
+                dst.position.z = p.z()
+            }
+            if (dst.orientationValid) {
+                val o = src.pose().orientation()
+                dst.orientation.x = o.x()
+                dst.orientation.y = o.y()
+                dst.orientation.z = o.z()
+                dst.orientation.w = o.w()
+            }
+        }
+        // Pinch strength: 0.0=open (50mm gap), 1.0=pinched (10mm gap).
+        val thumbTip = state[HandJoint.THUMB_TIP]
+        val indexTip = state[HandJoint.INDEX_TIP]
+        state.pinchStrength = if (thumbTip.positionValid && indexTip.positionValid) {
+            val dx = thumbTip.position.x - indexTip.position.x
+            val dy = thumbTip.position.y - indexTip.position.y
+            val dz = thumbTip.position.z - indexTip.position.z
+            val dist = kotlin.math.sqrt((dx * dx + dy * dy + dz * dz).toDouble()).toFloat()
+            ((0.05f - dist) / 0.04f).coerceIn(0f, 1f)
+        } else 0f
     }
 
     private fun syncAndUpdateControllers(session: XrSession, referenceSpace: XrSpace, predictedDisplayTime: Long) {
@@ -2377,6 +2504,14 @@ class OpenXRHmdTarget(
         swapchains.clear()
 
         // XR resources
+        leftHandTracker?.let { EXTHandTracking.xrDestroyHandTrackerEXT(it) }
+        rightHandTracker?.let { EXTHandTracking.xrDestroyHandTrackerEXT(it) }
+        leftHandTracker = null
+        rightHandTracker = null
+        leftJointsBuf?.free(); leftJointsBuf = null
+        rightJointsBuf?.free(); rightJointsBuf = null
+        handTrackingEnabled = false
+
         leftGripSpace?.let { xrDestroySpace(it) }
         rightGripSpace?.let { xrDestroySpace(it) }
         leftAimSpace?.let { xrDestroySpace(it) }
