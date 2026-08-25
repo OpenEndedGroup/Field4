@@ -938,7 +938,18 @@ kotlin {
                 // - annotations jar carries io.github.kyay10.wither.with/context (script-visible via
                 //   dependenciesFromClassloader wholeClasspath)
                 // - plugin jar is located on java.class.path at runtime and passed to the REPL
-                //   compiler via -Xplugin (see KotlinInterface2 init)
+                //   compiler via -Xplugin (see KotlinInterface2 init) -- but note that -Xplugin is
+                //   NOT what actually activates it. Because the jar is an `implementation`
+                //   dependency it sits on the app classpath, and it ships
+                //   META-INF/services/org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
+                //   naming WitherPluginComponentRegistrar, so the embedded compiler picks it up by
+                //   ServiceLoader whether or not -Xplugin is passed. Measured: suppressing both
+                //   -Xplugin args (compilerPluginArgs == []) still produced 10
+                //   io.github.kyay10.wither frames. The practical consequence is that Wither
+                //   CANNOT be turned off at runtime -- only by removing the line below.
+                // - and it is not neutral: its IrGenerationExtension breaks local and class-member
+                //   `by provideDelegate` in box code. See dev_docs/k2_repl_provide_delegate.md and
+                //   the reproducer afield.examples.ProvideDelegateReplSmokeTest.
                 implementation(files("libs/wither-annotations.jar"))
                 implementation(files("libs/wither-plugin.jar"))
 
