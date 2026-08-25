@@ -7,16 +7,6 @@ import simd
 private let liveMetalBuffersInFlight = 3
 private let liveMetalAlignedUniformSize = (MemoryLayout<LiveMetalFrameUniforms>.stride + 0xff) & -0x100
 
-private extension LayerRenderer.Clock.Instant {
-    /// Convert the compositor clock to the ARKit timestamp convention, matching Xcode's
-    /// Compositor Services project template.
-    var timeInterval: TimeInterval {
-        let components = LayerRenderer.Clock.Instant.epoch.duration(to: self).components
-        let nanoseconds = TimeInterval(components.attoseconds / 1_000_000_000)
-        return TimeInterval(components.seconds) + nanoseconds / TimeInterval(NSEC_PER_SEC)
-    }
-}
-
 private struct LiveMetalFrameUniforms {
     var viewProjection0 = matrix_identity_float4x4
     var viewProjection1 = matrix_identity_float4x4

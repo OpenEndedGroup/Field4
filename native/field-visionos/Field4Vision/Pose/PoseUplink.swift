@@ -49,6 +49,7 @@ final class PoseUplink: @unchecked Sendable {
     private var sent: UInt64 = 0
     private var dropped: UInt64 = 0
     private var lastReportFrame: UInt64 = 0
+    private var lastLatencyReportFrame: UInt64 = 0
 
     /// Publish every Nth frame. 1 is the intent; `FIELD4_POSE_DIVISOR` exists so a bandwidth or
     /// battery question can be answered by measurement instead of by argument.
@@ -105,6 +106,7 @@ final class PoseUplink: @unchecked Sendable {
         self.sendInFlight = false
         lock.unlock()
         task.resume()
+        receiveNext(on: task)
         log.notice("pose uplink connecting to \(self.server.webSocketURL.absoluteString, privacy: .public)")
     }
 
@@ -224,6 +226,8 @@ final class PoseUplink: @unchecked Sendable {
             }
         }
 
+        reportLatencyIfDue(frameIndex: frame.frameIndex)
+
         // One line every ~900 frames (ten seconds at 90 Hz): enough to see the rate holding without
         // burning the log.
         if frame.frameIndex - counters.lastReport >= 900 {
@@ -254,6 +258,55 @@ final class PoseUplink: @unchecked Sendable {
             self.connect()
             self.greet(viewCount: 2, refreshHz: 90)
         }
+    }
+
+    /// The channel's only inbound message is the host's clock-sync ping. Answered immediately, on
+    /// whatever thread the callback lands on, because the whole value of the reply is that the two
+    /// timestamps in it bracket as little of our own work as possible.
+    private func receiveNext(on task: URLSessionWebSocketTask) {
+        task.receive { [weak self] result in
+            guard let self else { return }
+            let arrival = LayerRenderer.Clock().now.timeInterval
+            switch result {
+            case .failure:
+                return   // the send path drives reconnection; nothing to do here
+            case .success(let message):
+                let data: Data?
+                switch message {
+                case .string(let text): data = Data(text.utf8)
+                case .data(let bytes): data = bytes
+                @unknown default: data = nil
+                }
+                if let data { self.handleInbound(data, arrival: arrival) }
+                self.lock.lock(); let live = self.running && self.task === task; self.lock.unlock()
+                if live { self.receiveNext(on: task) }
+            }
+        }
+    }
+
+    private func handleInbound(_ data: Data, arrival: Double) {
+        guard let ping = try? JSONDecoder().decode(PosePing.self, from: data),
+              ping.channel == PoseWire.channel,
+              ping.type == "visionpose/ping",
+              ping.version == PoseWire.version
+        else { return }
+        let pong = PosePong(hostSendNanos: ping.hostSendNanos,
+                            headRecvNanos: Int64(arrival * 1.0e9),
+                            headSendNanos: Int64(LayerRenderer.Clock().now.timeInterval * 1.0e9))
+        guard let text = encode(pong) else { return }
+        lock.lock(); let task = self.task; lock.unlock()
+        task?.send(.string(text)) { _ in }
+    }
+
+    /// Ship the device-side latency spans. Sent on its own cadence rather than per frame: it is a
+    /// summary, and at pose rate it would be most of the uplink's traffic.
+    private func reportLatencyIfDue(frameIndex: UInt64) {
+        guard frameIndex &- lastLatencyReportFrame >= 600, PoseLatency.shared.hasSamples else { return }
+        lastLatencyReportFrame = frameIndex
+        let report = PoseLatencyReport(device: device, spans: PoseLatency.shared.snapshot())
+        guard let text = encode(report) else { return }
+        lock.lock(); let task = self.task; lock.unlock()
+        task?.send(.string(text)) { _ in }
     }
 
     private func encode<T: Encodable>(_ value: T) -> String? {

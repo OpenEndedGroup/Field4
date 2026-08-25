@@ -299,7 +299,11 @@ class FieldRTTStreamer(
         // so this is the pose it was drawn from. Reading it after the graphics frame completes would
         // pick up whatever had arrived by then — a different pose, silently.
         val pose = poseTag?.invoke()
+        // Time the host's own stages. Recorded here rather than inside the deferred block for the
+        // same reason the pose is read here: this is the tick that rendered the surface.
+        afield.graphics.visionPoseLatest()?.let { afield.graphics.VisionPoseLatency.latched(s, it) }
         renderer.afterCurrentGraphicsFrameComplete {
+            afield.graphics.VisionPoseLatency.submitted(s)
             encoder.frame(surface = slot, seq = s, ptsMicros = pts, forceIdr = forceIdr,
                           poseFrameId = pose?.frameId, poseDisplayTimeNanos = pose?.displayTimeNanos)
         }
@@ -319,6 +323,8 @@ class FieldRTTStreamer(
                 allocLatch.countDown()   // unblock start() so it fails fast
             }
             "opened" -> lprintln("info,field-stream", "encoder opened")
+            // Closes the host's last span: submit (which waits the render fence) to encode complete.
+            "encoded" -> afield.graphics.VisionPoseLatency.encoded(ev.optLong("seq", -1L))
             else -> {}
         }
     }

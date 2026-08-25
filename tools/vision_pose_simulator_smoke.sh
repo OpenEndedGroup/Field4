@@ -71,19 +71,29 @@ if curl -sk --max-time 3 "https://localhost:$PORT/health" 2>/dev/null | grep -q 
 else
     say "starting Field on $PORT…"
     WORKSPACE="$OUT/workspace"
+    # `set -m` puts the server in its own process group, so cleanup can kill the whole tree. Killing
+    # `$SERVER_PID` alone reaps the subshell and leaves the Gradle wrapper and the JVM running; and a
+    # port-based sweep finds nothing when the server never got far enough to listen, which is exactly
+    # the case where it leaks.
+    set -m
     (cd "$REPO" && PORT="$PORT" AFIELD_SKIP_WORKSPACE_PERSIST=1 \
         ./gradlew runJvm --args="--workspace $WORKSPACE" > "$SERVER_LOG" 2>&1) &
     SERVER_PID=$!
+    set +m
     STARTED_SERVER=1
+    # This machine is shared with other build sessions; a cold `runJvm` behind seven busy Gradle
+    # daemons has been observed to need well past four minutes. Wait on the *process*, and only give
+    # up when it dies or the wall clock runs out, rather than assuming a fixed compile time.
     i=0
-    while [ "$i" -lt 480 ]; do
+    while [ "$i" -lt 1800 ]; do
         curl -sk --max-time 2 "https://localhost:$PORT/health" 2>/dev/null | grep -q ok && break
         kill -0 "$SERVER_PID" 2>/dev/null || { say "FAIL: server exited; see $SERVER_LOG"; exit 1; }
+        if [ $((i % 120)) -eq 119 ]; then say "  still waiting for the server ($((i / 2))s)…"; fi
         sleep 0.5
         i=$((i + 1))
     done
     curl -sk --max-time 2 "https://localhost:$PORT/health" 2>/dev/null | grep -q ok \
-        || { say "FAIL: server never became healthy; see $SERVER_LOG"; exit 1; }
+        || { say "FAIL: server never became healthy after $((i / 2))s; see $SERVER_LOG"; exit 1; }
 fi
 say "server healthy on $PORT"
 
@@ -93,6 +103,10 @@ say "server healthy on $PORT"
 cleanup() {
     xcrun simctl terminate "$DEVICE" "$BUNDLE_ID" >/dev/null 2>&1
     [ "$STARTED_SERVER" = "1" ] || return 0
+    # Whole process group first: that is what reaches the Gradle wrapper and the JVM it forked, and
+    # it works even when the server never bound the port.
+    PGID="$(ps -o pgid= -p "$SERVER_PID" 2>/dev/null | tr -d ' ')"
+    [ -n "$PGID" ] && kill -- -"$PGID" 2>/dev/null
     kill "$SERVER_PID" 2>/dev/null
     JVM="$(lsof -nP -iTCP:"$PORT" -sTCP:LISTEN -t 2>/dev/null | head -1)"
     [ -n "$JVM" ] && kill "$JVM" 2>/dev/null
@@ -107,6 +121,12 @@ cleanup() {
         kill -9 "$JVM" 2>/dev/null
         say "note: the Field JVM on $PORT needed SIGKILL"
     fi
+    # Last resort: anything still holding this run's workspace. Named by workspace rather than by
+    # port so it also catches a server that died before listening.
+    for stray in $(pgrep -f "$OUT/workspace" 2>/dev/null); do
+        kill -9 "$stray" 2>/dev/null
+        say "note: killed a stray process still holding this run's workspace ($stray)"
+    done
     return 0
 }
 trap cleanup EXIT INT TERM
@@ -182,6 +202,15 @@ operations:
           // `accepted` and `regressed` are both cumulative since server start; `grew` is the 3s
           // window. Mixing the two scales is how you get a nonsense ratio.
           println("pose-probe: " + VisionPoseStream.summary())
+          // Round-trips the clock-sync ping over the real socket. The simulator has no video stream,
+          // so the device's own spans stay empty here; what this proves is the ping/pong path and the
+          // offset estimator against a live head rather than a synthetic one.
+          val latency = afield.graphics.visionPoseLatencyReport(pings = 6, spacingMillis = 120)
+          println("pose-probe: offsetKnown=" + afield.graphics.VisionPoseLatency.offsetKnown +
+                  " bestRttMs=" + "%.2f".format(
+                      if (afield.graphics.VisionPoseLatency.bestRoundTripNanos == Long.MAX_VALUE) -1.0
+                      else afield.graphics.VisionPoseLatency.bestRoundTripNanos / 1.0e6))
+          latency.lines().forEach { println("pose-latency: " + it) }
           println("pose-probe: grew=" + (second - first) +
                   " accepted=" + second +
                   " heads=" + VisionPoseStream.connectedHeadCount +
@@ -221,26 +250,39 @@ while index < len(text):
     for item in (value.get("data") or {}).get("output") or []:
         lines.append(item.get("html", ""))
 for line in lines:
-    if re.search(r"pose-probe: grew=\d+ accepted=\d+", line):
+    # Both probe lines, so the shell reads numbers out of short parsed strings rather than out of
+    # the raw JSON — a greedy pattern over one very long JSON line is how the RTT came back blank.
+    if re.search(r"pose-probe: (grew=\d+ accepted=\d+|offsetKnown=)", line):
         print(line)
 PYEOF
 )"
 if [ -n "$PROBE" ]; then printf '%s\n' "$PROBE" | tee -a "$RESULT"; fi
+COUNTS="$(printf '%s\n' "$PROBE" | grep 'grew=' | head -1)"
+CLOCK="$(printf '%s\n' "$PROBE" | grep 'offsetKnown=' | head -1)"
 say "-------------------"
 say ""
 
 if [ -z "$PROBE" ]; then
     fail 'the box probe never reported — the Kotlin API was not reachable from a box'
 else
-    GREW="$(printf '%s' "$PROBE" | sed -E 's/.*grew=([0-9]+).*/\1/')"
-    REJECTED="$(printf '%s' "$PROBE" | sed -E 's/.*rejected=([0-9]+).*/\1/')"
-    REGRESSED="$(printf '%s' "$PROBE" | sed -E 's/.*regressed=([0-9]+).*/\1/')"
-    EYES="$(printf '%s' "$PROBE" | sed -E 's/.*eyes=([0-9]+).*/\1/')"
-    CONTROLLERS="$(printf '%s' "$PROBE" | sed -E 's/.*controllers=([0-9]+).*/\1/')"
+    GREW="$(printf '%s' "$COUNTS" | sed -E 's/.*grew=([0-9]+).*/\1/')"
+    REJECTED="$(printf '%s' "$COUNTS" | sed -E 's/.*rejected=([0-9]+).*/\1/')"
+    REGRESSED="$(printf '%s' "$COUNTS" | sed -E 's/.*regressed=([0-9]+).*/\1/')"
+    EYES="$(printf '%s' "$COUNTS" | sed -E 's/.*eyes=([0-9]+).*/\1/')"
+    CONTROLLERS="$(printf '%s' "$COUNTS" | sed -E 's/.*controllers=([0-9]+).*/\1/')"
     [ "${GREW:-0}" -gt 30 ] && say "ok   the stream is sustained ($GREW poses in 3s)" \
         || fail "the stream stalled after the first pose (only $GREW in 3s)"
     [ "${REJECTED:-1}" -eq 0 ] && say 'ok   nothing on the channel was refused' \
         || fail "$REJECTED messages on the channel were refused"
+    case "$CLOCK" in
+        *offsetKnown=true*)
+            RTT="$(printf '%s' "$CLOCK" | sed -E 's/.*bestRttMs=([0-9.-]+).*/\1/')"
+            say "ok   clock-sync ping round-tripped over the socket (best RTT ${RTT:-?} ms)"
+            ;;
+        *)
+            fail 'the clock-sync ping never came back — host and device spans cannot be compared'
+            ;;
+    esac
     [ "${EYES:-0}" -ge 1 ] && say "ok   $EYES view(s) carried per frame (1 in the simulator, 2 on device)" \
         || fail 'no per-eye views arrived'
     # The simulator has no tracked accessories, so zero is the correct answer here and the assertion
@@ -250,7 +292,7 @@ else
     # those instead of applying them over a newer pose is the point. Compare cumulative against
     # cumulative: `GREW` is a 3-second window and `REGRESSED` is a total, so ratioing those two
     # (which an earlier version of this script did) fails on nothing but a long run.
-    ACCEPTED="$(printf '%s' "$PROBE" | sed -E 's/.*accepted=([0-9]+).*/\1/')"
+    ACCEPTED="$(printf '%s' "$COUNTS" | sed -E 's/.*accepted=([0-9]+).*/\1/')"
     if [ "${ACCEPTED:-0}" -le 0 ]; then
         fail 'no poses were accepted at all'
     elif [ "${REGRESSED:-0}" -ge "${ACCEPTED:-0}" ]; then

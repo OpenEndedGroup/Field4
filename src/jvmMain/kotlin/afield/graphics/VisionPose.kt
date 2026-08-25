@@ -10,6 +10,11 @@ import afield.stdlib.linalg.Quaternionf
 import afield.stdlib.linalg.Vector3f
 import afield.stdlib.prettySummary
 import io.ktor.websocket.WebSocketSession
+import io.ktor.websocket.send
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
@@ -371,6 +376,29 @@ object VisionPoseStream {
                 else println("[vision-pose/selfcheck] $name: rtt-wire-selfcheck FAILED: $detail")
                 true
             }
+            VisionPoseLatency.PONG -> {
+                val hostSend = payload["hostSendNanos"]?.jsonPrimitive?.content?.toLongOrNull()
+                val headRecv = payload["headRecvNanos"]?.jsonPrimitive?.content?.toLongOrNull()
+                val headSend = payload["headSendNanos"]?.jsonPrimitive?.content?.toLongOrNull()
+                if (hostSend == null || headRecv == null || headSend == null) return reject()
+                VisionPoseLatency.acceptPong(hostSend, headRecv, headSend)
+                true
+            }
+            VisionPoseLatency.REPORT -> {
+                val reported = payload["spans"]?.jsonObject ?: return reject()
+                val decoded = reported.mapNotNull { (name, value) ->
+                    val obj = value.jsonObject
+                    val p50 = obj["p50Millis"]?.jsonPrimitive?.content?.toDoubleOrNull()
+                    val p95 = obj["p95Millis"]?.jsonPrimitive?.content?.toDoubleOrNull()
+                    val max = obj["maxMillis"]?.jsonPrimitive?.content?.toDoubleOrNull()
+                    val n = obj["n"]?.jsonPrimitive?.content?.toIntOrNull()
+                    if (p50 == null || p95 == null || max == null || n == null) null
+                    else name to VisionPoseLatency.DeviceSpan(p50, p95, max, n)
+                }.toMap()
+                if (decoded.isEmpty()) return reject()
+                VisionPoseLatency.acceptDeviceReport(decoded)
+                true
+            }
             "visionpose/bye" -> {
                 val device = payload["device"]?.jsonPrimitive?.contentOrNull
                 if (device != null) heads.remove(device)
@@ -445,6 +473,27 @@ object VisionPoseStream {
     /** Forget a head whose session has gone, called from the `/ws` teardown. */
     fun detach(session: WebSocketSession) {
         sessions -= session
+    }
+
+    /**
+     * Send one clock-sync ping to every attached head. Returns how many were reached.
+     *
+     * Sent on [Dispatchers.IO], **not** through `inMain`, and that is load-bearing rather than a
+     * style choice. `inMain` dispatches onto Field's main runloop; the natural caller here is a box,
+     * which *runs* on that runloop and then waits for the replies. Queue the send onto the thread
+     * that is about to block waiting for its answer and nothing is ever sent — the first version of
+     * this did exactly that, and presented as "the ping never came back" with a correct-looking
+     * sender, a correct-looking receiver and a live session between them.
+     */
+    internal fun pingHeads(): Int {
+        val frame = VisionPoseLatency.ping()
+        var sent = 0
+        sessions.forEach { session ->
+            sent++
+            @OptIn(DelicateCoroutinesApi::class)
+            GlobalScope.launch(Dispatchers.IO) { runCatching { session.send(frame) } }
+        }
+        return sent
     }
 
     /** One line for a log, a box output or a smoke test. */
@@ -589,3 +638,37 @@ fun visionPoseLatest(): VisionPoseFrame? = VisionPoseStream.latest
 
 /** Heads currently publishing pose. */
 fun visionPoseConnectedHeadCount(): Int = VisionPoseStream.connectedHeadCount
+
+/**
+ * Ask every attached head to echo a timestamp, so the two clocks can be related.
+ *
+ * Call this a handful of times before reading [VisionPoseLatency.report]: the offset is taken from
+ * the *smallest* round trip seen, so more samples can only improve it, and one sample on a contended
+ * link can be badly wrong. Cheap — one small frame per head per call.
+ */
+fun visionPosePingHeads(): Int = VisionPoseStream.pingHeads()
+
+/**
+ * Measure the clocks, then print where the time goes. **This is the one call to make on device.**
+ *
+ *     import afield.graphics.visionPoseLatencyReport
+ *     println(visionPoseLatencyReport())
+ *
+ * Pings [pings] times spaced [spacingMillis] apart before reading, because the offset is taken from
+ * the smallest round trip and a single sample on a contended link can be far off — the first sample
+ * in a fresh process is reliably the worst, since it pays class-loading inside the measured window.
+ *
+ * Blocks for roughly `pings * spacingMillis`. Safe from a box even though a box runs on Field's main
+ * runloop: the pings go out on [Dispatchers.IO] and the replies arrive on Ktor's own threads, so
+ * nothing this waits for needs the thread it is blocking.
+ * Returns the report even with no head attached; it will say what it could not measure.
+ */
+fun visionPoseLatencyReport(pings: Int = 8, spacingMillis: Long = 150): String {
+    repeat(pings.coerceAtLeast(1)) {
+        VisionPoseStream.pingHeads()
+        Thread.sleep(spacingMillis.coerceAtLeast(1))
+    }
+    // One more spacing so the last pong has a chance to land before we read.
+    Thread.sleep(spacingMillis.coerceAtLeast(1))
+    return VisionPoseLatency.report()
+}

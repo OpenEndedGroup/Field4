@@ -34,6 +34,9 @@ final class RTTDecodePipeline {
 
     /// Enqueue a reassembled access unit for decode. Safe on the receive queue; returns immediately.
     func submit(_ frame: ReassembledFrame) {
+        // Marks the frame's arrival and remembers its pose tail, keyed by ptsMicros — the only
+        // identifier that survives the decoder, which drops the rest of `ReassembledFrame`.
+        PoseLatency.shared.reassembled(frame)
         lock.lock()
         if awaitingKeyframe {
             if frame.isKeyframe { awaitingKeyframe = false }

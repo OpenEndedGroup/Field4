@@ -97,7 +97,7 @@ final class RTTStream {
     /// Decoded frames land here instead of being presented immediately.
     private func enqueue(_ pixelBuffer: CVPixelBuffer, ptsMicros: UInt64, stereo: Bool) {
         guard Self.bufferFrames > 0 else {
-            present(pixelBuffer, stereo: stereo)   // buffering disabled → old behaviour
+            present(pixelBuffer, ptsMicros: ptsMicros, stereo: stereo)   // buffering disabled → old behaviour
             return
         }
         // A sender restart resets pts to ~0; rebase rather than stall until the clocks agree again.
@@ -152,7 +152,10 @@ final class RTTStream {
 
         pending.removeFirst()
         lastPresentedPts = head.ptsMicros
-        present(head.pixelBuffer, stereo: head.stereo)
+        // The buffer's hold ends here; timing it separately is what stops a deliberate hold reading
+        // as a slow network.
+        PoseLatency.shared.released(ptsMicros: head.ptsMicros)
+        present(head.pixelBuffer, ptsMicros: head.ptsMicros, stereo: head.stereo)
 
         // Servo: run marginally fast when we are over-buffered, marginally slow when under. 4% is
         // far below the ~8ms jitter we are absorbing, so it never itself becomes visible.
@@ -206,6 +209,7 @@ final class RTTStream {
         // Decode pipeline: lives on the recv queue; hands finished frames back to the main actor.
         let pipeline = RTTDecodePipeline()
         pipeline.onPixelBuffer = { [weak self] pixelBuffer, ptsMicros, stereo in
+            PoseLatency.shared.decoded(ptsMicros: ptsMicros)
             Task { @MainActor in self?.enqueue(pixelBuffer, ptsMicros: ptsMicros, stereo: stereo) }
         }
         self.pipeline = pipeline
@@ -255,7 +259,10 @@ final class RTTStream {
     }
 
     /// Main-actor: upload the decoded frame to the display texture and update stats.
-    private func present(_ pixelBuffer: CVPixelBuffer, stereo: Bool) {
+    private func present(_ pixelBuffer: CVPixelBuffer, ptsMicros: UInt64, stereo: Bool) {
+        // Last moment observable from here. The compositor shows it up to one refresh later and
+        // RealityKit gives no hook for that, so the pose-to-texture span is a lower bound.
+        PoseLatency.shared.presented(ptsMicros: ptsMicros)
         if isStereo != stereo { isStereo = stereo }
 
         let concealed = Self.isNeutralChroma(pixelBuffer)

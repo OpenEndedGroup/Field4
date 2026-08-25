@@ -118,6 +118,36 @@ struct PoseSelfCheck: Encodable {
     let detail: String
 }
 
+/// Reply to the host's clock-sync ping. Echoing `hostSendNanos` lets the host match the round trip,
+/// and reporting both of *our* instants lets it subtract our own processing rather than charging it
+/// to the network.
+struct PosePong: Encodable {
+    let channel = PoseWire.channel
+    let type = "visionpose/pong"
+    let version = PoseWire.version
+    let hostSendNanos: Int64
+    let headRecvNanos: Int64
+    let headSendNanos: Int64
+}
+
+/// Periodic latency spans measured on this device. Span names are the keys and travel with the data,
+/// so the host does not need to know the set in advance — see `PoseLatency.Span`.
+struct PoseLatencyReport: Encodable {
+    let channel = PoseWire.channel
+    let type = "visionpose/latency"
+    let version = PoseWire.version
+    let device: String
+    let spans: [String: [String: Double]]
+}
+
+/// The host's clock-sync ping, the only message this channel receives.
+struct PosePing: Decodable {
+    let channel: String
+    let type: String
+    let version: Int
+    let hostSendNanos: Int64
+}
+
 /// Sent on a clean immersive-space exit, so the Mac stops rendering for a head that has gone.
 struct PoseBye: Encodable {
     let channel = PoseWire.channel

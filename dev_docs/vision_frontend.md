@@ -196,6 +196,39 @@ rendering is the macOS path, which is where MoltenVK multiview is the awkward on
 Hands stay a separate concept and are not implemented. Controllers are device-only
 to verify: `AccessoryTrackingProvider.isSupported` is false on the simulator.
 
+## Latency measurement
+
+`visionPoseLatencyReport()` is the whole interface — call it from a box and read the
+chain. It pings a few times first, because the clock offset is taken from the
+smallest round trip and the first sample in a fresh process pays class-loading
+inside the measured window.
+
+The headline figure needs **no clock agreement**, which is what makes it
+trustworthy: a pose's `predictedDisplayTime` is in the head's clock and the media
+wire carries it back as `poseDisplayTimeNanos`, so the device subtracts two of its
+own timestamps. The ping/pong offset exists only to split the remainder into our
+side and theirs, and it keeps the minimum-RTT sample — averaging RTTs on a
+contended link estimates the contention.
+
+Read the spans, not the total. Two of them are deliberate and must not be
+"optimised":
+
+- the receiver's jitter buffer holds frames on purpose (`FIELD4_RTT_BUFFER=0` for
+  the unbuffered comparison);
+- `submit to encoded` includes the render fence, so scene complexity lands there.
+
+The device's last observable moment is the texture upload, so the motion-to-photon
+figure is a **lower bound**, short by up to one compositor frame. RealityKit
+exposes no presentation hook; that closes with the Compositor Services present
+path, which is the same change that enables reprojection.
+
+Two traps worth keeping, both found by running it rather than reading it. The ping
+must be sent off Field's main runloop: `inMain` queues onto the thread a calling
+box is about to block on, so the sends never left and the symptom was "no pong"
+with a correct sender, a correct receiver and a live session. And the arithmetic
+test drives a synthetic head, so it cannot catch that at all — the simulator
+smoke's live round-trip assertion is what does.
+
 ## Carrying the pose identity to the head: media wire v2
 
 For the head to reproject a received frame it must know which pose the frame was
@@ -243,6 +276,10 @@ submit block, where a newer pose would silently substitute itself.
   the matching clip boundary, and the near plane at NDC z 0. Matching matrix
   entries against a literal would pass with the depth range inverted, which
   renders a plausible image with the wrong things in front.
+- Latency arithmetic: `visionpose.latency` (jvm-main). Recovers a known clock
+  offset from a synthetic head, and pins that a congested sample cannot displace a
+  clean one. A wrong offset yields a *plausible* latency rather than a failure,
+  which is the one kind of wrong nobody re-checks.
 - Media wire bytes: `tools/rtt_wire_check.py`. Drives the real helper and reads
   real datagrams, so it covers the control-channel decode and the threading of the
   pose through the async encoder, not just the header builder. Two phases because
