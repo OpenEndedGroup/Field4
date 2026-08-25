@@ -89,7 +89,10 @@ class KotlinInterface2(
         override val locationId: String? = "LOCATION_$number"
 
         override fun equals(other: Any?): Boolean {
-            return this == other || (other as? SourceCodeImpl)?.let { text == it.text } == true
+            // `this === other`, not `==`: `==` is a call to this same equals, and the self-call
+            // recursed until the stack ran out. Latent until a compiler that compares SourceCode
+            // instances came along (2.4.20 does), and then EVERY compile died in here.
+            return this === other || (other as? SourceCodeImpl)?.let { text == it.text } == true
         }
 
         override fun hashCode(): Int {

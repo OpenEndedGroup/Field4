@@ -1,7 +1,9 @@
 package afield
 
 import afield.logger.lprintln
+import java.io.File
 import io.github.classgraph.ClassGraph
+import io.github.classgraph.ClassInfo
 import kotlin.concurrent.thread
 import kotlin.time.measureTime
 
@@ -50,7 +52,12 @@ object ImportResolution {
         append(" (personal layer: ")
         append(
             when {
-                !PersonalLayer.isPresent -> "absent"
+                !personalCodeReachable() -> "absent"
+                // Reachable but not through the layer: on the plain `-cp`, as the jvm-main runner
+                // puts it. Worth saying out loud -- this case used to read "absent" and made a
+                // vacuous hermetic index look like a hermetic one.
+                !PersonalLayer.isPresent && hermetic -> "on -cp, EXCLUDED by origin"
+                !PersonalLayer.isPresent -> "on -cp (no layer property)"
                 hermetic -> "present but EXCLUDED (${PersonalLayer.roots.joinToString { it.name }})"
                 else -> "present (${PersonalLayer.roots.joinToString { it.name }})"
             }
@@ -127,7 +134,7 @@ object ImportResolution {
      * Empty when there is no personal layer, at no cost: the two indexes are then the same object.
      */
     fun personalLayerCasualties(): List<String> {
-        if (!PersonalLayer.isPresent) return emptyList()
+        if (!personalCodeReachable()) return emptyList()
         val blacklist = blacklist()
         fun importable(candidates: List<String>?) = candidates.orEmpty().count { isImportableClassName(it, blacklist) }
         return hermeticIndex.keys
@@ -169,24 +176,70 @@ internal val classpathIndex: Map<String, List<String>> get() = cache
 /**
  * The same index built over core Field alone — what a clean checkout of this repository has.
  *
- * With no personal layer this *is* [cache], deliberately: a fresh worktree pays for one scan, not two,
- * and the two modes are then indistinguishable by construction rather than by two scans agreeing.
+ * With no personal code reachable at all this *is* [cache], deliberately: a fresh worktree pays for one
+ * scan, not two, and the two modes are then indistinguishable by construction rather than by two scans
+ * agreeing. When there is personal code -- layer or `-cp` entry -- this is a second scan with those
+ * classes dropped by origin.
  */
 internal val hermeticIndex: Map<String, List<String>> by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    if (!PersonalLayer.isPresent) cache
-    else scanSimpleNames(PersonalLayer::class.java.classLoader ?: ClassLoader.getSystemClassLoader())
+    if (!personalCodeReachable()) cache
+    else scanSimpleNames(
+        PersonalLayer::class.java.classLoader ?: ClassLoader.getSystemClassLoader(),
+        // Not enough to scan the app loader: the personal jar can BE a `-cp` entry of that loader
+        // (the jvm-main runner), in which case only the per-class origin tells the two apart.
+        excludePersonalOrigin = true,
+    )
 }
 
-private fun scanSimpleNames(loader: ClassLoader): Map<String, List<String>> {
+/**
+ * Paths that mean "this class came from the personal layer", whichever way it got onto the classpath.
+ *
+ * [PersonalLayer.isPresent] only knows about the layer when `-Dafield.personal.classpath` was passed,
+ * which is how the app launches — but the jvm-main test runner puts `afield-personal.jar` on the
+ * plain `-cp` and passes no property. Hermetic mode then reported "personal layer: absent" and
+ * indexed personal classes anyway, so the guarantee it exists to make ("core Field alone") was
+ * vacuous exactly where the corpus gate depends on it: `rectgame.Window` contested `Window` and the
+ * `prop<Window>(window)` import silently vanished from every harvested preamble. Match on origin
+ * instead of trusting the property.
+ */
+private val personalOriginMarkers = listOf(
+    "afield-personal",
+    "/build/personal/",
+    "/src/personal/",
+    "/classes/kotlin/jvm/personal/",
+)
+
+private fun looksPersonal(path: String): Boolean = personalOriginMarkers.any { it in path }
+
+/**
+ * Whether personal-layer classes can be seen from here at all — through [PersonalLayer], or as a
+ * bare classpath entry. When false, hermetic and machine indexes are the same scan and [hermeticIndex]
+ * costs nothing extra.
+ */
+internal fun personalCodeReachable(): Boolean =
+    PersonalLayer.isPresent ||
+            System.getProperty("java.class.path").orEmpty()
+                .split(File.pathSeparatorChar)
+                .any { looksPersonal(it) }
+
+private fun scanSimpleNames(loader: ClassLoader, excludePersonalOrigin: Boolean = false): Map<String, List<String>> {
     val v = mutableMapOf<String, MutableList<String>>()
     ClassGraph().enableClassInfo().enableSystemJarsAndModules().enableMemoryMapping()
         .addClassLoader(loader)
         .scan().use { scanResult ->                // Start the scan
             for (cz in scanResult.allStandardClasses) {
+                if (excludePersonalOrigin && cz.isPersonalOrigin()) continue
                 v.computeIfAbsent(cz.simpleName) { mutableListOf() }.add(cz.name)
             }
         }
     return v
+}
+
+private fun ClassInfo.isPersonalOrigin(): Boolean {
+    val from = runCatching { classpathElementFile?.path }.getOrNull()
+        ?: runCatching { classpathElementURI?.toString() }.getOrNull()
+        ?: return false
+    return looksPersonal(from)
 }
 
 fun findClassesNamed(name: String): List<String>? {

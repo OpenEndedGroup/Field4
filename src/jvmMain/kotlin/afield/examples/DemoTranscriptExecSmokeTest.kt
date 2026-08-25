@@ -27,7 +27,7 @@ id: examples.demo-transcript.exec
 runner: jvm-main
 entrypoint: afield.examples.DemoTranscriptExecSmokeTest
 tags: [smoke, agents, transcript, docs, verification]
-timeoutSec: 600
+timeoutSec: 1200
 expect:
   exitCode: 0
   stdoutContains:
@@ -47,9 +47,20 @@ expect:
  * would flake on any machine slower than the one it was measured on, so it is now 600: roughly 2×,
  * with room for the corpus to keep growing.
  *
+ * 600 then became marginal on 2026-08-25, with the Kotlin 2.4.20 fork uplift: the Kotlin/JS
+ * transcripts (`remotear_*`, `vision_geometry_*`, `tone_synth_sequence`, `visionos_start`) had been
+ * failing in milliseconds against a stale `kotlin-stdlib-js` klib, and once that was rebuilt they do
+ * real Kotlin->JS compiles. The tell was progress, not the error: the run reached 108 `[execute]`
+ * lines in ~300s before, and only 93 in 600s after. A full green sweep then measured **570s** — under
+ * the old cap, but by 5%, which is precisely the margin the paragraph above says will flake on a
+ * slower machine. Hence 1200: ~2x the measurement, same rule as before.
+ *
  * If it times out again, **measure before trimming**. `AFIELD_DEMO_TRANSCRIPT_VERBOSE=1` echoes what
  * the boxes printed, and the `evaluate=<n>s` lines in the run's stdout attribute the time to the
  * transcript being replayed when they were emitted — which is how the two numbers above were found.
+ * And note the harness caches the catalog: a `timeoutSec` edit does nothing until
+ * `run_field_tests.py --refresh-catalog` (or a run whose `--id` is not in `build/field-tests/catalog.json`),
+ * so a stale limit will re-fail at the old number and look like the edit had no effect.
  *
  * Why this exists: on 2026-07-18 `fn_differentiable_fit_demo.yaml` shipped with two compile errors
  * in its box body and merged, because nothing in CI ever *ran* the box Kotlin —
