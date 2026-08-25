@@ -396,11 +396,13 @@ fraction of a percent off. Call `solve()` when the question is what the brief me
   because no opcode ties a coordinate to a number. It shows up in `BriefProgram.pointNames` as
   `_at:p.z:0`. Sound, and worth knowing before you count points.
 - **`liveGeometry` is still out of reach.** `BriefSession` covers the drag; what a brief cannot yet do
-  is track host `Vector3f`s across frames the way `LiveGeometryProgram.step` does.
+  is track host `Vector3f`s across frames the way `ArchitecturalGeometry.kt#class LiveGeometryProgram`
+  does in `step`.
 - **A brief that says `settle none` cannot be dragged**, and `openSession` refuses it by name. A drag is
   a *raised prior* over the model's `WeakPosition` weights, not an added constraint, so with no
   whole-cloud prior there is nothing to raise: `drag` returns true, the solve succeeds, and the point
-  does not move. Silent, and it cost an hour.
+  does not move. Silent, and it cost an hour
+  (reproducer: `BriefSolveSmoke.kt#private fun aDragIsOneMoreWeightedStatement()`).
 - **The box output panel did not render in the headless page** during verification, which is why the
   figure above was rasterised from the box's SVG rather than screenshotted from the UI. The `lines()`
   idiom is used throughout `public/docs/` so it is expected to be fine interactively, but that is an

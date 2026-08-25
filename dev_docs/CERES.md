@@ -442,6 +442,9 @@ orders of magnitude better than the existing iteration, and sane where it produc
 7. **Nothing can be held constant.** Bounds are exposed now; `SetParameterBlockConstant` is not.
    There is still no way to say "this point is data, not an unknown" except a very stiff
    `LockPosition`, which is why the fits above put their data in the expression as constants instead.
+   The wrapper's whole ABI is one list and `SetParameterBlockConstant` is not on it, which is what
+   makes this a wrapper gap rather than a Ceres one
+   (`FfmCeresBackend.kt#ken_ceres_solver_create`).
    That works, but it bakes the data into the program hash, so changing a data point recompiles the
    problem rather than re-solving it.
 8. **Only three manifolds.** `NONE`, `SPHERE`, `QUATERNION`. `SubsetManifold` (hold some components

@@ -139,7 +139,8 @@ Two further normalisations, documented on the function and tested:
 - a `Close` that is **not** the last instruction of its subpath (`close()` then more drawing, with
   no `moveTo` between — legal, because `close()` leaves the pen at the subpath start) comes back as
   an explicit straight segment. There is no way to write "close, backwards": in the reversed
-  traversal the pen is not at the subpath start when it reaches that segment.
+  traversal the pen is not at the subpath start when it reaches that segment
+  (`FLineGeometry.kt#in the reversed traversal the pen is not at the subpath`).
 - a subpath with no leading `moveTo` gains one, matching the renderer, which already reads a leading
   `LineTo` as a `moveTo` (`someSkiko.kt:339-344`).
 

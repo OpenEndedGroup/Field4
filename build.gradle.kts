@@ -1236,6 +1236,12 @@ val citationGuardTestClasses = listOf(
     // pinned to a population derived from the code. Here for the same reason as the line above — a
     // docs-only branch that restates a count must not be able to go green without recomputing it.
     "afield.docs.ProseNumeralContractTest",
+    // The claim half: a dev_docs sentence asserting that something is *impossible*, or that a cause has
+    // been *ruled out*, must carry a reproducer, a citation or an explicit conjecture marker. Here
+    // rather than in the broad jvmTest for the decisive reason — it reads Markdown, and citationGates
+    // is the only task that declares dev_docs/**.md as an input, so it is the only one that cannot go
+    // UP-TO-DATE after a Markdown-only edit. See dev_docs/impossibility_claims.md.
+    "afield.docs.ImpossibilityClaimContractTest",
 )
 
 // These tests read Markdown and JavaScript directly from the checkout. Keeping them inside the broad

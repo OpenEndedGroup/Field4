@@ -18,6 +18,7 @@ class DocsGatesWiringTest {
             "afield.docs.DocsFenceTreatmentTest",
             "afield.server.ServerSurfaceLedgerTest",
             "afield.docs.ProseNumeralContractTest",
+            "afield.docs.ImpossibilityClaimContractTest",
         )
 
         expected.forEach { className ->
@@ -46,6 +47,19 @@ class DocsGatesWiringTest {
         assertTrue(
             "isFailOnNoMatchingTests = true" in build,
             "a misspelled citation test filter could become a green zero-test run",
+        )
+        // Measured 2026-08-19: without this input declaration the task goes UP-TO-DATE after a
+        // Markdown-only edit and every guard here "passes" without running. A guard that can pass
+        // stale is worse than no guard, because it reads as evidence — so the declaration is pinned
+        // rather than trusted to survive the next build-file edit.
+        assertTrue(
+            """withPropertyName("guardedDevDocs")""" in build,
+            "citationGates no longer declares dev_docs/**.md as an input, so a Markdown-only edit can " +
+                "inherit an UP-TO-DATE pass from every docs guard",
+        )
+        assertTrue(
+            """withPropertyName("publishedDocs")""" in build,
+            "citationGates no longer declares public/docs/**.md as an input",
         )
     }
 }

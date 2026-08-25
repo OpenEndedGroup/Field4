@@ -143,7 +143,9 @@ extensions Field's `Device.kt` would need to request.
 devices; images cannot. `NvFlowContextInterface` has `getBufferExternalHandle`,
 `closeBufferExternalHandle` and `createBufferFromExternalHandle`, and no texture equivalent —
 `NvFlowDeviceInterface` likewise. So Flow's own ray-marched image, the thing `gridInterface.render`
-produces, **cannot be imported into a Field render target on this path.**
+produces, **cannot be imported into a Field render target on this path.** This one is read off
+Flow's headers and nothing in this tree can check it — as the header of this page says, no code was
+written and `src/` does not refer to Flow. (conjecture, 2026-08-20)
 
 What crosses instead is the NanoVDB export. `getRenderData` fills
 `NvFlowGridRenderDataNanoVdb` with `temperatureNanoVdb`, `fuelNanoVdb`, `burnNanoVdb`,

@@ -36,6 +36,8 @@ never asked what Plotly cannot do. That was the wrong question order. The rule i
 > FLine is for what Plotly cannot do. Rasterisation is for what FLine cannot do.
 
 **The claim that justified building this — that Plotly cannot serve a headless docs capture — is false.**
+(not a limitation: this sentence *retracts* an impossibility claim rather than making one, and the five
+pages named below are the disproof.)
 Plotly is HTML, Field's front end is a browser page, and the docs runner drives it headless.
 `public/docs/dough_dsp_sound.md` has 12 `diffstatic_runner` fences and several of them call
 `showSignals`; `statistics_examples.md`, `spectral_examples.md`, `autodiff_examples.md` and

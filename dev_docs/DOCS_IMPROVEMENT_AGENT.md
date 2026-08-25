@@ -287,6 +287,8 @@ independent — and never for the spawn.
 
 ## Redirects cannot walk the proxy off the docs site
 
+`docsAnnotations.kt#if (!isWithinFieldDocs(upstream.uri()))`
+
 The path checks constrain the URL the proxy *asks* for. `docsProxyClient` follows
 redirects, so they say nothing about where the bytes came from. The final
 `HttpResponse.uri()` is therefore checked against the same predicate, and a response that

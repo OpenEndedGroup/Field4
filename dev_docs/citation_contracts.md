@@ -29,7 +29,8 @@ guard over `small_language_anatomy.md` looks like it touches one markdown file. 
 that page it opens every file the page cites — `Server.kt`, `bootstrapMonaco.js`, `FieldMLInterface.kt`,
 forty others — and asserts something about their contents. So *any* branch that edits *any* cited file
 is editing an input to that guard, whether or not it goes near the doc. There is no way to schedule
-around it and no file-level review that predicts it.
+around it and no file-level review that predicts it. (conjecture, 2026-08-07 — generalised from two
+recorded collisions, not from an exhaustive search of schedules.)
 
 ## The three guards
 
@@ -205,7 +206,7 @@ derived by it should be the first thing the mechanism checks.
 
 There are 54<!--count:valuePrinterRegistrationsInSource--> in compiled source. The sentence carried a
 citation that **resolved perfectly**, on a page that passed
-`citationGates` — one of the 7<!--count:citationGuardTestClasses--> focused test classes that task
+`citationGates` — one of the 8<!--count:citationGuardTestClasses--> focused test classes that task
 runs — with every anchor green. The grep behind it saw `ValuePrinterRegistry.register` and
 missed the reified wrapper `registerValuePrinter<T>`, which is how all but four of them are written.
 The conclusion happened to survive, for a reason the page never gave — see the rewritten paragraph

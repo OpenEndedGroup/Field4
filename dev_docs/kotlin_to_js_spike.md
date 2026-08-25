@@ -98,7 +98,8 @@ Key findings:
 - **DCE is not the latency cost** — it's actually cheaper to emit (less code). The ~660ms floor is
   the two-phase pipeline; per-module ES is *slower* uncached because it re-emits the full stdlib.
 - **Single-pass is impossible**: K2 rejects producing a klib and JS in one invocation — the
-  source→klib→JS round-trip is mandatory.
+  source→klib→JS round-trip is mandatory, which is why the compiler in this tree is written as two
+  phases and not one (`KotlinToJsCompiler.kt#-Xir-produce-js, -Xinclude`).
 - **The latency lever is incremental compilation** (`-Xcache-directory` + `-Xir-build-cache`): the
   stdlib IC cache is built once and reused, ~halving warm latency (660→~350ms).
 - **DCE and IC are mutually exclusive.** DCE is whole-program (can't cache); IC is per-module (ships

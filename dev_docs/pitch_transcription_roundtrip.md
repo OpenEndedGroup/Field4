@@ -223,7 +223,8 @@ Also not measured, and marked as such in the code:
   a measurement.
 - **A rest and a refusal are different, and mini-notation cannot say so.** There is no token for "this
   sounded and I will not name it", so a declined span appears as `~` and is named explicitly in
-  `warnings`. The emitted notation is what the detector will stand behind.
+  `warnings`. The emitted notation is what the detector will stand behind. (conjecture, 2026-08-25 — an
+  absence in someone else's notation grammar; nothing in this tree can be pointed at to establish it.)
 
 ---
 
@@ -247,6 +248,9 @@ something that is heard differently again; a complete one round-trips. That rela
 so if it stops holding the finding gets restated rather than quietly rotting.
 
 ### It found a bug three hops cannot see
+
+(not a limitation: a section title describing what the fourth hop added, not a claim that anything is
+impossible — the three-hop comparison is measured and reported above.)
 
 `saw-timbre` reproduced its pitch sequence perfectly and still diverged, with a 54 ms onset shift
 *(before the fix)* against a detector whose own worst onset error on that case is 0.5 ms. The cause was

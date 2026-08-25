@@ -121,7 +121,8 @@ ever touched:
 
 - **A slot reflection cannot pin down keeps its fresh variable.** An erased generic reads back as
   `Host`, and `Host` refuses to unify with a function or a list, so substituting it for an inference
-  variable would break `hostStaticCall "max" ([…], fun a b -> b - a) Collections`.
+  variable would break `hostStaticCall "max" ([…], fun a b -> b - a) Collections`. The erasure test
+  that forces this is one line: `HostTypes.kt#val erased = generic is TypeVariable<*>`.
 - **A nullable Kotlin callback argument is treated the same way**, read from `kotlin-reflect`
   exactly as nullable *returns* already are (`nullableFunctionArguments`).
   `FLine.byFiltering((Vec3?, Node) -> Boolean)` is the case: the JVM really does pass null and the
@@ -527,7 +528,9 @@ error rather than a first-run one. Asserted in
   be read. This is the only `kotlin-reflect` use in FieldML; if it ever shows up in a completion
   latency profile, that map is where to look.
 - **`internal` Kotlin members are unreachable** under their source names, because the compiler
-  mangles them with the module name.
+  mangles them with the module name — which is why the surface-coverage test drops every method whose
+  JVM name carries a `$` before it counts anything
+  (`FieldMLHostSurfaceCoverageTest.kt#'$' !in it.name`).
 - **A method whose declaring class is not *exported* is invoked through a public supertype instead.**
   Not a hole — a fix, landed 2026-08-19 and missing from this page until 2026-08-20, and it belongs
   here because it is the one place the bridge deliberately calls a method other than the one
@@ -548,7 +551,9 @@ error rather than a first-run one. Asserted in
   the remaining 5% in the coverage measurement.
 - **A `suspend` *member* cannot be called**, which is the other half of decision 5 and a genuinely
   harder problem than the one that was solved. `Renderer.run` is `run(Continuation)` — arity one — so
-  no candidate matches at arity zero and the refusal is automatic. It is also *correct*: satisfying a
+  no candidate matches at arity zero and the refusal is automatic
+  (reproducer: `FieldMLSuspendCallbackTest.kt#fun aBodyThatWouldHaveToSuspendIsStillOutOfReach`).
+  It is also *correct*: satisfying a
   suspend type is sound because a FieldML closure always completes synchronously, and `Renderer.run`
   never completes at all. Calling it would mean returning `COROUTINE_SUSPENDED` to a caller with
   nowhere to resume. Doing this properly needs the FieldML evaluator to be suspendable, not another

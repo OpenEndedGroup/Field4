@@ -420,7 +420,9 @@ What a ramp **cannot** do is make a *burst* uniform. Gray–Scott's change is th
 roughly steps 400 to 1500: 18 % of a linear clip and 30 % of a `ramp = 40` one. A schedule decides how much
 of the clip that window gets and nothing more. This is a refutation of the log-time model the ramp was
 designed from, and pushing the ramp higher makes it worse rather than better, because a geometric map
-compresses its own upper range.
+compresses its own upper range. The schedule is a reparametrisation of *time* and nothing else — it
+chooses which step each frame lands on and never changes what the simulation does between two steps
+(`alife_animate.kt#{ t -> (ramp.pow(t) - 1.0) / (ramp - 1.0) }`).
 
 **Do not measure pacing at the endpoints.** The obvious instrument — mean absolute difference between the
 first, middle and last frames — *saturates* for anything that starts near black, because a labyrinth and an
