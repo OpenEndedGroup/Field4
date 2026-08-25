@@ -100,6 +100,12 @@ then `wait-native-renderer agent_graphics_context --frames 3`, then create+conne
 example box beneath `agent_graphics_context` and launch it. Capture context before any
 async boundary: `val renderer: Renderer = fromContext()` at top level, before `start(...)`.
 
+`fromContext` searches this box's *properties* and then, breadth-first, its ancestors' properties
+and top-level variables. It deliberately does **not** see this box's own top-level variables, so
+re-running the box above re-resolves from the parent instead of finding the `renderer` the previous
+run left behind. Pass `fromContext(includeLocalVariables = true)` for the old, self-pinning
+behaviour.
+
 ## Inspect a live value at runtime (debug probe)
 
 Ask the running JVM "what is this variable right now?" via the MCP tool

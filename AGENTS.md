@@ -20,6 +20,14 @@ This repository builds **Field·4**, a Kotlin-based live-coding environment for 
 - Change workspace directory (documents root):
   - CLI arg parsed by `option(...)`: `--workspace <path>`
   - Example: `./gradlew runJvm --args="--workspace /tmp/AFieldWorkspace"`
+  - Through the launcher: `./field.sh /tmp/AFieldWorkspace` (or `-w`/`--workspace`). The launcher
+    resolves a relative path against your shell's cwd rather than the checkout, refuses a
+    non-existent directory before spending a build on it, and takes a path to a document (a folder
+    holding a `metadata.edn`, or the file itself) as "the workspace above this". `./field.sh
+    --print-workspace` answers "which one would I get?" without launching anything.
+  - With no argument the workspace is whatever was used last, recorded machine-wide in
+    `~/.afield/last-workspace.txt` — so a sibling clone or worktree may have been what last wrote
+    it. `field.sh` prints the workspace it resolved, and where that came from, before it builds.
 - Ports and HTTPS:
   - `PORT` env var overrides default `9092`
   - Server uses HTTPS by default (self-signed dev cert)

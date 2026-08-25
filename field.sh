@@ -2,9 +2,185 @@
 # Unix shell script to run the JVM target using Gradle Wrapper
 # This script works both from command line and when double-clicked in a file browser
 
-# Get the directory where this script is located
+# Get the directory where this script is located. Note INVOKED_FROM: a workspace
+# path typed on the command line has to resolve against the directory the user is
+# standing in, which the cd below is about to leave.
 DIR="$(cd "$(dirname "$0")" && pwd)"
+INVOKED_FROM="$PWD"
 cd "$DIR"
+
+# --- launcher arguments ----------------------------------------------------------
+#
+# The backend already parses --workspace itself (afield.arguments.option), and this
+# script has always forwarded "$@" to it, so that flag reached it either way. It is
+# handled here as well because three things can only be done out here: resolving a
+# relative path against INVOKED_FROM rather than $DIR; rejecting a typo *before* the
+# minutes of Gradle that run before the backend ever looks at its arguments; and
+# printing which workspace a bare launch is about to open. That last one matters
+# because the choice is remembered once per machine, in ~/.afield/last-workspace.txt
+# — so any other clone or worktree on this machine may have been the one that wrote
+# it, and the workspace you get is not the workspace of the checkout you launched.
+
+WORKSPACE_PREFERENCE_FILE="$HOME/.afield/last-workspace.txt"
+DEFAULT_WORKSPACE="$HOME/Documents/AFieldWorkspace"
+
+usage() {
+    cat <<EOF
+Usage: ./field.sh [<workspace>] [options] [backend arguments]
+
+Builds Field, then launches the backend and the Electron window together.
+
+  <workspace>              the directory holding your Field documents; a bare
+                           first argument is taken as the workspace
+  -w, --workspace <path>   the same, stated explicitly
+  --workspace=<path>       the same again
+  --print-workspace        print the workspace this launch would use, then exit
+  -h, --help               show this message
+
+A single document works too — a folder holding a metadata.edn, or that file
+itself. The workspace is then the folder above it, which is what makes the
+document visible on the welcome page.
+
+With no workspace given, Field reopens the one it last used, recorded once per
+machine in
+  $WORKSPACE_PREFERENCE_FILE
+so a different clone or worktree of this repository may have been what last
+wrote it. Naming a workspace here makes it the remembered one for next time.
+
+Any other argument is passed through to the backend unchanged. See also
+AFIELD_SKIP_BUILD=1 to skip the build check, and PORT to move off 9092.
+EOF
+}
+
+absolute_workspace_path() {
+    # Expand the way the user's shell would have, had they not quoted it.
+    case "$1" in
+        "~")   printf '%s' "$HOME" ;;
+        "~/"*) printf '%s%s' "$HOME" "${1#\~}" ;;
+        /*)    printf '%s' "$1" ;;
+        *)     printf '%s/%s' "$INVOKED_FROM" "$1" ;;
+    esac
+}
+
+# Sets FIELD_WORKSPACE, plus FIELD_DOCUMENT when what was named turns out to be a
+# document rather than a workspace. Both spellings get typed: dev_docs hands out
+# `./field.sh <folder holding a metadata.edn>` and `./field.sh <...>/metadata.edn`,
+# and a document folder passed straight through as the workspace would open a
+# workspace that merely looks empty — its documents are its *subdirectories*.
+resolve_workspace_request() {
+    RAW="$(absolute_workspace_path "$1")"
+    FIELD_DOCUMENT=""
+    case "$RAW" in
+        */metadata.edn) FIELD_DOCUMENT="${RAW%/metadata.edn}" ;;
+        *)              [ -f "$RAW/metadata.edn" ] && FIELD_DOCUMENT="$RAW" ;;
+    esac
+    if [ -n "$FIELD_DOCUMENT" ]; then
+        RAW="$(dirname "$FIELD_DOCUMENT")"
+        FIELD_DOCUMENT="$(basename "$FIELD_DOCUMENT")"
+    fi
+    if [ -d "$RAW" ]; then
+        FIELD_WORKSPACE="$( cd "$RAW" && pwd )"
+    else
+        FIELD_WORKSPACE="$RAW"
+    fi
+}
+
+persisted_workspace() {
+    [ -f "$WORKSPACE_PREFERENCE_FILE" ] || return 1
+    VALUE="$(tr -d '\r' < "$WORKSPACE_PREFERENCE_FILE" | sed -n '1s/^[[:space:]]*//;1s/[[:space:]]*$//;1p')"
+    [ -n "$VALUE" ] || return 1
+    printf '%s' "$VALUE"
+}
+
+WORKSPACE_REQUESTED=""
+PRINT_WORKSPACE=0
+
+# POSIX sh has no arrays, so "$@" is rebuilt in place: each of the original $argc
+# arguments is shifted off the front, and the ones the backend should see are pushed
+# onto the back. The loop runs exactly $argc times, so nothing pushed is re-read.
+argc=$#
+consumed=0
+passthrough_seen=0
+while [ "$consumed" -lt "$argc" ]; do
+    arg="$1"
+    shift
+    consumed=$((consumed + 1))
+    case "$arg" in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        --print-workspace)
+            PRINT_WORKSPACE=1
+            ;;
+        -w|--workspace)
+            if [ "$consumed" -ge "$argc" ]; then
+                echo "field: $arg needs a directory" >&2
+                exit 2
+            fi
+            WORKSPACE_REQUESTED="$1"
+            shift
+            consumed=$((consumed + 1))
+            ;;
+        --workspace=*)
+            WORKSPACE_REQUESTED="${arg#--workspace=}"
+            ;;
+        -*)
+            set -- "$@" "$arg"
+            passthrough_seen=1
+            ;;
+        *)
+            # A bare path is the workspace only while it is unambiguous: once any
+            # backend argument has gone past, a bare word is more likely to be that
+            # argument's value than a workspace.
+            if [ -z "$WORKSPACE_REQUESTED" ] && [ "$passthrough_seen" = 0 ]; then
+                WORKSPACE_REQUESTED="$arg"
+            else
+                set -- "$@" "$arg"
+                passthrough_seen=1
+            fi
+            ;;
+    esac
+done
+
+FIELD_DOCUMENT=""
+if [ -n "$WORKSPACE_REQUESTED" ]; then
+    resolve_workspace_request "$WORKSPACE_REQUESTED"
+    WORKSPACE_ORIGIN="from the command line"
+    if [ ! -d "$FIELD_WORKSPACE" ]; then
+        echo "field: there is no workspace directory at $FIELD_WORKSPACE" >&2
+        echo "field: to start a new workspace there, create it first — mkdir -p \"$FIELD_WORKSPACE\"" >&2
+        exit 2
+    fi
+    set -- "$@" --workspace "$FIELD_WORKSPACE"
+elif FIELD_WORKSPACE="$(persisted_workspace)"; then
+    WORKSPACE_ORIGIN="last used, per $WORKSPACE_PREFERENCE_FILE"
+else
+    FIELD_WORKSPACE="$DEFAULT_WORKSPACE"
+    WORKSPACE_ORIGIN="the default; nothing recorded yet"
+fi
+
+if [ "$PRINT_WORKSPACE" = 1 ]; then
+    printf '%s\n' "$FIELD_WORKSPACE"
+    exit 0
+fi
+
+if [ -n "$FIELD_DOCUMENT" ]; then
+    echo "field: $FIELD_DOCUMENT is a document, not a workspace — using the folder that holds it" >&2
+fi
+echo "field: workspace $FIELD_WORKSPACE ($WORKSPACE_ORIGIN)" >&2
+if [ -n "$FIELD_DOCUMENT" ]; then
+    echo "field: open $FIELD_DOCUMENT from the welcome page once the window is up" >&2
+fi
+
+# run_in_terminal re-runs this script in a fresh terminal, where the arguments
+# parsed above are gone; put an explicitly requested workspace back on that inner
+# command line. Left empty otherwise, so the re-run consults the same preference
+# file this one just did.
+WORKSPACE_RELAUNCH_ARGS=""
+if [ -n "$WORKSPACE_REQUESTED" ]; then
+    WORKSPACE_RELAUNCH_ARGS="--workspace '$FIELD_WORKSPACE'"
+fi
 
 python_cmd() {
     if command -v python3 >/dev/null 2>&1; then
@@ -357,13 +533,13 @@ run_in_terminal() {
     
     # Try different terminal emulators in order of preference
     if command -v gnome-terminal >/dev/null 2>&1; then
-        gnome-terminal -- bash -c "cd '$DIR' && AFIELD_FIELD_SH_NO_TERMINAL=1 ./field.sh; echo ''; echo 'Press Enter to close...'; read"
+        gnome-terminal -- bash -c "cd '$DIR' && AFIELD_FIELD_SH_NO_TERMINAL=1 ./field.sh $WORKSPACE_RELAUNCH_ARGS; echo ''; echo 'Press Enter to close...'; read"
     elif command -v konsole >/dev/null 2>&1; then
-        konsole --hold -e bash -c "cd '$DIR' && AFIELD_FIELD_SH_NO_TERMINAL=1 ./field.sh"
+        konsole --hold -e bash -c "cd '$DIR' && AFIELD_FIELD_SH_NO_TERMINAL=1 ./field.sh $WORKSPACE_RELAUNCH_ARGS"
     elif command -v xterm >/dev/null 2>&1; then
-        xterm -hold -e "cd '$DIR' && AFIELD_FIELD_SH_NO_TERMINAL=1 ./field.sh"
+        xterm -hold -e "cd '$DIR' && AFIELD_FIELD_SH_NO_TERMINAL=1 ./field.sh $WORKSPACE_RELAUNCH_ARGS"
     elif command -v x-terminal-emulator >/dev/null 2>&1; then
-        x-terminal-emulator -e "cd '$DIR' && AFIELD_FIELD_SH_NO_TERMINAL=1 ./field.sh; read -p 'Press Enter to close...'"
+        x-terminal-emulator -e "cd '$DIR' && AFIELD_FIELD_SH_NO_TERMINAL=1 ./field.sh $WORKSPACE_RELAUNCH_ARGS; read -p 'Press Enter to close...'"
     else
         # No terminal found, try to run directly (may not show output)
         run_field

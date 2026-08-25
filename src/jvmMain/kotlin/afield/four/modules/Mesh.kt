@@ -26,7 +26,28 @@ class FromInput {
     }
 }
 
-inline fun <reified A> fromContext(defaultValue: A? = null): A {
+/**
+ * Resolve a value of type [A] from the box context: this box first, then its ancestors,
+ * breadth-first.
+ *
+ * Search order is
+ *  1. the current box itself (if it is an [A]),
+ *  2. the current box's properties,
+ *  3. each ancestor generation in turn - properties, then that box's top-level (`ki`) variables.
+ *
+ * Note what is deliberately absent: **the current box's own top-level variables**. Including them
+ * makes the canonical idiom self-pinning -
+ *
+ *     var foo = fromContext<Foo>()
+ *
+ * resolves from a parent the first time, but that leaves a `Foo`-typed variable in *this* box's
+ * variable table, so every later execution finds its own previous answer. `foo` can then never
+ * track the parent again, and re-pointing it by hand doesn't survive either.
+ *
+ * Pass [includeLocalVariables] = true to opt back in when a box genuinely wants to find a value it
+ * declared itself - e.g. code running after an async boundary in the same box.
+ */
+inline fun <reified A> fromContext(defaultValue: A? = null, includeLocalVariables: Boolean = false): A {
     val f = Box.context.get()
     if (f is A) return f
 
@@ -34,9 +55,11 @@ inline fun <reified A> fromContext(defaultValue: A? = null): A {
         if (value is A) return value
     }
 
-    for (variable in f.ki.context.vars.values) {
-        val value = variable.value
-        if (value is A) return value
+    if (includeLocalVariables) {
+        for (variable in f.ki.context.vars.values) {
+            val value = variable.value
+            if (value is A) return value
+        }
     }
 
     val seen = mutableSetOf<Box>()
@@ -61,7 +84,21 @@ inline fun <reified A> fromContext(defaultValue: A? = null): A {
     throw IllegalArgumentException("must pass in a value for context parameter ${A::class.java.name}")
 }
 
-inline fun <reified A> fromContextWithNameOrNull(name: String, defaultValue: A? = null): A? {
+/**
+ * Named sibling of [fromContext]: resolve the value called [name] (and assignable to [A]) from the
+ * box context.
+ *
+ * Same search order, and the same deliberate omission - this box's own top-level variables are not
+ * searched unless [includeLocalVariables] is true. Here the trap is even easier to hit, since the
+ * natural idiom gives the local the same name as the thing it is looking up:
+ *
+ *     val agent_context_value = fromContextWithNameOrNull<String>("agent_context_value")
+ */
+inline fun <reified A> fromContextWithNameOrNull(
+    name: String,
+    defaultValue: A? = null,
+    includeLocalVariables: Boolean = false,
+): A? {
     val f = Box.context.get()
     if (f == null) return defaultValue
 
@@ -69,11 +106,13 @@ inline fun <reified A> fromContextWithNameOrNull(name: String, defaultValue: A? 
         f.properties.entries.firstOrNull { it.value != null && it.key == name && it.value!!::class.isSubclassOf(A::class) }
     if (a != null) return a.value as A
 
-    f.ki.context.vars.entries.firstOrNull {
-        if (it.value.value == null) return@firstOrNull false
-        it.key == name && it.value.value!!::class.isSubclassOf(A::class)
-    }?.let {
-        return it.value.value as A
+    if (includeLocalVariables) {
+        f.ki.context.vars.entries.firstOrNull {
+            if (it.value.value == null) return@firstOrNull false
+            it.key == name && it.value.value!!::class.isSubclassOf(A::class)
+        }?.let {
+            return it.value.value as A
+        }
     }
 
     val seen = mutableSetOf<Box>()

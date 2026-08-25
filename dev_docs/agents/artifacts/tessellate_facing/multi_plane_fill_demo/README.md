@@ -7,7 +7,8 @@ punched in it by a second subpath.
 
 ## Open it
 
-Point Field at this folder as its workspace, or load the file in the offline viewer:
+Hand this folder to the launcher — it opens the workspace above it, with this document
+listed — or load the file in the offline viewer:
 
 ```
 ./field.sh dev_docs/agents/artifacts/tessellate_facing/multi_plane_fill_demo

@@ -24,14 +24,17 @@ expect:
  * Background: on one [KotlinInterface2] engine the K2 evaluator chains each snippet's
  * classloader onto the previously *evaluated* snippet and emits the shared `ReplState`
  * holder only into the first-evaluated snippet. So snippets must evaluate in the order
- * they compile; a later snippet evaluating before the stdlib intro throws
- * `NoClassDefFoundError: ReplState` (mis-reported as a "package declaration" error).
+ * they compile; a later snippet evaluating before the stdlib intro used to throw
+ * `NoClassDefFoundError: ReplState` (mis-reported as a "package declaration" error). The 2.4.20
+ * uplift fixed that upstream — see [testOutOfOrderEvalIsNowSafe] — so the gate below is now
+ * belt-and-suspenders rather than the thing standing between a box and a broken engine.
  *
  * A box connected under a running renderer used to hit this because makeKI evaluated the
  * intro asynchronously while the launch setup evaluated the inherited preamble — the two
  * raced. The real race is timing-dependent (it never fired naturally on macOS), so these
  * tests do NOT rely on thread timing to reproduce it. Instead they:
- *   1. deterministically produce the out-of-order evaluation and assert it fails, and
+ *   1. deterministically produce the out-of-order evaluation and pin what it does (since the
+ *      2.4.20 uplift it is simply safe — it evaluates, with the right answer), and
  *   2. assert the engine's bootstrap gate ([KotlinScriptEngine.armBootstrapGate] /
  *      [bootstrap] / [releaseBootstrapGate]) makes ordinary exec/evaluate wait for the
  *      intro — which is what removes the race in production.
@@ -43,7 +46,7 @@ object ReplBootstrapGateTest {
     fun runTests(): Boolean {
         return try {
             println("Running ReplBootstrapGate tests...")
-            testOutOfOrderEvalReproducesReplState()
+            testOutOfOrderEvalIsNowSafe()
             testGateBlocksUntilReleased()
             testConcurrentExecWaitsForBootstrap()
             println("✅ ReplBootstrapGate tests passed")
@@ -61,15 +64,22 @@ object ReplBootstrapGateTest {
     }
 
     /**
-     * The hazard the gate exists to prevent: on one engine, evaluating a later-compiled
-     * snippet before an earlier one fails, because the first-evaluated snippet is where the
-     * K2 REPL `ReplState` holder is defined. This is deterministic — no threads, we simply
-     * evaluate in the wrong order by hand. (If a future Kotlin makes out-of-order eval safe
-     * this test will flag it; the gate would then be belt-and-suspenders rather than load-
-     * bearing.)
+     * Out-of-order evaluation on one engine — which upstream fixed under us.
+     *
+     * It used to *fail*: the first-evaluated snippet is where the K2 REPL `ReplState` holder is
+     * defined, so evaluating snippet #1 before #0 threw `NoClassDefFoundError: ReplState`. This
+     * test's original KDoc predicted that "if a future Kotlin makes out-of-order eval safe this
+     * test will flag it, and the gate would then be belt-and-suspenders rather than load-bearing" —
+     * and the 2.4.20 uplift is that future. With upstream's synthetic-intermediate-snippet support
+     * (`prependSyntheticSnippets`), evaluating #1 first both works AND gets the right answer: `a`
+     * is initialised, so `a + 1` is 2, not the 1 an uninitialised field would have given.
+     *
+     * Pinned rather than deleted, because "out-of-order eval is correct" is now a property field's
+     * engine leans on. If it ever throws again, the engine's bootstrap gate goes back to being
+     * load-bearing — and this is the case that will say so.
      */
-    private fun testOutOfOrderEvalReproducesReplState() {
-        println("  Testing out-of-order evaluation is rejected...")
+    private fun testOutOfOrderEvalIsNowSafe() {
+        println("  Testing out-of-order evaluation is safe (fixed upstream in 2.4.20)...")
         val ki = KotlinInterface2(filePrefix = "gate-ooo")
 
         // Compile order fixes snippet identity: `first` is #0 (defines ReplState), `second`
@@ -80,13 +90,15 @@ object ReplBootstrapGateTest {
 
         // Evaluate #1 before #0 — the exact inversion the intro/preamble race produced.
         var err: Throwable? = null
-        second.evalAndWait(onEvalException = { err = it })
-        require(err != null) {
-            "expected out-of-order evaluation to fail (ReplState not yet loaded), but it succeeded"
+        val outOfOrder = second.evalAndWait(onEvalException = { err = it })
+        println("    out-of-order eval: result=$outOfOrder error=${err?.let { "${it::class.simpleName}: ${it.message}" }}")
+        require(err == null) {
+            "out-of-order evaluation threw $err. It threw before the 2.4.20 uplift and stopped " +
+                    "throwing after it; if it is failing again, the engine's bootstrap gate is " +
+                    "load-bearing once more and this case should assert the ReplState failure again."
         }
-        val msg = (err.message.orEmpty() + " " + err.cause?.message.orEmpty())
-        require(msg.contains("ReplState") || msg.contains("REPL snippets")) {
-            "expected a ReplState-flavoured failure, got: $err (cause=${err.cause})"
+        require(outOfOrder.toString().contains("= 2")) {
+            "out-of-order eval should see an initialised `a` and yield 2, got: $outOfOrder"
         }
 
         // Sanity: the *correct* order works on a clean engine.

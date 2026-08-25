@@ -106,8 +106,30 @@ Optional model override environment variables:
 
 ## Workspace
 
-Field documents are stored on disk in a workspace directory. To run with a
-specific workspace:
+Field documents are stored on disk in a workspace directory. Name one when you
+launch:
+
+```bash
+./field.sh /path/to/AFieldWorkspace
+```
+
+A relative path resolves against the directory you are standing in, and `-w` or
+`--workspace` say the same thing explicitly. Pointing at a single document — a
+folder holding a `metadata.edn`, or that file itself — opens the folder above it,
+which is the workspace that document lives in.
+
+With no argument, Field reopens the workspace it used last. That choice is
+recorded once per machine, in `~/.afield/last-workspace.txt`, so another clone or
+worktree of this repository can be what last wrote it; `./field.sh` prints the
+workspace it settled on, and where that came from, before it starts building. To
+ask without launching:
+
+```bash
+./field.sh --print-workspace
+```
+
+Naming a workspace also makes it the remembered one, so the next bare `./field.sh`
+comes back to it. The Gradle entry points take the same flag:
 
 ```bash
 ./gradlew runDesktop --args="--workspace /path/to/AFieldWorkspace"
