@@ -306,7 +306,7 @@ m.set(3, 1) {
     tri.add(0,1,2)
 }
 
-var kc = KeyCamera(camera=camera)
+var kc by keyCamera(camera=camera)
 ```
 
 The shader is the same push-constant shape as the previous section, just without the color attribute. The lesson is that camera control is ordinary Kotlin state around the same rendering contract.
@@ -538,7 +538,7 @@ val camera = Camera()
 m.p = camera.p
 m.m = camera.m
 
-var kc = KeyCamera(camera=camera)
+var kc by keyCamera(camera=camera)
 m.set(4, 2) {
     val z = 0.0
 
@@ -628,7 +628,7 @@ val camera = Camera()
 m.p = camera.p
 m.m = camera.m
 
-var kc = KeyCamera(camera=camera)
+var kc by keyCamera(camera=camera)
 m.set(4, 2) {
     val z = 0.0
 
@@ -784,7 +784,7 @@ m.finalColor = { vec(Math.random(),Math.random(),Math.random(),1.0) }
 // we can set this live and after the fact
 target.parameters.clearFirst = true
 
-var kc = KeyCamera(camera=camera, name="kc")
+var kc by keyCamera(camera=camera)
 loop {
     m.set(3, 1) {
         val z = Math.random()*0.0
@@ -811,7 +811,7 @@ val camera = Camera()
 mesh.p = camera.p
 mesh.m = camera.m
 
-var kc = KeyCamera(camera=camera)
+var kc by keyCamera(camera=camera)
 mesh.set(4, 2) {
     val z = 0.0
     pos.add(-1,-1, z,
@@ -1246,7 +1246,7 @@ val camera = Camera()
 m.p = camera.p
 m.m = camera.m
 
-var kc = KeyCamera(camera=camera)
+var kc by keyCamera(camera=camera)
 val n = 100
 m.set(4*n, 2*n) {
     n {

@@ -13,7 +13,7 @@ val camera = Camera()
 m.p = camera.p 
 m.m = camera.m 
 
-var kc = KeyCamera(camera=camera)
+var kc by keyCamera(camera=camera)
 val n = 100
 m.set(4*n, 2*n) {
     n {

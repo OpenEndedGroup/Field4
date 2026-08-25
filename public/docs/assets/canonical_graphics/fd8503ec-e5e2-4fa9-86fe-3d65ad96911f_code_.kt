@@ -11,7 +11,7 @@ val camera = Camera()
 m.p = camera.p 
 m.m = camera.m 
 
-var kc = KeyCamera(camera=camera)
+var kc by keyCamera(camera=camera)
 m.set(4, 2) {
     val z = 0.0 
 

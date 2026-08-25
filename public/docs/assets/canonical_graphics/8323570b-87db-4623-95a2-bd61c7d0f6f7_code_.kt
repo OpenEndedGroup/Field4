@@ -24,7 +24,7 @@ m.m = camera.m
 m.finalColor = { vec(Math.random(), Math.random(), Math.random(), 1.0) }
 target.parameters.clearFirst = true
 
-var kc = KeyCamera(camera = camera, name = "kc")
+var kc by keyCamera(camera=camera)
 loop {
     val sc = 10.5
     m.set(4, 2) {

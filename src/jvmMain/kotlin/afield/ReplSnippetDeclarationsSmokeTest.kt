@@ -122,6 +122,35 @@ object ReplSnippetDeclarationsSmokeTest {
         }
     }
 
+    /**
+     * Require [code] to COMPILE, without evaluating it.
+     *
+     * For the real `keyCamera(...)` delegate: the defect this file covers was a *compile* failure, and
+     * evaluating this line headlessly cannot work for an unrelated reason -- `keyCamera()` defaults its
+     * `renderer` to `fromContext()`, so constructing the provider needs a live renderer in the box
+     * context, i.e. a GPU. Compiling it is the faithful check of what changed; the delegate mechanism
+     * itself is evaluated end-to-end by the provideDelegate cases above, which use the same shape
+     * (a compiled provider returning an anonymous `ReadWriteProperty`).
+     */
+    private fun compilesOnly(label: String, code: String) = runBlocking {
+        val tag = label.filter { it.isLetterOrDigit() }
+        val (ki, box) = engineFor(tag, null)
+        try {
+            ki.exec(intro, implicits = listOf(box))
+            val compileErrors = mutableListOf<String>()
+            ki.compileSnippet(
+                code,
+                implicits = listOf(box),
+                onCompileError = { d -> d.forEach { compileErrors += firstLine(it) } },
+            )
+            val ok = compileErrors.isEmpty()
+            println("  ${if (ok) "ok  " else "FAIL"} $label (compile only)" + if (ok) "" else "  ${compileErrors.first().take(240)}")
+            if (!ok) failures += "$label: expected a clean compile, got ${compileErrors.first().take(240)}"
+        } finally {
+            ki.dispose()
+        }
+    }
+
     /** Run several code versions through ONE engine, requiring each to evaluate to its expectation. */
     private fun sequence(label: String, preamble: String?, steps: List<Pair<String, String>>) = runBlocking {
         val tag = label.filter { it.isLetterOrDigit() }
@@ -325,6 +354,12 @@ object ReplSnippetDeclarationsSmokeTest {
             x
             """.trimIndent(),
             expected = "= 1"
+        )
+
+        println("-- the real keyCamera delegate, as five published sites spell it --")
+        compilesOnly(
+            "R var kc by keyCamera(camera=camera)",
+            "import afield.four.util.keyCamera\nval camera = Camera()\nvar kc by keyCamera(camera=camera)\nkc"
         )
 
         println("-- known-open behaviour, reported not asserted --")

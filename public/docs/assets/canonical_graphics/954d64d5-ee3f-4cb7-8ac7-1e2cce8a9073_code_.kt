@@ -43,5 +43,5 @@ m.set(3, 1) {
 
 
 // and here's our handy keyboard control over the camera.
-var kc = KeyCamera(camera=camera)
+var kc by keyCamera(camera=camera)
 
