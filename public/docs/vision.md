@@ -13,8 +13,11 @@ visionOS and let them float in the room.
   system composites and drives. HTML stays HTML; we never texture it.
 - **Islands** — native **RealityKit** geometry for the things that want to be genuinely 3D.
 - **Streams** — the GPU renderer's output carried to the headset as native video.
+- **Poses** — and, since the head-tracking work below, one channel running the *other* way: where the
+  wearer is looking, back up to the Mac, so the renderer can draw the frame the headset is about to
+  show rather than a surface hanging in the room.
 
-All three are scoped projections of the *same* server-authoritative document, so nothing here forks
+All four are scoped projections of the *same* server-authoritative document, so nothing here forks
 Field: the visionOS app is a third client alongside the browser, speaking the protocols Field
 already has.
 
@@ -164,20 +167,257 @@ was the wrong trade for a 90Hz display.
 
 ---
 
+## Head tracking — the pose comes back up
+
+Everything above runs one way. The RTT stream carries pixels down, `__visionmetal__` carries a
+program down, and nothing tells the Mac where the wearer is looking. That ceiling is why the stereo
+stream in the previous section can only ever be a *surface* placed in the room: correct,
+stereoscopic, world-locked. A renderer that does not know the head pose has nothing else to draw.
+
+`__visionpose__` (`VisionPose.kt:82#const val VISION_POSE_CHANNEL`) is the one channel in Field that
+runs device to host. It is JSON on the same `/ws` bus the browser uses: a `visionpose/hello`, then a
+`visionpose/frame` per compositor frame, then a `visionpose/bye`. A frame carries the head transform,
+and each eye's transform and projection, as 16-float column-major arrays, plus the head's predicted
+display time in its own clock.
+
+It is sent from the one point in the Compositor Services renderer that already holds both the
+drawable and the device anchor (`PoseUplink.swift:164#func record(drawable: LayerRenderer.Drawable`),
+so the pose that travels is the pose that drawable was rendered from rather than a pose sampled
+nearby. The sender is latest-wins and never queues — a pose is only useful while it is the newest
+one, and a queue here would turn network jitter into accumulating pose delay.
+
+**One thing measured rather than assumed, because it does not present as what it is.** Field's `/ws`
+reader dispatches each raw message in its own coroutine, so poses decode concurrently and finish out
+of order — 9–10% of them, reproduced across three runs against the simulator (123/1382, 181/1962,
+230/2400). Publication is therefore monotonic under a lock
+(`VisionPose.kt:418#private fun publish(frame: VisionPoseFrame)`). Without that guard `latest` walks
+backwards several times a second, and what a wearer sees is not lag — it is the world *swimming*.
+
+---
+
+## Rendering from the head's own pose
+
+`StereoPoseSource` is the third pose source on `SideBySideStereoTarget`, beside an attached OpenXR
+headset and the desktop mock, and it wins over both when set. What makes it a separate interface
+rather than one more branch is a single property: a remote pose arrives asynchronously, so it has to
+be **latched** (`StereoPoseSource.kt:36#fun latch(): Boolean`) once per frame, before both eye
+passes.
+
+Read it per eye instead and the head moves between the left and right pass. That is worth dwelling on
+because of *how* it fails: it does not look like latency. It looks like the two eyes disagreeing,
+which is close to impossible to recognise from inside a headset — you feel unwell without being able
+to say why.
+
+Three further decisions, load-bearing rather than tidy:
+
+- **The projection is rebuilt, not forwarded.** The head's matrix carries its own compositor's
+  near/far and depth range; Field's pipelines want `Options.zNear`/`zFar` over a 0..1 range. So only
+  the convention-free part crosses over — the frustum tangents
+  (`VisionPose.kt:545#internal fun tangentsFromProjection`) — and Field builds its own matrix from
+  them. The view matrix *is* forwarded untouched, because the wire already carries world-to-eye.
+- **Losing tracking freezes the view rather than snapping it to the origin.** A frozen image reads as
+  "tracking dropped"; a snap to the origin reads as a broken scene.
+- **The target records which pose it drew from** (`StereoPoseSource.kt:39#val latchedFrameId: Long`,
+  `StereoPoseSource.kt:45#val latchedDisplayTime: Double`) — which is what the next section needs.
+
+Tracked accessories — a PSVR2 Sense controller — ride the *same* message as the pose, so input and
+the image it acts on describe one instant, and they report into the same `ControllerState` the OpenXR
+path already fills. Field's interaction code cannot tell which backend it is running on.
+
+**Not verified, and not claimed:** no controller has ever been read. `AccessoryTrackingProvider`
+reports `isSupported` as false on the simulator, so the button and axis mapping is a best guess that
+degrades to "not pressed". That is a device-only item and it is open.
+
+---
+
+## Carrying the pose back down: media wire v2
+
+For the head to *reproject* a frame it has received, it must know which pose that frame was drawn
+from. So the media header grew a 16-byte **pose tail** — `poseFrameId` and `poseDisplayTimeNanos`
+(`WIRE_FORMAT.md:57#poseDisplayTimeNanos u64`) — gated by a `POSE_VALID` flag rather than a sentinel,
+because compositor frame index 0 is perfectly legitimate. `FieldRTTStreamer.tagPosesFrom`
+(`FieldRTTStreamer.kt:106#fun tagPosesFrom`) wires a stereo target's latched pose into the stream, on
+the tick that rendered the surface rather than in the deferred submit block where a newer pose could
+silently substitute itself.
+
+The interesting part is what was *not* reused. `ptsMicros` looks like the obvious home for a
+timestamp and is deliberately not one: it is stamped on the ideal cadence grid (`seq * interval`)
+precisely so the receiver has something regular to schedule against. A real clock reading there would
+bake render-tick quantisation into the stream, and a receiver pacing off it would faithfully
+reproduce that irregularity. `poseDisplayTimeNanos` is in the **head's** clock, not the sender's,
+because the head is the only consumer — it hands the value straight back to
+`queryDeviceAnchor(atTimestamp:)`.
+
+**Versions 1 and 2 are both permanent**, which is a decision and not a migration left half-done. The
+macOS sender emits v2 because its head is a Vision Pro reporting its pose back up; the Linux/NVENC
+sender emits v1 because its host tracks locally through OpenXR and has *nothing* to put in the tail.
+A receiver parses both, keyed on the version byte.
+
+**Nothing on the head consumes the pose tail yet.** Frames carry it and the receiver parses it, but
+reprojection needs the present path moved off RealityKit onto Compositor Services. That is the same
+change the next section is waiting for, and it has not been made.
+
+---
+
+## Where the latency goes
+
+Before optimising any of this there is one call to make
+(`VisionPose.kt:666#fun visionPoseLatencyReport(`):
+
+```diffstatic {data-lang=kotlin}
+import afield.graphics.visionPoseLatencyReport
+println(visionPoseLatencyReport())
+```
+
+The point is **attribution** rather than a single number, because the plausible explanations for "it
+feels laggy" are spread across two machines and at least two of the stages are there on purpose.
+Folding them into one total invites someone to "fix" them.
+
+The headline figure needs no clock agreement at all, which is exactly what makes it trustworthy: a
+pose's `predictedDisplayTime` is in the head's clock, the media wire carries it back down as
+`poseDisplayTimeNanos`, and the device subtracts two of its *own* timestamps. The ping/pong clock
+offset (`VisionPoseLatency.kt:147#fun headToHostNanos`) exists only to split the remainder into our
+side and theirs, and it keeps the **minimum**-RTT sample — averaging round trips on a contended link
+estimates the contention, not the offset.
+
+Read the spans, not the total. Two of them are deliberate:
+
+- the receiver's **jitter buffer** holds frames on purpose, so that network jitter becomes smoothness
+  instead of dropped frames (`RTTStream.swift:77#static let bufferFrames`; set `FIELD4_RTT_BUFFER=0`
+  for the unbuffered comparison);
+- **`submit to encoded` includes the render fence**
+  (`VisionPoseLatency.kt:60#const val SUBMIT_TO_ENCODED`), so scene complexity lands there rather
+  than somewhere misleading.
+
+And the honest limit. The last moment observable on the device is the decoded frame reaching the
+display texture; actual presentation is up to one refresh later, and RealityKit exposes no hook for
+it. So the motion-to-photon figure is a **lower bound, and says so in its own name**
+(`PoseLatency.swift:32#static let poseToTexture` is spelled
+`head: POSE to texture (motion-to-photon lower bound)`). That closes when the present path moves to
+Compositor Services — the same change reprojection needs. Faking it before then would produce a
+number nobody could trust.
+
+Here is the report with **no headset attached**, run through a live Field box on the machine that
+built this page:
+
+```diffstatic {data-lang=text}
+heads attached = 0
+latest pose = null
+vision pose/stream latency
+  clock offset UNKNOWN — no pong yet; host/device spans cannot be compared
+  --- this machine ---
+  pose uplink transit                    (no samples)
+  pose age when latched                  (no samples)
+  latch to frame submit                  (no samples)
+  submit to encoded (incl. render fence) (no samples)
+  --- the head ---
+  (no report from the head yet)
+  note: the head's last observable moment is the texture upload, so any motion-to-photon figure
+  above is short by up to one compositor frame.
+```
+
+Showing the empty one is the point. The four<!--count:visionPoseHostSpans--> spans this machine can
+time on its own clock are named whether or not they hold samples, "no pong yet" stays distinguishable
+from "the offset is zero", and the lower-bound caveat is printed by the code rather than remembered
+by a reader. **No span in that table has ever been measured against real hardware**, and on the
+simulator the device's own spans stay empty because there is no video stream there.
+
+---
+
+## Hand tracking — on OpenXR, and nothing uses it yet
+
+Worth stating plainly, because its absence from the rest of this page could be read as an oversight.
+Field gained `XR_EXT_hand_tracking` on the **OpenXR** path: 26 per-joint poses per hand and a
+geometric `pinchStrength` interpolated from thumb-tip to index-tip distance, 50 mm to 10 mm
+(`OpenXRHmdTarget.kt:292#fun handState(hand: Hand)`). Confirmed against WiVRn on a Quest 3.
+
+It is not part of the visionOS story at all, and **there is no interaction layer built on it**. As of
+this page `handState` has no caller anywhere in Field, no test, and no other documentation — the API
+exists and nothing reads it. On visionOS hands remain a separate concept and are not implemented;
+`StereoPoseSource` carries controllers, not hands.
+
+---
+
 ## Status at a glance
 
-| Capability | State |
-|---|---|
-| Native 3D FLine viewer — render, orbit/scale, auto-frame, bounding cage | **Working** |
-| FLine interactivity (tap → server callback) | **Working** |
-| FLine editing — node + Bézier control-point drag | **Working** |
-| Web UI as spatial docks (editor / canvas / welcome) | **Working** |
-| Shared dock selection + editor-to-canvas History panel routing | **Working, browser-regression tested** |
-| Live Metal — live shader + uniforms on the compositor clock | **Working on device** |
-| Live Metal — headset-built geometry, per-part reload, `msl` as a property | **Built and smoke-tested**; native side compiles, device check pending |
-| RTT video streaming (mono), world-locked + windowed | **Working, verified end-to-end** |
-| RTT stereo (per-eye present) | **Working, confirmed on device** |
-| On-device polish — spatial-input feel, present smoothness | **Working on device**; frame pacing and presentation clock fixed |
+Read the third column first. It is the one that decays, and this page has been behind the code
+before.
+
+| Capability | State | How that is known |
+|---|---|---|
+| Native 3D FLine viewer — render, orbit/scale, auto-frame, bounding cage | **Working** | On device |
+| FLine interactivity (tap → server callback) | **Working** | On device |
+| FLine editing — node + Bézier control-point drag | **Working** | On device |
+| Web UI as spatial docks (editor / canvas / welcome) | **Working** | On device |
+| Shared dock selection + editor-to-canvas History panel routing | **Working** | Browser regression tests |
+| Live Metal — live shader + uniforms on the compositor clock | **Working** | On device |
+| Live Metal — headset-built geometry, per-part reload, `msl` as a property | **Built and smoke-tested** | Simulator script asserts on the head's own status messages; device check pending |
+| RTT video streaming (mono), world-locked + windowed | **Working** | Verified end-to-end on device |
+| RTT stereo (per-eye present) | **Working** | Confirmed on device — the simulator renders one mono view and cannot judge it |
+| Frame pacing + receiver presentation clock | **Fixed** | On device; the residual hiccup was Wi-Fi contention, not the pipeline |
+| Pose uplink `__visionpose__` (device → host) | **Working** | `visionpose.uplink` pins the wire decode and composition; `vision_pose_simulator_smoke.sh` takes it end to end in the simulator |
+| Head-tracked stereo rendering from an uplinked pose | **Built, arithmetic verified** | `visionpose.stereo-source` checks the rebuilt frustum *geometrically*. **Real head motion and true per-eye separation are device-only and unverified** |
+| Media wire v2 pose tail (`poseFrameId`, `poseDisplayTimeNanos`) | **Working** | `tools/rtt_wire_check.py` drives the real helper and reads real datagrams |
+| Reprojection on the head from the pose tail | **Not built** | Needs the present path moved off RealityKit onto Compositor Services |
+| Latency attribution — `visionPoseLatencyReport()` | **Built, arithmetic verified** | `visionpose.latency` recovers a known offset from a synthetic head. **No span has ever been measured against real hardware** |
+| Tracked accessories (PSVR2 Sense) over the pose channel | **Written, never read** | `AccessoryTrackingProvider.isSupported` is false on the simulator; the button/axis mapping is a guess that degrades to "not pressed" |
+| Hand tracking (26 joints, `pinchStrength`) | **OpenXR only, no consumer** | WiVRn + Quest 3. `handState` has no caller in Field; nothing on visionOS |
+
+Three<!--count:visionPoseSmokeTests--> of those rows lean on smoke tests that run without a headset,
+and they are named in the reference below so you can run them yourself.
+
+---
+
+## Reference — where this actually lives
+
+Cross-checked against source on every `docsGates` run, so a rename here breaks the build rather than
+rotting quietly. Half of this surface is Swift, because it is a two-machine protocol and a page citing
+only the Kotlin end would be describing one side of it.
+
+| What | Where | Anchor |
+|---|---|---|
+| The device→host channel name | `VisionPose.kt:82` | `const val VISION_POSE_CHANNEL` |
+| Monotonic publication under a lock | `VisionPose.kt:418` | `private fun publish(frame: VisionPoseFrame)` |
+| Frustum tangents out of the compositor's projection | `VisionPose.kt:545` | `internal fun tangentsFromProjection` |
+| The one call to make on device | `VisionPose.kt:666` | `fun visionPoseLatencyReport(` |
+| Clock-offset conversion, head → host | `VisionPoseLatency.kt:147` | `fun headToHostNanos` |
+| The deliberate render-fence span | `VisionPoseLatency.kt:60` | `const val SUBMIT_TO_ENCODED` |
+| Latch-once-per-frame contract | `StereoPoseSource.kt:36` | `fun latch(): Boolean` |
+| Which pose a frame was drawn from | `StereoPoseSource.kt:39` | `val latchedFrameId: Long` |
+| The head's own display time for that pose | `StereoPoseSource.kt:45` | `val latchedDisplayTime: Double` |
+| Tagging a stream's frames with the latched pose | `FieldRTTStreamer.kt:106` | `fun tagPosesFrom` |
+| Hand tracking on the OpenXR path | `OpenXRHmdTarget.kt:292` | `fun handState(hand: Hand)` |
+| The pose tail in the media header | `WIRE_FORMAT.md:57` | `poseDisplayTimeNanos u64` |
+| Where the pose is captured on the head | `PoseUplink.swift:164` | `func record(drawable: LayerRenderer.Drawable` |
+| The lower-bound span, named as one | `PoseLatency.swift:32` | `static let poseToTexture` |
+| The deliberate jitter buffer | `RTTStream.swift:77` | `static let bufferFrames` |
+| The one clock all three Swift files share | `CompositorClock.swift:16` | `var timeInterval: TimeInterval` |
+
+Runnable without a headset, through the canonical runner
+(`python3 tools/run_field_tests.py --id <id>`):
+
+- **`visionpose.uplink`** — the wire decode, the world-to-eye composition and the tangent extraction
+  against hand-computed values. This is the half a headset cannot check for you: a transposed matrix
+  or a swapped eye reads as "the world is wrong somehow" and looks perfectly correct in a screenshot.
+- **`visionpose.stereo-source`** — the rebuilt frustum, checked *geometrically*: a point on each
+  frustum edge must land on the matching clip boundary and the near plane at NDC z 0. Comparing matrix
+  entries against a literal would pass just as happily with the depth range inverted, which renders a
+  plausible image with the wrong things in front.
+- **`visionpose.latency`** — recovers a known clock offset from a synthetic head, and pins that a
+  congested sample cannot displace a clean one. A wrong offset yields a *plausible* latency rather
+  than a failure, which is the one kind of wrong nobody re-checks.
+
+Two things those cannot reach, stated rather than implied: `tools/rtt_wire_check.py` covers the real
+datagram bytes but not the head, and `tools/vision_pose_simulator_smoke.sh` reaches a real compositor
+pose in the visionOS simulator but the simulator reports **one** view where hardware reports two.
+
+The architecture note behind this page — seams, decisions and the full verification map — is
+`dev_docs/vision_frontend.md`. Related pages: **[Building geometry in the
+headset](vision_geometry.md)**, **[Kotlin in the head](kotlin_in_the_head.md)**, **[RemoteJS and
+WebXR](ar_reference.md)** for the browser-based sibling, **[ImGui as a VR
+panel](imgui_vr_panel.md)** for the same side-by-side stereo path on the desktop, and
+**[afield.four Graphics](afield_four_graphics.md)** for `FieldRTTStreamer`, the producer half of the
+streaming spine.
 
 ---
 
@@ -190,7 +430,10 @@ server. In short:
 2. In Field, run a box with `threeLines(myLines, editable = true)`.
 3. In the headset, open the **FLine 3D** viewer — it discovers the live view and renders it. Toggle
    **Edit** to grab the handles.
+4. With a head attached, `println(visionPoseLatencyReport())` from any box prints the whole chain.
+   With no head attached it prints the same table empty, which is a useful thing to see first.
 
 The screenshots above are from the visionOS simulator. Spatial-input feel and video smoothness are
-best judged on real hardware — the simulator can't drive spatial gestures and throttles the
-immersive scene — so those remain the active on-device verification items.
+best judged on real hardware — the simulator can't drive spatial gestures and throttles the immersive
+scene — so those remain the active on-device verification items, alongside real head motion, true
+per-eye separation, controller input, and every latency span on this page.
