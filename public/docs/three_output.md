@@ -103,7 +103,7 @@ drawables without knowing that meshes exist.
 
 ## The camera is four numbers, and they are the rasterizer's four numbers
 
-`ThreeCameraSpec` deliberately mirrors `MeshView` and `VisionGeometryPreview.Camera` one for one:
+`ThreeCameraSpec` mirrors `MeshView` and `VisionGeometryPreview.Camera` one for one:
 
 - **`yawDegrees`** — orbit around `+y`. `0` looks straight down `−z`.
 - **`pitchDegrees`** — lift above the horizon. Positive looks down on the geometry.
@@ -257,9 +257,8 @@ galleries to a uniform 1136 and lost a third of every picture.
 
 ## Which renderer draws this
 
-Field has more ways to put geometry on a screen than anyone expects, and the honest list is longer
-than "the viewer and the rasterizer". Establishing it means reading the source rather than trusting
-a summary, so here is what is actually in the tree.
+Field has more ways to put geometry on a screen than "the viewer and the rasterizer". The full list
+comes from reading the source rather than from a summary, so here is what is in the tree.
 
 | path | what it draws | where the pixels are made | reach for it when |
 |---|---|---|---|
@@ -293,8 +292,8 @@ front ends.
 It is not deprecated, and "it is the old one" is the wrong summary. Three reasons, in order of how
 hard they are to work around:
 
-**It is deterministic, and a GPU is not.** This is the load-bearing one. The pixel-exact proofs
-compare against it, and a GPU capture cannot play that role — driver, vendor and antialiasing all
+**It is deterministic, and a GPU is not.** This is the reason that matters most. The pixel-exact
+proofs compare against it, and a GPU capture cannot play that role — driver, vendor and antialiasing all
 move under you. Six test classes assert on its output today, and what they assert is pixel *statistics* —
 counts of red defect-overlay pixels, coverage fractions, painted-area bounds, outward-versus-flipped
 diffs — rather than golden images. Every one of them needs the same input to produce the same number
@@ -307,7 +306,7 @@ the ~16-context ceiling that `ThreePanel` exists to dodge.
 **It renders into a pixel buffer.** `TriMesh.renderPixels` hands you ARGB ints and a size, which is
 what you want when compositing several meshes into one figure yourself.
 
-There is also a fourth, quieter reason: it is *AWT-free on purpose*. Touching `java.awt` inside
+A fourth reason, less often noticed: it is *AWT-free*, and has to be. Touching `java.awt` inside
 Field's server JVM on macOS initialises AppKit in a process whose main thread belongs to GLFW, and
 the process dies silently. So `VisionGeometryPreview` writes its own PNGs.
 
@@ -315,8 +314,8 @@ the process dies silently. So `VisionGeometryPreview` writes its own PNGs.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/renderers.png" wait="7.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// The same mesh, the same MeshView, the same frame size — both renderers. The only honest way to
-// say what changed is to put them next to each other and look.
+// The same mesh, the same MeshView, the same frame size — both renderers. What changed is easiest
+// to see with the two side by side.
 val solid = marchingCubes(
     sdfSmoothUnion(sdfSphere(0.78), sdfBox(vec(2.1, 0.32, 0.32)), k = 0.28),
     boundsAround(radius = 1.35), 64,
@@ -339,7 +338,7 @@ picture. What differs, and what does not:
   rig. Nobody is going to reconcile those, and pretending otherwise would mean crippling one of them.
 - **Framing differs** — see the warning above. The viewer zoom-to-fits; the rasterizer places the eye
   literally.
-- **The input is held identical**, deliberately. `toThreeDrawable` mirrors `toCapturedMesh`'s
+- **The input is held identical.** `toThreeDrawable` mirrors `toCapturedMesh`'s
   preparation step for step: a mesh with no normals is run through `shadedNormals` at the *same* 35°
   crease angle the rasterizer uses (leaning on three.js's `computeVertexNormals()` instead would be
   an unconditional smooth average and would round every hard edge off a cube); colours come from
@@ -356,8 +355,8 @@ picture. What differs, and what does not:
 A face wound the wrong way is *missing* in the rasterizer — not dark, **gone** — and the
 [polytope](polytope_examples.md) and [typography](typography_examples.md) pages both teach that as a
 winding test. `ThreeDrawStyle.surface(cullBackFaces = true)` is the default so it must be missing in
-the viewer too. Switching renderers is not allowed to quietly switch a diagnostic off, and that is
-the sort of claim that should be a picture rather than a sentence.
+the viewer too. Switching renderers must not switch a diagnostic off without saying so,
+which is a claim better shown than asserted.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/winding.png" wait="7.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -391,13 +390,13 @@ showMesh(holed, channel = "the CPU rasterizer", view = view,
 what the numbers say while the picture says "hole", because this is the failure mode the whole
 apparatus exists to catch:
 
-* `signedVolume()` goes **2.1262 → 0.8112**. Quietly, catastrophically wrong.
+* `signedVolume()` goes **2.1262 → 0.8112** — catastrophically wrong, with nothing to flag it.
 * the fact line still reads **`χ=2 genus 0 · watertight`** — χ is a *count* of vertices, edges and
   faces, and reversing a triangle changes none of them. Topology is not orientation.
 * the only thing that says so out loud is `topology().isConsistentlyOriented`, which is **false**.
   `fixWinding()` is the repair.
 
-One honest divergence the figure shows and nothing else records: in the Three.js panel the
+One divergence the figure shows and nothing else records: in the Three.js panel the
 **wireframe overlay is not back-face culled**, so you can still see the reversed triangles' edges
 drawn across the hole. The rasterizer's depth-tested wireframe is culled with its surface, so its
 hole is bare. The *surfaces* agree, which is the diagnostic; the overlays do not.
@@ -429,7 +428,7 @@ counterparts have, so the format is ready and the viewer has not been taught to 
 it is, put a `TriMesh` you want to *interrogate* through `toFLines(...)` and hand the lines to
 `threeInspect`, or keep it on the CPU path and use `showMeshDiagnosis`.
 
-## What is deliberately unchanged
+## What is unchanged
 
 `ThreeGeometryPayload`'s `lines` / `fills` / `points` are untouched, and a payload with an empty
 `drawables` list serialises byte for byte as it did before any of this existed. Both halves are held

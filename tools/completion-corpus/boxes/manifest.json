@@ -159,7 +159,7 @@
   {"doc": "polytope_holes_and_chains", "box": "polytope_chained_vocabulary", "codeSha256": "9c5608588ec9fe45", "codeLines": 46, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "polytope_holes_and_chains", "box": "polytope_face_with_a_hole", "codeSha256": "057835d85ad49329", "codeLines": 72, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "polytope_holes_and_chains", "box": "polytope_plate_with_and_without", "codeSha256": "6fbafd5704f9e593", "codeLines": 66, "receivers": ["afield.Box"], "preamble": ""},
-  {"doc": "popup_prior_inspect", "box": "agent_popup_prior_inspect", "codeSha256": "393e7e4a2c0bce4a", "codeLines": 31, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "popup_prior_inspect", "box": "agent_popup_prior_inspect", "codeSha256": "6887cb3e9428f237", "codeLines": 31, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "recstl_playground", "box": "recstl_playground", "codeSha256": "5ece560657ba74ea", "codeLines": 96, "receivers": ["afield.Box"], "preamble": "recstl_playground__recstl_playground.preamble.kt"},
   {"doc": "recstl_playground", "box": "recstl_renderer", "codeSha256": "b15e5ae56ffc02ca", "codeLines": 14, "receivers": ["afield.Box"], "preamble": "recstl_playground__recstl_renderer.preamble.kt"},
   {"doc": "rectsl_dataviz", "box": "dataviz_figure", "codeSha256": "059861783b3b9236", "codeLines": 62, "receivers": ["afield.Box"], "preamble": "rectsl_dataviz__dataviz_figure.preamble.kt"},

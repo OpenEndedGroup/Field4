@@ -4,15 +4,15 @@ Press `ctrl-space` in a Field editor and something has to choose which of a few 
 you see first. This page is about that choice: where it is made, what it is made from, and how you —
 writing a class in a Field box or in Field's own source — get a say in it.
 
-There is one fact to get out of the way first, because it is where almost everyone starts looking in
-the wrong place:
+One thing to establish before the rest of the page makes sense, because it sends most people to the
+wrong file:
 
 !!! important "The server sends everything. The browser does the ranking."
 
     Field's completion server does not sort, filter or truncate. It answers a caret with *every*
-    candidate it can find, and the Kotlin source says so in as many words: "Ranking is client-side". The
-    order you see is computed in JavaScript, in `src/commonMain/resources/fieldSuggest.js`, by a function
-    called `rankItems`.
+    candidate it can find; a comment in the Kotlin reads "Ranking is client-side". The order you see is
+    computed in JavaScript, in `src/commonMain/resources/fieldSuggest.js`, by a function called
+    `rankItems`.
 
     So if you are reading Kotlin looking for the code that decides what comes first, you will not
     find it. What Kotlin decides is what each row *carries* — its category, where it was declared,
@@ -57,13 +57,13 @@ step is the interesting one:
 | 2 | does `declaredIn`'s package contain a match? | the vote, scoped to one package instead of 42 files |
 | 3 | `declaredIn` names something outside this tree | **decline** — a namesake here says nothing about `java.lang.Math` |
 
-The third row is a behaviour change worth internalising, because its consequence looks like a
-regression and is not. A receiver you did not write and cannot annotate — `java.lang.Math`,
-`kotlin.collections.List` — now gets an honest, uniform "no category" for every one of its members
-rather than a scatter of borrowed ones. Uniform means they all tie, and when everything ties the
+The third row is the one that surprises people, because its consequence looks like a regression and
+is not. A receiver you did not write and cannot annotate — `java.lang.Math`,
+`kotlin.collections.List` — now gets a uniform "no category" for every one of its members rather
+than a scatter of borrowed ones. Uniform means they all tie, and when everything ties the
 popup falls back to the order the server sent, which for a foreign type is alphabetical. So a bare
-dot on a foreign receiver is alphabetical. That is the truth about how much Field knows about
-`java.lang.Math`, stated plainly, where it used to be hidden behind noise.
+dot on a foreign receiver is alphabetical. That reflects how little Field knows about `java.lang.Math`, where
+the old behaviour hid it behind noise.
 
 ### 3. The receiver's type states its own prior
 
@@ -259,11 +259,11 @@ backend and the reason on every request, so this is never guesswork.
     *member* completions, so blank means "not a dot completion" at least as often as it means K1.
     Everything asserted above rests instead on the `completion backend=…` line each session logs for
     itself, which names the backend and the fallback reason directly. Recorded because a plausible
-    discriminator that quietly fails is worse than none at all.
+    discriminator that fails silently is worse than none at all.
 
 The second figure asks Field for the prior in numbers. It is not a transcription: the box calls
 `afield.CommonMemberPrior` — the very object the completion server calls, once per candidate, on every
-keystroke — so the table is the popup's own arithmetic, and it cannot go quietly stale: if the band moves, the
+keystroke — so the table is the popup's own arithmetic, and cannot go stale: if the band moves, the
 figure moves with it.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/popup-decides-prior-table.png" capture="box" w="700" h="190" wait="1.2" timeout="120" embed=true hidden=true name="popup-decides-prior-table" alt="A Field box output panel labelled main. A heading reads: @CommonMembers on afield.graphics.FLine — 8 members, first scores 40, less 2 per position. Below it a three-column table headed position, member, prior score, with eight rows: 1 moveTo 40, 2 lineTo 38, 3 cubicTo 36, 4 close 34, 5 here 32, 6 rot 30, 7 scale 28, 8 copy 26."}
@@ -283,7 +283,7 @@ val prior = Table(listOf("position", "member", "prior score"))
     })
     .role("member", CellRole.ACCENT)
 
-// The arithmetic the heading claims, as an assertion rather than a sentence.
+// The arithmetic the heading claims, checked rather than described.
 check(ranks.all { (_, position) ->
     afield.CommonMemberPrior.scoreOf(position) ==
         afield.CommonMemberPrior.BASE - afield.CommonMemberPrior.STEP * (position - 1)
@@ -310,7 +310,7 @@ about a type of your own.
 
 ## The authority order
 
-Four things can decide an order, and they are deliberately ranked against each other. In one line:
+Four things can decide an order, and they rank against each other in a fixed precedence:
 
 > **recency > the author's prior > the category bucket > alphabetical.**
 
@@ -320,14 +320,14 @@ Four things can decide an order, and they are deliberately ranked against each o
 | 1 | **recency** — what you have actually accepted | everything below | what a person demonstrably does beats anybody's guess about what they will do |
 | 2 | **the author's prior** — `@CommonMembers` | bucket, alphabetical | the person who wrote the class knows its first page |
 | 3 | **the category bucket** | alphabetical | a coarse grouping is better than none |
-| 4 | **the server's order** — alphabetical for a foreign type | — | the last resort, and honest about being one |
+| 4 | **the server's order** — alphabetical for a foreign type | — | the last resort |
 
 The prior's band is chosen to sit exactly in that gap: **above** the highest category weight, so a
 called-out member clears a page of uncategorised rows, and **below** what recency can reach, so what
 you use still wins over what the author guessed. The numbers are `COMMON_MEMBER_BASE = 40` decaying `2`
 per position, against a category ceiling of `28` and a recency ceiling near `62`.
 
-Two things keep that arrangement honest rather than aspirational. The magnitude lives on **both**
+Two things enforce that arrangement rather than merely intending it. The magnitude lives on **both**
 sides of the wire — `CommonMemberPrior.BASE`/`STEP` in Kotlin and `COMMON_MEMBER_BASE`/
 `COMMON_MEMBER_STEP` in JavaScript — and the build asserts the two agree, because a server that ranks
 members the client scores differently is worse than no prior at all. And the
@@ -360,7 +360,7 @@ class Ramp {
 
 Four things to know about it:
 
-**Names, not callable references.** `"moveTo"` rather than `FLine::moveTo`. This is on purpose: one
+**Names, not callable references.** `"moveTo"` rather than `FLine::moveTo`, so that one
 entry covers every overload of a name — `FLine.moveTo` has four — and a property reads exactly the
 same as a function. Only the bare name is matched, so a display string like `moveTo(v: Vec3)` still
 resolves.
@@ -381,7 +381,7 @@ long tail earns almost nothing anyway.
 
 **Inheritance is one-directional.** A subclass inherits its parent's list, and may re-declare a name
 to move it — but `CommonMemberPrior.declaredNames`, which the guard test checks against the class's
-actual members, deliberately reads *only* the class's own annotation. A class is answerable for the
+actual members, reads *only* the class's own annotation. A class is answerable for the
 list it writes, not for one it inherited.
 
 ## Asking the popup to show its reasoning
@@ -478,5 +478,5 @@ In rough order of how often each turns out to be the answer:
 | the guard on which backend a figure captured | `tools/test_docs_runner_completion_backend.py` |
 | the internals, at length | `dev_docs/completion_aa_sidecar.md` |
 
-Symbol names rather than line numbers, on purpose: a line number in a page like this one is the most
-perishable thing it could contain, and a name survives every edit that does not rename it.
+Symbol names rather than line numbers, because a line number in a page like this one is the first
+thing to rot, and a name survives every edit that does not rename it.

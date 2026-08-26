@@ -18,7 +18,7 @@ val prior = Table(listOf("position", "member", "prior score"))
     })
     .role("member", CellRole.ACCENT)
 
-// The arithmetic the heading claims, as an assertion rather than a sentence.
+// The arithmetic the heading claims, checked rather than described.
 check(ranks.all { (_, position) ->
     afield.CommonMemberPrior.scoreOf(position) ==
         afield.CommonMemberPrior.BASE - afield.CommonMemberPrior.STEP * (position - 1)

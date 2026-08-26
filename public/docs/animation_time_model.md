@@ -9,9 +9,9 @@ generator layer that sits beside it.
 This page picks up where [Running code in a box](running_code.md) stops: that page ends when the
 last fragment finishes evaluating, and this one starts with what Field does to the value it produced.
 
-There is one fact to put first, because everything else follows from it and almost nobody guesses it:
+Everything else on this page follows from one property of the loop, so it goes first:
 
-!!! important "A frame is not a unit of time."
+!!! important "A frame counts work, not seconds."
 
     Field's Runloop is a bare `while (true)` that drains a queue, counts one, and idles for about
     fifty microseconds. There is no 60 Hz, no vsync, no fixed timestep. `frameNumber` counts how
@@ -139,7 +139,7 @@ val figure = showTable(
     channel = "main",
 )
 
-// And the same claim as a build failure, so a regression in the builders cannot quietly ship a
+// And the same claim as a build failure, so a regression in the builders cannot ship a
 // figure that contradicts the paragraph under it.
 check(figure.deviations.isEmpty()) { "a builder no longer advances one frame per pump" }
 ```
@@ -158,8 +158,8 @@ What differs is *when the body runs relative to the boundary*:
 
 `eachFrame`'s body runs from pump 2; `loop`'s from pump 1. One pump, and it is the whole difference
 between "advance, then run" and "run, then advance". The `loop`/`forever` conditional advance is the
-part worth internalising: a body that calls `frame()` or `delay(ms)` itself does not get a second
-advance bolted on afterwards.
+part to watch: a body that calls `frame()` or `delay(ms)` itself does not get a second advance
+bolted on afterwards.
 
 !!! note "`forever { }` needs qualifying"
     A box imports both `afield.*` and `afield.four.util.*`, and each declares a `forever` — one
@@ -471,19 +471,19 @@ animate {
 
 ## A physics system in the loop
 
-The disc above is written against `AnimationClock.nowSeconds()` on purpose, so that it means the same
-thing live and under capture whatever rate frames arrive at. An integrator is the opposite case.
+The disc above is written against `AnimationClock.nowSeconds()`, so that it means the same thing
+live and under capture whatever rate frames arrive at. An integrator is the opposite case.
 `cloth.step(dt = 1f / 60f, ...)` hands the solver a **fixed** dt, so one turn of the loop is one tick
 of physics and the frame boundary and the integration step become the same event.
 
-That is the point rather than a compromise. This solve is force-based — positions advance by
+That is the intended arrangement rather than a compromise. This solve is force-based — positions advance by
 `v * damping + a * dt²` — so a dt that jittered with the frame rate would change the sheet's own
 stiffness and damping from frame to frame, and the stability limit lives in
 `stiffness × iterations × dt²`: measured at dt = 1/60, `60 × 16` settles and `150 × 16` diverges to
 NaN, so the same setting with a dt half again as large lands in the band that already blew up. Fixed
-dt buys the solver a constant it can be tuned against. What it costs is wall-clock honesty: recorded
-at 20 fps below, this sheet moves slower than it does live and behaves *identically* in simulation
-time. Anything coupled to the simulation therefore has to be on the simulation's clock too, which is
+dt buys the solver a constant it can be tuned against. The cost is that it no longer tracks
+wall-clock: recorded at 20 fps below, this sheet moves slower than it does live while behaving
+*identically* in simulation time. Anything coupled to the simulation therefore has to be on the simulation's clock too, which is
 why the drag is driven by the step count and not by `nowSeconds()`.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/animation_time_model/cloth_loop.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="960" h="120" embed=true name="animation-cloth-loop" alt="a wireframe cloth of 20 by 10 particles hanging from five red pins along its top edge, drawn as cyan constraint segments with pale dots at the particles and short green velocity whiskers; an invisible hand drags its bottom-right corner in a slow loop, and the sheet stretches, swings and folds after it while the caption counts frames upward"}
