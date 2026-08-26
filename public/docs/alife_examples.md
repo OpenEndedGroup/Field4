@@ -65,7 +65,7 @@ labelling, colour mapping or marching cubes:
 - **`alife_field.kt`** — the [inline `ToHTML` views](#evaluating-one-of-these-in-a-box-the-inline-views),
   kept in their own file so the five above name nothing from Field's visualizer.
 
-Things it deliberately does not do, so you are not surprised:
+Things it does not do, so you are not surprised:
 
 - **CPU only.** These are reference implementations you can read. The GPU story is
   [`afield.four`](reference/graphics.md), [StackSL](stacksl_examples.md) and
@@ -160,7 +160,7 @@ other. That is the same claim the montage above makes, and the same claim `trans
 the form where it is obvious.
 
 Right: the R-pentomino on a **64-cell walled** board, with its live population in the caption. Read the
-section's second paragraph before reading this panel: it is deliberately *not* the run the numbers above
+section's second paragraph before reading this panel: it is *not* the run the numbers above
 are about. Those need a board wide enough that no escaping glider can reach an edge, which at 1103
 generations means 620 cells, and 620 cells at one pixel each is a video in which the interesting part is
 four pixels wide. So this is the walled question instead — same rule, same seed, different board — and what
@@ -183,7 +183,7 @@ something stationary. Nothing is claimed here beyond the number in the caption, 
 :::fold the two boards, integer-upscaled so a cell is a block you can count
 // Both boards are integer-upscaled to the same 384 pixels, so a cell is a block you can count:
 // twenty-four pixels for the glider's 16-cell torus, six for the R-pentomino's 64-cell walled
-// board. Small boards on purpose -- see the note above this clip, which measures why.
+// board. Small boards here -- see the note above this clip, which measures why.
 fun boards(g: IntGrid, r: IntGrid, n: Int) = listOf(
     "glider, gen " + n to g.toImg(2).upscaleNearest(24),
     "R-pent " + n + ": " + r.population() + " live" to r.toImg(2).upscaleNearest(6)
@@ -191,7 +191,7 @@ fun boards(g: IntGrid, r: IntGrid, n: Int) = listOf(
 :::endfold
 
 // 400 generations over 200 displayed frames: TWO generations per frame. Slower than every other
-// clip on this page on purpose -- the glider's period is FOUR generations, and a spaceship stepped
+// clip on this page -- the glider's period is FOUR generations, and a spaceship stepped
 // nine generations at a time is a strobe rather than a spaceship.
 animateEvolution(
     LifePatterns.glider.centeredOn(16, 16) to
@@ -289,7 +289,7 @@ universality has to be built out of. Rule 184 just shifts, forever, conserving i
     [`rowsRevealed`](reference/alife.md#alife-animate-kt) uncovers it a row at a time. That is legitimate
     here for a specific reason and not in general: row `g` of a space-time diagram depends only on rows
     below `g`, so revealing rows and re-running the automaton produce *identical* pixels. Every other clip
-    on this page steps the real system. This one is honest about being the exception.
+    on this page steps the real system. This one is the exception, and says so.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/elementary.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="7" fps="20" timeout="240" w="900" embed=true name="alife-elementary-video" alt="four elementary cellular automaton space-time diagrams filling in a row at a time: rule 90's Sierpinski gasket, rule 30's chaos, rule 110's gliders and rule 184's shifting traffic"}
 :::static
@@ -579,7 +579,7 @@ paced the way it is.
     steps 400 to 1500 — 18 % of a linear clip, 30 % of this one. A schedule only decides how much of the clip
     that window gets, and `ramp` is the one parameter to change if you disagree with where it sits.
 
-    Two honest notes about instruments. The endpoint measurement is a *weak* one here even when it agrees:
+    Two caveats about instruments. The endpoint measurement is a *weak* one here even when it agrees:
     the first frame is a nearly black field, so its difference from any later frame saturates near 42
     whatever the schedule does. An earlier cut of this clip measured 42.40 / 9.61 while its consecutive-frame
     profile was still 15.5 / 73.8 / 10.7 / 0.0 — the endpoints understated a badly-paced clip. Trust the
@@ -628,7 +628,7 @@ That is the whole system. Its interest is that with a smooth ring kernel and a s
 growth mapping it supports localised, self-maintaining, *moving* structures — solitons — which a
 lattice automaton quantises away.
 
-The honest claim to make about an *implementation* of it is a cross-check, and there is a very good one
+The claim worth making about an *implementation* of it is a cross-check, and there is a very good one
 available. With a uniform Moore ring kernel, `dt = 1`, and a **three-valued** step growth mapping (`+1`
 on the birth counts, `0` on survive-only counts, `-1` elsewhere), Lenia reduces exactly to an
 outer-totalistic `B/S` rule: `G = +1` forces a cell alive from either state, `G = 0` leaves it as it
@@ -649,7 +649,7 @@ four generations, a block that does not move, a blinker of period 2.
 
 There is one real restriction, and it is a fact rather than a limitation: this needs `birth ⊆ survive`.
 If a count births a dead cell but does not sustain a live one, no function of the neighbour count alone
-can do both, and `leniaFromLifeRule` rejects the rule instead of quietly producing a different
+can do both, and `leniaFromLifeRule` rejects the rule instead of producing a different
 automaton. Conway's `B3/S23` satisfies it.
 
 For the *continuous* regime this page reports a measured phase trichotomy rather than a named creature.
@@ -717,7 +717,7 @@ showImg(
 
 ### The two `mu` values, running
 
-The discrete-limit result above is a **proof**, and it deliberately stays a still: "the worst per-cell
+The discrete-limit result above is a **proof**, and it stays a still: "the worst per-cell
 difference over 20 generations is `0.0`" is a number, it is exact, and there is nothing about it to watch.
 Animating it would add motion and subtract certainty.
 
@@ -1043,7 +1043,7 @@ estimator is reading the diffusion-limited part of DLA and not merely "a growth 
 it is not simply reading the bounded support.
 
 ??? aside "Stated as a range, not as a match"
-    1.597 is below 1.71, and it is honest to say why rather than to round toward the literature: lattice
+    1.597 is below 1.71, and it is worth saying why rather than rounding toward the literature: lattice
     DLA clusters of this size are known to read low, and the asymptote needs far larger clusters. The
     assertion in CI is therefore "clearly between 1.5 and 1.8, and clearly not 2".
 
@@ -1466,7 +1466,7 @@ Auto-ranging here is not a cosmetic mistake, it is a lie with a specific victim.
 field is constant at 1.** Normalise it per-frame and it maps to the *dark* end of the colour map and
 renders solid black — pixel-for-pixel indistinguishable from a field that died. That already cost this
 family a figure once. A view is worse than a figure in this respect: a figure is regenerated
-deliberately, a view is regenerated every time you look at a value.
+when you ask, a view is regenerated every time you look at a value.
 
 So the views are checked at the pixel rather than by eye. `AlifeGallery`'s `inline-view` figure decodes
 the base64 PNG back out of the emitted HTML and asserts individual pixels: all five of a glider's live

@@ -186,7 +186,7 @@ cube's first face is element 20 rather than face 0. An id identifies *this eleme
 topology*, so an incidence array can mix ranks without ambiguity and provenance can name a source
 element without also having to say which array it was in.
 
-Two details in that read-out are load-bearing:
+Two details in that read-out matter:
 
 - **Incidence is reciprocal and adjacent-rank only.** There is no vertex→face incidence stored; you
   walk. `validate()` checks reciprocity, edge endpoint counts, that every face cycle vertex really
@@ -202,14 +202,14 @@ Two details in that read-out are load-bearing:
 is an immutable ownership boundary around Field's mutable `Vec3`: public reads hand back copies, and
 coordinates are indexed in exactly the same order as `topology.elements(0)`.
 
-The honest way to show that the topology really is independent is to take the coordinates away and
+The way to show that the topology really is independent is to take the coordinates away and
 watch which operations still work.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/abstract_dual.png" wait="1.5" capture="box" open-outputs="true" w="980" h="520" padding="14"}
 :::static
 import afield.stdlib.polytope.*
 
-// Drop the cube's coordinates on purpose. The topology survives verbatim.
+// Drop the cube's coordinates. The topology survives verbatim.
 val abstractCube = PolyhedralObject(cube().topology)
 val d = abstractCube.transform(ConwayOperator.DUAL).polyhedron
 
@@ -247,7 +247,7 @@ column: the combinatorial claims — valid, closed, isomorphic to an octahedron 
 with no coordinates in the object, and the geometry-shaped calls fail loudly rather than inventing a
 placeholder embedding.
 
-`isCombinatoriallyIsomorphicTo` is deliberately small: it is a rank-3 helper that tries vertex
+`isCombinatoriallyIsomorphicTo` claims less than its name: it is a rank-3 helper that tries vertex
 bijections filtered by a degree/face-size signature and then compares edge and face multisets up to
 rotation and reversal. It is not a general incidence-poset graph-isomorphism solver, and it says so.
 
@@ -657,7 +657,7 @@ val cases = listOf<Pair<String, ElementSelector>>(
         (ElementSelectors.vertexDegree(4) and !ElementSelectors.provenanceRole("face-apex")),
 )
 
-// Two receivers, deliberately different: on a PolyhedralObject there is no lineage to consult,
+// Two receivers that behave differently: on a PolyhedralObject there is no lineage to consult,
 // so the provenance selectors match nothing. On a transform result they can see it.
 val rows = cases.joinToString("\n") { (label, s) ->
     "| `$label` | ${kisCube.polyhedron.selectElements(s).size} | ${kisCube.selectElements(s).size} |"
@@ -711,7 +711,7 @@ for (f in source.topology.elements(2)) {
     source = source.withAttribute(f.id, "spike", 0.08 + 0.80 * (x + 1.0) / 2.0)
 }
 
-// Selection and parameter are separate arguments, on purpose.
+// Selection and parameter are separate arguments.
 val result = source.kis(ElementSelectors.rank(2), ElementParameters.attribute("spike"))
 val out = result.polyhedron
 val g = out.triangulate()
@@ -805,7 +805,7 @@ attributes are untouched — the result is `copy(realization = solved)` and noth
     > common-edge constraints for deliberately irregular objects.*
 
     Levenberg–Marquardt from the supplied embedding is a **local** method, and the `referenceWeight`
-    term deliberately biases it toward where it started. Nothing here checks for self-intersection or
+    term biases it toward where it started. Nothing here checks for self-intersection or
     inversion — degenerate faces are *reported*, not repaired. If you want the canonical form, ask
     for it by name; that is the next section.
 
@@ -1204,7 +1204,7 @@ import afield.stdlib.polytope.*
 val seeds = listOf("5-cell" to fiveCell(), "tesseract" to tesseract(),
     "16-cell" to sixteenCell(), "24-cell" to twentyFourCell())
 
-// Viewing is a Projection4 above realization, deliberately not part of the geometry.
+// Viewing is a Projection4 above realization, not part of the geometry.
 val projection = RotatedProjection4(
     a = 0, b = 3, angle = 0.30, then = PerspectiveProjection4(eye = 4.2))
 
@@ -1245,7 +1245,7 @@ Every one of those rows reports `V − E + F − C = 0`, which is the Euler rela
 
 There is no `triangulate()` for rank 4. A projected 4-polytope's polygons do not bound a surface, and
 filling them would imply one that does not exist — so `toEdgeFLines` and `toCellEdgeFLines` give
-Field a wireframe and stop there. `OrthographicProjection4` is available and is honest about being
+Field a wireframe and stop there. `OrthographicProjection4` is available and is clear about being
 unreadable: it collapses the tesseract's two cubes exactly onto each other, which is a test
 assertion, not an accident.
 
@@ -1338,7 +1338,7 @@ distinction survives into the replay record, so a chain can be re-run exactly.
 
 `triangulate()` projects each face from its actual 3D plane by dropping its Newell normal's dominant
 axis, runs Field's existing `FloatEarcut` in 2D, and flips any triangle whose winding disagrees with
-the face. It **duplicates polygon corners between faces** on purpose: `TriMesh` stores normals per
+the face. It **duplicates polygon corners between faces**: `TriMesh` stores normals per
 vertex, and a creased polyhedron needs a different flat normal on each side of an edge.
 
 That duplication has a consequence worth seeing rather than being told about.
@@ -1391,7 +1391,7 @@ of one, and it takes the identical path through both adapters.
 
 The consequence is not only a rendering one. A face with a hole is a **surface with boundary**, so an
 object containing one stops being a closed manifold, and every operation that is only defined for a
-closed manifold has to say so rather than quietly produce nonsense.
+closed manifold has to say so rather than produce nonsense.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/face_with_a_hole.png" wait="2.5" capture="box" open-outputs="true" w="1000" h="620" padding="14"}
 :::static
@@ -1451,9 +1451,9 @@ rather than being remembered about.
 
 ### The hole, in pixels, beside the same face without one
 
-The claim that a hole is really a hole is a claim about triangles, so the honest way to make it is to
+The claim that a hole is really a hole is a claim about triangles, so the way to make it is to
 build the identical face twice — once with the inner ring declared, once with it dropped — and render
-both. Back-face culling is deliberately **on**: a rim triangle wound the wrong way would be *missing*
+both. Back-face culling is **on**: a rim triangle wound the wrong way would be *missing*
 here exactly as it would be missing on a GPU, so this is a winding test as well as a hole test.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/face_hole_counterfactual.png" wait="3.0" capture="box" open-outputs="true" w="880" h="480" padding="14"}
@@ -1520,9 +1520,9 @@ other: both came out of `triangulate()` on an object built by the code above it,
 the left one is empty because no triangle was generated there, not because something was drawn over
 it.
 
-What is deliberately *not* here: a hole ring that touches its outer boundary, a face with two nested
-rings, and star polygons. Those are named as remaining work rather than quietly half-supported. The
-realization verbs are the other honest gap — `relax` and `canonicalize` build their problem from
+What is *not* here: a hole ring that touches its outer boundary, a face with two nested
+rings, and star polygons. Those are named as remaining work rather than half-supported without saying so. The
+realization verbs are the other gap — `relax` and `canonicalize` build their problem from
 outer rings only, so hole vertices are unconstrained. No shipped path reaches that today, because the
 Conway operators refuse a holed face before a realizer ever sees one.
 
@@ -1573,14 +1573,14 @@ Two operation transcripts build a working document you can open, edit and re-run
   the transform role, the deployed height, the source elements and the 3D hit position.
 - **`dev_docs/agents/transcripts/polytope_conway_gallery.yaml`** — the four questions this page is
   organised around, as four small boxes: a Conway-expression gallery you can retype, a topology-only
-  dual shown honestly before a policy supplies coordinates, a non-uniform parameter field painted
+  dual shown before a policy supplies coordinates, a non-uniform parameter field painted
   onto the output faces, and a realization before/after that leaves the diagnostics as its final
   value.
 - **`dev_docs/agents/transcripts/polytope_canonical_gallery.yaml`** — one box that evaluates a Conway
   expression, canonicalizes it, and draws the realized and canonical forms side by side in the
   viewer with the diagnostics underneath. Change `val expression = "gD"` to `"ktC"`, `"bD"` or
   `"sD"` and re-run: the notation re-parses, both solids redraw, and the tangency-radius spread
-  drops by six orders of magnitude. Set it to `"kkC"` and watch this box report an honest failure — it
+  drops by six orders of magnitude. Set it to `"kkC"` and watch this box report a clean failure — it
   calls `canonicalize()`, which does not reach that one; `relaxWithCeres` does.
 
 Replay any of them from the repository root:

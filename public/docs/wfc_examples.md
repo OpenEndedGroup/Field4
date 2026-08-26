@@ -39,7 +39,7 @@ covers:
 - **An explicit `step()`**, so the collapse is observable rather than a black box. That is what the
   animation further down is made of.
 
-Things it deliberately does not do, so you are not surprised:
+Things it does not do, so you are not surprised:
 
 - **No backtracking.** A contradiction is terminal. The remedy is to start the attempt again, which
   is what `solveWithRetries` does — see [§8](#8-contradictions-seeds-and-reproducibility).
@@ -90,7 +90,7 @@ val rules = wfcRules(tileCount = 3) {
     mayTouch(SAND, SAND)
     mayTouch(SAND, GRASS)
     mayTouch(GRASS, GRASS)
-    // Deliberately absent: mayTouch(SEA, GRASS). That single omission is the whole model.
+    // Note what is absent: mayTouch(SEA, GRASS). That single omission is the whole model.
 }
 
 val solver = WfcSolver(width = 22, height = 14, rules = rules, seed = 12L)
@@ -258,7 +258,7 @@ showImgGrid(
 
 ![the island source above two WFC outputs: learned weights lose all water, sand boosted x10 restores lakes with deep cores ringed by shallow](assets/wfc_examples/simple-tiled.png)
 
-This is the result most WFC introductions quietly skip, and it is worth reading carefully.
+This is the result most WFC introductions skip, and it is worth reading carefully.
 
 The middle panel is **correct**. Every adjacent pair in it is a pair present in the source, and the
 set of band-to-band edges it contains is a subset of the set the source contains — `WfcGallery`
@@ -276,7 +276,7 @@ band allowed to touch both sides, is what matters: interface cells are what let 
 near each other, so making them cheap lets all five bands coexist. It does not, however, reproduce
 the source's proportions — sand is now far more common than it ever was in the source.
 
-The honest conclusion is that this model cannot reproduce global proportions, because it does not
+The conclusion is that this model cannot reproduce global proportions, because it does not
 represent them. It is a table of which colours may touch plus a marginal frequency per colour; "water
 covers about a quarter of the map in large connected regions" is not expressible in that language, so
 no amount of weight tuning will produce it.
@@ -401,7 +401,7 @@ source's 0.713 and the one-colour model's 0.468. It is *more* coherent than its 
 what you would expect from a model that has learned the interiors are large and the boundaries are
 thin, and is under no obligation to also put a shoreline in any particular place.
 
-The figure is deliberately unpinned, and the readout in the box says why:
+The figure is unpinned, and the readout in the box says why:
 
 ```diffstatic {data-lang=text}
 the all-deep window may be followed by: dir 0 4  dir 1 2  dir 2 1  dir 3 1
@@ -440,7 +440,7 @@ says where, and `observedAllows` is `allows` restricted to what the sample actua
 predicate to assert a learned model against, since `allows` on a widened table permits a great deal
 it never saw. The inline rules view in [§8](#8-contradictions-seeds-and-reproducibility) paints
 invented pairs amber for the same reason, and `WfcGallery` pins both ends of this so the numbers
-above cannot quietly rot.
+above cannot rot unnoticed.
 
 ## 3. Tiles with structure: the circuit set
 
@@ -1213,7 +1213,7 @@ nearly all of it. *Per-output* anisotropy takes the ratio within each field and 
 it asks whether any single field is directionless. That lands at 1.9×, right at the source's own
 2.1× — which is the correct outcome rather than a shortfall. Terrain has ridges, and ridges have
 directions; what was wrong before was not that each field had a grain but that *every* field had the
-*same* grain. Worth separating deliberately, because averaging the two roughnesses before dividing
+*same* grain. Worth separating, because averaging the two roughnesses before dividing
 reports a flattering `1.0×` for a model whose every individual output is still strongly banded, and
 that is a mistake this page made before the gallery caught it.
 
@@ -1270,7 +1270,7 @@ two contradictions is not the same as a fresh solver's first attempt.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/contradiction.png" wait="1.5" capture="box" open-outputs="true" w="1200" name="wfc-contradiction"}
 :::static
-// Over-constrained on purpose: a strict 0 -> 1 -> 2 chain and nothing else. Hand-authored rules do
+// Over-constrained: a strict 0 -> 1 -> 2 chain and nothing else. Hand-authored rules do
 // NOT get the widening that fromSampleGrid applies, so "nothing may sit east of tile 2" stands.
 // The longest fillable row is therefore three cells, and a 6x6 grid cannot be filled at all.
 val strict = wfcRules(tileCount = 3) {
@@ -1415,7 +1415,7 @@ turn that it may sit on the other side.
 They do not, however, turn **teal**. They turn amber, and the header says why: `4 widened masks → 8
 observed + 20 invented pairs (71% of the table)`. Four authored constraints went in and the finished
 model is mostly not them. That is the same 71% §2 measured on a real source, from the same cause and
-at a much smaller scale, and it is the honest reading of what the fallback did — it did not repair
+at a much smaller scale, and it is the right reading of what the fallback did — it did not repair
 the rules, it replaced most of them. Reach for it when an unplaceable edge tile is the actual
 problem, and read the header afterwards.
 
@@ -1439,7 +1439,7 @@ try when a learned model gives you correct speckle, as in §2 — more context p
 speckle into shape.
 
 **Prefer overlapping windows to bigger disjoint tiles** when you want that context. Both work in
-principle; only one of them keeps the model honest. Disjoint tiles above `1 × 1` are mostly seen once
+principle; only one of them keeps the model faithful. Disjoint tiles above `1 × 1` are mostly seen once
 each, at a sample edge, and the widening fallback then invents the majority of the adjacency table —
 71% of it on §2's terrain source. Check `widenedMaskCount` before trusting a learned model, and
 assert against `observedAllows` rather than `allows` when what you want to know is "did this reuse
@@ -1515,9 +1515,9 @@ degenerate, and — for the terrain figures — that the set of terrain edges in
 of the set in the source.
 
 Three of its checks exist because of claims made in prose above, and would otherwise be the kind of
-sentence that quietly stops being true. §2's twelve coastlines must all solve, must use only pairs
+sentence that stops being true without anything noticing. §2's twelve coastlines must all solve, must use only pairs
 the source contained (`observedAllows`, not merely `allows`), and must come out more coherent than
 both the one-colour model and the source itself; the all-deep window must still have exactly one
 southward successor, or the paragraph explaining why that figure is unpinned is wrong; and the
 widening audit pins 1 × 1 at zero invented pairs and 2 × 2 at more invented than observed, which is
-the note in §2 stated as a test.
+the note in §2 turned into a test.

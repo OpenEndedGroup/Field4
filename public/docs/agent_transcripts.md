@@ -20,7 +20,7 @@ the yaml can write that.
 
 Where an entry carries a figure, that figure is a capture of this code running, taken by the docs
 capture pipeline for the walkthrough page linked beside it. Most entries carry none: a scene that
-opens a native Vulkan window, or publishes to a headset, has no still a build can honestly produce,
+opens a native Vulkan window, or publishes to a headset, has no still image a build can produce,
 so those say what to run instead.
 
 ## Running one
@@ -44,9 +44,9 @@ All 73 transcripts are checked on every build, by one harness — `DemoTranscrip
 not in the same way, and the difference is worth knowing before you trust one. 54 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
-error-kind output line. (Almost always that is every box in the file. A transcript may deliberately
-create a box it does not execute — one that wants a device the build does not have, or that fails on
-purpose to demonstrate a diagnostic — and only the ops it actually writes down are replayed.) 12 want
+error-kind output line. (Almost always that is every box in the file. A transcript may
+create a box it does not execute — one that wants a device the build does not have, or that is meant to fail so a
+diagnostic can be shown — and only the ops it actually writes down are replayed.) 12 want
 something the lightweight build does not own — a GLFW window and Vulkan renderer, an external audio
 service, or a camera — so those are **built and compiled**: the graph is assembled through the real
 apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal evaluation —
@@ -143,7 +143,7 @@ difference between a gesture and a state is visible rather than described.
 
 **fn_differentiable_fit_demo** — A self-contained demo of the differentiable fitter
 (`afield.stdlib.fitBest` / `fitGradient`), the gradient-descent counterpart to the genetic
-`evolve()`. The target is a product of two oscillators with a deliberately-wrong seed; a single
+`evolve()`. The target is a product of two oscillators with a seed chosen to be wrong; a single
 `fitGradient` stalls in a frequency local-minimum, so the demo uses `fitBest` (jittered restarts) to
 land in the global basin. On execute it plots the target and the fitted curve and returns an RMSE
 before→after summary with a loss-trajectory sparkline.
@@ -155,7 +155,7 @@ leaves are the numbers written in the pattern text — so `fitGradient` tunes a 
 the node: its op, its role-tagged knobs (`atom0.sigma`, `atom1.attack`, `cps`) and their values. Box 2
 fits a two-bump target from a seed with the right structure and the wrong numbers, plots the two on
 top of each other, and prints the fitted gesture back out as pattern text you can paste anywhere. Box
-3 is the honest limit: the same fit with the two heights *swapped* stalls, because re-assigning values
+3 is the real limit: the same fit with the two heights *swapped* stalls, because re-assigning values
 between atoms is a permutation rather than a direction.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/pat_fn_graph_fit/metadata.edn)
 
@@ -167,7 +167,7 @@ slow read: `|+|`, `|+` and `+|` over `"0 1"` and `"10 20 30"` produce 4, 2 and 3
 is which side's structure the result keeps. *A parameter, not a staircase* attaches
 `sine().rangex(300, 6000)` as a cutoff and prints the note count at `bd*4`, `bd*8` and `bd*16` to show
 it unchanged — then runs the control arm, `appBoth` over a segmented curve, which fragments the
-rhythm on purpose. *Hear the difference* measures its own render rather than asserting it: it detects
+rhythm. *Hear the difference* measures its own render rather than asserting it: it detects
 the hat onsets and prints the level coefficient of variation of the flat half beside the modulated
 half. *Voice leading* prints total movement as written against voice-led, and then both pitch-class
 sets, so the claim "the harmony did not change and the movement did" is two printed lines rather than
@@ -202,7 +202,7 @@ drawing its net with `showPetriNet` and playing it with `showDirtAudio` — a ne
 mixed *offline* from the real Tidal Dirt-Samples library when it is installed (`DirtRender.kt`
 auto-discovers the SuperCollider quark, `FIELD_DIRT_SAMPLES` overrides) and from the synthetic
 `patVoice` when it is not, and each box prints which one it used — so this file sounds like actual
-drums on a machine that has the samples and still runs, silently degraded but honest, on one that
+drums on a machine that has the samples and still runs, silently degraded, on one that
 does not. *The smallest loop* is one token going round two transitions and prints
 `bd sd bd sd bd sd bd sd` at a period of `1/4`. *Five against three* is the one that earns the model:
 nothing in its source says fifteen, and `settle()` prints that it settles after 15 steps into 2
@@ -210,7 +210,7 @@ T-invariants — one per independent ring — with four cycles of audio so you c
 and re-align. *Song structure* and *tokens that are rhythms* are the medium timescale: the second
 carries a whole `PatPattern` as a token's colour, so `unfold` prints four bars of `bd sd` followed by
 four of `bd bd bd bd hh hh…` — an arrangement enforced by the net rather than by a scheduler, because
-only one place is marked. *Dining philosophers* is deliberately silent and is the contrast: the same
+only one place is marked. *Dining philosophers* is silent, and is the contrast: the same
 engine as a concurrency checker, printing `deadlocks=true` for the naive table, then
 `deadlocks=false … never fires: grab.4, eat.4, done.4` for the asymmetric one — a starvation, not a
 deadlock, which is why the third line adds a fair conflict policy and nothing is left over. And
@@ -237,7 +237,7 @@ than observed, and then `deadTransitions()` naming a starved philosopher on the 
 `neverFires()` correctly names nobody, because starvation belongs to the conflict policy and deadness
 belongs to the net. *Buffer* counts the four-slot producer/consumer buffer at exactly five reachable
 markings, 4-bounded, live and reversible, and asks an `EF` query for the shortest route to a full one.
-*A leak* is the honest one: the exhaustive search reports `BUDGET` and returns `null` — unknown — from
+*A leak* is the inconclusive one: the exhaustive search reports `BUDGET` and returns `null` — unknown — from
 every accessor that would otherwise have said "safe", while Karp–Miller puts an ω on the leaking place
 and terminates in two nodes. And *what the algebra cannot see* prints two nets with byte-identical
 incidence matrices, one of which enforces mutual exclusion with an inhibitor arc: no P-invariant
@@ -394,7 +394,7 @@ and two thirds of the way through — so spectral flux has something it should s
 
 **imaging_cv_examples** — [Imaging and computer vision](imaging_examples.md) as six independent
 boxes, all pure CPU: `showImgGrid` is `Img.toPngBytes` → `PngEncoder` → `display`, so there is no AWT
-rasteriser and no GPU. The images are deliberately large — 2400×1800, 4.3 megapixels, 52 MB of float
+rasteriser and no GPU. The images are large — 2400×1800, 4.3 megapixels, 52 MB of float
 RGB — because that is the size at which "is this fast enough to actually use?" has a meaningful
 answer. *Basics* prints the Otsu threshold it computed rather than one guessed, and resamples down and
 back up so you can see the detail is really gone. *Filters* corrupts a clean synthetic image with 4 %
@@ -406,7 +406,7 @@ decoy ring Hough must not fit, then prints how far the worst Harris corner lande
 corner. *Morphology* plants three discs of known radius and prints the distance-transform peak against
 the largest planted radius. *Motion* warps a frame by a *known* affine transform, tracks it with
 pyramidal Lucas–Kanade, fits a homography with RANSAC, and prints how far the recovered model
-disagrees with the planted one over a 16-point probe grid — the honest number for this whole family.
+disagrees with the planted one over a 16-point probe grid — the real number for this whole family.
 
 ![Four panels: frame A, frame B rotated and translated, their absolute difference as an inferno interference pattern, and frame B warped back by the recovered homography — which reads as frame A again](assets/imaging_examples/motion.png)
 
@@ -550,7 +550,7 @@ before it will trust itself.
 
 *IK* solves inverse kinematics on a four-link `FLine` chain. Forward kinematics is a cumulative angle
 sum, so it differentiates cleanly and 18 L-BFGS iterations put the tip dead centre in the target
-reticle. The third panel is the smoothness knob, shown as the honest trade it is: the pose straightens
+reticle. The third panel is the smoothness knob, shown as the trade it is: the pose straightens
 and it *costs* 0.006 units of reach.
 
 ![a four-link chain at rest, solved, and solved with a smoothness penalty](assets/autodiff/autodiff_ik.png)
@@ -572,10 +572,10 @@ truth table is small enough that correctness is exhaustive rather than sampled �
 first-exactly-correct with a dropped tick, because a curve that reaches zero and one that reaches
 0.004 look identical and that is the entire question. Two of the three find it; the control does not.
 *A recursion, found* evolves an or-reduce, then re-compiles the same source text at 7, 9, 16, 32 and
-48 bits — the widths are deliberately odd, because morpho's `SPLIT` gives equal halves only at even
+48 bits — the widths are odd, because morpho's `SPLIT` gives equal halves only at even
 widths and a family of powers of two never shows the search a cell whose halves differ, so it will
 happily return a design that is silently wrong at 5. *The recursive adder is not found* is the
-negative result, and it is here because the alternative is to quietly not mention it: four drivers,
+negative result, and it is here because the alternative is to not mention it at all: four drivers,
 including one *given* the SPLITs, all flatten well short of correct — and then the box hand-writes the
 ripple skeleton in the generator's own grammar and scores it through the same evaluator, so the target
 is provably inside the search space. The empty half of that cost plane is the finding.
@@ -623,13 +623,13 @@ arithmetic is chosen so a number identifies a strategy: helpers multiply by 10, 
 decisions and not two different sums. Box 1 is the control arm — no `strategy` block, so the historic
 global fixpoint rewrites both sites — and every other box's number is a difference from it. `once`
 and `subset` both reach 12 by different mechanisms; `topdown` and `bottomup` are exact mirrors on the
-same input, 102 against 202; `choice("toY", "toX")` deliberately inverts declaration order to show
+same input, 102 against 202; `choice("toY", "toX")` inverts declaration order to show
 the strategy picks, not the source; `repeat(topdown, 2)` leaves the innermost `f` alone; and the last
-box's `from { f(f(x)) }` eats two levels per step. The honest bound: each assertion proves this
+box's `from { f(f(x)) }` eats two levels per step. The actual bound: each assertion proves this
 strategy fired differently from the baseline, not that the rewriter is sound in general.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/rewrite_strategies_demo/metadata.edn)
 
-**polytope_conway_demo** — One deliberately compact box for the
+**polytope_conway_demo** — One very compact box for the
 [Conway polytope algebra](polytope_examples.md). It marks two opposite cube faces with different
 height attributes, selects exactly those faces, applies `kis` only there with the height deployed per
 face, and sends the resulting polygonal faces to the on-canvas `threeLines(...)` viewer. Orbit it,
@@ -657,7 +657,7 @@ gauge-normalized first, so the only difference on screen is shape and not scale 
 leaves the solver's own diagnostics as text: tangency-radius spread and planarity before and after,
 the stop reason and iteration count, and the combinatorial face orbits. Click a face and it reports
 its degree, which orbit it belongs to of how many, and its plane's distance from the centre. Change
-the string to `"kkC"` to watch the same box report an honest failure: `canonicalize()` does not reach
+the string to `"kkC"` to watch the same box report a clean failure: `canonicalize()` does not reach
 that one, and the box prints the reason rather than a picture that looks fine.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/polytope_canonical_gallery/metadata.edn)
 
@@ -686,7 +686,7 @@ problem twice — once with the residual written in Kotlin and differentiated on
 the expression VM, once with the hand-written C++ opcode — then prints the largest disagreement
 between the two answers and, as a self-check, that every solved normal is still unit, which no
 residual ever asked for: the sphere manifold's own doing. *Unknowns that are not points* fits a centre
-and a radius to four fixed points from a deliberately terrible start, and checks itself against the
+and a radius to four fixed points from a terrible start, and checks itself against the
 tetrahedron circumsphere computed by Cramer's rule in the same box. Both need the native Ceres
 wrapper, which is **not** committed — so as checked out, both boxes take the no-wrapper branch: they
 print that it is missing, show a card naming `./gradlew buildCeresRedistributable`, and draw the
@@ -703,7 +703,7 @@ joins, then extruded) and an 0.8mm chamfer done as a Minkowski closing with an o
 prints the numbers that decide whether it could be cut: **15513.561 mm³**, genus **5**, and a
 **2.767mm** wall between the slot and the nearest bore, measured with `minGap` rather than eyeballed.
 It then checks Manifold against Field's own mesh family, which shares no code with it: `signedVolume`
-agrees to `1.28e-05` and both say genus 5. Kept honest by the same box, because it is the trap most
+agrees to `1.28e-05` and both say genus 5. Checked by the same box, because it is the trap most
 worth knowing here — the *shaded* mesh has 9773 vertices against the plain one's 8740, split at every
 crease so each face can carry its own normal, and `isWatertight()` is therefore **false** on that one.
 Same geometry, different index topology; ask for `toTriMesh()` when you are measuring and
@@ -754,7 +754,7 @@ clearest look at what `free-param` actually puts in the tree. The second states 
 should pass through, fits the parameters against them on the exact gradient, and rasterises the answer as
 three stacked bands: the target, a seed missing every waypoint by 7.72, and the solved arc threading all
 three at 4.7e-15. Move a waypoint and re-run to watch it re-solve; move one somewhere
-`amp·trig(rate·t + phase) + centre` cannot reach and the caption reports the honest miss instead.
+`amp·trig(rate·t + phase) + centre` cannot reach and the caption reports the miss instead.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/rectsl_inverse_animation/metadata.edn)
 
 **rectsl_heading_fit** — The same backend one refusal later. `->face-travel` builds a `HeadingTrack`,
@@ -779,11 +779,11 @@ it. The three sliders that appear are not written anywhere in the box — they a
 `hslider` declarations, and because they arrive as an ordinary Field control group they are also what a
 tablet gets. *Block diagram* is Faust's own SVG of the signal flow, out of the embedded compiler rather
 than `faust -svg`. *Waveform* renders the identical program offline and plots it, which is both a cache
-hit and the reason a Faust figure can be honest in a build with no sound card. *The interface it declares*
+hit and the reason a Faust figure can mean something in a build with no sound card. *The interface it declares*
 prints what makes the first box's controls possible: ranges, steps, `[unit:Hz]`, `[scale:log]`, and the
 byte `index` in WebAssembly memory that makes a slider a float store rather than a message — listed
 alphabetically, because that is how Faust orders them and not how they were written. *An error, on the
-line* is broken on purpose: `#` is not a comment in Faust, so the `#faust` marker is stripped before
+line* is broken here: `#` is not a comment in Faust, so the `#faust` marker is stripped before
 compiling and its lines are added back before the marker is placed — get that arithmetic wrong and every
 diagnostic lands a row or two off, looking like a compiler bug. Only the middle three boxes are replayed
 here; the voice wants an audio device and the last one fails by design.
@@ -829,7 +829,7 @@ instrument wants an audio device.
 <!-- transcript-index: verified-by = execute -->
 
 These are complete, editable starting points whose first view works without model weights. Their
-generation boxes deliberately remain explicit about the companion service or hardware they need.
+generation boxes remain explicit about the companion service or hardware they need.
 
 **audio_ai_gesture_board** — Draw timed prompt regions, salience events, and activity, density,
 register and brightness curves over one shared musical timeline. The first box renders and explains
@@ -942,7 +942,7 @@ what makes editing the box and launching it again a clean hot-replace rather tha
 as a starting point: a metallic torus knot under a directional and an ambient light, an `FLine` ring
 built with the transform operators (`+ Matrix4`, `+ Vector3`, `* scalar`) and published to
 `stage.orbit`, and a glTF loaded through `mapDirectory` and played on the XR animation mixer. It
-deliberately refers to an external `/abs/assets/robot.glb`, which no checkout contains — so it stays
+refers to an external `/abs/assets/robot.glb`, which no checkout contains — so it stays
 agent-only rather than shipping as a starting point that half-loads. Replay it with your own model
 and both paths edited; everything except the glTF works as written.
 
@@ -1011,7 +1011,7 @@ becomes visible. Distance buys outlines and glows at any width, `smin` blending 
 boolean ops, per-pixel normals and sub-frame motion blur — in exchange for fill, material and z
 order, because `min` is union and a union has no layers. The look is one of eight presets (`fill`,
 `outline`, `glow`, `contours`, `relief`, `blend`, `carve`, `motion-blur`); this one ships on `relief`.
-There is a documented footgun in the box, left in on purpose: a top-level `val fragment` in a box is a
+There is a documented footgun left in the box: a top-level `val fragment` in a box is a
 script *property*, so naming the shader source `fragment` self-assigns the receiver's empty
 `fragment` and hands shaderc nothing, which reports itself as "Desktop shaders for Vulkan SPIR-V
 require version 140 or higher" — a message about nothing. Hence `fragmentSource`.

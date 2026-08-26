@@ -166,8 +166,8 @@ Two implementations of the same language — one Python and numpy, one JavaScrip
 struct-of-arrays compiler — agreeing to the gate is a far sharper instrument than either agreeing
 with itself.
 
-What is deliberately **not** compared is netlist *shape*. Python emits a flat op list, JavaScript a
-hierarchical cell graph, and there is no honest structural comparison between them that would not
+What is **not** compared is netlist *shape*. Python emits a flat op list, JavaScript a
+hierarchical cell graph, and there is no structural comparison between them that would not
 amount to reimplementing one in terms of the other.
 
 ---
@@ -282,7 +282,7 @@ shallower.
 
 A ripple carry is exactly linear in width. Brent–Kung is `2·log₂(N) + 1`. And at four bits the
 parallel-prefix adder is **worse** — 5 against 4 — because its prefix tree costs two levels that a
-four-stage carry chain never pays for. The crossover is between 4 and 8 bits. That is the honest
+four-stage carry chain never pays for. The crossover is between 4 and 8 bits. That is the real
 shape of the tradeoff, and it is the kind of thing that is one line to measure once the language is
 actually running inside your environment and a research project when it is not.
 
@@ -707,7 +707,7 @@ println()
 println(if (correct.isEmpty()) "(nothing exactly correct this run; showing the best found)" else "")
 println(best.genome.phenotype().cells[0].render())
 
-// Selected at 2, 3 and 5 -- an ODD family on purpose. SPLIT gives equal halves exactly
+// Selected at 2, 3 and 5 -- an ODD family, chosen so. SPLIT gives equal halves exactly
 // when the width is even, so a family of powers of two never shows the search a cell
 // whose two halves differ, and it will happily return a design that is silently wrong at
 // 5, 7 and 9. Re-compiled here at widths nothing was selected on: same source text, new
@@ -719,7 +719,7 @@ listOf(7, 9, 16, 32, 48).forEach { w ->
 
 // The Pareto front over every correct design the two runs produced. It is small and it is
 // not empty: a reduction can be a shallow wide tree or a deep cheap one, and the search
-// finds both ends. The staircase is drawn as a step function on purpose -- there is no
+// finds both ends. The staircase is drawn as a step function -- there is no
 // design at a fractional gate count, and a smooth curve would claim there is.
 val found = runs.flatMap { it.costPoints() }
 println()
@@ -814,7 +814,7 @@ until all four are right and wired to the outputs. Or-reduce needs two, and half
 import afield.morpho.*
 
 // The result this branch set out to get, and did not. Reported because the alternative is
-// to quietly not mention it.
+// to not mention it at all.
 val free = MorphoProblems.recursiveAdder()
 val guided = MorphoProblems.guidedRecursiveAdder()
 val budget = 6000
@@ -912,7 +912,7 @@ offers, where an error's line number comes from.
 
 The ratio is the point. Getting a language *registered* in Field is nearly free. What costs is
 deciding what the language should *do* when it is running, and — if you are bridging rather than
-porting — reading the other implementation carefully enough to not quietly disagree with it.
+porting — reading the other implementation carefully enough not to disagree with it by accident.
 
 *Every claim on this page is either checked on every build or measured; none of it is a description of
 code nobody ran.*
