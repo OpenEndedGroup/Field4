@@ -42,11 +42,14 @@ import kotlin.test.assertTrue
  * `Camera(val renderer: Renderer = fromContext())` (`Camera.kt:16`) requires a live renderer — so
  * the camera tests here exercise `CameraPose` itself, which is the whole of the maths.
  *
- * Two tests pin down behaviour that the KDoc did not mention and that the page now warns about:
+ * Three tests pin down behaviour that the KDoc did not mention and that the page now spells out:
  *
- *  - [captureSeesBoundPropertiesAndNotSetValues] — `capture()` reads a `Structure`'s *bindings*
- *    only. A property assigned by value (`structure["radius"] = 3f`) is invisible to it, and
- *    silently captures as null.
+ *  - [captureSeesBoundPropertiesAndSetValues] — `capture()` used to read a `Structure`'s *bindings*
+ *    only, so a property assigned by value (`structure["radius"] = 3f`) was invisible to it and
+ *    silently captured as null. It now reads binding-then-value, the same precedence
+ *    `Structure.get` and the buffer writer use; this test is the two-sided pin for that.
+ *  - [captureReadsAPropertyOfANestedStructure] — the same read on a child structure, whose
+ *    bindings live in the root's map under a dotted path.
  *  - [updateCodeEscapesDollarInASourceBlock] — a regression for a defect this page's research
  *    turned up: `kotlinRawStringLiteral` emitted a Kotlin *raw* string for a source block, guarding
  *    against `"""` and a trailing quote but not against `$`, which a raw string still interpolates.
@@ -103,9 +106,10 @@ class KeyframerTest {
     }
 
     @Test
-    fun captureSeesBoundPropertiesAndNotSetValues() {
-        // Undocumented until this page: capture() reads Structure.bindings, never Structure.values.
-        // A property written by value rather than bound is invisible to a snapshot.
+    fun captureSeesBoundPropertiesAndSetValues() {
+        // capture() reads binding-then-value, the precedence Structure.get and writeMembersToBuffer
+        // use. Before that it read bindings alone, and a property written by value snapshotted as a
+        // silent null.
         val scope = KeyframeScope()
         val structure = Structure()
         structure.bind("bound") { 1.0f }
@@ -115,8 +119,56 @@ class KeyframerTest {
 
         val key = scope.capture()
         assertEquals(1.0f, key["bound"], "a bound property is captured")
-        assertNull(key["set"], "a set-by-value property captures as null, with no warning")
-        assertTrue("set" in key, "…but the name is still present in the key")
+        assertEquals(2.0f, key["set"], "and so is one written by value")
+        assertNull(scope.capture()["absent"], "a name with no target at all is still null")
+
+        // A binding wins over a leftover value, the same way it does for every other reader.
+        structure["bound"] = 5.0f          // set() drops the binding...
+        assertEquals(5.0f, scope.capture()["bound"])
+        structure.bind("bound") { 7.0f }   // ...and bind() shadows the value it left behind.
+        assertEquals(7.0f, scope.capture()["bound"])
+        assertEquals(5.0f, structure.values["bound"], "the shadowed value is still there")
+    }
+
+    @Test
+    fun captureRoundTripsAValueHeldPropertyAsABinding() {
+        // The read side is symmetric; the write side is not. Applying a key always binds, so a
+        // value-held property comes back as a constant binding with the old value shadowed under it.
+        val scope = KeyframeScope()
+        val structure = Structure()
+        structure["gain"] = 2.0f
+        scope.target("gain", structure)
+
+        val key = scope.capture()
+        key["gain"] = 3.0f
+        key()
+
+        assertEquals(3.0f, structure.get<Float>("gain"), "the new value is what the structure reads")
+        assertEquals(3.0f, structure.bindings["gain"]?.invoke(), "…as a binding")
+        assertEquals(2.0f, structure.values["gain"], "…shadowing the value that was there")
+    }
+
+    @Test
+    fun captureReadsAPropertyOfANestedStructure() {
+        // A child structure shares the root's bindings/values maps and keys them under a dotted
+        // path, so reading `bindings[property]` off the child is wrong twice over: it misses the
+        // child's own entry, and it can silently pick up a root property of the same name.
+        val scope = KeyframeScope()
+        val root = Structure()
+        root.bind("radius") { 1.0f }
+        val inner = Structure(pathPrefix = "inner", root = root)
+        inner["radius"] = 2.0f
+
+        assertEquals(2.0f, inner.valueFor("radius"), "the child's entry is under the dotted path")
+        assertEquals(2.0f, root.values["inner.radius"], "…in the root's shared map")
+        assertEquals(1.0f, inner.bindings["radius"]?.invoke(), "reading the raw map off the child finds the ROOT's radius")
+
+        scope.target("outer@radius", root)
+        scope.target("inner@radius", inner)
+        val key = scope.capture()
+
+        assertEquals(1.0f, key["outer@radius"])
+        assertEquals(2.0f, key["inner@radius"], "not the root's radius, and not null")
     }
 
     @Test

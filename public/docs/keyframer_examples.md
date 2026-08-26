@@ -120,14 +120,14 @@ Panel 4 is the round trip closing: re-applying the original snapshot and re-capt
 
     Besides a `Structure`, a scope can target a live module's uniform structures —
     `target(module: ModulePointer, name)` and its `ComputeModulePointer` / `MeshModulePointer`
-    siblings (`keyframer.kt:580`, `:584`, `:588`). Those need a real renderer, so every fence here
+    siblings (`keyframer.kt:605`, `:609`, `:613`). Those need a real renderer, so every fence here
     uses the plain `Structure` form instead, and no figure on this page demonstrates them.
 
     Worth knowing what the source says before you reach for one. All three are one-line wrappers
-    over the lazily-resolved `target(name) { … }` (`keyframer.kt:562`), and they pass the *same*
+    over the lazily-resolved `target(name) { … }` (`keyframer.kt:587`), and they pass the *same*
     `@`-suffixed string to two different lookups: it selects the structure, via
     `module.current.liveUniformStructures[…]`, **and** it is the member name bound inside that
-    structure (`keyframer.kt:566-567`). That map is keyed by the **uniform block's name**
+    structure (`keyframer.kt:591-592`). That map is keyed by the **uniform block's name**
     (`Module.kt:559` for a graphics module, `ComputeModule.kt:163` for a compute one), while the
     members inside it are the block's *fields*. So the key can only address a member whose name
     equals the block's own name — not an arbitrary field within the block, and not the independent
@@ -138,13 +138,23 @@ Panel 4 is the round trip closing: re-applying the original snapshot and re-capt
     against `module.<block>`, which resolves to that same live structure
     (`Module.kt:217`), and that **is** demonstrated, on a real GPU, in the next section.
 
-!!! warning "`capture()` sees *bound* properties, not *set* values"
+!!! note "`capture()` reads either kind of property, and writes back a binding"
 
     A `Structure` can hold a property two ways: `structure.bind("radius") { 4f }` installs a
     binding, and `structure["radius"] = 4f` stores a value (and removes any binding). `capture()`
-    reads `Structure.bindings` only, so **a property written by value is invisible to a snapshot**
-    and captures as `null`, with nothing logged. The key still lists the name — it is just empty.
-    Bind the things you intend to keyframe.
+    reads binding-first-then-value (`keyframer.kt:550-552`) — the same precedence `Structure.get`
+    (`Structure.kt:188`) and the buffer writer (`Structure.kt:360`) use — so either kind snapshots.
+
+    It did not always. Until this page's research turned it up, `capture()` read `Structure.bindings`
+    alone: a property written by value snapshotted as `null` with nothing logged, and since `saveKey`
+    drops nulls, a key file written then is simply missing that name. A child `Structure` was worse —
+    its bindings live in the *root's* map under a dotted path, so the old read missed the child's
+    property and could silently return a root property of the same name instead.
+
+    The write side is still not symmetric: applying a key always goes through `Structure.bind`, so a
+    value-held property comes back as a constant binding with the old `values` entry shadowed
+    underneath. Every reader in the engine agrees on the binding, so that shows up only if you
+    inspect `structure.values` yourself.
 
 ## The same thing, driving a live GPU uniform
 
@@ -270,8 +280,8 @@ scope.target("tint", module.look)  // the uniform block's live Structure
 
 // Two endpoints. The camera swings 90 degrees around the fan and lifts, while the tint goes cool to
 // warm. Poses are read off the camera rather than constructed, so this is exactly what capture()
-// would have stored. Tint is given by value because capture() reads bindings only (see the warning
-// above) — an unbound property would have snapshotted as null.
+// would have stored. Tint is a literal here rather than a captured value, since there is nothing
+// to capture from yet — the uniform is untouched until the first key lands on it.
 camera.at = vec(0, 0, 3.5); camera.target = vec(0, 0, 0)
 val poseCool = camera.pose()
 camera.at = vec(-3.03, 1.0, 1.75); camera.target = vec(0, 0, 0)
@@ -565,7 +575,7 @@ straight line — once each, where they are defined.
     (the full list is at the [foot of the page](#what-is-actually-tested)); the pose arithmetic
     above, which is all of the behaviour, is tested. Note also that the target accepts a
     `CameraPose` or a bare `DualQuaternionf` and **silently ignores any other type**
-    (`keyframer.kt:647-650` is a `when` with no `else`), so a `Vector3f` "camera position" key will
+    (`keyframer.kt:672-676` is a `when` with no `else`), so a `Vector3f` "camera position" key will
     appear to apply and do nothing.
 
 ## Saving: every save is history
@@ -802,7 +812,7 @@ for.
 It is worth being exact about what that does *not* guarantee, because the mechanism reads as
 stronger than it is. The enumeration *within* the listed classes is measured; the class list itself,
 and the total below, are maintained by hand. A new **top-level** declaration is invisible to it —
-and `enum class KeyDiffKind` (`keyframer.kt:915`) is exactly that: public, absent from the ledger,
+and `enum class KeyDiffKind` (`keyframer.kt:1052`) is exactly that: public, absent from the ledger,
 and the suite is green. It is exercised by the tests; it simply is not counted, which pushes the
 figure below down rather than up.
 

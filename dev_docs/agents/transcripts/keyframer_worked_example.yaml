@@ -11,8 +11,8 @@ description: >
                     everything after the last '@' is the property driven on the target, so
                     "glow@radius" and "blur@radius" both drive a plain `radius` on different
                     structures — and `glow@radius` itself is never bound on the structure. Also
-                    demonstrates the trap that capture() reads Structure.bindings and NEVER
-                    Structure.values, so a property written by value snapshots as null in silence.
+                    shows that capture() reads binding-first-then-value, so a property written by
+                    value snapshots too; it used to read bindings alone and return a silent null.
     2. keyframe_camera   — why a camera move is a screw motion. Two cameras a quarter turn apart,
                     both looking at the origin; sclerp (a rigid-transform interpolation, via
                     DualQuaternionf) against a naive lerp of the two positions. The sclerp path is a
@@ -85,8 +85,8 @@ operations:
           println("blur.radius    = " + blur.bindings["radius"]?.invoke())
           println("glow.'glow@radius' = " + glow.bindings["glow@radius"]?.invoke() + "  <- never bound")
 
-          // THE TRAP: capture() reads Structure.bindings and never Structure.values. A property
-          // written by value rather than bound is invisible to a snapshot, and says nothing.
+          // capture() reads binding-first-then-value, so both of these land in the key. It used to
+          // read Structure.bindings alone, and `set` snapshotted as a silent null.
           val sneaky = Structure()
           sneaky.bind("bound") { 1.0f }
           sneaky["set"] = 2.0f

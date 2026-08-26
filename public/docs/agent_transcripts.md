@@ -587,11 +587,12 @@ is provably inside the search space. The empty half of that cost plane is the fi
 **keyframer_worked_example** — `KeyframeScope`, the thing that stops a look you spent twenty minutes
 arriving at from existing only as the contents of a running process. Four pure-CPU boxes: *targets*
 registers two uniform `Structure`s, captures them into a `Key`, edits it, invokes it to write the
-state back, and reads the live structures to prove it landed — including the trap that `capture()`
-sees a structure's *bindings* and never its *set values*, so a property written by value snapshots as
-null in silence. *Persist* shows that every `saveKey` also appends to a `.versions` history, that a
-`Boolean` or a list is dropped from a saved key with no warning at all, and how `missingKey` lets a
-scope that has grown a parameter still load an older file. *Updatecode* turns a captured look back
+state back, and reads the live structures to prove it landed — including the fact that `capture()`
+reads a structure's *bindings* first and then its *set values*, so a property written by value
+snapshots too. It used to read bindings alone and return a silent null. *Persist* shows that every
+`saveKey` also appends to a `.versions` history, that a `Boolean` or a list is dropped from a saved
+key with no warning at all, and how `missingKey` lets a scope that has grown a parameter still load
+an older file. *Updatecode* turns a captured look back
 into pasteable Kotlin whose literals keep their *types*.
 
 The fourth box is the argument for storing a camera as a `CameraPose` rather than a position: a

@@ -35,8 +35,8 @@ println("glow.intensity = " + glow.bindings["intensity"]?.invoke())
 println("blur.radius    = " + blur.bindings["radius"]?.invoke())
 println("glow.'glow@radius' = " + glow.bindings["glow@radius"]?.invoke() + "  <- never bound")
 
-// THE TRAP: capture() reads Structure.bindings and never Structure.values. A property
-// written by value rather than bound is invisible to a snapshot, and says nothing.
+// capture() reads binding-first-then-value, so both of these land in the key. It used to
+// read Structure.bindings alone, and `set` snapshotted as a silent null.
 val sneaky = Structure()
 sneaky.bind("bound") { 1.0f }
 sneaky["set"] = 2.0f

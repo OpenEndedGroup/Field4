@@ -95,7 +95,7 @@
   {"doc": "imgui_vr_panel", "box": "imgui_vr_renderer", "codeSha256": "e9f88d172b31077c", "codeLines": 14, "receivers": ["afield.Box"], "preamble": "imgui_vr_panel__imgui_vr_renderer.preamble.kt"},
   {"doc": "keyframer_worked_example", "box": "keyframe_camera", "codeSha256": "5c321d95b7fda75f", "codeLines": 101, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "keyframer_worked_example", "box": "keyframe_persist", "codeSha256": "9db809f34a198c40", "codeLines": 84, "receivers": ["afield.Box"], "preamble": ""},
-  {"doc": "keyframer_worked_example", "box": "keyframe_targets", "codeSha256": "5b74d9e42dd1db07", "codeLines": 87, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "keyframer_worked_example", "box": "keyframe_targets", "codeSha256": "1bd881c4d69131c1", "codeLines": 87, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "keyframer_worked_example", "box": "keyframe_updatecode", "codeSha256": "ee3d7385d729d963", "codeLines": 40, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "linalg_thumbnails_demo", "box": "linalg_mat3", "codeSha256": "13ce6f56047d3977", "codeLines": 1, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "linalg_thumbnails_demo", "box": "linalg_mat4", "codeSha256": "91cef275763ade72", "codeLines": 1, "receivers": ["afield.Box"], "preamble": ""},

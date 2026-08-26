@@ -537,12 +537,20 @@ class KeyframeScope(val schemaVersion: Int = 0) {
     private fun bindingForValue(value: Any?): Function0<*> =
         if (value is SourceBackedBlock<*>) value else ({ value })
 
-    private fun valueForBinding(binding: Function0<*>?): Any? =
-        when (binding) {
-            null -> null
-            is SourceBackedBlock<*> -> binding
-            else -> binding.invoke()
-        }
+    /**
+     * Read one property off a structure the way everything else in the engine reads it — the binding if
+     * there is one, otherwise the plain value, which is the same precedence `Structure.get` and the
+     * buffer writer use. A `SourceBackedBlock` binding is handed back as the block itself rather than
+     * invoked, because a key stores the live callable.
+     *
+     * Note the asymmetry with writing: a key applies through `Structure.bind`, so capturing a
+     * value-held property and putting it back converts it to a (constant) binding. Both read
+     * identically everywhere, but the old `values` entry is left behind, shadowed.
+     */
+    private fun readProperty(structure: Structure?, property: String): Any? {
+        val binding = structure?.bindingFor(property) ?: return structure?.valueFor(property)
+        return if (binding is SourceBackedBlock<*>) binding else binding.invoke()
+    }
 
     private fun targetPropertyName(keyName: String): String =
         keyName.substringAfterLast('@')
@@ -553,7 +561,7 @@ class KeyframeScope(val schemaVersion: Int = 0) {
             Target(
                 resolve = { structure },
                 bind = { value -> structure.bind(propertyName, value) },
-                get = { valueForBinding(structure.bindings[propertyName]) }
+                get = { readProperty(structure, propertyName) }
             )
         }
 
@@ -581,7 +589,7 @@ class KeyframeScope(val schemaVersion: Int = 0) {
         dynamicTargets[name] = Target(
             resolve = structure,
             bind = { value -> structure()?.bind(propertyName, value) },
-            get = { valueForBinding(structure()?.bindings?.get(propertyName)) }
+            get = { readProperty(structure(), propertyName) }
         )
         targets.remove(name)
     }
@@ -728,6 +736,10 @@ class KeyframeScope(val schemaVersion: Int = 0) {
 
     /**
      * Read every registered target *right now* into a new [Key] — the snapshot call.
+     *
+     * A structure property is read binding-first and then by value — the same precedence `Structure.get`
+     * and the buffer writer use — so `structure["radius"] = 4f` snapshots just as well as
+     * `structure.bind("radius") { 4f }`. Applying the key puts it back as a binding either way.
      *
      * Values are taken as they are, not copied, so a mutable `Vector3f` in a key is still the vector the
      * structure is bound to; keep the key across frames only if you also stopped mutating that vector
