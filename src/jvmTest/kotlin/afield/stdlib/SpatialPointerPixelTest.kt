@@ -496,6 +496,128 @@ class SpatialPointerPixelTest {
     }
 
     @Test
+    fun `the clickable projection and the JVM picker name the same part for the same click`() {
+        // What this exercises, precisely, because it would be easy to overclaim: the *polygon set* and
+        // the *topmost-wins rule* that `clickableProjection` hands the browser, checked against the
+        // JVM's own ray cast. It replays `sliders.js`'s point-in-polygon rule here rather than running
+        // `sliders.js` — that would need the node probe harness `FLineHitRecordProbeTest` uses. So this
+        // pins the geometry and the ordering, which is where a convention mismatch would live, and
+        // does not pin the browser's own arithmetic.
+        val scene = houseScene()
+        val camera = cleanView(400, 300).rayCamera(scene.mergedMesh())
+        assertTrue(camera.isNonDegenerate, "premise")
+
+        var browserAnswers = 0
+        var jvmAnswers = 0
+        var agree = 0
+        var disagree = 0
+        val disagreements = ArrayList<String>()
+
+        val lines = scene.clickableProjection(camera)
+        assertTrue(lines.size > 20, "premise: the projection must emit real polygons; got ${lines.size}")
+        // Every emitted line must carry a name, or the browser has nothing to report.
+        assertTrue(
+            lines.all { !it.label.isNullOrBlank() },
+            "every projected face must carry a label; ${lines.count { it.label.isNullOrBlank() }} did not",
+        )
+
+        // Pull the polygons back out of the FLines, in emission order — far to near.
+        // `Close` carries no point of its own, so skip it — the ring is already the three corners.
+        val polygons = lines.map { line ->
+            line.nodes.mapNotNull { node -> node.toOrNull?.let { p -> Vec2(p.x, p.y) } } to (line.label ?: "")
+        }
+        assertTrue(
+            polygons.all { it.first.size == 3 },
+            "every projected face must be a triangle; sizes were ${polygons.map { it.first.size }.distinct()}",
+        )
+
+        fun contains(poly: List<Vec2>, x: Double, y: Double): Boolean {
+            var inside = false
+            var j = poly.size - 1
+            for (i in poly.indices) {
+                val xi = poly[i].x.toDouble(); val yi = poly[i].y.toDouble()
+                val xj = poly[j].x.toDouble(); val yj = poly[j].y.toDouble()
+                if ((yi > y) != (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside
+                j = i
+            }
+            return inside
+        }
+
+        var y = 3
+        while (y < camera.pixelHeight - 3) {
+            var x = 3
+            while (x < camera.pixelWidth - 3) {
+                val px = x + 0.5
+                val py = y + 0.5
+                // Topmost wins: the SVG draws in list order, so scan from the end.
+                val browser = polygons.lastOrNull { contains(it.first, px, py) }?.second
+                val jvm = scene.pick(camera.rayThrough(px, py))
+                    ?.let { "${it.objectName} / ${it.partName}" }
+                if (browser != null) browserAnswers++
+                if (jvm != null) jvmAnswers++
+                if (browser != null && jvm != null) {
+                    if (browser == jvm) agree++ else {
+                        disagree++
+                        if (disagreements.size < 8) disagreements += "($x, $y): svg='$browser' jvm='$jvm'"
+                    }
+                }
+                x += 3
+            }
+            y += 3
+        }
+
+        val both = agree + disagree
+        val rate = agree.toDouble() / both
+        println(
+            "clickable-projection agreement: $agree of $both shared answers " +
+                "(${"%.5f".format(rate)}); browser-only=${browserAnswers - both} " +
+                "jvm-only=${jvmAnswers - both}; first disagreements: $disagreements"
+        )
+        assertTrue(both > 2000, "premise: the sweep must find plenty of shared answers; only $both")
+        // Measured: 4143 of 4154, i.e. 0.99735. The 11 that disagree are **not** edge noise, and it is
+        // worth being precise about what they are, because it is a real and permanent limitation
+        // rather than a rounding artefact: every one of them lies along the strip where the roof slab
+        // overhangs the north wall, and every one says `svg='house / wall north'` where the JVM says
+        // `house / roof`. That is the painter's sort. `clickableProjection` orders whole triangles by
+        // centroid depth, and where two surfaces nearly touch the centroid of the larger triangle can
+        // sort in front of the near edge of the smaller one. An SVG has no per-pixel depth, so this
+        // cannot be fixed there; the JVM half is exact, which is why the disagreement is informative
+        // rather than embarrassing.
+        assertTrue(
+            rate > 0.995,
+            "the polygons handed to the browser and the JVM's own ray cast must name the same part " +
+                "for the same click; agreement was ${"%.5f".format(rate)} " +
+                "($disagree of $both disagreed) — $disagreements",
+        )
+
+        // The structural claim, which is the one that distinguishes "a painter's sort tie" from "a
+        // convention mismatch": every disagreement must be between the *same small set* of part pairs.
+        // A flipped y or a caption-band offset scatters disagreements across many unrelated pairs even
+        // when the count stays low; a depth-sort tie concentrates them on the pair that touches.
+        var y2 = 3
+        val pairs = HashSet<Pair<String, String>>()
+        while (y2 < camera.pixelHeight - 3) {
+            var x2 = 3
+            while (x2 < camera.pixelWidth - 3) {
+                val px = x2 + 0.5
+                val py = y2 + 0.5
+                val browser = polygons.lastOrNull { contains(it.first, px, py) }?.second
+                val jvm = scene.pick(camera.rayThrough(px, py))?.let { "${it.objectName} / ${it.partName}" }
+                if (browser != null && jvm != null && browser != jvm) pairs += browser to jvm
+                x2 += 3
+            }
+            y2 += 3
+        }
+        println("distinct disagreeing part pairs: $pairs")
+        assertTrue(
+            pairs.size <= 2,
+            "every disagreement should concentrate on the surfaces that touch — a depth-sort tie. " +
+                "${pairs.size} distinct pairs disagreed, which is what a convention mismatch looks " +
+                "like: $pairs",
+        )
+    }
+
+    @Test
     fun `a transformed pickable is lit in the place it actually stands`() {
         // The composition most likely to be silently wrong: a highlight painted on the untransformed
         // mesh while the picture shows the transformed one.

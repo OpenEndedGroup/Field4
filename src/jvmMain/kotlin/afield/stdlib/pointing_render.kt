@@ -272,3 +272,94 @@ fun Box.showPointer(
 /** The rasterizer's raw output for this scene, z-buffer included — what the pixel differential reads. */
 internal fun PickScene.rasterize(camera: MeshViewRayCamera, view: MeshView): VisionGeometryPreview.Raster =
     mergedMesh().renderPixels(view.copy(width = camera.pixelWidth, height = camera.pixelHeight))
+
+// ==============================================================================================
+// Meeting the browser's picker halfway
+// ==============================================================================================
+
+/**
+ * This scene projected to 2D as one filled, clickable [FLine] per visible triangle — a real mouse
+ * pointer, and the bridge between the JVM picker in this layer and the browser picker Field already
+ * had.
+ *
+ * # What this is for
+ *
+ * A rendered PNG cannot be clicked. An interactive SVG can: Field's `lines(…)` output emits one
+ * `<g data-fline-index>` per line, `sliders.js` hit-tests the click against the line's own topology,
+ * and [FLine.onClick] fires on the JVM with an [FLineIntersection]. That machinery is years older than
+ * this layer and entirely independent of it.
+ *
+ * So projecting the scene into FLines gets **two pickers to answer the same click**:
+ *
+ *  - The **browser** decides which `<g>` was hit, from SVG hit-testing plus its own point-in-polygon
+ *    pass, and reports [FLineIntersection.label] — which is set here to `"object / part"`.
+ *  - The **JVM** takes [FLineIntersection.position] — the click in the line's own coordinate space,
+ *    which is *pixels* here because the projection is emitted in pixels — unprojects it with
+ *    [MeshViewRayCamera.rayThrough], and picks with [PickScene.pick].
+ *
+ * They agree or they do not, and [clickHandler] is handed both so a caller can say which. That is the
+ * strongest available check that the two conventions line up, and it runs live in a document.
+ *
+ * # Hidden surfaces
+ *
+ * Painter's algorithm: triangles are emitted **far to near**, so the nearest one is drawn last and is
+ * the topmost SVG element, which is what the browser's hit test picks. Back faces are dropped first.
+ * That makes the browser's answer a genuine nearest-surface pick and not "whichever polygon happens
+ * to be first in the list".
+ *
+ * It is a painter's sort over whole triangles, so it is exact for this layer's convex parts and
+ * approximate for interpenetrating geometry — the usual caveat, stated because the alternative is a
+ * per-pixel sort, which an SVG cannot have. The JVM half of the differential has no such limitation,
+ * which is precisely why disagreement is informative.
+ *
+ * @param highlightPart a merged part id (see [PickScene.mergedParts]) to fill brighter, or
+ *   [PickParts.UNASSIGNED] for none.
+ * @param clickHandler called with the browser's record and the JVM's own pick at the same pixel.
+ */
+fun PickScene.clickableProjection(
+    camera: MeshViewRayCamera,
+    highlightPart: Int = PickParts.UNASSIGNED,
+    clickHandler: (browser: afield.stdlib.FLineIntersection, jvm: PickHit?) -> Unit = { _, _ -> },
+): List<afield.graphics.FLine> {
+    val merged = mergedMesh()
+    val parts = mergedParts()
+    class Face(val depth: Double, val corners: List<Vec2>, val part: Int)
+
+    val faces = ArrayList<Face>(merged.triangleCount)
+    for (t in 0 until merged.triangleCount) {
+        val a = camera.pixelOf(merged.position(merged.ia(t))) ?: continue
+        val b = camera.pixelOf(merged.position(merged.ib(t))) ?: continue
+        val c = camera.pixelOf(merged.position(merged.ic(t))) ?: continue
+        // Screen-space winding: the rasterizer culls a positive signed area because screen y runs
+        // down. Same rule here, so the SVG and the PNG show the same faces.
+        val area = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+        if (area >= 0) continue
+        faces += Face(
+            depth = (a.depth + b.depth + c.depth) / 3.0,
+            corners = listOf(
+                Vec2(a.x.toFloat(), a.y.toFloat()),
+                Vec2(b.x.toFloat(), b.y.toFloat()),
+                Vec2(c.x.toFloat(), c.y.toFloat()),
+            ),
+            part = parts.partOf(t),
+        )
+    }
+    // Far to near: the last one drawn is on top, and on top is what the browser's hit test returns.
+    faces.sortByDescending { it.depth }
+
+    return faces.map { face ->
+        val lit = face.part == highlightPart && face.part != PickParts.UNASSIGNED
+        val tint = if (lit) PART_HIGHLIGHT else PART_BASE
+        afield.graphics.polylineFrom(face.corners, closed = true).also { line ->
+            line.filled = true
+            line.stroked = true
+            line.thickness = 0.6
+            line.color = Vec4(tint.x, tint.y, tint.z, 1f)
+            line.label = parts.nameOfPart(face.part)
+            line.onClick = { intersection ->
+                val ray = camera.rayThrough(intersection.position.x.toDouble(), intersection.position.y.toDouble())
+                clickHandler(intersection, pick(ray))
+            }
+        }
+    }
+}
