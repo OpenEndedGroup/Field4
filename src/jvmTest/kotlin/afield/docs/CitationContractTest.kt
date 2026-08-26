@@ -116,6 +116,15 @@ class CitationContractTest {
             // so the `native/field-encode` senders cannot be cited the same way. That reads as a
             // considered boundary rather than an oversight, and it is not this page's problem.)
             "public/docs/vision.md" to 24,
+            // The second `public/docs` page, added the same night. Twelve ledger rows, one per
+            // authoring method on the in-headset `MeshBuilder`, all anchors unique-in-file.
+            //
+            // This page is the one place on this branch where member *identity* can be pinned by the
+            // stricter tokenised check rather than by verbatim containment, because every member is a
+            // bare lowercase identifier. Bringing it under guard found a real gap on the way in:
+            // `clear()` was the one builder method the page documented nowhere at all, which is
+            // exactly the class of omission a count-only guard cannot see.
+            "public/docs/vision_geometry.md" to 6,
         )
 
         /**

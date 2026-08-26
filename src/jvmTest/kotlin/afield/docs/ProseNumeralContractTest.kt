@@ -367,6 +367,45 @@ class ProseNumeralContractTest {
             // landmarks above are exactly the two the page does quote, which is the honest encoding.
             membersQuotedVerbatim = false,
         ),
+        DerivedCountGuard.Derivation(
+            key = "visionGeometryBuilderMethods",
+            page = "public/docs/vision_geometry.md",
+            what = "authoring methods on the in-headset `MeshBuilder`",
+            // 12 on 2026-08-26, and the whole authoring surface. Floored at 12: the page's sentence is
+            // "twelve methods and nothing else", which is a completeness claim rather than a
+            // magnitude, and a completeness claim that can shrink silently is not one.
+            floor = 12,
+            landmarks = setOf("vertex", "triangle", "cube", "tube"),
+            // Selected by return type, which needs no hand-kept exclusion list: an authoring call
+            // returns the builder (to chain) or an `Int` (the new vertex's index). The two methods
+            // this excludes, `packedVertices`/`packedIndices`, return arrays and are the harness's
+            // readout rather than anything a box calls — so a future readout is excluded
+            // automatically, and a future authoring method is included automatically.
+            derive = { r ->
+                val text = File(r, "src/jvmMain/kotlin/afield/graphics/VisionMetalKotlinJs.kt").readText()
+                // Brace-match the class body so a same-named function elsewhere in the file cannot
+                // join the population.
+                val open = text.indexOf('{', text.indexOf("class MeshBuilder"))
+                var depth = 0
+                var close = open
+                while (close < text.length) {
+                    if (text[close] == '{') depth++
+                    else if (text[close] == '}' && --depth == 0) break
+                    close++
+                }
+                Regex("""fun\s+([A-Za-z][A-Za-z0-9_]*)\s*\((?:[^()]|\([^()]*\))*\)\s*:\s*([A-Za-z][A-Za-z0-9_<>?]*)""")
+                    .findAll(text.substring(open, close))
+                    .filter { it.groupValues[2] == "MeshBuilder" || it.groupValues[2] == "Int" }
+                    .map { it.groupValues[1] }
+                    .toSortedSet()
+            },
+            // TRUE, and this is the one population on this branch whose members are shaped for it:
+            // every one is a bare lowercase identifier, so the tokenised form works and is stricter
+            // than verbatim containment (it respects word boundaries). The table above is inside the
+            // section that states the count, so adding a thirteenth builder method fails until this
+            // page documents it, and renaming one fails until this page follows.
+            membersNamedOnPage = true,
+        ),
     )
 
     private fun derivationsByKey() = derivations.associateBy { it.key }

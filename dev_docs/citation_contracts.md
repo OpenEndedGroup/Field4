@@ -193,17 +193,39 @@ guard unescapes it, so FieldML's `\|>` can be cited.
 
 A citation guard proves an anchor exists. It says nothing about the *sentence* around the anchor, and
 the arithmetic in that sentence is the part that rots. `ProseNumeralContractTest` closes that gap for
-the same 19<!--count:guardedCitationPages--> pages `GUARDED_PAGES` already covers — this one among
+the same 20<!--count:guardedCitationPages--> pages `GUARDED_PAGES` already covers — this one among
 them since 2026-08-23, because a page that documents the mechanism and then states three numbers
 derived by it should be the first thing the mechanism checks.
 
-One of those 19 is under `public/docs` as of 2026-08-26, and the asymmetry it closed is worth naming.
-`citationGates` has declared `public/docs/**.md` as an input since 2026-08-19, so a published-page
-edit has never been able to go `UP-TO-DATE` — but `GUARDED_PAGES` held only `dev_docs` pages, so the
-published tree was *declared as an input and never read*. `public/docs/vision.md` is where that cost
-the most: it fell two whole capabilities behind the code while its `dev_docs` twin stayed current.
+**Two of those 20 are under `public/docs` as of 2026-08-26**, and the asymmetry they closed is worth
+naming. `citationGates` has declared `public/docs/**.md` as an input since 2026-08-19, so a
+published-page edit has never been able to go `UP-TO-DATE` — but `GUARDED_PAGES` held only `dev_docs`
+pages, so the published tree was *declared as an input and never read*. `public/docs/vision.md` is
+where that cost the most: it fell two whole capabilities behind the code while its `dev_docs` twin
+stayed current. `public/docs/vision_geometry.md` followed, and bringing it in found a builder method
+(`clear()`) the page documented nowhere — the class of omission a count-only guard cannot see.
+
 The remaining published pages are still unread, and at least one is known stale — see
 `public/docs/autodiff_examples.md:188` against the two derivations on `dev_docs/autodiff.md`.
+
+### Pinning identities, not only counts
+
+A marker equates a numeral with a population's *size*, which leaves substitution unguarded: swap one
+member for another at the same total and nothing notices.
+`DerivedCountGuard.Derivation.membersNamedOnPage` was the partial answer, and it had a hard limit
+worth recording because it was invisible from the call site. It tests `member in codeSpanWords(...)`,
+and `codeSpanWords` returns tokens matching `[A-Za-z_][A-Za-z0-9_]*` — so for any member containing a
+space, `.`, `:` or `(` the assertion was not weak but **unsatisfiable**, regardless of how exactly the
+page quoted it. Three derivations were count-only for that reason alone.
+
+`membersQuotedVerbatim` (2026-08-26) checks substring containment against the same recovered code
+text, which `stripCode` preserves character-for-character inside a fence. Use it for phrase-shaped
+populations and `membersNamedOnPage` for bare identifiers, where word boundaries make it stricter.
+Both are section-scoped and both remain **one-directional** — a page naming an *extra* member still
+passes. Closing that wants the page parsed as the expected set and compared both ways, which is what
+`ServerSurfaceLedgerTest.assertLedger` already does for tables and is the obvious next step here.
+`everyMemberOfANamedPopulationAppearsOnItsPage` prints a per-derivation census of which form each one
+uses, so the count-only remainder is visible rather than implied.
 
 ### The defect it was built against
 
