@@ -92,6 +92,30 @@ class CitationContractTest {
             "dev_docs/autodiff.md" to 1,
             "dev_docs/brief_notation.md" to 1,
             "dev_docs/kotlinjs_status_and_roadmap.md" to 1,
+            // The first `public/docs` page on this list, added 2026-08-26. It is here because of the
+            // asymmetry this list previously had: `citationGates` has declared
+            // `public/docs/**.md` as a Gradle input since 2026-08-19, so a published-page edit
+            // cannot go UP-TO-DATE — but nothing on this list is under `public/docs`, so the
+            // published tree was declared-as-input and never read. `public/docs/vision.md` is where
+            // that cost the most: it went two whole capabilities behind the code while its
+            // `dev_docs` twin stayed current, which is the same shape as
+            // `public/docs/autodiff_examples.md:188` carrying pre-correction numbers for five days
+            // in August.
+            //
+            // 31 anchored citations as written: 15 prose `path:line#anchor` in the narrative and 16
+            // ledger rows in the reference table. Every anchor was chosen unique-in-file, so all 31
+            // report unbounded headroom and the corpus fragility ceiling is unaffected. Floored at
+            // 16 rather than 31 on the DATAFRAME_PLUGIN convention — a page becoming a little less
+            // citation-dense should cost a doc edit, not a build failure, while deleting half of
+            // them should be a red build.
+            //
+            // Seven of the 31 point at Swift under `native/field-visionos/Field4Vision/`.
+            // `CitationGuard.EXT` has carried `swift` all along, so this needed no widening; it is
+            // worth doing because this is a two-machine protocol and a page citing only the Kotlin
+            // end would be documenting one side of it. (`EXT` still has no `cpp`/`c`/`h`/`hpp`/`cc`,
+            // so the `native/field-encode` senders cannot be cited the same way. That reads as a
+            // considered boundary rather than an oversight, and it is not this page's problem.)
+            "public/docs/vision.md" to 16,
         )
 
         /**

@@ -193,9 +193,17 @@ guard unescapes it, so FieldML's `\|>` can be cited.
 
 A citation guard proves an anchor exists. It says nothing about the *sentence* around the anchor, and
 the arithmetic in that sentence is the part that rots. `ProseNumeralContractTest` closes that gap for
-the same 18<!--count:guardedCitationPages--> pages `GUARDED_PAGES` already covers — this one among
+the same 19<!--count:guardedCitationPages--> pages `GUARDED_PAGES` already covers — this one among
 them since 2026-08-23, because a page that documents the mechanism and then states three numbers
 derived by it should be the first thing the mechanism checks.
+
+One of those 19 is under `public/docs` as of 2026-08-26, and the asymmetry it closed is worth naming.
+`citationGates` has declared `public/docs/**.md` as an input since 2026-08-19, so a published-page
+edit has never been able to go `UP-TO-DATE` — but `GUARDED_PAGES` held only `dev_docs` pages, so the
+published tree was *declared as an input and never read*. `public/docs/vision.md` is where that cost
+the most: it fell two whole capabilities behind the code while its `dev_docs` twin stayed current.
+The remaining published pages are still unread, and at least one is known stale — see
+`public/docs/autodiff_examples.md:188` against the two derivations on `dev_docs/autodiff.md`.
 
 ### The defect it was built against
 

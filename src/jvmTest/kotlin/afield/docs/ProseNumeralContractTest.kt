@@ -263,6 +263,64 @@ class ProseNumeralContractTest {
                     .toSortedSet()
             },
         ),
+        DerivedCountGuard.Derivation(
+            key = "visionPoseHostSpans",
+            page = "public/docs/vision.md",
+            what = "latency spans this process times on its own clock",
+            // 4 on 2026-08-26, and the whole population. Floored at 4 rather than lower, on the
+            // DATAFRAME_PLUGIN precedent, because this is not a decorative count. The published page
+            // prints an *empty* report as its evidence that nothing has been measured on hardware,
+            // and the argument for showing an empty table is that every span is named in it whether
+            // or not it holds samples. A fifth span means that paragraph needs rereading, not
+            // renumbering.
+            floor = 4,
+            landmarks = setOf("pose uplink transit", "submit to encoded (incl. render fence)"),
+            // The span *labels*, not the constant names, because the labels are what the report
+            // prints and therefore what the page quotes. Selected by "the literal has no `/` in it":
+            // VisionPoseLatency's other three string constants are wire channel names
+            // (`visionpose/ping`, `visionpose/pong`, `visionpose/latency`) and every span label is
+            // human prose. That is a property of the file rather than of a line number, so it
+            // survives reformatting — where scraping the `listOf(...)` inside `report()` would not.
+            derive = { r ->
+                val src = File(r, "src/jvmMain/kotlin/afield/graphics/VisionPoseLatency.kt")
+                Regex("""const val [A-Z_]+ = "([^"]+)"""")
+                    .findAll(src.readText())
+                    .map { it.groupValues[1] }
+                    .filterNot { '/' in it }
+                    .toSortedSet()
+            },
+            // Left false deliberately. Every member is a multi-word phrase, and the members-on-page
+            // check tokenises code spans on `[A-Za-z_][A-Za-z0-9_]*` — so "pose uplink transit" can
+            // never match however faithfully the page quotes it. Turning it on would assert nothing
+            // while looking like it asserted something.
+            membersNamedOnPage = false,
+        ),
+        DerivedCountGuard.Derivation(
+            key = "visionPoseSmokeTests",
+            page = "public/docs/vision.md",
+            what = "`visionpose.*` FIELD_TEST ids runnable without a headset",
+            // 3 on 2026-08-26, and the whole population. Floored at 3 because this number is load
+            // bearing in the one direction that matters for this page: there is no Vision Pro
+            // attached to the machine that builds these docs, so these three smokes are the only
+            // executable evidence behind the head-tracking rows of the status table. If one is
+            // deleted the page must stop citing it, and the reader should be told which.
+            floor = 3,
+            landmarks = setOf("visionpose.uplink", "visionpose.stereo-source", "visionpose.latency"),
+            // Scraped from the FIELD_TEST blocks themselves rather than from a hand-kept list, so a
+            // fourth pose smoke cannot be added without this page's count going red.
+            derive = { r ->
+                DerivedCountGuard.kotlinSourcesUnder(r, "src/jvmMain/kotlin/afield/examples")
+                    .flatMap { f ->
+                        Regex("""(?m)^id:\s*(visionpose\.[A-Za-z0-9_.-]+)\s*$""")
+                            .findAll(f.readText())
+                            .map { it.groupValues[1] }
+                    }
+                    .toSortedSet()
+            },
+            // False for the same tokenisation reason as above: `visionpose.latency` splits into two
+            // word tokens, so it could never match inside a code span.
+            membersNamedOnPage = false,
+        ),
     )
 
     private fun derivationsByKey() = derivations.associateBy { it.key }
