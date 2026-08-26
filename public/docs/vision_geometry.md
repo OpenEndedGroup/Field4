@@ -80,7 +80,7 @@ after them. The next three build faces from indices. The last four append whole 
 
 `clear()` is the one you will reach for least and miss most: it drops the appended geometry while
 keeping the current normal, colour and uv, which is what a per-frame rebuild wants when every frame
-starts from the same material. There is deliberately no method for adding a new vertex *attribute* —
+starts from the same material. There is no method for adding a new vertex *attribute* —
 the layout is fixed and `extra()` is the escape hatch, as [Per-vertex
 channels](#per-vertex-channels) explains.
 

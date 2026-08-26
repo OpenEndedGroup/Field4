@@ -62,7 +62,7 @@ data class LineRef(val a: PointRef, val b: PointRef, val name: String? = null)
 /**
  * Three points named as a plane, which therefore moves with them.
  *
- * The order is load-bearing: the normal is `unit(cross(b - a, c - a))`, and it decides the sign of every offset and
+ * The order matters: the normal is `unit(cross(b - a, c - a))`, and it decides the sign of every offset and
  * every half-space taken against this plane.
  */
 data class PlaneRef(val a: PointRef, val b: PointRef, val c: PointRef, val name: String? = null)
@@ -1123,7 +1123,7 @@ class GeometrySolveSession internal constructor(
  * One gesture on one point: `to` while it moves, `release` when it stops.
  *
  * A handle exists so the heavy prior has an owner. It is [AutoCloseable] and closing releases, so `use` is the shape
- * that cannot leave a point weighted; call [to] or [settle] after releasing and it throws rather than quietly
+ * that cannot leave a point weighted; call [to] or [settle] after releasing and it throws rather than silently
  * reweighting.
  *
  * Nothing stops two handles existing on the same point at once, and they would fight over its prior.

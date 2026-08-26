@@ -162,7 +162,7 @@ const val FLINE_ISO_WEIGHT_KEY = "isoWeight"
  *
  * A node that does not set [key] is **not** a keyframe: the weight ramps linearly, in fractional
  * node index, between the nodes that do, and holds flat before the first and after the last. This is
- * deliberately *not* the convention of `FLine.colorsPer`/`pointSizePer`, which carry the previous
+ * *not* the convention of `FLine.colorsPer`/`pointSizePer`, which carry the previous
  * node's value forward — under carry-forward, setting the weight on only the first and last node of
  * a ten-node stroke would give you nine nodes at the first value and a step at the tenth, which is
  * the one thing a taper must not be.
@@ -392,7 +392,7 @@ private fun PointEdgeGraph2D.perPoint(weight: FLinePointWeight?): PointEdgeWeigh
  * [field] is sampled once per grid corner, i.e. `(nx + 1) * (ny + 1)` times, and never again. A
  * corner is treated as *inside* iff its sample is strictly below [iso] — a sample exactly equal to
  * [iso] is outside — and the saddle cell is resolved by the asymptotic decider. See the file
- * overview for why both of those are load-bearing.
+ * overview for why both of those matter.
  *
  * The polylines come back in no particular order and with no particular orientation. A closed loop
  * arrives as a cycle whose first and last points are *adjacent*, not equal, so drawing it needs a

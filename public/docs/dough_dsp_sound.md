@@ -2,8 +2,8 @@
 
 The [`DoughDsp`](https://codeberg.org/uzu/dough) port gives Field a handful of low-level
 DSP building blocks — a plate reverb, an LFO-swept phaser, a resonant lowpass, a click-free
-envelope, a soft clipper, and two deliberately-aliasing oscillators. A picture of a filter
-curve only gets you so far; the honest way to know what one of these *does* is to run a real
+envelope, a soft clipper, and two aliasing oscillators. A picture of a filter
+curve only gets you so far; the way to know what one of these *does* is to run a real
 signal through it and listen.
 
 Every plot and every audio clip on this page is produced by actually running the primitive on
@@ -177,7 +177,7 @@ showSignals(
 
 ## ZawOsc / PulzeOsc — raw, aliasing tones
 
-The two naive oscillators, deliberately un-bandlimited: one second of a 200 Hz sawtooth
+The two naive oscillators, un-bandlimited: one second of a 200 Hz sawtooth
 (`ZawOsc`) then one second of a 200 Hz narrow pulse (`PulzeOsc`, duty 0.3). The raw ramps buzz
 with aliasing — that grit is the character, not a bug. The plot shows two periods of each: a clean
 rising ramp and a narrow rectangular pulse.

@@ -30,7 +30,7 @@ import afield.stdlib.Functions.PulseProfile
  * knows the vocabulary; the others consult it (and a JVM test asserts the JS
  * mirror never drifts).
  *
- * Transmutation ("rebuild this node as a different op") is honest about what is
+ * Transmutation ("rebuild this node as a different op") is explicit about what is
  * possible. Generators rebuild from role-addressed children plus scalar metadata
  * and always succeed, degrading missing roles to the factory defaults. Value
  * transforms rebuild only when the source node already has a `source` child, so

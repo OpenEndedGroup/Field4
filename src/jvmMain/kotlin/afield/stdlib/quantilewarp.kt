@@ -110,7 +110,7 @@ object TargetDistributions {
  * how fast to move.
  *
  * The default [probabilities] are `0.001, 0.01, 0.05, 0.20, 0.50, 0.80, 0.95, 0.99` — note that they
- * are deliberately **not symmetric**, spending three knots below the 5th percentile and only two
+ * are **not symmetric**, spending three knots below the 5th percentile and only two
  * above the 95th. There must be exactly eight, strictly increasing, strictly inside `(0, 1)`, or
  * construction throws; that is what makes the state pack into four `vec4`s.
  *

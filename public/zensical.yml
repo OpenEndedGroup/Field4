@@ -6,6 +6,7 @@ site_name: OpenEndedGroup | Field·4
 nav:
   - Home: index.md
   - Getting Started:
+    - Installation: installation.md
     - Survival Guide: survivalGuide.md
     - A Tour: funFeatures.md
     - Kotlin Syntax Overview: kotlin_overview.md
@@ -13,7 +14,17 @@ nav:
   - Writing Code in a Box:
     - Running Code in a Box: running_code.md
     - Frames, and What a Frame Is: animation_time_model.md
-    - How Completions Are Ranked: completion_ranking.md
+    - Kotlin in the Head: kotlin_in_the_head.md
+    - Autocomplete:
+      - The Documentation Browser: completion_doc_browser.md
+      - How Completions Are Ranked: completion_ranking.md
+  - Working in a Document:
+    - Bookmarks: bookmarks.md
+    - Snapping: snapping.md
+    - Your History with Field: history_overview.md
+    - Document History: document_history.md
+    - Inline History (History Lens): history_lens.md
+    - The Semantic Index: semantic_index.md
   # Generated from source rather than written: extracted KDoc and codegen output. Not
   # staged, because it is exactly as finished as the source it is read out of.
   - Reference:
@@ -33,32 +44,21 @@ nav:
       - Audio: reference/audio.md
       - Audio AI: reference/audio-ai.md
       - Workspace: reference/workspace.md
-    - Generated Vector API: linear_algebra_api.md
-    - Field's 3D Output: three_output.md
-    - Visualizers & Controls: visualizers.md
-    - DataFrames in a Box: dataframe.md
-    - What Field Exposes: server_surface.md
-  - Staging area:
-    - Staging Overview: staging.md
-    - Getting Set Up:
-      - Installation: installation.md
-      - Building & Testing: building_and_testing.md
-    - Writing Code in a Box:
-      - Kotlin in the Head: kotlin_in_the_head.md
-      - The Documentation Browser: completion_doc_browser.md
-    - Working in a Document:
-      - Bookmarks: bookmarks.md
-      - Snapping: snapping.md
-      - Your History with Field: history_overview.md
-      - Document History: document_history.md
-      - Inline History (History Lens): history_lens.md
-      - The Semantic Index: semantic_index.md
     - Libraries & APIs:
       - Linear Algebra: linear_algebra.md
+      - Generated Vector API: linear_algebra_api.md
       - FLine Examples: fline_examples.md
+      - Field's 3D Output: three_output.md
+      - Visualizers & Controls: visualizers.md
       - Charts as FLines: chart.md
+      - DataFrames in a Box: dataframe.md
       - Querying Object Graphs: graph_query.md
       - Rewriting Your Own Syntax: pattern_rewrite.md
+    - Under the Hood:
+      - What Field Exposes: server_surface.md
+      - Building & Testing: building_and_testing.md
+  - Staging area:
+    - Staging Overview: staging.md
     - Working with AI:
       - AI Overview: aiFeatures.md
       - AI Tool-Use History: ai_tool_use_history.md

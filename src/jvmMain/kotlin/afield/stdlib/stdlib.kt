@@ -36,7 +36,7 @@ import kotlin.reflect.KProperty
  * [InheritanceFromContext] (same walk, but prefers each box's live Kotlin variables over raw
  * properties).
  *
- * The rest is deliberately small conveniences: graph access (`named`, `+=` / `-=` for
+ * The rest is small conveniences: graph access (`named`, `+=` / `-=` for
  * connect/disconnect, `__m` markers); execution control (`begin`, `end`, [start], [animate],
  * `aside`, `cell`); frame-presentation logging ([frameLogStart], [frameLogStop],
  * [frameLogMark], [frameLogLine]); matrix and buffer building ([mat4], [mat3], `FloatBuffer.add`,
@@ -252,7 +252,7 @@ private fun missingContextualInheritedPropertyMessage(box: Box, propertyName: St
  * `prop` in a FieldML box calls this, and the two agree by construction rather than by comment. Any
  * third reader (a UI inspector, an agent tool) should do the same.
  *
- * Note this deliberately has **no** `defaultValue` and throws nothing: the delegate's failure
+ * Note this has **no** `defaultValue` and throws nothing: the delegate's failure
  * behaviour depends on the declared property's nullability, which only the delegate can see.
  */
 fun inheritedPropertyRaw(from: Box, name: String): Any? = inheritedPropertyWalk(from, name).first
@@ -502,7 +502,7 @@ fun Box.end() {
  * [path] a location is chosen for you, and [append] decides whether an existing log is added to or replaced.
  *
  * [waitAfterPresent] changes what is measured, not just how it is reported: it makes each frame wait for the
- * present to complete, which gives honest per-frame numbers at some cost to throughput. It defaults to the
+ * present to complete, which gives true per-frame numbers at some cost to throughput. It defaults to the
  * process-wide option, so leave it alone unless you are chasing a presentation stall specifically.
  *
  * Call [frameLogStop] when done; the log keeps growing until you do.
@@ -725,7 +725,7 @@ fun FloatBuffer.add(vararg x: Number): FloatBuffer {
  * Appends any number of values, each converted to `Int` (truncating, not rounding), and returns the buffer for
  * chaining — the index-buffer counterpart of `FloatBuffer.add`.
  *
- * Named `add` rather than `put` deliberately: `IntBuffer.put(index, data)` already means "write at an absolute
+ * Named `add` rather than `put`, because `IntBuffer.put(index, data)` already means "write at an absolute
  * index", and reusing it here would have shadowed that.
  */
 fun IntBuffer.add(vararg x: Number): IntBuffer {
@@ -912,7 +912,7 @@ fun Box.__m(s: String, onCreation: Marker.() -> Unit = {}) = this.markers.comput
  * semantics.
  *
  * A copy, not a view. **Throws** `IndexOutOfBoundsException` if the range runs off the end, unlike Python, which
- * would quietly return a short list.
+ * would return a short list with no error.
  */
 operator fun <T> List<T>.get(range: IntRange) = this.slice(range)
 

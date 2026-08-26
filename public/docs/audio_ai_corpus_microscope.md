@@ -96,6 +96,6 @@ different recordings. Source timestamps and previous/next segment ids remain vis
 not an implied common timeline.
 
 The loadable `audio_ai_corpus_microscope` operation transcript contains the guide, durable monitor,
-and complete Nancy/Candlestick indexing and query box. Timeline placement is deliberately outside
+and complete Nancy/Candlestick indexing and query box. Timeline placement is outside
 this first microscope. Continue with the [EnCodec reconstruction microscope](audio_ai_codec.md) for
 the token representation that the forthcoming surgery editor will manipulate.

@@ -6,7 +6,7 @@ operations, candidate sets, ratings, annotations, provenance, and arrangement. L
 workers perform analysis and inference behind a model-neutral HTTP and WebSocket protocol.
 
 The companion service is pinned under `services/field-audio-ai` as a Git submodule while its
-architecture is still moving quickly. The Field-side API is in `afield.stdlib.noir.audioai` and deliberately names
+architecture is still moving quickly. The Field-side API is in `afield.stdlib.noir.audioai` and names
 operations such as `generate.style`, `codec.reconstruct`, and `analysis.pitch_poly`, rather than
 depending on AudioCraft classes.
 

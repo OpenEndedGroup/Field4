@@ -25,7 +25,7 @@ import kotlin.random.Random
  * val warped = b.warpPerspective(fit.homography.inverse()) // undo the motion
  * ```
  *
- * The linear algebra is deliberately self-contained (a 9x9 Jacobi eigen-solver and a 6x6 Gaussian
+ * The linear algebra is self-contained (a 9x9 Jacobi eigen-solver and a 6x6 Gaussian
  * elimination), because a 3x3 homography does not justify a dependency and the whole point of this
  * family is that it works headless in a box with nothing installed.
  */

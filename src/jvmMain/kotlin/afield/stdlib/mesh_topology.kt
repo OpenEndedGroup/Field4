@@ -44,7 +44,7 @@ import kotlin.math.roundToLong
  * makes [boundaryEdges] the edges with exactly one incident triangle.
  *
  * Nothing in here welds: two vertices at the same position but with different indices are two
- * vertices, and the topology will honestly report the resulting crack. Call [TriMesh.weld] first if
+ * vertices, and the topology will report the resulting crack. Call [TriMesh.weld] first if
  * that is not what you meant.
  */
 class MeshTopology(val mesh: TriMesh) {

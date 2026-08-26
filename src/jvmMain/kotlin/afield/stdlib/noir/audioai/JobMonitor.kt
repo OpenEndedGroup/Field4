@@ -5,7 +5,7 @@ package afield.stdlib.noir.audioai
 /**
  * The job monitor: the service's own live view of every durable job, embedded in a box output.
  *
- * It is an `<iframe>` rather than a Kotlin-rendered table on purpose — the page is served by the
+ * It is an `<iframe>` rather than a Kotlin-rendered table, because the page is served by the
  * same service that owns the jobs, so it cannot disagree with them, and it needs no polling code on
  * the Field side. Same-origin through the `/field-audio` prefix, so nothing here reaches across
  * origins.

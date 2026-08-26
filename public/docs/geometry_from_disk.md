@@ -464,7 +464,7 @@ asking Manifold whether it accepted the result. The answers are not the ones fol
 The three "Manifold accepts this" rows are the reason there is a *suspicious* severity at all rather
 than a pass/fail. The dangerous one is `INVERTED_ORIENTATION`: an inside-out closed mesh is a
 perfectly legal manifold, and Manifold hands back a **negative volume**. Nothing throws. The boolean
-you do next quietly computes the complement of what you meant. A checker that only answered
+you do next computes the complement of what you meant, with nothing to flag it. A checker that only answered
 "valid / not valid" could not tell you that.
 
 `UNWALKABLE_BOUNDARY` deserves a note, because the first thing it usually means is not the exotic
@@ -520,7 +520,7 @@ here."** Two measured cases settle it, and they point opposite ways:
 Planarity, fill method, edge count and cap area are all equal-or-*better* on the wrong one. A cap-area
 threshold was implemented, measured against these two, and removed: at any cut-off that flags the
 severed torus it also flags the cylinder, whose caps are correct. `capAreaFraction` is still reported
-as a fact, but it deliberately does not set `isSuspect`.
+as a fact, but it does not set `isSuspect`.
 
 So the contract is: **`isSuspect == false` means the cap's geometry is sound, not that the model is
 the one you started with.** Only comparison against the shape you meant catches the difference, and at
@@ -528,7 +528,7 @@ run time you do not have it.
 
 ### How much of this was already there, and how much of it is actually *right*
 
-Honest accounting, because `repaired()` (weld → degenerate → unused → winding) has shipped in
+Worth being precise here, because `repaired()` (weld → degenerate → unused → winding) has shipped in
 `mesh_topology.kt` for a while and is not a straw man.
 
 The test table is 27 meshes broken in named, deterministic ways, of which **21 are rejected by
@@ -547,13 +547,13 @@ answer is known, and "repaired" is judged against **the undamaged original** rat
 
 That split is the point. An earlier draft of this page claimed "14 of 16" — measured on a table in
 which **every hole was flat**, planarity `0.0000` and volume error `0.00000` on every one. A fan fill
-is trivially correct on a planar rim, so that number measured the easy case and quietly used "fixes"
-to mean "Manifold accepts it". The four wrong rows are curved and non-planar holes added specifically
+is trivially correct on a planar rim, so that number measured the easy case, and used "fixes" to
+mean "Manifold accepts it". The four wrong rows are curved and non-planar holes added specifically
 to stop that: a hole across a torus's tube (1.5% off), one that severs it (4.2% off, genus 1→0), a
 wide hole over a sphere (1.9% off), and a crowned rim (**35%** off).
 
 The new code is responsible for exactly two families: open boundaries, and non-manifold edges from
-duplicated faces or dangling fins. Two rows stay broken on purpose and assert that the failure is
+duplicated faces or dangling fins. Two rows stay broken and assert that the failure is
 *reported*: a `NaN` position (refused outright, because repairing around it would silently delete the
 affected triangles and cap the gap), and two closed tetrahedra sharing a face.
 

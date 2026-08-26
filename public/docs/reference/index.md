@@ -6,7 +6,7 @@ Field's standard library is large and, until now, invisible: the only ways to re
 
 **9094 public symbols across 191 source files**, 5522 of them (60%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
 
-The "documented" column is the honest one: it is a coverage report on Field's own KDoc, not a claim about this page. Where a summary is blank the declaration has none yet.
+The "documented" column is a coverage report on Field's own KDoc, not a claim about this page. Where a summary is blank the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
@@ -36,7 +36,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [AbletonSetDebugDrawing.kt](audio.md#abletonsetdebugdrawing-kt) | Audio | 26 | 0 |  |  |
 | [alife.kt](alife.md#alife-kt) | ALife | 51 | 39 | Spatial artificial life for the Field stdlib — the *continuous / grid / agent* half of ALife, the counterpart to the graph-rewriting half already here (`growing.kt`, `dynamic_graph_systems.kt`, `interactionnets.kt`, `booleannetworks.kt`) and to the constraint-based generator in `wfc.kt`. | [Spatial artificial life](../alife_examples.md) |
 | [alife_agents.kt](alife.md#alife-agents-kt) | ALife | 59 | 24 | Agent-based spatial ALife: boids flocking, a Physarum (slime-mould) deposit–sense–move population over a trail `Img`, and diffusion-limited aggregation. | [Spatial artificial life](../alife_examples.md) |
-| [alife_animate.kt](alife.md#alife-animate-kt) | ALife | 5 | 5 | One shared, honest way to *animate* the `alife*.kt` family — because every system in it is a time evolution, and a montage of frozen generations is the one view that hides the thing they are about. | [Spatial artificial life](../alife_examples.md) |
+| [alife_animate.kt](alife.md#alife-animate-kt) | ALife | 5 | 5 | One shared way to *animate* the `alife*.kt` family — because every system in it is a time evolution, and a montage of frozen generations is the one view that hides the thing they are about. | [Spatial artificial life](../alife_examples.md) |
 | [alife_ca.kt](alife.md#alife-ca-kt) | ALife | 84 | 60 | Discrete cellular automata: life-like and outer-totalistic rules on a 2-D lattice, cyclic multi-state CA, Wolfram's elementary 1-D rules as a space-time raster, and a 3-D life-like CA that marches out to a `TriMesh`. | [Spatial artificial life](../alife_examples.md) |
 | [alife_continuous.kt](alife.md#alife-continuous-kt) | ALife | 69 | 40 | Continuous spatial ALife: reaction–diffusion (Gray–Scott / Turing) and Lenia, all shaped as `Img -> Img` steps so they compose with the imaging family. | [Spatial artificial life](../alife_examples.md) |
 | [alife_field.kt](alife.md#alife-field-kt) | ALife | 3 | 3 | Inline `ToHTML` views for the `alife*.kt` family — what a box draws when you *evaluate* an `IntGrid` or a `GrayScottState`, with nothing to set up. |  |
@@ -82,7 +82,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [Dough.kt](synthesis.md#dough-kt) | Synthesis | 20 | 0 |  |  |
 | [DoughDsp.kt](synthesis.md#doughdsp-kt) | Synthesis | 57 | 40 |  | [DoughDSP: hear the primitives](../dough_dsp_sound.md) |
 | [DoughDspSoundDocs.kt](synthesis.md#doughdspsounddocs-kt) | Synthesis | 16 | 13 |  | [DoughDSP: hear the primitives](../dough_dsp_sound.md) |
-| [dynamic_graph_field.kt](data.md#dynamic-graph-field-kt) | Data | 11 | 11 | The two honest ways to *look at* `dynamic_graph_systems.kt` — the point cloud and the weighted edges joining it, so a time-varying graph can be watched rather than described. | [Graphs that change while you watch](../dynamic_graph_systems_examples.md) |
+| [dynamic_graph_field.kt](data.md#dynamic-graph-field-kt) | Data | 11 | 11 | The two useful ways to *look at* `dynamic_graph_systems.kt` — the point cloud and the weighted edges joining it, so a time-varying graph can be watched rather than described. | [Graphs that change while you watch](../dynamic_graph_systems_examples.md) |
 | [dynamic_graph_systems.kt](data.md#dynamic-graph-systems-kt) | Data | 157 | 17 | Time-varying point-and-edge systems: point clouds that move every frame while the graph joining them is continually reinforced and decayed. | [Graphs that change while you watch](../dynamic_graph_systems_examples.md) |
 | [Effects.kt](synthesis.md#effects-kt) | Synthesis | 76 | 33 |  | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [Envelopes.kt](synthesis.md#envelopes-kt) | Synthesis | 46 | 9 |  | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
@@ -174,7 +174,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [pointing_pick.kt](graphics.md#pointing-pick-kt) | Graphics | 51 | 48 | A scene you can point at, and a hit record that names the **part** you touched rather than the triangle. |  |
 | [pointing_pointer.kt](graphics.md#pointing-pointer-kt) | Graphics | 36 | 32 | A person pointing — mouse, XR controller or pinched hand — behind one interface, and the hover / press / drag / release machine that turns a stream of samples into an interaction. |  |
 | [pointing_render.kt](graphics.md#pointing-render-kt) | Graphics | 17 | 14 | Seeing what the pointer found: the picked part lit, a crosshair where the pointer was aimed, and a caption that names what it hit. |  |
-| [Polytope4.kt](polytopes.md#polytope4-kt) | Polytopes | 43 | 36 | Rank 4: the seeds, the coordinates and the viewing policy that keep the incidence core honest about being rank-general rather than a polyhedron library with a rank field. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
+| [Polytope4.kt](polytopes.md#polytope4-kt) | Polytopes | 43 | 36 | Rank 4: the seeds, the coordinates and the viewing policy that keep the incidence core general about being rank-general rather than a polyhedron library with a rank field. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [PolytopeVisualizers.kt](polytopes.md#polytopevisualizers-kt) | Polytopes | 1 | 1 | The single place this package knows that Field has a screen — and it is one function long. |  |
 | [props.kt](workspace.md#props-kt) | Workspace | 4 | 4 | The `prop` / `rootProp` macro pair — the typed, inheritable box-property slot. |  |
 | [Protocol.kt](audio-ai.md#protocol-kt) | Audio AI | 267 | 195 | The wire vocabulary of Field Audio — one Kotlin type per JSON object in the pinned service contract, and nothing else. | [Field Audio service reference](../field_audio_service_reference.md), [Beat and pitch analysis: from source to synchronized views](../audio_ai_analysis.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
@@ -228,7 +228,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 ## What is not here
 
 - **The generated vector algebra** (`afield.stdlib.linalg`) has its own, better page: [Generated vector API reference](../linear_algebra_api.md), with [Linear algebra in Field](../linear_algebra.md) for the intuition.
-- **Declarations marked `Internal`** by their own `@file:CompletionCategory` are plumbing, and are excluded on purpose.
+- **Declarations marked `Internal`** by their own `@file:CompletionCategory` are plumbing, and are excluded.
 - **The harnesses** — smoke tests, docs figure galleries, the audio-provenance audit and the compile-only synth cookbook — are build machinery rather than API, and are excluded by path. They are still real, still run in `check`, and still worth reading; they are just not the answer to "what can I call?".
 - **Graphics, rendering and the small languages beyond their host side** live in `afield.four`, `afield.rectsl` and `afield.stacksl`; start from [afield.four Graphics](../afield_four_graphics.md), the [RectSL cheatsheet](../rectsl_cheatsheet.md) and the [StackSL cheatsheet](../stacksl_cheatsheet.md). `afield.four.synth` **is** here — it is the audio half of `afield.four`, and [Sound: from a pattern to something you can hear](../sound.md) is the prose it belongs to.
 

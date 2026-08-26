@@ -43,7 +43,7 @@ data class PolytopeTopologySummary(
      * are silently omitted, so this can total fewer than `elementCounts[2]`.
      */
     val faceDegreeCounts: Map<Int, Int>,
-    /** Alternating sum over the *proper* ranks; the whole-polytope rank is deliberately excluded. */
+    /** Alternating sum over the *proper* ranks; the whole-polytope rank is excluded. */
     val eulerCharacteristic: Int,
     /**
      * Inner boundary rings summed over every face — 0 for everything the seeds and the Conway

@@ -302,7 +302,7 @@ Field's matrices come in two precisions that share one shape. The
 **single-precision** family — `Matrix2f`, `Matrix3f`, `Matrix4f` — is what the
 renderer, camera, and quaternion code speak. The **double-precision** family —
 `Matrix2d`, `Matrix3d`, `Matrix4d` — is its f64 sibling, for arithmetic that must
-never quietly round to `float`. Both are generated from the same model as the
+never round to `float` silently. Both are generated from the same model as the
 vectors, so a shared method behaves identically bit-for-bit apart from storage
 width.
 
@@ -402,7 +402,7 @@ pure translation preserves volume.
 
 ### Where precision stops: the f32 bridge
 
-The f64 family deliberately covers only the precision-agnostic parts — multiply,
+The f64 family covers only the precision-agnostic parts — multiply,
 determinant, invert, transpose, scale, translate. **Rotation, projection/camera
 helpers (`perspective`, `lookAt`), and transforming a vector live on the
 single-precision `Matrix4f`**, matching Field's f32 quaternion and render
@@ -450,7 +450,7 @@ frameScratch {
 ```
 
 `frameScratch` uses one thread-confined `FrameArena`; leaving the block
-invalidates its allocations together. Copy deliberately (`copyTo`, `set`) when a
+invalidates its allocations together. Copy explicitly (`copyTo`, `set`) when a
 scratch result must outlive the scope. For dense CPU data, direct memory, or
 mapped Vulkan buffers, the `SegmentVec2/3/4Buffer` views carry the same operation
 surface over externally-owned memory. Development builds detect stale handles,

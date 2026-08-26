@@ -94,11 +94,11 @@ data class NpyDType(
  * One array read out of a `.npy` file: the raw payload bytes, the shape, the Fortran-order flag and the
  * dtype, with conversion to Kotlin arrays on demand.
  *
- * Deliberately not an ndarray — there is no arithmetic, no slicing and no writer. It is a decoder: get the
+ * Not an ndarray — there is no arithmetic, no slicing and no writer. It is a decoder: get the
  * numbers out with [asDoubleArray] and friends, or read single elements with [getDouble].
  *
  * The bulk conversions each require a matching [NpyKind] and throw otherwise, so a `float64` file will not
- * quietly come back through [asBooleanArray]. They default to C order and remap Fortran-ordered data for
+ * come back through [asBooleanArray] with no conversion note. They default to C order and remap Fortran-ordered data for
  * you; the per-element accessors default to storage order instead, which is the inconsistency
  * [NpyLinearOrder] warns about.
  *
@@ -182,7 +182,7 @@ class NpyArray internal constructor(
      * One element as a `Double`, whatever its dtype — `a.getDouble(2, 3)`.
      *
      * The random-access read, for when you want a few values out of a large array rather than the whole thing.
-     * Integers and half floats are widened; a complex dtype **throws** rather than quietly handing back its real
+     * Integers and half floats are widened; a complex dtype **throws** rather than handing back its real
      * part (use [asComplexDoublePairs]). Indices are in **storage** order by default.
      */
     fun getDouble(vararg indices: Int): Double = getDouble(indices, NpyLinearOrder.STORAGE)

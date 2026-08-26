@@ -1,6 +1,6 @@
 # FieldML's JVM bridge
 
-FieldML is a small language with a large host. The prelude covers geometry — `fline`, `vec3`, `draw`, `animate` — but Field itself is thousands of Kotlin functions, and the bridge is how a FieldML box reaches them. This page is that bridge: what it can do, what it refuses, and where it deliberately stops short.
+FieldML is a small language with a large host. The prelude covers geometry — `fline`, `vec3`, `draw`, `animate` — but Field itself is thousands of Kotlin functions, and the bridge is how a FieldML box reaches them. This page is that bridge: what it can do, what it refuses, and where it stops short.
 
 The short version: **a FieldML box can call a Kotlin method with any number of arguments, positionally or by name, pass a FieldML function where Kotlin wants a lambda — including a `suspend` one — get a real type back on both sides of that lambda, and reach Field's box-code *macros*: `prop`, `moduleHere`, `println` and the rest, which are rewrites over Kotlin source and used to be the one thing an interpreter could not touch.** The measurement in `FieldMLHostSurfaceCoverageTest` puts the first part at 344 of the 362 public methods of `FLine`, `Img`, the three linalg vectors and Field's two imaging extension files — 95%, against a modelled 166 for the narrower bridge this replaced. The second part is 21 of the 23 callback argument slots across the same types — 91.3%: a lambda handed to a JVM method has its parameters typed from that method's signature, and the two that stay untyped are one erased generic and one nullable Kotlin parameter, both of which would be lies.
 
@@ -75,7 +75,7 @@ fline
 
 **`p` is a `Vec3`, and nothing above says so.** `FLine.transform` takes a Kotlin `(Vec3) -> Vec3`, the type checker reads that signature off the receiver, and the lambda's parameters are bound to what the JVM is going to hand them — so `.x`, `.y` and `.z` are ordinary checked vector components, `p.xx` is an error before the box runs, and completion works inside the body. Six parameters get typed in `Img.generate(w, h) { x, y -> … }` plus `Img.mapIndexed { x, y, c, v -> … }`; `x` and `y` really are `Int`s, so `x + y` is integer arithmetic. A Kotlin *receiver* lambda (`BufferParameters.() -> Unit`) gets its receiver typed the same way, because the receiver is simply argument zero.
 
-Two cases keep the old behaviour, and keep it on purpose:
+Two cases keep the old behaviour:
 
 - **An erased generic.** `Collections.max(collection, Comparator<? super T>)` has no `T` at the use site, so `fun a b -> b - a` keeps ordinary inferred parameters. That is better than a type: `Host` would refuse the subtraction.
 - **A nullable Kotlin parameter.** `FLine.byFiltering((Vec3?, Node) -> Boolean)` really is handed a null for the first node's predecessor, so that parameter stays open while the second — not nullable — is typed `Node`.
@@ -135,7 +135,7 @@ hostStaticCall "max" ([5, 1, 9, 3], fun a b -> b - a) Collections
 
 `hostAsInt`, `hostAsFloat`, `hostAsBool` and `hostAsString` read a scalar out; `hostAs "SomeClass"` is a checked cast to a class, and doubles as the way FieldML names one.
 
-## Does it get the right answer?
+## Whether it gets the right answer
 
 Reachability is not correctness. A bridge that chose the wrong overload, put an argument in the wrong slot, or lost precision converting a result would still report a high "callable" number — so the coverage measurement calls every method **twice**: once through the bridge, once through plain `Method.invoke` with argument values of exactly the right JVM types, and compares the results.
 
@@ -153,7 +153,7 @@ It earned its keep on the first run. `Vector2f` has both `void set(int, float)` 
 
 ## Reaching `afield.four`
 
-`afield.four` is Field's Vulkan layer and the reason this bridge exists — the live workspaces are hundreds of Kotlin boxes driving it. FieldML can now express most of it, and the honest accounting matters more than the headline.
+`afield.four` is Field's Vulkan layer and the reason this bridge exists — the live workspaces are hundreds of Kotlin boxes driving it. FieldML can now express most of it, and the accounting matters more than the headline.
 
 Taking `threebox-2`, the minimal complete `afield.four` scene (a window, a compute shader over 100 000 particles, a draw pass), **18 of its 19 statements are expressible in FieldML** — it was 13 before source macros were reachable. Six run headlessly and are checked against the same call in Kotlin — including `defaultBuffer { size = N.vec4s }`, whose argument is a Kotlin *receiver* lambda and whose `vec4s` is a member extension property that only exists inside it, and the per-frame builders, because `Frames` is a plain object with no Vulkan in it. Everything downstream of a Vulkan device is expressible but untested here, because a headless test JVM has no device and a demo that pretended otherwise would be worth nothing.
 
@@ -337,7 +337,7 @@ Then run the fourth box while it is spinning. It writes `spinRate` with `setRoot
 | the live box | run it twice | `framesDrawn` grows — that is the per-frame body reporting from inside the render loop |
 | the scene box | `propOr "spinRate" 0.04` inside `eachFrame` → move it above the lambda | it becomes a constant: changing the live box does nothing |
 | the scene box | edit the `fragment` string's `vec3(0.0, 2.1, 4.2)` | different hues, because `moduleHere` recompiles from the box's properties |
-| the scene box | break the GLSL on purpose | the shader error is reported onto *this box*, which is the thing `moduleHere` gives you over hand-built parameters |
+| the scene box | break the GLSL | the shader error is reported onto *this box*, which is the thing `moduleHere` gives you over hand-built parameters |
 
 There is no picture of this one; its evidence is numbers instead — `builtBy = "_moduleHere"`, a 16-byte push-constant block, and 2550 frames drawn between two reads of the shared slot.
 
@@ -373,7 +373,7 @@ The reflection lives in `afield.ml.core.FieldMLHostBridge` (candidates, scoring,
     `FieldMLHostBridgeTest` has one test per capability. `FieldMLHostSurfaceCoverageTest` is the
     reachability-and-agreement measurement. `FieldMLHostAgreementTest` holds the semantically interesting
     calls beside the Kotlin they should equal. `FieldMLLambdaExpectedTypeTest` covers the typed callback
-    parameters and the cases that deliberately stay untyped. `FieldMLSuspendCallbackTest` is the per-frame
+    parameters and the cases that stay untyped. `FieldMLSuspendCallbackTest` is the per-frame
     surface — every test in it asserts that the closure *ran*, not that a proxy exists.
     `FieldMLAfieldFourReachTest` is the `threebox-2` survey with its citations, and `FieldMLSourceMacroTest`
     holds the macro ledger to the live contents of `afield.macros.MacroRegistry` in both directions.

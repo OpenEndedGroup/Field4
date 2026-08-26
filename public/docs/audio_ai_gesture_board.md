@@ -1,7 +1,7 @@
 # Gesture board: drawing toward a sound
 
 The gesture board turns a temporal sketch into a reproducible family of source-conditioned
-candidates. It is deliberately explicit about what the current MusicGen-Style worker can and
+candidates. It is explicit about what the current MusicGen-Style worker can and
 cannot obey:
 
 - the base prompt is a **direct** global text condition;

@@ -49,7 +49,7 @@ against: [`Delegation`](workspace.md#stdlib-kt-delegation) (stores on the receiv
 [`InheritanceFromContext`](workspace.md#stdlib-kt-inheritancefromcontext) (same walk, but prefers each box's live Kotlin variables over raw
 properties).
 
-The rest is deliberately small conveniences: graph access (`named`, `+=` / `-=` for
+The rest is small conveniences: graph access (`named`, `+=` / `-=` for
 connect/disconnect, `__m` markers); execution control (`begin`, `end`, `start`, `animate`,
 `aside`, `cell`); frame-presentation logging (`frameLogStart`, `frameLogStop`,
 `frameLogMark`, `frameLogLine`); matrix and buffer building (`mat4`, `mat3`, `FloatBuffer.add`,

@@ -79,7 +79,7 @@ The result tells you what happened: how many operations applied, whether anythin
 and an `output` list with the `println` text of every box that ran — tagged by box and
 line. That is how a script *knows* the code ran, and it is where compile errors and
 exceptions appear. Running a box that isn't there, or that has no code, fails loudly with
-a message that names the box rather than quietly doing nothing.
+a message that names the box rather than doing nothing at all.
 
 The backdoor also captures pictures — a single box, the editor, the whole window, or the
 native `afield.four` graphics window — and short videos, which is how this site's figures

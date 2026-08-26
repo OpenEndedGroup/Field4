@@ -49,7 +49,7 @@ import afield.facts
 
 /** Which lines [TriMesh.toFLines] should produce. */
 enum class MeshLines {
-    /** Every unique edge, as its own two-point line. The honest wireframe. */
+    /** Every unique edge, as its own two-point line. The whole wireframe. */
     EDGES,
 
     /**
@@ -432,7 +432,7 @@ internal const val MESH_THUMBNAIL_HEIGHT: Int = 225
  *
  * A **closed** mesh wound inside-out does *not* show up in the picture, and it is worth knowing why: the
  * silhouette is unchanged (culling the front faces only reveals the far inner wall) and the rasterizer
- * deliberately flips an inward normal rather than shading it black, so the render looks normal. The tell
+ * flips an inward normal rather than shading it black, so the render looks normal. The tell
  * is in the numbers instead — the `volume` line is the **signed** volume, so an inverted solid reports a
  * negative one. Both halves of that are pinned by [afield.stdlib.MeshVisualizerPixelTest].
  *

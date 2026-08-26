@@ -80,7 +80,7 @@ threeGrid(
 
 ![Six panels in two rows of three: a sphere; a rectangular block drawn with only a few large triangles per face; a cylinder lying at an angle with its flat end visibly faceted into straight segments; a cone seen close to base-on with its apex to the lower left; a torus; and a six-pointed star column seen nearly end-on, its points sweeping round as the extrusion twists. All are flat grey with the triangle wireframe drawn, each framed to its own bounds so the small shapes are not lost beside the large ones](assets/solid_notation/vocabulary.png)
 
-The faceting is the honest part. `cylinder(1.6, 0.7)` with `segments = 64` is a 64-gon prism on the
+The faceting is the part to be careful about. `cylinder(1.6, 0.7)` with `segments = 64` is a 64-gon prism on the
 exact path, not a true cylinder — the table above says so and the picture shows it. Raise `segments`
 and the silhouette tightens; the *field* lowering of the same expression has a true circular
 cross-section at every resolution and gets the surface wrong in a different way instead.
@@ -154,7 +154,7 @@ at which the two lowerings can *legitimately* differ is Manifold's faceting sagi
 geometric reason. It is a real check against a gross error, visible from anywhere in the volume, and
 nothing more than that.
 
-The honest version asks a different question: **how close to the surface do you have to get before
+The stronger version asks a different question: **how close to the surface do you have to get before
 they stop agreeing, and is that distance the sagitta?** Points are projected onto the field's own
 zero set by Newton iteration, then offset along the gradient by a band `δ` that shrinks by decades:
 
@@ -402,7 +402,7 @@ println(smoothUnion(a, b, k = 0.0).simplificationReport())
 // nodes 3 -> 1, GLSL 19 -> 10 statements, path level set -> exact
 ```
 
-Refused on purpose: composing two general Euler rotations (a matrix does not always come back out as
+Refused: composing two general Euler rotations (a matrix does not always come back out as
 three angles without a gimbal case to get wrong), reassociating `SmoothUnion` (non-associative),
 reordering a `Difference` (non-commutative). A rewrite that is nearly right is worse than no rewrite,
 which is the same discipline as the refusals. Every rule is checked by sampling the field at 4000

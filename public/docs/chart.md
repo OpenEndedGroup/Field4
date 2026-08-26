@@ -170,7 +170,7 @@ frame the derived insets landed on — which is what makes reason 1 above real: 
 the same drawing as the rest of your geometry, under one transform. `toHTML()` goes through
 `afield.graphics.linesToHTML`, the same markup `Box.lines` builds.
 
-Labels are glyph outlines, and there are three traps in that which `labelLines` avoids deliberately —
+Labels are glyph outlines, and there are three traps in that which `labelLines` avoids —
 each has been got wrong in this repo before. `TextLayout.toFLines()` is **plural**, never one filled
 `toFLine()`, whose triangulator fans disjoint contours from a shared origin and draws a starburst
 where a word should be. Placement goes through `FLine.transform`, which copies control points too;
@@ -221,5 +221,5 @@ refusals and expectations:
 
 The generated API listing is under [Visualization](reference/visualization.md); the source is
 `visualization/charts.kt`, with the DataFrame entry point in `DataFrameCharts.kt`. Implementation
-notes, the full Plotly comparison and the list of what was deliberately *not* built are in
+notes, the full Plotly comparison and the list of what was *not* built are in
 `dev_docs/chart_primitive.md`.

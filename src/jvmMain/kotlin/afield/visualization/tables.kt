@@ -410,7 +410,7 @@ fun table(vararg columns: Pair<String, List<Any?>>): Table {
  * can do still applies: [Table.role] a value column, [Table.bar] a numeric one, [Table.expect] a
  * claim about it.
  *
- * Accent rather than muted on purpose. `field.css` already says
+ * Accent rather than muted. `field.css` already says
  * `.field-md td:first-child { color: var(--field-accent-text) }` — a key column reads as accent
  * across the whole design system — and that selector outranks a class on the cell, so a muted label
  * would come out muted standalone and accent inside a `markdown()` card. Same token, one answer.

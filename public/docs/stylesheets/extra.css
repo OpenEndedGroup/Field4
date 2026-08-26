@@ -1,7 +1,14 @@
 /* ── Field·4 docs — minimal white-on-black ────────────────────── */
 
 @import url("https://pvinis.github.io/iosevka-webfont/7.0.2/iosevka.css");
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@300;400;500&display=swap');
+/* Every weight/style this sheet actually asks for is requested here, so nothing
+   is left to browser synthesis. The ital axis gives emphasis Plex's real italic
+   instead of a mechanical oblique — at 300 as well as 400, because headings are
+   weight 300 and five pages put emphasis inside a heading (the homepage h1 among
+   them). 700 roman and italic are here because bold markdown and the
+   definition-table term cells resolve to 700, and a handful of pages nest the
+   two; without them all of that was faux-bold. */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,700&display=swap');
 
 /* ── palette ─────────────────────────────────────────────────── */
 :root {

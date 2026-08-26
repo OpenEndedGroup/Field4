@@ -58,7 +58,7 @@ enum class OptimizeMethod {
  * Everything that shapes a [minimize] run, kept as one immutable value so a result can carry its
  * own provenance.
  *
- * The defaults are a 500-iteration Adam at `lr = 0.05` — deliberately the same learning rate
+ * The defaults are a 500-iteration Adam at `lr = 0.05` — the same learning rate
  * [fitGradient] uses, so switching a fit from finite differences to exact gradients does not also
  * silently change the step size.
  */
@@ -110,7 +110,7 @@ data class OptimizeStep(
     val iteration: Int,
     /** The objective value after this step. */
     val value: Double,
-    /** The gradient's infinity norm after this step — the honest convergence signal. */
+    /** The gradient's infinity norm after this step — the convergence signal that counts. */
     val gradientInfNorm: Double
 )
 

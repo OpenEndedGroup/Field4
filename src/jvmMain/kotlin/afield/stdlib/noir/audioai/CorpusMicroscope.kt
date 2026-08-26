@@ -23,7 +23,7 @@ private fun corpusTime(value: Double): String = String.format(Locale.US, "%.2f",
  * Every player maps its own absolute file position back to zero at the beginning of its segment.
  * The general audio visualizer's event bus can therefore share hover, zoom, seeking and playheads
  * across recordings with unrelated file timelines. The splice player remains independent: it is a
- * deliberately short query-tail to neighbour-head judgement rather than another aligned view.
+ * short query-tail to neighbour-head judgement rather than another aligned view.
  */
 fun corpusMicroscopeHtml(
     preview: CorpusPreview,

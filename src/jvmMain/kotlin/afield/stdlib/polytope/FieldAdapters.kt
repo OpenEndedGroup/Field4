@@ -26,7 +26,7 @@ import kotlin.math.sqrt
  * [POLYTOPE_FACE_ID_PROPERTY] and [POLYTOPE_FACE_RANK_PROPERTY]. So an attribute named `color` set
  * on a face during a Conway chain arrives as Field's own `color` property with no translation step —
  * which is the point of [PolytopeAttributes] being typed as `Any`, and also means a badly-named
- * attribute can quietly overwrite a drawing property.
+ * attribute can overwrite a drawing property with no warning.
  *
  * ## What these will not do
  *
@@ -156,7 +156,7 @@ fun interface FaceTriangulator {
     fun triangulate(faceVertices: IntArray, realization: Realization3): IntArray
 }
 
-/** Deterministic convex-polygon fan. It is deliberately not a general polygon triangulator. */
+/** Deterministic convex-polygon fan. It is not a general polygon triangulator. */
 object FanFaceTriangulator : FaceTriangulator {
     override fun triangulate(faceVertices: IntArray, realization: Realization3): IntArray {
         require(faceVertices.size >= 3) { "fan triangulation needs at least three face vertices" }
@@ -483,7 +483,7 @@ const val POLYTOPE_CELL_ID_PROPERTY = "polytopeCellId"
 /**
  * One open [FLine] per rank-1 edge of a [Polytope4], under a viewing [projection].
  *
- * Edges rather than filled polygons is the honest default for a 4-polytope: its polygons all live
+ * Edges rather than filled polygons is the right default for a 4-polytope: its polygons all live
  * on the boundary of *cells*, several cells meet at every polygon, and a projection puts them on
  * top of one another. A wireframe says what is there; a filled projection would imply a surface
  * that does not exist.

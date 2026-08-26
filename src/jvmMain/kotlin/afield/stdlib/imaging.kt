@@ -22,7 +22,7 @@ import kotlin.math.sqrt
  * Field's stated target domains include computer vision, but until now the stdlib had no image
  * layer at all: no convolution, no gradients, no pyramids, no features, no warps. This file (plus
  * `imaging_filters.kt`, `imaging_features.kt`, `imaging_geometry.kt`, `imaging_field.kt`) closes
- * that gap with a small, honest, dependency-free core.
+ * that gap with a small, dependency-free core.
  *
  * The whole family is built on one value type, [Img]:
  *
@@ -50,7 +50,7 @@ import kotlin.math.sqrt
  * - **Live-codeable.** [Img] implements [ToHTML], so evaluating an `Img` in a box (or `img.h`)
  *   shows the actual picture as an inline thumbnail, not `Img@3f1a2b`.
  *
- * Out of scope on purpose: GPU work (that is `afield.four` / StackSL / RectSL), video decoding,
+ * Out of scope: GPU work (that is `afield.four` / StackSL / RectSL), video decoding,
  * and anything needing a model file.
  */
 
@@ -854,7 +854,7 @@ fun Img.thresholdAdaptive(radius: Int = 8, bias: Float = 0.02f): Img {
     return src.zip(mean) { v, m -> if (v > m - bias) 1f else 0f }
 }
 
-/** Mean absolute difference per sample against [other] — a blunt but honest similarity measure. */
+/** Mean absolute difference per sample against [other] — a blunt but unbiased similarity measure. */
 fun Img.meanAbsDiff(other: Img): Double {
     require(sameShapeAs(other)) { "meanAbsDiff needs matching shapes" }
     var s = 0.0

@@ -89,7 +89,7 @@ data class VoronoiFace(
      * `true` if any of this face's corners touches the clip box, so the face is cut by the window
      * rather than closed by the sites.
      *
-     * Deliberately measured with a looser tolerance than the cell's combinatorics, because "does this
+     * Measured with a looser tolerance than the cell's combinatorics, because "does this
      * come near the box" is a question about the box.
      */
     val truncated: Boolean,
@@ -160,7 +160,7 @@ object Voronoi3d {
      * geometric epsilon, so the same value behaves the same way on a millimetre cloud and a kilometre one.
      * It must be strictly positive. [clipPadding] grows the sites' bounding box by `clipPadding * scale + 1`
      * on every side; the generous default keeps the box out of the way, and shrinking it is how you make
-     * the box do work on purpose.
+     * the box do the work.
      *
      * An empty input returns an empty lattice with a degenerate box rather than throwing.
      */
@@ -670,7 +670,7 @@ data class CircularDirichletDiagram3(
  *
  * Each pair of sites gives a bisector surface — an Apollonius sphere, or a plane when the weights
  * match — which is tessellated and then cut down to the part where no *third* site is closer. That is
- * the honest description of what you get: **approximate patches**, accurate to the sampling density,
+ * the accurate description of what you get: **approximate patches**, accurate to the sampling density,
  * wound for a renderer rather than stitched into exact topology. There are no cell volumes here and
  * no closure guarantee, unlike [Voronoi3d].
  */

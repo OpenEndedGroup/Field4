@@ -23,7 +23,7 @@ import kotlin.math.sqrt
  * Leaving that to a weak proximity term makes results depend on solver damping; instead
  * [PolyhedralObject.normalize] translates a declared centre to the origin, scales a declared measured
  * length to a target, and — given a reference embedding — applies the one rotation that best matches
- * it. The rotation gauge is anchored to a reference rather than to the inertia tensor on purpose: the
+ * it. The rotation gauge is anchored to a reference rather than to the inertia tensor, because the
  * principal axes of a symmetric solid are degenerate, so an inertia gauge would spin.
  *
  * Nothing here claims a shape is *good*. A construction can return a self-intersecting embedding with
@@ -68,7 +68,7 @@ fun PolyhedralObject.realize(policy: RealizationConstruction): PolyhedralObject 
  * with the second and third — many Conway outputs — the embedding is a good, symmetry-respecting
  * *starting point* and not a finished solid; follow it with [PolyhedralObject.canonicalize].
  *
- * What this deliberately does not claim: that the result is planar-faced, convex, or free of
+ * What this does not claim: that the result is planar-faced, convex, or free of
  * self-intersection. Check [PolyhedralObject.geometryDiagnostics] and
  * [PolyhedralObject.canonicalDiagnostics] rather than trusting the construction.
  *
@@ -179,7 +179,7 @@ enum class GaugeScale {
  * proximity term makes results depend on solver damping. Instead: translate a declared [centre] to
  * the origin, scale a declared measured length to [scaleTarget], and — when [alignToReference] and
  * a reference embedding are given — apply the single rotation that best matches the reference
- * (Kabsch/Horn). The rotation gauge is deliberately anchored to a reference rather than to the
+ * (Kabsch/Horn). The rotation gauge is anchored to a reference rather than to the
  * inertia tensor, whose principal axes are degenerate for exactly the symmetric solids this
  * library produces.
  */

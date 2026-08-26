@@ -130,7 +130,7 @@ fun scatterSized(vararg data: List<Vec3>): Plot {
  * than sequences — order within a list is irrelevant here, only the spread of values.
  *
  * Each violin carries its inner box and its mean line, and draws individual points only for outliers.
- * The traces are deliberately left unnamed, so name them yourself when you plot more than one or the
+ * The traces are left unnamed, so name them yourself when you plot more than one or the
  * legend will be useless. [darkMode] is applied and the `Plot` is returned, not displayed.
  */
 fun violin(vararg data: List<Number>): Plot {

@@ -225,7 +225,7 @@ Use per-slide chat when comments should stay attached to a specific step instead
 
 If the guide chat server is not running, the slideshow still renders and
 `withChat()` still produces the UI shell — only message load and post requests
-fail. Chat is deliberately optional; the slideshow system does not depend on it.
+fail. Chat is optional; the slideshow system does not depend on it.
 
 ### Setting up the chat server
 

@@ -63,7 +63,7 @@ class SourceBackedFnRewriteNumberExpression(
      *
      * The first call compiles, under a lock, and later calls reuse the compiled lambda. A result that is
      * neither null nor a `Number` is a hard error naming the offending source — a snippet ending in a
-     * `println` or an assignment throws rather than being quietly ignored. A live block is called directly
+     * `println` or an assignment throws rather than being ignored in silence. A live block is called directly
      * and its null is returned as-is, so returning null from one really does mean "leave this value alone";
      * only the *absence* of a block sends the call down the source-hydration path.
      */
@@ -176,7 +176,7 @@ class SourceBackedFnRewriteNumberEvaluator(
  *
  * The way to build one evaluator by hand — to reuse across several rewrites, or to hand a persisted
  * expression back its box. Nothing is compiled or even checked here, so a syntax error surfaces at the first
- * matched node, and a null [box] produces an object that throws on first use rather than one that quietly
+ * matched node, and a null [box] produces an object that throws on first use rather than one that silently
  * does nothing.
  */
 fun fnRewriteNumberExpression(

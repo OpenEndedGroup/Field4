@@ -32,7 +32,7 @@ import kotlin.random.Random
  *    back to the field's declared type on write.
  *
  * That second case is the interesting one: it makes *any* object's numeric field
- * modulatable, which is why the generic query core underneath deliberately knows nothing
+ * modulatable, which is why the generic query core underneath knows nothing
  * about audio.
  *
  * This used to end "Only this file touches [Runloop]". Checked while auditing this package's KDoc

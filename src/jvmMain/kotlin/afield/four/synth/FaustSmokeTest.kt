@@ -30,7 +30,7 @@ expect:
  *  * `generateAuxFiles(-svg)` still throws *after* writing the diagram,
  *  * and the UI JSON still carries `index`, which is the only reason a slider can move a parameter.
  *
- * The timeout is generous on purpose: the first compile in a process pays 13–22s of Truffle warm-up.
+ * The timeout is generous: the first compile in a process pays 13–22s of Truffle warm-up.
  */
 object FaustSmokeTest {
 

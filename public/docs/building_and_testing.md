@@ -70,13 +70,12 @@ cd public && python3 -m http.server 8000
 > fresh process per capture. It is opt-in and falls back to the ordinary capture
 > path after a configured session failure.
 
-## Is that published figure still true?
+## Checking whether a published figure is still true
 
-A green docs build is **not** an answer to that question, and for a long time
-nothing was. The capture cache keys each figure on the fence's own code, its
+A green docs build does not answer that question. The capture cache keys each figure on the fence's own code, its
 options, and a digest of the runner machinery, so editing a stdlib function that a
 fence *calls* used to leave every digest identical: the build was a 100% cache hit
-and re-executed nothing. Two things now close that gap.
+and re-executed nothing. Two mechanisms close that gap.
 
 **The digest follows the code a fence reaches.** Each fence also hashes the source
 files its code text actually names (`sourceRefsDigest`), mapped through the
@@ -169,6 +168,10 @@ an ordinary build saying so:
 | `checkCodebaseReference` | `public/docs/reference/` and `dev_docs/kdoc_worklist.md` | `./gradlew generateCodebaseReference` |
 | `checkKDocAttachment` | every KDoc block in `src/` attaching to the declaration below it | move the block — see `dev_docs/kdoc_reference_contract.md` |
 | `checkAgentTranscripts` | `public/docs/assets/agent_transcripts/`, the welcome screen's starting points | `./gradlew regenerateAgentTranscriptStartingPoints` |
+| `checkAgentTranscriptIndex` | `public/docs/agent_transcripts.md` being a true index of that corpus | write the missing entry |
+| `checkCompletionCorpusFixtures` | `tools/completion-corpus/boxes` after real macro expansion | re-run it with `AFIELD_HARVEST_WRITE=1` |
+| `checkAgentDemos` | a `dev_docs/agents/demos` inline fallback matching its sidecar | `./gradlew regenerateAgentDemos` |
+| `citationGates` | every `path:line` and `path#symbol` cited by a guarded page | fix the citation |
 | `checkPythonTools` | the `tools/test_*.py` suites | fix the test |
 
 None of them needs a Field server, a GPU or a network, and none of them writes a

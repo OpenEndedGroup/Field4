@@ -82,7 +82,7 @@ import kotlin.math.PI
  *
  * The mixed-arithmetic operators are declared here and only here, so the expression has to be on the left:
  * `expr * 2.0` compiles, `2.0 * expr` does not. Write `2.0.c * expr` — see [Double.c] — or reorder. There is
- * deliberately no comparison, no boolean and no conditional: a residual is an arithmetic expression, and the
+ * no comparison, no boolean and no conditional: a residual is an arithmetic expression, and the
  * one-sided behaviour a barrier needs comes from [max] and [barrierBelow] instead.
  */
 sealed interface CeresExpr {
@@ -475,7 +475,7 @@ data class CeresVariableRef(val index: Int, val declaration: CeresVariableDecl) 
 /**
  * One of an expression's free variables, bound to its position in that residual's variable list.
  *
- * Distinct from [CeresVariableRef] on purpose: that one knows where the variable sits in the
+ * Distinct from [CeresVariableRef]: that one knows where the variable sits in the
  * *program*, this one knows where it sits in *this residual's* parameter blocks, and only the second
  * is what the VM addresses.
  */
@@ -673,7 +673,7 @@ data class CeresHessePlane(val normal: Vec3, val offset: Double)
  * This is the closed form of the fit, and it is also exactly the seed the `PLANAR_HESSE` opcode
  * computes in C++ from the pose the problem was compiled with. An expression has to be handed the
  * pose and seed its own plane here — which is not a shortcoming: the caller picks the seed
- * deliberately and can print it, where the opcode's is invisible.
+ * explicitly and can print it, where the opcode's is invisible.
  *
  * The normal's sign is canonicalised (largest-magnitude component positive) so that the same points
  * always give the same seed. `n` and `-n` with `d` and `-d` are the same plane and negate every

@@ -339,7 +339,7 @@ data class IkSolution(
  * you need when the pose is going on screen and has to look the same tomorrow.
  *
  * When [target] is further than [IkChain.reach] there is no exact solution and the solver stretches
- * as far as it can; [IkSolution.reachError] then reports the shortfall honestly rather than the
+ * as far as it can; [IkSolution.reachError] then reports the shortfall rather than the
  * solver pretending to have converged.
  */
 fun solveIk(
@@ -413,7 +413,7 @@ data class PackingRun(
  *
  * The loss is three hinge terms and a pull:
  * `Σᵢ<ⱼ relu(rᵢ+rⱼ - dᵢⱼ)² + wall·Σ relu(penetration)² + pull·Σ|cᵢ - centre|²`.
- * Every hinge is a `relu(...)²`, so the kink convention from `autodiff.kt` is load-bearing here: at
+ * Every hinge is a `relu(...)²`, so the kink convention from `autodiff.kt` decides the answer here: at
  * the exact moment two discs touch, the even-split rule makes the penalty's derivative half a
  * one-sided rule's, and the packing settles instead of chattering across the contact.
  *

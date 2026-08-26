@@ -858,7 +858,7 @@ What one pattern atom turns into when Sonic Pi plays it.
 | --- | --- |
 | <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Sample</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">SonicPiVoice</span><span class="p">(</span><span class="p">)</span></code> | `sample :bd_haus` — a name from the installed sample library. |
 | <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Note</span><span class="p">(</span><span class="k">val</span> <span class="n">note</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">synth</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">:</span> <span class="nc">SonicPiVoice</span><span class="p">(</span><span class="p">)</span></code> | `play 60` — a MIDI note, optionally after switching synth. |
-| <code class="highlight"><span class="k">object</span> <span class="nc">Silent</span> <span class="p">:</span> <span class="nf">SonicPiVoice</span><span class="p">(</span><span class="p">)</span></code> | Nothing to play. Distinct from *unresolved*: this atom is deliberately a rest. |
+| <code class="highlight"><span class="k">object</span> <span class="nc">Silent</span> <span class="p">:</span> <span class="nf">SonicPiVoice</span><span class="p">(</span><span class="p">)</span></code> | Nothing to play. Distinct from *unresolved*: this atom is a rest, and says so. |
 
 ### SonicPiInstruments { #sonicpipatterns-kt-sonicpiinstruments }
 
@@ -1055,7 +1055,7 @@ limit to the file size plus padding.
 `loadSound2Vec` reads a directory of `metadata.csv` + `embeddings.npy` (+ optional
 `manifest.json`) into a [`Sound2VecDataset`](audio.md#essentiaanalysis-kt-sound2vecdataset) of [`Sound2VecClip`](audio.md#essentiaanalysis-kt-sound2vecclip)s, each carrying its embedding, its
 time span within a source audio file, and optional t-SNE 2D/3D coordinates; clips can be looked
-up by chunk id, or by audio path and time. The bundled `.npy` reader is deliberately narrow: it
+up by chunk id, or by audio path and time. The bundled `.npy` reader is narrow: it
 accepts only C-ordered (non-Fortran) `float32` 1D or 2D arrays, and by default requires the CSV
 row count, the embedding row count and the manifest's `num_chunks` / `embedding_dim` to agree.
 

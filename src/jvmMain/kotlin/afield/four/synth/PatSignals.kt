@@ -247,7 +247,7 @@ fun bools(source: String): PatPattern<Boolean> = pat(source).map { token ->
 
 // ── numeric shaping ───────────────────────────────────────────────────────────────────────
 
-/** Maps a 0..1 pattern onto `[lo, hi]`. Values outside 0..1 extrapolate, deliberately. */
+/** Maps a 0..1 pattern onto `[lo, hi]`. Values outside 0..1 extrapolate rather than clamp. */
 fun PatPattern<Double>.range(lo: Number, hi: Number): PatPattern<Double> {
     val a = lo.toDouble()
     val b = hi.toDouble()

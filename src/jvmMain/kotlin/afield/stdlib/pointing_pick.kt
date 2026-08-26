@@ -35,7 +35,7 @@ import kotlin.math.sqrt
  *     re-triangulation with a different triangulator and can be handed back to the polytope API.
  *  2. **The author said so.** [PickParts.of] takes the array, for a builder that knows which
  *     triangles it just appended — see [TriMeshBuilder.groups], which records it for you.
- *  3. **The topology can guess.** [PickParts.byComponent] splits on connected components. Honest and
+ *  3. **The topology can guess.** [PickParts.byComponent] splits on connected components. Cheap and
  *     cheap, and exactly as good as the mesh's connectivity: a house whose walls all share vertices
  *     is one component and therefore one part, which is a real limitation and not a bug here.
  *
@@ -167,7 +167,7 @@ class PickParts private constructor(
         /**
          * One part per connected component of the mesh, largest first.
          *
-         * Honest about what it can see: components are joined *through shared vertices*, so a model
+         * Explicit about what it can see: components are joined *through shared vertices*, so a model
          * whose parts were welded into one surface is one component and therefore one part. That is
          * exactly the right answer for a bag of separate solids — a `TriMeshBuilder.add` of twelve
          * beams, a marched surface with specks, an STL with no groups — and exactly the wrong answer
@@ -241,7 +241,7 @@ class PickParts private constructor(
  *
  * **Each [TriMeshBuilder.group] call starts a new part, even if the name repeats.** Two
  * `group("wall")` calls give two parts both called `wall`, because the alternative — merging them —
- * would quietly make two distinguishable pieces indistinguishable, and the point of a part id is to
+ * would make two distinguishable pieces indistinguishable, and the point of a part id is to
  * distinguish. Name them `wall east` and `wall west` if you meant two, and call `group` once if you
  * meant one.
  */
@@ -334,10 +334,10 @@ class Pickable(
 /**
  * What a pointer touched: which object, which named part, and the geometry of the contact.
  *
- * Deliberately shaped like [FLineIntersection], Field's browser-side hit record, so the two read the
+ * Shaped like [FLineIntersection], Field's browser-side hit record, so the two read the
  * same way — a kind of thing, an index of the element within its own object, a parameter on the
  * element, and the point *on* the element rather than the point the ray was aimed at. The
- * differences are the honest ones: a triangle's parameter is two barycentric weights rather than one
+ * differences are the real ones: a triangle's parameter is two barycentric weights rather than one
  * curve parameter, and this one has a real depth because it was computed in 3D rather than recovered
  * from a flattened SVG.
  */
@@ -454,7 +454,7 @@ class PickScene(pickables: List<Pickable> = emptyList()) {
      *
      * [maxDistance] is a *world* distance and is passed to the BVH as a model-space bound only when
      * the pickable is untransformed; under a transform the BVH is given no bound and the world
-     * distance is checked afterwards. That is deliberately the conservative choice — converting a
+     * distance is checked afterwards. That is the conservative choice — converting a
      * world bound into a model bound needs the scale factor along the ray, and getting that subtly
      * wrong would silently drop hits, which is far worse than visiting a few extra nodes.
      */

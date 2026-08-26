@@ -49,7 +49,7 @@ private fun heatCss(heat: SonicPiHeat): String =
 /**
  * Decorations for the lines of `workspace` that are currently sounding.
  *
- * Pure, and pure on purpose: the whole display is a function of (ages, offset), so the behaviour that
+ * Pure, and it has to be: the whole display is a function of (ages, offset), so the behaviour that
  * matters — decay, translation, coalescing — is testable without an editor, a websocket or a box.
  */
 internal fun sonicPiActivityDecorations(

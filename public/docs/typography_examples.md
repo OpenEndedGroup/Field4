@@ -423,7 +423,7 @@ showMeshGrid(
 
 The **grid** is what limits how crisp a serif can be, not the marching resolution. The sign
 convention is `mesh_sdf.kt`'s — **negative inside** — which is the opposite of
-`GlyphContour.signedArea`'s, and deliberately so: an area's sign says which way a ring runs, a
+`GlyphContour.signedArea`'s, and the difference is meaningful: an area's sign says which way a ring runs, a
 distance's sign says which side of the ink you are on.
 
 ## Letters as point clouds
@@ -436,7 +436,7 @@ outlines. Once a word is points, every point-consuming family in the stdlib work
 val layout = layoutText("field", typeface("SansSerif", 200.0))
 
 // Even by ARC LENGTH, so halving the spacing twice roughly quadruples the count. That ratio is the
-// honest check that the resampler walks the curve rather than emitting one point per stored vertex.
+// a real check that the resampler walks the curve rather than emitting one point per stored vertex.
 val coarse = layout.samplePoints(spacing = 18.0)
 val fine = layout.samplePoints(spacing = 4.5)
 
@@ -461,7 +461,7 @@ showPlaneGrid(
 
 ![Four panels of the word field: outline sample dots, a Delaunay triangulation over them, a six-way k-medoids partition tinted per cluster, and the outlines themselves](assets/typography_examples/points.png)
 
-**143** points at spacing 18 and **558** at 4.5 — `3.90×` for a 4× finer spacing, which is the honest
+**143** points at spacing 18 and **558** at 4.5 — `3.90×` for a 4× finer spacing, which is the
 check that the resampler is walking arc length and not emitting one point per stored vertex. From
 here `vec2KMedoids` finds the strokes, `vec2DelaunayGraph` triangulates a word, and the agents in
 [Spatial Artificial Life](alife_examples.md) will happily eat a headline.
@@ -475,12 +475,12 @@ Typefaces.firstAvailable("Futura", "Avenir", size = 64)  // the first one this m
 Typefaces.fromFile("/path/to/Whatever.ttf", 64.0)        // Font.createFont, not registered globally
 ```
 
-`Typefaces.available()` lists the installed families, and is held apart from the rest on purpose:
+`Typefaces.available()` lists the installed families, and is held apart from the rest:
 enumerating families needs a `GraphicsEnvironment` and loading a face **by name** does not.
 
 Because the figures above are rendered on whatever machine builds these docs, they are set in that
 machine's logical `SansSerif` and `Serif`. Build them somewhere else and you get different-looking
-but equally correct pictures — which is the honest situation, and why every claim on this page is
+but equally correct pictures — which is the actual situation, and why every claim on this page is
 about a *structural* property rather than about a particular curve.
 
 ### One platform caveat, and its symptom

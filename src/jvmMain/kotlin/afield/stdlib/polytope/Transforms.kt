@@ -53,7 +53,7 @@ import afield.stdlib.Vec3
 /**
  * The Conway operator vocabulary, each with the single letter Conway notation writes it as.
  *
- * [primitive] is the load-bearing flag: only the five primitive operators (`d`, `a`, `k`, `t`, `g`)
+ * [primitive] is the flag that matters: only the five primitive operators (`d`, `a`, `k`, `t`, `g`)
  * have an implementation in [PolytopeTopology.transform]. The other eight are *words* over those
  * five and are expanded by `primitiveExpansion` before anything runs, which is why they cost as
  * many topology rebuilds as their expansion is long. [displayName] is the lower-case English name

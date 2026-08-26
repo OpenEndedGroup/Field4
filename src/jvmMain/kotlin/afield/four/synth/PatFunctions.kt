@@ -486,7 +486,7 @@ private fun patAtomPayloadEnd(source: String, open: Int): Int {
 /**
  * Finds every hoistable number in [source], or **null** if this text cannot carry a graph node.
  *
- * A lexical scan rather than a second parser, and deliberately so: it has to agree with
+ * A lexical scan rather than a second parser, because it has to agree with
  * `MiniPat.readAtom` about where an atom token *starts*, because that offset is the key the decoder
  * later matches against `PatSourceSpan.start`. Sharing `readAtom`'s own token rule
  * ([isPatAtomChar], balanced payload parens) is what makes that agreement structural rather than
@@ -554,7 +554,7 @@ private fun scanPatAtomSlots(source: String): List<PatAtomSlot>? {
  * through `Double.toString`, which is round-trip exact, rather than through `patFormatNumber`'s
  * nine decimal places — a finite-difference step can be smaller than that, and a display that
  * rounded it away would make a converging fit look stalled. A non-finite parameter prints as
- * `NaN`: unpasteable, but honest about what the fit reached, and the evaluator sanitises it
+ * `NaN`: unpasteable, but accurate about what the fit reached, and the evaluator sanitises it
  * separately (see `PatFunctionAtom.safeWeightAt`).
  */
 private fun splicePatSource(
@@ -617,7 +617,7 @@ private fun patGraphAtomDecoder(
  * child order and θ's order — `mapGraphNumbers` walks children in order, so the *i*-th leaf it
  * reads is the *i*-th one it writes. The recipe rebuilds from the **pattern object**, never by
  * re-parsing the spliced text: a caller may have handed us `pat("g:(0,0.1)").fast(2)`, whose
- * behaviour the text alone does not describe, and rebuilding from text would quietly drop the
+ * behaviour the text alone does not describe, and rebuilding from text would drop the
  * `fast(2)`.
  *
  * `range`, `outside` and `strict` ride as scalar metadata rather than as leaves. They configure the
@@ -701,7 +701,7 @@ private fun PatPattern<String>.probeSourceText(): String? {
 }
 
 /**
- * The one place the string-atom surfaces converge: graph-bearing when it honestly can be, opaque
+ * The one place the string-atom surfaces converge: graph-bearing when it genuinely can be, opaque
  * when it cannot. The reasons for "cannot" are listed in the file header.
  */
 private fun buildStringPatFunction(

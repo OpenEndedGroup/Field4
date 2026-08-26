@@ -18,7 +18,7 @@ import kotlin.math.sqrt
  *
  * [cubeWithWindow] is the sixth and the odd one out: a cube whose top face has a hole in it, which
  * makes it a surface *with boundary* rather than a closed manifold. It exists so that the parts of
- * the library that handle holes have something honest to be tested and demonstrated against.
+ * the library that handle holes have something real to be tested and demonstrated against.
  *
  * ## Scale is not uniform across the seeds
  *
@@ -232,7 +232,7 @@ fun cube(): PolyhedralObject = realizedPolyhedron(
  * Twelve vertices — the cube's eight, plus the window's four at `(±side, ±side, 1)` — six faces, and
  * one inner ring on the top face. Everything else about it is an ordinary cube.
  *
- * It is deliberately **not a closed manifold**, and that is the point of it rather than a defect: the
+ * It is **not a closed manifold**, and that is the point of it rather than a defect: the
  * window's four edges bound one face each, so `validate(checkManifold = true)` rejects it and the
  * Conway operators refuse it, both with messages that say so. `validate()` on its own passes. Use it
  * to exercise the parts of the library that do handle a hole — [PolyhedralObject.triangulate],
@@ -297,7 +297,7 @@ fun octahedron(): PolyhedralObject = realizedPolyhedron(
  * The twelve cyclic `(0, ±1, ±phi)` points, normalised. Unlike the other seeds its faces are not
  * written down but *found*, by testing all 220 vertex triples for a supporting plane; the search
  * insists on finding exactly 20 triangles and throws if it does not, so a change to the coordinates
- * cannot quietly produce a not-quite-icosahedron.
+ * cannot produce a not-quite-icosahedron unnoticed.
  */
 fun icosahedron(): PolyhedralObject {
     val phi = ((1.0 + sqrt(5.0)) / 2.0).toFloat()

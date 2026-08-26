@@ -38,7 +38,7 @@ import kotlin.math.sqrt
  * val smooth = coarse.taubinSmooth(iterations = 20) // volume preserved to within ~1%
  * ```
  *
- * Catmull-Clark is deliberately absent: it is a quad scheme, [TriMesh] is triangles-only, and
+ * Catmull-Clark is absent: it is a quad scheme, [TriMesh] is triangles-only, and
  * running it on a triangulated quad mesh gives a different (worse) surface than running it on the
  * quads. Loop is the triangle scheme, and it is the one here.
  */
@@ -89,7 +89,7 @@ fun TriMesh.withVertexNormals(areaWeighted: Boolean = true): TriMesh {
 /**
  * One normal per **triangle**: every triangle gets its own three vertices, so every edge is hard.
  *
- * `3 * triangleCount` vertices and no sharing, which means the result is deliberately *not*
+ * `3 * triangleCount` vertices and no sharing, which means the result is *not*
  * watertight in the topological sense — it is a render-ready mesh, not an analysis-ready one. Keep
  * the welded original for measurement.
  */
@@ -204,7 +204,7 @@ fun TriMesh.shadedNormals(creaseAngleDegrees: Double = 35.0): TriMesh {
  *
  * Boundaries use the four-point boundary rules, so an open mesh keeps its border curve smooth
  * instead of pinching. Normals are recomputed; uvs and colours are dropped (interpolating an
- * attribute through subdivision needs its own rule per attribute, and quietly guessing would be
+ * attribute through subdivision needs its own rule per attribute, and guessing without saying so would be
  * worse than saying so).
  *
  * @param times rounds of subdivision. Each round multiplies the triangle count by 4, so 4 rounds is
@@ -473,7 +473,7 @@ private const val OPTIMUM_STRAY = 0.5
  *    perpendicular to the surface, so an open mesh keeps its border curve instead of eroding it.
  *
  * Returns early — without reaching the target — when every remaining collapse is vetoed. That is
- * honest behaviour rather than a violated postcondition, so check [TriMesh.triangleCount] if the
+ * documented behaviour rather than a violated postcondition, so check [TriMesh.triangleCount] if the
  * exact budget matters. Normals are recomputed; uvs and colours are dropped.
  *
  * @param targetTriangles the budget. Values at or above the current count return the mesh unchanged.

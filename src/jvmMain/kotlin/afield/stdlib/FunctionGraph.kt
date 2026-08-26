@@ -179,7 +179,7 @@ data class FnGraphSnapshotEdge(
  * A flattened, `Fn`-free picture of a graph: a node list, an edge list and the root's id.
  *
  * A **graph, not a tree** — a subgraph reached twice appears once with two edges into it, because identity is what is
- * de-duplicated. That is the honest shape of an `Fn` built with shared sub-expressions, and it is why this is the right
+ * de-duplicated. That is the true shape of an `Fn` built with shared sub-expressions, and it is why this is the right
  * thing to serialise or diff: `graphText` and `graphSvg` instead *mark* a repeat and stop there, which is legible but
  * not a structure you can walk.
  */
