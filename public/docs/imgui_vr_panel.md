@@ -6,6 +6,10 @@ texture is mapped onto a quad, the quad is rendered once per eye into a side-by-
 and a controller ray is hit-tested against it so buttons and sliders actually work. On a headset the
 same stereo image feeds the eye swapchains; on the desktop it previews in the window.
 
+The side-by-side stereo target underneath this demo is the same one the Vision Pro front end renders
+through — see **[Apple Vision Pro](vision.md)**, where those eye matrices can come from an uplinked
+head pose instead of from OpenXR or the desktop mock.
+
 ![A single eye of the VR panel: a readable Dear ImGui window titled "Field · VR Panel" with body text, a Click me button, a checkbox, a gain slider, and a ray-hit UV readout](assets/imgui_vr_panel/imgui-vr-panel-eye.png)
 
 The image above is a real capture of the running demo — one eye, cropped for legibility. The panel

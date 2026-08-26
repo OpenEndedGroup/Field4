@@ -184,7 +184,8 @@ class ProseNumeralContractTest {
             key = "guardedCitationPages",
             page = "dev_docs/citation_contracts.md",
             what = "pages under the corpus-wide citation guard",
-            // 17 on 2026-08-23, 19 on 2026-08-26 once the first published page joined. Floored at
+            // 17 on 2026-08-23, 21 on 2026-08-26 once three published pages joined in one day —
+            // autodiff_examples.md, vision.md and vision_geometry.md, from two branches. Floored at
             // 10: the page's argument is that the guard covers a corpus rather than a page, and
             // below ten that stops being true in a way a reader should be told about.
             floor = 10,
@@ -306,6 +307,183 @@ class ProseNumeralContractTest {
             derive = {
                 afield.stdlib.OpRegistry.knownOps
                     .map { afield.stdlib.OpRegistry.canonical(it)?.lowercase() ?: it.lowercase() }
+                    .toSortedSet()
+            },
+        ),
+        DerivedCountGuard.Derivation(
+            key = "visionPoseHostSpans",
+            page = "public/docs/vision.md",
+            what = "latency spans this process times on its own clock",
+            // 4 on 2026-08-26, and the whole population. Floored at 4 rather than lower, on the
+            // DATAFRAME_PLUGIN precedent, because this is not a decorative count. The published page
+            // prints an *empty* report as its evidence that nothing has been measured on hardware,
+            // and the argument for showing an empty table is that every span is named in it whether
+            // or not it holds samples. A fifth span means that paragraph needs rereading, not
+            // renumbering.
+            floor = 4,
+            landmarks = setOf("pose uplink transit", "submit to encoded (incl. render fence)"),
+            // The span *labels*, not the constant names, because the labels are what the report
+            // prints and therefore what the page quotes. Selected by "the literal has no `/` in it":
+            // VisionPoseLatency's other three string constants are wire channel names
+            // (`visionpose/ping`, `visionpose/pong`, `visionpose/latency`) and every span label is
+            // human prose. That is a property of the file rather than of a line number, so it
+            // survives reformatting — where scraping the `listOf(...)` inside `report()` would not.
+            derive = { r ->
+                val src = File(r, "src/jvmMain/kotlin/afield/graphics/VisionPoseLatency.kt")
+                Regex("""const val [A-Z_]+ = "([^"]+)"""")
+                    .findAll(src.readText())
+                    .map { it.groupValues[1] }
+                    .filterNot { '/' in it }
+                    .toSortedSet()
+            },
+            // Not the tokenised form: every member is a multi-word phrase, and `membersNamedOnPage`
+            // tokenises on `[A-Za-z_][A-Za-z0-9_]*`, so "pose uplink transit" could never match
+            // however faithfully the page quotes it. The verbatim form is what such a population
+            // needs, and it bites here: all four labels appear character-for-character inside the two
+            // report fences in `## Where the latency goes`. Dropping a row from either fence, or
+            // renaming a span in Kotlin without touching the page, now fails.
+            membersQuotedVerbatim = true,
+            // Backward direction. The superset is *every* `const val` string literal in the file, by
+            // dropping the "no `/` in it" test that defines the population — so the three excluded
+            // candidates are exactly the wire channel names `visionpose/ping`, `visionpose/pong` and
+            // `visionpose/latency`. Quoting one of those in a table of span labels is the stale-row
+            // case: it reads as a timing stage and is a message type. Measured 2026-08-26: 7
+            // candidates, 4 in the population, and the section quotes none of the other 3.
+            candidates = { r ->
+                val src = File(r, "src/jvmMain/kotlin/afield/graphics/VisionPoseLatency.kt")
+                Regex("""const val [A-Z_]+ = "([^"]+)"""")
+                    .findAll(src.readText())
+                    .map { it.groupValues[1] }
+                    .toSortedSet()
+            },
+        ),
+        DerivedCountGuard.Derivation(
+            key = "visionPoseSmokeTests",
+            page = "public/docs/vision.md",
+            what = "`visionpose.*` FIELD_TEST ids runnable without a headset",
+            // 3 on 2026-08-26, and the whole population. Floored at 3 because this number is load
+            // bearing in the one direction that matters for this page: there is no Vision Pro
+            // attached to the machine that builds these docs, so these three smokes are the only
+            // executable evidence behind the head-tracking rows of the status table. If one is
+            // deleted the page must stop citing it, and the reader should be told which.
+            floor = 3,
+            landmarks = setOf("visionpose.uplink", "visionpose.stereo-source", "visionpose.latency"),
+            // Scraped from the FIELD_TEST blocks themselves rather than from a hand-kept list, so a
+            // fourth pose smoke cannot be added without this page's count going red.
+            derive = { r ->
+                DerivedCountGuard.kotlinSourcesUnder(r, "src/jvmMain/kotlin/afield/examples")
+                    .flatMap { f ->
+                        Regex("""(?m)^id:\s*(visionpose\.[A-Za-z0-9_.-]+)\s*$""")
+                            .findAll(f.readText())
+                            .map { it.groupValues[1] }
+                    }
+                    .toSortedSet()
+            },
+            // Verbatim rather than tokenised: `visionpose.latency` splits into two word tokens, so it
+            // could never be an element of the word set. All three ids appear verbatim in code spans
+            // in the status table's third column, inside the section that states the count — so the
+            // rows that claim smoke-test backing now cannot lose the test they name.
+            membersQuotedVerbatim = true,
+        ),
+        DerivedCountGuard.Derivation(
+            key = "visionPoseDeviceSpans",
+            page = "public/docs/vision.md",
+            what = "latency spans the visionOS head defines and reports over the wire",
+            // 5 on 2026-08-26, and the whole population. The first derivation in this list whose
+            // population comes from **Swift** rather than Kotlin — the two machines' span sets are
+            // different sizes (4 here, 5 there) and the page states both, so a reader can tell which
+            // half of the chain a span belongs to. Floored at 5: the page's sentence exists to say
+            // the published fixture exercises *two of five*, and that fraction stops being true the
+            // moment the population moves.
+            floor = 5,
+            landmarks = setOf(
+                "head: jitter buffer hold (deliberate)",
+                "head: POSE to texture (motion-to-photon lower bound)",
+            ),
+            // Scraped from `PoseLatency.Span`, whose own comment says these strings "are the wire
+            // keys and appear verbatim in the host's readout, so the host does not need to know the
+            // set in advance". That is exactly why it is worth pinning from this side: the Kotlin end
+            // deliberately cannot enumerate them, so without this nothing in the build would notice
+            // a sixth appearing or a fifth going away.
+            //
+            // Selected on the `head: ` prefix rather than "every string literal in the file". Today
+            // those agree — all five `static let` literals in PoseLatency.swift are span names — but
+            // the prefix is the load-bearing property, since it is what separates a head span from a
+            // host span in the readout. Matching on it keeps the derivation meaning what its name
+            // says if an unrelated constant is ever added beside them.
+            derive = { r ->
+                val src = File(r, "native/field-visionos/Field4Vision/Pose/PoseLatency.swift")
+                Regex("""static let [A-Za-z0-9_]+ = "(head: [^"]+)"""")
+                    .findAll(src.readText())
+                    .map { it.groupValues[1] }
+                    .toSortedSet()
+            },
+            // Count-only, and this one is a genuine choice rather than a tokenisation limit — the
+            // verbatim form would work mechanically and it is deliberately not used. Only 2 of the 5
+            // head spans appear on the page, because the page's own sentence is that the published
+            // fixture *exercises two of them*; the other three are real spans that the fixture does
+            // not send. Turning on membersQuotedVerbatim here would fail truthfully but for the wrong
+            // reason: it would demand the page quote three spans it has nothing to say about. The
+            // landmarks above are exactly the two the page does quote, which is the honest encoding.
+            membersQuotedVerbatim = false,
+        ),
+        DerivedCountGuard.Derivation(
+            key = "visionGeometryBuilderMethods",
+            page = "public/docs/vision_geometry.md",
+            what = "authoring methods on the in-headset `MeshBuilder`",
+            // 12 on 2026-08-26, and the whole authoring surface. Floored at 12: the page's sentence is
+            // "twelve methods and nothing else", which is a completeness claim rather than a
+            // magnitude, and a completeness claim that can shrink silently is not one.
+            floor = 12,
+            landmarks = setOf("vertex", "triangle", "cube", "tube"),
+            // Selected by return type, which needs no hand-kept exclusion list: an authoring call
+            // returns the builder (to chain) or an `Int` (the new vertex's index). The two methods
+            // this excludes, `packedVertices`/`packedIndices`, return arrays and are the harness's
+            // readout rather than anything a box calls — so a future readout is excluded
+            // automatically, and a future authoring method is included automatically.
+            derive = { r ->
+                val text = File(r, "src/jvmMain/kotlin/afield/graphics/VisionMetalKotlinJs.kt").readText()
+                // Brace-match the class body so a same-named function elsewhere in the file cannot
+                // join the population.
+                val open = text.indexOf('{', text.indexOf("class MeshBuilder"))
+                var depth = 0
+                var close = open
+                while (close < text.length) {
+                    if (text[close] == '{') depth++
+                    else if (text[close] == '}' && --depth == 0) break
+                    close++
+                }
+                Regex("""fun\s+([A-Za-z][A-Za-z0-9_]*)\s*\((?:[^()]|\([^()]*\))*\)\s*:\s*([A-Za-z][A-Za-z0-9_<>?]*)""")
+                    .findAll(text.substring(open, close))
+                    .filter { it.groupValues[2] == "MeshBuilder" || it.groupValues[2] == "Int" }
+                    .map { it.groupValues[1] }
+                    .toSortedSet()
+            },
+            // TRUE, and this is the one population on this branch whose members are shaped for it:
+            // every one is a bare lowercase identifier, so the tokenised form works and is stricter
+            // than verbatim containment (it respects word boundaries). The table above is inside the
+            // section that states the count, so adding a thirteenth builder method fails until this
+            // page documents it, and renaming one fails until this page follows.
+            membersNamedOnPage = true,
+            // Backward direction. The superset drops the return-type test, so it is every `fun` in the
+            // class body: the excluded candidates are `packedVertices`, `packedIndices` (the harness's
+            // readouts) and the private `index` helper. A row for any of those in a section that says
+            // "twelve methods and nothing else" would be a false claim about the authoring surface,
+            // and the forward check cannot see it. Measured 2026-08-26: 15 candidates, 12 in the
+            // population, and the section names none of the other 3.
+            candidates = { r ->
+                val text = File(r, "src/jvmMain/kotlin/afield/graphics/VisionMetalKotlinJs.kt").readText()
+                val open = text.indexOf('{', text.indexOf("class MeshBuilder"))
+                var depth = 0
+                var close = open
+                while (close < text.length) {
+                    if (text[close] == '{') depth++
+                    else if (text[close] == '}' && --depth == 0) break
+                    close++
+                }
+                Regex("""fun\s+([A-Za-z][A-Za-z0-9_]*)\s*\(""")
+                    .findAll(text.substring(open, close))
+                    .map { it.groupValues[1] }
                     .toSortedSet()
             },
         ),
@@ -464,29 +642,68 @@ class ProseNumeralContractTest {
      * too; they were consistent with *different* answers. A guard on the numeral alone would have
      * passed on both days.
      *
-     * Only for derivations that opt in with [DerivedCountGuard.Derivation.membersNamedOnPage], and
-     * only against code spans — see [DerivedCountGuard.codeSpanWords] for why a whole-page word
-     * search is unusable here and for the residual weakness this keeps.
+     * Two opt-in forms, because one shape of member cannot use the other's check.
+     * [DerivedCountGuard.Derivation.membersNamedOnPage] tests token membership, which only works for
+     * bare identifiers; [DerivedCountGuard.Derivation.membersQuotedVerbatim] tests substring
+     * containment against the same recovered code text, which is what a multi-word member needs. See
+     * [DerivedCountGuard.codeText] for why the tokenised form was unsatisfiable for those, and
+     * [DerivedCountGuard.codeSpanWords] for why a whole-page word search is unusable here.
+     *
+     * Both are one-directional and both are scoped to the section. Neither closes the substitution
+     * hole in full — that wants the page parsed as the expected set, both ways, the way
+     * `ServerSurfaceLedgerTest.assertLedger` does it.
      */
     @Test
     fun everyMemberOfANamedPopulationAppearsOnItsPage() {
         val marked = allMarked().groupBy { it.key }
-        val problems = derivations.filter { it.membersNamedOnPage }.mapNotNull { d ->
+        val checked = derivations.filter { it.membersNamedOnPage || it.membersQuotedVerbatim }
+        val problems = checked.mapNotNull { d ->
             val f = pageFile(d.page)
             // Scoped to the section the number is stated in, not to the whole page. With the page in
             // scope this check was demonstrably unable to fail — see DerivedCountGuard.sectionBounds
             // for the measurement that says so.
             val scope = marked[d.key].orEmpty().map { DerivedCountGuard.sectionBounds(f, it.pageLine) }
-            // Case-insensitive, deliberately. `OpRegistry` canonicalises op names to lower case; the
-            // page writes `hannWindow` and `amplitudeMod`, which is the right way for a page to
-            // spell a Kotlin identifier. A case-sensitive comparison would report eight false
-            // absences and teach a reader to distrust the message.
-            val named = scope.flatMap { DerivedCountGuard.codeSpanWords(f, it) }
-                .map { it.lowercase() }.toSet()
-            val absent = d.derive(root).filterNot { it.lowercase() in named }.sorted()
-            if (absent.isEmpty()) null
-            else "  count:${d.key} — ${d.page} states the number but, in the same section, does not " +
-                "name ${absent.size} member(s) of ${d.what}: $absent"
+            // Case-insensitive in both forms, deliberately. `OpRegistry` canonicalises op names to
+            // lower case; the page writes `hannWindow` and `amplitudeMod`, which is the right way for
+            // a page to spell a Kotlin identifier. A case-sensitive comparison would report eight
+            // false absences and teach a reader to distrust the message.
+            val population = d.derive(root)
+            // One `isNamed` used by both directions, so "the page names X" cannot mean two different
+            // things depending on which way the comparison runs — which is how a bidirectional check
+            // ends up asymmetric without anyone noticing.
+            val isNamed: (String) -> Boolean = if (d.membersQuotedVerbatim) {
+                val quoted = scope.joinToString("\n") { DerivedCountGuard.codeText(f, it) }.lowercase()
+                ({ it.lowercase() in quoted })
+            } else {
+                val named = scope.flatMap { DerivedCountGuard.codeSpanWords(f, it) }
+                    .map { it.lowercase() }.toSet()
+                ({ it.lowercase() in named })
+            }
+            val verb = if (d.membersQuotedVerbatim) "quote" else "name"
+
+            // Forward: population ⊆ page. Catches a deleted row and a rename, and catches
+            // substitution too — a swapped-out member is simply absent.
+            val absent = population.filterNot(isNamed).sorted()
+            // Backward: (page ∩ candidates) ⊆ population, when a candidate superset is supplied.
+            // Catches the stale row the forward direction cannot: something named here that the
+            // population deliberately excludes.
+            val stale = d.candidates?.invoke(root).orEmpty()
+                .minus(population)
+                .filter(isNamed)
+                .sorted()
+
+            listOfNotNull(
+                absent.takeIf { it.isNotEmpty() }?.let {
+                    "  count:${d.key} — ${d.page} states the number but, in the same section, does " +
+                        "not $verb ${it.size} member(s) of ${d.what}: $it"
+                },
+                stale.takeIf { it.isNotEmpty() }?.let {
+                    "  count:${d.key} — ${d.page} ${verb}s ${it.size} name(s) in that section which " +
+                        "are NOT ${d.what}, though they sit beside them in the source: $it. Either " +
+                        "the row is stale, or the derivation's rule and the section's claim have " +
+                        "come apart."
+                },
+            ).joinToString("\n").takeIf { it.isNotEmpty() }
         }
         assertTrue(
             problems.isEmpty(),
@@ -494,6 +711,23 @@ class ProseNumeralContractTest {
                 "can then drift apart in opposite directions, which is what happened twice on " +
                 "dev_docs/autodiff.md:\n" + problems.joinToString("\n")
         )
+        val bidi = checked.count { it.candidates != null }
+        println(
+            "--- member-identity coverage: ${checked.size} of ${derivations.size} derivation(s) " +
+                "pin identities, of which $bidi are bidirectional ---"
+        )
+        derivations.forEach { d ->
+            val how = when {
+                d.membersQuotedVerbatim -> "verbatim"
+                d.membersNamedOnPage -> "token"
+                else -> "COUNT ONLY (+${d.landmarks.size} landmark(s))"
+            }
+            val dir = d.candidates?.let {
+                val c = it(root).size
+                "both ways (vs $c candidate(s))"
+            } ?: "forward only"
+            println("  %-38s %-8s %-9s %s".format(d.key, "n=${d.derive(root).size}", how, dir))
+        }
     }
 
     /**
@@ -839,6 +1073,156 @@ class ProseNumeralContractTest {
                 "a code span in a *different* section must not satisfy the check: $words"
             )
             assertTrue("neverSeen" !in words, "nor must one in the section after: $words")
+        } finally {
+            tmp.delete()
+        }
+    }
+
+    /**
+     * The gap `membersQuotedVerbatim` exists to close, asserted in both directions.
+     *
+     * The first two assertions are the *defect*: a multi-word member is unreachable by
+     * [DerivedCountGuard.codeSpanWords] no matter how exactly the page quotes it, because the
+     * tokeniser cannot emit a token containing a space. That is what forced three derivations in this
+     * class to be count-only, and a count is evadable by substitution — swap one member for another
+     * at the same total and nothing notices.
+     *
+     * The rest pin the replacement's shape, including the two properties it deliberately does *not*
+     * have, so neither is mistaken for strength later: the section scope still applies, and the line
+     * join is a newline so a phrase cannot be assembled across two lines that do not contain it.
+     */
+    @Test
+    fun aMultiWordMemberIsUnreachableByWordsAndReachableVerbatim() {
+        val tmp = File.createTempFile("prose-verbatim-", ".md")
+        try {
+            tmp.writeText(
+                """
+                # Title
+                ## Elsewhere
+                ```
+                pose age when latched
+                ```
+                ## The count
+                Four of them:
+                ```
+                pose uplink transit
+                submit to encoded (incl. render fence)
+                ```
+                And inline, in a table cell: | x | `visionpose.latency` |
+                ## After
+                ```
+                latch to frame submit
+                ```
+                """.trimIndent() + "\n"
+            )
+            // Line 7 (1-based, "Four of them:") is inside "## The count".
+            val bounds = DerivedCountGuard.sectionBounds(tmp, 7)
+            val words = DerivedCountGuard.codeSpanWords(tmp, bounds)
+            val verbatim = DerivedCountGuard.codeText(tmp, bounds)
+
+            // 1. The defect. Every word of the phrase is present; the phrase is not expressible.
+            assertTrue(
+                "pose" in words && "uplink" in words && "transit" in words,
+                "the tokeniser should see the individual words: $words"
+            )
+            assertTrue(
+                "pose uplink transit" !in words,
+                "a Set<String> of `[A-Za-z_][A-Za-z0-9_]*` matches can never contain a phrase — this " +
+                    "is why membersNamedOnPage was unusable for multi-word populations"
+            )
+            assertTrue(
+                "visionpose.latency" !in words,
+                "nor a dotted id: it splits on the `.` into two tokens"
+            )
+
+            // 2. The replacement reaches both shapes — a fenced phrase and an inline dotted id.
+            assertTrue("pose uplink transit" in verbatim, "verbatim text must carry the phrase")
+            assertTrue(
+                "submit to encoded (incl. render fence)" in verbatim,
+                "including parens and a full stop, which the tokeniser also cannot represent"
+            )
+            assertTrue(
+                "visionpose.latency" in verbatim,
+                "and an inline code span inside a markdown table cell"
+            )
+
+            // 3. Still section-scoped: the mechanism must not have widened to the whole page.
+            assertTrue(
+                "pose age when latched" !in verbatim,
+                "a phrase in a *different* section must not satisfy the verbatim check either"
+            )
+            assertTrue("latch to frame submit" !in verbatim, "nor one in the section after")
+
+            // 4. No cross-line assembly. "transit" ends one line and "submit" starts the next; a
+            //    space join would make this fabricated phrase appear present.
+            assertTrue(
+                "transit submit" !in verbatim,
+                "lines must be newline-joined, or containment invents phrases that are nowhere on " +
+                    "the page: ${verbatim.replace("\n", "\\n")}"
+            )
+        } finally {
+            tmp.delete()
+        }
+    }
+
+    /**
+     * Why the backward direction is a **candidate-restricted** comparison and not set equality.
+     *
+     * The first assertion is the one that settles the design: over a realistic section,
+     * [DerivedCountGuard.codeSpanWords] returns far more than the population — `fun`, a type name, a
+     * parameter, the cited file's own name. So `named == population` is not a strict version of this
+     * check, it is an unsatisfiable one, and no edit to the page could make it pass. That is why
+     * `ServerSurfaceLedgerTest.assertLedger` can compare sets outright and this cannot: its page side
+     * is a parsed table column, a set of the same kind as its population; a prose section's code text
+     * is not.
+     *
+     * The rest pin what the restriction buys: a sibling from the same declaration site that the
+     * population excludes IS caught, and ordinary code-span noise is not.
+     */
+    @Test
+    fun theBackwardCheckIsCandidateRestrictedBecauseSetEqualityIsUnsatisfiable() {
+        val tmp = File.createTempFile("prose-backward-", ".md")
+        try {
+            tmp.writeText(
+                """
+                # Title
+                ## The count
+                Two of them:
+                | what | where | anchor |
+                |---|---|---|
+                | appends a vertex | `Builder.kt:10` | `fun vertex(` |
+                | one face | `Builder.kt:20` | `fun triangle(` |
+                | the harness readout | `Builder.kt:30` | `fun packedVertices(` |
+                """.trimIndent() + "\n"
+            )
+            val bounds = DerivedCountGuard.sectionBounds(tmp, 3)
+            val named = DerivedCountGuard.codeSpanWords(tmp, bounds)
+            val population = setOf("vertex", "triangle")
+            val candidates = setOf("vertex", "triangle", "packedVertices", "packedIndices")
+
+            // 1. The design argument, asserted rather than claimed.
+            assertTrue(
+                named != population,
+                "unrestricted set equality is unsatisfiable over a real section: the page side also " +
+                    "carries $named"
+            )
+            assertTrue(
+                "fun" in named && "Builder" in named,
+                "…because code spans legitimately contain non-members: $named"
+            )
+
+            // 2. Forward direction still holds.
+            assertTrue(population.all { it in named }, "every member is named: $named")
+
+            // 3. Backward, restricted: the excluded sibling on the page is caught.
+            val stale = candidates.minus(population).filter { it in named }
+            assertEquals(
+                listOf("packedVertices"), stale,
+                "a candidate the population excludes, named in the section, is the stale-row case"
+            )
+
+            // 4. And a candidate the page does NOT name is not reported — absence is not staleness.
+            assertTrue("packedIndices" !in stale, "only what the page actually names can be stale")
         } finally {
             tmp.delete()
         }

@@ -193,18 +193,72 @@ guard unescapes it, so FieldML's `\|>` can be cited.
 
 A citation guard proves an anchor exists. It says nothing about the *sentence* around the anchor, and
 the arithmetic in that sentence is the part that rots. `ProseNumeralContractTest` closes that gap for
-the same 19<!--count:guardedCitationPages--> pages `GUARDED_PAGES` already covers — this one among
+the same 21<!--count:guardedCitationPages--> pages `GUARDED_PAGES` already covers — this one among
 them since 2026-08-23, because a page that documents the mechanism and then states three numbers
 derived by it should be the first thing the mechanism checks.
 
-One of those 19 is not a `dev_docs` page at all. `public/docs/autodiff_examples.md` joined on
-2026-08-26 for the numeral guard rather than the citation one, and it is worth saying why the drift it
-was added over went unseen: `citationGates` had declared `public/docs/**/*.md` as a task input since
-the day it was written, so up-to-date checking was never the gap. `GUARDED_PAGES` was, because it is
-the only list either class scans and every entry on it was under `dev_docs`. The published tree was
-**declared as an input and never read** — which is the more instructive failure of the two, since a
-missing Gradle input announces itself the first time somebody plants a bad fence, and a list that
-quietly covers less than the input declaration suggests does not.
+**Three of those 21 are under `public/docs` as of 2026-08-26**, and the asymmetry they closed is worth
+naming, because it is the more instructive of the two failures available here. `citationGates` has
+declared `public/docs/**.md` as a task input since 2026-08-19, so a published-page edit has never been
+able to go `UP-TO-DATE` — up-to-date checking was never the gap. `GUARDED_PAGES` was, because it is the
+only list either class scans and every entry on it was under `dev_docs`. The published tree was
+**declared as an input and never read**, and that is worse than a missing input declaration: a missing
+input announces itself the first time somebody plants a bad fence, whereas a list that quietly covers
+less than the input declaration suggests does not.
+
+Two pages joined for the numeral guard rather than the citation one.
+`public/docs/autodiff_examples.md` had drifted to *"32 of 124"* against a derived 35 of 127 — both
+numbers stale, in a sentence a reader is more likely to see than the `dev_docs` one.
+`public/docs/vision.md` is where the same asymmetry cost the most: it fell two whole capabilities
+behind the code while its `dev_docs` twin stayed current. `public/docs/vision_geometry.md` followed,
+and bringing it in found a builder method (`clear()`) the page documented nowhere — the class of
+omission a count-only guard cannot see.
+
+The remaining published pages are still unread.
+
+### Pinning identities, not only counts
+
+A marker equates a numeral with a population's *size*, which leaves substitution unguarded: swap one
+member for another at the same total and nothing notices.
+`DerivedCountGuard.Derivation.membersNamedOnPage` was the partial answer, and it had a hard limit
+worth recording because it was invisible from the call site. It tests `member in codeSpanWords(...)`,
+and `codeSpanWords` returns tokens matching `[A-Za-z_][A-Za-z0-9_]*` — so for any member containing a
+space, `.`, `:` or `(` the assertion was not weak but **unsatisfiable**, regardless of how exactly the
+page quoted it. Three derivations were count-only for that reason alone.
+
+`membersQuotedVerbatim` (2026-08-26) checks substring containment against the same recovered code
+text, which `stripCode` preserves character-for-character inside a fence. Use it for phrase-shaped
+populations and `membersNamedOnPage` for bare identifiers, where word boundaries make it stricter.
+Both are section-scoped. `everyMemberOfANamedPopulationAppearsOnItsPage` prints a per-derivation
+census of which form each one uses and which direction it runs, so the count-only remainder is visible
+rather than implied.
+
+#### The backward direction, and why it is not set equality
+
+`Derivation.candidates` (2026-08-26) closes *"a page naming an extra member still passes"*. Supply a
+rule deriving a **superset** of the population from the same declaration site by a weaker test; the
+section may then name no candidate the population excludes. `(named ∩ candidates) ⊆ population` is
+asserted alongside `population ⊆ named`, which is set equality **restricted to the candidate set**.
+
+Restricted, because unrestricted equality is not a stricter version of this check — it is an
+unsatisfiable one. `codeSpanWords` over a real section returns every token in every code span: `fun`,
+a type name, a parameter, the cited file's own name. `named == population` therefore fails on every
+page ever written and **no edit to the page could repair it**. That is the difference from
+`ServerSurfaceLedgerTest.assertLedger`, which compares sets outright and is right to: its page side is
+a *parsed table column*, a set of the same kind as its population. A prose section's code text is not.
+`theBackwardCheckIsCandidateRestrictedBecauseSetEqualityIsUnsatisfiable` asserts that rather than
+leaving it as an argument.
+
+So "extra" means something specific and checkable: **a sibling from the same declaration site that this
+population deliberately excludes** — a `packedVertices` row in a table of authoring methods, a
+`visionpose/ping` line in a table of span labels. That is the stale-row case, and it is the only case
+worth a mechanism here, because substitution is already caught by the forward direction: swapping one
+member for another leaves the swapped-out member absent.
+
+Both directions are proved by fault injection rather than by passing. Deleting a row fails the forward
+check naming the member; adding a `packedVertices` row, or a `visionpose/ping` line, **with the count
+left correct** fails the backward check naming that. 2 of the 4 identity-pinned derivations run both
+ways; a derivation with no sensible superset stays forward-only and the census says so.
 
 ### The defect it was built against
 

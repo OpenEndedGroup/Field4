@@ -53,6 +53,37 @@ The matching shader goes in the box's `msl` property. It reads `u_phase` — the
 `#define u_phase frame.user[0]` from the marker's `uniforms=` list, so shaders name their uniforms
 instead of counting slots.
 
+## The builder surface
+
+The whole of it, in one place. `geometry { … }` hands you a `MeshBuilder` with
+twelve<!--count:visionGeometryBuilderMethods--> methods and nothing else, and the rest of this page is
+those twelve in detail. Every row below is checked against source on each `docsGates` run — both that
+the line still says what it claims, and that this table has not fallen behind the builder.
+
+| What it does | Where | Anchor |
+|---|---|---|
+| current normal for following vertices | `VisionMetalKotlinJs.kt:67` | `fun normal(` |
+| current colour for following vertices | `VisionMetalKotlinJs.kt:73` | `fun color(` |
+| current texture coordinate | `VisionMetalKotlinJs.kt:79` | `fun uv(` |
+| the two free per-vertex channels | `VisionMetalKotlinJs.kt:85` | `fun extra(` |
+| append a vertex, return its index | `VisionMetalKotlinJs.kt:91` | `fun vertex(x: Double, y: Double, z: Double): Int` |
+| one face from three indices | `VisionMetalKotlinJs.kt:126` | `fun triangle(` |
+| two faces from four indices | `VisionMetalKotlinJs.kt:132` | `fun quad(` |
+| drop what was appended, keep the state | `VisionMetalKotlinJs.kt:139` | `fun clear(` |
+| axis-aligned cube, optional face tinting | `VisionMetalKotlinJs.kt:151` | `fun cube(` |
+| quad lattice on XY facing `+z` | `VisionMetalKotlinJs.kt:192` | `fun plane(` |
+| UV sphere with shared normals | `VisionMetalKotlinJs.kt:220` | `fun sphere(` |
+| sweep a polygon along a polyline | `VisionMetalKotlinJs.kt:260` | `fun tube(` |
+
+The first four set *state* and return the builder, so they chain and apply to everything appended
+after them. The next three build faces from indices. The last four append whole shapes.
+
+`clear()` is the one you will reach for least and miss most: it drops the appended geometry while
+keeping the current normal, colour and uv, which is what a per-frame rebuild wants when every frame
+starts from the same material. There is deliberately no method for adding a new vertex *attribute* —
+the layout is fixed and `extra()` is the escape hatch, as [Per-vertex
+channels](#per-vertex-channels) explains.
+
 ## Vertices and indices
 
 Underneath the shape helpers is a plain indexed-triangle builder.

@@ -94,7 +94,8 @@ class CitationContractTest {
             "dev_docs/autodiff.md" to 1,
             "dev_docs/brief_notation.md" to 1,
             "dev_docs/kotlinjs_status_and_roadmap.md" to 1,
-            // The first **published** page on this list, added 2026-08-26, and the reason is
+            // One of three **published** pages added on 2026-08-26 (the others are `vision.md` and
+            // `vision_geometry.md`, from a different branch the same day), and the reason here is
             // `ProseNumeralContractTest` rather than citations: `public/docs/autodiff_examples.md`
             // restated `dev_docs/autodiff.md`'s differentiability fraction and had drifted to
             // "32 of 124" against a derived 35 of 127 — both numbers stale, in a sentence a reader
@@ -108,6 +109,40 @@ class CitationContractTest {
             // of 0 is inert here rather than vacuous, since the numerals are what is guarded and
             // `everyDerivationIsStillUsedByItsPage` makes deleting the sentence fail.
             "public/docs/autodiff_examples.md" to 0,
+            // Added 2026-08-26 alongside `autodiff_examples.md` and `vision_geometry.md`, the three
+            // of them the first `public/docs` entries this list has ever had. It is here because of the
+            // asymmetry this list previously had: `citationGates` has declared
+            // `public/docs/**.md` as a Gradle input since 2026-08-19, so a published-page edit
+            // cannot go UP-TO-DATE — but nothing on this list is under `public/docs`, so the
+            // published tree was declared-as-input and never read. `public/docs/vision.md` is where
+            // that cost the most: it went two whole capabilities behind the code while its
+            // `dev_docs` twin stayed current, which is the same shape as
+            // `public/docs/autodiff_examples.md:188` carrying pre-correction numbers for five days
+            // in August.
+            //
+            // 49 anchored citations as written: 15 prose `path:line#anchor` in the narrative and 34
+            // ledger rows in the reference table. Every anchor was chosen unique-in-file, so all 49
+            // report unbounded headroom and the corpus fragility ceiling is unaffected. Floored at
+            // 24 rather than 49 on the DATAFRAME_PLUGIN convention — a page becoming a little less
+            // citation-dense should cost a doc edit, not a build failure, while deleting half of
+            // them should be a red build.
+            //
+            // 11 of the 49 point at Swift under `native/field-visionos/Field4Vision/`.
+            // `CitationGuard.EXT` has carried `swift` all along, so this needed no widening; it is
+            // worth doing because this is a two-machine protocol and a page citing only the Kotlin
+            // end would be documenting one side of it. (`EXT` still has no `cpp`/`c`/`h`/`hpp`/`cc`,
+            // so the `native/field-encode` senders cannot be cited the same way. That reads as a
+            // considered boundary rather than an oversight, and it is not this page's problem.)
+            "public/docs/vision.md" to 24,
+            // The third `public/docs` page, added the same night. Twelve ledger rows, one per
+            // authoring method on the in-headset `MeshBuilder`, all anchors unique-in-file.
+            //
+            // This page is the one place on this branch where member *identity* can be pinned by the
+            // stricter tokenised check rather than by verbatim containment, because every member is a
+            // bare lowercase identifier. Bringing it under guard found a real gap on the way in:
+            // `clear()` was the one builder method the page documented nowhere at all, which is
+            // exactly the class of omission a count-only guard cannot see.
+            "public/docs/vision_geometry.md" to 6,
         )
 
         /**
