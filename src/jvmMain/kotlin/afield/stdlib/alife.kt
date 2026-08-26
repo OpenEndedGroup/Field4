@@ -41,7 +41,7 @@ import kotlin.math.sqrt
  *   reaction–diffusion field pipelines straight into `gaussianBlur`, `colormap`, `connectedComponents`,
  *   `isoContourFLines` and `asHeightSdf` with no glue. Nothing here reimplements convolution.
  * - **A step is a value, not a side effect.** `step()` returns the next state; you keep the frames you
- *   want. The one exception is the deliberately-mutable agent populations, where copying 50 000
+ *   want. The one exception is the mutable agent populations, where copying 50 000
  *   agents per frame would be the whole cost.
  * - **Deterministic from a seed.** Every stochastic system takes a `seed: Long` and uses its own
  *   [kotlin.random.Random], so a figure in the docs is reproducible and a regression is a diff.
@@ -52,7 +52,7 @@ import kotlin.math.sqrt
  *   ~1.7; a Gray–Scott spot regime is one whose [blobShapes] are round. Each of those is a number a
  *   control arm gets wrong.
  *
- * Out of scope on purpose: GPU implementations (that is `afield.four` / StackSL / RectSL — these are
+ * Out of scope: GPU implementations (that is `afield.four` / StackSL / RectSL — these are
  * CPU reference implementations you can read), and any system needing a trained model.
  */
 
@@ -64,9 +64,9 @@ import kotlin.math.sqrt
  * A rectangular lattice of integer cell states — the substrate every discrete automaton in the family
  * steps. Row-major, `cells[y * width + x]`, origin top-left (matching [Img]).
  *
- * Kept separate from `Img` on purpose: a CA cell is a *state label*, not a sample. Storing Conway's
+ * Kept separate from `Img`: a CA cell is a *state label*, not a sample. Storing Conway's
  * Life in floats invites `0.999f == 1` questions that have no business existing, and a `2f` state in a
- * cyclic CA with 12 states would quietly lose precision at the top of the range. Convert at the
+ * cyclic CA with 12 states would lose precision silently at the top of the range. Convert at the
  * boundary with [toImg] / [Img.toIntGrid].
  *
  * @property width cells across, >= 1
@@ -305,7 +305,7 @@ fun IntGrid.toImg(states: Int? = null): Img {
 }
 
 /**
- * Render this grid as RGB through an explicit palette, one `Triple(r, g, b)` per state — the honest
+ * Render this grid as RGB through an explicit palette, one `Triple(r, g, b)` per state — the exact
  * way to show a multi-state automaton, where a grayscale ramp implies an ordering between states that
  * may not exist. States beyond the palette wrap around it.
  */
@@ -685,7 +685,7 @@ data class MassRadiusFit(
  *   starts where `N(r)` is 3 is dominated by counting noise: the second run of this family measured a
  *   *uniform disc* at dimension 2.32 for exactly that reason, which is not a possible answer. Raising
  *   the inner radius until the statistics exist is the fix, and stating it as a parameter is how the
- *   fit stays honest about the range it is describing.
+ *   fit stays explicit about the range it is describing.
  */
 fun massRadiusDimension(
     points: List<Vec2>,

@@ -19,7 +19,7 @@ write to. The simplest is a uniform Structure — and none of this needs a GPU, 
 Structure is constructible bare and bind/bindings are plain maps.
 
 ```edn [field-box id="keyframe_targets" role="properties"]
-{"id" "keyframe_targets" "index" 0 "name" "What a scope watches — capture, edit, apply" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What a scope watches — capture, edit, apply" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_targets_code_.kt" "lines" 87 "characters" 3414 "sha256" "b691fc8dc6c3e799e5acd04c7a59f2bd7405f69dccaf9ab17d78b3d5f920d4f4"}]}
+{"id" "keyframe_targets" "index" 0 "name" "What a scope watches — capture, edit, apply" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What a scope watches — capture, edit, apply" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_targets_code_.kt" "lines" 87 "characters" 3407 "sha256" "562d32a9374e2dce2beff54846ac698c33eb5d8758520da6c54346989b0df4b5"}]}
 ```
 
 ```kotlin [field-property box="keyframe_targets" name="code" path="keyframe_targets_code_.kt"]
@@ -60,8 +60,8 @@ println("glow.intensity = " + glow.bindings["intensity"]?.invoke())
 println("blur.radius    = " + blur.bindings["radius"]?.invoke())
 println("glow.'glow@radius' = " + glow.bindings["glow@radius"]?.invoke() + "  <- never bound")
 
-// THE TRAP: capture() reads Structure.bindings and never Structure.values. A property
-// written by value rather than bound is invisible to a snapshot, and says nothing.
+// capture() reads binding-first-then-value, so both of these land in the key. It used to
+// read Structure.bindings alone, and `set` snapshotted as a silent null.
 val sneaky = Structure()
 sneaky.bind("bound") { 1.0f }
 sneaky["set"] = 2.0f

@@ -117,7 +117,7 @@ class LambdaPointer(override val name: String, private val read: () -> PointerSt
 /**
  * A mouse, made into a spatial pointer by inverting a camera.
  *
- * Deliberately built from three lambdas rather than from a `Renderer`: it is then usable from a test,
+ * Built from three lambdas rather than from a `Renderer`: it is then usable from a test,
  * from a headless capture and from a live window without three separate implementations, and the
  * camera can be rebuilt per frame (which it must be, if the window resizes).
  *
@@ -153,7 +153,7 @@ fun mousePointer(
  *
  * The forward convention is **+Z rotated by the controller's quaternion**, matching
  * [afield.four.imgui.ImGuiPanel.controllerRay] — the only place in the tree that had already made
- * this decision, for Field's mock controller and for OpenXR alike. Deliberately the same call rather
+ * this decision, for Field's mock controller and for OpenXR alike. The same call rather
  * than a second opinion: two conventions for "which way is a controller pointing" is exactly the bug
  * that takes a day to find.
  *

@@ -32,7 +32,7 @@ private const val STDLIB_NOISE_PHASE_PROPERTY = "__stdlib_noise_phase"
 /**
  * The seed every box's generator starts from, and the seed [setRandomSeed] undoes.
  *
- * It is `1L` — a fixed value on purpose, so that a freshly re-run box produces the same "random"
+ * It is `1L` — a fixed value, so that a freshly re-run box produces the same "random"
  * sketch as it did last time. Pass a seed of your own to [setRandomSeed] when you want a different
  * draw, or `null` for an unpredictable one.
  */

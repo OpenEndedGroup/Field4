@@ -534,7 +534,7 @@ data class PatDetectedNote(
     /**
      * True when this span is not one note at the pitch named for it.
      *
-     * Deliberately not called `polyphonicSuspected`, which is what it was called until the corpus was
+     * Not called `polyphonicSuspected`, which is what it was called until the corpus was
      * read carefully. A high residual has two causes and the spectrum cannot separate them: more than
      * one pitch really is sounding, or the pitch estimate straddles two notes and is therefore a
      * harmonic of neither. On `bass-register` it fires on the second cause, not the first. Either way
@@ -564,9 +564,9 @@ data class PatDetectedNote(
  * body of a note one run and a transition through it several short ones.
  *
  * Segments whose longest stable run carries fewer than [minVoicedFrames] frames are dropped rather
- * than named from almost no evidence. That deliberately produces misses instead of noise on material
+ * than named from almost no evidence. That produces misses instead of noise on material
  * below the detector's resolution, so a corpus reports recall collapsing rather than precision
- * quietly rotting.
+ * rotting unnoticed.
  *
  * [PatDetectedNote.startSample] stays at the boundary — the onset estimate — while the pitch comes
  * from the stable run, which is later. Keeping those two apart is what lets a case have good timing
@@ -910,7 +910,7 @@ fun patEnergyAtF0(
  * shorter than [minPeriods] periods of [f0] returns zero, because its frequency resolution is coarser
  * than the intervals it would have to separate: a 23 ms window cannot tell a 65 Hz note from a 65 Hz
  * note plus a 90 Hz one, and a detector that guessed there would be refusing at random. This is the
- * one place in the file where the honest answer is "no opinion".
+ * one place in the file where the right answer is "no opinion".
  *
  * The transform is sized to the span rather than fixed, so the analysed window stays inside the note
  * it is asking about. A 4096-point window is 93 ms at 44.1 kHz — longer than a note in half this

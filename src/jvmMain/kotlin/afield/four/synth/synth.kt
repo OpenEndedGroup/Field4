@@ -972,11 +972,11 @@ fun chorus(rate: Number = 1.5, depth: Number = 0.003, mix: Number = 0.5): Chorus
 
 // ─── dough ports (see DoughDsp.kt) ──────────────────────────────
 
-/** Naive, deliberately aliasing sawtooth — dough's `zaw`. */
+/** Naive, aliasing sawtooth — dough's `zaw`. */
 val zaw: ZawOsc
     get() = ZawOsc()
 
-/** Naive, deliberately aliasing pulse — dough's `pulze`. */
+/** Naive, aliasing pulse — dough's `pulze`. */
 val pulze: PulzeOsc
     get() = PulzeOsc()
 

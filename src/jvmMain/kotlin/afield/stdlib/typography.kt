@@ -80,7 +80,7 @@ import kotlin.math.sqrt
  *
  * `imaging_field.kt:417` explains why `montage` captions with a bitmap table instead of
  * `Graphics2D.drawString`: on macOS, touching the AWT font manager pulls in AppKit, which competes
- * with GLFW for the main run loop, and `Server.main` deliberately never initialises the toolkit. This
+ * with GLFW for the main run loop, and `Server.main` never initialises the toolkit. This
  * family cannot avoid the font manager — it *is* the font manager — so it contains the hazard in one
  * place, [Typefaces.warm], whose KDoc carries the measured stack trace and the conclusion:
  *
@@ -116,7 +116,7 @@ internal val typographyFrc: FontRenderContext = FontRenderContext(AffineTransfor
  * is shared and the glyph cache is keyed by the AWT font, so two `Typeface`s over the same font at
  * the same size share their extracted outlines.
  *
- * @property awtFont the AWT font, exposed on purpose — anything AWT can do to a font (attributes,
+ * @property awtFont the AWT font, exposed — anything AWT can do to a font (attributes,
  *   transforms, `deriveFont`) is available, and [Typeface.of] wraps the result back up.
  */
 class Typeface internal constructor(val awtFont: Font) {
@@ -160,7 +160,7 @@ class Typeface internal constructor(val awtFont: Font) {
      * The same font with AWT's kerning-pair lookup switched on or off.
      *
      * Not every font has a `kern` table, and logical fonts (`SansSerif`, …) resolve to whatever the
-     * platform picked, so this can legitimately be a no-op — [TextLayout.advanceWidth] is the honest
+     * platform picked, so this can legitimately be a no-op — [TextLayout.advanceWidth] is the authoritative
      * way to find out whether it did anything for a given font and string.
      */
     fun withKerning(on: Boolean): Typeface {
@@ -359,7 +359,7 @@ object Typefaces {
     /**
      * Every font family the graphics environment can see, sorted.
      *
-     * Held apart from [warm] on purpose: this is the *only* thing in the family that needs a
+     * Held apart from [warm]: this is the *only* thing in the family that needs a
      * `GraphicsEnvironment`, which is a second and heavier AWT hazard than the font manager
      * ([warm]'s KDoc has the measurement). Loading a face by name, laying text out and extracting
      * outlines all avoid it entirely, so a live box never pays for it unless it asks for the list
@@ -1253,7 +1253,7 @@ fun textWidth(text: String, typeface: Typeface, tracking: Double = 0.0): Double 
  * Even samples along a ring, by arc length — the primitive the point-cloud bridge is built from.
  *
  * Kept here rather than in `typography_field.kt` because [GlyphContour] owns its own resampling and
- * because it is the honest way to compare two rings' shapes at equal spacing.
+ * because it is the right way to compare two rings' shapes at equal spacing.
  */
 fun GlyphContour.resample(spacing: Double): List<Vec2> {
     require(spacing > 0) { "spacing must be positive, got $spacing" }

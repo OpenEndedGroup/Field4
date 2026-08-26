@@ -38,7 +38,7 @@ import kotlin.math.roundToInt
  * value, [FieldAudioClient.analyzeRenderedAudio] treats it identically: upload immutable bytes,
  * submit durable jobs, follow progress, and return assets rather than in-memory sample arrays.
  *
- * [provenance] is deliberately Field-owned. An asset id identifies WAV *bytes*, so two bits of code
+ * [provenance] is Field-owned. An asset id identifies WAV *bytes*, so two bits of code
  * that render the same bytes must have the same server identity even if their source text differs.
  * Keep the code itself in the Field document and put concise render parameters here.
  */

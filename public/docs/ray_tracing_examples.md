@@ -24,7 +24,7 @@ module += "dispatch" to RayTracingDispatch(module, width = 512, height = 512)
 renderer += "my ray tracing module" to module
 ```
 
-The shader bindings in these examples are deliberately minimal:
+The shader bindings in these examples are minimal:
 
 ```diffstatic {data-lang=glsl}
 layout(set = 0, binding = 0, rgba8) uniform image2D outputImage;

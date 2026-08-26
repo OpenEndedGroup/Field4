@@ -6,7 +6,7 @@ Field's standard library is large and, until now, invisible: the only ways to re
 
 **9094 public symbols across 191 source files**, 5522 of them (60%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
 
-The "documented" column is the honest one: it is a coverage report on Field's own KDoc, not a claim about this page. Where a summary is blank the declaration has none yet.
+The "documented" column is a coverage report on Field's own KDoc, not a claim about this page. Where a summary is blank the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
@@ -36,7 +36,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [AbletonSetDebugDrawing.kt](audio.md#abletonsetdebugdrawing-kt) | Audio | 26 | 0 |  |  |
 | [alife.kt](alife.md#alife-kt) | ALife | 51 | 39 | Spatial artificial life for the Field stdlib — the *continuous / grid / agent* half of ALife, the counterpart to the graph-rewriting half already here (`growing.kt`, `dynamic_graph_systems.kt`, `interactionnets.kt`, `booleannetworks.kt`) and to the constraint-based generator in `wfc.kt`. | [Spatial artificial life](../alife_examples.md) |
 | [alife_agents.kt](alife.md#alife-agents-kt) | ALife | 59 | 24 | Agent-based spatial ALife: boids flocking, a Physarum (slime-mould) deposit–sense–move population over a trail `Img`, and diffusion-limited aggregation. | [Spatial artificial life](../alife_examples.md) |
-| [alife_animate.kt](alife.md#alife-animate-kt) | ALife | 5 | 5 | One shared, honest way to *animate* the `alife*.kt` family — because every system in it is a time evolution, and a montage of frozen generations is the one view that hides the thing they are about. | [Spatial artificial life](../alife_examples.md) |
+| [alife_animate.kt](alife.md#alife-animate-kt) | ALife | 5 | 5 | One shared way to *animate* the `alife*.kt` family — because every system in it is a time evolution, and a montage of frozen generations is the one view that hides the thing they are about. | [Spatial artificial life](../alife_examples.md) |
 | [alife_ca.kt](alife.md#alife-ca-kt) | ALife | 84 | 60 | Discrete cellular automata: life-like and outer-totalistic rules on a 2-D lattice, cyclic multi-state CA, Wolfram's elementary 1-D rules as a space-time raster, and a 3-D life-like CA that marches out to a `TriMesh`. | [Spatial artificial life](../alife_examples.md) |
 | [alife_continuous.kt](alife.md#alife-continuous-kt) | ALife | 69 | 40 | Continuous spatial ALife: reaction–diffusion (Gray–Scott / Turing) and Lenia, all shaped as `Img -> Img` steps so they compose with the imaging family. | [Spatial artificial life](../alife_examples.md) |
 | [alife_field.kt](alife.md#alife-field-kt) | ALife | 3 | 3 | Inline `ToHTML` views for the `alife*.kt` family — what a box draws when you *evaluate* an `IntGrid` or a `GrayScottState`, with nothing to set up. |  |
@@ -82,7 +82,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [Dough.kt](synthesis.md#dough-kt) | Synthesis | 20 | 0 |  |  |
 | [DoughDsp.kt](synthesis.md#doughdsp-kt) | Synthesis | 57 | 40 |  | [DoughDSP: hear the primitives](../dough_dsp_sound.md) |
 | [DoughDspSoundDocs.kt](synthesis.md#doughdspsounddocs-kt) | Synthesis | 16 | 13 |  | [DoughDSP: hear the primitives](../dough_dsp_sound.md) |
-| [dynamic_graph_field.kt](data.md#dynamic-graph-field-kt) | Data | 11 | 11 | The two honest ways to *look at* `dynamic_graph_systems.kt` — the point cloud and the weighted edges joining it, so a time-varying graph can be watched rather than described. | [Graphs that change while you watch](../dynamic_graph_systems_examples.md) |
+| [dynamic_graph_field.kt](data.md#dynamic-graph-field-kt) | Data | 11 | 11 | The two useful ways to *look at* `dynamic_graph_systems.kt` — the point cloud and the weighted edges joining it, so a time-varying graph can be watched rather than described. | [Graphs that change while you watch](../dynamic_graph_systems_examples.md) |
 | [dynamic_graph_systems.kt](data.md#dynamic-graph-systems-kt) | Data | 157 | 17 | Time-varying point-and-edge systems: point clouds that move every frame while the graph joining them is continually reinforced and decayed. | [Graphs that change while you watch](../dynamic_graph_systems_examples.md) |
 | [Effects.kt](synthesis.md#effects-kt) | Synthesis | 76 | 33 |  | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [Envelopes.kt](synthesis.md#envelopes-kt) | Synthesis | 46 | 9 |  | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
@@ -156,7 +156,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [ParamQuery.kt](synthesis.md#paramquery-kt) | Synthesis | 57 | 4 | The synth-facing head of the graph-query layer: turn a `PathSet` into a set of *drivable parameters*. | [Querying object graphs](../graph_query.md) |
 | [PatAlgebra.kt](patterns.md#patalgebra-kt) | Patterns | 66 | 65 |  | [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md), [Sonic Pi](../sonic_pi.md) |
 | [PatClock.kt](patterns.md#patclock-kt) | Patterns | 14 | 0 |  |  |
-| [PatComposition.kt](patterns.md#patcomposition-kt) | Patterns | 53 | 53 |  | [Patterns: writing rhythm as a function of time](../pattern_language.md), [Faust](../faust.md), [How the popup decides](../how_the_popup_decides.md) |
+| [PatComposition.kt](patterns.md#patcomposition-kt) | Patterns | 53 | 53 |  | [Patterns: writing rhythm as a function of time](../pattern_language.md), [How completions are ranked](../completion_ranking.md), [Faust](../faust.md) |
 | [PatFunctions.kt](patterns.md#patfunctions-kt) | Patterns | 48 | 6 |  |  |
 | [PatOnsetDetection.kt](patterns.md#patonsetdetection-kt) | Patterns | 14 | 8 |  |  |
 | [PatPatternReturnValue.kt](patterns.md#patpatternreturnvalue-kt) | Patterns | 1 | 0 |  |  |
@@ -174,7 +174,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [pointing_pick.kt](graphics.md#pointing-pick-kt) | Graphics | 51 | 48 | A scene you can point at, and a hit record that names the **part** you touched rather than the triangle. |  |
 | [pointing_pointer.kt](graphics.md#pointing-pointer-kt) | Graphics | 36 | 32 | A person pointing — mouse, XR controller or pinched hand — behind one interface, and the hover / press / drag / release machine that turns a stream of samples into an interaction. |  |
 | [pointing_render.kt](graphics.md#pointing-render-kt) | Graphics | 17 | 14 | Seeing what the pointer found: the picked part lit, a crosshair where the pointer was aimed, and a caption that names what it hit. |  |
-| [Polytope4.kt](polytopes.md#polytope4-kt) | Polytopes | 43 | 36 | Rank 4: the seeds, the coordinates and the viewing policy that keep the incidence core honest about being rank-general rather than a polyhedron library with a rank field. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
+| [Polytope4.kt](polytopes.md#polytope4-kt) | Polytopes | 43 | 36 | Rank 4: the seeds, the coordinates and the viewing policy that keep the incidence core general about being rank-general rather than a polyhedron library with a rank field. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [PolytopeVisualizers.kt](polytopes.md#polytopevisualizers-kt) | Polytopes | 1 | 1 | The single place this package knows that Field has a screen — and it is one function long. |  |
 | [props.kt](workspace.md#props-kt) | Workspace | 4 | 4 | The `prop` / `rootProp` macro pair — the typed, inheritable box-property slot. |  |
 | [Protocol.kt](audio-ai.md#protocol-kt) | Audio AI | 267 | 195 | The wire vocabulary of Field Audio — one Kotlin type per JSON object in the pinned service contract, and nothing else. | [Field Audio service reference](../field_audio_service_reference.md), [Beat and pitch analysis: from source to synchronized views](../audio_ai_analysis.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
@@ -187,7 +187,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [saved.kt](data.md#saved-kt) | Data | 7 | 7 | Per-box persistence for Kotlin values, on top of kotlinx.serialization. |  |
 | [SemanticSearchManager.kt](data.md#semanticsearchmanager-kt) | Data | 38 | 0 | Box-facing wrapper around `afield.ai.SemanticRetrievalService`, Field's embedding-based search over source, docs and workspace boxes. |  |
 | [Sequencing.kt](patterns.md#sequencing-kt) | Patterns | 54 | 0 |  | [Boolean network music examples](../boolean_network_music_examples.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
-| [shaders.kt](graphics.md#shaders-kt) | Graphics | 163 | 163 | The bridge between a box's text and a live Vulkan pipeline: shader source lives in box properties, and this file turns it into modules and keeps them hot-reloading. | [afield.four Graphics](../afield_four_graphics.md), [How Box Code Runs](../box_code_pipeline.md), [Field Probes — instrumenting shaders](../field_probes.md) |
+| [shaders.kt](graphics.md#shaders-kt) | Graphics | 163 | 163 | The bridge between a box's text and a live Vulkan pipeline: shader source lives in box properties, and this file turns it into modules and keeps them hot-reloading. | [afield.four Graphics](../afield_four_graphics.md), [Running code in a box](../running_code.md), [Field Probes — instrumenting shaders](../field_probes.md) |
 | [Signal.kt](synthesis.md#signal-kt) | Synthesis | 104 | 19 |  | [Making a sound in Field: every path there is](../sound_paths.md), [Faust](../faust.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [smile_interpolation_regression.kt](math.md#smile-interpolation-regression-kt) | Math | 21 | 0 | Two 1D fitters that wrap the Smile library: `smileCubicSpline` (cubic spline interpolation through the data) and `smileGaussianProcess` (Gaussian-process regression with a Gaussian kernel, configured by `SmileGpOptions`). |  |
 | [smile_neighbors.kt](data.md#smile-neighbors-kt) | Data | 26 | 26 | Nearest-neighbour indexes over `Vec2` / `Vec3` point lists, wrapping Smile's `KDTree` and `LSH`. | [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md) |
@@ -204,11 +204,11 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [stacksl.kt](graphics.md#stacksl-kt) | Graphics | 19 | 19 | Host-side entry points for StackSL: compiling the stack language to GLSL, and evaluating it on the GPU sample by sample. | [StackSL cheatsheet](../stacksl_cheatsheet.md), [StackSL examples](../stacksl_examples.md) |
 | [StandardDrawing.kt](graphics.md#standarddrawing-kt) | Graphics | 41 | 41 | The small vocabulary of `FLine` construction and styling that sketches and examples reach for first. | [FLine examples (Field graphics)](../fline_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md) |
 | [stats.kt](math.md#stats-kt) | Math | 176 | 23 | Descriptive statistics, and the SVG/HTML renderings Field uses to put them in a box output. | [Which of these signals actually depend on each other?](../statistics_examples.md) |
-| [stdlib.kt](workspace.md#stdlib-kt) | Workspace | 75 | 72 | The general-purpose helpers that every Field box already has in scope. | [How Box Code Runs](../box_code_pipeline.md) |
+| [stdlib.kt](workspace.md#stdlib-kt) | Workspace | 75 | 72 | The general-purpose helpers that every Field box already has in scope. | [Running code in a box](../running_code.md) |
 | [Summaries.kt](polytopes.md#summaries-kt) | Polytopes | 58 | 43 | Small, plain data classes that reduce the library's big values to something worth reading. |  |
 | [Symmetry.kt](polytopes.md#symmetry-kt) | Polytopes | 32 | 17 | Symmetry as a combinatorial fact, and as something a solver can be asked for. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [synth.kt](synthesis.md#synth-kt) | Synthesis | 78 | 19 |  | [Making a sound in Field: every path there is](../sound_paths.md) |
-| [tables.kt](visualization.md#tables-kt) | Visualization | 35 | 35 | Tabular output — the structure, and the one renderer for it. | [Frames, and what a frame is](../animation_time_model.md), [DataFrames in a Box](../dataframe.md), [How the popup decides](../how_the_popup_decides.md) |
+| [tables.kt](visualization.md#tables-kt) | Visualization | 35 | 35 | Tabular output — the structure, and the one renderer for it. | [Frames, and what a frame is](../animation_time_model.md), [DataFrames in a Box](../dataframe.md), [How completions are ranked](../completion_ranking.md) |
 | [TidalPatterns.kt](patterns.md#tidalpatterns-kt) | Patterns | 170 | 35 |  | [Patterns: writing rhythm as a function of time](../pattern_language.md), [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md), [Sonic Pi](../sonic_pi.md) |
 | [timeseries.kt](math.md#timeseries-kt) | Math | 212 | 212 | Streaming, time-domain filters over `Float` signals — the sample-at-a-time counterpart to the frequency-domain code in `spectral.kt`. | [Timeseries examples](../timeseries_examples.md), [Spectral examples](../spectral_examples.md) |
 | [Topology.kt](polytopes.md#topology-kt) | Polytopes | 89 | 61 | The abstract incidence complex — the authoritative value in `afield.stdlib.polytope`, and the one layer that knows nothing about coordinates. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
@@ -228,7 +228,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 ## What is not here
 
 - **The generated vector algebra** (`afield.stdlib.linalg`) has its own, better page: [Generated vector API reference](../linear_algebra_api.md), with [Linear algebra in Field](../linear_algebra.md) for the intuition.
-- **Declarations marked `Internal`** by their own `@file:CompletionCategory` are plumbing, and are excluded on purpose.
+- **Declarations marked `Internal`** by their own `@file:CompletionCategory` are plumbing, and are excluded.
 - **The harnesses** — smoke tests, docs figure galleries, the audio-provenance audit and the compile-only synth cookbook — are build machinery rather than API, and are excluded by path. They are still real, still run in `check`, and still worth reading; they are just not the answer to "what can I call?".
 - **Graphics, rendering and the small languages beyond their host side** live in `afield.four`, `afield.rectsl` and `afield.stacksl`; start from [afield.four Graphics](../afield_four_graphics.md), the [RectSL cheatsheet](../rectsl_cheatsheet.md) and the [StackSL cheatsheet](../stacksl_cheatsheet.md). `afield.four.synth` **is** here — it is the audio half of `afield.four`, and [Sound: from a pattern to something you can hear](../sound.md) is the prose it belongs to.
 

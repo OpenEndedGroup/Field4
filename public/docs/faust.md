@@ -104,7 +104,7 @@ recompiling must not snap every slider back to its default.
 | `hgroup`, `vgroup`, `tgroup` | a qualified label, `filter/cutoff` |
 | `[unit:Hz]` | appended to the label |
 
-Three of those are honest compromises rather than finished work:
+Three of those are compromises rather than finished work:
 
 * **`button` is momentary in Faust and Field's checkbox latches.** Holding the checkbox holds the
   gate, which is usable, but it is not the same thing. From code, `launch.press("gate")` is the real
@@ -223,7 +223,7 @@ cutoff (hslider), freq (hslider).
 Silence is the hardest bug to read, and writing to control 0 and hoping is how you get it.
 
 The control group a polyphonic launch generates contains the *shared* controls only — `cutoff` here.
-`freq`, `gate` and `gain` are deliberately absent: the notes write them on the sample a note begins, and a
+`freq`, `gate` and `gain` are absent: the notes write them on the sample a note begins, and a
 slider fighting the notes for them would look broken.
 
 ### Voice allocation, and what it does when it runs out
@@ -238,7 +238,7 @@ Stated, because an allocator without a stated policy is a guess:
 3. else **steal the oldest sounding voice**, counted as `steals`. A note is never dropped; an instrument
    that silently ignores a note is worse than one that audibly runs out.
 
-`peakConcurrency` reports the most voices that ever sounded together, which is the honest measure of how
+`peakConcurrency` reports the most voices that ever sounded together, which is the measure that matters for how
 much polyphony a pattern actually asked for.
 
 #### A steal clicks, and by how much
@@ -359,7 +359,7 @@ than preferences:
 
 Note also how much cheaper these figures are than the 60.4 µs a single `FaustDsp` block is documented at
 below. That figure is measured after 500 warm-up blocks; these are measured after several seconds of real
-rendering, by which point Truffle has compiled the wasm properly. Both are honest; they are answers to
+rendering, by which point Truffle has compiled the wasm properly. Both are correct; they answer
 different questions, and the first bank built in a process really does cost 118 µs a block until it warms.
 
 ### The audio thread takes no lock

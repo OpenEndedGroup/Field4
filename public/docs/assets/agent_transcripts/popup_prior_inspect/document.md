@@ -22,10 +22,10 @@ description of it. Change `receiver` to any qualified type name to ask about you
 What this cannot tell you is which SECTION each of these lands in, which is the other half
 of where a row appears on screen. That answer belongs to KotlinCompletionSupport, and it is
 `internal` — deliberately unreachable from a box. Use `FIELD_RANK_DUMP` for that; it prints
-a `category=` beside every visible row. See public/docs/how_the_popup_decides.md.
+a `category=` beside every visible row. See public/docs/completion_ranking.md.
 
 ```edn [field-box id="agent_popup_prior_inspect" role="properties"]
-{"id" "agent_popup_prior_inspect" "index" 0 "name" "What prior does the popup have" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What prior does the popup have" "_tombstone" false "frame" #afield/rect [80.0 80.0 680.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_popup_prior_inspect_code_.kt" "lines" 31 "characters" 1747 "sha256" "553fa8468ee4d5d00dc3359240dc055a6c99395721748609b36402470932e3c8"}]}
+{"id" "agent_popup_prior_inspect" "index" 0 "name" "What prior does the popup have" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What prior does the popup have" "_tombstone" false "frame" #afield/rect [80.0 80.0 680.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_popup_prior_inspect_code_.kt" "lines" 31 "characters" 1735 "sha256" "9abc89fb22d2b377e6ba96561cdef1b6f7c3edc66bdc826bf733789d4f265952"}]}
 ```
 
 ```kotlin [field-property box="agent_popup_prior_inspect" name="code" path="agent_popup_prior_inspect_code_.kt"]
@@ -37,7 +37,7 @@ a `category=` beside every visible row. See public/docs/how_the_popup_decides.md
 // What this cannot tell you is which SECTION each of these lands in, which is the other half
 // of where a row appears on screen. That answer belongs to KotlinCompletionSupport, and it is
 // `internal` — deliberately unreachable from a box. Use `FIELD_RANK_DUMP` for that; it prints
-// a `category=` beside every visible row. See public/docs/how_the_popup_decides.md.
+// a `category=` beside every visible row. See public/docs/completion_ranking.md.
 val receiver = "afield.graphics.FLine"
 val ranks = afield.CommonMemberPrior.ranksFor(receiver)
 
@@ -49,7 +49,7 @@ val prior = Table(listOf("position", "member", "prior score"))
     })
     .role("member", CellRole.ACCENT)
 
-// The arithmetic the heading claims, as an assertion rather than a sentence.
+// The arithmetic the heading claims, checked rather than described.
 check(ranks.all { (_, position) ->
     afield.CommonMemberPrior.scoreOf(position) ==
         afield.CommonMemberPrior.BASE - afield.CommonMemberPrior.STEP * (position - 1)

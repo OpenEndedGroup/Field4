@@ -1,8 +1,93 @@
 package afield
 
 import com.facebook.ktfmt.format.Formatter
+import com.facebook.ktfmt.format.Parser
+import org.jetbrains.kotlin.com.intellij.psi.PsiComment
+import org.jetbrains.kotlin.lexer.KtTokens
+import org.jetbrains.kotlin.psi.psiUtil.collectDescendantsOfType
+import org.jetbrains.kotlin.psi.psiUtil.endOffset
+import org.jetbrains.kotlin.psi.psiUtil.startOffset
 
-fun formatKotlinCode(code: String) = Formatter.format(Formatter.KOTLINLANG_FORMAT.copy(maxWidth = 200), code)
+fun formatKotlinCode(code: String, blockifyComments: Boolean = true): String {
+    val formatted = Formatter.format(Formatter.KOTLINLANG_FORMAT.copy(maxWidth = 200), code)
+    return if (blockifyComments) blockifyLineCommentRuns(formatted) else formatted
+}
+
+// Two // lines read as a pair of remarks as often as they read as one paragraph, so the run has
+// to be longer than that to be worth a pair of delimiters.
+private const val MINIMUM_RUN = 3
+
+private class LineCommentLine(val end: Int, val lineStart: Int, val indent: String, val body: String)
+
+// Collapse a run of three or more consecutive own-line // comments into one block comment.
+// Runs at the same indentation with no blank line between them are one comment in intent, so
+// give them one pair of delimiters.
+//
+// Two rules earn their keep here:
+//
+//  - The delimiters get their own lines and the body sits at the block's own indentation. ktfmt
+//    re-indents a block comment's continuation lines to exactly that column, so this shape is a
+//    fixed point, and whatever indentation the body carries inside itself survives. Aligning the
+//    body past the opening delimiter would not survive: ktfmt pulls it back on the next pass.
+//
+//  - A run whose text contains either block-comment delimiter is left alone. Kotlin block
+//    comments nest, so an opening delimiter inside the body would need a matching closer and a
+//    closing one would end the block early -- either way the rest of the file is swallowed.
+//
+// Run this on ktfmt's output, not its input: the indentation is already canonical, and ktfmt
+// never gets a second look at what we emit.
+fun blockifyLineCommentRuns(code: String): String {
+    // If ktfmt handed us something we can't re-parse, the transform simply doesn't apply.
+    val file = try {
+        Parser.parse(code)
+    } catch (t: Throwable) {
+        return code
+    }
+
+    val ownLine = file.collectDescendantsOfType<PsiComment>()
+        .filter { it.tokenType == KtTokens.EOL_COMMENT }
+        .sortedBy { it.startOffset }
+        .mapNotNull { comment ->
+            val start = comment.startOffset
+            val lineStart = code.lastIndexOf('\n', start - 1) + 1
+            val indent = code.substring(lineStart, start)
+            // Anything other than leading whitespace makes this a trailing comment on a line of
+            // code, which stays as it is.
+            if (indent.isNotBlank()) return@mapNotNull null
+            LineCommentLine(comment.endOffset, lineStart, indent, comment.text.removePrefix("//"))
+        }
+
+    val runs = mutableListOf<MutableList<LineCommentLine>>()
+    ownLine.forEach { line ->
+        val open = runs.lastOrNull()
+        val previous = open?.lastOrNull()
+        // Exactly one newline between them: same indentation, no blank line, nothing else.
+        val adjacent = previous != null &&
+            previous.indent == line.indent &&
+            code.substring(previous.end, line.lineStart) == "\n"
+        if (open != null && adjacent) open.add(line) else runs.add(mutableListOf(line))
+    }
+
+    // Back to front, so the offsets of the runs we haven't rewritten yet stay valid.
+    val out = StringBuilder(code)
+    runs.asReversed()
+        .filter { it.size >= MINIMUM_RUN }
+        .filter { run -> run.none { it.body.contains("/*") || it.body.contains("*/") } }
+        .forEach { run ->
+            val indent = run.first().indent
+            val block = buildString {
+                append(indent).append("/*\n")
+                run.forEach { line ->
+                    val text = line.body.removePrefix(" ").trimEnd()
+                    // An empty line stays empty rather than becoming an indent's worth of spaces.
+                    if (text.isEmpty()) append('\n') else append(indent).append(text).append('\n')
+                }
+                append(indent).append("*/")
+            }
+            out.replace(run.first().lineStart, run.last().end, block)
+        }
+    return out.toString()
+}
 
 private val glslProperties = setOf(
     "fragment",

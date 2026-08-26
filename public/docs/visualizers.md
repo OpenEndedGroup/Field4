@@ -27,7 +27,7 @@ box.viz(value = value)        // convenience: visualize into the box's "viz" cha
 
 `.h` is the lightweight view used throughout Field; its heavier sibling `.h2`
 opens a paged browser for large structures. The built-in and reflective paths are
-deliberately forgiving: they track recursion by reference, cap depth and preview
+forgiving by design: they track recursion by reference, cap depth and preview
 sizes, catch reflective getter failures, and guard optional plots and thumbnails
 (including a throwing `Fn.evalFn`). Objects implementing `ToHTML` and callbacks
 registered with `registerValuePrinter` are extension points whose returned HTML is
@@ -200,7 +200,7 @@ scene.h
 
 #### The range policy, which is the whole design
 
-This family is **float-channel and deliberately unbounded**. A Sobel `dx` is
+This family is **float-channel and unbounded**, which is the point. A Sobel `dx` is
 signed. An unnormalised response exceeds 1. An upstream division produces a NaN. A
 visualizer that just clamps everything to `0…1` answers all three questions with a
 flat white rectangle. So the renderer picks one of three modes and **always names
@@ -708,7 +708,7 @@ Three things make this work on real figures rather than just on prose:
 
 Beyond GitHub-flavoured markdown there are two additions: `:::row … :::end`, splitting columns on a `---` line, for the before/after shape markdown cannot spell; and `{role:text}` spans — `accent`, `muted`, `dim`, `ok`, `warn`, `bad` — so a callout never needs a hex literal. Neither applies inside code, so a `:::row` or a `{warn:…}` shown *as* an example stays as written.
 
-Close a row with `:::end`, not a bare `:::`. Both work in a live box, but on a docs page the runner treats a line that is exactly `:::` as one of its own fence-section markers — the same family as the `:::static` at the top of every runnable example — and strips it out of the code before running it. The row then never closes and quietly swallows the rest of the card, in the built page only.
+Close a row with `:::end`, not a bare `:::`. Both work in a live box, but on a docs page the runner treats a line that is exactly `:::` as one of its own fence-section markers — the same family as the `:::static` at the top of every runnable example — and strips it out of the code before running it. The row then never closes, and swallows the rest of the card in the built page only.
 
 You do not need `trimIndent()`; the text is dedented for you, and unlike `trimIndent` it survives having a multi-line value interpolated into it. `width` pins the card, which matters for a docs `capture="box"` screenshot: that clips to the output card, so an unpinned card sized by its widest unbreakable line loses everything past the clip.
 
@@ -1069,7 +1069,7 @@ display("analysis", analysisDashboardHtml(
 
 This synchronizes across separate `display(...)` output documents. Playback publishes a gold
 playhead to every joined view; hover publishes a temporary cursor; click publishes a seek; and zoom
-or pan publishes a visible time window. The deliberately small callback protocol is also available
+or pan publishes a visible time window. The callback protocol is small, and is also available
 to handwritten HTML, gesture views and future timeline widgets through parent-window
 `CustomEvent`s:
 

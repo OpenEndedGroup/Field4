@@ -261,7 +261,7 @@ object StatsDependence {
     // and a two-valued one read 0.9702330025889176 at n=300, for predictors carrying no information.
     // -------------------------
     /**
-     * Chatterjee's xi, which is **asymmetric on purpose**: it measures how nearly `y` is a *function* of
+     * Chatterjee's xi, which is **asymmetric, and that is the point**: it measures how nearly `y` is a *function* of
      * `x`, so swapping the arguments asks a different question and returns a different number. Near 0 for
      * independence, near 1 when y is a noiseless function of x — including a non-monotone one such as a
      * parabola, where [pearson] reads 0 and [kendallTauB] not much more.
@@ -275,7 +275,7 @@ object StatsDependence {
      * deterministic, reproducible, and invariant to the order you present the pairs in. Two consequences
      * worth knowing: a constant predictor reads 0 — the closed form is *exactly* zero for every n, and in
      * `Double` it lands within one ulp of that (over n = 2..400, 54 values of n come back non-zero, the
-     * largest being 2.2e-16) — and quantised or categorical `x` is answered honestly rather than being
+     * largest being 2.2e-16) — and quantised or categorical `x` is answered correctly rather than being
      * scored on arrival order. Inputs with all-distinct `x` are unaffected, bit for bit.
      *
      * Until 2026-07-30 x-ties broke by input index instead, so a constant predictor read **0.970** and a

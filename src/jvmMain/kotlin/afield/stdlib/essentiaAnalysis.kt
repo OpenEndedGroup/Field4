@@ -39,7 +39,7 @@ import kotlin.math.roundToInt
  * [loadSound2Vec] reads a directory of `metadata.csv` + `embeddings.npy` (+ optional
  * `manifest.json`) into a [Sound2VecDataset] of [Sound2VecClip]s, each carrying its embedding, its
  * time span within a source audio file, and optional t-SNE 2D/3D coordinates; clips can be looked
- * up by chunk id, or by audio path and time. The bundled `.npy` reader is deliberately narrow: it
+ * up by chunk id, or by audio path and time. The bundled `.npy` reader is narrow: it
  * accepts only C-ordered (non-Fortran) `float32` 1D or 2D arrays, and by default requires the CSV
  * row count, the embedding row count and the manifest's `num_chunks` / `embedding_dim` to agree.
  */

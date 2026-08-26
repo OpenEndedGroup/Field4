@@ -25,7 +25,7 @@ import kotlin.math.sin
  * wrote down in between.
  *
  * A codec round trip is three things that have to be looked at together — the audio in, the discrete
- * tokens, the audio out — and this file is the rendering half of that view. It is deliberately
+ * tokens, the audio out — and this file is the rendering half of that view. It is
  * browser-free below the top layer: the spectrograms, the waveform and the token map are drawn into
  * PNG bytes on the JVM, so the same code produces a live box output, a test assertion and the
  * committed picture on [the EnCodec microscope page](../audio_ai_codec.md).
@@ -253,7 +253,7 @@ object CodecVisualization {
     /**
      * The token tensor as PNG bytes: time across, codebooks down, coarse to fine, one hue per code.
      *
-     * Colour is a cyclic function of the code index, so neighbouring codes look unrelated on purpose:
+     * Colour is a cyclic function of the code index, so neighbouring codes look unrelated:
      * a codebook index is a label, not a magnitude, and a continuous ramp would invent a similarity
      * the codes do not have. Thin lines separate the codebook lanes.
      */

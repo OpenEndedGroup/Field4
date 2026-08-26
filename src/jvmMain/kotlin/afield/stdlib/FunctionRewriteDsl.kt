@@ -13,7 +13,7 @@ package afield.stdlib
  * `domain=`, `drop`, and the numeric `=`, `*=`, `/=`, `+=`, `-=` forms. `op=` targets are checked
  * against `OpRegistry`; an unknown op is reported as a warning, not an error.
  *
- * The file deliberately does not depend on the live-code compiler. A Kotlin right-hand side is
+ * The file does not depend on the live-code compiler. A Kotlin right-hand side is
  * parsed out of its `@{...}` (or dollar-brace) wrapper and then handed to
  * [FnRewriteOptions.kotlinNumberContext]; when no caller supplied one, the action is simply not
  * applied. FunctionRewriteKotlin.kt is what plugs a box's Kotlin engine into that hook, and
@@ -110,7 +110,7 @@ data class FnRewriteNumberContext(
  * stay shared.
  *
  * The default is the compiler-free configuration, and that is a trap worth knowing: with no evaluator
- * installed, a rule whose action is a Kotlin expression is **quietly not applied** — the rule still
+ * installed, a rule whose action is a Kotlin expression is **not applied, and says nothing** — the rule still
  * matches, and a preview records it as `matched/no-op`. Pass an evaluator (or use `rewriteKotlin`,
  * which wires the live box's one in for you) when those actions are meant to run.
  */
@@ -242,7 +242,7 @@ data class FnRewriteApplication(
     /** The op afterwards. Usually the same: a naming edit, a numeric edit or a refused transmutation all leave it. */
     val afterOp: String,
     /**
-     * Whether the node's structural signature actually moved. False is the honest report for a
+     * Whether the node's structural signature actually moved. False is the correct report for a
      * transmutation the `OpRegistry` refused, a numeric action on a non-numeric node, a Kotlin
      * right-hand side with no evaluator installed, and `*= 1.0`.
      */
@@ -322,7 +322,7 @@ fun compileFnRewrite(spec: String): FnRewriteProgram = parseFnDslRewriteProgram(
  * Compiles [spec] and applies it, returning a new function and discarding everything the attempt
  * learned — the forgiving one-liner for sketching and performance.
  *
- * Deliberately quiet: rules that failed to parse are skipped, rules that matched nothing say nothing,
+ * Quiet: rules that failed to parse are skipped, rules that matched nothing say nothing,
  * an impossible transmutation leaves the node alone, and a Kotlin right-hand side with no evaluator in
  * [options] is not applied. Always returns a fresh graph, even for a spec with no usable rules at all
  * (that case is a plain deep copy). When you need to know what actually happened, use
@@ -377,15 +377,15 @@ fun Functions.Fn.previewRewrite(
 }
 
 /**
- * [Functions.Fn.rewrite], but a malformed spec throws instead of quietly applying whatever rules parsed.
+ * [Functions.Fn.rewrite], but a malformed spec throws instead of applying whatever rules parsed.
  *
  * Note the order: the rewrite is *run* first and its result discarded if the program had an error, because
  * the diagnostics come out of the same pass. So a `@{...}` right-hand side may well have been compiled and
  * evaluated before the throw — that is fine for pure expressions and worth knowing for anything else.
  * Throws `IllegalArgumentException` carrying [FnRewriteProgram.diagnosticText] when the program has any
  * error. Only errors: a warning — the usual one being an `op=` target the `OpRegistry` does not know —
- * passes through here and then quietly does nothing at the nodes it matches, so check a preview too if
- * a transmutation is load-bearing.
+ * passes through here and then does nothing at the nodes it matches, so check a preview too if
+ * the transmutation matters.
  */
 fun Functions.Fn.rewriteChecked(
     spec: String,

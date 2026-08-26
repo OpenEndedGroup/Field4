@@ -57,7 +57,7 @@ Four more generators build a mesh out of something you already have rather than 
 lathe), `tubeMesh` (a rotation-minimising sweep along a 3D path) and `heightfieldMesh` — which has a
 lambda form and an `Img.toHeightfieldMesh()` form, and that second one is the bridge from the
 [imaging family](imaging_examples.md) into this one. The two heightfields are the only panels here
-that are open surfaces (χ=1) rather than closed solids, which is the honest reading of what a
+that are open surfaces (χ=1) rather than closed solids, which is the correct reading of what a
 heightfield is.
 
 ![Five derived generators: an extruded concave L, a lathed goblet, a helical tube, a heightfield from a lambda, and a heightfield read out of an image — each headed with its call, triangle count, Euler characteristic and genus](assets/mesh_gallery/07-derived-generators.png)
@@ -211,7 +211,7 @@ The two spheres are the same field at two grid resolutions: **1544 triangles and
 with χ = 2, and the error falls from **1.82% to 0.11%** — roughly the O(*h*²) you should demand of a
 marcher, and the printed table in the box carries all four resolutions. The drilled solid is the
 topology point: it looks like a sphere from most angles and reports **χ = 0, genus 1**. The gyroid is
-the honest edge case — **χ = −20, genus 4, and *open*, with 20 boundary loops**, because the surface
+the awkward edge case — **χ = −20, genus 4, and *open*, with 20 boundary loops**, because the surface
 runs out of the sampling box rather than closing inside it. `summary()` says so rather than
 pretending, and [Field's 3D output](three_output.md#one-scene-two-kinds-of-thing) draws those twenty
 loops over the surface so you can see where they are.
@@ -406,7 +406,7 @@ only across creases, and `withVertexNormals()` shares them all — 144, 50 and 2
 
 Those two are the whole *dependency-free* story, and they are not the whole story: PLY, glTF and GLB
 read as well. [Geometry from disk](geometry_from_disk.md) is the route from any format to pixels — one
-call per format, a measured table of what each one loses in each direction, and an honest list of what
+call per format, a measured table of what each one loses in each direction, and a list of what
 cannot be read at all (STEP and every other CAD boundary representation).
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/mesh_examples/bridges.png" wait="3.0" capture="box" open-outputs="true" padding="20"}
@@ -561,8 +561,8 @@ amounts to produce:
 | the five `diffstatic_runner` fences above | **executed by the docs build**; the image under each is that box's own output, drawn by the Three.js viewer — which is what `showMeshGrid` now uses |
 | `assets/mesh_gallery/*.png` (six figures) | **committed captures** from the `mesh.gallery` FIELD_TEST: `MESH_GALLERY_DIR=public/docs/assets/mesh_gallery python3 tools/run_field_tests.py --id mesh.gallery --port 9700`. These are composited from `renderPixels`, so they are the **CPU rasterizer** and always will be — that is the point of them. The gallery renders eleven figures; the five not shown here are the ones the `diffstatic_runner` fences above already cover live, and they stay in `dev_docs/assets/mesh_gallery/` |
 
-Read both routes as "real output, as of when it was taken", and regenerate deliberately after changing
-the family. What guards the family continuously is the gallery itself: it is a FIELD_TEST
+Read both routes as "real output, as of when it was taken", and regenerate them after changing the
+family. What guards the family continuously is the gallery itself: it is a FIELD_TEST
 rather than a script, so
 it **fails** if the invariants break — if a generator stops being watertight, if a marched sphere's
 volume error stops falling with resolution, if a decimation misses its budget, if Gauss–Bonnet stops

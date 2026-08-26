@@ -100,4 +100,4 @@ Reusable transcript examples live under `dev_docs/agents/transcripts/`. The most
 - [Boolean Networks Examples](boolean_networks_examples.md) connects wiring diagrams, state spaces, attractors, and rhythm grids.
 - [Boolean Network Music Examples](boolean_network_music_examples.md) maps Boolean network steps into `NoteProcess` and live Dirt triggers.
 
-Missing from this section, on purpose for now: a full guide to the low-level Vulkan renderer internals, especially device setup, synchronization, descriptor ownership, and shader reflection. The Fabricate page is now the user-facing entry point for the fabricated layer; `afield.four Graphics` remains the lower-level examples page.
+Missing from this section for now: a full guide to the low-level Vulkan renderer internals, especially device setup, synchronization, descriptor ownership, and shader reflection. The Fabricate page is now the user-facing entry point for the fabricated layer; `afield.four Graphics` remains the lower-level examples page.

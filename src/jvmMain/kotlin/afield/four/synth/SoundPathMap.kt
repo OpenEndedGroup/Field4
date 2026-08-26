@@ -72,7 +72,7 @@ object SoundPathMap {
      *
      * Not an exemption for convenience: a file that *declares* `alcOpenDevice(` as a marker
      * necessarily contains `alcOpenDevice(`, so the first run of this guard reported itself as three
-     * undeclared audio paths. That is a real property of any grep-based derivation and the honest
+     * undeclared audio paths. That is a real property of any grep-based derivation and the
      * fix is to name the blind spot rather than to weaken the literals into something that could
      * match by accident.
      *
@@ -153,7 +153,7 @@ object SoundPathMap {
      *
      * Ordered the way a person reads it: the things that make sound, then the things that carry it
      * away, then the things that feed it. Every `page = null` is a real gap and is named as one on
-     * [PAGE] rather than quietly omitted — the most striking is `audio-patch-seam`, the one
+     * [PAGE] rather than omitted in silence — the most striking is `audio-patch-seam`, the one
      * signature the whole realtime stack is built on, which no published page mentions at all.
      */
     val PATHS: List<SoundPath> = listOf(
@@ -537,7 +537,7 @@ object SoundPathMap {
      *
      * Closes the loop the other way round: the guard already stops the code drifting away from the
      * page, and this stops the page drifting away from the code. A path is "named" when the page
-     * carries both its file and its entry-point symbol verbatim, which is a low bar deliberately —
+     * carries both its file and its entry-point symbol verbatim, which is a low bar on purpose —
      * it catches an omitted row and a renamed symbol without dictating how the prose reads.
      */
     fun pageOmissions(repoRoot: File = File(".")): List<String> {
@@ -880,9 +880,9 @@ object SoundPathMap {
     /**
      * Two different lowpasses of one buffer still correlate strongly.
      *
-     * Deliberately loose. A Chamberlin state-variable filter and a first-order Butterworth are not
+     * Loose. A Chamberlin state-variable filter and a first-order Butterworth are not
      * the same filter and the figure would be dishonest if they matched; what this catches is one
-     * of the two paths quietly producing something unrelated to the input.
+     * of the two paths producing something unrelated to the input.
      */
     const val CROSS_PATH_SIMILARITY_FLOOR = 0.5
 
@@ -890,7 +890,7 @@ object SoundPathMap {
      * `Signal * 0.5` and Faust `*(0.5)` on identical input must agree to float precision.
      *
      * This is the seam claim reduced to a number. It is a multiplication by an exactly
-     * representable constant on both sides, so the honest expectation is bit-equality; the ceiling
+     * representable constant on both sides, so the right expectation is bit-equality; the ceiling
      * allows a single rounding step and nothing more.
      */
     const val SEAM_AGREEMENT_CEILING = 1e-6f
@@ -903,7 +903,7 @@ object SoundPathMap {
  * One line for a box: the whole comparison, playable and plotted.
  *
  * Three players and a brightness plot, so the difference between the paths can be heard *and*
- * seen without leaving the box. Deliberately routed through `displayAudioSamples`, which is the
+ * seen without leaving the box. Routed through `displayAudioSamples`, which is the
  * `box-output-player` path from the map — so running this exercises four of the fifteen declared
  * paths at once (`pat-stand-in`, `signal-graph`, `faust`, `box-output-player`).
  *

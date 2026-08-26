@@ -153,7 +153,7 @@ with(Functions) {
 
     // A target that is awkward to hand-tune: two oscillators multiplied together.
     val target = cos(2) * sin(1.5, amplitude = 0.8, offset = 0.2)
-    // Same *shape*, deliberately wrong *numbers* (both frequencies far off).
+    // Same *shape*, wrong *numbers* — both frequencies far off, which is the point.
     val seed = cos(3.4) * sin(1.0, amplitude = 2.0)
 
     // Gradient descent with jittered restarts. A single fitGradient would stall in a
@@ -3424,7 +3424,7 @@ println(shiftedSine.effect.take(4))
 
 `graphTrace(...)` is the non-HTML form for tests, analysis, and agents. It returns the shared x coordinates, final samples, and local/muted/effect arrays for each occurrence, plus the numeric-node value sweeps behind the sensitivity view (pass `sensitivitySteps` to control the sweep resolution). `maxDepth` and `maxNodes` bound the work for unusually large generated graphs.
 
-Effect is deliberately called *contextual effect*, not contribution. For addition it behaves like an additive decomposition; for clipping, division, modulation, and other nonlinear parents it answers the more honest counterfactual question: “what changes in the final output if this occurrence is neutralized?”
+Effect is called *contextual effect* rather than contribution. For addition it behaves like an additive decomposition; for clipping, division, modulation, and other nonlinear parents it answers a stricter counterfactual question: “what changes in the final output if this occurrence is neutralized?”
 
 ### Watching a rewrite happen
 
@@ -3444,7 +3444,7 @@ saw => op=triangle
 
 `Fn` values carry a best-effort structural graph alongside their evaluator. Ordinary sampling still uses the evaluator; the graph is there so a function can be inspected, deep-copied, visualized, and rewritten without reverse-engineering a Kotlin closure. Constructors and combiners in the standard family attach graph nodes with operation names, child edges, numeric metadata, and rebuild recipes. Opaque `fn { ... }` functions still evaluate normally, but rewrite passes cannot see inside their lambda bodies.
 
-The rewrite language is a compact "selector `=>` action" layer over `Fn.rewriteGraph(...)`. It is deliberately closer to XPath/CSS/glob selectors than to JSON tools: the thing being matched is a labeled occurrence path through a function graph.
+The rewrite language is a compact "selector `=>` action" layer over `Fn.rewriteGraph(...)`. It is closer to XPath/CSS/glob selectors than to JSON tools: the thing being matched is a labeled occurrence path through a function graph.
 
 **Simple**
 
@@ -3688,9 +3688,9 @@ Numeric actions apply only to nodes with a `numbers["value"]` metadata entry. Th
 
 - **Generators** — oscillators (`sin`, `cos`, `saw`, `triangle`, `square`), `pulseTrain`, noise (`whiteNoise`, `valueNoise`, `perlinNoise`, `fbm`, `fbmPerlin`, `randomWalk`), windows (`hannWindow`, `hammingWindow`, `blackmanWindow`, `gaussianWindow`), `gaussian`, `ramp`, `step`, `smoothstep`, `tween`, `ease`. These rebuild from whatever roles the source carries and fall back to factory defaults for the rest. Role names bridge across families, so `sin => op=saw` carries `frequency` over as `period` (via reciprocal) rather than resetting it.
 - **Algebra** — `add`, `subtract`, `multiply`, `divide`, rebuilt from the `left`/`right` children.
-- **Value transforms** — `shift`, `scaleX`, `scaleY`, `offsetY`, `pow`, `log`, `clamp`, `clip`, `softClip`, `fold`, `chebyshev`, `rectify`, `quantize`, `crush`, `wrapY`. These need an existing `source` child, so `clamp => op=softClip` works while `sin => op=clamp` is an honest no-op (nothing to wrap) rather than a silent lie. The waveshaper trio `rectify`/`quantize`/`crush` joined this list once they became rebuildable graph nodes (previously opaque `mapY` lambdas the DSL could not reach).
+- **Value transforms** — `shift`, `scaleX`, `scaleY`, `offsetY`, `pow`, `log`, `clamp`, `clip`, `softClip`, `fold`, `chebyshev`, `rectify`, `quantize`, `crush`, `wrapY`. These need an existing `source` child, so `clamp => op=softClip` works while `sin => op=clamp` is reported as a no-op — nothing to wrap — rather than silently doing something else. The waveshaper trio `rectify`/`quantize`/`crush` joined this list once they became rebuildable graph nodes (previously opaque `mapY` lambdas the DSL could not reach).
 
-Transmutation is deliberately truthful about impossibility: if a target cannot be built from the matched node it is left unchanged and reported as `matched/no-op` in `previewRewrite(...)`. Data-carrying ops such as `piecewise`, `timeline`, and `rbf` are *known* to selectors and validation but are not transmutation targets, because their identity lives in baked point/item data a foreign node cannot supply.
+Transmutation reports impossibility rather than guessing at it: if a target cannot be built from the matched node it is left unchanged and reported as `matched/no-op` in `previewRewrite(...)`. Data-carrying ops such as `piecewise`, `timeline`, and `rbf` are *known* to selectors and validation but are not transmutation targets, because their identity lives in baked point/item data a foreign node cannot supply.
 
 ### Kotlin on the RHS
 
@@ -3764,7 +3764,7 @@ val optimized = run.function
 println("${run.stop}: ${run.events.size} edits in ${run.passes} passes")
 ```
 
-This API is deliberately small, but it establishes the pieces needed for a more ambitious optimizer or evolving-function system:
+This API is small, but it establishes the pieces needed for a more ambitious optimizer or evolving-function system:
 
 - `graphMatches { ... }` returns occurrence-sensitive matches with roles, ancestry, depth, and paths.
 - `firstGraphMatch { ... }` is the short-circuit query form.
@@ -3773,7 +3773,7 @@ This API is deliberately small, but it establishes the pieces needed for a more 
 - `rewriteWithRules(...)` performs one named, traced pass.
 - `rewriteUntilStable(...)` performs bounded passes and stops with `STABLE`, `CYCLE`, or `MAX_PASSES`.
 
-Rules default to `FIRST_MATCH` at each node, which makes priority explicit. Use `FnGraphRuleMode.ALL_MATCHES` when several rules should deliberately chain on the same copied node. A bounded run is important in live art code: an oscillating rewrite should report a cycle, not disappear into the animation loop.
+Rules default to `FIRST_MATCH` at each node, which makes priority explicit. Use `FnGraphRuleMode.ALL_MATCHES` when several rules should chain on the same copied node. A bounded run is important in live art code: an oscillating rewrite should report a cycle, not disappear into the animation loop.
 
 `graphMetrics` separates shared DAG nodes from path occurrences. That distinction is useful now for understanding repeated motifs, and later for cost-guided search: execution cost might charge each unique node, while visual or semantic complexity might charge each occurrence.
 
@@ -3819,7 +3819,7 @@ run.best.browseGraph(channel = "evolved")
 
 Prose is easy to distrust, so here is an actual run — no GPU, no window, just the harness. The worked example lives in `afield.examples.functions.EvolveWorkedExample`; it runs this exact search on the CPU, and every number below is asserted to reproduce exactly under the fixed seed. The figure that follows is a live capture of the same run plotted in a box.
 
-The setup is deliberately adversarial in two independent ways at once. The **target** is a half-amplitude sine, `sin(frequency = 1.0, amplitude = 0.5)`. The **seed** is a full-amplitude *cosine*, `cos(frequency = 1.0, amplitude = 1.0)` — the wrong op *and* the wrong amplitude. To reach the target a run must both transmute the operator (via `substituteOp`, staying inside the oscillator family) and dial in the numeric leaves (via `jitter`/`nudge`), with `prune` trimming structure for parsimony. Everything runs under a fixed `rngSeed = 3`.
+The setup is adversarial in two independent ways at once. The **target** is a half-amplitude sine, `sin(frequency = 1.0, amplitude = 0.5)`. The **seed** is a full-amplitude *cosine*, `cos(frequency = 1.0, amplitude = 1.0)` — the wrong op *and* the wrong amplitude. To reach the target a run must both transmute the operator (via `substituteOp`, staying inside the oscillator family) and dial in the numeric leaves (via `jitter`/`nudge`), with `prune` trimming structure for parsimony. Everything runs under a fixed `rngSeed = 3`.
 
 ```diffstatic {data-lang=kotlin}
 :::static

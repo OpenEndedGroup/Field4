@@ -250,7 +250,7 @@ data class NodeState(
      * One branch's share of this state when a node divides into [parts] — the state side of a DUP-style rewrite.
      *
      * Energy is divided by [parts] and then scaled by [attenuation], so the branches conserve it (or lose a
-     * little, deliberately) rather than each inheriting the whole. Hue and phase are spread **symmetrically about
+     * little) rather than each inheriting the whole. Hue and phase are spread **symmetrically about
      * the original**: branch index is re-centred, so with `parts = 2` the two children go `-0.5` and `+0.5` of
      * the spread and their average is where the parent was.
      *
@@ -366,7 +366,7 @@ class Node internal constructor(
     /** Which kind of agent this is — what rules match on, and what fixes the port count. */
     val type: AgentType,
     /** This node's mutable payload. [Net.create] copies whatever you pass, so two nodes never share one by
-     * accident; a rewrite rule must copy it deliberately. */
+     * accident; a rewrite rule must copy it explicitly. */
     val state: NodeState = NodeState()
 ) {
     /** All of this node's ports, principal first at index 0, then the auxiliaries in order. */
@@ -529,7 +529,7 @@ class Net internal constructor(
     /**
      * Wires two ports together.
      *
-     * Deliberately strict — it will not silently rewire — and each `require` catches a different mistake:
+     * Strict — it will not silently rewire — and each `require` catches a different mistake:
      *
      * @throws IllegalArgumentException if the two ports are the same port, if either node is not in this net, or
      * if **either port is already connected**. [disconnect] first when you mean to move a wire.
@@ -1296,7 +1296,7 @@ data class PairContext(
      * rule has to reattach.
      *
      * Null when that port was free, or when the index is out of range: **out-of-range is not an error here**, it
-     * quietly returns null, so a typo in an aux index silently drops a connection rather than complaining.
+     * returns null, so a typo in an aux index silently drops a connection rather than complaining.
      *
      * @throws IllegalStateException if [nodeOrdinal] is not 0 or 1
      */
@@ -1579,7 +1579,7 @@ data class ExternalEndpoint(val nodeOrdinal: Int, val auxIndex: Int) : AutoEndpo
  * `aux(ref, i)` name ports of the nodes you are creating.
  *
  * Connections involving an `ext` whose port turned out to be **free are silently dropped**, so a rule written for a
- * fully wired pair degrades quietly rather than throwing when it meets a partly wired one.
+ * fully wired pair degrades silently rather than throwing when it meets a partly wired one.
  */
 class AutoRuleBuilder internal constructor(private val ctx: PairContext) {
     private val fragment = NetFragment()
@@ -1873,7 +1873,7 @@ object PairSelectors {
  *
  * Two side effects worth knowing, both in every step: every node's age is incremented, and the layout moves. And two
  * defensive skips: a passthrough is dropped when either end is already connected, and a reconnection when its
- * *outside* peer is — so a rule that double-books an outside port loses a wire quietly. The reconnection's own
+ * *outside* peer is — so a rule that double-books an outside port loses a wire with nothing to say so. The reconnection's own
  * new port is not checked, so a rule that wires a freshly built port internally and then reconnects it does
  * throw, out of [Net.connect].
  *

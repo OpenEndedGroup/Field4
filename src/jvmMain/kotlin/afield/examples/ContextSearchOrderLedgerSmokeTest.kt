@@ -34,7 +34,7 @@ expect:
  * they are the two that decide its blast radius:
  *
  *  1. **This box's own properties are still searched.** That is the escape route the documented
- *     renderer-box idiom depends on — `public/docs/box_code_pipeline.md` shows a graphics-context
+ *     renderer-box idiom depends on — `public/docs/running_code.md` shows a graphics-context
  *     box publishing with `prop<Window>(window)` / `prop<Renderer>(renderer)`, i.e. as *properties*
  *     of itself, not as bare top-level vals. Every `moduleHere { }`, `Mesh()`, `Camera()`,
  *     `KeyEvents()` and `standardRenderer` entry point defaults its renderer to `fromContext()`, so
@@ -188,7 +188,7 @@ ${pass(OWN_VARIABLE_CODE, "pass2").trimEnd().prependIndent("        ")}
             if (!printed.contains("own-property pass2 found=11")) {
                 failures.add("this box's own PROPERTIES are no longer searched. Every graphics entry " +
                     "point defaults its renderer to fromContext(), and the documented renderer-box " +
-                    "idiom (prop<Renderer>(renderer), box_code_pipeline.md) publishes into exactly " +
+                    "idiom (prop<Renderer>(renderer), running_code.md) publishes into exactly " +
                     "this bag - dropping step 2 the way bafa9ee5f dropped step 3 breaks all of it")
             }
             if (printed.contains("own-variable pass2 default=22")) {

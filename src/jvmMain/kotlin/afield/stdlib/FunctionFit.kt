@@ -125,7 +125,7 @@ data class FnFitConfig(
  * `losses.first() == initialError` and `losses.last() == finalError`.
  *
  * [initialError] / [finalError] are the distance under the fit's [FnMetric] (RMSE by default)
- * at the start and end. The name is metric-neutral on purpose — a custom metric need not be
+ * at the start and end. The name is metric-neutral — a custom metric need not be
  * a root-mean-square, so "error" reads truthfully whatever objective the fit descended.
  */
 data class FnFitRun(
@@ -234,7 +234,7 @@ private fun finiteDifferenceGradient(
  *        [FnGradientMode.EXACT] differentiates the graph itself (`autodiff_fn.kt`) — one loss
  *        evaluation per step instead of `2n+1`, and no `fdStep` to tune — and throws with a
  *        diagnostic if the graph or metric is outside the supported set.
- *        [FnGradientMode.AUTO] takes the exact path where it applies and quietly falls back;
+ *        [FnGradientMode.AUTO] takes the exact path where it applies and falls back silently;
  *        [FnFitRun.usedExactGradient] reports which happened.
  * @param adMetric the differentiable form of [metric], for the exact path. When omitted it is
  *        derived from [metric] via [FnAdMetric.of], which recognises the singleton
@@ -524,7 +524,7 @@ fun fitHybrid(
  * fitted graphs sees phantom variety.
  *
  * Normalising to `const` everywhere removes that inconsistency. It does **not** make the signature
- * value-blind — [graphSignature] deliberately includes `numbers`, so a graph whose constants moved is
+ * value-blind — [graphSignature] includes `numbers`, so a graph whose constants moved is
  * still a different signature, which is correct. What it fixes is the part that was an artefact.
  *
  * Values, domains and names are preserved exactly, so this changes no evaluation:
@@ -594,7 +594,7 @@ data class FnRefineRun(
  * structural search is cheap relative to the fit, when you want to *watch* the alternation (the
  * per-round record is plottable), or when a round's polish genuinely unlocks a mutation the unpolished
  * shape would have had rejected. It is the wrong thing when one long structural search would do. Try
- * both; [FnRefineRun.errors] and [FnHybridRun] both report honestly.
+ * both; [FnRefineRun.errors] and [FnHybridRun] both report it.
  *
  * The normalisation between rounds is not cosmetic — see [normalizeNumericLeaves] for the trap it
  * closes. Without it, whether a leaf comes back as `param` or `const` depends on whether its value
@@ -606,7 +606,7 @@ data class FnRefineRun(
  * `saw` is a piecewise oscillator with no formula — see [FnNonDifferentiable]). `EXACT` would abort
  * such a round; `AUTO` refines it with finite differences instead, and
  * [FnRefineRound.usedExactGradient] plus [FnRefineRound.refusal] record what happened, so
- * [FnRefineRun.exactRounds] tells you honestly how much of the run got exact derivatives.
+ * [FnRefineRun.exactRounds] tells you how much of the run got exact derivatives.
  *
  * What exact gradients buy *here* is also measured, and it is precision rather than speed: over four
  * rounds of the case above, finite differences reached RMSE 0.182600 in 585 ms using 14884 loss

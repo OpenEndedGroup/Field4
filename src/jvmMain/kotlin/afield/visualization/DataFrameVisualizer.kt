@@ -82,7 +82,7 @@ object DataFrameVisualizer {
     /**
      * The head of a frame as a [Table], plus its shape.
      *
-     * Deliberately `take(HEAD_ROWS)` per column rather than materialising the frame: this is the
+     * `take(HEAD_ROWS)` per column rather than materialising the frame: this is the
      * form that shows up in a box output on every execution, so it has to stay cheap for a frame far
      * larger than the screen.
      */

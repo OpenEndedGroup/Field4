@@ -77,7 +77,7 @@ display("main", analysisPreviewDashboardHtml(
 
 ## Submit, monitor, await, visualize
 
-This is the complete live-coding path. It deliberately shows each boundary rather than hiding job
+This is the complete live-coding path. It shows each boundary rather than hiding job
 submission in setup code. The source waveform appears immediately; the persistent monitor and
 three replace-in-place status cards remain useful while the worker runs; only terminal successful
 jobs are turned into an analysis board.

@@ -159,7 +159,7 @@ in tree or in the published transcript corpus. Observed:
 | shape | before | after | who is in this shape |
 | --- | --- | --- | --- |
 | child box reading a value its **ancestor** holds, as a property or a top-level variable | worked on pass 1, self-pinned from pass 2 on | works on every pass | `val renderer: Renderer = fromContext()` — the idiom `dev_docs/agents/AGENT_QUICK_REF.md` teaches and every graphics box in `public/docs/afield_four_graphics.md` opens with (10 occurrences on that page alone) |
-| box reading a value **it holds as a property** | worked | **still works** — step 2 was not touched | the documented renderer box: `public/docs/box_code_pipeline.md` publishes with `prop<Window>(window)` / `prop<Renderer>(renderer)`, which is this bag. This is why nothing on the graphics surface broke |
+| box reading a value **it holds as a property** | worked | **still works** — step 2 was not touched | the documented renderer box: `public/docs/running_code.md` publishes with `prop<Window>(window)` / `prop<Renderer>(renderer)`, which is this bag. This is why nothing on the graphics surface broke |
 | box reading a value it holds **only as a bare top-level `val`/`var`**, with no ancestor holding one | worked from pass 2 on | **throws** `IllegalArgumentException: must pass in a value for context parameter …` | the cost of the change. No call site in `src/`, no committed transcript and no published docs box is in this shape; `includeLocalVariables = true` is the fix if one appears |
 
 ### What was swept, and the verdict

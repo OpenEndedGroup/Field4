@@ -41,7 +41,7 @@ import kotlin.reflect.jvm.isAccessible
  * [registerValuePrinter]; both are trusted to return well-formed HTML, while ordinary strings,
  * characters, keys and reflected values are escaped here.
  *
- * Output is deliberately bounded — [ValueVisualizer]'s own KDoc below covers dispatch order, the
+ * Output is bounded — [ValueVisualizer]'s own KDoc below covers dispatch order, the
  * built-in formatters and the size limits. Whatever those limits elide (the tail of a long string
  * or list, extra fields of an object) becomes an expander link, resolved later by
  * `renderLazyFragment` from the server's `/lazy-value-fragment` route, so the rest of the value is
@@ -1704,7 +1704,7 @@ object ValueVisualizer {
 
     /**
      * [recordTable] applied to value display, or null to fall through to the ordinary list
-     * rendering. Deliberately narrower than [recordTable] itself, because here it is *replacing* a
+     * rendering. Narrower than [recordTable] itself, because here it is *replacing* a
      * rendering that already works:
      *
      *  - every cell must be a scalar — a record holding a list or a nested struct has no useful

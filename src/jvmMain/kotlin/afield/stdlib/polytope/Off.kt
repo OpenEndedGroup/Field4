@@ -6,7 +6,7 @@ package afield.stdlib.polytope
  * The one-way bridge to OFF, the plain-text polygon interchange format that Geomview and most
  * polyhedron tooling read.
  *
- * Deliberately one function and no reader. Export exists so that a solid can be opened in something
+ * One function and no reader. Export exists so that a solid can be opened in something
  * that was not written here — an independent second opinion when a test disagrees with a picture — and
  * so that a bug report can carry the actual object. It is a diagnostic, not an architectural
  * dependency: nothing else in this package goes through it, and no part of the topology is shaped by
@@ -28,8 +28,8 @@ package afield.stdlib.polytope
  * `Realization3`'s single precision rather than any wider format.
  *
  * A face with holes throws. OFF has no way to say "and this ring is subtracted", so the alternatives
- * were a file whose face is solid where the object's is not, or a refusal; a diagnostic that quietly
- * disagrees with the object it is diagnosing is worse than no diagnostic. Triangulate first and write
+ * were a file whose face is solid where the object's is not, or a refusal; a diagnostic that
+ * disagrees with the object it is diagnosing, and does not say so, is worse than no diagnostic. Triangulate first and write
  * the mesh if you need the geometry out.
  */
 fun PolyhedralObject.toOff(): String {

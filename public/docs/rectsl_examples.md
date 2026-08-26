@@ -582,7 +582,7 @@ curve bound *by name* (`target`, `seed`, `fit`):
 The gold row's height scale is written as a `{{ 4.0 }}` Kotlin escape rather than a literal — the same inline-Kotlin hatch, here proving escapes compile and run even inside the headless render. (That render is a long-running graphics loop on the box's own Kotlin engine, so the escape can't compile lazily on that engine mid-render; the harness pre-warms every escape on a *separate* idle engine before the render starts, then the render only invokes the cached lambdas.)
 
 The host builds a two-lobe target, seeds a curve with the *same structure* but
-deliberately wrong numbers, fits it, and binds all three curves into the program
+wrong numbers, fits it, and binds all three curves into the program
 with `compileRectSL(source, curves)` — the Functions→RectSL half of the bridge:
 
 ```diffstatic {data-lang=kotlin}
@@ -659,7 +659,7 @@ details](rectsl_cheatsheet.md#lowering-to-glsl-a-scene-as-a-signed-distance-fiel
 rectangle is. Nothing is uploaded per frame; between frames exactly one float
 changes.
 
-The scene is deliberately ordinary. One animated template, six copies from
+The scene is an ordinary one. One animated template, six copies from
 `array`, close enough together to overlap:
 
 ```diffstatic {data-lang=rectsl}
@@ -1151,7 +1151,7 @@ several series overlay in one coordinate system — see the plotting layer below
 
 The seven ramps are named `viridis`, `magma`, `inferno`, `plasma`, `turbo`,
 `coolwarm` (diverging), and `grayscale`. Sample one across the array fraction `f` to
-draw a colour bar — this is the honest way to *see* a colormap:
+draw a colour bar — which is how you actually *see* a colormap:
 
 ```diffstatic {data-lang=rectsl}
 #rectsl
@@ -1240,7 +1240,7 @@ that. Set an explicit `->domain` (or let the first series adopt its own extent),
 `->frame` of margins, then draw `axes` — x/y rules, "nice-number" ticks, numeric tick labels,
 and faint gridlines. Because there is no text primitive in RectSL, the labels are numerals
 drawn as a 3×5 grid of rects (numbers only). The domain-aware series `area`, `line` (alias
-`plot`), and `points` all map through the one shared domain, so they overlay honestly; a
+`plot`), and `points` all map through the one shared domain, so they overlay correctly; a
 `colorbar` and a discrete-swatch `legend` finish the figure:
 
 ```diffstatic {data-lang=rectsl}

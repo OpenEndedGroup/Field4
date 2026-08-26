@@ -14,7 +14,7 @@ import kotlin.math.pow
 import kotlin.math.roundToInt
 
 /**
- * One shared, honest way to *animate* the `alife*.kt` family — because every system in it is a time
+ * One shared way to *animate* the `alife*.kt` family — because every system in it is a time
  * evolution, and a montage of frozen generations is the one view that hides the thing they are about.
  *
  * The whole file is [Box.animateEvolution] plus four small "show a prefix of something" helpers. It sits

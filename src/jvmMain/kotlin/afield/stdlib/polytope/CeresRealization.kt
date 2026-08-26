@@ -39,7 +39,7 @@ import afield.stdlib.ceres.Vec3 as CeresVec3
  * `kkD` reach a tangency spread of `1e-8` in 12 iterations and about 6 ms, where `relax` takes 1507 ms
  * and does not converge at all. Plus a real termination report in [CeresSolveSummary].
  *
- * It is deliberately a *second implementation of the same declared objective*, not a replacement:
+ * It is a *second implementation of the same declared objective*, not a replacement:
  * same plan in, the same [RealizationSolveResult] out, the same [RigidGauge] applied afterwards, so the
  * two can be run on one plan and diffed. Three places where they genuinely differ — the plane
  * parameterisation, the weight convention and the robust loss — are set out on [CeresRealization], and
@@ -62,7 +62,7 @@ import afield.stdlib.ceres.Vec3 as CeresVec3
  * the sparse normal equations, so the per-iteration cost tracks the number of *incidences* rather
  * than the square of the vertex count.
  *
- * This is deliberately a second implementation of the same declared objective, not a replacement:
+ * This is a second implementation of the same declared objective, not a replacement:
  * [relaxWithCeres] returns the same [RealizationSolveResult] as [relax] and applies the same
  * [RigidGauge] afterwards, so the two can be run on the same plan and diffed. Where they disagree,
  * see "Where the two solvers genuinely differ" below — the differences are real, not rounding.
@@ -86,7 +86,7 @@ import afield.stdlib.ceres.Vec3 as CeresVec3
  *   a weight and multiplies the residual by its *square root*. The mapping below squares every
  *   weight to compensate; that convention is easy to get wrong by hand.
  * - **Loss.** The wrapper defaults to `Huber(1e-3)` on every residual, which would cap the
- *   influence of whichever constraint is currently worst and quietly change the objective. These
+ *   influence of whichever constraint is currently worst and change the objective without saying so. These
  *   programs are built with [RobustLoss.NONE].
  */
 object CeresRealization {

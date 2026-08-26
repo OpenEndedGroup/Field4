@@ -19,7 +19,7 @@ import kotlin.math.sqrt
  *
  * This is the 3D counterpart of `contours.kt`. There, a [ScalarField2D] is marched by
  * [generateIsoContours] into `FLine` polylines; here a [ScalarField3D] is marched into triangles.
- * The two files are deliberately parallel, and reading the 2D one first is the fastest way to
+ * The two files are parallel, and reading the 2D one first is the fastest way to
  * understand this one.
  *
  * ```kotlin
@@ -421,7 +421,7 @@ fun ScalarField3D.normalAt(p: Vec3, h: Number = 1e-3): Vec3 {
 /**
  * The `iso` level set of [field] over [bounds], as a watertight [TriMesh] with shared edge vertices.
  *
- * See this file's overview for how it works and where it is honest about its limits. The short
+ * See this file's overview for how it works and where its limits are. The short
  * version: `(resolution+1)^3` field samples, one shared vertex per crossed grid edge, the
  * asymptotic decider on ambiguous faces so neighbouring cubes never disagree, and winding taken from
  * the field's own gradient.

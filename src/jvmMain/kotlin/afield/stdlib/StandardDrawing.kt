@@ -231,8 +231,8 @@ data class FLineIntersection(
      * For an [FLineHitKind.EDGE], along the segment: 0 at the segment's start node, 1 at its end. On a
      * cubic this is the **Bézier parameter**, not arc length, and the two are not interchangeable — on
      * an unevenly-controlled curve `u = 0.5` can be two thirds of the way along by length. It is the
-     * parameter on purpose, because that is the number that indexes back into the curve the author
-     * wrote; `FLineHitRecordProbeTest` pins the size of the disagreement on a deliberately lopsided
+     * parameter, because that is the number that indexes back into the curve the author
+     * wrote; `FLineHitRecordProbeTest` pins the size of the disagreement on a lopsided
      * cubic so that nobody has to take this paragraph's word for it.
      *
      * For an [FLineHitKind.FACE], the first face coordinate — and [faceCoordinates] says what that

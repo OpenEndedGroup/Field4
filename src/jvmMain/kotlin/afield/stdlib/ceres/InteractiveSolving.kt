@@ -42,7 +42,7 @@ data class InteractionPolicy(
     val releaseWeight: Double = preserveWeight,
     /** For points the user has explicitly fixed — heavy enough to win against any geometry in the program. */
     val pinnedWeight: Double = 1e8,
-    /** Iterations per frame while dragging. Small on purpose: a late frame is worse than an unsettled one. */
+    /** Iterations per frame while dragging. Small: a late frame is worse than an unsettled one. */
     val dragIterations: Int = 8,
     /** Iterations for the settle pass, where latency no longer matters. */
     val settleIterations: Int = 24,
@@ -273,7 +273,7 @@ class MutableSolveReport(groupCapacity: Int = 64) {
  * its native buffers.
  *
  * This is the interface a drag loop holds. Implementing it is a promise about allocation, not about capability — the
- * in-place path deliberately runs the wrapper's fixed configuration, so anything in [SolveOptions] that needs the
+ * in-place path runs the wrapper's fixed configuration, so anything in [SolveOptions] that needs the
  * configurable solve (a different linear solver, threads, a summary, a changed tolerance) is refused rather than
  * silently ignored. Those are setup-time choices; make them at compile time and solve through [solve] when you need
  * them.

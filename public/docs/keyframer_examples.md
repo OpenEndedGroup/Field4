@@ -120,14 +120,14 @@ Panel 4 is the round trip closing: re-applying the original snapshot and re-capt
 
     Besides a `Structure`, a scope can target a live module's uniform structures —
     `target(module: ModulePointer, name)` and its `ComputeModulePointer` / `MeshModulePointer`
-    siblings (`keyframer.kt:580`, `:584`, `:588`). Those need a real renderer, so every fence here
+    siblings (`keyframer.kt:605#fun target(module: ModulePointer, name: String) =`, `:609`, `:613`). Those need a real renderer, so every fence here
     uses the plain `Structure` form instead, and no figure on this page demonstrates them.
 
     Worth knowing what the source says before you reach for one. All three are one-line wrappers
-    over the lazily-resolved `target(name) { … }` (`keyframer.kt:562#you built once and will keep.`), and they pass the *same*
+    over the lazily-resolved `target(name) { … }` (`keyframer.kt:587#fun target(name: String, structure: () -> Structure?) {`), and they pass the *same*
     `@`-suffixed string to two different lookups: it selects the structure, via
     `module.current.liveUniformStructures[…]`, **and** it is the member name bound inside that
-    structure (`keyframer.kt:566-567`). That map is keyed by the **uniform block's name**
+    structure (`keyframer.kt:591-592`). That map is keyed by the **uniform block's name**
     (`Module.kt:559#vi.ubos.forEach { liveUniformStructures[it.name] =` for a graphics module, `ComputeModule.kt:163#ci.ubos.forEach  { liveUniformStructures[it.name] =` for a compute one), while the
     members inside it are the block's *fields*. So the key can only address a member whose name
     equals the block's own name — not an arbitrary field within the block, and not the independent
@@ -138,17 +138,27 @@ Panel 4 is the round trip closing: re-applying the original snapshot and re-capt
     against `module.<block>`, which resolves to that same live structure
     (`Module.kt:217#return inside.current.liveUniformStructures[property.name] ?:`), and that **is** demonstrated, on a real GPU, in the next section.
 
-!!! warning "`capture()` sees *bound* properties, not *set* values"
+!!! note "`capture()` reads either kind of property, and writes back a binding"
 
     A `Structure` can hold a property two ways: `structure.bind("radius") { 4f }` installs a
     binding, and `structure["radius"] = 4f` stores a value (and removes any binding). `capture()`
-    reads `Structure.bindings` only, so **a property written by value is invisible to a snapshot**
-    and captures as `null`, with nothing logged. The key still lists the name — it is just empty.
-    Bind the things you intend to keyframe.
+    reads binding-first-then-value (`keyframer.kt:550-552`) — the same precedence `Structure.get`
+    (`Structure.kt:188#operator fun <T> get(property: String) =`) and the buffer writer (`Structure.kt:360`) use — so either kind snapshots.
+
+    It did not always. Until this page's research turned it up, `capture()` read `Structure.bindings`
+    alone: a property written by value snapshotted as `null` with nothing logged, and since `saveKey`
+    drops nulls, a key file written then is simply missing that name. A child `Structure` was worse —
+    its bindings live in the *root's* map under a dotted path, so the old read missed the child's
+    property and could silently return a root property of the same name instead.
+
+    The write side is still not symmetric: applying a key always goes through `Structure.bind`, so a
+    value-held property comes back as a constant binding with the old `values` entry shadowed
+    underneath. Every reader in the engine agrees on the binding, so that shows up only if you
+    inspect `structure.values` yourself.
 
 ## The same thing, driving a live GPU uniform
 
-Everything so far ran on bare `Structure`s, which is honest but leaves the obvious question open:
+Everything so far ran on bare `Structure`s, which leaves the obvious question open:
 does a `Key` actually move a uniform on the GPU? This fence is a real Vulkan render — a native
 window, a `moduleHere()` graphics module, a fan of **white** triangles — where the only source of
 colour in the entire frame is a `vec4 tint` in the shader's uniform block, and the only thing that
@@ -167,7 +177,7 @@ var module = moduleHere()
 module += "mainMesh" to m
 renderer += module
 
-// Fully qualified on purpose: a uniform block makes moduleHere() generate a Kotlin class of the
+// Fully qualified, and it has to be: a uniform block makes moduleHere() generate a Kotlin class of the
 // same (capitalised) name straight into this box's preamble, and a declaration in the box beats
 // any import. The block here is `look`, so the trap would bite anything called `Look`.
 val camera = afield.four.util.Camera()
@@ -202,7 +212,7 @@ scope.target("tint", module.look)
 val cool = scope.Key(mutableMapOf("tint" to vec(0.20, 0.65, 1.00, 1.0)))
 val warm = scope.Key(mutableMapOf("tint" to vec(1.00, 0.50, 0.12, 1.0)))
 
-// A quarter of the way from cool to warm — deliberately NOT the midpoint. These two are nearly
+// A quarter of the way from cool to warm — NOT the midpoint. These two are nearly
 // complementary, so t = 0.5 blends to (0.60, 0.575, 0.56): a grey indistinguishable from an
 // untinted fan, which would make the picture prove nothing. t = 0.25 is (0.40, 0.6125, 0.78).
 scope.interpolate(cool, warm, 0.25)()
@@ -270,8 +280,8 @@ scope.target("tint", module.look)  // the uniform block's live Structure
 
 // Two endpoints. The camera swings 90 degrees around the fan and lifts, while the tint goes cool to
 // warm. Poses are read off the camera rather than constructed, so this is exactly what capture()
-// would have stored. Tint is given by value because capture() reads bindings only (see the warning
-// above) — an unbound property would have snapshotted as null.
+// would have stored. Tint is a literal here rather than a captured value, since there is nothing
+// to capture from yet — the uniform is untouched until the first key lands on it.
 camera.at = vec(0, 0, 3.5); camera.target = vec(0, 0, 0)
 val poseCool = camera.pose()
 camera.at = vec(-3.03, 1.0, 1.75); camera.target = vec(0, 0, 0)
@@ -565,7 +575,7 @@ straight line — once each, where they are defined.
     (the full list is at the [foot of the page](#what-is-actually-tested)); the pose arithmetic
     above, which is all of the behaviour, is tested. Note also that the target accepts a
     `CameraPose` or a bare `DualQuaternionf` and **silently ignores any other type**
-    (`keyframer.kt:647-650` is a `when` with no `else`), so a `Vector3f` "camera position" key will
+    (`keyframer.kt:672-676` is a `when` with no `else`), so a `Vector3f` "camera position" key will
     appear to apply and do nothing.
 
 ## Saving: every save is history
@@ -633,7 +643,7 @@ val migratedRows = migrated.values.entries.sortedBy { it.key }.joinToString("\n"
     "| ${mdEscape(k)} | ${mdEscape(v)} |"
 }
 
-// The width is pinned on purpose. A `capture="box"` screenshot clips to the output card, and an
+// The width is pinned. A `capture="box"` screenshot clips to the output card, and an
 // unpinned card sized by its widest unbreakable line loses everything past the clip.
 markdown("persist", """
     #### version history after three saves
@@ -703,9 +713,9 @@ version:
 
 - A **file no row mentions** is listed anyway, with the file's own modification time and a note
   reading `(recovered from disk; the manifest row for this version was lost)`. That marker is
-  deliberately something you notice in the history table: the snapshot survived and its note did not.
+  meant to be noticed in the history table: the snapshot survived and its note did not.
 - A **row whose file is gone** is still listed, because the row is the only surviving evidence that
-  the version existed. Loading it throws rather than quietly returning something else.
+  the version existed. Loading it throws rather than returning something else.
 - `saveKey` takes its next number from that union, so it never reuses an index and never overwrites
   an existing snapshot — the same way `nextSafeSaveBackup` (`saving.kt:1816`) numbers a document
   backup off the directory listing rather than off a side file.
@@ -769,11 +779,11 @@ ${key.updateCode("look")}
 
 Every literal is chosen so the paste round-trips as the same *type*, not merely the same number.
 `0.65f` keeps its `f`, because without it a captured `Float` comes back as a `Double` literal and
-`Key.set` deliberately does not re-coerce numbers. `99L` keeps its `L`; bytes and shorts get
+`Key.set` does not re-coerce numbers. `99L` keeps its `L`; bytes and shorts get
 `.toByte()` / `.toShort()`. Vectors come out as `vec(…)`, quaternions and poses as fully-qualified
 constructor calls, and StackSL as `stackSLString(…)` so it stays *code* rather than decaying to a
 string. A value outside that set — the list here — becomes `null` behind an `/* unsupported */`
-comment: the emitted code still compiles, and quietly nulls that one value.
+comment: the emitted code still compiles, and nulls that one value.
 
 The escaped `\$` in the source block is a fix this page's own research turned up.
 `kotlinRawStringLiteral` preferred a Kotlin raw string for a source block, guarding against `"""`
@@ -802,7 +812,7 @@ for.
 It is worth being exact about what that does *not* guarantee, because the mechanism reads as
 stronger than it is. The enumeration *within* the listed classes is measured; the class list itself,
 and the total below, are maintained by hand. A new **top-level** declaration is invisible to it —
-and `enum class KeyDiffKind` (`keyframer.kt:915`) is exactly that: public, absent from the ledger,
+and `enum class KeyDiffKind` (`keyframer.kt:1052#enum class KeyDiffKind { ADDED, REMOVED, CHANGED }`) is exactly that: public, absent from the ledger,
 and the suite is green. It is exercised by the tests; it simply is not counted, which pushes the
 figure below down rather than up.
 

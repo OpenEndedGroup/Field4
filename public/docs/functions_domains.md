@@ -2,7 +2,7 @@
 
 *Every public declaration used below is listed, with its KDoc, in the codebase reference: [`Functions.kt`](reference/math.md#functions-kt). Start from [what's already in the box](reference/index.md).*
 
-Every `Fn` in the Functions small language carries one interval: its `domain`. It is the answer to a simple question — *over what stretch of the number line is this function meant to be looked at?* A `hannWindow()` is shaped across `0.0..1.0` and is silent outside it. A `ramp` rises across the interval you give it. And an oscillator, honestly, goes on forever.
+Every `Fn` in the Functions small language carries one interval: its `domain`, the stretch of the number line the function is meant to be looked at over. A `hannWindow()` is shaped across `0.0..1.0` and is silent outside it. A `ramp` rises across the interval you give it. An oscillator goes on forever.
 
 That last case is where the domain stops being bookkeeping and starts mattering, because domains are not just labels: **arithmetic intersects them.** Add two functions and the sum is only defined where *both* operands are defined. Get an operand's domain wrong and the mistake propagates silently into every expression it touches. This page is about getting it right.
 
@@ -53,12 +53,12 @@ val stack  = tone + rising                     // 0..1  ∩  0..3  ==  0..1  (!)
 // Plot `stack` over 0..3 and it just stops a third of the way across.
 ```
 
-Nobody asked for that. The `rising` term was defined across `0.0..3.0`; the oscillator quietly amputated two-thirds of it.
+Nobody asked for that: the `rising` term was defined across `0.0..3.0`, and the oscillator amputated two-thirds of it.
 
 Today the periodic family — `sin`, `cos`, `saw`, `triangle`, `square`, plus `pulseTrain`, `impulseTrain`, and `pulseBurst` — defaults `domain` to `Domain.ALL`. An unbounded operand contributes nothing to the intersection, so the expression takes its extent from the terms that actually have an opinion:
 
 ```diffstatic {data-lang=kotlin}
-// New behavior — the honest one.
+// New behavior.
 val rising = identity(0.0..3.0) * 0.6
 val tone   = sin(2.0)                          // Domain.ALL
 val stack  = tone + rising                     // ALL ∩ 0..3  ==  0..3  ✔
@@ -112,7 +112,7 @@ Because it is the *default* that changed, the fix reaches you without any edit t
 - an **empty** domain passes through unchanged;
 - an **unbounded** domain previews over `plotSafe()`'s finite fallback window.
 
-So a bounded function samples over exactly the interval you would expect, while an `ALL`-domain oscillator handed no explicit window quietly previews over a sensible finite range instead of hanging. This applies at the implicit-domain samplers (`toDoubleArray`, `toVec2List`, `toFLine`, the `sample*` family, the cursor/stream/integral/filter streams, and the `repeat`/`mirrorRepeat`/`tile` anchors) and at the domain→`[0,1]` shapers (`tween`, `spliceWindow`, the `window` family) — so even transmuting an unbounded generator into a windowed shape stays finite.
+So a bounded function samples over exactly the interval you would expect, while an `ALL`-domain oscillator handed no explicit window previews over a sensible finite range instead of hanging. This applies at the implicit-domain samplers (`toDoubleArray`, `toVec2List`, `toFLine`, the `sample*` family, the cursor/stream/integral/filter streams, and the `repeat`/`mirrorRepeat`/`tile` anchors) and at the domain→`[0,1]` shapers (`tween`, `spliceWindow`, the `window` family) — so even transmuting an unbounded generator into a windowed shape stays finite.
 
 In practice: give a plot or sampler an explicit window when you have one, and rely on the fallback only for a quick look:
 
@@ -121,7 +121,7 @@ sin(3.0).plot("tone", domain(0.0..2.0))   // explicit window — samples 0..2
 sin(3.0).toFLine()                          // no window — previews the fallback
 ```
 
-Graph serialization and rebuild keep the *original* domain, unbounded or not, so a function's declared reach still shows up in its fingerprint — the intent is preserved through a round-trip, not quietly normalized to whatever window last previewed it.
+Graph serialization and rebuild keep the *original* domain, unbounded or not, so a function's declared reach still shows up in its fingerprint — the intent survives a round-trip rather than being normalized to whatever window last previewed it.
 
 ## The exception: `gaussian` stays local
 
@@ -132,7 +132,7 @@ val bump = gaussian()          // Domain.DEFAULT — a local feature, not a sign
 val wave = sin()               // Domain.ALL — genuinely everywhere
 ```
 
-This is the tell for the whole model. Ask "is this function honestly defined everywhere, or only somewhere?" A signal that oscillates forever answers *everywhere* and takes `Domain.ALL`. A shape that lives in a region — a window, a bump, a ramp — answers *somewhere* and carries a finite domain, so that when it enters an expression, it constrains the result on purpose.
+This is the question the whole model turns on: is this function defined everywhere, or only somewhere? A signal that oscillates forever answers *everywhere* and takes `Domain.ALL`. A shape that lives in a region — a window, a bump, a ramp — answers *somewhere* and carries a finite domain, so that it constrains the result of any expression it enters.
 
 ## The short rules
 

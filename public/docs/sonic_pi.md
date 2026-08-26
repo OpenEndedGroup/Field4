@@ -253,9 +253,9 @@ installed app.
 That check is not decoration. Sonic Pi answers `sample :bd_hauz` by doing nothing at all — no error,
 no sound — and a `live_loop` playing three of its four voices is very hard to debug from the sound.
 So a mistyped alias is a failing test rather than a silence, and an atom that matches nothing is
-named in a comment at the top of the emitted program instead of being quietly dropped.
+named in a comment at the top of the emitted program instead of being dropped in silence.
 
-Notes come out as MIDI numbers rather than `:c4` on purpose: Field puts middle C at `c5`, Sonic Pi
+Notes come out as MIDI numbers rather than `:c4` because Field puts middle C at `c5`, Sonic Pi
 at `:c4`, and emitting the number the pattern meant removes a whole class of off-by-an-octave that
 neither side would report.
 
@@ -568,7 +568,7 @@ only after five empty 10s windows, so the real grace period is nearer 90s. Field
 asks the daemon to exit outright on close.
 
 One consequence is worth recognising, because it presents as a mystery: a Sonic Pi that was started
-and then abandoned holds the cue port for that whole grace period, which quietly pushes the *next*
+and then abandoned holds the cue port for that whole grace period, which pushes the *next*
 boot onto a random cue port. If `oscCues` is not 4560, suspect a stranded daemon rather than a
 configuration change.
 

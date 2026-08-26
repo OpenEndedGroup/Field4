@@ -65,7 +65,7 @@ class GestureBoardBuilder internal constructor(
  *
  * Prompt regions are compiled into the backend's global text condition. Curves and
  * events are measured against each generated waveform and become reproducible ranking
- * scores; they are deliberately not presented as native MusicGen controls.
+ * scores; they are not presented as native MusicGen controls.
  */
 fun gestureBoard(
     durationSeconds: Number,

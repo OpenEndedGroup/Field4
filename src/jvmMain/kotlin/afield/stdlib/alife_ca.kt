@@ -552,7 +552,7 @@ fun sierpinskiReference(width: Int, generations: Int): IntGrid {
  */
 fun IntGrid.centerColumn(): IntArray = IntArray(height) { cells[it * width + width / 2] }
 
-/** The longest run of identical values in [bits] — a crude but honest structure detector for a bit sequence. */
+/** The longest run of identical values in [bits] — a crude but real structure detector for a bit sequence. */
 fun longestRunLength(bits: IntArray): Int {
     if (bits.isEmpty()) return 0
     var best = 1

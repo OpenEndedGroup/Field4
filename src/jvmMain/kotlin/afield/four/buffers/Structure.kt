@@ -187,6 +187,19 @@ open class Structure(
 
     operator fun <T> get(property: String) = (bindings[storageKey(property)]?.invoke() ?: values[storageKey(property)]) as T
 
+    /**
+     * The live supplier for [property] if it is *bound*, or null if it is held as a plain value or is
+     * not held at all — [get] without invoking the binding, for a caller that wants the supplier itself.
+     * Honours this structure's nested path, which reading [bindings] directly does not.
+     */
+    fun bindingFor(property: String): Function0<*>? = bindings[storageKey(property)]
+
+    /**
+     * The plain value for [property] if it is held as one, or null if it is bound or absent — the other
+     * half of [bindingFor]. A bound property reads null here even though [get] returns something.
+     */
+    fun valueFor(property: String): Any? = values[storageKey(property)]
+
     fun setProxyFor(p: FrameBufferGroup) {
         proxyTo(p)
     }

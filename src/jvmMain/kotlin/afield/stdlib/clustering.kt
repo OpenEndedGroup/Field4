@@ -15,7 +15,7 @@ import kotlin.random.Random
 /**
  * Clustering for lists of `Float`, `Vec2`, `Vec3` and `Vec4`.
  *
- * **There is no k-means here, on purpose.** Every algorithm in this file returns either a *hierarchy*
+ * **There is no k-means here.** Every algorithm in this file returns either a *hierarchy*
  * or a centre that is meaningful for the data it summarises: a medoid is one of your own samples, and
  * a median is coordinate-wise robust. A k-means centroid is neither, and on a point cloud with an
  * outlier it is the one that moves.
@@ -253,7 +253,7 @@ class AgglomerativeClustering internal constructor(
     /**
      * One [ClusterLayer] per requested `k`, ready to stack in a `visualize…` call.
      *
-     * Forgiving on purpose: a `k` outside `1..sampleCount` is skipped rather than throwing, and repeats
+     * Forgiving: a `k` outside `1..sampleCount` is skipped rather than throwing, and repeats
      * are dropped, so a generous range like `2..20` is safe on a small point cloud.
      */
     fun layers(kValues: Iterable<Int>): List<ClusterLayer> {
@@ -394,7 +394,7 @@ data class ClusterLayerVizOptions(
     val pointHaloSize: Double = 0.3,
     /** Size of a cluster centre's core dot — slightly larger than a sample's, so centres read as centres. */
     val centerPointSize: Double = 0.14,
-    /** Size of the glow behind a cluster centre. Much larger than the others on purpose. */
+    /** Size of the glow behind a cluster centre. Much larger than the others. */
     val centerHaloSize: Double = 22.0,
     /** Stroke thickness of the sample-to-centre links. */
     val linkThickness: Double = 0.85,

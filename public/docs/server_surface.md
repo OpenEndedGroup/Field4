@@ -6,8 +6,8 @@ you are looking at is a browser, and everything you do in it — typing in a box
 box, running code — travels to Field's JVM over HTTP and a WebSocket.
 
 That is a good architecture. It is also, unavoidably, a *listening socket on your machine*,
-and this page is the honest answer to the question that follows: **what can reach it, and
-what stops a web page you happen to be visiting from driving your editor?**
+which raises a question this page answers: **what can reach it, and what stops a web page you
+happen to be visiting from driving your editor?**
 
 You do not need to do anything with this page to use Field. It is here because anyone running
 Field on a laptop on a shared network — a studio, a university, a conference wifi — deserves
@@ -69,7 +69,7 @@ On 2026-08-11 this was measured rather than argued, with a real Chromium page se
 
 So the defences that matter are the ones that ask *which website*, and there are four.
 
-## Defence 1 — CORS, and the `anyHost()` that is deliberately there
+## Defence 1 — CORS, and the `anyHost()` that has to be there
 
 Ktor's CORS plugin decides which websites may read Field's replies. Field's configuration is
 five lines, and it is pinned literally by a test so that changing it has to be deliberate:
@@ -85,7 +85,7 @@ install(CORS) {
 ```
 
 `anyHost()` means *any website you have open in any tab* may call Field and read the answer.
-That is not an oversight; it is load-bearing. The offline document viewer posts a document
+That is not an oversight. The offline document viewer posts a document
 back to `POST /api/import-offline-doc` from whatever origin its bundle was served from, and
 `/api/import-offline-doc` is the one path explicitly exempted from the same-site guard below
 for exactly that reason.
@@ -101,7 +101,8 @@ only two:
   endpoint can spawn a coding agent with write access to your checkout. It requires that
   header, and because the header is not CORS-safelisted and not in `allowHeader`, a web
   page's preflight fails before the request is sent. `anyHeader()` in that block would
-  quietly convert an agent-spawning endpoint into something a web page can reach.
+  turn an agent-spawning endpoint into something a web page can reach, with nothing in the
+  diff to say so.
 
 ??? aside "Pinned by"
     `FieldApiCorsExposureTest.theCorsConfigurationIsExactlyWhatWeThinkItIs`, and
@@ -113,10 +114,10 @@ only two:
 application-wide interceptor that **refuses cross-site state-changing requests** across
 Field's whole API.
 
-It is **off by default**, and the reason is uncomfortable but honest: turning a refusal on
-across three dozen routes at once is how you discover, at four in the morning, which of them
-your own tooling was quietly relying on. So the default is the old behaviour and the switch
-is documented, rather than the other way around. Field prints a loud warning line at startup
+It is **off by default**, for an unsatisfying reason: turning a refusal on across three dozen
+routes at once is how you discover, at four in the morning, which of them your own tooling
+was relying on. So the default is the old behaviour and the switch is documented, rather than
+the other way around. Field prints a loud warning line at startup
 either way.
 
 What it inspects is **mutating methods only** — `POST`, `PUT`, `DELETE`. A `GET` goes
@@ -204,8 +205,7 @@ hole open until 2026-08-19:
 
 - **CORS does not govern a WebSocket handshake at all.** A page can open a WebSocket to any
   origin it likes; the browser will not preflight it and will not withhold the connection.
-- **The same-site interceptor skips `GET`**, on purpose, because reads and page loads must go
-  through.
+- **The same-site interceptor skips `GET`**, because reads and page loads have to go through.
 
 So `AFIELD_API_REQUIRE_SAME_SITE=1` could be fully on and a foreign page could still open
 Field's command channel and start sending commands. The startup banner said the switch
@@ -252,8 +252,8 @@ spawn a coding agent with write access to your checkout.
 That last one is guarded by **five independent conditions, each separately sufficient** to
 stop it: the feature must be switched on, a random per-run token must match (compared with
 `MessageDigest.isEqual`), the request must be from loopback, it must be same-site, and the
-target directory must exist and be a directory. Its token header is deliberately not
-CORS-allow-listed, so a web page's preflight fails before any of that is reached.
+target directory must exist and be a directory. Its token header is kept off the CORS
+allow-list, so a web page's preflight fails before any of that is reached.
 
 The same file's documentation *mirror* — `GET /field-docs/{...}`, which fetches
 `openendedgroup.com` and serves it back from Field's own origin so an injected annotation
@@ -263,15 +263,14 @@ Field has dozens of other unguarded `/api/…` routes. A hostile or compromised 
 page would be able to call all of them. Restricting the mirror to loopback takes that whole
 same-origin position off the local network.
 
-## The two things that are open, and are open on purpose
+## Two things that are open, and why they stay open
 
-Nothing above closes these. Both are deliberate, both cost something real to close, and
-pretending otherwise would make this page useless.
+Nothing above closes these. Both are known, and both cost something real to close.
 
 **Another host on your network.** The HTTPS connector binds `0.0.0.0` so that the visionOS
 shell and other devices can reach Field — a real, used workflow. Ktor's CORS plugin does not
-run at all for a request with no `Origin` header, and the same-site check deliberately allows
-such a request. So `curl` from any machine on the same wifi reaches essentially every route,
+run at all for a request with no `Origin` header, and the same-site check allows such a
+request. So `curl` from any machine on the same wifi reaches essentially every route,
 today. Closing this needs authentication or a narrower bind address, and a narrower bind
 breaks the headset. **It is your network that is protecting you here.**
 

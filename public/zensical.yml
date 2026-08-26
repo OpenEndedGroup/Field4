@@ -5,26 +5,28 @@ site_name: OpenEndedGroup | Field·4
 
 nav:
   - Home: index.md
-  - Installation: installation.md
-  - Survival Guide: survivalGuide.md
-  - Keyboard Shortcuts: keybindings.md
-  - Feature Overview: funFeatures.md
-  - AI Overview: aiFeatures.md
-  - The Documentation Browser: completion_doc_browser.md
-  - How the Popup Decides: how_the_popup_decides.md
-  - History & Inspection:
+  - Getting Started:
+    - Installation: installation.md
+    - Survival Guide: survivalGuide.md
+    - A Tour: funFeatures.md
+    - Kotlin Syntax Overview: kotlin_overview.md
+    - Keyboard Shortcuts: keybindings.md
+  - Writing Code in a Box:
+    - Running Code in a Box: running_code.md
+    - Frames, and What a Frame Is: animation_time_model.md
+    - Kotlin in the Head: kotlin_in_the_head.md
+    - Autocomplete:
+      - The Documentation Browser: completion_doc_browser.md
+      - How Completions Are Ranked: completion_ranking.md
+  - Working in a Document:
+    - Bookmarks: bookmarks.md
+    - Snapping: snapping.md
     - Your History with Field: history_overview.md
     - Document History: document_history.md
     - Inline History (History Lens): history_lens.md
-    - AI Tool-Use History: ai_tool_use_history.md
-    - AI Documentation Polish: ai_doc_polish.md
     - The Semantic Index: semantic_index.md
-  - Kotlin Overview: kotlin_overview.md
-  - Kotlin in the Head: kotlin_in_the_head.md
-  - How Box Code Runs: box_code_pipeline.md
-  - Frames, and What a Frame Is: animation_time_model.md
-  - Building & Testing: building_and_testing.md
-  - What Field Exposes: server_surface.md
+  # Generated from source rather than written: extracted KDoc and codegen output. Not
+  # staged, because it is exactly as finished as the source it is read out of.
   - Reference:
     - What's Already in the Box: reference/index.md
     - Codebase Reference:
@@ -42,59 +44,73 @@ nav:
       - Audio: reference/audio.md
       - Audio AI: reference/audio-ai.md
       - Workspace: reference/workspace.md
-    - Linear Algebra: linear_algebra.md
-    - Generated Vector API: linear_algebra_api.md
-    - FLine Examples: fline_examples.md
-    - Field's 3D Output: three_output.md
-    - Visualizers & Controls: visualizers.md
-    - Charts as FLines: chart.md
-    - DataFrames in a Box: dataframe.md
-    - Querying Object Graphs: graph_query.md
-    - Rewriting Your Own Syntax: pattern_rewrite.md
-    - Staging area:
-      - Staging Overview: staging.md
-      - Mobile Controllers: mobile_controllers.md
+    - Libraries & APIs:
+      - Linear Algebra: linear_algebra.md
+      - Generated Vector API: linear_algebra_api.md
+      - FLine Examples: fline_examples.md
+      - Field's 3D Output: three_output.md
+      - Visualizers & Controls: visualizers.md
+      - Charts as FLines: chart.md
+      - DataFrames in a Box: dataframe.md
+      - Querying Object Graphs: graph_query.md
+      - Rewriting Your Own Syntax: pattern_rewrite.md
+    - Under the Hood:
+      - What Field Exposes: server_surface.md
+      - Building & Testing: building_and_testing.md
+  - Staging area:
+    - Staging Overview: staging.md
+    - Working with AI:
+      - AI Overview: aiFeatures.md
+      - AI Tool-Use History: ai_tool_use_history.md
+      - AI Documentation Polish: ai_doc_polish.md
+    - Automation & Agents:
       - Automating Field: automating_field.md
       - Agent Transcript Gallery: agent_transcripts.md
-      - Field Systems:
-        - Field Audio AI: field_audio_ai.md
-        - Field Audio Service Reference: field_audio_service_reference.md
+      - Mobile Controllers: mobile_controllers.md
+      - Interactive Guides: interactive_guides.md
+    - Field Systems:
+      - Rendering & GPU:
+        - afield.four Graphics: afield_four_graphics.md
+        - Fabricate Renderer: fabricate_renderer.md
+        - Ray Tracing Examples: ray_tracing_examples.md
+        - Particles, Cloth & Constraints: physics.md
+        - Field Probes: field_probes.md
+      - Heads & Headsets:
         - RemoteJS & WebXR: ar_reference.md
         - Apple Vision Pro (WiP): vision.md
         - Geometry in the Headset: vision_geometry.md
-        - Fabricate Renderer: fabricate_renderer.md
-        - Ray Tracing Examples: ray_tracing_examples.md
-        - afield.four Graphics: afield_four_graphics.md
-        - Particles, Cloth & Constraints: physics.md
         - ImGui as a VR Panel: imgui_vr_panel.md
-        - Field Probes: field_probes.md
-        - Interactive Guides: interactive_guides.md
-      - Small Languages:
-        - FieldML Cheatsheet: fieldml_cheatsheet.md
-        - FieldML Examples: fieldml_examples.md
-        - FieldML JVM Bridge: fieldml_host_bridge.md
-        - Forth Examples: forth_examples.md
-        - StackSL Cheatsheet: stacksl_cheatsheet.md
-        - StackSL Examples: stacksl_examples.md
-        - Language Extensions: language_extensions.md
-        - Petri Cheatsheet: petri_cheatsheet.md
-        - RectSL Cheatsheet: rectsl_cheatsheet.md
-        - RectSL Examples: rectsl_examples.md
-        - RectSL Inverse Animation: rectsl_inverse_animation.md
-        - Nano Examples: nano_examples.md
-        - Bridging Another Language (MorphoHDL): morpho_examples.md
-      - Drawing From Data:
+    - Small Languages:
+      - Language Extensions: language_extensions.md
+      - FieldML Cheatsheet: fieldml_cheatsheet.md
+      - FieldML Examples: fieldml_examples.md
+      - FieldML JVM Bridge: fieldml_host_bridge.md
+      - StackSL Cheatsheet: stacksl_cheatsheet.md
+      - StackSL Examples: stacksl_examples.md
+      - RectSL Cheatsheet: rectsl_cheatsheet.md
+      - RectSL Examples: rectsl_examples.md
+      - RectSL Inverse Animation: rectsl_inverse_animation.md
+      - Petri Cheatsheet: petri_cheatsheet.md
+      - Forth Examples: forth_examples.md
+      - Nano Examples: nano_examples.md
+      - Bridging Another Language (MorphoHDL): morpho_examples.md
+    - Drawing From Data:
+      - Functions & Derivatives:
         - Functions Examples: functions_examples.md
         - Functions Domains: functions_domains.md
         - Differentiating Functions: autodiff_examples.md
+      - Time & Signals:
         - Values Over Time (Interpolants & Keyframes): interpolants_examples.md
         - Capturing & Replaying Live State (Keyframes): keyframer_examples.md
         - Timeseries Examples: timeseries_examples.md
         - State Estimation Examples: state_estimation_examples.md
         - Statistics & Dependence: statistics_examples.md
         - Spectral Examples: spectral_examples.md
+      - Colour & Images:
+        - Colors Examples: colors_examples.md
         - Imaging & Computer Vision: imaging_examples.md
         - Depth & CLIP (ONNX): onnx.md
+      - Geometry & Solids:
         - Meshes & 3D Geometry: mesh_examples.md
         - Solids & Booleans (Manifold): manifold.md
         - A Solid, Written Down (solidsl): solid_notation.md
@@ -102,29 +118,32 @@ nav:
         - Polytopes & the Conway Algebra: polytope_examples.md
         - Typography as Geometry: typography_examples.md
         - Voronoi, Contours & Clusters: spatial_geometry_examples.md
-        - DoughDSP Sound Examples: dough_dsp_sound.md
+      - Sound & Music:
         - Patterns & Rhythm: pattern_language.md
         # Quoted: the title has its own colon, and an unquoted one breaks the YAML scanner.
         - "Sound: the Pattern → Audio Path": sound.md
         - Making a Sound, Every Path There Is: sound_paths.md
+        - DoughDSP Sound Examples: dough_dsp_sound.md
         - Sonic Pi: sonic_pi.md
         - Faust: faust.md
+      - Audio AI:
+        - Field Audio AI: field_audio_ai.md
+        - Field Audio Service Reference: field_audio_service_reference.md
         - Audio AI Gesture Board: audio_ai_gesture_board.md
         - Beat and Pitch Analysis: audio_ai_analysis.md
         - Corpus Microscope: audio_ai_corpus_microscope.md
         - Render Field Music, Then Analyse It: audio_render_analysis.md
         - EnCodec Reconstruction Microscope: audio_ai_codec.md
-        - Colors Examples: colors_examples.md
-        - Neighbors & Graphs Examples: graph_connectivity_examples.md
-      - Networks and Dynamics:
-        - Sorting Networks Examples: sorting_networks_examples.md
-        - Interaction Nets Examples: interaction_nets_examples.md
-        - Petri Nets: petri_nets.md
-        - Boolean Networks Examples: boolean_networks_examples.md
-        - Boolean Network Music Examples: boolean_network_music_examples.md
-        - Wave Function Collapse Examples: wfc_examples.md
-        - Spatial Artificial Life: alife_examples.md
-        - Graphs That Change While You Watch: dynamic_graph_systems_examples.md
+    - Networks and Dynamics:
+      - Sorting Networks Examples: sorting_networks_examples.md
+      - Interaction Nets Examples: interaction_nets_examples.md
+      - Petri Nets: petri_nets.md
+      - Boolean Networks Examples: boolean_networks_examples.md
+      - Boolean Network Music Examples: boolean_network_music_examples.md
+      - Wave Function Collapse Examples: wfc_examples.md
+      - Spatial Artificial Life: alife_examples.md
+      - Neighbors & Graphs Examples: graph_connectivity_examples.md
+      - Graphs That Change While You Watch: dynamic_graph_systems_examples.md
 
 # Note: declaring this key at all replaces Zensical's DEFAULT_MARKDOWN_EXTENSIONS
 # wholesale (it is only a `config.get(..., DEFAULT)` fallback) — only `toc` and

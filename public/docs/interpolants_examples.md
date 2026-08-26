@@ -18,7 +18,7 @@ An interpolant is a value that chases a target over a controlled number of
 evaluations rather than jumping. `smoothTo(...)` is the workhorse — opacity,
 brightness, a filter cutoff, a camera move, a gesture-derived control. The single
 knob that shapes the approach is `steps`: fewer steps arrive sooner and sharper,
-more steps settle later and softer. The honest way to feel that is to give three
+more steps settle later and softer. The way to feel that is to give three
 interpolants a target that keeps *moving* — a set-point that jumps every 60
 evaluations — and re-aim each one from wherever it currently sits (`startAt`) the
 moment the target changes. Now `steps` reads as responsiveness: the snappy one

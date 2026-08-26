@@ -341,7 +341,7 @@ data class CommonRadiusConstraint(
  * Three residuals per vertex — per coordinate, not per distance — each `x - initialX`, so this is the
  * one family that is *not* invariant under rigid motion, which is exactly what makes it able to pin
  * one down. It is also the bluntest instrument here: at any appreciable weight it will hold a vertex
- * away from where the other families want it and quietly cap how well they can be satisfied. A
+ * away from where the other families want it and cap how well they can be satisfied, with nothing to say so. A
  * [RigidGauge] on the plan does the same job afterwards without biasing the objective.
  */
 data class ProximityConstraint(
@@ -368,7 +368,7 @@ data class ProximityConstraint(
  * [radius]; `null` uses the initial embedding's mean tangency radius, so the family constrains the
  * spread rather than the scale.
  *
- * The origin is deliberately not the vertex centroid: the canonical form centres on the *tangency*
+ * The origin is not the vertex centroid: the canonical form centres on the *tangency*
  * points, and mixing the two centres is the classic way to make this constraint fight itself. Pair
  * it with [TangencyCentroidConstraint].
  *

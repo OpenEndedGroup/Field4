@@ -222,7 +222,7 @@ That gives you a useful split of responsibilities:
 - `lines(...)` for direct 2D inspection and editing.
 - `threeLines(...)` for orbiting, spatial debugging, and editing geometry in depth.
 
-The two viewers are deliberately close in spirit. If you learn one, the other should feel familiar rather than like a separate subsystem.
+The two viewers are close in spirit by design. If you learn one, the other should feel familiar rather than like a separate subsystem.
 
 ### The 3D output area as an instrument: `threeInspect(...)`
 

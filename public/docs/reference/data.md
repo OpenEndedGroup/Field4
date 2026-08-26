@@ -348,7 +348,7 @@ An attractor of the Boolean network: the minimal invariant set(s) reached after 
 
 Clustering for lists of `Float`, `Vec2`, `Vec3` and `Vec4`.
 
-**There is no k-means here, on purpose.** Every algorithm in this file returns either a *hierarchy*
+**There is no k-means here.** Every algorithm in this file returns either a *hierarchy*
 or a centre that is meaningful for the data it summarises: a medoid is one of your own samples, and
 a median is coordinate-wise robust. A k-means centroid is neither, and on a point cloud with an
 outlier it is the one that moves.
@@ -521,7 +521,7 @@ How a stack of [`ClusterLayer`](data.md#clustering-kt-clusterlayer)s is laid out
 | <code class="highlight"><span class="k">val</span> <span class="n">pointSize</span><span class="p">:</span> <span class="nc">Double</span></code> | Size of a sample's core dot. |
 | <code class="highlight"><span class="k">val</span> <span class="n">pointHaloSize</span><span class="p">:</span> <span class="nc">Double</span></code> | Size of the soft halo drawn behind each sample, which is what makes dense regions read as bright. |
 | <code class="highlight"><span class="k">val</span> <span class="n">centerPointSize</span><span class="p">:</span> <span class="nc">Double</span></code> | Size of a cluster centre's core dot — slightly larger than a sample's, so centres read as centres. |
-| <code class="highlight"><span class="k">val</span> <span class="n">centerHaloSize</span><span class="p">:</span> <span class="nc">Double</span></code> | Size of the glow behind a cluster centre. Much larger than the others on purpose. |
+| <code class="highlight"><span class="k">val</span> <span class="n">centerHaloSize</span><span class="p">:</span> <span class="nc">Double</span></code> | Size of the glow behind a cluster centre. Much larger than the others. |
 | <code class="highlight"><span class="k">val</span> <span class="n">linkThickness</span><span class="p">:</span> <span class="nc">Double</span></code> | Stroke thickness of the sample-to-centre links. |
 | <code class="highlight"><span class="k">val</span> <span class="n">pointAlpha</span><span class="p">:</span> <span class="nc">Float</span></code> | Opacity of a sample's core dot. |
 | <code class="highlight"><span class="k">val</span> <span class="n">haloAlpha</span><span class="p">:</span> <span class="nc">Float</span></code> | Opacity of the halos. Low, because they accumulate: overlap is the signal. |
@@ -533,7 +533,7 @@ How a stack of [`ClusterLayer`](data.md#clustering-kt-clusterlayer)s is laid out
 
 ## dynamic_graph_field.kt { #dynamic-graph-field-kt }
 
-The two honest ways to *look at* `dynamic_graph_systems.kt` — the point cloud and the weighted edges
+The two useful ways to *look at* `dynamic_graph_systems.kt` — the point cloud and the weighted edges
 joining it, so a time-varying graph can be watched rather than described.
 
 It sits in its own file for the same reason `alife_field.kt` and `wfc_field.kt` do:
@@ -572,7 +572,7 @@ to both paths:
    different states and must look different.
  - **A figure that clips says so.** `dynamicGraphImg` reports how many points fell outside the
    window in `DynamicGraphRaster.clipped` and `dynamicGraphOutsideWindow` answers the same question
-   for the vector path, because a figure quietly cropping half its subject is the other way this
+   for the vector path, because a figure cropping half its subject unannounced is the other way this
    goes wrong.
 
 `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_field.kt` — [read the source](source/jvmMain/afield/stdlib/dynamic_graph_field/)
@@ -1681,8 +1681,8 @@ Overlapping WFC patterns extracted from a row-major 2D FloatArray.
 
 The bridge from Wave Function Collapse into the things Field already displays.
 
-`wfc.kt` is deliberately dependency-free — it knows about integer tile IDs, `BufferedImage` and
-`FloatArray`, and nothing else. That keeps the solver honest, but it means a box running WFC has
+`wfc.kt` is dependency-free — it knows about integer tile IDs, `BufferedImage` and
+`FloatArray`, and nothing else. That keeps the solver portable, but it means a box running WFC has
 no direct way to *look* at what it is doing. These extensions supply the missing hop into
 [`Img`](imaging.md#imaging-kt-img), and therefore into `Box.showImg`, `showImgGrid`, `montage`, `Img.colormap` and the
 `ToHTML` thumbnail a box shows when you evaluate a value.

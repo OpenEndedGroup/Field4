@@ -193,7 +193,7 @@ re-running is the intended way to work.
 One rule: the class's simple name has to be unique across the whole
 conversation, which includes Field's own built-in tools. Naming your request
 class `Commentary` or `EditFileRequest` is rejected with an error saying so,
-rather than quietly shadowing a tool the model has been told it can rely on.
+rather than shadowing a tool the model has been told it can rely on.
 
 ### Deciding when a tool is offered
 

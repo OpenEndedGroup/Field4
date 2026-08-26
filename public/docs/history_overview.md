@@ -5,7 +5,7 @@ runtime visualizers keep short in-memory value windows; AI4 writes per-send tool
 semantic index represents the code corpus it has most recently indexed. These records have
 different retention and are not one exhaustive event log.
 
-That memory is spread across a handful of tools, and this section pulls them together. They all answer the same question from different angles: *what happened, and how did we get to now?*
+Those records are spread across a handful of tools, and this section collects them.
 
 - **[Document history](document_history.md)** — a full-page timeline of the versions retained in the document's history store, with restore, cherry-pick and diff. This is content-level recovery.
 - **[Inline history: the History Lens](history_lens.md)** — right there in the editor, scrub a single line or selection back through the versions it has lived in.
@@ -16,7 +16,7 @@ That memory is spread across a handful of tools, and this section pulls them tog
 
 ## The `/welcome` dashboard
 
-Most of the AI-facing history tools are launched and monitored from one place: the **welcome page**. It is Field's landing page — the server opens `https://localhost:<port>/welcome` on startup, and in the desktop app it is the always-available first tab (the `+` button opens a fresh one).
+The AI-facing history tools are launched and monitored from the **welcome page**. It is Field's landing page — the server opens `https://localhost:<port>/welcome` on startup, and in the desktop app it is the always-available first tab (the `+` button opens a fresh one).
 
 ![The welcome dashboard, with the AI tasks panel open](assets/welcome-dashboard.png)
 

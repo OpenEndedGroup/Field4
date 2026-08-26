@@ -72,7 +72,7 @@ AI4 still needs the same provider credentials and configuration it uses on the d
 
 ## Select, then edit
 
-Open **Select** whenever you want to move elsewhere in the document. The search field is deliberately 16 pixels high enough to avoid Safari's automatic page zoom, rows have touch-sized targets, and the desktop preview column is omitted so results have room beside the on-screen keyboard.
+Open **Select** whenever you want to move elsewhere in the document. The search field is 16 pixels high, enough to avoid Safari's automatic page zoom, rows have touch-sized targets, and the desktop preview column is omitted so results have room beside the on-screen keyboard.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-mobile-controller-select" screenshot="assets/mobile_controllers/select.png" alt="Open Anything in the Field mobile controller at iPhone size" padding="0" wait="0" timeout="120" embed=true hidden=true name="mobile-controller-select"}
 ui.eval("""

@@ -213,7 +213,7 @@ data class CanonicalizeOptions(
 }
 
 /**
- * The outcome of a canonicalization run, including the honest before/after evidence.
+ * The outcome of a canonicalization run, including the before/after evidence.
  *
  * [converged] means the iteration stopped moving, not that the result is the canonical form: only
  * the diagnostics can say that, and for a non-convex or non-polyhedral input no canonical form need
@@ -576,7 +576,7 @@ fun PolyhedralObject.canonicalDiagnostics(): CanonicalDiagnostics {
 
 /**
  * Move each edge's two endpoints along that edge's tangency vector so the edge's nearest approach
- * to the origin tends to one. Deliberately Gauss-Seidel — each edge sees the previous edges' work —
+ * to the origin tends to one. Gauss-Seidel rather than Jacobi — each edge sees the previous edges' work —
  * which is what makes the published algorithm converge in hundreds rather than thousands of steps.
  */
 private fun tangentifyStep(problem: RealizationProblem, x: DoubleArray, stability: Double) {

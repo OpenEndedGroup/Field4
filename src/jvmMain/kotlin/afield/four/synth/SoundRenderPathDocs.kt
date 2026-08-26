@@ -36,7 +36,7 @@ expect:
  * two mechanisms hold the declaration to it:
  *
  *  * [renderWav] refuses to write a [Voice.DIRT_SAMPLES] figure out of the fallback. On a machine
- *    with no library the docs build fails with an explanation instead of quietly publishing the
+ *    with no library the docs build fails with an explanation instead of publishing the
  *    stand-in under a caption that says "real samples".
  *  * `SoundProvenanceGuardTest` decodes the *committed* `.wav`, correlates it against a fresh
  *    stand-in render of the same pattern, and fails if the answer disagrees with the declaration.
@@ -178,7 +178,7 @@ object SoundRenderPathDocs {
      * Renders [name] through the voice it declares.
      *
      * A [Voice.DIRT_SAMPLES] figure is an error when no library can be found: the caller asked for
-     * real samples and cannot have them, and the one thing this file exists to prevent is quietly
+     * real samples and cannot have them, and the one thing this file exists to prevent is silently
      * substituting the other voice under a caption that says otherwise. Set
      * `FIELD_DIRT_SAMPLES` (see [DirtRender.ENV_VAR]) or install the Tidal quark.
      */
@@ -459,7 +459,7 @@ object SoundRenderPathDocs {
      * so the two genuinely correlate. Measured 0.0565 for `beat-dirt`, whose sixteenth-note hats
      * dilute the kick, and 0.1588 for `per-event-fallback`, which is a quarter kicks. So this
      * ceiling is set from the *worse* case with roughly a factor of two of headroom, and it is
-     * still ~6x below the ~1.0 that a figure quietly reverting to the stand-in produces — which is
+     * still ~6x below the ~1.0 that a figure reverting to the stand-in produces — which is
      * the only failure it needs to catch.
      */
     const val SAMPLE_BACKED_SIMILARITY_CEILING = 0.35

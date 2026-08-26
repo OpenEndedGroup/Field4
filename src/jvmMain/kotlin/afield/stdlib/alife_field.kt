@@ -18,7 +18,7 @@ import kotlin.math.roundToInt
  * separately.
  *
  * **Range-policy discipline, which is the whole difference between a heatmap and a lie.** Copied
- * deliberately from `wfc_field.kt`, because these are the rules that stop an inline view being
+ * separately from `wfc_field.kt`, because these are the rules that stop an inline view being
  * decoration:
  *
  *  - **Every scale is named in the caption, with both endpoints spelled out in the units of the thing
@@ -119,7 +119,7 @@ private fun alifeNum(v: Double): String = when {
  * The **state count is read from the data** (`maxState() + 1`) and named in the caption. This is the one
  * place where "fixed by meaning, not by the frame" has to give a little: an [IntGrid] does not carry its
  * rule's state count, so a 14-state cyclic soup that happens to have died back to 9 distinct states will
- * report 9. The caption therefore says "states observed", not "states", and that is the honest wording
+ * report 9. The caption therefore says "states observed", not "states", and that is the accurate wording
  * rather than a number that looks more authoritative than it is.
  */
 fun alifeGridHtml(grid: IntGrid): String {
@@ -262,7 +262,7 @@ fun alifeLeniaRunHtml(run: LeniaRun): String {
 }
 
 /**
- * A [values] sparkline as a 1-channel [Img], `y` fixed to `0 .. 1` — deliberately *not* auto-scaled, so a
+ * A [values] sparkline as a 1-channel [Img], `y` fixed to `0 .. 1` — *not* auto-scaled, so a
  * death curve and a saturation curve are drawn in different places on the panel rather than both filling
  * it.
  */

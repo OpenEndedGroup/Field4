@@ -1,4 +1,26 @@
-# How Box Code Runs
+# Running code in a box
+
+"Run this" is the gesture you make most often in Field, and it means more than one thing. This page
+is the whole path, from the keystroke to the frame — start at whichever end you need.
+
+- **Running versus launching.** `alt-return` runs a line or a block; `alt-0` runs everything in the
+  box; `alt-click` and `alt-up` *launch* it. Running evaluates and stops. Launching gives the code a
+  chance to put something into the animation loop and keep going. If none of those keys are muscle
+  memory yet, the [Survival Guide](survivalGuide.md) is where they live, alongside the `?` cheat
+  sheet and the `F1` palette that lists every other way to execute something.
+- **What happens between the keystroke and the compiler** — fragments, macro expansion, the
+  preamble, inheritance from parent boxes, `@exported` — is the rest of this page.
+- **What happens after the last line evaluates**, when what you returned is a `Frames`, is
+  [Frames, and what a frame is](animation_time_model.md). Launching a box is exactly the case where
+  that page takes over from this one.
+
+For a friendly tour of `connect` / `prop` / `once` in use, rather than in mechanism, read the
+[Feature Overview](funFeatures.md); for the graphics-box API on top of all this, see
+[afield.four Graphics](afield_four_graphics.md). This page is the layer underneath both.
+
+---
+
+## The pipeline, in five steps
 
 When you run a box, Field does **not** hand your text straight to the Kotlin compiler. It:
 
@@ -8,9 +30,7 @@ When you run a box, Field does **not** hand your text straight to the Kotlin com
 4. compiles and evaluates the fragment,
 5. and folds some of what just ran (`@exported` declarations) back into the preamble.
 
-Most of the day-to-day magic — `prop`, `once`, inherited `renderer`/`window`, the typed accessors you get from `moduleHere { }`, `@exported` helpers — is built on this pipeline. This page explains the machinery. For the gentle user-level tour of `connect`/`prop`/`once` see the [Feature Overview](funFeatures.md); for the graphics-box API see [afield.four Graphics](afield_four_graphics.md). This page is the layer underneath both.
-
-This page stops where the last fragment finishes evaluating. What happens to the *value* it produced — and in particular what happens when that value is a `Frames`, as it is for every `animate { }` box — is [Frames, and what a frame is](animation_time_model.md).
+Most of the day-to-day magic — `prop`, `once`, inherited `renderer`/`window`, the typed accessors you get from `moduleHere { }`, `@exported` helpers — is built on these five steps. Everything below is that machinery, in the order the steps run.
 
 There are two distinct "code that writes code" mechanisms, and it helps to keep them straight from the start:
 
@@ -40,7 +60,7 @@ Expansion produces an **`Insert`** with three parts that matter:
 - **`preamble` / `preambleAfterImports`** — glue (imports + generated declarations) pushed into the box's preamble.
 - **`target`** — optionally, *which* box's preamble to write to (`rootProp` targets the document root).
 
-The expander walks your code's syntax tree, asks the macro registry to rewrite each recognised call, and applies the edits. Two consequences are worth internalising:
+The expander walks your code's syntax tree, asks the macro registry to rewrite each recognised call, and applies the edits. Two consequences follow from that:
 
 - **Macro expansion is not pure.** Besides rewriting text, it mutates box state. `moduleHere { }`, for instance, seeds the box's `vertex`/`fragment` shader properties and *compiles those shaders* during expansion (it needs the shader interface to generate typed accessors — see **Generated GLSL accessors** below). This is why the ordering of `//%-` fragments matters (see **The `//%-` fragment break** below).
 - **A macro's output lands in the preamble**, so it becomes available not just to the rest of your code but — if tagged for inheritance — to child boxes too.
@@ -124,9 +144,9 @@ Two things have to be true for a child to use a parent's value:
 
 2. **The value is fetched at read time** by the `Inheritance` delegate's walk up `parents`. The preamble only carries the *accessor*; the *value* stays on whichever box set it.
 
-### Topology is load-bearing
+### Which box is whose parent decides what is visible
 
-Both the preamble gather and the value walk follow `parents` — so **which box is whose parent decides what is visible.** Connecting a child under a parent (`parent.connect(child)`, or selecting the parent and pressing `g` in the UI) is what puts the parent into the child's ancestor chain.
+Both the preamble gather and the value walk follow `parents`. Connecting a child under a parent (`parent.connect(child)`, or selecting the parent and pressing `g` in the UI) is what puts the parent into the child's ancestor chain.
 
 This is the classic graphics gotcha: a freshly created box whose only parent is the document root is a **sibling** of the renderer box, not a descendant. It will *not* inherit `renderer` — the accessor never gathers into it, and the value walk never reaches it. Only after you connect it **beneath the renderer box** does the next run gather the accessor and resolve the live `Renderer`. (See the RectSL galleries, where "each example is a child of the renderer, inheriting `renderer`.")
 
@@ -242,7 +262,7 @@ Walk it through:
 
 So `//%-` is not cosmetic here — it is what makes "set some state, then run a macro that reads it" work. Interactive execution expands and evaluates fragments in sequence. A single Kotlin box launched through the transcript/multi-box path is also awaited fragment by fragment; mixed-language launch groups do not promise the same first-frame ordering across boxes.
 
-**A second worked example, for the preamble half rather than the macro half.** "Between fragments, the preamble/setup blocks are re-run too" (above) is easy to read past, and it is load-bearing on its own: `runLaunchSetupBlocks(box)` sits *inside* the fragment loop, not before it (`execution.kt:1400`). So a fragment that *writes* to the box's preamble at runtime has published a real source declaration by the time the next fragment is compiled. That is exactly how `DataFrame.typed("People")` makes typed columns survive into the second half of the same execution — see [DataFrames in a Box](dataframe.md#fragment-marker). Same shape as `once.vertex` before `moduleHere`, one layer down: not "set state a macro reads", but "declare a type the compiler reads".
+**A second worked example, for the preamble half rather than the macro half.** "Between fragments, the preamble/setup blocks are re-run too" (above) is easy to read past, and it carries a consequence of its own: `runLaunchSetupBlocks(box)` sits *inside* the fragment loop, not before it (`execution.kt:1400`). So a fragment that *writes* to the box's preamble at runtime has published a real source declaration by the time the next fragment is compiled. That is exactly how `DataFrame.typed("People")` makes typed columns survive into the second half of the same execution — see [DataFrames in a Box](dataframe.md#fragment-marker). Same shape as `once.vertex` before `moduleHere`, one layer down: not "set state a macro reads", but "declare a type the compiler reads".
 
 ---
 

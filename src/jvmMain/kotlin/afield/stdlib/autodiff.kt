@@ -19,7 +19,7 @@ import kotlin.math.absoluteValue
  *
  * [AD] is a scalar that remembers how it was made. Arithmetic on [AD] values appends to an [ADTape]
  * — a flat array of (value, up-to-two parents, up-to-two local partials) — so
- * `(a * b + sin(c)) / 2.0` reads exactly like `Double` arithmetic and quietly records a graph. The
+ * `(a * b + sin(c)) / 2.0` reads exactly like `Double` arithmetic and records a graph as it goes. The
  * backward sweep walks that array once in reverse accumulating adjoints. Because every node has at
  * most two parents, the tape is three arrays of primitives and no object churn beyond the [AD]
  * handles themselves.
@@ -131,7 +131,7 @@ class ADTape {
     fun variable(value: Double): AD = AD(this, push(value, -1, 0.0, -1, 0.0))
 
     /**
-     * A tracked scalar holding [value] that is deliberately treated as a leaf — identical in
+     * A tracked scalar holding [value] that is treated as a leaf — identical in
      * mechanics to [variable], named differently to say "I do not intend to differentiate this".
      */
     fun constant(value: Double): AD = AD(this, push(value, -1, 0.0, -1, 0.0))
@@ -382,7 +382,7 @@ fun ceil(x: AD): AD = x.node(kotlin.math.ceil(x.value), 0.0)
 /** Nearest integer. Piecewise constant, so the derivative is 0 everywhere it exists. */
 fun round(x: AD): AD = x.node(kotlin.math.round(x.value), 0.0)
 
-/** The sign of a tracked value as a plain `Double` — deliberately *not* an [AD], since its
+/** The sign of a tracked value as a plain `Double` — *not* an [AD], since its
  *  derivative is 0 away from the origin and undefined at it. */
 fun sign(x: AD): Double = kotlin.math.sign(x.value)
 

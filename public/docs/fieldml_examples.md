@@ -412,7 +412,7 @@ let progress name =
   |> progress "interop"
 ```
 
-For object construction and ad hoc member access, the lower-level host bridge is still available. It is deliberately explicit: resolve a class, construct it, call a method, or read/write a member.
+For object construction and ad hoc member access, the lower-level host bridge is still available. It is explicit: resolve a class, construct it, call a method, or read/write a member.
 
 ```diffstatic {data-lang=fieldml}
 let line =

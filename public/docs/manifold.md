@@ -74,7 +74,7 @@ val part = Solid.scope {
         Solid.cylinder(30.0, 3.0, segments = 64, center = true).translated(x, y, 0.0)
     }
 
-    // A slot with properly rounded ends: that is a 2D offset, extruded. There is no honest way to
+    // A slot with properly rounded ends: that is a 2D offset, extruded. There is no correct way to
     // get those end caps by moving points around.
     val slot = Section.square(26.0, 9.0, center = true)
         .offset(4.5, JoinType.ROUND, circularSegments = 64)
@@ -175,7 +175,7 @@ separately, and for the pair of cases proving that no local check can tell them 
 
 One trap worth stating on this page in particular: **Manifold accepts an inside-out mesh.** A closed,
 consistently-but-inwardly wound surface is a legal manifold and reports a *negative* volume, so
-`status` is `NO_ERROR` and the next boolean quietly computes the complement of what you meant.
+`status` is `NO_ERROR` and the next boolean computes the complement of what you meant.
 `isValidSolid()` cannot catch that; `diagnose()` reports it as `INVERTED_ORIENTATION`, and
 `repairToSolid()`'s second winding pass fixes it. Manifold likewise accepts zero-area triangles,
 pinch vertices, and disjoint components — whose volumes it sums.

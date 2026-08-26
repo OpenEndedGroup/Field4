@@ -308,7 +308,7 @@ One node in a net: an [`AgentType`](visualization.md#interactionnets-kt-agenttyp
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span></code> | Unique within its net and never reused, so a [`ReductionStep`](visualization.md#interactionnets-kt-reductionstep)'s removed ids stay unambiguous after the fact. Minted as `type_n` by [`IdSource`](visualization.md#interactionnets-kt-idsource) unless you named it. |
 | <code class="highlight"><span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">AgentType</span></code> | Which kind of agent this is — what rules match on, and what fixes the port count. |
-| <code class="highlight"><span class="k">val</span> <span class="n">state</span><span class="p">:</span> <span class="nc">NodeState</span></code> | This node's mutable payload. `Net.create` copies whatever you pass, so two nodes never share one by accident; a rewrite rule must copy it deliberately. |
+| <code class="highlight"><span class="k">val</span> <span class="n">state</span><span class="p">:</span> <span class="nc">NodeState</span></code> | This node's mutable payload. `Net.create` copies whatever you pass, so two nodes never share one by accident; a rewrite rule must copy it explicitly. |
 | [<code class="highlight"><span class="k">val</span> <span class="n">ports</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Port</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/interactionnets/#L373) | All of this node's ports, principal first at index 0, then the auxiliaries in order. |
 | [<code class="highlight"><span class="k">val</span> <span class="n">principal</span><span class="p">:</span> <span class="nc">Port</span></code>](source/jvmMain/afield/stdlib/interactionnets/#L381) | This node's one reactive port. Wire two of these together and you have an [`ActivePair`](visualization.md#interactionnets-kt-activepair). |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">aux</span><span class="p">(</span><span class="n">i</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Port</span></code>](source/jvmMain/afield/stdlib/interactionnets/#L388) | Auxiliary port `i`, numbered from **0** — so `aux(0)` is `ports[1]`. |
@@ -749,7 +749,7 @@ A typed frame, charting its own columns.
 rows for `.h2`, which is the right compact form: a frame is rows and columns first. What it had no
 answer for is the other question a reader has about a numeric column, which is *what shape is it*.
 
-This is that answer, and it is deliberately thin — nine lines of column selection over [`Chart`](visualization.md#charts-kt-chart).
+This is that answer, and it is thin — nine lines of column selection over [`Chart`](visualization.md#charts-kt-chart).
 The interesting decision is which columns, and the rule is the one that makes `frame.chart()` with
 no arguments do the obvious thing:
 
@@ -871,7 +871,7 @@ can take over its own rendering either by implementing [`ToHTML`](visualization.
 `registerValuePrinter`; both are trusted to return well-formed HTML, while ordinary strings,
 characters, keys and reflected values are escaped here.
 
-Output is deliberately bounded — [`ValueVisualizer`](visualization.md#valuevisualizer-kt-valuevisualizer)'s own KDoc below covers dispatch order, the
+Output is bounded — [`ValueVisualizer`](visualization.md#valuevisualizer-kt-valuevisualizer)'s own KDoc below covers dispatch order, the
 built-in formatters and the size limits. Whatever those limits elide (the tail of a long string
 or list, extra fields of an object) becomes an expander link, resolved later by
 `renderLazyFragment` from the server's `/lazy-value-fragment` route, so the rest of the value is
@@ -1232,7 +1232,7 @@ a string returned from a `Table.format` lambda is trusted HTML and inserted as-i
 
 `src/jvmMain/kotlin/afield/visualization/tables.kt` — [read the source](source/jvmMain/afield/visualization/tables/)
 
-**Used in:** [Frames, and what a frame is](../animation_time_model.md), [DataFrames in a Box](../dataframe.md), [How the popup decides](../how_the_popup_decides.md)
+**Used in:** [Frames, and what a frame is](../animation_time_model.md), [DataFrames in a Box](../dataframe.md), [How completions are ranked](../completion_ranking.md)
 
 ### Top-level functions { #tables-kt-functions }
 

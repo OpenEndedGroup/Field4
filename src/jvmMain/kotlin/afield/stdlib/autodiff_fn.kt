@@ -26,9 +26,9 @@ import kotlin.math.absoluteValue
  * ## Which ops, and how the honesty is enforced
  *
  * The interpreter covers the smooth algebraic core — see [FnAutoDiff.differentiableOps]. That is
- * deliberately a *subset*: the piecewise oscillators (`saw`, `square`), the table-backed
+ * a *subset*: the piecewise oscillators (`saw`, `square`), the table-backed
  * interpolants, the noise generators and everything with baked point data are not here, and
- * [FnAutoDiff.supports] answers honestly for any graph.
+ * [FnAutoDiff.supports] answers correctly for any graph.
  *
  * The danger with a second interpreter is that it silently computes the derivative of a *different
  * function* from the one `eval` computes. So the exact path never trusts itself: [FnAutoDiff.agrees]
@@ -60,7 +60,7 @@ enum class FnGradientMode {
      */
     EXACT,
 
-    /** Exact where it applies, quietly finite differences where it does not. */
+    /** Exact where it applies, and falls back to finite differences, without saying so, where it does not. */
     AUTO
 }
 
@@ -77,7 +77,7 @@ object FnAutoDiff {
      * The ops the gradient can handle, lower-cased — **derived**, not restated: every op with an
      * [FnFormulas] entry, plus the two numeric-leaf ops that are θ rather than a formula.
      *
-     * Deliberately a subset of the vocabulary. What is *out* and why is declared op by op in
+     * A subset of the vocabulary. What is *out* and why is declared op by op in
      * [FnNonDifferentiable], and `FnOpCoverageTest` fails if an op in [OpRegistry] appears in
      * neither this set nor that one — which is what stops the gap growing silently.
      */
@@ -162,7 +162,7 @@ object FnAutoDiff {
     /**
      * Re-evaluates one node in [AD] arithmetic by walking its [FnFormulas] entry.
      *
-     * There is deliberately **no per-op code here**. The only thing this function knows about ops is
+     * There is **no per-op code here**. The only thing this function knows about ops is
      * that a node carrying `numbers["value"]` is a θ leaf; everything else is looked up in the one
      * formula table that `Fn.eval` is pinned against, and walked by [evalFormulaAD]. That is what
      * makes adding a differentiable op a one-line change with no second transcription to get wrong.
@@ -368,7 +368,7 @@ fun interface FnAdMetric {
          * correspondence.
          *
          * Matching is by **identity** against the singleton metrics in [FnMetric.Companion], which
-         * is deliberately strict: `FnMetric.lp(2.0)` builds a fresh instance that is numerically
+         * is strict: `FnMetric.lp(2.0)` builds a fresh instance that is numerically
          * identical to [FnMetric.rmse] but is not recognised, and the caller is told to pass an
          * explicit [FnAdMetric] rather than being given a gradient of something subtly else.
          */
@@ -432,7 +432,7 @@ fun exactFitObjective(
  * or null when it *is* available.
  *
  * The diagnostic behind [FnGradientMode.EXACT]'s error message, and worth calling by hand when a
- * fit you expected to run exactly quietly fell back under [FnGradientMode.AUTO].
+ * fit you expected to run exactly fell back under [FnGradientMode.AUTO] without saying so.
  */
 fun exactFitRefusal(
     target: Functions.Fn,

@@ -249,9 +249,9 @@ var Box._callable by Delegation<String?>()
  * [Box._moduleHere] and [Box.attachShader]; a re-run replaces the pointer rather than adding a
  * second module.
  *
- * Its presence is load-bearing outside this file: it is how the editor decides that this box has a
+ * Its presence matters outside this file: it is how the editor decides that this box has a
  * graphics pipeline worth offering reflected GLSL completions for, and how the AI/provisional path
- * decides a shader-property edit should trigger a reload. Box-local, deliberately — a child box
+ * decides a shader-property edit should trigger a reload. Box-local, and it has to be — a child box
  * must build its own module rather than inherit its parent's.
  */
 var Box._shader by Delegation<ModulePointer?>()
@@ -699,7 +699,7 @@ data class ShaderRemoteIncludeCacheOptions(
     /** `HttpURLConnection` connect timeout, in milliseconds. */
     val connectTimeoutMillis: Int = 5_000,
     /** `HttpURLConnection` read timeout, in milliseconds. Both timeouts are felt by whichever thread
-     * is compiling — the main runloop, on the reload path — so the defaults are deliberately short. */
+     * is compiling — the main runloop, on the reload path — so the defaults are short. */
     val readTimeoutMillis: Int = 5_000
 )
 
@@ -1918,7 +1918,7 @@ private fun preprocess(
  * includes — `fieldProbe`, `fieldStats`, `quantileWarp` — resolve here too, and asking for `fieldStats`
  * without a [Box.fieldStatsHere] or [Box.useFieldStats] binding throws.
  *
- * Two things this overload deliberately cannot do, because it has no notion of a previous stage or a
+ * Two things this overload cannot do, because it has no notion of a previous stage or a
  * registered root: `{% copyPC %}` throws (there is no prior stage to copy a push-constant block from),
  * and `{% include "someRoot/file.glsl" %}` fails as "no box named …" — registered include roots are
  * only reachable from a real `#include` during compilation, not from the template tag.
@@ -3145,7 +3145,7 @@ private suspend fun updateShader(box: Box, key: ShaderReloadKey, generation: Lon
  * re-preprocesses both stages, re-introspects them, rewrites the box's preamble with the resulting
  * typed bindings, and reloads the module with `forceReresolve`. That flag reaches only the *texture*
  * resolver — textures are re-resolved by name, falling back to the previous module's binding when the
- * resolver comes up empty. Uniform buffers and SSBOs are deliberately *carried over* instead: a UBO
+ * resolver comes up empty. Uniform buffers and SSBOs are *carried over* instead: a UBO
  * whose name still matches keeps its existing source, and an SSBO keeps its previous source whenever
  * `checkCompatibility` still passes. Use this when the shader's interface changed; use the update path
  * when only the arithmetic did.
@@ -4154,7 +4154,7 @@ private fun buildStackAutoShaderPreamble(box: Box?): String {
  * Turn a compiled vertex+fragment pair into the [Insert] that gives a box its typed graphics API: one
  * `val Mesh.<name> by FromInput()` per vertex attribute, the `m.set { }` writer map, a generated Kotlin
  * class per GLSL struct/UBO/SSBO layout, `stack.auto` string properties, and `Mesh`/`MeshGroup`
- * accessors for every push-constant member. UBO members deliberately get *less* than that: the block
+ * accessors for every push-constant member. UBO members get *less* than that: the block
  * itself becomes a `val ModulePointer.<name> by FromUniform()` and each member a
  * `var Structure.<name>`, with no `Mesh`/`MeshGroup` accessor, so a UBO member is written through the
  * uniform rather than per-mesh. (The compute and mesh-shader inserts do emit `Mesh.<uboName>`; this
@@ -4795,7 +4795,7 @@ fun Box._meshModuleHere(p: Parameters = parameters {}): MeshModulePointer {
  * The ray-generation shader a box gets when `rayTracingModuleHere` expands and the box has no `raygen`
  * source: it writes the launch uv into the ray payload and traces nothing at all.
  *
- * Deliberately trace-free, so the pipeline builds and dispatches on any device with ray tracing without
+ * Trace-free, so the pipeline builds and dispatches on any device with ray tracing without
  * needing an acceleration structure to exist yet. Declares no push constants or bindings, so it generates
  * no accessors either.
  */

@@ -44,7 +44,7 @@ import kotlin.math.sqrt
 /**
  * The default fraction of its arc a note holds its gate for.
  *
- * **Deliberately not 1.0, and this is the trap worth naming.** At `sustain = 1.0` the gate never falls
+ * **Not 1.0, and this is the trap worth naming.** At `sustain = 1.0` the gate never falls
  * between adjacent notes, so a repeated pitch is one continuous tone with a single attack — and an onset
  * detector pointed at that signal finds envelope ripple instead of notes. (Exactly that mistake was made in
  * this package on 2026-08-12: 22 "onsets" found in a render of 10 notes.) At 0.9 the gate falls for a tenth
@@ -233,7 +233,7 @@ class FaustPatternRender(
 /**
  * Render [cycles] cycles of [pattern] through a polyphonic bank of [program], offline.
  *
- * Nothing here opens an audio device or a window, which is what makes this the honest path for a figure in
+ * Nothing here opens an audio device or a window, which is what makes this the reliable path for a figure in
  * the documentation and the only path a test can assert on. The bank is built, rendered in blocks — the
  * *same* [FaustVoiceBank.render] the audio thread calls, at the same block size, so what is measured is what
  * would be heard — and closed.
@@ -343,9 +343,9 @@ fun faustEnvelope(x: FloatArray, sampleRate: Int, releaseMs: Double = 30.0): Flo
  * The frame of every note attack in [x].
  *
  * A **burst** is a run of samples that is not quiet, allowing quiet stretches shorter than [minGapMs] inside
- * it; the onset is the burst's first sample. That is the whole algorithm, and it is deliberately not a
+ * it; the onset is the burst's first sample. That is the whole algorithm, and it is not a
  * threshold crossing on a smoothed envelope, because the reported frame then depends on the smoothing rather
- * than on the music — and it is deliberately not period-dependent, because a sawtooth's `|x|` passes through
+ * than on the music — and it is not period-dependent, because a sawtooth's `|x|` passes through
  * zero once a cycle and any envelope release long enough to bridge that is also long enough to bridge the
  * gap between two notes.
  *
@@ -593,7 +593,7 @@ fun faustSpectrumPeaks(
 /**
  * A polyphonic Faust program, and the handle a box holds it by.
  *
- * The same arrangement as [FaustLaunch] and for the same reason — deliberately not a [StereoRenderable], so
+ * The same arrangement as [FaustLaunch] and for the same reason — not a [StereoRenderable], so
  * that the generic audio return-value handler cannot claim it and leak the GraalVM context — with one
  * addition: it may own a feeder thread turning a pattern into notes, and that has to stop when the box does.
  */
@@ -845,7 +845,7 @@ fun Box.faustPoly(
 /**
  * Build the control group for a polyphonic launch: the shared controls only.
  *
- * `freq`, `gate` and `gain` are deliberately absent. They are per-note, written by the allocator on the
+ * `freq`, `gate` and `gain` are absent. They are per-note, written by the allocator on the
  * sample a note begins, and a slider that fought the notes for them would look broken. Everything else — a
  * cutoff, a resonance, a detune — is shared across the whole bank, which is what a synthesiser's front panel
  * is.
@@ -876,7 +876,7 @@ fun Box.faustPolyControls(launch: FaustPolyLaunch, channel: String = "controls")
  * Render a pattern through a polyphonic Faust program and put it in this box's output — a player, a
  * waveform, and the note count.
  *
- * The one-liner that makes the whole thing visible without an audio device, and the honest way to put a
+ * The one-liner that makes the whole thing visible without an audio device, and the way to put a
  * polyphonic Faust figure in the documentation.
  *
  * @param automate shared controls patterned by label —

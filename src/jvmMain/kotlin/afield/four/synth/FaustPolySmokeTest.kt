@@ -30,7 +30,7 @@ expect:
  *
  *  1. **The notes land where they were notated, on the sample.** A 128-frame block at 48kHz is 2.67ms, and a
  *     scheduler that writes parameters once per block quantises every onset to that grid. So the pattern here
- *     is deliberately seven notes to a cycle — onsets at 6857, 13714, 20571 … frames, none of them on a
+ *     is seven notes to a cycle — onsets at 6857, 13714, 20571 … frames, none of them on a
  *     block boundary — and what is asserted is the **jitter**: the spread of the onset error around its
  *     median. A constant offset is the voice's attack and its filter's group delay, which is physics; a
  *     varying offset is the scheduler, which is the thing under test. The block-quantised alternative is
@@ -804,7 +804,7 @@ object FaustPolySmokeTest {
      *
      * A per-block allocation is not a performance nit in an audio callback: it is a GC pause in the audio
      * path, i.e. a dropout, and an average hides exactly that. `getCurrentThreadAllocatedBytes` is the
-     * cheapest honest instrument for it.
+     * cheapest adequate instrument for it.
      *
      * What this found, and what was fixed for it: `nextEventFrame` returned a `Long?` (boxed, once per
      * chunk) and read its two queue heads by building a `Pair`; `render`'s `finally` used `runCatching`,
@@ -1043,7 +1043,7 @@ object FaustPolySmokeTest {
      * moves the whole figure and there is nothing in the number to say so.
      *
      * A median over several windows is immune to that: a pause has to hit most of the windows to move it, and
-     * if it does, the cost is real. Same total work, one honest number.
+     * if it does, the cost is real. Same total work, one number that means something.
      */
     private inline fun medianUsPerBlock(reps: Int = 5, blocks: Int = 400, body: (Int) -> Unit): Double {
         val samples = DoubleArray(reps)

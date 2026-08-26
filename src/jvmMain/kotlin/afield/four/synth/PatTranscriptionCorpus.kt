@@ -185,7 +185,7 @@ class PatCaseResult(
  *
  * It can be run here. The phase accumulates across the frequency change and the amplitude never moves,
  * so the RMS envelope is flat by construction and there is nothing for an energy criterion to find
- * except the first note's entry from silence. That is the honest form of the comparison, and it is
+ * except the first note's entry from silence. That is the fair form of the comparison, and it is
  * strictly stronger than the one that was assumed, because the audio really does have the property the
  * argument needs.
  *
@@ -502,7 +502,7 @@ object PatTranscriptionCorpus {
      *
      * `REFUSED` is checked before `CONFIDENTLY_WRONG`, and that ordering is the whole design: a case
      * that warned about what it could not name has told the reader how much to trust it, so it is not
-     * confidently anything. Being incomplete and saying so is a different act from being wrong quietly.
+     * confidently anything. Being incomplete and saying so is a different act from being wrong in silence.
      */
     fun classify(
         case: PatTranscriptionCase,

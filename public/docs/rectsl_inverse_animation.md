@@ -307,7 +307,7 @@ val report = """IR before:   $before
 |residual:    ${fit.initialResidual} -> ${fit.finalResidual}
 |x(1.0) = ${fit.fitted.sample(1.0)}   x(3.0) = ${fit.fitted.sample(3.0)}""".trimMargin()
 
-// Both halves go in ONE output channel on purpose. Returned as a bare String the report is a
+// Both halves go in ONE output channel. Returned as a bare String the report is a
 // 377-character value and the inline viewer collapses it to "+277 chars" — true, and useless to
 // read — while a second `display` channel would arrive collapsed, since only one pane opens.
 display(
@@ -332,8 +332,8 @@ pinned against.
 ## One primitive, and every hard edge in the language
 
 Five different things could stop a track from lowering, and four of them were the *same* missing
-primitive — one the stdlib had already named as its own biggest gap. `FnNonDifferentiable`'s KDoc said,
-in as many words, that the piecewise oscillators "need only an `FnExpr.Floor`".
+primitive — one the stdlib had already named as its own biggest gap. `FnNonDifferentiable`'s KDoc said
+as much: the piecewise oscillators "need only an `FnExpr.Floor`".
 
 So `Fn` gained a `floor`. It is a first-class node **and** differentiable, which reads like a
 contradiction and is not: the derivative of a staircase is zero everywhere it exists, and zero is
@@ -404,7 +404,7 @@ that failure is kept as a measurement rather than as a remark.
 A wrong derivative is worse than no derivative, so the lowering never guesses. `Track.toFn()` returns
 `RectSLFnLowering.Refused(why, closable, missing)` rather than a null or a plausible-looking zero —
 and `closable` is the distinction a reader actually needs, borrowed from the stdlib's own
-`FnOpStatus`: **not yet written** is a different fact from **no honest lowering exists**.
+`FnOpStatus`: **not yet written** is a different fact from **no correct lowering exists**.
 
 | refused | closable? | why, and what it would take |
 | --- | --- | --- |
@@ -427,7 +427,7 @@ signed zero is exactly what can spin a `->face-travel` rect through half a turn.
     `smoothstep` were refused on a real observation with the wrong conclusion drawn from it. Each was
     closed by trying the lowering and comparing it against the sampler, not by arguing about it.
 
-There is a matching honesty rule in the fitter. A staircase's derivative really is zero, so a
+The fitter has a matching refusal. A staircase's derivative really is zero, so a
 parameter reachable *only* through a `floor`, a gate or a hold has no path to the value at all —
 present in the graph and unsolvable. `fitParameters` refuses that by name instead of printing a
 residual that never moved and calling it convergence. A parameter *beside* a staircase is still fine:

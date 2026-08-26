@@ -48,7 +48,7 @@ self-contained HTML card.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/statistics_examples/summary_card.png" wait="1.5" capture="box" open-outputs="true" w="760" h="640" padding="16"}
 :::static
-// A deliberately right-skewed signal: exp of a Gaussian, so we know the shape we are asking about.
+// A right-skewed signal by construction: exp of a Gaussian, so we know the shape we are asking about.
 val rng = java.util.Random(11)
 val signal = (0 until 500).map { exp(0.6 * rng.nextGaussian()) }
 
@@ -86,7 +86,7 @@ another tool, `SummaryStats` matches NumPy and SciPy *exactly* — `q1`/`median`
 `numpy.percentile`'s default linear interpolation, `mad` is `median(|y − median(y)|)`,
 `sampleStdDev` is `numpy.std(ddof=1)`, and `skewness`/`kurtosisExcess` are `scipy.stats.skew`
 and `scipy.stats.kurtosis` at their *default* `bias=True`. That is not a claim about intent: it is
-checked to ten decimal places against SciPy 1.15.2 on a deliberately tie-heavy ten-point dataset.
+checked to ten decimal places against SciPy 1.15.2 on a tie-heavy ten-point dataset.
 
 Three more edges, all guarded rather than propagated, so you get a number instead of a NaN:
 
@@ -258,7 +258,7 @@ function and not a monotone one, and monotone is all either of them can see. `sp
 `pearson` on `ranksAverageTies` (`correlations.kt:171#is constant, since every rank is then identical and [pearson]`–`correlations.kt:176#val ry = ranksAverageTies(y)`), so it inherits every
 Pearson limitation *after* the ranking.
 
-**Chatterjee's xi answers "is `y` a function of `x`" — and it is asymmetric on purpose.** It reads
+**Chatterjee's xi answers "is `y` a function of `x`", and the asymmetry is the point.** It reads
 0.985 on the parabola and 0.955 on the sine, the two cases the rank coefficients miss entirely.
 Swap the arguments and it changes its mind: `xi(x, parabola) = 0.985` but `xi(parabola, x) = 0.246`,
 because `x` genuinely is *not* a function of `x²` — each `y` has two possible `x`. That asymmetry is
@@ -293,7 +293,7 @@ looking, then use something else to describe what you found.
     is exactly zero for every `n`. In `Double` it is zero to within one ulp rather than bit-exact —
     sweeping `n` = 2..400, 54 values come back non-zero, the largest of them 2.2×10⁻¹⁶ — so compare
     it against a tolerance, not against `0.0`. And a quantised predictor — a bucketed index, an
-    integer control value, a thresholded signal — is answered honestly:
+    integer control value, a thresholded signal — is answered correctly:
     heavy ties with a real relationship still read high (a ten-block staircase reads **0.891**),
     while heavy ties with no relationship read ~0.
 
@@ -406,7 +406,7 @@ even though `pearson` reads −0.002. And in the same run xi reads 0.0263 agains
 percentile of 0.0520, with **76 / 400** re-pairings doing at least as well — xi has correctly
 declined to call this a functional relationship.
 
-The second figure gives you the shortcut for next time, and it is plotted against `1/√n` on purpose:
+The second figure gives you the shortcut for next time, and it is plotted against `1/√n` rather than `n`:
 the measured 95th percentile falls on a **straight line through the origin**, which is a much
 stronger statement than a hyperbola would be. The line's slope is about 2.5 — read the
 measured-against-predicted pairs off the bottom of the figure: 0.335/0.354 at n = 50 through
@@ -415,7 +415,7 @@ predicted). So: **a dCor you cannot beat 2.5/√n with is noise.** Note what tha
 signals. At n = 50 the threshold is around 0.34, so anything short of a strong relationship is
 invisible; distance correlation needs a few hundred samples before it can see a subtle one.
 
-## Rolling: when did the relationship start?
+## Rolling: finding when the relationship starts
 
 A single coefficient over a whole recording answers the wrong question if the relationship comes
 and goes. `RollingDistanceCorrelation` maintains its row sums, grand sums and cross sums

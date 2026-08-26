@@ -136,7 +136,7 @@ println("ages:   " + p.age.toList())
 println("adults: " + p.filter { age >= 18 }.name.toList())
 ```
 
-**Delete the `//%-` and the box stops compiling.** With a single fragment the schema is written only *after* that fragment has already been compiled, so `Peach` does not exist yet. This is the rare case where a fragment marker is load-bearing rather than cosmetic.
+**Delete the `//%-` and the box stops compiling.** With a single fragment the schema is written only *after* that fragment has already been compiled, so `Peach` does not exist yet. This is the rare case where a fragment marker changes what compiles, rather than only how the code reads.
 
 Once it has run, the second half is independently re-runnable: select those lines, run them as often as you like, and the frame is never reloaded. That is the live-coding loop this whole feature exists for.
 
@@ -176,7 +176,7 @@ The compact `.h` form shows the first **10** rows (`DataFrameVisualizer.kt:44`) 
 import org.jetbrains.kotlinx.dataframe.api.*
 
 // 200,000 rows. A spread argument is one the plugin cannot statically interpret,
-// so this frame is deliberately schema-less — the point here is the RENDERING cost.
+// so this frame is schema-less — the point here is the RENDERING cost.
 val big = dataFrameOf("i")(*Array(200_000) { it })
 
 val compact = big.h
@@ -205,7 +205,7 @@ import org.jetbrains.kotlinx.dataframe.api.*
 // 15,000 rows, and nothing below pages them: `.h2` hands the whole FRAME to the
 // explorer, which asks for the window it is showing and for nothing else. A spread
 // argument is one the plugin cannot statically interpret, so this frame is
-// deliberately schema-less — what is on show here is the rendering, not the typing.
+// schema-less — what is on show here is the rendering, not the typing.
 val n = 15_000
 val big = dataFrameOf("i", "sq")(
     *Array<Any?>(n * 2) { k ->
@@ -233,7 +233,7 @@ Doing it this way rather than with a bespoke widget has a second payoff: a frame
 | Point at a different plugin jar | `-Dafield.dataframePlugin.jar=<path>` (`KotlinInterface2.kt:2963#lprintln("kotlin", "dataframe: plugin disabled by`) |
 | Default jar location | `libs/dataframe-plugin.jar`, git-lfs tracked |
 
-The plugin jar is deliberately **not** on the app classpath, and this is not an accident of packaging. It vendors ~1000 classes of the DataFrame runtime of its own, so putting it beside the real `dataframe-core` dependency would put **two copies of `DataFrame`** in front of box code (`KotlinInterface2.kt:2940#The two plugins are located differently on purpose. Wither's jar`). `-Xplugin` loads it in the compiler's own plugin classloader, so only the compiler ever sees it — while the *runtime* goes on the classpath normally (`build.gradle.kts:952#the reproducer afield.examples.ProvideDelegateReplSmokeTest.`).
+The plugin jar is **not** on the app classpath, and that is a choice rather than an accident of packaging. It vendors ~1000 classes of the DataFrame runtime of its own, so putting it beside the real `dataframe-core` dependency would put **two copies of `DataFrame`** in front of box code (`KotlinInterface2.kt:2940#The two plugins are located differently on purpose. Wither's jar`). `-Xplugin` loads it in the compiler's own plugin classloader, so only the compiler ever sees it — while the *runtime* goes on the classpath normally (`build.gradle.kts:952#the reproducer afield.examples.ProvideDelegateReplSmokeTest.`).
 
 The runtime version is pinned to `1.0.0-Beta2`, and **it is a pin rather than a preference**: the plugin was built from Field's `2.4.255-SNAPSHOT` Kotlin fork, whose `libs.versions.toml` names that runtime version, and *the plugin statically interprets the runtime's API*. Moving to a released DataFrame 1.0 therefore means re-syncing the fork and rebuilding the plugin — not bumping a line in `build.gradle.kts`.
 
@@ -254,7 +254,7 @@ Engine cost is dominated by warm-up rather than by either addition: the first en
 
 - **[Agent Transcript Gallery](agent_transcripts.md)** — `dataframe_typed_columns`, the four-box example, replayable.
 - **[Visualizers, Displays, and Little Instruments](visualizers.md)** — everything else `.h` and `.h2` know how to draw.
-- **[Kotlin in the Head](kotlin_in_the_head.md)** and **[How Box Code Runs](box_code_pipeline.md)** — snippets, fragments, preambles, and why a compile boundary exists at all.
+- **[Kotlin in the Head](kotlin_in_the_head.md)** and **[Running code in a box](running_code.md)** — snippets, fragments, preambles, and why a compile boundary exists at all.
 - `dev_docs/DATAFRAME_PLUGIN.md` — the wiring: `-Xplugin` versus classpath, the probes, the unwired `schemasPath` route.
 
 ## Known limits, stated plainly

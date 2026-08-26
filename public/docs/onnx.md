@@ -149,7 +149,7 @@ arm of the sofa are bright, the wall behind the television is dark, and the book
 comes forward. Read the two captions together and the warning above stops being abstract — **the same
 photograph, at two sizes, produces two entirely different numeric ranges**. That property is pinned: the
 518² and 266² ranges of a reference frame are required to differ by more than 0.5, precisely so nobody
-can quietly start treating the output as calibrated.
+can start treating the output as calibrated.
 
 Resolution is also the only performance dial that really matters, because cost is roughly quadratic in
 it. The `@126` panel has about 4.6× fewer pixels than `@266` — the counts are in the captions — and ran
@@ -245,7 +245,7 @@ fun toRgba8(img: Img): ByteBuffer {
     return out
 }
 
-// Two real images already in the repository, deliberately unalike.
+// Two real images already in the repository, chosen to be unalike.
 val room = imgFromFile("public/docs/assets/vision/fline-viewer.jpg", 3).scaleBy(0.45)
 val car = imgFromFile("public/docs/assets/fabricate-toy-car-donmccurdy-reference-close.png", 3)
 
@@ -326,9 +326,9 @@ including the *correct* ones. Meanwhile two unrelated *text* prompts, `storm` an
 `0.21` does not mean "unrelated" and `0.88` does not mean "the same". Only **rank** and **difference**
 carry information. An absolute threshold on a raw cosine will not survive contact with a second scene,
 so the gap is asserted explicitly — every image↔text cosine below 0.5, every text↔text cosine above
-0.75 — and cannot quietly stop being true.
+0.75 — and cannot stop being true unnoticed.
 
-`classify(candidates)` is the honest form of the question: it softmaxes the cosines *against each
+`classify(candidates)` is the better-posed form of the question: it softmaxes the cosines *against each
 other* and returns probabilities that sum to 1, most likely first. `best()` is its first element. The
 `logitScale` only changes how peaked the distribution is — it cannot change the ranking, which is
 asserted by re-running at 500 and comparing the order.
@@ -349,7 +349,7 @@ and states outright rather than asking you to eyeball it. For a live input the u
 value but how it *moves*. `ClipVector.mean(...)` averages and renormalises several prompts, which is
 the standard prompt-ensemble trick and one CLIP responds well to.
 
-The rest of `ClipVector` is small and pure: `plus`/`minus`/`times` (deliberately not renormalised,
+The rest of `ClipVector` is small and pure: `plus`/`minus`/`times` (not renormalised,
 because the length of a difference is meaningful), `dot`, `cosine`, `normalized`, and
 `toBase64`/`fromBase64` for persisting an embedding — 2732 characters of exact fp32 round trip, for a
 stored identity to cosine against later.
@@ -453,7 +453,7 @@ python3 tools/run_field_tests.py --id onnx.depth.smoke --id onnx.clip.smoke
     Both passed on 2026-08-15 with `cos(storm,calm) = 0.881320` and depth at 518² of `[1.0353, 2.8187]`,
     matching the Python reference to four decimals.
 
-What is **not** covered: anything involving a camera. `WebcamPerceptionDemo` is deliberately not a
+What is **not** covered: anything involving a camera. `WebcamPerceptionDemo` is not a
 `FIELD_TEST` because it needs hardware and a human to point it at something. It does have a
 still-image path, which is the runnable no-webcam route from a shell:
 
@@ -478,11 +478,11 @@ illustration, and are marked as such where they appear:
 
 | block | why it is not executed | what stands behind it |
 |---|---|---|
-| the orientation snippet | `rgbaBytes` is deliberately undefined | every call in it, via both smokes |
+| the orientation snippet | `rgbaBytes` is left undefined | every call in it, via both smokes |
 | the session-cache do/don't | half of it is an anti-example that *must* not run | `OnnxSmokeTest.testSessionIsCached` |
 | the worker + `StreamingTexture` | needs a Vulkan device and a webcam | the ONNX half, via `testWorkerPublishesAFrame`; the buffer stride, via `testFp16BufferMatchesVulkanStride` |
 
-The honest gap, stated once: **`StreamingTexture(...)` and `recordUpload(...)` are the only lines on this
+The gap, stated once: **`StreamingTexture(...)` and `recordUpload(...)` are the only lines on this
 page that nothing in this repository checks.**
 
 ??? aside "Why this page keeps a census at all"
@@ -493,7 +493,7 @@ page that nothing in this repository checks.**
     whole because an import that does not resolve is exactly the rot being measured; lines exclude the
     `:::static` / `:::fold` markers.
 
-    The bar is deliberately narrow. If "covered" were allowed to mean "the API this snippet calls is
+    The bar is narrow. If "covered" were allowed to mean "the API this snippet calls is
     asserted somewhere", all five blocks would count — because that is already true today, and it is
     precisely the condition under which the invented `0.94f` survived review. Asserting `ClipImage.encode`
     in a smoke says nothing about whether a page's prose about it is right. Only the two capture fences are

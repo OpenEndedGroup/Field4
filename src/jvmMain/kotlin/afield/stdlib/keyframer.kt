@@ -158,7 +158,7 @@ sealed interface KValue {
     /**
      * Rebuild the live Kotlin value this entry stands for — the load half of the round trip.
      * A [DualQuat] and a [CameraPoseValue] are re-normalised on the way out, because a rigid transform that
-     * has drifted is a broken transform; a plain [Quat] deliberately is **not** (see its own note — it may be
+     * has drifted is a broken transform; a plain [Quat] is **not** (see its own note — it may be
      * standing in for something that is not a rotation). Numbers regain their [NumKind] type, and a
      * [SourceBlock] becomes a `SourceBackedBlock` that has not compiled anything yet.
      */
@@ -493,7 +493,7 @@ class KeyframeScope(val schemaVersion: Int = 0) {
          * contains a `"""`, a trailing quote, or a `$`, any of which a raw string would mangle, and it
          * falls back to a fully escaped literal instead. A value outside that set is
          * emitted as `null` behind an "unsupported" block comment, so the code still compiles but
-         * quietly nulls that value.
+         * nulls that value with no warning.
          */
         fun updateCode(keyName: String = "key", apply: Boolean = true): String {
             val header = if (apply) "$keyName.updateAndApply {" else "$keyName.update {"
@@ -537,12 +537,20 @@ class KeyframeScope(val schemaVersion: Int = 0) {
     private fun bindingForValue(value: Any?): Function0<*> =
         if (value is SourceBackedBlock<*>) value else ({ value })
 
-    private fun valueForBinding(binding: Function0<*>?): Any? =
-        when (binding) {
-            null -> null
-            is SourceBackedBlock<*> -> binding
-            else -> binding.invoke()
-        }
+    /**
+     * Read one property off a structure the way everything else in the engine reads it — the binding if
+     * there is one, otherwise the plain value, which is the same precedence `Structure.get` and the
+     * buffer writer use. A `SourceBackedBlock` binding is handed back as the block itself rather than
+     * invoked, because a key stores the live callable.
+     *
+     * Note the asymmetry with writing: a key applies through `Structure.bind`, so capturing a
+     * value-held property and putting it back converts it to a (constant) binding. Both read
+     * identically everywhere, but the old `values` entry is left behind, shadowed.
+     */
+    private fun readProperty(structure: Structure?, property: String): Any? {
+        val binding = structure?.bindingFor(property) ?: return structure?.valueFor(property)
+        return if (binding is SourceBackedBlock<*>) binding else binding.invoke()
+    }
 
     private fun targetPropertyName(keyName: String): String =
         keyName.substringAfterLast('@')
@@ -553,7 +561,7 @@ class KeyframeScope(val schemaVersion: Int = 0) {
             Target(
                 resolve = { structure },
                 bind = { value -> structure.bind(propertyName, value) },
-                get = { valueForBinding(structure.bindings[propertyName]) }
+                get = { readProperty(structure, propertyName) }
             )
         }
 
@@ -581,7 +589,7 @@ class KeyframeScope(val schemaVersion: Int = 0) {
         dynamicTargets[name] = Target(
             resolve = structure,
             bind = { value -> structure()?.bind(propertyName, value) },
-            get = { valueForBinding(structure()?.bindings?.get(propertyName)) }
+            get = { readProperty(structure(), propertyName) }
         )
         targets.remove(name)
     }
@@ -729,6 +737,10 @@ class KeyframeScope(val schemaVersion: Int = 0) {
     /**
      * Read every registered target *right now* into a new [Key] — the snapshot call.
      *
+     * A structure property is read binding-first and then by value — the same precedence `Structure.get`
+     * and the buffer writer use — so `structure["radius"] = 4f` snapshots just as well as
+     * `structure.bind("radius") { 4f }`. Applying the key puts it back as a binding either way.
+     *
      * Values are taken as they are, not copied, so a mutable `Vector3f` in a key is still the vector the
      * structure is bound to; keep the key across frames only if you also stopped mutating that vector
      * in place. A target that cannot currently be resolved contributes a null, which [interpolate] skips
@@ -866,7 +878,7 @@ class KeyframeScope(val schemaVersion: Int = 0) {
      *
      * In normal use that is the same content as `loadKey(path)`, since every save writes both. It differs
      * when the main file has been edited or replaced by hand behind the history's back — then this
-     * deliberately prefers what Field last wrote.
+     * prefers what Field last wrote.
      */
     fun loadLatestKey(path: Path): Key =
         keyVersions(path).lastOrNull()?.let { loadKey(path, it.index) } ?: loadKey(path)
@@ -884,14 +896,14 @@ class KeyframeScope(val schemaVersion: Int = 0) {
      * alone can lose a version:
      *
      *  - a manifest row whose file has since been deleted is still listed, because the row is the only
-     *    surviving record that the version existed (loading it then throws, which is the honest answer);
+     *    surviving record that the version existed (loading it then throws, which is the right answer);
      *  - a numbered file the manifest does not mention is listed too, with the file's own modification
      *    time and a note saying it was recovered. That covers a manifest deleted by hand, one truncated
      *    mid-write, and the window inside [saveKeyVersion] between writing the file and writing the
      *    manifest.
      *
      * Empty only when nothing has been saved. An unparseable manifest is reported on the
-     * `error,keyframer` log channel and recovered from — never quietly read as "no history", which is
+     * `error,keyframer` log channel and recovered from — never read as "no history" without saying so, which is
      * what used to make the next save renumber from 0 and overwrite `000000.json`. Throws if the
      * `.versions` directory exists but cannot be listed, rather than guess at a history it cannot see.
      */
@@ -1027,7 +1039,7 @@ class KeyframeScope(val schemaVersion: Int = 0) {
 
 /**
  * The [KeyVersionInfo.note] of a history row rebuilt from a numbered file that no manifest row
- * described. Deliberately something a person reads as wrong in the history table, because it is: the
+ * described. Meant to read as wrong in the history table, because it is: the
  * snapshot survived and the note did not.
  */
 private const val RECOVERED_NOTE = "(recovered from disk; the manifest row for this version was lost)"

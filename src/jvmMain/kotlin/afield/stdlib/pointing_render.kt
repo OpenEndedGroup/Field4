@@ -39,7 +39,7 @@ import java.util.Base64
 // Painting a mesh by part
 // ==============================================================================================
 
-/** The neutral blue-grey `withDefectColors` uses for "nothing to see here". Kept the same on purpose. */
+/** The neutral blue-grey `withDefectColors` uses for "nothing to see here". Kept the same throughout. */
 private val PART_BASE = Vec3(0.42f, 0.48f, 0.58f)
 
 /** The highlight. Warm, and far enough from [PART_BASE] in every channel to survive a JPEG. */
@@ -89,7 +89,7 @@ private fun TriMesh.indices(): IntArray = indices
  * This mesh with one part lit and everything else neutral — the picture of a pick.
  *
  * @param part the part id to light. [PickParts.UNASSIGNED] (or any id not in the assignment) lights
- *   nothing, which is the honest rendering of "the pointer is over nothing".
+ *   nothing, which is the correct rendering of "the pointer is over nothing".
  */
 fun TriMesh.withPartHighlight(
     parts: PickParts,
@@ -165,7 +165,7 @@ class PointerRaster(
  * Render this scene from [camera] with whatever is under the pointer lit up and a crosshair where the
  * pointer is aimed.
  *
- * The camera is a [MeshViewRayCamera] and not a bare [MeshView] on purpose: the *same* camera object
+ * The camera is a [MeshViewRayCamera] and not a bare [MeshView]: the *same* camera object
  * has to produce the ray and frame the picture, or the highlight is evidence of nothing. Build it
  * with [MeshView.rayCamera] over [PickScene.mergedMesh].
  *

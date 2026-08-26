@@ -890,7 +890,7 @@ class WfcSolver(
     /**
      * Return every cell to "any tile is still possible" and clear [status] and [lastObservation].
      *
-     * Deliberately **does not** reset the random stream: the solver's [SplittableRandom] is built
+     * **Does not** reset the random stream: the solver's [SplittableRandom] is built
      * once, from `seed`, and keeps going across resets. That is what makes a retry loop useful —
      * `reset()` after a [WfcStatus.Contradiction] gives you a genuinely *different* attempt rather
      * than replaying the one that just failed. See [solveWithRetries].
@@ -1445,7 +1445,7 @@ class PngOverlappingTileSet(
      *
      * Set by [expandSymmetry], whose extra variants were never *observed* anywhere in the sample and
      * so have no occurrence count to derive a weight from — counting would hand every one of them a
-     * zero weight and quietly make them unchoosable.
+     * zero weight and make them unchoosable with no warning.
      */
     val patternWeights: DoubleArray? = null
 ) {

@@ -292,7 +292,7 @@ data class MorphologyReport(
  * Measure a 1-channel field's morphology at [threshold] — the single call every regime claim in this
  * family is made through.
  *
- * Deliberately *not* clever: threshold, label, and report shape statistics. A regime claim is then a
+ * *Not* clever: threshold, label, and report shape statistics. A regime claim is then a
  * claim about these numbers, and a control arm (diffusion off, the other preset, a shuffled field)
  * produces different ones. See [MorphologyReport] for what each field discriminates.
  *
@@ -603,8 +603,8 @@ fun leniaFromLifeRule(rule: LifeRule): LeniaRule {
 
 /**
  * Named continuous-Lenia parameter sets. These are labelled by the behaviour this codebase
- * **measures** ([leniaPhase]), not by a creature name from the literature: the family deliberately
- * does not claim to reproduce a named Lenia lifeform, because reproducing one requires its exact
+ * **measures** ([leniaPhase]), not by a creature name from the literature: the family does
+ * not claim to reproduce a named Lenia lifeform, because reproducing one requires its exact
  * published initial pattern and this file does not ship one.
  */
 object LeniaPresets {
@@ -660,7 +660,7 @@ class LeniaRun(
      * Inline view: the final field on a **fixed** `0..1` scale, the measured phase, and the mass history
      * as a sparkline. Body in `alife_field.kt` ([alifeLeniaRunHtml]). A saturated field is constant at 1
      * and an auto-ranged colour map draws it black, i.e. identical to death — so this view is the one
-     * place in the family where the range policy is load-bearing rather than tidy.
+     * place in the family where the range policy changes the result rather than tidying it.
      */
     override fun toHTML(): String = alifeLeniaRunHtml(this)
 }
@@ -668,7 +668,7 @@ class LeniaRun(
 /**
  * Run a Lenia rule from [initial] for [steps] and **classify** the outcome.
  *
- * This is the honest form of a Lenia claim. Rather than asserting that a particular parameter set
+ * This is the defensible form of a Lenia claim. Rather than asserting that a particular parameter set
  * produces a named creature, it reports which of [LeniaPhase]'s three outcomes happened and the
  * numbers behind the verdict. A `mu` sweep then produces a measured phase boundary, and the death and
  * saturation cells *are* the control arms for the bounded ones: the same code, the same seed, one
@@ -741,7 +741,7 @@ fun fieldCentroid(f: Img): Pair<Double, Double> {
  * A Lenia seed: a smooth radial blob of noise of radius `rule.radius * blobRadii`, centred, on an
  * otherwise empty field.
  *
- * Sized in units of the *kernel* radius rather than in cells on purpose — a seed much smaller than the
+ * Sized in units of the *kernel* radius rather than in cells — a seed much smaller than the
  * kernel cannot excite it and dies whatever the parameters, so a `mu` sweep seeded in cells is really
  * a sweep of "was the blob big enough", which is not the question.
  */

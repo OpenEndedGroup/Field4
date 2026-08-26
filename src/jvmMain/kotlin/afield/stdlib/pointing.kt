@@ -192,7 +192,7 @@ interface RayCamera {
      * Whether this camera actually spreads the frame out — the premise every round-trip test needs.
      *
      * A camera that collapsed the scene to a point, or whose clip matrix is singular, would make a
-     * round trip trivially exact and a picking test vacuous. The check is deliberately about
+     * round trip trivially exact and a picking test vacuous. The check is about
      * *observable pixels* rather than about a determinant: it fires four rays through the frame's
      * quarter points and requires their directions to be measurably different. See
      * [nonDegeneracyMargin] for the number.

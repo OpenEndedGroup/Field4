@@ -32,7 +32,7 @@ ui.eval("if (document.activeElement && document.activeElement !== document.body)
 ui.press("Shift+Slash")
 ui.pause(1500)
 
-// Fail the capture rather than quietly photograph an invisible card.
+// Fail the capture rather than photograph an invisible card.
 val opacity = ui.eval("return getComputedStyle(document.getElementById('cheatsheet')).opacity")
     ?.toString()?.trim('"') ?: "missing"
 if (opacity == "0" || opacity == "missing") error("the ? shortcut did not open the cheatsheet (opacity=$opacity)")
@@ -160,8 +160,8 @@ searching it for "Bookmark" or "Format" is usually the fastest route from *what 
 *what to write*.
 
 The command palette is the other way round — search for the command by name, and its
-current shortcut is shown on the right of the row. Which makes it the honest test of a
-rebind, since those labels are drawn from the same binding your keypress would use:
+current shortcut is shown on the right of the row. That makes it the real test of a rebind,
+since those labels are drawn from the same binding your keypress would use:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-palette-shell" screenshot="assets/keybindings/rebound-palette.png" padding="6" wait="0" timeout="150" embed=true hidden=true name="keybindings-rebound-palette" alt="Field's command palette, opened with a custom Alt+K shortcut, listing New Box with its rebound Cmd+Opt+B"}
 // A rebind, taken all the way through the real machinery: write a keybindings.yaml,
@@ -212,8 +212,8 @@ Field would rather tell you than guess.
     halfway and not taken as an unbind: `open-anything` above is still on `cmd+p`. That
     distinction matters, because an empty value means something quite different — `""` is a
     deliberate unbind (below). If a rejected spec also produced "no shortcut", a typo and a
-    decision would look identical, and the error message would be quietly telling you about
-    a shortcut you had just lost.
+    decision would look identical, and the error message would be describing a shortcut you
+    had just lost without saying so.
 
 - **A command id it does not recognize** — usually a typo — is logged as a warning naming
   the id, and the binding is kept anyway rather than dropped. It has to be: the

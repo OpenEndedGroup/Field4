@@ -1,7 +1,7 @@
 # Field on Apple Vision Pro — work in progress
 
 !!! warning "Work in progress"
-    This is an early, honest snapshot of Field's native **visionOS** front end. Some pieces are
+    This is an early snapshot of Field's native **visionOS** front end. Some pieces are
     solid and verified; others are half-built and named as such. Expect it to move.
 
 Field's front end and its Vulkan renderer already talk to each other over JSON — the browser is
@@ -162,7 +162,7 @@ discarded the remainder on a late tick (29.56fps against a 30fps target — fata
 where 30.00fps is exactly three refreshes and any deficit accumulates into a held frame), a
 presentation timestamp taken from the wall clock at emit time rather than derived from the sequence
 number, and the absence of a receiver-side buffer. The receiver now runs a depth-servoed presentation
-clock, which deliberately contradicts the present-on-arrival rule the wire format started with — that
+clock, which contradicts the present-on-arrival rule the wire format started with — that
 was the wrong trade for a 90Hz display.
 
 ---
@@ -208,7 +208,7 @@ because of *how* it fails: it does not look like latency. It looks like the two 
 which is close to impossible to recognise from inside a headset — you feel unwell without being able
 to say why.
 
-Three further decisions, load-bearing rather than tidy:
+Three further decisions that change behaviour rather than tidy it:
 
 - **The projection is rebuilt, not forwarded.** The head's matrix carries its own compositor's
   near/far and depth range; Field's pipelines want `Options.zNear`/`zFar` over a 0..1 range. So only
@@ -241,7 +241,7 @@ the tick that rendered the surface rather than in the deferred submit block wher
 silently substitute itself.
 
 The interesting part is what was *not* reused. `ptsMicros` looks like the obvious home for a
-timestamp and is deliberately not one: it is stamped on the ideal cadence grid (`seq * interval`)
+timestamp and is not one: it is stamped on the ideal cadence grid (`seq * interval`)
 precisely so the receiver has something regular to schedule against. A real clock reading there would
 bake render-tick quantisation into the stream, and a receiver pacing off it would faithfully
 reproduce that irregularity. `poseDisplayTimeNanos` is in the **head's** clock, not the sender's,
@@ -270,7 +270,7 @@ println(visionPoseLatencyReport())
 ```
 
 The point is **attribution** rather than a single number, because the plausible explanations for "it
-feels laggy" are spread across two machines and at least two of the stages are there on purpose.
+feels laggy" are spread across two machines and at least two of the stages are meant to be there.
 Folding them into one total invites someone to "fix" them.
 
 The headline figure needs no clock agreement at all, which is exactly what makes it trustworthy: a
@@ -282,14 +282,14 @@ estimates the contention, not the offset.
 
 Read the spans, not the total. Two of them are deliberate:
 
-- the receiver's **jitter buffer** holds frames on purpose, so that network jitter becomes smoothness
+- the receiver's **jitter buffer** holds frames, so that network jitter becomes smoothness
   instead of dropped frames (`RTTStream.swift:77#static let bufferFrames`; set `FIELD4_RTT_BUFFER=0`
   for the unbuffered comparison);
 - **`submit to encoded` includes the render fence**
   (`VisionPoseLatency.kt:60#const val SUBMIT_TO_ENCODED`), so scene complexity lands there rather
   than somewhere misleading.
 
-And the honest limit. The last moment observable on the device is the decoded frame reaching the
+And the limit. The last moment observable on the device is the decoded frame reaching the
 display texture; actual presentation is up to one refresh later, and RealityKit exposes no hook for
 it. So the motion-to-photon figure is a **lower bound, and says so in its own name**
 (`PoseLatency.swift:32#static let poseToTexture` is spelled
@@ -345,14 +345,14 @@ which, because a table like this invites being quoted as a benchmark:
   test writes those in, so they say nothing about how fast anything is. What they demonstrate is that
   a device-reported span survives the wire intact, that percentiles and counts land in the right
   columns, and that a *negative* span is dropped rather than counted as zero — `submit to encoded`
-  shows `n=1` from two recorded samples, one of which was negative, and counting it would quietly
-  have pulled every percentile down.
+  shows `n=1` from two recorded samples, one of which was negative, and counting it would have
+  pulled every percentile down with nothing to show why.
 - The **clock offset is genuinely recovered, not written in.** The synthetic head is built at an
   offset of `+1234567.890 ms`; the estimator recovered `+1234567.547 ms` from seven round trips on
   this machine without ever being told the answer. That is the one figure here measured rather than
   fixtured, and it is the one worth checking, because a wrong offset does not fail — it produces a
   *plausible* latency, which is the kind of wrong nobody re-checks. The smoke's own bound is a
-  deliberately loose 20 ms: a sign slip would be out by twice the offset and a missing halving by the
+  loose 20 ms: a sign slip would be out by twice the offset and a missing halving by the
   offset itself, and what fits inside that window is host scheduling noise on a shared machine.
 - The **`best RTT 10.69 ms`** is against a synthetic path of two 5 ms crossings, with the head's own
   2 ms hold correctly excluded rather than charged to the network.
@@ -420,7 +420,7 @@ and they are named in the reference below so you can run them yourself.
 ## Reference — where this actually lives
 
 Cross-checked against source on every `docsGates` run, so a rename here breaks the build rather than
-rotting quietly. The Swift rows are here because this is a two-machine protocol, and a page citing
+rotting unnoticed. The Swift rows are here because this is a two-machine protocol, and a page citing
 only the Kotlin end would be describing one side of it.
 
 **How this list was chosen, and where it is blind.** Not by hand. The Kotlin half is the closure over
@@ -458,7 +458,7 @@ compilation, so it is not a client and has no rows below.
 | Where a remote pose overrides OpenXR and the mock | `SideBySideStereoTarget.kt:96` | `var poseSource` |
 | What the target recorded it drew from | `SideBySideStereoTarget.kt:105` | `var renderedPoseFrameId` |
 | …and that pose's display time | `SideBySideStereoTarget.kt:109` | `var renderedPoseDisplayTime` |
-| The multiview sibling, deliberately with no pose source | `SideBySideStereoTarget.kt:498` | `class MultiviewSideBySideStereoTarget` |
+| The multiview sibling, with no pose source | `SideBySideStereoTarget.kt:498` | `class MultiviewSideBySideStereoTarget` |
 | The desktop mock a remote pose replaces | `SideBySideStereoTarget.kt:880` | `class StereoCamera` |
 | …and the eye separation it invents | `SideBySideStereoTarget.kt:881` | `var ipd` |
 | Tagging a stream's frames with the latched pose | `FieldRTTStreamer.kt:106` | `fun tagPosesFrom` |

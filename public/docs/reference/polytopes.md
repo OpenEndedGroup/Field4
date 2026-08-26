@@ -18,7 +18,7 @@ output, a tag a selector can test with `ElementSelectors.attributeEquals`. What 
 operator is decided by an [`AttributePropagationPolicy`](polytopes.md#transforms-kt-attributepropagationpolicy) rather than by each operator, and the
 default — [`PreserveCommonAttributes`](polytopes.md#transforms-kt-preservecommonattributes) — keeps only the entries every source element agreed on.
 
-Values are typed `Any?` on purpose: these are Field's ordinary property values, so a box can put an
+Values are typed `Any?`: these are Field's ordinary property values, so a box can put an
 `Int`, a `Vec3` or a lambda in one. The consequences are the reader's to hold: equality is
 structural `==` on `Any?`, so `1` and `1.0` are different attributes, and nothing here validates a
 value against a schema. The two extension functions `PolyhedralObject.withAttribute` and
@@ -145,7 +145,7 @@ Configuration for `PolyhedralObject.canonicalize`.
 
 [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CanonicalizeResult</span><span class="p">(</span><span class="k">val</span> <span class="n">polyhedron</span><span class="p">:</span> <span class="nc">PolyhedralObject</span><span class="p">,</span> <span class="k">val</span> <span class="n">initialDiagnostics</span><span class="p">:</span> <span class="nc">CanonicalDiagnostics</span><span class="p">,</span> <span class="k">val</span> <span class="n">finalDiagnostics</span><span class="p">:</span> <span class="nc">CanonicalDiagnostics</span><span class="p">,</span> <span class="k">val</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">converged</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">finalMovement</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">reason</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">reciprocalIterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="k">val</span> <span class="n">relaxationIterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="k">val</span> <span class="n">reseeded</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/polytope/Canonical/#L222)
 
-The outcome of a canonicalization run, including the honest before/after evidence.
+The outcome of a canonicalization run, including the before/after evidence.
 
 | Declaration | Summary |
 | --- | --- |
@@ -183,7 +183,7 @@ count. On the objective that matters that is the difference between an answer an
 `kkD` reach a tangency spread of `1e-8` in 12 iterations and about 6 ms, where `relax` takes 1507 ms
 and does not converge at all. Plus a real termination report in [`CeresSolveSummary`](solvers.md#ceresgeometry-kt-ceressolvesummary).
 
-It is deliberately a *second implementation of the same declared objective*, not a replacement:
+It is a *second implementation of the same declared objective*, not a replacement:
 same plan in, the same [`RealizationSolveResult`](polytopes.md#realizationsolver-kt-realizationsolveresult) out, the same [`RigidGauge`](polytopes.md#realize-kt-rigidgauge) applied afterwards, so the
 two can be run on one plan and diffed. Three places where they genuinely differ — the plane
 parameterisation, the weight convention and the robust loss — are set out on [`CeresRealization`](polytopes.md#ceresrealization-kt-ceresrealization), and
@@ -561,7 +561,7 @@ Every face line receives its face's attributes copied straight into `line.proper
 `POLYTOPE_FACE_ID_PROPERTY` and `POLYTOPE_FACE_RANK_PROPERTY`. So an attribute named `color` set
 on a face during a Conway chain arrives as Field's own `color` property with no translation step —
 which is the point of [`PolytopeAttributes`](polytopes.md#attributes-kt-polytopeattributes) being typed as `Any`, and also means a badly-named
-attribute can quietly overwrite a drawing property.
+attribute can overwrite a drawing property with no warning.
 
 ### What these will not do
 
@@ -637,7 +637,7 @@ Polygon triangulation strategy. Input and output values are indices into [`Reali
 
 [<code class="highlight"><span class="k">object</span> <span class="nc">FanFaceTriangulator</span> <span class="p">:</span> <span class="nc">FaceTriangulator</span></code>](source/jvmMain/afield/stdlib/polytope/FieldAdapters/#L160)
 
-Deterministic convex-polygon fan. It is deliberately not a general polygon triangulator.
+Deterministic convex-polygon fan. It is not a general polygon triangulator.
 
 | Declaration | Summary |
 | --- | --- |
@@ -697,7 +697,7 @@ How a render vertex gets its normal — and therefore whether an edge of the sol
 The one-way bridge to OFF, the plain-text polygon interchange format that Geomview and most
 polyhedron tooling read.
 
-Deliberately one function and no reader. Export exists so that a solid can be opened in something
+One function and no reader. Export exists so that a solid can be opened in something
 that was not written here — an independent second opinion when a test disagrees with a picture — and
 so that a bug report can carry the actual object. It is a diagnostic, not an architectural
 dependency: nothing else in this package goes through it, and no part of the topology is shaped by
@@ -830,12 +830,12 @@ The stock parameter fields: one number everywhere, a number read off each elemen
 
 ## Polytope4.kt { #polytope4-kt }
 
-Rank 4: the seeds, the coordinates and the viewing policy that keep the incidence core honest
+Rank 4: the seeds, the coordinates and the viewing policy that keep the incidence core general
 about being rank-general rather than a polyhedron library with a rank field.
 
 Four regular seeds — `fiveCell`, `tesseract`, `sixteenCell` and the self-dual `twentyFourCell` —
 plus [`Realization4`](polytopes.md#polytope4-kt-realization4) for coordinates, an abstract `Polytope4.dual`, and [`Projection4`](polytopes.md#polytope4-kt-projection4) for getting a
-picture out. Everything a rank-3 reader would assume is wrong here, deliberately: there are four
+picture out. Everything a rank-3 reader would assume is wrong here: there are four
 proper ranks rather than three, an edge bounds three or more polygons rather than exactly two (so
 `validate(checkManifold = true)` *must reject* a tesseract, and does), and there is no
 `triangulate()`, because a projected 4-polytope's polygons do not bound a surface and filling them
@@ -877,7 +877,7 @@ the object, and nothing in the topology moves when you do it.
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">fiveCell</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Polytope4</span></code>](source/jvmMain/afield/stdlib/polytope/Polytope4/#L169) | The regular 5-cell (4-simplex): 5 vertices, 10 edges, 10 triangles, 5 tetrahedral cells. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">tesseract</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Polytope4</span></code>](source/jvmMain/afield/stdlib/polytope/Polytope4/#L190) | The tesseract (8-cell): 16 vertices, 32 edges, 24 squares, 8 cubic cells. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">sixteenCell</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Polytope4</span></code>](source/jvmMain/afield/stdlib/polytope/Polytope4/#L209) | The 16-cell (4-orthoplex): 8 vertices, 24 edges, 32 triangles, 16 tetrahedral cells. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">twentyFourCell</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Polytope4</span></code>](source/jvmMain/afield/stdlib/polytope/Polytope4/#L230) | The 24-cell: 24 vertices, 96 edges, 96 triangles, 24 octahedral cells. It is self-dual and has no three-dimensional analogue, which makes it the honest test that the core is rank-general and not a polyhedron library wearing a hat. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">twentyFourCell</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Polytope4</span></code>](source/jvmMain/afield/stdlib/polytope/Polytope4/#L230) | The 24-cell: 24 vertices, 96 edges, 96 triangles, 24 octahedral cells. It is self-dual and has no three-dimensional analogue, which makes it the real test that the core is rank-general and not a polyhedron library wearing a hat. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">convexPolytope4</span><span class="p">(</span><span class="n">coordinates</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DoubleArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">facetNormals</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DoubleArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">tolerance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">9</span><span class="p">)</span><span class="p">:</span> <span class="nc">Polytope4</span></code>](source/jvmMain/afield/stdlib/polytope/Polytope4/#L269) | Build a rank-4 incidence topology from vertex coordinates and outward facet normals. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nc">Polytope4</span><span class="p">.</span><span class="nf">project</span><span class="p">(</span><span class="n">projection</span><span class="p">:</span> <span class="nc">Projection4</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/polytope/Polytope4/#L496) | Project every vertex, in `topology.elements(0)` order — so the result is index-parallel to `Polytope4.vertices`, and a face cycle's element ids have to be looked up in that list rather than used as indices into this one. |
 
@@ -941,7 +941,7 @@ How a four-dimensional point becomes a three-dimensional one for viewing.
 
 [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">OrthographicProjection4</span><span class="p">(</span><span class="k">val</span> <span class="n">axis</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Projection4</span></code>](source/jvmMain/afield/stdlib/polytope/Polytope4/#L411)
 
-Drop one axis. Honest, cheap, and usually unreadable — every cell folds onto every other.
+Drop one axis. Cheap, exact, and usually unreadable — every cell folds onto every other.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1071,7 +1071,7 @@ Weights are residual multipliers; set a term to zero to disable that constraint 
 | <code class="highlight"><span class="k">val</span> <span class="n">facePlanarityWeight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">centroidWeight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">radiusWeight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">referenceWeight</span><span class="p">:</span> <span class="nc">Double</span></code> | The weak pull back toward the input embedding; small on purpose, it only picks a representative. |
+| <code class="highlight"><span class="k">val</span> <span class="n">referenceWeight</span><span class="p">:</span> <span class="nc">Double</span></code> | The weak pull back toward the input embedding; small, because it only picks a representative. |
 | <code class="highlight"><span class="k">val</span> <span class="n">targetEdgeLength</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> | Null keeps the object's own size by targeting the initial mean edge length. |
 | <code class="highlight"><span class="k">val</span> <span class="n">leastSquares</span><span class="p">:</span> <span class="nc">LeastSquaresOptions</span></code> |  |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">toPlan</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">RelaxationPlan</span></code>](source/jvmMain/afield/stdlib/polytope/RealizationSolver/#L200) | The same request expressed in the composable vocabulary. |
@@ -1127,7 +1127,7 @@ motion, and most under scale, so a solver's answer is only defined up to seven d
 Leaving that to a weak proximity term makes results depend on solver damping; instead
 `PolyhedralObject.normalize` translates a declared centre to the origin, scales a declared measured
 length to a target, and — given a reference embedding — applies the one rotation that best matches
-it. The rotation gauge is anchored to a reference rather than to the inertia tensor on purpose: the
+it. The rotation gauge is anchored to a reference rather than to the inertia tensor, because the
 principal axes of a symmetric solid are degenerate, so an inertia gauge would spin.
 
 Nothing here claims a shape is *good*. A construction can return a self-intersecting embedding with
@@ -1211,7 +1211,7 @@ expression such as `conway("tI")`.
 
 `cubeWithWindow` is the sixth and the odd one out: a cube whose top face has a hole in it, which
 makes it a surface *with boundary* rather than a closed manifold. It exists so that the parts of
-the library that handle holes have something honest to be tested and demonstrated against.
+the library that handle holes have something real to be tested and demonstrated against.
 
 ### Scale is not uniform across the seeds
 
@@ -1320,7 +1320,7 @@ Compact, stable inspection value for a rank-aware incidence topology.
 | <code class="highlight"><span class="k">val</span> <span class="n">rank</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">elementCounts</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span></code> | Element count per rank, `0..rank` inclusive — so the whole-polytope element is counted here. |
 | <code class="highlight"><span class="k">val</span> <span class="n">faceDegreeCounts</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span></code> | How many faces have each corner count, ordered by degree. Faces with no stored ordered boundary are silently omitted, so this can total fewer than `elementCounts[2]`. |
-| <code class="highlight"><span class="k">val</span> <span class="n">eulerCharacteristic</span><span class="p">:</span> <span class="nc">Int</span></code> | Alternating sum over the *proper* ranks; the whole-polytope rank is deliberately excluded. |
+| <code class="highlight"><span class="k">val</span> <span class="n">eulerCharacteristic</span><span class="p">:</span> <span class="nc">Int</span></code> | Alternating sum over the *proper* ranks; the whole-polytope rank is excluded. |
 | <code class="highlight"><span class="k">val</span> <span class="n">faceHoleCount</span><span class="p">:</span> <span class="nc">Int</span></code> | Inner boundary rings summed over every face — 0 for everything the seeds and the Conway operators produce, so a non-zero number here is why `closedManifold` is false. |
 | <code class="highlight"><span class="k">val</span> <span class="n">cellularEulerCharacteristic</span><span class="p">:</span> <span class="nc">Int</span></code> | `eulerCharacteristic` with one subtracted per hole: a face with `h` holes is a disk with `h` disks removed. Equal to `eulerCharacteristic` whenever `faceHoleCount` is 0. |
 | <code class="highlight"><span class="k">val</span> <span class="n">valid</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Basic incidence and boundary validation only. |
@@ -1591,7 +1591,7 @@ picking id and a vote in `eulerCharacteristic` that it has no business having.
 
 **Winding is a convention here, not a check.** Outer rings run counter-clockwise about the face
 normal and inner rings run clockwise. There are no coordinates at this layer, so that cannot be
-verified here — and it is deliberately not load-bearing downstream either, because
+verified here — and nothing downstream depends on it either, because
 `afield.graphics.PlanarTessellation` normalises each ring's winding and decides which ring is the
 outer one geometrically. What `validate` does check is combinatorial: rings vertex-disjoint, each
 ring closed over the face's own edges, every incident edge used by exactly one ring, and one
@@ -1599,9 +1599,9 @@ boundary component per ring.
 
 A holed face is a surface *with boundary* — its hole edges bound one face, not two — so
 `validate(checkManifold = true)` rejects it, correctly. `dual` and the Conway operators require a
-closed manifold and therefore refuse it explicitly, rather than quietly dropping the hole.
+closed manifold and therefore refuse it explicitly, rather than dropping the hole silently.
 
-### What is deliberately absent
+### What is absent
 
 No orientation of the complex as a whole, and no assumption that it is a closed manifold:
 `validate(checkManifold = true)` is an opt-in stricter pass, and a 4-polytope legitimately fails
@@ -1840,7 +1840,7 @@ An immutable report, not a control-flow exception: everything one `PolytopeTopol
 | --- | --- |
 | [<code class="highlight"><span class="k">val</span> <span class="n">issues</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ValidationIssue</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/polytope/Topology/#L250) |  |
 | [<code class="highlight"><span class="k">val</span> <span class="n">isValid</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stdlib/polytope/Topology/#L251) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">throwIfInvalid</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/polytope/Topology/#L259) | Throw [`TopologyValidationException`](polytopes.md#topology-kt-topologyvalidationexception) carrying every issue, or return quietly. The bridge from the report style back to ordinary Kotlin failure, used by `PolytopeTopologyBuilder.buildValidated` and by each Field adapter before it assumes a well-formed input. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">throwIfInvalid</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/polytope/Topology/#L259) | Throw [`TopologyValidationException`](polytopes.md#topology-kt-topologyvalidationexception) carrying every issue, or return without complaint. The bridge from the report style back to ordinary Kotlin failure, used by `PolytopeTopologyBuilder.buildValidated` and by each Field adapter before it assumes a well-formed input. |
 
 ### TopologyValidationException { #topology-kt-topologyvalidationexception }
 
@@ -1885,7 +1885,7 @@ Immutable, rank-aware incidence topology.
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">faceBoundaryOrNull</span><span class="p">(</span><span class="n">face</span><span class="p">:</span> <span class="nc">ElementId</span><span class="p">)</span><span class="p">:</span> <span class="nc">FaceBoundary</span><span class="o">?</span></code>](source/jvmMain/afield/stdlib/polytope/Topology/#L428) | `faceBoundary` without the throw: null for any element that has no stored outer cycle. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">verticesOfFace</span><span class="p">(</span><span class="n">face</span><span class="p">:</span> <span class="nc">ElementId</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Element</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/polytope/Topology/#L436) | All vertices of `face`'s **outer** boundary, in order. Throws if the cycle names an id this topology does not hold — a state `validate` would have reported as [`FaceCycleWrongElement`](polytopes.md#topology-kt-facecyclewrongelement). Hole vertices are not included; ask `faceHoles` for those. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">totalFaceHoleCount</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stdlib/polytope/Topology/#L441) | Inner rings summed over every face — zero for everything this package constructs by default. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">eulerCharacteristic</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stdlib/polytope/Topology/#L451) | Alternating count of all proper ranks; the whole-polytope rank is deliberately excluded. So it is 2 for a closed polyhedral surface and 0 for a convex 4-polytope, and either number is a cheap check that a transform did not lose or duplicate elements. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">eulerCharacteristic</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stdlib/polytope/Topology/#L451) | Alternating count of all proper ranks; the whole-polytope rank is excluded. So it is 2 for a closed polyhedral surface and 0 for a convex 4-polytope, and either number is a cheap check that a transform did not lose or duplicate elements. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">cellularEulerCharacteristic</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stdlib/polytope/Topology/#L463) | `eulerCharacteristic` corrected for holes: a face with `h` inner rings is a disk with `h` disks removed and contributes `1 - h`, not 1. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">validate</span><span class="p">(</span><span class="n">checkManifold</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">ValidationResult</span></code>](source/jvmMain/afield/stdlib/polytope/Topology/#L474) | Validate basic incidence and explicit polygon boundaries. Set `checkManifold` to additionally require every edge to have exactly two incident faces. Non-manifold structures remain legal at the core level. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">dual</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PolytopeTopology</span></code>](source/jvmMain/afield/stdlib/polytope/Topology/#L620) | Abstract dual. Proper ranks are reversed while the whole-polytope rank remains the whole. For rank 3 this is exactly vertices <-> faces and edges <-> edges. |

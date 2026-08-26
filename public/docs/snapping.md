@@ -10,8 +10,6 @@ Field can snap boxes while you drag or resize them. The snapping system is desig
 
 Snapping is active while Caps Lock is on.
 
-Use this workflow:
-
 1. Press `Caps Lock`.
 2. Drag a box near another box.
 3. Release the mouse when the guide line lands where you want it.
@@ -48,13 +46,9 @@ This is useful when you are cleaning up a graph after adding a few boxes quickly
 
 Snapping also looks for gaps between nearby boxes.
 
-If a dragged box can land between two other boxes with equal spacing, Field offers that as a snap target and draws measurement ticks on the guide line.
-
-Use this when you want:
-
-- evenly spaced rows of processing boxes
-- regular vertical stacks
-- a quick visual rhythm without measuring by hand
+If a dragged box can land between two other boxes with equal spacing, Field offers that as a snap
+target and draws measurement ticks on the guide line — which is how you get an evenly spaced row or
+a regular vertical stack without measuring by hand.
 
 ## Resize snapping
 
@@ -74,17 +68,12 @@ In practice, the easiest way to use it is simply to drag near the intended relat
 
 ## When to use it
 
-Snapping is most useful when:
-
-- arranging a document for presentation or teaching
-- cleaning up a box graph after exploratory edits
-- building rows or columns of related boxes
-- making parent and child regions feel visually intentional
-
-It is less useful when you are sketching quickly and do not want layout constraints. In that case, leave Caps Lock off and place boxes freely.
+Arranging a document for presentation, or tidying a graph after a run of exploratory edits. It is
+the wrong mode for sketching, which is why it is on a modifier you have to hold rather than on by
+default — leave Caps Lock off and boxes go where you put them.
 
 ## Related features
 
-- Use [interactive_guides.md](interactive_guides.md) when the layout itself is part of a walkthrough.
-- Use [bookmarks.md](bookmarks.md) to save a useful view once you have arranged it.
-- Use [document_history.md](document_history.md) if you want to roll back to an earlier document state rather than manually undoing a large layout change.
+- Use [Interactive Guides](interactive_guides.md) when the layout itself is part of a walkthrough.
+- Use [Bookmarks](bookmarks.md) to save a useful view once you have arranged it.
+- Use [Document History](document_history.md) if you want to roll back to an earlier document state rather than manually undoing a large layout change.
