@@ -321,6 +321,42 @@ class ProseNumeralContractTest {
             // word tokens, so it could never match inside a code span.
             membersNamedOnPage = false,
         ),
+        DerivedCountGuard.Derivation(
+            key = "visionPoseDeviceSpans",
+            page = "public/docs/vision.md",
+            what = "latency spans the visionOS head defines and reports over the wire",
+            // 5 on 2026-08-26, and the whole population. The first derivation in this list whose
+            // population comes from **Swift** rather than Kotlin — the two machines' span sets are
+            // different sizes (4 here, 5 there) and the page states both, so a reader can tell which
+            // half of the chain a span belongs to. Floored at 5: the page's sentence exists to say
+            // the published fixture exercises *two of five*, and that fraction stops being true the
+            // moment the population moves.
+            floor = 5,
+            landmarks = setOf(
+                "head: jitter buffer hold (deliberate)",
+                "head: POSE to texture (motion-to-photon lower bound)",
+            ),
+            // Scraped from `PoseLatency.Span`, whose own comment says these strings "are the wire
+            // keys and appear verbatim in the host's readout, so the host does not need to know the
+            // set in advance". That is exactly why it is worth pinning from this side: the Kotlin end
+            // deliberately cannot enumerate them, so without this nothing in the build would notice
+            // a sixth appearing or a fifth going away.
+            //
+            // Selected on the `head: ` prefix rather than "every string literal in the file". Today
+            // those agree — all five `static let` literals in PoseLatency.swift are span names — but
+            // the prefix is the load-bearing property, since it is what separates a head span from a
+            // host span in the readout. Matching on it keeps the derivation meaning what its name
+            // says if an unrelated constant is ever added beside them.
+            derive = { r ->
+                val src = File(r, "native/field-visionos/Field4Vision/Pose/PoseLatency.swift")
+                Regex("""static let [A-Za-z0-9_]+ = "(head: [^"]+)"""")
+                    .findAll(src.readText())
+                    .map { it.groupValues[1] }
+                    .toSortedSet()
+            },
+            // False, again for tokenisation: these are multi-word phrases containing `:` and `(`.
+            membersNamedOnPage = false,
+        ),
     )
 
     private fun derivationsByKey() = derivations.associateBy { it.key }
