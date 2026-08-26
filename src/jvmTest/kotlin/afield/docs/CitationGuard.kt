@@ -152,7 +152,7 @@ object CitationGuard {
      * Bare `` `path:line` `` with no anchor of any kind — an *unguarded* citation. Not a citation this
      * can check; counted so that a page's unguarded remainder is a number rather than a vibe.
      */
-    private val BARE = Regex("""`([A-Za-z0-9_./-]+\.(?:$EXT)):(\d+)(?:-\d+)?`""")
+    private val BARE = Regex("""`([A-Za-z0-9_./-]+\.(?:$EXT)):(\d+)(-\d+)?`""")
 
     /**
      * A `|` inside a markdown table cell has to be written `\|`, so an anchor containing a pipe —
@@ -515,6 +515,213 @@ object CitationGuard {
                 }
             }
             line
+        }
+        if (changed > 0) pageFile.writeText(out.joinToString("\n", postfix = "\n"))
+        return changed
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Anchoring a bare citation
+    // ---------------------------------------------------------------------------------------------
+
+    /** Shortest anchor worth trusting. Below this a substring is common enough to land anywhere. */
+    private const val MIN_ANCHOR_LENGTH = 14
+
+    /** Longest anchor worth publishing. An anchor is apparatus, not a quotation. */
+    private const val MAX_ANCHOR_LENGTH = 64
+
+    // Leading comment punctuation to drop before quoting a line, longest first so the doc-comment
+    // opener wins over the single star. A `//` comment rather than a KDoc because the markers have to
+    // appear literally in the list below, and a KDoc naming them would nest a block comment inside
+    // itself and swallow the rest of the file — which is exactly how this failed to compile first try.
+    private val COMMENT_PREFIXES = listOf("/**", "*/", "//", "*")
+
+    /**
+     * What could be done about one bare `` `path:line` `` citation. [anchor] is null when nothing
+     * mechanical is safe, and [reason] then says why, because that is the interesting half.
+     */
+    data class AnchorProposal(
+        val page: String,
+        val pageLine: Int,
+        val path: String,
+        val line: Int,
+        val anchor: String?,
+        val reason: String,
+    ) {
+        /** `page:12 → Foo.kt:34` plus the verdict, which is what a migration report is made of. */
+        fun describe(): String =
+            "$page:$pageLine → $path:$line  " + (anchor?.let { "`$it`" } ?: "SKIPPED — $reason")
+    }
+
+    /**
+     * An anchor for the site a bare citation names, taken from **the cited line itself**.
+     *
+     * The tempting alternative is to anchor to the enclosing declaration, which is more stable and
+     * almost always unique. It is also wrong: 55 of the 77 bare citations in `public/docs` point at a
+     * KDoc paragraph or a statement rather than at a signature, and anchoring those to the enclosing
+     * `fun` would move the published line number to the top of the function — silently retargeting the
+     * citation to something the author did not write. A citation that cannot be anchored to what it
+     * actually points at is left alone and counted, which the unguarded population already models.
+     *
+     * The line is quoted after dropping any leading comment punctuation and keeping the longest run
+     * that contains no backtick or pipe — a backtick would terminate the citation's own inline code
+     * span, and a pipe would end a table cell. What is left must still be a contiguous substring of
+     * the line, which is what makes [resolve] able to find it.
+     */
+    fun proposeAnchor(root: File, path: String, line: Int): Pair<String?, String> {
+        val file = locate(root, path) ?: return null to explainUnresolvable(root, path)
+        val lines = file.readLines()
+        if (line !in 1..lines.size) return null to "the file has only ${lines.size} lines"
+
+        var text = lines[line - 1].trim()
+        COMMENT_PREFIXES.firstOrNull { text.startsWith(it) }?.let { text = text.removePrefix(it).trim() }
+        var segment = text.split('`', '|').maxByOrNull { it.length }.orEmpty().trim()
+        if (segment.length > MAX_ANCHOR_LENGTH) {
+            val cut = segment.lastIndexOf(' ', MAX_ANCHOR_LENGTH)
+            segment = (if (cut >= MIN_ANCHOR_LENGTH) segment.take(cut) else segment.take(MAX_ANCHOR_LENGTH)).trimEnd()
+        }
+        if (segment.length < MIN_ANCHOR_LENGTH) {
+            val shown = lines[line - 1].trim().ifEmpty { "(blank)" }
+            return null to "line $line is `$shown`, too short or too structural to quote"
+        }
+        val hits = lines.count { segment in it }
+        if (hits != 1) return null to "`$segment` occurs $hits times in $path"
+        return segment to "unique in $path"
+    }
+
+    /** How far from a cited line a symbol may be and still count as corroborating it. */
+    private const val CORROBORATION_WINDOW = 20
+
+    /** Shortest word in the page's prose worth treating as a symbol name. */
+    private const val MIN_CORROBORATION_LENGTH = 5
+
+    /**
+     * Words that carry no evidence about *where* in a file a citation points, so finding one near the
+     * cited line proves nothing. Kotlin keywords, and the English a sentence about code is made of.
+     */
+    private val CORROBORATION_STOPWORDS = setOf(
+        "class", "object", "interface", "typealias", "internal", "private", "public", "protected",
+        "override", "suspend", "return", "when", "while", "value", "const", "field", "import",
+        "package", "false", "true", "null", "this", "super", "string", "double", "float", "boolean",
+        "there", "which", "every", "after", "before", "because", "other", "those", "these", "their",
+        "would", "should", "could", "about", "first", "where",
+    )
+
+    /**
+     * Whether the page's own words agree with the line it cites — and if not, where the symbol is.
+     *
+     * ## Why anchoring needs this
+     *
+     * Anchoring quotes the cited line, so it faithfully preserves whatever a citation already pointed
+     * at. That is the right behaviour when the citation is right, and the wrong behaviour when it is
+     * not: a stale number stops drifting and starts *tracking* the unrelated line it landed on, with a
+     * green build over it forever. Five of the fifty anchorable citations in `public/docs` were in
+     * exactly that state, and there was no way to tell from the page.
+     *
+     * So a citation is only anchored when nothing contradicts it. The page usually names the symbol it
+     * is citing in the same sentence — `` `enum class KeyDiffKind` (`keyframer.kt:915`) `` — and that
+     * name is evidence: `KeyDiffKind` is at line 1040, so 915 is not where the sentence says it is.
+     * When the page names nothing, no contradiction is possible and the citation is anchored as
+     * written; the anchor is the cited line's own text, so it can only be as wrong as the page already
+     * was.
+     */
+    private fun contradiction(pageText: String, file: File, line: Int): String? {
+        val named = TICKED.findAll(pageText)
+            .map { it.groupValues[1] }
+            .filterNot { BARE.matches("`$it`") || PROSE_LINE_SYMBOL.matches("`$it`") }
+            .flatMap { IDENTIFIER_WORD.findAll(it).map { w -> w.value } }
+            .filter { it.length >= MIN_CORROBORATION_LENGTH && it.lowercase() !in CORROBORATION_STOPWORDS }
+            .distinct()
+            .toList()
+        if (named.isEmpty()) return null
+
+        val lines = file.readLines()
+        val from = (line - 1 - CORROBORATION_WINDOW).coerceAtLeast(0)
+        val until = (line + CORROBORATION_WINDOW).coerceAtMost(lines.size)
+        val near = lines.subList(from, until)
+        if (named.any { word -> near.any { word in it } }) return null
+
+        // Nothing the page names is anywhere near. Say where the best candidate actually is, so the
+        // report reads as a repair instruction rather than a refusal.
+        val elsewhere = named.firstNotNullOfOrNull { word ->
+            lines.indexOfFirst { word in it }.takeIf { it >= 0 }?.let { word to it + 1 }
+        }
+        val located = elsewhere?.let { (word, at) -> "`$word` is at line $at, not near $line" }
+            ?: "none of ${named.joinToString(", ") { "`$it`" }} appears in the file at all"
+        return "the page names ${named.joinToString(", ") { "`$it`" }} but $located"
+    }
+
+    /** Any backticked span, for reading what a page claims around a citation. */
+    private val TICKED = Regex("""`([^`]+)`""")
+
+    /** An identifier-shaped word inside such a span. */
+    private val IDENTIFIER_WORD = Regex("""[A-Za-z_][A-Za-z0-9_]*""")
+
+    /** Every bare citation on [pageFile], with what could be done about it. */
+    fun proposeAnchors(root: File, pageFile: File, pageName: String = pageFile.name): List<AnchorProposal> {
+        val out = mutableListOf<AnchorProposal>()
+        pageFile.readLines().forEachIndexed { idx, text ->
+            if (LEDGER_ROW.containsMatchIn(text)) return@forEachIndexed
+            val symbolic = (PROSE_LINE_SYMBOL.findAll(text) + PROSE_SYMBOL.findAll(text))
+                .map { it.range }.toList()
+            BARE.findAll(text)
+                .filterNot { b -> symbolic.any { it.first <= b.range.first && b.range.last <= it.last } }
+                .forEach { m ->
+                    val path = m.groupValues[1]
+                    val line = m.groupValues[2].toInt()
+                    // `compiler.js:962-973` names a span of lines, and the anchored forms this guard
+                    // parses carry a single number. Anchoring it would produce a citation that neither
+                    // `PROSE_LINE_SYMBOL` nor `BARE` matches — unguarded *and* uncounted, which is the
+                    // one outcome worse than leaving it alone.
+                    if (m.groupValues[3].isNotEmpty()) {
+                        out += AnchorProposal(
+                            pageName, idx + 1, path, line, null,
+                            "`$path:$line${m.groupValues[3]}` is a line range, which an anchor cannot carry"
+                        )
+                        return@forEach
+                    }
+                    val (anchor, reason) = proposeAnchor(root, path, line)
+                    val disagreement = anchor?.let {
+                        locate(root, path)?.let { file -> contradiction(text, file, line) }
+                    }
+                    out += if (disagreement != null) {
+                        AnchorProposal(pageName, idx + 1, path, line, null, disagreement)
+                    } else {
+                        AnchorProposal(pageName, idx + 1, path, line, anchor, reason)
+                    }
+                }
+        }
+        return out
+    }
+
+    /**
+     * Rewrite every bare citation on [pageFile] that [proposeAnchor] can anchor, and return how many.
+     *
+     * Sibling of [refreshAdvisoryLines], and gated the same way: an ordinary build never calls it. The
+     * replacement walks a line's bare citations in order rather than by text, so a line carrying two
+     * citations to the same site cannot have one of them take the other's anchor.
+     */
+    fun anchorBareCitations(root: File, pageFile: File, pageName: String = pageFile.name): Int {
+        val byPageLine = proposeAnchors(root, pageFile, pageName)
+            .filter { it.anchor != null }
+            .groupBy { it.pageLine }
+        if (byPageLine.isEmpty()) return 0
+
+        var changed = 0
+        val out = pageFile.readLines().mapIndexed { idx, text ->
+            val proposals = byPageLine[idx + 1] ?: return@mapIndexed text
+            if (LEDGER_ROW.containsMatchIn(text)) return@mapIndexed text
+            val pending = ArrayDeque(proposals)
+            BARE.replace(text) { m ->
+                val next = pending.firstOrNull()
+                if (next != null && next.path == m.groupValues[1] && next.line == m.groupValues[2].toInt()) {
+                    pending.removeFirst()
+                    changed++
+                    "`${next.path}:${next.line}#${next.anchor}`"
+                } else {
+                    m.value
+                }
+            }
         }
         if (changed > 0) pageFile.writeText(out.joinToString("\n", postfix = "\n"))
         return changed

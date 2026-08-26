@@ -33,7 +33,7 @@ Two things this family is **not**. It is not a statistics library: there are no 
 confidence intervals, no hypothesis tests anywhere in it, and the last section of this page shows
 the permutation test you have to write yourself to know whether a number means anything. And
 `micTicNaive` is not MICe/TICe — the file's own header comment
-(`correlations.kt:31`) is emphatic that it is an equipartition-grid approximation that will not
+(`correlations.kt:31#IMPORTANT NOTES (honesty about what this is / isn't):`) is emphatic that it is an equipartition-grid approximation that will not
 reproduce published numbers.
 
 If you want the two-fence version of the dependence story next to the interpolants it grew out of,
@@ -247,7 +247,7 @@ Five things fall out of that table, and each one is a rule about which measure t
 
 **Pearson answers "is this a straight line", and nothing else.** `r = −0.000` on the parabola —
 where `y` is a *noiseless, exact* function of `x`. The dependence is total and the coefficient is
-zero. That is not a defect: `pearson` (`correlations.kt:147`) is the sample covariance over the
+zero. That is not a defect: `pearson` (`correlations.kt:147#each for the means and one for the covariance.`) is the sample covariance over the
 product of the standard deviations, and a symmetric parabola has zero covariance with its own
 argument by construction.
 
@@ -255,7 +255,7 @@ argument by construction.
 reads 0.819, which is the whole reason they exist — any strictly increasing reshape of `y` leaves
 them alone. But they side with Pearson on the parabola, and for the same reason: a parabola is a
 function and not a monotone one, and monotone is all either of them can see. `spearman` is literally
-`pearson` on `ranksAverageTies` (`correlations.kt:171`–`correlations.kt:176`), so it inherits every
+`pearson` on `ranksAverageTies` (`correlations.kt:171#is constant, since every rank is then identical and [pearson]`–`correlations.kt:176#val ry = ranksAverageTies(y)`), so it inherits every
 Pearson limitation *after* the ranking.
 
 **Chatterjee's xi answers "is `y` a function of `x`" — and it is asymmetric on purpose.** It reads
@@ -284,7 +284,7 @@ looking, then use something else to describe what you found.
     Chatterjee's estimator is only defined up to a *random* breaking of the ties among the `x`
     values, so on tied `x` it is a random variable rather than a number. Rather than pick a seed,
     `chatterjeeXi` returns that random variable's **exact expectation**, computed in closed form
-    from the ranks inside each run of equal `x` (`correlations.kt:321`–`correlations.kt:343`). So it
+    from the ranks inside each run of equal `x` (`correlations.kt:321#val denominator = 2.0 * denomTerm.toDouble()`–`correlations.kt:343`). So it
     is deterministic, reproducible, and — the property that matters — invariant to the order you
     hand the pairs over in.
 
@@ -420,9 +420,9 @@ invisible; distance correlation needs a few hundred samples before it can see a 
 A single coefficient over a whole recording answers the wrong question if the relationship comes
 and goes. `RollingDistanceCorrelation` maintains its row sums, grand sums and cross sums
 incrementally, so a `push` costs O(w) rather than the O(w²) a rebuild would
-(`correlations.kt:670`). `RollingXiCorrelation` makes no such promise — it recomputes
-`chatterjeeXi` over the window every time, at O(w log w) (`correlations.kt:914`–
-`correlations.kt:925`) — which makes it exactly as trustworthy as the batch call and no faster.
+(`correlations.kt:670#The maintained row sums, grand sums and cross sums are only ever`). `RollingXiCorrelation` makes no such promise — it recomputes
+`chatterjeeXi` over the window every time, at O(w log w) (`correlations.kt:914#have arrived. Copies the window out in arrival order first,`–
+`correlations.kt:925#val slot = (head + i) % windowSize`) — which makes it exactly as trustworthy as the batch call and no faster.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/statistics_examples/rolling_regime.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="620" padding="16"}
 :::static
@@ -520,9 +520,9 @@ the change, xi **48**. Distance correlation reacts sooner; xi ends up higher.
 The last line of that figure is a real cross-check and not a restatement.
 `RollingDistanceCorrelation` never rebuilds a distance matrix — it only adds to and subtracts from
 maintained sums — while `StatsDependence.distanceCorrelation` materialises two full w×w matrices
-and double-centres them (`correlations.kt:415`–`correlations.kt:495`). Two genuinely different
+and double-centres them (`correlations.kt:415#matrices, which puts the practical ceiling at a few thousand`–`correlations.kt:495#val dcor = dcov / sqrt(dvarx * dvary)`). Two genuinely different
 algorithms, and on the final window they agree to **5×10⁻¹⁵**. The KDoc at
-`correlations.kt:667`–`correlations.kt:669` warns that the incremental sums drift over a long run,
+`correlations.kt:667#evicts the oldest pair. There is no reset: build a new`–`correlations.kt:669` warns that the incremental sums drift over a long run,
 and they do — but the drift is small: over **200 000** pushes with a window of 64, the largest
 disagreement sampled against the batch call was **8.6×10⁻¹⁴**. Both bounds are pinned.
 
@@ -533,7 +533,7 @@ PCHIP curve from the measured quantiles of recent samples onto the quantiles of 
 distribution, so a signal of the wrong shape becomes one of the right shape. The default target is
 `TargetDistributions.UnitNormal` (`quantilewarp.kt:156`), and the default eight probabilities are
 `0.001, 0.01, 0.05, 0.20, 0.50, 0.80, 0.95, 0.99` — note that they are **not symmetric**
-(`quantilewarp.kt:44`–`quantilewarp.kt:46`), so the fit spends more knots on the left tail than the
+(`quantilewarp.kt:44`–`quantilewarp.kt:46#private val defaultQuantileWarpProbabilities = doubleArrayOf(`), so the fit spends more knots on the left tail than the
 right.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/statistics_examples/quantile_warp.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="820" padding="16"}
@@ -617,13 +617,13 @@ approximating. The left histogram in the same figure is the reason you would bot
 of 72.98 against a median of 0.98, the raw distribution is one spike and a tail, and no amount of
 binning makes it readable. That comparison is worth its own paragraph, because `quantilewarp.kt` contains no
 such function; the oracle is built in the fence out of `inverseStandardNormalCdf`
-(`quantilewarp.kt:674`, itself accurate to six decimals: it returns 1.959964 at p=0.975 and
+(`quantilewarp.kt:674#float t3 = t2 * t;`, itself accurate to six decimals: it returns 1.959964 at p=0.975 and
 −3.090232 at p=0.001) and a binary search over the sorted fitting sample.
 
 Three sharp edges, all measured:
 
 - **Outside the fitted range, `evaluate` extrapolates linearly from the endpoint tangent**
-  (`quantilewarp.kt:584`–`quantilewarp.kt:589`), and for a compressed tail that slope is steep. On
+  (`quantilewarp.kt:584`–`quantilewarp.kt:589#out float ys[FIELD_QUANTILE_WARP_KNOTS]`), and for a compressed tail that slope is steep. On
   the fit above, whose lowest input knot is 0.038, `evaluate(0.0)` returns −3.75 and
   `evaluate(-1.0)` returns **−21.1**. Nothing clamps it. If your signal can leave the range you
   fitted on, clamp the input yourself.
@@ -633,8 +633,8 @@ Three sharp edges, all measured:
   the median knot goes 0.009 → 2.016 → 3.608 → 4.879 → … → 9.310 after twelve updates, tracking
   `10·(1 − 0.20)ᵏ` — 0.690 remaining against a predicted 0.687. Convergence is geometric, so a
   step change takes a couple of dozen frames to follow.
-- **The knots are forced strictly increasing after smoothing** (`quantilewarp.kt:201`–
-  `quantilewarp.kt:205`), so the curve stays invertible even when the input degenerates; swept from
+- **The knots are forced strictly increasing after smoothing** (`quantilewarp.kt:201#val inputKnots: DoubleArray = inputKnots.copyOf()`–
+  `quantilewarp.kt:205#val packedPushConstants: FloatArray =`), so the curve stays invertible even when the input degenerates; swept from
   −5 to 60 in steps of 0.01 the fitted curve above is strictly increasing throughout.
 
 `AdaptiveQuantileWarp` also keeps a history: `update` merges the batch you hand it with the last

@@ -1368,6 +1368,45 @@ tasks.register<JavaExec>("checkKDocAttachment") {
     mainClass.set("afield.docs.KDocAttachmentGuard")
 }
 
+// Rendering a source *file* as a docs page needs a fact neither of the guards above establishes: that
+// the file can be cut into spans losslessly. A page that lifts KDoc into prose and numbers its code
+// fences from real source lines is only honest if the partition it came from accounts for every line —
+// lose three and every fence below them is numbered wrong, on a well-formed page, with nothing to
+// notice it. This checks the tiling over the whole repository, and pins the count of lines the cutter
+// cannot attribute to anything named. See KotlinSourcePartition for the invariants.
+tasks.register<JavaExec>("checkSourcePartition") {
+    group = "verification"
+    description = "Fails if a Kotlin file in src/ cannot be cut into spans losslessly — the invariant a source-rendering docs page depends on. Pass --args=--verbose for the per-file and per-shape breakdowns."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.docs.SourcePartitionGuard")
+}
+
+// The source pages themselves: KDoc as prose, declarations as headings, bodies in fences numbered
+// from their real lines. Unlike every other generated artifact here these are NOT committed — a
+// source mirror changes whenever any line of its source changes, so committing it would double every
+// diff in the repository and make each source commit require a regeneration step. They are built
+// into the docs tree by tools/build_zensical_docs.py instead, and the citation links degrade to plain
+// chips when they are absent. checkSourcePages is the guard that matters: it parses the fences back
+// out of the emitted markdown and asserts each is verbatim source at the line it claims, which is the
+// only property that makes a numbered fence honest.
+tasks.register<JavaExec>("generateSourcePages") {
+    group = "documentation"
+    description = "Renders the reference packages and every cited source file as docs pages into build/source-pages."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.docs.SourcePageGenerator")
+}
+
+tasks.register<JavaExec>("checkSourcePages") {
+    group = "verification"
+    description = "Fails if any source page's code fence is not verbatim source at the line its linenums claims. Writes nothing."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.docs.SourcePageGenerator")
+    args("--check")
+}
+
 // `public/docs/assets/agent_transcripts/` is generated from the transcript yaml in
 // `dev_docs/agents/transcripts/` and is *committed*: the welcome screen's starting points, the docs
 // gallery and the search index all read it. AgentTranscriptMaterializer already drift-checks it —
@@ -1614,6 +1653,8 @@ tasks.register<Exec>("fieldAudioModelSmoke") {
 tasks.named("check") {
     dependsOn("checkCodebaseReference")
     dependsOn("checkKDocAttachment")
+    dependsOn("checkSourcePartition")
+    dependsOn("checkSourcePages")
     dependsOn("checkPythonTools")
     dependsOn("checkAgentTranscripts")
     dependsOn("checkAgentTranscriptIndex")
@@ -1642,6 +1683,8 @@ tasks.register("docsGates") {
     description = "Runs the documentation/generated-artifact and citation guards without :allTests."
     dependsOn("checkCodebaseReference")
     dependsOn("checkKDocAttachment")
+    dependsOn("checkSourcePartition")
+    dependsOn("checkSourcePages")
     dependsOn("checkAgentTranscripts")
     dependsOn("checkAgentTranscriptIndex")
     dependsOn("checkCompletionCorpusFixtures")

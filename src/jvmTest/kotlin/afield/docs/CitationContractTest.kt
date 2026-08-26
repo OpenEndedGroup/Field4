@@ -143,6 +143,25 @@ class CitationContractTest {
             // `clear()` was the one builder method the page documented nowhere at all, which is
             // exactly the class of omission a count-only guard cannot see.
             "public/docs/vision_geometry.md" to 6,
+            // Four more published pages, 2026-08-26. These were not written with anchors: between
+            // them they carried 77 bare `path:line` citations, which `citationGates` has always
+            // counted and never been able to check. `CitationGuard.anchorBareCitations` anchored 44
+            // of them mechanically, by quoting the cited line — the only anchor that preserves what
+            // a citation already pointed at rather than retargeting it at the enclosing declaration.
+            //
+            // The remaining 33 are deliberate and stay counted. 27 point at a line too structural to
+            // quote (`)`, a comment terminator, a blank line, `lineCounter++`); one is a line *range*,
+            // which the anchored grammar cannot express; and five are **wrong citations** the
+            // anchoring found by refusing to cement them — the page names a symbol that is nowhere
+            // near the line it cites. `keyframer_examples.md` says `enum class KeyDiffKind` is at
+            // `keyframer.kt:915` and it is at 1040. Those five need an author to say what was meant,
+            // and each is named with the true location by `anchorBareCitationsWhenAsked`.
+            //
+            // Floors are set to about half the anchored count, on the DATAFRAME_PLUGIN convention.
+            "public/docs/statistics_examples.md" to 8,
+            "public/docs/dataframe.md" to 8,
+            "public/docs/keyframer_examples.md" to 5,
+            "public/docs/morpho_examples.md" to 2,
         )
 
         /**
@@ -707,10 +726,16 @@ class CitationContractTest {
      * variable so an ordinary build can never rewrite tracked files.
      *
      * ```
-     * FIELD_CITATIONS_WRITE=1 ./gradlew --no-daemon jvmTest --tests '*CitationContract*'
+     * FIELD_CITATIONS_WRITE=1 ./gradlew --no-daemon citationGates --rerun-tasks
      * ```
      *
      * Advisory drift is not a build failure by design; this is how it gets cleaned up without one.
+     *
+     * The task is `citationGates`, not `jvmTest`: `jvmTest` *excludes* these classes (see
+     * `citationGuardTestClasses` in build.gradle.kts) so that a docs-only edit does not rerun the
+     * whole JVM suite, and a `--tests` filter cannot re-include an excluded class — the command this
+     * line used to give exits with "No tests found for given includes". `--rerun-tasks` because the
+     * gate is input-tracked, so an unchanged corpus is UP-TO-DATE and the writer never runs.
      */
     @Test
     fun refreshAdvisoryLineNumbersWhenAsked() {
@@ -731,4 +756,53 @@ class CitationContractTest {
         }
         println("refreshed $changed advisory line number(s); review the diff before committing")
     }
+
+    /**
+     * Not a test: the mechanical **anchoring** of bare citations, so a page can be brought under guard
+     * without hand-writing an anchor per citation.
+     *
+     * ```
+     * FIELD_CITATIONS_ANCHOR=public/docs/foo.md,public/docs/bar.md \
+     *   ./gradlew --no-daemon citationGates --rerun-tasks
+     * ```
+     *
+     * Takes an explicit page list rather than [GUARDED_PAGES], because the pages that need anchoring
+     * are by definition the ones not yet on it. With no variable set it reports what it *would* do for
+     * every guarded page plus every page under `public/docs`, which is the survey you want before
+     * deciding whether a page is ready — including the citations it cannot anchor and why, since a
+     * citation pointing at a blank line is a finding rather than a gap.
+     */
+    @Test
+    fun anchorBareCitationsWhenAsked() {
+        val requested = System.getenv("FIELD_CITATIONS_ANCHOR").orEmpty()
+        if (requested.isBlank()) {
+            val surveyed = (GUARDED_PAGES.keys + publicDocsPages()).sorted()
+            val proposals = surveyed.flatMap { rel ->
+                val file = File(root, rel)
+                if (file.isFile) CitationGuard.proposeAnchors(root, file, rel) else emptyList()
+            }
+            val (anchorable, skipped) = proposals.partition { it.anchor != null }
+            println(
+                "bare citations: ${proposals.size} across ${surveyed.size} page(s) — " +
+                    "${anchorable.size} anchorable, ${skipped.size} needing a human " +
+                    "(set FIELD_CITATIONS_ANCHOR=<pages> to write the anchorable ones)"
+            )
+            skipped.take(40).forEach { println("  ${it.describe()}") }
+            return
+        }
+        var changed = 0
+        requested.split(",").map { it.trim() }.filter { it.isNotEmpty() }.forEach { rel ->
+            val file = File(root, rel)
+            assertTrue(file.isFile, "page to anchor is missing: $rel")
+            changed += CitationGuard.anchorBareCitations(root, file, rel)
+        }
+        println("anchored $changed citation(s); review the diff before committing")
+    }
+
+    /** Every page under `public/docs`, so the survey above cannot miss one by forgetting to list it. */
+    private fun publicDocsPages(): List<String> =
+        File(root, "public/docs").walkTopDown()
+            .filter { it.isFile && it.extension == "md" }
+            .map { it.relativeTo(root).path.replace('\\', '/') }
+            .toList()
 }

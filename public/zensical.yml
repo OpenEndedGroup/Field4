@@ -180,6 +180,8 @@ extra_javascript:
   - assets/homepage-video.js
   - assets/dot-grid.js
   - assets/header-brand.js
+  # Before lesswrong-rail.js: the rail measures heading offsets, and this rewraps them.
+  - assets/sticky-headings.js
   - assets/lesswrong-rail.js
   - assets/image-lightbox.js
   - assets/code-diff-player/fence-upgrade.js

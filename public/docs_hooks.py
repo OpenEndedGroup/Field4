@@ -3,6 +3,7 @@ from __future__ import annotations
 import atexit
 import ast
 import hashlib
+import html
 import json
 import logging
 import math
@@ -236,6 +237,133 @@ def rewrite_guide_fences(markdown: str) -> str:
         lang = GUIDE_LANG_ALIASES.get(lang, lang)
         newline = match.group("newline") or "\n"
         out.append(f"{match.group('indent')}{fence}diffstatic {{data-lang={lang}}}{newline}")
+    return "".join(out)
+
+
+# A citation written `path:line#anchor` names a source site twice: the line number is for the
+# reader, the anchor is the substring CitationGuard searches for so that somebody inserting lines
+# above the site cannot break the reference. Only the first half is any use to a reader, and until
+# now both halves were published -- `public/docs/vision.md` renders
+# `VisionPose.kt:82#const val VISION_POSE_CHANNEL` verbatim, six times over, machine-readable
+# apparatus and all. So the anchor is folded into a title attribute here, on the way into the
+# generated site only: the markdown on disk keeps it where the guard reads it, and the page shows
+# the short form a reader wants.
+#
+# CITATION_EXTENSIONS must stay in step with `CitationGuard.EXT`
+# (src/jvmTest/kotlin/afield/docs/CitationGuard.kt) -- an extension the guard checks and this does
+# not is a citation published with its apparatus showing. test_docs_hooks_citations.py reads the
+# Kotlin constant and asserts the two agree, so the drift is a test failure rather than a surprise
+# on a page.
+CITATION_EXTENSIONS = "kt|js|md|py|kts|html|swift|glsl|json|yml|yaml"
+SOURCE_CITATION_RE = re.compile(
+    r"`(?P<path>[A-Za-z0-9_./-]+\.(?:" + CITATION_EXTENSIONS + r"))(?P<line>:\d+)?"
+    r"#(?P<anchor>[^`]+)`"
+)
+
+
+# Set by tools/build_zensical_docs.py when the source pages were rendered this run. Absent means
+# they were not, and a citation then stays an unlinked chip -- the same "links only appear when they
+# resolve" rule the KDoc linkifier in StdlibReferenceGenerator follows.
+SOURCE_PAGE_ANCHORS_ENV = "FIELD_DOCS_SOURCE_PAGE_ANCHORS"
+_source_page_anchors: dict[str, Any] | None = None
+
+
+def source_page_anchors() -> dict[str, Any]:
+    """The basename -> {page, lines} map written by afield.docs.SourcePageGenerator, or empty."""
+    global _source_page_anchors
+    if _source_page_anchors is None:
+        path = os.environ.get(SOURCE_PAGE_ANCHORS_ENV, "").strip()
+        candidate = Path(path) if path else None
+        if candidate is not None and candidate.is_file():
+            _source_page_anchors = json.loads(candidate.read_text(encoding="utf-8"))
+        else:
+            _source_page_anchors = {}
+    return _source_page_anchors
+
+
+def citation_href(*, path: str, line: int | None, depth: int) -> str | None:
+    """The URL a citation should point at, or None when nothing can resolve it.
+
+    A citation frequently points *into* a body rather than at a signature, and there is no anchor on
+    line 1096 of `stats.kt` to jump to -- so the target is the greatest declaration line at or below
+    the cited one, which lands on the section containing it with the fence numbered so the exact line
+    is visible. `depth` is how deep the citing page's *directory* is: the href goes into raw HTML,
+    which zensical rebases against the published URL for us, so it must be written file-relative.
+    """
+    entry = source_page_anchors().get(path.rsplit("/", 1)[-1])
+    if not entry:
+        return None
+    url = "../" * depth + entry["page"].removesuffix(".md") + "/"
+    if line is not None:
+        candidates = [n for n in entry.get("lines", []) if n <= line]
+        if candidates:
+            url += f"#L{max(candidates)}"
+    return url
+
+
+def page_directory_depth(page_path: Path, docs_dir: Path) -> int:
+    """How many `../` steps reach the docs root from the directory [page_path] lives in.
+
+    The *directory*, not the published URL, and the difference is not academic: zensical rebases
+    relative hrefs inside raw HTML the same way it rebases markdown links, so a link written from the
+    URL's point of view gets a second `../` added to it and lands one level above the site. Measured
+    on the first build with links in it — `vision.md` emitted `../reference/…` and the page served
+    `../../reference/…`. Writing them file-relative lets that rebasing do its job.
+    """
+    try:
+        relative = page_path.resolve().relative_to(docs_dir.resolve())
+    except ValueError:
+        return 0
+    return len(relative.parts) - 1
+
+
+def rewrite_source_citations(markdown: str, depth: int | None = None) -> str:
+    """Publish `path:line#anchor` as `path:line`, keeping the anchor as a tooltip.
+
+    With `depth` given and the source pages present, the chip also becomes a link to the declaration
+    that contains the cited line. Without either it is the plain chip, which is what a docs build with
+    no compiled Kotlin tree produces.
+
+    Fenced blocks are skipped: a fence showing what a citation looks like should keep showing it,
+    and a runner fence's code is compiled rather than read.
+    """
+
+    def replace(match: re.Match[str]) -> str:
+        path = match.group("path")
+        line_text = match.group("line") or ""
+        shown = path + line_text
+        anchor = match.group("anchor")
+        escaped_anchor = html.escape(anchor, quote=True)
+        chip = (
+            '<code class="source-citation" data-anchor="{anchor}" title="{anchor}">{shown}</code>'
+        ).format(anchor=escaped_anchor, shown=html.escape(shown, quote=True))
+        if depth is None:
+            return chip
+        href = citation_href(
+            path=path,
+            line=int(line_text[1:]) if line_text else None,
+            depth=depth,
+        )
+        if href is None:
+            return chip
+        return '<a class="source-citation-link" href="{href}">{chip}</a>'.format(
+            href=html.escape(href, quote=True), chip=chip
+        )
+
+    out: list[str] = []
+    closing: re.Pattern[str] | None = None
+    for line in markdown.splitlines(keepends=True):
+        if closing is not None:
+            out.append(line)
+            if closing.match(line):
+                closing = None
+            continue
+        generic = GENERIC_FENCE_OPEN_RE.match(line)
+        if generic is not None:
+            out.append(line)
+            closing = re.compile(rf"^[ ]{{0,3}}{re.escape(generic.group('fence'))}\s*(?:\r?\n)?$")
+            continue
+        out.append(SOURCE_CITATION_RE.sub(replace, line))
     return "".join(out)
 
 
@@ -2241,6 +2369,10 @@ def ensure_state(config: Any) -> RunnerState:
 def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, files: Any) -> str:
     if is_workspace_guide(page_path):
         markdown = rewrite_guide_fences(markdown)
+    markdown = rewrite_source_citations(
+        markdown,
+        depth=page_directory_depth(page_path, state.docs_dir),
+    )
     lines = markdown.splitlines(keepends=True)
     out: list[str] = []
     block_index = 0

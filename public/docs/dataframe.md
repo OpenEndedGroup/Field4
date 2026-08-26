@@ -85,7 +85,7 @@ Kotlin DataFrame does ship a second, separate mechanism for schemas arriving fro
 
 ## `typed()`: the way across
 
-`DataFrame<T>.typed(name)` (`DataFrameSchemas.kt:50`) stops asking the plugin to remember, and gives it something it can see instead. It reads the frame's **runtime** columns — which are exactly right, because the data has already been loaded — and writes a real schema into the calling box's **preamble**:
+`DataFrame<T>.typed(name)` (`DataFrameSchemas.kt:50#fun <T> DataFrame<T>.typed(name: String): DataFrame<T> {`) stops asking the plugin to remember, and gives it something it can see instead. It reads the frame's **runtime** columns — which are exactly right, because the data has already been loaded — and writes a real schema into the calling box's **preamble**:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -106,13 +106,13 @@ Three choices in that design are worth knowing, because they are what make it su
 
 | choice | why | where |
 |---|---|---|
-| **The preamble, not an inline eval.** | `typed()` runs *inside* the box's engine, and the compile dispatcher is a single thread, so evaluating another snippet from there risks deadlock. The preamble is the existing channel for "source this box should have compiled first". | `DataFrameSchemas.kt:31` |
-| **Unchanged schemas are free.** | `checkPreambleAndExecute` only evaluates preamble lines that *changed*, so re-running a box whose columns are the same costs nothing. | `DataFrameSchemas.kt:34` |
-| **Replace by name, not append.** | Matching is on the `interface <name> {` prefix rather than the whole line, so a re-run with a *changed* set of columns rewrites the declaration instead of accumulating a second one. | `DataFrameSchemas.kt:100` |
+| **The preamble, not an inline eval.** | `typed()` runs *inside* the box's engine, and the compile dispatcher is a single thread, so evaluating another snippet from there risks deadlock. The preamble is the existing channel for "source this box should have compiled first". | `DataFrameSchemas.kt:31#- **The preamble, not an inline eval.** We are executing inside` |
+| **Unchanged schemas are free.** | `checkPreambleAndExecute` only evaluates preamble lines that *changed*, so re-running a box whose columns are the same costs nothing. | `DataFrameSchemas.kt:34#only evaluates lines that *changed* — so re-running a box with` |
+| **Replace by name, not append.** | Matching is on the `interface <name> {` prefix rather than the whole line, so a re-run with a *changed* set of columns rewrites the declaration instead of accumulating a second one. | `DataFrameSchemas.kt:100#val marker = "interface $name {"` |
 
 Redeclaring is safe here in a way it is not for `sharedTypes`: nothing is loaded into a classloader, so a shape change is ordinary REPL shadowing rather than an unrepeatable event.
 
-**What you do not get.** Flat value columns get their real element type. A **column group** or **frame column** would need a nested interface to type properly, so it is declared `Any?` — you still get the column, just not its shape — and the log names which ones landed that way (`DataFrameSchemas.kt:67`). Calling `typed()` with no box in context logs a warning and does nothing (`DataFrameSchemas.kt:58`).
+**What you do not get.** Flat value columns get their real element type. A **column group** or **frame column** would need a nested interface to type properly, so it is declared `Any?` — you still get the column, just not its shape — and the log names which ones landed that way (`DataFrameSchemas.kt:67#val rendered = columns().map { it.name() to`). Calling `typed()` with no box in context logs a warning and does nothing (`DataFrameSchemas.kt:58#lprintln("warning,dataframe", "typed(\"$name\"): no box in`).
 
 ### One execution, two halves: the `//%-` marker { #fragment-marker }
 
@@ -144,7 +144,7 @@ Once it has run, the second half is independently re-runnable: select those line
 
 ## Looking at a frame: `.h` and `.h2` { #looking-at-a-frame }
 
-A DataFrame is a first-class Field value: it renders through [the value visualizer](visualizers.md#the-value-visualizer-what-h-draws) like anything else. `DataFrame` is a third-party interface, so it cannot implement `ToHTML` the way Field's own `Table` and `Img` do — which is exactly what `ValuePrinterRegistry` and `H2ValueRegistry` exist for (`DataFrameVisualizer.kt:55`, `DataFrameVisualizer.kt:62`).
+A DataFrame is a first-class Field value: it renders through [the value visualizer](visualizers.md#the-value-visualizer-what-h-draws) like anything else. `DataFrame` is a third-party interface, so it cannot implement `ToHTML` the way Field's own `Table` and `Img` do — which is exactly what `ValuePrinterRegistry` and `H2ValueRegistry` exist for (`DataFrameVisualizer.kt:55`, `DataFrameVisualizer.kt:62#ValuePrinterRegistry.register(DataFrame::class.java) { frame ->`).
 
 Four things dispatch: a **frame**, a **column**, a **row**, and a **`GroupBy`**.
 
@@ -189,10 +189,10 @@ The capture above is the claim, measured: **1,143 characters for 200,000 rows.**
 
 ??? aside "Why that claim is pinned by a comparison rather than a size limit"
     `kotlin.dataframe-visualizer.smoke` renders both frames and fails unless their compact forms differ by
-    no more than 40 characters (`DataFrameVisualizerSmokeTest.kt:137`). A rendering that was linear in rows
+    no more than 40 characters (`DataFrameVisualizerSmokeTest.kt:137#require(grew in -SHAPE_LINE_SLACK..SHAPE_LINE_SLACK) {`). A rendering that was linear in rows
     with a small constant would satisfy a plain size ceiling at 5,000 rows and blow past it at 200,000, so a
     ceiling alone would not catch the regression that matters. There is a ceiling as well — under 4,000
-    characters, no last row (`DataFrameVisualizerSmokeTest.kt:105`).
+    characters, no last row (`DataFrameVisualizerSmokeTest.kt:105#require(rendered.length < 4_000) {`).
 
 ### `.h2` is a real scroller, for free
 
@@ -219,7 +219,7 @@ display("scroller", big.h2)
 
 Three things in that picture are worth naming. The header is the frame's real shape, `15000 rows × 2 columns`, not the size of what was sent. The rows are a **table** — one column per key, in the row's own key order (`h2explorer.kt:180#fun recordCells`) — because a list of same-shaped maps is a table and not a column of summaries. And `i` and `sq` are the frame's own column names, arriving from the data rather than from anything this page declared.
 
-Mechanically, the `.h2` output is an `<iframe>` onto `/h2-explorer?root=h2-<token>` (`h2explorer.kt:559#fun installH2ExplorerHandler`), and the explorer asks for its windows over the `/ws` `__h2_explorer__` channel. That is a different path from `/lazy-value-fragment`, which `renderListContinuation` (`ValueVisualizer.kt:2269`) serves when a value is expanded in place — worth keeping straight, because the two are easy to confuse and only one of them is what `.h2` opens.
+Mechanically, the `.h2` output is an `<iframe>` onto `/h2-explorer?root=h2-<token>` (`h2explorer.kt:559#fun installH2ExplorerHandler`), and the explorer asks for its windows over the `/ws` `__h2_explorer__` channel. That is a different path from `/lazy-value-fragment`, which `renderListContinuation` (`ValueVisualizer.kt:2269#private fun renderListContinuation(value: Any?, offset: Int,`) serves when a value is expanded in place — worth keeping straight, because the two are easy to confuse and only one of them is what `.h2` opens.
 
 Doing it this way rather than with a bespoke widget has a second payoff: a frame nested *inside* another value — a list of frames, a data class with a frame field — expands with the same machinery.
 
@@ -229,17 +229,17 @@ Doing it this way rather than with a bespoke widget has a second payoff: a frame
 
 | what | how |
 |---|---|
-| Turn the plugin off for this JVM | `-Dafield.dataframePlugin=false` (`KotlinInterface2.kt:2959`) |
-| Point at a different plugin jar | `-Dafield.dataframePlugin.jar=<path>` (`KotlinInterface2.kt:2963`) |
+| Turn the plugin off for this JVM | `-Dafield.dataframePlugin=false` (`KotlinInterface2.kt:2959#DataFramePluginSpike`) |
+| Point at a different plugin jar | `-Dafield.dataframePlugin.jar=<path>` (`KotlinInterface2.kt:2963#lprintln("kotlin", "dataframe: plugin disabled by`) |
 | Default jar location | `libs/dataframe-plugin.jar`, git-lfs tracked |
 
-The plugin jar is deliberately **not** on the app classpath, and this is not an accident of packaging. It vendors ~1000 classes of the DataFrame runtime of its own, so putting it beside the real `dataframe-core` dependency would put **two copies of `DataFrame`** in front of box code (`KotlinInterface2.kt:2940`). `-Xplugin` loads it in the compiler's own plugin classloader, so only the compiler ever sees it — while the *runtime* goes on the classpath normally (`build.gradle.kts:952`).
+The plugin jar is deliberately **not** on the app classpath, and this is not an accident of packaging. It vendors ~1000 classes of the DataFrame runtime of its own, so putting it beside the real `dataframe-core` dependency would put **two copies of `DataFrame`** in front of box code (`KotlinInterface2.kt:2940#The two plugins are located differently on purpose. Wither's jar`). `-Xplugin` loads it in the compiler's own plugin classloader, so only the compiler ever sees it — while the *runtime* goes on the classpath normally (`build.gradle.kts:952#the reproducer afield.examples.ProvideDelegateReplSmokeTest.`).
 
 The runtime version is pinned to `1.0.0-Beta2`, and **it is a pin rather than a preference**: the plugin was built from Field's `2.4.255-SNAPSHOT` Kotlin fork, whose `libs.versions.toml` names that runtime version, and *the plugin statically interprets the runtime's API*. Moving to a released DataFrame 1.0 therefore means re-syncing the fork and rebuilding the plugin — not bumping a line in `build.gradle.kts`.
 
 ### What it costs every other box
 
-Field builds one compiler engine per box, so anything added to the compilation state is paid per box rather than per DataFrame user. That is worth a number, and it has one, from `kotlin.dataframe-plugin-cost.probe`: toggling the plugin moves per-engine cost by **~4%** — 7449 ms against 7785 ms over three engines — and `dataframe-core` adds four entries to a 471-entry classpath (`DataFramePluginCostProbe.kt:27`).
+Field builds one compiler engine per box, so anything added to the compilation state is paid per box rather than per DataFrame user. That is worth a number, and it has one, from `kotlin.dataframe-plugin-cost.probe`: toggling the plugin moves per-engine cost by **~4%** — 7449 ms against 7785 ms over three engines — and `dataframe-core` adds four entries to a 471-entry classpath (`DataFramePluginCostProbe.kt:27#cost by ~4% (7449ms vs 7785ms over three engines), and`).
 
 Engine cost is dominated by warm-up rather than by either addition: the first engine costs ~4.6 s to construct and ~13 s to first-evaluate, the second and third ~200 ms and ~1–3 s.
 

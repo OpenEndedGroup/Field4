@@ -17,6 +17,11 @@ import yaml
 
 from verification_runtime import verification_lock
 
+# Where `generate_source_pages` tells `public/docs_hooks.py` to find the basename -> page/anchor map
+# that turns a citation into a link. Named here and read there; an absent variable is the signal that
+# no source pages exist this run, which is what makes the citation chips degrade rather than break.
+SOURCE_PAGE_ANCHORS_ENV = "FIELD_DOCS_SOURCE_PAGE_ANCHORS"
+
 
 def ceres_library_path(repo_root: Path) -> Path:
     """Where `afield.stdlib.ceres.CeresNativeLibrary.defaultPath` will look, from Python.
@@ -218,13 +223,83 @@ def matches_page_filter(relative: Path, filters: tuple[str, ...]) -> bool:
     return False
 
 
-def build_generated_config(*, public_dir: Path, generated_root: Path) -> Path:
+def generate_source_pages(*, repo_root: Path, generated_docs: Path, enabled: bool) -> Path | None:
+    """Render the source pages into the docs tree, and return the anchor index if it worked.
+
+    These are the only generated docs pages that are *not* committed, because a source mirror moves
+    whenever any line of its source moves; see `afield.docs.SourcePageGenerator` for the argument.
+    That makes them a build step, and a build step that needs a compiled Kotlin tree — which a
+    docs-only contributor may not have. So a failure here is a warning rather than an error: the
+    citation linker in `docs_hooks` links a citation only when its page was generated, so the site
+    degrades to the unlinked chips it had before rather than to a page of dead links. Under `--strict`
+    the caller turns the warning into a failure, the same trade `check_doc_assets.py` makes above.
+    """
+    if not enabled:
+        return None
+    gradlew = repo_root / "gradlew"
+    if not gradlew.is_file():
+        print(f"No {gradlew}; skipping source pages.", file=sys.stderr)
+        return None
+    started = time.monotonic()
+    result = subprocess.run(
+        [str(gradlew), "--no-daemon", "-q", "generateSourcePages", f"--args={generated_docs}"],
+        cwd=repo_root,
+        check=False,
+    )
+    if result.returncode != 0:
+        print(
+            "Source page generation failed; the site will build without them and citations will "
+            "stay unlinked. Run ./gradlew generateSourcePages to see why.",
+            file=sys.stderr,
+        )
+        return None
+    anchors = generated_docs / "reference" / "source" / "anchors.json"
+    pages = len(list((generated_docs / "reference" / "source").rglob("*.md")))
+    print(f"Generated {pages} source page(s) in {time.monotonic() - started:.1f}s")
+    return anchors if anchors.is_file() else None
+
+
+def source_page_nav(generated_docs: Path) -> list[Any]:
+    """One nav entry for the source tree: its overview page, and nothing else.
+
+    The obvious thing is a nav subtree with all 240 files in it, grouped by package. Measured, that is
+    a bad trade: material renders the whole nav into *every* page, so listing them took each of the
+    site's ~350 pages from 97 KB to 198 KB, the site from 396 MB to 528 MB, and the docs build from
+    21s to 63s. None of that buys much — the overview table lists the same files with their line and
+    declaration counts, and the ways anyone actually arrives at one of these pages are a citation in
+    the prose, a row in the reference, or that table.
+
+    Built here rather than in `public/zensical.yml` because the pages are a build artifact: an entry in
+    the tracked config would describe a file a fresh checkout does not have.
+    """
+    if not (generated_docs / "reference" / "source" / "index.md").is_file():
+        return []
+    return [{"Source": "reference/source/index.md"}]
+
+
+def build_generated_config(
+    *,
+    public_dir: Path,
+    generated_root: Path,
+    source_nav: list[Any] | None = None,
+) -> Path:
     source_config = public_dir / "zensical.yml"
     with source_config.open("r", encoding="utf-8") as handle:
         config = yaml.load(handle, Loader=yaml.Loader)  # noqa: S506 - existing config uses Python tags.
 
     config["docs_dir"] = os.path.relpath(generated_root / "docs", public_dir)
     config["site_dir"] = "field4"
+
+    if source_nav:
+        # Hang the generated tree off the existing "Reference" section rather than making a new
+        # top-level one: the reference index is the page that already answers "what is in here?", and
+        # the source pages are the next click from it.
+        for entry in config.get("nav", []):
+            if isinstance(entry, dict) and "Reference" in entry:
+                entry["Reference"].extend(source_nav)
+                break
+        else:
+            config.setdefault("nav", []).extend(source_nav)
 
     theme = config.get("theme")
     if isinstance(theme, dict) and "custom_dir" in theme:
@@ -329,6 +404,11 @@ def parse_args() -> argparse.Namespace:
             "Matches relative paths, filenames, stems, or shell globs; may be repeated."
         ),
     )
+    parser.add_argument(
+        "--no-source-pages",
+        action="store_true",
+        help="Skip rendering src/ as docs pages. Citations then stay unlinked rather than dead.",
+    )
     return parser.parse_args()
 
 
@@ -366,8 +446,25 @@ def run(args: argparse.Namespace) -> int:
         runner_mode=docs_hooks.resolve_runner_mode(os.environ.get(docs_hooks.RUNNER_MODE_ENV)),
     )
 
+    anchors = generate_source_pages(
+        repo_root=repo_root,
+        generated_docs=generated_docs,
+        enabled=not args.no_source_pages,
+    )
+    if anchors is not None:
+        os.environ[SOURCE_PAGE_ANCHORS_ENV] = str(anchors)
+    else:
+        os.environ.pop(SOURCE_PAGE_ANCHORS_ENV, None)
+        if args.strict and not args.no_source_pages:
+            print("Source pages are missing. Failing because --strict.", file=sys.stderr)
+            return 1
+
     preprocess_docs(public_dir=public_dir, generated_docs=generated_docs, page_filters=tuple(args.page))
-    generated_config = build_generated_config(public_dir=public_dir, generated_root=generated_root)
+    generated_config = build_generated_config(
+        public_dir=public_dir,
+        generated_root=generated_root,
+        source_nav=source_page_nav(generated_docs),
+    )
 
     # A referenced-but-untracked asset renders fine in this warm tree and 404s on a clean
     # checkout. Warn on every build; under --strict (CI / pre-merge) it gates.

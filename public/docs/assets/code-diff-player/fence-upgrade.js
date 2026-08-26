@@ -16,6 +16,23 @@
     return { pre, holder, classes };
   }
 
+  // A `diffstatic` fence may declare the source line its first line really is, as
+  // `{data-lang=kotlin data-start-line=82}`. Superfences puts brace attributes on the <pre>, so look
+  // there first, then at the <code> and the highlight wrapper, the same order extractLanguage uses.
+  function extractStartLine(codeEl) {
+    const { pre, holder } = surroundingInfo(codeEl);
+    const candidates = [
+      codeEl.dataset.startLine,
+      pre ? pre.dataset.startLine : null,
+      holder && holder.dataset ? holder.dataset.startLine : null,
+    ];
+    for (const value of candidates) {
+      const n = parseInt(value, 10);
+      if (Number.isFinite(n) && n > 0) return n;
+    }
+    return 1;
+  }
+
   function extractLanguage(codeEl) {
     const { pre, holder, classes } = surroundingInfo(codeEl);
     const cls = classes;
@@ -101,6 +118,8 @@
     const wrapper = document.createElement("div");
     wrapper.className = "code-diff-player";
     wrapper.dataset.language = lang;
+    const startLine = extractStartLine(codeEl);
+    if (startLine !== 1) wrapper.dataset.startLine = String(startLine);
 
     const preBefore = document.createElement("pre");
     preBefore.dataset.state = "before";

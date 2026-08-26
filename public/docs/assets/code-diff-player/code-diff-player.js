@@ -449,6 +449,11 @@
     constructor(container, options) {
       this.container = container;
       this.language = options.language || "kotlin";
+      // The line number the block's first line carries. 1 for an ordinary example; for a fence cut
+      // out of a real file it is where that fence starts, so the gutter reads as the file does.
+      this.startLine = Number.isFinite(options.startLine) && options.startLine > 0
+        ? options.startLine
+        : 1;
       this.codeStart = options.before || "";
       this.codeEnd = options.after || options.before || "";
       // Pull out :::fold/:::endfold regions before anything else counts lines or diffs.
@@ -567,7 +572,7 @@
         const marker = markers.get(idx) || "";
         const markerHtml = marker ? `<span class="marker ${marker}"></span>` : "";
         cls += marker ? " with-marker" : " no-marker";
-        return `<div class="${cls}"><span class="line-no">${idx + 1}</span>${markerHtml}<span class="code-text">${content}</span></div>`;
+        return `<div class="${cls}"><span class="line-no">${idx + this.startLine}</span>${markerHtml}<span class="code-text">${content}</span></div>`;
       };
 
       // Explicit :::fold regions still collapsed, clipped to the visible [startIdx,endIdx) window.
@@ -876,17 +881,19 @@
     if (!beforeNode && !afterNode && !singleNode) return null;
 
     const lang = container.dataset.language || container.dataset.lang || "kotlin";
+    const declaredStart = parseInt(container.dataset.startLine, 10);
+    const startLine = Number.isFinite(declaredStart) && declaredStart > 0 ? declaredStart : 1;
 
     if (singleNode) {
       const text = normalizeBlock(singleNode.textContent || "");
       singleNode.hidden = true;
-      return { before: text, after: text, language: lang, static: true };
+      return { before: text, after: text, language: lang, static: true, startLine };
     }
 
     if (beforeNode && !afterNode) {
       const text = normalizeBlock(beforeNode.textContent || "");
       beforeNode.hidden = true;
-      return { before: text, after: text, language: lang, static: true };
+      return { before: text, after: text, language: lang, static: true, startLine };
     }
 
     if (!beforeNode || !afterNode) return null;
@@ -895,7 +902,7 @@
     const after = normalizeBlock(afterNode.textContent || "");
     beforeNode.hidden = true;
     afterNode.hidden = true;
-    return { before, after, language: lang };
+    return { before, after, language: lang, startLine };
   }
 
   function mountAll() {

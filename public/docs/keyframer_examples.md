@@ -25,8 +25,8 @@ watch**, **why a camera move is a screw motion**, **how saving works and what su
 **how a captured look becomes source**.
 
 Almost everything below runs on the CPU. `Structure` is constructible bare
-(`Structure.kt:112`) and its `bind`/`bindings` are plain map operations
-(`Structure.kt:176`, `Structure.kt:136`), so a keyframe scope can be exercised — and tested —
+(`Structure.kt:112#open class Structure(`) and its `bind`/`bindings` are plain map operations
+(`Structure.kt:176#fun bind(property: String, value: Function0<*>) {`, `Structure.kt:136#val bindings: MutableMap<String, Function0<*>> = root?.bindings`), so a keyframe scope can be exercised — and tested —
 without a GPU anywhere in sight. The exception is
 [the GPU still](#the-same-thing-driving-a-live-gpu-uniform), which is a real Vulkan render, and the
 targets that need a renderer, which are listed at the [foot of the page](#what-is-actually-tested).
@@ -124,11 +124,11 @@ Panel 4 is the round trip closing: re-applying the original snapshot and re-capt
     uses the plain `Structure` form instead, and no figure on this page demonstrates them.
 
     Worth knowing what the source says before you reach for one. All three are one-line wrappers
-    over the lazily-resolved `target(name) { … }` (`keyframer.kt:562`), and they pass the *same*
+    over the lazily-resolved `target(name) { … }` (`keyframer.kt:562#you built once and will keep.`), and they pass the *same*
     `@`-suffixed string to two different lookups: it selects the structure, via
     `module.current.liveUniformStructures[…]`, **and** it is the member name bound inside that
     structure (`keyframer.kt:566-567`). That map is keyed by the **uniform block's name**
-    (`Module.kt:559` for a graphics module, `ComputeModule.kt:163` for a compute one), while the
+    (`Module.kt:559#vi.ubos.forEach { liveUniformStructures[it.name] =` for a graphics module, `ComputeModule.kt:163#ci.ubos.forEach  { liveUniformStructures[it.name] =` for a compute one), while the
     members inside it are the block's *fields*. So the key can only address a member whose name
     equals the block's own name — not an arbitrary field within the block, and not the independent
     structure-and-property pair the `@` qualifier gives a plain `Structure` target.
@@ -136,7 +136,7 @@ Panel 4 is the round trip closing: re-applying the original snapshot and re-capt
     This is a reading of three source files, not a measurement — nothing here executes those
     overloads. The working way to keyframe a module's uniform is the plain `Structure` overload
     against `module.<block>`, which resolves to that same live structure
-    (`Module.kt:217`), and that **is** demonstrated, on a real GPU, in the next section.
+    (`Module.kt:217#return inside.current.liveUniformStructures[property.name] ?:`), and that **is** demonstrated, on a real GPU, in the next section.
 
 !!! warning "`capture()` sees *bound* properties, not *set* values"
 
@@ -432,8 +432,8 @@ target point but a `CameraPose`: the camera's rigid transform as a dual quaterni
 distance. That choice is the whole reason the feature is worth having, and it is easiest to see by
 drawing what the two options actually do.
 
-Interpolating a dual quaternion is a *screw motion* (`CameraPose.sclerp`, `CameraPose.kt:45`, over
-`DualQuaternionf.sclerp`, `DualQuaternionf.kt:158`) — a rotation and a translation about one axis,
+Interpolating a dual quaternion is a *screw motion* (`CameraPose.sclerp`, `CameraPose.kt:45#fun sclerp(other: CameraPose, t: Float): CameraPose =`, over
+`DualQuaternionf.sclerp`, `DualQuaternionf.kt:158#fun sclerp(other: DualQuaternionf, t: Float, dest:`) — a rotation and a translation about one axis,
 performed together. Interpolating a position is a straight line. Between two cameras that both look
 at the same subject, those are very different moves:
 
@@ -560,7 +560,7 @@ straight line — once each, where they are defined.
 ??? aside "The camera target itself needs a renderer"
 
     `KeyframeScope.camera(camera)` takes a live `Camera`, and `Camera`'s constructor is
-    `Camera(val renderer: Renderer = fromContext())` (`Camera.kt:16`) — it resolves a renderer from
+    `Camera(val renderer: Renderer = fromContext())` (`Camera.kt:16#class Camera(val renderer: Renderer = fromContext()) {`) — it resolves a renderer from
     the box context. So the *registration* is one of the eight declarations no unit test reaches
     (the full list is at the [foot of the page](#what-is-actually-tested)); the pose arithmetic
     above, which is all of the behaviour, is tested. Note also that the target accepts a
@@ -816,7 +816,7 @@ The remaining **8** are the ones a unit test cannot reach, each for the same two
 | --- | --- |
 | `target(ModulePointer/ComputeModulePointer/MeshModulePointer, name)` | resolves `module.current.liveUniformStructures`; needs a live `Renderer` |
 | `stackAuto(…)`, all three overloads | writes shader source through `stackAutoShaderSource`; needs a live `Renderer` |
-| `camera(Camera, keyName)` | `Camera(val renderer: Renderer = fromContext())` (`Camera.kt:16`) |
+| `camera(Camera, keyName)` | `Camera(val renderer: Renderer = fromContext())` (`Camera.kt:16#class Camera(val renderer: Renderer = fromContext()) {`) |
 | `Key.copyUpdateCodeToClipboard(…)` | the AWT system clipboard throws on a headless JVM |
 
 That is the whole gap, and it is the same gap the two notes above describe. Closing it needs a

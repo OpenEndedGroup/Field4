@@ -450,6 +450,16 @@ object StdlibReferenceGenerator {
         val types: List<TypeEntry>,
         val topLevelFunctions: List<Symbol>,
         val topLevelValues: List<Symbol>,
+        /**
+         * The lines [SourcePageGenerator] will give a heading — and therefore an `#L…` anchor — on
+         * this file's source page.
+         *
+         * Held rather than assumed because the two parsers do not agree on every line, and it is
+         * cheaper to ask than to publish a link that scrolls nowhere. A `data class`'s constructor
+         * properties are the common case: `KotlinSourceIndex` reports each as a declaration on its own
+         * line, the source page renders them as one signature, so only the class itself has an anchor.
+         */
+        val sourceAnchors: Set<Int>,
     ) {
         fun allSymbols(): List<Symbol> =
             types.map { it.symbol } + types.flatMap { it.members } + topLevelFunctions + topLevelValues
@@ -560,6 +570,15 @@ object StdlibReferenceGenerator {
         val overview = fileOverview(lines, definitions.minOfOrNull { it.line })
         val overviewOwner = overview?.second
 
+        val sourceAnchors = try {
+            SourcePageGenerator.headedDeclarationLines(KotlinSourcePartition.partition(text))
+        } catch (t: Throwable) {
+            // A partition failure costs links, not pages. `checkSourcePartition` is where that gets
+            // to be a build failure; here it degrades to the unlinked reference this page has always
+            // been.
+            emptySet()
+        }
+
         fun toSymbol(def: KotlinSourceIndex.ParsedDefinition): Symbol {
             val summaryRaw = if (def.line == overviewOwner) null else def.kdoc
             return Symbol(
@@ -599,7 +618,33 @@ object StdlibReferenceGenerator {
             types = types,
             topLevelFunctions = functions,
             topLevelValues = values,
+            sourceAnchors = sourceAnchors,
         )
+    }
+
+    /**
+     * The URL of [doc]'s source page, relative to a reference page, or null when it has none.
+     *
+     * Reference pages live in `reference/` and source pages in `reference/source/`, so the whole
+     * relative path is the `source/…` suffix. Written in the directory-URL form rather than as a `.md`
+     * link because these end up inside a markdown link whose text is already raw HTML, and zensical
+     * rebases the prefix either way.
+     *
+     * Null for a file outside [SourcePageGenerator]'s corpus. Those exist — the reference covers a few
+     * files whose category excludes them from the source-page selection — and a link that resolves to
+     * nothing is worse than a name that never claimed to be one.
+     */
+    private fun sourcePageUrl(doc: SourceDocument): String? {
+        if (doc.sourceAnchors.isEmpty()) return null
+        val page = SourcePageGenerator.pagePathFor(doc.relativePath)
+        return page.removePrefix("reference/").removeSuffix(".md") + "/"
+    }
+
+    /** [text] as a link to [line] on [doc]'s source page, or unchanged when that anchor is not there. */
+    private fun linkToSource(doc: SourceDocument, line: Int, text: String): String {
+        val url = sourcePageUrl(doc) ?: return text
+        if (line !in doc.sourceAnchors) return text
+        return "[$text]($url#L$line)"
     }
 
     private fun KotlinSourceIndex.ParsedDefinition.simpleName(): String = name.substringAfterLast('.')
@@ -680,7 +725,7 @@ object StdlibReferenceGenerator {
 
     private val BLOCK_TAG = Regex("""^@(param|return|throws|exception|see|since|sample|author|constructor|receiver|property|suppress)\b""")
 
-    private fun stripKDocMarkers(block: String): String =
+    internal fun stripKDocMarkers(block: String): String =
         block.split("\n").joinToString("\n") { raw ->
             var s = raw.trim()
             if (s.startsWith("/**")) s = s.removePrefix("/**").trim()
@@ -1172,7 +1217,12 @@ object StdlibReferenceGenerator {
         // "```diffstatic {data-lang=…}", which FENCE_OPENER no longer matches, so a demotion run
         // afterwards mistakes the *closing* fence for an opening one and stops demoting from there on.
         doc.overview?.let { appendLine(fencesToDiffstatic(demoteHeadings(linkify(it, typeAnchors)))); appendLine() }
-        appendLine("`${doc.relativePath}`")
+        val source = sourcePageUrl(doc)
+        if (source == null) {
+            appendLine("`${doc.relativePath}`")
+        } else {
+            appendLine("`${doc.relativePath}` — [read the source]($source)")
+        }
         appendLine()
         evidenceLinks(doc, evidence)?.let {
             appendLine("**Used in:** $it")
@@ -1182,17 +1232,17 @@ object StdlibReferenceGenerator {
         if (doc.topLevelFunctions.isNotEmpty()) {
             appendLine("### Top-level functions { #${fileAnchor(doc)}-functions }")
             appendLine()
-            append(renderTable(doc.topLevelFunctions, typeAnchors))
+            append(renderTable(doc.topLevelFunctions, typeAnchors, doc))
         }
         if (doc.topLevelValues.isNotEmpty()) {
             appendLine("### Top-level values { #${fileAnchor(doc)}-values }")
             appendLine()
-            append(renderTable(doc.topLevelValues, typeAnchors))
+            append(renderTable(doc.topLevelValues, typeAnchors, doc))
         }
         doc.types.forEach { type ->
             appendLine("### ${type.symbol.simpleName} { #${typeAnchor(doc, type.symbol)} }")
             appendLine()
-            appendLine(highlightSignature(type.symbol.signature))
+            appendLine(linkToSource(doc, type.symbol.line, highlightSignature(type.symbol.signature)))
             appendLine()
             if (type.symbol.summary.isNotBlank()) {
                 appendLine(fencesToDiffstatic(linkify(type.symbol.summary, typeAnchors)))
@@ -1202,17 +1252,22 @@ object StdlibReferenceGenerator {
                 appendLine("Constants: ${type.enumConstants.joinToString(", ") { "`$it`" }}.")
                 appendLine()
             }
-            if (type.members.isNotEmpty()) append(renderTable(type.members, typeAnchors))
+            if (type.members.isNotEmpty()) append(renderTable(type.members, typeAnchors, doc))
         }
     }
 
-    private fun renderTable(symbols: List<Symbol>, typeAnchors: Map<String, String>): String = buildString {
+    private fun renderTable(
+        symbols: List<Symbol>,
+        typeAnchors: Map<String, String>,
+        doc: SourceDocument,
+    ): String = buildString {
         appendLine("| Declaration | Summary |")
         appendLine("| --- | --- |")
         coalesce(symbols).forEach { row ->
             val signature = row.symbol.signature.ifBlank { row.symbol.simpleName }
+            val declaration = linkToSource(doc, row.symbol.line, highlightSignature(signature))
             appendLine(
-                "| ${highlightSignature(signature)}${overloadBadge(row)} | " +
+                "| $declaration${overloadBadge(row)} | " +
                     "${escapeCell(linkify(row.summary, typeAnchors))} |"
             )
         }
@@ -1362,7 +1417,7 @@ object StdlibReferenceGenerator {
      * for the drift guard, and because a signature is a small enough grammar to tokenise exactly:
      * keyword, declaration name, type (capitalised), parameter name, literal, operator, punctuation.
      */
-    private fun highlightSignature(signature: String): String {
+    internal fun highlightSignature(signature: String): String {
         val out = StringBuilder("<code class=\"highlight\">")
         var i = 0
         var sawDeclarationName = false
@@ -1663,7 +1718,7 @@ object StdlibReferenceGenerator {
      * Lines inside a fenced block are left alone — `#` is a comment in several of the languages the
      * overviews quote. Levels are clamped at `######`, markdown's deepest.
      */
-    private fun demoteHeadings(text: String): String {
+    internal fun demoteHeadings(text: String): String {
         if ('#' !in text) return text
         val lines = text.split("\n")
         var fenced = false
@@ -1703,7 +1758,7 @@ object StdlibReferenceGenerator {
      * A fence with no language is treated as Kotlin, which is what those blocks have always been in
      * practice. Closing fences are left alone, and an already-`diffstatic` fence is passed through.
      */
-    private fun fencesToDiffstatic(text: String): String {
+    internal fun fencesToDiffstatic(text: String): String {
         if (!text.contains("```")) return text
         var open = false
         return text.split("\n").joinToString("\n") { line ->

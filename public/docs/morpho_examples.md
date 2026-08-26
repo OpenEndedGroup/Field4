@@ -675,7 +675,7 @@ that is 3% wrong and cannot get off it. Those spaces are small enough that sampl
 perfectly good algorithm, and quoting the full-adder row without this one would be cherry-picking.
 
 **Or-reduce is the interesting positive result** because it cannot be done without recursion.
-Morpho sizes a LUT cell to its widest operand and broadcasts the narrow ones (`compiler.js:964`), so
+Morpho sizes a LUT cell to its widest operand and broadcasts the narrow ones (`compiler.js:964#const w = Math.max(...inputs.map(x => x.length));`), so
 no gate and no combination of gates turns eight wires into one bit — the only route down is to keep
 `SPLIT`ting.
 Every correct answer is genuinely divide-and-conquer. The designs found come out at four gates and
@@ -762,7 +762,7 @@ twelve other widths, all 400 are correct at 3, 6, 12, 16, 32 and 48 — and **39
 gives **zero of 400**.
 
 The mechanism is a hole in the language, not a quirk of the search. `SPLIT` halves a bus as
-`floor(w/2), w - floor(w/2)` (`primitives.js:42`), so the two halves are the same width exactly when
+`floor(w/2), w - floor(w/2)` (`primitives.js:42#const half = Math.floor(w.length / 2);`), so the two halves are the same width exactly when
 the width is even; 5, 7 and 9 are the small widths where they differ *and* both are wider than one
 bit. A LUT applied to both halves — `Or(x0, x1)`, which is what these designs do — then has operands
 of two different widths, and `materializeLut` (`compiler.js:962-973`) takes the maximum and

@@ -243,6 +243,144 @@ code {
     margin-left: 0.15em;
 }
 
+/* A source citation — `path:line#anchor` in the markdown, `path:line` on the page, with the
+   anchor folded into a title attribute by rewrite_source_citations in public/docs_hooks.py.
+   Styled as an ordinary inline code pill (it is one) plus a dotted underline, which is the
+   conventional "there is a tooltip here" signal and the only thing distinguishing it from the
+   inline code around it. Deliberately not a link colour: it does not navigate anywhere yet. */
+.md-typeset code.source-citation {
+    border-bottom: 1px dotted rgba(255, 255, 255, 0.32);
+    cursor: help;
+}
+
+/* …and when the source page it names was generated, the chip is wrapped in a link to the
+   declaration containing the cited line. The anchor carries no colour of its own: the chip is
+   already a distinct object in the line, and tinting it would make a page of citations read as a
+   page of links. The underline goes solid on hover, which is the only state change needed to say
+   "this one goes somewhere". */
+.md-typeset a.source-citation-link {
+    text-decoration: none;
+    color: inherit;
+}
+
+.md-typeset a.source-citation-link code.source-citation {
+    cursor: pointer;
+}
+
+.md-typeset a.source-citation-link:hover code.source-citation {
+    border-bottom-style: solid;
+    border-bottom-color: var(--md-accent-fg-color, rgba(255, 255, 255, 0.7));
+}
+
+/* Declaration headings on the source pages carry a highlighted signature rather than plain code, so
+   a reader scanning the page can find the name without reading the types. Only `font-weight` and
+   `opacity` are touched, never `color`: the palette is already doing the colouring, and a `color` on
+   these spans outranks `.highlight .k` and silently flattens it — the same trap the codebase-reference
+   rules above are commented for.
+
+   The size reduction is the other half. A signature is much longer than a title, and at full heading
+   size `private fun alifePanelHtml(img: Img, title: String, legend: String?, caption: String): String`
+   wrapped onto three lines. */
+.md-typeset :is(h1, h2, h3, h4, h5, h6) code.highlight {
+    background: transparent;
+    padding: 0;
+    font-size: 0.66em;
+    font-weight: 400;
+    line-height: 1.35;
+}
+
+/* `!important` because `.md-typeset code *` above sets the code weight with `!important` too, to keep
+   the skin from bolding terms inside code. This is the one place that blanket rule is wrong: the
+   declaration's own name is exactly what a reader is scanning a heading for. Specificity decides
+   between two `!important` declarations, and this selector is the more specific. */
+.md-typeset :is(h1, h2, h3, h4, h5, h6) code.highlight .nf {
+    font-weight: 700 !important;
+}
+
+.md-typeset :is(h1, h2, h3, h4, h5, h6) code.highlight :is(.k, .p, .o) {
+    opacity: 0.6;
+}
+
+.md-typeset :is(h1, h2, h3, h4, h5, h6) code.highlight :is(.nc, .n) {
+    opacity: 0.82;
+}
+
+/* Sticky section headings on the generated source pages. `assets/sticky-headings.js` wraps the flat
+   heading list into nested <section>s first — without that, a sticky heading never stops sticking and
+   the reader ends up with a stale h3 pinned under the current h2 — and then measures each level's
+   offset from the real heights of the headings above it, because fixed steps put a 38px gap under a
+   67px heading and the two texts overlapped.
+
+   z-index stays below the site header's 4. At 5 and 6 the shallower levels painted *over* it as they
+   scrolled away, which reads as the page passing through the chrome. Shallower levels sit above
+   deeper ones so a heading sliding up disappears underneath its parent. */
+.md-typeset .field-sticky-section > :is(h1, h2, h3, h4):first-child {
+    position: sticky;
+    margin-top: 0;
+    padding-top: 0.3rem;
+    padding-bottom: 0.2rem;
+    /* A wrapped heading is one thing said over two lines, and the theme's heading leading — set for
+       single-line titles with air around them — spaces those two lines like separate paragraphs.
+       Tightened here only, where a heading is a signature or a section banner rather than a title.
+
+       The line-height has to go on the heading, not on the `code.highlight` inside it: the block's
+       own strut sets a floor under the line box, so shrinking the inline alone changed nothing.
+
+       The negative text-indent against an equal padding-left is a hanging indent — first line flush,
+       continuations stepped in — so `64): DoubleArray` reads as the tail of the signature above it
+       instead of as a new declaration starting at the margin. */
+    line-height: 1.18;
+    text-indent: -1.6em;
+    padding-left: 1.6em;
+}
+
+/* A signature heading is set at 0.66em, so the leading that suits a full-size prose banner is still
+   loose around it. Tightened separately rather than by one shared number, because the two cases are
+   different sizes of type doing different jobs. */
+.md-typeset .field-sticky-section > :is(h1, h2, h3, h4):first-child:has(> code.highlight) {
+    line-height: 1.02;
+}
+
+/* `top` is set per heading by sticky-headings.js from its own ancestors' heights — a level cannot
+   carry a fixed offset, because a heading that wraps to two lines is taller than one that does not.
+   The values here are only a floor for the moment before the script runs. */
+.md-typeset .field-sticky-section[data-level="1"] > h1:first-child {
+    top: 3rem;
+    z-index: 3;
+}
+
+.md-typeset .field-sticky-section[data-level="2"] > h2:first-child {
+    top: 6rem;
+    z-index: 2;
+}
+
+.md-typeset .field-sticky-section[data-level="3"] > h3:first-child {
+    top: 8rem;
+    z-index: 1;
+}
+
+.md-typeset .field-sticky-section[data-level="4"] > h4:first-child {
+    top: 10rem;
+    z-index: 1;
+}
+
+/* Pinned, and only then: the same frosted treatment the header has, so the stack reads as one piece
+   of chrome with the page moving behind it rather than as content with a flat panel behind it. The
+   heading's own rule goes while pinned — four stacked underlines is four claims of separation where
+   only the bottom of the stack needs one. */
+.md-typeset .field-sticky-section > :is(h1, h2, h3, h4).is-pinned {
+    /* The header's *computed* treatment, which is not what `.md-header` declares: `.md-header--shadow`
+       comes later and replaces the blur(20px) brightness(0.8) with this. Copying the declaration
+       rather than the effect made the pinned stack markedly heavier than the bar above it. */
+    backdrop-filter: blur(5px);
+    background: rgba(0, 0, 0, 0.3);
+    border-bottom-color: transparent;
+}
+
+.md-typeset .field-sticky-section > :is(h1, h2, h3, h4).is-pinned-last {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
 /* StackSL reference page */
 .md-typeset .stacksl-reference {
     --stacksl-table-border: rgba(255, 255, 255, 0.16);
@@ -1104,6 +1242,29 @@ button.md-search__icon[aria-label="Clear"] {
     width: var(--field-rail-width);
     z-index: 28;
     display: block;
+    /* The rail is `--field-rail-width` wide (258px measured) because it needs somewhere to put the
+       heading labels it reveals on hover — but almost all of that width is empty, and it is fixed at
+       z-index 28 over the page. With `pointer-events: auto` that empty space silently ate every click
+       landing in it. On a 1250px window the source index's table starts at x=138 and the rail reaches
+       x=287, so the first 150px of every row in a 240-row table looked dead: hit-testing a link there
+       returned `.field-reading-rail__row`, not the link.
+
+       `pointer-events` is inherited, so `none` here lifts the whole rail out of hit-testing, and the
+       two rules below put it back exactly where it is wanted: a narrow strip over the line and dots,
+       and the labels once they are visible. `:hover` still resolves on the rail itself because a
+       hovered descendant matches its ancestors. */
+    pointer-events: none;
+}
+
+/* The hit strip: the visible line and dots, plus a little room to aim at. Everything to the right of
+   this passes clicks through to the page. */
+.field-reading-rail::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 1.6rem;
     pointer-events: auto;
 }
 
@@ -1225,6 +1386,10 @@ button.md-search__icon[aria-label="Clear"] {
 .field-reading-rail__row.is-active .field-reading-rail__link {
     opacity: 1;
     transform: translateX(0);
+    /* Clickable only once visible — an invisible label is exactly the thing this whole fix is
+       removing. Hovering a label keeps the rail's own `:hover` true, so moving from the strip onto a
+       label does not make it vanish under the cursor. */
+    pointer-events: auto;
 }
 
 .field-reading-rail:hover .field-reading-rail__link,

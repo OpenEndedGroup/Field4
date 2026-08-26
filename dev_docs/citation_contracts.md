@@ -193,11 +193,11 @@ guard unescapes it, so FieldML's `\|>` can be cited.
 
 A citation guard proves an anchor exists. It says nothing about the *sentence* around the anchor, and
 the arithmetic in that sentence is the part that rots. `ProseNumeralContractTest` closes that gap for
-the same 21<!--count:guardedCitationPages--> pages `GUARDED_PAGES` already covers — this one among
+the same 25<!--count:guardedCitationPages--> pages `GUARDED_PAGES` already covers — this one among
 them since 2026-08-23, because a page that documents the mechanism and then states three numbers
 derived by it should be the first thing the mechanism checks.
 
-**Three of those 21 are under `public/docs` as of 2026-08-26**, and the asymmetry they closed is worth
+**Seven of those 25 are under `public/docs` as of 2026-08-26**, and the asymmetry they closed is worth
 naming, because it is the more instructive of the two failures available here. `citationGates` has
 declared `public/docs/**.md` as a task input since 2026-08-19, so a published-page edit has never been
 able to go `UP-TO-DATE` — up-to-date checking was never the gap. `GUARDED_PAGES` was, because it is the
@@ -213,6 +213,58 @@ numbers stale, in a sentence a reader is more likely to see than the `dev_docs` 
 behind the code while its `dev_docs` twin stayed current. `public/docs/vision_geometry.md` followed,
 and bringing it in found a builder method (`clear()`) the page documented nowhere — the class of
 omission a count-only guard cannot see.
+
+Four more published pages joined later the same day — `statistics_examples.md`, `dataframe.md`,
+`keyframer_examples.md` and `morpho_examples.md` — and they arrived by a different route, because none
+of them was written with anchors. Between them they carried 77 bare `path:line` citations: counted by
+`unguardedCitationsAreCountedNotIgnored` since the day it was written, and checkable by nothing.
+`CitationGuard.anchorBareCitations` anchored 44 of them mechanically, and the rule it follows is the
+whole argument for doing it that way: **the anchor is the cited line's own text.**
+
+The tempting alternative is the enclosing declaration, which is more stable and nearly always unique.
+It is also a retarget. 55 of those 77 citations point at a KDoc paragraph or a statement rather than a
+signature, so anchoring them to the enclosing `fun` would have moved the published line number to the
+top of that function — silently changing what the sentence points at, in the name of guarding it.
+Quoting the cited line cannot do that: the anchor can only be as wrong as the page already was.
+
+Which turned out to matter, because five of them *were* already wrong, and anchoring found them by
+refusing to bless them. A citation is only anchored when the page's own words do not contradict it:
+where the sentence names a symbol — `` `enum class KeyDiffKind` (`keyframer.kt:915`) `` — that name is
+evidence, and `KeyDiffKind` is at line 1040. Five citations across three pages named a symbol that
+appears nowhere near the line they cite:
+
+(The table below writes its line numbers as bare numerals, and the file as a name with no line
+attached. That is not styling: `` | … | `path:line` | `anchor` | `` *is* the ledger-row citation form,
+so a table of wrong citations written the obvious way gets parsed as five citations and the page fails
+its own guard. It did, on the first attempt.)
+
+| Page says | In | Cited line | Really at |
+| --- | --- | --- | --- |
+| `enum class KeyDiffKind` | `keyframer.kt` | 915 | 1040 |
+| `nextSafeSaveBackup` | `saving.kt` | 1816 | nowhere in the file |
+| `buildHistogram` takes no bin-count argument | `stats.kt` | 1096 | a 3-D vector summary's KDoc |
+| `skew` and `kurtosis(ex)` | `stats.kt` | 1611 | a plot label layout call |
+| `TargetDistributions.UnitNormal` | `quantilewarp.kt` | 156 | a knot-count `require` |
+
+Anchoring one of those would have converted a drifting wrong number into a *stable* wrong number with
+a green build over it — the one outcome worse than leaving it bare. They are reported with the true
+location by `anchorBareCitationsWhenAsked` and wait for an author. The other 28 are inert rather than
+wrong: 27 cite a line too structural to quote (a bare `)`, a comment terminator, a blank line,
+`lineCounter++`), and one cites a line *range*, which the anchored grammar cannot express.
+
+## Apparatus a reader should not have to see
+
+An anchored prose citation is written `` `path:line#anchor` `` and, until 2026-08-26, that is exactly
+what the published page showed: `public/docs/vision.md` rendered
+`VisionPose.kt:82#const val VISION_POSE_CHANNEL` six times over, machine-readable apparatus and all.
+`rewrite_source_citations` in `public/docs_hooks.py` now folds the anchor into a `title` attribute on
+the way into the generated site, so the page shows `VisionPose.kt:82` and hovering gives the symbol.
+
+The markdown on disk is untouched, which is the point: the guard reads the checkout, the reader reads
+the build. Same arrangement as `rewrite_guide_fences` next to it. The extension list the transform
+recognises is read out of `CitationGuard.EXT` by `tools/test_docs_hooks_citations.py` rather than
+restated, because an extension the guard checks and the transform misses is a page published with its
+apparatus showing.
 
 The remaining published pages are still unread.
 
