@@ -489,7 +489,13 @@ run_field() {
     # exit we can put back precisely what the user had — not a forced canonical default. `stty -g` emits
     # a machine-readable dump that `stty <dump>` restores verbatim; that's strictly better than `stty
     # sane`, which resets erase/kill/flow-control/etc. to hard-coded values the user may not use.
-    SAVED_STTY="$(stty -g </dev/tty 2>/dev/null || true)"
+    # The `2>/dev/null` has to be on a group rather than on `stty` itself: with no controlling
+    # terminal (an agent's shell tool, a launchd job, `< /dev/null`) it is the *redirection* that
+    # fails, and the shell reports that in its own voice — "field.sh: line 492: /dev/tty: Device not
+    # configured" on bash, "cannot open /dev/tty" on dash, "run_field:14: device not configured" on
+    # zsh — so a redirection on stty catches nothing. Suppressing it inside the group covers all five
+    # shells this script has to satisfy (see tools/test_field_sh_launcher.py).
+    SAVED_STTY="$( { stty -g </dev/tty; } 2>/dev/null || true )"
 
     JAVA_BIN="$(cat build/field-launch/java)"
     # Backend in the background but still attached to THIS terminal — including stdin, so terminal-size
@@ -529,8 +535,9 @@ run_field() {
 
 # Function to run Field4 in a new terminal
 run_in_terminal() {
-    local terminal_cmd=""
-    
+    # No `local` here: this script is #!/bin/sh, and `local` is not in POSIX. ksh93 has no such
+    # builtin and prints "field.sh: line NNN: local: not found" on every double-click launch.
+
     # Try different terminal emulators in order of preference
     if command -v gnome-terminal >/dev/null 2>&1; then
         gnome-terminal -- bash -c "cd '$DIR' && AFIELD_FIELD_SH_NO_TERMINAL=1 ./field.sh $WORKSPACE_RELAUNCH_ARGS; echo ''; echo 'Press Enter to close...'; read"
@@ -541,8 +548,13 @@ run_in_terminal() {
     elif command -v x-terminal-emulator >/dev/null 2>&1; then
         x-terminal-emulator -e "cd '$DIR' && AFIELD_FIELD_SH_NO_TERMINAL=1 ./field.sh $WORKSPACE_RELAUNCH_ARGS; read -p 'Press Enter to close...'"
     else
-        # No terminal found, try to run directly (may not show output)
-        run_field
+        # No terminal found, try to run directly (may not show output). "$@" matters here and used
+        # not to be passed: none of the four emulators above exists on macOS, so this *is* the
+        # macOS no-tty path, and without the arguments the script printed "field: workspace X (from
+        # the command line)" and then launched a backend with no --workspace at all — which opened
+        # whatever ~/.afield/last-workspace.txt happened to say. Announcing one workspace and
+        # opening another is the exact confusion --print-workspace was added to end.
+        run_field "$@"
     fi
 }
 
@@ -567,5 +579,5 @@ if [ -t 0 ] || [ "$AFIELD_FIELD_SH_NO_TERMINAL" = "1" ] || running_under_coding_
     run_field "$@"
 else
     # Not in a terminal (likely double-clicked), open one
-    run_in_terminal
+    run_in_terminal "$@"
 fi

@@ -113,3 +113,159 @@ turn, from two inputs that compare equal, and no `FnExpr` comparison can tell th
 Not a change: `Fn.eval` for every existing graph, every existing formula, the sampled output of every
 existing RectSL scene (the CPU sampler and the GLSL emitter are untouched), and the finite-difference
 fit path.
+
+---
+
+## 2026-08-26 — `fromContext` stopped seeing this box's own variables (`nightly/2026-08-26/2-salvage-verification`)
+
+The change landed in bafa9ee5f (`afield.four.modules`, `Mesh.kt`), whose commit message says the
+headline fix "is committed on the strength of its reasoning and the fact that its test compiles, not
+on a green run." This entry is what a green run, and a red one, then said.
+
+`fromContext` / `fromContextWithNameOrNull` used to search, in order: this box if it is an `A`, this
+box's **properties**, this box's **top-level (`ki`) variables**, then each ancestor generation's
+properties and variables. Step 3 is now skipped unless `includeLocalVariables = true`.
+
+### What the bug was, reproduced rather than argued
+
+`examples.context.local-variable-shadowing` was run against `Mesh.kt` reverted to its pre-bafa9ee5f
+state. Box output, verbatim, three boxes over two passes:
+
+```
+[normal] shadow_parent: parent set 1
+[normal] shadow_child:  child pass1 holder=1
+[normal] shadow_parent: parent set 2
+[normal] shadow_child:  child pass2 holder=1      <-- parent says 2
+```
+
+The child inherited `1` correctly on its first execution, left an `AtomicInteger`-typed variable
+behind, and on its second execution found that instead of the parent's new `2`. Against the committed
+`Mesh.kt` the same line reads `child pass2 holder=2`. So the defect was real, the fix works, and the
+test is not a tautology — it is red on the old code with exactly the diagnosis it names.
+
+### Who else is affected: the search order, measured step by step
+
+`examples.context.search-order-ledger` stages the two steps that had no committed artifact anywhere,
+in tree or in the published transcript corpus. Observed:
+
+```
+[normal] own_property: own-property pass1 found=11
+[normal] own_property: own-property pass2 found=11
+[normal] own_variable: own-variable pass1 default=absent
+[normal] own_variable: own-variable pass2 default=absent
+[normal] own_variable: own-variable pass2 optin=22
+```
+
+| shape | before | after | who is in this shape |
+| --- | --- | --- | --- |
+| child box reading a value its **ancestor** holds, as a property or a top-level variable | worked on pass 1, self-pinned from pass 2 on | works on every pass | `val renderer: Renderer = fromContext()` — the idiom `dev_docs/agents/AGENT_QUICK_REF.md` teaches and every graphics box in `public/docs/afield_four_graphics.md` opens with (10 occurrences on that page alone) |
+| box reading a value **it holds as a property** | worked | **still works** — step 2 was not touched | the documented renderer box: `public/docs/box_code_pipeline.md` publishes with `prop<Window>(window)` / `prop<Renderer>(renderer)`, which is this bag. This is why nothing on the graphics surface broke |
+| box reading a value it holds **only as a bare top-level `val`/`var`**, with no ancestor holding one | worked from pass 2 on | **throws** `IllegalArgumentException: must pass in a value for context parameter …` | the cost of the change. No call site in `src/`, no committed transcript and no published docs box is in this shape; `includeLocalVariables = true` is the fix if one appears |
+
+### What was swept, and the verdict
+
+Enumerated rather than counted — and then the count had to be given a predicate, because three
+different true numbers were in circulation within an hour and none of them was wrong. This is the
+`"exactly four registrations"` failure mode (a count quoted against ~56) arriving from the other
+direction, so the rule is worth restating: **a count of `fromContext` is meaningless without the
+tree, the revision, the path set, and whether it counts matching lines or call sites.**
+
+| number | tree | revision | path set | unit |
+| --- | --- | --- | --- | --- |
+| **188** | this worktree | `730440b80` | `src`, minus `four/modules/Mesh.kt` | matching **lines** (50 files) |
+| 201 | this worktree | branch HEAD | same | matching lines (51 files) |
+| 210 | primary **working directory** | `730440b80` | same | matching lines |
+| 217 | primary working directory | `730440b80` | `src`, *including* `Mesh.kt` | matching lines |
+| 293 | this worktree | branch HEAD | `src` + `dev_docs` + `public/docs` | matching lines (78 files) |
+
+They reconcile exactly, and each gap is a different question being asked:
+
+- **210 − 188 = 22**, all in `src/personal/`, which `.gitignore:243` excludes. A grep of a *working
+  directory* is not a grep of the repository; use `git grep <rev> -- src` when the answer is meant to
+  be about committed code.
+- **201 − 188 = 13**, all in `ContextSearchOrderLedgerSmokeTest.kt` — the test *this very entry*
+  added. The number moved because the measurer moved it. Any count of a symbol quoted in a commit
+  that also adds uses of that symbol has to name the revision it was taken at.
+
+Of the 188 at `730440b80`: 30 `import` lines, 16 KDoc/comment prose lines, 5 in JavaScript (editor
+completion word lists), and **137 real Kotlin**. "Call sites" is a smaller number again and was not
+counted — 137 is lines of Kotlin mentioning the symbol, which includes multi-`fromContext` parameter
+lists as one and spans two functions (`fromContext` and `fromContextWithNameOrNull`) throughout.
+
+Of the 137, essentially all are **default parameter values in library constructors and functions** —
+`Camera(val renderer: Renderer = fromContext())`, `ComputeMesh`, `MeshMesh`, `KeyCamera`,
+`OrbitControls`, `KeyEvents`, `Projection`, `VideoTexture`, `WebcamTexture`, `TextureSampler`,
+`standardRenderer.build`, and the seven `moduleHere`/`shadertoyHere`/`computeModuleHere` family
+entries in `shaders.kt`. Those run *inside the calling box's* context, so they are the sites where
+step 3's removal could have bitten. Four are name-matched lookups into an ancestor
+(`magic.kt:282`, `Module.kt:106`, and two in `CrossBoxContextInheritanceSmokeTest`).
+
+Driven, not reasoned about — every one of these passed against the committed `Mesh.kt`:
+
+- `examples.demo-transcript.exec` (193.7s) — which runs `two_box_context`, the published
+  parent/child context demo at `public/docs/assets/agent_transcripts/two_box_context/`, plus 20-odd
+  other demos. This is the **negative control**: its child reads an ancestor *property*, the half the
+  change did not touch, and it must still pass byte for byte. It does.
+- `docs.fabricate.default-scene`, `docs.fabricate.shadows` — `standardRenderer.build(renderer =
+  fromContext())` through the real GPU path.
+- `docs.stacksl.gallery` — `stacksl.kt`'s two `renderer: Renderer = fromContext()` entry points.
+- `examples.context.cross-box-inheritance` — the ancestor ki-var path specifically (`ctx_kivar`).
+- `examples.exports.batch-launch`, `core.compiled-snippet.smoke`, `core.repl-bootstrap-gate.smoke`.
+
+The rest of the published corpus, driven after the first pass showed the gap. `fromContext` appears
+in five published pages and three transcript bundles, and `examples.demo-transcript.exec` classifies
+`afield_four_traditional_triangle`, `rectsl_sdf_live` and `imgui_vr_panel` as **`COMPILE_ONLY`** —
+every box compiled through the real K2/preamble path, **none evaluated**. So passing that smoke does
+not mean `fromContext` was ever *called* for those three. Their real consumers were run instead:
+
+- `examples.four.imgui-vr-panel-smoke` — `ImGuiStereoQuadExample`'s three defaults in one parameter
+  list (`window`, `renderer`, `sbs`), the `imgui_vr_panel` bundle's evaluating consumer.
+- `rectsl.examples.smoke`, `rectsl.language.workout`, `rectsl.dataviz.proof` — `RectSL.kt`'s six
+  `renderer: Renderer = fromContext()` entry points, evaluated rather than compiled.
+- `docs.rectsl.gallery`, `docs.rectsl.fit` — the same six through the docs-capture path.
+- `docs.fabricate.toy-car-gltf` — `simpleGLTFSupport.applyToMesh(camera: Camera = fromContext())`.
+- `four.ply-loader.smoke` — `simplePLYSupport`'s two `camera: Camera = fromContext()` overloads.
+
+`afield_four_traditional_triangle` remains **compile-only everywhere in the smoke catalog**; its
+pixels are only checked by the `afield_four_graphics.md` docs capture, which is a docs-build step and
+not a catalog id. That page opens ten of its examples with `val renderer: Renderer = fromContext()`,
+so it is the largest single consumer of this idiom with no smoke behind it. Named, not closed.
+
+### `docs.rectsl.sdf` is a third pre-existing red on `main`, and nothing can record it
+
+Not a consequence of this change. Not a consequence of this branch. Measured at `730440b80` itself,
+in this worktree detached to that commit with **none** of this branch's commits present (checked:
+`tools/test_field_sh_launcher.py` and `ContextSearchOrderLedgerSmokeTest.kt` both absent,
+`git rev-parse HEAD` = `730440b8088cd5cdc751787be50d61d7d0279b19` during the run):
+
+```
+[1/1] FAIL docs.rectsl.sdf (9987 ms)
+  wait-file /tmp/docs-rectsl-sdf-hero.png --timeout 900.0 --fail-on-error-uid @last:
+    target 009aa8bf-1e45-4fd3-9c5d-ee5c6709edbf emitted an error while waiting for file:
+    Out of stack space.
+  wait-file ... line 348: Out of stack space.
+  expected image was not created: /tmp/docs-rectsl-sdf-hero.png
+Summary: 0 passed, 1 failed
+```
+
+Character-for-character the same failure as on branch HEAD, and the same again with `Mesh.kt`
+reverted to pre-bafa9ee5f — three measurements, one result. `Out of stack space.` is LWJGL's
+`MemoryStack`, not glslang, and it bites *generated* shaders; `RectSL.kt`'s SDF lowering emits one.
+Worth measuring rather than asserting, because `RectSL.kt` has six
+`renderer: Renderer = fromContext()` entry points that `docs.rectsl.fit`, `docs.rectsl.gallery` and
+`docs.stacksl.gallery` share — and all three of those pass.
+
+This is a **third** pre-existing red, distinct from the two known `jvmTest` ones in `afield.rectsl`
+(`RectSLGlslSdfTest > gallery emission reports no fidelity caveats` and
+`RectSLTrackCharacterizationTest > gallery programs sample identically`).
+
+And it cannot be registered anywhere, which is why a third red could sit unrecorded:
+`dev_docs/testing/expected_test_failures.json` is an empty array, and
+`tools/check_expected_test_failures.py` globs `build/test-results/**/TEST-*.xml` and keys on JUnit
+`classname`/`name`. `docs.rectsl.sdf` is a **FIELD_TEST catalog id** run by `tools/run_field_tests.py`,
+which emits `results.json` and no JUnit XML. The smoke runner's only opt-out is `skipOn:` for
+platforms. So there is no mechanism on the smoke side that can hold a known red at all — a gap in
+the harness, not a gap in anyone's diligence.
+
+Not a change: this box's properties, every ancestor's properties, every ancestor's top-level
+variables, and `fromContextWithNameOrNull`'s name and type filtering.

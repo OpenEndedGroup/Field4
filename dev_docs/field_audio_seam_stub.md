@@ -246,3 +246,39 @@ received rather than the one the caller asked for. No change made.
 - `src/jvmTest/kotlin/afield/stdlib/noir/audioai/RenderedAudioSeamTest.kt` — the seam, end to end.
 - `src/jvmTest/kotlin/afield/stdlib/noir/audioai/RenderedAudioAnalysisTest.kt` — the renderers and
   the HTML, which predate the stub and need none of it.
+
+## The submodule pointer rots quietly, and here is why nobody notices
+
+Measured 2026-08-26, in this checkout and in the primary one, because bafa9ee5f found the primary
+tree carrying a *backward* submodule pointer and deliberately declined to commit it.
+
+The state, and each claim is a command:
+
+- `git ls-tree HEAD services/field-audio-ai` records **`3c47c75`** ("Add multi-scale corpus
+  navigation", authored 2026-08-24 12:20:43).
+- the primary checkout's working tree is at **`b2da219`** ("License Field Audio AI under
+  AGPL-3.0-or-later", 2026-08-09), and `git merge-base --is-ancestor b2da219 3c47c75` succeeds — so
+  it is an *ancestor*, i.e. a rewind, not a bump.
+- `git log b2da219..3c47c75` is **one** commit. Committing the rewind would drop exactly that one:
+  15 files, +1221 lines, including a new `src/field_audio/corpus.py` and a changed
+  `docs/reference.md` — which is the default source `tools/sync_field_audio_docs.py` copies from, so
+  the rewind would also silently stale the synced half of `public/docs/field_audio_ai.md`.
+- `git config --get submodule.services/field-audio-ai.url` returns **nothing**: the submodule was
+  never `git submodule init`ed in that checkout. `services/field-audio-ai/.git` is a 51-byte gitfile
+  dated 4 August. So it was populated once and has never been updated; `git submodule status`
+  accordingly prints a leading `-`. That is what makes the superproject report it as a modification.
+- the object is present locally, so `git submodule update --init services/field-audio-ai` needs no
+  network.
+
+Why it goes unnoticed is the part worth writing down: **no gate reads the submodule's contents.** In
+a fresh worktree `services/field-audio-ai/` is an *empty directory*, and with it empty
+`./gradlew citationGates` passes (64 tests, 8 classes, 0 failures) and so does `docsGates`. That is
+by design — the whole point of `FieldAudioServiceStub` above — but it means the pointer can be
+months stale, or pointed backwards, and every check in this repository stays green. Only
+`build.gradle.kts:1542`'s `fieldAudioDirectory` and `tools/sync_field_audio_docs.py` look at the
+checkout at all, and both fail with an explicit "run `git submodule update --init`" rather than
+silently reading whatever is there.
+
+So: a backward pointer here is a stale local checkout, not an intended downgrade, and nothing will
+tell you. Check it by hand, or `git submodule update --init services/field-audio-ai` before
+believing anything you read under that path.
