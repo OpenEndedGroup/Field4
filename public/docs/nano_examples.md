@@ -1,6 +1,6 @@
 # Nano examples
 
-Nano is deliberately tiny: 4 registers (`r0`-`r3`), 32 bytes of RAM, a handful of arithmetic and branch instructions, and no room to hide. That is why it is interesting. You can usually *see* the whole machine at once.
+Nano is tiny: 4 registers (`r0`-`r3`), 32 bytes of RAM, a handful of arithmetic and branch instructions, and no room to hide. That is why it is interesting. You can usually *see* the whole machine at once.
 
 The screenshots keep that machine state visible. Blue RAM cells are the initial program bytes; amber cells are bytes that changed during execution; the green ring is the final program counter.
 

@@ -35,7 +35,7 @@ in.** Those numbers are held by a guard rather than by memory: `SoundPathMap.SOU
 
 | path | what it is | needs | offline? | on the seam? | page |
 | --- | --- | --- | --- | --- | --- |
-| `pat-stand-in` | a pattern's events through a deliberately tiny voice: one oscillator, one one-pole lowpass, one decay envelope, per event. `fun patRenderStereo` in `src/jvmMain/kotlin/afield/four/synth/PatSoundDocs.kt` | nothing | offline only | no | [Sound](sound.md) |
+| `pat-stand-in` | a pattern's events through a very small voice: one oscillator, one one-pole lowpass, one decay envelope, per event. `fun patRenderStereo` in `src/jvmMain/kotlin/afield/four/synth/PatSoundDocs.kt` | nothing | offline only | no | [Sound](sound.md) |
 | `dirt-samples` | the same events as real Tidal one-shots. `fun patRenderStereoDirt` in `src/jvmMain/kotlin/afield/four/synth/DirtRender.kt` offline; `DirtSamplePlayer` live | the Dirt-Samples quark | both | live half only | [Sound](sound.md) |
 | `signal-graph` | Field's own DSP graph — `abstract class Signal` in `src/jvmMain/kotlin/afield/four/synth/Signal.kt`, plus the oscillators, filters and the DoughDSP ports | nothing | both | **yes** | [DoughDSP](dough_dsp_sound.md) |
 | `faust` | a Faust program compiled at runtime and dropped into that same graph. `class FaustNode` in `src/jvmMain/kotlin/afield/four/synth/FaustDsp.kt` | nothing — libfaust is vendored as wasm | both | **yes** | [Faust](faust.md) |
@@ -118,7 +118,7 @@ The seam is also the least-documented thing in Field's audio stack, which is the
 was written out of rather than a complaint: **no published page mentions `AudioPatchSpec` at all**,
 and it is what every box that makes a noise actually returns. Five of the fifteen paths above have
 no page — `audio-patch-seam`, `dough-engine`, `spatial-openal`, `device-input`, `wav-file-in` — and
-the em-dashes in the tables are honest rather than decorative. `afield.four.synth` is also absent
+the em-dashes in the tables mean absent, not merely unlisted. `afield.four.synth` is also absent
 from the [generated codebase reference](reference/index.md), whose source roots are `afield/stdlib`
 and `afield/visualization` only, so the audio stack is the least-surfaced major subsystem Field has.
 
@@ -153,7 +153,7 @@ voice's own filter wide open. Then a 900 Hz lowpass, three times, from three dif
 **Path: `faust`.** The same buffer, through `fi.lowpass(1, 900)`, compiled at runtime.
 
 The hats go and the kick stays, twice, differently — and the *difference* between the two is the
-honest part of the figure. `ChamberlinLowpass` is a two-pole state-variable filter, 12 dB per
+real part of the figure. `ChamberlinLowpass` is a two-pole state-variable filter, 12 dB per
 octave. `fi.lowpass(1, 900)` is first-order, 6 dB per octave. Ask both for 900 Hz and the steeper one
 takes far more of the hats away, which is exactly what the spectra show and what the numbers say:
 

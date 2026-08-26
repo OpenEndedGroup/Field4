@@ -105,7 +105,7 @@ And this is the figure behind the "0 confidently wrong" count — what a **refus
 simultaneous pitches gives 0 of 12 notes, a `POLYPHONIC` verdict and `pat("~")`: the outlines have no
 bars in them at all, and that is the correct answer rather than a failure. The same audio at 31 ms per
 note recovers 23 of 32 when it is *told* its register and 0 of 32 when it is not — because the analysis
-window is then longer than the notes, and the honest output is again `pat("~")` rather than a plausible
+window is then longer than the notes, and the output is again `pat("~")` rather than a plausible
 parseable wrong one:
 
 ![Three panels: a chord triad recovering zero of twelve notes and emitting pat tilde, a fast line recovering 23 of 32 when told its register, and the same audio recovering zero of 32 when not told, its whole span struck out by a declined band](assets/pat_transcription/pat-transcription-refusals-and-limits.svg)
@@ -149,7 +149,7 @@ positions. Nothing so far has an opinion about what a kick drum sounds like.
 
 ## The stand-in voice
 
-`patVoice` is that opinion, and it is a deliberately small one: **one oscillator, one
+`patVoice` is that opinion, and it is a small one: **one oscillator, one
 one-pole lowpass, one exponential-decay envelope**, per event. Pitch comes from the event's
 value when it parses as a MIDI number, and otherwise from a drum map with five entries in it:
 
@@ -179,7 +179,7 @@ checkout, in CI, on a machine that has never heard of SuperCollider, and it is d
 so a committed `.wav` regenerates byte-stably. A figure that always works and sounds
 approximate beats a figure that sounds right on one laptop.
 
-It is also honest about being a *measurement* target rather than a musical one:
+It is also explicit about being a *measurement* target rather than a musical one:
 `PatSoundDocs`' scenes verify pitch, onset count, stereo decorrelation and swing ratios
 against the rendered audio, and a plain sine is a much easier thing to measure a pitch in
 than a sampled kick.
@@ -223,7 +223,7 @@ being triggered:
 
 Dirt-Samples ships as a SuperCollider *quark*, so anybody who has ever run Tidal already has
 it at one of those — which is the whole reason to auto-discover rather than ask you for a
-path. It is deliberately **not vendored**: roughly 400MB of third-party audio with mixed
+path. It is **not vendored**: roughly 400MB of third-party audio with mixed
 per-folder licensing has no business inside this repository. The probe is not cached, so
 setting `FIELD_DIRT_SAMPLES` and rendering in the same session gets you what you asked for.
 
@@ -237,14 +237,14 @@ very different things.
 **No library on this machine — the whole render falls back.** `patRenderStereoDirt` returns
 the `patRenderStereo` render, *exactly* — same samples, not an approximation — and
 `DirtRenderResult.usedSamples` is `false`. Nothing breaks and no figure fails to generate;
-the caller is simply told, and can be honest.
+the caller is simply told, and can say so.
 
 **Library present, one token missing from it — only that event falls back.** A pattern of
 MIDI note numbers, or one naming a drum Dirt has never heard of, must not go silent just
 because the library loaded successfully. The unrecognised events are voiced by `patVoice` and
 mixed on top of the sampled ones, and `DirtRenderResult.unmatched` names them.
 
-`pat("bd zzzznotadrum bd hh")` is the second case, deliberately: `bd` and `hh` are in every
+`pat("bd zzzznotadrum bd hh")` is the second case: `bd` and `hh` are in every
 Dirt install and `zzzznotadrum` is in none. You can hear the seam — three sampled drums and
 one square-wave blip, in one bar.
 
@@ -353,8 +353,8 @@ audio fence with its figure, and requires:
 
 The correlation needs no sample library, which is the reason it is worth having: a build
 machine with no 400MB third-party download can still catch the day a "real drums" figure
-quietly becomes bursts of white noise. Which, at that point, is the one thing nobody would
-notice by reading the page.
+becomes bursts of white noise — which is the one thing nobody would notice by reading the
+page.
 
 ### And the same question, asked of every clip in the docs
 
@@ -368,7 +368,7 @@ assertions:
 * **every committed clip still matches what its producer renders today** — all fifteen
   currently score 1.0000, bit-stable through peak normalisation and 16-bit quantisation;
 * **the list of audio that cannot be re-derived is pinned by key and by reason**, so it
-  cannot quietly become a place to put problems. It has one entry, the banner loop.
+  cannot become a place to put problems unnoticed. It has one entry, the banner loop.
 
 ??? aside "Why the middle assertion is there"
     Two published figures had already had to be repaired by hand once, in `56b124131`, after the code

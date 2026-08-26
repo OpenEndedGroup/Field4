@@ -104,7 +104,7 @@ involved, so it works anywhere.
 Four smoothers with genuinely different characters. The picture makes the point, but the printed
 residuals against the clean source make it *checkable*: on impulse noise the median is two orders of
 magnitude better than the Gaussian, and the bilateral filter — which is excellent at preserving
-edges — is deliberately bad at impulses, because a salt pixel is far away in *range* and so keeps
+edges — is bad at impulses, because a salt pixel is far away in *range* and so keeps
 its own weight.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/imaging_examples/filters.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
@@ -444,7 +444,7 @@ The transcript is a loadable document: replay it into a fresh Field with the age
 (`field_run_transcript`) and you get six live boxes you can edit. Change a sigma, a threshold or the
 planted motion, re-run the box, and watch it update. See [Agent transcripts](agent_transcripts.md).
 
-## Is it fast enough?
+## Whether it is fast enough
 
 The family is pure Kotlin with no native dependency, which is the whole point of it — and the
 obvious question that raises is whether you should just use OpenCV instead. So the repository
@@ -527,7 +527,7 @@ divided by a constant; our `pyrDown` takes a configurable sigma where OpenCV's i
 kernel; and `median`/`bilateral` have matched parameters but different internal algorithms. Our API
 also returns a fresh `Img` each call, so part of our cost is an allocation OpenCV is not paying.
 
-**The honest summary** is that convolution now wins and most of the rest is within striking distance.
+**The summary** is that convolution now wins and most of the rest is within striking distance.
 Gaussian blur, dense convolution and the RGB blur are at or slightly past OpenCV; box blur (1.4x),
 Laplacian (1.7x), Scharr and Sobel (2.0-2.1x), luma (1.7x) and bilateral (~1.2x) are close enough
 that the pure-Kotlin path is the reasonable default. Three rows are still meaningfully behind, and

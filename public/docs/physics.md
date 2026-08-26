@@ -51,7 +51,7 @@ rest lengths, four stiffnesses, in parallel arrays. Four because that is exactly
 up/down/left/right neighbourhood of an interior particle in a grid — a cloth's whole topology fits
 with nothing spare.
 
-*Directed* is the load-bearing word. A constraint `i → j` writes its correction **only to `i`**. It
+*Directed* is the word that matters. A constraint `i → j` writes its correction **only to `i`**. It
 never scatters back to `j`. That is not a simplification, it is the reason the solve is fast: with no
 scatter writes, disjoint particle ranges can be solved on separate threads with a scratch buffer
 each, and the whole inner loop vectorises through the JDK Incubator Vector API.
@@ -555,7 +555,7 @@ indexes the slot arrays by *particle* index, so a set cannot cover only part of 
 adopts `sim.constraints4` if there already is one and otherwise publishes the one it creates. Two
 cloths in one simulation therefore share a single set. If you drive the simulation yourself rather
 than through `cloth.step(...)`, you must pass it: `sim.step(dt, damping, gravity, iterations,
-sim.constraints4)`. The no-constraints overload solves nothing and the sheet quietly falls apart.
+sim.constraints4)`. The no-constraints overload solves nothing, and the sheet falls apart with no error.
 
 **`cloth.step(...)` steps the whole simulation.** It is a convenience for the common case where the
 cloth *is* the simulation. With other systems in the same `SimdVerlet`, drive it yourself.

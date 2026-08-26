@@ -27,7 +27,7 @@ Worth a table up front, because the filenames are misleading and one of them is 
 | 2D weighted (Apollonius) Voronoi | `dirichlet.kt` | `CircularDirichlet`. Pure Kotlin. **Not** Poisson-disc sampling, despite the name |
 | **3D** Voronoi, **3D** weighted Voronoi | `voronoi.kt` | `voronoi3d`, `CircularDirichlet3d`. `voronoi.kt` has no 2D anything and no Delaunay at all |
 | marching squares → polylines and `FLine`s | `contours.kt` | `generateIsoContours`, `generateSmoothIsoContours`, `pointEdgeScalarField2D` |
-| clustering | `clustering.kt` | agglomerative (7 linkages), k-medoids, k-medians. **There is no k-means in Field**, on purpose — see below |
+| clustering | `clustering.kt` | agglomerative (7 linkages), k-medoids, k-medians. **There is no k-means in Field** — see below for why |
 | any of the above → `FLine` | `spatial_field.kt` | `toFLine`/`toFLines` per result type, plus `showPlane` / `showPlaneGrid` |
 
 That last row is new, and it is what makes this page possible. Every partitioner above answers with
@@ -413,7 +413,7 @@ changes*, and `d₂ − d₁` is non-negative by construction: over that window 
 `1.6e-8 … 2.0`. It *touches* zero along the seams and never crosses. A level set that a field only
 grazes is invisible to a marcher, and the fix is not a smaller epsilon — it is to ask a question the
 field can answer. Every distance-gap, every absolute value, every `min`-of-distances field has this
-property, so it is worth internalising once.
+property, so it is worth learning once.
 
 Ask for 0.05 and you get each cell shrunk inwards by that margin, which is a *better* picture anyway.
 The middle panel is the payoff: raise the level further and the cells shrink with **rounded** corners,
@@ -442,7 +442,7 @@ end it is feeding into.
 ### The two things the marcher gets right, and the one it does not
 
 Marching squares has exactly two decisions in it, and both of them are places where a plausible
-implementation is quietly wrong. This one gets both right — as of writing this page, because
+implementation is wrong without saying so. This one gets both right — as of writing this page, because
 documenting it is what found them.
 
 **A sample exactly at the iso level.** The natural test for "does this grid edge carry a crossing" is
@@ -672,7 +672,7 @@ fun branchLines(contours: List<List<Vec2>>): List<FLine> {
 
 fun sizes(contours: List<List<Vec2>>) = contours.map { it.size }.joinToString(" and ")
 
-// Captions stay short on purpose: showPlaneGrid lays the cards out on `max-content`, so a long
+// Captions stay short: showPlaneGrid lays the cards out on `max-content`, so a long
 // single-line caption widens the card past the docs screenshot's ~1100 CSS px crop and gets cut off.
 showPlaneGrid(
     "−3 / +1 / −3 / +1   deep inside\nsaddle ${"%+.3f".format(saddleValue(deepInside))} — cuts isolate the shallow pair" to
@@ -860,7 +860,7 @@ val wardSpendsAClusterOnTheStray = sizes(cut3).first() == 1        // [1, 28, 56
 val medoidsKeepEveryBlobWhole = medoids.clusterSizes.min() >= 28   // [28, 28, 29]
 val wardCostsThisMuchMore = l1Of(cut3.labels, 3) / medians.objective  // 1.86x, not 1.00x
 
-// …and the invariants that hold whatever the data, which is why they are the honest backbone.
+// …and the invariants that hold whatever the data, which is why they are the backbone.
 val medoidsAreSamples = medoids.medoids.all { m -> points.any { it.x == m.x && it.y == m.y } }
 val nested = (0 until cut6.clusterCount).all { fine ->
     cut6.indices(fine).map { cut3.labels[it] }.toSet().size == 1
@@ -1193,7 +1193,7 @@ in a figure about a `Float` clipper: 4 × 4 × 4 sites one unit apart, whose eig
 exact unit cubes, so a plane through them must cut 1 × 1 squares. The caption reports that as a
 *measured* boolean — every slice's bounding box within 10⁻³ of 1 × 1 — rather than as the adjective
 "square", because an adjective in a caption is not a check. Only the cells the plane actually passes
-through are drawn, and `z = 1.2` rather than `1.5` on purpose: `1.5` is exactly the boundary between
+through are drawn, and `z = 1.2` rather than `1.5`, because `1.5` is exactly the boundary between
 two layers of cells and would slice them degenerately.
 
 What makes this worth a paragraph on a page about seams is **how face membership is decided**,
@@ -1213,7 +1213,7 @@ trying to recover from geometry. A second pass adds a plane that passes through 
 corner's *own* uncertainty (from a first-order error bound on Cramer's rule), which is what handles
 exactly symmetric input, where seven bisectors really do meet at each corner of a cubic lattice cell.
 
-**And honestly, the residual.** This is a `Float` clipper and the guarantee is not absolute. On the
+**And the residual.** This is a `Float` clipper and the guarantee is not absolute. On the
 sweep that ratcheted the fix: **4 of 465 bounded cells** and **12 of 447 clipped cells** still fail
 the strict closure check — every edge walked by exactly two faces in opposite directions. Those
 counts are pinned with `<=`, so they can improve but cannot regress silently. Cell volumes tile the clip box to 1 × 10⁻⁴ relative, and cells of a cubic lattice come out

@@ -156,7 +156,7 @@ Style rule: keep user intent on `FabricateMaterial` and `FabricateRenderable`; l
 
 ## Default Scene
 
-The default scene is deliberately plain: three colored torii, the standard camera, and the stock lighting setup. If this image is wrong, the higher-level Fabricate examples are not worth trusting yet.
+The default scene is a plain one: three colored torii, the standard camera, and the stock lighting setup. If this image is wrong, the higher-level Fabricate examples are not worth trusting yet.
 
 The scene is intentionally just node/material creation plus mesh binding:
 

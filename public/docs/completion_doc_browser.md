@@ -77,7 +77,7 @@ From here the browsing is recursive. `Vec2`'s card is itself linkified, so any
 breadcrumb) returns you to the `vec` card you came from; `›` goes forward again.
 Closing the completion popup resets the trail.
 
-## Why this is useful
+## Reading the codebase by following its cross-references
 
 Reading one symbol's documentation raises a question about a neighbouring one —
 the type it returns, the class it extends, the helper it mentions — and that

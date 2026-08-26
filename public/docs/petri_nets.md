@@ -294,7 +294,7 @@ three times past the top.
 ## Playing one live, and poking it
 
 Everything above is the pure half — a function of time, safe for the combinators to re-query. A
-performance is not a function of time, so it lives somewhere else on purpose.
+performance is not a function of time, so it lives somewhere else.
 
 ```diffstatic {data-lang=kotlin}
 val live = net.live()
@@ -547,16 +547,16 @@ Three limits, and they are the whole reason to trust it:
   promise it, so do not build on it.
 - **A colour-dependent net is not reduced.** The closure reasons about arcs, and a guard or an
   `enabledIf` is an arbitrary predicate no arc analysis can see, so `stateSpace(reduction = STUBBORN)`
-  on such a net quietly returns an unreduced — and therefore still `exact` — graph, with
+  on such a net returns an unreduced — and therefore still `exact` — graph, with no complaint and with
   `graph.reduction == PetriReduction.NONE` saying so.
 
 #### What the reduction is measured to do, rather than claimed to
 
 The three limits above are what the theorem says. The reduction is about eighty lines of code
-deciding what *not* to explore, and a theorem does not check code, so the honest question is what has
+deciding what *not* to explore, and a theorem does not check code, so the question worth asking is what has
 actually been compared.
 
-Both searches are run over generated nets and made to agree, and the comparison is deliberately
+Both searches are run over generated nets and made to agree, and the comparison is
 sharper than "does a deadlock exist" — existence is the weakest possible oracle, because a net with
 three deadlocks agrees on existence while the reduction loses two of them. What is compared is the
 **set** of reachable terminal markings, the length of the counterexample, containment of the reduced
@@ -590,7 +590,7 @@ this whole layer is built not to make. Both are fixed, both are pinned as three-
 four-transition nets, and the corpus is what found them.
 
 The pruning ratio is itself asserted at a floor just under its measured value, because a reduction
-that quietly stopped reducing would agree with the full search perfectly and prove nothing at all.
+that stopped reducing without saying so would agree with the full search perfectly and prove nothing at all.
 
 #### When the state space is infinite
 
@@ -615,7 +615,7 @@ every feature of the model exactly — read arcs, inhibitor arcs, colour guards,
 capacities — and may not terminate. Karp–Miller always terminates and is only valid for a plain
 place/transition net.** Inhibitor arcs, place capacities and colour-dependent behaviour each break
 the monotonicity argument that ω rests on, so each adds a line to `coverability().caveats` and flips
-`sound` to false rather than being quietly ignored.
+`sound` to false rather than being ignored.
 
 `petri_state_space` in the [transcript gallery](agent_transcripts.md) is all of this as five
 runnable boxes.
@@ -682,7 +682,7 @@ Three limits, stated once rather than discovered later:
 - **Recurrence compares colours by name.** Two different patterns both render as `PatPattern(...)`,
   so a section swap looks, to the loop detector, like nothing happening. That is usually the right
   coarseness for a *structural* period and occasionally not what you want. `stateSpace()`
-  deliberately does **not** use that key — a coarse key merges markings with different futures
+  does **not** use that key — a coarse key merges markings with different futures
   and can hide a deadlock — so a net that mints fresh colours exhausts its budget there instead.
 - **Editor diagnostics are lexical.** `petri.js` can see that `@1/0` is not a duration and that
   `=> wobble` is not a combinator. It cannot see that a transition will never fire — that is a

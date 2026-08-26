@@ -74,7 +74,7 @@ void main()
 }
 ```
 
-The first example is deliberately small: vertex data is written directly into the mesh, the shader reads it as vertex attributes, and the fragment shader colors the pixels.
+The first example is as small as it can be: vertex data is written directly into the mesh, the shader reads it as vertex attributes, and the fragment shader colors the pixels.
 
 ## 1. Buffer-Backed Triangles
 
@@ -222,7 +222,7 @@ void main()
 
 Because the uniform block is named `camera`, the Kotlin side writes `module.camera.p` and `module.camera.m`. The module owns this resource because the block is declared at descriptor set/binding scope, not as a per-mesh push constant.
 
-That same name is also why the Kotlin above says `afield.four.util.Camera()` in full rather than the usual bare `Camera()`. `moduleHere()` generates a Kotlin class per uniform block, capitalising the block's name, so this box's own preamble declares a `Camera` — and a declaration in the box beats any import, including the `afield.four.util.*` that every box already gets. Writing `import afield.four.util.Camera` does *not* help: the generated `Camera` still wins, `camera.at` then fails to resolve, and the example stops compiling. The fully-qualified name is load-bearing here, not leftover verbosity. Rename the uniform block and the collision goes away.
+That same name is also why the Kotlin above says `afield.four.util.Camera()` in full rather than the usual bare `Camera()`. `moduleHere()` generates a Kotlin class per uniform block, capitalising the block's name, so this box's own preamble declares a `Camera` — and a declaration in the box beats any import, including the `afield.four.util.*` that every box already gets. Writing `import afield.four.util.Camera` does *not* help: the generated `Camera` still wins, `camera.at` then fails to resolve, and the example stops compiling. The fully-qualified name is required here, not leftover verbosity. Rename the uniform block and the collision goes away.
 
 ## 2. Camera As Push Constants
 
@@ -1224,7 +1224,7 @@ void main()
 }
 ```
 
-Two things are load-bearing. `#extension GL_EXT_debug_printf : enable` is required, and printing needs validation layers switched on (`Options.validation`) — without them the call compiles and silently does nothing. And the guard matters: `debugPrintfEXT` with no condition in a shader running over a million invocations will flood the log and stall the frame. Note the guard in this example (`gl_VertexIndex == 10`) never fires for a three-vertex draw, which is the honest state of the saved lesson: the plumbing is there to be switched on by changing the condition.
+Two things are required. `#extension GL_EXT_debug_printf : enable` has to be there, and printing needs validation layers switched on (`Options.validation`) — without them the call compiles and silently does nothing. And the guard matters: `debugPrintfEXT` with no condition in a shader running over a million invocations will flood the log and stall the frame. Note the guard in this example (`gl_VertexIndex == 10`) never fires for a three-vertex draw, which is the state the lesson is saved in: the plumbing is there to be switched on by changing the condition.
 
 ## 6. Debugging: Texture Probes
 
@@ -1290,7 +1290,7 @@ void main()
 
 A second probe lesson (`6b. debugging / mapping - Texture probe example`) goes further and warps the sampled distribution before display — `AdaptiveQuantileWarp` and `QuantileWarpConfig` — which is what you reach for when the interesting variation is buried in a narrow part of the range.
 
-There is deliberately no figure here. The probe's value is the readback, and `.display("probe")` puts that in the *box's* output area, not in the Vulkan window — so a native-window capture of this example shows only the textured quads, pixel-identical to section 4, and would suggest the probe produced nothing. The quads also stack along z, so from the camera they land on top of one another and 100 of them look like one.
+There is no figure here, and there should not be. The probe's value is the readback, and `.display("probe")` puts that in the *box's* output area, not in the Vulkan window — so a native-window capture of this example shows only the textured quads, pixel-identical to section 4, and would suggest the probe produced nothing. The quads also stack along z, so from the camera they land on top of one another and 100 of them look like one.
 
 ## 6. Streaming A Target Over The Network
 
@@ -1401,7 +1401,7 @@ loop {
 }
 ```
 
-The corpus box for this lesson (`7. slang — hello triangle`) is also the best-commented file in the collection, and is worth opening directly — it is written as a tutorial, and it makes two points in passing that generalise beyond Slang. First, buffer sizes are a guess that Field will correct: `size = 3.vec4s` is deliberately too small there, and the buffer resizes dynamically rather than failing. Second, `perFrame = true` allocates one buffer per frame in flight, so a write never has to wait on the GPU to finish reading.
+The corpus box for this lesson (`7. slang — hello triangle`) is also the best-commented file in the collection, and is worth opening directly — it is written as a tutorial, and it makes two points in passing that generalise beyond Slang. First, buffer sizes are a guess that Field will correct: `size = 3.vec4s` is set too small there, and the buffer resizes dynamically rather than failing. Second, `perFrame = true` allocates one buffer per frame in flight, so a write never has to wait on the GPU to finish reading.
 
 A second Slang lesson (`7b. slang — Texture`) is the same step again with a texture bound, and it makes the language-independence claim concrete: the Kotlin is section 4's texturing code unchanged, `prop<LoadedTexture>` and all, because the resource is matched by reflected name and the name survives the change of shader language.
 
@@ -1480,7 +1480,7 @@ the lessons that use it.
 A caveat worth stating plainly, since these are working notes rather than a polished sample pack:
 the boxes are a real working document, and a few of them are mid-thought. Where running a lesson as
 saved does not do what its name suggests, this page says so — the sampler-array count in 4b and the
-never-firing printf guard in section 6 are both noted above rather than quietly corrected.
+never-firing printf guard in section 6 are both noted above rather than silently corrected.
 
 ## Which Sections Have Figures
 

@@ -87,7 +87,7 @@ Written after the name, inside the brackets, in any order.
 ## Combinators
 
 What `=>` can name. Each takes the tokens a firing consumed and returns the colour of the token it
-produces. The vocabulary is fixed on purpose — it keeps the notation fast to parse and the
+produces. The vocabulary is fixed — that is what keeps the notation fast to parse and the
 cheatsheet finite. For anything else, use the Kotlin DSL, where an output arc takes a lambda.
 
 | written | means |
@@ -137,7 +137,7 @@ Not notation — the API around it.
 | `graph.invariant { … }` | `AG`: the shortest violation, or null when the property holds |
 | `graph.mutuallyExclusive("a", "b")` | true / false / null — null means the search was truncated |
 | `graph.bound(place)`, `graph.isSafe`, `graph.isLive` | exact, or null when the budget ran out |
-| `graph.neverFires()` | fireable in *no* interleaving — the honest `deadTransitions()` |
+| `graph.neverFires()` | fireable in *no* interleaving — the strict `deadTransitions()` |
 | `trace.verify()` | re-fires the counterexample through the engine; null means it holds up |
 | `net.stateSpace(reduction = PetriReduction.STUBBORN)` | partial-order reduction — 73× on eleven philosophers, deadlock only |
 | `graph.exact` | `complete && reduction == NONE`; everything but deadlock needs it |

@@ -190,14 +190,14 @@ of `OpRegistry`'s 127<!--count:canonicalFnOpsOnExamplesPage--> canonical ops hav
 piecewise oscillators, the seeded noise generators, the table-backed interpolants and the windowed
 numeric operators do not. `FnGradientMode.EXACT` throws with the reason, `FnGradientMode.AUTO` falls
 back to finite differences and `FnFitRun.usedExactGradient` tells you which happened. Nothing here
-quietly returns the gradient of a function you did not ask about.
+returns the gradient of a function you did not ask about.
 
 Which ops those are is a question about *representation* rather than about calculus. `abs`, `flip` and
 `exp` were refused until 2026-07-31 — not because absolute value is hard to differentiate, but because
 they were built out of `Fn.mapY { … }`, which stores an opaque Kotlin lambda in the graph node. There
 was nothing to read a formula out of, so `log` was differentiable and `exp` was not, and `clamp` was
 and `abs` was not. All three are now first-class graph ops with derivatives, and a genuine
-`mapY { … }` of your own is still refused — which is the honest answer, not a gap.
+`mapY { … }` of your own is still refused — which is the right answer, not a gap.
 
 `abs` has a corner at zero, and the subgradient reported there is `0`: the even split, which is also
 exactly what a central difference reports at a kink, so the exact gradient and the finite-difference
@@ -250,7 +250,7 @@ with(Functions) {
 Read the two loss curves against the ones in the previous figure. There, exact gradients reached a
 lower error. Here the two arms are indistinguishable and both stop early, and the printed line says
 why it is still worth doing: the same descent for **801 loss evaluations instead of 6801**. The last
-line is the boundary — `sign` is refused on purpose, because its derivative is zero wherever it
+line is the boundary — `sign` is refused, because its derivative is zero wherever it
 exists, and a fit that descends a permanently-zero gradient is worse off than one that is told no.
 
 ## Inverse kinematics, because it makes pixels
