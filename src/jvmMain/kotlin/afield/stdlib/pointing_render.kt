@@ -105,13 +105,16 @@ fun TriMesh.withPartHighlight(
  * a `byComponent` that found one part where you expected twelve is obvious here and invisible in a
  * hit record.
  */
-fun TriMesh.coloredByPart(parts: PickParts): TriMesh = coloredByPart(parts) { part ->
-    if (part == PickParts.UNASSIGNED) Vec3(0.30f, 0.32f, 0.36f) else {
-        // Golden-ratio hue stepping, so adjacent part ids are never adjacent colours.
-        val hue = (part * 0.61803399f) % 1f
-        hsvToRgb(hue, 0.55f, 0.92f)
-    }
-}
+fun TriMesh.coloredByPart(parts: PickParts): TriMesh = coloredByPart(parts, ::partPalette)
+
+/**
+ * The default colour for a part id: a golden-ratio walk around the hue circle, so adjacent part ids
+ * are never adjacent colours and a five-part model does not come out as five shades of the same
+ * green. [PickParts.UNASSIGNED] gets a dead grey.
+ */
+fun partPalette(part: Int): Vec3 =
+    if (part == PickParts.UNASSIGNED) Vec3(0.30f, 0.32f, 0.36f)
+    else hsvToRgb((part * 0.61803399f) % 1f, 0.55f, 0.92f)
 
 private fun hsvToRgb(h: Float, s: Float, v: Float): Vec3 {
     val i = (h * 6f).toInt()
@@ -323,7 +326,12 @@ fun PickScene.clickableProjection(
 ): List<afield.graphics.FLine> {
     val merged = mergedMesh()
     val parts = mergedParts()
-    class Face(val depth: Double, val corners: List<Vec2>, val part: Int)
+    class Face(val depth: Double, val corners: List<Vec2>, val part: Int, val shade: Float)
+
+    // One fixed light over the viewer's left shoulder, so the flat polygons read as a solid rather
+    // than as one silhouette in one colour. Not the rasterizer's two-light model — an SVG has no
+    // gradients here — but enough that the shape is legible.
+    val light = Vec3(-0.42f, 0.72f, 0.55f).normalize()
 
     val faces = ArrayList<Face>(merged.triangleCount)
     for (t in 0 until merged.triangleCount) {
@@ -334,6 +342,7 @@ fun PickScene.clickableProjection(
         // down. Same rule here, so the SVG and the PNG show the same faces.
         val area = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
         if (area >= 0) continue
+        val n = merged.faceNormal(t)
         faces += Face(
             depth = (a.depth + b.depth + c.depth) / 3.0,
             corners = listOf(
@@ -342,6 +351,7 @@ fun PickScene.clickableProjection(
                 Vec2(c.x.toFloat(), c.y.toFloat()),
             ),
             part = parts.partOf(t),
+            shade = (0.45f + 0.55f * maxOf(0f, n.dot(light))).coerceIn(0f, 1f),
         )
     }
     // Far to near: the last one drawn is on top, and on top is what the browser's hit test returns.
@@ -349,12 +359,14 @@ fun PickScene.clickableProjection(
 
     return faces.map { face ->
         val lit = face.part == highlightPart && face.part != PickParts.UNASSIGNED
-        val tint = if (lit) PART_HIGHLIGHT else PART_BASE
+        val tint = if (lit) PART_HIGHLIGHT else partPalette(face.part)
         afield.graphics.polylineFrom(face.corners, closed = true).also { line ->
             line.filled = true
-            line.stroked = true
-            line.thickness = 0.6
-            line.color = Vec4(tint.x, tint.y, tint.z, 1f)
+            line.stroked = false
+            line.color = Vec4(tint.x * face.shade, tint.y * face.shade, tint.z * face.shade, 1f)
+            // Hovering shows the highlight colour, so the part under the mouse is obvious before the
+            // click — the browser does this on its own, from the line's own property.
+            line.hoverColor = Vec4(PART_HIGHLIGHT.x, PART_HIGHLIGHT.y, PART_HIGHLIGHT.z, 1f)
             line.label = parts.nameOfPart(face.part)
             line.onClick = { intersection ->
                 val ray = camera.rayThrough(intersection.position.x.toDouble(), intersection.position.y.toDouble())
