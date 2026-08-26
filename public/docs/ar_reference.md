@@ -14,6 +14,10 @@ It connects back to the Field server over WebSocket and executes Javascript boxe
 
 Variant Launch is no longer involved. There is no external key, hosted scene, or platform-specific page.
 
+This is the *browser* head. Field's other head is native and does not go through WebXR at all — see
+**[Apple Vision Pro](vision.md)** for the visionOS front end, its RealityKit and Live Metal surfaces,
+and the pose channel that lets the desktop renderer draw from the wearer's own viewpoint.
+
 ## Start a RemoteJS document
 
 1. Start Field and open a document.
