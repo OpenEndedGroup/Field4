@@ -59,7 +59,7 @@ connect/disconnect, `__m` markers); execution control (`begin`, `end`, `start`, 
 
 `src/jvmMain/kotlin/afield/stdlib/stdlib.kt`
 
-**Used in:** [How Box Code Runs](../box_code_pipeline.md)
+**Used in:** [Running code in a box](../running_code.md)
 
 ### Top-level functions { #stdlib-kt-functions }
 

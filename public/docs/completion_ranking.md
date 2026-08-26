@@ -1,4 +1,4 @@
-# How the popup decides
+# How completions are ranked
 
 Press `ctrl-space` in a Field editor and something has to choose which of a few hundred candidates
 you see first. This page is about that choice: where it is made, what it is made from, and how you —

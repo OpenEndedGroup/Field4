@@ -528,7 +528,7 @@ object StdlibReferenceGenerator {
         // the `\b` anchor stopped `set(` matching `offset(`, these alone were enough to publish
         // `afield_four_graphics.md` and `ar_reference.md` as worked examples of `stdlib.kt` on the
         // strength of `mesh.set(`, `list.add(` and `map.get(`. What is left for `stdlib.kt` is
-        // `Delegation` / `Inheritance` / `InheritanceFromContext` in `box_code_pipeline.md`, which
+        // `Delegation` / `Inheritance` / `InheritanceFromContext` in `running_code.md`, which
         // is the one page that really is about it.
         "set", "add", "get", "end", "start", "invoke", "begin",
     )

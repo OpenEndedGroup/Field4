@@ -1,4 +1,26 @@
-# How Box Code Runs
+# Running code in a box
+
+"Run this" is the gesture you make most often in Field, and it means more than one thing. This page
+is the whole path, from the keystroke to the frame — start at whichever end you need.
+
+- **Running versus launching.** `alt-return` runs a line or a block; `alt-0` runs everything in the
+  box; `alt-click` and `alt-up` *launch* it. Running evaluates and stops. Launching gives the code a
+  chance to put something into the animation loop and keep going. If none of those keys are muscle
+  memory yet, the [Survival Guide](survivalGuide.md) is where they live, alongside the `?` cheat
+  sheet and the `F1` palette that lists every other way to execute something.
+- **What happens between the keystroke and the compiler** — fragments, macro expansion, the
+  preamble, inheritance from parent boxes, `@exported` — is the rest of this page.
+- **What happens after the last line evaluates**, when what you returned is a `Frames`, is
+  [Frames, and what a frame is](animation_time_model.md). Launching a box is exactly the case where
+  that page takes over from this one.
+
+For a friendly tour of `connect` / `prop` / `once` in use, rather than in mechanism, read the
+[Feature Overview](funFeatures.md); for the graphics-box API on top of all this, see
+[afield.four Graphics](afield_four_graphics.md). This page is the layer underneath both.
+
+---
+
+## The pipeline, in five steps
 
 When you run a box, Field does **not** hand your text straight to the Kotlin compiler. It:
 
@@ -8,9 +30,7 @@ When you run a box, Field does **not** hand your text straight to the Kotlin com
 4. compiles and evaluates the fragment,
 5. and folds some of what just ran (`@exported` declarations) back into the preamble.
 
-Most of the day-to-day magic — `prop`, `once`, inherited `renderer`/`window`, the typed accessors you get from `moduleHere { }`, `@exported` helpers — is built on this pipeline. This page explains the machinery. For the gentle user-level tour of `connect`/`prop`/`once` see the [Feature Overview](funFeatures.md); for the graphics-box API see [afield.four Graphics](afield_four_graphics.md). This page is the layer underneath both.
-
-This page stops where the last fragment finishes evaluating. What happens to the *value* it produced — and in particular what happens when that value is a `Frames`, as it is for every `animate { }` box — is [Frames, and what a frame is](animation_time_model.md).
+Most of the day-to-day magic — `prop`, `once`, inherited `renderer`/`window`, the typed accessors you get from `moduleHere { }`, `@exported` helpers — is built on these five steps. Everything below is that machinery, in the order the steps run.
 
 There are two distinct "code that writes code" mechanisms, and it helps to keep them straight from the start:
 

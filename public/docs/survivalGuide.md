@@ -29,6 +29,10 @@ There are a large number of other ways of executing code, since executing code i
 
 Note that Field differentiates between running a piece of code (a line or two or the whole contents of a box) and _launching_ code (giving the code at least an opportunity to inject something into the main animation loop and keep going).
 
+[Running code in a box](running_code.md) is that distinction in full — every way to execute
+something, what Field does to your text before the compiler sees it, and where a launched box hands
+over to the animation loop.
+
 # Three things you'll want to know
 
 ## Saving and Loading
@@ -87,4 +91,5 @@ Autocomplete answers "what can I write *here*". For the other question — "what
 
 ## Next
 
-Take [a Tour](funFeatures.md); check out the [Kotlin guide](kotlin_overview.md); understand the [AI features](aiFeatures.md).
+Take [a Tour](funFeatures.md); check out the [Kotlin guide](kotlin_overview.md); learn what happens
+when you [run code in a box](running_code.md); understand the [AI features](aiFeatures.md).

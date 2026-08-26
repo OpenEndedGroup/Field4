@@ -85,6 +85,6 @@ It is less useful when you are sketching quickly and do not want layout constrai
 
 ## Related features
 
-- Use [interactive_guides.md](interactive_guides.md) when the layout itself is part of a walkthrough.
-- Use [bookmarks.md](bookmarks.md) to save a useful view once you have arranged it.
-- Use [document_history.md](document_history.md) if you want to roll back to an earlier document state rather than manually undoing a large layout change.
+- Use [Interactive Guides](interactive_guides.md) when the layout itself is part of a walkthrough.
+- Use [Bookmarks](bookmarks.md) to save a useful view once you have arranged it.
+- Use [Document History](document_history.md) if you want to roll back to an earlier document state rather than manually undoing a large layout change.

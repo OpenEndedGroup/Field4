@@ -6,7 +6,7 @@
 // What this cannot tell you is which SECTION each of these lands in, which is the other half
 // of where a row appears on screen. That answer belongs to KotlinCompletionSupport, and it is
 // `internal` — deliberately unreachable from a box. Use `FIELD_RANK_DUMP` for that; it prints
-// a `category=` beside every visible row. See public/docs/how_the_popup_decides.md.
+// a `category=` beside every visible row. See public/docs/completion_ranking.md.
 val receiver = "afield.graphics.FLine"
 val ranks = afield.CommonMemberPrior.ranksFor(receiver)
 

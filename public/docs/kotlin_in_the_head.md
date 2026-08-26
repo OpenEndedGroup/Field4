@@ -302,7 +302,7 @@ compiler accepts can't drift apart.
 ## Further reading
 
 - [Kotlin Syntax Overview](kotlin_overview.md) — the language these boxes are written in.
-- [How Box Code Runs](box_code_pipeline.md) — the box execution model this plugs into.
+- [Running code in a box](running_code.md) — the box execution model this plugs into.
 - [Field on Apple Vision Pro](vision.md) — the native head the `visionmetal` profile targets.
 - [Building geometry in the headset](vision_geometry.md) — the `visionmetal` geometry builder in full.
 - [Automating Field](automating_field.md) — driving boxes over the transport.

@@ -2433,7 +2433,7 @@ generation-guarded async reload all key off it.
 
 `src/jvmMain/kotlin/afield/stdlib/shaders.kt`
 
-**Used in:** [afield.four Graphics](../afield_four_graphics.md), [How Box Code Runs](../box_code_pipeline.md), [Field Probes — instrumenting shaders](../field_probes.md)
+**Used in:** [afield.four Graphics](../afield_four_graphics.md), [Running code in a box](../running_code.md), [Field Probes — instrumenting shaders](../field_probes.md)
 
 ### Top-level functions { #shaders-kt-functions }
 

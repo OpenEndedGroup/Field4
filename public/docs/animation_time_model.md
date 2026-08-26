@@ -6,6 +6,9 @@ driver, a subprocess streaming its stdout into an output panel, the renderer's o
 loop: what a frame is, how a `Frames` suspends and resumes, what *stops* one, and the pull-based
 generator layer that sits beside it.
 
+This page picks up where [Running code in a box](running_code.md) stops: that page ends when the
+last fragment finishes evaluating, and this one starts with what Field does to the value it produced.
+
 There is one fact to put first, because everything else follows from it and almost nobody guesses it:
 
 !!! important "A frame is not a unit of time."

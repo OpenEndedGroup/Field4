@@ -74,4 +74,4 @@ Bookmarks are a good fit for:
 - switching between code and presentation views
 - teaching sessions where you want repeatable jumps between examples
 
-If you want to save the document's content state rather than the current view state, use [document_history.md](document_history.md) instead.
+If you want to save the document's content state rather than the current view state, use [Document History](document_history.md) instead.

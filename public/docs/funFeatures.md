@@ -625,7 +625,7 @@ once.myVec {
 (`null` itself is not cached.) This is useful in the graphics system because a box often wants to
 create one window and Vulkan renderer, then publish those resources to descendants through `prop`.
 
-For the mechanism behind all of this — how `prop`/`once` expand, how properties propagate up the box graph, the `@exported` annotation, the typed accessors `moduleHere { }` generates, and the `//%-` fragment break — see [How Box Code Runs](box_code_pipeline.md).
+For the mechanism behind all of this — how `prop`/`once` expand, how properties propagate up the box graph, the `@exported` annotation, the typed accessors `moduleHere { }` generates, and the `//%-` fragment break — see [Running code in a box](running_code.md).
 
 ## Nesting
 

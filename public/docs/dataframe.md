@@ -254,7 +254,7 @@ Engine cost is dominated by warm-up rather than by either addition: the first en
 
 - **[Agent Transcript Gallery](agent_transcripts.md)** — `dataframe_typed_columns`, the four-box example, replayable.
 - **[Visualizers, Displays, and Little Instruments](visualizers.md)** — everything else `.h` and `.h2` know how to draw.
-- **[Kotlin in the Head](kotlin_in_the_head.md)** and **[How Box Code Runs](box_code_pipeline.md)** — snippets, fragments, preambles, and why a compile boundary exists at all.
+- **[Kotlin in the Head](kotlin_in_the_head.md)** and **[Running code in a box](running_code.md)** — snippets, fragments, preambles, and why a compile boundary exists at all.
 - `dev_docs/DATAFRAME_PLUGIN.md` — the wiring: `-Xplugin` versus classpath, the probes, the unwired `schemasPath` route.
 
 ## Known limits, stated plainly
