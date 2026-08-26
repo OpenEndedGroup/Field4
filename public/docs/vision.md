@@ -345,8 +345,8 @@ which, because a table like this invites being quoted as a benchmark:
   test writes those in, so they say nothing about how fast anything is. What they demonstrate is that
   a device-reported span survives the wire intact, that percentiles and counts land in the right
   columns, and that a *negative* span is dropped rather than counted as zero — `submit to encoded`
-  shows `n=1` from two recorded samples, one of which was negative, and counting it would quietly
-  have pulled every percentile down.
+  shows `n=1` from two recorded samples, one of which was negative, and counting it would have
+  pulled every percentile down with nothing to show why.
 - The **clock offset is genuinely recovered, not written in.** The synthetic head is built at an
   offset of `+1234567.890 ms`; the estimator recovered `+1234567.547 ms` from seven round trips on
   this machine without ever being told the answer. That is the one figure here measured rather than
@@ -420,7 +420,7 @@ and they are named in the reference below so you can run them yourself.
 ## Reference — where this actually lives
 
 Cross-checked against source on every `docsGates` run, so a rename here breaks the build rather than
-rotting quietly. The Swift rows are here because this is a two-machine protocol, and a page citing
+rotting unnoticed. The Swift rows are here because this is a two-machine protocol, and a page citing
 only the Kotlin end would be describing one side of it.
 
 **How this list was chosen, and where it is blind.** Not by hand. The Kotlin half is the closure over

@@ -45,7 +45,7 @@ enum class VecNNMode {
  * path reads the three `lsh` values; a [VecNNMode.EXACT] index ignores them entirely, so tuning them
  * there changes nothing.
  *
- * The number of hash tables is deliberately not exposed — it is derived from the point count as
+ * The number of hash tables is not exposed — it is derived from the point count as
  * `max(8, sqrt(n))`. The rest go straight to Smile's `LSH` constructor.
  */
 data class VecNNBuildOptions(
@@ -183,7 +183,7 @@ class Vec2NNIndex internal constructor(
      * structure produced them, so sort by `distance` yourself if you need nearest-first.
      *
      * `k` is a maximum, not a promise: it is clamped to [size], so asking for more neighbours than the
-     * index holds quietly gives you every point rather than an error, while a `k` of zero or less
+     * index holds gives you every point rather than an error, while a `k` of zero or less
      * throws. When the backing structure returns fewer candidates than that, the shortfall is topped
      * up from a brute-force distance sort, which costs O(n log n). That top-up only rescues a *short*
      * answer: in approximate mode a full-length answer from the LSH is accepted as it stands, even
@@ -331,7 +331,7 @@ class Vec3NNIndex internal constructor(
      * structure produced them, so sort by `distance` yourself if you need nearest-first.
      *
      * `k` is a maximum, not a promise: it is clamped to [size], so asking for more neighbours than the
-     * index holds quietly gives you every point rather than an error, while a `k` of zero or less
+     * index holds gives you every point rather than an error, while a `k` of zero or less
      * throws. When the backing structure returns fewer candidates than that, the shortfall is topped
      * up from a brute-force distance sort, which costs O(n log n). That top-up only rescues a *short*
      * answer: in approximate mode a full-length answer from the LSH is accepted as it stands, even
@@ -476,7 +476,7 @@ fun vec2NN(
  * [options] tunes the LSH and the duplicate policy.
  *
  * As in 2D, the KD-tree is always built and a failed LSH construction is swallowed — stderr gets a
- * line and you are quietly handed an exact index instead.
+ * line and you are handed an exact index instead.
  */
 fun vec3NN(
     points: List<Vec3>,

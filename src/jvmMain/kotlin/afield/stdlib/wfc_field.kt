@@ -12,8 +12,8 @@ import kotlin.math.roundToInt
 /**
  * The bridge from Wave Function Collapse into the things Field already displays.
  *
- * `wfc.kt` is deliberately dependency-free — it knows about integer tile IDs, `BufferedImage` and
- * `FloatArray`, and nothing else. That keeps the solver honest, but it means a box running WFC has
+ * `wfc.kt` is dependency-free — it knows about integer tile IDs, `BufferedImage` and
+ * `FloatArray`, and nothing else. That keeps the solver portable, but it means a box running WFC has
  * no direct way to *look* at what it is doing. These extensions supply the missing hop into
  * [Img], and therefore into `Box.showImg`, `showImgGrid`, `montage`, `Img.colormap` and the
  * `ToHTML` thumbnail a box shows when you evaluate a value.
@@ -637,7 +637,7 @@ fun wfcSolverHtml(solver: WfcSolver): String {
 private const val WFC_NOTE_STYLE = "color:#8a90a0;margin-top:3px"
 
 /**
- * The panel container: a grid of a **fixed** column count, deliberately not `flex-wrap`.
+ * The panel container: a grid of a **fixed** column count, not `flex-wrap`.
  *
  * A box sizes an HTML output by measuring the fragment's laid-out extent, and a wrapping flex row
  * makes that measurement depend on the width it happened to be measured at. Measure three panels

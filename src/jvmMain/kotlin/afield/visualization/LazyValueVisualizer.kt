@@ -66,7 +66,7 @@ object H2ValueRegistry {
      *
      * Same resolution rule, and same fix, as [ValuePrinterRegistry.getPrinter]: the superclass chain
      * most-derived first, and at each step that class's **whole** interface closure rather than only
-     * the interfaces the runtime class declares. Kept deliberately identical, because the two
+     * the interfaces the runtime class declares. Kept identical, because the two
      * registries are the pair of extension points a third-party type reaches Field through, and
      * having them disagree about what "registered for this type" means is the bug twice.
      */

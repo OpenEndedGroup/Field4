@@ -401,7 +401,7 @@ fun patTranscribe(
  * change where every later note falls; `_` occupies a slot and leaves the grid alone.
  *
  * Pitches are emitted as integers. The cents each note was measured at are in
- * [PatDetectedNote.centsOffset] and are deliberately *not* written into the notation: a fractional
+ * [PatDetectedNote.centsOffset] and are *not* written into the notation: a fractional
  * atom would re-render the detector's own error as if it were the composer's intent.
  */
 fun patNotationOf(notes: List<PatDetectedNote>, grid: PatStepGrid?): String {
@@ -467,13 +467,13 @@ fun patRenderTranscription(
  * boundaries were lost. So a wide first pass is a poor transcriber and a perfectly good histogram, and
  * one cheap pass can buy the second pass its window.
  *
- * Deliberately asymmetric in what it is willing to get wrong. The low bound comes from a low
+ * Asymmetric in what it is willing to get wrong. The low bound comes from a low
  * *percentile* rather than the minimum, and is then dropped a further semitone. An estimate that is too
  * low only costs sharpness; an estimate that is too high makes real low notes unvoiced and deletes them.
  * Octave-down errors in the first pass therefore push this in the safe direction, which is why the
  * cheap statistic is adequate.
  *
- * @param hop coarser than the analysis default on purpose: this pass needs a distribution, not timing,
+ * @param hop coarser than the analysis default: this pass needs a distribution, not timing,
  *   so it pays a quarter of the frames.
  * @return the register to hand [patTranscribe], or null when too little was voiced to have an opinion.
  */
@@ -509,7 +509,7 @@ fun patEstimateRegister(
  * Two passes: [patEstimateRegister] over a wide range to pick the window, then the real transcription
  * inside it. What this recovers of the declared-register result is measured on the corpus by
  * `PatTranscriptionCorpus.runAuto`, and reported rather than assumed — if it did not work this function
- * would still exist, loudly warning instead of quietly guessing.
+ * would still exist, warning loudly instead of guessing in silence.
  *
  * The estimate is always recorded in [PatTranscription.warnings], because a register that was guessed
  * is a different kind of claim from one that was promised, and the caller should be able to tell.
@@ -899,7 +899,7 @@ data class PatTranscriptionScore(
  *
  * Matching is nearest-onset-within-[toleranceSeconds], each recovered note used at most once, walked
  * in reference order. A recovered note matched on time but wrong in pitch counts for onset recall and
- * against note-level F — the two questions are kept separate on purpose, because the interesting
+ * against note-level F — the two questions are kept separate, because the interesting
  * failures in this package are the ones where timing is right and pitch is not, and a single combined
  * score hides exactly those.
  *

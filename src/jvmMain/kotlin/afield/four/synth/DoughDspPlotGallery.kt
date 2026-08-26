@@ -43,7 +43,7 @@ expect:
  * `afield.examples.rectsl.RectSLDataVizProof`: pure-CPU AWT `Graphics2D` → `BufferedImage` →
  * `ImageIO` PNG, run under `java.awt.headless=true`. There is no browser, GPU, Vulkan or Field
  * window. Only the "draw a line between real samples" step is synthetic; the samples themselves
- * are honest.
+ * are real.
  *
  * As a FIELD_TEST (`synth.dough-dsp.gallery`) it renders to a temp dir and asserts real
  * correctness (painted fraction, finite samples, and per-plot sanity: the reverb tail decays and
@@ -583,7 +583,7 @@ object DoughDspPlotGallery {
     }
 
     /**
-     * The audio log ladder, deliberately *not* `afield.logTicks`.
+     * The audio log ladder, *not* `afield.logTicks`.
      *
      * A frequency response is read against these ten landmarks — 20 Hz, 20 kHz, and the 1/2/5
      * points between — not against whatever decades a general log axis would choose for the data's

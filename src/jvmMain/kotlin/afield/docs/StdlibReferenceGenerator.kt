@@ -266,8 +266,8 @@ object StdlibReferenceGenerator {
             "also the JIT's first look at your graph. On top of the oscillator / filter / effect / " +
             "envelope families sit three larger things that are not Field's own DSP: **Faust**, " +
             "whose compiler is embedded as WebAssembly and turns a `#faust` box into a running " +
-            "node in the same graph; the **dough** ports, hand-rolled float math kept " +
-            "deliberately inaccurate because the inaccuracy is the character; and the **spectral** " +
+            "node in the same graph; the **dough** ports, hand-rolled float math whose " +
+            "inaccuracy is the character rather than a defect; and the **spectral** " +
             "and **granular** layers, which are Field's own. `Visualizers.kt` is how you look at " +
             "any of it — every function there is an extension on a type declared in this " +
             "category. Start from `synth.kt`, which is the terse surface a box actually imports; " +
@@ -1245,7 +1245,7 @@ object StdlibReferenceGenerator {
         )
         appendLine()
         appendLine(
-            "The \"documented\" column is the honest one: it is a coverage report on Field's own KDoc, " +
+            "The \"documented\" column is a coverage report on Field's own KDoc, " +
                 "not a claim about this page. Where a summary is blank the declaration has none yet."
         )
         appendLine()
@@ -1297,7 +1297,7 @@ object StdlibReferenceGenerator {
         )
         appendLine(
             "- **Declarations marked `Internal`** by their own `@file:CompletionCategory` are " +
-                "plumbing, and are excluded on purpose."
+                "plumbing, and are excluded."
         )
         appendLine(
             "- **The harnesses** — smoke tests, docs figure galleries, the audio-provenance audit " +

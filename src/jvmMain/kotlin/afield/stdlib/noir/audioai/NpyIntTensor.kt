@@ -14,7 +14,7 @@ import java.nio.file.Path
  * `numpy.kt` already reads `.npy` and `.npz` generally; this is the narrow, self-checking version
  * for the one shape that matters here (codebooks × frames of small integers), so the codec views
  * can index tokens by codebook and frame without a general tensor type in between. It refuses what
- * it cannot represent honestly rather than guessing: Fortran order, an unsupported dtype and a
+ * it cannot represent, rather than guessing: Fortran order, an unsupported dtype and a
  * multi-item batch are all errors with a message.
  */
 
@@ -48,7 +48,7 @@ data class NpyIntTensor(
         /**
          * Decode NPY bytes, or fail with a message saying what was wrong.
          *
-         * Deliberately narrow: C-order only (Fortran order is rejected rather than silently transposed),
+         * Narrow: C-order only (Fortran order is rejected rather than silently transposed),
          * `i8`, `i4` and `u2` integer dtypes only, and a single batch only — the constructor rejects a
          * shape whose leading axes multiply to anything but 1, because a batch of token grids has no one
          * picture. Both NPY header versions are handled, and the dtype's byte order is honoured.

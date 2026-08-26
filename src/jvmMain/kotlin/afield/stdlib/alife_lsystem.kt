@@ -197,7 +197,7 @@ val LSYSTEM_BUSH: LSystem = LSystem(
  * A stochastic plant: the same symbol `X` has three competing productions, so two derivations with
  * different seeds are different plants of the same species.
  *
- * This is the honest way to get variation. Jittering the turtle's angles produces a wobbly copy of one
+ * This is the right way to get variation. Jittering the turtle's angles produces a wobbly copy of one
  * plant; competing productions produce genuinely different *topologies*, which is what varies between
  * two real plants of a species.
  */

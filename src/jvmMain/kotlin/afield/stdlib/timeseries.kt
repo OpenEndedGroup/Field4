@@ -419,7 +419,7 @@ class BiquadFilter(
     /**
      * Re-derive the five coefficients from the current [type], [frequency], [sampleRate], [q] and
      * [gainDb]. Run once at construction; run it again yourself after mutating any of those, because
-     * nothing else will. It deliberately leaves the delay line alone, so a mid-stream retune stays
+     * nothing else will. It leaves the delay line alone, so a mid-stream retune stays
      * continuous in the signal but can step the output audibly.
      */
     fun calculateCoefficients() {
@@ -1065,7 +1065,7 @@ class RollingBetaStats(
     var supportMax: Float = 1f,
     /**
      * How far inside the open interval `(0, 1)` stored samples are held, and the degeneracy floor for
-     * the moment fit. Defaults to 1e-4, deliberately looser than the other fits in this file.
+     * the moment fit. Defaults to 1e-4, looser than the other fits in this file.
      */
     var epsilon: Float = 1e-4f
 ) : FloatFilter {
@@ -1328,7 +1328,7 @@ class BetaEventDetector(
  * falls within it. A tap: the sample passes through unchanged.
  *
  * Rayleigh is the distribution of the *magnitude* of a two-dimensional Gaussian, which makes it the
- * honest model for speeds, `hypot(dx, dy)` jitter, gradient magnitudes — anywhere you took the length
+ * right model for speeds, `hypot(dx, dy)` jitter, gradient magnitudes — anywhere you took the length
  * of a noisy 2-D vector. It has a single parameter, estimated here straight from the raw second
  * moment (`sigma = sqrt(mean(x²) / 2)`, the maximum-likelihood estimator), so it needs no variance
  * and settles faster than the gamma fit. Negatives are outside its support: clamped to 0 and counted
@@ -1544,7 +1544,7 @@ class RayleighEventDetector(
  * details worth knowing: the standard deviation here is the population (÷n) one, so it reads slightly
  * smaller than [RollingStats.stdDev] over the same samples; and unlike the distribution detectors this
  * one uses [influence] unclamped, so a value outside `0..1` will corrupt the window rather than being
- * quietly corrected.
+ * clamped for you.
  */
 class ZScoreEventDetector(
     /** Samples of history behind the mean and standard deviation; nothing fires until this many have arrived. */
@@ -1688,7 +1688,7 @@ class AGC(
     var attack: Float = 0.01f,
     /**
      * Per-sample coefficient (`0..1`) used when the envelope falls and when the gain must decrease. The
-     * default is deliberately ten times slower than [attack], so the gain backs off gently.
+     * default is ten times slower than [attack], so the gain backs off gently.
      */
     var release: Float = 0.001f,
     /** Ceiling on the multiplier, so a near-silent stretch cannot be amplified without limit. */
@@ -2115,7 +2115,7 @@ class CooldownFilter(val cooldownSamples: Int) : FloatFilter {
  * `alpha` is the per-sample adaptation rate in `0..1` — the effective memory is about `1/alpha` samples, so
  * the 0.01 default tracks over a few hundred. The first sample seeds the mean and returns 0, since there is
  * no spread to divide by yet, and the output is 0 whenever the running standard deviation is at or below
- * `epsilon`, which is also what a constant input produces. One honest quirk: the mean is updated *before*
+ * `epsilon`, which is also what a constant input produces. One quirk worth knowing: the mean is updated *before*
  * the residual is taken, so the output is systematically `(1 - alpha)` times the z-score you would compute
  * by hand — negligible at small alpha, visible if you push alpha near 1.
  */

@@ -16,7 +16,7 @@ time-domain `timeseries.kt` and frequency-domain `spectral.kt` families.
 Field's stated target domains include computer vision, but until now the stdlib had no image
 layer at all: no convolution, no gradients, no pyramids, no features, no warps. This file (plus
 `imaging_filters.kt`, `imaging_features.kt`, `imaging_geometry.kt`, `imaging_field.kt`) closes
-that gap with a small, honest, dependency-free core.
+that gap with a small, dependency-free core.
 
 The whole family is built on one value type, [`Img`](imaging.md#imaging-kt-img):
 
@@ -44,7 +44,7 @@ Design choices, all deliberate:
 - **Live-codeable.** [`Img`](imaging.md#imaging-kt-img) implements [`ToHTML`](visualization.md#valuevisualizer-kt-tohtml), so evaluating an `Img` in a box (or `img.h`)
   shows the actual picture as an inline thumbnail, not `Img@3f1a2b`.
 
-Out of scope on purpose: GPU work (that is `afield.four` / StackSL / RectSL), video decoding,
+Out of scope: GPU work (that is `afield.four` / StackSL / RectSL), video decoding,
 and anything needing a model file.
 
 `src/jvmMain/kotlin/afield/stdlib/imaging.kt`
@@ -95,7 +95,7 @@ and anything needing a model file.
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">threshold</span><span class="p">(</span><span class="n">threshold</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Binarise: samples `> threshold` become 1, everything else 0. Result is 1-channel. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">thresholdOtsu</span><span class="p">(</span><span class="n">bins</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">256</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Binarise at the `otsuThreshold`. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">thresholdAdaptive</span><span class="p">(</span><span class="n">radius</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="n">bias</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">0.02f</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Adaptive (local-mean) threshold: each pixel is compared to the mean of a `(2*radius+1)` square neighbourhood, minus `bias`. Handles uneven illumination that defeats a global threshold. |
-| <code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">meanAbsDiff</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Img</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | Mean absolute difference per sample against `other` — a blunt but honest similarity measure. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">meanAbsDiff</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Img</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | Mean absolute difference per sample against `other` — a blunt but unbiased similarity measure. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">psnr</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Img</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | Peak signal-to-noise ratio in dB against `other`, assuming a `0..1` signal range. |
 
 ### Top-level values { #imaging-kt-values }
@@ -471,7 +471,7 @@ val fit   = findHomographyRansac(flow.sourcePoints(), flow.targetPoints())
 val warped = b.warpPerspective(fit.homography.inverse()) // undo the motion
 ```
 
-The linear algebra is deliberately self-contained (a 9x9 Jacobi eigen-solver and a 6x6 Gaussian
+The linear algebra is self-contained (a 9x9 Jacobi eigen-solver and a 6x6 Gaussian
 elimination), because a 3x3 homography does not justify a dependency and the whole point of this
 family is that it works headless in a box with nothing installed.
 

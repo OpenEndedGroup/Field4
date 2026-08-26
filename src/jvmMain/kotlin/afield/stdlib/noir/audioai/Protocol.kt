@@ -107,7 +107,7 @@ data class AssetRepresentation(
      *
      * A 48 kHz `audition_proxy` of a 32 kHz MusicGen output carries `sampleRate = 48000` and
      * `nativeSampleRate = 32000`. That difference is what the candidate board's provenance line
-     * reports, and it is the honest answer to "am I listening to the model or to a resampler?".
+     * reports, and it is the direct answer to "am I listening to the model or to a resampler?".
      */
     @SerialName("native_sample_rate")
     val nativeSampleRate: Int? = null,
@@ -117,7 +117,7 @@ data class AssetRepresentation(
     /**
      * Service-relative path to the bytes: `/v1/representations/{id}/content`.
      *
-     * A path and not an absolute URL on purpose — `FieldAudioClient.download` resolves it against
+     * A path and not an absolute URL — `FieldAudioClient.download` resolves it against
      * the client's base URI, and the in-box HTML views resolve it against the same-origin
      * `/field-audio` proxy prefix.
      */
@@ -205,7 +205,7 @@ data class WaveformSummary(
 /**
  * A request for the service to do something — the one type you build by hand, or nearly.
  *
- * The operation vocabulary is deliberately Field's rather than any model library's:
+ * The operation vocabulary is Field's rather than any model library's:
  * `generate.style`, `codec.reconstruct`, `analysis.beats`, `analysis.pitch_mono`,
  * `analysis.pitch_poly`. Prefer the typed constructors — `styleCandidates`, `codecReconstruction`,
  * `multiScaleBeatAnalysis`, `monophonicPitchAnalysis`, `polyphonicPitchAnalysis` — which validate
@@ -853,7 +853,7 @@ data class ProgressEvent(
 )
 
 /**
- * What one model can do, as reported by `FieldAudioClient.models` — the honest answer to "can I ask
+ * What one model can do, as reported by `FieldAudioClient.models` — the authoritative answer to "can I ask
  * for this?" before submitting anything.
  *
  * A model that is installed but unusable is still listed, with [available] false and

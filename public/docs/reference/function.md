@@ -579,12 +579,12 @@ Queries come first, and none of them copy or evaluate the function:
 incoming path, so role, ancestry, depth and path stay meaningful for editing;
 `Functions.Fn.graphMetrics` separates unique DAG nodes from occurrences and charges a
 caller-supplied cost; `Functions.Fn.graphSignature` reduces structure to a deterministic string
-with evaluator closures and rebuild lambdas deliberately excluded. On top of those, [`FnGraphRule`](function.md#functiongraphrules-kt-fngraphrule)
+with evaluator closures and rebuild lambdas excluded. On top of those, [`FnGraphRule`](function.md#functiongraphrules-kt-fngraphrule)
 pairs a named predicate with a replacement, and `Functions.Fn.rewriteWithRules` (one bottom-up
 pass) and `Functions.Fn.rewriteUntilStable` (repeated passes) apply them, returning an
 [`FnGraphRewriteRun`](function.md#functiongraphrules-kt-fngraphrewriterun) that records every edit that actually changed a node's signature.
 
-Fixed-point rewriting is bounded on purpose: `Functions.Fn.rewriteUntilStable` compares
+Fixed-point rewriting is bounded: `Functions.Fn.rewriteUntilStable` compares
 signatures each pass and reports `FnGraphRewriteStop.STABLE`, `FnGraphRewriteStop.CYCLE` or
 `FnGraphRewriteStop.MAX_PASSES` rather than letting a non-terminating rule set hide inside an
 animation loop. Rules default to `FnGraphRuleMode.FIRST_MATCH` at each node, so ordering is
@@ -741,7 +741,7 @@ selectors with `*` and `**` wildcards — and so does action application: `op=`,
 `domain=`, `drop`, and the numeric `=`, `*=`, `/=`, `+=`, `-=` forms. `op=` targets are checked
 against `OpRegistry`; an unknown op is reported as a warning, not an error.
 
-The file deliberately does not depend on the live-code compiler. A Kotlin right-hand side is
+The file does not depend on the live-code compiler. A Kotlin right-hand side is
 parsed out of its `@{...}` (or dollar-brace) wrapper and then handed to
 `FnRewriteOptions.kotlinNumberContext`; when no caller supplied one, the action is simply not
 applied. FunctionRewriteKotlin.kt is what plugs a box's Kotlin engine into that hook, and
@@ -758,7 +758,7 @@ FunctionRewritePattern.kt is the separate structural pattern-to-template surface
 | <code class="highlight"><span class="k">fun</span> <span class="nf">compileFnRewrite</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnRewriteProgram</span></code> | Parses a rewrite spec and reports on it, without needing a function graph or touching one. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">rewrite</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">FnRewriteOptions</span> <span class="o">=</span> <span class="nc">FnRewriteOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> | Compiles `spec` and applies it, returning a new function and discarding everything the attempt learned — the forgiving one-liner for sketching and performance. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">previewRewrite</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">FnRewriteOptions</span> <span class="o">=</span> <span class="nc">FnRewriteOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnRewritePreview</span></code> | Compiles and applies `spec`, retaining diagnostics, match paths, and effective-change information. |
-| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">rewriteChecked</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">FnRewriteOptions</span> <span class="o">=</span> <span class="nc">FnRewriteOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> | `Functions.Fn.rewrite`, but a malformed spec throws instead of quietly applying whatever rules parsed. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">rewriteChecked</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">FnRewriteOptions</span> <span class="o">=</span> <span class="nc">FnRewriteOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> | `Functions.Fn.rewrite`, but a malformed spec throws instead of applying whatever rules parsed. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">rewrite</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">preserveSharing</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> | `rewrite` when the only thing you want to vary is sharing — no evaluator, no other options. |
 
 ### FnRewriteNumberContext { #functionrewritedsl-kt-fnrewritenumbercontext }
@@ -870,7 +870,7 @@ One rule firing at one occurrence: which rule, where it landed, and whether it a
 | <code class="highlight"><span class="k">val</span> <span class="n">role</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | The role of the edge the matched node hangs from, or null at the root. |
 | <code class="highlight"><span class="k">val</span> <span class="n">beforeOp</span><span class="p">:</span> <span class="nc">String</span></code> | The op before this rule's actions ran here. |
 | <code class="highlight"><span class="k">val</span> <span class="n">afterOp</span><span class="p">:</span> <span class="nc">String</span></code> | The op afterwards. Usually the same: a naming edit, a numeric edit or a refused transmutation all leave it. |
-| <code class="highlight"><span class="k">val</span> <span class="n">changed</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Whether the node's structural signature actually moved. False is the honest report for a transmutation the `OpRegistry` refused, a numeric action on a non-numeric node, a Kotlin right-hand side with no evaluator installed, and `*= 1.0`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">changed</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Whether the node's structural signature actually moved. False is the correct report for a transmutation the `OpRegistry` refused, a numeric action on a non-numeric node, a Kotlin right-hand side with no evaluator installed, and `*= 1.0`. |
 
 ### FnRewritePreview { #functionrewritedsl-kt-fnrewritepreview }
 
@@ -1026,9 +1026,9 @@ with(Functions) {
 ### Which ops, and how the honesty is enforced
 
 The interpreter covers the smooth algebraic core — see `FnAutoDiff.differentiableOps`. That is
-deliberately a *subset*: the piecewise oscillators (`saw`, `square`), the table-backed
+a *subset*: the piecewise oscillators (`saw`, `square`), the table-backed
 interpolants, the noise generators and everything with baked point data are not here, and
-`FnAutoDiff.supports` answers honestly for any graph.
+`FnAutoDiff.supports` answers correctly for any graph.
 
 The danger with a second interpreter is that it silently computes the derivative of a *different
 function* from the one `eval` computes. So the exact path never trusts itself: `FnAutoDiff.agrees`
@@ -1063,7 +1063,7 @@ keyed by the child-index path, and a test asserts the two agree leaf for leaf.
 
 How a fit obtains the gradient of its loss with respect to a graph's numeric leaves.
 
-Constants: `and`, `so`, `quietly`.
+Constants: `and`, `so`, `without`, `where`.
 
 ### FnAutoDiff { #autodiff-fn-kt-fnautodiff }
 
@@ -1192,7 +1192,7 @@ A node of an op's formula: an expression over the sample position, the op's role
 | <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Atan</span><span class="p">(</span><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">FnExpr</span><span class="p">)</span> <span class="p">:</span> <span class="nc">FnExpr</span></code> | `kotlin.math.atan` — the principal arc tangent, in `(-pi/2, pi/2)`. |
 | <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Atan2</span><span class="p">(</span><span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">FnExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">FnExpr</span><span class="p">)</span> <span class="p">:</span> <span class="nc">FnExpr</span></code> | `kotlin.math.atan2(y, x)` — the quadrant-correct angle of the vector `(x, y)`, in `[-pi, pi]`. |
 | <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Hypot</span><span class="p">(</span><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">FnExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">FnExpr</span><span class="p">)</span> <span class="p">:</span> <span class="nc">FnExpr</span></code> | `kotlin.math.hypot` — `√(a²+b²)`, computed without an intermediate overflow. |
-| <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Pow</span><span class="p">(</span><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">FnExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">FnExpr</span><span class="p">)</span> <span class="p">:</span> <span class="nc">FnExpr</span></code> | `Math.pow(a, b)` — spelled as the real call, so a literal exponent of 2.0 stays bit-identical to the hand-written `.pow(2.0)` rather than being quietly rewritten as `a * a`. |
+| <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Pow</span><span class="p">(</span><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">FnExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">FnExpr</span><span class="p">)</span> <span class="p">:</span> <span class="nc">FnExpr</span></code> | `Math.pow(a, b)` — spelled as the real call, so a literal exponent of 2.0 stays bit-identical to the hand-written `.pow(2.0)` rather than being rewritten as `a * a`. |
 | <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Min</span><span class="p">(</span><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">FnExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">FnExpr</span><span class="p">)</span> <span class="p">:</span> <span class="nc">FnExpr</span></code> | The smaller of two. |
 | <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Max</span><span class="p">(</span><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">FnExpr</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">FnExpr</span><span class="p">)</span> <span class="p">:</span> <span class="nc">FnExpr</span></code> | The larger of two. |
 | <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Clamp01</span><span class="p">(</span><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">FnExpr</span><span class="p">)</span> <span class="p">:</span> <span class="nc">FnExpr</span></code> | `coerceIn(0.0, 1.0)` — the `clamp01` the shapes and windows use. |
@@ -1235,7 +1235,7 @@ Every op in [`OpRegistry`](function.md#functionops-kt-opregistry) that [`FnAutoD
 | --- | --- |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">statusOf</span><span class="p">(</span><span class="n">op</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnOpStatus</span><span class="o">?</span></code> | The declared status of `op`, or null when this op has a formula (or is unknown to the registry). |
 | <code class="highlight"><span class="k">val</span> <span class="n">ops</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> | Every op declared non-differentiable, lower-cased. |
-| <code class="highlight"><span class="k">val</span> <span class="n">closable</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> | Ops whose derivative could be written but has not been — the honest backlog. |
+| <code class="highlight"><span class="k">val</span> <span class="n">closable</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> | Ops whose derivative could be written but has not been — the real backlog. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">explain</span><span class="p">(</span><span class="n">op</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | A one-line explanation for a diagnostic: either the declared reason, or a note that the op is differentiable, or that nothing is known about it. |
 
 </div>

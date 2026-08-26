@@ -31,7 +31,7 @@ expect:
  * cycles through `PatPattern.events(...)`. Nothing is hand-placed. The only synthetic part is the
  * choice of colours and the mapping from cycle time to pixels.
  *
- * Most rolls are deliberately **two-panel**: the top lane is what the pre-tonight surface could
+ * Most rolls are **two-panel**: the top lane is what the pre-tonight surface could
  * express and the bottom lane is what the new operator does, in the same figure, at the same
  * scale, so the difference is looked at rather than described.
  *
@@ -622,7 +622,7 @@ object PatPianoRollGallery {
 
     // ── resolving a spec into real events ──────────────────────────────────────────────────
 
-    /** Queries every lane over [PatRollSpec.cycles] whole cycles — the honest part of the render. */
+    /** Queries every lane over [PatRollSpec.cycles] whole cycles — the measured part of the render. */
     fun resolve(spec: PatRollSpec): List<LaneEvents> = spec.lanes.map { lane ->
         val events = lane.pattern.events(PatArc(PatQ.ZERO, PatQ.of(spec.cycles)))
             .sortedWith(compareBy({ it.arc.start }, { it.arc.end }))

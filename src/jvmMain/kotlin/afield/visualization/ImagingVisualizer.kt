@@ -38,7 +38,7 @@ import kotlin.math.sqrt
  *
  * ## Where this hooks in
  *
- * Three one-line hooks, deliberately tiny so this file can grow without touching
+ * Three one-line hooks, small enough that this file can grow without touching
  * `ValueVisualizer.kt`:
  *
  *  - [Img.toHTML] delegates to [img] — [Img] implements [ToHTML], which `ValueVisualizer` dispatches
@@ -54,9 +54,9 @@ import kotlin.math.sqrt
  * three previous inline-graphics branches all appended to that same anchor and add/add-conflicted
  * every time.
  *
- * ## How a float image is turned into pixels — the honesty policy
+ * ## How a float image is turned into pixels — the normalisation policy
  *
- * The family is float-channel and deliberately unbounded: a Sobel `dx`, a Laplacian and a
+ * The family is float-channel and unbounded: a Sobel `dx`, a Laplacian and a
  * difference-of-Gaussians are legitimately signed, an unnormalised response legitimately exceeds 1,
  * and a division somewhere upstream legitimately produces a NaN. A visualizer that clamps all of
  * those to `0..1` shows you a flat white or flat black rectangle and tells you nothing, so
@@ -82,7 +82,7 @@ import kotlin.math.sqrt
  *
  * Each raster visualizer carries a closed `<details>` with the per-channel strip, a per-channel
  * histogram computed over the *full-resolution* samples, and the numeric stats. It is a plain
- * `<details>` element rather than a `lazy-value-fragment` expander link on purpose: it needs no
+ * `<details>` element rather than a `lazy-value-fragment` expander link, because it needs no
  * running server, so it works identically in a live box, in a docs capture and in a saved HTML file.
  */
 object ImagingVisualizer {
@@ -958,7 +958,7 @@ object ImagingVisualizer {
      * SVG `viewBox`, so a marker radius or a stroke width means the same thing at any data scale.
      * Y is not flipped: image coordinates and SVG coordinates both run downwards.
      *
-     * The members are spelled out (`panelW`, not `w`) on purpose. Inside [svg]'s `buildString` the
+     * The members are spelled out (`panelW`, not `w`) for a reason. Inside [svg]'s `buildString` the
      * innermost implicit receiver is a `StringBuilder`, and this package declares
      * `val Any?.h: String` — so a `"height='$h'"` template silently resolved to
      * *`ValueVisualizer.visualize(theStringBuilder)`* and emitted a rendered value tree in the middle
@@ -1028,7 +1028,7 @@ object ImagingVisualizer {
     /**
      * The `<img>` itself. A 4-channel image sits on a CSS checkerboard so transparent black and
      * opaque black are not the same picture, and `image-rendering:pixelated` keeps a small thumbnail
-     * honest about where its pixel edges are.
+     * exact about where its pixel edges are.
      */
     private fun imgTag(base64: String, w: Int, h: Int, checkerboard: Boolean): String = buildString {
         val bg = if (checkerboard) {

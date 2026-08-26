@@ -13,7 +13,7 @@ import kotlin.math.sqrt
  * which edges have the wrong number of faces, which faces are duplicated, whether the winding is
  * consistent and whether it points out. [TriMesh.repairToSolid] then attempts the fixes in a
  * defensible order and hands back a [MeshRepairResult] that says **what it did and what it could
- * not do** — a repair that quietly drops half your model is worse than one that refuses, so nothing
+ * not do** — a repair that silently drops half your model is worse than one that refuses, so nothing
  * here returns a bare mesh.
  *
  * ```kotlin
@@ -56,7 +56,7 @@ import kotlin.math.sqrt
  *  2. **Non-manifold edges** — nothing removes a duplicated face or a dangling fin.
  *     [removeDuplicateFaces] and [removeNonManifoldFins] are the new code.
  *
- * So the honest framing is that this file is the *last third* of a mesh repair pipeline, not the whole
+ * So the accurate framing is that this file is the *last third* of a mesh repair pipeline, not the whole
  * of one, and [TriMesh.repairToSolid] calls the existing repairs for the first two thirds.
  */
 
@@ -66,7 +66,7 @@ import kotlin.math.sqrt
 
 /**
  * How much a defect matters — the distinction between "Manifold will refuse this" and "Manifold will
- * accept this and quietly give you a wrong answer".
+ * accept this and give you a wrong answer without saying so".
  *
  * The second category is the one worth having a word for. A mesh that is inside out is a perfectly
  * legal manifold with a negative volume: subtract it from something and you get the complement of what
@@ -551,7 +551,7 @@ private fun measureLoop(mesh: TriMesh, ring: List<Int>): BoundaryLoopInfo {
  * refuses the whole mesh. Exporters produce them by welding two parts that already touched, and no
  * amount of [TriMesh.weld] or [TriMesh.fixWinding] removes them — measured.
  *
- * Two cases, handled differently on purpose:
+ * Two cases, handled differently:
  *
  *  - **Same winding.** Plain redundancy. One copy is kept.
  *  - **Opposite winding, in equal numbers.** A zero-thickness sheet: two faces back to back enclosing
@@ -588,7 +588,7 @@ fun TriMesh.removeDuplicateFaces(): TriMesh {
  * Remove dangling flaps: triangles that hang off a non-manifold edge instead of being part of the
  * closed surface.
  *
- * The test is deliberately conservative — a triangle goes only if it has **both** a non-manifold edge
+ * The test is conservative — a triangle goes only if it has **both** a non-manifold edge
  * (three or more faces, so the surface does not need it to be closed there) **and** a boundary edge
  * (one face, so it is hanging free at the other end). That is what a fin, a stray internal wall, or a
  * modelling mistake looks like, and it is not what two properly closed sheets meeting along a seam
@@ -685,10 +685,10 @@ class HoleFillReport(
      * flags the cylinder, whose caps are correct, and at 5% it flags the cylinder and *misses* the
      * torus entirely. The two are locally indistinguishable. [capAreaFraction] is still reported, as a
      * fact rather than a verdict — a cap that is a tenth of your model is worth a look whatever the
-     * arithmetic says — but it deliberately does not set this flag.
+     * arithmetic says — but it does not set this flag.
      *
      * The only thing that catches the severed torus is comparison against the shape you meant, which
-     * at run time you do not have. So the honest contract is: a clean `isSuspect == false` means the
+     * at run time you do not have. So the contract is: a clean `isSuspect == false` means the
      * cap's geometry is sound, **not** that the model is the one you started with.
      */
     val isSuspect: Boolean
@@ -733,7 +733,7 @@ class HoleFillResult(val mesh: TriMesh, val fills: List<HoleFillReport>) {
  *
  * # When this produces a bad fill, stated plainly
  *
- * The honest simple algorithm has exactly two failure modes, and both are reported rather than hidden:
+ * The simple algorithm has exactly two failure modes, and both are reported rather than hidden:
  *
  *  - **A non-planar loop.** The cap is a flat-ish disc stretched over a wavy rim, so it can dip inside
  *    the model or bulge out of it. [BoundaryLoopInfo.planarity] measures this before the fill happens
@@ -901,10 +901,10 @@ private fun projectRing(mesh: TriMesh, ring: List<Int>): List<Vec2>? {
  * Ear-clip a counter-clockwise simple polygon, returning index triples **into [polygon]**, or `null`
  * when it stalls.
  *
- * Deliberately not [triangulatePolygon]: that one silently falls back to a fan when it cannot find an
+ * Distinct from [triangulatePolygon]: that one silently falls back to a fan when it cannot find an
  * ear, which is the right call for a modelling primitive and exactly the wrong one here. A repair
  * pipeline has to be able to say "this hole did not triangulate cleanly", so this variant returns
- * `null` instead of quietly producing something.
+ * `null` instead of producing something wrong.
  */
 private fun earClip(polygon: List<Vec2>): IntArray? {
     val order = polygon.indices.toMutableList()
@@ -1027,7 +1027,7 @@ class MeshRepairResult(
 }
 
 /**
- * Try to turn this mesh into something [afield.manifold.toSolid] will accept, and report honestly.
+ * Try to turn this mesh into something [afield.manifold.toSolid] will accept, and report what it could not fix.
  *
  * # The order, and why it is that order
  *

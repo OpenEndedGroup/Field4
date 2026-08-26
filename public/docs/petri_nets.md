@@ -445,7 +445,7 @@ ring on the marking it gets stuck in. Every philosopher picking up one fork — 
 there is nothing shorter.
 
 Eighty-two markings is about as far as that picture goes, and it stops going rather than degrading
-quietly. Above `PETRI_STATE_DRAW_LIMIT` — 400 markings — the dot radius has bottomed out at two
+without saying so. Above `PETRI_STATE_DRAW_LIMIT` — 400 markings — the dot radius has bottomed out at two
 pixels and the layers overlap, so the drawing **declines**: it shows the counterexample alone, laid
 out one firing per column, over a histogram of how many markings sit at each breadth-first depth, and
 it writes on the figure that it did so. `graph.tooDenseToDraw()` answers the question in advance, and

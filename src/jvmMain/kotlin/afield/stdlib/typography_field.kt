@@ -45,7 +45,7 @@ import kotlin.math.sqrt
  *     in z, so letters compose with `sdfSphere`, `sdfSmoothUnion`, `.twisted()` and everything else
  *     in `mesh_sdf.kt`, and `marchingCubes` will mesh the result.
  *  4. **→ [Img]** ([rasterizeText]). An analytic even-odd scanline fill of the layout's own rings —
- *     deliberately *not* `Graphics2D.drawString`, both because AWT text rendering in-process is what
+ *     *not* `Graphics2D.drawString`, both because AWT text rendering in-process is what
  *     `imaging_field.kt:417` forbids and because filling our own outlines means a legible PNG is
  *     evidence about *this* code rather than about AWT's rasteriser.
  *  5. **→ points** ([TextLayout.samplePoints], [TextLayout.toPointFLine]). Even-by-arc-length
@@ -390,7 +390,7 @@ private fun addExtrudedRingGroup(
 /**
  * A signed-distance grid over a layout, in text space, negative inside the ink.
  *
- * Built once and sampled bilinearly, because the honest brute-force answer — nearest point over
+ * Built once and sampled bilinearly, because the exact brute-force answer — nearest point over
  * every segment of every ring — costs a few thousand segment tests per query, and `marchingCubes` at
  * resolution 96 asks a million times. The grid pays that cost `nx*ny` times instead.
  *
@@ -591,7 +591,7 @@ class TextSdf internal constructor(
  * How a scanline decides whether a crossing count means "inside".
  *
  * The two rules a filled outline can be interpreted under, and the reason the winding convention in
- * `typography.kt` is load-bearing rather than tidy:
+ * `typography.kt` changes the result rather than tidying it:
  *
  *  - [NON_ZERO] sums the *directions* of the crossings, and is what Skia (`someSkiko.kt`'s
  *    `outputTo`) and Java2D's `GeneralPath` both do by default. A counter is a hole under this rule
@@ -601,14 +601,14 @@ class TextSdf internal constructor(
  *    instead. Robust to a broken winding, blind to a self-overlapping stroke.
  *
  * Two rules that agree on correct input and disagree on broken input is a control arm, so both are
- * here on purpose.
+ * here for that reason.
  */
 enum class TextFillRule { NON_ZERO, EVEN_ODD }
 
 /**
  * Rasterise a layout by filling its own rings: an analytic-in-x, supersampled-in-y scanline fill.
  *
- * Deliberately not `Graphics2D.drawString`. Two reasons, and the second is the important one:
+ * Not `Graphics2D.drawString`. Two reasons, and the second is the important one:
  * `imaging_field.kt:417-425` forbids in-process AWT text rendering (AppKit versus GLFW's main run
  * loop), and — more to the point — a PNG produced by AWT's rasteriser would be evidence that *AWT*
  * can draw text. Filling the contours this family extracted makes a legible PNG evidence about the
@@ -866,7 +866,7 @@ fun TextLayout.metricsFLines(
 /**
  * A per-glyph advance-box diagram: one rectangle per glyph, at its handles.
  *
- * The picture of the layout's *decisions* rather than its letters, and the honest way to see what
+ * The picture of the layout's *decisions* rather than its letters, and the way to see what
  * tracking, kerning or `onCurve` did — the boxes move even for a space, which the glyphs do not.
  */
 fun TextLayout.advanceBoxFLines(color: Vec4 = vec(0.95, 0.62, 0.35, 0.55)): List<FLine> = glyphs.map { g ->

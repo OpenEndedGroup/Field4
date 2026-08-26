@@ -140,7 +140,7 @@ data class PatOnsetMatch(
 /**
  * Compare an onset train against the schedule it should have realised.
  *
- * Two things are deliberately not judged. Neither renderer controls its own zero — a Sonic Pi
+ * Two things are not judged. Neither renderer controls its own zero — a Sonic Pi
  * recording starts before the music and an offline render starts exactly at it — so the train is
  * anchored on its earliest onset and then shifted by the **median** of the matched residuals, which
  * stops the first onset being privileged into a free 0 ms. And the constant lag that shift removes

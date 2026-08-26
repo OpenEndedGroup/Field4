@@ -237,7 +237,7 @@ class FieldAudioClient(
      *
      * [startSeconds] must be non-negative, [durationSeconds] positive or null for "to the end", and
      * [points] within 16..4096. Every source frame in the window contributes, so this is safe to ask
-     * for over a long recording and honest about single-sample transients. `AudioVisualizer` calls
+     * for over a long recording and unforgiving about single-sample transients. `AudioVisualizer` calls
      * this endpoint itself as the user zooms; call it directly only when you are drawing the waveform
      * yourself.
      */

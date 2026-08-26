@@ -108,7 +108,7 @@ data class RelaxationPlan(
 
         /**
          * The canonical form written as constraints: planar faces, one common edge-tangency radius,
-         * and the tangency centroid at the origin. Solving this is an honest alternative to
+         * and the tangency centroid at the origin. Solving this is a real alternative to
          * [PolyhedralObject.canonicalize]'s iteration for small objects, and it is how the canonical
          * conditions get *measured* — see [PolyhedralObject.canonicalDiagnostics].
          *
@@ -178,7 +178,7 @@ data class RealizationSolverOptions(
     val facePlanarityWeight: Double = 2.0,
     val centroidWeight: Double = 4.0,
     val radiusWeight: Double = 0.2,
-    /** The weak pull back toward the input embedding; small on purpose, it only picks a representative. */
+    /** The weak pull back toward the input embedding; small, because it only picks a representative. */
     val referenceWeight: Double = 1e-3,
     /** Null keeps the object's own size by targeting the initial mean edge length. */
     val targetEdgeLength: Double? = null,

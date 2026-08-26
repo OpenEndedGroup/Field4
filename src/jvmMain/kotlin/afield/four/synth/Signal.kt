@@ -685,7 +685,7 @@ class Mix(vararg sources: Signal) : Signal(), LiveGraphInspectable {
  * and the currency of the stereo half of the graph: it is what `AudioPatchSpec.from` accepts, what a
  * `Pan` or a Faust node is, and what the offline renderers take.
  *
- * Deliberately one method and no memoization, so a stateless adapter can implement it directly. A
+ * One method and no memoization, so a stateless adapter can implement it directly. A
  * generator that carries state across blocks should extend [StereoNode] instead, which adds [Signal]'s
  * per-cycle cache — without it, a stereo node reached twice in one block advances its own state twice.
  * [hold] wraps an arbitrary implementation to get the same protection.

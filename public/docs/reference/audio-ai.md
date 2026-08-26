@@ -97,7 +97,7 @@ The EnCodec reconstruction microscope: what a neural codec kept, what it threw a
 wrote down in between.
 
 A codec round trip is three things that have to be looked at together — the audio in, the discrete
-tokens, the audio out — and this file is the rendering half of that view. It is deliberately
+tokens, the audio out — and this file is the rendering half of that view. It is
 browser-free below the top layer: the spectrograms, the waveform and the token map are drawn into
 PNG bytes on the JVM, so the same code produces a live box output, a test assertion and the
 committed picture on [the EnCodec microscope page](../audio_ai_codec.md).
@@ -350,7 +350,7 @@ Interactive, dependency-free timeline renderer for a [`GestureBoard`](audio-ai.m
 
 The job monitor: the service's own live view of every durable job, embedded in a box output.
 
-It is an `<iframe>` rather than a Kotlin-rendered table on purpose — the page is served by the
+It is an `<iframe>` rather than a Kotlin-rendered table, because the page is served by the
 same service that owns the jobs, so it cannot disagree with them, and it needs no polling code on
 the Field side. Same-origin through the `/field-audio` prefix, so nothing here reaches across
 origins.
@@ -375,7 +375,7 @@ grids, in practice.
 `numpy.kt` already reads `.npy` and `.npz` generally; this is the narrow, self-checking version
 for the one shape that matters here (codebooks × frames of small integers), so the codec views
 can index tokens by codebook and frame without a general tensor type in between. It refuses what
-it cannot represent honestly rather than guessing: Fortran order, an unsupported dtype and a
+it cannot represent, rather than guessing: Fortran order, an unsupported dtype and a
 multi-item batch are all errors with a message.
 
 `src/jvmMain/kotlin/afield/stdlib/noir/audioai/NpyIntTensor.kt`
@@ -912,7 +912,7 @@ One frame of a job's live narration, delivered over the WebSocket `FieldAudioCli
 
 <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ModelCapability</span><span class="p">(</span><span class="p">@</span><span class="nc">SerialName</span><span class="p">(</span><span class="s">&quot;model&#95;id&quot;</span><span class="p">)</span> <span class="k">val</span> <span class="n">modelId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">revision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">operations</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="p">@</span><span class="nc">SerialName</span><span class="p">(</span><span class="s">&quot;native&#95;sample&#95;rates&quot;</span><span class="p">)</span> <span class="k">val</span> <span class="n">nativeSampleRates</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">channels</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="p">@</span><span class="nc">SerialName</span><span class="p">(</span><span class="s">&quot;max&#95;duration&#95;seconds&quot;</span><span class="p">)</span> <span class="k">val</span> <span class="n">maxDurationSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="p">@</span><span class="nc">SerialName</span><span class="p">(</span><span class="s">&quot;supports&#95;seed&quot;</span><span class="p">)</span> <span class="k">val</span> <span class="n">supportsSeed</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="p">@</span><span class="nc">SerialName</span><span class="p">(</span><span class="s">&quot;supports&#95;cancellation&quot;</span><span class="p">)</span> <span class="k">val</span> <span class="n">supportsCancellation</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">conditioning</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">available</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="p">@</span><span class="nc">SerialName</span><span class="p">(</span><span class="s">&quot;unavailable&#95;reason&quot;</span><span class="p">)</span> <span class="k">val</span> <span class="n">unavailableReason</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>
 
-What one model can do, as reported by `FieldAudioClient.models` — the honest answer to "can I ask for this?" before submitting anything.
+What one model can do, as reported by `FieldAudioClient.models` — the authoritative answer to "can I ask for this?" before submitting anything.
 
 | Declaration | Summary |
 | --- | --- |

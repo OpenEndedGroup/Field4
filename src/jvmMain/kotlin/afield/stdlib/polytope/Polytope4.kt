@@ -9,12 +9,12 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * Rank 4: the seeds, the coordinates and the viewing policy that keep the incidence core honest
+ * Rank 4: the seeds, the coordinates and the viewing policy that keep the incidence core general
  * about being rank-general rather than a polyhedron library with a rank field.
  *
  * Four regular seeds — [fiveCell], [tesseract], [sixteenCell] and the self-dual [twentyFourCell] —
  * plus [Realization4] for coordinates, an abstract [Polytope4.dual], and [Projection4] for getting a
- * picture out. Everything a rank-3 reader would assume is wrong here, deliberately: there are four
+ * picture out. Everything a rank-3 reader would assume is wrong here: there are four
  * proper ranks rather than three, an edge bounds three or more polygons rather than exactly two (so
  * `validate(checkManifold = true)` *must reject* a tesseract, and does), and there is no
  * `triangulate()`, because a projected 4-polytope's polygons do not bound a surface and filling them
@@ -81,7 +81,7 @@ class Realization4(vertexCoordinates: List<DoubleArray>) {
  * This exists to exercise the incidence core at a rank the Conway surface operators cannot reach.
  * Every rank-3 assumption stays out of it: the topology has four proper ranks (vertices, edges,
  * polygons, cells) plus the whole-polytope element, an edge belongs to three or more polygons
- * rather than exactly two, and there is deliberately no `triangulate()`. Viewing one is a
+ * rather than exactly two, and there is no `triangulate()`. Viewing one is a
  * [Projection4] above realization, not a reason to flatten the topology.
  */
 data class Polytope4(
@@ -220,7 +220,7 @@ fun sixteenCell(): Polytope4 {
 
 /**
  * The 24-cell: 24 vertices, 96 edges, 96 triangles, 24 octahedral cells. It is self-dual and has
- * no three-dimensional analogue, which makes it the honest test that the core is rank-general and
+ * no three-dimensional analogue, which makes it the real test that the core is rank-general and
  * not a polyhedron library wearing a hat.
  *
  * The 24 permutations of `(±1, ±1, 0, 0)`: circumradius and edge length are both `sqrt(2)`, so every
@@ -390,7 +390,7 @@ private inline fun <T : Any> requireNonNull(value: T?, message: () -> String): T
 /**
  * How a four-dimensional point becomes a three-dimensional one for viewing.
  *
- * This is deliberately a separate concept from realization. A [Polytope4]'s coordinates are its
+ * This is a separate concept from realization. A [Polytope4]'s coordinates are its
  * geometry; a projection is a camera, and swapping cameras must not be mistaken for changing the
  * object.
  */
@@ -403,7 +403,7 @@ fun interface Projection4 {
 }
 
 /**
- * Drop one axis. Honest, cheap, and usually unreadable — every cell folds onto every other.
+ * Drop one axis. Cheap, exact, and usually unreadable — every cell folds onto every other.
  *
  * The three surviving axes become x, y and z in ascending index order, so `axis = 3` is the identity
  * on the first three components and `axis = 0` shifts the rest down.

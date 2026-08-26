@@ -110,7 +110,7 @@ fun Box.faustCompile(source: String): FaustProgram {
 /**
  * A running Faust program, and the handle a box holds it by.
  *
- * Deliberately *not* a [StereoRenderable]: if it were, the generic audio return-value handler would
+ * *Not* a [StereoRenderable]: if it were, the generic audio return-value handler would
  * claim it and close only the audio patch, leaving this object's GraalVM context alive for the life
  * of the process. One leaked context per box run is exactly the kind of slow leak that only shows up
  * in a long session, so [registerFaustLaunchReturnValue] handles it instead and closes both.
@@ -253,13 +253,13 @@ fun Box.faustDiagram(program: FaustProgram, channel: String = "diagram") {
 /**
  * Render a program offline and plot the result.
  *
- * Nothing here touches the audio engine, so this works headless — which makes it the honest way to
+ * Nothing here touches the audio engine, so this works headless — which makes it the reliable way to
  * put a Faust figure in the documentation, and a quick way to see what a program does without
  * listening to it. The DSP is instantiated, rendered and closed; a program that needs an input hears
  * silence.
  *
  * @param seconds how much audio to render
- * @param sampleRate deliberately a plain default rather than the audio engine's rate: asking
+ * @param sampleRate a plain default rather than the audio engine's rate: asking
  *   [FieldAudioEngine] would open an audio device, and this path is meant to work where there is none
  * @param maxPoints decimate to at most this many points, since a second at 48kHz is far more than a
  *   plot can show or a websocket should carry

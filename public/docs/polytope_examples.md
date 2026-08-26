@@ -993,7 +993,7 @@ section.
     That is not a promise that every input converges. `kkC` — kis applied twice to the cube — is the
     worked counter-example for *these two iterations*: neither finds its canonical form, and the
     library returns `converged = false` with `reason = "max iterations"` and finite coordinates,
-    rather than a smoothed lie. A test pins that failure as a *reported* one, so it cannot quietly
+    rather than a smoothed lie. A test pins that failure as a *reported* one, so it cannot
     start returning garbage instead.
 
     It is no longer a gap in the library, though. `relaxWithCeres` reaches it in 12 iterations and
@@ -1595,8 +1595,8 @@ Both are exercised by the transcript execution smoke, so their box bodies cannot
 
 ## What this does not do yet
 
-Kept here because the architecture note is careful about it and a documentation page that quietly
-drops the caveats is worse than no page:
+Kept here because the architecture note is careful about it, and a documentation page that drops
+the caveats is worse than no page:
 
 - A face is a **single** ordered vertex cycle. No holes, no annuli, and star/self-intersecting
   polygons are not represented — pretending Earcut handles them would make their winding and filling

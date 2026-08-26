@@ -275,7 +275,7 @@ infix fun <A, B> PatPattern<A>.rhythmFrom(other: PatPattern<B>): PatPattern<A> =
 /**
  * A named parameter pattern waiting to be attached to some atoms.
  *
- * Deliberately not a new event type: [with] resolves it through [appLeft] and writes the result
+ * Not a new event type: [with] resolves it through [appLeft] and writes the result
  * into the event's existing `annotations` map, so parameters survive `rev`, `fast`, `every`,
  * scheduling, and the editor-highlighting span bookkeeping without any of those knowing about it.
  */

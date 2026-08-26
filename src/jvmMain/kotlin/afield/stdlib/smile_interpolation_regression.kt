@@ -12,7 +12,7 @@ import smile.regression.GaussianProcessRegression
  * kernel, configured by [SmileGpOptions]).
  *
  * Both take parallel `xs`/`ys` arrays, copy them, and require at least two finite samples with
- * `xs` strictly increasing — a violation throws rather than producing a quietly bad fit. The
+ * `xs` strictly increasing — a violation throws rather than producing a bad fit with no complaint. The
  * returned [SmileCubicSpline1D] / [SmileGaussianProcess1D] are callable via `invoke` and also
  * expose `predict` for a single `x` or for a whole array.
  *

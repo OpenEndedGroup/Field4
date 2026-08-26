@@ -25,7 +25,7 @@ expect:
  * checking it is the whole job: **it is not true.** A large share of the published corpus comes from
  * [DoughDspSoundDocs], which renders DSP primitives and never calls [patVoice] at all. See
  * [Origin] for the families the sweep actually found — four of them when this object was written,
- * and the count is deliberately not repeated in this sentence, because the first version of it said
+ * and the count is not repeated in this sentence, because the first version of it said
  * "three" while [Origin] already declared four. `DocsAudioProvenanceGuardTest` pins the numbers; a
  * KDoc paragraph is the wrong place to keep one.
  *
@@ -40,11 +40,11 @@ expect:
  *    render through its declared producer. ~1 means the asset is what the code makes now. This is
  *    the `56b124131` property, and it is the one a docs build can silently break.
  *  * [Finding.standInSimilarity] — against a [patVoice] render of the same pattern, where the
- *    producer is pattern-shaped. `NaN` where the concept does not apply, which is honest rather
+ *    producer is pattern-shaped. `NaN` where the concept does not apply, which is correct rather
  *    than convenient: a plate reverb has no pattern to render a stand-in of.
  *
  * Anything the sweep finds that cannot be re-derived has to be named in [UNDERIVABLE] with a
- * reason. The guard asserts that list too, so it cannot quietly grow.
+ * reason. The guard asserts that list too, so it cannot grow unnoticed.
  */
 object DocsAudioProvenance {
 
@@ -81,7 +81,7 @@ object DocsAudioProvenance {
     /**
      * The renderer object named by a page's `audio-renderer=` attribute, and what it produces.
      *
-     * [SoundRenderPathDocs] is absent on purpose: its figures each declare their own
+     * [SoundRenderPathDocs] is absent: its figures each declare their own
      * [SoundRenderPathDocs.Voice], because it is the one producer that can emit more than one
      * family. It is resolved per figure in [originOf].
      */

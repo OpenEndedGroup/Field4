@@ -202,7 +202,7 @@ fun CircularDirichlet.CellBoundary.toFLines(
  * Every cell of a weighted diagram, tinted per site.
  *
  * Note that each interior boundary is drawn **twice**, once from either side, because both cells own
- * it. That is deliberate: it is what makes the two tints meet along the arc, and it is honest about
+ * it. That is deliberate: it is what makes the two tints meet along the arc, and it is explicit about
  * the fact that [CircularDirichlet] builds each cell independently rather than sharing edges.
  *
  * @param palette a colour per site; shorter lists wrap. `null` uses [color] throughout.

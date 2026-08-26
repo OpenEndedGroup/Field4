@@ -263,7 +263,7 @@ Dirt samples: bd hh — synth voice for zzzznotadrum
 ```
 
 and for the whole-render fallback, the same call names the override rather than failing
-quietly:
+silently:
 
 ```diffstatic {data-lang=text}
 synth voice (no Dirt-Samples found; set FIELD_DIRT_SAMPLES to use real samples)

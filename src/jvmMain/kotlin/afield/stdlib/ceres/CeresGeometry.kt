@@ -61,7 +61,7 @@ value class PointId(val value: Int) {
          *
          * Accepted by [WeakPosition], [NoNegativeZ], [Centroid], [RadiusAboutCentroid] and [GaugeRotation]. It only
          * means anything on its own: the first two reject a list that mixes it with real indices, while the last three
-         * accept one and then quietly drop the sentinel, constraining just the points you named. The builder's `…All`
+         * accept one and then drop the sentinel, constraining just the points you named. The builder's `…All`
          * methods are the way to reach it without that ambiguity.
          */
         val ALL_POINTS = PointId(-1)
@@ -1052,12 +1052,12 @@ data class EdgeTangency(
  * The mean, over [edges], of each edge's nearest point to the origin, driven to the origin — three
  * residuals over every endpoint at once.
  *
- * Deliberately about the tangency points and not the vertex centroid: the canonical form centres on
+ * About the tangency points and not the vertex centroid: the canonical form centres on
  * the former, and mixing the two is the classic way to make the pair of conditions fight.
  *
  * One residual block over every distinct endpoint — the endpoint list is deduplicated, since Ceres will
  * not accept a parameter block twice in one block — so the Jacobian row is dense in the points and this
- * is the constraint that stops the problem being sparse. That is the honest shape of a mean, and it is
+ * is the constraint that stops the problem being sparse. That is the true shape of a mean, and it is
  * three residuals however many edges you pass.
  */
 data class TangencyCentroid(
@@ -1251,7 +1251,7 @@ data class GaugeRotation(
  * [buildCeresProgram] rather than instantiating it.
  *
  * Because the indices are ordinary `Int`s the `-1` whole-cloud sentinel would be easy to pass by accident;
- * it is instead reached deliberately through the `…All` methods ([weakAll], [centroidAll],
+ * it is instead reached explicitly through the `…All` methods ([weakAll], [centroidAll],
  * [radiusAboutCentroidAll], [noNegativeZAll], [gaugeRotationAll]). [build] snapshots the constraints, so a
  * builder may be extended and built again, and the resulting [CeresProgram]s are independent.
  */
@@ -1527,7 +1527,7 @@ class CeresProgramBuilder {
  * The wrapper used to hardcode `Huber(1e-3)`. That is a good default for interactive constraint
  * editing — one badly-placed point should not drag the whole model — and the wrong one for a
  * least-squares problem whose residuals are *meant* to reach zero together, because a robust loss
- * caps the influence of the largest residual and so quietly changes the objective you wrote down.
+ * caps the influence of the largest residual and so changes the objective you wrote down.
  * [HUBER] therefore remains the default for compatibility, and [NONE] is what a realization solve
  * wants.
  */
@@ -1564,7 +1564,7 @@ data class RobustLoss(val kind: Kind = Kind.HUBER, val scale: Double = 1e-3) {
  * A whole solve, described independently of any point data: an ordered list of constraints plus the loss
  * they are wrapped in.
  *
- * Deliberately not tied to a cloud. The same program compiles against any cloud of the right size, which is
+ * Not tied to a cloud. The same program compiles against any cloud of the right size, which is
  * what lets [CachedCeresSolvers] key a compiled solver on point count plus program hash and what lets a drag
  * loop re-solve without rebuilding anything. Constraint order is preserved and is the order the native side
  * builds residual blocks in; it does not otherwise affect the answer.

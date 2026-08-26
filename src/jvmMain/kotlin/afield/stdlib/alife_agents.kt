@@ -133,7 +133,7 @@ class BoidFlock(
     companion object {
         /**
          * A population at uniformly random positions with uniformly random headings at speed
-         * `maxSpeed` — the *disordered* initial condition, which is the only honest place to start a
+         * `maxSpeed` — the *disordered* initial condition, which is the only defensible place to start a
          * self-organisation claim from.
          */
         fun random(
@@ -163,7 +163,7 @@ class BoidFlock(
  * One boid step, mutating the flock in place: accumulate the three steering terms from every neighbour
  * within [BoidParams.perceptionRadius] (toroidal metric), cap the total force, integrate, wrap.
  *
- * `O(N²)` on purpose. A spatial hash is the right structure for 50 000 agents and it is a different
+ * `O(N²)`, and that is the trade. A spatial hash is the right structure for 50 000 agents and it is a different
  * (and considerably longer) piece of code; the flocks this family renders are a few hundred agents, and
  * a reference implementation whose correctness is legible is worth more here than one whose bucket
  * arithmetic is.

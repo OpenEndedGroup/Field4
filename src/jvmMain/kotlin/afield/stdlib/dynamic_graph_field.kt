@@ -11,7 +11,7 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
- * The two honest ways to *look at* `dynamic_graph_systems.kt` — the point cloud and the weighted edges
+ * The two useful ways to *look at* `dynamic_graph_systems.kt` — the point cloud and the weighted edges
  * joining it, so a time-varying graph can be watched rather than described.
  *
  * It sits in its own file for the same reason `alife_field.kt` and `wfc_field.kt` do:
@@ -50,7 +50,7 @@ import kotlin.math.roundToInt
  *    different states and must look different.
  *  - **A figure that clips says so.** [dynamicGraphImg] reports how many points fell outside the
  *    window in [DynamicGraphRaster.clipped] and [dynamicGraphOutsideWindow] answers the same question
- *    for the vector path, because a figure quietly cropping half its subject is the other way this
+ *    for the vector path, because a figure cropping half its subject unannounced is the other way this
  *    goes wrong.
  */
 
@@ -136,7 +136,7 @@ fun dynamicGraphWindow(
  *
  * @param maxWeight the weight that maps to the top of the ramp and the thickest stroke; name it in the
  *   figure's caption. The natural choice is the `maxWeight` the [DynamicGraphSystem] was given, since
- *   that is the ceiling [DynamicEdgeList.reinforce] saturates at. Not derived from [edges], on purpose
+ *   that is the ceiling [DynamicEdgeList.reinforce] saturates at. Not derived from [edges]
  *   — see the range policy at the top of this file.
  * @param colormap a ramp name from [Colormaps.names]; the same ramp [dynamicGraphPanel] colours with,
  *   so a still and a clip of the same system read the same way

@@ -24,7 +24,7 @@ expect:
 */
 
 /**
- * Headless **offline sound-render harness** for the dough DSP ports in [DoughDsp], and the honest
+ * Headless **offline sound-render harness** for the dough DSP ports in [DoughDsp], and the only
  * source behind the `audio="…"` docs-capture mode (see `public/docs_hooks.py`).
  *
  * Every scene in [SCENES] is produced by actually *running* a primitive on the CPU — a pluck into

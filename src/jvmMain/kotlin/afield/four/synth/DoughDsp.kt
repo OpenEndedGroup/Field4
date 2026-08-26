@@ -788,7 +788,7 @@ class SoftDistort(
  *
  * dough calls this `zaw` to distinguish it from its band-limited `saw`.
  * The aliasing is the point: at high frequencies the foldover adds a
- * gritty inharmonic shimmer that [SawOsc] (PolyBLEP) deliberately
+ * gritty inharmonic shimmer that [SawOsc] (PolyBLEP)
  * removes. Use [SawOsc] for anything that needs to stay clean.
  */
 class ZawOsc(

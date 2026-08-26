@@ -673,7 +673,7 @@ internal fun inferSonicPiLineOffset(box: Box, code: String): Int {
  * Decode `/log/multi_message`: `jobId, thread, runtime, count`, then `count` flattened
  * `(style, text)` pairs.
  *
- * Tolerant on purpose — the count and the payload come from separate parts of the spider server, so
+ * Tolerant — the count and the payload come from separate parts of the spider server, so
  * a message that claims more pairs than it carries decodes to the pairs that are actually there.
  * Losing a log line is a cosmetic failure; throwing on the OSC receive thread would not be.
  */

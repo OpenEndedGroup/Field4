@@ -56,8 +56,8 @@ data class UKFOptions(
 }
 
 /**
- * How hard to jiggle particles apart immediately after resampling — the cure for a filter that has quietly
- * collapsed onto a handful of identical clones.
+ * How hard to jiggle particles apart immediately after resampling — the cure for a filter that has
+ * collapsed, without saying so, onto a handful of identical clones.
  *
  * Systematic resampling copies good particles, so straight after it several particles are numerically
  * *identical* and will stay identical forever, wasting the ensemble. Roughening adds a small independent
@@ -80,7 +80,7 @@ data class RougheningOptions(
 
     /**
      * If true, the UKF covariance is inflated by the variance of the roughening noise.
-     * This keeps the UKF covariance honest after we perturb its mean.
+     * This keeps the UKF covariance consistent after we perturb its mean.
      */
     val inflateCovariance: Boolean = true
 ) {
@@ -92,7 +92,7 @@ data class RougheningOptions(
 
 /**
  * An unscented Kalman filter: it tracks a quantity you cannot measure directly, keeping a best guess [x] and
- * an honest account [p] of how unsure it is.
+ * an explicit account [p] of how unsure it is.
  *
  * Unlike a plain Kalman filter it needs no derivatives — you hand [predict] and [update] ordinary lambdas
  * for "how does the state evolve" and "what would I measure if the state were this", and it probes them at a
@@ -371,7 +371,7 @@ data class UKFParticle<H>(
  * update each step, and [resampleIfNeeded] after, or the whole ensemble's weight ends up on one particle.
  *
  * [copyHypothesis] is how a hypothesis is duplicated at resampling time; it defaults to handing back the same
- * reference, which is correct for an immutable [H] and **quietly wrong for a mutable one** — two particles
+ * reference, which is correct for an immutable [H] and **wrong, and silently so, for a mutable one** — two particles
  * would then share and clobber each other's hypothesis. Pass a real copy function if [H] is mutable.
  *
  * @throws IllegalArgumentException if constructed with no particles
@@ -623,7 +623,7 @@ class UKFParticleFilter<H>(
      * The uncertainty of the whole ensemble: the weighted average of the particles' own covariances **plus** the
      * scatter of their means about [estimateMean].
      *
-     * That second term is what makes this honest — it is how disagreement *between* hypotheses shows up as
+     * That second term is what makes this correct — it is how disagreement *between* hypotheses shows up as
      * uncertainty rather than vanishing. A filter whose particles are individually confident but point in
      * different directions reports a large covariance here, which is exactly right.
      */

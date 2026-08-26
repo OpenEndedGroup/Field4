@@ -130,7 +130,7 @@ object SonicPiVocabulary {
     /**
      * The opts [synth] accepts.
      *
-     * Per-synth, deliberately: `:tb303` has `cutoff` and `res`, `:beep` has neither, and sending
+     * Per-synth, because `:tb303` has `cutoff` and `res`, `:beep` has neither, and sending
      * `cutoff:` to `:beep` is silently ignored by Sonic Pi rather than reported.
      */
     fun synthOpts(synth: String): Set<String> = synthOptsByName[synth] ?: commonPlayOpts
@@ -174,7 +174,7 @@ sealed class SonicPiVoice {
         override fun toString() = if (synth == null) "play $note" else "play $note on :$synth"
     }
 
-    /** Nothing to play. Distinct from *unresolved*: this atom is deliberately a rest. */
+    /** Nothing to play. Distinct from *unresolved*: this atom is a rest, and says so. */
     object Silent : SonicPiVoice() {
         override fun toString() = "silent"
     }
@@ -231,7 +231,7 @@ val SONIC_PI_DRUM_ALIASES: Map<String, SonicPiVoice> = buildMap {
  * 4. a note: `c4`, `ef3`, `60`, via `patNoteNumber`, played on the ambient synth.
  * 5. [aliases] — the drum shorthand.
  *
- * Samples and synths come before notes on purpose: `fm` is a synth and would otherwise be read as
+ * Samples and synths come before notes: `fm` is a synth and would otherwise be read as
  * F♯-something, and `e2` really is a note that no sample is called.
  *
  * An atom that matches nothing resolves to `null`, which becomes an entry in
@@ -827,7 +827,7 @@ data class SonicPiReading(
  *
  * It understands only the subset [sonicPiProgram] emits. Anything else lands in
  * [SonicPiReading.unparsed], so widening the emitter without widening this shows up as a failure
- * rather than as an event the oracle quietly stopped checking.
+ * rather than as an event the oracle stopped checking without saying so.
  */
 object SonicPiProgramReader {
 

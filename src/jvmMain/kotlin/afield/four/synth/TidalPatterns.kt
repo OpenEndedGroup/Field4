@@ -202,7 +202,7 @@ import kotlinx.coroutines.runBlocking
  *
  * Seconds appear only at the boundary where something has to be scheduled or heard; everything inside
  * the pattern algebra is in cycles and stays exact. [fromDouble] is the deliberate exception and is
- * lossy on purpose — it **truncates** onto a fixed denominator — so it is for reading a slider, not
+ * lossy — it **truncates** onto a fixed denominator — so it is for reading a slider, not
  * for arithmetic whose result you intend to compare.
  */
 data class PatQ(val n: BigInteger, val d: BigInteger) : Comparable<PatQ> {
@@ -249,7 +249,7 @@ data class PatQ(val n: BigInteger, val d: BigInteger) : Comparable<PatQ> {
 /**
  * A **half-open** span of cycles, `[start, end)`, and the only thing you may ask a [PatPattern] about.
  *
- * Half-open is load-bearing rather than a convention: [contains] is `t >= start && t < end`, so
+ * Half-open is a real constraint rather than a convention: [contains] is `t >= start && t < end`, so
  * consecutive arcs tile time without an event at a bar line belonging to both bars. That is what lets
  * a scheduler walk cycle by cycle — the only thing it can do, since it cannot ask for all of time —
  * without striking a note twice.
@@ -471,7 +471,7 @@ data class PatScheduledEvent<A>(
  * asking about cycle 10,000 costs the same as asking about cycle 0. Time stays exact ([PatQ]) through
  * every transform, so a third of a cycle is still a third after a round trip.
  *
- * `A` is deliberately unconstrained. An atom is whatever you want it to mean — a drum name for
+ * `A` is unconstrained. An atom is whatever you want it to mean — a drum name for
  * [playDirt], a note number for [Sequencing], a [PatFunctionAtom] for the `Fn` algebra, a parameter
  * value, or a lambda's argument for an arbitrary side effect. Nothing in this type knows about sound.
  *

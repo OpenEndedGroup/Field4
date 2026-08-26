@@ -37,7 +37,7 @@ Design choices, all deliberate:
   reaction–diffusion field pipelines straight into `gaussianBlur`, `colormap`, `connectedComponents`,
   `isoContourFLines` and `asHeightSdf` with no glue. Nothing here reimplements convolution.
 - **A step is a value, not a side effect.** `step()` returns the next state; you keep the frames you
-  want. The one exception is the deliberately-mutable agent populations, where copying 50 000
+  want. The one exception is the mutable agent populations, where copying 50 000
   agents per frame would be the whole cost.
 - **Deterministic from a seed.** Every stochastic system takes a `seed: Long` and uses its own
   `kotlin.random.Random`, so a figure in the docs is reproducible and a regression is a diff.
@@ -48,7 +48,7 @@ Design choices, all deliberate:
   ~1.7; a Gray–Scott spot regime is one whose `blobShapes` are round. Each of those is a number a
   control arm gets wrong.
 
-Out of scope on purpose: GPU implementations (that is `afield.four` / StackSL / RectSL — these are
+Out of scope: GPU implementations (that is `afield.four` / StackSL / RectSL — these are
 CPU reference implementations you can read), and any system needing a trained model.
 
 `src/jvmMain/kotlin/afield/stdlib/alife.kt`
@@ -60,7 +60,7 @@ CPU reference implementations you can read), and any system needing a trained mo
 | Declaration | Summary |
 | --- | --- |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">IntGrid</span><span class="p">.</span><span class="nf">toImg</span><span class="p">(</span><span class="n">states</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Render this grid as a 1-channel [`Img`](imaging.md#imaging-kt-img) with state `s` mapped to `s / max(1, states - 1)`, so a two-state grid becomes a clean 0/1 mask and a 12-state cyclic CA becomes a ramp ready for `Img.colormap`. |
-| <code class="highlight"><span class="k">fun</span> <span class="nc">IntGrid</span><span class="p">.</span><span class="nf">toImg</span><span class="p">(</span><span class="n">palette</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Triple</span><span class="p">&lt;</span><span class="nc">Float</span><span class="p">,</span> <span class="nc">Float</span><span class="p">,</span> <span class="nc">Float</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Render this grid as RGB through an explicit palette, one `Triple(r, g, b)` per state — the honest way to show a multi-state automaton, where a grayscale ramp implies an ordering between states that may not exist. States beyond the palette wrap around it. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">IntGrid</span><span class="p">.</span><span class="nf">toImg</span><span class="p">(</span><span class="n">palette</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Triple</span><span class="p">&lt;</span><span class="nc">Float</span><span class="p">,</span> <span class="nc">Float</span><span class="p">,</span> <span class="nc">Float</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Render this grid as RGB through an explicit palette, one `Triple(r, g, b)` per state — the exact way to show a multi-state automaton, where a grayscale ramp implies an ordering between states that may not exist. States beyond the palette wrap around it. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">toIntGrid</span><span class="p">(</span><span class="n">threshold</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">0.5f</span><span class="p">,</span> <span class="n">wrap</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntGrid</span></code> | Threshold a 1-channel [`Img`](imaging.md#imaging-kt-img) into a two-state [`IntGrid`](alife.md#alife-kt-intgrid) — the way a reaction–diffusion field, a Physarum trail or an imported picture becomes CA seed material. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">cyclicPalette</span><span class="p">(</span><span class="n">states</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Triple</span><span class="p">&lt;</span><span class="nc">Float</span><span class="p">,</span> <span class="nc">Float</span><span class="p">,</span> <span class="nc">Float</span><span class="p">&gt;</span><span class="p">&gt;</span></code> | A dark-background categorical palette sized for multi-state automata: state 0 is near-black background, and the rest sweep the hue circle at fixed saturation/value so no two adjacent states look alike. Built from `hsvToRgb`'s maths directly so it needs no `Img` round trip. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">translationBetween</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">IntGrid</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">IntGrid</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span><span class="o">?</span></code> | The rigid translation from `a` to `b` as `(dx, dy)`, or `null` if `b` is not a translate of `a`. |
@@ -263,7 +263,7 @@ A grown aggregate.
 
 ## alife_animate.kt { #alife-animate-kt }
 
-One shared, honest way to *animate* the `alife*.kt` family — because every system in it is a time
+One shared way to *animate* the `alife*.kt` family — because every system in it is a time
 evolution, and a montage of frozen generations is the one view that hides the thing they are about.
 
 The whole file is `Box.animateEvolution` plus four small "show a prefix of something" helpers. It sits
@@ -354,7 +354,7 @@ where the two must agree.
 | <code class="highlight"><span class="k">fun</span> <span class="nf">binomialParity</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">k</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> | `C(n, k) mod 2` — the parity of a binomial coefficient, by Kummer's theorem: it is 1 exactly when `k`'s binary digits are a subset of `n`'s, i.e. `n and k == k`. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">sierpinskiReference</span><span class="p">(</span><span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">generations</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntGrid</span></code> | The exact space-time diagram of rule 90 from a single central seed, computed from `binomialParity` rather than by stepping — the reference the CA must reproduce cell for cell. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">IntGrid</span><span class="p">.</span><span class="nf">centerColumn</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntArray</span></code> | The centre column of an elementary rule's space-time diagram, as a bit sequence. |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">longestRunLength</span><span class="p">(</span><span class="n">bits</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> | The longest run of identical values in `bits` — a crude but honest structure detector for a bit sequence. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">longestRunLength</span><span class="p">(</span><span class="n">bits</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> | The longest run of identical values in `bits` — a crude but real structure detector for a bit sequence. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">lifeRule3D</span><span class="p">(</span><span class="n">notation</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">LifeRule3D</span></code> | Parse a 3-D rule from `B…/S…` where the counts are **comma-separated** (they run to 26, so the digit-per-count convention of 2-D notation cannot work). |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">IntVolume</span><span class="p">.</span><span class="nf">step</span><span class="p">(</span><span class="n">rule</span><span class="p">:</span> <span class="nc">LifeRule3D</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntVolume</span></code> | One synchronous generation of a [`LifeRule3D`](alife.md#alife-ca-kt-liferule3d). |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">IntVolume</span><span class="p">.</span><span class="nf">stepTimes</span><span class="p">(</span><span class="n">rule</span><span class="p">:</span> <span class="nc">LifeRule3D</span><span class="p">,</span> <span class="n">generations</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntVolume</span></code> | `step` applied `generations` times under a [`LifeRule3D`](alife.md#alife-ca-kt-liferule3d). |
@@ -605,7 +605,7 @@ A Lenia kernel as parallel arrays of offsets and weights.
 
 <code class="highlight"><span class="k">object</span> <span class="nc">LeniaPresets</span></code>
 
-Named continuous-Lenia parameter sets. These are labelled by the behaviour this codebase **measures** (`leniaPhase`), not by a creature name from the literature: the family deliberately does not claim to reproduce a named Lenia lifeform, because reproducing one requires its exact published initial pattern and this file does not ship one.
+Named continuous-Lenia parameter sets. These are labelled by the behaviour this codebase **measures** (`leniaPhase`), not by a creature name from the literature: the family does not claim to reproduce a named Lenia lifeform, because reproducing one requires its exact published initial pattern and this file does not ship one.
 
 | Declaration | Summary |
 | --- | --- |
@@ -635,7 +635,7 @@ The outcome of a Lenia run, as measured rather than as looked at.
 | <code class="highlight"><span class="k">val</span> <span class="n">centroidDrift</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">field</span><span class="p">:</span> <span class="nc">Img</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toHTML</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | Inline view: the final field on a **fixed** `0..1` scale, the measured phase, and the mass history as a sparkline. Body in `alife_field.kt` (`alifeLeniaRunHtml`). A saturated field is constant at 1 and an auto-ranged colour map draws it black, i.e. identical to death — so this view is the one place in the family where the range policy is load-bearing rather than tidy. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toHTML</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | Inline view: the final field on a **fixed** `0..1` scale, the measured phase, and the mass history as a sparkline. Body in `alife_field.kt` (`alifeLeniaRunHtml`). A saturated field is constant at 1 and an auto-ranged colour map draws it black, i.e. identical to death — so this view is the one place in the family where the range policy changes the result rather than tidying it. |
 
 ## alife_field.kt { #alife-field-kt }
 
@@ -649,7 +649,7 @@ reader of `alife.kt` sees integer lattices and nothing about HTML, and the two f
 separately.
 
 **Range-policy discipline, which is the whole difference between a heatmap and a lie.** Copied
-deliberately from `wfc_field.kt`, because these are the rules that stop an inline view being
+separately from `wfc_field.kt`, because these are the rules that stop an inline view being
 decoration:
 
  - **Every scale is named in the caption, with both endpoints spelled out in the units of the thing

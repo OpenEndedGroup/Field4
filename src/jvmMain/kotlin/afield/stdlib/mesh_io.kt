@@ -12,7 +12,7 @@ import java.nio.ByteOrder
  * **OBJ** (text, indexed, carries normals and uvs) and **STL** (ASCII or binary, triangle soup, the
  * lingua franca of 3D printing).
  *
- * Both directions, no dependencies, and honest about what each format can carry:
+ * Both directions, no dependencies, and explicit about what each format can carry:
  *
  *  - [TriMesh.toObj] / [objToTriMesh] keep the index structure, so a watertight mesh round-trips as a
  *    watertight mesh. Normals and uvs survive; per-vertex colours do not (OBJ has no standard for
@@ -301,7 +301,7 @@ fun triMeshFromStl(file: File): TriMesh = stlToTriMesh(file.readBytes())
 /**
  * Load a mesh from a path, choosing the reader by extension (`.obj`, `.stl`).
  *
- * Deliberately narrow, and deliberately dependency-free: these two readers are a few hundred lines of
+ * Narrow, and dependency-free: these two readers are a few hundred lines of
  * plain Kotlin with no native library behind them. For **any other format** — PLY, glTF, GLB, FBX,
  * DAE, 3DS — reach for `afield.four.modules.meshFromAnyFile`, which handles these two as well and
  * routes the rest through the loaders in `simplePLYSupport.kt` and `simpleGLTFSupport.kt`. The whole

@@ -34,7 +34,7 @@ expect:
  * `sustain` parameters. There is no realtime engine, no audio device, no GPU and no Field window,
  * and the render is deterministic, so a committed `.wav` regenerates byte-stably.
  *
- * Three scenes are deliberately **two-halves-of-one-file**: the first half is what the pre-tonight
+ * Three scenes are **two-halves-of-one-file**: the first half is what the pre-tonight
  * surface could produce and the second half is the same pattern with the new operator applied, so
  * the difference is *heard* in a single listen rather than described. The verification checks the
  * halves against each other rather than against a remembered number.
@@ -580,7 +580,7 @@ object PatSoundDocs {
      * Estimates the dominant frequency of `[from, to)` by autocorrelation over the musical range.
      *
      * Used to check that the audio really sounds the MIDI note the pattern scheduled — the only
-     * honest way to verify a pitch claim about a `.wav`.
+     * reliable way to verify a pitch claim about a `.wav`.
      */
     fun estimateHz(samples: FloatArray, from: Int, to: Int, loHz: Double = 40.0, hiHz: Double = 2000.0): Double {
         val lo = from.coerceIn(0, samples.size)
@@ -753,7 +753,7 @@ fun patVoice(
     attack: Double = 0.003
 ): PatVoiceSpec = PatVoiceSpec(wave, baseHz, decay.coerceAtLeast(1e-4), sustain.coerceIn(0.0, 1.0), attack.coerceAtLeast(1e-5))
 
-/** The drum map behind unpitched atoms — deliberately crude, just enough to be recognisable. */
+/** The drum map behind unpitched atoms — crude, just enough to be recognisable. */
 private fun patDrumHz(atom: String, baseHz: Double): Pair<Double, PatWave?> = when (atom.substringBefore(':')) {
     "bd", "kick" -> 62.0 to PatWave.SINE
     "sd", "snare" -> 190.0 to PatWave.NOISE
@@ -766,7 +766,7 @@ private fun patDrumHz(atom: String, baseHz: Double): Pair<Double, PatWave?> = wh
 /**
  * Schedules [pattern] over [cycles] whole cycles at [cps] and renders it through [voice].
  *
- * This is the honest core of [PatSoundDocs]: nothing here knows anything about the operators. It
+ * This is the core of [PatSoundDocs]: nothing here knows anything about the operators. It
  * asks the pattern for its events, reads their parameters, and adds one voice per event.
  */
 fun patRenderStereo(

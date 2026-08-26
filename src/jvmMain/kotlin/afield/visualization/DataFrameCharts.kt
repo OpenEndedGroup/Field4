@@ -12,7 +12,7 @@ import org.jetbrains.kotlinx.dataframe.DataFrame
  * rows for `.h2`, which is the right compact form: a frame is rows and columns first. What it had no
  * answer for is the other question a reader has about a numeric column, which is *what shape is it*.
  *
- * This is that answer, and it is deliberately thin — nine lines of column selection over [Chart].
+ * This is that answer, and it is thin — nine lines of column selection over [Chart].
  * The interesting decision is which columns, and the rule is the one that makes `frame.chart()` with
  * no arguments do the obvious thing:
  *

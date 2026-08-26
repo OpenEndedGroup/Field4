@@ -196,7 +196,7 @@ fun slGlsl(
 
 /**
  * Evaluate a StackSL program across a line of inputs and return the whole response as a plottable
- * [StackSLSweep] — the honest way to see what a word does to a range rather than to one number.
+ * [StackSLSweep] — the direct way to see what a word does to a range rather than to one number.
  *
  * The inputs are [samples] vectors interpolated linearly from `range.first` to `range.second`,
  * **both endpoints included** (`samples = 1` evaluates the start only, and `samples` must be

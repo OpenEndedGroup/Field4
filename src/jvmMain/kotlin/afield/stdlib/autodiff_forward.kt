@@ -26,7 +26,7 @@ import kotlin.math.absoluteValue
  * second order. [hessian] in `autodiff.kt` is built on this file: `vᵀHv` is exactly [Dual2.second]
  * after a pass seeded along `v`.
  *
- * The op vocabulary deliberately mirrors `autodiff.kt` name for name — [sin], [exp], [tanh], [max],
+ * The op vocabulary mirrors `autodiff.kt` name for name — [sin], [exp], [tanh], [max],
  * [pow] and friends are overloaded on both [AD] and [Dual2], so the *same* expression body can be
  * written once against a shape and evaluated either way (see [ADFunction2]).
  *

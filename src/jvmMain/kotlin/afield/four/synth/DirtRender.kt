@@ -21,7 +21,7 @@ import kotlin.math.sqrt
  * published clips are [patVoice], and the largest family comes from [DoughDspSoundDocs], which
  * never reaches this voice at all.
  *
- * The counts deliberately do not appear in that sentence any more. They did — "of the twelve, four
+ * The counts no longer appear in that sentence. They did — "of the twelve, four
  * are `patVoice` and six come from `DoughDspSoundDocs`" — and two of the three had gone stale by
  * the time this package entered the generated codebase reference, which publishes this block
  * verbatim. The corpus grew a Faust clip and a DoughDSP scene; the places that hold the numbers as
@@ -38,7 +38,7 @@ import kotlin.math.sqrt
  *
  *  * **No library on this machine** — the whole render falls back to [patRenderStereo]. Nothing
  *    breaks, the figures still generate, and [DirtRenderResult.usedSamples] says `false` so a
- *    caller can be honest about which one you are hearing.
+ *    caller can say which one you are hearing.
  *  * **Library present, token missing from it** — only *that event* falls back to the synth voice.
  *    A pattern of note numbers, or one naming a drum Dirt has never heard of, must not go silent
  *    just because the library loaded.
@@ -199,7 +199,7 @@ fun patRenderStereoDirt(
  * The sample-backed twin of [showPatAudio]: same call shape, same annotations, but it sounds like
  * the drum machine the token names instead of a stand-in for one. Falls back to the synth voice
  * when the library is absent, and returns the result so a box can print [DirtRender.DirtRenderResult.describe]
- * and be honest about which one played.
+ * and say which one played.
  */
 fun Box.showDirtAudio(
     pattern: PatPattern<String>,

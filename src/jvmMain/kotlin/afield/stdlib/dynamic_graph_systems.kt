@@ -1463,7 +1463,7 @@ class RelaxToMidpointProcess(
  * Kills, and then compacts away, every point below [minDegree] incident edges or below [minResource]
  * resource.
  *
- * **Both defaults are deliberately near-inert and `minDegree = 0` is exactly inert**, which is worth
+ * **Both defaults are near-inert and `minDegree = 0` is exactly inert**, which is worth
  * knowing before you configure one: `degree < 0` cannot hold, and `resource < -Double.MAX_VALUE`
  * cannot hold, so `PruneIsolatedPointsProcess(minDegree = 0)` is a provable no-op — it marks nothing,
  * and `removeDeadPointsInPlace` then returns early. That is how [exampleDynamicMorphogenesisStep] is
@@ -1542,7 +1542,7 @@ class DynamicProcessPipeline(
  * grow tips, merge what has collided, smooth, prune.
  *
  * **Read [DirectedTipGrowthProcess] and [PruneIsolatedPointsProcess] before using this.** The
- * composition below is the family's shop window and it is deliberately left as it shipped, which means
+ * composition below is the family's shop window and it is left as it shipped, which means
  * it pairs an uncapped growth rule with a prune configured (`minDegree = 0`) so that it provably
  * cannot fire. On the 40-point ring in `DynamicGraphSystemsTest` the population is exactly 40 for 109
  * frames and then multiplies by about 1.05 per frame: 3603 points by frame 199. [maxPointCount] is the

@@ -58,7 +58,7 @@ package afield.stdlib.polytope
  *
  * **Winding is a convention here, not a check.** Outer rings run counter-clockwise about the face
  * normal and inner rings run clockwise. There are no coordinates at this layer, so that cannot be
- * verified here — and it is deliberately not load-bearing downstream either, because
+ * verified here — and nothing downstream depends on it either, because
  * `afield.graphics.PlanarTessellation` normalises each ring's winding and decides which ring is the
  * outer one geometrically. What [validate] does check is combinatorial: rings vertex-disjoint, each
  * ring closed over the face's own edges, every incident edge used by exactly one ring, and one
@@ -66,9 +66,9 @@ package afield.stdlib.polytope
  *
  * A holed face is a surface *with boundary* — its hole edges bound one face, not two — so
  * `validate(checkManifold = true)` rejects it, correctly. [dual] and the Conway operators require a
- * closed manifold and therefore refuse it explicitly, rather than quietly dropping the hole.
+ * closed manifold and therefore refuse it explicitly, rather than dropping the hole silently.
  *
- * ## What is deliberately absent
+ * ## What is absent
  *
  * No orientation of the complex as a whole, and no assumption that it is a closed manifold:
  * `validate(checkManifold = true)` is an opt-in stricter pass, and a 4-polytope legitimately fails
@@ -251,7 +251,7 @@ class ValidationResult(issues: List<ValidationIssue>) {
     val isValid: Boolean get() = issues.isEmpty()
 
     /**
-     * Throw [TopologyValidationException] carrying every issue, or return quietly. The bridge from
+     * Throw [TopologyValidationException] carrying every issue, or return without complaint. The bridge from
      * the report style back to ordinary Kotlin failure, used by
      * [PolytopeTopologyBuilder.buildValidated] and by each Field adapter before it assumes a
      * well-formed input.
@@ -320,7 +320,7 @@ class FaceBoundary internal constructor(outer: IntArray, holes: List<IntArray>) 
  * The constructor is internal: make one with [PolytopeTopologyBuilder], or take one from a seed such
  * as [cube] or from a Conway expression. Construction is also the only moment anything is derived —
  * the adjacent-rank up and down maps are computed once here, and an incidence whose ranks are *not*
- * adjacent is quietly left out of them rather than repaired. That is why [validate], and not
+ * adjacent is left out of them rather than repaired. That is why [validate], and not
  * construction, is where you find out about it.
  */
 class PolytopeTopology internal constructor(
@@ -441,7 +441,7 @@ class PolytopeTopology internal constructor(
     fun totalFaceHoleCount(): Int = storedFaceHoles.values.sumOf { it.size }
 
     /**
-     * Alternating count of all proper ranks; the whole-polytope rank is deliberately excluded. So it
+     * Alternating count of all proper ranks; the whole-polytope rank is excluded. So it
      * is 2 for a closed polyhedral surface and 0 for a convex 4-polytope, and either number is a
      * cheap check that a transform did not lose or duplicate elements.
      *
@@ -457,7 +457,7 @@ class PolytopeTopology internal constructor(
      * removed and contributes `1 - h`, not 1.
      *
      * Identical to [eulerCharacteristic] whenever nothing has holes, which is every seed and every
-     * Conway output. For a cube with one square window it is 1, not 2 — the honest χ of a sphere with
+     * Conway output. For a cube with one square window it is 1, not 2 — the correct χ of a sphere with
      * a disk removed.
      */
     fun cellularEulerCharacteristic(): Int = eulerCharacteristic() - totalFaceHoleCount()

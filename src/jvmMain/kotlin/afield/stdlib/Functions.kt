@@ -235,7 +235,7 @@ object Functions {
          *
          * The leading underscore is not style, it is a JVM signature clash with
          * `ClosedRange.isEmpty()`; read it as the ordinary `isEmpty`. Almost every method here
-         * short-circuits on it, so an empty domain propagates quietly rather than throwing.
+         * short-circuits on it, so an empty domain propagates rather than throwing.
          */
         val _isEmpty: Boolean
             get() = min.isNaN() || max.isNaN() || max < min
@@ -587,7 +587,7 @@ object Functions {
      * Earlier drafts split this into "domain" and "ROI". That sounded flexible
      * but made composition ambiguous: arithmetic wanted intersection, timeline
      * placement wanted a destination interval, and samplers had to guess which
-     * range was authoritative. For now the public model is deliberately simpler:
+     * range was authoritative. For now the public model is simpler:
      * an [Fn] has one [domain]. When a timeline remaps a function, the chunk owns
      * the second interval explicitly as its placement [TimelineChunk.domain].
      *
@@ -1595,7 +1595,7 @@ object Functions {
      * the fraction of each period the pulse occupies, clamped to 0..1. [rise] and [fall], though, are
      * absolute widths **in x units**, converted internally to fractions of the period; if together they
      * would exceed the duty window they are scaled down proportionally to fit, so asking for edges
-     * longer than the pulse quietly gives you a pulse that is all edge. [edge] shapes those ramps
+     * longer than the pulse gives you a pulse that is all edge. [edge] shapes those ramps
      * ([curve] only bites for `EXP`), while [profile] shapes the body ([profileSigma] only bites for
      * `GAUSSIAN`) — the two multiply, so a tapering profile with soft edges tapers twice.
      *
@@ -2479,7 +2479,7 @@ object Functions {
      * A train of narrow Gaussian bumps — [pulseTrainWidth] pre-set to a `GAUSSIAN` profile with smooth
      * edges, which is as close as a continuously-sampleable function gets to a Dirac comb.
      *
-     * One bump every [period], each [width] wide in x units — the default 0.02 is deliberately narrow.
+     * One bump every [period], each [width] wide in x units — the default 0.02 is narrow.
      * [sigma] is the bump's relative width *within* that window, and because a Gaussian never actually
      * reaches zero the bumps always have faint tails. [jitter] displaces each bump by a fraction of a
      * period, deterministically from [seed]. Unipolar: the output runs from [offset] to
@@ -3743,7 +3743,7 @@ canvas {
      * the function unchanged so it can sit mid-chain.
      *
      * Convenient inside a box and useless outside one: with no active box context this throws
-     * [IllegalStateException] rather than quietly doing nothing. Reach for `Box.plot(fn)` when you have the
+     * [IllegalStateException] rather than doing nothing. Reach for `Box.plot(fn)` when you have the
      * box in hand instead of relying on the ambient one. Re-plotting on the same channel replaces the
      * previous output.
      */
@@ -4103,7 +4103,7 @@ canvas {
     /**
      * A [FunctionCursor] over this function, positioned at the start of its domain with a step of 1.0 unless
      * told otherwise. Note that a step of 1.0 across a `0.0..1.0` function covers the whole thing in one
-     * move — set [step] deliberately.
+     * move — set [step] explicitly.
      */
     fun Fn.cursor(start: Double = domain.finiteSweep().min, step: Double = 1.0): FunctionCursor = FunctionCursor(this, start, step)
 
@@ -6860,7 +6860,7 @@ canvas {
      * [stretch] onto [to] with the pacing given by [warp] rather than a named [StretchShape] — see the
      * [Functions.stretchBy] transform for what a warp is and how it is read.
      *
-     * `outside` is deliberately not passed to [Fn.evalSafe] here: under [EdgeMode.CLAMP] it is
+     * `outside` is not passed to [Fn.evalSafe] here: under [EdgeMode.CLAMP] it is
      * unreachable, so an `outside = alpha` argument only *looks* like an un-warped fallback.
      */
     fun Fn.stretchBy(to: Domain, warp: Fn, from: Domain = domain): Fn =
@@ -7099,7 +7099,7 @@ canvas {
      * The sign of the signal: `-1`, `0` or `+1`. A hard three-level comparator — everything about the
      * magnitude is discarded.
      *
-     * A first-class node, so a rewrite can see it, but deliberately **not** differentiable: its
+     * A first-class node, so a rewrite can see it, but **not** differentiable: its
      * derivative is zero wherever it exists, so a gradient threaded through it would be exactly
      * zero and a fit would report convergence without ever having moved. `FnGradientMode.EXACT`
      * refuses instead of returning that, and says why.
@@ -7420,7 +7420,7 @@ canvas {
      * `Domain.wrap`.
      *
      * Where [clamp] flattens an over-range signal, this jumps it to the other end, which is discontinuous by design and
-     * exactly what you want for phase accumulation or a deliberately glitchy shaper. The bounds are sorted internally,
+     * exactly what you want for phase accumulation or a glitchy shaper you actually want. The bounds are sorted internally,
      * so their order does not matter; a zero-width range passes values through untouched.
      */
     fun Fn.wrapY(min: Fn = param(-1.0), max: Fn = param(1.0)): Fn {

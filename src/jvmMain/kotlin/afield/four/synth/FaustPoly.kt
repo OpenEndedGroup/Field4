@@ -285,7 +285,7 @@ class FaustVoiceBank internal constructor(
     var notesPlayed: Long = 0L
         private set
 
-    /** The greatest number of voices sounding at once, so far. The honest measure of polyphony reached. */
+    /** The greatest number of voices sounding at once, so far. The measure of polyphony actually reached. */
     @Volatile
     var peakConcurrency: Int = 0
         private set
@@ -694,7 +694,7 @@ class FaustVoiceBank internal constructor(
      * The next frame at which anything must happen, strictly after [now]; [Long.MAX_VALUE] when nothing
      * does.
      *
-     * A sentinel rather than a `Long?` on purpose: this runs once per chunk on the audio thread, and a
+     * A sentinel rather than a `Long?`: this runs once per chunk on the audio thread, and a
      * nullable `Long` boxes. That boxing was real and removing it was worth doing — but do not read this
      * as a claim that [render] is allocation-free, because it is not. `synth.faust.poly`'s allocation
      * check asserts a *bound* on what a block costs, not zero, and what remains is the polyglot buffer

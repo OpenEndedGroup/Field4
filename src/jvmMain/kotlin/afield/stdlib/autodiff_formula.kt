@@ -70,7 +70,7 @@ package afield.stdlib
  * A node of an op's formula: an expression over the sample position, the op's role-addressed
  * children, and literals.
  *
- * Deliberately small and total — no user-extensible escape hatch — because every kind here has to be
+ * Small and total — no user-extensible escape hatch — because every kind here has to be
  * implemented twice (once per walker) and oracle-checked. A subtree may appear more than once; both
  * walkers simply recompute it, which is bit-identical in `Double` and correct in [AD] (adjoints
  * accumulate).
@@ -159,7 +159,7 @@ sealed interface FnExpr {
      *
      * Smooth at every double, with derivative `1/(1+x²)`, and that is the rarity worth pointing at.
      * The last two kinds added to this family report a derivative of **zero** — [Floor] everywhere,
-     * [Abs] at its kink — honestly, and uselessly on their own. An angle built out of this one
+     * [Abs] at its kink — correctly, and uselessly on their own. An angle built out of this one
      * carries a real gradient, so a fit can descend through a heading rather than stalling on it.
      *
      * It is **not** how [Atan2] is built. See that entry for why not.
@@ -197,7 +197,7 @@ sealed interface FnExpr {
     data class Hypot(val a: FnExpr, val b: FnExpr) : FnExpr
 
     /** `Math.pow(a, b)` — spelled as the real call, so a literal exponent of 2.0 stays bit-identical
-     *  to the hand-written `.pow(2.0)` rather than being quietly rewritten as `a * a`. */
+     *  to the hand-written `.pow(2.0)` rather than being rewritten as `a * a`. */
     data class Pow(val a: FnExpr, val b: FnExpr) : FnExpr
 
     /** The smaller of two. */
@@ -583,7 +583,7 @@ fun evalFormulaAD(
 /**
  * Why an `Fn` op has no derivative, and whether that is permanent.
  *
- * [closable] is the honest distinction the coverage story needs: `NOT_DIFFERENTIABLE` means there is
+ * [closable] is the distinction the coverage story needs: `NOT_DIFFERENTIABLE` means there is
  * no derivative to write (a seeded hash, a baked table, an opaque lambda), while `closable = true`
  * means the formula exists and simply has not been transcribed yet, with [missing] naming what it
  * would take. Both are failures of coverage; only one is a failure of *ambition*.
@@ -769,7 +769,7 @@ object FnNonDifferentiable {
     /** Every op declared non-differentiable, lower-cased. */
     val ops: Set<String> get() = table.keys
 
-    /** Ops whose derivative could be written but has not been — the honest backlog. */
+    /** Ops whose derivative could be written but has not been — the real backlog. */
     val closable: List<String> get() = table.entries.filter { it.value.closable }.map { it.key }.sorted()
 
     /**

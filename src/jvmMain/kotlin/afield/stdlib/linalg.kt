@@ -35,7 +35,7 @@ import kotlin.math.min
  *
  * These vector types are mutable and most operations mutate the receiver, so copy first
  * (`Vec3(existing)`) when you need to keep the original. Swizzles and the *vector* `invoke`, `%=`
- * and `len` operators are deliberately absent here: they are generated for every float vector into
+ * and `len` operators are absent here: they are generated for every float vector into
  * `Swizzles.kt` and `VectorOperators.kt` by `tools/linalg-generator`. `%=` for [Quat] and
  * [DualQuat] is defined here, because no generator emits those.
  */
@@ -495,7 +495,7 @@ fun List<Vec3>.convexHull(): List<Vec3> {
  * Each peel discards every point on the current outside, so a handful of far-flung strays are gone by
  * the second round and cannot influence the answer at all — unlike [center], which averages them in,
  * or [medianVec], which is per-axis. Stops early once four or fewer points remain (and returns
- * [center] outright at that size), so on a small or hollow cloud this quietly degrades to the mean.
+ * [center] outright at that size), so on a small or hollow cloud this degrades to the mean.
  *
  * Costs one [convexHull] per peel; expensive enough to keep out of a per-frame path on a large cloud.
  *
@@ -806,7 +806,7 @@ fun dualquat(real: Quaternionfc, dual: Quaternionfc) =
 /**
  * An axis-aligned 3D box held as a corner plus a size — `x, y, z` and `w, h, d` — and immutable.
  *
- * Deliberately *not* the same shape as [AxisAlignedBoundingBox3D], which stores two corners: this is
+ * *Not* the same shape as [AxisAlignedBoundingBox3D], which stores two corners: this is
  * the corner-and-extent form that layout arithmetic wants, and it is the type behind Field's
  * box-packing and region work rather than anything geometric. Every operation returns a new `Cuboid`.
  *
