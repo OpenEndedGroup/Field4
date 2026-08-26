@@ -633,30 +633,74 @@ def write_coverage_state(
         raise RunnerError(f"Cannot persist smoke coverage state {path}: {exc}") from exc
 
 
-def unmatched_ids(selected: list[dict[str, Any]], requested: set[str]) -> set[str]:
+def catalog_ids(tests: list[dict[str, Any]]) -> set[str]:
+    return {str(test.get("id") or "") for test in tests}
+
+
+def unmatched_ids(catalogued: list[dict[str, Any]], requested: set[str]) -> set[str]:
     """Requested `--id`s that no test in the catalog answers to.
 
     Selection is a filter, so an id nobody matches contributes nothing and
     disappears without trace: ask for four tests, get "3 passed, 0 failed", and
     the run reads as green. A typo, a renamed test or a stale catalog all look
     like success. Callers use this to refuse instead.
+
+    Measured against the *catalog*, not against the post-filter selection. It used to
+    take the selection, so every `--id` combined with a `--tag` that id does not carry
+    was reported as "absent from the FIELD_TEST blocks in the scanned roots" — with
+    `(did you mean: <the very same id>?)` printed underneath it, because the suggester
+    searched the catalog and duly found it there. Ids removed by `--tag`/`--runner`
+    are still refused, by [filtered_out_ids]; they are just no longer lied about.
     """
-    return requested - {str(test.get("id") or "") for test in selected}
+    return requested - catalog_ids(catalogued)
 
 
-def describe_unmatched_ids(missing: set[str], tests: list[dict[str, Any]]) -> str:
+def filtered_out_ids(
+    catalogued: list[dict[str, Any]],
+    selected: list[dict[str, Any]],
+    requested: set[str],
+) -> set[str]:
+    """Requested `--id`s the catalog knows but `--tag`/`--runner` removed."""
+    return (requested & catalog_ids(catalogued)) - catalog_ids(selected)
+
+
+def describe_unmatched_ids(
+    missing: set[str],
+    tests: list[dict[str, Any]],
+    filtered: set[str] | None = None,
+    tags: set[str] | None = None,
+    runner_names: set[str] | None = None,
+) -> str:
     known = sorted(str(test.get("id") or "") for test in tests)
-    lines = [
-        f"{len(missing)} requested --id value(s) matched no test in the catalog:",
-    ]
-    for wanted in sorted(missing):
-        near = difflib.get_close_matches(wanted, known, n=3, cutoff=0.6)
-        suffix = f"  (did you mean: {', '.join(near)}?)" if near else ""
-        lines.append(f"  - {wanted}{suffix}")
-    lines.append(
-        "The catalog was refreshed before this check, so these ids are absent from the "
-        "FIELD_TEST blocks in the scanned roots, not merely stale."
-    )
+    lines: list[str] = []
+    if missing:
+        lines.append(f"{len(missing)} requested --id value(s) matched no test in the catalog:")
+        for wanted in sorted(missing):
+            near = difflib.get_close_matches(wanted, known, n=3, cutoff=0.6)
+            suffix = f"  (did you mean: {', '.join(near)}?)" if near else ""
+            lines.append(f"  - {wanted}{suffix}")
+        lines.append(
+            "The catalog was refreshed before this check, so these ids are absent from the "
+            "FIELD_TEST blocks in the scanned roots, not merely stale."
+        )
+    if filtered:
+        narrowed = ", ".join(
+            part
+            for part in (
+                f"--tag {'/'.join(sorted(tags))}" if tags else "",
+                f"--runner {'/'.join(sorted(runner_names))}" if runner_names else "",
+            )
+            if part
+        )
+        lines.append(
+            f"{len(filtered)} requested --id value(s) are in the catalog but were removed by "
+            f"{narrowed or 'the other filters'}:"
+        )
+        lines.extend(f"  - {wanted}" for wanted in sorted(filtered))
+        lines.append(
+            "--id and --tag/--runner intersect rather than union. Drop the narrowing filter to "
+            "run these ids, or drop the ids to run the filter."
+        )
     return "\n".join(lines)
 
 
@@ -1585,7 +1629,10 @@ def run(args: argparse.Namespace) -> int:
     # An unmatched --id is usually a stale catalog rather than a typo: the file on
     # disk is only rebuilt on --refresh-catalog or when absent, so a test added
     # since the last run is invisible. Rediscover once before believing it is gone.
-    missing = unmatched_ids(selected, requested_ids)
+    # Measured against the catalog, so an id narrowed away by --tag/--runner does not
+    # trigger a pointless re-scan that then reports it as never having existed.
+    catalogued = list(catalog.get("tests") or [])
+    missing = unmatched_ids(catalogued, requested_ids)
     if missing and not args.refresh_catalog:
         print(
             f"Re-scanning for FIELD_TEST blocks: {len(missing)} requested id(s) "
@@ -1598,13 +1645,25 @@ def run(args: argparse.Namespace) -> int:
             refresh_catalog=True,
             roots=args.roots,
         )
+        catalogued = list(catalog.get("tests") or [])
         selected = select(catalog)
-        missing = unmatched_ids(selected, requested_ids)
+        missing = unmatched_ids(catalogued, requested_ids)
 
     # Refuse rather than run a subset: a partially-matched selection that reports
-    # "N passed" for fewer tests than were asked for reads as a clean run.
-    if missing:
-        raise SystemExit(describe_unmatched_ids(missing, list(catalog.get("tests") or [])))
+    # "N passed" for fewer tests than were asked for reads as a clean run. Both
+    # reasons an id can go missing are refused; they are reported apart, because
+    # "your --tag excluded it" and "it does not exist" call for different fixes.
+    filtered = filtered_out_ids(catalogued, selected, requested_ids)
+    if missing or filtered:
+        raise SystemExit(
+            describe_unmatched_ids(
+                missing,
+                catalogued,
+                filtered=filtered,
+                tags=set(args.tags or []),
+                runner_names=set(args.runners or []),
+            )
+        )
 
     if not selected:
         raise SystemExit("No tests matched the requested filters.")

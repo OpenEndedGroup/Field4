@@ -1,4 +1,4 @@
-"""Regression tests for least-recently-completed smoke catalog ordering."""
+"""Regression tests for smoke catalog ordering and for `--id` selection diagnostics."""
 
 import sys
 import tempfile
@@ -10,9 +10,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from tools.run_field_tests import (  # noqa: E402
     RunnerError,
     coverage_snapshot,
+    describe_unmatched_ids,
+    filtered_out_ids,
     load_coverage_state,
     order_tests_by_coverage,
     record_coverage_result,
+    unmatched_ids,
     write_coverage_state,
 )
 
@@ -83,3 +86,55 @@ class CoverageOrderingTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RequestedIdDiagnosticTests(unittest.TestCase):
+    """`--id` combined with a `--tag` it does not carry used to be reported as nonexistent.
+
+    Observed 2026-08-26, asking for six ids alongside `--tag context --tag regression`:
+
+        6 requested --id value(s) matched no test in the catalog:
+          - docs.fabricate.shadows  (did you mean: docs.fabricate.shadows, ...?)
+        The catalog was refreshed before this check, so these ids are absent from the
+        FIELD_TEST blocks in the scanned roots, not merely stale.
+
+    Every one of those ids was in the catalog — the suggester found each of them there
+    and offered it back as its own nearest match. `unmatched_ids` was measured against
+    the post-filter *selection*, so `--tag` narrowing was indistinguishable from a typo,
+    and the closing sentence asserted something false as fact. Both cases still refuse
+    to run; they now say which one happened.
+    """
+
+    def test_an_id_absent_from_the_catalog_is_reported_as_absent(self) -> None:
+        catalogued = tests("a.one", "a.two")
+        self.assertEqual(unmatched_ids(catalogued, {"a.one", "b.nope"}), {"b.nope"})
+
+    def test_an_id_the_catalog_has_is_never_reported_as_absent(self) -> None:
+        """The regression, stated directly: a filter narrowing an id away is not absence."""
+        catalogued = tests("a.one", "a.two")
+        selected = tests("a.one")
+        self.assertEqual(unmatched_ids(catalogued, {"a.one", "a.two"}), set())
+        self.assertEqual(filtered_out_ids(catalogued, selected, {"a.one", "a.two"}), {"a.two"})
+
+    def test_the_two_reasons_are_described_apart(self) -> None:
+        catalogued = tests("a.one", "a.two")
+        message = describe_unmatched_ids(
+            {"b.nope"},
+            catalogued,
+            filtered={"a.two"},
+            tags={"context"},
+        )
+        self.assertIn("1 requested --id value(s) matched no test in the catalog", message)
+        self.assertIn("b.nope", message)
+        self.assertIn("removed by --tag context", message)
+        self.assertIn("a.two", message)
+        self.assertIn("intersect rather than union", message)
+        # The false-as-fact sentence must attach only to the ids it is true of.
+        absent_paragraph, _, filtered_paragraph = message.partition(
+            "are in the catalog but were removed"
+        )
+        self.assertIn("absent from the", absent_paragraph)
+        self.assertNotIn("absent from the", filtered_paragraph)
+
+    def test_nothing_is_said_when_every_id_matched(self) -> None:
+        self.assertEqual(describe_unmatched_ids(set(), tests("a.one"), filtered=set()), "")
