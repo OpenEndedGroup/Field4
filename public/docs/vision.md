@@ -364,17 +364,26 @@ regardless, because there is no video stream there to time.
 
 ---
 
-## Hand tracking — on OpenXR, and nothing uses it yet
+## Hand tracking — on OpenXR, and a pinch can now point
 
 Worth stating plainly, because its absence from the rest of this page could be read as an oversight.
 Field gained `XR_EXT_hand_tracking` on the **OpenXR** path: 26 per-joint poses per hand and a
 geometric `pinchStrength` interpolated from thumb-tip to index-tip distance, 50 mm to 10 mm
 (`OpenXRHmdTarget.kt:292#fun handState(hand: Hand)`). Confirmed against WiVRn on a Quest 3.
 
-It is not part of the visionOS story at all, and **there is no interaction layer built on it**. As of
-this page `handState` has no caller anywhere in Field, no test, and no other documentation — the API
-exists and nothing reads it. On visionOS hands remain a separate concept and are not implemented;
-`StereoPoseSource` carries controllers, not hands.
+It is still **not part of the visionOS story at all** — on visionOS hands remain a separate concept and
+are not implemented, and `StereoPoseSource` carries controllers, not hands.
+
+What changed on 2026-08-26 is that it acquired its first reader. `pinchPointer`
+(`pointing_pointer.kt:228#fun pinchPointer`) turns a `HandTrackingState` into a ray plus a select
+value, and `OpenXRHmdTarget.pinchPointer` binds it to `handState(hand)` directly
+(`pointing_pointer.kt:299`), so a pinched hand drives the same picking layer as a mouse or a
+controller. Two cautions, both from the branch that wrote it. The ray's **default** convention
+(wrist through pinch point) is a design choice with no in-tree precedent — pass `eye` for
+gaze-through-pinch instead, which is the better convention where a head pose is available. And every
+test constructs the `HandTrackingState` the function was designed around, so **the binding to a real
+device is untested**: what is pinned is the arithmetic and the tracking-loss branches, not that a Quest
+or an Index fills those fields the way the code assumes.
 
 ---
 
@@ -401,7 +410,7 @@ before.
 | Reprojection on the head from the pose tail | **Not built** | Needs the present path moved off RealityKit onto Compositor Services |
 | Latency attribution — `visionPoseLatencyReport()` | **Built, arithmetic verified** | `visionpose.latency` recovers a known offset from a synthetic head. **No span has ever been measured against real hardware** |
 | Tracked accessories (PSVR2 Sense) over the pose channel | **Written, never read** | `AccessoryTrackingProvider.isSupported` is false on the simulator; the button/axis mapping is a guess that degrades to "not pressed" |
-| Hand tracking (26 joints, `pinchStrength`) | **OpenXR only, no consumer** | WiVRn + Quest 3. `handState` has no caller in Field; nothing on visionOS |
+| Hand tracking (26 joints, `pinchStrength`) | **OpenXR only; read by the pointer layer** | WiVRn + Quest 3. `pinchPointer` consumes `handState` as of 2026-08-26, tested against constructed hand states only — never a device. Nothing on visionOS |
 
 Three<!--count:visionPoseSmokeTests--> of those rows lean on smoke tests that run without a headset,
 and they are named in the reference below so you can run them yourself.
