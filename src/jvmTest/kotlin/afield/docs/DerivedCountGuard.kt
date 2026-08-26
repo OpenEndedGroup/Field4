@@ -333,11 +333,37 @@ object DerivedCountGuard {
      * code span counts as named — a citation anchor would do. It catches the case that matters (an op
      * exists in the code and appears nowhere near the count that claims to cover it).
      */
-    fun codeSpanWords(pageFile: File, within: IntRange? = null): Set<String> {
+    fun codeSpanWords(pageFile: File, within: IntRange? = null): Set<String> =
+        Regex("""[A-Za-z_][A-Za-z0-9_]*""").findAll(codeText(pageFile, within)).map { it.value }.toSet()
+
+    /**
+     * The same recovered code text [codeSpanWords] tokenises, returned **before** tokenising.
+     *
+     * ## Why this exists separately
+     *
+     * [codeSpanWords] returns a `Set<String>` of `[A-Za-z_][A-Za-z0-9_]*` matches, and
+     * [Derivation.membersNamedOnPage] checks `member in thatSet`. That makes the check *unsatisfiable*
+     * for any member whose text is not a single bare identifier — the regex cannot emit a token
+     * containing a space, `.`, `:`, `(` or `-`, so a member like `pose uplink transit`,
+     * `visionpose.latency` or `head: jitter buffer hold (deliberate)` can never be an element of the
+     * set however faithfully the page quotes it. That is not a property of the page; the *shape of the
+     * member alone* decides it, which is why three derivations in `ProseNumeralContractTest` had to
+     * leave `membersNamedOnPage = false` with the reason written into the source.
+     *
+     * The input text was never the problem. [stripCode] blanks a fenced block wholesale, so what is
+     * recovered here preserves the block character-for-character — internal spaces, parens and all.
+     * Only the final tokenising regex destroyed phrases. So [Derivation.membersQuotedVerbatim] checks
+     * against this string instead, and multi-word populations become pinnable by identity rather than
+     * only by count.
+     *
+     * Position-preserving in the same sense [stripCode] is: one output line per input line in [within],
+     * newline-joined, non-code blanked to spaces.
+     */
+    fun codeText(pageFile: File, within: IntRange? = null): String {
         val original = pageFile.readLines()
         val stripped = stripCode(pageFile.readText())
         val range = within ?: original.indices
-        val code = buildString {
+        return buildString {
             for (i in range) {
                 if (i !in original.indices) continue
                 val o = original[i]
@@ -345,10 +371,13 @@ object DerivedCountGuard {
                 // Whatever stripCode blanked is exactly the code; recover it by difference, character
                 // by character, which is why stripCode is position-preserving.
                 o.forEachIndexed { j, c -> append(if (b.getOrNull(j) == c) ' ' else c) }
-                append(' ')
+                // A newline rather than a space, so a member cannot be matched across a line break —
+                // verbatim containment has no word boundaries to protect it, and joining with a space
+                // would let "…transit" at the end of one row and a continuation on the next appear to
+                // form a phrase that is nowhere on the page.
+                append('\n')
             }
         }
-        return Regex("""[A-Za-z_][A-Za-z0-9_]*""").findAll(code).map { it.value }.toSet()
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -379,6 +408,17 @@ object DerivedCountGuard {
      *   [page] ([codeSpanWords]). This is the *"and the table beside the number lists them"* half,
      *   and it exists because `dev_docs/autodiff.md` records the count and the table drifting apart
      *   **twice, in opposite directions**: a count-only guard would have caught neither.
+     *   Only usable for populations whose members are bare identifiers — see [membersQuotedVerbatim].
+     * @param membersQuotedVerbatim the same check for populations [membersNamedOnPage] cannot express:
+     *   every member must appear **verbatim** in the section's code text ([codeText]) rather than as a
+     *   token in its word set. A member containing a space, `.`, `:` or `(` can never be a token, so
+     *   before this existed such a population could only ever be pinned by *count* — and a count is
+     *   evadable by substitution, swapping one member for another at the same total. Two weaker
+     *   properties than [membersNamedOnPage], both deliberate and both bounded by the section scope:
+     *   containment has no word boundaries, so a short member can match inside a longer one; and like
+     *   [membersNamedOnPage] it is one-directional (population minus page), so a page naming an
+     *   *extra* member still passes. Closing that second one needs the page parsed as the expected set
+     *   — the `ServerSurfaceLedgerTest.assertLedger` shape — which is a larger change than this.
      */
     data class Derivation(
         val key: String,
@@ -388,6 +428,7 @@ object DerivedCountGuard {
         val landmarks: Set<String>,
         val derive: (File) -> Set<String>,
         val membersNamedOnPage: Boolean = false,
+        val membersQuotedVerbatim: Boolean = false,
     )
 
     /** Kotlin sources under [root], excluding foreign checkouts, for a derivation that scrapes code. */

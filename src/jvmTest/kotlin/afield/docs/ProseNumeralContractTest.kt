@@ -289,11 +289,13 @@ class ProseNumeralContractTest {
                     .filterNot { '/' in it }
                     .toSortedSet()
             },
-            // Left false deliberately. Every member is a multi-word phrase, and the members-on-page
-            // check tokenises code spans on `[A-Za-z_][A-Za-z0-9_]*` — so "pose uplink transit" can
-            // never match however faithfully the page quotes it. Turning it on would assert nothing
-            // while looking like it asserted something.
-            membersNamedOnPage = false,
+            // Not the tokenised form: every member is a multi-word phrase, and `membersNamedOnPage`
+            // tokenises on `[A-Za-z_][A-Za-z0-9_]*`, so "pose uplink transit" could never match
+            // however faithfully the page quotes it. The verbatim form is what such a population
+            // needs, and it bites here: all four labels appear character-for-character inside the two
+            // report fences in `## Where the latency goes`. Dropping a row from either fence, or
+            // renaming a span in Kotlin without touching the page, now fails.
+            membersQuotedVerbatim = true,
         ),
         DerivedCountGuard.Derivation(
             key = "visionPoseSmokeTests",
@@ -317,9 +319,11 @@ class ProseNumeralContractTest {
                     }
                     .toSortedSet()
             },
-            // False for the same tokenisation reason as above: `visionpose.latency` splits into two
-            // word tokens, so it could never match inside a code span.
-            membersNamedOnPage = false,
+            // Verbatim rather than tokenised: `visionpose.latency` splits into two word tokens, so it
+            // could never be an element of the word set. All three ids appear verbatim in code spans
+            // in the status table's third column, inside the section that states the count — so the
+            // rows that claim smoke-test backing now cannot lose the test they name.
+            membersQuotedVerbatim = true,
         ),
         DerivedCountGuard.Derivation(
             key = "visionPoseDeviceSpans",
@@ -354,8 +358,14 @@ class ProseNumeralContractTest {
                     .map { it.groupValues[1] }
                     .toSortedSet()
             },
-            // False, again for tokenisation: these are multi-word phrases containing `:` and `(`.
-            membersNamedOnPage = false,
+            // Count-only, and this one is a genuine choice rather than a tokenisation limit — the
+            // verbatim form would work mechanically and it is deliberately not used. Only 2 of the 5
+            // head spans appear on the page, because the page's own sentence is that the published
+            // fixture *exercises two of them*; the other three are real spans that the fixture does
+            // not send. Turning on membersQuotedVerbatim here would fail truthfully but for the wrong
+            // reason: it would demand the page quote three spans it has nothing to say about. The
+            // landmarks above are exactly the two the page does quote, which is the honest encoding.
+            membersQuotedVerbatim = false,
         ),
     )
 
@@ -512,29 +522,43 @@ class ProseNumeralContractTest {
      * too; they were consistent with *different* answers. A guard on the numeral alone would have
      * passed on both days.
      *
-     * Only for derivations that opt in with [DerivedCountGuard.Derivation.membersNamedOnPage], and
-     * only against code spans — see [DerivedCountGuard.codeSpanWords] for why a whole-page word
-     * search is unusable here and for the residual weakness this keeps.
+     * Two opt-in forms, because one shape of member cannot use the other's check.
+     * [DerivedCountGuard.Derivation.membersNamedOnPage] tests token membership, which only works for
+     * bare identifiers; [DerivedCountGuard.Derivation.membersQuotedVerbatim] tests substring
+     * containment against the same recovered code text, which is what a multi-word member needs. See
+     * [DerivedCountGuard.codeText] for why the tokenised form was unsatisfiable for those, and
+     * [DerivedCountGuard.codeSpanWords] for why a whole-page word search is unusable here.
+     *
+     * Both are one-directional and both are scoped to the section. Neither closes the substitution
+     * hole in full — that wants the page parsed as the expected set, both ways, the way
+     * `ServerSurfaceLedgerTest.assertLedger` does it.
      */
     @Test
     fun everyMemberOfANamedPopulationAppearsOnItsPage() {
         val marked = allMarked().groupBy { it.key }
-        val problems = derivations.filter { it.membersNamedOnPage }.mapNotNull { d ->
+        val checked = derivations.filter { it.membersNamedOnPage || it.membersQuotedVerbatim }
+        val problems = checked.mapNotNull { d ->
             val f = pageFile(d.page)
             // Scoped to the section the number is stated in, not to the whole page. With the page in
             // scope this check was demonstrably unable to fail — see DerivedCountGuard.sectionBounds
             // for the measurement that says so.
             val scope = marked[d.key].orEmpty().map { DerivedCountGuard.sectionBounds(f, it.pageLine) }
-            // Case-insensitive, deliberately. `OpRegistry` canonicalises op names to lower case; the
-            // page writes `hannWindow` and `amplitudeMod`, which is the right way for a page to
-            // spell a Kotlin identifier. A case-sensitive comparison would report eight false
-            // absences and teach a reader to distrust the message.
-            val named = scope.flatMap { DerivedCountGuard.codeSpanWords(f, it) }
-                .map { it.lowercase() }.toSet()
-            val absent = d.derive(root).filterNot { it.lowercase() in named }.sorted()
+            // Case-insensitive in both forms, deliberately. `OpRegistry` canonicalises op names to
+            // lower case; the page writes `hannWindow` and `amplitudeMod`, which is the right way for
+            // a page to spell a Kotlin identifier. A case-sensitive comparison would report eight
+            // false absences and teach a reader to distrust the message.
+            val absent = if (d.membersQuotedVerbatim) {
+                val quoted = scope.joinToString("\n") { DerivedCountGuard.codeText(f, it) }.lowercase()
+                d.derive(root).filterNot { it.lowercase() in quoted }.sorted()
+            } else {
+                val named = scope.flatMap { DerivedCountGuard.codeSpanWords(f, it) }
+                    .map { it.lowercase() }.toSet()
+                d.derive(root).filterNot { it.lowercase() in named }.sorted()
+            }
             if (absent.isEmpty()) null
             else "  count:${d.key} — ${d.page} states the number but, in the same section, does not " +
-                "name ${absent.size} member(s) of ${d.what}: $absent"
+                (if (d.membersQuotedVerbatim) "quote " else "name ") +
+                "${absent.size} member(s) of ${d.what}: $absent"
         }
         assertTrue(
             problems.isEmpty(),
@@ -542,6 +566,18 @@ class ProseNumeralContractTest {
                 "can then drift apart in opposite directions, which is what happened twice on " +
                 "dev_docs/autodiff.md:\n" + problems.joinToString("\n")
         )
+        println(
+            "--- member-identity coverage: ${checked.size} of ${derivations.size} derivation(s) " +
+                "pin identities, not just counts ---"
+        )
+        derivations.forEach { d ->
+            val how = when {
+                d.membersQuotedVerbatim -> "verbatim"
+                d.membersNamedOnPage -> "token"
+                else -> "COUNT ONLY (+${d.landmarks.size} landmark(s))"
+            }
+            println("  %-38s %-8s %s".format(d.key, "n=${d.derive(root).size}", how))
+        }
     }
 
     /**
@@ -887,6 +923,93 @@ class ProseNumeralContractTest {
                 "a code span in a *different* section must not satisfy the check: $words"
             )
             assertTrue("neverSeen" !in words, "nor must one in the section after: $words")
+        } finally {
+            tmp.delete()
+        }
+    }
+
+    /**
+     * The gap `membersQuotedVerbatim` exists to close, asserted in both directions.
+     *
+     * The first two assertions are the *defect*: a multi-word member is unreachable by
+     * [DerivedCountGuard.codeSpanWords] no matter how exactly the page quotes it, because the
+     * tokeniser cannot emit a token containing a space. That is what forced three derivations in this
+     * class to be count-only, and a count is evadable by substitution — swap one member for another
+     * at the same total and nothing notices.
+     *
+     * The rest pin the replacement's shape, including the two properties it deliberately does *not*
+     * have, so neither is mistaken for strength later: the section scope still applies, and the line
+     * join is a newline so a phrase cannot be assembled across two lines that do not contain it.
+     */
+    @Test
+    fun aMultiWordMemberIsUnreachableByWordsAndReachableVerbatim() {
+        val tmp = File.createTempFile("prose-verbatim-", ".md")
+        try {
+            tmp.writeText(
+                """
+                # Title
+                ## Elsewhere
+                ```
+                pose age when latched
+                ```
+                ## The count
+                Four of them:
+                ```
+                pose uplink transit
+                submit to encoded (incl. render fence)
+                ```
+                And inline, in a table cell: | x | `visionpose.latency` |
+                ## After
+                ```
+                latch to frame submit
+                ```
+                """.trimIndent() + "\n"
+            )
+            // Line 7 (1-based, "Four of them:") is inside "## The count".
+            val bounds = DerivedCountGuard.sectionBounds(tmp, 7)
+            val words = DerivedCountGuard.codeSpanWords(tmp, bounds)
+            val verbatim = DerivedCountGuard.codeText(tmp, bounds)
+
+            // 1. The defect. Every word of the phrase is present; the phrase is not expressible.
+            assertTrue(
+                "pose" in words && "uplink" in words && "transit" in words,
+                "the tokeniser should see the individual words: $words"
+            )
+            assertTrue(
+                "pose uplink transit" !in words,
+                "a Set<String> of `[A-Za-z_][A-Za-z0-9_]*` matches can never contain a phrase — this " +
+                    "is why membersNamedOnPage was unusable for multi-word populations"
+            )
+            assertTrue(
+                "visionpose.latency" !in words,
+                "nor a dotted id: it splits on the `.` into two tokens"
+            )
+
+            // 2. The replacement reaches both shapes — a fenced phrase and an inline dotted id.
+            assertTrue("pose uplink transit" in verbatim, "verbatim text must carry the phrase")
+            assertTrue(
+                "submit to encoded (incl. render fence)" in verbatim,
+                "including parens and a full stop, which the tokeniser also cannot represent"
+            )
+            assertTrue(
+                "visionpose.latency" in verbatim,
+                "and an inline code span inside a markdown table cell"
+            )
+
+            // 3. Still section-scoped: the mechanism must not have widened to the whole page.
+            assertTrue(
+                "pose age when latched" !in verbatim,
+                "a phrase in a *different* section must not satisfy the verbatim check either"
+            )
+            assertTrue("latch to frame submit" !in verbatim, "nor one in the section after")
+
+            // 4. No cross-line assembly. "transit" ends one line and "submit" starts the next; a
+            //    space join would make this fabricated phrase appear present.
+            assertTrue(
+                "transit submit" !in verbatim,
+                "lines must be newline-joined, or containment invents phrases that are nowhere on " +
+                    "the page: ${verbatim.replace("\n", "\\n")}"
+            )
         } finally {
             tmp.delete()
         }
