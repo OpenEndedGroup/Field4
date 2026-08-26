@@ -1929,7 +1929,8 @@ In descending order of how much it is worth trusting:
 
  1. **The geometry already knows.** `PickParts.fromTriangulated` reads
     `TriangulatedGeometry.sourceFace` — the polytope layer has recorded, for every triangle it
-    emits, the polygonal face it was cut from, and until now nothing consumed it. This is the only
+    emits, the polygonal face it was cut from — well covered by the polytope tests and, until now,
+    read by nothing in `jvmMain` outside `polytope` itself. This is the only
     source here where the id means something *outside* the mesh: it is an
     [`afield.stdlib.polytope.ElementId`](polytopes.md#topology-kt-elementid) in the polytope's own topology, so it survives
     re-triangulation with a different triangulator and can be handed back to the polytope API.
