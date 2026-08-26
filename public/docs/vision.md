@@ -370,7 +370,7 @@ and they are named in the reference below so you can run them yourself.
 ## Reference — where this actually lives
 
 Cross-checked against source on every `docsGates` run, so a rename here breaks the build rather than
-rotting quietly. Half of this surface is Swift, because it is a two-machine protocol and a page citing
+rotting quietly. The Swift rows are here because this is a two-machine protocol, and a page citing
 only the Kotlin end would be describing one side of it.
 
 | What | Where | Anchor |
