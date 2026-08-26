@@ -210,4 +210,4 @@ A few behaviours are worth knowing before you point this at something large:
 - **Non-public classes work.** Your own `private` and `internal` model classes
   are read and written like any other.
 - **A throwing getter won't derail a walk**, but reading that one slot
-  propagates the real exception rather than quietly reporting null.
+  propagates the real exception rather than reporting null.

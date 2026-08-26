@@ -6,11 +6,10 @@ comment — and the `source …:line` footer at the bottom of a card — is a li
 link. Click one and the panel *re-renders as that symbol's own card*: the same
 category header, the same highlighted signature, the same rendered
 documentation. A small back / forward control with a breadcrumb trail appears so
-you can retrace your steps. In other words, the documentation panel quietly
-becomes a recursive mini-browser over Field's code, without ever leaving the
-editor.
+you can retrace your steps. The documentation panel is a small recursive browser
+over Field's code, without ever leaving the editor.
 
-Crucially, links only appear when they actually resolve. A `[Symbol]` that Field
+Links only appear when they resolve. A `[Symbol]` that Field
 can't find stays plain text — there are no dead links to click.
 
 ## A worked example
@@ -80,12 +79,10 @@ Closing the completion popup resets the trail.
 
 ## Why this is useful
 
-Reading one symbol's documentation almost always raises a question about a
-*neighbouring* symbol — the type it returns, the class it extends, the helper it
-mentions. Normally that means leaving what you are doing to go hunting. Here the
-answer is one click away and one click back, inside the same popup you already
-opened to write the line. It turns the completion panel from a label into a way
-to read the codebase by following its own cross-references.
+Reading one symbol's documentation raises a question about a neighbouring one —
+the type it returns, the class it extends, the helper it mentions — and that
+question is normally answered somewhere else. Here it is one click away and one
+click back, in the popup you already opened to write the line.
 
 The underlying autocomplete is covered in the
 [Survival Guide](survivalGuide.md#autocomplete). Conversational code search is

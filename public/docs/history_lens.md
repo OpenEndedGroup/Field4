@@ -1,8 +1,8 @@
 # Inline History: the History Lens
 
-The [document history](document_history.md) view is a whole-document affair — you leave the editor, look at a timeline, and restore. Often that is more than you want. You are staring at one line of code, you *know* it used to say something else, and you just want to see what.
+The [document history](document_history.md) view is a whole-document affair — you leave the editor, look at a timeline, and restore. Often that is more than you want, because the question is only what one line used to say.
 
-The **History Lens** answers exactly that question, in place, without leaving the editor.
+The **History Lens** answers that in place, without leaving the editor.
 
 ![The History Lens open below a line of code](assets/history-lens.png)
 
@@ -40,7 +40,7 @@ Reach for the lens when the question is "what did *this* used to be?" and for th
 
 ## A different "history" in the editor
 
-Field has a second, unrelated inline visual that also happens to be called `history`, and it is worth not confusing them.
+Field has a second, unrelated inline visual also called `history`, which is easy to confuse with this one.
 
 The **`history()` visualizer** (`m.history(value)`) draws a live chart of the last N *runtime* values of an expression, printed inline next to the code that produced it. That is about the history of a *value while your code runs* — not the history of your *source across saves*. It is covered with its siblings `histogram()` and `stats()` on the [Visualizers & Controls](visualizers.md) page.
 

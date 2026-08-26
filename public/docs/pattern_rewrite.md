@@ -181,7 +181,7 @@ The metavariable is substituted in the *declaration name* position (`n` →
 `/*start*/ … /*end*/` block — the "stack mark" idempotency mechanism the
 existing preamble machinery already understands. Firing the same rule twice with
 the same capture contributes the segment once; distinct captures get distinct
-keys. (Unlike the `to {}` side, `provide {}` names are deliberately *not*
+keys. (Unlike the `to {}` side, `provide {}` names are *not*
 gensym-renamed — they are meant to define stable, shared box-level names.)
 
 ## Running code at rewrite time: `unquote { }`

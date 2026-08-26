@@ -1,12 +1,12 @@
 # Installation
 
-Field is distributed as source, and the way you get it is the way you keep it up to date:
+Field is distributed as source. You install it by cloning it:
 
 ```diffstatic {data-lang=bash}
 git clone https://github.com/OpenEndedGroup/Field4.git
 ```
 
-There are no binaries and no installer. A checkout is the installation.
+There are no binaries and no installer — the checkout is the installation.
 
 ### Quick Start (Double-Click)
 
@@ -45,7 +45,7 @@ On Mac you might find that Apple cannot abide the idea of you downloading some c
 
 ### Updating
 
-You update Field the way you update any checkout:
+Update it the same way:
 
 ```diffstatic {data-lang=bash}
 git pull
@@ -58,13 +58,13 @@ doing. It asks `origin` what it has on your branch — one `git ls-remote`, and 
 fetched if you are already level — and reports how many commits you are behind, along with any
 local commits of your own that `origin` does not have.
 
-It stops there. It will not pull, merge, rebase or write anything into your working tree, because
-only you know whether that checkout has work in it. If the answer is "7 new commits on
+It will not pull, merge, rebase or write anything into your working tree — only you know whether
+that checkout has work in it. If the answer is "7 new commits on
 origin/main", the `git pull` is yours to run when you are ready.
 
 ![](assets/screenshot_17.png)
 
-The command is honest about not being able to answer. If you unpacked Field from an archive instead
+The command says when it cannot answer. If you unpacked Field from an archive instead
 of cloning it, if `HEAD` is detached, if there is no `origin`, or if the network is down, it says
 which of those happened rather than reporting that you are up to date.
 

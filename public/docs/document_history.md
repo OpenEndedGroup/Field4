@@ -30,7 +30,7 @@ The timeline can be viewed against a **Saves** axis (one slot per version) or a 
 
 ## Restore an earlier version
 
-The basic workflow:
+To restore a whole version:
 
 1. Open the history view.
 2. Click a version in the timeline.
@@ -63,16 +63,7 @@ The panel is richer than a plain timeline. Depending on what you select you can 
 - **Review version jumps** — the sidebar lists the restore transitions you have made, so the act of moving through history is itself recoverable.
 - **See per-version metrics** — boxes, properties and lines for the selected version.
 
-## When to use history
-
-History is the right tool when:
-
-- you want to recover from a large experimental change
-- a document has drifted and you want to return to a known earlier structure
-- you need to inspect how the graph looked at an earlier save point
-- you want a document-wide rollback (or a targeted cherry-pick) rather than a local code-edit undo
-
-Use bookmarks for view-state jumps. Use history for content-state recovery.
+Use bookmarks for view-state jumps, and history for content-state recovery.
 
 ## Where versions come from
 
@@ -87,5 +78,5 @@ If a document has no backups yet, the history page will have little or nothing t
 ## Related features
 
 - Use the [History Lens](history_lens.md) to scrub a single line through its versions without leaving the editor.
-- Use [bookmarks.md](bookmarks.md) to return to a saved working view without changing content.
-- Use [interactive_guides.md](interactive_guides.md) when you want to explain a document state instead of restoring one.
+- Use [Bookmarks](bookmarks.md) to return to a saved working view without changing content.
+- Use [Interactive Guides](interactive_guides.md) when you want to explain a document state instead of restoring one.
