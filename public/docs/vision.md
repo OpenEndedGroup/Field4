@@ -312,8 +312,7 @@ vision pose/stream latency
   submit to encoded (incl. render fence) (no samples)
   --- the head ---
   (no report from the head yet)
-  note: the head's last observable moment is the texture upload, so any motion-to-photon figure
-  above is short by up to one compositor frame.
+  note: the head's last observable moment is the texture upload, so any motion-to-photon figure above is short by up to one compositor frame.
 ```
 
 Showing the empty one is the point. The four<!--count:visionPoseHostSpans--> spans this machine can
