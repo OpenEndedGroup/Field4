@@ -113,3 +113,87 @@ turn, from two inputs that compare equal, and no `FnExpr` comparison can tell th
 Not a change: `Fn.eval` for every existing graph, every existing formula, the sampled output of every
 existing RectSL scene (the CPU sampler and the GLSL emitter are untouched), and the finite-difference
 fit path.
+
+---
+
+## 2026-08-26 — `fromContext` stopped seeing this box's own variables (`nightly/2026-08-26/2-salvage-verification`)
+
+The change landed in bafa9ee5f (`afield.four.modules`, `Mesh.kt`), whose commit message says the
+headline fix "is committed on the strength of its reasoning and the fact that its test compiles, not
+on a green run." This entry is what a green run, and a red one, then said.
+
+`fromContext` / `fromContextWithNameOrNull` used to search, in order: this box if it is an `A`, this
+box's **properties**, this box's **top-level (`ki`) variables**, then each ancestor generation's
+properties and variables. Step 3 is now skipped unless `includeLocalVariables = true`.
+
+### What the bug was, reproduced rather than argued
+
+`examples.context.local-variable-shadowing` was run against `Mesh.kt` reverted to its pre-bafa9ee5f
+state. Box output, verbatim, three boxes over two passes:
+
+```
+[normal] shadow_parent: parent set 1
+[normal] shadow_child:  child pass1 holder=1
+[normal] shadow_parent: parent set 2
+[normal] shadow_child:  child pass2 holder=1      <-- parent says 2
+```
+
+The child inherited `1` correctly on its first execution, left an `AtomicInteger`-typed variable
+behind, and on its second execution found that instead of the parent's new `2`. Against the committed
+`Mesh.kt` the same line reads `child pass2 holder=2`. So the defect was real, the fix works, and the
+test is not a tautology — it is red on the old code with exactly the diagnosis it names.
+
+### Who else is affected: the search order, measured step by step
+
+`examples.context.search-order-ledger` stages the two steps that had no committed artifact anywhere,
+in tree or in the published transcript corpus. Observed:
+
+```
+[normal] own_property: own-property pass1 found=11
+[normal] own_property: own-property pass2 found=11
+[normal] own_variable: own-variable pass1 default=absent
+[normal] own_variable: own-variable pass2 default=absent
+[normal] own_variable: own-variable pass2 optin=22
+```
+
+| shape | before | after | who is in this shape |
+| --- | --- | --- | --- |
+| child box reading a value its **ancestor** holds, as a property or a top-level variable | worked on pass 1, self-pinned from pass 2 on | works on every pass | `val renderer: Renderer = fromContext()` — the idiom `dev_docs/agents/AGENT_QUICK_REF.md` teaches and every graphics box in `public/docs/afield_four_graphics.md` opens with (10 occurrences on that page alone) |
+| box reading a value **it holds as a property** | worked | **still works** — step 2 was not touched | the documented renderer box: `public/docs/box_code_pipeline.md` publishes with `prop<Window>(window)` / `prop<Renderer>(renderer)`, which is this bag. This is why nothing on the graphics surface broke |
+| box reading a value it holds **only as a bare top-level `val`/`var`**, with no ancestor holding one | worked from pass 2 on | **throws** `IllegalArgumentException: must pass in a value for context parameter …` | the cost of the change. No call site in `src/`, no committed transcript and no published docs box is in this shape; `includeLocalVariables = true` is the fix if one appears |
+
+### What was swept, and the verdict
+
+Enumerated rather than counted, because the enumeration changed the number. `grep -rn "fromContext"
+src | grep -v four/modules/Mesh.kt` gives **188** lines across 50 files at 730440b80 — 30 imports, 16
+KDoc/comment lines, 5 in JavaScript (editor completion word lists), and 137 real Kotlin. In the
+primary checkout the same grep gives 210; the extra 22 are in `src/personal/`, which is not tracked,
+so a count taken there is not a count of this repository.
+
+Of the 137, essentially all are **default parameter values in library constructors and functions** —
+`Camera(val renderer: Renderer = fromContext())`, `ComputeMesh`, `MeshMesh`, `KeyCamera`,
+`OrbitControls`, `KeyEvents`, `Projection`, `VideoTexture`, `WebcamTexture`, `TextureSampler`,
+`standardRenderer.build`, and the seven `moduleHere`/`shadertoyHere`/`computeModuleHere` family
+entries in `shaders.kt`. Those run *inside the calling box's* context, so they are the sites where
+step 3's removal could have bitten. Four are name-matched lookups into an ancestor
+(`magic.kt:282`, `Module.kt:106`, and two in `CrossBoxContextInheritanceSmokeTest`).
+
+Driven, not reasoned about — every one of these passed against the committed `Mesh.kt`:
+
+- `examples.demo-transcript.exec` (193.7s) — which runs `two_box_context`, the published
+  parent/child context demo at `public/docs/assets/agent_transcripts/two_box_context/`, plus 20-odd
+  other demos. This is the **negative control**: its child reads an ancestor *property*, the half the
+  change did not touch, and it must still pass byte for byte. It does.
+- `docs.fabricate.default-scene`, `docs.fabricate.shadows` — `standardRenderer.build(renderer =
+  fromContext())` through the real GPU path.
+- `docs.stacksl.gallery` — `stacksl.kt`'s two `renderer: Renderer = fromContext()` entry points.
+- `examples.context.cross-box-inheritance` — the ancestor ki-var path specifically (`ctx_kivar`).
+- `examples.exports.batch-launch`, `core.compiled-snippet.smoke`, `core.repl-bootstrap-gate.smoke`.
+
+`docs.rectsl.sdf` failed, with `Out of stack space.` from shader generation — the known LWJGL
+`MemoryStack` limit in generated-shader compilation, on a path that contains no `fromContext` call.
+Unrelated, and not re-verified against the base commit, so it is recorded as an observation rather
+than as a cleared suspect.
+
+Not a change: this box's properties, every ancestor's properties, every ancestor's top-level
+variables, and `fromContextWithNameOrNull`'s name and type filtering.

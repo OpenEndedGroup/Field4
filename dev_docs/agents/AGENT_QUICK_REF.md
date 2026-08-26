@@ -106,6 +106,14 @@ re-running the box above re-resolves from the parent instead of finding the `ren
 run left behind. Pass `fromContext(includeLocalVariables = true)` for the old, self-pinning
 behaviour.
 
+The one shape that costs you: a box holding the *only* copy of a value in a bare top-level
+`val`/`var`, with nothing above it holding one, cannot reach it through `fromContext` at all — it
+throws `IllegalArgumentException: must pass in a value for context parameter …`. Publish it as a
+property instead (`prop<Renderer>(renderer)`, which is what a renderer box does), pass it
+explicitly, or use the opt-in. All four cases are staged live and asserted in
+`examples.context.search-order-ledger`, with the measured output recorded in
+[`../stdlib_behaviour_changes.md`](../stdlib_behaviour_changes.md).
+
 ## Inspect a live value at runtime (debug probe)
 
 Ask the running JVM "what is this variable right now?" via the MCP tool
