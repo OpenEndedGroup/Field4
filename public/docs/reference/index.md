@@ -4,7 +4,7 @@
 
 Field's standard library is large and, until now, invisible: the only ways to read it were to open the source or to already know the name you wanted. This section is a browsable map of it — every public declaration in `afield.stdlib`, `afield.visualization` and `afield.four.synth`, with the KDoc that sits next to it in the source.
 
-**8946 public symbols across 187 source files**, 5398 of them (60%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
+**9094 public symbols across 191 source files**, 5522 of them (60%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
 
 The "documented" column is the honest one: it is a coverage report on Field's own KDoc, not a claim about this page. Where a summary is blank the declaration has none yet.
 
@@ -12,7 +12,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | --- | --- | --- | --- | --- |
 | [Math](math.md) | 18 | 1580 | 1195 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 17 | 675 | 325 (48%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 23 | 1069 | 882 (82%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 27 | 1217 | 1006 (82%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Polytopes](polytopes.md) | 17 | 581 | 426 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 4 | 657 | 270 (41%) | Nonlinear least squares, aimed at geometry. |
 | [Imaging](imaging.md) | 6 | 255 | 209 (81%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
@@ -137,7 +137,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [LeastSquares.kt](math.md#leastsquares-kt) | Math | 19 | 2 | A Levenberg–Marquardt nonlinear least-squares solver, pure Kotlin and self-contained. |  |
 | [linalg.kt](math.md#linalg-kt) | Math | 87 | 78 | The short vector aliases (`Vec2`, `Vec3`, `Vec4`, `Quat`, `DualQuat`) plus the constructors and point-cloud helpers that sit on top of Field's generated `afield.stdlib.linalg` types. | [FLine examples (Field graphics)](../fline_examples.md), [Kotlin Syntax Overview (for Python + JavaScript folks)](../kotlin_overview.md), [Linear algebra in Field](../linear_algebra.md) |
 | [math.kt](math.md#math-kt) | Math | 13 | 13 | `Number`-taking overloads of the trigonometric functions, so `sin(1)` and `sin(1f)` work without writing `.toDouble()` at every call site. |  |
-| [mesh.kt](graphics.md#mesh-kt) | Graphics | 58 | 52 | `TriMesh` — the CPU triangle mesh Field's 3D geometry family is built on, plus the builder that makes one and the whole-mesh transforms that move one around. | [Meshes and 3D geometry](../mesh_examples.md) |
+| [mesh.kt](graphics.md#mesh-kt) | Graphics | 59 | 53 | `TriMesh` — the CPU triangle mesh Field's 3D geometry family is built on, plus the builder that makes one and the whole-mesh transforms that move one around. | [Meshes and 3D geometry](../mesh_examples.md) |
 | [mesh_field.kt](graphics.md#mesh-field-kt) | Graphics | 33 | 33 | What makes the mesh family *Field's* rather than a generic geometry library: the bridges out of `TriMesh` and into the things Field already draws, renders and displays. | [Geometry from disk](../geometry_from_disk.md), [Field's 3D output](../three_output.md), [Meshes and 3D geometry](../mesh_examples.md) |
 | [mesh_generate.kt](graphics.md#mesh-generate-kt) | Graphics | 20 | 20 | Where a `TriMesh` comes from: the primitives (`boxMesh`, `uvSphereMesh`, `icosphereMesh`, `torusMesh`, `cylinderMesh`, `coneMesh`, `capsuleMesh`, the five platonics) and the *derived* generators that build one out of something you already have (`extrudeMesh`, `revolveMesh`, `tubeMesh`, `heightfieldMesh`, `polygonMesh`). | [Meshes and 3D geometry](../mesh_examples.md), [Geometry from disk](../geometry_from_disk.md), [Field's 3D output](../three_output.md) |
 | [mesh_io.kt](graphics.md#mesh-io-kt) | Graphics | 10 | 10 | Getting a `TriMesh` in and out of the two formats every 3D tool on the machine can already read: **OBJ** (text, indexed, carries normals and uvs) and **STL** (ASCII or binary, triangle soup, the lingua franca of 3D printing). | [Geometry from disk](../geometry_from_disk.md), [Meshes and 3D geometry](../mesh_examples.md), [Solids that cannot fail: Manifold in Field](../manifold.md) |
@@ -170,6 +170,10 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [pf.kt](math.md#pf-kt) | Math | 38 | 29 | An unscented Kalman filter, and a particle filter whose particles each carry one. | [State estimation: tracking what you cannot measure](../state_estimation_examples.md) |
 | [Physical.kt](synthesis.md#physical-kt) | Synthesis | 19 | 1 |  |  |
 | [plotly.kt](visualization.md#plotly-kt) | Visualization | 12 | 12 | Plotly helpers — the short way to get a chart out of a box, wrapping `space.kscience.plotly`. | [Values over time: interpolants & keyframes](../interpolants_examples.md) |
+| [pointing.kt](graphics.md#pointing-kt) | Graphics | 43 | 29 | Turning a place a person is looking at back into a place in the world — the half of picking that Field did not have. |  |
+| [pointing_pick.kt](graphics.md#pointing-pick-kt) | Graphics | 51 | 48 | A scene you can point at, and a hit record that names the **part** you touched rather than the triangle. |  |
+| [pointing_pointer.kt](graphics.md#pointing-pointer-kt) | Graphics | 36 | 32 | A person pointing — mouse, XR controller or pinched hand — behind one interface, and the hover / press / drag / release machine that turns a stream of samples into an interaction. |  |
+| [pointing_render.kt](graphics.md#pointing-render-kt) | Graphics | 17 | 14 | Seeing what the pointer found: the picked part lit, a crosshair where the pointer was aimed, and a caption that names what it hit. |  |
 | [Polytope4.kt](polytopes.md#polytope4-kt) | Polytopes | 43 | 36 | Rank 4: the seeds, the coordinates and the viewing policy that keep the incidence core honest about being rank-general rather than a polyhedron library with a rank field. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [PolytopeVisualizers.kt](polytopes.md#polytopevisualizers-kt) | Polytopes | 1 | 1 | The single place this package knows that Field has a screen — and it is one function long. |  |
 | [props.kt](workspace.md#props-kt) | Workspace | 4 | 4 | The `prop` / `rootProp` macro pair — the typed, inheritable box-property slot. |  |

@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-23 source file(s), 1069 public symbol(s), 882 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+27 source file(s), 1217 public symbol(s), 1006 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -826,6 +826,7 @@ The accumulator every generator in this family is written against: append vertic
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">vertexCount</span><span class="p">:</span> <span class="nc">Int</span></code> | How many vertices have been appended so far — also the index the next `vertex` will get. |
 | <code class="highlight"><span class="k">val</span> <span class="n">triangleCount</span><span class="p">:</span> <span class="nc">Int</span></code> | How many triangles have been appended so far. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">group</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code> | Name the piece every triangle appended from here on belongs to. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">vertex</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec3</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">uv</span><span class="p">:</span> <span class="nc">Vec2</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec3</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> | Append a vertex and return its index. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">vertex</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec3</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">uv</span><span class="p">:</span> <span class="nc">Vec2</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec3</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> | `vertex` from loose floats — what the generators use, so they never allocate a `Vec3` per vertex. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">triangle</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code> | Append one triangle. Counter-clockwise seen from outside. |
@@ -1758,6 +1759,499 @@ plant against the controller and prints a trace.
 | <code class="highlight"><span class="k">fun</span> <span class="nf">tick</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">ControlOutput</span><span class="o">?</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">installRunloopHook</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">runloop</span><span class="p">:</span> <span class="nc">Runloop</span> <span class="o">=</span> <span class="nc">Runloop</span><span class="p">.</span><span class="n">runLoop</span><span class="p">)</span><span class="p">:</span> <span class="nc">AdaptiveDistributionLoop</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">removeRunloopHook</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">runloop</span><span class="p">:</span> <span class="nc">Runloop</span> <span class="o">=</span> <span class="nc">Runloop</span><span class="p">.</span><span class="n">runLoop</span><span class="p">)</span><span class="p">:</span> <span class="nc">AdaptiveDistributionLoop</span></code> |  |
+
+## pointing.kt { #pointing-kt }
+
+Turning a place a person is looking at back into a place in the world — the half of picking that
+Field did not have.
+
+### Why this exists
+
+Field could already answer *"what does this ray hit"* — `MeshBvh.raycast`, `intersectRayTriangle`,
+`intersectRayPlane`. What it could not do was **produce the ray**. There was no unprojection
+anywhere in `afield`: no way to get from a mouse position, a controller pose or a headset's aim to
+a line in the scene. Every picker Field owned ran in JavaScript, and the JVM's rich hit record
+([`FLineIntersection`](graphics.md#standarddrawing-kt-flineintersection)) had exactly one constructor, decoding a browser payload.
+
+So this file is the missing middle: pixel → ray. [`PickScene`](graphics.md#pointing-pick-kt-pickscene) is the next step, ray → named part,
+and [`Pointer`](graphics.md#pointing-pointer-kt-pointer) the step after, person → pixel-or-pose.
+
+### The two camera models, and why there are two
+
+Field has two unrelated camera models, and confusing them is the main hazard here:
+
+ - **[`MeshView`](graphics.md#mesh-field-kt-meshview)** — the orbital camera behind `TriMesh.renderPng`, Field's CPU rasterizer. Yaw,
+   pitch, a distance *in multiples of the mesh's own bounding-sphere radius*, and a field of view.
+   This is the one that makes pixels with no GPU, no window and no AWT, so it is the one a headless
+   test or a docs capture can prove things with. `MeshView.rayCamera` inverts it, and does so by
+   calling straight into `VisionGeometryPreview.ViewFrame` — *the same object the rasterizer
+   projects with*. The unprojection is the renderer's inverse by construction, not by
+   transcription, which is the only version of that claim worth making.
+ - **`afield.four.util.Camera`** — the live Vulkan scene's camera: a `lookAt` model-view and a
+   `afield.four.util.SuperProjection`, which can be a perspective frustum, an off-centre one, an
+   orthographic prism, or a Lie-group interpolation *between* perspective and ortho. There is no
+   closed-form frustum to re-derive for that last case, so `rayCameraFor` does the only thing that
+   is right for all of them: it inverts the clip matrix numerically, in double precision.
+
+### Conventions, stated because getting one wrong is silent
+
+ - **Pixel coordinates run from the top-left of the frame, y downward**, which is what GLFW's
+   cursor reports (`Window.cursor` is `glfwGetCursorPos`) and what an image's rows are indexed by.
+   Pixel *centres* are at half-integers: pixel `(0, 0)` covers `[0,1) x [0,1)` and its centre is
+   `(0.5, 0.5)`. All the `rayThroughPixel` overloads take the pixel *index* and aim at its centre.
+ - **Field's clip space is Vulkan's depth range, `z` in `0..1`**, and `y` is *up* in NDC despite
+   Vulkan's default being down — `afield.four.Renderer` flips it with a negative-height viewport
+   (`setViewportAndScissor` sets `y = rect.y + rect.h` and `height = -rect.h`), precisely so that
+   the familiar GL-style projection matrices keep working. So NDC `y = +1` is the **top** row.
+ - **A ray's direction is unit length**, so [`RayCamera`](graphics.md#pointing-kt-raycamera) hit distances are in world units and
+   comparable between pointers.
+
+### Typical use
+
+```diffstatic {data-lang=kotlin}
+val mesh = icosphere(2)
+val view = MeshView(yawDegrees = 30.0, pitchDegrees = 20.0)
+val camera = view.rayCamera(mesh)
+val hit = mesh.bvh().raycast(camera.rayThroughPixel(360, 270))
+println(hit)                                  // the triangle under the middle of the picture
+```
+
+`src/jvmMain/kotlin/afield/stdlib/pointing.kt`
+
+### Top-level functions { #pointing-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">MeshBvh</span><span class="p">.</span><span class="nf">raycast</span><span class="p">(</span><span class="n">ray</span><span class="p">:</span> <span class="nc">Ray</span><span class="p">,</span> <span class="n">maxDistance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="nc">Double</span><span class="p">.</span><span class="nc">MAX&#95;VALUE</span><span class="p">,</span> <span class="n">cullBackFaces</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">RayHit</span><span class="o">?</span></code> | Convenience: `MeshBvh.raycast` down a [`Ray`](graphics.md#pointing-kt-ray). Distances come back in world units. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">MeshView</span><span class="p">.</span><span class="nf">rayCamera</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="nc">TriMesh</span><span class="p">,</span> <span class="n">caption</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">MeshViewRayCamera</span></code> | The camera `TriMesh.renderPng` would use for `mesh` under this view — inverted, so its pixels map back into the world. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">rayCameraFor</span><span class="p">(</span><span class="n">projection</span><span class="p">:</span> <span class="nc">Matrix4f</span><span class="p">,</span> <span class="n">modelView</span><span class="p">:</span> <span class="nc">Matrix4f</span><span class="p">,</span> <span class="n">pixelWidth</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">pixelHeight</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">ClipMatrixRayCamera</span></code> | A [`RayCamera`](graphics.md#pointing-kt-raycamera) over a projection and a model-view, in the order a vertex shader applies them. |
+| <code class="highlight"><span class="k">fun</span> <span class="n">afield</span><span class="p">.</span><span class="n">four</span><span class="p">.</span><span class="n">util</span><span class="p">.</span><span class="nc">Camera</span><span class="p">.</span><span class="nf">rayCamera</span><span class="p">(</span><span class="n">pixelWidth</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="n">renderer</span><span class="p">.</span><span class="n">window</span><span class="p">.</span><span class="n">width</span><span class="p">,</span> <span class="n">pixelHeight</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="n">renderer</span><span class="p">.</span><span class="n">window</span><span class="p">.</span><span class="n">height</span><span class="p">)</span><span class="p">:</span> <span class="nc">ClipMatrixRayCamera</span></code> | This live scene camera, inverted — so a mouse position in the window becomes a ray in the scene. |
+
+### Ray { #pointing-kt-ray }
+
+<code class="highlight"><span class="k">class</span> <span class="nf">Ray</span><span class="p">(</span><span class="k">val</span> <span class="n">originX</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">originY</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">originZ</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">dirX</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">dirY</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">dirZ</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>
+
+A half-line in world space: where it starts and, in unit length, where it goes.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">originX</span><span class="p">:</span> <span class="nc">Double</span></code> | Where the ray starts. |
+| <code class="highlight"><span class="k">val</span> <span class="n">originY</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">originZ</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">dirX</span><span class="p">:</span> <span class="nc">Double</span></code> | Unit-length direction. |
+| <code class="highlight"><span class="k">val</span> <span class="n">dirY</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">dirZ</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">origin</span><span class="p">:</span> <span class="nc">Vec3</span></code> | A **fresh** `Vec3` at the ray's start — mutating it does not touch the ray. |
+| <code class="highlight"><span class="k">val</span> <span class="n">direction</span><span class="p">:</span> <span class="nc">Vec3</span></code> | A **fresh** unit-length `Vec3` along the ray. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">at</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | The point `t` world units along the ray, in double precision. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">pointAt</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec3</span></code> | `at`, as a fresh `Vec3`. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
+### PixelAt { #pointing-kt-pixelat }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PixelAt</span><span class="p">(</span><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">depth</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>
+
+Where a world point landed: a pixel, and how far in front of the eye it was.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span></code> | Column, in pixels from the left edge. Not rounded — a point lands between pixels. |
+| <code class="highlight"><span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span></code> | Row, in pixels from the **top** edge. |
+| <code class="highlight"><span class="k">val</span> <span class="n">depth</span><span class="p">:</span> <span class="nc">Double</span></code> | Depth. Its units are the camera's own business — [`MeshViewRayCamera`](graphics.md#pointing-kt-meshviewraycamera) reports view-space `z` in world units, [`ClipMatrixRayCamera`](graphics.md#pointing-kt-clipmatrixraycamera) reports normalized device `z` in `0..1` — so compare two depths from the same camera and nothing else. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">isInside</span><span class="p">(</span><span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> | True when this landed inside a `width` x `height` frame. |
+
+### RayCamera { #pointing-kt-raycamera }
+
+<code class="highlight"><span class="k">interface</span> <span class="nc">RayCamera</span></code>
+
+A camera you can run backwards: pixel to ray, and world point back to pixel.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">pixelWidth</span><span class="p">:</span> <span class="nc">Int</span></code> | Frame width in pixels. |
+| <code class="highlight"><span class="k">val</span> <span class="n">pixelHeight</span><span class="p">:</span> <span class="nc">Int</span></code> | Frame height in pixels. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">rayThrough</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Ray</span></code> | The ray leaving the eye through the point `(x, y)` in pixel coordinates, y downward. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">rayThroughPixel</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Ray</span></code> | `rayThrough` the *centre* of pixel `(x, y)` — i.e. through `(x + 0.5, y + 0.5)`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">pixelOf</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">PixelAt</span><span class="o">?</span></code> | Where a world point lands, or `null` when it is at or behind the eye and so has no pixel. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">pixelOf</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">)</span><span class="p">:</span> <span class="nc">PixelAt</span><span class="o">?</span></code> | `pixelOf` a `Vec3`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">isNonDegenerate</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Whether this camera actually spreads the frame out — the premise every round-trip test needs. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">nonDegeneracyMargin</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | The smallest angle, in radians, between the rays through the frame's four quarter points. |
+
+### MeshViewRayCamera { #pointing-kt-meshviewraycamera }
+
+<code class="highlight"><span class="k">class</span> <span class="nf">MeshViewRayCamera</span><span class="p">(</span><span class="k">val</span> <span class="n">frame</span><span class="p">:</span> <span class="nc">VisionGeometryPreview</span><span class="p">.</span><span class="nc">ViewFrame</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RayCamera</span></code>
+
+[`MeshView`](graphics.md#mesh-field-kt-meshview)'s camera, inverted — the one that maps pixels of a `TriMesh.renderPng` back into the world.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">frame</span><span class="p">:</span> <span class="nc">VisionGeometryPreview</span><span class="p">.</span><span class="nc">ViewFrame</span></code> | The rasterizer's projection, both ways. |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">pixelWidth</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">pixelHeight</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">eye</span><span class="p">:</span> <span class="nc">Vec3</span></code> | Where the eye stands, as a fresh `Vec3`. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">rayThrough</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Ray</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">rayThroughPixel</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Ray</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">pixelOf</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">PixelAt</span><span class="o">?</span></code> |  |
+
+### ClipMatrixRayCamera { #pointing-kt-clipmatrixraycamera }
+
+<code class="highlight"><span class="k">class</span> <span class="nf">ClipMatrixRayCamera</span><span class="p">(</span><span class="n">clip</span><span class="p">:</span> <span class="nc">Matrix4f</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">pixelWidth</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">pixelHeight</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RayCamera</span></code>
+
+Any projection at all, inverted numerically: a clip matrix, a frame size, and double-precision Gauss-Jordan.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">pixelWidth</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">pixelHeight</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">rayThrough</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Ray</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">pixelOf</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">PixelAt</span><span class="o">?</span></code> |  |
+
+## pointing_pick.kt { #pointing-pick-kt }
+
+A scene you can point at, and a hit record that names the **part** you touched rather than the
+triangle.
+
+### Why a triangle index is not an answer
+
+`MeshBvh.raycast` returns a [`RayHit`](graphics.md#mesh-measure-kt-rayhit), and `RayHit.triangle` is an index into an [`TriMesh`](graphics.md#mesh-kt-trimesh)'s
+`indices` array. That is the right thing for a physics query and the wrong thing for a person: a
+human pointing at a house wants to hear *"the east wall"*, not *"triangle 4471"*, and a triangle
+index changes every time the geometry is rebuilt, so it cannot be written down, logged, compared
+between two runs or used as a selection.
+
+So a pickable carries [`PickParts`](graphics.md#pointing-pick-kt-pickparts) — a per-triangle part id with names — and a [`PickHit`](graphics.md#pointing-pick-kt-pickhit) reports
+the part. Three things then become possible that were not: naming the thing you touched, keeping
+a selection across a re-render, and asking whether two pointers found *the same* part.
+
+### Where a part id comes from
+
+In descending order of how much it is worth trusting:
+
+ 1. **The geometry already knows.** `PickParts.fromTriangulated` reads
+    `TriangulatedGeometry.sourceFace` — the polytope layer has recorded, for every triangle it
+    emits, the polygonal face it was cut from, and until now nothing consumed it. This is the only
+    source here where the id means something *outside* the mesh: it is an
+    [`afield.stdlib.polytope.ElementId`](polytopes.md#topology-kt-elementid) in the polytope's own topology, so it survives
+    re-triangulation with a different triangulator and can be handed back to the polytope API.
+ 2. **The author said so.** `PickParts.of` takes the array, for a builder that knows which
+    triangles it just appended — see `TriMeshBuilder.groups`, which records it for you.
+ 3. **The topology can guess.** `PickParts.byComponent` splits on connected components. Honest and
+    cheap, and exactly as good as the mesh's connectivity: a house whose walls all share vertices
+    is one component and therefore one part, which is a real limitation and not a bug here.
+
+#### What happens when the geometry is rebuilt
+
+[`PickParts`](graphics.md#pointing-pick-kt-pickparts) is **keyed by triangle index and valid only for the mesh it was built from.**
+[`Pickable`](graphics.md#pointing-pick-kt-pickable) checks the triangle count on construction, which catches the gross case; it cannot
+catch a mesh of the same size with different triangles, and does not pretend to. If you rebuild
+geometry every frame, rebuild the [`PickParts`](graphics.md#pointing-pick-kt-pickparts) with it and carry the *part id* — never the triangle
+— across the rebuild. That is the whole reason ids exist.
+
+### Typical use
+
+```diffstatic {data-lang=kotlin}
+val scene = pickScene {
+    add("floor", plane(4.0), parts = PickParts.single(plane(4.0), "floor"))
+    add("lamp", icosphere(2), at = Matrix4f().translation(0f, 1.5f, 0f))
+}
+val camera = MeshView().rayCamera(scene.mergedMesh())
+val hit = scene.pick(camera.rayThroughPixel(360, 270))
+println(hit?.describe())      // "lamp / lamp  tri 812  1.83 away  at (0.31, 1.72, 0.44)"
+```
+
+`src/jvmMain/kotlin/afield/stdlib/pointing_pick.kt`
+
+### Top-level functions { #pointing-pick-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">TriMeshBuilder</span><span class="p">.</span><span class="nf">groups</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PickParts</span></code> | A [`PickParts`](graphics.md#pointing-pick-kt-pickparts) recording the groups this builder was told about — the "the author said so" source, and the one to reach for when you are assembling a model out of named pieces. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">pickScene</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="nc">PickSceneBuilder</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">PickScene</span></code> | Build a [`PickScene`](graphics.md#pointing-pick-kt-pickscene). See `PickSceneBuilder.add`. |
+
+### PickParts { #pointing-pick-kt-pickparts }
+
+<code class="highlight"><span class="k">class</span> <span class="nc">PickParts</span> <span class="k">private</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">storedTriangleParts</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">names</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">externalIds</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="o">?</span><span class="p">&gt;</span><span class="p">)</span></code>
+
+Which named part each of a mesh's triangles belongs to — the "stable picking id through triangles" a pick record needs in order to say something a person can act on.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">names</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> | Part names, indexed by part id. |
+| <code class="highlight"><span class="k">val</span> <span class="n">externalIds</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="o">?</span><span class="p">&gt;</span></code> | For `fromTriangulated`, the part's id in the geometry's own world — a polytope [`afield.stdlib.polytope.ElementId`](polytopes.md#topology-kt-elementid)'s value. `null` for parts that have no such identity. |
+| <code class="highlight"><span class="k">val</span> <span class="n">triangleCount</span><span class="p">:</span> <span class="nc">Int</span></code> | Triangles this covers. Must equal the mesh's `triangleCount`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">partCount</span><span class="p">:</span> <span class="nc">Int</span></code> | How many named parts there are. |
+| <code class="highlight"><span class="k">val</span> <span class="n">triangleParts</span><span class="p">:</span> <span class="nc">IntArray</span></code> | Per-triangle part indices, as a fresh array. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">partOf</span><span class="p">(</span><span class="n">triangle</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> | Which part triangle `triangle` belongs to, or `UNASSIGNED`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">nameOfTriangle</span><span class="p">(</span><span class="n">triangle</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | The name of the part triangle `triangle` belongs to, or `UNASSIGNED_NAME`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">nameOfPart</span><span class="p">(</span><span class="n">part</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | The name of part `part`, or `UNASSIGNED_NAME` when it is out of range. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">externalIdOfPart</span><span class="p">(</span><span class="n">part</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code> | Part `part`'s identity in the geometry it came from, or `null`. See `externalIds`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">trianglesOfPart</span><span class="p">(</span><span class="n">part</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntArray</span></code> | Every triangle belonging to part `part`. Linear in the triangle count. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">triangleCounts</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntArray</span></code> | How many triangles each part got, indexed by part. Useful in a caption. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
+### Pickable { #pointing-pick-kt-pickable }
+
+<code class="highlight"><span class="k">class</span> <span class="nf">Pickable</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">mesh</span><span class="p">:</span> <span class="nc">TriMesh</span><span class="p">,</span> <span class="k">val</span> <span class="n">parts</span><span class="p">:</span> <span class="nc">PickParts</span> <span class="o">=</span> <span class="nc">PickParts</span><span class="p">.</span><span class="nf">single</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">at</span><span class="p">:</span> <span class="nc">Matrix4f</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">enabled</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">leafSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">)</span></code>
+
+One thing in a scene that a ray can hit: CPU geometry, a name, a part assignment, and where it stands.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> | What to call this when a pick reports it. |
+| <code class="highlight"><span class="k">val</span> <span class="n">mesh</span><span class="p">:</span> <span class="nc">TriMesh</span></code> | The geometry. Captured by reference; nothing here mutates it. |
+| <code class="highlight"><span class="k">val</span> <span class="n">parts</span><span class="p">:</span> <span class="nc">PickParts</span></code> | Which part each triangle belongs to. Defaults to one part named after the object. |
+| <code class="highlight"><span class="k">val</span> <span class="n">at</span><span class="p">:</span> <span class="nc">Matrix4f</span><span class="o">?</span></code> | Model-to-world. `null` means the mesh is already in world coordinates, and skips the maths. |
+| <code class="highlight"><span class="k">val</span> <span class="n">enabled</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Set false to leave it in the scene but stop it answering — a "look through this" flag. |
+| <code class="highlight"><span class="k">val</span> <span class="n">bvh</span><span class="p">:</span> <span class="nc">MeshBvh</span></code> | The BVH over `mesh`, in model space. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
+### PickHit { #pointing-pick-kt-pickhit }
+
+<code class="highlight"><span class="k">class</span> <span class="nf">PickHit</span><span class="p">(</span><span class="k">val</span> <span class="n">pickable</span><span class="p">:</span> <span class="nc">Pickable</span><span class="p">,</span> <span class="k">val</span> <span class="n">objectName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">part</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">partName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">externalId</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">triangle</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">point</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">u</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">v</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">localPoint</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">)</span></code>
+
+What a pointer touched: which object, which named part, and the geometry of the contact.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">pickable</span><span class="p">:</span> <span class="nc">Pickable</span></code> | The thing that was hit. |
+| <code class="highlight"><span class="k">val</span> <span class="n">objectName</span><span class="p">:</span> <span class="nc">String</span></code> | `Pickable.name`, hoisted so a hit can be logged without holding the geometry. |
+| <code class="highlight"><span class="k">val</span> <span class="n">part</span><span class="p">:</span> <span class="nc">Int</span></code> | Part id within `Pickable.parts`, or `PickParts.UNASSIGNED`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">partName</span><span class="p">:</span> <span class="nc">String</span></code> | The part's name. |
+| <code class="highlight"><span class="k">val</span> <span class="n">externalId</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code> | The part's identity in the geometry it came from — a polytope face's `ElementId` value — or `null`. This is the id worth writing down; `triangle` is not. |
+| <code class="highlight"><span class="k">val</span> <span class="n">triangle</span><span class="p">:</span> <span class="nc">Int</span></code> | Index of the triangle hit, in `Pickable.mesh`. Changes whenever the geometry is rebuilt. |
+| <code class="highlight"><span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span></code> | Distance from the ray's origin, in **world** units. See [`Pickable`](graphics.md#pointing-pick-kt-pickable)'s note on scale. |
+| <code class="highlight"><span class="k">val</span> <span class="n">point</span><span class="p">:</span> <span class="nc">Vec3</span></code> | The contact point, in world space. |
+| <code class="highlight"><span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec3</span></code> | The hit triangle's geometric normal in world space, unit length, **not** flipped toward the ray. |
+| <code class="highlight"><span class="k">val</span> <span class="n">u</span><span class="p">:</span> <span class="nc">Double</span></code> | Barycentric weight on the triangle's second corner. `u + v <= 1`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">v</span><span class="p">:</span> <span class="nc">Double</span></code> | Barycentric weight on the triangle's third corner. `u + v <= 1`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">localPoint</span><span class="p">:</span> <span class="nc">Vec3</span></code> | The contact point in the pickable's own model space — where its geometry thinks it is. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">isFrontFacing</span><span class="p">(</span><span class="n">ray</span><span class="p">:</span> <span class="nc">Ray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> | True when the normal points back toward where the ray came from. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | One line a person can read. The `println` of a pick. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
+### PickScene { #pointing-pick-kt-pickscene }
+
+<code class="highlight"><span class="k">class</span> <span class="nf">PickScene</span><span class="p">(</span><span class="n">pickables</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pickable</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>
+
+Several [`Pickable`](graphics.md#pointing-pick-kt-pickable)s, and nearest-hit resolution across them.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">pickables</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pickable</span><span class="p">&gt;</span></code> | Everything in the scene, in the order it was added. |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pickable</span><span class="o">?</span></code> | The pickable called `name`, or `null`. First match wins if two share a name. |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">plus</span><span class="p">(</span><span class="n">pickable</span><span class="p">:</span> <span class="nc">Pickable</span><span class="p">)</span><span class="p">:</span> <span class="nc">PickScene</span></code> | A scene with `pickable` added. [`PickScene`](graphics.md#pointing-pick-kt-pickscene) is immutable; this returns a new one. |
+| <code class="highlight"><span class="k">val</span> <span class="n">triangleCount</span><span class="p">:</span> <span class="nc">Int</span></code> | Total triangles across every pickable, enabled or not. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">pick</span><span class="p">(</span><span class="n">ray</span><span class="p">:</span> <span class="nc">Ray</span><span class="p">,</span> <span class="n">maxDistance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="nc">Double</span><span class="p">.</span><span class="nc">MAX&#95;VALUE</span><span class="p">,</span> <span class="n">cullBackFaces</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">PickHit</span><span class="o">?</span></code> | The nearest thing `ray` hits, or `null`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">pickAll</span><span class="p">(</span><span class="n">ray</span><span class="p">:</span> <span class="nc">Ray</span><span class="p">,</span> <span class="n">maxDistance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="nc">Double</span><span class="p">.</span><span class="nc">MAX&#95;VALUE</span><span class="p">,</span> <span class="n">cullBackFaces</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PickHit</span><span class="p">&gt;</span></code> | Every hit along `ray`, nearest first — one per pickable, its own nearest. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">mergedMesh</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriMesh</span></code> | Every pickable's geometry, transformed into world space and concatenated — for framing a camera on the whole scene, and for rendering it in one call. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">mergedParts</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PickParts</span></code> | `mergedMesh`'s part assignment, named `"object / part"` so a merged hit is still legible. |
+
+### PickSceneBuilder { #pointing-pick-kt-pickscenebuilder }
+
+<code class="highlight"><span class="k">class</span> <span class="nc">PickSceneBuilder</span></code>
+
+Collects [`Pickable`](graphics.md#pointing-pick-kt-pickable)s for `pickScene`.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">add</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">mesh</span><span class="p">:</span> <span class="nc">TriMesh</span><span class="p">,</span> <span class="n">parts</span><span class="p">:</span> <span class="nc">PickParts</span> <span class="o">=</span> <span class="nc">PickParts</span><span class="p">.</span><span class="nf">single</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span><span class="p">,</span> <span class="n">at</span><span class="p">:</span> <span class="nc">Matrix4f</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">enabled</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pickable</span></code> | Add something pointable. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">add</span><span class="p">(</span><span class="n">pickable</span><span class="p">:</span> <span class="nc">Pickable</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pickable</span></code> | Add an already-built [`Pickable`](graphics.md#pointing-pick-kt-pickable). |
+
+## pointing_pointer.kt { #pointing-pointer-kt }
+
+A person pointing — mouse, XR controller or pinched hand — behind one interface, and the
+hover / press / drag / release machine that turns a stream of samples into an interaction.
+
+### A pointer is three things
+
+A ray, a select value in `0..1`, and whether it exists at all ([`PointerState`](graphics.md#pointing-pointer-kt-pointerstate)). That is enough to
+unify every pointing device Field can see, which is the whole reason the interface is this thin:
+
+ - **A mouse** has a ray only because a camera can be inverted (`mousePointer`), a select value
+   that is `0` or `1`, and is always active while the window has a cursor.
+ - **An XR controller** has a pose and a trigger, and reports `active` when the runtime is tracking
+   it (`controllerPointer`).
+ - **A pinched hand** has 26 joints and a geometric pinch strength, and is the interesting case,
+   because its select value is genuinely continuous and genuinely noisy (`pinchPointer`).
+
+The `handState` that landed in `afield.four.targets.OpenXRHmdTarget` had **no consumer** — every
+mention of it in the tree was inside the file that writes it. `pinchPointer` is the first.
+
+### Why the machine has hysteresis, in two places
+
+Feed raw nearest-hit results to a UI and it flickers. Two specific, different flickers, and
+[`PointerInteraction`](graphics.md#pointing-pointer-kt-pointerinteraction) treats them differently because they *are* different:
+
+ 1. **The part flickers** when the ray lands near an edge two parts share, or grazes a silhouette.
+   A pixel's worth of hand tremor alternates the answer every frame, and a label that alternates
+   every frame is unreadable. The fix is a **dwell** guarding every transition *away* from a held
+   hover — see `PointerInteraction.switchSamples` and the rule stated on `resolveHover`. Acquiring
+   a hover is never delayed, because a lag between pointing at something and it lighting up reads
+   as the pointer being broken.
+ 2. **The click flickers** when a continuous select value sits on the threshold — which a
+   geometric `pinchStrength` derived from a 40 mm range of finger separation does constantly. The
+   fix is a **Schmitt trigger**: press at `PointerInteraction.pressThreshold`, release at the lower
+   `PointerInteraction.releaseThreshold`. A value wobbling between them holds its state.
+
+And once pressed, **the drag belongs to what it grabbed**: hover is frozen, and
+`PointerInteraction.dragOffset` reports where the ray now crosses the plane through the original
+contact point, so letting the pointer wander off the object does not drop the drag.
+
+### Typical use
+
+```diffstatic {data-lang=kotlin}
+val scene = pickScene { add("model", mesh, parts = builder.groups()) }
+val pointer = mousePointer(camera = { view.rayCamera(mesh) }, cursor = { window.cursor },
+                           selecting = { window.isMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT) })
+val interaction = PointerInteraction(scene)
+forever {
+    interaction.update(pointer.sample())
+    if (interaction.justPressed) println("grabbed ${interaction.grabbed?.partName}")
+}
+```
+
+`src/jvmMain/kotlin/afield/stdlib/pointing_pointer.kt`
+
+### Top-level functions { #pointing-pointer-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">mousePointer</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;mouse&quot;</span><span class="p">,</span> <span class="n">camera</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">RayCamera</span><span class="o">?</span><span class="p">,</span> <span class="n">cursor</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Vec2</span><span class="p">,</span> <span class="n">selecting</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="n">clampToFrame</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pointer</span></code> | A mouse, made into a spatial pointer by inverting a camera. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">controllerPointer</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;controller&quot;</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">ControllerState</span><span class="o">?</span><span class="p">,</span> <span class="n">localForward</span><span class="p">:</span> <span class="nc">Vector3f</span> <span class="o">=</span> <span class="nc">Vector3f</span><span class="p">(</span><span class="mi">0f</span><span class="p">,</span> <span class="mi">0f</span><span class="p">,</span> <span class="mi">1f</span><span class="p">)</span><span class="p">,</span> <span class="n">select</span><span class="p">:</span> <span class="p">(</span><span class="nc">ControllerState</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span> <span class="o">=</span> <span class="p">{</span> <span class="n">s</span> <span class="o">-&gt;</span> <span class="nf">maxOf</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">triggerValue</span><span class="p">.</span><span class="nf">toDouble</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">if</span> <span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">selectPressed</span> <span class="o">&#124;</span><span class="o">&#124;</span> <span class="n">s</span><span class="p">.</span><span class="n">triggerPressed</span><span class="p">)</span> <span class="mf">1.0</span> <span class="n">else</span> <span class="mf">0.0</span><span class="p">)</span> <span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pointer</span></code> | An XR controller's aim, and its trigger. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">pinchPointer</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;pinch&quot;</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">HandTrackingState</span><span class="o">?</span><span class="p">,</span> <span class="n">eye</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Vec3</span><span class="p">)</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pointer</span></code> | A bare hand: aim by moving it, select by pinching. The first consumer of `afield.four.targets.OpenXRHmdTarget.handState`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">fixedPointer</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;fixed&quot;</span><span class="p">,</span> <span class="n">fixed</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">PointerState</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pointer</span></code> | A pointer that always reports `fixed` — for tests, and for driving a capture from a script. |
+| <code class="highlight"><span class="k">fun</span> <span class="n">afield</span><span class="p">.</span><span class="n">four</span><span class="p">.</span><span class="n">targets</span><span class="p">.</span><span class="nc">SideBySideStereoTarget</span><span class="p">.</span><span class="nf">pointer</span><span class="p">(</span><span class="n">hand</span><span class="p">:</span> <span class="n">afield</span><span class="p">.</span><span class="n">four</span><span class="p">.</span><span class="n">targets</span><span class="p">.</span><span class="nc">OpenXRHmdTarget</span><span class="p">.</span><span class="nc">Hand</span> <span class="o">=</span> <span class="n">afield</span><span class="p">.</span><span class="n">four</span><span class="p">.</span><span class="n">targets</span><span class="p">.</span><span class="nc">OpenXRHmdTarget</span><span class="p">.</span><span class="nc">Hand</span><span class="p">.</span><span class="nc">RIGHT</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;controller ${hand.name.lowercase()}&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pointer</span></code> | This stereo target's controller, as a [`Pointer`](graphics.md#pointing-pointer-kt-pointer). |
+| <code class="highlight"><span class="k">fun</span> <span class="n">afield</span><span class="p">.</span><span class="n">four</span><span class="p">.</span><span class="n">targets</span><span class="p">.</span><span class="nc">OpenXRHmdTarget</span><span class="p">.</span><span class="nf">handPointer</span><span class="p">(</span><span class="n">hand</span><span class="p">:</span> <span class="n">afield</span><span class="p">.</span><span class="n">four</span><span class="p">.</span><span class="n">targets</span><span class="p">.</span><span class="nc">OpenXRHmdTarget</span><span class="p">.</span><span class="nc">Hand</span> <span class="o">=</span> <span class="n">afield</span><span class="p">.</span><span class="n">four</span><span class="p">.</span><span class="n">targets</span><span class="p">.</span><span class="nc">OpenXRHmdTarget</span><span class="p">.</span><span class="nc">Hand</span><span class="p">.</span><span class="nc">RIGHT</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;pinch ${hand.name.lowercase()}&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pointer</span></code> | This headset's bare hand, as a [`Pointer`](graphics.md#pointing-pointer-kt-pointer) — pinch to select. |
+
+### PointerState { #pointing-pointer-kt-pointerstate }
+
+<code class="highlight"><span class="k">class</span> <span class="nf">PointerState</span><span class="p">(</span><span class="k">val</span> <span class="n">ray</span><span class="p">:</span> <span class="nc">Ray</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">select</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span></code>
+
+One reading of a pointing device.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">ray</span><span class="p">:</span> <span class="nc">Ray</span><span class="o">?</span></code> | Where the pointer is aiming, or `null` when it is not there. |
+| <code class="highlight"><span class="k">val</span> <span class="n">select</span><span class="p">:</span> <span class="nc">Double</span></code> | How hard the person is selecting, `0..1`. A mouse button is `0` or `1`; a trigger and a pinch are continuous, which is why [`PointerInteraction`](graphics.md#pointing-pointer-kt-pointerinteraction) needs two thresholds rather than one. |
+| <code class="highlight"><span class="k">val</span> <span class="n">active</span><span class="p">:</span> <span class="nc">Boolean</span></code> | True when there is a ray to use. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
+### Pointer { #pointing-pointer-kt-pointer }
+
+<code class="highlight"><span class="k">interface</span> <span class="nc">Pointer</span></code>
+
+Something a person points with. Sampled, not subscribed to — see [`PointerInteraction`](graphics.md#pointing-pointer-kt-pointerinteraction).
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> | For logs and for telling two hands apart. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">sample</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointerState</span></code> | Read the device now. |
+
+### LambdaPointer { #pointing-pointer-kt-lambdapointer }
+
+<code class="highlight"><span class="k">class</span> <span class="nf">LambdaPointer</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">read</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">PointerState</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Pointer</span></code>
+
+A [`Pointer`](graphics.md#pointing-pointer-kt-pointer) from a lambda. What every factory below builds.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">sample</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointerState</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
+### PointerPhase { #pointing-pointer-kt-pointerphase }
+
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">PointerPhase</span></code>
+
+What a [`PointerInteraction`](graphics.md#pointing-pointer-kt-pointerinteraction) is doing.
+
+Constants: `or`, `not`, `and`.
+
+### PointerInteraction { #pointing-pointer-kt-pointerinteraction }
+
+<code class="highlight"><span class="k">class</span> <span class="nf">PointerInteraction</span><span class="p">(</span><span class="k">var</span> <span class="n">scene</span><span class="p">:</span> <span class="nc">PickScene</span><span class="p">,</span> <span class="k">val</span> <span class="n">pressThreshold</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.6</span><span class="p">,</span> <span class="k">val</span> <span class="n">releaseThreshold</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.35</span><span class="p">,</span> <span class="k">val</span> <span class="n">switchSamples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="k">val</span> <span class="n">maxDistance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="nc">Double</span><span class="p">.</span><span class="nc">MAX&#95;VALUE</span><span class="p">,</span> <span class="k">val</span> <span class="n">cullBackFaces</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span></code>
+
+A stream of [`PointerState`](graphics.md#pointing-pointer-kt-pointerstate)s turned into an interaction: what is hovered, what is grabbed, and what a drag has moved by.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">var</span> <span class="n">scene</span><span class="p">:</span> <span class="nc">PickScene</span></code> | What to pick against. Swap it freely between calls; the machine holds hits, not indices. |
+| <code class="highlight"><span class="k">val</span> <span class="n">pressThreshold</span><span class="p">:</span> <span class="nc">Double</span></code> | Select value at which a press begins. Above `releaseThreshold` by construction. |
+| <code class="highlight"><span class="k">val</span> <span class="n">releaseThreshold</span><span class="p">:</span> <span class="nc">Double</span></code> | Select value at which a press ends. The lower half of the Schmitt trigger: a value wobbling between the two thresholds holds whichever state it is in. |
+| <code class="highlight"><span class="k">val</span> <span class="n">switchSamples</span><span class="p">:</span> <span class="nc">Int</span></code> | How many consecutive samples a *different* part must be the nearest hit before the hover moves to it. |
+| <code class="highlight"><span class="k">val</span> <span class="n">maxDistance</span><span class="p">:</span> <span class="nc">Double</span></code> | Ignore anything further away than this. |
+| <code class="highlight"><span class="k">val</span> <span class="n">cullBackFaces</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Skip triangles facing away, as a renderer would. |
+| <code class="highlight"><span class="k">var</span> <span class="n">phase</span><span class="p">:</span> <span class="nc">PointerPhase</span></code> | What the machine is doing. |
+| <code class="highlight"><span class="k">var</span> <span class="n">hover</span><span class="p">:</span> <span class="nc">PickHit</span><span class="o">?</span></code> | What the pointer is over. Frozen to `grabbed` while `PointerPhase.PRESSED` or `PointerPhase.DRAGGING` — a drag belongs to what it grabbed. |
+| <code class="highlight"><span class="k">var</span> <span class="n">grabbed</span><span class="p">:</span> <span class="nc">PickHit</span><span class="o">?</span></code> | What the press landed on, or `null` when nothing is pressed. |
+| <code class="highlight"><span class="k">var</span> <span class="n">ray</span><span class="p">:</span> <span class="nc">Ray</span><span class="o">?</span></code> | The last sample's ray, for whoever wants to draw it. |
+| <code class="highlight"><span class="k">var</span> <span class="n">justPressed</span><span class="p">:</span> <span class="nc">Boolean</span></code> | True for exactly the one `update` in which the press began. |
+| <code class="highlight"><span class="k">var</span> <span class="n">justReleased</span><span class="p">:</span> <span class="nc">Boolean</span></code> | True for exactly the one `update` in which the press ended *with the pointer still there* — i.e. a click. A pointer that vanished mid-press sets `justCancelled` instead. |
+| <code class="highlight"><span class="k">var</span> <span class="n">justCancelled</span><span class="p">:</span> <span class="nc">Boolean</span></code> | True for exactly the one `update` in which a press was abandoned because the pointer went away. |
+| <code class="highlight"><span class="k">var</span> <span class="n">dragOffset</span><span class="p">:</span> <span class="nc">Vec3</span><span class="o">?</span></code> | How far the drag has moved the grabbed point, in world units, or `null` when nothing is grabbed. |
+| <code class="highlight"><span class="k">val</span> <span class="n">dragDistance</span><span class="p">:</span> <span class="nc">Double</span></code> | Straight-line length of `dragOffset`, or 0. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">update</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="nc">PointerState</span><span class="p">,</span> <span class="n">moveEpsilon</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">4</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointerPhase</span></code> | Feed one sample. Returns the new `phase`. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
+## pointing_render.kt { #pointing-render-kt }
+
+Seeing what the pointer found: the picked part lit, a crosshair where the pointer was aimed, and a
+caption that names what it hit.
+
+### Why this is in the layer and not left to the caller
+
+Because "it compiles" and "a hit record came back non-null" are both worthless as evidence for
+something whose whole job is to tell a person what they are touching. The failure mode is not a
+crash; it is *the wrong part lit*, or a pointer that is confidently off by the height of a caption
+band. Neither shows up in a unit test's return value, and both are obvious in a picture.
+
+So the layer ships its own way of drawing itself, `SpatialPointerPixelTest` decodes the PNG back
+out and reads samples from it, and the demo transcript uses the same call a person would.
+
+### What the picture is
+
+`TriMesh.renderPng`'s rasterizer, over a mesh whose per-vertex colours have been repainted by part
+(`TriMesh.coloredByPart`), with a crosshair composited on afterwards at the pointer's pixel. All of
+it CPU: no GPU, no window, no AWT — so it runs inside a live Field box, inside a test, and inside a
+headless docs capture, identically.
+
+```diffstatic {data-lang=kotlin}
+val scene = pickScene { add("model", mesh, parts = builder.groups()) }
+val camera = MeshView().rayCamera(scene.mergedMesh())
+val at = Vec2(360f, 270f)
+display(scene.pointerFigureHtml(camera, at))
+```
+
+`src/jvmMain/kotlin/afield/stdlib/pointing_render.kt`
+
+### Top-level functions { #pointing-render-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">TriMesh</span><span class="p">.</span><span class="nf">coloredByPart</span><span class="p">(</span><span class="n">parts</span><span class="p">:</span> <span class="nc">PickParts</span><span class="p">,</span> <span class="n">palette</span><span class="p">:</span> <span class="p">(</span><span class="n">part</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Vec3</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriMesh</span></code> | This mesh with each triangle painted by the part it belongs to. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">TriMesh</span><span class="p">.</span><span class="nf">withPartHighlight</span><span class="p">(</span><span class="n">parts</span><span class="p">:</span> <span class="nc">PickParts</span><span class="p">,</span> <span class="n">part</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">highlight</span><span class="p">:</span> <span class="nc">Vec3</span> <span class="o">=</span> <span class="nc">PART&#95;HIGHLIGHT</span><span class="p">,</span> <span class="n">base</span><span class="p">:</span> <span class="nc">Vec3</span> <span class="o">=</span> <span class="nc">PART&#95;BASE</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriMesh</span></code> | This mesh with one part lit and everything else neutral — the picture of a pick. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">TriMesh</span><span class="p">.</span><span class="nf">coloredByPart</span><span class="p">(</span><span class="n">parts</span><span class="p">:</span> <span class="nc">PickParts</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriMesh</span></code> | This mesh with every part its own colour, walked around a hue circle. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">partPalette</span><span class="p">(</span><span class="n">part</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec3</span></code> | The default colour for a part id: a golden-ratio walk around the hue circle, so adjacent part ids are never adjacent colours and a five-part model does not come out as five shades of the same green. `PickParts.UNASSIGNED` gets a dead grey. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PickScene</span><span class="p">.</span><span class="nf">renderPointer</span><span class="p">(</span><span class="n">camera</span><span class="p">:</span> <span class="nc">MeshViewRayCamera</span><span class="p">,</span> <span class="n">at</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">,</span> <span class="n">view</span><span class="p">:</span> <span class="nc">MeshView</span> <span class="o">=</span> <span class="nc">MeshView</span><span class="p">(</span><span class="n">width</span> <span class="o">=</span> <span class="n">camera</span><span class="p">.</span><span class="n">pixelWidth</span><span class="p">,</span> <span class="n">height</span> <span class="o">=</span> <span class="n">camera</span><span class="p">.</span><span class="n">pixelHeight</span><span class="p">)</span><span class="p">,</span> <span class="n">crosshairRadius</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">11</span><span class="p">,</span> <span class="n">maxDistance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="nc">Double</span><span class="p">.</span><span class="nc">MAX&#95;VALUE</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointerRaster</span></code> | Render this scene from `camera` with whatever is under the pointer lit up and a crosshair where the pointer is aimed. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PickScene</span><span class="p">.</span><span class="nf">pointerFigureHtml</span><span class="p">(</span><span class="n">camera</span><span class="p">:</span> <span class="nc">MeshViewRayCamera</span><span class="p">,</span> <span class="n">at</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">,</span> <span class="n">view</span><span class="p">:</span> <span class="nc">MeshView</span> <span class="o">=</span> <span class="nc">MeshView</span><span class="p">(</span><span class="n">width</span> <span class="o">=</span> <span class="n">camera</span><span class="p">.</span><span class="n">pixelWidth</span><span class="p">,</span> <span class="n">height</span> <span class="o">=</span> <span class="n">camera</span><span class="p">.</span><span class="n">pixelHeight</span><span class="p">)</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | The pick as a `<figure>` — the picture, and a caption naming the part — for `display(…)` in a box. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showPointer</span><span class="p">(</span><span class="n">scene</span><span class="p">:</span> <span class="nc">PickScene</span><span class="p">,</span> <span class="n">camera</span><span class="p">:</span> <span class="nc">MeshViewRayCamera</span><span class="p">,</span> <span class="n">at</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">,</span> <span class="n">view</span><span class="p">:</span> <span class="nc">MeshView</span> <span class="o">=</span> <span class="nc">MeshView</span><span class="p">(</span><span class="n">width</span> <span class="o">=</span> <span class="n">camera</span><span class="p">.</span><span class="n">pixelWidth</span><span class="p">,</span> <span class="n">height</span> <span class="o">=</span> <span class="n">camera</span><span class="p">.</span><span class="n">pixelHeight</span><span class="p">)</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">PickHit</span><span class="o">?</span></code> | Push `pointerFigureHtml` to a box output — the one-liner a live document uses. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PickScene</span><span class="p">.</span><span class="nf">clickableProjection</span><span class="p">(</span><span class="n">camera</span><span class="p">:</span> <span class="nc">MeshViewRayCamera</span><span class="p">,</span> <span class="n">highlightPart</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">PickParts</span><span class="p">.</span><span class="nc">UNASSIGNED</span><span class="p">,</span> <span class="n">clickHandler</span><span class="p">:</span> <span class="p">(</span><span class="n">browser</span><span class="p">:</span> <span class="n">afield</span><span class="p">.</span><span class="n">stdlib</span><span class="p">.</span><span class="nc">FLineIntersection</span><span class="p">,</span> <span class="n">jvm</span><span class="p">:</span> <span class="nc">PickHit</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span> <span class="n">&#95;</span><span class="p">,</span> <span class="n">&#95;</span> <span class="o">-&gt;</span> <span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="n">afield</span><span class="p">.</span><span class="n">graphics</span><span class="p">.</span><span class="nc">FLine</span><span class="p">&gt;</span></code> | This scene projected to 2D as one filled, clickable `FLine` per visible triangle — a real mouse pointer, and the bridge between the JVM picker in this layer and the browser picker Field already had. |
+
+### PointerRaster { #pointing-render-kt-pointerraster }
+
+<code class="highlight"><span class="k">class</span> <span class="nf">PointerRaster</span><span class="p">(</span><span class="k">val</span> <span class="n">pixels</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">hit</span><span class="p">:</span> <span class="nc">PickHit</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">pointerX</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">pointerY</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>
+
+A finished picture of a pick: ARGB pixels, the size, and what the pointer found.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">pixels</span><span class="p">:</span> <span class="nc">IntArray</span></code> | ARGB, row-major, `width` x `height`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">hit</span><span class="p">:</span> <span class="nc">PickHit</span><span class="o">?</span></code> | What the pointer found, or `null`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">pointerX</span><span class="p">:</span> <span class="nc">Double</span></code> | Where the pointer was aimed, in pixels. |
+| <code class="highlight"><span class="k">val</span> <span class="n">pointerY</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">toPng</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code> | `pixels` as PNG bytes, via `afield.util.PngEncoder`. No AWT. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">caption</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | One line naming what was hit, for a caption or a log. |
 
 ## quantilewarp.kt { #quantilewarp-kt }
 
