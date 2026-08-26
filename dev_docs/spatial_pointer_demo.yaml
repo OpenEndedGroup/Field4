@@ -1,0 +1,159 @@
+name: spatial_pointer
+description: >
+  Point at geometry in a scene and be told what you touched. Two boxes over one little house whose
+  five pieces are named — floor, wall north, wall west, roof, chimney. The first box gives you two
+  sliders, `pointer x` and `pointer y`: drag either and the crosshair moves, the part under it lights
+  up, and the caption names it and says how far away it is. The second box is the same house as a
+  clickable SVG, so you can point with the mouse — and because a click is answered *twice*, once by
+  the browser's own FLine picker and once by the JVM unprojecting the same pixel, the box prints
+  whether the two agree. Pure CPU: no GPU, no Renderer, no window. See dev_docs/SPATIAL_POINTER.md.
+operations:
+  - create:
+      box: agent_spatial_pointer_sliders
+      name: point at it with a slider
+      frame: { x: 60.0, y: 60.0, w: 240.0, h: 55.0 }
+      properties:
+        code: |
+          // A spatial pointer: a pixel becomes a ray, the ray finds a triangle, and the triangle
+          // knows which *part* it belongs to. Drag `pointer x` below and watch the caption.
+          //
+          // The one parameter to move is `pointer x`. As it sweeps left to right the crosshair
+          // crosses the model and the caption changes part — "house / wall west", then
+          // "house / roof", then "house / chimney" — and the distance changes with it. `pointer y`
+          // does the same vertically, and is the quicker way to get from the roof down to the floor
+          // through the open front of the house.
+
+          // ---- the model: five named pieces, built with TriMeshBuilder.group ----------------
+          fun boxAt(cx: Double, cy: Double, cz: Double, w: Double, h: Double, d: Double): TriMesh {
+              val hx = (w / 2).toFloat(); val hy = (h / 2).toFloat(); val hz = (d / 2).toFloat()
+              val b = TriMeshBuilder()
+              val at = listOf(
+                  vec(-hx, -hy, -hz), vec(hx, -hy, -hz), vec(hx, hy, -hz), vec(-hx, hy, -hz),
+                  vec(-hx, -hy, hz), vec(hx, -hy, hz), vec(hx, hy, hz), vec(-hx, hy, hz),
+              ).map { b.vertex(vec(it.x + cx, it.y + cy, it.z + cz)) }
+              b.quad(at[3], at[2], at[1], at[0]); b.quad(at[4], at[5], at[6], at[7])
+              b.quad(at[0], at[1], at[5], at[4]); b.quad(at[7], at[6], at[2], at[3])
+              b.quad(at[0], at[4], at[7], at[3]); b.quad(at[1], at[2], at[6], at[5])
+              return b.build()
+          }
+
+          val builder = TriMeshBuilder()
+          builder.group("floor");      builder.add(boxAt(0.0, -0.05, 0.0, 3.0, 0.1, 2.0))
+          builder.group("wall north"); builder.add(boxAt(0.0, 0.7, -0.95, 3.0, 1.4, 0.1))
+          builder.group("wall west");  builder.add(boxAt(-1.45, 0.7, 0.0, 0.1, 1.4, 2.0))
+          builder.group("roof");       builder.add(boxAt(0.0, 1.45, 0.0, 3.2, 0.1, 2.2))
+          builder.group("chimney");    builder.add(boxAt(0.9, 1.8, 0.4, 0.35, 0.6, 0.35))
+
+          // `groups()` turns those markers into a PickParts — a per-triangle part id. That is what
+          // makes a hit say "roof" instead of "triangle 43", and it is the only part of a hit record
+          // worth writing down: a triangle index changes every time the geometry is rebuilt.
+          val house = builder.build()
+          val parts = builder.groups()
+          println("house: " + house.triangleCount + " triangles in " + parts.partCount + " named parts " +
+                  parts.names)
+
+          val scene = pickScene { add("house", house, parts = parts) }
+
+          // The camera is inverted, not re-derived: `rayCamera` holds the *same* ViewFrame object
+          // that `renderPng` projects with, so the ray through a pixel is exactly the inverse of the
+          // thing that drew that pixel. Pass the same caption/title to both or the caption band
+          // shifts the answer.
+          val view = MeshView(yawDegrees = 38.0, pitchDegrees = 26.0, width = 640, height = 480,
+                              wireframe = true, supersample = 2)
+          val camera = view.rayCamera(scene.mergedMesh())
+          println("camera spreads its rays by " +
+                  "%.1f".format(Math.toDegrees(camera.nonDegeneracyMargin())) + " deg across the frame")
+
+          var px = 330.0
+          var py = 190.0
+
+          fun redraw() {
+              val hit = showPointer(scene, camera, vec(px, py), view, title = "a spatial pointer")
+              println(if (hit == null) "pointing at nothing"
+                      else "pointing at " + hit.partName + ", " + "%.3f".format(hit.distance) + " away")
+          }
+
+          controlGroup("pointer") {
+              // Move this one. Left to right it crosses wall west, the roof, and the chimney.
+              slider("pointer x", min = 0.0, max = 639.0, initialValue = px) { px = it; redraw() }
+              slider("pointer y", min = 0.0, max = 479.0, initialValue = py) { py = it; redraw() }
+          }
+
+          redraw()
+  - create:
+      box: agent_spatial_pointer_click
+      name: … or with the mouse, and check the two pickers agree
+      frame: { x: 60.0, y: 420.0, w: 300.0, h: 55.0 }
+      properties:
+        code: |
+          // The same house, projected to 2D as one clickable filled FLine per visible triangle,
+          // painter-sorted so the nearest is on top. Click it.
+          //
+          // Every click is answered twice. The *browser* decides which <g> you hit — SVG hit testing
+          // plus sliders.js's own point-in-polygon pass — and reports the part name it was labelled
+          // with. The *JVM* takes the click position, which is in pixels because that is what the
+          // projection was emitted in, unprojects it through the same camera, and casts a ray. The
+          // box prints both and whether they match.
+          //
+          // They should match everywhere except along a strip where two surfaces nearly touch: the
+          // projection sorts whole triangles by centroid depth, and an SVG cannot have a per-pixel
+          // z-buffer. That disagreement is the honest one, and it is the JVM that is right.
+
+          fun boxAt(cx: Double, cy: Double, cz: Double, w: Double, h: Double, d: Double): TriMesh {
+              val hx = (w / 2).toFloat(); val hy = (h / 2).toFloat(); val hz = (d / 2).toFloat()
+              val b = TriMeshBuilder()
+              val at = listOf(
+                  vec(-hx, -hy, -hz), vec(hx, -hy, -hz), vec(hx, hy, -hz), vec(-hx, hy, -hz),
+                  vec(-hx, -hy, hz), vec(hx, -hy, hz), vec(hx, hy, hz), vec(-hx, hy, hz),
+              ).map { b.vertex(vec(it.x + cx, it.y + cy, it.z + cz)) }
+              b.quad(at[3], at[2], at[1], at[0]); b.quad(at[4], at[5], at[6], at[7])
+              b.quad(at[0], at[1], at[5], at[4]); b.quad(at[7], at[6], at[2], at[3])
+              b.quad(at[0], at[4], at[7], at[3]); b.quad(at[1], at[2], at[6], at[5])
+              return b.build()
+          }
+
+          val builder = TriMeshBuilder()
+          builder.group("floor");      builder.add(boxAt(0.0, -0.05, 0.0, 3.0, 0.1, 2.0))
+          builder.group("wall north"); builder.add(boxAt(0.0, 0.7, -0.95, 3.0, 1.4, 0.1))
+          builder.group("wall west");  builder.add(boxAt(-1.45, 0.7, 0.0, 0.1, 1.4, 2.0))
+          builder.group("roof");       builder.add(boxAt(0.0, 1.45, 0.0, 3.2, 0.1, 2.2))
+          builder.group("chimney");    builder.add(boxAt(0.9, 1.8, 0.4, 0.35, 0.6, 0.35))
+          val scene = pickScene { add("house", builder.build(), parts = builder.groups()) }
+
+          val view = MeshView(yawDegrees = 38.0, pitchDegrees = 26.0, width = 640, height = 480,
+                              wireframe = false)
+          val camera = view.rayCamera(scene.mergedMesh())
+
+          var agreed = 0
+          var disagreed = 0
+
+          fun draw(highlight: Int) {
+              val faces = scene.clickableProjection(camera, highlightPart = highlight) { browser, jvm ->
+                  val jvmName = jvm?.let { it.objectName + " / " + it.partName }
+                  val match = browser.label != null && browser.label == jvmName
+                  if (match) agreed++ else disagreed++
+                  println(
+                      "click at (" + "%.0f".format(browser.position.x) + ", " +
+                      "%.0f".format(browser.position.y) + ")  browser: " + browser.label +
+                      "  jvm: " + (jvmName ?: "nothing") +
+                      (if (match) "  AGREE" else "  DISAGREE") +
+                      "   [" + agreed + " agree / " + disagreed + " disagree]"
+                  )
+                  jvm?.let { println("   " + it.describe()) }
+                  // Redraw with the JVM's answer lit, so the picture follows the click.
+                  draw(scene.mergedParts().names.indexOf(jvmName ?: ""))
+              }
+              lines(faces, channel = "click the house", w = 640.0, h = 480.0)
+          }
+
+          draw(PickParts.UNASSIGNED)
+          println("click a face above. " + scene.mergedParts().partCount + " named parts: " +
+                  scene.mergedParts().names)
+  - execute:
+      box: agent_spatial_pointer_sliders
+      property: code
+  - execute:
+      box: agent_spatial_pointer_click
+      property: code
+  - await:
+      wait: pending

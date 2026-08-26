@@ -477,7 +477,217 @@ object VisionGeometryPreview {
         /** Triangles that reached the z-buffer, and those the back-face cull removed. */
         val drawn: Int,
         val culled: Int,
-    )
+        /**
+         * The z-buffer the rasterizer filled in, in **view-space z** — world units in front of the
+         * eye, the same quantity [ViewFrame.project] divides by. `Double.MAX_VALUE` where nothing was
+         * drawn.
+         *
+         * Handed out rather than dropped because it is the only *independent* measurement of the
+         * scene's depth Field has on the CPU: a scanline rasterizer arrived at it, so comparing it
+         * against a BVH ray cast down the matching unprojected ray is a genuine two-implementation
+         * differential rather than one implementation agreeing with itself.
+         * `SpatialPointerPixelTest` does exactly that.
+         *
+         * **At sample resolution, not pixel resolution** — [sampleWidth] x [sampleHeight], i.e.
+         * [Style.supersample] times larger in each axis than [pixels]. Averaging depths would be
+         * meaningless (the mean of a foreground and a background depth is a depth at neither), so it
+         * is left un-downsampled and the size is stated instead.
+         */
+        val depth: DoubleArray = DoubleArray(0),
+        /** [depth]'s width. [width] times [Style.supersample]. */
+        val sampleWidth: Int = width,
+        /** [depth]'s height. [height] times [Style.supersample]. */
+        val sampleHeight: Int = height,
+    ) {
+        /** View-space depth at sample `(x, y)`, or `Double.MAX_VALUE` where nothing was drawn. */
+        fun depthAtSample(x: Int, y: Int): Double =
+            if (depth.isEmpty() || x < 0 || y < 0 || x >= sampleWidth || y >= sampleHeight) Double.MAX_VALUE
+            else depth[y * sampleWidth + x]
+    }
+
+    // ---------------------------------------------------------------- the projection, both ways
+
+    /**
+     * Where the eye stands, and how a point in front of it lands on a pixel.
+     *
+     * This is [renderPixels]'s projection and only that — it used to be a dozen local `val`s and two
+     * local `fun`s inside the rasterizer's body. It is a class now because the *interesting*
+     * direction is the other one: [rayThroughSample] turns a pixel back into a world-space ray, and
+     * the only way to be sure an unprojection is the inverse of a renderer is for both directions to
+     * be the same arithmetic rather than two transcriptions of it.
+     * `afield.stdlib.MeshView.rayCamera` is the consumer, and `afield.stdlib.SpatialPointer`'s pixel
+     * evidence leans on the two agreeing.
+     *
+     * Three details here are easy to get wrong from the outside, which is the other reason this is no
+     * longer private:
+     *
+     *  - **View-space `z` is positive in front of the eye.** [forwardX]/[forwardY]/[forwardZ] run
+     *    *away* from the viewer and [project] divides by `+z`. The negation the conventional
+     *    "`+z` points back at the viewer" wants happens in the shading normals instead, inside
+     *    [renderPixels].
+     *  - **The vertical extent is [contentHeight], not [height].** A caption strip reserves the
+     *    bottom band ([Style.reservedBottom]) and the model is framed in what is left, so `sy`
+     *    divides by [contentHeight] while `sx` divides by [width]. Mapping a pixel through this with
+     *    `height` where `contentHeight` belongs is off by a caption band, which looks like a small,
+     *    plausible and entirely wrong answer.
+     *  - **Everything here is in *supersampled* pixels.** The finished raster is [supersample] times
+     *    smaller in each axis; [sampleOfPixel] does that conversion, centre-of-block.
+     *
+     * The eye is placed from the mesh's own bounds, so a [ViewFrame] belongs to the mesh it was built
+     * for; framing a different mesh with it puts the camera in the wrong place.
+     */
+    class ViewFrame internal constructor(bounds: DoubleArray, val camera: Camera, style: Style) {
+
+        /** Samples per output pixel, per axis. At least 1. */
+        val supersample: Int = max(1, style.supersample)
+
+        /** Raster width in samples — [Style.width] times [supersample]. */
+        val width: Int = style.width * supersample
+
+        /** Raster height in samples — [Style.height] times [supersample]. */
+        val height: Int = style.height * supersample
+
+        /**
+         * The vertical extent the projection actually uses, in samples: [height] less the caption
+         * band [Style.reservedBottom] reserves, floored at a third of the frame.
+         */
+        val contentHeight: Int = (height - style.reservedBottom * supersample).coerceAtLeast(height / 3)
+
+        /** Centre of the framed mesh's bounding box. The camera orbits this. */
+        val centreX: Double = (bounds[0] + bounds[3]) / 2
+        val centreY: Double = (bounds[1] + bounds[4]) / 2
+        val centreZ: Double = (bounds[2] + bounds[5]) / 2
+
+        /** Half the bounding box's diagonal — the "one mesh radius" [Camera.distance] counts in. */
+        val radius: Double = max(
+            1e-4,
+            0.5 * sqrt(
+                (bounds[3] - bounds[0]) * (bounds[3] - bounds[0]) +
+                    (bounds[4] - bounds[1]) * (bounds[4] - bounds[1]) +
+                    (bounds[5] - bounds[2]) * (bounds[5] - bounds[2]),
+            ),
+        )
+
+        /** Where the eye stands, in world space. */
+        val eyeX: Double
+        val eyeY: Double
+        val eyeZ: Double
+
+        /** Unit view axes in world space. `forward` runs from the eye toward [centreX] and friends. */
+        val rightX: Double; val rightY: Double; val rightZ: Double
+        val upX: Double; val upY: Double; val upZ: Double
+        val forwardX: Double; val forwardY: Double; val forwardZ: Double
+
+        /** `1 / tan(fov/2)` — the projection's focal length in half-heights. */
+        val focal: Double = 1.0 / tan(Math.toRadians(camera.fieldOfViewDegrees) / 2)
+
+        /** Width over [contentHeight]. `sx` is divided by this, which is what makes pixels square. */
+        val aspect: Double = width.toDouble() / contentHeight
+
+        /**
+         * The near plane, in view-space `z`. A twentieth of [radius]: the eye stands
+         * `distance * radius` away, so this is always well in front of the mesh and keeps the depth
+         * buffer's precision where the mesh is.
+         */
+        val near: Double
+
+        init {
+            val yaw = Math.toRadians(camera.yawDegrees)
+            val pitch = Math.toRadians(camera.pitchDegrees)
+            val eyeDistance = radius * camera.distance
+            eyeX = centreX + eyeDistance * cos(pitch) * sin(yaw)
+            eyeY = centreY + eyeDistance * sin(pitch)
+            eyeZ = centreZ + eyeDistance * cos(pitch) * cos(yaw)
+
+            // Right-handed look-at: forward is -z in view space, as in Metal and in the head.
+            val fx0 = centreX - eyeX; val fy0 = centreY - eyeY; val fz0 = centreZ - eyeZ
+            val fl = sqrt(fx0 * fx0 + fy0 * fy0 + fz0 * fz0)
+            forwardX = fx0 / fl; forwardY = fy0 / fl; forwardZ = fz0 / fl
+            // right = forward x worldUp, worldUp = (0, 1, 0)
+            var rx = forwardY * 0.0 - forwardZ * 1.0
+            var ry = forwardZ * 0.0 - forwardX * 0.0
+            var rz = forwardX * 1.0 - forwardY * 0.0
+            val rl = sqrt(rx * rx + ry * ry + rz * rz)
+            if (rl < 1e-9) { rx = 1.0; ry = 0.0; rz = 0.0 } else { rx /= rl; ry /= rl; rz /= rl }
+            rightX = rx; rightY = ry; rightZ = rz
+            upX = ry * forwardZ - rz * forwardY
+            upY = rz * forwardX - rx * forwardZ
+            upZ = rx * forwardY - ry * forwardX
+
+            near = max(1e-5, radius * 0.05)
+        }
+
+        /** World point to view space: `(right·d, up·d, forward·d)`, `z` positive in front. */
+        fun toView(x: Double, y: Double, z: Double): DoubleArray {
+            val dx = x - eyeX; val dy = y - eyeY; val dz = z - eyeZ
+            return doubleArrayOf(
+                dx * rightX + dy * rightY + dz * rightZ,
+                dx * upX + dy * upY + dz * upZ,
+                dx * forwardX + dy * forwardY + dz * forwardZ,
+            )
+        }
+
+        /**
+         * View point to sample coordinates: `(sx, sy, z)`, where `sx`/`sy` are in samples measured
+         * from the frame's top-left corner and `z` is passed through as the depth.
+         *
+         * Undefined for a point at or behind the eye — the rasterizer clips against [near] first.
+         */
+        fun project(vx: Double, vy: Double, vz: Double): DoubleArray {
+            val invZ = 1.0 / vz
+            return doubleArrayOf(
+                (vx * focal * invZ / aspect * 0.5 + 0.5) * width,
+                (0.5 - vy * focal * invZ * 0.5) * contentHeight,
+                vz,
+            )
+        }
+
+        /** [toView] then [project] — a world point straight to sample coordinates. */
+        fun projectWorld(x: Double, y: Double, z: Double): DoubleArray {
+            val v = toView(x, y, z)
+            return project(v[0], v[1], v[2])
+        }
+
+        /**
+         * The centre of output pixel `(x, y)` in sample coordinates.
+         *
+         * The downsample averages the `supersample × supersample` block starting at
+         * `(x * supersample, y * supersample)`, so its centre is half a block further on. At
+         * `supersample = 1` this is the familiar `+0.5`.
+         */
+        fun sampleOfPixel(x: Double, y: Double): DoubleArray =
+            doubleArrayOf(x * supersample + supersample * 0.5, y * supersample + supersample * 0.5)
+
+        /**
+         * The ray leaving the eye through sample coordinates `(sx, sy)` — the inverse of [project],
+         * up to the scale [project] threw away.
+         *
+         * Returns `(originX, originY, originZ, dirX, dirY, dirZ)` in world space, with the direction
+         * **not** normalized: it is scaled so that its component along `forward` is exactly 1, which
+         * makes the parameter along it equal to view-space `z`. Normalize it if you want distances.
+         */
+        fun rayThroughSample(sx: Double, sy: Double): DoubleArray {
+            // Invert `project` at z = 1: solve for the view-space x and y a depth-1 point would need.
+            val vx = (sx / width - 0.5) * 2.0 * aspect / focal
+            val vy = (0.5 - sy / contentHeight) * 2.0 / focal
+            return doubleArrayOf(
+                eyeX, eyeY, eyeZ,
+                vx * rightX + vy * upX + forwardX,
+                vx * rightY + vy * upY + forwardY,
+                vx * rightZ + vy * upZ + forwardZ,
+            )
+        }
+
+        /** [rayThroughSample] from the centre of output pixel `(x, y)`. */
+        fun rayThroughPixel(x: Double, y: Double): DoubleArray {
+            val s = sampleOfPixel(x, y)
+            return rayThroughSample(s[0], s[1])
+        }
+    }
+
+    /** The [ViewFrame] [renderPixels] would use for this mesh, camera and style. */
+    fun viewFrame(mesh: CapturedMesh, camera: Camera = Camera(), style: Style = Style()): ViewFrame =
+        ViewFrame(mesh.bounds(), camera, style)
 
     // ---------------------------------------------------------------- rasterizer
 
@@ -494,69 +704,30 @@ object VisionGeometryPreview {
         camera: Camera = Camera(),
         style: Style = Style(),
     ): Raster {
-        val scale = max(1, style.supersample)
-        val w = style.width * scale
-        val h = style.height * scale
+        val frame = ViewFrame(mesh.bounds(), camera, style)
+        val scale = frame.supersample
+        val w = frame.width
+        val h = frame.height
         val pixels = IntArray(w * h) { style.background }
         val depth = DoubleArray(w * h) { Double.MAX_VALUE }
 
-        val bounds = mesh.bounds()
-        val cx = (bounds[0] + bounds[3]) / 2
-        val cy = (bounds[1] + bounds[4]) / 2
-        val cz = (bounds[2] + bounds[5]) / 2
-        val radius = max(
-            1e-4,
-            0.5 * sqrt(
-                (bounds[3] - bounds[0]) * (bounds[3] - bounds[0]) +
-                    (bounds[4] - bounds[1]) * (bounds[4] - bounds[1]) +
-                    (bounds[5] - bounds[2]) * (bounds[5] - bounds[2]),
-            ),
-        )
-
-        val yaw = Math.toRadians(camera.yawDegrees)
-        val pitch = Math.toRadians(camera.pitchDegrees)
-        val eyeDistance = radius * camera.distance
-        val ex = cx + eyeDistance * cos(pitch) * sin(yaw)
-        val ey = cy + eyeDistance * sin(pitch)
-        val ez = cz + eyeDistance * cos(pitch) * cos(yaw)
-
-        // Right-handed look-at: forward is -z in view space, as in Metal and in the head.
-        val fx0 = cx - ex; val fy0 = cy - ey; val fz0 = cz - ez
-        val fl = sqrt(fx0 * fx0 + fy0 * fy0 + fz0 * fz0)
-        val fx = fx0 / fl; val fy = fy0 / fl; val fz = fz0 / fl
-        // right = forward x worldUp
-        var rx = fy * 0.0 - fz * 1.0
-        var ry = fz * 0.0 - fx * 0.0
-        var rz = fx * 1.0 - fy * 0.0
-        val rl = sqrt(rx * rx + ry * ry + rz * rz)
-        if (rl < 1e-9) { rx = 1.0; ry = 0.0; rz = 0.0 } else { rx /= rl; ry /= rl; rz /= rl }
-        val ux = ry * fz - rz * fy
-        val uy = rz * fx - rx * fz
-        val uz = rx * fy - ry * fx
-
-        // The eye stands `distance * radius` away, so a near plane at a twentieth of the radius is
-        // always well in front of the mesh and keeps the depth buffer's precision where the mesh is.
-        val near = max(1e-5, radius * 0.05)
-        val focal = 1.0 / tan(Math.toRadians(camera.fieldOfViewDegrees) / 2)
-        // The caption strip and the stats lines sit over the bottom of the frame, so the model is
-        // framed in the band above them rather than in the whole image — otherwise a mesh that fills
-        // its frame (a cube does) gets its near corner clipped by the text.
-        val contentH = (h - style.reservedBottom * scale).coerceAtLeast(h / 3)
-        val aspect = w.toDouble() / contentH
+        // Where the eye stands, how a point in front of it lands on a pixel, and the near plane —
+        // all of it in `frame` now, so `MeshView.rayCamera` can invert exactly this and not a copy.
+        val rx = frame.rightX; val ry = frame.rightY; val rz = frame.rightZ
+        val ux = frame.upX; val uy = frame.upY; val uz = frame.upZ
+        val fx = frame.forwardX; val fy = frame.forwardY; val fz = frame.forwardZ
+        val near = frame.near
+        val contentH = frame.contentHeight
+        val focal = frame.focal
+        val aspect = frame.aspect
 
         // Key light over the viewer's left shoulder, plus a cool fill from below-right, both in view
         // space so the shading reads the same from every camera angle.
         val keyX = -0.45; val keyY = 0.68; val keyZ = 0.58
         val fillX = 0.62; val fillY = -0.35; val fillZ = 0.70
 
-        fun toView(x: Double, y: Double, z: Double): DoubleArray {
-            val dx = x - ex; val dy = y - ey; val dz = z - ez
-            return doubleArrayOf(
-                dx * rx + dy * ry + dz * rz,
-                dx * ux + dy * uy + dz * uz,
-                dx * fx + dy * fy + dz * fz, // +ve in front of the eye; we negate at projection
-            )
-        }
+        // `+ve in front of the eye; we negate at projection` — see ViewFrame.toView.
+        fun toView(x: Double, y: Double, z: Double): DoubleArray = frame.toView(x, y, z)
 
         // Each vertex becomes view position, view normal, and colour; the raster stage only ever
         // deals in view space, which makes the near-plane clip a single comparison.
@@ -594,12 +765,7 @@ object VisionGeometryPreview {
             a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t,
         )
 
-        fun project(c: Corner): DoubleArray {
-            val invZ = 1.0 / c.z
-            val sx = (c.x * focal * invZ / aspect * 0.5 + 0.5) * w
-            val sy = (0.5 - c.y * focal * invZ * 0.5) * contentH
-            return doubleArrayOf(sx, sy, c.z)
-        }
+        fun project(c: Corner): DoubleArray = frame.project(c.x, c.y, c.z)
 
         fun shade(nx: Double, ny: Double, nz: Double, r: Double, g: Double, b: Double, facing: Double): IntArray {
             var lx = nx; var ly = ny; var lz = nz
@@ -710,7 +876,11 @@ object VisionGeometryPreview {
             drawWireframe(mesh, pixels, depth, w, h, contentH, ::toView, focal, aspect, nearZ, style.cullBackFaces)
         }
 
-        return Raster(downsample(pixels, w, h, style.width, style.height, scale), style.width, style.height, drawn, culled)
+        return Raster(
+            downsample(pixels, w, h, style.width, style.height, scale),
+            style.width, style.height, drawn, culled,
+            depth = depth, sampleWidth = w, sampleHeight = h,
+        )
     }
 
     /**
