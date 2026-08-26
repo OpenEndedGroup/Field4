@@ -431,6 +431,90 @@ class SpatialPointerPixelTest {
     }
 
     @Test
+    fun `what getting the camera wrong looks like, as a picture`() {
+        // The number — 28,276 interior disagreements — is convincing to someone who already believes
+        // the differential. This is the same mistake as a picture, so that nobody has to.
+        //
+        // Both frames aim at the same pixel and render with the same view. One uses the camera that
+        // matches the render; the other uses a camera built with a caption band the render does not
+        // have, which is exactly what "simplifying" `rayCamera` to drop its caption argument produces.
+        // The crosshair lands in the same place in both. A different part lights up.
+        val scene = houseScene()
+        val merged = scene.mergedMesh()
+        val view = MeshView(
+            yawDegrees = 38.0, pitchDegrees = 26.0, width = 560, height = 420,
+            wireframe = true, supersample = 2,
+        )
+        val right = view.rayCamera(merged)
+        val wrong = view.rayCamera(merged, caption = "a caption reserves the bottom band")
+
+        // Find a pixel where the two cameras genuinely disagree about the part, low in the frame where
+        // the caption band's error is largest. Swept rather than hard-coded so the fixture cannot rot.
+        var found: Vec2? = null
+        var y = view.height - 60
+        while (y > view.height / 2 && found == null) {
+            var x = 30
+            while (x < view.width - 30) {
+                val a = scene.pick(right.rayThroughPixel(x, y))?.partName
+                val b = scene.pick(wrong.rayThroughPixel(x, y))?.partName
+                if (a != null && b != null && a != b) { found = Vec2(x + 0.5f, y + 0.5f); break }
+                x += 3
+            }
+            y -= 3
+        }
+        assertNotNull(
+            found,
+            "premise: the two cameras must disagree about *some* pixel's part, or there is no mistake " +
+                "to illustrate",
+        )
+
+        val (dir, temporary) = captureDir()
+        val ok = scene.renderPointer(right, found, view)
+        // The wrong camera picks with the wrong ray, but the *picture* is rendered by the same
+        // rasterizer either way — which is the whole trap: the render looks completely normal and the
+        // highlight is simply on the wrong thing.
+        val bad = scene.renderPointer(wrong, found, view)
+        println("adversarial capture at (${found.x}, ${found.y}): matching camera says " +
+            "'${ok.hit?.partName}', caption-band-off camera says '${bad.hit?.partName}'")
+        assertTrue(
+            ok.hit?.partName != bad.hit?.partName,
+            "the two captures must light different parts, or the picture illustrates nothing",
+        )
+
+        val fileOk = write(dir, "adversarial-right.png", ok.toPng())
+        val fileBad = write(dir, "adversarial-wrong.png", bad.toPng())
+
+        val dOk = decode(fileOk.readBytes())
+        val dBad = decode(fileBad.readBytes())
+        // Both must be real renders — a black frame would "differ" too, and prove nothing.
+        assertTrue(dOk.argb.toHashSet().size > 200 && dBad.argb.toHashSet().size > 200,
+            "both captures must be real renders, not black frames")
+        val litOk = litPixels(dOk)
+        val litBad = litPixels(dBad)
+        assertTrue(litOk > 500 && litBad > 500, "both must light something: $litOk and $litBad pixels")
+
+        var both = 0
+        var either = 0
+        for (yy in 0 until dOk.height) for (xx in 0 until dOk.width) {
+            val a = isLit(dOk, xx, yy); val b = isLit(dBad, xx, yy)
+            if (a || b) either++
+            if (a && b) both++
+        }
+        val overlap = both.toDouble() / either
+        println("adversarial lit-region overlap: ${"%.5f".format(overlap)} ($litOk vs $litBad lit pixels)")
+        // Measured: exactly 0. The two cameras land on *different parts*, and two parts are disjoint
+        // sets of triangles, so any overlap at all would mean the highlight had leaked — which is a
+        // different bug and worth failing on rather than tolerating under a percentage.
+        assertEquals(
+            0, both,
+            "the wrong camera must light a wholly different region, not a shifted one; " +
+                "$both pixels were lit in both (overlap ${"%.4f".format(overlap)})",
+        )
+
+        if (temporary) { fileOk.delete(); fileBad.delete(); dir.delete() }
+    }
+
+    @Test
     fun `pointing at nothing lights nothing, and says so`() {
         val scene = houseScene()
         val camera = cleanView(400, 300).rayCamera(scene.mergedMesh())

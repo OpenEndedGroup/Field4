@@ -2,6 +2,9 @@ package afield.stdlib
 
 import afield.four.util.SuperProjection
 import afield.stdlib.linalg.Matrix4f
+import afield.stdlib.polytope.NormalPolicy
+import afield.stdlib.polytope.dodecahedron
+import afield.stdlib.polytope.triangulate
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.test.Test
@@ -436,6 +439,103 @@ class SpatialPointerTest {
         assertTrue(
             thrown.message!!.contains("keyed by triangle index"),
             "…and explain the rebuild rule. Got: ${thrown.message}",
+        )
+    }
+
+    @Test
+    fun `a polytope's own face ids survive re-triangulation, which is what makes them worth carrying`() {
+        // The roadmap item this layer exists to serve, and the strongest id source available:
+        // `TriangulatedGeometry.sourceFace` records, at triangulation time, the polygonal face each
+        // triangle was cut from. Nothing in `src` consumed it before `PickParts.fromTriangulated`.
+        //
+        // The claim being tested is the one that makes such an id worth writing down: **the triangles
+        // change and the face ids do not.** So triangulate the same solid twice with different normal
+        // policies, check the meshes really do differ, and check a ray through the same point reports
+        // the same face id both times.
+        val solid = dodecahedron()
+        val flat = solid.triangulate(normals = NormalPolicy.Flat)
+        val smooth = solid.triangulate(normals = NormalPolicy.Crease(180.0))
+
+        val flatParts = PickParts.fromTriangulated(flat)
+        val smoothParts = PickParts.fromTriangulated(smooth)
+        assertEquals(12, flatParts.partCount, "a dodecahedron has twelve faces")
+        assertEquals(12, smoothParts.partCount)
+        assertEquals(listOf(3), flatParts.triangleCounts().distinct(), "each pentagon fans to 3 triangles")
+        assertEquals(36, flat.mesh.triangleCount, "twelve pentagons, three triangles each")
+
+        // Premise: the two triangulations must actually be different objects, or "the id survived" is
+        // a statement about nothing. Flat keeps a per-corner face normal; a 180-degree crease blends
+        // every fan, so the normals differ even though the positions do not.
+        val normalsDiffer = (0 until flat.mesh.vertexCount).any { v ->
+            val a = flat.mesh.normal(v)
+            val b = smooth.mesh.normal(v)
+            a != null && b != null && a.distance(b) > 1e-3f
+        }
+        assertTrue(
+            normalsDiffer,
+            "premise: the two triangulations must differ, or the survival claim is vacuous",
+        )
+
+        // And the ids are the polytope's own, not an ordinal this layer invented.
+        assertTrue(
+            flatParts.externalIds.all { it != null },
+            "every part from a triangulation must carry the polytope's ElementId: ${flatParts.externalIds}",
+        )
+        assertEquals(
+            flatParts.externalIds, smoothParts.externalIds,
+            "the same solid must yield the same face ids under either normal policy",
+        )
+
+        // Now point at it. Twelve rays, one out through each face's centroid, from far outside.
+        val flatScene = PickScene(listOf(Pickable("flat", flat.mesh, flatParts)))
+        val smoothScene = PickScene(listOf(Pickable("smooth", smooth.mesh, smoothParts)))
+        val bounds = flat.mesh.boundsArray()
+        val radius = 4.0 * kotlin.math.sqrt(
+            ((bounds[3] - bounds[0]) * (bounds[3] - bounds[0]) +
+                (bounds[4] - bounds[1]) * (bounds[4] - bounds[1]) +
+                (bounds[5] - bounds[2]) * (bounds[5] - bounds[2])).toDouble()
+        )
+
+        val idsSeen = HashSet<Int>()
+        var compared = 0
+        for (part in 0 until flatParts.partCount) {
+            // The centroid of the part's triangles is inside the face, so a ray from far outside along
+            // the outward direction through it hits that face first.
+            val tris = flatParts.trianglesOfPart(part)
+            var cx = 0.0; var cy = 0.0; var cz = 0.0
+            for (t in tris) {
+                val a = flat.mesh.position(flat.mesh.ia(t))
+                val b = flat.mesh.position(flat.mesh.ib(t))
+                val c = flat.mesh.position(flat.mesh.ic(t))
+                cx += (a.x + b.x + c.x) / 3.0; cy += (a.y + b.y + c.y) / 3.0; cz += (a.z + b.z + c.z) / 3.0
+            }
+            cx /= tris.size; cy /= tris.size; cz /= tris.size
+            val len = kotlin.math.sqrt(cx * cx + cy * cy + cz * cz)
+            assertTrue(len > 1e-6, "a face centroid must be off the origin for this construction")
+            val ray = Ray(cx / len * radius, cy / len * radius, cz / len * radius, -cx, -cy, -cz)
+
+            val fromFlat = flatScene.pick(ray)
+            val fromSmooth = smoothScene.pick(ray)
+            assertNotNull(fromFlat, "part $part's own centroid direction must hit the solid")
+            assertNotNull(fromSmooth)
+            assertEquals(
+                flatParts.externalIdOfPart(part), fromFlat.externalId,
+                "the ray aimed through part $part must report part $part's face id",
+            )
+            assertEquals(
+                fromFlat.externalId, fromSmooth.externalId,
+                "and the *same* face id under the other triangulation — that is what 'stable through " +
+                    "triangles' means. Flat said ${fromFlat.externalId} ('${fromFlat.partName}'), " +
+                    "smooth said ${fromSmooth.externalId} ('${fromSmooth.partName}')",
+            )
+            idsSeen += fromFlat.externalId!!
+            compared++
+        }
+        assertEquals(12, compared, "all twelve faces must have been pointed at")
+        assertEquals(
+            12, idsSeen.size,
+            "and each must be a *distinct* face id — one id for all twelve would pass every " +
+                "assertion above and mean nothing. Saw $idsSeen",
         )
     }
 
