@@ -191,9 +191,14 @@ Driven, not reasoned about — every one of these passed against the committed `
 - `examples.exports.batch-launch`, `core.compiled-snippet.smoke`, `core.repl-bootstrap-gate.smoke`.
 
 `docs.rectsl.sdf` failed, with `Out of stack space.` from shader generation — the known LWJGL
-`MemoryStack` limit in generated-shader compilation, on a path that contains no `fromContext` call.
-Unrelated, and not re-verified against the base commit, so it is recorded as an observation rather
-than as a cleared suspect.
+`MemoryStack` limit in generated-shader compilation. Ruled out rather than waved away: the same test
+was re-run with `Mesh.kt` reverted to its pre-bafa9ee5f state and failed **identically** — same
+message, same box line 348, same missing `/tmp/docs-rectsl-sdf-hero.png` — so it fails on both sides
+of the change. Worth measuring rather than asserting, because `RectSL.kt` has six
+`renderer: Renderer = fromContext()` entry points and `docs.rectsl.fit`, `docs.rectsl.gallery` and
+`docs.stacksl.gallery` share them. It is an unregistered red in its own right:
+`dev_docs/testing/expected_test_failures.json` is an empty array, so nothing in this repository
+currently expects it.
 
 Not a change: this box's properties, every ancestor's properties, every ancestor's top-level
 variables, and `fromContextWithNameOrNull`'s name and type filtering.
