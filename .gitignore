@@ -260,3 +260,16 @@ config/field4-local.p12
 # That fix has now landed — see `afield.proofDir` in src/jvmTest/kotlin/afield/TestProofDir.kt —
 # so the ignores are gone with the litter they were hiding. Set AFIELD_PROOF_DIR to collect the
 # artifacts somewhere deliberate.
+
+### Ad-hoc render output at the repository root
+# A box that calls `renderer.captureWindowToFile(outputPath = "bridge-top-assembled.png")` — a bare
+# relative path — writes it to the JVM's working directory, which is the checkout root. There is no
+# library default to fix here the way `afield.proofDir` fixed jvmTest's proofs: the caller chose the
+# path. On 2026-08-25 that had left **68** loose PNGs at the root (angled-section-*, bridge-*,
+# collar-*, three-mitre-*, monkeypaw-*, bounded-*, planar-*, house-* and friends, all from the
+# rect/house and tessellation work), every one of which showed up in every `git status` and in the
+# untracked list of every agent session that read one. Root-anchored, so nothing under
+# public/docs/assets/, dev_docs/agents/artifacts/ or templates/ is affected; no tracked file at the
+# root is a PNG (tools/test_repository_root_inventory.py holds that down), and `git add -f` still
+# works if one ever should be.
+/*.png
