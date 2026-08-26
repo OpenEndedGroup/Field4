@@ -477,7 +477,33 @@ object VisionGeometryPreview {
         /** Triangles that reached the z-buffer, and those the back-face cull removed. */
         val drawn: Int,
         val culled: Int,
-    )
+        /**
+         * The z-buffer the rasterizer filled in, in **view-space z** — world units in front of the
+         * eye, the same quantity [ViewFrame.project] divides by. `Double.MAX_VALUE` where nothing was
+         * drawn.
+         *
+         * Handed out rather than dropped because it is the only *independent* measurement of the
+         * scene's depth Field has on the CPU: a scanline rasterizer arrived at it, so comparing it
+         * against a BVH ray cast down the matching unprojected ray is a genuine two-implementation
+         * differential rather than one implementation agreeing with itself.
+         * `SpatialPointerPixelTest` does exactly that.
+         *
+         * **At sample resolution, not pixel resolution** — [sampleWidth] x [sampleHeight], i.e.
+         * [Style.supersample] times larger in each axis than [pixels]. Averaging depths would be
+         * meaningless (the mean of a foreground and a background depth is a depth at neither), so it
+         * is left un-downsampled and the size is stated instead.
+         */
+        val depth: DoubleArray = DoubleArray(0),
+        /** [depth]'s width. [width] times [Style.supersample]. */
+        val sampleWidth: Int = width,
+        /** [depth]'s height. [height] times [Style.supersample]. */
+        val sampleHeight: Int = height,
+    ) {
+        /** View-space depth at sample `(x, y)`, or `Double.MAX_VALUE` where nothing was drawn. */
+        fun depthAtSample(x: Int, y: Int): Double =
+            if (depth.isEmpty() || x < 0 || y < 0 || x >= sampleWidth || y >= sampleHeight) Double.MAX_VALUE
+            else depth[y * sampleWidth + x]
+    }
 
     // ---------------------------------------------------------------- the projection, both ways
 
@@ -850,7 +876,11 @@ object VisionGeometryPreview {
             drawWireframe(mesh, pixels, depth, w, h, contentH, ::toView, focal, aspect, nearZ, style.cullBackFaces)
         }
 
-        return Raster(downsample(pixels, w, h, style.width, style.height, scale), style.width, style.height, drawn, culled)
+        return Raster(
+            downsample(pixels, w, h, style.width, style.height, scale),
+            style.width, style.height, drawn, culled,
+            depth = depth, sampleWidth = w, sampleHeight = h,
+        )
     }
 
     /**

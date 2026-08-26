@@ -474,12 +474,38 @@ class TriMeshBuilder {
     private var tex: ArrayList<Float>? = null
     private var col: ArrayList<Float>? = null
     private var decided = false
+    private val marks = ArrayList<Pair<Int, String>>()
 
     /** How many vertices have been appended so far — also the index the next [vertex] will get. */
     val vertexCount: Int get() = pos.size / 3
 
     /** How many triangles have been appended so far. */
     val triangleCount: Int get() = idx.size / 3
+
+    /**
+     * Name the piece every triangle appended from here on belongs to.
+     *
+     * A marker, not a container: it records "triangles from index [triangleCount] onward are called
+     * this" and nothing else, so it costs one pair per call and does not touch the mesh. The [TriMesh]
+     * a builder produces has no idea the names exist; they come back out through
+     * [afield.stdlib.groups], which turns them into a [PickParts] so that *pointing* at the model
+     * reports `roof` instead of `triangle 4471`.
+     *
+     * Each call starts a new piece even if the name repeats — see [afield.stdlib.groups] for why.
+     *
+     * ```kotlin
+     * val house = triMesh {
+     *     group("floor"); add(box(4.0, 0.2, 3.0))
+     *     group("roof");  add(box(4.2, 0.2, 3.2))
+     * }
+     * ```
+     */
+    fun group(name: String) {
+        marks += triangleCount to name
+    }
+
+    /** The [group] markers, as `(first triangle, name)` pairs in call order. */
+    internal fun groupMarks(): List<Pair<Int, String>> = marks.toList()
 
     /**
      * Append a vertex and return its index.
