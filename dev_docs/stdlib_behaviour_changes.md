@@ -164,11 +164,33 @@ in tree or in the published transcript corpus. Observed:
 
 ### What was swept, and the verdict
 
-Enumerated rather than counted, because the enumeration changed the number. `grep -rn "fromContext"
-src | grep -v four/modules/Mesh.kt` gives **188** lines across 50 files at 730440b80 — 30 imports, 16
-KDoc/comment lines, 5 in JavaScript (editor completion word lists), and 137 real Kotlin. In the
-primary checkout the same grep gives 210; the extra 22 are in `src/personal/`, which is not tracked,
-so a count taken there is not a count of this repository.
+Enumerated rather than counted — and then the count had to be given a predicate, because three
+different true numbers were in circulation within an hour and none of them was wrong. This is the
+`"exactly four registrations"` failure mode (a count quoted against ~56) arriving from the other
+direction, so the rule is worth restating: **a count of `fromContext` is meaningless without the
+tree, the revision, the path set, and whether it counts matching lines or call sites.**
+
+| number | tree | revision | path set | unit |
+| --- | --- | --- | --- | --- |
+| **188** | this worktree | `730440b80` | `src`, minus `four/modules/Mesh.kt` | matching **lines** (50 files) |
+| 201 | this worktree | branch HEAD | same | matching lines (51 files) |
+| 210 | primary **working directory** | `730440b80` | same | matching lines |
+| 217 | primary working directory | `730440b80` | `src`, *including* `Mesh.kt` | matching lines |
+| 293 | this worktree | branch HEAD | `src` + `dev_docs` + `public/docs` | matching lines (78 files) |
+
+They reconcile exactly, and each gap is a different question being asked:
+
+- **210 − 188 = 22**, all in `src/personal/`, which `.gitignore:243` excludes. A grep of a *working
+  directory* is not a grep of the repository; use `git grep <rev> -- src` when the answer is meant to
+  be about committed code.
+- **201 − 188 = 13**, all in `ContextSearchOrderLedgerSmokeTest.kt` — the test *this very entry*
+  added. The number moved because the measurer moved it. Any count of a symbol quoted in a commit
+  that also adds uses of that symbol has to name the revision it was taken at.
+
+Of the 188 at `730440b80`: 30 `import` lines, 16 KDoc/comment prose lines, 5 in JavaScript (editor
+completion word lists), and **137 real Kotlin**. "Call sites" is a smaller number again and was not
+counted — 137 is lines of Kotlin mentioning the symbol, which includes multi-`fromContext` parameter
+lists as one and spans two functions (`fromContext` and `fromContextWithNameOrNull`) throughout.
 
 Of the 137, essentially all are **default parameter values in library constructors and functions** —
 `Camera(val renderer: Renderer = fromContext())`, `ComputeMesh`, `MeshMesh`, `KeyCamera`,
@@ -190,15 +212,60 @@ Driven, not reasoned about — every one of these passed against the committed `
 - `examples.context.cross-box-inheritance` — the ancestor ki-var path specifically (`ctx_kivar`).
 - `examples.exports.batch-launch`, `core.compiled-snippet.smoke`, `core.repl-bootstrap-gate.smoke`.
 
-`docs.rectsl.sdf` failed, with `Out of stack space.` from shader generation — the known LWJGL
-`MemoryStack` limit in generated-shader compilation. Ruled out rather than waved away: the same test
-was re-run with `Mesh.kt` reverted to its pre-bafa9ee5f state and failed **identically** — same
-message, same box line 348, same missing `/tmp/docs-rectsl-sdf-hero.png` — so it fails on both sides
-of the change. Worth measuring rather than asserting, because `RectSL.kt` has six
-`renderer: Renderer = fromContext()` entry points and `docs.rectsl.fit`, `docs.rectsl.gallery` and
-`docs.stacksl.gallery` share them. It is an unregistered red in its own right:
-`dev_docs/testing/expected_test_failures.json` is an empty array, so nothing in this repository
-currently expects it.
+The rest of the published corpus, driven after the first pass showed the gap. `fromContext` appears
+in five published pages and three transcript bundles, and `examples.demo-transcript.exec` classifies
+`afield_four_traditional_triangle`, `rectsl_sdf_live` and `imgui_vr_panel` as **`COMPILE_ONLY`** —
+every box compiled through the real K2/preamble path, **none evaluated**. So passing that smoke does
+not mean `fromContext` was ever *called* for those three. Their real consumers were run instead:
+
+- `examples.four.imgui-vr-panel-smoke` — `ImGuiStereoQuadExample`'s three defaults in one parameter
+  list (`window`, `renderer`, `sbs`), the `imgui_vr_panel` bundle's evaluating consumer.
+- `rectsl.examples.smoke`, `rectsl.language.workout`, `rectsl.dataviz.proof` — `RectSL.kt`'s six
+  `renderer: Renderer = fromContext()` entry points, evaluated rather than compiled.
+- `docs.rectsl.gallery`, `docs.rectsl.fit` — the same six through the docs-capture path.
+- `docs.fabricate.toy-car-gltf` — `simpleGLTFSupport.applyToMesh(camera: Camera = fromContext())`.
+- `four.ply-loader.smoke` — `simplePLYSupport`'s two `camera: Camera = fromContext()` overloads.
+
+`afield_four_traditional_triangle` remains **compile-only everywhere in the smoke catalog**; its
+pixels are only checked by the `afield_four_graphics.md` docs capture, which is a docs-build step and
+not a catalog id. That page opens ten of its examples with `val renderer: Renderer = fromContext()`,
+so it is the largest single consumer of this idiom with no smoke behind it. Named, not closed.
+
+### `docs.rectsl.sdf` is a third pre-existing red on `main`, and nothing can record it
+
+Not a consequence of this change. Not a consequence of this branch. Measured at `730440b80` itself,
+in this worktree detached to that commit with **none** of this branch's commits present (checked:
+`tools/test_field_sh_launcher.py` and `ContextSearchOrderLedgerSmokeTest.kt` both absent,
+`git rev-parse HEAD` = `730440b8088cd5cdc751787be50d61d7d0279b19` during the run):
+
+```
+[1/1] FAIL docs.rectsl.sdf (9987 ms)
+  wait-file /tmp/docs-rectsl-sdf-hero.png --timeout 900.0 --fail-on-error-uid @last:
+    target 009aa8bf-1e45-4fd3-9c5d-ee5c6709edbf emitted an error while waiting for file:
+    Out of stack space.
+  wait-file ... line 348: Out of stack space.
+  expected image was not created: /tmp/docs-rectsl-sdf-hero.png
+Summary: 0 passed, 1 failed
+```
+
+Character-for-character the same failure as on branch HEAD, and the same again with `Mesh.kt`
+reverted to pre-bafa9ee5f — three measurements, one result. `Out of stack space.` is LWJGL's
+`MemoryStack`, not glslang, and it bites *generated* shaders; `RectSL.kt`'s SDF lowering emits one.
+Worth measuring rather than asserting, because `RectSL.kt` has six
+`renderer: Renderer = fromContext()` entry points that `docs.rectsl.fit`, `docs.rectsl.gallery` and
+`docs.stacksl.gallery` share — and all three of those pass.
+
+This is a **third** pre-existing red, distinct from the two known `jvmTest` ones in `afield.rectsl`
+(`RectSLGlslSdfTest > gallery emission reports no fidelity caveats` and
+`RectSLTrackCharacterizationTest > gallery programs sample identically`).
+
+And it cannot be registered anywhere, which is why a third red could sit unrecorded:
+`dev_docs/testing/expected_test_failures.json` is an empty array, and
+`tools/check_expected_test_failures.py` globs `build/test-results/**/TEST-*.xml` and keys on JUnit
+`classname`/`name`. `docs.rectsl.sdf` is a **FIELD_TEST catalog id** run by `tools/run_field_tests.py`,
+which emits `results.json` and no JUnit XML. The smoke runner's only opt-out is `skipOn:` for
+platforms. So there is no mechanism on the smoke side that can hold a known red at all — a gap in
+the harness, not a gap in anyone's diligence.
 
 Not a change: this box's properties, every ancestor's properties, every ancestor's top-level
 variables, and `fromContextWithNameOrNull`'s name and type filtering.

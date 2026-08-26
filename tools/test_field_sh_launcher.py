@@ -22,6 +22,12 @@ fake `gradlew`, a fake `build/field-launch/java` that records its argv, and a `H
 Every `AFIELD_SKIP_*` escape the script already documents is used to keep it out of Gradle. What is
 exercised is therefore the shipped script, not a re-implementation of its `case` block.
 
+What this module cannot prove, and where that is proved instead: it drives the real script against a
+*fake* `java`, so it establishes the argv the backend is handed and stops there. "Field started and
+opened that workspace" needs a real backend, and the live A/B that settles it — the pre-fix launcher
+announcing a temp directory and opening the developer's real 493-document workspace — is recorded in
+`dev_docs/launcher_workspace_verification.md`, with the recipe for repeating it.
+
 Two invariants beyond the individual cases:
 
   * `test_every_launcher_option_is_covered_by_the_ledger` is bidirectional. It parses the option
