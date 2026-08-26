@@ -7,7 +7,9 @@ import kotlin.test.assertTrue
 import kotlin.test.fail
 
 /**
- * The corpus-wide citation guard: every `dev_docs` page that opts in, checked in one place.
+ * The corpus-wide citation guard: every page that opts in, checked in one place.
+ *
+ * Mostly `dev_docs`, and `public/docs/autodiff_examples.md` since 2026-08-26 — see [GUARDED_PAGES].
  *
  * `SmallLanguageAnatomyTest` guards one page and does a great deal else besides (derived-count
  * ratchets, language censuses). This guards the *class* — it knows nothing about small languages, only
@@ -92,6 +94,20 @@ class CitationContractTest {
             "dev_docs/autodiff.md" to 1,
             "dev_docs/brief_notation.md" to 1,
             "dev_docs/kotlinjs_status_and_roadmap.md" to 1,
+            // The first **published** page on this list, added 2026-08-26, and the reason is
+            // `ProseNumeralContractTest` rather than citations: `public/docs/autodiff_examples.md`
+            // restated `dev_docs/autodiff.md`'s differentiability fraction and had drifted to
+            // "32 of 124" against a derived 35 of 127 — both numbers stale, in a sentence a reader
+            // is more likely to see than the dev_docs one. Only this list decides what that class
+            // scans, so a published page cannot be pinned without appearing here.
+            //
+            // Floor 0, which is the honest number and not an admission: the page carries no anchored
+            // citation at all, because it points at code by *name* (`FnGradientMode.EXACT`,
+            // `FnFitRun.usedExactGradient`) in the register published prose is written in, rather
+            // than by `path:line#anchor`. Raise it the day it cites a site — and note that a floor
+            // of 0 is inert here rather than vacuous, since the numerals are what is guarded and
+            // `everyDerivationIsStillUsedByItsPage` makes deleting the sentence fail.
+            "public/docs/autodiff_examples.md" to 0,
         )
 
         /**
@@ -190,7 +206,7 @@ class CitationContractTest {
     @Test
     fun theCorpusInventoryIsReportedAndFloored() {
         val inv = CitationGuard.inventory(root, pages())
-        println("--- dev_docs citation inventory (${GUARDED_PAGES.size} guarded pages) ---")
+        println("--- citation inventory (${GUARDED_PAGES.size} guarded pages) ---")
         println(inv.render())
 
         // The same inventory, machine-readable, for questions this class did not anticipate —

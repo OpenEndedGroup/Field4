@@ -184,9 +184,9 @@ class ProseNumeralContractTest {
             key = "guardedCitationPages",
             page = "dev_docs/citation_contracts.md",
             what = "pages under the corpus-wide citation guard",
-            // 17 on 2026-08-23. Floored at 10: the page's argument is that the guard covers a
-            // corpus rather than a page, and below ten that stops being true in a way a reader
-            // should be told about.
+            // 17 on 2026-08-23, 19 on 2026-08-26 once the first published page joined. Floored at
+            // 10: the page's argument is that the guard covers a corpus rather than a page, and
+            // below ten that stops being true in a way a reader should be told about.
             floor = 10,
             landmarks = setOf(
                 "dev_docs/small_language_anatomy.md",
@@ -255,6 +255,52 @@ class ProseNumeralContractTest {
             what = "canonical ops in `OpRegistry`, aliases resolved",
             // 124 on 2026-08-23, and the denominator of the coverage fraction the page prints. Read
             // through the same canonicalisation FnOpCoverageTest uses, so the two cannot disagree.
+            floor = 80,
+            landmarks = setOf("floor", "sign", "quantize"),
+            derive = {
+                afield.stdlib.OpRegistry.knownOps
+                    .map { afield.stdlib.OpRegistry.canonical(it)?.lowercase() ?: it.lowercase() }
+                    .toSortedSet()
+            },
+        ),
+        // The same two populations again, for the *published* page that restates the fraction. Two
+        // more keys rather than two more markers on the existing keys, because a derivation is scoped
+        // to one page on purpose — see the `@param page` KDoc on Derivation, and the identical
+        // argument valuePrinterRegistrationsInSource makes for citation_contracts.md. Sharing a key
+        // would let the dev_docs sentence cover for a deleted published one.
+        //
+        // These exist because the duplication had already rotted. Found 2026-08-26:
+        // `autodiff_examples.md` said "32 of 124" while the guarded twin said 35 of 127 and
+        // FnOpCoverageTest printed "35 of 127 canonical ops differentiable (27.6%)". Both numbers
+        // wrong, on the page a *reader* reaches first, because citationGates declares
+        // `public/docs/**/*.md` as an input but GUARDED_PAGES named only dev_docs — declared as an
+        // input and never read. Restating a derived number is fine; restating it unguarded is not.
+        DerivedCountGuard.Derivation(
+            key = "differentiableFnOpsOnExamplesPage",
+            page = "public/docs/autodiff_examples.md",
+            what = "`Fn` ops with an exact derivative",
+            // Same population and the same floor as differentiableFnOps, deliberately: two floors
+            // that could disagree about the same set would be the ledger-that-disagrees-with-itself
+            // shape this area exists to refuse. If one moves, both should, in one edit.
+            floor = 20,
+            landmarks = setOf("floor", "add", "gaussian", "atan2"),
+            derive = { afield.stdlib.FnAutoDiff.differentiableOps.toSortedSet() },
+            // False where the dev_docs twin is true, and this is the one real asymmetry between the
+            // two pages. `dev_docs/autodiff.md` prints the ops as a table and must, since its whole
+            // recorded failure was the count and the table drifting apart. The published page names
+            // the refused set by *category* — "the piecewise oscillators, the seeded noise
+            // generators, the table-backed interpolants" — which is the right register for it and
+            // cannot satisfy a member-by-member check. Turning this on would force a 35-name table
+            // onto a page that is better without one; the count is guarded, the enumeration lives
+            // one link away, and the page says so.
+            membersNamedOnPage = false,
+        ),
+        DerivedCountGuard.Derivation(
+            key = "canonicalFnOpsOnExamplesPage",
+            page = "public/docs/autodiff_examples.md",
+            what = "canonical ops in `OpRegistry`, aliases resolved",
+            // 127 on 2026-08-26, and the denominator the published page prints. Floored at 80 to
+            // match canonicalFnOps for the reason given above.
             floor = 80,
             landmarks = setOf("floor", "sign", "quantize"),
             derive = {

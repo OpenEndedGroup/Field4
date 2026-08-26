@@ -185,11 +185,12 @@ building the tape costs about what the extra graph evaluations did. The exact pa
 are that it is exact, has no `fdStep` to tune, and costs one sweep per step whatever the parameter
 count, where finite differences costs `2n`.
 
-And the refusal line matters as much as the fit. Only 32 of `OpRegistry`'s 124 canonical ops have a
-derivative; the piecewise oscillators, the seeded noise generators, the table-backed interpolants and
-the windowed numeric operators do not. `FnGradientMode.EXACT` throws with the reason,
-`FnGradientMode.AUTO` falls back to finite differences and `FnFitRun.usedExactGradient` tells you which
-happened. Nothing here quietly returns the gradient of a function you did not ask about.
+And the refusal line matters as much as the fit. Only 35<!--count:differentiableFnOpsOnExamplesPage-->
+of `OpRegistry`'s 127<!--count:canonicalFnOpsOnExamplesPage--> canonical ops have a derivative; the
+piecewise oscillators, the seeded noise generators, the table-backed interpolants and the windowed
+numeric operators do not. `FnGradientMode.EXACT` throws with the reason, `FnGradientMode.AUTO` falls
+back to finite differences and `FnFitRun.usedExactGradient` tells you which happened. Nothing here
+quietly returns the gradient of a function you did not ask about.
 
 Which ops those are is a question about *representation* rather than about calculus. `abs`, `flip` and
 `exp` were refused until 2026-07-31 — not because absolute value is hard to differentiate, but because

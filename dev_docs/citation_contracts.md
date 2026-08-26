@@ -193,9 +193,18 @@ guard unescapes it, so FieldML's `\|>` can be cited.
 
 A citation guard proves an anchor exists. It says nothing about the *sentence* around the anchor, and
 the arithmetic in that sentence is the part that rots. `ProseNumeralContractTest` closes that gap for
-the same 18<!--count:guardedCitationPages--> pages `GUARDED_PAGES` already covers — this one among
+the same 19<!--count:guardedCitationPages--> pages `GUARDED_PAGES` already covers — this one among
 them since 2026-08-23, because a page that documents the mechanism and then states three numbers
 derived by it should be the first thing the mechanism checks.
+
+One of those 19 is not a `dev_docs` page at all. `public/docs/autodiff_examples.md` joined on
+2026-08-26 for the numeral guard rather than the citation one, and it is worth saying why the drift it
+was added over went unseen: `citationGates` had declared `public/docs/**/*.md` as a task input since
+the day it was written, so up-to-date checking was never the gap. `GUARDED_PAGES` was, because it is
+the only list either class scans and every entry on it was under `dev_docs`. The published tree was
+**declared as an input and never read** — which is the more instructive failure of the two, since a
+missing Gradle input announces itself the first time somebody plants a bad fence, and a list that
+quietly covers less than the input declaration suggests does not.
 
 ### The defect it was built against
 
