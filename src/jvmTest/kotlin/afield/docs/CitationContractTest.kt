@@ -102,20 +102,20 @@ class CitationContractTest {
             // `public/docs/autodiff_examples.md:188` carrying pre-correction numbers for five days
             // in August.
             //
-            // 31 anchored citations as written: 15 prose `path:line#anchor` in the narrative and 16
-            // ledger rows in the reference table. Every anchor was chosen unique-in-file, so all 31
+            // 49 anchored citations as written: 15 prose `path:line#anchor` in the narrative and 34
+            // ledger rows in the reference table. Every anchor was chosen unique-in-file, so all 49
             // report unbounded headroom and the corpus fragility ceiling is unaffected. Floored at
-            // 16 rather than 31 on the DATAFRAME_PLUGIN convention — a page becoming a little less
+            // 24 rather than 49 on the DATAFRAME_PLUGIN convention — a page becoming a little less
             // citation-dense should cost a doc edit, not a build failure, while deleting half of
             // them should be a red build.
             //
-            // Seven of the 31 point at Swift under `native/field-visionos/Field4Vision/`.
+            // 11 of the 49 point at Swift under `native/field-visionos/Field4Vision/`.
             // `CitationGuard.EXT` has carried `swift` all along, so this needed no widening; it is
             // worth doing because this is a two-machine protocol and a page citing only the Kotlin
             // end would be documenting one side of it. (`EXT` still has no `cpp`/`c`/`h`/`hpp`/`cc`,
             // so the `native/field-encode` senders cannot be cited the same way. That reads as a
             // considered boundary rather than an oversight, and it is not this page's problem.)
-            "public/docs/vision.md" to 16,
+            "public/docs/vision.md" to 24,
         )
 
         /**

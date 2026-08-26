@@ -414,9 +414,27 @@ Cross-checked against source on every `docsGates` run, so a rename here breaks t
 rotting quietly. The Swift rows are here because this is a two-machine protocol, and a page citing
 only the Kotlin end would be describing one side of it.
 
+**How this list was chosen, and where it is blind.** Not by hand. The Kotlin half is the closure over
+the `import afield.*` symbols of every `FIELD_TEST` tagged `visionos`, resolved to declaring files;
+the wire half comes from the channel set `ServerSurfaceLedgerTest` scrapes out of Kotlin source and
+set-equality-matches against `dev_docs/server_surface_inventory.md`; the Swift half is every `.swift`
+file the Xcode project compiles — which is *every* file under `Field4Vision/`, because the project
+uses a filesystem-synchronized group and `project.pbxproj` contains no `.swift` strings at all, so
+anyone reading sources out of that file gets an empty list.
+
+Worth saying plainly, because it is the sort of gap a hand-written list hides: **the tag enumerator
+does not see the OpenXR side-by-side path at all.** `ImGuiVrPanelSmokeTest` is the only `FIELD_TEST`
+in the tree that constructs a `SideBySideStereoTarget`, and it carries no `tags:` line — so `tags:
+[…visionos…]` is a *visionOS* census, not an XR one, and `OpenXRHmdTarget` and
+`SideBySideStereoTarget` reach this table only through the import closure. Two things sit outside
+every census here: `SimpleSpatialAudio.setListenerFromSideBySide` drives spatial audio off the stereo
+target and nothing classifies it as XR, and `src/jsVision/` is two tracked files in no Gradle
+compilation, so it is not a client and has no rows below.
+
 | What | Where | Anchor |
 |---|---|---|
 | The device→host channel name | `VisionPose.kt:82` | `const val VISION_POSE_CHANNEL` |
+| The newest-pose holder, and its counters | `VisionPose.kt:273` | `object VisionPoseStream` |
 | Monotonic publication under a lock | `VisionPose.kt:418` | `private fun publish(frame: VisionPoseFrame)` |
 | Frustum tangents out of the compositor's projection | `VisionPose.kt:545` | `internal fun tangentsFromProjection` |
 | The one call to make on device | `VisionPose.kt:666` | `fun visionPoseLatencyReport(` |
@@ -425,13 +443,30 @@ only the Kotlin end would be describing one side of it.
 | Latch-once-per-frame contract | `StereoPoseSource.kt:36` | `fun latch(): Boolean` |
 | Which pose a frame was drawn from | `StereoPoseSource.kt:39` | `val latchedFrameId: Long` |
 | The head's own display time for that pose | `StereoPoseSource.kt:45` | `val latchedDisplayTime: Double` |
+| The implementation over the pose stream | `VisionPoseStereoSource.kt:33` | `class VisionPoseStereoSource` |
+| Poses latched twice because none arrived | `VisionPoseStereoSource.kt:45` | `var staleLatchCount` |
+| The target this plugs into | `SideBySideStereoTarget.kt:41` | `class SideBySideStereoTarget` |
+| Where a remote pose overrides OpenXR and the mock | `SideBySideStereoTarget.kt:96` | `var poseSource` |
+| What the target recorded it drew from | `SideBySideStereoTarget.kt:105` | `var renderedPoseFrameId` |
+| …and that pose's display time | `SideBySideStereoTarget.kt:109` | `var renderedPoseDisplayTime` |
+| The multiview sibling, deliberately with no pose source | `SideBySideStereoTarget.kt:498` | `class MultiviewSideBySideStereoTarget` |
+| The desktop mock a remote pose replaces | `SideBySideStereoTarget.kt:880` | `class StereoCamera` |
+| …and the eye separation it invents | `SideBySideStereoTarget.kt:881` | `var ipd` |
 | Tagging a stream's frames with the latched pose | `FieldRTTStreamer.kt:106` | `fun tagPosesFrom` |
+| The pair a frame carries, or neither | `FieldRTTStreamer.kt:341` | `class StreamPose` |
 | Hand tracking on the OpenXR path | `OpenXRHmdTarget.kt:292` | `fun handState(hand: Hand)` |
+| …the per-hand state it returns | `OpenXRHmdTarget.kt:208` | `class HandTrackingState` |
+| …and the 26 joints it is keyed by | `OpenXRHmdTarget.kt:198` | `class HandJoint` |
+| Spatial audio driven off the stereo target | `SimpleSpatialAudio.kt:638` | `fun setListenerFromSideBySide` |
 | The pose tail in the media header | `WIRE_FORMAT.md:57` | `poseDisplayTimeNanos u64` |
 | Where the pose is captured on the head | `PoseUplink.swift:164` | `func record(drawable: LayerRenderer.Drawable` |
 | The lower-bound span, named as one | `PoseLatency.swift:32` | `static let poseToTexture` |
 | The deliberate jitter buffer | `RTTStream.swift:77` | `static let bufferFrames` |
 | The one clock all three Swift files share | `CompositorClock.swift:16` | `var timeInterval: TimeInterval` |
+| The uplink sender on the head | `PoseUplink.swift:18` | `class PoseUplink` |
+| Where ARKit and GameController are joined | `ControllerTracker.swift:21` | `class ControllerTracker` |
+| The header parser, both versions | `RTTWireFormat.swift:14` | `enum RTTWire` |
+| The parser's only execution coverage | `RTTWireSelfCheck.swift:21` | `enum RTTWireSelfCheck` |
 
 Runnable without a headset, through the canonical runner
 (`python3 tools/run_field_tests.py --id <id>`):
@@ -447,7 +482,12 @@ Runnable without a headset, through the canonical runner
   congested sample cannot displace a clean one. A wrong offset yields a *plausible* latency rather
   than a failure, which is the one kind of wrong nobody re-checks.
 
-Two things those cannot reach, stated rather than implied: `tools/rtt_wire_check.py` covers the real
+Those three are the pose tests. Four more carry the same `visionos` tag and cover the Live Metal half:
+`visionmetal.kotlinjs-externals` (the Kotlin→JS geometry externals), `visionmetal.msl-language` (the
+MSL editor language, driven under Node), `vision.geometry-preview` (the CPU preview gallery), and
+`remotejs.kotlinjs-head-profiles`. Run them the same way.
+
+Two things none of them reach, stated rather than implied: `tools/rtt_wire_check.py` covers the real
 datagram bytes but not the head, and `tools/vision_pose_simulator_smoke.sh` reaches a real compositor
 pose in the visionOS simulator but the simulator reports **one** view where hardware reports two.
 
