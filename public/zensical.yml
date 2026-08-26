@@ -19,7 +19,7 @@ nav:
       - The Documentation Browser: completion_doc_browser.md
       - How Completions Are Ranked: completion_ranking.md
   - Working in a Document:
-    - Bookmarks: bookmarks.md
+    - Spatial Navigation: spatial_navigation.md
     - Snapping: snapping.md
     - Your History with Field: history_overview.md
     - Document History: document_history.md

@@ -1,0 +1,71 @@
+name: spatial_navigation_overlay
+description: >
+  Four boxes in a plus, laid out so the spatial-navigation overlay has something unambiguous to
+  draw. Backs the overlay figure on `public/docs/spatial_navigation.md`.
+
+  The middle box is the anchor the figure is taken from; the other three sit due north, due east
+  and due south of it. The offsets are deliberately axis-aligned and far apart, because
+  `findDirectionalSpatialTargets` picks a direction from the dominant axis of the centre-to-centre
+  offset (`abs(dx) > abs(dy)` -> east/west, else north/south) and then keeps the nearest box in
+  each direction, counting sideways distance as a fifth of distance along the direction of travel.
+  A cluster that was nearly diagonal would let one box flip between two directions depending on
+  where the canvas happened to be panned. West is left empty on purpose: the page says a direction
+  with no box in it is absent from the overlay, and the figure should show that.
+
+  Boxes are created but not launched. The overlay is drawn from box geometry and names, so nothing
+  here needs to run, and a box that does not run cannot fail a capture.
+
+  Capture-only, so it lives under transcripts/docs_capture/: AgentTranscriptMaterializer scans the
+  transcripts/ directory itself and would expect a committed starting-point bundle for anything
+  directly inside it.
+operations:
+  - create:
+      box: spatial_nav_north
+      name: palette
+      frame:
+        x: 430.0
+        y: 170.0
+        w: 260.0
+        h: 100.0
+      properties:
+        code: |
+          // The colours the curve below is drawn with.
+          val ramp = listOf(Vec4(0.96, 0.62, 0.26, 1.0), Vec4(0.30, 0.62, 0.90, 1.0))
+  - create:
+      box: spatial_nav_center
+      name: curve
+      frame:
+        x: 430.0
+        y: 340.0
+        w: 260.0
+        h: 100.0
+      properties:
+        code: |
+          // The box the figure is anchored on: the one you are standing on.
+          val path = FLine().moveTo(0.0, 0.0).cubicTo(60.0, -80.0, 180.0, 80.0, 240.0, 0.0)
+  - create:
+      box: spatial_nav_east
+      name: render
+      frame:
+        x: 740.0
+        y: 340.0
+        w: 260.0
+        h: 100.0
+      properties:
+        code: |
+          // Due east of `curve`, so the overlay offers it under the right arrow.
+          lines("main", path.stroked(2.0))
+  - create:
+      box: spatial_nav_south
+      name: export
+      frame:
+        x: 430.0
+        y: 510.0
+        w: 260.0
+        h: 100.0
+      properties:
+        code: |
+          // Due south of `curve`, so the overlay offers it under the down arrow.
+          print(path.arcLength())
+  - wait:
+      millis: 400
