@@ -30,7 +30,7 @@ private fun bookmarkDebug(message: String) {
  * JS dynamic property, not an HTML attribute, so lookups go through [findBoxByUid]
  * (iterating .box elements) rather than a CSS attribute selector.
  *
- * User-facing reference: public/docs/bookmarks.md.
+ * User-facing reference: public/docs/spatial_navigation.md.
  */
 
 @Serializable
