@@ -296,6 +296,19 @@ class ProseNumeralContractTest {
             // report fences in `## Where the latency goes`. Dropping a row from either fence, or
             // renaming a span in Kotlin without touching the page, now fails.
             membersQuotedVerbatim = true,
+            // Backward direction. The superset is *every* `const val` string literal in the file, by
+            // dropping the "no `/` in it" test that defines the population — so the three excluded
+            // candidates are exactly the wire channel names `visionpose/ping`, `visionpose/pong` and
+            // `visionpose/latency`. Quoting one of those in a table of span labels is the stale-row
+            // case: it reads as a timing stage and is a message type. Measured 2026-08-26: 7
+            // candidates, 4 in the population, and the section quotes none of the other 3.
+            candidates = { r ->
+                val src = File(r, "src/jvmMain/kotlin/afield/graphics/VisionPoseLatency.kt")
+                Regex("""const val [A-Z_]+ = "([^"]+)"""")
+                    .findAll(src.readText())
+                    .map { it.groupValues[1] }
+                    .toSortedSet()
+            },
         ),
         DerivedCountGuard.Derivation(
             key = "visionPoseSmokeTests",
@@ -405,6 +418,27 @@ class ProseNumeralContractTest {
             // section that states the count, so adding a thirteenth builder method fails until this
             // page documents it, and renaming one fails until this page follows.
             membersNamedOnPage = true,
+            // Backward direction. The superset drops the return-type test, so it is every `fun` in the
+            // class body: the excluded candidates are `packedVertices`, `packedIndices` (the harness's
+            // readouts) and the private `index` helper. A row for any of those in a section that says
+            // "twelve methods and nothing else" would be a false claim about the authoring surface,
+            // and the forward check cannot see it. Measured 2026-08-26: 15 candidates, 12 in the
+            // population, and the section names none of the other 3.
+            candidates = { r ->
+                val text = File(r, "src/jvmMain/kotlin/afield/graphics/VisionMetalKotlinJs.kt").readText()
+                val open = text.indexOf('{', text.indexOf("class MeshBuilder"))
+                var depth = 0
+                var close = open
+                while (close < text.length) {
+                    if (text[close] == '{') depth++
+                    else if (text[close] == '}' && --depth == 0) break
+                    close++
+                }
+                Regex("""fun\s+([A-Za-z][A-Za-z0-9_]*)\s*\(""")
+                    .findAll(text.substring(open, close))
+                    .map { it.groupValues[1] }
+                    .toSortedSet()
+            },
         ),
     )
 
@@ -586,18 +620,43 @@ class ProseNumeralContractTest {
             // lower case; the page writes `hannWindow` and `amplitudeMod`, which is the right way for
             // a page to spell a Kotlin identifier. A case-sensitive comparison would report eight
             // false absences and teach a reader to distrust the message.
-            val absent = if (d.membersQuotedVerbatim) {
+            val population = d.derive(root)
+            // One `isNamed` used by both directions, so "the page names X" cannot mean two different
+            // things depending on which way the comparison runs — which is how a bidirectional check
+            // ends up asymmetric without anyone noticing.
+            val isNamed: (String) -> Boolean = if (d.membersQuotedVerbatim) {
                 val quoted = scope.joinToString("\n") { DerivedCountGuard.codeText(f, it) }.lowercase()
-                d.derive(root).filterNot { it.lowercase() in quoted }.sorted()
+                ({ it.lowercase() in quoted })
             } else {
                 val named = scope.flatMap { DerivedCountGuard.codeSpanWords(f, it) }
                     .map { it.lowercase() }.toSet()
-                d.derive(root).filterNot { it.lowercase() in named }.sorted()
+                ({ it.lowercase() in named })
             }
-            if (absent.isEmpty()) null
-            else "  count:${d.key} — ${d.page} states the number but, in the same section, does not " +
-                (if (d.membersQuotedVerbatim) "quote " else "name ") +
-                "${absent.size} member(s) of ${d.what}: $absent"
+            val verb = if (d.membersQuotedVerbatim) "quote" else "name"
+
+            // Forward: population ⊆ page. Catches a deleted row and a rename, and catches
+            // substitution too — a swapped-out member is simply absent.
+            val absent = population.filterNot(isNamed).sorted()
+            // Backward: (page ∩ candidates) ⊆ population, when a candidate superset is supplied.
+            // Catches the stale row the forward direction cannot: something named here that the
+            // population deliberately excludes.
+            val stale = d.candidates?.invoke(root).orEmpty()
+                .minus(population)
+                .filter(isNamed)
+                .sorted()
+
+            listOfNotNull(
+                absent.takeIf { it.isNotEmpty() }?.let {
+                    "  count:${d.key} — ${d.page} states the number but, in the same section, does " +
+                        "not $verb ${it.size} member(s) of ${d.what}: $it"
+                },
+                stale.takeIf { it.isNotEmpty() }?.let {
+                    "  count:${d.key} — ${d.page} ${verb}s ${it.size} name(s) in that section which " +
+                        "are NOT ${d.what}, though they sit beside them in the source: $it. Either " +
+                        "the row is stale, or the derivation's rule and the section's claim have " +
+                        "come apart."
+                },
+            ).joinToString("\n").takeIf { it.isNotEmpty() }
         }
         assertTrue(
             problems.isEmpty(),
@@ -605,9 +664,10 @@ class ProseNumeralContractTest {
                 "can then drift apart in opposite directions, which is what happened twice on " +
                 "dev_docs/autodiff.md:\n" + problems.joinToString("\n")
         )
+        val bidi = checked.count { it.candidates != null }
         println(
             "--- member-identity coverage: ${checked.size} of ${derivations.size} derivation(s) " +
-                "pin identities, not just counts ---"
+                "pin identities, of which $bidi are bidirectional ---"
         )
         derivations.forEach { d ->
             val how = when {
@@ -615,7 +675,11 @@ class ProseNumeralContractTest {
                 d.membersNamedOnPage -> "token"
                 else -> "COUNT ONLY (+${d.landmarks.size} landmark(s))"
             }
-            println("  %-38s %-8s %s".format(d.key, "n=${d.derive(root).size}", how))
+            val dir = d.candidates?.let {
+                val c = it(root).size
+                "both ways (vs $c candidate(s))"
+            } ?: "forward only"
+            println("  %-38s %-8s %-9s %s".format(d.key, "n=${d.derive(root).size}", how, dir))
         }
     }
 
@@ -1049,6 +1113,69 @@ class ProseNumeralContractTest {
                 "lines must be newline-joined, or containment invents phrases that are nowhere on " +
                     "the page: ${verbatim.replace("\n", "\\n")}"
             )
+        } finally {
+            tmp.delete()
+        }
+    }
+
+    /**
+     * Why the backward direction is a **candidate-restricted** comparison and not set equality.
+     *
+     * The first assertion is the one that settles the design: over a realistic section,
+     * [DerivedCountGuard.codeSpanWords] returns far more than the population — `fun`, a type name, a
+     * parameter, the cited file's own name. So `named == population` is not a strict version of this
+     * check, it is an unsatisfiable one, and no edit to the page could make it pass. That is why
+     * `ServerSurfaceLedgerTest.assertLedger` can compare sets outright and this cannot: its page side
+     * is a parsed table column, a set of the same kind as its population; a prose section's code text
+     * is not.
+     *
+     * The rest pin what the restriction buys: a sibling from the same declaration site that the
+     * population excludes IS caught, and ordinary code-span noise is not.
+     */
+    @Test
+    fun theBackwardCheckIsCandidateRestrictedBecauseSetEqualityIsUnsatisfiable() {
+        val tmp = File.createTempFile("prose-backward-", ".md")
+        try {
+            tmp.writeText(
+                """
+                # Title
+                ## The count
+                Two of them:
+                | what | where | anchor |
+                |---|---|---|
+                | appends a vertex | `Builder.kt:10` | `fun vertex(` |
+                | one face | `Builder.kt:20` | `fun triangle(` |
+                | the harness readout | `Builder.kt:30` | `fun packedVertices(` |
+                """.trimIndent() + "\n"
+            )
+            val bounds = DerivedCountGuard.sectionBounds(tmp, 3)
+            val named = DerivedCountGuard.codeSpanWords(tmp, bounds)
+            val population = setOf("vertex", "triangle")
+            val candidates = setOf("vertex", "triangle", "packedVertices", "packedIndices")
+
+            // 1. The design argument, asserted rather than claimed.
+            assertTrue(
+                named != population,
+                "unrestricted set equality is unsatisfiable over a real section: the page side also " +
+                    "carries $named"
+            )
+            assertTrue(
+                "fun" in named && "Builder" in named,
+                "…because code spans legitimately contain non-members: $named"
+            )
+
+            // 2. Forward direction still holds.
+            assertTrue(population.all { it in named }, "every member is named: $named")
+
+            // 3. Backward, restricted: the excluded sibling on the page is caught.
+            val stale = candidates.minus(population).filter { it in named }
+            assertEquals(
+                listOf("packedVertices"), stale,
+                "a candidate the population excludes, named in the section, is the stale-row case"
+            )
+
+            // 4. And a candidate the page does NOT name is not reported — absence is not staleness.
+            assertTrue("packedIndices" !in stale, "only what the page actually names can be stale")
         } finally {
             tmp.delete()
         }

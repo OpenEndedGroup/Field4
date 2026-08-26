@@ -221,11 +221,36 @@ page quoted it. Three derivations were count-only for that reason alone.
 `membersQuotedVerbatim` (2026-08-26) checks substring containment against the same recovered code
 text, which `stripCode` preserves character-for-character inside a fence. Use it for phrase-shaped
 populations and `membersNamedOnPage` for bare identifiers, where word boundaries make it stricter.
-Both are section-scoped and both remain **one-directional** — a page naming an *extra* member still
-passes. Closing that wants the page parsed as the expected set and compared both ways, which is what
-`ServerSurfaceLedgerTest.assertLedger` already does for tables and is the obvious next step here.
-`everyMemberOfANamedPopulationAppearsOnItsPage` prints a per-derivation census of which form each one
-uses, so the count-only remainder is visible rather than implied.
+Both are section-scoped. `everyMemberOfANamedPopulationAppearsOnItsPage` prints a per-derivation
+census of which form each one uses and which direction it runs, so the count-only remainder is visible
+rather than implied.
+
+#### The backward direction, and why it is not set equality
+
+`Derivation.candidates` (2026-08-26) closes *"a page naming an extra member still passes"*. Supply a
+rule deriving a **superset** of the population from the same declaration site by a weaker test; the
+section may then name no candidate the population excludes. `(named ∩ candidates) ⊆ population` is
+asserted alongside `population ⊆ named`, which is set equality **restricted to the candidate set**.
+
+Restricted, because unrestricted equality is not a stricter version of this check — it is an
+unsatisfiable one. `codeSpanWords` over a real section returns every token in every code span: `fun`,
+a type name, a parameter, the cited file's own name. `named == population` therefore fails on every
+page ever written and **no edit to the page could repair it**. That is the difference from
+`ServerSurfaceLedgerTest.assertLedger`, which compares sets outright and is right to: its page side is
+a *parsed table column*, a set of the same kind as its population. A prose section's code text is not.
+`theBackwardCheckIsCandidateRestrictedBecauseSetEqualityIsUnsatisfiable` asserts that rather than
+leaving it as an argument.
+
+So "extra" means something specific and checkable: **a sibling from the same declaration site that this
+population deliberately excludes** — a `packedVertices` row in a table of authoring methods, a
+`visionpose/ping` line in a table of span labels. That is the stale-row case, and it is the only case
+worth a mechanism here, because substitution is already caught by the forward direction: swapping one
+member for another leaves the swapped-out member absent.
+
+Both directions are proved by fault injection rather than by passing. Deleting a row fails the forward
+check naming the member; adding a `packedVertices` row, or a `visionpose/ping` line, **with the count
+left correct** fails the backward check naming that. 2 of the 4 identity-pinned derivations run both
+ways; a derivation with no sensible superset stays forward-only and the census says so.
 
 ### The defect it was built against
 

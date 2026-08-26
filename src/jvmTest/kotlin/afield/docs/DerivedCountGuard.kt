@@ -416,9 +416,29 @@ object DerivedCountGuard {
      *   evadable by substitution, swapping one member for another at the same total. Two weaker
      *   properties than [membersNamedOnPage], both deliberate and both bounded by the section scope:
      *   containment has no word boundaries, so a short member can match inside a longer one; and like
-     *   [membersNamedOnPage] it is one-directional (population minus page), so a page naming an
-     *   *extra* member still passes. Closing that second one needs the page parsed as the expected set
-     *   — the `ServerSurfaceLedgerTest.assertLedger` shape — which is a larger change than this.
+     *   [membersNamedOnPage] it is one-directional on its own — see [candidates] for the other
+     *   direction and for why plain set equality is the wrong shape here.
+     * @param candidates the **backward** direction, and the answer to *"a page naming an extra member
+     *   still passes"*. Supply a rule that derives a **superset** of [derive] from the same
+     *   declaration site by a weaker test; the section may then name no candidate that the population
+     *   excludes. So `(named ∩ candidates) ⊆ population` is asserted alongside
+     *   `population ⊆ named`, and together those are set equality *restricted to the candidate set*.
+     *
+     *   Restricted, because unrestricted set equality is not merely strict here, it is wrong.
+     *   [codeSpanWords] over a real section returns every token in every code span — `fun`, `Double`,
+     *   `cx`, the file name in a citation — so `named == population` fails on every page ever written
+     *   and cannot be repaired by editing the page. `ServerSurfaceLedgerTest.assertLedger` can compare
+     *   sets outright because its page side is a *parsed table column*, which is a set of the same kind
+     *   as its population. A prose section's code text is not, and pretending otherwise would buy a
+     *   guard nobody can keep green.
+     *
+     *   The candidate superset restores the useful half of that comparison without a table parser:
+     *   "extra" stops meaning *any word* and starts meaning **a sibling from the same declaration site
+     *   that this population deliberately excludes** — a `packedVertices` row in a table of authoring
+     *   methods, a `visionpose/ping` line in a table of span labels. That is the stale-row case the
+     *   forward check cannot see, and the only one worth a mechanism, because substitution is already
+     *   caught: swapping one member for another leaves the swapped-out member absent, which
+     *   `population ⊆ named` fails on.
      */
     data class Derivation(
         val key: String,
@@ -429,6 +449,7 @@ object DerivedCountGuard {
         val derive: (File) -> Set<String>,
         val membersNamedOnPage: Boolean = false,
         val membersQuotedVerbatim: Boolean = false,
+        val candidates: ((File) -> Set<String>)? = null,
     )
 
     /** Kotlin sources under [root], excluding foreign checkouts, for a derivation that scrapes code. */
