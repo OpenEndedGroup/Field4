@@ -204,18 +204,31 @@ fun controllerPointer(
  *    as the person commits to the click. Wrist-through-pinch barely moves when the pinch closes,
  *    which is what makes "aim, then click without re-aiming" possible at all.
  *
- * The version a headset's own UI uses — a ray from the **eye** through the pinch point — is better
- * still, and is not available here: it needs a head pose, and taking one would make this function
- * require a live XR session. [mousePointer] and [controllerPointer] both stay poll-a-lambda; so does
- * this. Compose it yourself if you have the head pose:
- * `Ray.through(headPosition, pinchPoint)`.
+ * ## …unless you can tell it where the eyes are, in which case give it that
+ *
+ * A headset's own UI aims from the **eye** through the pinch point, which is better than any
+ * hand-local direction for one reason that no amount of hand data can make up for: it is the line the
+ * person is *looking along*, so what they see their fingers over is what they get. If you have a head
+ * pose, pass [eye] and this uses it.
+ *
+ * Note what [eye] changes and what it does not. It supplies the **direction** only; the ray still
+ * starts at the pinch point. Starting at the eye would be more faithful to a headset's own
+ * implementation and worse here, because the ray would then have to pass through the person's own hand
+ * and anything else between their face and their fingers, and would report those instead. Starting at
+ * the fingers and aiming along eye→pinch gets the direction that matters without the occluders. The
+ * cost, stated: a target *nearer* than the pinch point along that line is not reachable.
+ *
+ * Without [eye] it falls back to wrist→pinch, which needs nothing but the hand.
  *
  * @param state read on every sample; `null` or `!isActive` makes the pointer inactive, as does a
  *   frame in which the wrist or either fingertip lost tracking.
+ * @param eye where the viewer's eyes are, in the same space as the joints, or `null`. Read on every
+ *   sample, so a moving head is fine.
  */
 fun pinchPointer(
     name: String = "pinch",
     state: () -> HandTrackingState?,
+    eye: (() -> Vec3)? = null,
 ): Pointer = LambdaPointer(name) {
     val s = state() ?: return@LambdaPointer PointerState.inactive
     if (!s.isActive) return@LambdaPointer PointerState.inactive
@@ -228,11 +241,13 @@ fun pinchPointer(
     val px = (thumb.position.x + index.position.x) * 0.5
     val py = (thumb.position.y + index.position.y) * 0.5
     val pz = (thumb.position.z + index.position.z) * 0.5
-    val dx = px - wrist.position.x
-    val dy = py - wrist.position.y
-    val dz = pz - wrist.position.z
+    val from = eye?.invoke() ?: wrist.position
+    val dx = px - from.x
+    val dy = py - from.y
+    val dz = pz - from.z
     if (sqrt(dx * dx + dy * dy + dz * dz) < 1e-4) {
-        // The pinch point sitting on the wrist is not a hand; it is a tracking glitch.
+        // The pinch point sitting on top of the wrist, or of the eye, is not a hand pointing at
+        // something; it is a tracking glitch, and a normalized zero would be NaN.
         return@LambdaPointer PointerState.inactive
     }
     PointerState(
@@ -243,6 +258,45 @@ fun pinchPointer(
 
 /** A pointer that always reports [fixed] — for tests, and for driving a capture from a script. */
 fun fixedPointer(name: String = "fixed", fixed: () -> PointerState): Pointer = LambdaPointer(name, fixed)
+
+// ----------------------------------------------------------------------------------------------
+// The two-line bindings to the targets that actually have devices
+// ----------------------------------------------------------------------------------------------
+
+/**
+ * This stereo target's controller, as a [Pointer].
+ *
+ * A convenience and nothing more: it is [controllerPointer] over
+ * [afield.four.targets.SideBySideStereoTarget.controllerState], which already resolves the same
+ * precedence a live OpenXR session, a remote Vision Pro pose and the desktop `mockController` share.
+ * So it works on all three, including the mouse-driven mock — which is how you would drive it at a
+ * desk.
+ *
+ * **Untested against a device.** Its arithmetic is [controllerPointer]'s, which is tested against
+ * constructed `ControllerState`s; the composition itself has no test, because a test would need a
+ * headset. Stated rather than implied.
+ */
+fun afield.four.targets.SideBySideStereoTarget.pointer(
+    hand: afield.four.targets.OpenXRHmdTarget.Hand = afield.four.targets.OpenXRHmdTarget.Hand.RIGHT,
+    name: String = "controller ${hand.name.lowercase()}",
+): Pointer {
+    val reusable = ControllerState()
+    return controllerPointer(name, state = { controllerState(hand, reusable) })
+}
+
+/**
+ * This headset's bare hand, as a [Pointer] — pinch to select.
+ *
+ * [pinchPointer] over [afield.four.targets.OpenXRHmdTarget.handState], which is `null` unless the
+ * runtime supports `XR_EXT_hand_tracking` and is tracking that hand; a `null` there makes the pointer
+ * inactive, which is the right answer.
+ *
+ * **Untested against a device**, for the same reason as [pointer] above.
+ */
+fun afield.four.targets.OpenXRHmdTarget.handPointer(
+    hand: afield.four.targets.OpenXRHmdTarget.Hand = afield.four.targets.OpenXRHmdTarget.Hand.RIGHT,
+    name: String = "pinch ${hand.name.lowercase()}",
+): Pointer = pinchPointer(name, state = { handState(hand) })
 
 // ==============================================================================================
 // Hover / press / drag / release

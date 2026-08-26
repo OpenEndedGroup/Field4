@@ -540,6 +540,66 @@ class SpatialPointerTest {
     }
 
     @Test
+    fun `the merged mesh is computed once and a new scene gets a new one`() {
+        // The merge is what every render needs, and a pointer under a mouse asks for it once a frame.
+        // Re-transforming and re-concatenating every vertex to draw the same static scene again is
+        // work with no result, so `PickScene` holds it — and can, because it is immutable.
+        val scene = pickScene {
+            add("a", box(1.0, 1.0, 1.0))
+            add("b", box(1.0, 1.0, 1.0), at = Matrix4f().identity().translate(3f, 0f, 0f))
+        }
+        val first = scene.mergedMesh()
+        assertTrue(
+            first === scene.mergedMesh(),
+            "the merged mesh must be the same object on a second call, not an equal copy",
+        )
+        assertTrue(scene.mergedParts() === scene.mergedParts())
+
+        // Cheap enough to state as a ratchet rather than a hope: after warm-up, a thousand calls must
+        // cost about nothing, because 999 of them are a field read. Compared against the cost of
+        // actually merging a thousand times, via a thousand fresh scenes.
+        //
+        // **Best of five, not a single trial.** The held loop takes tens of microseconds in total, so
+        // one GC pause landing inside its measurement window inflates it by orders of magnitude and
+        // fails a perfectly good implementation. Taking the minimum measures the thing this test is
+        // about — the cost of the work — rather than the scheduler's mood. Measured on this machine:
+        // 23 ns/call held against 2038 ns/call rebuilt, a factor of 88; the floor is 20, which is
+        // margin for a slower machine and not margin for the caching having been removed.
+        fun bestOfFiveNanos(block: () -> Unit): Long {
+            repeat(20) { block() }
+            var best = Long.MAX_VALUE
+            repeat(5) {
+                val start = System.nanoTime()
+                block()
+                val took = System.nanoTime() - start
+                if (took < best) best = took
+            }
+            return best
+        }
+        val held = bestOfFiveNanos { repeat(1000) { scene.mergedMesh() } }
+        val rebuilt = bestOfFiveNanos {
+            repeat(1000) {
+                PickScene(scene.pickables).mergedMesh()
+            }
+        }
+        println("merged mesh: 1000 held reads ${held / 1000} ns, 1000 rebuilds ${rebuilt / 1000} ns per call")
+        assertTrue(
+            rebuilt > held * 20,
+            "holding the merge must be at least an order of magnitude cheaper than rebuilding it, or " +
+                "the laziness is not earning its keep: held=${held}ns rebuilt=${rebuilt}ns for 1000 calls",
+        )
+
+        // And a *different* scene must get its own merge — which is the correct invalidation, because
+        // the only way to change a PickScene is to make a new one.
+        val bigger = scene + Pickable("c", box(1.0, 1.0, 1.0), at = Matrix4f().identity().translate(-3f, 0f, 0f))
+        assertTrue(bigger.mergedMesh() !== first, "adding a pickable must not reuse the old merge")
+        assertEquals(first.triangleCount + 12, bigger.mergedMesh().triangleCount)
+        assertEquals(3, bigger.mergedParts().partCount)
+        // The original is untouched, since `plus` returns a new scene.
+        assertEquals(2, scene.mergedParts().partCount)
+    }
+
+    @Test
     fun `a merged scene keeps object and part legible in one name`() {
         val scene = pickScene {
             add("floor", boxAt(0.0, -0.5, 0.0, 6.0, 0.2, 6.0))

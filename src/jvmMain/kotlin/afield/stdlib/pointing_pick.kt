@@ -517,13 +517,21 @@ class PickScene(pickables: List<Pickable> = emptyList()) {
      *
      * The triangle indices of the result do **not** line up with any pickable's [PickParts]; use
      * [mergedParts] for a part assignment over the merged mesh.
+     *
+     * **Computed once and held.** [PickScene] is immutable, so the merge cannot go stale, and the
+     * alternative was measurably wrong in practice: every `renderPointer` call needs the merged mesh,
+     * a pointer moving under a mouse calls it once per frame, and re-transforming and re-concatenating
+     * every vertex to draw the same static scene again is work with no result. `plus` returns a new
+     * scene, which gets its own lazy merge — which is the correct invalidation, for free.
      */
-    fun mergedMesh(): TriMesh = merged().first
+    fun mergedMesh(): TriMesh = merged.first
 
     /** [mergedMesh]'s part assignment, named `"object / part"` so a merged hit is still legible. */
-    fun mergedParts(): PickParts = merged().second
+    fun mergedParts(): PickParts = merged.second
 
-    private fun merged(): Pair<TriMesh, PickParts> {
+    private val merged: Pair<TriMesh, PickParts> by lazy { computeMerged() }
+
+    private fun computeMerged(): Pair<TriMesh, PickParts> {
         val builder = TriMeshBuilder()
         val names = ArrayList<String>()
         val externalIds = ArrayList<Int?>()

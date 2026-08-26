@@ -174,6 +174,50 @@ class SpatialPointerInteractionTest {
         )
     }
 
+    @Test
+    fun `a head pose changes the pinch ray's direction and not where it starts`() {
+        // The convention a headset's own UI uses, offered when the caller can supply a head pose —
+        // and the two properties that make it usable rather than merely faithful.
+        val h = hand(gap = 0.02f, pinchAt = Vec3(0f, 0f, 0.25f))
+        val fromWrist = pinchPointer(state = { h }).sample().ray!!
+        // An eye above and behind the hand: looking down and forward through the fingers.
+        val eyeAt = Vec3(0f, 0.35f, -0.15f)
+        val fromEye = pinchPointer(state = { h }, eye = { eyeAt }).sample().ray!!
+
+        // It starts at the fingers either way. Starting at the eye would make the ray pass through the
+        // person's own hand and report that instead.
+        assertEquals(0.0, fromEye.originX, 1e-5)
+        assertEquals(0.0, fromEye.originY, 1e-5)
+        assertEquals(0.25, fromEye.originZ, 1e-5, "the ray must still start at the pinch point")
+        assertEquals(fromWrist.originZ, fromEye.originZ, 1e-6, "…the same place as without an eye")
+
+        // And it aims along eye → pinch, which here points forward and *down*.
+        val expected = Vec3(0f - eyeAt.x, 0f - eyeAt.y, 0.25f - eyeAt.z).normalize()
+        assertEquals(expected.x.toDouble(), fromEye.dirX, 1e-5)
+        assertEquals(expected.y.toDouble(), fromEye.dirY, 1e-5)
+        assertEquals(expected.z.toDouble(), fromEye.dirZ, 1e-5)
+
+        // Premise for the whole test: the two conventions must actually give different rays, or the
+        // `eye` argument is decoration.
+        val between = Math.toDegrees(
+            kotlin.math.acos(
+                (fromWrist.dirX * fromEye.dirX + fromWrist.dirY * fromEye.dirY + fromWrist.dirZ * fromEye.dirZ)
+                    .coerceIn(-1.0, 1.0)
+            )
+        )
+        assertTrue(
+            between > 20.0,
+            "the eye-through-pinch ray must differ measurably from wrist-through-pinch, or passing a " +
+                "head pose achieves nothing; they differed by ${"%.2f".format(between)} deg",
+        )
+
+        // And the degenerate case: an eye sitting on the pinch point has no direction, not a NaN one.
+        assertTrue(
+            !pinchPointer(state = { h }, eye = { Vec3(0f, 0f, 0.25f) }).sample().active,
+            "an eye on top of the pinch point must make the pointer inactive rather than emit a NaN ray",
+        )
+    }
+
     // ------------------------------------------------------------------------------------------
     // Hysteresis on the part — the dwell
     // ------------------------------------------------------------------------------------------
