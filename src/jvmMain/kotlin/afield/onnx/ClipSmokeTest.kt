@@ -164,6 +164,22 @@ object ClipSmokeTest {
             near("storm component $i matches Python", storm.values[i], REF_STORM_FIRST4[i])
         }
 
+        // The one-argument form the documentation actually teaches. `public/docs/onnx.md` writes
+        // `clipEncode("…")` six times and writes `ClipText.encodeAll` nowhere, and until 2026-08-27
+        // nothing in CI called it: every assertion in this file went through the batch entry point
+        // underneath it, so the name on the page was type-checked and never run. One line, no extra
+        // model load — the text encoder is already resident by here — and it makes the published
+        // spelling a checked one. Found by `DocumentedApiEvaluationTest`, which lists the APIs a
+        // published page teaches that CI only ever compiles.
+        val viaDocumentedForm = clipEncode("storm")
+        check(
+            "clipEncode(\"storm\") is the same vector as the batch form",
+            viaDocumentedForm.values.contentEquals(storm.values)
+        ) {
+            "the documented one-liner and ClipText.encodeAll disagree; cosine " +
+                "${viaDocumentedForm.cosine(storm)}"
+        }
+
         fun cos(a: String, b: String) = embeddings.getValue(a).cosine(embeddings.getValue(b))
         near("cos(storm, calm)", cos("storm", "calm"), REF_COS_STORM_CALM)
         near("cos(cat, dog)", cos("a photo of a cat", "a photo of a dog"), REF_COS_CAT_DOG)

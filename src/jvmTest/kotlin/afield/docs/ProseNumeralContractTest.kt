@@ -78,8 +78,59 @@ class ProseNumeralContractTest {
          * [markedNumeralsAreFlooredAndUnmarkedOnesAreCounted]. This floor exists for one reason: so
          * that deleting every marker cannot turn this class into six green ticks over nothing, which
          * is precisely how [CitationContractTest.MIN_ABBREVIATED_CITATIONS] earns its place.
+         *
+         * **Ratcheted 2026-08-27, 6 → 12.** The corpus had grown to 13 markers across 6 pages while
+         * this stayed at its founding value, and a floor of 6 under a population of 13 does not do
+         * the one job the paragraph above claims for it: it permits deleting *seven* markers — the
+         * whole of `dev_docs/DATAFRAME_PLUGIN.md`, `dev_docs/autodiff.md`,
+         * `public/docs/autodiff_examples.md` and `public/docs/vision_geometry.md`, four of the six
+         * guarded pages — and staying green. A floor is only a floor relative to the population it
+         * floors; left unratcheted it becomes precisely the "green tick over nothing" it was written
+         * against, one marker at a time. Kept one below the measurement for the original reason.
          */
-        const val MIN_MARKED_NUMERALS = 6
+        const val MIN_MARKED_NUMERALS = 12
+
+        /**
+         * Floor on the number of *pages* carrying at least one marker. Measured 2026-08-27: **6**.
+         *
+         * The numeral count alone cannot see the shape of a loss. Thirteen markers on one page and
+         * thirteen spread over six pages are the same number and not the same coverage, and the
+         * cheapest way to shed markers is to stop guarding a page rather than to thin a page out.
+         * Floored at 5 on the same margin argument as [MIN_MARKED_NUMERALS].
+         */
+        const val MIN_MARKED_PAGES = 5
+
+        /**
+         * Floor on the derivations pinned in **both** directions — carrying a `candidates` superset
+         * rule as well as a member check.
+         *
+         * Measured 2026-08-27: **2** of 13 (`visionPoseHostSpans`, `visionGeometryBuilderMethods`),
+         * and until that day the number was computed, printed into the build log by
+         * [everyDerivedPopulationIsAlsoNamedOnItsPage], and asserted nowhere. A printed number is a
+         * measurement; it is not a guard — and the KDoc on
+         * [DerivedCountGuard.Derivation.candidates] argues at length that the backward direction is
+         * the only one that catches a stale row. Bidirectional coverage could therefore have gone
+         * 2 → 0 — deleting two lambdas is a four-line edit — with nothing red and the census line
+         * still printing cheerfully.
+         *
+         * Pinned at the measurement rather than one below it, deliberately and unlike the two floors
+         * above: at 2 there is no margin left to give away, and the next `candidates` rule added
+         * should ratchet this. [MIN_IDENTITY_PINNED_DERIVATIONS] is the weaker sibling — a derivation
+         * can pin identities forward-only — and takes the usual one-below margin.
+         */
+        const val MIN_BIDIRECTIONAL_DERIVATIONS = 2
+
+        /**
+         * Floor on the derivations that pin member *identities* at all, in either direction —
+         * `membersNamedOnPage` or `membersQuotedVerbatim`. Measured 2026-08-27: **4** of 13.
+         *
+         * The other nine are count-only, which the KDoc on
+         * [DerivedCountGuard.Derivation.membersQuotedVerbatim] is explicit about being the weakest
+         * form: a count is evadable by substitution. This exists so the strong end of the set cannot
+         * be traded for the weak end, which is a one-word edit per derivation and leaves every other
+         * test in this class green.
+         */
+        const val MIN_IDENTITY_PINNED_DERIVATIONS = 3
 
         /**
          * How many unmarked numerals to name in the census before the output stops being readable.
@@ -728,6 +779,25 @@ class ProseNumeralContractTest {
             } ?: "forward only"
             println("  %-38s %-8s %-9s %s".format(d.key, "n=${d.derive(root).size}", how, dir))
         }
+
+        // The two numbers just printed, now asserted. Until 2026-08-27 they were printed and nothing
+        // else, which made this test's green compatible with every `candidates` rule and every member
+        // check in the file having been deleted — the exact shape the KDoc on
+        // DerivedCountGuard.Derivation warns about, reproduced inside the guard that warns about it.
+        assertTrue(
+            checked.size >= MIN_IDENTITY_PINNED_DERIVATIONS,
+            "only ${checked.size} of ${derivations.size} derivation(s) pin member identities at all " +
+                "(floor $MIN_IDENTITY_PINNED_DERIVATIONS). The rest are count-only, and a count is " +
+                "evadable by substitution. If a population genuinely became untokenisable, say so in " +
+                "its comment and lower this on purpose."
+        )
+        assertTrue(
+            bidi >= MIN_BIDIRECTIONAL_DERIVATIONS,
+            "only $bidi derivation(s) are pinned in both directions (floor " +
+                "$MIN_BIDIRECTIONAL_DERIVATIONS). Forward-only coverage cannot see a stale row: a " +
+                "page may name a sibling the population deliberately excludes and still pass. " +
+                "Supply a `candidates` superset rather than lowering this."
+        )
     }
 
     /**
@@ -751,19 +821,33 @@ class ProseNumeralContractTest {
                 println("  %-45s marked %2d   unmarked %4d".format(s.page, s.marked.size, s.unmarked.size))
             }
         }
-        println("  total marked: $marked (floor $MIN_MARKED_NUMERALS)   total unmarked: $unmarked")
+        val markedPages = all.count { it.marked.isNotEmpty() }
+        println(
+            "  total marked: $marked (floor $MIN_MARKED_NUMERALS) on $markedPages page(s) " +
+                "(floor $MIN_MARKED_PAGES)   total unmarked: $unmarked"
+        )
         println("  a sample of the unchecked remainder, for whoever marks the next one:")
         all.flatMap { it.unmarked }.take(CENSUS_SAMPLE).forEach {
             println("    ${it.page}:${it.pageLine}  `${it.literal}`  ${it.context}")
         }
 
-        assertTrue(
-            marked >= MIN_MARKED_NUMERALS,
-            "only $marked prose numeral(s) in the corpus are pinned to a derivation, below the floor " +
-                "of $MIN_MARKED_NUMERALS. If numbers were genuinely removed from the docs, lower this " +
-                "deliberately — but note that every other test in this class is then guarding a " +
-                "population the corpus barely contains."
+        // Both floors are collected and reported together rather than asserted in sequence. With two
+        // `assertTrue` calls the first failure hides the second, and these two fail together in the
+        // most likely case — a page stops being guarded, which costs both markers and a page. A red
+        // build that names one of the two losses teaches half of what happened.
+        val breaches = listOfNotNull(
+            if (marked >= MIN_MARKED_NUMERALS) null else
+                "only $marked prose numeral(s) in the corpus are pinned to a derivation, below the " +
+                    "floor of $MIN_MARKED_NUMERALS. If numbers were genuinely removed from the docs, " +
+                    "lower this deliberately — but note that every other test in this class is then " +
+                    "guarding a population the corpus barely contains.",
+            if (markedPages >= MIN_MARKED_PAGES) null else
+                "only $markedPages guarded page(s) carry a marker (floor $MIN_MARKED_PAGES). The " +
+                    "numeral count above can stay healthy while whole pages stop being guarded, so " +
+                    "this is the half of the measurement that notices a page leaving rather than a " +
+                    "marker thinning.",
         )
+        assertTrue(breaches.isEmpty(), breaches.joinToString("\n"))
     }
 
     // -------------------------------------------------------------------------------------------

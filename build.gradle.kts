@@ -1253,6 +1253,15 @@ val citationGuardTestClasses = listOf(
     // is the only task that declares dev_docs/**.md as an input, so it is the only one that cannot go
     // UP-TO-DATE after a Markdown-only edit. See dev_docs/impossibility_claims.md.
     "afield.docs.ImpossibilityClaimContractTest",
+    // "Compiled is not run": which APIs a published page teaches that CI only ever type-checks. Here
+    // for the same reason as the two above — it reads Markdown and transcript yaml, so it must not be
+    // able to inherit an UP-TO-DATE result from an unchanged test classpath.
+    "afield.docs.DocumentedApiEvaluationTest",
+    // The guard on the guards' own inputs: every repo path the classes in this list read must be
+    // covered by one of the `inputs.` declarations below. It reads build.gradle.kts and the test
+    // sources, both of which already invalidate this task, so it needs no declaration of its own —
+    // and it is in this list rather than in jvmTest so that it runs in the same task it audits.
+    "afield.docs.GateInputDeclarationTest",
 )
 
 // These tests read Markdown and JavaScript directly from the checkout. Keeping them inside the broad
@@ -1288,6 +1297,52 @@ val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationG
     // corpus and the server-surface ledger both live under dev_docs, which is not `public/docs`.
     inputs.files(fileTree("dev_docs") { include("**/*.md") })
         .withPropertyName("guardedDevDocs")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    // The non-Kotlin, non-Markdown *code* these guards scrape. Same lesson as the two blocks above,
+    // one step further out: a Kotlin edit invalidates this task through the test classpath and a
+    // Markdown edit through the file trees, but a change to a source file in a language that is on
+    // no JVM classpath invalidates nothing at all.
+    //
+    // Measured 2026-08-27, before these lines existed: planting a sixth
+    // `static let … = "head: …"` span in `native/field-visionos/Field4Vision/Pose/PoseLatency.swift`
+    // — the population `ProseNumeralContractTest`'s `visionPoseDeviceSpans` derives, and the number
+    // `public/docs/vision.md` publishes — left `citationGates` reporting
+    // `> Task :citationGates UP-TO-DATE` and `BUILD SUCCESSFUL in 924ms`. The gate did not re-run at
+    // all, so its green was a cached verdict about the previous contents of a file it exists to read.
+    // With the declaration below the same edit re-runs the task and it fails on the count.
+    inputs.files(fileTree("native") { include("**/*.swift") })
+        .withPropertyName("guardedNativeSources")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    // `CitationContractTest.theInputThatRulesOutTheGradleMarkerIsReallyInThisRepo` asserts on the
+    // shape of this in-repo Gradle subproject — its own settings.gradle.kts, and no `.git` of its
+    // own — because that shape is the premise behind `CitationGuard.isForeignCheckout` not treating
+    // it as a nested checkout. It acquiring a `.git` must not be able to pass stale.
+    inputs.files(fileTree("tools/code-use-semantic-sidecar") {
+        include("settings.gradle.kts")
+        include("src/main/kotlin/**")
+    })
+        .withPropertyName("guardedSidecarSubproject")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    // `CitationContractTest.noGuardedPageCitesIntoASubmoduleByAnAbbreviatedPath` reads the submodule
+    // list out of this file and fails when it is empty, so adding or removing a submodule changes
+    // what that guard checks.
+    inputs.file(".gitmodules").withPathSensitivity(PathSensitivity.RELATIVE)
+    // Python reproducers. `ImpossibilityClaimGuard.validateReproducer` accepts a `tools/**.py`
+    // path as evidence for a dev_docs impossibility claim and opens it to check it defines
+    // something runnable, so a tool losing its `def` silently un-substantiates a published claim.
+    //
+    // Found by `GateInputDeclarationTest` rather than by hand — the fourth instance of this bug on
+    // this branch and the first nobody had to notice. It was hidden for one run by a lenient
+    // "this directory contains a declared tree" branch in that class, which counted `tools` as
+    // covered because `tools/code-use-semantic-sidecar` sits underneath it. A partly-declared
+    // parent is not a declared input.
+    inputs.files(fileTree("tools") { include("**/*.py") })
+        .withPropertyName("guardedReproducerTools")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    // The agent transcript corpus. It lives under `dev_docs` but it is yaml, so the `**/*.md` tree
+    // above does not see it — and it is the whole population `DocumentedApiEvaluationTest` measures.
+    inputs.files(fileTree("dev_docs/agents/transcripts") { include("**/*.yaml") })
+        .withPropertyName("guardedTranscriptCorpus")
         .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 

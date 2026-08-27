@@ -193,7 +193,7 @@ guard unescapes it, so FieldML's `\|>` can be cited.
 
 A citation guard proves an anchor exists. It says nothing about the *sentence* around the anchor, and
 the arithmetic in that sentence is the part that rots. `ProseNumeralContractTest` closes that gap for
-the same 25<!--count:guardedCitationPages--> pages `GUARDED_PAGES` already covers — this one among
+the same 26<!--count:guardedCitationPages--> pages `GUARDED_PAGES` already covers — this one among
 them since 2026-08-23, because a page that documents the mechanism and then states three numbers
 derived by it should be the first thing the mechanism checks.
 
@@ -321,7 +321,7 @@ ways; a derivation with no sensible superset stays forward-only and the census s
 
 There are 54<!--count:valuePrinterRegistrationsInSource--> in compiled source. The sentence carried a
 citation that **resolved perfectly**, on a page that passed
-`citationGates` — one of the 8<!--count:citationGuardTestClasses--> focused test classes that task
+`citationGates` — one of the 10<!--count:citationGuardTestClasses--> focused test classes that task
 runs — with every anchor green. The grep behind it saw `ValuePrinterRegistry.register` and
 missed the reified wrapper `registerValuePrinter<T>`, which is how all but four of them are written.
 The conclusion happened to survive, for a reason the page never gave — see the rewritten paragraph

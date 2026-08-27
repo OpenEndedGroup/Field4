@@ -19,6 +19,8 @@ class DocsGatesWiringTest {
             "afield.server.ServerSurfaceLedgerTest",
             "afield.docs.ProseNumeralContractTest",
             "afield.docs.ImpossibilityClaimContractTest",
+            "afield.docs.DocumentedApiEvaluationTest",
+            "afield.docs.GateInputDeclarationTest",
         )
 
         expected.forEach { className ->
@@ -60,6 +62,21 @@ class DocsGatesWiringTest {
         assertTrue(
             """withPropertyName("publishedDocs")""" in build,
             "citationGates no longer declares public/docs/**.md as an input",
+        )
+        // The same argument, for the two input kinds added on 2026-08-27 after each was measured
+        // going UP-TO-DATE over a file its guard reads. Swift is on no JVM classpath;
+        // `dev_docs/agents/transcripts/*.yaml` is under dev_docs but is not `**/*.md`, so the
+        // guardedDevDocs tree above misses it and `DocumentedApiEvaluationTest`'s whole population
+        // comes out of it.
+        assertTrue(
+            """withPropertyName("guardedNativeSources")""" in build,
+            "citationGates no longer declares native/**.swift as an input, so editing a span name in " +
+                "PoseLatency.swift can inherit an UP-TO-DATE pass from ProseNumeralContractTest",
+        )
+        assertTrue(
+            """withPropertyName("guardedTranscriptCorpus")""" in build,
+            "citationGates no longer declares the transcript yaml corpus as an input, so adding or " +
+                "editing a transcript can inherit an UP-TO-DATE pass from DocumentedApiEvaluationTest",
         )
     }
 }

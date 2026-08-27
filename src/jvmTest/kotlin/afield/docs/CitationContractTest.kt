@@ -76,6 +76,13 @@ class CitationContractTest {
             "dev_docs/morpho_circuit_search.md" to 4,
             "dev_docs/FLineGeometry.md" to 2,
             "dev_docs/kdoc_reference_contract.md" to 2,
+            // The note on how guards in this tree go green over the wrong population, added
+            // 2026-08-27 by the branch that found four instances of it. Guarded from its first day
+            // rather than later, because a page arguing that guards should be held to their own
+            // populations and sitting outside the corpus itself would be the same defect in prose
+            // form. Floor 0 for the reason `public/docs/autodiff_examples.md` has one: it points at
+            // code by name and by task, not by `path:line#anchor`. Raise it the day it cites a site.
+            "dev_docs/guard_population_hygiene.md" to 0,
             // The page that documents this machinery, brought under it 2026-08-23. Two anchored
             // citations, both prose `path:line#anchor`; the page is mostly *about* citations rather
             // than made of them, so the floor is the count. It needs to be guarded for a reason
@@ -168,8 +175,21 @@ class CitationContractTest {
          * Corpus floor on anchors that are unique in their file. Unique anchors have unbounded
          * [CitationGuard.headroom]: no amount of unrelated editing can make them resolve to the wrong
          * place. This is the number that actually measures how safe the corpus is.
+         *
+         * **Ratcheted 2026-08-27, 184 → 360**, and the argument is about domination rather than about
+         * the gap. Measured that day: 403 unique of 442 total, across 26 guarded pages. But the
+         * per-page floors in [GUARDED_PAGES] sum to **327**, and
+         * [everyGuardedPageKeepsItsCitations] asserts every one of them — so another test in this
+         * same class already guarantees at least 327 anchored citations, and a corpus-wide floor of
+         * 184 could only ever bind if more than 143 of those went non-unique, which [MAX_FRAGILE]
+         * independently forbids the worst of. It was not a weak floor; it was a floor that had no
+         * reachable failure. At 360 it binds on the property it names — anchor *uniqueness* — rather
+         * than on corpus volume, which the per-page floors already cover.
+         *
+         * Set above that 327 sum on purpose. If a future branch raises the per-page floors past 360,
+         * raise this with them or it lapses back into being dominated.
          */
-        const val MIN_UNIQUE_ANCHORS = 184
+        const val MIN_UNIQUE_ANCHORS = 360
 
         /**
          * Corpus ceiling on anchors fragile enough to be confused by fewer than
