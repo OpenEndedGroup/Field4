@@ -6,6 +6,8 @@ import afield.python.PythonInterface.Companion.conf
 import afield.python.PythonInterface.Companion.deliverErr
 import afield.python.PythonInterface.Companion.deliverProgress
 import afield.python.PythonInterface.Companion.deliverStdOut
+import afield.python.PythonInterface.Companion.EMBED_IFRAME_STYLE
+import afield.python.PythonInterface.Companion.resultLineFor
 import afield.python.PythonInterface.Companion.formatOutput
 import afield.python.PythonInterface.Companion.hasHadOutput
 import afield.python.PythonInterface.Companion.truncateOutput
@@ -1011,13 +1013,31 @@ async def cancel_tasks(source_id: str, *, timeout: float = 2.0) -> dict:
 import builtins as _builtins
 _orig_print = _builtins.print
 
+# Which line of the cell is printing. `_exec_with_return2` compiles a fragment under the filename
+# "<repl:{box id}>", so the innermost frame carrying that filename is the cell, and its f_lineno is
+# 1-based within the fragment; thisLineOffset carries the fragment's own start line in the box.
+# Every print used to be published at line -1, which the output area resolves to the END of the
+# fragment: a one-line print appeared beside the cell's last line rather than beside the statement
+# that made it, and two such prints landed on the same line and overwrote one another. A print from
+# library code has no "<repl:" frame and keeps the old -1.
+def _field_source_line(_PythonInterface):
+    try:
+        frame = sys._getframe(2)
+    except ValueError:
+        return -1
+    while frame is not None:
+        if frame.f_code.co_filename.startswith("<repl:"):
+            return _PythonInterface.thisLineOffset + frame.f_lineno
+        frame = frame.f_back
+    return -1
+
 def _field_print(*args, sep=' ', end='\n', file=None, flush=False):
     from afield.python import PythonInterface
     box = PythonInterface.thisBox
     if box is None or (file is not None and file is not sys.stdout):
         return _orig_print(*args, sep=sep, end=end, file=file, flush=flush)
     text = sep.join(str(a) for a in args)
-    box.getOutput().getProxy()(PythonInterface.formatOutput(text), False, -1)
+    box.getOutput().getProxy()(PythonInterface.formatOutput(text), False, _field_source_line(PythonInterface))
     PythonInterface.hasHadOutput = True
 
 _builtins.print = _field_print
@@ -1046,9 +1066,28 @@ def _field_embed_show(box, iframe_html):
     from afield.python import PythonInterface
     PythonInterface.hasHadOutput = True
 
-_FIELD_IFRAME_STYLE = "width:100%;height:640px;border:none;background:#fff;border-radius:8px;"
+# Both axes are in px, deliberately not "100%". PythonInterface.EMBED_IFRAME_STYLE carries the
+# reason; a test holds it to pixels. It is NOT the only place the frame is styled -- field.css's
+# `.afield-embed-frame` is the other half, and the background has to agree in both.
+_FIELD_IFRAME_STYLE = "${EMBED_IFRAME_STYLE}"
+
+# The embedded document paints its own background, and a full plotly/bokeh page defaults to a
+# white body -- which lands as a bright slab inside a dark box no matter what the IFRAME is set to.
+# `plotly_dark` colours the figure's paper, not the page around it. So neutralise the page: only the
+# backdrop, so anything the document actually draws still wins.
+#
+# The trade is real and one-directional: a document that assumes a white page and draws dark text on
+# it (a folium legend, a light-theme bokeh toolbar) now draws that dark text over Field's dark box.
+# Pass `template="plotly_dark"` or the equivalent, as this page's example does.
+_FIELD_EMBED_RESET = "<style>html,body{background:transparent !important;margin:0;padding:0;}</style>"
 
 def _field_embed_document(box, full_html):
+    lowered = full_html.lower()
+    head = lowered.find("<head>")
+    if head >= 0:
+        full_html = full_html[:head + 6] + _FIELD_EMBED_RESET + full_html[head + 6:]
+    else:
+        full_html = _FIELD_EMBED_RESET + full_html
     srcdoc = full_html.replace("&", "&amp;").replace('"', "&quot;")
     iframe = '<iframe class="afield-embed-frame" style="' + _FIELD_IFRAME_STYLE + '" srcdoc="' + srcdoc + '"></iframe>'
     _field_embed_show(box, iframe)
@@ -1138,6 +1177,7 @@ _orig_print(" python interpreter has finished starting up ")
             deliverProgress = { deliverProgressText(inside, it) }
             var c = execute.code
 //            for (n in 0 until execute.line) c = "\n" + c
+            val resultLine = resultLineFor(execute.line, execute.code)
             val wm = ++inside.fragmentGeneration
             send(Message("is-running").payload(IsRunning(execute.uid, true, wm, "__fragment__")))
             try {
@@ -1157,8 +1197,11 @@ _orig_print(" python interpreter has finished starting up ")
                     if (awaitable) {
                         if (!hasHadOutput) {
                             inside.output.proxy(
-                                "[task launched]", false, execute.line + execute.code.split("\n").count()
+                                "[task launched]", false, resultLine
                             )
+                            // Same reason as the bare-expression branch below: `withholdEndNotification`
+                            // suppresses the is-running message but not the `finally`'s "ok".
+                            hasHadOutput = true
                             withholdEndNotification = true
                             launch {
                                 lprintln("info,python", "running notification for box has started $wm")
@@ -1185,12 +1228,18 @@ _orig_print(" python interpreter has finished starting up ")
                     } else {
                         if (!hasHadOutput) {
                             inside.output.proxy(
-                                formatOutput(ret.toString()), false, execute.line + execute.code.split("\n").count()
+                                formatOutput(ret.toString()), false, resultLine
                             )
+                            // Claim the output slot. Without this the `finally` below still believes
+                            // the cell produced nothing and writes "ok" over the value, at the same
+                            // line — so a cell whose last line is a bare expression displayed "ok"
+                            // rather than its result.
+                            hasHadOutput = true
                         }
                     }
                 } else if (!hasHadOutput) {
-                    inside.output.proxy("ok", false, execute.line + execute.code.split("\n").count())
+                    inside.output.proxy("ok", false, resultLine)
+                    hasHadOutput = true
                 }
             } catch (j: JepException) {
                 j.printStackTrace()
@@ -1232,7 +1281,7 @@ _orig_print(" python interpreter has finished starting up ")
                         reply,
                         Output(
                             uid = inside.id,
-                            line = execute.line + execute.code.split("\n").count(),
+                            line = resultLine,
                             kind = "ok",
                             html = "ok",
                             frame = Runloop.runLoop.frame.toInt()
@@ -1354,6 +1403,40 @@ class PythonInterface {
         /** Cap on the characters / lines a single output event may carry before it is truncated. */
         const val MAX_OUTPUT_CHARS = 40_000
         const val MAX_OUTPUT_LINES = 400
+
+        /**
+         * The inline style on an embedded page's iframe (plotly's `fig.show()`, bokeh, folium).
+         *
+         * **Both dimensions must stay in `px`.** The output area sizes its panel from the iframe's
+         * own declared size and reads it with a `parseFloat`-based parser
+         * (`src/commonMain/resources/outputareas2.js:278-287`); a percentage parses as zero, so it
+         * falls back to measuring an iframe that is itself waiting to be sized, and every embed
+         * ends up in a ~480px column. Held to that by
+         * [afield.python.PythonOutputContractTest.theEmbedIframeDeclaresBothAxesInPixels].
+         *
+         * **The background is `transparent`, not `#fff`.** A white frame around a `plotly_dark`
+         * figure is a bright slab in the middle of a dark box, and it is the frame showing through
+         * rather than anything the figure drew: plotly paints its own `paper_bgcolor` and leaves the
+         * rest of the page to whatever is underneath. Transparent lets the box's own background be
+         * that. A document that genuinely needs a light backdrop still paints one — every library
+         * that assumes white sets `body{background:#fff}` in the HTML it hands us — so this changes
+         * the default rather than removing the option.
+         */
+        const val EMBED_IFRAME_STYLE =
+            "width:960px;height:640px;border:none;background:transparent;border-radius:8px;"
+
+        /**
+         * The document line a fragment's result, `[task launched]`, or `ok` is attached to.
+         *
+         * [startLine] is the fragment's own offset in the box; the result belongs on the fragment's
+         * **last** line. A fragment almost always ends in a newline, and `"a\nb\n".split("\n")`
+         * yields a trailing `""` — counting that put the result one line past the end of the
+         * document, where the output area drops the decoration and the cell looked as though it had
+         * produced nothing at all.
+         */
+        @JvmStatic
+        fun resultLineFor(startLine: Int, code: String): Int =
+            startLine + code.trimEnd('\n').split("\n").count()
 
         /**
          * Truncate, escape, and (for multi-line text) wrap output for display in the editor.

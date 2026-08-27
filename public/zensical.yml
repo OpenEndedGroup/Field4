@@ -92,6 +92,7 @@ nav:
       - RectSL Inverse Animation: rectsl_inverse_animation.md
       - Petri Cheatsheet: petri_cheatsheet.md
       - Forth Examples: forth_examples.md
+      - Python in a Box: python.md
       - Nano Examples: nano_examples.md
       - Bridging Another Language (MorphoHDL): morpho_examples.md
     - Drawing From Data:

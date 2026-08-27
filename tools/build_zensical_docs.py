@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import time
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -80,9 +81,76 @@ def manifold_library_path(repo_root: Path) -> Path:
 # on its fence. Each key maps to where the artifact lives and the one command that builds
 # it. Nothing else reads the attribute -- docs_hooks ignores unknown fence attributes, so
 # adding one does not change a fence's capture digest.
+def jep_library_path(repo_root: Path) -> Path:
+    """Where `PythonInterface` will find JEP's native library, or a plausible miss.
+
+    Walks the same candidates as `PythonInterface.pythonConfigChoices`
+    (src/jvmMain/kotlin/afield/python/PythonInterface.kt:1685-1701) in the same order, and
+    applies the same acceptance test as `inspectPython` (:1720-1791): a candidate counts only
+    if a `libjep` actually sits in its site-packages. Testing importability instead would be
+    wrong — a correctly installed JEP raises `ImportError: Jep is not supported in standalone
+    Python`, because it is only ever loaded from inside a JVM.
+
+    `repo_root` is unused, and kept so every NATIVE_PREREQUISITES entry has one signature.
+    """
+    if sys.platform.startswith("win"):
+        lib_names, bin_dir = ("jep.dll",), "Scripts"
+    elif sys.platform == "darwin":
+        lib_names, bin_dir = ("libjep.jnilib", "libjep.dylib"), "bin"
+    else:
+        lib_names, bin_dir = ("libjep.so",), "bin"
+
+    def libjep_under(python_executable: Path) -> Path | None:
+        if not python_executable.exists():
+            return None
+        try:
+            site_packages = subprocess.run(
+                [str(python_executable), "-c", "import sysconfig;print(sysconfig.get_paths()['purelib'])"],
+                capture_output=True, text=True, timeout=30, check=False,
+            ).stdout.strip()
+        except (OSError, subprocess.SubprocessError):
+            return None
+        if not site_packages:
+            return None
+        return next((c for c in (Path(site_packages, "jep", n) for n in lib_names) if c.exists()), None)
+
+    def executables() -> Iterator[Path]:
+        for var in ("FIELD_PYTHON_EXECUTABLE",):
+            if (raw := os.environ.get(var, "").strip()):
+                yield Path(raw).expanduser()
+        for var in ("FIELD_PYTHON_VENV", "VIRTUAL_ENV", "CONDA_PREFIX"):
+            if (raw := os.environ.get(var, "").strip()):
+                yield Path(raw).expanduser() / bin_dir / "python3"
+        settings = Path.home() / ".afield" / "python.properties"
+        if settings.exists():
+            values = dict(
+                line.split("=", 1)
+                for line in settings.read_text(encoding="utf-8").splitlines()
+                if "=" in line and not line.startswith("#")
+            )
+            if (raw := values.get("path", "").strip()):
+                configured = Path(raw).expanduser()
+                yield configured / bin_dir / "python3" if values.get("kind", "venv").strip() == "venv" else configured
+        if (found := shutil.which("python3") or shutil.which("python")):
+            yield Path(found)
+
+    candidates = list(executables())
+    for candidate in candidates:
+        if (hit := libjep_under(candidate)) is not None:
+            return hit
+    named = candidates[0] if candidates else Path("python3")
+    return named.parent.parent / "lib" / "pythonX.Y" / "site-packages" / "jep" / lib_names[0]
+
+
 NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
     "ceres": (ceres_library_path, "./gradlew buildCeresRedistributable"),
     "manifold": (manifold_library_path, "brew install manifold"),
+    "jep": (
+        jep_library_path,
+        "pip install 'jep==4.3.1' jedi into the interpreter Field resolves, then point "
+        "FIELD_PYTHON_EXECUTABLE at it (on macOS the build needs "
+        "CFLAGS=\"-isysroot $(xcrun --show-sdk-path)\")",
+    ),
 }
 
 REQUIRES_ATTR_RE = re.compile(r'(?m)^```\w*_?runner\b[^\n]*?\brequires="([^"]*)"')

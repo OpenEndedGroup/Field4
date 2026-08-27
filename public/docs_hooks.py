@@ -4122,7 +4122,18 @@ def docs_runner_target_uid(*, page_path: Path, block_index: int, options: Runner
 
 
 def docs_runner_fieldml_root_alias(*, target_uid: str) -> str:
-    return safe_transcript_id(f"{target_uid}_fieldml_root")
+    return docs_runner_language_root_alias(target_uid=target_uid, language="fieldml")
+
+
+# Languages whose boxes only execute as that language when they are a *child* of a box carrying
+# `mainLanguage`. See src/jvmMain/kotlin/afield/runtime/LanguageRuntimeSupport.kt:54-69: the toggle
+# walks `root.children`, so the root itself stays Kotlin and the fence body has to live one level
+# down. `fieldml` predates this set and produces byte-identical commands through it.
+MAIN_LANGUAGE_ROOT_LANGUAGES = ("fieldml", "python")
+
+
+def docs_runner_language_root_alias(*, target_uid: str, language: str) -> str:
+    return safe_transcript_id(f"{target_uid}_{language}_root")
 
 
 def graphics_renderer_transcript_path(repo_root: Path) -> Path:
@@ -4445,8 +4456,8 @@ def build_backdoor_command(
             setup_macro_name,
             "--timeout", str(options.timeout),
         ]))
-    elif language == "fieldml":
-        root_alias = docs_runner_fieldml_root_alias(target_uid=generated_target_uid)
+    elif language in MAIN_LANGUAGE_ROOT_LANGUAGES:
+        root_alias = docs_runner_language_root_alias(target_uid=generated_target_uid, language=language)
         backdoor_commands.append(shlex.join([
             "new-box",
             "--name", f"{options.box_name}-root",
@@ -4461,7 +4472,7 @@ def build_backdoor_command(
             "set",
             root_alias,
             "mainLanguage",
-            "fieldml",
+            language,
         ]))
         backdoor_commands.append(shlex.join([
             "new-box",

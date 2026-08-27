@@ -52,7 +52,7 @@ provisional-edit path, so it remains reviewable before acceptance.
 ## AI-assisted completion
 
 `ctrl-space` opens Field's completion panel. Kotlin completions come from
-Field's compiler-backed completion path; Python completion uses Jedi. Field can
+Field's compiler-backed completion path; [Python](python.md) completion uses Jedi. Field can
 also request AI candidates in the background and add at most three of them to
 the same list when they arrive.
 

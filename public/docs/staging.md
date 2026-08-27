@@ -79,6 +79,7 @@ Reusable transcript examples live under `dev_docs/agents/transcripts/`. The most
 
 - [FieldML Cheatsheet](fieldml_cheatsheet.md) and [FieldML Examples](fieldml_examples.md) cover Field's small ML-flavoured expression language, from its prelude of numbers, lists and vectors to boxes that generate and animate drawings.
 - [Forth Examples](forth_examples.md) covers Field's small stack language, its output helpers, and its bridge into JVM objects.
+- [Python in a Box](python.md) is the odd one out here — not small, and not Field's. CPython is embedded in-process through JEP, so a Python cell shares a JVM with your Kotlin: it can import `java.lang`, reach its own `Box`, and have `fig.show()` land in that box instead of a browser.
 - [StackSL Cheatsheet](stacksl_cheatsheet.md) and [StackSL Examples](stacksl_examples.md) document the concatenative stack language and its worked drawings.
 - [Language Extensions](language_extensions.md) explains how these small languages plug into the editor — highlighting, flow, and completion.
 - [RectSL Cheatsheet](rectsl_cheatsheet.md) and [RectSL Examples](rectsl_examples.md) cover the rectangle-stack drawing language, from its operator vocabulary to animated worked examples.

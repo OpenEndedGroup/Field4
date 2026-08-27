@@ -265,7 +265,7 @@ Field's primary language for live coding is Kotlin, which we've found to be expr
 
 ## Python
 
-Via the JEP project, Python works splendidly in Field and we are incentivized to keep going in this direction. Autocompletion is driven by Jedi, and Field's central concept of launching (and stopping) boxes is supported by a custom async runner.
+Via the JEP project, Python works splendidly in Field and we are incentivized to keep going in this direction. [Python in a box](python.md) is the full account: the box topology, the one shared interpreter, and where output lands. Autocompletion is driven by Jedi, and Field's central concept of launching (and stopping) boxes is supported by a custom async runner.
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="assets/tinypython.mp4" type="video/mp4">

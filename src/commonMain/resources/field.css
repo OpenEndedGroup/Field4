@@ -2030,13 +2030,18 @@ body {
     tab-size: 4;
 }
 
-/* Pages a library would open in an external browser (plotly fig.show(), ...) embedded in-place. */
+/* Pages a library would open in an external browser (plotly fig.show(), ...) embedded in-place.
+
+   `background` is transparent, and it has to be set in BOTH places: the iframe's inline style comes
+   from PythonInterface.EMBED_IFRAME_STYLE and this class is the other half. A white backdrop here is
+   a bright slab around a dark figure, because the embedded document only paints the area its own
+   content covers. */
 .afield-embed-frame {
     display: block;
     width: 100%;
     border: none;
     border-radius: 8px;
-    background: #fff;
+    background: transparent;
 }
 
 /* Field-authored (dark-theme) Plotly plots render straight into the output DOM, so

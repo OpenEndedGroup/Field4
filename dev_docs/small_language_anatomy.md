@@ -438,7 +438,8 @@ Note the path: the hooks module is `public/docs_hooks.py`, **not** `tools/docs_h
 | where every fence attribute is parsed | `public/docs_hooks.py:2356` | `def parse_runner_options` |
 | where `data-lang=` is read | `public/docs_hooks.py:2546` | `def fence_language_key` |
 | **per-language wrapping of the fence body** | `public/docs_hooks.py:2551` | `def wrap_runnable_code_for_language` |
-| **per-language box construction** | `public/docs_hooks.py:4075` | `elif language == "fieldml":` |
+| **per-language box construction** | `public/docs_hooks.py:4075` | `elif language in MAIN_LANGUAGE_ROOT_LANGUAGES:` |
+| which languages get a language root | `public/docs_hooks.py:4130` | `MAIN_LANGUAGE_ROOT_LANGUAGES` |
 | the accepted `capture=` modes | `public/docs_hooks.py:2379` | `if capture not in` |
 | `capture="ui"` drives the live editor | `public/docs_hooks.py:1792` | `drive the live editor` |
 | the still capture for `capture="box"` | `public/docs_hooks.py:4266` | `screenshot-box` |
@@ -454,13 +455,15 @@ capture is *not* just a matter of writing `data-lang=mylang`:
 - `wrap_runnable_code_for_language` (`:2239-2289`) has an explicit branch per language that needs its
   body wrapped before it will run — `nano` (`:2241`), `morpho` (`:2264`), `forth` (`:2276`) — and
   otherwise passes the body through verbatim (`:2289`).
-- `build_backdoor_command` has a branch that builds a *different box graph* per language. FieldML's
-  (`:3758-3790`) creates a root box, sets `mainLanguage fieldml` on it, creates the code box, and
-  connects them — because a main language is conferred by a language-*root* parent, so a docs capture
-  of a Route B language needs two boxes, not one. The plain single-box path is the `else` at `:3791`.
+- `build_backdoor_command` builds a *different box graph* for a language with a main-language
+  runtime: a root box, `mainLanguage <id>` set on it, the code box, and a connection between them —
+  because a main language is conferred by a language-*root* parent, so a docs capture of a Route B
+  language needs two boxes, not one. The plain single-box path is the `else` beneath it. That branch
+  used to name FieldML directly; it is now generic over `MAIN_LANGUAGE_ROOT_LANGUAGES`, so a language
+  whose body needs no wrapping joins by adding its id to that tuple. Python did exactly that.
 
-So the docs-capture cost of a new main language is one branch in each of those two functions. That is
-the honest number, and it is not zero.
+So the docs-capture cost of a new main language is at most one branch in each of those two functions,
+and at least one tuple entry. That is the honest number, and it is not zero.
 
 Two rules that are not negotiable here:
 
@@ -608,7 +611,7 @@ precisely, because they bound what "this page is checked" means.
 
 1. **Citations.** Every table row whose last two cells are `` `path:line` `` and `` `anchor` `` is
    re-checked: the anchor must still exist **somewhere in the cited file**, found by searching it.
-   There are **134** checked citations. The line number is *advisory* — it is what you are shown, and
+   There are **135** checked citations. The line number is *advisory* — it is what you are shown, and
    it disambiguates an anchor that occurs more than once, but a stale one does not fail the build. A
    citation breaks when the thing it names is renamed or deleted, not when it moves. That is the point:
    until 2026-08-12 this guard used a ±2-line window, which meant it reached into every file any
@@ -622,7 +625,7 @@ precisely, because they bound what "this page is checked" means.
    documented here.
 3. **The Monaco-provider claim.** `msl.js` must remain the only editor resource registering a Monaco
    completion provider.
-4. **Table sizes.** **134** checked citations and **9** coverage guards, both asserted, so deleting a
+4. **Table sizes.** **135** checked citations and **9** coverage guards, both asserted, so deleting a
    ledger row is as loud as breaking one.
 
 What it does **not** check, stated so nobody assumes otherwise:
