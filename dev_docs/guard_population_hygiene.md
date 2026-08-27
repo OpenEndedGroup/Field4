@@ -18,8 +18,8 @@ population grew.
 
 `ProseNumeralContractTest.MIN_MARKED_NUMERALS` was 6, set against a founding measurement of 7. By
 2026-08-27 the corpus held 13 markers across 6 pages, so seven markers could be removed — four of
-the six guarded pages' worth — and the build stayed green. The number the guard printed and the
-number it asserted had drifted an order of magnitude apart in usefulness while both stayed true.
+the six guarded pages' worth — and the build stayed green. Both numbers were true the whole time.
+The floor had simply stopped describing the corpus it sat under.
 
 A floor is a statement about a ratio, not about a count. Write down the measurement and the margin
 in the same comment, and the next reader can tell 12-against-13 from 6-against-13 without running
@@ -28,6 +28,21 @@ anything.
 Corollary worth stating separately: **count the shape as well as the size.** Thirteen markers on one
 page and thirteen across six pages are the same number and not the same coverage, and shedding a
 whole page is cheaper than thinning six.
+
+The related case is a floor that is not merely loose but **dominated** — another assertion in the
+same class already guarantees more than it asks for, so it has no reachable failure.
+
+`CitationContractTest.MIN_UNIQUE_ANCHORS` was 184 against a measured 403. That looks like an
+ordinary loose floor. The sharper problem is that the per-page floors in `GUARDED_PAGES` sum to 327,
+and `everyGuardedPageKeepsItsCitations` asserts every one of them, so the corpus is already
+guaranteed at least 327 anchored citations. A corpus-wide floor of 184 unique anchors could only
+bind if more than 143 of those went non-unique, and `MAX_FRAGILE = 0` forbids the worst of that
+band. It was not a weak assertion so much as one that could not fire. Ratcheted to 360 on
+2026-08-27, which puts it above the 327 sum, so it binds on the property it names — anchor
+uniqueness — rather than on corpus volume that something else already covers.
+
+Test for it: compare each floor against what the *other* assertions in the same class already
+guarantee, not only against today's measurement.
 
 ### 2. A number printed but not asserted
 
@@ -67,6 +82,14 @@ plant fail on the count.
 that ran and passed both exit 0, and any A/B on input declarations that reads only the exit code is
 testing the wrong thing with the mechanism under test.
 
+Scope, so nobody spends a night fixing nine tasks that are already fine: this hazard belongs to
+`Test`-typed tasks. The nine `JavaExec`/`Exec` gates `docsGates` depends on —
+`checkCodebaseReference`, `checkKDocAttachment`, `checkSourcePartition`, `checkSourcePages`,
+`checkAgentTranscripts`, `checkAgentTranscriptIndex`, `checkCompletionCorpusFixtures`,
+`checkAgentDemos`, `checkPythonTools` — declare neither `inputs` nor `outputs`, so Gradle gives them
+no up-to-date check and they re-run every time. Checked 2026-08-27. `citationGates` and `jvmTest`
+are the two that can serve a cached verdict.
+
 Two rules follow. Grep the guard's source for every `File(root, …)` it opens and check each against
 the declared input set; anything outside `src/**/*.kt` wants a declaration, because the Kotlin
 classpath is the only thing invalidating that task for free. And when adding a guard that reads a new
@@ -90,11 +113,17 @@ gets evaluated in this tree. Measured 2026-08-27 over camelCase call sites:
 
 ```text
 camelCase APIs called by the transcript corpus         506
-  also named as a call on a published page             421
+  also named as a call on a published page             421   <- the denominator
   reached by an EXECUTE or KOTLINJS transcript         407
   reached only by a COMPILE_ONLY transcript             14   <- the tempting number
-  and not evaluated by any smoke or jvmTest either       5   <- the actionable one
+  of those 14, evaluated by a smoke or a jvmTest         9
+  evaluated by something, anything, in CI              416
+  evaluated by nothing at all                            5   <- the actionable one
 ```
+
+Those nine are the whole argument. They are APIs no `EXECUTE` transcript reaches and a smoke or a
+`jvmTest` does, and a scan that stops at the transcript corpus reports every one of them as a
+problem.
 
 The nightly brief that commissioned this work made the same mistake in miniature. Its example was
 `fromContext`: three transcripts demonstrate it, all three are `COMPILE_ONLY`, five published pages
@@ -145,6 +174,7 @@ found in guards written the same night by someone actively looking for this fail
 | Shape | Instance | Fixed |
 |---|---|---|
 | Floor below population | `ProseNumeralContractTest.MIN_MARKED_NUMERALS` 6 vs 13 | 2026-08-27, ratcheted to 12 with a page floor beside it |
+| Dominated floor | `CitationContractTest.MIN_UNIQUE_ANCHORS` 184, under a 327 already guaranteed elsewhere in the class | 2026-08-27, ratcheted to 360 |
 | Printed, not asserted | `ProseNumeralContractTest` bidirectional-derivation count | 2026-08-27, `MIN_BIDIRECTIONAL_DERIVATIONS` |
 | Undeclared input | `citationGates` over `native/**/*.swift` | 2026-08-27, `guardedNativeSources` |
 | Undeclared input | `citationGates` over `.gitmodules`, `tools/code-use-semantic-sidecar` | 2026-08-27, by argument rather than A/B |

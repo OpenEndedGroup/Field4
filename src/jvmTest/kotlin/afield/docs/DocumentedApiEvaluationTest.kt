@@ -32,10 +32,12 @@ import kotlin.test.assertTrue
  *
  * ```text
  * camelCase APIs called by the transcript corpus            506
- *   … also named as a call on a published page              421
+ *   … also named as a call on a published page              421   <- the denominator
  *   … reached by an EXECUTE or KOTLINJS transcript          407
  *   … reached only by a COMPILE_ONLY transcript              14   <- the tempting number
- *   … and not evaluated by any smoke or jvmTest either        5   <- the true one
+ *   … of those 14, evaluated by a smoke or a jvmTest          9
+ *   … evaluated by something, anything, in CI                416   <- what is floored
+ *   … evaluated by nothing at all                             5   <- what is ledgered
  * ```
  *
  * The brief that dispatched this work carried the same error in miniature. Its flagship example was
@@ -92,8 +94,14 @@ class DocumentedApiEvaluationTest {
         const val MIN_DOCUMENTED_APIS = 400
 
         /**
-         * Floor on the documented APIs an EXECUTE or KOTLINJS transcript actually evaluates. Measured
-         * 2026-08-27: **407**.
+         * Floor on the documented APIs that anything in CI evaluates — the **union** of the three
+         * populations, which is what this class prints beside it. Measured 2026-08-27: **416**.
+         *
+         * Not to be confused with the 407 in the table above, which is the transcript half alone. The
+         * nine between them are APIs no EXECUTE transcript reaches and a `FIELD_TEST` smoke or a
+         * `jvmTest` does, and they are exactly the population a transcripts-only scan misreports. A
+         * floor written against 407 would have been a floor on the wrong number by nine, in the file
+         * whose whole subject is floors written against the wrong population.
          *
          * This is the number the class is named after, and the one worth watching: reclassifying a
          * large EXECUTE transcript down to COMPILE_ONLY is a one-line edit in
@@ -176,6 +184,18 @@ class DocumentedApiEvaluationTest {
                     var j = i + 1
                     while (j < text.length && text[j] != '"') { if (text[j] == '\\') j++; j++ }
                     val end = (j + 1).coerceAtMost(text.length)
+                    out.append(text, i, end); i = end
+                }
+                // A character literal, consumed whole so that the quote in `'"'` cannot open a
+                // string. This branch is here because of one line in this very function: without it
+                // the `'"'` two cases up opens a bogus string that runs to the next real quote and
+                // carries whatever comment text lies between into the output verbatim. Bounded at
+                // eight characters, which covers `'A'`, so an apostrophe inside a backtick
+                // identifier degrades to being an ordinary character rather than swallowing a line.
+                c == '\'' -> {
+                    var j = i + 1
+                    while (j < text.length && j <= i + 8 && text[j] != '\'') { if (text[j] == '\\') j++; j++ }
+                    val end = if (j < text.length && j <= i + 8 && text[j] == '\'') j + 1 else i + 1
                     out.append(text, i, end); i = end
                 }
                 text.startsWith("//", i) -> {
@@ -478,10 +498,11 @@ class DocumentedApiEvaluationTest {
                 // this looks like a comment but is box Kotlin: keptAnyway()
             ""${'"'}
             val quoted = "not/*a*/comment"
+            val quoteChar = '"' // and a trailing comment: hiddenByChar()
             fun real() = realCall()
         """.trimIndent()
         val stripped = stripComments(src)
-        listOf("docOnly", "lineOnly", "nestedOnly").forEach {
+        listOf("docOnly", "lineOnly", "nestedOnly", "hiddenByChar").forEach {
             assertTrue("$it(" !in stripped, "$it( survived comment stripping: $stripped")
         }
         listOf("stringOnly", "keptAnyway", "realCall").forEach {
