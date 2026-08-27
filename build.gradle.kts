@@ -96,7 +96,27 @@ val vectorizationJvmArgs = listOf(
 val ffmpegVersion = "6.1.1-1.5.10"
 val opencvVersion = "4.9.0-1.5.10"
 val openblasVersion = "0.3.26-1.5.10"
-val arpackVersion = "3.9.1-1.5.10"
+// Deliberately off the 1.5.10 generation the rest of these share: bytedeco's arpack-ng has no
+// macosx-arm64 build until 1.5.12. At 3.9.1-1.5.10 it ships linux-arm64, linux-ppc64le,
+// linux-x86_64, macosx-x86_64 and windows-x86_64 and nothing else, so resolving
+// arpack-ng:3.9.1-1.5.10:macosx-arm64 404s and, because prepareSmileNative resolves at
+// CONFIGURATION time, no Gradle task on an Apple Silicon machine can be configured at all --
+// every guard and every test, not just the Smile ones. openblas does have macosx-arm64 at
+// 1.5.10, which is what makes pairing them at one generation look right; it builds on Intel Mac
+// and on Linux. Safe to advance alone because prepareSmileNative only unzips the native dylib
+// out of this artifact for Smile to find by name -- there is no javacpp binding, so nothing here
+// is coupled to the 1.5.10 ABI.
+//
+// This makes the build configure and the arm64 dylib extract; it does NOT make Smile's ARPACK path
+// work here, and that is a separate, open question rather than a regression. `otool -L` on the
+// extracted libarpack.dylib wants four @rpath libraries: libarpack.2 and libopenblas.0, both of
+// which prepareSmileNative copies, plus libgfortran.5 and libquadmath.0, which neither bytedeco
+// artifact ships on macosx-arm64 — so dlopen fails with "Cannot open library: libarpack.dylib" and
+// SmileMdsTest, SpeechEmbeddingMdsTest and SpectralEmbeddingProjectionTest fail on this platform.
+// Homebrew gcc has both at /opt/homebrew/opt/gcc/lib/gcc/current, but reaching for them would
+// contradict the vendoring intent stated above, so the choice — vendor a Fortran runtime, find a
+// self-contained arpack, or let Smile fall back where ARPACK is unavailable — is left to the author.
+val arpackVersion = "3.9.1-1.5.12"
 val javacppVersion = "1.5.10"
 val javacvVersion = "1.5.10"
 val bytedecoPlatformClassifier = when {

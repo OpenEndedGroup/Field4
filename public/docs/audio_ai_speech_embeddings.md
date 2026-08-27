@@ -47,7 +47,7 @@ but rotations of a newly fitted corpus still have no semantic name.
 
 From the Field Audio AI checkout (or Field4's `services/field-audio-ai` submodule):
 
-```bash
+```diffstatic {data-lang=bash}
 ./scripts/run-speech-worker.sh
 ./scripts/run-api.sh
 ```

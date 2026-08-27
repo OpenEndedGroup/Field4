@@ -4,7 +4,7 @@
 
 Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box.
 
-17 source file(s), 674 public symbol(s), 325 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+18 source file(s), 703 public symbol(s), 334 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1238,6 +1238,81 @@ The delegate behind `var n by saved { 0 }`: a property that loads itself from di
 | --- | --- |
 | [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">getValue</span><span class="p">(</span><span class="n">thisRef</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">KProperty</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">T</span></code>](source/jvmMain/afield/stdlib/saved/#L119) | The stored value, loading it from disk on the first read of this box's run. |
 | [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">setValue</span><span class="p">(</span><span class="n">thisRef</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">KProperty</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">T</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/saved/#L146) | Stores the value and writes it to disk immediately — there is no batching and no dirty flag, so an assignment in a tight loop is a file write per iteration. |
+
+## smile_mds.kt { #smile-mds-kt }
+
+`src/jvmMain/kotlin/afield/stdlib/smile_mds.kt` — [read the source](source/jvmMain/afield/stdlib/smile_mds/)
+
+### Top-level functions { #smile-mds-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">smileMds</span><span class="p">(</span><span class="n">vectors</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">DoubleArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">dimensions</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">SmileMdsDistance</span> <span class="o">=</span> <span class="nc">SmileMdsDistance</span><span class="p">.</span><span class="nc">COSINE</span><span class="p">,</span> <span class="n">positiveCorrection</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">SmileMdsProjection</span></code>](source/jvmMain/afield/stdlib/smile_mds/#L70) | Project arbitrary equal-length vectors with Smile's classical MDS implementation. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">smileMdsDistances</span><span class="p">(</span><span class="n">distances</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">DoubleArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">dimensions</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;precomputed&quot;</span><span class="p">,</span> <span class="n">positiveCorrection</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">SmileMdsProximityProjection</span></code>](source/jvmMain/afield/stdlib/smile_mds/#L141) | Project an explicit distance matrix; useful for transport, edit, and graph distances. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">smileTsne</span><span class="p">(</span><span class="n">vectors</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">DoubleArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">dimensions</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">SmileMdsDistance</span> <span class="o">=</span> <span class="nc">SmileMdsDistance</span><span class="p">.</span><span class="nc">COSINE</span><span class="p">,</span> <span class="n">perplexity</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">30.0</span><span class="p">,</span> <span class="n">learningRate</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">200.0</span><span class="p">,</span> <span class="n">earlyExaggeration</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">12.0</span><span class="p">,</span> <span class="n">maxIterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">750</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">184</span><span class="n">&#95;921L</span><span class="p">)</span><span class="p">:</span> <span class="nc">SmileTsneProjection</span></code>](source/jvmMain/afield/stdlib/smile_mds/#L162) | Project equal-length vectors with Smile's exact t-SNE implementation. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">smileTsneDistances</span><span class="p">(</span><span class="n">distances</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">DoubleArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">dimensions</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;precomputed&quot;</span><span class="p">,</span> <span class="n">perplexity</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">30.0</span><span class="p">,</span> <span class="n">learningRate</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">200.0</span><span class="p">,</span> <span class="n">earlyExaggeration</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">12.0</span><span class="p">,</span> <span class="n">maxIterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">750</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">184</span><span class="n">&#95;921L</span><span class="p">)</span><span class="p">:</span> <span class="nc">SmileTsneProximityProjection</span></code>](source/jvmMain/afield/stdlib/smile_mds/#L222) | Run fixed-seed t-SNE from an explicit distance matrix. |
+
+### SmileMdsDistance { #smile-mds-kt-smilemdsdistance }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">SmileMdsDistance</span></code>](source/jvmMain/afield/stdlib/smile_mds/#L12)
+
+Distance functions supplied by Field's general-purpose `smileMds` wrapper.
+
+### SmileMdsProjection { #smile-mds-kt-smilemdsprojection }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SmileMdsProjection</span><span class="p">(</span><span class="k">val</span> <span class="n">coordinates</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">DoubleArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">scores</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">proportion</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">SmileMdsDistance</span><span class="p">,</span> <span class="k">val</span> <span class="n">positiveCorrection</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/smile_mds/#L27)
+
+A classical multidimensional-scaling result produced in Field by Smile.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">coordinates</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">DoubleArray</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">scores</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">proportion</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">SmileMdsDistance</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">positiveCorrection</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+
+### SmileTsneProjection { #smile-mds-kt-smiletsneprojection }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SmileTsneProjection</span><span class="p">(</span><span class="k">val</span> <span class="n">coordinates</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">DoubleArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">cost</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">SmileMdsDistance</span><span class="p">,</span> <span class="k">val</span> <span class="n">perplexity</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/smile_mds/#L36)
+
+A reproducible t-SNE result produced by Smile from Field-owned vectors.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">coordinates</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">DoubleArray</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">cost</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">SmileMdsDistance</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">perplexity</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+
+### SmileMdsProximityProjection { #smile-mds-kt-smilemdsproximityprojection }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SmileMdsProximityProjection</span><span class="p">(</span><span class="k">val</span> <span class="n">coordinates</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">DoubleArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">scores</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">proportion</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">positiveCorrection</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/smile_mds/#L45)
+
+Classical MDS over a caller-supplied symmetric dissimilarity matrix.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">coordinates</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">DoubleArray</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">scores</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">proportion</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">positiveCorrection</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+
+### SmileTsneProximityProjection { #smile-mds-kt-smiletsneproximityprojection }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SmileTsneProximityProjection</span><span class="p">(</span><span class="k">val</span> <span class="n">coordinates</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">DoubleArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">cost</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">perplexity</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/smile_mds/#L54)
+
+Exact t-SNE over a caller-supplied symmetric dissimilarity matrix.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">coordinates</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">DoubleArray</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">cost</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">perplexity</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
 
 ## smile_neighbors.kt { #smile-neighbors-kt }
 
