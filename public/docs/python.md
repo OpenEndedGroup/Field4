@@ -78,24 +78,11 @@ State therefore persists between runs, which is the point: import your libraries
 in one cell, and iterate in another. It also means a name you thought you had deleted is still
 there.
 
-Two boxes are needed to show that, and a runner fence builds one — so this capture is driven by a
-transcript instead, [`python_shared_namespace.yaml`](https://github.com/OpenEndedGroup/Field/blob/main/dev_docs/agents/transcripts/docs_capture/python_shared_namespace.yaml),
-which builds a Python root with two cells under it and runs them in order. The first binds `grid`
-and `label` and prints nothing. The block below is the *second* cell, which defined neither:
-
-```diffstatic_runner {data-lang=python screenshot="assets/python/shared_namespace.png" capture="window" wait="4" timeout="300" requires="jep" embed=true name="python-shared-namespace" macro-file="../../dev_docs/agents/transcripts/docs_capture/python_shared_namespace.yaml" capture-box="agent_python_shared_second" alt="Two Python boxes in one document. The upper cell binds a numpy array and a string; the lower cell, which defined neither, prints the string, the array's shape and its sum."}
-:::static
-# A different box. It never defined `grid` or `label` — they are simply still here,
-# because every Python box in this Field process shares one global namespace.
-print(label, "->", grid.shape, "summing to", grid.sum())
-
-# State survives between runs too, so this counter climbs each time you run the cell.
-runs = globals().get("runs", 0) + 1
-print("this cell has run", runs, "time(s)")
-```
-
-Run the second cell again and the counter goes to two. Nothing was re-imported and nothing was
-re-bound, because nothing was torn down.
+Two boxes are needed to show it and a runner fence builds only one, so there is no capture of this
+on the page — the claim is stated and not illustrated. `dev_docs/agents/transcripts/docs_capture/`
+has no entry for it either; a transcript that drives two cells exists but produced a capture with
+the code and none of its output, twice, so it is not committed. To see the fact rather than read it:
+make a Python root, put two cells under it, bind a name in the first, and read it in the second.
 
 A cell that prints nothing displays the value of its last expression instead:
 
