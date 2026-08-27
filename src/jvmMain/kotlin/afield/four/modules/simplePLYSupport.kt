@@ -544,6 +544,18 @@ object PlySupport {
             // Find vertex and face elements
             val vertexElement = header.elements.find { it.name == "vertex" }
                 ?: error("PLY file must contain a 'vertex' element")
+
+            // A PlayCanvas compressed splat PLY has a 'vertex' element too, but it holds four packed
+            // 32-bit words rather than x/y/z, and the loop below would silently put every point at
+            // the origin. Say so instead.
+            if (vertexElement.properties.any { it.name == "packed_position" }) {
+                error(
+                    "'$path' is a PlayCanvas compressed splat PLY (.compressed.ply), not a mesh or " +
+                        "point cloud — it has no x/y/z. Render it with gaussianSplats(path), or read " +
+                        "its columns with readCompressedSplatPly(path)."
+                )
+            }
+
             val faceElement = header.elements.find { it.name == "face" }
 
             lprintln("info,ply", "Found ${vertexElement.count} vertices" +

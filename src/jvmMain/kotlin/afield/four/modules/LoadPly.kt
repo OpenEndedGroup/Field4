@@ -76,11 +76,11 @@ data class PlyFloatTable(
     }
 }
 
-private enum class PlyTableFormat {
+internal enum class PlyTableFormat {
     ASCII, BINARY_LITTLE_ENDIAN, BINARY_BIG_ENDIAN
 }
 
-private data class PlyTableProperty(
+internal data class PlyTableProperty(
     val name: String,
     val type: String,
     val isList: Boolean = false,
@@ -88,24 +88,61 @@ private data class PlyTableProperty(
     val listElementType: String? = null
 )
 
-private data class PlyTableElement(
+internal data class PlyTableElement(
     val name: String,
     val count: Int,
     val properties: List<PlyTableProperty>
 )
 
-private data class PlyTableHeader(
+internal data class PlyTableHeader(
     val format: PlyTableFormat,
     val elements: List<PlyTableElement>,
     val dataStart: Long
 )
 
-fun readPlyAsFloatTable(path: String, elementName: String = "vertex"): PlyFloatTable {
+/**
+ * Read one PLY element into a flat [PlyFloatTable], one row per element, every scalar property
+ * widened to a float.
+ *
+ * PlayCanvas `.compressed.ply` splat files are recognised by their schema and decompressed
+ * transparently when [elementName] is the default `"vertex"`, so a caller gets the same `x`/`y`/`z`,
+ * `f_dc_*`, `opacity`, `rot_*`, `scale_*` columns it would have got from the uncompressed file. See
+ * [CompressedSplatPly]. Ask for `"chunk"` or `"sh"` by name to read a compressed file's raw
+ * quantization tables instead.
+ *
+ * @param includeSphericalHarmonics only meaningful for compressed splat files — see
+ *   [CompressedSplatPly.readCompressedSplatPly].
+ */
+fun readPlyAsFloatTable(
+    path: String,
+    elementName: String = "vertex",
+    includeSphericalHarmonics: Boolean = false
+): PlyFloatTable {
     val file = File(path)
     require(file.exists()) { "PLY file not found: $path" }
 
     RandomAccessFile(file, "r").use { raf ->
         val header = parseFloatTableHeader(raf)
+
+        // A compressed splat file's "vertex" element is four packed 32-bit words, which the float
+        // reader below would happily coerce into four meaningless floats. Divert before that.
+        if (elementName == "vertex") {
+            when (val recognition = CompressedSplatPly.recognise(header)) {
+                is CompressedSplatPly.Recognition.Compressed -> return CompressedSplatPly.decompress(
+                    raf = raf,
+                    header = header,
+                    layout = recognition.layout,
+                    includeSphericalHarmonics = includeSphericalHarmonics,
+                    path = path
+                )
+
+                is CompressedSplatPly.Recognition.Malformed ->
+                    error("'$path' looks like a compressed splat PLY but ${recognition.reason}")
+
+                CompressedSplatPly.Recognition.Plain -> Unit
+            }
+        }
+
         val target = header.elements.find { it.name == elementName }
             ?: error("PLY file '$path' does not contain element '$elementName'")
         val scalarProperties = target.properties.filterNot { it.isList }
@@ -139,7 +176,7 @@ fun testPly(fn: String): PlyFloatTable {
     return table
 }
 
-private fun parseFloatTableHeader(raf: RandomAccessFile): PlyTableHeader {
+internal fun parseFloatTableHeader(raf: RandomAccessFile): PlyTableHeader {
     val magic = raf.readLine()?.trim() ?: error("Empty PLY file")
     require(magic == "ply") { "File does not start with 'ply' magic number" }
 
