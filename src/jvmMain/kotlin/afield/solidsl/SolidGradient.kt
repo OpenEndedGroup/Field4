@@ -1051,9 +1051,30 @@ internal fun adBox3(px: AD, py: AD, pz: AD, hx: AD, hy: AD, hz: AD): AD {
 /**
  * [sdBox2] in [AD].
  *
- * Carries [adBox3]'s interior branch for the same reason and by the same argument: `hypot(0, 0)`'s
- * partials are `0/0`, so a sample strictly inside a [Profile.Rect] produced a `NaN` gradient — and
- * a rect is the most common profile in the algebra.
+ * # 2D never had [adBox3]'s interior `NaN`, and this comment used to say it did
+ *
+ * The claim that stood here was that `hypot(0, 0)`'s partials are `0/0`, so a sample strictly
+ * inside a [Profile.Rect] produced a `NaN` gradient exactly as a cuboid's interior did. That is
+ * **false**, and it shipped: `afield.stdlib.hypot` is explicitly zero-guarded — `autodiff.kt:493`
+ * is `val dx = if (v == 0.0) 0.0 else x.value / v`, and `:494` the same for `dy` — so it returns
+ * `0` rather than dividing, no infinity is produced, and there is no `inf × 0` left to become
+ * `NaN`. The commit that added the branch below never touched `autodiff.kt`, and its own census
+ * evidence said as much: `cuboid` was the *only* subject that came back short, while `extrude` and
+ * the three `profile*` subjects — all of them rects, lowered through here — each reported every
+ * component clean.
+ *
+ * 3D differs for a reason that does not carry over. `sqrt` is not guarded and must not be:
+ * `sqrt(0)`'s derivative genuinely is `+∞`, an essential singularity rather than a removable one.
+ * `hypot`'s partials at the origin are instead a choice of subgradient out of the unit ball, and
+ * `0` is a legal member of it — which is why guarding is available there and not in [adBox3].
+ *
+ * Measured on the pre-branch body, strictly inside a unit rect: `[1, 0, -1, 0]`, every component
+ * finite, where the corresponding 3D body is `NaN` in all six. `SolidSLBoxGradientBoundaryTest`
+ * holds both halves of that counterfactual, so the correction cannot rot back into the claim.
+ *
+ * The branch below is therefore a semantic no-op: same value, same gradient, three fewer tape
+ * nodes. It is retained rather than reverted only because the *boundary* of the region it names is
+ * a real and separate problem in both dimensions, which is where it earns its keep.
  */
 internal fun adBox2(px: AD, py: AD, hx: AD, hy: AD): AD {
     val qx = abs(px) - hx; val qy = abs(py) - hy
