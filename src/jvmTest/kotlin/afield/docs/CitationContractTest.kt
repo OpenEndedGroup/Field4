@@ -76,6 +76,13 @@ class CitationContractTest {
             "dev_docs/morpho_circuit_search.md" to 4,
             "dev_docs/FLineGeometry.md" to 2,
             "dev_docs/kdoc_reference_contract.md" to 2,
+            // The note on how guards in this tree go green over the wrong population, added
+            // 2026-08-27 by the branch that found four instances of it. Guarded from its first day
+            // rather than later, because a page arguing that guards should be held to their own
+            // populations and sitting outside the corpus itself would be the same defect in prose
+            // form. Floor 0 for the reason `public/docs/autodiff_examples.md` has one: it points at
+            // code by name and by task, not by `path:line#anchor`. Raise it the day it cites a site.
+            "dev_docs/guard_population_hygiene.md" to 0,
             // The page that documents this machinery, brought under it 2026-08-23. Two anchored
             // citations, both prose `path:line#anchor`; the page is mostly *about* citations rather
             // than made of them, so the floor is the count. It needs to be guarded for a reason
