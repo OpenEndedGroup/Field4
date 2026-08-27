@@ -1046,7 +1046,11 @@ def _field_embed_show(box, iframe_html):
     from afield.python import PythonInterface
     PythonInterface.hasHadOutput = True
 
-_FIELD_IFRAME_STYLE = "width:100%;height:640px;border:none;background:#fff;border-radius:8px;"
+# The width is in px, and deliberately not "100%", to match the height. The output area sizes its
+# panel from the iframe's own declared size and reads it with a px parser (outputareas2.js:278-287):
+# a percentage parses as zero, so it fell back to the measured width of an iframe that was itself
+# waiting to be sized -- which laid every embedded plotly/bokeh/folium page out in a ~480px column.
+_FIELD_IFRAME_STYLE = "width:960px;height:640px;border:none;background:#fff;border-radius:8px;"
 
 def _field_embed_document(box, full_html):
     srcdoc = full_html.replace("&", "&amp;").replace('"', "&quot;")
@@ -1138,6 +1142,11 @@ _orig_print(" python interpreter has finished starting up ")
             deliverProgress = { deliverProgressText(inside, it) }
             var c = execute.code
 //            for (n in 0 until execute.line) c = "\n" + c
+            // Where a result, "[task launched]" or "ok" is attached. A fragment almost always ends in
+            // a newline, and splitting on "\n" then yields a trailing "" — which pushed this one line
+            // past the end of the document, where the decoration is simply dropped and the cell looked
+            // as though it had produced nothing at all.
+            val resultLine = execute.line + execute.code.trimEnd('\n').split("\n").count()
             val wm = ++inside.fragmentGeneration
             send(Message("is-running").payload(IsRunning(execute.uid, true, wm, "__fragment__")))
             try {
@@ -1157,8 +1166,11 @@ _orig_print(" python interpreter has finished starting up ")
                     if (awaitable) {
                         if (!hasHadOutput) {
                             inside.output.proxy(
-                                "[task launched]", false, execute.line + execute.code.split("\n").count()
+                                "[task launched]", false, resultLine
                             )
+                            // Same reason as the bare-expression branch below: `withholdEndNotification`
+                            // suppresses the is-running message but not the `finally`'s "ok".
+                            hasHadOutput = true
                             withholdEndNotification = true
                             launch {
                                 lprintln("info,python", "running notification for box has started $wm")
@@ -1185,12 +1197,18 @@ _orig_print(" python interpreter has finished starting up ")
                     } else {
                         if (!hasHadOutput) {
                             inside.output.proxy(
-                                formatOutput(ret.toString()), false, execute.line + execute.code.split("\n").count()
+                                formatOutput(ret.toString()), false, resultLine
                             )
+                            // Claim the output slot. Without this the `finally` below still believes
+                            // the cell produced nothing and writes "ok" over the value, at the same
+                            // line — so a cell whose last line is a bare expression displayed "ok"
+                            // rather than its result.
+                            hasHadOutput = true
                         }
                     }
                 } else if (!hasHadOutput) {
-                    inside.output.proxy("ok", false, execute.line + execute.code.split("\n").count())
+                    inside.output.proxy("ok", false, resultLine)
+                    hasHadOutput = true
                 }
             } catch (j: JepException) {
                 j.printStackTrace()
@@ -1232,7 +1250,7 @@ _orig_print(" python interpreter has finished starting up ")
                         reply,
                         Output(
                             uid = inside.id,
-                            line = execute.line + execute.code.split("\n").count(),
+                            line = resultLine,
                             kind = "ok",
                             html = "ok",
                             frame = Runloop.runLoop.frame.toInt()
