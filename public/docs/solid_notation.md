@@ -584,6 +584,119 @@ Measured there: the seed misplaces **32.1% of the target's own silhouette**, and
 raster is **byte-identical** to the target's. Both directions are asserted, because a "before" that
 already looked like the answer would make the "after" free.
 
+### A second fit, where only half the model can be right
+
+The fit above has a property worth naming, because it is not the normal case: the target was
+generated from the model, so a correct answer *exists* and the loss knows where it is. `4.6e-22`
+means "there was a right answer and the gradient found it". Read on its own it teaches the wrong
+lesson — that a small loss is what success looks like.
+
+So here is the same machinery on a problem with no right answer. The target is a **sphere and a
+cylinder**. The model is a **cube and a cylinder**. The cylinder is the same primitive on both
+sides, so its two numbers are recoverable. The cube is being asked to be a sphere, and no side
+length achieves that.
+
+```diffstatic {data-lang=kotlin}
+val truth  = sphere(0.62) + cylinder(2.20, 0.28)
+val target = truth.sampleField(count = 3000, seed = 17)
+
+val model = (cuboid(1.0) + cylinder(1.0, 1.0)).parameterize {
+    param("cubeSize")  { it.node == "Cuboid" }                                  // one number, all three extents
+    param("barHeight") { it.node == "Cylinder" && it.field == "height" }
+    param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") }
+}.orThrow()
+
+val fit = model.fitParameters(
+    target,
+    start = doubleArrayOf(1.35, 1.60, 0.42),
+    SolidFitOptions(method = OptimizeMethod.ADAM, iterations = 1200, learningRate = 0.015),
+)
+
+fit.report()
+// fit 3 parameter(s) in 387 iterations (gradient)
+//   cubeSize           1.350000  ->      0.855280
+//   barHeight          1.600000  ->      2.197219
+//   barRadius          0.420000  ->      0.281340
+//   loss           6.999584e-02  ->  3.766271e-03
+//   rms distance   2.645673e-01  ->  6.136995e-02
+//   improvement    18.58x
+```
+
+And the picture, because "the cylinder matches and the cube does not" is a claim about shapes:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/partial.png" wait="12.0" capture="box" open-outputs="true" padding="20"}
+:::static
+import afield.solidsl.*
+import afield.stdlib.OptimizeMethod
+
+// A sphere and a cylinder. The model below gets a CUBE and a cylinder.
+val truth = sphere(0.62) + cylinder(2.20, 0.28)
+val target = truth.sampleField(count = 3000, seed = 17)
+
+val model = (cuboid(1.0) + cylinder(1.0, 1.0)).parameterize {
+    param("cubeSize") { it.node == "Cuboid" }
+    param("barHeight") { it.node == "Cylinder" && it.field == "height" }
+    param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") }
+}.orThrow()
+
+val seed = doubleArrayOf(1.35, 1.60, 0.42)
+val fit = model.fitParameters(
+    target, seed,
+    SolidFitOptions(method = OptimizeMethod.ADAM, iterations = 1200, learningRate = 0.015),
+)
+println(fit.report())
+
+// `margin` is not decoration here. `march`'s window defaults to the shape's OWN bounding box, and
+// a cuboid's faces lie exactly ON that boundary — the outermost grid samples sit at the zero
+// crossing, the side faces never close, and the cube renders as a flat sheet. A sphere only touches
+// its box tangentially, at six points, which is why the fit above gets away with the default.
+fun m(e: SolidExpr) = e.march(resolution = 104, margin = 0.06)
+threeGrid(
+    "model at the seed  ·  loss %.3e".format(fit.initialLoss) to m(model.withValues(seed)),
+    "fitted  ·  loss %.3e  (%.1fx)".format(fit.loss, fit.improvementFactor) to m(fit.fitted),
+    "target  ·  a SPHERE and a cylinder" to m(truth),
+    channel = "partial", columns = 3, height = 300,
+    view = MeshView(width = 320, height = 250, yawDegrees = 32.0, pitchDegrees = 22.0, wireframe = true),
+)
+```
+
+![Three panels in a row, flat grey wireframe on a dark background. Left, labelled "model at the seed, loss 7.000e-02", a large cube so much bigger than its rod that the rod does not emerge — it shows only as a circular outline on the cube's front face. Middle, labelled "fitted, loss 3.766e-03 (18.6x)", a smaller cube with a rod passing right through it and protruding well beyond. Right, labelled "target, a SPHERE and a cylinder", a sphere with a rod of visibly the same length and thickness as the middle panel's, so the two rods match while one body is a cube and the other is a sphere](assets/solid_notation/partial.png)
+
+Compare the rods: same length, same thickness, in the middle and right panels. Then compare the
+bodies: a cube and a sphere, and no amount of further descent changes that.
+
+The cylinder recovered: `2.197219` against a true `2.20`, and `0.281340` against a true `0.28` —
+0.13% and 0.48% out. The cube settled at `0.855280`, and there is no truth to compare that against,
+because there is no side length that makes a cube a sphere. What there is instead is a bound: a cube
+that fits a sphere of radius `R` at all has a side between the inscribed cube's `2R/√3 = 0.7159` and
+the circumscribed cube's `2R = 1.2400`. `0.855280` sits inside that interval, nearer the inscribed
+end — which is what a least-squares fit on a *field* should do, since the sphere's field is closer to
+the inscribed cube's over most of the sampled volume than to the circumscribed one's.
+
+**The residual is `3.77e-03`, not `4.6e-22`.** Nineteen orders of magnitude, and that gap is the
+whole difference between the two problems: the first loss went to zero because zero was reachable,
+this one stopped at 2.79% of the target's longest extent because that is as close as a cube gets to
+a sphere. Both descents converged. Only one of them was right.
+
+Which is the point, and it is uncomfortable: **the report does not tell you which of its three
+numbers to believe.** `cubeSize`, `barHeight` and `barRadius` are printed identically, and two are
+measurements while the third is a negotiation. Nothing in the loss distinguishes them. What
+distinguishes them is knowing that half your model can represent half your target — and if you do
+not know that, a plausible number is what you get. `SolidSLPartialRecoveryTest` asserts both halves
+separately for exactly this reason: the cylinder against its truth, the cube against its interval.
+
+!!! note "A cube that never enters the union has no gradient at all"
+
+    The first version of this example seeded `cubeSize` at `0.40` against a bar of radius `0.55`,
+    and the fit reported `cubeSize 0.400000 -> 0.400000` after 387 iterations. Not slow, not stuck:
+    `Union` is `min`, so a child that is never the nearest surface at any sample point receives
+    **exactly** zero gradient, and a cube small enough to sit wholly inside the bar is never the
+    nearest surface anywhere. `fit.deadParameters` is the first-order version of this and reported
+    `none`, because the parameter is not dead at the start in the sense that guard measures — the
+    cube is invisible to the loss, not stationary in it. Read
+    [What makes a parameter refuse to move](#what-makes-a-parameter-refuse-to-move) next; this is
+    that section's failure mode arriving by a different route.
+
 ### What makes a parameter refuse to move
 
 This is the failure mode of inverse design, and it is worth naming because it presents as a
