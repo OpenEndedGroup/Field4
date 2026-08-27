@@ -136,6 +136,19 @@ data class OptimizeRun(
     val steps: List<OptimizeStep>,
     /** The objective trajectory including the starting point. */
     val losses: List<Double>,
+    /**
+     * The **parameter** trajectory, indexed exactly like [losses]: `trajectory[i]` is the point at
+     * which `losses[i]` was measured, so `trajectory.first()` is [initialX] and `trajectory.last()`
+     * is [x].
+     *
+     * Recorded because a finished run otherwise cannot tell you what the answer *looked like* on the
+     * way — only how good it was. Reconstructing an intermediate point means re-running the descent
+     * truncated at that iteration, which is both slower and a different thing: a re-run is only the
+     * same point if the descent is deterministic, and nothing forces it to be.
+     *
+     * Each entry is a defensive copy, because the search mutates its point in place.
+     */
+    val trajectory: List<DoubleArray>,
     /** How many iterations actually ran. */
     val iterations: Int,
     /** How many times the objective (and its gradient) was evaluated. */
@@ -153,6 +166,13 @@ data class OptimizeRun(
     /** The gradient's infinity norm at [x]. */
     val gradientInfNorm: Double get() = if (gradient.isEmpty()) 0.0 else gradient.maxOf { it.absoluteValue }
 
+    /**
+     * [trajectory] is deliberately **not** compared here. It is a `List<DoubleArray>`, and
+     * `DoubleArray.equals` is identity, so including it would make every comparison of two
+     * separately-computed runs false for a reason that has nothing to do with their contents. It is
+     * fully determined by [initialX], [options] and the objective anyway, and [x] and [losses] —
+     * its two endpoints and its whole value trace — are compared.
+     */
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is OptimizeRun) return false
@@ -214,12 +234,13 @@ fun minimizeWithGradient(
 
     var current = eval(x)
     val losses = mutableListOf(current.value)
+    val trajectory = mutableListOf(x.copyOf())
     val steps = mutableListOf<OptimizeStep>()
 
     if (options.iterations == 0) {
         return OptimizeRun(
             x, current.value, current.gradient, startX, losses.first(), steps, losses,
-            0, evaluations, converged = false, reason = "no iterations", options = options
+            trajectory, 0, evaluations, converged = false, reason = "no iterations", options = options
         )
     }
 
@@ -253,6 +274,7 @@ fun minimizeWithGradient(
             current = outcome.next
             iterationsRun = iteration
             losses += current.value
+            trajectory += x.copyOf()
             steps += OptimizeStep(iteration, current.value, current.gradientInfNorm)
             reporter?.update(iteration.toLong(), options.iterations.toLong())
 
@@ -279,6 +301,7 @@ fun minimizeWithGradient(
         initialValue = losses.first(),
         steps = steps,
         losses = losses,
+        trajectory = trajectory,
         iterations = iterationsRun,
         evaluations = evaluations,
         converged = converged,
