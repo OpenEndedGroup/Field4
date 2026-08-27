@@ -255,6 +255,18 @@ class SolidSLGradientTest {
                 val g = template.checkGradient(x, y, z)
                 subjectCheckedParam += g.size
                 subjectUsableParam += g.usableCount
+                // A NaN or an Infinity from the lowering, at a point where central differences are
+                // confident, is always a bug in the lowering. This assertion is why `adBox3` has an
+                // interior branch: without it, `NaN` was being filed as "the oracle has no opinion"
+                // and the census reported 95.9% coverage over a derivative that did not exist inside
+                // any box.
+                assertTrue(
+                    g.nonFiniteAnalytic.isEmpty(),
+                    "${s.name}: the analytic parameter gradient is not a number at ($x, $y, $z) for " +
+                        "component(s) ${g.nonFiniteAnalytic.map { slots.getOrNull(it)?.path }} — but " +
+                        "central differences are confident there, so the function IS differentiable " +
+                        "and the lowering is wrong. $g",
+                )
                 if (g.usable) {
                     if (g.maxError > subjectWorstParam) subjectWorstParam = g.maxError
                     assertTrue(
@@ -268,6 +280,11 @@ class SolidSLGradientTest {
                 val p = template.checkPositionGradient(x, y, z)
                 subjectCheckedPos += p.size
                 subjectUsablePos += p.usableCount
+                assertTrue(
+                    p.nonFiniteAnalytic.isEmpty(),
+                    "${s.name}: the analytic position gradient is not a number at ($x, $y, $z) " +
+                        "where central differences are confident. $p",
+                )
                 if (p.usable) {
                     if (p.maxError > subjectWorstPos) subjectWorstPos = p.maxError
                     assertTrue(
@@ -292,13 +309,13 @@ class SolidSLGradientTest {
             // Per subject: the oracle has to have had *something* to say. A construct where every
             // component came back unusable contributed nothing and would vanish into the aggregate.
             assertTrue(
-                subjectUsableParam >= subjectCheckedParam / 4,
+                subjectUsableParam >= (subjectCheckedParam * 9) / 10,
                 "${s.name}: only $subjectUsableParam of $subjectCheckedParam parameter-gradient " +
                     "components produced a trustworthy central difference, so this construct is " +
                     "effectively unchecked",
             )
             assertTrue(
-                subjectUsablePos >= subjectCheckedPos / 4,
+                subjectUsablePos >= (subjectCheckedPos * 9) / 10,
                 "${s.name}: only $subjectUsablePos of $subjectCheckedPos position-gradient components " +
                     "produced a trustworthy central difference",
             )
@@ -316,8 +333,14 @@ class SolidSLGradientTest {
         )
         // The printed fractions, floored. Without these the whole test passes when the oracle
         // declares every single component untrustworthy, which is the failure mode that looks green.
-        assertTrue(paramFraction > 0.70, "only ${"%.1f".format(100 * paramFraction)}% of parameter-gradient components were usable")
-        assertTrue(posFraction > 0.70, "only ${"%.1f".format(100 * posFraction)}% of position-gradient components were usable")
+        //
+        // Both measure 100.0% today, and getting there is the story of this number: it was 95.9% and
+        // 93.8% until `adBox3`'s interior NaN was fixed, and every single one of those "untrustworthy"
+        // components was that bug rather than a genuine singularity. The floor is 98% — near the
+        // measurement, as the house rule wants, with just enough room for a random sample to land on
+        // an exact kink where the two step sizes legitimately disagree.
+        assertTrue(paramFraction > 0.98, "only ${"%.1f".format(100 * paramFraction)}% of parameter-gradient components were usable")
+        assertTrue(posFraction > 0.98, "only ${"%.1f".format(100 * posFraction)}% of position-gradient components were usable")
         // And a worst error of exactly zero would mean the comparison never ran.
         assertTrue(worstParam > 0.0 && worstPos > 0.0, "a zero worst-case error means nothing was compared")
     }

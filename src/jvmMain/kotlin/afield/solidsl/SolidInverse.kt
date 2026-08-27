@@ -288,12 +288,32 @@ data class SolidGradientCheck(
     /** How many components there are. */
     val size: Int get() = analytic.size
 
-    /** Which components the numerical oracle is prepared to have an opinion about. */
+    /**
+     * Which components the numerical oracle is prepared to have an opinion about.
+     *
+     * A statement about the **oracle only**. It deliberately says nothing about whether the analytic
+     * side produced a number, and that separation was bought the hard way: while this predicate also
+     * required `analytic[i].isFinite()`, a `NaN` from the thing under test was silently filed as "no
+     * verdict here" — the same bucket as a genuine singularity — and a census reported 95.9%
+     * coverage over a derivative that was `NaN` throughout the interior of every box. See
+     * [nonFiniteAnalytic], and `adBox3`'s KDoc for the bug it was hiding.
+     */
     val usableComponents: BooleanArray = BooleanArray(analytic.size) { i ->
-        numerical[i].isFinite() && numericalHalfStep[i].isFinite() && analytic[i].isFinite() &&
+        numerical[i].isFinite() && numericalHalfStep[i].isFinite() &&
             abs(numerical[i] - numericalHalfStep[i]) /
             max(1.0, max(abs(numerical[i]), abs(numericalHalfStep[i]))) < 1e-4
     }
+
+    /**
+     * Components where the oracle is trustworthy and the **analytic gradient is not a number**.
+     *
+     * Always a bug, never a property of the geometry: the numerical side having a confident opinion
+     * means the function really is differentiable there, so a `NaN` or an `Infinity` from the
+     * lowering is the lowering's fault. Must be empty; `SolidSLGradientTest` asserts it over the
+     * whole census.
+     */
+    val nonFiniteAnalytic: List<Int>
+        get() = analytic.indices.filter { usableComponents[it] && !analytic[it].isFinite() }
 
     /** How many of them, i.e. how much evidence this check actually carries. */
     val usableCount: Int get() = usableComponents.count { it }
@@ -333,7 +353,9 @@ data class SolidGradientCheck(
         31 * (31 * analytic.contentHashCode() + numerical.contentHashCode()) + step.hashCode()
 
     override fun toString(): String =
-        "$usableCount/$size usable, max floored relative error ${"%.3e".format(maxError)} at " +
+        "$usableCount/$size usable" +
+            (if (nonFiniteAnalytic.isNotEmpty()) ", NON-FINITE ANALYTIC at ${nonFiniteAnalytic}" else "") +
+            ", max floored relative error ${"%.3e".format(maxError)} at " +
             "component $worstComponent  analytic [${analytic.joinToString(", ") { "%.6g".format(it) }}]  " +
             "numerical [${numerical.joinToString(", ") { "%.6g".format(it) }}]"
 }

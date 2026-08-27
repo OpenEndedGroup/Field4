@@ -1015,17 +1015,51 @@ private fun emptyADField2(numerics: SolidNumerics): ADField2 {
 // The closed forms, in AD — transpositions of SolidField.kt's
 // ==============================================================================================
 
-/** [sdBox3] in [AD]. */
+/**
+ * [sdBox3] in [AD].
+ *
+ * # The interior branch is not an optimisation and not an epsilon
+ *
+ * Strictly inside the box all three clamped terms are exactly zero, so the exterior distance is
+ * `sqrt(0)` — whose derivative is `+∞`. Reverse mode then multiplies that infinity by the clamp's own
+ * zero partial and gets **`NaN`**, which propagates to every half-extent and, through the sum, to the
+ * whole loss gradient. The value is perfectly correct the entire time; only the derivative is
+ * poisoned, and only for samples *inside* a box — a region of positive volume, not a measure-zero
+ * surface.
+ *
+ * That was a real bug in this file, and it is worth saying how it hid. `SolidSLGradientTest`'s
+ * central-difference census *saw* it — the `cuboid` subject reported 57 of 72 components usable where
+ * every other primitive reported 72 — but the check treated a non-finite analytic value as "the
+ * oracle has no opinion here" and skipped it, which is the same verdict it gives at a genuine
+ * singularity. Conflating "the numerical oracle is untrustworthy" with "the thing under test returned
+ * `NaN`" is how a differential test reports 95.9% coverage over a broken derivative.
+ * [SolidGradientCheck] now separates them and fails on the second.
+ *
+ * The branch below is *exact*, not a regularisation: on the open region where all three `q` are
+ * negative the exterior term is identically zero, so its derivative there genuinely is zero, and
+ * returning the interior term alone is the right answer rather than an approximation to it. On the
+ * boundary itself the field is still non-differentiable, which is true of a box and not a defect.
+ */
 internal fun adBox3(px: AD, py: AD, pz: AD, hx: AD, hy: AD, hz: AD): AD {
     val qx = abs(px) - hx; val qy = abs(py) - hy; val qz = abs(pz) - hz
+    val inner = min(max(qx, max(qy, qz)), 0.0)
+    if (qx.value < 0.0 && qy.value < 0.0 && qz.value < 0.0) return inner
     val ox = max(qx, 0.0); val oy = max(qy, 0.0); val oz = max(qz, 0.0)
-    return sqrt(ox.sq() + oy.sq() + oz.sq()) + min(max(qx, max(qy, qz)), 0.0)
+    return sqrt(ox.sq() + oy.sq() + oz.sq()) + inner
 }
 
-/** [sdBox2] in [AD]. */
+/**
+ * [sdBox2] in [AD].
+ *
+ * Carries [adBox3]'s interior branch for the same reason and by the same argument: `hypot(0, 0)`'s
+ * partials are `0/0`, so a sample strictly inside a [Profile.Rect] produced a `NaN` gradient — and
+ * a rect is the most common profile in the algebra.
+ */
 internal fun adBox2(px: AD, py: AD, hx: AD, hy: AD): AD {
     val qx = abs(px) - hx; val qy = abs(py) - hy
-    return hypot(max(qx, 0.0), max(qy, 0.0)) + min(max(qx, qy), 0.0)
+    val inner = min(max(qx, qy), 0.0)
+    if (qx.value < 0.0 && qy.value < 0.0) return inner
+    return hypot(max(qx, 0.0), max(qy, 0.0)) + inner
 }
 
 /**
