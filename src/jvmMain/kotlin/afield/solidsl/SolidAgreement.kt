@@ -43,6 +43,15 @@ import kotlin.math.sin
  * agreement is therefore strong evidence that both are right, in a way that any number of assertions
  * against constants would not be.
  *
+ * The same argument has since been applied to a **third** reading — the differentiable one in
+ * `SolidGradient.kt`, which is `toScalarField`'s arithmetic replaced by
+ * [afield.stdlib.AD] and shares no line of code with it. It is measured by
+ * [SolidExpr.gradientAgreement] rather than folded in here, and the reason is that the two compare
+ * different objects: this file compares **surfaces** — volume, area, genus, Hausdorff deviation —
+ * and the differentiable reading produces a *field*, exactly as `toScalarField` does. Folding it in
+ * would have meant inventing a volume for something that has none. What the two share is the
+ * argument, so each cross-references the other.
+ *
  * # Agreement does not converge to zero, and saying so is the point
  *
  * There are two regimes, and conflating them would be the overclaim this measurement is designed to
