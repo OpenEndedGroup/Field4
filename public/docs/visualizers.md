@@ -1129,6 +1129,84 @@ The public [beat and pitch analysis walkthrough](audio_ai_analysis.md) and loada
 `audio_ai_analysis` operation transcript contain the full source → submit → monitor → await →
 visualize path.
 
+### Speech embedding phase portraits
+
+`speechEmbeddingVisualizationHtml(result)` turns the worker's cached learned-frame preview into two phase
+portraits: MDS axes 0×1 and 2×3. The complete 768-dimensional embedding remains in the immutable
+NPZ; only a bounded preview crosses into the browser. A strip underneath shows WebRTC voice
+activity, dBFS energy, and embedding novelty.
+
+Give the source `AudioVisualizer` and the speech view the same `syncGroup`. Audio playback moves a
+marker through both portraits; hovering either portrait publishes the nearest frame time; clicking
+seeks the player. The view also listens to `field-time-window`, so the waveform's visible interval
+stays saturated while the rest of the embedding path recedes. These are the same general
+`field-time-cursor`, `field-time-seek`, and `field-time-window` callbacks used by the timeline
+analysis views.
+
+```diffstatic {data-lang=kotlin}
+val sync = "field-recording-speech"
+display("source", audio.audioVisualizerHtml(
+    options = AudioVisualizerOptions(syncGroup = sync),
+))
+
+client.submit(wavlmBasePlusEmbeddingAnalysis(region, layer = 6))
+    .thenCompose(client::awaitAnalysis)
+    .thenAccept { result ->
+        display("WavLM", speechEmbeddingVisualizationHtml(result, syncGroup = sync))
+    }
+```
+
+Use `speechEmbeddingDashboardHtml(listOf(emotion2vec, wavlm), syncGroup = sync)` to compare both
+models on one playhead. `speechEmbeddingPreviewVisualizationHtml(...)` and
+`speechEmbeddingPreviewDashboardHtml(...)` are the no-fetch counterparts. The complete
+[speech-reactive embedding walkthrough](audio_ai_speech_embeddings.md) and
+`audio_ai_speech_embeddings` transcript show import → submit → monitor → await → audition.
+
+For a programmable local-neighbourhood projection, prefer
+`client.speechEmbeddingSmileTsnePreview(result, poolMillis = 500.0, hopMillis = 40.0)`. It downloads
+the result's binary MessagePack tensor, selects the requested time range before float16 expansion,
+mean-pools 500 ms of evidence around each point, and runs fixed-seed t-SNE inside Field using Smile.
+The independent 40 ms hop produces 25 points per second, just above a 24 fps display. Both values
+round to the model's native 20 ms grid; omit them to retain the original 50 Hz vectors. Pooling occurs
+before `maxFrames` sampling, and the visualizer header reports the effective pool, hop, distance, and
+projected frame count. The returned `AnalysisPreview` goes directly into the no-fetch visualizers.
+Exact classical MDS remains available through
+`speechEmbeddingSmilePreview`; both paths support cosine and Euclidean distance without rerunning
+the neural analysis.
+
+### Short-time spectral phase portraits
+
+`spectralEmbeddingPreviewVisualizationHtml(preview)` uses the same two phase portraits and shared
+time bus for a Field-owned MDS or t-SNE projection of mel, log-mel, or MFCC frames. The lower strip
+shows energy, mel-distribution flux, and spectral centroid; path opacity follows normalized flux.
+Hovering reports time, energy, flux, centroid, and flatness, and clicking seeks any linked audio
+visualizer.
+
+One `analysis.embed_spectral` result contains all three representations, so decode once and create
+several views without another job:
+
+```diffstatic {data-lang=kotlin}
+client.analysisPreview(result.id).thenCombineAsync(
+    client.spectralEmbeddingFrames(
+        result, durationSeconds = 10.0, poolMillis = 200.0, hopMillis = 40.0,
+    )
+) { preview, frames ->
+    listOf(
+        SpectralEmbeddingDistance.MEL_WASSERSTEIN,
+        SpectralEmbeddingDistance.LOG_MEL_COSINE,
+        SpectralEmbeddingDistance.MFCC_EUCLIDEAN,
+    ).map { distance ->
+        preview.withSpectralProjection(frames.tsne(distance = distance, dimensions = 4))
+    }
+}.thenAccept { previews ->
+    display("spaces", spectralEmbeddingPreviewDashboardHtml(previews, syncGroup = "recording"))
+}
+```
+
+The complete [short-time spectral walkthrough](audio_ai_spectral_embeddings.md) and
+`audio_ai_spectral_embeddings` transcript show source lookup/import → durable job → progress →
+binary artifact → temporal pooling → three Field Smile spaces → bidirectional audition.
+
 The same visualizer can begin with sound generated inside Field. `renderPatWav`, `renderDirtWav`,
 `renderDoughWav`, `renderFaustWavAsync`, and `recordSonicPiWav` all produce a
 `RenderedAudioFile`; `client.analyzeRenderedAudio(render)` imports it and returns a

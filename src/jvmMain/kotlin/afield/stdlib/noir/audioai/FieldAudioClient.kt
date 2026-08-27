@@ -388,6 +388,18 @@ class FieldAudioClient(
             }, callbackExecutor)
     }
 
+    /** Fetch a binary representation into memory without routing it through JSON or a temporary file. */
+    fun downloadBytes(representation: AssetRepresentation): CompletableFuture<ByteArray> {
+        val request = HttpRequest.newBuilder(resolve(representation.binaryUrl)).GET().build()
+        val path = request.uri().path
+        return http.sendAsync(request, HttpResponse.BodyHandlers.ofByteArray())
+            .handleAsync({ response, transport ->
+                if (transport != null) throw unreachable(path, transport.unwrapCompletion())
+                requireSuccess(response.statusCode(), String(response.body().take(512).toByteArray()))
+                response.body()
+            }, callbackExecutor)
+    }
+
     /**
      * Poll durable job state without occupying Field's runloop.
      *

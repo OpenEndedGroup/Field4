@@ -24,6 +24,7 @@ current pinned HTTP objects, states, and error vocabulary.
 - EnCodec token capture, reconstruction, metrics, waveform and spectrogram comparison;
 - multi-scale beat and tempo trajectories;
 - monophonic pYIN and polyphonic Basic Pitch analysis;
+- revision-pinned emotion2vec and WavLM Base+ speech trajectories with voice activity and live Field projections;
 - zoomable waveform, pitch, beat and token views, plus the embedded job monitor.
 
 ```diffstatic {data-lang=kotlin}
@@ -77,6 +78,20 @@ parameter sweeps and candidate comparison around it. The complete
 [beat and pitch analysis workflow](audio_ai_analysis.md) shows source lookup, submission, live
 progress, cached result retrieval and synchronized librosa/pYIN/Basic Pitch views without hiding
 the job boundary.
+
+For speech and field recordings, [speech-reactive learned spaces](audio_ai_speech_embeddings.md)
+adds emotion2vec and WavLM Base+ behind the same durable operation boundary. Its dual phase
+portraits let a recording drive t-SNE axes 0×1 and 2×3 while the ordinary waveform player remains
+the transport and shared time authority.
+The preferred path transfers those vectors as binary MessagePack, temporally pools them at a
+user-selected context and hop, and computes the display in Field through Smile, so projection
+choices stay live-code parameters rather than neural jobs.
+
+For a fast, inspectable complement, [short-time spectral spaces](audio_ai_spectral_embeddings.md)
+retain normalized mel mass, absolute log-mel, MFCC, and scalar spectral trajectories in one cached
+librosa job. Field can then compare exact mel-Wasserstein, log-mel, and cepstral distances with MDS
+or t-SNE. These views use the same synchronized playhead contract as speech spaces, but require no
+model checkpoint or GPU.
 
 Move from analysis into source-derived navigation with the
 [corpus microscope](audio_ai_corpus_microscope.md), then continue with the

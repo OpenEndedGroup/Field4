@@ -82,4 +82,61 @@ class AnalysisVisualizationTest {
     fun dashboardRejectsAnEmptyResultSet() {
         assertFailsWith<IllegalArgumentException> { analysisPreviewDashboardHtml(emptyList()) }
     }
+
+    @Test
+    fun speechPhasePortraitCarriesFourAxesAndTheSharedAudioBus() {
+        val times = listOf(0.0, 0.5, 1.0)
+        val preview = AnalysisPreview(
+            operation = "analysis.embed_speech",
+            durationSeconds = 1.0,
+            series = listOf(
+                series("voice_activity"), series("energy_dbfs"), series("embedding_novelty"),
+                AnalysisSeries("mds_0", "MDS 0", timesSeconds = times, values = listOf(0.0, 0.5, 1.0)),
+                AnalysisSeries("mds_1", "MDS 1", timesSeconds = times, values = listOf(1.0, 0.5, 0.0)),
+                AnalysisSeries("mds_2", "MDS 2", timesSeconds = times, values = listOf(-1.0, 0.0, 1.0)),
+                AnalysisSeries("mds_3", "MDS 3", timesSeconds = times, values = listOf(0.2, 0.8, 0.3)),
+            ),
+        )
+
+        val html = speechEmbeddingPreviewVisualizationHtml(
+            preview, width = 920, syncGroup = "near-drowning", timeOffsetSeconds = 7.0,
+        )
+
+        assertContains(html, "axis 0 × axis 1")
+        assertContains(html, "axisPrefix=seriesPrefix||'mds_'")
+        assertContains(html, "projection_pool_millis")
+        assertContains(html, "projection_hop_millis")
+        assertContains(html, "projection_distance")
+        assertContains(html, "voice activity · blue energy · amber novelty")
+        assertContains(html, "field-time-cursor")
+        assertContains(html, "field-time-seek")
+        assertContains(html, "field-time-window")
+        assertContains(html, "data-sync=\"near-drowning\"")
+        assertContains(html, "data-time-offset=\"7.0\"")
+    }
+
+    @Test
+    fun spectralPhasePortraitUsesFluxAndTheSharedAudioBus() {
+        val times = listOf(0.0, 0.5, 1.0)
+        val preview = AnalysisPreview(
+            operation = "analysis.embed_spectral",
+            durationSeconds = 1.0,
+            series = listOf(
+                series("energy_dbfs"), series("spectral_flux"), series("spectral_centroid_hz"),
+                series("spectral_flatness"),
+            ) + (0..3).map { axis ->
+                AnalysisSeries(
+                    "tsne_$axis", "t-SNE $axis", timesSeconds = times,
+                    values = times.map { it + axis },
+                )
+            },
+        )
+        val html = spectralEmbeddingPreviewVisualizationHtml(
+            preview, width = 920, syncGroup = "spectral-test",
+        )
+        assertContains(html, "data-kind=\"spectral\"")
+        assertContains(html, "blue energy · amber mel flux · violet centroid")
+        assertContains(html, "field-time-cursor")
+        assertContains(html, "data-sync=\"spectral-test\"")
+    }
 }

@@ -178,6 +178,12 @@ object DemoTranscriptExecSmokeTest {
         // The guide and synchronized preview gallery use deterministic embedded data. The third
         // box contains the complete service-backed analysis workflow but remains inert in CI.
         "audio_ai_analysis",
+        // The guide and synthetic calibration view execute without weights. The third box owns the
+        // real emotion2vec/WavLM submission path and remains an explicit user action.
+        "audio_ai_speech_embeddings",
+        // The guide and synthetic phase portraits are pure compute; the live third box owns the
+        // optional librosa service call and is deliberately left for an interactive run.
+        "audio_ai_spectral_embeddings",
         // The guide and durable monitor run headless. The second box contains the complete
         // Librosa-backed indexing and retrieval workflow, and remains inert until run by a user.
         "audio_ai_corpus_microscope",
