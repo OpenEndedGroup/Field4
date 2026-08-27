@@ -45,8 +45,8 @@ nothing else changes.
 | off | type | field | |
 |---|---|---|---|
 | 0 | u32 | `magic` | `0x42555350`, i.e. the bytes `PSUB` |
-| 4 | u32 | `version` | currently 1 |
-| 8 | u32 | `flags` | bit 0 `HAS_CAMERA`, bit 1 `ORTHO` |
+| 4 | u32 | `version` | currently 2. v2 added the estimator flag below; in v1 the error metrics were always perpendicular |
+| 8 | u32 | `flags` | bit 0 `HAS_CAMERA`, bit 1 `ORTHO`, bit 2 `VERTICAL_FIT` |
 | 12 | u32 | `reserved0` | 0 |
 | 16 | u32 | `width` | source image width, 0 if the input was a bare point cloud |
 | 20 | u32 | `height` | |
@@ -58,7 +58,7 @@ nothing else changes.
 | 44 | u32 | `num_groups` | 0 when merging is off |
 | 48 | f32×3 | `bbox_min` | over all points |
 | 60 | f32×3 | `bbox_max` | |
-| 72 | f32 | `fit_tol` | the rms tolerance the producer used — bounds the *perpendicular* residual, in whatever units the z channel carries. See gotcha 1 |
+| 72 | f32 | `fit_tol` | the rms tolerance the producer used, in the active estimator's metric and in whatever units the z channel carries. See gotcha 1 |
 | 76 | f32 | `min_fill` | the occupancy threshold it used |
 | 80 | — | `sections[16]` | 16 × 24-byte section records, see below |
 | 464 | f32 | `cam_fx`, `cam_fy`, `cam_cx`, `cam_cy`, `cam_sx`, `cam_sy` | valid iff `HAS_CAMERA` |
@@ -102,14 +102,14 @@ plane and the box reads five `vec4`s and stops.
 |---|---|---|---|
 | 0 | f32×4 | `plane` | `nx, ny, nz, d`; n is unit and `n·p + d = 0` |
 | 16 | f32×3 | `obb_center` | |
-| 28 | f32 | `rms` | sqrt of the mean squared **perpendicular** point-plane distance — see the warning below |
+| 28 | f32 | `rms` | sqrt of the mean squared residual **in the active estimator's metric** — see gotcha 1 |
 | 32 | f32×3 | `obb_u` | major in-plane axis, unit |
 | 44 | f32 | `max_err` | |
 | 48 | f32×3 | `obb_v` | minor in-plane axis, unit |
 | 60 | f32 | `mean_abs_err` | |
 | 64 | f32×3 | `obb_w` | **equals `plane.xyz`** |
 | 76 | f32 | `inlier_frac` | fraction within the producer's inlier band |
-| 80 | f32×3 | `half_extent` | along u, v, w — `half_extent.z` is the slab half-thickness, again perpendicular |
+| 80 | f32×3 | `half_extent` | along u, v, w — `half_extent.z` is the slab half-thickness, always perpendicular regardless of estimator, because it is a geometric extent |
 | 92 | f32 | `fill_ratio` | occupancy of the OBB face: solid rectangle 1.0, triangle ≈0.5, annulus ≈0.4 |
 | 96 | u32 | `first_point` | offset into `PERM` |
 | 100 | u32 | `point_count` | |
@@ -122,9 +122,29 @@ plane and the box reads five `vec4`s and stops.
 | 126 | u16 | `hole_permille` | enclosed void as a share of the footprint, in 1/1000 — high means the support wraps a hole |
 
 Flags: `LEAF` 1, `GOOD_FIT` 2, `COMPACT` 4, `SPLIT_FAILED` 8, `DEGENERATE` 16, `HIT_DEPTH` 32,
-`HIT_MINPTS` 64. On a leaf they say *why* subdivision stopped there, which is often more
-useful than the fact that it did — `SPLIT_FAILED` means a cut was wanted but none earned its
-keep, `HIT_MINPTS` means it ran out of points.
+`HIT_MINPTS` 64, `NATURAL_LEAF` 128. On a leaf the first seven say *why* subdivision stopped
+there, which is often more useful than the fact that it did — `SPLIT_FAILED` means a cut was
+wanted but none earned its keep, `HIT_MINPTS` means it ran out of points.
+
+`NATURAL_LEAF` is the level-of-detail marker. When the producer ran with `extra_levels > 0`,
+subdivision was forced to continue past the point where the criteria would have ended it, and
+this flag marks that point. So the tree carries **two useful leaf sets**: the actual leaves,
+and the coarser natural level. The natural nodes partition the points exactly, every leaf has
+exactly one natural ancestor-or-self, and the flag is set on internal nodes as well as leaves.
+With `extra_levels == 0` every leaf carries it and nothing else does.
+
+```kotlin
+/** The natural-leaf ancestor of a node, or the node itself. */
+fun Psub.naturalAncestor(node: Int): Int {
+    var n = node
+    while (n != PSUB_INVALID && (nodeFlags(n) and 128) == 0) n = parent(n)
+    return n
+}
+```
+
+To address a rung *between* the natural level and the leaves, walk the chain from the leaf up
+to its natural ancestor and index back down it — the chain is unique, so "natural + k" is well
+defined from any leaf.
 
 ## `PsubGroup` — 128 bytes
 
@@ -181,8 +201,9 @@ class Psub(path: java.nio.file.Path) {
     val maxDepth   get() = buf.getInt(36)
     val numGroups  get() = buf.getInt(44)
     val fitTol     get() = buf.getFloat(72)
-    val hasCamera  get() = (flags and 1) != 0
-    val ortho      get() = (flags and 2) != 0
+    val hasCamera    get() = (flags and 1) != 0
+    val ortho        get() = (flags and 2) != 0
+    val verticalFit  get() = (flags and 4) != 0
     val fx get() = buf.getFloat(464); val fy get() = buf.getFloat(468)
     val cx get() = buf.getFloat(472); val cy get() = buf.getFloat(476)
     val sx get() = buf.getFloat(480); val sy get() = buf.getFloat(484)
@@ -299,18 +320,28 @@ those four sections and a frame costs about a megabyte.
 
 ## Seven things that will bite
 
-1. **`rms`, `max_err`, `mean_abs_err` and `half_extent.z` are all *perpendicular*
-   point-to-plane distances, not errors in the value channel.** The two differ by
-   `1/|plane.nz|`, which is not a small factor: on a real disparity frame the leaf normals ran
-   down to `|nz| = 0.0104`, so a plane whose stored rms is 0.0075 can be **96× worse** than
-   that at predicting disparity. `fit_tol` bounds the perpendicular residual, so a steeply
-   sloped plane is held to a much looser standard in the value channel than a fronto-parallel
-   one. If what you care about is "predicted disparity within ε", compute
-   `|predict(node,u,v) - observed|` yourself; do not read `rms` as that quantity.
+1. **Check `VERTICAL_FIT` before you interpret `rms`, `max_err` or `mean_abs_err`.** Two
+   estimators can produce these files and the error metrics mean different things:
 
-   The relationship is exact and worth writing down, since it is also how to verify a loader:
-   `predict(n,u,v) - observed = -(n·p + d) / nz`, where `n·p + d` is the signed perpendicular
-   distance the metrics are built from.
+   | flag | estimator | `rms` is | `fit_tol` bounds |
+   |---|---|---|---|
+   | set (default) | ordinary least squares in the value channel | value-channel error | what you see as a height field |
+   | clear | total least squares | perpendicular point-plane distance | perpendicular distance |
+
+   The two differ by exactly `1/|plane.nz|`, and that is not a small factor. The relationship
+   is worth writing down because it is also how to verify a loader:
+
+   ```
+   predict(n,u,v) − observed  =  −(n·p + d) / nz
+   ```
+
+   With `VERTICAL_FIT` **clear**, beware: a plane bridging a depth discontinuity has a tiny
+   perpendicular residual and a ruinous height-field error. Measured on one real disparity
+   frame, 14 of 136 leaves had `|nz| < 0.05` (down to 0.001), and the worst pixel predicted
+   **25.6** against a data range of 0.95 — while every stored `rms` sat inside tolerance.
+   With the flag **set** that cannot happen: the same frame had no such leaf and a worst-pixel
+   error of 0.187. Prefer vertical-fit files for anything that evaluates the planes as a
+   height field over the image.
 
 2. **The z axis means whatever the producer fed in.** These files are often built from
    *disparity* (inverse depth) rather than metric depth, in orthographic mode with x and y
@@ -338,10 +369,12 @@ same file and compare. Three checks are worth porting here as a test, because ea
 loudly if an offset is wrong rather than quietly returning plausible numbers:
 
 - `PERM` sorted equals `0 until numPoints`.
-- For every leaf, the rms of `nx·X + ny·Y + nz·value + d` over that leaf's pixels equals the
-  stored `rms`. Measured agreement on a real file is **2.5e-9** — this single check exercises
-  the section table, the node stride, the plane convention, the camera block and the
-  orthographic/perspective branch all at once.
+- For every leaf, the rms of the residual over that leaf's pixels equals the stored `rms` —
+  where the residual is `nx·X + ny·Y + nz·value + d` for a total-least-squares file, and that
+  divided by `|nz|` for a vertical-fit one. Measured agreement is **1.1e-8** (vertical) and
+  **8.4e-9** (orthogonal). This single check exercises the section table, the node stride, the
+  plane convention, the camera block, the orthographic/perspective branch and the estimator
+  flag all at once — it is the one to port first.
 - Group `point_count` sums to `numPoints`, and `GROUP_OF_NODE` is `0xFFFFFFFF` at every node
   whose `child0` is not `0xFFFFFFFF`.
 
