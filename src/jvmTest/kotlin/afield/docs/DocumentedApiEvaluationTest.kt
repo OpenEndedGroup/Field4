@@ -150,26 +150,21 @@ class DocumentedApiEvaluationTest {
     private val root = CitationGuard.repoRoot()
 
     /**
-     * The five documented APIs that CI compiles and never runs, each with the reason it is that way.
+     * The documented APIs that CI compiles and never runs, each with the reason it is that way.
      *
      * Every row was checked by hand against all three exercise populations before being written here.
-     * The reasons are not excuses — four of the five are *good* reasons, and the point of writing them
-     * down is that "we cannot run this headless" and "nobody got round to it" look identical in a
-     * build log and want completely different responses.
+     * The reasons are not excuses, and the point of writing them down is that "this needs hardware CI
+     * does not have" and "nobody got round to it" look identical in a build log and want completely
+     * different responses.
+     *
+     * It was five on the day the class landed. `clipEncode` came off the same day and is the example
+     * worth keeping in mind: `public/docs/onnx.md` teaches it six times, `ClipSmokeTest` already had
+     * the text encoder resident and asserted against `ClipText.encodeAll` underneath it, and closing
+     * the gap was one line. The lesson is not that the ledger was wrong — it was right — but that a
+     * row's reason is worth re-reading, because "the transcript that demonstrates it is COMPILE_ONLY"
+     * and "no cheap evaluator exists" are different sentences.
      */
     private val COMPILE_ONLY_REMAINDER: Map<String, String> = mapOf(
-        // `onnx_webcam_live` is COMPILE_ONLY because CI has no camera, and the transcript's own
-        // comment in DemoTranscriptExecSmokeTest adds the second reason: clipEncode sits behind lazy
-        // initialisation, so compiling rather than evaluating is what keeps the harness hermetic
-        // instead of fetching ~600MB of encoders. Note the trap this row exists to name: grepping the
-        // tree for `clipEncode(` outside `afield/onnx/Clip.kt` finds exactly one other file, and it is
-        // DemoTranscriptExecSmokeTest itself — the harness that does not run it. An evaluator that is
-        // the compile-only harness is not an evaluator, and a scan that did not exclude it would score
-        // this row green.
-        "clipEncode" to
-            "onnx.md; onnx_webcam_live is COMPILE_ONLY (no camera in CI, and evaluating it would " +
-                "fetch ~600MB of CLIP encoders). Its only non-declaring call site in the tree is the " +
-                "compile-only harness itself.",
         // The one row here that is not a good reason, and the only one a person should act on.
         // `src/jvmMain/kotlin/afield/examples/four/FieldProbeSmokeTest.kt` exists, opens a Window and
         // exercises ShaderFieldProbe — and carries no FIELD_TEST block and no Gradle task, so nothing
@@ -362,25 +357,20 @@ class DocumentedApiEvaluationTest {
     }
 
     /**
-     * The three exclusions are load-bearing, and this is what says so.
+     * The three non-evaluator exclusions, each asserted against the mechanism rather than an API.
      *
-     * Assertions on the *mechanism* rather than on today's corpus, in the shape of
-     * `CitationContractTest.theInputThatRulesOutTheGradleMarkerIsReallyInThisRepo`: each exclusion is
-     * only worth its lines while the thing it excludes is still there to be excluded, and when one of
-     * these fails the argument has gone stale and wants re-reading rather than patching.
-     *
-     * `clipEncode` is the witness for all three because it is the only API in the tree whose every
-     * mention outside its own declaration is prose about it not being run.
+     * An earlier version pinned all three through `clipEncode`, which was the only API in the tree
+     * whose every mention outside its own declaration was prose about it not being run. That stopped
+     * being true the moment `ClipSmokeTest` was given the documented one-liner, and a fixture that
+     * dissolves the first time somebody fixes the underlying problem is the wrong fixture. So each
+     * exclusion is now pinned twice: the mechanism still applies, and the thing it excludes is still
+     * there to be excluded. Same shape as
+     * `CitationContractTest.theInputThatRulesOutTheGradleMarkerIsReallyInThisRepo`.
      */
     @Test
     fun theThreeNonEvaluatorExclusionsAreStillNeededAndStillWork() {
-        val harness = File(root, "src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt")
-        assertTrue(harness.isFile, "the compile-only harness moved; ${harness.path} no longer exists")
-        assertTrue(
-            "clipEncode" in harness.readText(),
-            "DemoTranscriptExecSmokeTest no longer mentions clipEncode, so the by-name exclusion is " +
-                "no longer demonstrated by anything."
-        )
+        // 1. Comments are not evaluations. `afield/onnx/Clip.kt` documents its own entry point in its
+        //    own KDoc, which scored the declaration site as its own evaluator before stripping.
         val declaration = File(root, "src/jvmMain/kotlin/afield/onnx/Clip.kt")
         assertTrue(declaration.isFile, "afield/onnx/Clip.kt moved; the comment-stripping witness is gone")
         val rx = Regex("""\bclipEncode\s*\(""")
@@ -392,18 +382,30 @@ class DocumentedApiEvaluationTest {
                 "of them. With nothing dropped, nothing here demonstrates that a call written in a " +
                 "KDoc example is not an evaluation."
         )
+
+        // 2. The compile-only harness is not an evaluator. It is excluded by file name, before its
+        //    text is even read, because it names APIs precisely in order to say it does not run them.
+        val harness = File(root, "src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt")
+        assertTrue(harness.isFile, "the compile-only harness moved; ${harness.path} no longer exists")
         assertTrue(
-            "clipEncode(" in File(root, "src/jvmTest/kotlin/afield/docs/DocumentedApiEvaluationTest.kt").readText(),
-            "this file no longer mentions clipEncode( in its own prose, so the GUARD_PACKAGE_DIR " +
-                "exclusion — added because that prose scored as an evaluator on the first run — is no " +
-                "longer demonstrated."
+            "DemoTranscriptExecSmokeTest.kt" !in smokeSources.map { it.first },
+            "the compile-only harness is being scanned as a smoke. Whatever it mentions would score " +
+                "as evaluated, and what it mentions is exactly the set of things it does not run."
         )
-        val found = evaluatingSmokes("clipEncode") + evaluatingTests("clipEncode")
+
+        // 3. This package's own prose is not evidence. Found on run one: the sentence in this file
+        //    explaining exclusion 2 scored as an evaluating jvmTest.
         assertTrue(
-            found.isEmpty(),
-            "clipEncode now has an evaluator: $found. If that is real, delete its " +
-                "COMPILE_ONLY_REMAINDER row; if one of the three exclusions has broken, fix it — the " +
-                "three are: the harness by name, comments by stripComments, this package by path."
+            testSources.none { it.first == "DocumentedApiEvaluationTest.kt" || it.first == "GateInputDeclarationTest.kt" },
+            "the afield.docs guard package is being scanned as evidence of evaluation. A guard that " +
+                "counts its own documentation as proof is the failure this class is named after."
+        )
+        assertTrue(
+            COMPILE_ONLY_REMAINDER.keys.any { api ->
+                api in File(root, "src/jvmTest/kotlin/afield/docs/DocumentedApiEvaluationTest.kt").readText()
+            },
+            "no COMPILE_ONLY_REMAINDER key is named in this file's own text any more, so exclusion 3 " +
+                "is no longer demonstrated by anything. Re-read the argument for it before trusting it."
         )
     }
 
