@@ -78,6 +78,25 @@ State therefore persists between runs, which is the point: import your libraries
 in one cell, and iterate in another. It also means a name you thought you had deleted is still
 there.
 
+Two boxes are needed to show that, and a runner fence builds one — so this capture is driven by a
+transcript instead, [`python_shared_namespace.yaml`](https://github.com/OpenEndedGroup/Field/blob/main/dev_docs/agents/transcripts/docs_capture/python_shared_namespace.yaml),
+which builds a Python root with two cells under it and runs them in order. The first binds `grid`
+and `label` and prints nothing. The block below is the *second* cell, which defined neither:
+
+```diffstatic_runner {data-lang=python screenshot="assets/python/shared_namespace.png" capture="window" wait="4" timeout="300" requires="jep" embed=true name="python-shared-namespace" macro-file="../../dev_docs/agents/transcripts/docs_capture/python_shared_namespace.yaml" capture-box="agent_python_shared_second" alt="Two Python boxes in one document. The upper cell binds a numpy array and a string; the lower cell, which defined neither, prints the string, the array's shape and its sum."}
+:::static
+# A different box. It never defined `grid` or `label` — they are simply still here,
+# because every Python box in this Field process shares one global namespace.
+print(label, "->", grid.shape, "summing to", grid.sum())
+
+# State survives between runs too, so this counter climbs each time you run the cell.
+runs = globals().get("runs", 0) + 1
+print("this cell has run", runs, "time(s)")
+```
+
+Run the second cell again and the counter goes to two. Nothing was re-imported and nothing was
+re-bound, because nothing was torn down.
+
 A cell that prints nothing displays the value of its last expression instead:
 
 ```diffstatic_runner {data-lang=python screenshot="assets/python/last_expression.png" capture="editor" wait="4" padding="10" w="900" h="300" timeout="240" requires="jep" embed=true name="python-last-expression" alt="A Python box whose final line is an expression, showing the resulting number beside it in the editor."}
@@ -221,13 +240,11 @@ where `pip install jep` has been run, so that a `libjep` file exists in its site
 The candidate list is tried in this order, and the first one with a `libjep` in it wins
 (`PythonInterface.kt:1685-1701`):
 
-| # | candidate |
-|---|---|
-| 1 | `-Dafield.python.venv=…` / `-Dafield.python.executable=…` |
-| 2 | `FIELD_PYTHON_VENV` / `FIELD_PYTHON_EXECUTABLE` |
-| 3 | whatever `/welcome` last saved, in `~/.afield/python.properties` |
-| 4 | `VIRTUAL_ENV`, then `CONDA_PREFIX` |
-| 5 | `python3`, then `python`, on `PATH` |
+1. `-Dafield.python.venv=…` / `-Dafield.python.executable=…`
+2. `FIELD_PYTHON_VENV` / `FIELD_PYTHON_EXECUTABLE`
+3. whatever `/welcome` last saved, in `~/.afield/python.properties`
+4. `VIRTUAL_ENV`, then `CONDA_PREFIX`
+5. `python3`, then `python`, on `PATH`
 
 The `/welcome` panel has an **Install JEP** button, and it is worth knowing what it actually does
 (`installJep`, `PythonInterface.kt:1552-1607`): it runs `python -m ensurepip --upgrade`, then `python
@@ -235,20 +252,22 @@ The `/welcome` panel has an **Install JEP** button, and it is worth knowing what
 JNI extension and its build needs `jni.h`. It then re-resolves, and only persists your choice if a
 `libjep` really did appear. The pip step is given six minutes, because it compiles C.
 
-Three things that go wrong, all observed on macOS while writing this page:
+??? aside "Three things that go wrong, all observed on macOS while writing this page"
 
-- **`import jep` is the wrong way to check.** A *correctly* installed JEP raises `ImportError: Jep is
-  not supported in standalone Python, it must be embedded in Java.` The thing to look for is the
-  `libjep` file, which is also what Field looks for (`:1771`).
-- **Binding happens once, at startup.** Saving new settings returns `restartRequired`
-  (`PythonInterface.kt:1540`) and the status line says so. Until you restart Field, `mainLanguage =
-  python` is inert and your cells stay Kotlin, because the runtime is only registered when Python
-  resolved at boot (`installPython`, `:157`).
-- **A stale `typing` backport breaks startup.** An Anaconda base environment carrying the PyPI
-  `typing` package (a Python 3.4-era backport, obsolete since 3.5) fails interpreter startup with
-  `AttributeError: type object 'Callable' has no attribute '_abc_registry'`. A clean `python -m venv`
-  avoids it. Field reports this as "found but failed to initialize" and names the interpreter it
-  tried (`markPythonUnavailable`, `:1506`).
+    **`import jep` is the wrong way to check.** A *correctly* installed JEP raises `ImportError: Jep
+    is not supported in standalone Python, it must be embedded in Java.` The thing to look for is the
+    `libjep` file, which is also what Field looks for (`:1771`).
+
+    **Binding happens once, at startup.** Saving new settings returns `restartRequired`
+    (`PythonInterface.kt:1540`) and the status line says so. Until you restart Field, `mainLanguage =
+    python` is inert and your cells stay Kotlin, because the runtime is only registered when Python
+    resolved at boot (`installPython`, `:157`).
+
+    **A stale `typing` backport breaks startup.** An Anaconda base environment carrying the PyPI
+    `typing` package (a Python 3.4-era backport, obsolete since 3.5) fails interpreter startup with
+    `AttributeError: type object 'Callable' has no attribute '_abc_registry'`. A clean `python -m
+    venv` avoids it. Field reports this as "found but failed to initialize" and names the interpreter
+    it tried (`markPythonUnavailable`, `:1506`).
 
 On macOS, if Xcode is selected but Homebrew's Python was built against a Command Line Tools SDK that
 is no longer installed, the jep build fails with `fatal error: 'assert.h' file not found`. Building

@@ -1396,9 +1396,17 @@ class PythonInterface {
          * falls back to measuring an iframe that is itself waiting to be sized, and every embed
          * ends up in a ~480px column. Held to that by
          * [afield.python.PythonOutputContractTest.theEmbedIframeDeclaresBothAxesInPixels].
+         *
+         * **The background is `transparent`, not `#fff`.** A white frame around a `plotly_dark`
+         * figure is a bright slab in the middle of a dark box, and it is the frame showing through
+         * rather than anything the figure drew: plotly paints its own `paper_bgcolor` and leaves the
+         * rest of the page to whatever is underneath. Transparent lets the box's own background be
+         * that. A document that genuinely needs a light backdrop still paints one — every library
+         * that assumes white sets `body{background:#fff}` in the HTML it hands us — so this changes
+         * the default rather than removing the option.
          */
         const val EMBED_IFRAME_STYLE =
-            "width:960px;height:640px;border:none;background:#fff;border-radius:8px;"
+            "width:960px;height:640px;border:none;background:transparent;border-radius:8px;"
 
         /**
          * The document line a fragment's result, `[task launched]`, or `ok` is attached to.
