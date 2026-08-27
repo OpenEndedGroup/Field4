@@ -4,7 +4,7 @@
 
 Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box.
 
-17 source file(s), 675 public symbol(s), 325 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+17 source file(s), 674 public symbol(s), 325 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1099,7 +1099,6 @@ Turns a terse schema string into Kotlin source for a data class with a `fromStri
 | [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Tok</span><span class="p">(</span><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">TokKind</span><span class="p">,</span> <span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">pos</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/jsonparsing/#L322) |  |
 | [<code class="highlight"><span class="k">class</span> <span class="nf">SchemaTokenizer</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">src</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/jsonparsing/#L328) |  |
 | [<code class="highlight"><span class="k">class</span> <span class="nf">SchemaParser</span><span class="p">(</span><span class="n">schemaText</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/jsonparsing/#L396) |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">helperBlock</span></code> |  |
 
 ## numpy.kt { #numpy-kt }
 

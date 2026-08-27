@@ -90,15 +90,19 @@ object SourcePartitionGuard {
     /**
      * The ratchet on declarations [KotlinSourceIndex] reports from *inside a function body*.
      *
-     * These are not partition failures — they are the other parser over-reporting, and every one
-     * checked by hand has been a local `val` that its state machine reached with a drifted brace depth
-     * (a raw string carrying `${'$'}`-interpolation or comment-marker text is the usual trigger). They
-     * are not harmless: `jsonparsing.kt`'s local `helperBlock` is published on
-     * `public/docs/reference/data.md` as a public symbol of that file. Fixing it belongs to
-     * KotlinSourceIndex and changes the committed reference pages, so it is a separate change; this
-     * pins the count meanwhile so the population cannot grow unnoticed.
+     * These are not partition failures — they are the other parser over-reporting a local as though
+     * it were public API. It stood at 32 until the five lexical shapes documented on
+     * `KotlinSourceIndex.KotlinParseState` were fixed, which brought it to 2 and, in the same pass,
+     * *recovered* 28 genuine public symbols that the same mis-lexes had been hiding — the count on
+     * `public/docs/reference/index.md` went 9095 → 9122, of which the single departure was
+     * `jsonparsing.kt`'s local `helperBlock`, the one this note used to name.
+     *
+     * The 2 that remain are a different bug, and not one about braces: a `data class Foo(…)` with no
+     * body stays "pending" until a `{` arrives, so a later `init {` in the enclosing class is taken
+     * for its body and the locals inside it are attributed to `Foo`. Both live cases —
+     * `CommandBuffer.SecondaryInheritance` and `JoltPhysicsWorld.SurfaceQuery` — are that shape.
      */
-    private const val MAX_INDEX_OVER_REPORTS = 31
+    private const val MAX_INDEX_OVER_REPORTS = 2
 
     /** How many unattributed lines to keep per file for the `--verbose` sample. */
     private const val SAMPLES_PER_FILE = 12
