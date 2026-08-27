@@ -40,13 +40,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 73 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+All 74 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
 not in the same way, and the difference is worth knowing before you trust one. 54 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
 error-kind output line. (Almost always that is every box in the file. A transcript may
 create a box it does not execute — one that wants a device the build does not have, or that is meant to fail so a
-diagnostic can be shown — and only the ops it actually writes down are replayed.) 12 want
+diagnostic can be shown — and only the ops it actually writes down are replayed.) 13 want
 something the lightweight build does not own — a GLFW window and Vulkan renderer, an external audio
 service, or a camera — so those are **built and compiled**: the graph is assembled through the real
 apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal evaluation —
@@ -964,6 +964,22 @@ These are self-contained scenes that build their own `Window` + `Renderer` and, 
 ships no synthesized still of any of them: open the scene and run it yourself, and capture its window
 with a follow-on `native-screenshot` backdoor command (with `--with-playwright`). Where a walkthrough
 page already carries a real capture of the same scene, the entry links or shows it.
+
+**splat_sequence_streaming** — 4D splat video: a sequence of PlayCanvas `.compressed.ply` files
+played as fifteen simultaneous sources arranged in a ring around the viewer, all decoded into **one**
+GPU buffer. The measurement that shaped it: on a real 15-file frame of 309,555 splats, reading each
+file and re-packing it took 59 ms against a 41.7 ms budget at 24 fps, while `readRaw` +
+`GaussianSplatRenderer.packInto` — straight from the quantized payload to the 16-float layout, written
+absolutely into the mapped buffer — takes 22 ms, and 27 ms including a back-to-front CPU sort of the
+whole frame. Three things in it are not the obvious choice. The ring is fifteen *rotations* and no
+translation, because each capture is a depth map from a camera at the origin and so already sits
+1–1.6 in front of its own origin. Per-source transforms are baked at decode for +8%, because the
+per-file linear map folds into a congruence the covariance already computes — which is what rules out
+a matrix palette here. And `SplatTransport.advance()` returns false on the six display frames in seven
+where the resolved source frame did not move, so scrubbing a shot costs nothing until it crosses a
+frame boundary. Needs your own frames: the box prints how to make them and stops if the directory is
+absent, rather than shipping somebody's capture as a fixture.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/splat_sequence_streaming/metadata.edn)
 
 **threebox** — A self-contained renderer + compute + draw particle system: a renderer box that owns
 the `Window`/`Renderer` and pumps the loop, a compute box that simulates 100k particles into a
