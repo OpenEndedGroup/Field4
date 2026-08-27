@@ -668,6 +668,71 @@ threeGrid(
 Compare the rods: same length, same thickness, in the middle and right panels. Then compare the
 bodies: a cube and a sphere, and no amount of further descent changes that.
 
+#### The descent, as frames
+
+The two ends are the same picture everyone draws. What is actually interesting is *when* each
+parameter stops moving, and the recorded trajectory has that:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/converging.png" wait="14.0" capture="box" open-outputs="true" padding="20"}
+:::static
+import afield.solidsl.*
+import afield.stdlib.OptimizeMethod
+
+val truth = sphere(0.62) + cylinder(2.20, 0.28)
+val target = truth.sampleField(count = 3000, seed = 17)
+
+val model = (cuboid(1.0) + cylinder(1.0, 1.0).turned(y = 1.0)).parameterize {
+    param("cubeSize") { it.node == "Cuboid" }
+    param("barHeight") { it.node == "Cylinder" && it.field == "height" }
+    param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") }
+    param("barTilt") { it.node == "Rotate" && it.field == "y" }
+}.orThrow()
+
+val fit = model.fitParameters(
+    target, doubleArrayOf(1.35, 1.60, 0.42, 25.0),
+    SolidFitOptions(method = OptimizeMethod.ADAM, iterations = 6000, learningRate = 0.015),
+)
+
+// `run.trajectory` is the parameter vector at every recorded iteration, indexed exactly like
+// `run.losses`. `shapeAt` substitutes one back into the template, so these are the shapes the
+// optimizer really held -- not six descents truncated at six different caps.
+val frames = listOf(0, 150, 500, 1200, 2400, fit.run.trajectory.lastIndex)
+val tilt = model.names.indexOf("barTilt")
+
+threeGrid(
+    *frames.map { i ->
+        "iter %d  ·  tilt %.1f deg  ·  loss %.2e"
+            .format(i, fit.run.trajectory[i][tilt], fit.run.losses[i]) to
+            fit.shapeAt(i).march(resolution = 88, margin = 0.06)
+    }.toTypedArray(),
+    channel = "converging", columns = 6, height = 210,
+    view = MeshView(width = 190, height = 170, yawDegrees = 32.0, pitchDegrees = 22.0, wireframe = true),
+)
+```
+
+![Six small wireframe panels in a row, a cube with a rod through it, each labelled with its iteration, tilt and loss. In the first the cube is large and the rod is buried inside it, showing only as an outline on the front face. In the second the cube has shrunk to roughly its final size and a short fat rod juts out of it at a steep angle. Across the next three the cube barely changes while the rod thins and lengthens and swings progressively upright. In the last two the rod is square to the cube and the two panels are indistinguishable](assets/solid_notation/converging.png)
+
+**The cube stops moving almost immediately and the angle takes the whole descent.** `cubeSize` goes
+`1.350 → 0.847` inside the first 150 iterations and then spends the remaining four thousand between
+`0.879` and `0.855`; `barTilt` goes `25.0° → 22.5°` in that same span and needs until iteration 2400
+to reach `0.18°`. Both are visible in the strip: the body settles in frame two, the rod is still
+turning in frame five.
+
+One detail the strip shows that the final table cannot: `barRadius` gets **worse before it gets
+better**. It goes `0.420 → 0.464` over the first 150 iterations before coming back down through
+`0.356` and `0.290` to `0.281`, which is the fat stub in frame two. Nothing is wrong — while the cube
+is still far too big the rod is the only thing that can carry the target's volume, and it is
+rewarded for thickening until the cube gets out of the way. A per-parameter trace is the only place
+that shows up; the loss falls at every frame regardless.
+
+That is not a curiosity, it is the two kinds of parameter showing their difference *in time* rather
+than only in the final table. The cube reaches its compromise early because a compromise is a
+shallow, wide minimum — it is already as close to a sphere as a cube gets, and pushing further buys
+nothing. The angle is a genuine recovery with a real minimum at the bottom of a narrow valley, and it
+walks all the way down. If you had stopped this fit at iteration 500 — a perfectly reasonable-looking
+`loss 1.38e-02`, down 5× from the seed — you would have read `barTilt = 16.3°` off the report and
+believed it.
+
 The cylinder recovered on all three of its numbers: `2.197225` against a true `2.20` and
 `0.281335` against a true `0.28` — 0.13% and 0.48% out — and `barTilt`, seeded a full **25° off**,
 came back to `-0.009525°`. The cube settled at `0.855279`, and there is no truth to compare that against,

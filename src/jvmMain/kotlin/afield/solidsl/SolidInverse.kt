@@ -502,6 +502,25 @@ data class SolidFit(
     /** `initialLoss / loss` — how many times better the answer is than the seed. */
     val improvementFactor: Double get() = if (loss <= 0.0) Double.POSITIVE_INFINITY else initialLoss / loss
 
+    /**
+     * The shape the descent was holding at iteration [index] — an ordinary [SolidExpr], marchable
+     * like any other.
+     *
+     * Indexed like [afield.stdlib.OptimizeRun.trajectory] and therefore like
+     * [afield.stdlib.OptimizeRun.losses]: `shapeAt(0)` is the seed and `shapeAt(run.losses.lastIndex)`
+     * is [fitted]. This is what makes a convergence filmstrip a *recording* rather than a set of
+     * re-runs truncated at different iteration caps — the frames are the points the optimizer
+     * actually passed through, not points a second descent would have reached.
+     */
+    fun shapeAt(index: Int): SolidExpr {
+        val t = run.trajectory
+        require(index in t.indices) { "iteration $index is outside the recorded trajectory 0..${t.lastIndex}" }
+        return template.withValues(t[index])
+    }
+
+    /** [shapeAt] for a whole strip, in the order given. */
+    fun shapesAt(indices: List<Int>): List<SolidExpr> = indices.map(::shapeAt)
+
     /** The residual as an RMS distance, which is comparable with [SolidSamples.rms]. */
     val rmsError: Double get() = sqrt(max(0.0, loss))
 
