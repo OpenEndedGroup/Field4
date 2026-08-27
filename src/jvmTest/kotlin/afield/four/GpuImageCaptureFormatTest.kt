@@ -126,4 +126,21 @@ class GpuImageCaptureFormatTest {
         assertEquals(listOf(255, 255, 255, 255), rgba.take(4).map { it.toInt() and 0xff })
         assertEquals(listOf(0, 0, 0, 255), rgba.drop(4).map { it.toInt() and 0xff })
     }
+
+    @Test
+    fun topDownJpegPackingPreservesSwapchainRowOrder() {
+        // Two RGBA rows: red/green at the top, blue/white at the bottom.
+        val rgba = byteArrayOf(
+            255.toByte(), 0, 0, 255.toByte(), 0, 255.toByte(), 0, 255.toByte(),
+            0, 0, 255.toByte(), 255.toByte(), 255.toByte(), 255.toByte(), 255.toByte(), 255.toByte()
+        )
+
+        val rgb = GpuImageCapture.packRgbaToRgbTopDown(rgba, width = 2, height = 2)
+        val actual = ByteArray(rgb.remaining()).also(rgb::get).map { it.toInt() and 0xff }
+
+        assertEquals(
+            listOf(255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255),
+            actual
+        )
+    }
 }

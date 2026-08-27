@@ -265,9 +265,8 @@ class ImGuiVrPanelDemo(
      * Headless verification capture: aim at the panel centre, render a warm-up of frames, then read
      * the swapchain back to a PNG with [Renderer.captureWindowToFile] (a Vulkan transfer-source copy —
      * unlike `screencapture` it needs no Screen-Recording permission and works over SSH/CI). The
-     * captured pixels are the blitted side-by-side packed image and are vertically flipped by that path
-     * (see the KDoc on captureWindowToFile / Window.saveFramebufferToTempFile); un-flip downstream if
-     * you want an upright still.
+     * captured pixels are the blitted side-by-side packed image, preserving the orientation presented
+     * by the swapchain.
      */
     @OptIn(DelicateCoroutinesApi::class)
     fun runCaptureGpu(outputPath: String) {

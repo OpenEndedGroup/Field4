@@ -163,6 +163,20 @@ internal object GpuImageCapture {
         return rgb
     }
 
+    /** Pack rows without changing their order. Vulkan swapchain image copies are already top-down. */
+    fun packRgbaToRgbTopDown(rgba: ByteArray, width: Int, height: Int): ByteBuffer {
+        val rgb = ByteBuffer.allocateDirect(width * height * 3)
+        var src = 0
+        repeat(width * height) {
+            rgb.put(rgba[src])
+            rgb.put(rgba[src + 1])
+            rgb.put(rgba[src + 2])
+            src += 4
+        }
+        rgb.flip()
+        return rgb
+    }
+
     fun writeJpegRgb(outputPath: String, rgb: ByteBuffer, width: Int, height: Int, quality: Int) {
         val ok = stbi_write_jpg(outputPath, width, height, 3, rgb, quality.coerceIn(1, 100))
         if (!ok) {

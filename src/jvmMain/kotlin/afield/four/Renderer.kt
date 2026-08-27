@@ -1085,7 +1085,8 @@ class Renderer(
             ByteBuffer.wrap(capture.rgba),
             capture.width,
             capture.height,
-            flipY = true
+            // vkCmdCopyImageToBuffer preserves the presented swapchain's top-to-bottom row order.
+            flipY = false
         )
         val encodeMs = SaveReloadLog.elapsedMillis(startedAt)
         val writeStartedAt = System.nanoTime()
@@ -1104,7 +1105,7 @@ class Renderer(
 
     private fun writeWindowCaptureJpeg(capture: WindowCapturePixels) {
         val startedAt = System.nanoTime()
-        val rgb = GpuImageCapture.packRgbaToRgbBottomUp(capture.rgba, capture.width, capture.height)
+        val rgb = GpuImageCapture.packRgbaToRgbTopDown(capture.rgba, capture.width, capture.height)
         val packMs = SaveReloadLog.elapsedMillis(startedAt)
         val writeStartedAt = System.nanoTime()
         val quality = windowCaptureJpegQuality()
