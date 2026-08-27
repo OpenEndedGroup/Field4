@@ -192,6 +192,27 @@ Kotlin machinery: `complete` builds a `jedi.Interpreter` over the box's source a
 you actually created rather than only what it can infer statically — and because it is jedi, `pip
 install jedi` is what turns it on.
 
+## A notebook is a column of boxes
+
+Dragging a `.ipynb` onto the canvas and choosing *Import as Python cells* builds the topology this
+page opened with, automatically. `importNotebookCells` (`importing.kt:261`) creates one box named
+`python root` with `isPythonRoot = true` (`:275-276`), then walks the notebook: a `code` cell becomes
+a Python cell connected under that root, and a `markdown` or `raw` cell becomes a `notes` box
+indented beside the column so the prose reads inline.
+
+The imported cells stay children of the document root as well as the Python root, and the comment in
+the importer says why in so many words: the toggle keeps a box in-language while it has *any*
+language-root parent, so there is no need to detach it. This page's [parenting
+rule](#a-python-box-is-a-child-of-a-python-root) and that importer are the same fact seen twice.
+
+Going the other way, *Export notebook (.ipynb)* on a selected python-root box walks its column
+top-to-bottom and writes nbformat 4 (`exportNotebookCells`, `:383`; `nbformat` is set at `:444`).
+Reading is more forgiving than writing: the importer also accepts nbformat 3, where the cells live
+under `worksheets[].cells` and a cell's source is keyed `input` rather than `source` (`:336`,
+`:348`).
+
+[funFeatures](funFeatures.md#python) has the round-trip in context.
+
 ## Setting Python up { #setting-python-up }
 
 Field needs an interpreter that has **JEP's native library** in it. Not merely a Python — a Python
