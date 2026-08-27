@@ -536,12 +536,53 @@ Three parameters, seeded 42%, 45% and 112% wrong, recovered to about `1e-10` in 
 `initialLoss` is in the same object as `loss`, measured in the same run, because "the fit improved
 things" is unfalsifiable without the counterfactual beside it.
 
-Rendered, the seed misplaces **32.1% of the target's own silhouette** and the fitted solid is
-**pixel-identical** to it. That comparison is a test rather than a screenshot: `SolidSLInverseRenderProofTest`
-pins one camera across all three frames — `MeshView.distance` is in bounding-sphere radii, so
-auto-framing would have rendered a shape and a 1.5× copy of it at the same apparent size — and
-asserts both directions, because a "before" that already looked like the answer would make the
-"after" free.
+And that is a claim about a picture, so here is the picture — target, seed and fitted, all three
+marched in the same run, with each panel's label carrying the loss the run measured for it:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/inverse.png" wait="12.0" capture="box" open-outputs="true" padding="20"}
+:::static
+import afield.solidsl.*
+
+// The model, and the three numbers to be solved for. `barRadius` drives BOTH of the cylinder's
+// radii, which is how "the bar is a cylinder, not a frustum" gets written down.
+val template = smoothUnion(sphere(0.45), cylinder(1.90, 0.16), k = 0.18).parameterize {
+    param("sphereRadius", "SmoothUnion/a/Sphere.radius")
+    param("barHeight", "SmoothUnion/b/Cylinder.height")
+    param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") }
+}.orThrow()
+
+val truth = doubleArrayOf(0.45, 1.90, 0.16)
+val seed = doubleArrayOf(0.26, 1.05, 0.34)          // wrong by 42%, 45% and 112%
+
+// The target is a bag of points with a signed distance at each. Nothing below sees `truth` again.
+val target = template.withValues(truth).sampleField(count = 2400, seed = 91)
+val fit = template.fitParameters(target, seed)
+
+println(fit.report())
+
+// Every number in the three labels is measured in THIS run. There is no remembered before-value:
+// `initialLoss` is the seed's loss, computed by the same code that computed the fitted one.
+fun m(e: SolidExpr) = e.march(resolution = 104)
+threeGrid(
+    "seed  ·  loss %.3e".format(fit.initialLoss) to m(template.withValues(seed)),
+    "fitted  ·  loss %.3e  (%.2gx)".format(fit.loss, fit.improvementFactor) to m(fit.fitted),
+    "target  ·  the shape the samples came from" to m(template.withValues(truth)),
+    channel = "inverse", columns = 3, height = 300,
+    view = MeshView(width = 320, height = 250, yawDegrees = 32.0, pitchDegrees = 22.0, wireframe = true),
+)
+```
+
+![Three panels in a row, flat grey with the triangle wireframe drawn on a dark background. Left, labelled "seed, loss 2.141e-02", a short fat rounded capsule lying at an angle. Middle, labelled "fitted, loss 4.609e-22 (4.6e+19x)", a ball with a rod emerging from it, the rod meeting the ball in a smooth fillet. Right, labelled "target, the shape the samples came from", the same ball-and-rod shape at the same size and orientation as the middle panel and indistinguishable from it](assets/solid_notation/inverse.png)
+
+The middle and right panels are the same shape because the fit found the target's numbers to about
+`1e-10`, and the left one is there so that "the same shape" means something. `SolidSLInverseRenderProofTest`
+makes that comparison an assertion rather than an impression: it pins one camera across all three
+frames — `MeshView.distance` is in bounding-sphere radii, so auto-framing would have rendered a
+shape and a 1.5x copy of it at the same apparent size — and measures the silhouettes.
+
+Measured there: the seed misplaces **32.1% of the target's own silhouette**, and the fitted solid's
+raster is **byte-identical** to the target's. Both directions are asserted, because a "before" that
+already looked like the answer would make the "after" free.
 
 ### What makes a parameter refuse to move
 
