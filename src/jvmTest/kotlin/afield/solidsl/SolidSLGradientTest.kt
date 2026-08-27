@@ -376,18 +376,7 @@ class SolidSLGradientTest {
     // 6. Recovery — the counterfactual measured live
     // ==========================================================================================
 
-    /** The subject both fitting problems use: a ball blended onto a bar, three named numbers. */
-    private val barAndBall = smoothUnion(sphere(0.62), cylinder(1.45, 0.30).at(0.0, 0.0, 0.0), 0.2)
-
-    private fun barAndBallTemplate() = barAndBall.parameterize {
-        param("sphereRadius", "SmoothUnion/a/Sphere.radius")
-        param("barHeight", "SmoothUnion/b/Translate/Cylinder.height")
-        // One name, both radii — the symmetry constraint that says "the bar is a cylinder, not a
-        // frustum", written into the parameterisation rather than hoped for.
-        param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") }
-    }.orThrow()
-
-    private val truthValues = doubleArrayOf(0.62, 1.45, 0.30)
+    private val truthValues = BAR_AND_BALL_TRUTH
 
     @Test
     fun `a perturbed parametric solid recovers its target`() {
@@ -397,7 +386,7 @@ class SolidSLGradientTest {
 
         // Every parameter measurably far from the truth, and far enough that the shapes are visibly
         // different objects — see SolidSLInverseRenderProofTest, which renders exactly these three.
-        val start = doubleArrayOf(0.95, 2.20, 0.48)
+        val start = BAR_AND_BALL_SEED
         val fit = template.fitParameters(target, start)
 
         println(fit.report())
@@ -426,9 +415,12 @@ class SolidSLGradientTest {
                 "${template.names[i]} recovered as ${fit.values[i]}, wanted ${truthValues[i]} (off by $err)",
             )
             // And the seed really was far away, so `err` is a recovery rather than a lucky start.
+            // Relative, because the three parameters live on different scales — 0.15 absolute is
+            // most of a radius and a twentieth of a height.
             assertTrue(
-                abs(start[i] - truthValues[i]) > 0.15,
-                "${template.names[i]} started only ${abs(start[i] - truthValues[i])} away",
+                abs(start[i] - truthValues[i]) / truthValues[i] > 0.30,
+                "${template.names[i]} started only " +
+                    "${"%.0f".format(100 * abs(start[i] - truthValues[i]) / truthValues[i])}% away",
             )
         }
         // The fitted expression is an ordinary SolidExpr again, not a bag of numbers — which is what
@@ -564,3 +556,34 @@ class SolidSLGradientTest {
         is Profile.Difference -> p.children.flatMap { names(it) }
     }
 }
+
+// ==============================================================================================
+// The fixture the fitting tests and the render proof share
+// ==============================================================================================
+
+/**
+ * A ball blended onto a rod: three named numbers, one of them driving two slots.
+ *
+ * Shared between `SolidSLGradientTest` and `SolidSLInverseRenderProofTest` rather than written twice,
+ * because the render proof's whole job is to show the pictures of *the fit the other file measures*.
+ * Two copies that drifted apart would leave a contact sheet illustrating a different experiment from
+ * the one whose numbers are asserted, which is the quiet version of a faked capture.
+ */
+internal fun barAndBallTemplate(): SolidTemplate =
+    smoothUnion(sphere(0.45), cylinder(1.90, 0.16).at(0.0, 0.0, 0.0), 0.18).parameterize {
+        param("sphereRadius", "SmoothUnion/a/Sphere.radius")
+        param("barHeight", "SmoothUnion/b/Translate/Cylinder.height")
+        // One name, both radii — the symmetry constraint that says "the bar is a cylinder, not a
+        // frustum", written into the parameterisation rather than hoped for.
+        param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") }
+    }.orThrow()
+
+/** What [barAndBallTemplate] actually is: a thin rod through a ball. */
+internal val BAR_AND_BALL_TRUTH = doubleArrayOf(0.45, 1.90, 0.16)
+
+/**
+ * Where the fits start: a fat short capsule, wrong in every parameter by 42%, 45% and 112%, and
+ * contained inside the target's bounding box on every axis — which is what lets the render proof pin
+ * its camera to the target's own corners.
+ */
+internal val BAR_AND_BALL_SEED = doubleArrayOf(0.26, 1.05, 0.34)
