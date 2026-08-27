@@ -1,4 +1,6 @@
+import argparse
 import asyncio
+import re
 import shlex
 import sys
 import unittest
@@ -11,7 +13,14 @@ REPO_PATH = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_PATH))
 sys.path.insert(0, str(REPO_PATH / "tools"))
 
-from tools.field_backdoor import BackdoorError, CommandParseError, FieldBackdoor, REPO_ROOT, parse_command
+from tools.field_backdoor import (
+    BackdoorError,
+    CommandParseError,
+    FieldBackdoor,
+    REPO_ROOT,
+    build_command_parser,
+    parse_command,
+)
 from tools.verification_runtime import automation_workspace
 
 from tools.run_field_tests import build_backdoor_command  # noqa: E402  (path set up just above)
@@ -242,3 +251,172 @@ class JvmMainArgEmissionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CaptureSignatureDocTests(unittest.TestCase):
+    """The capture-signature table in FIELD_BACKDOOR.md must match the real parser.
+
+    Why this guard exists: every capture subparser is built with ``add_help=False``, so
+    ``native-screenshot --help`` prints the *top-level* usage and an error that reads like a
+    complaint about the caller's arguments. An agent with no way to interrogate the CLI falls back
+    to guessing, and the guess is always ``--output`` -- the output path is a positional on all of
+    these. The doc table is the only place that fact is written down, so it must not be allowed to
+    drift away from the code it describes.
+    """
+
+    DOC = REPO_ROOT / "dev_docs" / "agents" / "FIELD_BACKDOOR.md"
+    BEGIN = "<!-- BEGIN CAPTURE SIGNATURES"
+    END = "<!-- END CAPTURE SIGNATURES -->"
+
+    def _documented(self) -> dict[str, tuple[str, set[str]]]:
+        text = self.DOC.read_text()
+        self.assertIn(self.BEGIN, text, f"{self.DOC} lost its capture-signature table markers")
+        table = text.split(self.BEGIN, 1)[1].split(self.END, 1)[0]
+        rows: dict[str, tuple[str, set[str]]] = {}
+        for line in table.splitlines():
+            cells = [c.strip() for c in line.strip().strip("|").split("|")]
+            if len(cells) != 3 or cells[0].startswith("-") or cells[0] == "command":
+                continue
+            command = cells[0].strip("`")
+            positionals = cells[1].replace("`", "").strip()
+            options = {tok for tok in cells[2].replace("`", "").split() if tok.startswith("--")}
+            rows[command] = (positionals, options)
+        return rows
+
+    def _actual(self, command: str) -> tuple[str, set[str]]:
+        parser = build_command_parser()
+        subparsers = [
+            action for action in parser._actions
+            if isinstance(action, argparse._SubParsersAction)
+        ]
+        self.assertEqual(len(subparsers), 1, "field-backdoor should have exactly one subparser group")
+        sub = subparsers[0].choices[command]
+        positionals: list[str] = []
+        options: set[str] = set()
+        for action in sub._actions:
+            if action.option_strings:
+                options.update(o for o in action.option_strings if o.startswith("--"))
+            else:
+                positionals.append(
+                    f"[{action.dest}]" if action.nargs == "?" else action.dest
+                )
+        return " ".join(positionals), options
+
+    def test_documented_signatures_match_the_parser(self) -> None:
+        documented = self._documented()
+        self.assertTrue(documented, "the capture-signature table parsed as empty")
+        for command, (positionals, options) in sorted(documented.items()):
+            with self.subTest(command=command):
+                actual_positionals, actual_options = self._actual(command)
+                self.assertEqual(
+                    positionals,
+                    actual_positionals,
+                    f"{command}: doc says positionals '{positionals}', parser says "
+                    f"'{actual_positionals}'. Update the table in {self.DOC.name}.",
+                )
+                self.assertEqual(
+                    options,
+                    actual_options,
+                    f"{command}: doc and parser disagree on options. "
+                    f"Only in doc: {sorted(options - actual_options)}; "
+                    f"only in parser: {sorted(actual_options - options)}.",
+                )
+
+    def test_every_capture_command_is_documented(self) -> None:
+        parser = build_command_parser()
+        sub = next(
+            a for a in parser._actions if isinstance(a, argparse._SubParsersAction)
+        )
+        capture = {
+            name for name in sub.choices
+            if name.startswith(("screenshot-", "record-", "native-", "wait-native-"))
+        }
+        self.assertEqual(
+            capture,
+            set(self._documented()),
+            "a capture command exists that the FIELD_BACKDOOR.md table does not list "
+            "(or vice versa) -- an undocumented one is a command an agent will guess at",
+        )
+
+    def test_no_capture_command_accepts_an_output_flag(self) -> None:
+        """The mistake this whole guard is about: there is no --output anywhere."""
+        for command in self._documented():
+            with self.subTest(command=command):
+                _, options = self._actual(command)
+                self.assertFalse(
+                    options & {"--output", "--out", "--path", "--file"},
+                    f"{command} grew an output-style flag; the doc says the path is positional",
+                )
+
+    QUICK_REF = REPO_ROOT / "dev_docs" / "agents" / "AGENT_QUICK_REF.md"
+    _ROLE = {"path": "path", "box": "uid"}
+
+    def _quick_ref_positionals(self, line: str) -> list[str]:
+        """The positional region of a terse usage line: everything before the first option.
+
+        `screenshot-window <path> [--uid <box>]` has ONE positional -- the `<box>` belongs to
+        `--uid`. Stopping at the first `[`/`--` token is what keeps a flag's value from being
+        counted as a positional.
+        """
+        out: list[str] = []
+        for token in line.split()[1:]:
+            if token.startswith("--") or token.startswith("[--"):
+                break
+            match = re.fullmatch(r"\[?<(\w+)>\]?", token)
+            if not match:
+                break
+            role = self._ROLE.get(match.group(1))
+            if role is None:
+                break
+            out.append(f"[{role}]" if token.startswith("[") else role)
+        return out
+
+    def test_quick_ref_usage_lines_match_the_parser(self) -> None:
+        """AGENT_QUICK_REF.md carries the same signatures in a terser form.
+
+        It had them right when FIELD_BACKDOOR.md had only prose, and then drifted: the combined
+        ``record-window / record-box / record-editor <path>`` line was wrong for two of the three,
+        because -box and -editor take the uid as their first positional. Two documents stating the
+        same fact need one of them checked, or they diverge exactly like that.
+        """
+        text = self.QUICK_REF.read_text()
+        section = text.split("## Screenshots & video", 1)
+        self.assertEqual(len(section), 2, "AGENT_QUICK_REF.md lost its Screenshots & video section")
+        block = section[1].split("```", 2)
+        self.assertGreaterEqual(len(block), 3, "the usage code block went missing")
+        parser = build_command_parser()
+        sub = next(a for a in parser._actions if isinstance(a, argparse._SubParsersAction))
+        checked = 0
+        for raw in block[1].splitlines():
+            line = raw.split("#", 1)[0].strip()
+            tokens = line.split()
+            if not tokens or tokens[0] not in sub.choices:
+                continue
+            command = tokens[0]
+            expected, _ = self._actual(command)
+            self.assertEqual(
+                " ".join(self._quick_ref_positionals(line)),
+                expected,
+                f"{command}: quick ref line '{line}' does not show the parser's "
+                f"positionals '{expected}'",
+            )
+            checked += 1
+        self.assertGreaterEqual(checked, 7, f"only {checked} quick-ref usage lines were recognised")
+
+    def test_a_subcommand_cannot_report_its_own_usage(self) -> None:
+        """The reproducer for FIELD_BACKDOOR.md's claim that ``<command> --help`` is not self-describing.
+
+        Every subparser is built ``add_help=False``, so argparse treats ``--help`` as an
+        unrecognised argument and answers with the *top-level* usage plus an error that reads like a
+        complaint about the caller's arguments. That is what leaves a reader with no way to check the
+        argument shape from the CLI, and the guess it invites is ``--output``.
+        """
+        parser = build_command_parser()
+        sub = next(a for a in parser._actions if isinstance(a, argparse._SubParsersAction))
+        for command in sorted(self._documented()):
+            with self.subTest(command=command):
+                self.assertFalse(
+                    sub.choices[command].add_help,
+                    f"{command} now answers --help on its own; the claim in FIELD_BACKDOOR.md that "
+                    f"a subcommand cannot report its usage is stale and should be removed",
+                )
