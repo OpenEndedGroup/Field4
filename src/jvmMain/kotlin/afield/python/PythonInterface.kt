@@ -1066,11 +1066,28 @@ def _field_embed_show(box, iframe_html):
     from afield.python import PythonInterface
     PythonInterface.hasHadOutput = True
 
-# Both axes are in px, deliberately not "100%". PythonInterface.EMBED_IFRAME_STYLE is the single
-# definition and carries the reason; a test holds it to pixels.
+# Both axes are in px, deliberately not "100%". PythonInterface.EMBED_IFRAME_STYLE carries the
+# reason; a test holds it to pixels. It is NOT the only place the frame is styled -- field.css's
+# `.afield-embed-frame` is the other half, and the background has to agree in both.
 _FIELD_IFRAME_STYLE = "${EMBED_IFRAME_STYLE}"
 
+# The embedded document paints its own background, and a full plotly/bokeh page defaults to a
+# white body -- which lands as a bright slab inside a dark box no matter what the IFRAME is set to.
+# `plotly_dark` colours the figure's paper, not the page around it. So neutralise the page: only the
+# backdrop, so anything the document actually draws still wins.
+#
+# The trade is real and one-directional: a document that assumes a white page and draws dark text on
+# it (a folium legend, a light-theme bokeh toolbar) now draws that dark text over Field's dark box.
+# Pass `template="plotly_dark"` or the equivalent, as this page's example does.
+_FIELD_EMBED_RESET = "<style>html,body{background:transparent !important;margin:0;padding:0;}</style>"
+
 def _field_embed_document(box, full_html):
+    lowered = full_html.lower()
+    head = lowered.find("<head>")
+    if head >= 0:
+        full_html = full_html[:head + 6] + _FIELD_EMBED_RESET + full_html[head + 6:]
+    else:
+        full_html = _FIELD_EMBED_RESET + full_html
     srcdoc = full_html.replace("&", "&amp;").replace('"', "&quot;")
     iframe = '<iframe class="afield-embed-frame" style="' + _FIELD_IFRAME_STYLE + '" srcdoc="' + srcdoc + '"></iframe>'
     _field_embed_show(box, iframe)
