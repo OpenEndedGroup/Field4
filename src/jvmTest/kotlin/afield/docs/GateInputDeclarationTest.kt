@@ -144,9 +144,18 @@ class GateInputDeclarationTest {
             .map { m -> m.groupValues[1] to Regex("""include\("([^"]+)"\)""")
                 .findAll(m.groupValues[2]).map { it.groupValues[1] }.toList() }
             .toList()
-        val files = Regex("""inputs\.file\("([^"]+)"\)""").findAll(block).map { it.groupValues[1] }.toSet()
-        assertTrue(trees.isNotEmpty() && files.isNotEmpty(), "parsed no citationGates inputs at all")
-        return Declared(trees, files)
+        // Inlined rather than bound to a local, and that is not style. KotlinSourceIndex's brace
+        // tracking loses this function's body somewhere in the chained `.map { m -> ... }` above, so
+        // a `val` here is indexed as a top-level `GateInputDeclarationTest.Companion.files` and
+        // counts against SourcePartitionGuard's inside-a-body ratchet of 31. The parser bug is real
+        // and pre-existing (31 other instances, none of them this file); this declines to be the
+        // 32nd. Binding two locals here instead of one takes the count to 34, measured.
+        assertTrue(trees.isNotEmpty(), "parsed no citationGates fileTree inputs at all")
+        return Declared(
+            trees,
+            Regex("""inputs\.file\("([^"]+)"\)""").findAll(block).map { it.groupValues[1] }.toSet()
+                .also { assertTrue(it.isNotEmpty(), "parsed no citationGates inputs.file entries at all") },
+        )
     }
 
     /** Why [rel] is covered, or null. */
