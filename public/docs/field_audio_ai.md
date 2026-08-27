@@ -87,6 +87,12 @@ The preferred path transfers those vectors as binary MessagePack, temporally poo
 user-selected context and hop, and computes the display in Field through Smile, so projection
 choices stay live-code parameters rather than neural jobs.
 
+For a fast, inspectable complement, [short-time spectral spaces](audio_ai_spectral_embeddings.md)
+retain normalized mel mass, absolute log-mel, MFCC, and scalar spectral trajectories in one cached
+librosa job. Field can then compare exact mel-Wasserstein, log-mel, and cepstral distances with MDS
+or t-SNE. These views use the same synchronized playhead contract as speech spaces, but require no
+model checkpoint or GPU.
+
 Move from analysis into source-derived navigation with the
 [corpus microscope](audio_ai_corpus_microscope.md), then continue with the
 [EnCodec reconstruction microscope](audio_ai_codec.md) and the

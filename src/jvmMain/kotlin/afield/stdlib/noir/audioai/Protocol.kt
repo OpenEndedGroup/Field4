@@ -767,7 +767,9 @@ data class AnalysisNote(
  * [operation]: `analysis.beats` fills [beatTimesSeconds] and a series per tempo scale,
  * `analysis.pitch_mono` fills F0 and voiced-probability series, `analysis.pitch_poly` fills
  * [notes] plus two activation series, and `analysis.embed_speech` fills voice activity, energy,
- * novelty, and MDS coordinate series while retaining the full learned embedding in the NPZ.
+ * novelty, and MDS coordinate series while retaining the full learned embedding in the NPZ;
+ * `analysis.embed_spectral` fills energy, centroid, flatness, rolloff, and flux while its dense mel,
+ * log-mel, and MFCC frames remain in NPZ and MessagePack artifacts.
  */
 @Serializable
 data class AnalysisPreview(

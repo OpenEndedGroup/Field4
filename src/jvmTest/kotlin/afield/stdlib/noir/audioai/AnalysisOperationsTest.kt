@@ -37,6 +37,16 @@ class AnalysisOperationsTest {
     }
 
     @Test
+    fun wrapsReusableShortTimeSpectralRepresentations() {
+        val request = spectralEmbeddingAnalysis(source, nMels = 80, nMfcc = 24)
+        assertEquals("analysis.embed_spectral", request.operation)
+        assertEquals("analysis.librosa", request.backendPreference)
+        assertEquals(882, request.parameters.getValue("hop_length").jsonPrimitive.content.toInt())
+        assertEquals(80, request.parameters.getValue("n_mels").jsonPrimitive.content.toInt())
+        assertEquals(24, request.parameters.getValue("n_mfcc").jsonPrimitive.content.toInt())
+    }
+
+    @Test
     fun wrapsBothLearnedSpeechSpacesBehindOneOperation() {
         val emotion = emotion2VecEmbeddingAnalysis(source, mdsLandmarks = 128)
         val wavlm = wavlmBasePlusEmbeddingAnalysis(source, layer = 7, chunkSeconds = 12.0)

@@ -41,6 +41,24 @@ data class SmileTsneProjection(
     val seed: Long,
 )
 
+/** Classical MDS over a caller-supplied symmetric dissimilarity matrix. */
+data class SmileMdsProximityProjection(
+    val coordinates: Array<DoubleArray>,
+    val scores: DoubleArray,
+    val proportion: DoubleArray,
+    val label: String,
+    val positiveCorrection: Boolean,
+)
+
+/** Exact t-SNE over a caller-supplied symmetric dissimilarity matrix. */
+data class SmileTsneProximityProjection(
+    val coordinates: Array<DoubleArray>,
+    val cost: Double,
+    val label: String,
+    val perplexity: Double,
+    val seed: Long,
+)
+
 /**
  * Project arbitrary equal-length vectors with Smile's classical MDS implementation.
  *
@@ -119,6 +137,20 @@ fun smileMds(
 
 private val smileTsneLock = Any()
 
+/** Project an explicit distance matrix; useful for transport, edit, and graph distances. */
+fun smileMdsDistances(
+    distances: Array<DoubleArray>,
+    dimensions: Int = 2,
+    label: String = "precomputed",
+    positiveCorrection: Boolean = true,
+): SmileMdsProximityProjection {
+    validateDistanceMatrix(distances, dimensions, "smileMdsDistances")
+    val model = MDS.fit(distances, MDS.Options(dimensions, positiveCorrection))
+    return SmileMdsProximityProjection(
+        model.coordinates(), model.scores(), model.proportion(), label, positiveCorrection,
+    )
+}
+
 /**
  * Project equal-length vectors with Smile's exact t-SNE implementation.
  *
@@ -184,6 +216,68 @@ fun smileTsne(
         perplexity = perplexity,
         seed = seed,
     )
+}
+
+/** Run fixed-seed t-SNE from an explicit distance matrix. */
+fun smileTsneDistances(
+    distances: Array<DoubleArray>,
+    dimensions: Int = 2,
+    label: String = "precomputed",
+    perplexity: Double = 30.0,
+    learningRate: Double = 200.0,
+    earlyExaggeration: Double = 12.0,
+    maxIterations: Int = 750,
+    seed: Long = 184_921L,
+): SmileTsneProximityProjection {
+    validateDistanceMatrix(distances, dimensions, "smileTsneDistances", minimumRows = 4)
+    require(perplexity.isFinite() && perplexity > 0.0 && perplexity < distances.size) {
+        "smileTsneDistances: perplexity must be positive and smaller than distances.size"
+    }
+    require(learningRate.isFinite() && learningRate > 0.0) {
+        "smileTsneDistances: learningRate must be finite and positive"
+    }
+    require(earlyExaggeration.isFinite() && earlyExaggeration >= 1.0) {
+        "smileTsneDistances: earlyExaggeration must be finite and at least 1"
+    }
+    require(maxIterations > 250) { "smileTsneDistances: maxIterations must be greater than 250" }
+    val options = TSNE.Options(
+        dimensions, perplexity, learningRate, earlyExaggeration, maxIterations,
+    )
+    val model = synchronized(smileTsneLock) {
+        MathEx.setSeed(seed)
+        TSNE.fit(distances, options)
+    }
+    return SmileTsneProximityProjection(
+        model.coordinates(), model.cost(), label, perplexity, seed,
+    )
+}
+
+private fun validateDistanceMatrix(
+    distances: Array<DoubleArray>,
+    dimensions: Int,
+    caller: String,
+    minimumRows: Int = 2,
+) {
+    require(distances.size >= minimumRows) { "$caller: at least $minimumRows rows are required" }
+    require(dimensions in 1 until distances.size) {
+        "$caller: dimensions must be between 1 and distances.size - 1"
+    }
+    distances.forEachIndexed { row, values ->
+        require(values.size == distances.size) {
+            "$caller: row $row has ${values.size} values; expected ${distances.size}"
+        }
+        values.forEachIndexed { column, value ->
+            require(value.isFinite() && value >= 0.0) {
+                "$caller: distance [$row,$column] must be finite and non-negative"
+            }
+            require(kotlin.math.abs(value - distances[column][row]) <= 1e-9) {
+                "$caller: distance matrix is not symmetric at [$row,$column]"
+            }
+        }
+        require(kotlin.math.abs(values[row]) <= 1e-12) {
+            "$caller: diagonal distance [$row,$row] must be zero"
+        }
+    }
 }
 
 private fun cosineDistanceMatrix(vectors: Array<DoubleArray>, caller: String): Array<DoubleArray> {

@@ -58,6 +58,48 @@ fun multiScaleBeatAnalysis(
     )
 }
 
+/**
+ * Short-time spectral shape for mel-transport, log-mel, and cepstral spaces.
+ *
+ * The worker retains one normalized mel distribution, one absolute log-mel vector and one MFCC
+ * vector per frame. Field chooses temporal pooling, distance, and projection later without rerunning
+ * this cached operation. The default 882-sample hop at 22.05 kHz is exactly 25 frames per second.
+ */
+fun spectralEmbeddingAnalysis(
+    source: AssetRegion,
+    hopLength: Int = 882,
+    nFft: Int = 2048,
+    nMels: Int = 64,
+    nMfcc: Int = 20,
+    fminHz: Double = 30.0,
+    fmaxHz: Double? = null,
+    backend: String? = "analysis.librosa",
+    requestedBy: String? = null,
+    forceRegenerate: Boolean = false,
+): ModelOperation {
+    require(hopLength > 0 && nFft > 0) { "hopLength and nFft must be positive" }
+    require(nMels >= 4) { "nMels must be at least 4" }
+    require(nMfcc in 1..nMels) { "nMfcc must be between 1 and nMels" }
+    require(fminHz >= 0.0) { "fminHz must be non-negative" }
+    require(fmaxHz == null || fmaxHz > fminHz) { "fmaxHz must be greater than fminHz" }
+    return ModelOperation(
+        operation = "analysis.embed_spectral",
+        inputs = listOf(source),
+        parameters = buildJsonObject {
+            put("hop_length", hopLength)
+            put("n_fft", nFft)
+            put("n_mels", nMels)
+            put("n_mfcc", nMfcc)
+            put("fmin_hz", fminHz)
+            fmaxHz?.let { put("fmax_hz", it) }
+        },
+        candidateCount = 1,
+        backendPreference = backend,
+        requestedBy = requestedBy,
+        forceRegenerate = forceRegenerate,
+    )
+}
+
 /** Frame-wise monophonic F0 and voiced probability from probabilistic YIN. */
 fun monophonicPitchAnalysis(
     source: AssetRegion,

@@ -40,8 +40,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 74 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
-not in the same way, and the difference is worth knowing before you trust one. 55 of them are
+All 75 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+not in the same way, and the difference is worth knowing before you trust one. 56 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
 error-kind output line. (Almost always that is every box in the file. A transcript may
@@ -857,6 +857,14 @@ synchronized phase-portrait renderer without
 downloading model weights; the complete local source-to-result path remains explicit in box 3.
 Walkthrough: [Speech-reactive learned spaces](audio_ai_speech_embeddings.md).
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/audio_ai_speech_embeddings/metadata.edn)
+
+**audio_ai_spectral_embeddings** — Find or import `near_drowning.wav`, submit and monitor one
+model-free librosa spectral job, retain its 25 Hz mel, log-mel, MFCC, and diagnostic trajectories,
+then decode the binary artifact once and compare mel-Wasserstein, log-mel cosine, and MFCC Euclidean
+t-SNE phase portraits. The first two boxes explain and exercise the synchronized renderer without a
+service; box 3 owns the complete source-to-result path.
+Walkthrough: [Short-time spectral spaces](audio_ai_spectral_embeddings.md).
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/audio_ai_spectral_embeddings/metadata.edn)
 
 **audio_ai_corpus_microscope** — Resolve Nancy and Final Out at Candlestick Park, submit and monitor
 multi-scale segmentation and grouped descriptor jobs, then use a six-second Nancy window to retrieve

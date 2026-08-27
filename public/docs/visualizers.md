@@ -1174,6 +1174,39 @@ Exact classical MDS remains available through
 `speechEmbeddingSmilePreview`; both paths support cosine and Euclidean distance without rerunning
 the neural analysis.
 
+### Short-time spectral phase portraits
+
+`spectralEmbeddingPreviewVisualizationHtml(preview)` uses the same two phase portraits and shared
+time bus for a Field-owned MDS or t-SNE projection of mel, log-mel, or MFCC frames. The lower strip
+shows energy, mel-distribution flux, and spectral centroid; path opacity follows normalized flux.
+Hovering reports time, energy, flux, centroid, and flatness, and clicking seeks any linked audio
+visualizer.
+
+One `analysis.embed_spectral` result contains all three representations, so decode once and create
+several views without another job:
+
+```diffstatic {data-lang=kotlin}
+client.analysisPreview(result.id).thenCombineAsync(
+    client.spectralEmbeddingFrames(
+        result, durationSeconds = 10.0, poolMillis = 200.0, hopMillis = 40.0,
+    )
+) { preview, frames ->
+    listOf(
+        SpectralEmbeddingDistance.MEL_WASSERSTEIN,
+        SpectralEmbeddingDistance.LOG_MEL_COSINE,
+        SpectralEmbeddingDistance.MFCC_EUCLIDEAN,
+    ).map { distance ->
+        preview.withSpectralProjection(frames.tsne(distance = distance, dimensions = 4))
+    }
+}.thenAccept { previews ->
+    display("spaces", spectralEmbeddingPreviewDashboardHtml(previews, syncGroup = "recording"))
+}
+```
+
+The complete [short-time spectral walkthrough](audio_ai_spectral_embeddings.md) and
+`audio_ai_spectral_embeddings` transcript show source lookup/import → durable job → progress →
+binary artifact → temporal pooling → three Field Smile spaces → bidirectional audition.
+
 The same visualizer can begin with sound generated inside Field. `renderPatWav`, `renderDirtWav`,
 `renderDoughWav`, `renderFaustWavAsync`, and `recordSonicPiWav` all produce a
 `RenderedAudioFile`; `client.analyzeRenderedAudio(render)` imports it and returns a

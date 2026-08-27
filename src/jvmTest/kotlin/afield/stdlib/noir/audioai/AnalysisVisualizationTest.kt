@@ -114,4 +114,29 @@ class AnalysisVisualizationTest {
         assertContains(html, "data-sync=\"near-drowning\"")
         assertContains(html, "data-time-offset=\"7.0\"")
     }
+
+    @Test
+    fun spectralPhasePortraitUsesFluxAndTheSharedAudioBus() {
+        val times = listOf(0.0, 0.5, 1.0)
+        val preview = AnalysisPreview(
+            operation = "analysis.embed_spectral",
+            durationSeconds = 1.0,
+            series = listOf(
+                series("energy_dbfs"), series("spectral_flux"), series("spectral_centroid_hz"),
+                series("spectral_flatness"),
+            ) + (0..3).map { axis ->
+                AnalysisSeries(
+                    "tsne_$axis", "t-SNE $axis", timesSeconds = times,
+                    values = times.map { it + axis },
+                )
+            },
+        )
+        val html = spectralEmbeddingPreviewVisualizationHtml(
+            preview, width = 920, syncGroup = "spectral-test",
+        )
+        assertContains(html, "data-kind=\"spectral\"")
+        assertContains(html, "blue energy · amber mel flux · violet centroid")
+        assertContains(html, "field-time-cursor")
+        assertContains(html, "data-sync=\"spectral-test\"")
+    }
 }

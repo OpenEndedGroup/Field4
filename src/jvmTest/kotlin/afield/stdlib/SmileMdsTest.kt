@@ -33,6 +33,20 @@ class SmileMdsTest {
     }
 
     @Test
+    fun projectsAnExplicitDistanceMatrix() {
+        val points = doubleArrayOf(0.0, 0.2, 0.7, 1.0, 1.8)
+        val distances = Array(points.size) { a ->
+            DoubleArray(points.size) { b -> kotlin.math.abs(points[a] - points[b]) }
+        }
+        val projection = smileMdsDistances(
+            distances, dimensions = 2, label = "earth mover", positiveCorrection = false,
+        )
+        assertEquals("earth mover", projection.label)
+        assertEquals(points.size, projection.coordinates.size)
+        assertTrue(projection.coordinates.all { row -> row.size == 2 && row.all(Double::isFinite) })
+    }
+
+    @Test
     fun tsneIsFiniteAndReproducibleForAFixedSeed() {
         val vectors = Array(30) { row ->
             DoubleArray(8) { column ->
