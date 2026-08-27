@@ -1289,6 +1289,35 @@ val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationG
     inputs.files(fileTree("dev_docs") { include("**/*.md") })
         .withPropertyName("guardedDevDocs")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+    // The non-Kotlin, non-Markdown *code* these guards scrape. Same lesson as the two blocks above,
+    // one step further out: a Kotlin edit invalidates this task through the test classpath and a
+    // Markdown edit through the file trees, but a change to a source file in a language that is on
+    // no JVM classpath invalidates nothing at all.
+    //
+    // Measured 2026-08-27, before these lines existed: planting a sixth
+    // `static let … = "head: …"` span in `native/field-visionos/Field4Vision/Pose/PoseLatency.swift`
+    // — the population `ProseNumeralContractTest`'s `visionPoseDeviceSpans` derives, and the number
+    // `public/docs/vision.md` publishes — left `citationGates` reporting
+    // `> Task :citationGates UP-TO-DATE` and `BUILD SUCCESSFUL in 924ms`. The gate did not re-run at
+    // all, so its green was a cached verdict about the previous contents of a file it exists to read.
+    // With the declaration below the same edit re-runs the task and it fails on the count.
+    inputs.files(fileTree("native") { include("**/*.swift") })
+        .withPropertyName("guardedNativeSources")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    // `CitationContractTest.theInputThatRulesOutTheGradleMarkerIsReallyInThisRepo` asserts on the
+    // shape of this in-repo Gradle subproject — its own settings.gradle.kts, and no `.git` of its
+    // own — because that shape is the premise behind `CitationGuard.isForeignCheckout` not treating
+    // it as a nested checkout. It acquiring a `.git` must not be able to pass stale.
+    inputs.files(fileTree("tools/code-use-semantic-sidecar") {
+        include("settings.gradle.kts")
+        include("src/main/kotlin/**")
+    })
+        .withPropertyName("guardedSidecarSubproject")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    // `CitationContractTest.noGuardedPageCitesIntoASubmoduleByAnAbbreviatedPath` reads the submodule
+    // list out of this file and fails when it is empty, so adding or removing a submodule changes
+    // what that guard checks.
+    inputs.file(".gitmodules").withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 tasks.named("compileKotlinJvm") {
