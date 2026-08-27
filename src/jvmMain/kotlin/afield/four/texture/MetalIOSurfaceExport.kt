@@ -29,6 +29,22 @@ object MetalIOSurface {
 
     private val pIOSurfaceGetID: Long by lazy { ioSurfaceLibrary.getFunctionAddress("IOSurfaceGetID") }
     private val pIOSurfaceLookup: Long by lazy { ioSurfaceLibrary.getFunctionAddress("IOSurfaceLookup") }
+    private val pIOSurfaceLookupFromMachPort: Long by lazy {
+        ioSurfaceLibrary.getFunctionAddress("IOSurfaceLookupFromMachPort")
+    }
+    private val pIOSurfaceCreateMachPort: Long by lazy {
+        ioSurfaceLibrary.getFunctionAddress("IOSurfaceCreateMachPort")
+    }
+
+    private val coreFoundationLibrary: SharedLibrary by lazy {
+        runCatching { apiCreateLibrary("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation") }
+            .getOrElse { apiCreateLibrary("CoreFoundation") }
+    }
+    private val pCFRelease: Long by lazy { coreFoundationLibrary.getFunctionAddress("CFRelease") }
+
+    private val systemLibrary: SharedLibrary by lazy { apiCreateLibrary("/usr/lib/libSystem.B.dylib") }
+    private val pMachTaskSelf: Long by lazy { systemLibrary.getFunctionAddress("mach_task_self") }
+    private val pMachPortDeallocate: Long by lazy { systemLibrary.getFunctionAddress("mach_port_deallocate") }
 
     /**
      * `IOSurfaceRef IOSurfaceLookup(IOSurfaceID)` — resolve a process-global id back to a local
@@ -39,6 +55,41 @@ object MetalIOSurface {
     fun lookup(id: Long): Long {
         if (id == 0L) return 0L
         return JNI.callPP(id and 0xFFFF_FFFFL, pIOSurfaceLookup)
+    }
+
+    /**
+     * Resolve an IOSurface send right that has already been transferred into this process. The
+     * returned IOSurfaceRef is retained; [release] balances it. This does not consume [port].
+     */
+    fun lookupFromMachPort(port: Int): Long {
+        if (port == 0) return 0L
+        return JNI.callP(port, pIOSurfaceLookupFromMachPort)
+    }
+
+    /**
+     * Create a send right for [ioSurfaceRef]. The returned port name is local to this process;
+     * transfer the right in a Mach message rather than sending its integer value over ordinary IPC.
+     * The caller owns the right and must eventually call [deallocateMachPort].
+     */
+    fun createMachPort(ioSurfaceRef: Long): Int {
+        if (ioSurfaceRef == 0L) return 0
+        return JNI.callPI(ioSurfaceRef, pIOSurfaceCreateMachPort)
+    }
+
+    /** Drop this process's send right after [lookupFromMachPort] retained the IOSurface. */
+    fun deallocateMachPort(port: Int) {
+        if (port == 0) return
+        val task = JNI.callI(pMachTaskSelf)
+        val result = JNI.callI(task, port, pMachPortDeallocate)
+        check(result == 0) { "mach_port_deallocate failed: $result" }
+    }
+
+    /**
+     * Balances the retain performed by [lookup] or [lookupFromMachPort]. Call only after every
+     * Vulkan object importing the returned IOSurfaceRef has been destroyed.
+     */
+    fun release(ioSurfaceRef: Long) {
+        if (ioSurfaceRef != 0L) JNI.callPV(ioSurfaceRef, pCFRelease)
     }
 
     /**

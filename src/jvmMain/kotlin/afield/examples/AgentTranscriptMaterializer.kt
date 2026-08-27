@@ -76,6 +76,8 @@ object AgentTranscriptMaterializer {
      */
     internal val EXCLUDE = setOf(
         "afield_four_traditional_triangle",
+        // A macOS receiver integration smoke, not a user-facing starting scene.
+        "external_browser_surface_macos_smoke",
         "graphics_renderer_launch",
         "remotear_scene_motion",
         "tone_synth_sequence",

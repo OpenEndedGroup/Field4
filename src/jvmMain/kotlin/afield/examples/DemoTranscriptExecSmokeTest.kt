@@ -303,6 +303,9 @@ object DemoTranscriptExecSmokeTest {
         "rectsl_sdf_live",
         "spin_glass",
         "imgui_vr_panel",
+        // Exercises IOSurface/Mach-port import, a Vulkan copy, and a graphics-fence callback on
+        // macOS. CI still compiles both boxes everywhere; the tracked backdoor replay runs it live.
+        "external_browser_surface_macos_smoke",
         // Needs a camera, which CI does not have. Compiling without evaluating is also what keeps this
         // hermetic: the box's `clipEncode(…)` calls and its Depth Anything session are behind lazy
         // initialisation, so nothing here fetches the ~600MB of encoders that running it would.

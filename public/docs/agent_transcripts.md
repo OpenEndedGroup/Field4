@@ -6,7 +6,7 @@ an agent copies, runs, and adapts when [automating Field](automating_field.md).
 
 These are the same scenes offered as **Starting points** on the [welcome screen](history_overview.md):
 each transcript that is a self-contained scene is materialized into an openable document, so you can
-search for it there and open an editable copy in your workspace. Four are not, and say so in their
+search for it there and open an editable copy in your workspace. Five are not, and say so in their
 entry — a transcript that needs an external asset, a user gesture in a browser, or a renderer from a
 box outside itself makes a broken starting point, so none is offered.
 
@@ -40,13 +40,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 74 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+All 75 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
 not in the same way, and the difference is worth knowing before you trust one. 54 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
 error-kind output line. (Almost always that is every box in the file. A transcript may
 create a box it does not execute — one that wants a device the build does not have, or that is meant to fail so a
-diagnostic can be shown — and only the ops it actually writes down are replayed.) 13 want
+diagnostic can be shown — and only the ops it actually writes down are replayed.) 14 want
 something the lightweight build does not own — a GLFW window and Vulkan renderer, an external audio
 service, or a camera — so those are **built and compiled**: the graph is assembled through the real
 apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal evaluation —
@@ -1048,6 +1048,15 @@ transcript does not exercise.
 ![The full packed side-by-side stereo frame: the ImGui panel rendered twice, one per eye, against black](assets/imgui_vr_panel/imgui-vr-panel.png)
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/imgui_vr_panel/metadata.edn)
+
+**external_browser_surface_macos_smoke** — The receiver half of a web UI on a VR texture, exercised
+against real macOS GPU objects: an IOSurface-backed render target becomes a Mach send right, is
+looked up through the same port path an Electron producer must use, imported through
+`VK_EXT_metal_objects`, and copied into a stable sampled image. The box reads that resident image
+back as `32,128,223` and accepts only a `PRESENTED` release that arrived after the graphics fence.
+CI compiles the graph on every OS; the tracked backdoor replay is the live macOS test. It is an
+integration probe rather than a welcome-screen starting point, so no materialized document is
+offered here.
 
 ## Graphics building blocks
 
