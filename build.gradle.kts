@@ -1253,6 +1253,10 @@ val citationGuardTestClasses = listOf(
     // is the only task that declares dev_docs/**.md as an input, so it is the only one that cannot go
     // UP-TO-DATE after a Markdown-only edit. See dev_docs/impossibility_claims.md.
     "afield.docs.ImpossibilityClaimContractTest",
+    // "Compiled is not run": which APIs a published page teaches that CI only ever type-checks. Here
+    // for the same reason as the two above — it reads Markdown and transcript yaml, so it must not be
+    // able to inherit an UP-TO-DATE result from an unchanged test classpath.
+    "afield.docs.DocumentedApiEvaluationTest",
 )
 
 // These tests read Markdown and JavaScript directly from the checkout. Keeping them inside the broad
@@ -1318,6 +1322,11 @@ val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationG
     // list out of this file and fails when it is empty, so adding or removing a submodule changes
     // what that guard checks.
     inputs.file(".gitmodules").withPathSensitivity(PathSensitivity.RELATIVE)
+    // The agent transcript corpus. It lives under `dev_docs` but it is yaml, so the `**/*.md` tree
+    // above does not see it — and it is the whole population `DocumentedApiEvaluationTest` measures.
+    inputs.files(fileTree("dev_docs/agents/transcripts") { include("**/*.yaml") })
+        .withPropertyName("guardedTranscriptCorpus")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 tasks.named("compileKotlinJvm") {
