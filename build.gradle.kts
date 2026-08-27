@@ -19,6 +19,7 @@ import java.net.InetSocketAddress
 import java.net.Socket
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.nio.file.StandardCopyOption
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
 import java.util.concurrent.atomic.AtomicBoolean
@@ -95,8 +96,17 @@ val vectorizationJvmArgs = listOf(
 val ffmpegVersion = "6.1.1-1.5.10"
 val opencvVersion = "4.9.0-1.5.10"
 val openblasVersion = "0.3.26-1.5.10"
+val arpackVersion = "3.9.1-1.5.10"
 val javacppVersion = "1.5.10"
 val javacvVersion = "1.5.10"
+val bytedecoPlatformClassifier = when {
+    osName.startsWith("Linux") && normalizedOsArch in setOf("aarch64", "arm64") -> "linux-arm64"
+    osName.startsWith("Linux") -> "linux-x86_64"
+    osName.startsWith("Mac") || osName.startsWith("Darwin") ->
+        if (normalizedOsArch in setOf("aarch64", "arm64")) "macosx-arm64" else "macosx-x86_64"
+    osName.startsWith("Win") -> "windows-x86_64"
+    else -> error("Unsupported Bytedeco platform: $osName-$osArch")
+}
 //val kotlinWrappersVersion = "1.0.0-pre.621"
 val electronDir = layout.projectDirectory.dir("electron")
 fun abletonLinkNativeLibraryName(): String {
@@ -994,6 +1004,7 @@ kotlin {
                 implementation("com.github.quickhull3d:quickhull3d:1.0.0")
                 implementation("com.github.haifengl:smile-core:$smileVersion")
                 implementation("com.github.haifengl:smile-kotlin:$smileVersion")
+                implementation("org.msgpack:msgpack-core:0.9.12")
                 implementation("org.clojure:clojure:1.11.3")
                 implementation("org.clojure:tools.reader:1.5.1")
                 implementation("compliment:compliment:0.5.5")
@@ -1139,6 +1150,82 @@ tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
         val name = key.toString()
         if (name.startsWith("afield.")) systemProperty(name, value.toString())
     }
+}
+
+// Smile 5's manifold solvers use Java FFM and therefore need a discoverable BLAS/LAPACK library.
+// Field already ships Bytedeco OpenBLAS for JavaCV. Reuse it, add the matching Bytedeco ARPACK
+// runtime, and expose both under the unversioned names Smile requests rather than requiring system
+// BLAS/LAPACK packages.
+val smileOpenBlasRuntime by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+dependencies {
+    add(smileOpenBlasRuntime.name, "org.bytedeco:openblas:$openblasVersion:$bytedecoPlatformClassifier")
+    add(smileOpenBlasRuntime.name, "org.bytedeco:arpack-ng:$arpackVersion:$bytedecoPlatformClassifier")
+}
+val smileNativeDirectory = layout.buildDirectory.dir("smile-native")
+val prepareSmileNative = tasks.register<org.gradle.api.tasks.Sync>("prepareSmileNative") {
+    from({ smileOpenBlasRuntime.map { zipTree(it) } }) {
+        include(
+            "**/libopenblas.so.0", "**/libopenblas*.dylib", "**/libopenblas.dll",
+            "**/libarpack.so.*", "**/libarpack*.dylib", "**/libarpack.dll",
+        )
+        eachFile { path = name }
+        includeEmptyDirs = false
+    }
+    into(smileNativeDirectory)
+    doLast {
+        val directory = smileNativeDirectory.get().asFile.toPath()
+        fun alias(prefix: String, target: String) {
+            val source = Files.list(directory).use { files ->
+                files.filter { it.fileName.toString().startsWith(prefix) }.findFirst().orElseThrow()
+            }
+            val destination = directory.resolve(target)
+            if (source != destination) Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING)
+        }
+        when {
+            osName.startsWith("Linux") -> {
+                alias("libopenblas", "libopenblas.so")
+                alias("libarpack", "libarpack.so")
+            }
+            osName.startsWith("Mac") || osName.startsWith("Darwin") -> {
+                alias("libopenblas", "libopenblas.dylib")
+                alias("libarpack", "libarpack.dylib")
+            }
+            else -> {
+                alias("libopenblas", "openblas.dll")
+                alias("libarpack", "arpack.dll")
+            }
+        }
+    }
+}
+
+fun org.gradle.process.JavaForkOptions.useSmileNative() {
+    val nativePath = smileNativeDirectory.get().asFile.absolutePath
+    systemProperty("smile.lib.lapack", "openblas")
+    systemProperty("smile.lib.arpack", "arpack")
+    systemProperty("java.library.path", nativePath)
+    val pathVariable = when {
+        osName.startsWith("Win") -> "PATH"
+        osName.startsWith("Mac") || osName.startsWith("Darwin") -> "DYLD_LIBRARY_PATH"
+        else -> "LD_LIBRARY_PATH"
+    }
+    environment(
+        pathVariable,
+        listOf(nativePath, System.getenv(pathVariable).orEmpty())
+            .filter(String::isNotBlank)
+            .joinToString(File.pathSeparator),
+    )
+}
+
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    dependsOn(prepareSmileNative)
+    useSmileNative()
+}
+tasks.withType<JavaExec>().configureEach {
+    dependsOn(prepareSmileNative)
+    useSmileNative()
 }
 
 // Measurement fixtures deliberately print publishable timing/search data and make no assertions.

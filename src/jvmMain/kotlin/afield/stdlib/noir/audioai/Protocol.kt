@@ -683,7 +683,7 @@ data class CodecReconstructionResult(
  * Everything an `analysis.*` job produced — as stored assets, not as numbers.
  *
  * [data] is an `.npz` archive of the full-resolution arrays and [artifacts] holds anything else the
- * backend emitted (a MIDI transcription, for instance). Nothing here is plottable as it stands: for
+ * backend emitted (a MIDI transcription or Field-readable embedding MessagePack, for instance). Nothing here is plottable as it stands: for
  * a display, ask for the downsampled [AnalysisPreview] through `FieldAudioClient.analysisPreview`,
  * or hand this whole value to `analysisVisualizationHtml`, which fetches the preview in the
  * browser. Download [data] only when you want the exact arrays in the JVM.
@@ -702,7 +702,7 @@ data class AnalysisResult(
     val source: AssetRegion,
     /** The main product: an `.npz` of the analysis arrays, with an `analysis_…` role. */
     val data: AssetRepresentation,
-    /** Secondary products — transcribed MIDI, for example. Empty for backends that emit none. */
+    /** Secondary products — transcribed MIDI or a `speech_embedding_messagepack`, for example. */
     val artifacts: List<AssetRepresentation> = emptyList(),
     /** Backend-chosen headline numbers, e.g. an overall tempo estimate. Free-form. */
     val summary: JsonObject = JsonObject(emptyMap()),
@@ -765,8 +765,9 @@ data class AnalysisNote(
  * which is why this is safe to fetch for a long recording and why it is *not* the value to measure
  * anything from — download [AnalysisResult.data] for that. Which fields are populated depends on
  * [operation]: `analysis.beats` fills [beatTimesSeconds] and a series per tempo scale,
- * `analysis.pitch_mono` fills F0 and voiced-probability series, and `analysis.pitch_poly` fills
- * [notes] plus two activation series.
+ * `analysis.pitch_mono` fills F0 and voiced-probability series, `analysis.pitch_poly` fills
+ * [notes] plus two activation series, and `analysis.embed_speech` fills voice activity, energy,
+ * novelty, and MDS coordinate series while retaining the full learned embedding in the NPZ.
  */
 @Serializable
 data class AnalysisPreview(

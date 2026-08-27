@@ -40,8 +40,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 73 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
-not in the same way, and the difference is worth knowing before you trust one. 54 of them are
+All 74 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+not in the same way, and the difference is worth knowing before you trust one. 55 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
 error-kind output line. (Almost always that is every box in the file. A transcript may
@@ -848,6 +848,15 @@ confidence, monophonic F0, voicing and polyphonic notes on synchronized timeline
 boxes are model-free and remain runnable without the analysis worker.
 Walkthrough: [Beat and pitch analysis](audio_ai_analysis.md).
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/audio_ai_analysis/metadata.edn)
+
+**audio_ai_speech_embeddings** — Find or import `near_drowning.wav`, submit revision-pinned
+emotion2vec and WavLM Base+ frame-embedding jobs, follow both through replaceable progress cards
+and the durable monitor, then pool 500 ms of evidence at 25 Hz and play the recording through Smile
+t-SNE axes 0×1 and 2×3 in each learned space. The first two boxes explain and exercise the
+synchronized phase-portrait renderer without
+downloading model weights; the complete local source-to-result path remains explicit in box 3.
+Walkthrough: [Speech-reactive learned spaces](audio_ai_speech_embeddings.md).
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/audio_ai_speech_embeddings/metadata.edn)
 
 **audio_ai_corpus_microscope** — Resolve Nancy and Final Out at Candlestick Park, submit and monitor
 multi-scale segmentation and grouped descriptor jobs, then use a six-second Nancy window to retrieve

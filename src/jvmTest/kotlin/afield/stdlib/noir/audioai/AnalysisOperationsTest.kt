@@ -37,6 +37,20 @@ class AnalysisOperationsTest {
     }
 
     @Test
+    fun wrapsBothLearnedSpeechSpacesBehindOneOperation() {
+        val emotion = emotion2VecEmbeddingAnalysis(source, mdsLandmarks = 128)
+        val wavlm = wavlmBasePlusEmbeddingAnalysis(source, layer = 7, chunkSeconds = 12.0)
+
+        assertEquals("analysis.embed_speech", emotion.operation)
+        assertEquals("analysis.emotion2vec", emotion.backendPreference)
+        assertEquals("analysis.embed_speech", wavlm.operation)
+        assertEquals("analysis.wavlm_base_plus", wavlm.backendPreference)
+        assertEquals(7, wavlm.parameters.getValue("wavlm_layer").jsonPrimitive.content.toInt())
+        assertEquals(12.0, wavlm.parameters.getValue("chunk_seconds").jsonPrimitive.content.toDouble())
+        assertEquals(4, wavlm.parameters.getValue("mds_dimensions").jsonPrimitive.content.toInt())
+    }
+
+    @Test
     fun rendersRangeAwareAnalysisCanvas() {
         val result = AnalysisResult(
             id = "analysis_test",
