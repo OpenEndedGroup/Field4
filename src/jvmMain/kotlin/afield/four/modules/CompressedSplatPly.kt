@@ -282,6 +282,79 @@ object CompressedSplatPly {
     }
 
     /**
+     * A file's quantized payload, read but not decoded: [CHUNK_RANGE_COUNT] range floats per chunk
+     * (the colour six left zero when the file omits them) and the four packed words per splat, in
+     * file order.
+     *
+     * This is what a consumer wants when it is going to produce its own vertex layout anyway.
+     * [readCompressedSplatPly] followed by a re-pack walks the data three times and materializes a
+     * 14-float table nobody keeps; from here a decoder can go straight to its own layout in one
+     * pass. See `GaussianSplatRenderer.packInto`.
+     */
+    class RawSplats(
+        val chunkRanges: FloatArray,
+        /** `[position, rotation, scale, colour]` per splat, 4 ints each. */
+        val packed: IntArray,
+        val count: Int,
+        val hasChunkColors: Boolean
+    ) {
+        val chunkCount: Int get() = chunkRanges.size / CHUNK_RANGE_COUNT
+
+        /** Offset into [chunkRanges] of the chunk that owns [splat]. */
+        fun rangeBase(splat: Int): Int = (splat / CHUNK_SIZE) * CHUNK_RANGE_COUNT
+    }
+
+    /**
+     * Read [path]'s quantized payload without decoding it: one pass over the file, two arrays out
+     * and nothing per-splat but four `getInt`s.
+     */
+    fun readRaw(path: String): RawSplats {
+        val file = File(path)
+        require(file.exists()) { "PLY file not found: $path" }
+        return RandomAccessFile(file, "r").use { raf ->
+            val header = parseFloatTableHeader(raf)
+            val layout = when (val recognition = recognise(header)) {
+                is Recognition.Compressed -> recognition.layout
+                is Recognition.Malformed ->
+                    error("'$path' looks like a compressed splat PLY but ${recognition.reason}")
+                Recognition.Plain ->
+                    error("'$path' is not a compressed splat PLY — it has no packed_* vertex properties")
+            }
+            val order =
+                if (header.format == PlyTableFormat.BINARY_BIG_ENDIAN) ByteOrder.BIG_ENDIAN
+                else ByteOrder.LITTLE_ENDIAN
+            val blocks = readElementBlocks(raf, header, setOf("chunk", "vertex"), order, path)
+            val vertex = blocks.getValue("vertex")
+
+            // Property offsets resolved once. Doing this by name per splat is what made the old
+            // decode-then-pack path spend more time in HashMap than in arithmetic.
+            val stride = vertex.stride
+            val bytes = vertex.bytes
+            val positionAt = vertex.byteOffsets.getValue("packed_position")
+            val rotationAt = vertex.byteOffsets.getValue("packed_rotation")
+            val scaleAt = vertex.byteOffsets.getValue("packed_scale")
+            val colorAt = vertex.byteOffsets.getValue("packed_color")
+
+            val count = layout.splatCount
+            val packed = IntArray(count * 4)
+            for (splat in 0 until count) {
+                val row = splat * stride
+                val out = splat * 4
+                packed[out] = bytes.getInt(row + positionAt)
+                packed[out + 1] = bytes.getInt(row + rotationAt)
+                packed[out + 2] = bytes.getInt(row + scaleAt)
+                packed[out + 3] = bytes.getInt(row + colorAt)
+            }
+            RawSplats(
+                chunkRanges = chunkRangesOf(blocks.getValue("chunk"), layout),
+                packed = packed,
+                count = count,
+                hasChunkColors = layout.hasChunkColors
+            )
+        }
+    }
+
+    /**
      * Unpack an already-open, already-recognised compressed PLY. [raf] may be positioned anywhere;
      * this seeks for itself.
      */
@@ -319,17 +392,7 @@ object CompressedSplatPly {
         }
         val out = ByteBuffer.allocateDirect(outBytes.toInt()).order(order).asFloatBuffer()
 
-        // Chunk ranges, hoisted out of the per-splat loop: 18 floats each, read once.
-        val chunkRanges = FloatArray(layout.chunkCount * CHUNK_RANGE_COUNT)
-        for (chunkIndex in 0 until layout.chunkCount) {
-            val base = chunkIndex * CHUNK_RANGE_COUNT
-            for ((rangeIndex, name) in chunkRangeOrder.withIndex()) {
-                chunkRanges[base + rangeIndex] =
-                    if (name in colorChunkProperties && !layout.hasChunkColors) 0f
-                    else chunkBlock.float(chunkIndex, name)
-            }
-        }
-
+        val chunkRanges = chunkRangesOf(chunkBlock, layout)
 
         for (splat in 0 until count) {
             val base = (splat / CHUNK_SIZE) * CHUNK_RANGE_COUNT
@@ -461,6 +524,29 @@ object CompressedSplatPly {
 
         fun byte(row: Int, property: String): Int =
             bytes.get(row * stride + byteOffsets.getValue(property)).toInt() and 0xff
+    }
+
+    /**
+     * The chunk element as a flat [CHUNK_RANGE_COUNT]-per-chunk array in [chunkRangeOrder], so a
+     * per-splat decode indexes it arithmetically instead of by name. The colour six read zero when
+     * the file has the 12-property chunk layout; nothing consults them in that case.
+     */
+    private fun chunkRangesOf(chunk: ElementBlock, layout: Layout): FloatArray {
+        val byteOffsets = IntArray(CHUNK_RANGE_COUNT) { index ->
+            val name = chunkRangeOrder[index]
+            if (name in colorChunkProperties && !layout.hasChunkColors) -1
+            else chunk.byteOffsets.getValue(name)
+        }
+        val out = FloatArray(layout.chunkCount * CHUNK_RANGE_COUNT)
+        for (chunkIndex in 0 until layout.chunkCount) {
+            val base = chunkIndex * CHUNK_RANGE_COUNT
+            val row = chunkIndex * chunk.stride
+            for (index in 0 until CHUNK_RANGE_COUNT) {
+                val at = byteOffsets[index]
+                out[base + index] = if (at < 0) 0f else chunk.bytes.getFloat(row + at)
+            }
+        }
+        return out
     }
 
     /**

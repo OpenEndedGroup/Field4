@@ -73,6 +73,93 @@ logit hits `GaussianSplatRenderer.decodeOpacity`'s finite guard, lands on `sigmo
 renders a solid splat half-transparent. On `frame_000012.compressed.ply` (883k splats) 10,385 splats
 — 1.2% — have a saturated opacity byte, so this is not hypothetical.
 
+## Streaming: the fused path
+
+Reading a file and then re-packing it walks the data three times and materializes a 14-float table
+nobody keeps. For playback — fifteen files a frame at 12–24 fps — use the fused path instead:
+
+    val cloud = GaussianSplatRenderer.streaming(capacity = 15 * 30_000,
+                    config = Config(sortMode = SortMode.None))
+    // per source frame:
+    val sources = files.mapIndexed { i, f ->
+        SplatSource(CompressedSplatPly.readRaw(f), circle[i])   // per-file transform
+    }
+    cloud.reupload(sources, sortAlong = Vector3f(0f, 0f, 1f))
+
+`CompressedSplatPly.readRaw` returns the quantized payload without decoding it;
+`GaussianSplatRenderer.packInto` takes N of those and writes the 16-float GPU layout **directly into
+the mapped storage buffer**, so there is no `FloatArray` to copy afterwards. One destination, one
+draw, and — if you sort — one order that is correct across sources rather than fifteen
+locally-correct orders that interleave wrongly.
+
+Two round trips disappear, because the compressed format already stores what the shader wants.
+Colour is linear 0..1 in the file, so `f_dc = (c - 0.5) / SH_C0` followed by `0.5 + SH_C0 * f_dc`
+cancels; opacity is stored post-sigmoid, so the logit and the sigmoid cancel too — which means the
+±30 clamp above never happens on this path and a saturated opacity byte comes out exact. The fused
+path is therefore both faster than `pack` *and* slightly more accurate.
+
+**Per-file transforms are baked at decode**, and that is nearly free because the per-file linear map
+folds into a congruence the decode already performs: the covariance is `A·S²·Aᵀ` with `A` the splat's
+own rotation, so a file transform `L` just makes it `(L·A)`. One 3×3 product per splat, +8% measured.
+The alternative — a source index in one of the three unused floats plus a matrix palette in its own
+buffer — is only worth it if the *arrangement* must move faster than the data refreshes. Sorting does
+not force the choice: `dot(L·p + t, d)` is `dot(p, Lᵀ·d) + dot(t, d)`, so an untransformed position
+sorts in world order against a per-source direction and offset at no per-splat cost, which is what
+`packInto` does.
+
+### Measured, on a real 15-file frame
+
+309,555 splats over 15 files, 4.9 MB, M4-class laptop, 10 cores. A 24 fps frame is 41.7 ms.
+
+| | ms | % of frame |
+|---|---|---|
+| fused decode, no transform, no sort | 20.9 | 50% |
+| fused decode + transforms baked | 22.4 | 54% |
+| + CPU back-to-front sort (`Arrays.sort`) | 37.9 | 91% |
+| + CPU sort, parallel (`Arrays.parallelSort`) | 27.2 | 65% |
+| + re-reading the files from disk | ~35 | ~84% |
+| 4-thread decode, unsorted | 6.1 | 15% |
+| the old decompress-then-`pack` path | 59.4 | 142% |
+
+The sort of 310k longs is 16.7 ms sequential and 2.8 ms parallel; the scattered read that emitting in
+sorted order implies costs only 1–2 ms, because the raw payload is 5 MB and stays in cache. So
+`parallelSort` is the default in `packInto`, and **CPU sorting once per source frame is comfortably
+affordable** — which is the right trade when a frame is on screen for ~10 headset frames, since a
+depth-map capture's sort order stays valid for any view near the source camera.
+
+`pack` over a `PlyFloatTable` is still there and is now ~4× faster than it was: it used to rebuild
+`"scale_$index"` and a `listOf` of alternatives *per splat* and hash each one, which cost more than
+all its arithmetic. The column indices are resolved once now.
+
+### Rewriting the buffer every frame
+
+`streaming()` sets `perFrameSplatData`, which gives the splat buffer one slot per swapchain image.
+`FrameBufferGroup` then does the right thing without any further machinery: a write lands in the
+current image's slot and is recorded as last-written, and `getGPUAddress` resolves to the
+**last written** slot, not the current one. A 12 fps source into a 90 Hz display is therefore safe —
+the frames that skip a reupload read the most recent upload.
+
+Measured on a 3-image swapchain, writing once and then watching ten frames:
+
+    frame 0: WROTE at currentImage=2, lastWritten=2
+    frame 1: currentImage=0  get()=slot0  getLastWritten()=slot2  same=false
+    frame 2: currentImage=1  get()=slot1  getLastWritten()=slot2  same=false
+    frame 3: currentImage=2  get()=slot2  getLastWritten()=slot2  same=true
+
+**The trap is the binding, not the buffer.** `push.bind("splatData") { splatData.result.get() }` pins
+the address to `renderer.currentImage` and reads an unwritten slot two frames in three; binding the
+*group* — `push.bind("splatData") { splatData.result }` — gets last-written semantics. With
+`perFrame = false` the group holds one buffer and the two are indistinguishable, which is why the
+one-shot path never noticed.
+
+### SortMode.None
+
+Builds no depth-key compute pass, no radix sort, no bucket sorter and no per-frame pre-target. Use it
+when the splats are already back-to-front (pass `sortAlong` to `reupload`) or when the blend does not
+care — `Blend.Additive`, `Screen`, `Multiply` and `Max` all report `orderIndependent`. `sortedIndices`
+is still allocated and filled with the identity once, so one vertex shader serves both paths and the
+GPU reads it as a coalesced pass-through.
+
 ## Verification
 
 `PlyLoaderUnitTest` Tests 9–12, in the `four.ply-loader.smoke` FIELD_TEST:
