@@ -600,26 +600,28 @@ length achieves that.
 val truth  = sphere(0.62) + cylinder(2.20, 0.28)
 val target = truth.sampleField(count = 3000, seed = 17)
 
-val model = (cuboid(1.0) + cylinder(1.0, 1.0)).parameterize {
+val model = (cuboid(1.0) + cylinder(1.0, 1.0).turned(y = 1.0)).parameterize {
     param("cubeSize")  { it.node == "Cuboid" }                                  // one number, all three extents
     param("barHeight") { it.node == "Cylinder" && it.field == "height" }
     param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") }
+    param("barTilt")   { it.node == "Rotate" && it.field == "y" }               // an ANGLE, in degrees
 }.orThrow()
 
 val fit = model.fitParameters(
     target,
-    start = doubleArrayOf(1.35, 1.60, 0.42),
-    SolidFitOptions(method = OptimizeMethod.ADAM, iterations = 1200, learningRate = 0.015),
+    start = doubleArrayOf(1.35, 1.60, 0.42, 25.0),
+    SolidFitOptions(method = OptimizeMethod.ADAM, iterations = 6000, learningRate = 0.015),
 )
 
 fit.report()
-// fit 3 parameter(s) in 387 iterations (gradient)
-//   cubeSize           1.350000  ->      0.855280
-//   barHeight          1.600000  ->      2.197219
-//   barRadius          0.420000  ->      0.281340
-//   loss           6.999584e-02  ->  3.766271e-03
-//   rms distance   2.645673e-01  ->  6.136995e-02
-//   improvement    18.58x
+// fit 4 parameter(s) in 4176 iterations (gradient)
+//   cubeSize           1.350000  ->      0.855279
+//   barHeight          1.600000  ->      2.197225
+//   barRadius          0.420000  ->      0.281335
+//   barTilt           25.000000  ->     -0.009525
+//   loss           7.044887e-02  ->  3.766267e-03
+//   rms distance   2.654221e-01  ->  6.136992e-02
+//   improvement    18.71x
 ```
 
 And the picture, because "the cylinder matches and the cube does not" is a claim about shapes:
@@ -633,16 +635,17 @@ import afield.stdlib.OptimizeMethod
 val truth = sphere(0.62) + cylinder(2.20, 0.28)
 val target = truth.sampleField(count = 3000, seed = 17)
 
-val model = (cuboid(1.0) + cylinder(1.0, 1.0)).parameterize {
+val model = (cuboid(1.0) + cylinder(1.0, 1.0).turned(y = 1.0)).parameterize {
     param("cubeSize") { it.node == "Cuboid" }
     param("barHeight") { it.node == "Cylinder" && it.field == "height" }
     param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") }
+    param("barTilt") { it.node == "Rotate" && it.field == "y" }
 }.orThrow()
 
-val seed = doubleArrayOf(1.35, 1.60, 0.42)
+val seed = doubleArrayOf(1.35, 1.60, 0.42, 25.0)
 val fit = model.fitParameters(
     target, seed,
-    SolidFitOptions(method = OptimizeMethod.ADAM, iterations = 1200, learningRate = 0.015),
+    SolidFitOptions(method = OptimizeMethod.ADAM, iterations = 6000, learningRate = 0.015),
 )
 println(fit.report())
 
@@ -660,30 +663,51 @@ threeGrid(
 )
 ```
 
-![Three panels in a row, flat grey wireframe on a dark background. Left, labelled "model at the seed, loss 7.000e-02", a large cube so much bigger than its rod that the rod does not emerge — it shows only as a circular outline on the cube's front face. Middle, labelled "fitted, loss 3.766e-03 (18.6x)", a smaller cube with a rod passing right through it and protruding well beyond. Right, labelled "target, a SPHERE and a cylinder", a sphere with a rod of visibly the same length and thickness as the middle panel's, so the two rods match while one body is a cube and the other is a sphere](assets/solid_notation/partial.png)
+![Three panels in a row, flat grey wireframe on a dark background. Left, labelled "model at the seed, loss 7.045e-02", a large cube with its rod almost entirely buried inside it — the rod shows only as a slanted outline on the cube's front face, tilted about 25 degrees off the axis. Middle, labelled "fitted, loss 3.766e-03 (18.7x)", a smaller cube with the rod now square to it, passing right through and protruding well beyond. Right, labelled "target, a SPHERE and a cylinder", a sphere with a rod of visibly the same length, thickness and orientation as the middle panel's, so the two rods match while one body is a cube and the other is a sphere](assets/solid_notation/partial.png)
 
 Compare the rods: same length, same thickness, in the middle and right panels. Then compare the
 bodies: a cube and a sphere, and no amount of further descent changes that.
 
-The cylinder recovered: `2.197219` against a true `2.20`, and `0.281340` against a true `0.28` —
-0.13% and 0.48% out. The cube settled at `0.855280`, and there is no truth to compare that against,
+The cylinder recovered on all three of its numbers: `2.197225` against a true `2.20` and
+`0.281335` against a true `0.28` — 0.13% and 0.48% out — and `barTilt`, seeded a full **25° off**,
+came back to `-0.009525°`. The cube settled at `0.855279`, and there is no truth to compare that against,
 because there is no side length that makes a cube a sphere. What there is instead is a bound: a cube
 that fits a sphere of radius `R` at all has a side between the inscribed cube's `2R/√3 = 0.7159` and
 the circumscribed cube's `2R = 1.2400`. `0.855280` sits inside that interval, nearer the inscribed
 end — which is what a least-squares fit on a *field* should do, since the sphere's field is closer to
 the inscribed cube's over most of the sampled volume than to the circumscribed one's.
 
+Worth noticing what the tilt costs at the optimum: **nothing**. The four-parameter fit's residual,
+`3.766267e-03`, is the three-parameter fit's `3.766271e-03` to six figures. A parameter that *can* be
+recovered is free once it has been; the residual is paid entirely by the one that cannot.
+
 **The residual is `3.77e-03`, not `4.6e-22`.** Nineteen orders of magnitude, and that gap is the
 whole difference between the two problems: the first loss went to zero because zero was reachable,
 this one stopped at 2.79% of the target's longest extent because that is as close as a cube gets to
 a sphere. Both descents converged. Only one of them was right.
 
-Which is the point, and it is uncomfortable: **the report does not tell you which of its three
-numbers to believe.** `cubeSize`, `barHeight` and `barRadius` are printed identically, and two are
-measurements while the third is a negotiation. Nothing in the loss distinguishes them. What
+Which is the point, and it is uncomfortable: **the report does not tell you which of its four
+numbers to believe.** `cubeSize`, `barHeight`, `barRadius` and `barTilt` are printed identically, and
+three are measurements while the fourth is a negotiation. Nothing in the loss distinguishes them. What
 distinguishes them is knowing that half your model can represent half your target — and if you do
 not know that, a plausible number is what you get. `SolidSLPartialRecoveryTest` asserts both halves
 separately for exactly this reason: the cylinder against its truth, the cube against its interval.
+
+??? aside "Why this fit needs 6000 iterations when the recovery fit needed 14"
+
+    `barTilt` is measured in **degrees** and everything else is measured in **units of the shape**,
+    and `SolidFitOptions` carries one `learningRate` for all of them. ADAM's step is bounded by that
+    rate, so a parameter whose natural scale is ~25 moves at the same ~0.015 per iteration as one
+    whose natural scale is ~1. At `iterations = 1200` this fit stopped on `max iterations` with
+    `barTilt 25.000000 -> 5.752590`: not stalled, not stuck in a local minimum, simply still walking
+    — 19.25° in 1200 steps is exactly the step cap times the iteration count. At 6000 it converges on
+    the gradient tolerance in 4176.
+
+    So the cost of the angle is about **10x the iterations** of the same fit without it (4176 against
+    387), and none of that is the rotation being non-convex — which it also is, but that is not what
+    was happening here. If you add an angle to a fit and it seems to stall, check the arithmetic
+    before you change optimizer: `iterations x learningRate` against the distance the parameter has
+    to travel.
 
 !!! note "A cube that never enters the union has no gradient at all"
 

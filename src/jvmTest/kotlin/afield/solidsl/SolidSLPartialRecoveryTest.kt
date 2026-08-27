@@ -46,12 +46,17 @@ class SolidSLPartialRecoveryTest {
 
         val target = truth.sampleField(count = 3000, seed = 17)
 
-        val model = (cuboid(1.0) + cylinder(1.0, 1.0)).parameterize {
+        val model = (cuboid(1.0) + cylinder(1.0, 1.0).turned(y = 1.0)).parameterize {
             // One parameter drives all three of the cuboid's extents, so the box stays a cube and
             // cannot cheat by growing into a sphere-ish slab.
             param("cubeSize") { it.node == "Cuboid" }
             param("barHeight") { it.node == "Cylinder" && it.field == "height" }
             param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") }
+            // The fourth, and the only one that is an ANGLE. The target's cylinder is axis-aligned,
+            // so the truth here is 0 degrees -- but the loss cannot tell 0 from 180, because a
+            // cylinder is symmetric under a half turn. That is a property of the shape, not a defect
+            // in the fit, and it is why the assertion below is modulo 180.
+            param("barTilt") { it.node == "Rotate" && it.field == "y" }
         }.orThrow()
 
         // The seed matters more here than in a recovery fit, and not for convergence-speed
@@ -61,13 +66,13 @@ class SolidSLPartialRecoveryTest {
         // and reported `cubeSize 0.400000 -> 0.400000`: not slow, not stuck, simply invisible to
         // the loss. So the cube starts *outside* its own admissible interval and has to come down
         // into it, which also means the descent has to move it to succeed.
-        val seed = doubleArrayOf(1.35, 1.60, 0.42)
+        val seed = doubleArrayOf(1.35, 1.60, 0.42, 25.0)
         val fit = model.fitParameters(
             target,
             seed,
             // Hard edges meeting a union make a piecewise-smooth landscape; the line search stalls
             // on it and reports convergence. Same lesson as SolidSLApproximationTest.
-            SolidFitOptions(method = OptimizeMethod.ADAM, iterations = 1200, learningRate = 0.015),
+            SolidFitOptions(method = OptimizeMethod.ADAM, iterations = 6000, learningRate = 0.015),
         )
 
         println(fit.report())
@@ -77,12 +82,16 @@ class SolidSLPartialRecoveryTest {
         val gotCube = named.getValue("cubeSize")
         val gotHeight = named.getValue("barHeight")
         val gotRadius = named.getValue("barRadius")
+        val gotTilt = named.getValue("barTilt")
+        // A cylinder is symmetric under a half turn, so 0 and 180 are the same shape.
+        val tiltError = kotlin.math.abs(((gotTilt % 180.0) + 180.0) % 180.0).let { minOf(it, 180.0 - it) }
 
         val inscribed = 2.0 * sphereRadius / sqrt(3.0)
         val circumscribed = 2.0 * sphereRadius
         println(
             "  cylinder truth   height %.6f radius %.6f".format(barHeight, barRadius) +
                 "\n  cylinder fitted  height %.6f radius %.6f".format(gotHeight, gotRadius) +
+                "\n  tilt truth 0 deg, fitted %.6f deg (error %.6f deg, mod 180)".format(gotTilt, tiltError) +
                 "\n  cube             fitted %.6f, admissible [%.6f, %.6f]".format(gotCube, inscribed, circumscribed) +
                 "\n  residual rms     %.6e  (%.3f%% of the target's longest extent)"
                     .format(fit.rmsError, 100.0 * fit.rmsError / barHeight)
@@ -116,6 +125,10 @@ class SolidSLPartialRecoveryTest {
         assertTrue(
             kotlin.math.abs(gotRadius - barRadius) < 0.02,
             "barRadius recovered as $gotRadius against a true $barRadius",
+        )
+        assertTrue(
+            tiltError < 3.0,
+            "barTilt recovered as $gotTilt deg, ${tiltError} deg from axis-aligned (mod 180)",
         )
 
         // 5. The counterfactual, measured in this run. Floored at 12x against a measured 18.6x:
