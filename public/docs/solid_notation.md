@@ -408,6 +408,162 @@ reordering a `Difference` (non-commutative). A rewrite that is nearly right is w
 which is the same discipline as the refusals. Every rule is checked by sampling the field at 4000
 points with **zero sign flips** permitted.
 
+## A third reading: the derivative
+
+The two readings above are both *evaluations*. Neither changes what you can **ask** the notation
+for. `afield.rectsl.RectSLFn` made the argument one step further in 2D and it ports:
+
+> a track that lowers to an `Fn` is a track you can take the derivative of, and therefore a track you
+> can **solve**: declare where a rect should be at some instant and let a gradient find the numbers
+> that put it there.
+
+`Fn` itself does not port — it is `(Double) -> Double`, and a solid is a function of `(x, y, z)`
+*and* of however many numbers the author wants to fit. The tool that does is
+`afield.stdlib.AD`: reverse-mode automatic differentiation over `Double`. So `SolidGradient.kt` is
+`SolidField.kt`'s `toField3` transposed line for line into `AD` arithmetic, and the two are meant to
+be read side by side.
+
+Reverse mode and not forward, because the objective is one scalar loss over many sample points and a
+handful of parameters: one forward pass and one backward sweep give *every* parameter derivative,
+where forward mode costs a pass per parameter. The position gradient is three more inputs and falls
+off the same tape for free.
+
+### Naming the numbers
+
+A `SolidExpr` has no names in it — it is an anonymous tree of `data class`es — so a parameter is
+bound to a **structural address**:
+
+```diffstatic {data-lang=kotlin}
+val part = smoothUnion(sphere(0.45), cylinder(1.90, 0.16), k = 0.18)
+
+part.numericSlots()
+// SmoothUnion/a/Sphere.radius = 0.45
+// SmoothUnion/b/Cylinder.height = 1.9
+// SmoothUnion/b/Cylinder.radiusLow = 0.16
+// SmoothUnion/b/Cylinder.radiusHigh = 0.16
+// SmoothUnion.k = 0.18
+
+val template = part.parameterize {
+    param("sphereRadius", "SmoothUnion/a/Sphere.radius")
+    param("barHeight", "SmoothUnion/b/Cylinder.height")
+    param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") }   // both, tied
+}.orThrow()
+
+template.gradientAt(0.9, 0.0, 0.0, template.seed)
+// value 0.450000  dPos 1.000, 0.000, 0.000  dParam -1.000, 0.000, 0.000
+```
+
+`barRadius` drives **two** slots, which is how a symmetry constraint is written: "the bar is a
+cylinder, not a frustum", in the parameterisation rather than in a comment. A fit over two
+independently-varying radii and a fit over one shared radius are different problems and the notation
+should be able to say which is meant.
+
+`segments` is not in that list, and its absence is the first refusal. It is an integer facet count
+that `toScalarField()` ignores entirely — a `Sphere`'s field is a true sphere whatever its
+`segments` says — and that the exact lowering consumes as a number of polygon sides. Neither has a
+derivative with respect to it, for opposite reasons: one because the number has no effect at all, the
+other because its effect is a jump.
+
+### The reading is total; the *parameterisation* is where the refusals live
+
+`exactSolid()` refuses five nodes. This reading refuses none, and that is a finding rather than an
+omission: every node with a field form has a differentiable form, because `AD` is closed over
+everything `Field3` uses. What is not total is *binding a parameter*, and there are seven refusals
+there — an address that does not resolve (with the ones that do, in the message), a predicate that
+matched nothing, a name declared twice, two names claiming one number, tied slots holding
+inconsistent seeds, and two seed values that would make the lowering singular before the first step
+(a `Scale` factor at zero, a blend radius at zero).
+
+The interesting part is that the shape of it **inverts** the exact lowering's:
+
+| node | `toScalarField` | `exactSolid` | the gradient |
+|---|---|---|---|
+| `SmoothUnion` | native | **refused** — the fillet lies on neither operand | native, and **C¹**: no kink at all |
+| `SmoothDifference` | native | **refused** | native, C¹ |
+| `Gyroid` | native | **refused** — not a bounded volume | native; one `abs` kink on the mid-sheet |
+| `Round` | native | **refused** — would not converge | native, exactly `f − r` |
+| `Union` | native | native | a subgradient on the seam, split 0.5/0.5 |
+
+The two nodes the exact kernel refuses hardest are the two this reading is *best* at. If a shape is
+going to be fitted, `smoothUnion` and `smoothDifference` are the operators to write it with, and
+`gradientNotes()` — the third notes function, beside `fieldNotes()` and `allRefusals()` — will say so
+about your own expression.
+
+### The kink convention was already decided, and that is what makes it checkable
+
+A distance field is nothing but kinks: `min` and `max` *are* CSG, `abs` is `Shell` and `Gyroid`,
+`sqrt` at zero is every radial primitive's own centre. `autodiff.kt` had already chosen — `abs`,
+`min` and `max` split the derivative **0.5/0.5 at an exact tie** — and had already said why: that is
+"precisely what a central difference reports at a kink, so the analytic gradient and the
+finite-difference oracle *agree there too*".
+
+Which means the CSG seam does not have to be carved out of a finite-difference census. Over a census
+of every construct in the algebra:
+
+> **18 of 18 `SolidExpr` nodes and 11 of 11 `Profile` nodes**, 179 bound parameters, one exclusion
+> (a full 360° revolve, where a central difference straddles two different lowerings). Worst floored
+> relative disagreement **1.7e-8** on the parameter gradient and **1.5e-8** on the position gradient.
+
+And the number that keeps that honest: the oracle declines to speak where a central difference
+disagrees with itself between step `h` and `h/2`, which happens at genuine singularities. **95.9% of
+parameter-gradient components and 93.8% of position components were usable**, both printed and both
+floored by the test — because a differential test where the oracle refused everything reads as a
+pass.
+
+The `.value` half has a second implementation to check against instead, which is
+[the same argument](#the-headline-two-evaluations-and-how-far-apart-they-land) applied to a third
+column: **worst relative disagreement 2.9e-7** against `toScalarField()`, which shares no line of
+code with it and reaches a caller through `Float`, whose own resolution is about `1.2e-7`.
+
+### And therefore: inverse design
+
+```diffstatic {data-lang=kotlin}
+val target = template.withValues(doubleArrayOf(0.45, 1.90, 0.16)).sampleField(count = 2400, seed = 91)
+val fit = template.fitParameters(target, start = doubleArrayOf(0.26, 1.05, 0.34))
+
+fit.report()
+// fit 3 parameter(s) in 14 iterations (gradient)
+//   sphereRadius       0.260000  ->      0.450000
+//   barHeight          1.050000  ->      1.900000
+//   barRadius          0.340000  ->      0.160000
+//   loss           2.140904e-02  ->  4.609346e-22
+//   improvement    4.645e+19x
+
+fit.fitted        // an ordinary SolidExpr again: marchable, GLSL-able, printable
+```
+
+Three parameters, seeded 42%, 45% and 112% wrong, recovered to about `1e-10` in fourteen iterations.
+`initialLoss` is in the same object as `loss`, measured in the same run, because "the fit improved
+things" is unfalsifiable without the counterfactual beside it.
+
+Rendered, the seed misplaces **32.1% of the target's own silhouette** and the fitted solid is
+**pixel-identical** to it. That comparison is a test rather than a screenshot: `SolidSLInverseRenderProofTest`
+pins one camera across all three frames — `MeshView.distance` is in bounding-sphere radii, so
+auto-framing would have rendered a shape and a 1.5× copy of it at the same apparent size — and
+asserts both directions, because a "before" that already looked like the answer would make the
+"after" free.
+
+### What makes a parameter refuse to move
+
+This is the failure mode of inverse design, and it is worth naming because it presents as a
+*converged* optimisation. A hard `Union` is a pointwise `min`, so it hands the **whole** derivative to
+whichever child is nearest. A child that is nowhere nearest — a small sphere swallowed inside a large
+one — receives exactly `0.0` from every sample, and a descent on its radius stops immediately because
+the gradient really is zero.
+
+```diffstatic {data-lang=kotlin}
+unionOf(listOf(sphere(1.0), sphere(0.25))).parameterize { … }
+    .fitParameters(target, …).deadParameters      // [inner]
+
+smoothUnion(sphere(1.0), sphere(0.25), k = 0.9).parameterize { … }
+    .fitParameters(target, …).deadParameters      // []
+```
+
+`SolidFit.deadParameters` reports which parameters had an exactly-zero gradient at the start, so that
+reads as a diagnosis. It is reported rather than thrown on, because a legitimately dead parameter is a
+fine thing to have in a vector — a fit over six holes where one is genuinely irrelevant — and it is
+the *unexpectedly* dead one that looks like a success.
+
 ## Conventions, all of them upstream's
 
 Primitives are centred on the origin. Beyond that, nothing is tidied up:
@@ -458,3 +614,15 @@ which is what a torus is.
 
 All three need nothing but Field; the second needs no Manifold at all. The first and third print a
 clear "install Manifold" message and fall back to the field lowering when it is absent.
+
+For the differentiable reading there is a second document, `dev_docs/agents/demos/solidsl_inverse/metadata.edn`,
+and it needs **no Manifold at all** — marching cubes and the mesh rasteriser are both pure Kotlin.
+Open it in Field (**File ▸ Open**) and run its three boxes:
+
+- **a solid, and its exact gradient** — the slot census, a template, and `checkGradient` against
+  central differences computed in the box. The last probe is the ball's own centre, where the
+  *parameter* gradient is exact and the *position* gradient is `NaN` and the check says so.
+- **inverse design** — the fit above, with the loss curve, the seed and the fitted solid all in the
+  same output, so the counterfactual is a picture in the frame rather than a number in a comment.
+- **what refuses, and the one that does not** — all seven parameterisation refusals with their
+  reasons, then a swallowed child dying under a hard `Union` and living under a smooth one.
