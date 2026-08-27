@@ -505,10 +505,19 @@ of every construct in the algebra:
 > relative disagreement **1.7e-8** on the parameter gradient and **1.5e-8** on the position gradient.
 
 And the number that keeps that honest: the oracle declines to speak where a central difference
-disagrees with itself between step `h` and `h/2`, which happens at genuine singularities. **95.9% of
-parameter-gradient components and 93.8% of position components were usable**, both printed and both
-floored by the test — because a differential test where the oracle refused everything reads as a
-pass.
+disagrees with itself between step `h` and `h/2`, which happens at genuine singularities. **100.0% of
+parameter-gradient components (4272 of 4272) and 100.0% of position components (1944 of 1944) were
+usable**, both printed and both floored by the test at 98% — because a differential test where the
+oracle refused everything reads as a pass.
+
+Those two numbers read 95.9% and 93.8% until 2026-08-27, and what closed the gap is worth more than
+the gap. Not one of the "untrustworthy" components was a singularity in the geometry: every one was
+a `NaN` coming out of the *lowering* — `sqrt(0)`'s derivative is `+∞`, reverse mode multiplied it by
+a clamp's zero partial, and the gradient was `NaN` throughout the interior of every cuboid — and the
+check had been filing it under "the oracle has no opinion here", which is the same verdict it gives
+at a real kink. A differential test can report 95.9% coverage of a derivative that does not exist.
+`SolidGradientCheck` now asks the two questions separately: whether the oracle is trustworthy, and
+whether the lowering returned a number at all. The second is asserted to be always yes.
 
 The `.value` half has a second implementation to check against instead, which is
 [the same argument](#the-headline-two-evaluations-and-how-far-apart-they-land) applied to a third
