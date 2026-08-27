@@ -261,46 +261,80 @@ fun SolidExpr.gradientAgreement(
  * gradient takes there. So the two agree at kinks as well as away from them, and a CSG seam does not
  * have to be excluded from a census.
  *
- * @param usable false when the oracle itself is untrustworthy at this point: the finite difference
- *   disagrees with itself between step `h` and step `h/2` by more than the truncation error can
- *   explain, which happens at a genuine singularity (a sphere's centre, a polygon's outline). A check
- *   with `usable = false` carries no verdict — and a census must count how many of those there were,
- *   because a test that silently skipped every point would pass.
+ * # The verdict is per component, and there is a verdict about the verdict
+ *
+ * [usableComponents] marks which entries the oracle is willing to speak about. A central difference
+ * is `O(h²)`, so halving `h` should barely move it; if it moves a lot, the third derivative is
+ * enormous or the function is not differentiable at this point at all, and the numerical answer is
+ * not evidence about anything. That happens at a sphere's own centre, on a polygon's outline, and
+ * within `h` of any kink — a real property of distance fields, not a weakness of the analytic side.
+ *
+ * Per *component* rather than per *point* because the alternative loses most of the census: a
+ * twisted star extrusion has twenty-six parameters, and one of them being near its own kink is not a
+ * reason to discard the verdict on the other twenty-five.
+ *
+ * And a census that counts the unusable ones is the only kind worth running. A check with nothing
+ * usable has no verdict, and a suite of those passes silently — which is exactly the failure
+ * `RectSLFnBackendTest` documents guarding against. [usableCount] against [size] is the number to
+ * print and then floor.
  */
 data class SolidGradientCheck(
     val analytic: DoubleArray,
     val numerical: DoubleArray,
+    /** The same central difference at half the step — what [usableComponents] is decided from. */
+    val numericalHalfStep: DoubleArray,
     val step: Double,
-    val usable: Boolean,
 ) {
-    /** The largest absolute disagreement across the components. */
-    val maxAbsoluteError: Double
-        get() = analytic.indices.maxOfOrNull { abs(analytic[it] - numerical[it]) } ?: 0.0
+    /** How many components there are. */
+    val size: Int get() = analytic.size
+
+    /** Which components the numerical oracle is prepared to have an opinion about. */
+    val usableComponents: BooleanArray = BooleanArray(analytic.size) { i ->
+        numerical[i].isFinite() && numericalHalfStep[i].isFinite() && analytic[i].isFinite() &&
+            abs(numerical[i] - numericalHalfStep[i]) /
+            max(1.0, max(abs(numerical[i]), abs(numericalHalfStep[i]))) < 1e-4
+    }
+
+    /** How many of them, i.e. how much evidence this check actually carries. */
+    val usableCount: Int get() = usableComponents.count { it }
+
+    /** Whether there is any verdict here at all. */
+    val usable: Boolean get() = usableCount > 0
 
     /**
-     * The disagreement measured against a **floored** scale — `max(1, |analytic|, |numerical|)`.
+     * The disagreement over the usable components, measured against a **floored** scale —
+     * `max(1, |analytic|, |numerical|)`.
      *
      * The floor is the point. A relative error against a derivative that happens to be `1e-9` is
-     * meaningless and will fail any tolerance; a floor of 1 turns it into an absolute test exactly
-     * where an absolute test is the right one, and into a relative test where the derivative is large
-     * (a `Scale` factor's `1/s²` reaches the thousands).
+     * meaningless and fails any tolerance; a floor of 1 makes it an absolute test exactly where an
+     * absolute test is the right one, and a relative one where the derivative is large (a `Scale`
+     * factor's `1/s²` reaches the thousands).
+     *
+     * `0.0` when nothing is usable — which is why a caller must consult [usableCount] and not read a
+     * zero here as a pass.
      */
     val maxError: Double
-        get() = analytic.indices.maxOfOrNull { i ->
+        get() = analytic.indices.filter { usableComponents[it] }.maxOfOrNull { i ->
             abs(analytic[i] - numerical[i]) / max(1.0, max(abs(analytic[i]), abs(numerical[i])))
         } ?: 0.0
 
+    /** Which component disagreed the most, or `-1` when there is no verdict. */
+    val worstComponent: Int
+        get() = analytic.indices.filter { usableComponents[it] }.maxByOrNull { i ->
+            abs(analytic[i] - numerical[i]) / max(1.0, max(abs(analytic[i]), abs(numerical[i])))
+        } ?: -1
+
     override fun equals(other: Any?): Boolean =
         other is SolidGradientCheck && analytic.contentEquals(other.analytic) &&
-            numerical.contentEquals(other.numerical) && step == other.step && usable == other.usable
+            numerical.contentEquals(other.numerical) &&
+            numericalHalfStep.contentEquals(other.numericalHalfStep) && step == other.step
 
     override fun hashCode(): Int =
-        31 * (31 * (31 * analytic.contentHashCode() + numerical.contentHashCode()) + step.hashCode()) +
-            usable.hashCode()
+        31 * (31 * analytic.contentHashCode() + numerical.contentHashCode()) + step.hashCode()
 
     override fun toString(): String =
-        (if (usable) "" else "[UNUSABLE] ") + "max rel ${"%.3e".format(maxError)}  " +
-            "analytic [${analytic.joinToString(", ") { "%.6g".format(it) }}]  " +
+        "$usableCount/$size usable, max floored relative error ${"%.3e".format(maxError)} at " +
+            "component $worstComponent  analytic [${analytic.joinToString(", ") { "%.6g".format(it) }}]  " +
             "numerical [${numerical.joinToString(", ") { "%.6g".format(it) }}]"
 }
 
@@ -323,13 +357,9 @@ fun SolidTemplate.checkGradient(
     h: Double = 1e-5,
 ): SolidGradientCheck {
     val analytic = gradientAt(x, y, z, values).dParameters
-    val numerical = DoubleArray(size)
-    val half = DoubleArray(size)
-    for (i in 0 until size) {
-        numerical[i] = central(x, y, z, values, i, h)
-        half[i] = central(x, y, z, values, i, h / 2.0)
-    }
-    return SolidGradientCheck(analytic, numerical, h, usable = trustworthy(numerical, half))
+    val numerical = DoubleArray(size) { central(x, y, z, values, it, h) }
+    val half = DoubleArray(size) { central(x, y, z, values, it, h / 2.0) }
+    return SolidGradientCheck(analytic, numerical, half, h)
 }
 
 /** [checkGradient] for the position gradient — the surface normal. */
@@ -341,18 +371,23 @@ fun SolidTemplate.checkPositionGradient(
     h: Double = 1e-5,
 ): SolidGradientCheck {
     val analytic = gradientAt(x, y, z, values).dPosition
-    fun at(step: Double): DoubleArray {
-        val f = { px: Double, py: Double, pz: Double -> withValues(values).toField3().at(px, py, pz) }
-        return doubleArrayOf(
-            (f(x + step, y, z) - f(x - step, y, z)) / (2.0 * step),
-            (f(x, y + step, z) - f(x, y - step, z)) / (2.0 * step),
-            (f(x, y, z + step) - f(x, y, z - step)) / (2.0 * step),
-        )
-    }
-    val numerical = at(h)
-    return SolidGradientCheck(analytic, numerical, h, usable = trustworthy(numerical, at(h / 2.0)))
+    val field = withValues(values).toField3()
+    fun at(step: Double) = doubleArrayOf(
+        (field.at(x + step, y, z) - field.at(x - step, y, z)) / (2.0 * step),
+        (field.at(x, y + step, z) - field.at(x, y - step, z)) / (2.0 * step),
+        (field.at(x, y, z + step) - field.at(x, y, z - step)) / (2.0 * step),
+    )
+    return SolidGradientCheck(analytic, at(h), at(h / 2.0), h)
 }
 
+/**
+ * One component of the central difference.
+ *
+ * The tree is rebuilt and re-lowered per probe, which is `O(nodes)` and looks wasteful. It is the
+ * honest way: substituting into a [SolidExpr] and lowering it afresh is exactly what the *analytic*
+ * side is being compared against, so a shared cache between the two would be a shared assumption,
+ * and a shared assumption is the one thing a second opinion must not have.
+ */
 private fun SolidTemplate.central(
     x: Double,
     y: Double,
@@ -366,22 +401,6 @@ private fun SolidTemplate.central(
     val fu = withValues(up).toField3().at(x, y, z)
     val fd = withValues(down).toField3().at(x, y, z)
     return (fu - fd) / (2.0 * h)
-}
-
-/**
- * Whether a central difference agrees with itself when the step is halved.
- *
- * A central difference is `O(h²)`, so halving `h` should change the answer by about a quarter of
- * whatever it was already off by — a small change. A *large* change means the third derivative is
- * enormous or the function is not differentiable here at all, and the oracle has no verdict to give.
- * This is what marks a sphere's own centre unusable rather than declaring the analytic gradient wrong
- * there.
- */
-private fun trustworthy(a: DoubleArray, b: DoubleArray): Boolean {
-    if (a.any { !it.isFinite() } || b.any { !it.isFinite() }) return false
-    return a.indices.all { i ->
-        abs(a[i] - b[i]) / max(1.0, max(abs(a[i]), abs(b[i]))) < 1e-3
-    }
 }
 
 // ==============================================================================================
