@@ -51,5 +51,6 @@ notes. The entries below point to the canonical note for each maintained subsyst
 - [`FileWatchManager.md`](./FileWatchManager.md) / [`FileWatchManager_Testing.md`](./FileWatchManager_Testing.md) — watcher ownership map and focused end-to-end checks; implementation detail lives in KDoc
 - [`physics/SIMDVERLET_4_CONSTRAINTS.md`](./physics/SIMDVERLET_4_CONSTRAINTS.md) — SIMD Verlet constraint solver
 - [`NVFLOW_BINDINGS.md`](./NVFLOW_BINDINGS.md) — reconnaissance, not a contract: what an `afield.flow` binding to NVIDIA Flow would involve, the two integration paths and the buffer-only interop constraint that separates them, and the platform fact (Windows/Linux only) that decides where any of it can run
+- [`COMPRESSED_SPLAT_PLY.md`](./COMPRESSED_SPLAT_PLY.md) — reading PlayCanvas `.compressed.ply` Gaussian splats: the chunk/vertex/sh element layout, the four packed words and their bit fields, the quaternion largest-component trick, the one deliberate difference from the reference decoder (a saturated opacity byte inverts to an infinite logit, which renders 1.2% of a real capture half-transparent), and how the reader was checked against splat-transform itself
 
 `AGENTS.md` remains in the repository root because agent tooling expects it there.
