@@ -6,8 +6,9 @@ describes.
 
 The engineering journal records this being rediscovered from a new angle repeatedly. Each
 rediscovery finds a genuine instance, fixes it, and does not leave behind the shape, so the next
-pass starts from scratch. What follows is the shape, three checks that find it, and the measured
-results of running those checks over the guard family on 2026-08-27.
+pass starts from scratch. What follows is the shape, the checks that find it, and the measured
+results of running those checks over the guard family on 2026-08-27 — including two places the
+checks came back clean, which are worth recording for the same reason.
 
 ## The three shapes
 
@@ -147,6 +148,28 @@ Three false-evaluator traps showed up while building it, all of them the same de
 - The new guard's own prose scored as an evaluating `jvmTest` on its first run, which is how the
   `afield/docs` package came to be excluded from every evaluator population.
 
+## Two negative results, so the next pass can skip them
+
+Both were checked on 2026-08-27 and both came back clean. Recording a clean result is worth as much
+as recording a defect, because the alternative is somebody spending a night rediscovering that there
+was nothing there.
+
+**The smoke corpus does not have the exit-code-only shape.** All 150 `FIELD_TEST` blocks in `src/**`
+pin at least one observable beyond `exitCode: 0` — `stdoutContains` (136), `outputContains` (12),
+`eventKinds` (12), `stdout` (2), `screenshot` (2), `stdoutNotContains` (3). None passes purely on a
+process exiting.
+
+**The nine non-test `docsGates` dependencies re-run unconditionally**, as above: they are
+`JavaExec`/`Exec` with no declared inputs or outputs, so Gradle gives them no up-to-date check.
+
+Both of those numbers took three attempts to get right, and both times for the same reason: the
+first scan used an incomplete vocabulary. The exit-code census read 14 before it learned that
+`stdout:` and `stdoutContains:` are both spellings of the same thing, then 12 before it learned
+about `outputContains` and `eventKinds`, then 0. The documented-API census read 39 before excluding
+English words, then 8, then 5. **A census over a naming convention is only as good as the census's
+list of names, and the first draft of that list is always short.** Print the vocabulary the scan
+used, next to the count it produced.
+
 ## The checklist
 
 When writing or reviewing a guard:
@@ -162,11 +185,14 @@ When writing or reviewing a guard:
    direction. They want opposite repairs, and a red build that misnames its cause teaches a reader
    to skim the next one.
 6. Cross-check the guard's file reads against the task's declared inputs.
-7. Demonstrate the red. Delete the marker, empty the set, drop the input, run the gate, watch it
+7. Print the vocabulary a census matched on, beside the count. A census over a naming convention is
+   only as good as its list of names, and every scan on this page was wrong on its first draft for
+   exactly that reason.
+8. Demonstrate the red. Delete the marker, empty the set, drop the input, run the gate, watch it
    fail, restore. Record the message. A guard that has only ever been observed green is a guard
    whose failure path has never been executed.
 
-Point 7 is the one that pays. Every defect on this page was found by an A/B, and three of them were
+Point 8 is the one that pays. Every defect on this page was found by an A/B, and three of them were
 found in guards written the same night by someone actively looking for this failure mode.
 
 ## Where the instances are
