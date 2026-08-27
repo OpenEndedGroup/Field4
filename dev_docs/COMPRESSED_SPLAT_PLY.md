@@ -160,6 +160,36 @@ care — `Blend.Additive`, `Screen`, `Multiply` and `Max` all report `orderIndep
 is still allocated and filled with the identity once, so one vertex shader serves both paths and the
 GPU reads it as a coalesced pass-through.
 
+## Playback: sequence and transport
+
+[`SplatSequence`](../src/jvmMain/kotlin/afield/four/fabricated/SplatSequence.kt) is a directory of
+frames read in **any order**, because scrubbing jumps around; frames are held in a bounded
+most-recently-used cache so a shot longer than memory still works. `peakWindowSplats(window)` gives
+the capacity a streaming cloud needs — the true peak over any `window` consecutive frames, which on a
+124-frame capture came out 379,588 against 391,218 for the cruder "the 15 largest anywhere".
+
+`SplatTransport` is the play head: `playing`, `speed` (negative runs backwards), `loop`, `seek`,
+`scrubBy`, and `normalized` for a slider.
+
+The property worth having a class for is that **`advance()` reports whether the resolved frame
+actually changed**. At 12 fps into a 90 Hz display that is false six display frames in seven, and a
+scrub that stays inside one frame is false too — and every false is fifteen files not decoded to
+write identical bytes. Driven live from a fragment:
+
+    PROBE after seek(60) frame = 60
+    PROBE after scrubBy(-1) frame = 59
+    PROBE after normalized=0.25 frame = 31 of 124
+    PROBE ten 0.05-frame scrubs: 9 reported no change (no decode)
+
+There is also a stall guard: a ten-second gap — a breakpoint, a shader recompile, a GC pause —
+advances the head by `maxCatchUpSeconds` rather than by ten seconds of frames.
+
+It is clock-driven and fractional, so `position` accumulates rather than being derived from an
+origin. That drifts by a few times 1e-15 over a second, which is irrelevant to playback but means an
+assertion pinned to landing exactly on a frame boundary is asserting the floating-point accumulation.
+`SplatTransportTest` asserts the *rate* and the quiet-frame proportion instead. Twelve tests, no GPU
+needed — the transport is the one part of this path that is pure arithmetic.
+
 ## Verification
 
 `PlyLoaderUnitTest` Tests 9–12, in the `four.ply-loader.smoke` FIELD_TEST:
