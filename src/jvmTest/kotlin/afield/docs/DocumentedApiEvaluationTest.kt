@@ -147,77 +147,6 @@ class DocumentedApiEvaluationTest {
         const val GUARD_PACKAGE_DIR = "/afield/docs/"
     }
 
-    /**
-     * Kotlin source with `//` and block comments blanked, string literals left intact.
-     *
-     * Both halves are deliberate and they pull in opposite directions.
-     *
-     * **Comments out**, because a KDoc worked example is not an evaluation. `afield/onnx/Clip.kt`
-     * carries three `clipEncode("…")` calls in its own documentation, and the un-stripped scan read
-     * the declaration site's KDoc as proof that the declaration is exercised.
-     *
-     * **Strings in**, because in this tree an enormous amount of genuinely-evaluated code *is* a
-     * string literal: every jvm-main smoke that stages a live box holds the box's Kotlin in a
-     * `""" … """` constant and hands it to the real compiler and evaluator. Stripping those would
-     * discard the strongest evidence there is — `ContextSearchOrderLedgerSmokeTest`'s `fromContext`
-     * evidence is exactly this shape.
-     *
-     * Approximate in one known way, stated rather than hidden: a block-comment opener inside a
-     * *character* literal is not modelled. (Written as a description rather than as the two
-     * characters, because Kotlin block comments nest and a literal opener in this KDoc would swallow
-     * the rest of the file — a trap this tree has hit before.) There are none in this tree and the
-     * failure would be conservative anyway — it
-     * blanks too much, which can only move an API from "evaluated" to "not evaluated", i.e. toward a
-     * red build that a person then looks at.
-     */
-    private fun stripComments(text: String): String {
-        val out = StringBuilder(text.length)
-        var i = 0
-        while (i < text.length) {
-            val c = text[i]
-            when {
-                text.startsWith("\"\"\"", i) -> {
-                    val end = text.indexOf("\"\"\"", i + 3).let { if (it < 0) text.length else it + 3 }
-                    out.append(text, i, end); i = end
-                }
-                c == '"' -> {
-                    var j = i + 1
-                    while (j < text.length && text[j] != '"') { if (text[j] == '\\') j++; j++ }
-                    val end = (j + 1).coerceAtMost(text.length)
-                    out.append(text, i, end); i = end
-                }
-                // A character literal, consumed whole so that the quote in `'"'` cannot open a
-                // string. This branch is here because of one line in this very function: without it
-                // the `'"'` two cases up opens a bogus string that runs to the next real quote and
-                // carries whatever comment text lies between into the output verbatim. Bounded at
-                // eight characters, which covers `'A'`, so an apostrophe inside a backtick
-                // identifier degrades to being an ordinary character rather than swallowing a line.
-                c == '\'' -> {
-                    var j = i + 1
-                    while (j < text.length && j <= i + 8 && text[j] != '\'') { if (text[j] == '\\') j++; j++ }
-                    val end = if (j < text.length && j <= i + 8 && text[j] == '\'') j + 1 else i + 1
-                    out.append(text, i, end); i = end
-                }
-                text.startsWith("//", i) -> {
-                    val end = text.indexOf('\n', i).let { if (it < 0) text.length else it }
-                    repeat(end - i) { out.append(' ') }; i = end
-                }
-                text.startsWith("/*", i) -> {
-                    // Kotlin block comments nest, and this tree's KDoc relies on it.
-                    var depth = 0; var j = i
-                    while (j < text.length) {
-                        if (text.startsWith("/*", j)) { depth++; j += 2 }
-                        else if (text.startsWith("*/", j)) { depth--; j += 2; if (depth == 0) break }
-                        else j++
-                    }
-                    repeat(j - i) { out.append(if (text[i + it] == '\n') '\n' else ' ') }; i = j
-                }
-                else -> { out.append(c); i++ }
-            }
-        }
-        return out.toString()
-    }
-
     private val root = CitationGuard.repoRoot()
 
     /**
@@ -327,7 +256,7 @@ class DocumentedApiEvaluationTest {
             // registration block to survive comment stripping, which is the wrong trade.
             .map { it.name to it.readText() }
             .filter { (_, raw) -> !requireFieldTest || FIELD_TEST_ID.containsMatchIn(raw) }
-            .map { (name, raw) -> name to stripComments(raw) }
+            .map { (name, raw) -> name to KotlinSourceText.stripComments(raw) }
 
     private val smokeSources by lazy { sources("src/jvmMain/kotlin", requireFieldTest = true) }
     private val testSources by lazy { sources("src/jvmTest/kotlin", requireFieldTest = false) }
@@ -456,7 +385,7 @@ class DocumentedApiEvaluationTest {
         assertTrue(declaration.isFile, "afield/onnx/Clip.kt moved; the comment-stripping witness is gone")
         val rx = Regex("""\bclipEncode\s*\(""")
         val raw = rx.findAll(declaration.readText()).count()
-        val kept = rx.findAll(stripComments(declaration.readText())).count()
+        val kept = rx.findAll(KotlinSourceText.stripComments(declaration.readText())).count()
         assertTrue(
             raw > kept,
             "afield/onnx/Clip.kt carries $raw clipEncode( call site(s) and stripComments keeps $kept " +
@@ -501,7 +430,7 @@ class DocumentedApiEvaluationTest {
             val quoteChar = '"' // and a trailing comment: hiddenByChar()
             fun real() = realCall()
         """.trimIndent()
-        val stripped = stripComments(src)
+        val stripped = KotlinSourceText.stripComments(src)
         listOf("docOnly", "lineOnly", "nestedOnly", "hiddenByChar").forEach {
             assertTrue("$it(" !in stripped, "$it( survived comment stripping: $stripped")
         }

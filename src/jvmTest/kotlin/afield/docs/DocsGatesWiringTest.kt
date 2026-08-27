@@ -20,6 +20,7 @@ class DocsGatesWiringTest {
             "afield.docs.ProseNumeralContractTest",
             "afield.docs.ImpossibilityClaimContractTest",
             "afield.docs.DocumentedApiEvaluationTest",
+            "afield.docs.GateInputDeclarationTest",
         )
 
         expected.forEach { className ->
