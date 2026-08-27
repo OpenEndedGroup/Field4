@@ -68,9 +68,11 @@ sealed interface SolidLowering<out T> {
      * whether that is a gap in ambition or a gap in mathematics.
      *
      * `closable = true` would mean the lowering could be written and has not been, with [missing]
-     * naming what it would take. Nothing in this package is currently `closable`, and that is worth
-     * stating rather than leaving to be inferred: every refusal here is a fact about CSG, not a
-     * to-do.
+     * naming what it would take. **No refusal on the exact path is `closable`**, and that is worth
+     * stating rather than leaving to be inferred: every refusal in this file is a fact about CSG,
+     * not a to-do. (`SolidGradient.kt` reuses this type for a different kind of refusal — a
+     * mis-bound parameter — and those *are* closable, because closing one is fixing the binding.
+     * The flag is what tells the two apart.)
      *
      * @param node the node that refused, as its `toString`, so a refusal from deep in a tree says
      *   where it came from.
