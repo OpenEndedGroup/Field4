@@ -1035,17 +1035,46 @@ private fun emptyADField2(numerics: SolidNumerics): ADField2 {
  * `NaN`" is how a differential test reports 95.9% coverage over a broken derivative.
  * [SolidGradientCheck] now separates them and fails on the second.
  *
- * The branch below is *exact*, not a regularisation: on the open region where all three `q` are
- * negative the exterior term is identically zero, so its derivative there genuinely is zero, and
- * returning the interior term alone is the right answer rather than an approximation to it. On the
- * boundary itself the field is still non-differentiable, which is true of a box and not a defect.
+ * The branch below is *exact*, not a regularisation: on the region where `qmax ≤ 0` the exterior
+ * term is identically zero, so its derivative there genuinely is zero, and returning the interior
+ * term alone is the right answer rather than an approximation to it.
+ *
+ * # Why the test is `≤` and why the `min` is gone
+ *
+ * Both are about a sample landing *exactly* on a face, which the random census never does and which
+ * was therefore wrong in two different ways for as long as nobody looked.
+ *
+ * With a strict `< 0` a face sample takes the general path, where `max(qx, 0)` splits its tie
+ * 0.5/0.5 and hands a zero-*valued* node to `sqrt`. That is the original `∞ × 0` all over again,
+ * reached through the boundary instead of the interior, and it is `NaN` in all six components.
+ * Measured, at `(1, 0, 0)` on a unit cube.
+ *
+ * Widening to `≤` is necessary but on its own it is *worse than the bug*, which is the part worth
+ * pausing on. It would return `min(qmax, 0.0)`, and on the closed region that `min` is the identity
+ * — except at the boundary, precisely where it is now being asked, where it sees an exact tie
+ * against the constant `0.0` and splits it. The answer comes back `0.5` when the truth is `1`: a
+ * silent factor of two in place of a `NaN` that at least announced itself. So the `min` is dropped
+ * on this path, where it never did anything but that.
+ *
+ * And `1` really is the truth, not a convention. Across a face the box field is locally just
+ * `|px| - hx`, differentiable, both one-sided limits agreeing; a central difference reports
+ * `1.0000` and reports it stably between `h` and `h/2`. The two kinked *terms* cancel — the
+ * exterior norm has one-sided derivatives `{1, 0}` and the interior term `{0, 1}` — which is why
+ * taking either term alone loses half of it.
+ *
+ * An edge or a corner is genuinely non-differentiable and still reports the even split: `0.5` on an
+ * edge, which is what a central difference reports there too. The fix has to leave that alone, and
+ * `SolidSLBoxGradientBoundaryTest` pins the face, the edge and the untouched interior separately so
+ * that "return 1 near any boundary" fails.
  */
 internal fun adBox3(px: AD, py: AD, pz: AD, hx: AD, hy: AD, hz: AD): AD {
     val qx = abs(px) - hx; val qy = abs(py) - hy; val qz = abs(pz) - hz
-    val inner = min(max(qx, max(qy, qz)), 0.0)
-    if (qx.value < 0.0 && qy.value < 0.0 && qz.value < 0.0) return inner
+    val qmax = max(qx, max(qy, qz))
+    // qmax ≤ 0 is exactly "inside or on the box"; there min(qmax, 0) is the identity, so the whole
+    // field is qmax and the exterior term is not merely zero but absent.
+    if (qmax.value <= 0.0) return qmax
     val ox = max(qx, 0.0); val oy = max(qy, 0.0); val oz = max(qz, 0.0)
-    return sqrt(ox.sq() + oy.sq() + oz.sq()) + inner
+    return sqrt(ox.sq() + oy.sq() + oz.sq()) + min(qmax, 0.0)
 }
 
 /**
@@ -1072,15 +1101,25 @@ internal fun adBox3(px: AD, py: AD, pz: AD, hx: AD, hy: AD, hz: AD): AD {
  * finite, where the corresponding 3D body is `NaN` in all six. `SolidSLBoxGradientBoundaryTest`
  * holds both halves of that counterfactual, so the correction cannot rot back into the claim.
  *
- * The branch below is therefore a semantic no-op: same value, same gradient, three fewer tape
- * nodes. It is retained rather than reverted only because the *boundary* of the region it names is
- * a real and separate problem in both dimensions, which is where it earns its keep.
+ * # What the branch is actually for
+ *
+ * Strictly inside the rect it is a no-op — same value, same gradient, three fewer tape nodes — and
+ * had that been the whole story it would have been reverted rather than explained. It is kept
+ * because the *boundary* of the region it names was wrong, and wrong here in a quieter way than in
+ * 3D: not `NaN` but `0.5` where the truth is `1`, because `min(max(q), 0)` meets an exact tie
+ * against the constant `0.0` on a face and splits it. Measured, at `(1, 0)` on a unit rect, against
+ * a central difference that says `1.0000`.
+ *
+ * That is the same defect as [adBox3]'s and takes the same repair — widen the test to `≤` and drop
+ * the `min`, which on that region is the identity anyway. The symmetry between the two functions is
+ * therefore real, and it is this: not the `NaN`, which was only ever 3D, but the tie-split on the
+ * face, which was both.
  */
 internal fun adBox2(px: AD, py: AD, hx: AD, hy: AD): AD {
     val qx = abs(px) - hx; val qy = abs(py) - hy
-    val inner = min(max(qx, qy), 0.0)
-    if (qx.value < 0.0 && qy.value < 0.0) return inner
-    return hypot(max(qx, 0.0), max(qy, 0.0)) + inner
+    val qmax = max(qx, qy)
+    if (qmax.value <= 0.0) return qmax
+    return hypot(max(qx, 0.0), max(qy, 0.0)) + min(qmax, 0.0)
 }
 
 /**
