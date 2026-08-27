@@ -67,6 +67,19 @@ In JSON results, inspect `ok`, `timedOut`, and `events`. For
 The launched Java command is omitted unless that inner command receives
 `--include-command`.
 
+`run-jvm-main <entrypoint> [--arg VALUE]... [--timeout N] [--include-command]`.
+**An argument value that begins with a dash must use `--arg=VALUE`**, not
+`--arg VALUE`: argparse refuses a separate value starting with a dash and dies with
+`argument --arg: expected one argument`, which reads as though the flag itself were
+wrong. So `--arg=--verbose`, but `--arg /some/path`. The same rule is why
+`run_field_tests.py` emits `=` only for dash-leading values — see the comment on
+`build_backdoor_command` there.
+
+One more shape worth stating, since `--json` output invites it: **each `--command`
+prints its own JSON object**, concatenated with no enclosing array. `json.load` on the
+whole stream raises `Extra data`. Decode it as a sequence with
+`json.JSONDecoder().raw_decode` in a loop, or pass one `--command` per invocation.
+
 ## Session and execution contracts
 
 - Scratch is the default and is scoped to one `field_backdoor.py` process.
@@ -120,14 +133,52 @@ Attaching later cannot reconstruct DOM that was never rendered in that page.
 The capture commands wait for normal page/element races, but not for missing
 application state.
 
-The parser defines the options for these capture families:
+### You cannot ask a subcommand for its own usage
+
+Every subparser is built with `add_help=False`, so `native-screenshot --help` does
+**not** print that command's arguments. It prints the *top level* usage — the bare list
+of command names — and then an error that reads as though your arguments were wrong.
+There is no `-h` either
+(reproducer: `test_field_backdoor.py#def test_a_subcommand_cannot_report_its_own_usage`).
+The table below is the substitute; `build_command_parser()` in `tools/field_backdoor.py` is the
+authority behind it, and `tools/test_field_backdoor.py::CaptureSignatureDocTests` fails if the two
+disagree.
+
+### Capture command signatures
+
+**The output path is a positional argument on every one of these — there is no
+`--output`, `--out`, or `--path` flag.** Where the box goes differs by family, and that
+asymmetry is the other easy mistake: the `-window` commands take the box through
+`--uid`, while `-box` and `-editor` take it as the *first positional*.
+
+<!-- BEGIN CAPTURE SIGNATURES (checked by tools/test_field_backdoor.py) -->
+| command | positional arguments | notable options |
+| --- | --- | --- |
+| `screenshot-window` | `path` | `--uid --property --with-editor --open-outputs --no-pan --wait-ms --preserve-selection --include-notifications --timeout` |
+| `screenshot-editor` | `uid path` | `--property --padding --open-outputs --no-pan --timeout` |
+| `screenshot-box` | `uid path` | `--padding --open-outputs --no-open-outputs --no-pan --preserve-selection --include-notifications --timeout` |
+| `native-screenshot` | `path` | `--wait-frames --timeout` |
+| `wait-native-renderer` | `[uid]` | `--frames --timeout` |
+| `record-window` | `path` | `--uid --property --with-editor --open-outputs --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
+| `record-editor` | `uid path` | `--property --padding --open-outputs --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
+| `record-box` | `uid path` | `--property --padding --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
+<!-- END CAPTURE SIGNATURES -->
+
+```bash
+--command 'native-screenshot /tmp/frame.png --wait-frames 40'   # native renderer window
+--command 'screenshot-box @last /tmp/box.png'                    # one box, uid first
+--command 'screenshot-window /tmp/all.png --uid @last'           # whole viewport, box via --uid
+```
+
+What each family actually captures:
 
 - `screenshot-window`, `record-window`: full browser viewport; optionally
   select a box, show its editor, and open outputs.
 - `screenshot-editor`, `record-editor`: the visible Monaco pane. Call
   `editor-open` before execution when inline editor visualizers must exist.
 - `screenshot-box`, `record-box`: one box and its disclosures.
-- `native-screenshot`: the native renderer window rather than browser DOM.
+- `native-screenshot`: the native renderer window rather than browser DOM. Needs a
+  live native renderer, so `wait-native-renderer <uid> --frames 3` first.
 - `page-eval`: JSON-serializable DOM probes. Use `--file` for anything with
   meaningful quoting; `--body` needs an explicit JavaScript `return`.
 

@@ -212,6 +212,7 @@
   {"doc": "spin_glass", "box": "sg_measure", "codeSha256": "47609e5656e0d061", "codeLines": 26, "receivers": ["afield.Box"], "preamble": "spin_glass__sg_measure.preamble.kt"},
   {"doc": "spin_glass", "box": "sg_renderer", "codeSha256": "ac9b7a075ff452ef", "codeLines": 11, "receivers": ["afield.Box"], "preamble": "spin_glass__sg_renderer.preamble.kt"},
   {"doc": "spin_glass", "box": "sg_update", "codeSha256": "0b25c7fa4bcfa66a", "codeLines": 81, "receivers": ["afield.Box"], "preamble": "spin_glass__sg_update.preamble.kt"},
+  {"doc": "splat_sequence_streaming", "box": "splat_sequence_streaming", "codeSha256": "5eb53861706b9d88", "codeLines": 134, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "statistics_examples", "box": "stats_dependence", "codeSha256": "1a9d771bf6991a1c", "codeLines": 84, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "statistics_examples", "box": "stats_histogram", "codeSha256": "d40021e52a3bf9a8", "codeLines": 51, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "statistics_examples", "box": "stats_rolling", "codeSha256": "79b4f557cce82aaf", "codeLines": 73, "receivers": ["afield.Box"], "preamble": ""},

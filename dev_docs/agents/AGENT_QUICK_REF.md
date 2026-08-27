@@ -75,9 +75,19 @@ screenshot-window <path> [--uid <box>] [--with-editor] [--open-outputs]
 screenshot-box <box> <path> [--padding 16]
 screenshot-editor <box> <path> [--padding 10]     # inline Monaco visualizers
 native-screenshot <path> [--wait-frames 4]        # native afield.four Vulkan window
-record-window / record-box / record-editor <path> [--duration 5] [--fps 30]
-  [--frame-synchronous] [--restart-target]
+wait-native-renderer [<box>] [--frames 3]         # before any native-screenshot
+record-window <path> [--uid <box>] [--duration 5] [--fps 30]
+record-box <box> <path> [--duration 5] [--fps 30]
+record-editor <box> <path> [--duration 5] [--fps 30]
+  ... the record-* commands also take [--frame-synchronous] [--restart-target]
 ```
+
+The output path is a **positional** on all of these; there is no `--output`. The
+`-window` pair takes the box through `--uid`, the `-box`/`-editor` pairs take it as the
+first positional. You cannot check by hand — the subparsers are `add_help=False`, so
+`<command> --help` prints the top-level usage and an error that looks like it is about
+your arguments. `tools/test_field_backdoor.py::CaptureSignatureDocTests` holds these
+lines to the real parser.
 
 Inspect the actual PNG/MP4 — clips are CSS pixels; output files may be device-scale.
 Docs videos use both frame-synchronous flags: one Field frame becomes one encoded

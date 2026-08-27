@@ -288,6 +288,9 @@ object DemoTranscriptExecSmokeTest {
         "audio_render_analysis",
         "graphics_renderer_launch",
         "afield_four_traditional_triangle",
+        // Streams a splat sequence into a native window, and wants a directory of .compressed.ply
+        // frames that is deliberately not committed -- so compiled here and no further.
+        "splat_sequence_streaming",
         "recstl_playground",
         "threebox",
         "rectsl_dataviz",
