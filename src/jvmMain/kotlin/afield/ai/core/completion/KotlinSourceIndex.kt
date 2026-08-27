@@ -824,82 +824,178 @@ object KotlinSourceIndex {
         return sb.toString()
     }
 
+    /**
+     * A line-at-a-time lexical tracker for "how deeply nested in braces is this line, in *code*".
+     *
+     * Everything downstream — which declarations [parseTopLevelDefinitions] is willing to emit, and
+     * therefore what the completion panel offers and what the generated reference publishes — hangs
+     * off [depth] being right. A depth that drifts *low* is the expensive direction: the scan decides
+     * a function body has ended while still inside it and starts indexing the locals that follow as
+     * though they were public API. Every one of the five shapes below was found that way, by
+     * cross-checking this against [afield.docs.KotlinSourcePartition] over the whole repository.
+     *
+     * The five, each with the smallest source that shows it:
+     *
+     * 1. **Backtick-quoted identifiers.** `` fun `a builder's groups are named`() { `` — the
+     *    apostrophe inside the backticks is not a character literal, but a scanner that does not know
+     *    about backticks reads one, and then swallows every brace up to the next apostrophe anywhere
+     *    in the file. This is the big one in test sources, where possessives in test names are
+     *    idiomatic.
+     * 2. **Nested block comments.** Kotlin's block comments nest, so a KDoc that *mentions* a comment
+     *    marker — `RewriteDsl.kt` explains a "stack mark" and writes the marker in backticks — stays
+     *    open across it. Treating the inner close as the outer close ends the comment mid-prose and
+     *    hands the rest of the KDoc to the code path.
+     * 3. **String templates.** `"…${line?.let { " x=$it" } ?: ""} …"` — the expression inside `${…}`
+     *    is code, and can contain strings of its own. Skipping from the opening quote to the next
+     *    quote lands inside the template, after which its braces are counted and its text is lexed
+     *    as code.
+     * 4. **A quote run closing a raw string.** `""" data-label="$x""""` is a raw string whose content
+     *    ends in a quote: of the four closing quotes the *last three* close it. Taking the first
+     *    three leaves a stray quote that opens a string nothing ever closes.
+     * 5. **A string that never closes on its line.** A single-quoted or double-quoted literal cannot
+     *    contain a newline in Kotlin, so if one is still open at the end of a line the scan has
+     *    mis-lexed something. Dropping it there bounds the damage to one line instead of letting it
+     *    run to the end of the file. (A `${…}` inside a string *may* span lines, and is kept.)
+     *
+     * Deliberately still not a real parser: it is a lexer's worth of state, no more, because the
+     * declaration recogniser above it is line-based and could not use a parse tree if it had one.
+     */
     private class KotlinParseState {
+        /** Brace nesting depth in code: braces inside strings, comments and templates do not count. */
         var depth: Int = 0
-        var inBlockComment: Boolean = false
-        var inRawString: Boolean = false
-        var inString: Boolean = false
-        private var stringChar: Char = '"'
+            private set
+
+        /** Nesting count for block comments, which nest in Kotlin. Zero means "not in a comment". */
+        private var blockCommentDepth: Int = 0
+
+        private enum class Frame { CODE, STRING, RAW_STRING }
+
+        /**
+         * The lexical context stack, innermost last, with a `CODE` frame at the bottom that is never
+         * popped. A string pushes `STRING`/`RAW_STRING`; a `${` inside one pushes a `CODE` frame back
+         * on top, which is what makes `"${f("x")}"` come out right.
+         */
+        private val frames = ArrayDeque<Frame>().apply { addLast(Frame.CODE) }
+
+        /** The opening quote of each `STRING` frame, so a `'` literal is not closed by a `"`. */
+        private val quotes = ArrayDeque<Char>()
+
+        /** Open brace count *within* the innermost `CODE` frame, so a template knows its own `}`. */
+        private val braces = ArrayDeque<Int>().apply { addLast(0) }
+
+        val inBlockComment: Boolean get() = blockCommentDepth > 0
+
+        /** True anywhere lexically inside a raw string, including inside one of its templates. */
+        val inRawString: Boolean get() = frames.contains(Frame.RAW_STRING)
+
+        /** True anywhere lexically inside a normal string or character literal. */
+        val inString: Boolean get() = frames.contains(Frame.STRING)
+
+        private fun pushCode() {
+            frames.addLast(Frame.CODE)
+            braces.addLast(0)
+        }
+
+        private fun popFrame() {
+            when (frames.removeLast()) {
+                Frame.CODE -> braces.removeLast()
+                Frame.STRING -> quotes.removeLast()
+                Frame.RAW_STRING -> Unit
+            }
+        }
 
         fun consumeLine(line: String, onToken: ((ch: Char, index: Int, before: Int, after: Int) -> Unit)? = null) {
             var i = 0
-            var inLineComment = false
             while (i < line.length) {
-                if (inLineComment) break
-                if (inBlockComment) {
-                    if (line.startsWith("*/", i)) {
-                        inBlockComment = false
-                        i += 2
-                    } else {
-                        i++
+                if (blockCommentDepth > 0) {
+                    when {
+                        line.startsWith("*/", i) -> { blockCommentDepth--; i += 2 }
+                        line.startsWith("/*", i) -> { blockCommentDepth++; i += 2 }
+                        else -> i++
                     }
                     continue
                 }
-                if (inRawString) {
-                    if (line.startsWith("\"\"\"", i)) {
-                        inRawString = false
-                        i += 3
-                    } else {
-                        i++
+                when (frames.last()) {
+                    Frame.RAW_STRING -> {
+                        when {
+                            line.startsWith("\${", i) -> { pushCode(); i += 2 }
+                            line.startsWith("\"\"\"", i) -> {
+                                // A run of N ≥ 3 quotes closes with its last three; the rest are content.
+                                var run = 0
+                                while (i + run < line.length && line[i + run] == '"') run++
+                                popFrame()
+                                i += run
+                            }
+                            else -> i++
+                        }
+                        continue
                     }
-                    continue
-                }
-                if (inString) {
-                    if (line[i] == '\\') {
-                        i += 2
-                    } else if (line[i] == stringChar) {
-                        inString = false
-                        i++
-                    } else {
-                        i++
+                    Frame.STRING -> {
+                        when {
+                            line[i] == '\\' -> i += 2
+                            line.startsWith("\${", i) -> { pushCode(); i += 2 }
+                            line[i] == quotes.last() -> { popFrame(); i++ }
+                            else -> i++
+                        }
+                        continue
                     }
-                    continue
+                    Frame.CODE -> Unit
                 }
 
-                if (line.startsWith("//", i)) {
-                    inLineComment = true
-                    continue
-                }
+                if (line.startsWith("//", i)) break
                 if (line.startsWith("/*", i)) {
-                    inBlockComment = true
+                    blockCommentDepth = 1
                     i += 2
                     continue
                 }
                 if (line.startsWith("\"\"\"", i)) {
-                    inRawString = true
+                    frames.addLast(Frame.RAW_STRING)
                     i += 3
                     continue
                 }
                 val ch = line[i]
+                if (ch == '`') {
+                    // A backtick-quoted identifier. It cannot span a line, so an unclosed one is a
+                    // lexical error; treat that backtick as an ordinary character rather than eating
+                    // the rest of the line.
+                    val close = line.indexOf('`', i + 1)
+                    i = if (close < 0) i + 1 else close + 1
+                    continue
+                }
                 if (ch == '"' || ch == '\'') {
-                    inString = true
-                    stringChar = ch
+                    frames.addLast(Frame.STRING)
+                    quotes.addLast(ch)
                     i++
                     continue
                 }
+                // Tokens are only reported from the outermost code frame: a brace inside a string
+                // template is a lambda in an interpolation, never a class body.
+                val outermost = frames.size == 1
                 if (ch == '{') {
                     val before = depth
                     depth++
-                    onToken?.invoke(ch, i, before, depth)
+                    braces.addLast(braces.removeLast() + 1)
+                    if (outermost) onToken?.invoke(ch, i, before, depth)
                 } else if (ch == '}') {
+                    if (braces.last() == 0 && frames.size > 1) {
+                        // The `}` that ends a `${…}`; the string it interrupted resumes.
+                        popFrame()
+                        i++
+                        continue
+                    }
                     val before = depth
                     depth = (depth - 1).coerceAtLeast(0)
-                    onToken?.invoke(ch, i, before, depth)
+                    braces.addLast((braces.removeLast() - 1).coerceAtLeast(0))
+                    if (outermost) onToken?.invoke(ch, i, before, depth)
                 } else if (ch == '(' || ch == ')') {
-                    onToken?.invoke(ch, i, depth, depth)
+                    if (outermost) onToken?.invoke(ch, i, depth, depth)
                 }
                 i++
             }
+            // A normal string or character literal cannot contain a newline. One still open here is
+            // a mis-lex; end it, so the damage stops at this line. A `${…}` left open is not dropped:
+            // a template expression legitimately spans lines.
+            while (frames.size > 1 && frames.last() == Frame.STRING) popFrame()
         }
     }
 }
