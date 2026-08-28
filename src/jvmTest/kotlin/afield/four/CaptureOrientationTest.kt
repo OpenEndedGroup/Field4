@@ -397,6 +397,167 @@ class CaptureOrientationTest {
         )
     }
 
+    // ── the premise under the premise: the shared negative-height viewport ──────────────────
+
+    private data class ViewportFinding(
+        val file: String,
+        val symbol: String,
+        val line: Int,
+        val flipsY: Boolean
+    )
+
+    /**
+     * Find every `VkViewport` setup in one file and report whether it flips Y.
+     *
+     * "Flips Y" means the enclosing function contains at least one negative `height(...)`. It is
+     * deliberately *at least one* rather than *all*: these functions also set a scissor rectangle,
+     * whose `height` is legitimately positive, so requiring every height to be negative would fail
+     * on correct code.
+     */
+    private fun scanForViewportSites(relativePath: String, content: String): List<ViewportFinding> {
+        val lines = content.lines()
+        val funDecl = Regex("""\bfun\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(""")
+        val negativeHeight = Regex("""\.height\(\s*\(?\s*-""")
+
+        fun isCommentary(l: String): Boolean {
+            val t = l.trimStart()
+            return t.startsWith("*") || t.startsWith("//") || t.startsWith("/*")
+        }
+
+        // Index each line to its enclosing fun, so a viewport and its heights agree on an owner.
+        val owners = arrayOfNulls<String>(lines.size)
+        var current: String? = null
+        lines.forEachIndexed { i, l ->
+            if (!isCommentary(l)) funDecl.find(l)?.let { current = it.groupValues[1] }
+            owners[i] = current
+        }
+
+        val viewportOwners = linkedMapOf<String, Int>()
+        lines.forEachIndexed { i, l ->
+            if (isCommentary(l)) return@forEachIndexed
+            if (l.contains("VkViewport.calloc")) {
+                val owner = owners[i] ?: "<file scope>"
+                viewportOwners.putIfAbsent(owner, i + 1)
+            }
+        }
+
+        return viewportOwners.map { (symbol, line) ->
+            val flips = lines.indices.any { i ->
+                owners[i] == symbol && !isCommentary(lines[i]) && negativeHeight.containsMatchIn(lines[i])
+            }
+            ViewportFinding(relativePath, symbol, line, flips)
+        }
+    }
+
+    private fun scanAllViewportSites(): List<ViewportFinding> {
+        val sites = mutableListOf<ViewportFinding>()
+        CaptureOrientation.scannedRoots.forEach { root ->
+            Files.walk(repoRoot.resolve(root)).use { stream ->
+                stream.filter { it.toString().endsWith(".kt") }
+                    .filter { it.fileName.toString() != "CaptureOrientation.kt" }
+                    .sorted()
+                    .forEach { file ->
+                        sites += scanForViewportSites(repoRoot.relativize(file).toString(), file.readText())
+                    }
+            }
+        }
+        return sites
+    }
+
+    /**
+     * The table above concludes `TopDown` for the render targets by arguing that they share the
+     * swapchain's viewport convention. This is that argument, made checkable.
+     */
+    @Test
+    fun everyDeclaredRenderPathFlipsYInItsViewport() {
+        val found = scanAllViewportSites()
+
+        CaptureOrientation.viewportConventionSites.forEach { site ->
+            val file = repoRoot.resolve(site.file)
+            assertTrue(Files.isRegularFile(file), "declared viewport file missing: ${site.file}")
+            val mine = found.singleOrNull { it.file == site.file && it.symbol == site.symbol }
+            assertNotNull(
+                mine,
+                "no VkViewport setup found in ${site.symbol} (${site.file}); found instead: " +
+                        found.filter { it.file == site.file }.map { it.symbol }
+            )
+            assertTrue(
+                mine.flipsY,
+                "${site.file}:${mine.line} (${site.symbol}) sets up a VkViewport with a " +
+                        "non-negative height. Every TopDown row in CaptureOrientation.paths assumes " +
+                        "the negative-height Y-flip is universal; if this path genuinely renders " +
+                        "y-down, the capture paths reading its images need re-deriving, not just " +
+                        "this assertion relaxing."
+            )
+            assertTrue(site.why.length >= 40, "${site.symbol}: 'why' is too thin: ${site.why}")
+        }
+
+        assertTrue(
+            CaptureOrientation.viewportConventionSites.size >= 5,
+            "the viewport site list shrank to ${CaptureOrientation.viewportConventionSites.size}"
+        )
+    }
+
+    @Test
+    fun everyViewportSetupInFourIsDeclared() {
+        val found = scanAllViewportSites()
+        val declared = CaptureOrientation.viewportConventionSites.map { it.file to it.symbol }.toSet()
+
+        val undeclared = found.filter { (it.file to it.symbol) !in declared }
+        assertTrue(
+            undeclared.isEmpty(),
+            "these render paths set up a VkViewport but are not declared in " +
+                    "CaptureOrientation.viewportConventionSites. The row-order table's TopDown " +
+                    "conclusions depend on every render path sharing the Y-flip, so a new one has " +
+                    "to be checked:\n" +
+                    undeclared.joinToString("\n") { "  ${it.file}:${it.line} in ${it.symbol} (flipsY=${it.flipsY})" }
+        )
+        assertTrue(found.size >= 5, "the viewport scan found only ${found.size} sites; it has gone blind")
+    }
+
+    @Test
+    fun viewportScannerSpotsAPositiveHeightViewport() {
+        // Negative control: the exact thing that would silently falsify the table.
+        val synthetic = """
+            package afield.four
+            object NewPath {
+                fun setViewportYDown(stack: MemoryStack, w: Int, h: Int) {
+                    val viewport = VkViewport.calloc(1, stack)
+                        .x(0f)
+                        .y(0f)
+                        .width(w.toFloat())
+                        .height(h.toFloat())
+                }
+            }
+        """.trimIndent()
+
+        val found = scanForViewportSites("src/jvmMain/kotlin/afield/four/NewPath.kt", synthetic)
+        assertEquals(1, found.size, "scanner missed a viewport setup: $found")
+        assertEquals("setViewportYDown", found[0].symbol)
+        assertTrue(!found[0].flipsY, "a positive-height viewport must not read as flipping Y")
+    }
+
+    @Test
+    fun viewportScannerIsNotFooledByAPositiveScissorHeight() {
+        // The real shape of the in-tree code: a flipped viewport next to an upright scissor.
+        val synthetic = """
+            package afield.four
+            object RealShape {
+                fun setViewportAndScissor(stack: MemoryStack, rect: Rect) {
+                    val viewport = VkViewport.calloc(1, stack)
+                        .y((rect.y + rect.h).toFloat())
+                        .height((-rect.h).toFloat())
+                    val scissor = VkRect2D.calloc(1, stack)
+                        .extent(VkExtent2D.calloc(stack).width(rect.w.toInt()).height(rect.h.toInt()))
+                }
+            }
+        """.trimIndent()
+
+        val found = scanForViewportSites("src/jvmMain/kotlin/afield/four/RealShape.kt", synthetic)
+        assertEquals(1, found.size)
+        assertTrue(found[0].flipsY, "the positive scissor height must not mask the flipped viewport")
+    }
+
     @Test
     fun everyPathSpecExplainsItself() {
         CaptureOrientation.paths.forEach { spec ->

@@ -207,4 +207,74 @@ internal object CaptureOrientation {
     val deliberatelyExcluded: List<String> = listOf(
         "ImGuiRenderToTexture.flipYWhenBlittingToScreen"
     )
+
+    /**
+     * Every place `afield.four` sets up a `VkViewport`.
+     *
+     * This list is not about encoding at all — it is the **premise** every `TopDown` row above
+     * rests on, and it is here because it was the one load-bearing assumption with nothing
+     * checking it.
+     *
+     * Only the swapchain capture has ever been compared against a real on-screen window
+     * (`62fd65d0a`). Every other path inherits that comparison through a syllogism: if a render
+     * target is rendered through *the same* viewport convention as the swapchain, then its image
+     * holds rows the same way round, so the same readback yields the same order. Today all five
+     * sites below use the negative-height Y-flip (`viewport.y = y + h`, `viewport.height = -h`),
+     * which maps clip `y = +1` to image row 0, so the syllogism holds.
+     *
+     * A sixth render path added with an ordinary positive-height viewport would silently falsify
+     * half of [paths] while every flip in the tree still matched its declaration — the table would
+     * be self-consistent and wrong. `CaptureOrientationTest` therefore checks these too, and fails
+     * on any undeclared `VkViewport` setup in `afield.four`.
+     */
+    val viewportConventionSites: List<ViewportConventionSite> = listOf(
+        ViewportConventionSite(
+            file = "src/jvmMain/kotlin/afield/four/Renderer.kt",
+            symbol = "setViewportAndScissor",
+            why = "The swapchain path — the one case checked against a live window, and so the " +
+                    "reference every other row in the table is derived from."
+        ),
+        ViewportConventionSite(
+            file = "src/jvmMain/kotlin/afield/four/targets/RenderTarget.kt",
+            symbol = "setViewportAndScissor",
+            why = "Base render target. Matches the swapchain, which is what makes a render-target " +
+                    "readback top-down."
+        ),
+        ViewportConventionSite(
+            file = "src/jvmMain/kotlin/afield/four/targets/RenderToTexture.kt",
+            symbol = "setViewportAndScissorArray",
+            why = "Offscreen targets, including every docs-gallery capture and " +
+                    "RenderToTexture.saveJpgAsync. The two paths this branch fixed both read images " +
+                    "rendered here."
+        ),
+        ViewportConventionSite(
+            file = "src/jvmMain/kotlin/afield/four/targets/OpenXRHmdTarget.kt",
+            symbol = "setViewportAndScissor",
+            why = "XR eye targets. Not currently captured to a file, but it shares the convention, " +
+                    "so a capture added here would be top-down like the rest."
+        ),
+        ViewportConventionSite(
+            file = "src/jvmMain/kotlin/afield/four/imgui/ImGuiRenderToTexture.kt",
+            symbol = "renderAdditional",
+            why = "ImGui's own RTT. Spells the flip inline rather than through a Rect, but is the " +
+                    "same convention — which is why an ImGui RTT read back directly is top-down " +
+                    "like any other, and its separate flipYWhenBlittingToScreen is about sampling " +
+                    "a quad at display time, not row order."
+        )
+    )
 }
+
+/**
+ * One `VkViewport` setup, declared so that the row-order table's premise is checkable.
+ *
+ * [CaptureOrientationTest] requires the function named by [symbol] to contain a `VkViewport`
+ * whose height is negative.
+ */
+internal data class ViewportConventionSite(
+    /** Repo-relative path of the file setting up the viewport. */
+    val file: String,
+    /** The function that sets it up. */
+    val symbol: String,
+    /** What depends on this site sharing the convention. */
+    val why: String
+)

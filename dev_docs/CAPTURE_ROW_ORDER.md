@@ -31,6 +31,18 @@ one is. That matters because the swapchain case is the one with an empirical che
 `62fd65d0a` compared it against the live on-screen window. Everything else inherits from that
 comparison via (2), which is why (2) is worth stating rather than assuming.
 
+**And (2) is itself guarded.** It is the load-bearing assumption, so
+`CaptureOrientation.viewportConventionSites` declares all five `VkViewport` setups in
+`afield.four` — `Renderer`, `RenderTarget`, `RenderToTexture`, `OpenXRHmdTarget`,
+`ImGuiRenderToTexture` — and the test asserts each really does use a negative height, and fails on
+any *undeclared* viewport setup in the package.
+
+This matters more than it looks. A sixth render path added with an ordinary positive-height
+viewport would silently falsify half the table while every flip in the tree still matched its
+declaration: the table would be self-consistent and wrong, and the only symptom would be one
+capture route coming out upside down again. Guarding the encode decisions without guarding their
+premise would have left exactly the hole this document exists to close.
+
 The bottom-up case is real but currently unused: a GL-style `glReadPixels` genuinely hands row 0 as
 the bottom of the picture. `packRgbaToRgbBottomUp` is kept for it.
 
