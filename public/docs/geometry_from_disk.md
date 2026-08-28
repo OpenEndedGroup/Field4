@@ -378,11 +378,18 @@ which is easy and lossy, or teaching `VisionGeometryPreview` to sample a texture
 change to the rasterizer.
 
 **Point clouds as first-class geometry.** `PlySupport` reads them and `plyPointCloudHere` draws them
-on the GPU, but there is no CPU point-cloud type — no splatting into `VisionGeometryPreview`, no
-Poisson or ball-pivot surface reconstruction, no downsampling. `convexHullMesh` over the positions
-and `voronoi3d` are what the tree has. (For Gaussian splats specifically, see
-`afield/four/fabricated/GaussianSplatRenderer.kt`, which is a different and much more specific
-thing.)
+on the GPU, but there is still no CPU point-cloud *type* — no Poisson or ball-pivot surface
+reconstruction, and no downsampling of a plain `PlySupport` cloud. `convexHullMesh` over the
+positions and `voronoi3d` are what the tree has.
+
+Gaussian splats are the exception, and now a large one. `afield/four/modules/SplatRaster.kt`
+rasterizes a splat cloud **on the CPU**, into PNG bytes, with no GPU and no window: it is a
+transcription of `afield/four/fabricated/GaussianSplatRenderer.kt`'s own Vulkan shader, consuming
+the same 16-float layout, so the two agree to 100.000% of pixels on the same cloud.
+`SplatContactSheet` puts a whole 126-frame capture in one image, and `SplatCloud` is an editable
+CPU form — crop, filter, decimate, transform, merge, and write a valid `.compressed.ply` back out.
+None of that goes through `VisionGeometryPreview`; it is its own rasterizer, because a Gaussian is
+not a triangle and the EWA projection has nothing to share with a scanline fill.
 
 **Animation.** Assimp samples node TRS tracks and `GltfSupport.MeshInstance.animationSamples`
 carries them, but `assimpToTriMesh` bakes the bind pose and throws the tracks away — a `TriMesh` is

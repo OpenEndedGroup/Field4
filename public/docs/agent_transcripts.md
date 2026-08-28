@@ -40,13 +40,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 78 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+All 79 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
 not in the same way, and the difference is worth knowing before you trust one. 56 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
 error-kind output line. (Almost always that is every box in the file. A transcript may
 create a box it does not execute — one that wants a device the build does not have, or that is meant to fail so a
-diagnostic can be shown — and only the ops it actually writes down are replayed.) 15 want
+diagnostic can be shown — and only the ops it actually writes down are replayed.) 16 want
 something the lightweight build does not own — a GLFW window and Vulkan renderer, an external audio
 service, or a camera — so those are **built and compiled**: the graph is assembled through the real
 apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal evaluation —
@@ -1084,6 +1084,17 @@ covers the two paths one frame cannot: a repeat paint that omits its handle, whi
 the cached slot import, and a frame the mailbox must reject, whose receiver-local fd has to be
 closed rather than leaked. Same shape as the macOS smoke — compiled everywhere,
 run live by the tracked backdoor replay, and not a starting point.
+
+**field_ui_browser_texture** — The end-to-end version: a hidden Electron window opens this Field
+document, emits Chromium's accelerated offscreen `paint` textures, and transfers their IOSurfaces
+to Field as Mach rights. Field imports each image into Vulkan, copies it into a stable sampled
+texture, draws that texture on a full-window mesh, and only then releases Electron's paint lease.
+The result is Field's own live canvas and boxes recursively visible inside Field's native renderer;
+no screenshot or CPU bitmap enters the path. Run the renderer box first, then the panel box.
+
+![Field's live canvas, two running transcript boxes and their connection sampled from Chromium onto a Vulkan mesh](assets/browser_texture/field-ui-on-texture.png)
+
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/field_ui_browser_texture/metadata.edn)
 
 ## Graphics building blocks
 

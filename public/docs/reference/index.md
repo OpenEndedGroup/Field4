@@ -169,7 +169,7 @@ The "documented" column is a coverage report on Field's own KDoc, not a claim ab
 | [PatTranscriptionGallery.kt](patterns.md#pattranscriptiongallery-kt) | Patterns | 12 | 8 |  |  |
 | [pf.kt](math.md#pf-kt) | Math | 38 | 29 | An unscented Kalman filter, and a particle filter whose particles each carry one. | [State estimation: tracking what you cannot measure](../state_estimation_examples.md) |
 | [Physical.kt](synthesis.md#physical-kt) | Synthesis | 19 | 1 |  |  |
-| [plotly.kt](visualization.md#plotly-kt) | Visualization | 12 | 12 | Plotly helpers — the short way to get a chart out of a box, wrapping `space.kscience.plotly`. | [Values over time: interpolants & keyframes](../interpolants_examples.md) |
+| [plotly.kt](visualization.md#plotly-kt) | Visualization | 12 | 12 | Plotly helpers — the short way to get a chart out of a box, wrapping `space.kscience.plotly`. | [Values over time: interpolants & keyframes](../interpolants_examples.md), [Where do these things sit, relative to each other?](../projection_examples.md) |
 | [pointing.kt](graphics.md#pointing-kt) | Graphics | 43 | 29 | Turning a place a person is looking at back into a place in the world — the half of picking that Field did not have. |  |
 | [pointing_pick.kt](graphics.md#pointing-pick-kt) | Graphics | 51 | 48 | A scene you can point at, and a hit record that names the **part** you touched rather than the triangle. |  |
 | [pointing_pointer.kt](graphics.md#pointing-pointer-kt) | Graphics | 36 | 32 | A person pointing — mouse, XR controller or pinched hand — behind one interface, and the hover / press / drag / release machine that turns a stream of samples into an interaction. |  |
@@ -190,7 +190,7 @@ The "documented" column is a coverage report on Field's own KDoc, not a claim ab
 | [shaders.kt](graphics.md#shaders-kt) | Graphics | 163 | 163 | The bridge between a box's text and a live Vulkan pipeline: shader source lives in box properties, and this file turns it into modules and keeps them hot-reloading. | [afield.four Graphics](../afield_four_graphics.md), [Running code in a box](../running_code.md), [Field Probes — instrumenting shaders](../field_probes.md) |
 | [Signal.kt](synthesis.md#signal-kt) | Synthesis | 104 | 19 |  | [Making a sound in Field: every path there is](../sound_paths.md), [Faust](../faust.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [smile_interpolation_regression.kt](math.md#smile-interpolation-regression-kt) | Math | 21 | 0 | Two 1D fitters that wrap the Smile library: `smileCubicSpline` (cubic spline interpolation through the data) and `smileGaussianProcess` (Gaussian-process regression with a Gaussian kernel, configured by `SmileGpOptions`). |  |
-| [smile_mds.kt](data.md#smile-mds-kt) | Data | 29 | 9 |  |  |
+| [smile_mds.kt](data.md#smile-mds-kt) | Data | 29 | 9 |  | [Where do these things sit, relative to each other?](../projection_examples.md) |
 | [smile_neighbors.kt](data.md#smile-neighbors-kt) | Data | 26 | 26 | Nearest-neighbour indexes over `Vec2` / `Vec3` point lists, wrapping Smile's `KDTree` and `LSH`. | [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md) |
 | [Solids.kt](polytopes.md#solids-kt) | Polytopes | 14 | 14 | The rank-3 value everything in this package passes around, and the five Platonic seeds to start from. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [SonicPi.kt](audio.md#sonicpi-kt) | Audio | 81 | 28 |  | [Sonic Pi](../sonic_pi.md) |

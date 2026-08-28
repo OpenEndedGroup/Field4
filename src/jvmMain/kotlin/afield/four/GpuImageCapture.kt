@@ -148,6 +148,19 @@ internal object GpuImageCapture {
         return rgba
     }
 
+    /**
+     * Pack rows in reverse, for a source whose row 0 really is the bottom of the picture.
+     *
+     * **Nothing in this repo currently has such a source.** Every readback here goes through
+     * `vkCmdCopyImageToBuffer`, which is top-down. This was reached by [writeJpeg] on the belief
+     * that the offscreen render-target path was bottom-up; it was not, and that inverted every
+     * `RenderToTexture.saveJpgAsync` frame. Kept — with a test — because a genuinely bottom-up
+     * source (a GL `glReadPixels`, a user buffer that says so) is a legitimate thing to have, and
+     * because deleting it would leave the *reason* the top-down twin exists undocumented.
+     *
+     * If you are about to call this, say in a comment which source of yours is bottom-up and why.
+     * See [CaptureOrientation] for the per-path table.
+     */
     fun packRgbaToRgbBottomUp(rgba: ByteArray, width: Int, height: Int): ByteBuffer {
         val rgb = ByteBuffer.allocateDirect(width * height * 3)
         for (y in height - 1 downTo 0) {
@@ -163,7 +176,11 @@ internal object GpuImageCapture {
         return rgb
     }
 
-    /** Pack rows without changing their order. Vulkan swapchain image copies are already top-down. */
+    /**
+     * Pack rows without changing their order — the right choice for every readback in this repo,
+     * because `vkCmdCopyImageToBuffer` is top-down whether the source is the swapchain or an
+     * offscreen render target.
+     */
     fun packRgbaToRgbTopDown(rgba: ByteArray, width: Int, height: Int): ByteBuffer {
         val rgb = ByteBuffer.allocateDirect(width * height * 3)
         var src = 0
@@ -184,10 +201,18 @@ internal object GpuImageCapture {
         }
     }
 
+    /**
+     * Write [rgba] as a JPEG, preserving row order.
+     *
+     * The only caller is `RenderToTexture.completeFileSave`, whose rows come from
+     * `vkCmdCopyImageToBuffer` on a colour attachment — the same top-down-preserving copy the
+     * swapchain path uses, and rendered through the same negative-height viewport. So it needs
+     * [packRgbaToRgbTopDown], not its reversing twin. See [CaptureOrientation].
+     */
     fun writeJpeg(outputPath: String, rgba: ByteArray, width: Int, height: Int, quality: Int) {
         val path = Path.of(outputPath)
         path.parent?.let { Files.createDirectories(it) }
-        writeJpegRgb(path.toString(), packRgbaToRgbBottomUp(rgba, width, height), width, height, quality)
+        writeJpegRgb(path.toString(), packRgbaToRgbTopDown(rgba, width, height), width, height, quality)
     }
 
     private fun halfFloatToFloat(raw: Short): Float {

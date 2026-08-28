@@ -99,10 +99,11 @@ turns mouse motion into the mock controller's ray; in XR a real controller drive
   `at = (0,0,0)`, `target = (0,0,1)`. With that pose the camera-right vector is +X, so world +X maps
   to screen-right and ImGui text reads correctly. Looking down −Z mirrors +X to screen-left and
   flips the panel horizontally. The panel sits at `z = +1.5 m`.
-- **`captureWindowToFile` / the swapchain readback Y-flips blitted content.** A GPU readback of the
-  window (see below) comes out upside-down; un-flip it (e.g. `sips -f vertical`) for an upright
-  still. `screencapture` of the live window is already upright but needs Screen-Recording
-  permission.
+- **`captureWindowToFile` output is upright — do not un-flip it.** This used to say the opposite,
+  and following it now gives you an upside-down still. `62fd65d0a` established that
+  `vkCmdCopyImageToBuffer` hands rows over top-to-bottom and stopped the window capture flipping
+  them again. `screencapture` of the live window is also upright, but needs Screen-Recording
+  permission. See [CAPTURE_ROW_ORDER.md](CAPTURE_ROW_ORDER.md) for the per-path table.
 - **Each SBS eye is 2× horizontally squished** in the packed image, since two eye views share the
   window width. A single-eye crop stretched 2× horizontally recovers the panel's true proportions.
 - **`preTargets` ordering matters** — the ImGui RTT must be drawn before the module that samples it.
@@ -122,12 +123,10 @@ Verification capture. Two modes exist on the demo:
   / over SSH with a non-zero exit).
 - `capture-gpu <out.png>` — renders the same warm-up, then reads the swapchain back with
   `Renderer.captureWindowToFile` (a Vulkan transfer-source copy). **No Screen-Recording permission
-  needed**, so it works headless / in CI. The PNG is Y-flipped (see gotcha above).
+  needed**, so it works headless / in CI. The PNG is upright as written.
 
 ```bash
 ./gradlew runImGuiVrPanelDemo --args="capture-gpu build/imgui-vr-panel.png"
-# then, for an upright still:
-sips -f vertical build/imgui-vr-panel.png
 ```
 
 Smoke test (the canonical way to verify — it applies the required JVM args):

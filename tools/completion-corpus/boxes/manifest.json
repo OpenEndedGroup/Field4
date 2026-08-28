@@ -66,6 +66,8 @@
   {"doc": "faust_voice", "box": "faust_voice_interface", "codeSha256": "77c54dae992377c7", "codeLines": 30, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "faust_voice", "box": "faust_voice_play", "codeSha256": "3fdc7568b5360783", "codeLines": 16, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "faust_voice", "box": "faust_voice_waveform", "codeSha256": "af2e861e5e970444", "codeLines": 16, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "field_ui_browser_texture", "box": "field_ui_texture_panel", "codeSha256": "8898c130d768005f", "codeLines": 44, "receivers": ["afield.Box"], "preamble": "field_ui_browser_texture__field_ui_texture_panel.preamble.kt"},
+  {"doc": "field_ui_browser_texture", "box": "field_ui_texture_renderer", "codeSha256": "f1fea735a232c0dc", "codeLines": 15, "receivers": ["afield.Box"], "preamble": "field_ui_browser_texture__field_ui_texture_renderer.preamble.kt"},
   {"doc": "fn_differentiable_fit_demo", "box": "fn_fit_demo", "codeSha256": "c441a7567aa9ca0b", "codeLines": 16, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "geometry_from_disk", "box": "disk_glb", "codeSha256": "1f67a6896e92af6c", "codeLines": 43, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "geometry_from_disk", "box": "disk_ply", "codeSha256": "4fa9e4034b7a8364", "codeLines": 55, "receivers": ["afield.Box"], "preamble": ""},

@@ -48,6 +48,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [typography.kt](../src/jvmMain/kotlin/afield/stdlib/typography.kt) | Graphics | typography_examples, manifold | 0 | 23 | 70% |
 | [FaustPattern.kt](../src/jvmMain/kotlin/afield/four/synth/FaustPattern.kt) | Synthesis | faust | 0 | 22 | 56% |
 | [alife_lsystem.kt](../src/jvmMain/kotlin/afield/stdlib/alife_lsystem.kt) | ALife | alife_examples | 0 | 20 | 59% |
+| [smile_mds.kt](../src/jvmMain/kotlin/afield/stdlib/smile_mds.kt) | Data | projection_examples | 0 | 20 | 31% |
 | [alife_ca.kt](../src/jvmMain/kotlin/afield/stdlib/alife_ca.kt) | ALife | alife_examples | 0 | 19 | 71% |
 | [Transforms.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Transforms.kt) | Polytopes | polytope_examples | 0 | 19 | 76% |
 | [DoughDsp.kt](../src/jvmMain/kotlin/afield/four/synth/DoughDsp.kt) | Synthesis | dough_dsp_sound | 0 | 17 | 70% |
@@ -116,7 +117,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [PatTranscription.kt](../src/jvmMain/kotlin/afield/four/synth/PatTranscription.kt) | Patterns | — | 0 | 49 | 33% |
 | [SpeechEmbeddingMds.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/SpeechEmbeddingMds.kt) | Audio AI | — | 0 | 42 | 22% |
 | [PatPitchDetection.kt](../src/jvmMain/kotlin/afield/four/synth/PatPitchDetection.kt) | Patterns | — | 0 | 23 | 51% |
-| [smile_mds.kt](../src/jvmMain/kotlin/afield/stdlib/smile_mds.kt) | Data | — | 0 | 20 | 31% |
 | [osc.kt](../src/jvmMain/kotlin/afield/stdlib/osc.kt) | Audio | — | 0 | 18 | 33% |
 | [Colormaps.kt](../src/jvmMain/kotlin/afield/visualization/Colormaps.kt) | Visualization | — | 0 | 17 | 19% |
 | [InteractiveSolving.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/InteractiveSolving.kt) | Solvers | — | 0 | 15 | 65% |

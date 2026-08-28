@@ -107,15 +107,15 @@ val openblasVersion = "0.3.26-1.5.10"
 // out of this artifact for Smile to find by name -- there is no javacpp binding, so nothing here
 // is coupled to the 1.5.10 ABI.
 //
-// This makes the build configure and the arm64 dylib extract; it does NOT make Smile's ARPACK path
-// work here, and that is a separate, open question rather than a regression. `otool -L` on the
-// extracted libarpack.dylib wants four @rpath libraries: libarpack.2 and libopenblas.0, both of
-// which prepareSmileNative copies, plus libgfortran.5 and libquadmath.0, which neither bytedeco
-// artifact ships on macosx-arm64 — so dlopen fails with "Cannot open library: libarpack.dylib" and
-// SmileMdsTest, SpeechEmbeddingMdsTest and SpectralEmbeddingProjectionTest fail on this platform.
-// Homebrew gcc has both at /opt/homebrew/opt/gcc/lib/gcc/current, but reaching for them would
-// contradict the vendoring intent stated above, so the choice — vendor a Fortran runtime, find a
-// self-contained arpack, or let Smile fall back where ARPACK is unavailable — is left to the author.
+// This makes the build configure and the arm64 dylib extract; it does NOT make Smile's own ARPACK
+// path work here. `otool -L` on the extracted libarpack.dylib wants four @rpath libraries:
+// libarpack.2 and libopenblas.0, both of which prepareSmileNative copies, plus libgfortran.5 and
+// libquadmath.0, which neither bytedeco artifact ships on macosx-arm64 — so dlopen fails with
+// "Cannot open library: libarpack.dylib". Homebrew gcc carries both at
+// /opt/homebrew/opt/gcc/lib/gcc/current, but reaching for them would contradict the vendoring
+// intent stated above. Of the three options once left open here the third was taken: smileMds
+// probes the binding once and falls back to LAPACK's dsyevd (smile_mds.kt), so SmileMdsTest and
+// its two siblings now run on this platform. Vendoring a Fortran runtime remains unexplored.
 val arpackVersion = "3.9.1-1.5.12"
 val javacppVersion = "1.5.10"
 val javacvVersion = "1.5.10"
@@ -1265,6 +1265,13 @@ val jvmTestTask = tasks.named<org.gradle.api.tasks.testing.Test>("jvmTest") {
     inputs.file("dev_docs/server_surface_inventory.md")
         .withPropertyName("serverSurfaceLedger")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+    // Same reason, second page. `ProjectionExamplesPageTest` recomputes every figure published by
+    // `public/docs/projection_examples.md` and asserts both that the recomputed value formats to the
+    // string on the page and that the sentence carrying it is still there. Both halves are inert if
+    // a Markdown-only edit can leave this task UP-TO-DATE.
+    inputs.file("public/docs/projection_examples.md")
+        .withPropertyName("projectionExamplesPage")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 // A known red recorded only in CI prose has been misgraded three times: once as an ordinary
@@ -2198,10 +2205,64 @@ tasks.named("npmInstall") {
     description = "Installs npm dependencies for the Electron wrapper."
 }
 
+val buildFieldBrowserBridge = tasks.register("buildFieldBrowserBridge") {
+    group = "application"
+    description = "Builds the native Electron/JVM bridge used by accelerated browser textures."
+    dependsOn(tasks.named("nodeSetup"))
+
+    val source = layout.projectDirectory.file("native/field-browser-bridge/macos_bridge.cc")
+    val outputDir = layout.buildDirectory.dir("field-browser-bridge/macos")
+    inputs.file(source)
+    outputs.files(
+        outputDir.map { it.file("field_browser_bridge.node") },
+        outputDir.map { it.file("libfield_browser_bridge.dylib") },
+    )
+
+    onlyIf {
+        osName.startsWith("Mac") || osName.startsWith("Darwin")
+    }
+
+    doLast {
+        val out = outputDir.get().asFile.also { it.mkdirs() }
+        val nodeInclude = File(managedNodeExecutable().parentFile.parentFile, "include/node")
+        val src = source.asFile
+        if (!nodeInclude.resolve("node_api.h").isFile) {
+            throw GradleException("Managed Node headers not found at ${nodeInclude.absolutePath}")
+        }
+
+        fun compile(vararg args: String) {
+            val command = listOf("xcrun", "clang++", "-std=c++17", "-O2") + args
+            val exit = ProcessBuilder(command)
+                .directory(project.projectDir)
+                .inheritIO()
+                .start()
+                .waitFor()
+            if (exit != 0) throw GradleException("Native browser bridge compile failed (${command.joinToString(" ")})")
+        }
+
+        compile(
+            "-dynamiclib",
+            src.absolutePath,
+            "-framework", "IOSurface",
+            "-o", File(out, "libfield_browser_bridge.dylib").absolutePath,
+        )
+        compile(
+            "-bundle",
+            "-undefined", "dynamic_lookup",
+            "-DFIELD_NODE_ADDON=1",
+            "-DNODE_GYP_MODULE_NAME=field_browser_bridge",
+            "-I", nodeInclude.absolutePath,
+            src.absolutePath,
+            "-framework", "IOSurface",
+            "-o", File(out, "field_browser_bridge.node").absolutePath,
+        )
+    }
+}
+
 val electronInstall = tasks.register("electronInstall") {
     group = "application"
     description = "Installs Electron wrapper dependencies in electron/."
-    dependsOn(tasks.named("npmInstall"))
+    dependsOn(tasks.named("npmInstall"), buildFieldBrowserBridge)
 
     doLast {
         val isMac = System.getProperty("os.name").lowercase().contains("mac")

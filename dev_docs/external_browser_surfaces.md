@@ -1,9 +1,10 @@
 # External browser surfaces
 
-Status: the platform-neutral frame/lease contract and the macOS/MoltenVK and Linux/dma-buf
-receivers are implemented and live-tested. The Windows/D3D11 receiver is implemented as a
-compile-reviewed first pass and still needs native-machine validation. The Electron producer and
-its native-handle transports are not yet in this repository.
+Status: the platform-neutral frame/lease contract, macOS/MoltenVK receiver, and Electron/macOS
+producer transport are implemented and live-tested end to end. The Linux/dma-buf receiver is
+live-tested against real dma-bufs, but against a Field-side producer: its Electron handle-transfer
+bridge does not exist yet. Windows/D3D11 is a compile-reviewed first pass still needing both its
+bridge and native-machine validation.
 
 This is the texture seam for web UI that should appear on geometry in Field/OpenXR. It does not
 choose the browser. Electron is the immediate producer because its accelerated offscreen `paint`
@@ -72,6 +73,20 @@ the browser surface resolved it through a Mach send right and copied it, the res
 back the expected BGRA pixel, and the release callback arrived after the graphics fence. The
 replayable graph is `dev_docs/agents/transcripts/external_browser_surface_macos_smoke.yaml`.
 
+The producer is `electron/browser-texture-producer.js`, launched by `FieldUiBrowserTexture`. It
+opens a hidden Electron window with `offscreen.useSharedTexture`, points it at the current Field
+document, and keeps every `OffscreenSharedTexture` lease until Field returns the frame token. The
+small Node-API bridge in `native/field-browser-bridge/macos_bridge.cc` reads Electron's documented
+pointer-sized IOSurface buffer, creates a Mach send right, and sends it to a uniquely named bootstrap
+service owned by the JVM. Frame metadata and fence-delayed release tokens use a loopback control
+socket; the GPU allocation itself never enters that socket and is never read back through the CPU.
+
+`dev_docs/agents/transcripts/field_ui_browser_texture.yaml` is the end-to-end proof and a materialized
+starting point. Its hidden browser waits until the panel box exists in the embedded Field DOM, then
+the native window samples the following paint on a mesh. The tracked replay reached that condition
+on frame 15 and captured the two live Field boxes, their connection, running stripes, and Field's
+own notifications from the imported texture.
+
 ## Windows implementation
 
 `WindowsExternalBrowserSurface` imports `WindowsD3D11NtHandle` with
@@ -131,11 +146,16 @@ the receiver, and reads the expected BGRA pixel back out of the resident image a
 `PRESENTED`. It then covers the two paths a single-frame test would miss: a second paint that omits
 its handle, which must copy from the cached slot import and re-acquire the same allocation from the
 foreign queue family without corrupting the resident image; and a frame the mailbox must reject,
-whose receiver-local fd must be closed rather than leaked. Verified on NVIDIA proprietary 610.43.02 (RTX 4090, modifier
-`0x0300000000606013`) with Vulkan validation enabled and silent. The same recipe was checked against
-Mesa RADV 26.1.4 outside Field, which chooses a different modifier — the negotiation is not
-NVIDIA-shaped. The replayable graph is
+whose receiver-local fd must be closed rather than leaked. Verified on NVIDIA proprietary
+610.43.02 (RTX 4090, modifier `0x0300000000606013`) with Vulkan validation enabled and silent. The
+same recipe was checked against Mesa RADV 26.1.4 outside Field, which chooses a different modifier
+— the negotiation is not NVIDIA-shaped. The replayable graph is
 `dev_docs/agents/transcripts/external_browser_surface_linux_smoke.yaml`.
+
+What this does *not* cover is the transport: the smoke exports and imports inside one process, so
+the fd never crosses a process boundary. `UnixFdPass` can only send descriptors today, so the
+Electron-side bridge that the macOS Mach-port path already has still has to be written and, with
+it, an `SCM_RIGHTS` receive path.
 
 ## What came from the Windows prototype
 
@@ -157,8 +177,7 @@ until it passes its own.
 
 ## Next integration slice
 
-Build the small Electron native producer/transport first, not another browser abstraction in
-Kotlin. Its three handle-transfer operations are Mach-message send-right transfer, `DuplicateHandle`
-into Field, and Unix-domain `SCM_RIGHTS`. Once each can deliver one platform handle and receive one
-token, add the control channel and forward pointer, scroll, keyboard, focus, navigation, and IME
-messages. The renderer API does not need to change for those additions.
+Carry the now-working Electron session protocol across the remaining handle transfers:
+`DuplicateHandle` into Field on Windows and Unix-domain `SCM_RIGHTS` on Linux. Then forward pointer,
+scroll, keyboard, focus, navigation, and IME messages over the existing control channel. The
+renderer API does not need to change for those additions.
