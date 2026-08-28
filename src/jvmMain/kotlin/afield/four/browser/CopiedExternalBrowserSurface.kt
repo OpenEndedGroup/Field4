@@ -137,7 +137,16 @@ sealed class CopiedExternalBrowserSurface(
         renderer.cleanup.add(Runnable { imported.cleanup() })
     }
 
+    /**
+     * Recorded immediately before the copy into the resident texture, on the same command buffer.
+     * A backend that has to get pixels onto the GPU itself — rather than importing an allocation
+     * that already holds them — stages that work here, so it still inherits the conflation, fence
+     * and release ordering rather than reimplementing them.
+     */
+    protected open fun recordPreCopy(command: CommandBuffer, source: ImportedImage) = Unit
+
     private fun recordCopy(command: CommandBuffer, source: ImportedImage) {
+        recordPreCopy(command, source)
         MemoryStack.stackPush().use { stack ->
             val range = VkImageSubresourceRange.calloc(stack)
                 .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)

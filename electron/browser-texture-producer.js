@@ -14,13 +14,17 @@ const height = Number(required("FIELD_BROWSER_TEXTURE_HEIGHT"));
 const controlPort = Number(required("FIELD_BROWSER_TEXTURE_CONTROL_PORT"));
 const isLinux = process.platform === "linux";
 // The receiver's address, in whichever form this platform's handle transfer needs.
-const machService = isLinux ? "" : required("FIELD_BROWSER_TEXTURE_MACH_SERVICE");
-const dmaBufSocket = isLinux ? required("FIELD_BROWSER_TEXTURE_DMABUF_SOCKET") : "";
-const bridgePath = required("FIELD_BROWSER_TEXTURE_BRIDGE");
+const machService = isLinux || cpuBitmap ? "" : required("FIELD_BROWSER_TEXTURE_MACH_SERVICE");
+const dmaBufSocket = isLinux && !cpuBitmap ? required("FIELD_BROWSER_TEXTURE_DMABUF_SOCKET") : "";
+// The opt-in CPU fallback: no shared texture at all, pixels read back and shipped over a second
+// loopback socket. See dev_docs/external_browser_surfaces.md for why it is opt-in and what it costs.
+const cpuBitmap = process.env.FIELD_BROWSER_TEXTURE_CPU_BITMAP === "1";
+const pixelPort = cpuBitmap ? Number(required("FIELD_BROWSER_TEXTURE_PIXEL_PORT")) : 0;
+const bridgePath = cpuBitmap ? "" : required("FIELD_BROWSER_TEXTURE_BRIDGE");
 const streamId = BigInt(required("FIELD_BROWSER_TEXTURE_STREAM_ID"));
 const slotCount = Number(process.env.FIELD_BROWSER_TEXTURE_SLOTS || "3");
 const readyBoxUid = process.env.FIELD_BROWSER_TEXTURE_READY_BOX_UID || "";
-const bridge = require(path.resolve(bridgePath));
+const bridge = cpuBitmap ? null : require(path.resolve(bridgePath));
 
 app.commandLine.appendSwitch("ignore-certificate-errors");
 app.commandLine.appendSwitch("ignore-gpu-blocklist");
@@ -58,6 +62,46 @@ function release(token, reason) {
   if (reason === "INVALID" || reason === "IMPORT_FAILED") {
     console.warn(`[field-browser-texture] frame ${token} released ${reason}`);
   }
+}
+
+// One frame header, then its pixels. Fixed layout so the JVM can read it without parsing.
+const PIXEL_HEADER_BYTES = 44;
+const PIXEL_MAGIC = 0x46504958; // "FPIX"
+let pixels = null;
+let pixelsWritable = false;
+
+function installPixelChannel() {
+  pixels = net.createConnection({ host: "127.0.0.1", port: pixelPort });
+  pixels.on("connect", () => { pixelsWritable = true; });
+  pixels.on("drain", () => { pixelsWritable = true; });
+  pixels.on("error", (error) => {
+    console.error("[field-browser-texture] pixel channel failed", error);
+    app.quit();
+  });
+  pixels.on("close", () => { pixelsWritable = false; app.quit(); });
+}
+
+function sendBitmapFrame(image, frameNumber) {
+  // Drop rather than queue. A 3.7 MB frame every 33 ms will outrun a stalled consumer within
+  // seconds, and an unbounded write queue turns that into unbounded memory instead of a dropped
+  // frame nobody would have seen anyway.
+  if (!pixels || !pixelsWritable) return false;
+  const size = image.getSize();
+  const bitmap = image.getBitmap();
+  const header = Buffer.alloc(PIXEL_HEADER_BYTES);
+  let at = 0;
+  at = header.writeUInt32BE(PIXEL_MAGIC, at);
+  at = header.writeBigUInt64BE(streamId, at);
+  at = header.writeBigUInt64BE(frameNumber, at);
+  at = header.writeUInt32BE(Number(frameNumber % BigInt(slotCount)), at);
+  at = header.writeUInt32BE(size.width, at);
+  at = header.writeUInt32BE(size.height, at);
+  at = header.writeUInt32BE(bitmap.length / Math.max(size.height, 1), at);
+  at = header.writeUInt32BE(bitmap.length, at);
+  header.writeUInt32BE(0, at); // reserved
+  pixels.write(header);
+  pixelsWritable = pixels.write(bitmap);
+  return true;
 }
 
 function installControl() {
@@ -136,7 +180,7 @@ function createProducer() {
     backgroundColor: "#000000",
     webPreferences: {
       offscreen: {
-        useSharedTexture: true,
+        useSharedTexture: !cpuBitmap,
         sharedTexturePixelFormat: "argb",
         deviceScaleFactor: 1.0,
       },
@@ -145,7 +189,13 @@ function createProducer() {
     },
   });
   window.webContents.setFrameRate(30);
-  window.webContents.on("paint", (event) => {
+  window.webContents.on("paint", (event, dirtyRect, image) => {
+    if (cpuBitmap) {
+      if (!controlReady || !image) return;
+      frameId += 1n;
+      sendBitmapFrame(image, frameId);
+      return;
+    }
     const texture = event.texture;
     if (!texture) return;
     if (!controlReady) {
@@ -229,8 +279,9 @@ function createProducer() {
 }
 
 app.whenReady().then(() => {
-  console.log(`[producer] starting for ${targetUrl}`);
+  console.log(`[producer] starting for ${targetUrl}${cpuBitmap ? " (CPU bitmap fallback)" : ""}`);
   installControl();
+  if (cpuBitmap) installPixelChannel();
   createProducer();
 });
 

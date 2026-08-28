@@ -26,6 +26,8 @@ import java.io.InputStreamReader
 import java.io.PrintWriter
 import java.net.InetAddress
 import java.net.ServerSocket
+import java.nio.channels.ServerSocketChannel
+import java.nio.channels.SocketChannel
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicBoolean
@@ -47,6 +49,13 @@ class FieldUiBrowserTexture(
     height: Int = 720,
     slots: Int = 3,
     readyBoxUid: String? = null,
+    /**
+     * Read frames back to the CPU and upload them, instead of importing Chromium's shared GPU
+     * allocation. Costs about 110 MB/s at 1280x720/30 and exists because Chromium's Linux
+     * shared-texture export hands over a buffer it never fills (electron#53271). Opt-in on purpose:
+     * see [BitmapBrowserSurface].
+     */
+    private val cpuBitmapFallback: Boolean = false,
 ) : ExternalBrowserSurface {
     private val closed = AtomicBoolean(false)
     private val writer = AtomicReference<PrintWriter?>()
@@ -58,7 +67,7 @@ class FieldUiBrowserTexture(
         pixelFormat = BrowserSurfacePixelFormat.BGRA8_SRGB,
         slotCount = slots,
     )
-    private val delegate = ExternalBrowserSurfaces.create(renderer, specValue) { release ->
+    private val delegate: ExternalBrowserSurface = createDelegate(renderer, specValue, cpuBitmapFallback) { release ->
         writer.get()?.let { out ->
             synchronized(out) {
                 out.println(
@@ -77,7 +86,8 @@ class FieldUiBrowserTexture(
         writer = writer,
         loadedAfterFrame = loadedAfterFrame,
         readyBoxUid = readyBoxUid,
-        transport = BrowserHandleTransport.forThisPlatform(projectRoot),
+        transport = if (cpuBitmapFallback) CpuBitmapTransport(delegate, specValue)
+        else BrowserHandleTransport.forThisPlatform(projectRoot),
     )
 
     override val spec: ExternalBrowserSurfaceSpec get() = delegate.spec
@@ -146,7 +156,7 @@ private class ElectronBrowserTextureSession(
     init {
         val electron = electronBinary(projectRoot)
         val producer = File(projectRoot, "electron/browser-texture-producer.js")
-        listOf(electron, producer, transport.nodeBridge).forEach { file ->
+        listOfNotNull(electron, producer, transport.nodeBridge).forEach { file ->
             require(file.isFile) {
                 "Missing browser texture runtime ${file.absolutePath}; run ./gradlew electronInstall"
             }
@@ -162,7 +172,7 @@ private class ElectronBrowserTextureSession(
                 environment()["FIELD_BROWSER_TEXTURE_HEIGHT"] = spec.height.toString()
                 environment()["FIELD_BROWSER_TEXTURE_SLOTS"] = spec.slotCount.toString()
                 environment()["FIELD_BROWSER_TEXTURE_CONTROL_PORT"] = server.localPort.toString()
-                environment()["FIELD_BROWSER_TEXTURE_BRIDGE"] = transport.nodeBridge.absolutePath
+                transport.nodeBridge?.let { environment()["FIELD_BROWSER_TEXTURE_BRIDGE"] = it.absolutePath }
                 environment()["FIELD_BROWSER_TEXTURE_STREAM_ID"] = streamId.toString()
                 environment().putAll(transport.producerEnvironment)
                 readyBoxUid?.takeIf { it.isNotBlank() }?.let {
@@ -277,8 +287,8 @@ private class ElectronBrowserTextureSession(
  * announced frame into the [ExternalBrowserImageHandle] its receiver understands.
  */
 private interface BrowserHandleTransport : AutoCloseable {
-    /** The Node-API addon the producer loads to send on this transport. */
-    val nodeBridge: File
+    /** The Node-API addon the producer loads to send on this transport; null if it needs none. */
+    val nodeBridge: File?
 
     /** Endpoint address and anything else the producer needs to reach this receiver. */
     val producerEnvironment: Map<String, String>
@@ -392,6 +402,120 @@ private fun JsonObject.colorSpace(name: String): BrowserSurfaceColorSpace? =
             range = it.string("range"),
         )
     }
+
+
+/** Picks the receiver that matches the transport: an importer, or the CPU-upload fallback. */
+private fun createDelegate(
+    renderer: Renderer,
+    spec: ExternalBrowserSurfaceSpec,
+    cpuBitmapFallback: Boolean,
+    releaseListener: BrowserFrameReleaseListener,
+): ExternalBrowserSurface =
+    if (cpuBitmapFallback) BitmapBrowserSurface(renderer, spec, releaseListener)
+    else ExternalBrowserSurfaces.create(renderer, spec, releaseListener)
+
+/**
+ * The opt-in fallback's transport: no GPU handle crosses at all, so instead of answering a `frame`
+ * announcement on the control channel this one *is* the frame source, reading header-plus-pixels off
+ * a second loopback socket and offering each frame to the surface directly.
+ */
+private class CpuBitmapTransport(
+    private val surface: ExternalBrowserSurface,
+    private val spec: ExternalBrowserSurfaceSpec,
+) : BrowserHandleTransport {
+    private val server = ServerSocketChannel.open().apply {
+        bind(java.net.InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 1)
+    }
+    private val closed = AtomicBoolean(false)
+    private val worker: Thread
+
+    override val nodeBridge: File? = null
+    override val producerEnvironment = mapOf(
+        "FIELD_BROWSER_TEXTURE_CPU_BITMAP" to "1",
+        "FIELD_BROWSER_TEXTURE_PIXEL_PORT" to
+            (server.localAddress as java.net.InetSocketAddress).port.toString(),
+    )
+
+    init {
+        worker = Thread({ readFrames() }, "field-browser-texture-pixels").apply {
+            isDaemon = true
+            start()
+        }
+    }
+
+    private fun readFrames() {
+        try {
+            server.accept().use { channel ->
+                val header = MemoryUtil.memAlloc(HEADER_BYTES)
+                try {
+                    while (!closed.get()) {
+                        header.clear()
+                        if (!readFully(channel, header)) return
+                        header.flip()
+                        val magic = header.int
+                        check(magic == MAGIC) { "browser pixel channel desynchronised (magic 0x${magic.toString(16)})" }
+                        val streamId = header.long
+                        val frameId = header.long
+                        val slot = header.int
+                        val width = header.int
+                        val height = header.int
+                        val stride = header.int
+                        val length = header.int
+                        header.int // reserved
+
+                        require(length in 1..MAX_FRAME_BYTES) { "browser pixel frame claims $length bytes" }
+                        // Read straight into the buffer the importer will memcpy from; the handle
+                        // owns it from here and frees it on close, including when the mailbox
+                        // conflates this frame away before it is ever imported.
+                        val pixels = MemoryUtil.memAlloc(length)
+                        if (!readFully(channel, pixels)) {
+                            MemoryUtil.memFree(pixels)
+                            return
+                        }
+                        pixels.flip()
+                        surface.offerFrame(
+                            ExternalBrowserFrame(
+                                streamId = streamId,
+                                frameId = frameId,
+                                releaseToken = frameId,
+                                slot = slot,
+                                width = width,
+                                height = height,
+                                pixelFormat = spec.pixelFormat,
+                                handle = ExternalBrowserImageHandle.CpuBitmap(pixels, stride),
+                            )
+                        )
+                    }
+                } finally {
+                    MemoryUtil.memFree(header)
+                }
+            }
+        } catch (t: Throwable) {
+            if (!closed.get()) System.err.println("[field-browser-texture] pixel channel failed: ${t.message}")
+        }
+    }
+
+    private fun readFully(channel: SocketChannel, into: java.nio.ByteBuffer): Boolean {
+        while (into.hasRemaining()) {
+            if (channel.read(into) < 0) return false
+        }
+        return true
+    }
+
+    override fun receive(message: JsonObject, token: Long, timeoutMs: Int): ExternalBrowserImageHandle =
+        error("the CPU bitmap transport delivers frames on its own channel, not by announcement")
+
+    override fun close() {
+        closed.set(true)
+        runCatching { server.close() }
+    }
+
+    private companion object {
+        const val MAGIC = 0x46504958 // "FPIX"
+        const val HEADER_BYTES = 44
+        const val MAX_FRAME_BYTES = 256 * 1024 * 1024
+    }
+}
 
 private data class ReceivedMachSurface(val token: Long, val port: Int)
 

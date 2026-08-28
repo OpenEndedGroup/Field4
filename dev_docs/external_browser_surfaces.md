@@ -272,7 +272,8 @@ in that thread shows the *pixels* having been read back. So the two observations
 conflict at all — the handle may well arrive correctly on Linux while the buffer behind it is never
 filled, and only a consumer that samples it would notice.
 
-The report prepared for upstream, with the minimal pure-JS reproduction, is
+Filed upstream as [electron#53271](https://github.com/electron/electron/issues/53271). The report,
+with the minimal pure-JS reproduction, is
 [`upstream/electron-osr-linux-shared-texture.md`](upstream/electron-osr-linux-shared-texture.md).
 Its strongest single piece of evidence is that Electron imports its own shared texture through
 `sharedTexture.importSharedTexture` and reads it back with `VideoFrame.copyTo` as 0 of 921600
