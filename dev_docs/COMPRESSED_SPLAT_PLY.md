@@ -211,15 +211,148 @@ in.compressed.ply out.ply`, then both column sets diffed — over all 882,952 sp
 doubles and not a difference in logic. The `sh` path was checked the same way, against a compressed
 file the reference encoder produced with three bands: all 13,500 coefficients bit-identical.
 
-## Not done
+## On the CPU: seeing and editing a cloud without a GPU
 
-**Writing.** `CompressedSplatPlyFixture` can emit a file and is a faithful transcription, but it is
-test scaffolding: no Morton sort, no streaming, no options, and it materializes everything. If Field
-ever needs to *write* splats, write a real encoder — and prefer SOG, which is what splat-transform
-now recommends over compressed PLY.
+Everything above is about getting splats onto a graphics card as fast as possible. The trouble with
+that as the *only* path is that it left the pipeline unfalsifiable in the way that matters: the tests
+above check numbers, and every assertion in them would still pass if the shader drew the cloud
+mirrored, inside out, or with red and blue swapped. Seeing a splat required a GPU and a window.
+
+[`SplatRaster`](../src/jvmMain/kotlin/afield/four/modules/SplatRaster.kt) rasterizes a cloud on the
+CPU into PNG bytes. It is a line-by-line transcription of `splatVertexShader` and
+`splatFragmentShader` — the view-space covariance congruence, the projective Jacobian, the 0.3 screen
+dilation, the eigen-decomposition into an oriented 3σ quad, the `minScreenRadius`/`maxScreenRadius`
+clamps, the `colorGamma` decode, premultiplied Over in linear, sRGB on the way out — so the same
+`Config` numbers mean the same things on both sides.
+
+It consumes **`packInto`'s own 16-float output** rather than decoding the payload again. That was the
+one real design decision here, and it went against the obvious: a second decoder would turn "the CPU
+and the GPU are looking at the same cloud" into a claim about two decoders staying in step, which is
+the kind of claim that rots unobserved. There is still exactly one bit-level decoder in the tree.
+
+What is left to doubt is whether the rasterizer reads each of the sixteen slots for the purpose the
+shader reads it for — a swapped covariance off-diagonal produces a *plausible* cloud, and no float
+comparison against `packInto` can see it. So `SplatRasterTest` perturbs one slot at a time and
+requires the image to move for the thirteen the shader reads and to be byte-identical for the three it
+does not. It reports 13 load-bearing (0–6, 8–13) and 3 inert (7, 14, 15).
+
+Against the table path in pixels: **100.000% of 25,600 pixels bit-identical, worst channel delta 0**.
+The floors are 99.99% and one code value, and they are set by a negative control rather than by taste
+— the same test moves one splat of 1200 by 0.01 and requires the comparison to notice. That control
+failed on its first run against the original 99.9% floor, because one moved splat leaves 99.938%
+identical at delta 1, which the old floors admitted.
+
+### The Y convention, which is answerable
+
+`Renderer.setViewportAndScissor` sets a **negative-height** Vulkan viewport
+(`.y(rect.y + rect.h).height(-rect.h)`), so NDC `+y` is at the **top** and the mapping is
+`row = (1 - ndc.y) · 0.5 · height`. That is the GL convention, not raw Vulkan's. Output goes through
+`PngEncoder.encode`, the `IntArray` entry point, which has no `flipY` parameter to get wrong. Four
+corner-marked splats pin it in the test regardless: a derivation from a viewport call is evidence, a
+corner-marked image is proof. A single splat's rendered centroid lands at column 80.657, row 54.921
+against 80.656 and 54.922 derived on paper from the perspective matrix.
+
+### Contact sheets
+
+[`SplatContactSheet`](../src/jvmMain/kotlin/afield/four/modules/SplatContactSheet.kt) tiles N frames
+of a `SplatSequence` into one image, frame numbers drawn from a 3×5 bitmap rather than
+`java.awt.Font`. `SplatSequence` and `SplatTransport` scrub beautifully, but scrubbing is a *serial*
+instrument and the questions a fresh capture raises are parallel: which frames are empty, where does
+the subject leave frame, are 40–60 the same moment. `Sheet.emptyFrames` names the dead ones, because a
+sheet with three dead frames and twenty-one good ones looks healthy in aggregate.
+
+24 tiles of the real 126-frame circle-05 capture — 522,171 splats — take about nine seconds including
+JVM startup. `SheetCamera.autoFrame` fits the box in the view's own axes rather than its bounding
+sphere; on this data the sphere throws away more than a factor of two of linear magnification, because
+a depth-map capture of one video frame measures 1.77 × 0.92 × 0.58 and so has a bounding sphere of
+radius 1.04 where the view needs 0.46 vertically.
+
+### Editing: `SplatCloud`
+
+[`SplatCloud`](../src/jvmMain/kotlin/afield/four/modules/SplatCloudEdit.kt) is a fourth
+representation and it needed justifying. `PlyFloatTable` is the file's conventions — log scales, logit
+opacity, SH-DC colour — right for a reader and hostile to a person, since the number that halves a
+splat's width is not `0.5` but a subtraction of `ln 2`. `RawSplats` is deliberately undecoded. The
+16-float layout has the covariance already baked into six numbers from which scale and rotation cannot
+be cleanly recovered. `SplatCloud` is the one you can edit: **world-unit scales, 0..1 opacity, linear
+0..1 colour, unit quaternions**. It adds no fourth *decoder* — `of` converts conventions on the table
+the existing reader already produced.
+
+```kotlin
+val cloud = SplatCloud.read("frame_000060.compressed.ply")
+println(cloud.stats())
+cloud.filtered(minAlpha = 0.15f).cropped(lo, hi).decimated(0.5f)
+     .transformed(m).write(File("trimmed.compressed.ply"))
+```
+
+`toRawSplats()` re-quantizes without touching the disk, so an edited cloud goes straight into
+`packInto` — and therefore into `SplatRaster` or a live `Cloud.reupload`. It is the same encoder
+`write` uses, so a preview is not a different picture from the save; the test requires bit-identical
+payloads between the two.
+
+`transformed` is the subtle one. `packInto` folds a matrix into the covariance congruence
+`(L·A)·S²·(L·A)ᵀ` and never names a rotation; `transformed` *must* produce a rotation and three
+scales, because that is all the format holds, so it multiplies, Gram-Schmidts and converts back to a
+quaternion. A sign error in that recovery is invisible to any float comparison inside either path, so
+`SplatCloudEditTest` rasterizes both and compares pixels: **0.120 code values per channel against an
+untransformed control of 63.774**. Shear cannot be stored, so it is reported rather than absorbed —
+`shearLoss` is 2.5e-7 after a rotation and 0.599 after a shear of 0.6.
+
+`stats()` is what settles arguments rendering can only start. The first real CPU render of circle-05
+came out very dark and nearly monochrome, which is also what a broken capture looks like. The data
+settles it: mean colour (0.1569, 0.1572, 0.1571), mean saturation 0.0013 — genuinely greyscale,
+genuinely dim, and the render was right. It also turned up something nothing else had said:
+**opacity is 0.996 at p1 and 0.996 at p99**. Every splat is fully opaque, because a depth map gives
+one opaque splat per pixel. So opacity filtering buys nothing on this kind of capture, and
+compositing *order* is everything — a better argument for `sortAlong` than any in its own KDoc.
+
+## Writing
+
+`CompressedSplatPlyWriter` writes a valid `.compressed.ply` — the inverse of the reader, and readable
+by this tree, SuperSplat, the PlayCanvas engine and splat-transform. It exists because `SplatCloud`
+gave Field a reason to write one: an edit has to be able to leave.
+
+`CompressedSplatPlyFixture` stays a fixture. It checks the *reader* against the reference encoder and
+is deliberately optionless. `SplatCloudEditTest` cross-checks the two on the same input and requires
+**byte-identical** payloads — 11,200 vertex bytes and 216 chunk-range bytes over 700 splats — which is
+a better arrangement than either being the other's only witness.
+
+**Morton order is load-bearing, and measuring that caught a bug.** Position, scale and colour are
+quantized per chunk of 256 against that chunk's own min and max, so a splat's error is set by how
+tightly its 255 neighbours-in-file-order bound it. The first sort key packed a 63-bit Morton code and
+a 24-bit index into one `Long` by shifting the code right 3 and left 24 — silently discarding the top
+24 bits, which are exactly the *coarse* subdivision that decides which chunk a splat lands in. It
+sorted correctly on sub-cell detail and randomly on anything larger, so it looked like a working
+Morton sort. The grid is 13 bits per axis now (`3·13 + 24 = 63`, with a `require`). The bug was put
+back afterwards to confirm the diagnosis rather than argue it: with the overflow, mean position error
+was 2.244e-4 against 2.254e-4 unsorted — a 1.004× improvement, which is none. With 13 bits it is
+1.02e-4 against 2.25e-4, or 2.2× tighter.
+
+The test asserts the **mean**, not the worst, and that is not a softening: chunks hold exactly 256
+splats while Morton octants hold whatever they hold, so some chunk always straddles a boundary and
+inherits nearly the full span on one axis. The worst error is a statistic about that one unluckiest
+chunk; the mean is a statistic about the file.
+
+Round trip on 1500 splats: worst position error 6.8e-4, colour 1.2e-3, alpha 1.9e-3, scale ratio
+5.3e-4. Save and reload moves a rendered picture by 0.000 code values per channel.
+
+SOG is still what splat-transform recommends over compressed PLY, and is still not here.
+
+## Not done
 
 **The other splat containers.** splat-transform reads `.splat`, `.ksplat`, `.spz`, `.sog` and its LOD
 formats too. None of them are here.
+
+**Spherical harmonics survive reading and nothing else.** `SplatRaster` shades from the DC term as the
+shader does, so `f_rest_*` is as unused there as on the GPU. More sharply: `SplatCloud` does not carry
+the bands at all, so an edit-and-write round trip **drops them** — a cloud with three SH bands comes
+back with none, silently. `readCompressedSplatPly(includeSphericalHarmonics = true)` still reads them;
+nothing downstream keeps them.
+
+**Parallelism.** `SplatRaster` is single-threaded. Alpha compositing is order-dependent, so the split
+has to be by screen tile rather than by splat, which is a real change rather than a `parallelStream`.
+A 764×430 preview of 20k splats is about 15.5M fragments and takes a fraction of a second, so nothing
+has needed it yet.
 
 **View-dependent colour.** The `f_rest_*` bands can be read but nothing evaluates them —
 `GaussianSplatRenderer` shades from `f_dc` alone, so a scene's specular highlights are baked at

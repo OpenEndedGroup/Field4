@@ -110,9 +110,12 @@ class SplatCloud(
             append("  size        (%.4f, %.4f, %.4f)\n".format(
                 boundsMax.x - boundsMin.x, boundsMax.y - boundsMin.y, boundsMax.z - boundsMin.z
             ))
+            // An em dash rather than "<-": this string lands in a box's output panel, which renders
+            // HTML, and a literal '<' in text that a browser is going to parse is a hazard not worth
+            // taking for the sake of an arrow.
             append("  colour      mean (%.4f, %.4f, %.4f), saturation %.4f%s\n".format(
                 meanColor.x, meanColor.y, meanColor.z, meanSaturation,
-                if (meanSaturation < 0.02f) "  <- effectively greyscale" else ""
+                if (meanSaturation < 0.02f) "  — effectively greyscale" else ""
             ))
             append("  opacity     mean %.4f, p1/p25/p50/p75/p99 %s\n".format(
                 meanAlpha, alphaPercentiles.joinToString(" / ") { "%.3f".format(it) }
