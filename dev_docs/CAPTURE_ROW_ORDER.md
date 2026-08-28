@@ -116,6 +116,10 @@ world y than `ease-out` at the same phase of a rising segment. Colour centroids 
 That second oracle is the useful pattern to reuse: an asymmetry the *source* fixes, rather than a
 judgement about what a picture ought to look like.
 
+The before/after stills and the all-black flipped difference are committed under
+[`evidence/capture_row_order/`](evidence/capture_row_order/), whose README carries the one command
+that re-derives the whole claim.
+
 ## Regenerating the affected assets
 
 Fixing `TexturePreviewCache` inverts the correct output relative to every committed asset produced
