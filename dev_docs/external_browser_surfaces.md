@@ -198,14 +198,25 @@ never wrote them rather than that Field failed to read them. Against a page of s
 | `mmap` of the received descriptor, outside Field entirely | 0 of 921600 |
 | a separate C `VK_EXT_image_drm_format_modifier` import + GPU copy | 0 of 921600 |
 
+The cleanest repro is an A/B against Chromium's own other output path. Same URL, same switches,
+same Electron, same machine, differing only in `useSharedTexture`:
+
+| offscreen mode | non-zero pixels |
+| --- | --- |
+| `useSharedTexture: false` — CPU bitmap | 921600 of 921600 |
+| `useSharedTexture: true` — dma-buf | 0 of 921600 |
+
+Chromium renders the page; only the shared-texture export is empty.
+
 The third reader exists because the second alone is not conclusive: a CPU mapping of a device-local
 allocation can read zeros spuriously. It imports the same descriptor with the same modifier and
 stride and reports `reqs=3686400`, exactly the declared size, so the import is well formed — it
 simply reads an empty buffer.
 
 The result does not move: Electron 42.3.3 and 44.0.0; Chromium on the RTX 4090 and forced onto the
-AMD iGPU through Mesa; `argb` and `rgbaf16` shared-texture formats; the first paint and the fifth
-paint of a continuously animating page. `supportsZeroCopyWebGpuImport` is reported `false`
+AMD iGPU through Mesa; `argb` and `rgbaf16` shared-texture formats; the first paint, the fifth paint
+of a continuously animating page, and the tenth paint of a fully loaded `https://youtube.com`, so
+it is not a first-frame race and not specific to Field's own page. `supportsZeroCopyWebGpuImport` is reported `false`
 throughout. A web search finds no report of this symptom and no working Linux example: Electron
 documents `nativePixmap` in its type definitions, but every code sample and every README section of
 its shared-texture documentation covers only Windows/D3D11 and macOS/IOSurface. The same producer

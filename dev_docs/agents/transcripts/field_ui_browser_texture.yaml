@@ -3,7 +3,20 @@ description: |
   The recursive proof: Field's own live browser UI arrives from Electron as a GPU shared texture
   and is sampled by a mesh in Field's Vulkan renderer. The producer is a hidden offscreen Chromium
   window pointed at this same document; on macOS its IOSurface crosses processes as a Mach right,
-  and Electron's paint lease is released only after Field's resident-texture copy completes.
+  on Linux its dma-buf crosses as SCM_RIGHTS, and Electron's paint lease is released only after
+  Field's resident-texture copy completes.
+
+  Run this in a *named* document, not a scratch one. The producer opens a second browser view of
+  the document it lives in, and an agent scratch document is private to the session that made it —
+  a second client asking for `?file=scratch` gets its own empty one, attaches offline, and the
+  readiness gate then waits for a box that will never appear. Through the backdoor that means
+  `--document <name>`. Note also that `wait-output --kind all` is the wrong wait for this graph:
+  the panel emits empty error events on its `vertex_fragment` (Slang) property, which abort the
+  wait while the box is in fact running. Use `sleep` then `output`.
+
+  On Linux the transport works end to end — descriptors cross, frames import, `PRESENTED` comes
+  back after the fence — but the panel is black, because Chromium exports an empty dma-buf. That is
+  upstream, not here; see dev_docs/external_browser_surfaces.md.
 operations:
   - create:
       box: field_ui_texture_renderer
