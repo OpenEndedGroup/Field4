@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 data class ExternalBrowserSurfaceSpec(
     val width: Int,
     val height: Int,
-    val pixelFormat: BrowserSurfacePixelFormat = BrowserSurfacePixelFormat.BGRA8_UNORM,
+    val pixelFormat: BrowserSurfacePixelFormat = BrowserSurfacePixelFormat.BGRA8_SRGB,
     val slotCount: Int = 3,
     val deviceScaleFactor: Double = 1.0
 ) {
@@ -29,8 +29,10 @@ data class ExternalBrowserSurfaceSpec(
     }
 }
 
-/** Formats Electron can currently publish through its accelerated offscreen paint API. */
+/** Pixel layouts and transfer functions accepted from accelerated browser producers. */
 enum class BrowserSurfacePixelFormat {
+    BGRA8_SRGB,
+    RGBA8_SRGB,
     BGRA8_UNORM,
     RGBA8_UNORM,
     RGBA16_FLOAT

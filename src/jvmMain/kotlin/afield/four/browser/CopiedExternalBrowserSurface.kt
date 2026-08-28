@@ -46,13 +46,16 @@ sealed class CopiedExternalBrowserSurface(
     private val mailbox = ExternalBrowserFrameMailbox(spec, onRelease)
     private val currentFrame = AtomicReference<ExternalBrowserFrame?>(null)
 
-    protected val vkFormat = spec.pixelFormat.vkFormat()
+    // External APIs describe the allocation's channel storage separately from its color space.
+    // Import the raw bytes, then copy them into the view format Field should sample.
+    protected val importVkFormat = spec.pixelFormat.storageVkFormat()
+    private val residentVkFormat = spec.pixelFormat.sampledVkFormat()
     private val residentImage = Image(
         renderer.device,
         Image.ImageData()
             .width(spec.width)
             .height(spec.height)
-            .format(vkFormat)
+            .format(residentVkFormat)
             .mipLevels(1)
             .usage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT or VK_IMAGE_USAGE_TRANSFER_DST_BIT or VK_IMAGE_USAGE_SAMPLED_BIT)
             .debugName("external-browser-resident ${spec.width}x${spec.height}")
@@ -61,7 +64,7 @@ sealed class CopiedExternalBrowserSurface(
         renderer.device,
         residentImage,
         ImageView.ImageViewData()
-            .format(vkFormat)
+            .format(residentVkFormat)
             .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
             .mipLevels(1)
             .debugName("external-browser-resident-view ${spec.width}x${spec.height}")
@@ -288,8 +291,18 @@ sealed class CopiedExternalBrowserSurface(
 
     private fun ExternalBrowserFrame.key() = FrameKey(streamId, frameId, releaseToken)
 
-    private fun BrowserSurfacePixelFormat.vkFormat(): Int = when (this) {
+    private fun BrowserSurfacePixelFormat.sampledVkFormat(): Int = when (this) {
+        BrowserSurfacePixelFormat.BGRA8_SRGB -> VK_FORMAT_B8G8R8A8_SRGB
+        BrowserSurfacePixelFormat.RGBA8_SRGB -> VK_FORMAT_R8G8B8A8_SRGB
         BrowserSurfacePixelFormat.BGRA8_UNORM -> VK_FORMAT_B8G8R8A8_UNORM
+        BrowserSurfacePixelFormat.RGBA8_UNORM -> VK_FORMAT_R8G8B8A8_UNORM
+        BrowserSurfacePixelFormat.RGBA16_FLOAT -> VK_FORMAT_R16G16B16A16_SFLOAT
+    }
+
+    private fun BrowserSurfacePixelFormat.storageVkFormat(): Int = when (this) {
+        BrowserSurfacePixelFormat.BGRA8_SRGB,
+        BrowserSurfacePixelFormat.BGRA8_UNORM -> VK_FORMAT_B8G8R8A8_UNORM
+        BrowserSurfacePixelFormat.RGBA8_SRGB,
         BrowserSurfacePixelFormat.RGBA8_UNORM -> VK_FORMAT_R8G8B8A8_UNORM
         BrowserSurfacePixelFormat.RGBA16_FLOAT -> VK_FORMAT_R16G16B16A16_SFLOAT
     }

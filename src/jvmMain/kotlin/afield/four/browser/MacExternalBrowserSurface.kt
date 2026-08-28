@@ -71,7 +71,7 @@ class MacExternalBrowserSurface(
                 Image.ImageData()
                     .width(spec.width)
                     .height(spec.height)
-                    .format(vkFormat)
+                    .format(importVkFormat)
                     .mipLevels(1)
                     .usage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT or VK_IMAGE_USAGE_SAMPLED_BIT)
                     .debugName("external-browser-iosurface slot=${frame.slot} handle=$identity")

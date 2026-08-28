@@ -54,7 +54,7 @@ class FieldUiBrowserTexture(
     private val specValue = ExternalBrowserSurfaceSpec(
         width = width,
         height = height,
-        pixelFormat = BrowserSurfacePixelFormat.BGRA8_UNORM,
+        pixelFormat = BrowserSurfacePixelFormat.BGRA8_SRGB,
         slotCount = slots,
     )
     private val delegate = ExternalBrowserSurfaces.create(renderer, specValue) { release ->
@@ -222,9 +222,11 @@ private class MacElectronBrowserTextureSession(
         }
         val width = message.int("width")
         val height = message.int("height")
+        val colorSpace = message.colorSpace("colorSpace")
+        val isSrgb = colorSpace?.transfer.equals("srgb", ignoreCase = true)
         val pixelFormat = when (message.string("pixelFormat")) {
-            "bgra" -> BrowserSurfacePixelFormat.BGRA8_UNORM
-            "rgba" -> BrowserSurfacePixelFormat.RGBA8_UNORM
+            "bgra" -> if (isSrgb) BrowserSurfacePixelFormat.BGRA8_SRGB else BrowserSurfacePixelFormat.BGRA8_UNORM
+            "rgba" -> if (isSrgb) BrowserSurfacePixelFormat.RGBA8_SRGB else BrowserSurfacePixelFormat.RGBA8_UNORM
             "rgbaf16" -> BrowserSurfacePixelFormat.RGBA16_FLOAT
             else -> error("Unsupported Electron browser texture format ${message.string("pixelFormat")}")
         }
@@ -238,6 +240,7 @@ private class MacElectronBrowserTextureSession(
                 height = height,
                 pixelFormat = pixelFormat,
                 handle = ExternalBrowserImageHandle.MacIOSurfaceMachPort(received.port),
+                colorSpace = colorSpace,
                 visibleRect = message.rect("visibleRect"),
                 contentRect = message.rect("contentRect"),
                 timestampMicros = message["timestamp"]?.jsonPrimitive?.longOrNull,
@@ -329,3 +332,13 @@ private fun JsonObject.int(name: String): Int =
 
 private fun JsonObject.rect(name: String): BrowserSurfaceRect? =
     this[name]?.jsonObject?.let { BrowserSurfaceRect(it.int("x"), it.int("y"), it.int("width"), it.int("height")) }
+
+private fun JsonObject.colorSpace(name: String): BrowserSurfaceColorSpace? =
+    (this[name] as? JsonObject)?.let {
+        BrowserSurfaceColorSpace(
+            primaries = it.string("primaries"),
+            transfer = it.string("transfer"),
+            matrix = it.string("matrix"),
+            range = it.string("range"),
+        )
+    }
