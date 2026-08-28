@@ -58,6 +58,18 @@ object SplatRasterTest {
     /** Opacity logit that quantizes to the 255 byte, hence to an alpha of exactly 1. */
     private const val OPAQUE = 30f
 
+    /**
+     * Percentage of pixels that must be bit-identical between the two pack paths.
+     *
+     * Set by what the *negative* control tolerates, not by what feels safe:
+     * [checkPackPathAgreement] moves one splat and requires this floor to reject the result, so the
+     * floor can only be as loose as a genuine single-splat defect is detectable.
+     */
+    private const val AGREEMENT_FLOOR = 99.99
+
+    /** Largest per-channel difference allowed between the two pack paths. Measured: 0. */
+    private const val WORST_DELTA_CEILING = 1
+
     fun runTests(): Boolean {
         var passed = true
         testDir.mkdirs()
@@ -396,18 +408,61 @@ object SplatRasterTest {
             // These two floors are the point of the test, and they sit next to the measured figure
             // rather than a comfortable distance below it: this comparison actually returns 100.000%
             // identical with a worst channel delta of 0, because the two paths' ~3e-5 relative
-            // disagreement is an order of magnitude under an 8-bit code value. The floor is 99.9%
-            // and one code value — enough headroom for a differently-rounding FMA, and nowhere near
-            // enough to absorb a real regression.
-            check(agreement >= 99.9) {
-                "only %.3f%% of pixels identical between the pack paths, expected >= 99.9%%".format(agreement)
+            // disagreement is an order of magnitude under an 8-bit code value.
+            //
+            // The first version of this floor was 99.9%, and the negative control below rejected it:
+            // moving a single splat of 1200 by 0.01 leaves 99.938% of pixels identical with a worst
+            // delta of 1, which 99.9% and "delta <= 1" both admit. A floor that a real perturbation
+            // passes is not a floor. AGREEMENT_FLOOR is 99.99% — about two pixels of this image, so
+            // still room for a differently-rounding FMA on another platform, and nowhere near room
+            // for one splat in the wrong place.
+            check(agreement >= AGREEMENT_FLOOR) {
+                "only %.3f%% of pixels identical between the pack paths, expected >= %s%%"
+                    .format(agreement, AGREEMENT_FLOOR)
             }
-            check(worst <= 1) { "a channel differs by $worst code values between the pack paths, expected <= 1" }
+            check(worst <= WORST_DELTA_CEILING) {
+                "a channel differs by $worst code values between the pack paths, " +
+                    "expected <= $WORST_DELTA_CEILING"
+            }
             check(fromFused.stats.drawn > 500) {
                 "only ${fromFused.stats.drawn} splats drawn of ${raw.count}; the view is nearly empty, " +
                     "so this comparison would agree vacuously"
             }
-            "%.3f%% of ${a.size} pixels identical, worst channel delta $worst, " .format(agreement) +
+            // The other half of the claim: the comparison can tell when the clouds DIFFER. Move one
+            // splat of 1200 by a hundredth of a unit and require both floors to reject it.
+            //
+            // Without this, "100.000% identical" is unfalsifiable — a comparison that always returns
+            // 100% would produce exactly the same reassuring line. This is the cheapest possible
+            // version of breaking your own oracle and watching it go red, and it runs every time
+            // rather than once, in a terminal, by an agent who then wrote down that it had.
+            val sabotaged = SplatRaster.allocatePacked(raw.count)
+            GaussianSplatRenderer.packInto(raw, sabotaged)
+            val victim = raw.count / 3
+            sabotaged.put(victim * STRIDE, sabotaged.get(victim * STRIDE) + 0.01f)
+            val damaged = SplatRaster.rasterize(sabotaged, raw.count, view).image.toArgb()
+            var stillIdentical = 0
+            var damagedWorst = 0
+            for (pixel in a.indices) {
+                if (b[pixel] == damaged[pixel]) { stillIdentical++; continue }
+                for (shift in intArrayOf(16, 8, 0)) {
+                    val delta = abs(((b[pixel] shr shift) and 255) - ((damaged[pixel] shr shift) and 255))
+                    if (delta > damagedWorst) damagedWorst = delta
+                }
+            }
+            val damagedAgreement = stillIdentical * 100.0 / a.size
+            // Deliberately re-uses the *same* two constants the positive assertion above uses, so the
+            // floors cannot be loosened without this control noticing.
+            check(damagedAgreement < AGREEMENT_FLOOR || damagedWorst > WORST_DELTA_CEILING) {
+                "moving one splat of ${raw.count} by 0.01 left the comparison reporting " +
+                    "%.3f%% identical with a worst delta of $damagedWorst — both inside the floors this "
+                        .format(damagedAgreement) +
+                    "test passes on ($AGREEMENT_FLOOR%%, $WORST_DELTA_CEILING), so those floors " +
+                    "would not catch a real regression either"
+            }
+
+            "%.3f%% of ${a.size} pixels identical, worst channel delta $worst; ".format(agreement) +
+                "one splat moved by 0.01 drops that to %.3f%% at delta $damagedWorst; "
+                    .format(damagedAgreement) +
                 "${fromFused.stats.drawn} splats drawn, ${fromFused.image.stats()}"
         }
     }
