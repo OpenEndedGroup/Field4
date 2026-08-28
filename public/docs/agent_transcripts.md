@@ -40,13 +40,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 77 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+All 78 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
 not in the same way, and the difference is worth knowing before you trust one. 56 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
 error-kind output line. (Almost always that is every box in the file. A transcript may
 create a box it does not execute — one that wants a device the build does not have, or that is meant to fail so a
-diagnostic can be shown — and only the ops it actually writes down are replayed.) 14 want
+diagnostic can be shown — and only the ops it actually writes down are replayed.) 15 want
 something the lightweight build does not own — a GLFW window and Vulkan renderer, an external audio
 service, or a camera — so those are **built and compiled**: the graph is assembled through the real
 apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal evaluation —
@@ -1074,6 +1074,16 @@ back as `32,128,223` and accepts only a `PRESENTED` release that arrived after t
 CI compiles the graph on every OS; the tracked backdoor replay is the live macOS test. It is an
 integration probe rather than a welcome-screen starting point, so no materialized document is
 offered here.
+
+**external_browser_surface_linux_smoke** — The Linux twin of the above, against real dma-bufs. A
+render target created with a driver-chosen DRM format modifier exports its allocation as a
+`/dmabuf:` fd, hands the image off to `VK_QUEUE_FAMILY_FOREIGN_EXT`, and the receiver imports it
+through `VK_EXT_image_drm_format_modifier` with the explicit plane layout an Electron `nativePixmap`
+carries. The box reads the resident image back as `32,127,223` after a post-fence `PRESENTED`, then
+covers the two paths one frame cannot: a repeat paint that omits its handle, which has to copy from
+the cached slot import, and a frame the mailbox must reject, whose receiver-local fd has to be
+closed rather than leaked. Same shape as the macOS smoke — compiled everywhere,
+run live by the tracked backdoor replay, and not a starting point.
 
 ## Graphics building blocks
 

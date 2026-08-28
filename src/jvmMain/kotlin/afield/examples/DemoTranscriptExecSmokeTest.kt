@@ -312,6 +312,9 @@ object DemoTranscriptExecSmokeTest {
         // Exercises IOSurface/Mach-port import, a Vulkan copy, and a graphics-fence callback on
         // macOS. CI still compiles both boxes everywhere; the tracked backdoor replay runs it live.
         "external_browser_surface_macos_smoke",
+        // The Linux twin: a DRM-modifier RTT, a dma-buf export, and a foreign-queue import. Same
+        // deal — compiled everywhere, run live by the tracked backdoor replay.
+        "external_browser_surface_linux_smoke",
         // Needs a camera, which CI does not have. Compiling without evaluating is also what keeps this
         // hermetic: the box's `clipEncode(…)` calls and its Depth Anything session are behind lazy
         // initialisation, so nothing here fetches the ~600MB of encoders that running it would.

@@ -78,6 +78,8 @@ object AgentTranscriptMaterializer {
         "afield_four_traditional_triangle",
         // A macOS receiver integration smoke, not a user-facing starting scene.
         "external_browser_surface_macos_smoke",
+        // The Linux/dma-buf receiver integration smoke, likewise.
+        "external_browser_surface_linux_smoke",
         "graphics_renderer_launch",
         "remotear_scene_motion",
         "tone_synth_sequence",

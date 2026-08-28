@@ -1,9 +1,9 @@
 # External browser surfaces
 
-Status: the platform-neutral frame/lease contract and the macOS/MoltenVK receiver are implemented
-and live-tested. Windows/D3D11 and Linux/dma-buf receivers are implemented as compile-reviewed
-first passes and still need native-machine validation. The Electron producer and its native-handle
-transports are not yet in this repository.
+Status: the platform-neutral frame/lease contract and the macOS/MoltenVK and Linux/dma-buf
+receivers are implemented and live-tested. The Windows/D3D11 receiver is implemented as a
+compile-reviewed first pass and still needs native-machine validation. The Electron producer and
+its native-handle transports are not yet in this repository.
 
 This is the texture seam for web UI that should appear on geometry in Field/OpenXR. It does not
 choose the browser. Electron is the immediate producer because its accelerated offscreen `paint`
@@ -103,17 +103,39 @@ successful memory import; before that point, rejected or failed frames close the
 fds. Each copy acquires the image from `VK_QUEUE_FAMILY_FOREIGN_EXT` and releases it back after the
 copy, before the producer lease is acknowledged.
 
-The first pass supports one unique dma-buf allocation with one or more modifier layout planes.
-That is the intended accelerated RGB/BGRA/RGBAF16 browser path. A nativePixmap containing distinct
-fds fails with an actionable error: supporting it correctly requires disjoint image creation,
-per-memory-plane requirement queries and `vkBindImageMemory2`, which should be added against a real
-Electron/driver combination rather than guessed on macOS.
+This supports one unique dma-buf allocation with one or more modifier layout planes. That is the
+intended accelerated RGB/BGRA/RGBAF16 browser path. A nativePixmap containing distinct fds fails
+with an actionable error: supporting it correctly requires disjoint image creation, per-memory-plane
+requirement queries and `vkBindImageMemory2`, which should be added against a real Electron/driver
+combination rather than guessed at.
 
-The Linux device path now enables and checks `VK_KHR_external_memory_fd`,
-`VK_EXT_external_memory_dma_buf`, `VK_EXT_image_drm_format_modifier`, and
-`VK_EXT_queue_family_foreign`. Native validation still
-needs to probe the received format/modifier tuple with `vkGetPhysicalDeviceImageFormatProperties2`
-before relying on it in production; an unsupported tuple currently fails at image creation.
+Before building anything from a received handle, the importer asks
+`vkGetPhysicalDeviceImageFormatProperties2` whether this device can import that
+format/modifier/usage tuple at all. Without that question an unsupported combination arrives as a
+bare `vkCreateImage` failure naming neither the modifier nor the reason. The Linux device path
+enables and checks `VK_KHR_external_memory_fd`, `VK_EXT_external_memory_dma_buf`,
+`VK_EXT_image_drm_format_modifier`, and `VK_EXT_queue_family_foreign`.
+
+This receiver path has a live Linux smoke, and unlike the macOS one it also needed a producer.
+`LinuxDmaBufExport` (with `Image.exportDmaBuf`/`RTTParameters.exportDmaBuf`) is that producer: a
+Field render target whose backing allocation carries a driver-chosen DRM format modifier and exports
+as a dma-buf fd. It exists because a dma-buf is only interpretable by another driver if a modifier
+describes its tiling, which is precisely what the existing `exportOpaqueFd` NVENC path does *not*
+carry — opaque fd is a same-vendor handshake and cannot stand in for a browser handle. Rather than
+name a modifier, the producer offers every modifier the device can both build the image from and
+share, and reads back the one the driver chose; a producer that hard-codes a modifier is guessing on
+the consumer's behalf.
+
+The smoke renders that target, releases it to `VK_QUEUE_FAMILY_FOREIGN_EXT`, imports the fd through
+the receiver, and reads the expected BGRA pixel back out of the resident image after a post-fence
+`PRESENTED`. It then covers the two paths a single-frame test would miss: a second paint that omits
+its handle, which must copy from the cached slot import and re-acquire the same allocation from the
+foreign queue family without corrupting the resident image; and a frame the mailbox must reject,
+whose receiver-local fd must be closed rather than leaked. Verified on NVIDIA proprietary 610.43.02 (RTX 4090, modifier
+`0x0300000000606013`) with Vulkan validation enabled and silent. The same recipe was checked against
+Mesa RADV 26.1.4 outside Field, which chooses a different modifier — the negotiation is not
+NVIDIA-shaped. The replayable graph is
+`dev_docs/agents/transcripts/external_browser_surface_linux_smoke.yaml`.
 
 ## What came from the Windows prototype
 
@@ -129,8 +151,9 @@ parts that matter for a browser process:
 - one release acknowledgement for every offered producer lease, with `PRESENTED` delayed until the
   GPU fence.
 
-The Windows and Linux first passes now live behind the same construction point. They intentionally
-stop short of claiming runtime support until each has passed its native validation/readback smoke.
+The Windows and Linux backends live behind the same construction point. Linux has since passed its
+native validation/readback smoke; Windows intentionally stops short of claiming runtime support
+until it passes its own.
 
 ## Next integration slice
 
