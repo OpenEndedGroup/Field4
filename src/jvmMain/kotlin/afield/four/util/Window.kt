@@ -313,9 +313,18 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
      * OpenGL, or software rendering) — the caller is responsible for reading the pixels back
      * (e.g. a Vulkan staging-buffer copy) and freeing the ByteBuffer afterwards.
      *
-     * The PNG is flipped vertically for you by [PngEncoder.encodeFromBuffer] with `flipY = true`
-     * (Vulkan/GL framebuffers are typically bottom-to-top). If the result looks upside-down you
-     * are likely double-flipping upstream; do not flip again here.
+     * **Row order is per-source, not universal.** Your rows are written out in the order you
+     * hand them over. In this repo every readback is a `vkCmdCopyImageToBuffer`, whose addressing
+     * is row-major from `imageOffset` with y increasing, so image row 0 lands at the lowest buffer
+     * address and the rows arrive **top-down** — for an offscreen render target exactly as much as
+     * for the swapchain, since both are rendered through the same negative-height viewport. A
+     * `glReadPixels`-style source is the bottom-up case, and there is currently no such source
+     * here.
+     *
+     * This method used to claim the opposite as a general fact and tell callers not to correct it.
+     * It was wrong, and it was wrong in the direction that keeps you looking upstream: if the
+     * result looks upside-down, check the flip *here* first. [afield.four.CaptureOrientation]
+     * carries the per-path table and the reasoning for each entry.
      *
      * To fire a capture from a render loop, register a poll callback with the Sequence idiom
      * `window.onPoll[name] = sequence { while (true) { ...; yield(Unit) } }`
@@ -349,8 +358,9 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss").format(Date())
             val tempFile = Files.createTempFile("field4_screenshot_$timestamp", ".png").toFile()
 
-            // Convert buffer to PNG and write to file
-            val pngBytes = PngEncoder.encodeFromBuffer(imageData, width, height, flipY = true)
+            // Preserve the caller's row order: every readback in this repo is top-down.
+            // See CaptureOrientation for the per-path table.
+            val pngBytes = PngEncoder.encodeFromBuffer(imageData, width, height, flipY = false)
             Files.write(tempFile.toPath(), pngBytes, StandardOpenOption.WRITE)
 
             return tempFile
@@ -363,6 +373,10 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
      * Get the current framebuffer as a base64-encoded PNG string.
      * Useful for sending image data over the network.
      *
+     * Row order is preserved, for the reasons given on [saveFramebufferToTempFile]. Neither
+     * method has a caller anywhere in this repo, so the default is set to match the in-tree
+     * Vulkan readbacks — that way the first caller to arrive is right without having to know.
+     *
      * @param imageData ByteBuffer containing RGBA pixel data (4 bytes per pixel), or null for a blank image
      * @param width Image width in pixels
      * @param height Image height in pixels
@@ -374,7 +388,8 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
         }
 
         return try {
-            val pngBytes = PngEncoder.encodeFromBuffer(imageData, width, height, flipY = true)
+            // Preserve the caller's row order — see CaptureOrientation.
+            val pngBytes = PngEncoder.encodeFromBuffer(imageData, width, height, flipY = false)
             Base64.getEncoder().encodeToString(pngBytes)
         } catch (e: Exception) {
             System.err.println("Failed to get framebuffer as base64 PNG: ${e.message}")
