@@ -40,13 +40,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 81 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+All 82 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
 not in the same way, and the difference is worth knowing before you trust one. 56 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
 error-kind output line. (Almost always that is every box in the file. A transcript may
 create a box it does not execute — one that wants a device the build does not have, or that is meant to fail so a
-diagnostic can be shown — and only the ops it actually writes down are replayed.) 18 want
+diagnostic can be shown — and only the ops it actually writes down are replayed.) 19 want
 something the lightweight build does not own — a GLFW window and Vulkan renderer, an external audio
 service, or a camera — so those are **built and compiled**: the graph is assembled through the real
 apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal evaluation —
@@ -1075,6 +1075,12 @@ CI compiles the graph on every OS; the tracked backdoor replay is the live macOS
 integration probe rather than a welcome-screen starting point, so no materialized document is
 offered here.
 
+**external_browser_surface_linux_smoke** — The Linux receiver and transport proof: a real dma-buf
+crosses processes with SCM_RIGHTS, keeps its DRM modifier and per-plane layout, imports into Vulkan,
+and is copied into Field's stable resident texture before its lease is released. It also exercises
+the opt-in CPU bitmap fallback used while Chromium's Linux shared-texture export can announce an
+unfilled buffer. CI compiles the graph everywhere; the live replay belongs on a Linux Vulkan host.
+
 **field_ui_browser_texture** — The end-to-end version: a hidden Electron window opens this Field
 document, emits Chromium's accelerated offscreen `paint` textures, and transfers their IOSurfaces
 to Field as Mach rights. Field imports each image into Vulkan, copies it into a stable sampled
@@ -1082,8 +1088,9 @@ texture, draws that texture on a full-window mesh, and only then releases Electr
 The result is Field's own live canvas and boxes recursively visible inside Field's native renderer;
 the native window's input is routed back to Chromium, and launch proves a page-to-Field-to-JavaScript
 promise round trip. The published `browserControl` property is the live navigation, input,
-evaluation, and raw-CDP handle. No screenshot or CPU bitmap enters the path. Run the renderer box
-first, then the panel box.
+evaluation, and raw-CDP handle. The default path never uses a screenshot or CPU bitmap; Linux also
+offers an explicit readback/upload fallback while the upstream empty-dma-buf issue remains. Run the
+renderer box first, then the panel box.
 
 ![Field's live canvas, two running transcript boxes and their connection sampled from Chromium onto a Vulkan mesh](assets/browser_texture/field-ui-on-texture.png)
 

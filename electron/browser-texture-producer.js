@@ -13,14 +13,26 @@ const textureWidth = Number(required("FIELD_BROWSER_TEXTURE_WIDTH"));
 const textureHeight = Number(required("FIELD_BROWSER_TEXTURE_HEIGHT"));
 const deviceScaleFactor = Number(process.env.FIELD_BROWSER_TEXTURE_DEVICE_SCALE_FACTOR || "1");
 const controlPort = Number(required("FIELD_BROWSER_TEXTURE_CONTROL_PORT"));
-const machService = required("FIELD_BROWSER_TEXTURE_MACH_SERVICE");
-const bridgePath = required("FIELD_BROWSER_TEXTURE_BRIDGE");
+const isLinux = process.platform === "linux";
+const cpuBitmap = process.env.FIELD_BROWSER_TEXTURE_CPU_BITMAP === "1";
+const machService = isLinux || cpuBitmap ? "" : required("FIELD_BROWSER_TEXTURE_MACH_SERVICE");
+const dmaBufSocket = isLinux && !cpuBitmap ? required("FIELD_BROWSER_TEXTURE_DMABUF_SOCKET") : "";
+const pixelPort = cpuBitmap ? Number(required("FIELD_BROWSER_TEXTURE_PIXEL_PORT")) : 0;
+const bridgePath = cpuBitmap ? "" : required("FIELD_BROWSER_TEXTURE_BRIDGE");
 const streamId = BigInt(required("FIELD_BROWSER_TEXTURE_STREAM_ID"));
 const slotCount = Number(process.env.FIELD_BROWSER_TEXTURE_SLOTS || "3");
 let readyBoxUid = process.env.FIELD_BROWSER_TEXTURE_READY_BOX_UID || "";
-const bridge = require(path.resolve(bridgePath));
+const bridge = cpuBitmap ? null : require(path.resolve(bridgePath));
 
 app.commandLine.appendSwitch("ignore-gpu-blocklist");
+
+if (isLinux && !cpuBitmap) {
+  app.commandLine.appendSwitch("enable-features", "Vulkan");
+  app.commandLine.appendSwitch("use-angle", "vulkan");
+  app.commandLine.appendSwitch("enable-gpu-rasterization");
+  app.commandLine.appendSwitch("enable-zero-copy");
+  app.commandLine.appendSwitch("ozone-platform-hint", "auto");
+}
 
 // Field's development server uses a self-signed certificate. Keep that exception local instead
 // of weakening certificate validation for every site this general-purpose browser can visit.
@@ -112,6 +124,43 @@ function release(token, reason) {
   if (reason === "INVALID" || reason === "IMPORT_FAILED") {
     console.warn(`[field-browser-texture] frame ${token} released ${reason}`);
   }
+}
+
+// One frame header, then its pixels. Fixed layout so the JVM can read it without parsing.
+const PIXEL_HEADER_BYTES = 44;
+const PIXEL_MAGIC = 0x46504958; // "FPIX"
+let pixels = null;
+let pixelsWritable = false;
+
+function installPixelChannel() {
+  pixels = net.createConnection({ host: "127.0.0.1", port: pixelPort });
+  pixels.on("connect", () => { pixelsWritable = true; });
+  pixels.on("drain", () => { pixelsWritable = true; });
+  pixels.on("error", (error) => {
+    console.error("[field-browser-texture] pixel channel failed", error);
+    app.quit();
+  });
+  pixels.on("close", () => { pixelsWritable = false; app.quit(); });
+}
+
+function sendBitmapFrame(image, frameNumber) {
+  if (!pixels || !pixelsWritable) return false;
+  const size = image.getSize();
+  const bitmap = image.getBitmap();
+  const header = Buffer.alloc(PIXEL_HEADER_BYTES);
+  let at = 0;
+  at = header.writeUInt32BE(PIXEL_MAGIC, at);
+  at = header.writeBigUInt64BE(streamId, at);
+  at = header.writeBigUInt64BE(frameNumber, at);
+  at = header.writeUInt32BE(Number(frameNumber % BigInt(slotCount)), at);
+  at = header.writeUInt32BE(size.width, at);
+  at = header.writeUInt32BE(size.height, at);
+  at = header.writeUInt32BE(bitmap.length / Math.max(size.height, 1), at);
+  at = header.writeUInt32BE(bitmap.length, at);
+  header.writeUInt32BE(0, at); // reserved
+  pixels.write(header);
+  pixelsWritable = pixels.write(bitmap);
+  return true;
 }
 
 async function ensureDebugger() {
@@ -424,6 +473,35 @@ async function announceLoaded() {
   send({ type: "loaded", afterFrameId: frameId.toString(), url: contents.getURL(), state: stateSnapshot() });
 }
 
+let warnedAboutHandle = false;
+
+function describeTransfer(info) {
+  if (isLinux) {
+    const pixmap = info?.handle?.nativePixmap;
+    const planes = pixmap?.planes;
+    if (!Array.isArray(planes) || planes.length === 0) return null;
+
+    const fds = [];
+    const described = planes.map((plane) => {
+      let index = fds.indexOf(plane.fd);
+      if (index < 0) index = fds.push(plane.fd) - 1;
+      return { fdIndex: index, stride: plane.stride, offset: plane.offset, size: plane.size };
+    });
+    return {
+      send: (token) => {
+        bridge.sendDmaBuf(dmaBufSocket, fds, token);
+        return { planes: described, modifier: String(pixmap.modifier) };
+      },
+    };
+  }
+
+  const ioSurface = info?.handle?.ioSurface;
+  if (!Buffer.isBuffer(ioSurface)) return null;
+  return {
+    send: (token) => ({ ioSurfaceId: bridge.sendIOSurface(machService, ioSurface, token) }),
+  };
+}
+
 function createProducer() {
   window = new BrowserWindow({
     show: false,
@@ -433,7 +511,7 @@ function createProducer() {
     webPreferences: {
       preload: path.join(__dirname, "browser-texture-preload.js"),
       offscreen: {
-        useSharedTexture: true,
+        useSharedTexture: !cpuBitmap,
         sharedTexturePixelFormat: "argb",
         deviceScaleFactor,
       },
@@ -444,8 +522,14 @@ function createProducer() {
   });
   installPageBridge();
   installBrowserEvents();
-  window.webContents.setFrameRate(60);
-  window.webContents.on("paint", (event) => {
+  window.webContents.setFrameRate(cpuBitmap ? 30 : 60);
+  window.webContents.on("paint", (event, _dirtyRect, image) => {
+    if (cpuBitmap) {
+      if (!controlReady || !image) return;
+      frameId += 1n;
+      sendBitmapFrame(image, frameId);
+      return;
+    }
     const texture = event.texture;
     if (!texture) return;
     if (!controlReady) {
@@ -464,16 +548,25 @@ function createProducer() {
       texture.release();
       return;
     }
-    const ioSurface = info?.handle?.ioSurface;
-    if (!Buffer.isBuffer(ioSurface)) {
+    const transfer = describeTransfer(info);
+    if (!transfer) {
       texture.release();
+      if (!warnedAboutHandle) {
+        warnedAboutHandle = true;
+        send({
+          type: "error",
+          message: isLinux
+            ? "Chromium delivered a paint with no dma-buf; GPU compositing is not exporting native pixmaps"
+            : "Chromium delivered a paint with no IOSurface handle",
+        });
+      }
       return;
     }
 
     frameId += 1n;
     const token = frameId.toString();
     try {
-      const ioSurfaceId = bridge.sendIOSurface(machService, ioSurface, frameId);
+      const extra = transfer.send(frameId);
       leases.set(token, texture);
       send({
         type: "frame",
@@ -490,7 +583,7 @@ function createProducer() {
         contentRect: info.contentRect,
         metadata: info.metadata,
         timestamp: info.timestamp,
-        ioSurfaceId,
+        ...extra,
       });
     } catch (error) {
       texture.release();
@@ -505,7 +598,9 @@ function createProducer() {
 }
 
 app.whenReady().then(() => {
+  console.log(`[producer] starting for ${targetUrl}${cpuBitmap ? " (CPU bitmap fallback)" : ""}`);
   installControl();
+  if (cpuBitmap) installPixelChannel();
   createProducer();
 });
 
@@ -517,6 +612,7 @@ app.on("before-quit", () => {
     pendingPageRequests.delete(id);
   }
   control?.destroy();
+  pixels?.destroy();
 });
 
 app.on("window-all-closed", () => app.quit());

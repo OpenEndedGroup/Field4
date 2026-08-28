@@ -14,6 +14,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
@@ -29,6 +30,8 @@ import java.io.InputStreamReader
 import java.io.PrintWriter
 import java.net.InetAddress
 import java.net.ServerSocket
+import java.nio.channels.ServerSocketChannel
+import java.nio.channels.SocketChannel
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.CompletableFuture
@@ -54,6 +57,13 @@ class FieldUiBrowserTexture(
     height: Int = 720,
     slots: Int = 3,
     readyBoxUid: String? = null,
+    /**
+     * Read frames back to the CPU and upload them, instead of importing Chromium's shared GPU
+     * allocation. Costs about 110 MB/s at 1280x720/30 and exists because Chromium's Linux
+     * shared-texture export hands over a buffer it never fills (electron#53271). Opt-in on purpose:
+     * see [BitmapBrowserSurface].
+     */
+    private val cpuBitmapFallback: Boolean = false,
 ) : PuppetBrowser {
     private val closed = AtomicBoolean(false)
     private val writer = AtomicReference<PrintWriter?>()
@@ -68,7 +78,7 @@ class FieldUiBrowserTexture(
         pixelFormat = BrowserSurfacePixelFormat.BGRA8_SRGB,
         slotCount = slots,
     )
-    private val delegate = ExternalBrowserSurfaces.create(renderer, specValue) { release ->
+    private val delegate: ExternalBrowserSurface = createDelegate(renderer, specValue, cpuBitmapFallback) { release ->
         writer.get()?.let { out ->
             synchronized(out) {
                 out.println(
@@ -79,25 +89,20 @@ class FieldUiBrowserTexture(
             }
         }
     }
-    private val session = when (OS) {
-        OSType.MACOS -> MacElectronBrowserTextureSession(
-            projectRoot = projectRoot,
-            surface = delegate,
-            url = url,
-            spec = specValue,
-            writer = writer,
-            loadedAfterFrame = loadedAfterFrame,
-            readyBoxUid = readyBoxUid,
-            stateListener = browserState::set,
-            eventListener = { event -> eventListeners.forEach { listener -> runCatching { listener(event) } } },
-            pageRequest = ::handlePageRequest,
-        )
-
-        else -> error(
-            "FieldUiBrowserTexture producer transport is currently live on macOS; " +
-                "the ${OS.name.lowercase()} receiver exists but still needs its Electron handle-transfer bridge"
-        )
-    }
+    private val session = ElectronBrowserTextureSession(
+        projectRoot = projectRoot,
+        surface = delegate,
+        url = url,
+        spec = specValue,
+        writer = writer,
+        loadedAfterFrame = loadedAfterFrame,
+        readyBoxUid = readyBoxUid,
+        transport = if (cpuBitmapFallback) CpuBitmapTransport(delegate, specValue)
+        else BrowserHandleTransport.forThisPlatform(projectRoot),
+        stateListener = browserState::set,
+        eventListener = { event -> eventListeners.forEach { listener -> runCatching { listener(event) } } },
+        pageRequest = ::handlePageRequest,
+    )
 
     override val spec: ExternalBrowserSurfaceSpec get() = delegate.spec
     override val presentedFrame: ExternalBrowserFrame? get() = delegate.presentedFrame
@@ -246,7 +251,17 @@ class FieldUiBrowserTexture(
     }
 }
 
-private class MacElectronBrowserTextureSession(
+/**
+ * Everything about driving the Electron producer that does not depend on how a GPU handle crosses
+ * the process boundary: launching it, the loopback JSON control channel, readiness, and turning a
+ * `frame` message into an offered [ExternalBrowserFrame].
+ *
+ * Only the handle transfer is per-platform, so only that is behind [BrowserHandleTransport]. The
+ * transport is a constructor parameter rather than an overridable method because it has to exist
+ * before the producer process starts — the process needs the transport's address in its
+ * environment.
+ */
+private class ElectronBrowserTextureSession(
     projectRoot: File,
     private val surface: ExternalBrowserSurface,
     url: String,
@@ -254,6 +269,7 @@ private class MacElectronBrowserTextureSession(
     private val writer: AtomicReference<PrintWriter?>,
     private val loadedAfterFrame: AtomicLong,
     readyBoxUid: String?,
+    private val transport: BrowserHandleTransport,
     private val stateListener: (PuppetBrowserState) -> Unit,
     private val eventListener: (PuppetBrowserEvent) -> Unit,
     private val pageRequest: (id: String, name: String, value: JsonElement) -> Unit,
@@ -262,18 +278,14 @@ private class MacElectronBrowserTextureSession(
     private val ready = CompletableFuture<Unit>()
     private val requestSequence = AtomicLong()
     private val pending = ConcurrentHashMap<String, CompletableFuture<JsonObject>>()
-    private val service = "com.field4.browser-texture.${ProcessHandle.current().pid()}.${System.nanoTime()}"
-    private val bridgeDir = File(projectRoot, "build/field-browser-bridge/macos")
-    private val inbox = MacMachSurfaceInbox(File(bridgeDir, "libfield_browser_bridge.dylib"), service)
     private val server = ServerSocket(0, 1, InetAddress.getLoopbackAddress())
     private val process: Process
     private val worker: Thread
 
     init {
-        val electron = macElectronBinary(projectRoot)
+        val electron = electronBinary(projectRoot)
         val producer = File(projectRoot, "electron/browser-texture-producer.js")
-        val nodeBridge = File(bridgeDir, "field_browser_bridge.node")
-        listOf(electron, producer, nodeBridge).forEach { file ->
+        listOfNotNull(electron, producer, transport.nodeBridge).forEach { file ->
             require(file.isFile) {
                 "Missing browser texture runtime ${file.absolutePath}; run ./gradlew electronInstall"
             }
@@ -290,9 +302,9 @@ private class MacElectronBrowserTextureSession(
                 environment()["FIELD_BROWSER_TEXTURE_DEVICE_SCALE_FACTOR"] = spec.deviceScaleFactor.toString()
                 environment()["FIELD_BROWSER_TEXTURE_SLOTS"] = spec.slotCount.toString()
                 environment()["FIELD_BROWSER_TEXTURE_CONTROL_PORT"] = server.localPort.toString()
-                environment()["FIELD_BROWSER_TEXTURE_MACH_SERVICE"] = service
-                environment()["FIELD_BROWSER_TEXTURE_BRIDGE"] = nodeBridge.absolutePath
+                transport.nodeBridge?.let { environment()["FIELD_BROWSER_TEXTURE_BRIDGE"] = it.absolutePath }
                 environment()["FIELD_BROWSER_TEXTURE_STREAM_ID"] = streamId.toString()
+                environment().putAll(transport.producerEnvironment)
                 readyBoxUid?.takeIf { it.isNotBlank() }?.let {
                     environment()["FIELD_BROWSER_TEXTURE_READY_BOX_UID"] = it
                 }
@@ -453,12 +465,7 @@ private class MacElectronBrowserTextureSession(
 
     private fun offer(message: JsonObject) {
         val token = message.long("token")
-        val received = inbox.receive(5_000)
-        require(received.token == token) {
-            "Mach surface token ${received.token} did not match frame token $token"
-        }
-        val width = message.int("width")
-        val height = message.int("height")
+        val handle = transport.receive(message, token, 5_000)
         val colorSpace = message.colorSpace("colorSpace")
         val isSrgb = colorSpace?.transfer.equals("srgb", ignoreCase = true)
         val pixelFormat = when (message.string("pixelFormat")) {
@@ -473,10 +480,10 @@ private class MacElectronBrowserTextureSession(
                 frameId = message.long("frameId"),
                 releaseToken = token,
                 slot = message.int("slot"),
-                width = width,
-                height = height,
+                width = message.int("width"),
+                height = message.int("height"),
                 pixelFormat = pixelFormat,
-                handle = ExternalBrowserImageHandle.MacIOSurfaceMachPort(received.port),
+                handle = handle,
                 colorSpace = colorSpace,
                 visibleRect = message.rect("visibleRect"),
                 contentRect = message.rect("contentRect"),
@@ -501,11 +508,12 @@ private class MacElectronBrowserTextureSession(
         process.destroy()
         if (!process.waitFor(2, java.util.concurrent.TimeUnit.SECONDS)) process.destroyForcibly()
         worker.join(6_000)
-        runCatching { inbox.close() }
+        runCatching { transport.close() }
     }
 
-    private fun macElectronBinary(root: File): File {
+    private fun electronBinary(root: File): File {
         val dist = File(root, "electron/node_modules/electron/dist")
+        if (OS != OSType.MACOS) return File(dist, "electron")
         return listOf(
             File(dist, "Field4.app/Contents/MacOS/Field4"),
             File(dist, "Electron.app/Contents/MacOS/Field4"),
@@ -521,6 +529,242 @@ private fun <T> CompletableFuture<T>.discardResult(): CompletableFuture<Unit> {
         else discarded.completeExceptionally(error)
     }
     return discarded
+}
+
+/**
+ * How one platform moves a Chromium-owned GPU allocation into this process. Implementations own a
+ * receiver-side endpoint whose address they publish into the producer's environment, and turn each
+ * announced frame into the [ExternalBrowserImageHandle] its receiver understands.
+ */
+private interface BrowserHandleTransport : AutoCloseable {
+    /** The Node-API addon the producer loads to send on this transport; null if it needs none. */
+    val nodeBridge: File?
+
+    /** Endpoint address and anything else the producer needs to reach this receiver. */
+    val producerEnvironment: Map<String, String>
+
+    /** Blocks for the handle the producer transferred for [token] out of band. */
+    fun receive(message: JsonObject, token: Long, timeoutMs: Int): ExternalBrowserImageHandle
+
+    companion object {
+        fun forThisPlatform(projectRoot: File): BrowserHandleTransport = when (OS) {
+            OSType.MACOS -> MacMachSurfaceTransport(projectRoot)
+            OSType.LINUX -> LinuxDmaBufTransport(projectRoot)
+            else -> error(
+                "FieldUiBrowserTexture has no Electron handle transport on ${OS.name.lowercase()}; " +
+                    "the receiver exists but its producer bridge does not"
+            )
+        }
+    }
+}
+
+/** macOS: Chromium's IOSurface arrives as a Mach send right on a per-session bootstrap service. */
+private class MacMachSurfaceTransport(projectRoot: File) : BrowserHandleTransport {
+    private val service = "com.field4.browser-texture.${ProcessHandle.current().pid()}.${System.nanoTime()}"
+    private val bridgeDir = File(projectRoot, "build/field-browser-bridge/macos")
+    private val inbox = MacMachSurfaceInbox(File(bridgeDir, "libfield_browser_bridge.dylib"), service)
+
+    override val nodeBridge = File(bridgeDir, "field_browser_bridge.node")
+    override val producerEnvironment = mapOf("FIELD_BROWSER_TEXTURE_MACH_SERVICE" to service)
+
+    override fun receive(message: JsonObject, token: Long, timeoutMs: Int): ExternalBrowserImageHandle {
+        val received = inbox.receive(timeoutMs)
+        require(received.token == token) {
+            "Mach surface token ${received.token} did not match frame token $token"
+        }
+        return ExternalBrowserImageHandle.MacIOSurfaceMachPort(received.port)
+    }
+
+    override fun close() = inbox.close()
+}
+
+/**
+ * Linux: Chromium's `nativePixmap` dma-buf arrives over SCM_RIGHTS, because a descriptor number is
+ * meaningless in another process and a dma-buf cannot be re-opened through `/proc/<pid>/fd`.
+ *
+ * The control message carries only the descriptors and the frame token; each plane's stride,
+ * offset, size and the allocation's DRM modifier come alongside on the JSON channel, which is
+ * where they belong — they are metadata, not kernel objects. Planes name their descriptor by index
+ * so that planes sharing one allocation stay one allocation after the transfer.
+ */
+private class LinuxDmaBufTransport(projectRoot: File) : BrowserHandleTransport {
+    private val socket = "field4.browser-texture.${ProcessHandle.current().pid()}.${System.nanoTime()}"
+    private val bridgeDir = File(projectRoot, "build/field-browser-bridge/linux")
+    private val inbox = LinuxDmaBufInbox(File(bridgeDir, "libfield_browser_bridge.so"), socket)
+
+    override val nodeBridge = File(bridgeDir, "field_browser_bridge.node")
+    override val producerEnvironment = mapOf("FIELD_BROWSER_TEXTURE_DMABUF_SOCKET" to socket)
+
+    override fun receive(message: JsonObject, token: Long, timeoutMs: Int): ExternalBrowserImageHandle {
+        val received = inbox.receive(timeoutMs)
+        if (received.token != token) {
+            received.closeFds()
+            error("dma-buf token ${received.token} did not match frame token $token")
+        }
+        return try {
+            val planes = message["planes"]?.jsonArray
+                ?: error("Linux browser frame carries no plane layout: $message")
+            ExternalBrowserImageHandle.LinuxDmaBuf(
+                planes = planes.map { element ->
+                    val plane = element.jsonObject
+                    val index = plane.int("fdIndex")
+                    require(index in received.fds.indices) {
+                        "plane names descriptor $index but only ${received.fds.size} arrived"
+                    }
+                    ExternalBrowserImageHandle.LinuxDmaBuf.Plane(
+                        fd = received.fds[index],
+                        stride = plane.int("stride"),
+                        offset = plane.int("offset"),
+                        size = plane.long("size"),
+                    )
+                },
+                // Electron sends the modifier as a decimal string; DRM_FORMAT_MOD_INVALID and the
+                // vendor-high-bit modifiers do not fit a signed parse.
+                modifier = java.lang.Long.parseUnsignedLong(message.string("modifier")),
+            )
+        } catch (t: Throwable) {
+            received.closeFds()
+            throw t
+        }
+    }
+
+    override fun close() = inbox.close()
+}
+
+private fun JsonObject.string(name: String): String =
+    this[name]?.jsonPrimitive?.contentOrNull ?: error("Browser texture message has no '$name': $this")
+
+private fun JsonObject.long(name: String): Long =
+    this[name]?.jsonPrimitive?.longOrNull ?: string(name).toLong()
+
+private fun JsonObject.int(name: String): Int =
+    this[name]?.jsonPrimitive?.intOrNull ?: string(name).toInt()
+
+private fun JsonObject.rect(name: String): BrowserSurfaceRect? =
+    this[name]?.jsonObject?.let { BrowserSurfaceRect(it.int("x"), it.int("y"), it.int("width"), it.int("height")) }
+
+private fun JsonObject.colorSpace(name: String): BrowserSurfaceColorSpace? =
+    (this[name] as? JsonObject)?.let {
+        BrowserSurfaceColorSpace(
+            primaries = it.string("primaries"),
+            transfer = it.string("transfer"),
+            matrix = it.string("matrix"),
+            range = it.string("range"),
+        )
+    }
+
+
+/** Picks the receiver that matches the transport: an importer, or the CPU-upload fallback. */
+private fun createDelegate(
+    renderer: Renderer,
+    spec: ExternalBrowserSurfaceSpec,
+    cpuBitmapFallback: Boolean,
+    releaseListener: BrowserFrameReleaseListener,
+): ExternalBrowserSurface =
+    if (cpuBitmapFallback) BitmapBrowserSurface(renderer, spec, releaseListener)
+    else ExternalBrowserSurfaces.create(renderer, spec, releaseListener)
+
+/**
+ * The opt-in fallback's transport: no GPU handle crosses at all, so instead of answering a `frame`
+ * announcement on the control channel this one *is* the frame source, reading header-plus-pixels off
+ * a second loopback socket and offering each frame to the surface directly.
+ */
+private class CpuBitmapTransport(
+    private val surface: ExternalBrowserSurface,
+    private val spec: ExternalBrowserSurfaceSpec,
+) : BrowserHandleTransport {
+    private val server = ServerSocketChannel.open().apply {
+        bind(java.net.InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 1)
+    }
+    private val closed = AtomicBoolean(false)
+    private val worker: Thread
+
+    override val nodeBridge: File? = null
+    override val producerEnvironment = mapOf(
+        "FIELD_BROWSER_TEXTURE_CPU_BITMAP" to "1",
+        "FIELD_BROWSER_TEXTURE_PIXEL_PORT" to
+            (server.localAddress as java.net.InetSocketAddress).port.toString(),
+    )
+
+    init {
+        worker = Thread({ readFrames() }, "field-browser-texture-pixels").apply {
+            isDaemon = true
+            start()
+        }
+    }
+
+    private fun readFrames() {
+        try {
+            server.accept().use { channel ->
+                val header = MemoryUtil.memAlloc(HEADER_BYTES)
+                try {
+                    while (!closed.get()) {
+                        header.clear()
+                        if (!readFully(channel, header)) return
+                        header.flip()
+                        val magic = header.int
+                        check(magic == MAGIC) { "browser pixel channel desynchronised (magic 0x${magic.toString(16)})" }
+                        val streamId = header.long
+                        val frameId = header.long
+                        val slot = header.int
+                        val width = header.int
+                        val height = header.int
+                        val stride = header.int
+                        val length = header.int
+                        header.int // reserved
+
+                        require(length in 1..MAX_FRAME_BYTES) { "browser pixel frame claims $length bytes" }
+                        // Read straight into the buffer the importer will memcpy from; the handle
+                        // owns it from here and frees it on close, including when the mailbox
+                        // conflates this frame away before it is ever imported.
+                        val pixels = MemoryUtil.memAlloc(length)
+                        if (!readFully(channel, pixels)) {
+                            MemoryUtil.memFree(pixels)
+                            return
+                        }
+                        pixels.flip()
+                        surface.offerFrame(
+                            ExternalBrowserFrame(
+                                streamId = streamId,
+                                frameId = frameId,
+                                releaseToken = frameId,
+                                slot = slot,
+                                width = width,
+                                height = height,
+                                pixelFormat = spec.pixelFormat,
+                                handle = ExternalBrowserImageHandle.CpuBitmap(pixels, stride),
+                            )
+                        )
+                    }
+                } finally {
+                    MemoryUtil.memFree(header)
+                }
+            }
+        } catch (t: Throwable) {
+            if (!closed.get()) System.err.println("[field-browser-texture] pixel channel failed: ${t.message}")
+        }
+    }
+
+    private fun readFully(channel: SocketChannel, into: java.nio.ByteBuffer): Boolean {
+        while (into.hasRemaining()) {
+            if (channel.read(into) < 0) return false
+        }
+        return true
+    }
+
+    override fun receive(message: JsonObject, token: Long, timeoutMs: Int): ExternalBrowserImageHandle =
+        error("the CPU bitmap transport delivers frames on its own channel, not by announcement")
+
+    override fun close() {
+        closed.set(true)
+        runCatching { server.close() }
+    }
+
+    private companion object {
+        const val MAGIC = 0x46504958 // "FPIX"
+        const val HEADER_BYTES = 44
+        const val MAX_FRAME_BYTES = 256 * 1024 * 1024
+    }
 }
 
 private data class ReceivedMachSurface(val token: Long, val port: Int)
@@ -571,24 +815,70 @@ private class MacMachSurfaceInbox(libraryFile: File, service: String) : AutoClos
     }
 }
 
-private fun JsonObject.string(name: String): String =
-    this[name]?.jsonPrimitive?.contentOrNull ?: error("Browser texture message has no '$name': $this")
+/**
+ * One frame's worth of descriptors, already installed in this process by the kernel. They are owned
+ * here from this moment: whatever happens next must either hand them to a
+ * [ExternalBrowserImageHandle.LinuxDmaBuf] or [closeFds] them.
+ */
+private class ReceivedDmaBuf(val token: Long, val fds: List<Int>) {
+    fun closeFds() = fds.forEach { fd -> runCatching { ExternalBrowserFdClose.close(fd) } }
+}
 
-private fun JsonObject.long(name: String): Long =
-    this[name]?.jsonPrimitive?.longOrNull ?: string(name).toLong()
+private class LinuxDmaBufInbox(libraryFile: File, socketName: String) : AutoCloseable {
+    private val library: SharedLibrary
+    private val receiveAddress: Long
+    private val destroyAddress: Long
+    private var receiver: Long
 
-private fun JsonObject.int(name: String): Int =
-    this[name]?.jsonPrimitive?.intOrNull ?: string(name).toInt()
-
-private fun JsonObject.rect(name: String): BrowserSurfaceRect? =
-    this[name]?.jsonObject?.let { BrowserSurfaceRect(it.int("x"), it.int("y"), it.int("width"), it.int("height")) }
-
-private fun JsonObject.colorSpace(name: String): BrowserSurfaceColorSpace? =
-    (this[name] as? JsonObject)?.let {
-        BrowserSurfaceColorSpace(
-            primaries = it.string("primaries"),
-            transfer = it.string("transfer"),
-            matrix = it.string("matrix"),
-            range = it.string("range"),
-        )
+    init {
+        require(libraryFile.isFile) {
+            "Missing ${libraryFile.absolutePath}; run ./gradlew buildFieldBrowserBridge"
+        }
+        library = apiCreateLibrary(libraryFile.absolutePath)
+        val openAddress = library.getFunctionAddress("field_browser_dmabuf_receiver_open")
+        receiveAddress = library.getFunctionAddress("field_browser_dmabuf_receiver_receive")
+        destroyAddress = library.getFunctionAddress("field_browser_dmabuf_receiver_destroy")
+        require(openAddress != 0L && receiveAddress != 0L && destroyAddress != 0L) {
+            "Native browser bridge is missing its dma-buf receiver exports"
+        }
+        MemoryStack.stackPush().use { stack ->
+            receiver = JNI.callPP(MemoryUtil.memAddress(stack.UTF8(socketName)), openAddress)
+        }
+        require(receiver != 0L) { "Could not bind browser texture dma-buf socket @$socketName" }
     }
+
+    fun receive(timeoutMs: Int): ReceivedDmaBuf {
+        // token, descriptor count, then up to four descriptors.
+        val output = MemoryUtil.memCalloc(8 * 8)
+        try {
+            val address = MemoryUtil.memAddress(output)
+            val result = JNI.invokePPI(receiver, address, timeoutMs, receiveAddress)
+            require(result == 0) { "dma-buf receive failed with code $result" }
+            val count = MemoryUtil.memGetLong(address + 8).toInt()
+            require(count in 1..4) { "dma-buf receive reported $count descriptors" }
+            return ReceivedDmaBuf(
+                token = MemoryUtil.memGetLong(address),
+                fds = (0 until count).map { MemoryUtil.memGetLong(address + 16 + it * 8L).toInt() },
+            )
+        } finally {
+            MemoryUtil.memFree(output)
+        }
+    }
+
+    override fun close() {
+        val value = receiver
+        receiver = 0L
+        if (value != 0L) JNI.callPV(value, destroyAddress)
+        library.free()
+    }
+}
+
+/** `close(2)`, for descriptors this file received but never handed to a Vulkan import. */
+private object ExternalBrowserFdClose {
+    private val libc: SharedLibrary by lazy { apiCreateLibrary("libc.so.6") }
+    private val closeAddress: Long by lazy { libc.getFunctionAddress("close") }
+
+    fun close(fd: Int) {
+        check(JNI.callI(fd, closeAddress) == 0) { "close($fd) failed" }
+    }
+}

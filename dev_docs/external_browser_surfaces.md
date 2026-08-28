@@ -1,9 +1,11 @@
 # External browser surfaces
 
 Status: the platform-neutral frame/lease contract, macOS/MoltenVK receiver, and Electron/macOS
-producer transport are implemented and live-tested end to end. Windows/D3D11 and Linux/dma-buf
-receivers are compile-reviewed first passes and still need their Electron handle-transfer bridges
-and native-machine validation.
+producer transport are implemented and live-tested end to end. On Linux the receiver and the full
+Electron/dma-buf producer transport are implemented and live-tested — descriptors cross, frames
+import, and leases are acknowledged — but the picture is blank, because Chromium does not put the
+rendered page into the dma-buf it exports (see "What Linux is still blocked on"). Windows/D3D11 is
+a compile-reviewed first pass still needing both its bridge and native-machine validation.
 
 This is the texture seam for web UI that should appear on geometry in Field/OpenXR. It does not
 choose the browser. Electron is the immediate producer because its accelerated offscreen `paint`
@@ -117,17 +119,171 @@ successful memory import; before that point, rejected or failed frames close the
 fds. Each copy acquires the image from `VK_QUEUE_FAMILY_FOREIGN_EXT` and releases it back after the
 copy, before the producer lease is acknowledged.
 
-The first pass supports one unique dma-buf allocation with one or more modifier layout planes.
-That is the intended accelerated RGB/BGRA/RGBAF16 browser path. A nativePixmap containing distinct
-fds fails with an actionable error: supporting it correctly requires disjoint image creation,
-per-memory-plane requirement queries and `vkBindImageMemory2`, which should be added against a real
-Electron/driver combination rather than guessed on macOS.
+This supports one unique dma-buf allocation with one or more modifier layout planes. That is the
+intended accelerated RGB/BGRA/RGBAF16 browser path. A nativePixmap containing distinct fds fails
+with an actionable error: supporting it correctly requires disjoint image creation, per-memory-plane
+requirement queries and `vkBindImageMemory2`, which should be added against a real Electron/driver
+combination rather than guessed at.
 
-The Linux device path now enables and checks `VK_KHR_external_memory_fd`,
-`VK_EXT_external_memory_dma_buf`, `VK_EXT_image_drm_format_modifier`, and
-`VK_EXT_queue_family_foreign`. Native validation still
-needs to probe the received format/modifier tuple with `vkGetPhysicalDeviceImageFormatProperties2`
-before relying on it in production; an unsupported tuple currently fails at image creation.
+Before building anything from a received handle, the importer asks
+`vkGetPhysicalDeviceImageFormatProperties2` whether this device can import that
+format/modifier/usage tuple at all. Without that question an unsupported combination arrives as a
+bare `vkCreateImage` failure naming neither the modifier nor the reason. The Linux device path
+enables and checks `VK_KHR_external_memory_fd`, `VK_EXT_external_memory_dma_buf`,
+`VK_EXT_image_drm_format_modifier`, and `VK_EXT_queue_family_foreign`.
+
+This receiver path has a live Linux smoke, and unlike the macOS one it also needed a producer.
+`LinuxDmaBufExport` (with `Image.exportDmaBuf`/`RTTParameters.exportDmaBuf`) is that producer: a
+Field render target whose backing allocation carries a driver-chosen DRM format modifier and exports
+as a dma-buf fd. It exists because a dma-buf is only interpretable by another driver if a modifier
+describes its tiling, which is precisely what the existing `exportOpaqueFd` NVENC path does *not*
+carry — opaque fd is a same-vendor handshake and cannot stand in for a browser handle. Rather than
+name a modifier, the producer offers every modifier the device can both build the image from and
+share, and reads back the one the driver chose; a producer that hard-codes a modifier is guessing on
+the consumer's behalf.
+
+The smoke renders that target, releases it to `VK_QUEUE_FAMILY_FOREIGN_EXT`, imports the fd through
+the receiver, and reads the expected BGRA pixel back out of the resident image after a post-fence
+`PRESENTED`. It then covers the two paths a single-frame test would miss: a second paint that omits
+its handle, which must copy from the cached slot import and re-acquire the same allocation from the
+foreign queue family without corrupting the resident image; and a frame the mailbox must reject,
+whose receiver-local fd must be closed rather than leaked. Verified on NVIDIA proprietary
+610.43.02 (RTX 4090, modifier `0x0300000000606013`) with Vulkan validation enabled and silent. The
+same recipe was checked against Mesa RADV 26.1.4 outside Field, which chooses a different modifier
+— the negotiation is not NVIDIA-shaped. The replayable graph is
+`dev_docs/agents/transcripts/external_browser_surface_linux_smoke.yaml`.
+
+### The Electron transport
+
+`native/field-browser-bridge/linux_bridge.cc` is the twin of `macos_bridge.cc`, built twice from one
+source for the same reason: a Node-API addon the producer loads to send, and a plain shared object
+the JVM opens through LWJGL to receive. Keeping both halves in one translation unit is what stops
+the wire struct between them drifting.
+
+The descriptors move by `SCM_RIGHTS` over an abstract-namespace `AF_UNIX` `SOCK_SEQPACKET` socket:
+abstract so a crash leaves nothing on the filesystem to clean up, seqpacket so one `sendmsg` is
+always exactly one `recvmsg` and a frame's descriptors can never be split or coalesced. Only the
+descriptors and the frame token travel out of band; each plane's stride, offset and size and the
+allocation's DRM modifier stay on the JSON control channel, where metadata belongs. Planes name
+their descriptor by index rather than by number, so that planes sharing one allocation stay one
+allocation after transfer — `SCM_RIGHTS` would otherwise duplicate a shared fd into several
+descriptors that look unrelated, and the receiver rejects multi-allocation pixmaps.
+
+`SCM_RIGHTS` is not a stylistic choice. A descriptor number means nothing in another process, and
+the cheaper trick of passing pid plus number and re-opening `/proc/<pid>/fd/<n>` does not work for
+dma-bufs: they live on anonymous inodes and the open fails with ENXIO. (`UnixFdPass`'s note claimed
+otherwise; it has been corrected.)
+
+### What Linux is still blocked on
+
+Two Chromium switches are load-bearing, and Field's Electron head has only half of them.
+`--use-angle=vulkan` (with `--enable-features=Vulkan`) is required before Chromium will export a
+paint as a native pixmap at all; on the GL backend the shared image cannot be created, Chromium
+logs `Unable to initialize SkSurface`, and every `paint` silently arrives as a CPU bitmap with no
+texture. `--ignore-gpu-blocklist` on its own was the worst of the three states: it enables Vulkan without
+pointing ANGLE at it, which additionally makes Ozone report that Wayland and Vulkan are
+incompatible. `electron/main.js` set exactly that, and now sets both switches, so Field's own head
+runs coherently on ANGLE-over-Vulkan too (`ANGLE (NVIDIA, Vulkan 1.4.341, RTX 4090)`). `--ozone-platform=x11` is not an escape route: the GPU
+process segfaults in a loop until Chromium gives up.
+
+With those switches the whole chain runs. Chromium exports a single-plane `DRM_FORMAT_MOD_LINEAR`
+dma-buf, the bridge moves it, the receiver imports it, the copy is recorded, and `PRESENTED` comes
+back after the graphics fence. The pixels, however, are all zero, and the evidence says Chromium
+never wrote them rather than that Field failed to read them. Against a page of solid
+`rgb(255,64,32)`, three independent readers agree:
+
+| reader | non-zero pixels |
+| --- | --- |
+| Field's receiver, imported and copied on the GPU | 0 (resident texture reads back black) |
+| `mmap` of the received descriptor, outside Field entirely | 0 of 921600 |
+| a separate C `VK_EXT_image_drm_format_modifier` import + GPU copy | 0 of 921600 |
+
+The cleanest repro is an A/B against Chromium's own other output path. Same URL, same switches,
+same Electron, same machine, differing only in `useSharedTexture`:
+
+| offscreen mode | non-zero pixels |
+| --- | --- |
+| `useSharedTexture: false` — CPU bitmap | 921600 of 921600 |
+| `useSharedTexture: true` — dma-buf | 0 of 921600 |
+
+Chromium renders the page; only the shared-texture export is empty.
+
+The third reader exists because the second alone is not conclusive: a CPU mapping of a device-local
+allocation can read zeros spuriously. It imports the same descriptor with the same modifier and
+stride and reports `reqs=3686400`, exactly the declared size, so the import is well formed — it
+simply reads an empty buffer.
+
+The result does not move across Electron 42.3.3 and 44.0.0, `argb` and `rgbaf16` shared-texture
+formats, or the first paint, the fifth paint of a continuously animating page and the tenth paint of
+a fully loaded `https://youtube.com` — so it is neither a first-frame race nor anything to do with
+Field's own page. This is a known upstream problem, and it is **NVIDIA-plus-Wayland specific rather than Linux-wide**:
+[electron#49247](https://github.com/electron/electron/issues/49247), "OSR paint events do not fire in
+an NVIDIA GPU + Wayland environment", reports the same `Unable to initialize SkSurface` line, and was
+closed as not planned. `reitowo`, who wrote the shared-texture implementation, dropped Linux from it
+for lack of hardware ("Due to lack of development environment I choose drop Linux support for now",
+[PR #46811](https://github.com/electron/electron/pull/46811)) and later
+[reported it working on an AMD laptop](https://github.com/electron/electron/pull/46811#issuecomment-2859463799).
+The reporter's own matrix in #49247 is the useful part:
+
+| session | result |
+| --- | --- |
+| Ubuntu 24.04 Xorg, with `--enable-features=Vulkan` | works |
+| Xorg without that switch | same `SkSurface` error |
+| Wayland (Ubuntu and Fedora), with or without it | fails |
+| XWayland | GPU process crashes, or paints arrive with `texture = null` |
+
+The Wayland rows match this machine, and so does XWayland — every `--ozone-platform=x11` attempt
+inside the Plasma session is XWayland, where the GPU process dies with 139 or compositing silently
+drops to software. The Xorg row does not.
+
+### Tested on a real Xorg session
+
+Worth doing properly, because `supportsZeroCopyWebGpuImport` is the field that separates the working
+Xorg capture in that thread (`true`) from every handle this machine produced under Wayland
+(`false`). A bare Xorg session was started on a spare VT (`startx <test> -- :1`; the box needed
+`xorg-server`, and an `AutoAddGPU off` snippet, because Xorg brings the NVIDIA screen up and then
+auto-adds the AMD iGPU, which the live Wayland session still holds, and dies on `drmSetMaster`).
+
+Under real Xorg the flag does flip to `true` — so this is genuinely the code path upstream reports
+working. The buffer is still empty:
+
+| variant under Xorg, `supportsZeroCopyWebGpuImport: true` | non-zero pixels |
+| --- | --- |
+| GPU import + copy, read immediately | 0 |
+| GPU import + copy, read 3s after the paint | 0 |
+| GPU import + copy of the twenty-fifth paint | 0 |
+| CPU `mmap` + `DMA_BUF_IOCTL_SYNC`, read 2s after the paint | 0 |
+| Electron's own `importSharedTexture` + `VideoFrame.copyTo` | 0 |
+
+Which rules out, in order: a Vulkan-import mistake of ours (the CPU mapping shares none of our
+modifier, stride, memory-type or layout assumptions and agrees), an unflushed write, a pool warm-up,
+and — with the last row — any question about our consumer at all, since that one is Electron
+importing its own texture and reading back its own pixels. Zeros rather than garbage also argues the memory is genuinely zero rather than correct
+bytes in a layout we are misreading.
+
+So what `--use-angle=vulkan` buys on Wayland is getting *past* the `SkSurface` error to a real
+dma-buf — further than #49247 got — but the emptiness is not the Wayland/Vulkan incoherence, since
+it survives on Xorg where that incoherence is gone.
+
+One caution before treating the upstream "Xorg works fine" report as contradicting this: the
+evidence offered there is a `console.log` of `textureInfo`, which is metadata. It is the same
+metadata this machine now prints under Xorg, `supportsZeroCopyWebGpuImport: true` included. Nothing
+in that thread shows the *pixels* having been read back. So the two observations may not be in
+conflict at all — the handle may well arrive correctly on Linux while the buffer behind it is never
+filled, and only a consumer that samples it would notice.
+
+Filed upstream as [electron#53271](https://github.com/electron/electron/issues/53271). The report,
+with the minimal pure-JS reproduction, is
+[`upstream/electron-osr-linux-shared-texture.md`](upstream/electron-osr-linux-shared-texture.md).
+Its strongest single piece of evidence is that Electron imports its own shared texture through
+`sharedTexture.importSharedTexture` and reads it back with `VideoFrame.copyTo` as 0 of 921600
+non-zero pixels — no bridge, no Vulkan of ours, nothing of Field's in the path at all.
+
+An earlier revision of this page claimed "forcing Chromium onto the AMD iGPU gives the same empty
+buffer". That was wrong and is withdrawn: the environment variables used never moved Chromium, which
+stayed on the RTX 4090, and when the Vulkan ICD is genuinely restricted to RADV the GPU process will
+not start against this NVIDIA-driven display. The AMD path remains untested here, and it is the one
+configuration anybody has claimed a passing test on.
 
 ## What came from the Windows prototype
 
@@ -143,8 +299,9 @@ parts that matter for a browser process:
 - one release acknowledgement for every offered producer lease, with `PRESENTED` delayed until the
   GPU fence.
 
-The Windows and Linux first passes now live behind the same construction point. They intentionally
-stop short of claiming runtime support until each has passed its native validation/readback smoke.
+The Windows and Linux backends live behind the same construction point. Linux has since passed its
+native validation/readback smoke; Windows intentionally stops short of claiming runtime support
+until it passes its own.
 
 ## Next integration slice
 

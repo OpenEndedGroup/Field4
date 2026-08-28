@@ -10,13 +10,16 @@ import java.net.URLClassLoader
  * mechanism [VulkanExternalMemory]'s `field-encode-linux` handoff actually needs.
  *
  * Superseded design note: the first cut tried `/proc/<pid>/fd/<fd>` duplication in the helper
- * (cheap, no native glue) — verified to work for anonymous-inode fds (pipes, eventfds, real
- * dma-bufs) but **not** for NVIDIA's `VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT` export, which
+ * (cheap, no native glue) — it works for pipes and eventfds but **not** for NVIDIA's
+ * `VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT` export, which
  * turned out to be backed by `/dev/nvidiactl` (a real device-special file): reopening that path
  * performs a fresh `open()` against the driver, yielding an fd that's numerically valid but
  * unrelated to the original memory object — `cuImportExternalMemory` then fails with
- * `CUDA_ERROR_UNKNOWN (999)`. SCM_RIGHTS duplicates the actual kernel `struct file*` regardless of
- * what's behind it, so it's the correct fix. Java has no standard-library `sendmsg`/ancillary-data
+ * `CUDA_ERROR_UNKNOWN (999)`. It does not work for dma-bufs either, contrary to what an earlier
+ * version of this note claimed: a dma-buf lives on an anonymous inode with no re-openable path, and
+ * `open("/proc/self/fd/<dma-buf>")` fails with ENXIO — measured while choosing the external-browser
+ * Linux transport, which is why that one also has to use SCM_RIGHTS. SCM_RIGHTS duplicates the
+ * actual kernel `struct file*` regardless of what's behind it, so it's the correct fix. Java has no standard-library `sendmsg`/ancillary-data
  * support, hence a JNI shim (`native/field-fdpass/`) rather than a pure-JVM mechanism.
  *
  * This wrapper deliberately declares **no** `external fun` itself and loads the real native class

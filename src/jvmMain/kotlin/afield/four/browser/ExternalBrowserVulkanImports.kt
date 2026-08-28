@@ -1,6 +1,7 @@
 package afield.four.browser
 
 import afield.four.device.Device
+import afield.four.texture.LinuxDmaBufExport
 import afield.four.util.vkCheck
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.EXTExternalMemoryDmaBuf.VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT
@@ -93,6 +94,21 @@ internal object ExternalBrowserVulkanImports {
             "Electron nativePixmap used ${uniqueFds.size} distinct dma-bufs; the first Linux backend supports one allocation with one or more layout planes"
         }
 
+        // Ask whether this driver can actually import a dma-buf of this format/modifier/usage tuple
+        // before building anything from it. Without this an unsupported combination surfaces as a
+        // bare vkCreateImage failure, which names neither the modifier nor the reason.
+        require(
+            LinuxDmaBufExport.supportsModifier(
+                device,
+                format,
+                importUsage,
+                handle.modifier,
+                VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT
+            )
+        ) {
+            "this device cannot import a dma-buf with format $format and DRM modifier 0x${handle.modifier.toString(16)}"
+        }
+
         val layouts = VkSubresourceLayout.calloc(handle.planes.size, stack)
         handle.planes.forEachIndexed { index, plane ->
             layouts[index]
@@ -164,6 +180,9 @@ internal object ExternalBrowserVulkanImports {
         }
     }
 
+    /** What a received browser image is used for: copied out of, and (via the copy) sampled. */
+    private const val importUsage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT or VK_IMAGE_USAGE_SAMPLED_BIT
+
     private fun imageCreateInfo(
         stack: MemoryStack,
         width: Int,
@@ -178,7 +197,7 @@ internal object ExternalBrowserVulkanImports {
         .arrayLayers(1)
         .samples(VK_SAMPLE_COUNT_1_BIT)
         .tiling(VK_IMAGE_TILING_OPTIMAL)
-        .usage(VK_IMAGE_USAGE_TRANSFER_SRC_BIT or VK_IMAGE_USAGE_SAMPLED_BIT)
+        .usage(importUsage)
         .sharingMode(VK_SHARING_MODE_EXCLUSIVE)
         .initialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
 

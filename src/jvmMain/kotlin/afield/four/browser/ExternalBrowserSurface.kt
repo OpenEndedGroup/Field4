@@ -100,6 +100,26 @@ sealed interface ExternalBrowserImageHandle : AutoCloseable {
         override fun toString(): String = "WindowsD3D11NtHandle(value=$value)"
     }
 
+    /**
+     * Pixels that have already been read back to the CPU, for the deliberately non-zero-copy
+     * fallback. Not a native handle at all: nothing is shared, and the bytes are owned by this
+     * value until [close] frees them.
+     */
+    class CpuBitmap(val pixels: java.nio.ByteBuffer, val stride: Int) : ExternalBrowserImageHandle {
+        private val closed = AtomicBoolean(false)
+
+        init {
+            require(pixels.isDirect) { "CPU bitmap pixels must be a direct buffer" }
+            require(stride > 0) { "CPU bitmap stride must be positive" }
+        }
+
+        override fun close() {
+            if (closed.compareAndSet(false, true)) org.lwjgl.system.MemoryUtil.memFree(pixels)
+        }
+
+        override fun toString(): String = "CpuBitmap(${pixels.capacity()} bytes, stride=$stride)"
+    }
+
     class LinuxDmaBuf(
         val planes: List<Plane>,
         /** DRM modifier bits, represented as a signed Long without reinterpretation. */

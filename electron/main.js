@@ -170,6 +170,15 @@ function installChromiumGpuSwitches() {
   appendChromiumSwitchIfMissing("enable-gpu-rasterization");
   appendChromiumSwitchIfMissing("enable-zero-copy");
   appendChromiumSwitchIfMissing("ozone-platform-hint", "auto");
+
+  // These two belong with the line above, not apart from it. `ignore-gpu-blocklist` already turns
+  // Vulkan on wherever the blocklist would have held it back, and leaving ANGLE on GL while Vulkan
+  // is on is the one incoherent combination of the three: Ozone then reports that Wayland and
+  // Vulkan are incompatible and Chromium cannot create a shared image at all — which is exactly
+  // what stopped the accelerated browser-texture producer from exporting a native pixmap. See
+  // dev_docs/external_browser_surfaces.md. Either both or neither; both is the accelerated one.
+  appendChromiumSwitchIfMissing("enable-features", "Vulkan");
+  appendChromiumSwitchIfMissing("use-angle", "vulkan");
 }
 
 installChromiumGpuSwitches();
@@ -192,6 +201,8 @@ function logChromiumGpuSwitches() {
     "disable-gpu-process-crash-limit",
     "enable-gpu-rasterization",
     "enable-zero-copy",
+    "enable-features",
+    "use-angle",
     "ozone-platform-hint",
     "force-device-scale-factor",
     "disable-gpu",

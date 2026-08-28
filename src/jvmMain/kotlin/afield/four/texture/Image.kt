@@ -28,6 +28,15 @@ class Image(private val device: Device, val imageData: ImageData) {
     var linearRowPitch: Long = 0
         private set
 
+    // Set only when [ImageData.exportDmaBuf] is true (Linux/dma-buf path — see
+    // LinuxDmaBufExport.kt). The driver, not this code, chooses which of the offered DRM format
+    // modifiers to use, so the choice has to be read back before the handle can describe itself to
+    // an importer; [drmPlaneLayouts] is the memory-plane layout that modifier implies.
+    var drmFormatModifier: Long = 0
+        private set
+    var drmPlaneLayouts: List<DmaBufPlaneLayout> = emptyList()
+        private set
+
     private val autoDisposeToken = AutoDisposer.register(this, "Image(format=${imageData.format}, ${imageData.width}x${imageData.height})") { /* set after init */ }
 
     init {
@@ -64,7 +73,17 @@ class Image(private val device: Device, val imageData: ImageData) {
                 // LINEAR tiling. Costs a little render throughput vs OPTIMAL; irrelevant at the
                 // resolutions/framerates this streams (see dev_docs/vision_frontend.md's "ship the
                 // fence first" posture).
-                .tiling(if (imageData.exportOpaqueFd) VK10.VK_IMAGE_TILING_LINEAR else VK10.VK_IMAGE_TILING_OPTIMAL)
+                .tiling(
+                    when {
+                        imageData.exportOpaqueFd -> VK10.VK_IMAGE_TILING_LINEAR
+                        // A dma-buf is only interpretable by another driver if a DRM format
+                        // modifier describes its tiling, and that tiling mode is how the image
+                        // acquires one. Unlike LINEAR above this costs no render throughput: the
+                        // modifier the driver picks is normally its own optimal layout.
+                        imageData.exportDmaBuf -> EXTImageDrmFormatModifier.VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT
+                        else -> VK10.VK_IMAGE_TILING_OPTIMAL
+                    }
+                )
                 .usage(imageData.usage)
 
             // Back the image with an externally-created IOSurface (MoltenVK), or make its backing
@@ -89,6 +108,23 @@ class Image(private val device: Device, val imageData: ImageData) {
                 val extImageInfo = VkExternalMemoryImageCreateInfo.calloc(stack)
                     .sType(VK11.VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO)
                     .handleTypes(VK11.VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT)
+                imageCreateInfo.pNext(extImageInfo.address())
+            } else if (imageData.exportDmaBuf) {
+                // Linux/dma-buf path: the generic cross-vendor handle type a browser compositor
+                // publishes (see LinuxDmaBufExport.kt). Offer every modifier this device can both
+                // build a `usage` image from and share as a dma-buf, and let the driver choose —
+                // naming one modifier here would be guessing on the importer's behalf.
+                val modifiers = LinuxDmaBufExport.shareableModifiers(device, format, imageData.usage)
+                check(modifiers.isNotEmpty()) {
+                    "no DRM format modifier on this device can export format $format with usage 0x${imageData.usage.toString(16)} as a dma-buf"
+                }
+                val modifierList = VkImageDrmFormatModifierListCreateInfoEXT.calloc(stack)
+                    .sType(EXTImageDrmFormatModifier.VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT)
+                    .pDrmFormatModifiers(stack.longs(*modifiers.toLongArray()))
+                val extImageInfo = VkExternalMemoryImageCreateInfo.calloc(stack)
+                    .sType(VK11.VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO)
+                    .handleTypes(EXTExternalMemoryDmaBuf.VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT)
+                    .pNext(modifierList.address())
                 imageCreateInfo.pNext(extImageInfo.address())
             }
 
@@ -140,6 +176,18 @@ class Image(private val device: Device, val imageData: ImageData) {
                     .handleTypes(VK11.VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT)
                     .pNext(dedicatedAllocInfo.address())
                 memAlloc.pNext(exportAllocInfo.address())
+            } else if (imageData.exportDmaBuf) {
+                // Dedicated is not optional here either: NVIDIA reports its block-linear modifiers
+                // as VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT for the dma-buf handle type, so
+                // a suballocated export would be invalid on exactly the modifiers worth using.
+                val dedicatedAllocInfo = VkMemoryDedicatedAllocateInfo.calloc(stack)
+                    .sType(VK11.VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO)
+                    .image(vkImage)
+                val exportAllocInfo = VkExportMemoryAllocateInfo.calloc(stack)
+                    .sType(VK11.VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO)
+                    .handleTypes(EXTExternalMemoryDmaBuf.VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT)
+                    .pNext(dedicatedAllocInfo.address())
+                memAlloc.pNext(exportAllocInfo.address())
             }
 
             // Allocate memory
@@ -160,6 +208,23 @@ class Image(private val device: Device, val imageData: ImageData) {
                 val layout = VkSubresourceLayout.calloc(stack)
                 VK10.vkGetImageSubresourceLayout(device.vkDevice, vkImage, subresource, layout)
                 linearRowPitch = layout.rowPitch()
+            }
+
+            if (imageData.exportDmaBuf) {
+                val chosen = VkImageDrmFormatModifierPropertiesEXT.calloc(stack)
+                    .sType(EXTImageDrmFormatModifier.VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT)
+                vkCheck(
+                    EXTImageDrmFormatModifier.vkGetImageDrmFormatModifierPropertiesEXT(
+                        device.vkDevice,
+                        vkImage,
+                        chosen
+                    ),
+                    "vkGetImageDrmFormatModifierPropertiesEXT"
+                )
+                drmFormatModifier = chosen.drmFormatModifier()
+                // shareableModifiers only offers single-memory-plane layouts, so the driver cannot
+                // have chosen one that needs more.
+                drmPlaneLayouts = LinuxDmaBufExport.planeLayouts(device, vkImage, planeCount = 1)
             }
         }
         imageData.debugName.takeIf { it.isNotBlank() }?.let {
@@ -252,6 +317,21 @@ class Image(private val device: Device, val imageData: ImageData) {
         }
     }
 
+    /**
+     * Export this image's backing memory as a POSIX dma-buf fd (Linux, VK_EXT_external_memory_dma_buf
+     * — see LinuxDmaBufExport.kt). Requires [ImageData.exportDmaBuf] = true at creation.
+     *
+     * Unlike [exportOpaqueFd] this deliberately does *not* cache. A dma-buf fd is normally handed
+     * to an importer that consumes ownership of it, so one cached fd shared between two imports
+     * would be a double free; each call instead returns a fresh fd the caller owns. Pair it with
+     * [drmFormatModifier] and [drmPlaneLayouts], without which no other driver can interpret the
+     * bytes.
+     */
+    fun exportDmaBufFd(): Int {
+        require(imageData.exportDmaBuf) { "exportDmaBufFd requires ImageData.exportDmaBuf = true" }
+        return LinuxDmaBufExport.exportFd(device, vkMemory)
+    }
+
     class ImageData {
         var arrayLayers: Int = 1
         internal var format: Int
@@ -284,6 +364,15 @@ class Image(private val device: Device, val imageData: ImageData) {
          * [exportMetalIOSurface] on the Mac path — see VulkanExternalMemory.kt.
          */
         var exportOpaqueFd: Boolean = false
+
+        /**
+         * Linux only: create this image with a driver-chosen DRM format modifier and dma-buf
+         * exportable backing memory (VK_EXT_image_drm_format_modifier +
+         * VK_EXT_external_memory_dma_buf), and enable [Image.exportDmaBufFd]. This is the handle a
+         * browser compositor publishes, and the one the external-browser receiver imports; see
+         * LinuxDmaBufExport.kt for why it is not the same thing as [exportOpaqueFd].
+         */
+        var exportDmaBuf: Boolean = false
         var width: Int = 0
 
         init {

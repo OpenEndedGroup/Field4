@@ -4,7 +4,16 @@ description: |
   shared texture and is sampled by a mesh in Field's Vulkan renderer. Mouse and keyboard input in
   the native window are routed back into hidden Chromium, while a page-to-Field request and its
   JavaScript promise result prove the bidirectional control channel. On macOS each IOSurface crosses
-  processes as a Mach right and its lease is released after Field's resident-texture copy completes.
+  processes as a Mach right; on Linux each dma-buf crosses with SCM_RIGHTS. Electron's paint lease
+  is released only after Field's resident-texture copy completes.
+
+  The URL helper preserves named documents as well as ephemeral scratch-session identity, so the
+  recursively opened view reaches the same graph rather than a fresh empty scratch document.
+
+  On Linux the zero-copy transport works end to end — descriptors cross, frames import, and
+  `PRESENTED` comes back after the fence — but current Chromium can export a dma-buf it never fills.
+  The opt-in CPU bitmap fallback makes the browser usable while that upstream Electron issue remains.
+  See dev_docs/external_browser_surfaces.md.
 operations:
   - create:
       box: field_ui_texture_renderer

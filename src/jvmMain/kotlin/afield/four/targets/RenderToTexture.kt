@@ -81,7 +81,13 @@ data class RTTParameters(
     // Create color attachments with opaque-fd-exportable backing (VK_KHR_external_memory_fd) so
     // the RTT can be handed zero-copy to NVENC via CUDA external memory import (field-encode-linux).
     // Opt-in; Linux/NVIDIA only. See VulkanExternalMemory.kt.
-    var exportOpaqueFd: Boolean = false
+    var exportOpaqueFd: Boolean = false,
+
+    // Create color attachments with dma-buf-exportable backing and a driver-chosen DRM format
+    // modifier, so the RTT can be handed to any dma-buf importer — including Field's own
+    // external-browser receiver, which is how that receiver is testable without a browser.
+    // Opt-in; Linux only. See LinuxDmaBufExport.kt.
+    var exportDmaBuf: Boolean = false
 )
 
 /**
@@ -630,6 +636,7 @@ open class RenderToTexture(
                     .aliasSingleLayerDescriptors(forceColorArrayView)
                 data.exportMetalIOSurface = this.parameters.exportMetalIOSurface
                 data.exportOpaqueFd = this.parameters.exportOpaqueFd
+                data.exportDmaBuf = this.parameters.exportDmaBuf
                 // Import applies to color attachment 0 only (a streamed RTT is single-attachment;
                 // a ring is N separate RTTs, each importing its own surface).
                 if (idx == 0) data.importMetalIOSurface = this.parameters.importMetalIOSurface
