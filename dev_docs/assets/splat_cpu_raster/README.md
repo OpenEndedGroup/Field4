@@ -1,4 +1,40 @@
-# CPU splat raster — render proof
+# CPU splat raster — the demo, and render proof
+
+## The demo
+
+`splat_cpu_raster.yaml`, in this directory, is an operation transcript: one box, no
+`agent_graphics_context` parent, no window, no Vulkan. Replay it into a fresh document with
+
+```bash
+python3 tools/field_backdoor.py --port 9481 \
+  --command "transcript write splatdemo --file dev_docs/assets/splat_cpu_raster/splat_cpu_raster.yaml" \
+  --command "transcript run splatdemo"
+```
+
+**Move `cropFar`** — marked `>>> MOVE THIS ONE FIRST <<<` in the box. It starts at `1.60f`, which
+keeps all 20,112 splats of frame 60; `1.20f` prints `20112 splats -> 12001 (59.7% survived)` and
+redraws the lower panel with the back of the subject sliced away; `1.05f` leaves 3,949. With no
+capture on disk the box builds a synthetic spiral in the same depth range instead, so `cropFar` means
+the same thing and the demo still runs.
+
+### Why this lives here and not in the transcript corpus
+
+`dev_docs/agents/transcripts/` is policed by `AgentTranscriptIndexGuard`, which requires every yaml in
+it to have a hand-written entry in `public/docs/agent_transcripts.md`, to be classified in one of
+`DemoTranscriptExecSmokeTest`'s three sets, and — unless it is in
+`AgentTranscriptMaterializer.EXCLUDE` — to carry an `Open ↗` link to a *committed* materialized bundle.
+That bundle is a generated artefact, and regenerating generated artefacts is a post-merge step rather
+than something a feature branch does.
+
+Putting it in the corpus would therefore have meant either shipping a dead link, or adding the demo to
+`EXCLUDE` — which means "not self-contained", the opposite of what this one is, and which would stop
+the welcome screen offering it. So the yaml lives here, where `transcript write --file` reaches it just
+as well (the path is arbitrary; that is how it was tested). Promoting it into the corpus later is a
+small, deliberate piece of work: an index paragraph, an entry in the exec set, and one bundle
+regeneration.
+
+
+## Render proof
 
 Seven PNGs produced by the CPU splat rasterizer and **opened and looked at** by the agent that wrote
 it, committed so the claims in [`../../COMPRESSED_SPLAT_PLY.md`](../../COMPRESSED_SPLAT_PLY.md) can be
