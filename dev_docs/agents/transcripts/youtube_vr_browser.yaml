@@ -1,0 +1,113 @@
+name: youtube_vr_browser
+description: >
+  A YouTube watch page floating 1.7 metres ahead as an aspect-correct 16:9 Chromium quad. The
+  right-hand OpenXR controller ray supplies hover and trigger clicks; thumbstick or trackpad scrolls,
+  so the EU consent page and the player are usable without desktop sharing. On the desktop the mouse
+  stands in for the controller and the stereo pair is shown side by side. Chromium audio remains live.
+operations:
+  - create:
+      box: youtube_vr_renderer
+      name: window + renderer
+      frame: { x: -600.0, y: -300.0, w: 220.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.four.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+
+          Options.enableHDR = false
+          Options.profiling = false
+          // OpenXR is the default on its supported desktop platforms. macOS remains the stereo
+          // preview/development path because it has no system OpenXR runtime.
+          Options.enableVR = !Options.isMac
+
+          once.renderer {
+              window = Window("YouTube · puppet browser")
+              val created = Renderer(window)
+              if (Options.enableVR) {
+                  created.openXRHmdTarget = afield.four.targets.OpenXRHmdTarget(created)
+              }
+              created
+          }
+
+          println("YouTube VR renderer ready")
+          start(renderer::run)
+  - create:
+      box: youtube_vr_panel
+      name: YouTube — interactive Chromium panel
+      frame: { x: -260.0, y: -180.0, w: 300.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.four.Target
+          import afield.four.browser.FieldUiBrowserTexture
+          import afield.four.browser.PuppetBrowserVrPanel
+          import afield.four.browser.PuppetBrowserWindowInput
+          import afield.four.modules.fromContext
+          import afield.four.targets.SideBySideStereoTarget
+
+          val renderer: Renderer = fromContext()
+          // prop declarations are lifted into Field's preamble before ordinary imports are applied.
+          prop<afield.four.browser.PuppetBrowser>(browserControl)
+
+          // The producer is a full Chromium page, not an embed: consent, account state, player,
+          // navigation and audio all behave as they do in an ordinary browser.
+          val browser = FieldUiBrowserTexture(
+              renderer = renderer,
+              url = "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+              width = 1280,
+              height = 720
+          )
+          browserControl = browser
+
+          // Import the newest cross-process frame before either eye samples the resident texture.
+          renderer.renderList.preTargets["youtube-browser-upload"] =
+              Target { command, _ -> browser.prepareSampledImagesFor(command) }
+
+          val stereo = SideBySideStereoTarget(renderer, openXR = renderer.openXRHmdTarget)
+          val panel = PuppetBrowserVrPanel(
+              renderer = renderer,
+              stereo = stereo,
+              browser = browser,
+              widthMeters = 1.6f,
+              distanceMeters = 1.7f,
+              name = "youtube-browser-panel"
+          )
+          panel.build()
+          panel.enableDesktopInteraction()
+
+          // The controller owns pointer input. Once the panel has focus, physical keyboard/IME
+          // events from Field's Window remain available for search boxes and other text fields.
+          val keyboard = PuppetBrowserWindowInput(browser, renderer.window) { _, _ -> null }
+          keyboard.takeFocus()
+
+          // Desktop mirror of the same stereo texture that can be handed to OpenXR eye swapchains.
+          stereo.packed.blitToScreen(
+              renderer = renderer,
+              target = renderer.renderList,
+              name = "youtube-stereo-screen"
+          )
+
+          var announced = false
+          loop {
+              if (!announced && browser.pageReady) {
+                  announced = true
+                  println("YouTube is live on a ${browser.spec.width}x${browser.spec.height} " +
+                      "texture; trigger accepts consent and controls playback")
+              }
+              frame()
+          }.end {
+              renderer.renderList.preTargets.remove("youtube-browser-upload")
+              keyboard.close()
+              browser.close()
+          }
+  - connect: { parent: youtube_vr_renderer, child: youtube_vr_panel }
+  - launch:
+      box: youtube_vr_renderer
+      property: code
+      strand: renderer
+  - wait: { frames: 3 }
+  - launch:
+      box: youtube_vr_panel
+      property: code
+      strand: browser-texture

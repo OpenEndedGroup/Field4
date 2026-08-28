@@ -148,7 +148,7 @@ class SideBySideStereoTarget(
         poseSource?.takeIf { it.latchedFrameId >= 0 }?.let {
             return it.eyeViewMatrix(currentEyeIndex.coerceIn(0, 1), out)
         }
-        val xr = openXR
+        val xr = openXR?.takeIf { it.hasEyeViews }
         return if (xr != null && xr.currentEyeIndex >= 0) {
             xr.currentEyeViewMatrix(out)
         } else {
@@ -169,7 +169,7 @@ class SideBySideStereoTarget(
         poseSource?.takeIf { it.latchedFrameId >= 0 }?.let {
             return it.eyeProjectionMatrix(currentEyeIndex.coerceIn(0, 1), out)
         }
-        val xr = openXR
+        val xr = openXR?.takeIf { it.hasEyeViews }
         return if (xr != null && xr.currentEyeIndex >= 0) {
             xr.currentEyeProjectionMatrix(out)
         } else {
@@ -197,7 +197,10 @@ class SideBySideStereoTarget(
             if (source.controller(hand, out)) return out
         }
         val xr = openXR
-        if (xr != null) return xr.controllerState(hand, out)
+        if (xr != null) {
+            xr.controllerState(hand, out)
+            if (out.active && out.poseValid) return out
+        }
 
         val src = mockController
         out.active = src.active

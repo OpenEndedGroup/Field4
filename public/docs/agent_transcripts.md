@@ -1080,11 +1080,23 @@ document, emits Chromium's accelerated offscreen `paint` textures, and transfers
 to Field as Mach rights. Field imports each image into Vulkan, copies it into a stable sampled
 texture, draws that texture on a full-window mesh, and only then releases Electron's paint lease.
 The result is Field's own live canvas and boxes recursively visible inside Field's native renderer;
-no screenshot or CPU bitmap enters the path. Run the renderer box first, then the panel box.
+the native window's input is routed back to Chromium, and launch proves a page-to-Field-to-JavaScript
+promise round trip. The published `browserControl` property is the live navigation, input,
+evaluation, and raw-CDP handle. No screenshot or CPU bitmap enters the path. Run the renderer box
+first, then the panel box.
 
 ![Field's live canvas, two running transcript boxes and their connection sampled from Chromium onto a Vulkan mesh](assets/browser_texture/field-ui-on-texture.png)
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/field_ui_browser_texture/metadata.edn)
+
+**youtube_vr_browser** — The usable layer built on that transport: a full YouTube watch page, not
+an embed or screenshot, rendered at 1280×720 onto a 1.6 m × 0.9 m quad 1.7 m ahead. It is rendered
+once per eye at real stereo depth. The controller ray supplies hover and trigger clicks for the EU
+consent flow and player controls; thumbstick or trackpad scrolls, and the physical keyboard can type
+into Chromium. Electron continues to play the page's audio. Without a headset the desktop window
+shows the same side-by-side scene and its mouse supplies the controller ray.
+
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/youtube_vr_browser/metadata.edn)
 
 ## Graphics building blocks
 
