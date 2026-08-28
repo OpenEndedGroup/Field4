@@ -253,10 +253,12 @@ working. The buffer is still empty:
 | GPU import + copy, read 3s after the paint | 0 |
 | GPU import + copy of the twenty-fifth paint | 0 |
 | CPU `mmap` + `DMA_BUF_IOCTL_SYNC`, read 2s after the paint | 0 |
+| Electron's own `importSharedTexture` + `VideoFrame.copyTo` | 0 |
 
 Which rules out, in order: a Vulkan-import mistake of ours (the CPU mapping shares none of our
-modifier, stride, memory-type or layout assumptions and agrees), an unflushed write, and a pool
-warm-up. Zeros rather than garbage also argues the memory is genuinely zero rather than correct
+modifier, stride, memory-type or layout assumptions and agrees), an unflushed write, a pool warm-up,
+and — with the last row — any question about our consumer at all, since that one is Electron
+importing its own texture and reading back its own pixels. Zeros rather than garbage also argues the memory is genuinely zero rather than correct
 bytes in a layout we are misreading.
 
 So what `--use-angle=vulkan` buys on Wayland is getting *past* the `SkSurface` error to a real

@@ -41,9 +41,22 @@ structurally correct; only its contents are missing. It also reproduces where
 The clearest way to see it uses only Electron's own APIs — `sharedTexture.importSharedTexture`,
 `sendSharedTexture`, and `VideoFrame.copyTo`. No native addon, no external consumer:
 
+Under KDE Plasma / Wayland:
+
 ```
 paint#5  supportsZeroCopyWebGpuImport=false  modifier=0  stride=5120
 imported textureId=578d48a9-...
+VideoFrame 1280x720 format=BGRA bytes=3686400
+nonzeroPixels=0/921600  firstPixel=[0,0,0,0]
+```
+
+And on a bare Xorg session on a spare VT, where the flag is `true` — the configuration #49247
+treats as working — the same script, unchanged:
+
+```
+session: tty  DISPLAY=:1  WAYLAND_DISPLAY=unset
+paint#5  supportsZeroCopyWebGpuImport=true  modifier=0  stride=5120
+imported textureId=14f9f92c-186a-4e2d-ac3a-07d73971ff53
 VideoFrame 1280x720 format=BGRA bytes=3686400
 nonzeroPixels=0/921600  firstPixel=[0,0,0,0]
 ```
