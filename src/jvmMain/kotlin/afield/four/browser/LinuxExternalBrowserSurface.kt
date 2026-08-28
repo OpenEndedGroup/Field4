@@ -45,7 +45,7 @@ class LinuxExternalBrowserSurface(
                 handle,
                 spec.width,
                 spec.height,
-                vkFormat
+                importVkFormat
             )
         } catch (t: Throwable) {
             // Vulkan consumes the fd only when allocation succeeds. Before that, it remains ours.

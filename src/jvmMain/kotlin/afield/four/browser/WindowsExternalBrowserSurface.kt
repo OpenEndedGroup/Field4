@@ -47,7 +47,7 @@ class WindowsExternalBrowserSurface(
                 handle.value,
                 spec.width,
                 spec.height,
-                vkFormat
+                importVkFormat
             )
         } finally {
             // Win32 imports retain the underlying allocation but do not consume the HANDLE.
