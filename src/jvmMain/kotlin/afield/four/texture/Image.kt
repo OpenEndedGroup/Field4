@@ -414,7 +414,9 @@ fun image_layout_transition(
     dst_access_mask: Long,
     old_layout: Int,
     new_layout: Int,
-    sub_resource_range: VkImageSubresourceRange
+    sub_resource_range: VkImageSubresourceRange,
+    src_queue_family_index: Int = VK_QUEUE_FAMILY_IGNORED,
+    dst_queue_family_index: Int = VK_QUEUE_FAMILY_IGNORED
 ) {
     MemoryStack.stackPush().use { stack ->
         val barrier2 = VkImageMemoryBarrier2.calloc(1, stack)
@@ -426,8 +428,8 @@ fun image_layout_transition(
             .dstAccessMask(dst_access_mask)
             .oldLayout(old_layout)
             .newLayout(new_layout)
-            .srcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-            .dstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+            .srcQueueFamilyIndex(src_queue_family_index)
+            .dstQueueFamilyIndex(dst_queue_family_index)
             .image(image)
             .subresourceRange(sub_resource_range)
 
@@ -448,7 +450,9 @@ fun image_layout_transition(
     dst_access_mask: Long,
     old_layout: Int,
     new_layout: Int,
-    sub_resource_range: VkImageSubresourceRange
+    sub_resource_range: VkImageSubresourceRange,
+    src_queue_family_index: Int = VK_QUEUE_FAMILY_IGNORED,
+    dst_queue_family_index: Int = VK_QUEUE_FAMILY_IGNORED
 ) {
     image_layout_transition(
         command_buffer,
@@ -459,7 +463,9 @@ fun image_layout_transition(
         dst_access_mask,
         old_layout,
         new_layout,
-        sub_resource_range
+        sub_resource_range,
+        src_queue_family_index,
+        dst_queue_family_index
     )
     image.setLayoutFor(command_buffer.address(), new_layout)
 }

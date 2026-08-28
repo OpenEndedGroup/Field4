@@ -57,6 +57,17 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
     val supportsExternalMemoryFd: Boolean
         get() = supportedExtensions.contains(org.lwjgl.vulkan.KHRExternalMemoryFd.VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME)
 
+    /** Extensions needed to import Electron nativePixmap dma-bufs with explicit DRM modifiers. */
+    val supportsDmaBufImport: Boolean
+        get() = supportsExternalMemoryFd &&
+            supportedExtensions.contains(EXTExternalMemoryDmaBuf.VK_EXT_EXTERNAL_MEMORY_DMA_BUF_EXTENSION_NAME) &&
+            supportedExtensions.contains(EXTImageDrmFormatModifier.VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION_NAME) &&
+            supportedExtensions.contains(EXTQueueFamilyForeign.VK_EXT_QUEUE_FAMILY_FOREIGN_EXTENSION_NAME)
+
+    /** VK_KHR_external_memory_win32, used for duplicated Electron D3D11 NT handles. */
+    val supportsExternalMemoryWin32: Boolean
+        get() = supportedExtensions.contains(KHRExternalMemoryWin32.VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME)
+
     init {
         MemoryStack.stackPush().use { stack ->
             val hasExt = { name: String -> supportedExtensions.contains(name) }
@@ -224,6 +235,9 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                     // is the base capability VK_KHR_external_memory_fd builds on.
                     addIfSupported(KHRExternalMemory.VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME)
                     addIfSupported(org.lwjgl.vulkan.KHRExternalMemoryFd.VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME)
+                    addIfSupported(EXTExternalMemoryDmaBuf.VK_EXT_EXTERNAL_MEMORY_DMA_BUF_EXTENSION_NAME)
+                    addIfSupported(EXTImageDrmFormatModifier.VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION_NAME)
+                    addIfSupported(EXTQueueFamilyForeign.VK_EXT_QUEUE_FAMILY_FOREIGN_EXTENSION_NAME)
                 }
 
                 // VK_EXT_present_timing: scanout-jitter logging via actual display timestamps.
