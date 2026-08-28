@@ -455,7 +455,10 @@ object TexturePreviewCache {
                         this.put(off + 2, b)
                     }
                 }
-                val png = PngEncoder.encodeFromBuffer(this, thumbW, thumbH, flipY = true)
+                // vkCmdCopyImageToBuffer hands rows over top-to-bottom, and the optional
+                // downsampling blit above has srcOffsets(0) == dstOffsets(0) == (0,0,0), so it
+                // does not invert Y either. Preserve the order — see CaptureOrientation.
+                val png = PngEncoder.encodeFromBuffer(this, thumbW, thumbH, flipY = false)
                 result = Base64.getEncoder().encodeToString(png)
             }
 
