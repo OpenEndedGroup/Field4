@@ -1683,25 +1683,49 @@ class FieldSuggestController {
       line: params.get("line") || "-1",
       context: "60",
     });
+    // Every outcome puts something on screen. This used to drop a failed fetch, a non-200 and a
+    // not-found on the floor alike, so a broken endpoint was indistinguishable from a dead link:
+    // when /api/source started 500ing, clicking the source footer did nothing at all, silently,
+    // for the rest of the session.
+    const place = (html) => {
+      // Guard against a stale response after the panel re-rendered.
+      if (doc.querySelector(".afield-suggest-source-code")) return;
+      const block = document.createElement("div");
+      block.className = "afield-suggest-source-code";
+      block.innerHTML = html;
+      const footer = anchor.closest(".afield-suggest-doc-source");
+      if (footer && footer.parentNode) footer.parentNode.insertBefore(block, footer.nextSibling);
+      else doc.appendChild(block);
+      highlightCodeBlocks(doc);
+      block.scrollIntoView({ block: "nearest" });
+    };
+    const placeFailure = (why) =>
+      place(
+        `<div class="afield-suggest-source-code-head"><code>${escapeHtml(query.get("path") || "source")}</code></div>` +
+          `<pre class="afield-suggest-source-code-error"><code>${escapeHtml(why)}</code></pre>`,
+      );
+
     fetch(`/api/source?${query.toString()}`)
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) =>
+        r.ok
+          ? r.json()
+          : r.text().then((body) => {
+              const first = String(body || "").trim().split("\n")[0];
+              throw new Error(`GET /api/source failed: ${r.status}${first ? ` ${first}` : ""}`);
+            }),
+      )
       .then((res) => {
-        if (!res || !res.found || !res.code) return;
-        // Guard against a stale response after the panel re-rendered.
-        if (doc.querySelector(".afield-suggest-source-code")) return;
+        if (!res || !res.found || !res.code) {
+          placeFailure("no readable source for this symbol");
+          return;
+        }
         const lang = res.language || "kotlin";
-        const block = document.createElement("div");
-        block.className = "afield-suggest-source-code";
-        block.innerHTML =
+        place(
           `<div class="afield-suggest-source-code-head"><code>${escapeHtml(res.path)}:${res.startLine}</code></div>` +
-          `<pre><code class="language-${escapeHtml(lang)}">${escapeHtml(res.code)}</code></pre>`;
-        const footer = anchor.closest(".afield-suggest-doc-source");
-        if (footer && footer.parentNode) footer.parentNode.insertBefore(block, footer.nextSibling);
-        else doc.appendChild(block);
-        highlightCodeBlocks(doc);
-        block.scrollIntoView({ block: "nearest" });
+            `<pre><code class="language-${escapeHtml(lang)}">${escapeHtml(res.code)}</code></pre>`,
+        );
       })
-      .catch(() => {});
+      .catch((e) => placeFailure(String((e && e.message) || e)));
   }
 
   navBack() {

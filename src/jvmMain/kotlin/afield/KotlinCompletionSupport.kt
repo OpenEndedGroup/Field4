@@ -11,6 +11,7 @@ import java.net.URLEncoder
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.ZipFile
 import kotlin.reflect.KParameter
 import kotlin.reflect.full.primaryConstructor
@@ -273,14 +274,17 @@ internal object KotlinCompletionSupport {
                 kinds = setOf("val", "var"),
                 requireReceiverOwnerMatch = requireReceiverOwnerMatch
             ) ?: return metadata.withReceiverDocumentation(receiverDocumentation)
+            val baseDocumentation = if (target.hasDocumentation) {
+                metadata.documentation
+            } else {
+                leadingFallbackSignature(metadata.documentation)
+            }
+            // A constant's value is what the panel was opened for; the engine only knows its type.
+            val documentedValue = declarationInitializer(target.sourceFile, target.sourceLine)
+                ?.let { withDeclarationInitializer(baseDocumentation, it) }
+                ?: baseDocumentation
             return metadata.copy(
-                documentation = linkifyKDocSymbols(
-                    if (target.hasDocumentation) {
-                        metadata.documentation
-                    } else {
-                        leadingFallbackSignature(metadata.documentation)
-                    }
-                ),
+                documentation = linkifyKDocSymbols(documentedValue),
                 generateDocumentation = !target.hasDocumentation,
                 documentationSourceName = target.sourceName,
                 documentationSourcePath = target.sourceFile,
@@ -692,6 +696,82 @@ internal object KotlinCompletionSupport {
         val closingFence = trimmed.indexOf("```", startIndex = "```kotlin".length)
         if (closingFence == -1) return trimmed
         return trimmed.substring(0, closingFence + 3).trim()
+    }
+
+    /** Longest initializer spliced into a signature fence; past this it is a body, not a signature. */
+    private const val MAX_INLINE_INITIALIZER = 160
+
+    /** A `val`/`var` declaration that carries an initializer, capturing the right-hand side. */
+    private val declarationInitializerRegex = Regex(
+        """^(?:@\w+\s+)*""" +
+            """(?:(?:private|internal|public|protected|const|lateinit|open|override|final|inline|external|actual|expect)\s+)*""" +
+            """(?:val|var)\s+[\w`]+\s*(?::\s*[^=]+?)?\s*=\s*(.+)$"""
+    )
+
+    /**
+     * Declaration source keyed by `path:lastModified`. Cached by *file* rather than by declaration:
+     * one popup can offer a dozen constants out of the same file, and a per-declaration cache would
+     * re-read the whole file for each of them while someone waits for the list.
+     */
+    private val declarationSourceCache = ConcurrentHashMap<String, List<String>>()
+
+    /**
+     * The initializer a `val`/`var` was declared with, read from its own source line:
+     * `"input x =e <e <e * <e * 160 *"` for `val ROPE = "input x =e <e <e * <e * 160 *"`.
+     *
+     * The completion engine knows a constant's *type* and nothing else, so the doc panel could only
+     * say `ROPE: String` — true, and never the thing the panel was opened to find out. For a
+     * constant the value usually is the documentation: a program string, a magic number, a default.
+     *
+     * Single-line initializers only, and only short ones. A `val` whose right-hand side is a builder
+     * block or a forty-line table is a body rather than a signature, and the "source" footer under
+     * the panel already exists for reading bodies.
+     */
+    internal fun declarationInitializer(sourceFile: String, line: Int): String? {
+        if (sourceFile.isBlank() || line < 1) return null
+        val root = Paths.get(System.getProperty("user.dir")).normalize()
+        val path = runCatching { root.resolve(sourceFile).normalize() }.getOrNull() ?: return null
+        if (!path.startsWith(root) || !Files.isRegularFile(path)) return null
+        val stamp = runCatching { Files.getLastModifiedTime(path).toMillis() }.getOrNull() ?: return null
+        if (declarationSourceCache.size > 512) declarationSourceCache.clear()
+        val lines = declarationSourceCache.getOrPut("$path:$stamp") {
+            runCatching { Files.readAllLines(path) }.getOrNull() ?: emptyList()
+        }
+        return initializerAt(lines, line)
+    }
+
+    /** Uncached read of one declaration, for callers holding a path rather than a repo-relative name. */
+    internal fun readDeclarationInitializer(path: Path, line: Int): String? {
+        val lines = runCatching { Files.readAllLines(path) }.getOrNull() ?: return null
+        return initializerAt(lines, line)
+    }
+
+    private fun initializerAt(lines: List<String>, line: Int): String? {
+        if (line < 1 || line > lines.size) return null
+        val declaration = lines[line - 1].trim()
+        val initializer = declarationInitializerRegex.find(declaration)?.groupValues?.get(1)?.trim()
+            ?: return null
+        if (initializer.length > MAX_INLINE_INITIALIZER) return null
+        // A trailing brace or an unclosed bracket means the value carries on below this line.
+        if (initializer.endsWith("{")) return null
+        if (initializer.count { it == '(' } != initializer.count { it == ')' }) return null
+        return initializer
+    }
+
+    /**
+     * Splice `= <initializer>` into the leading kotlin signature fence, so `ROPE: String` becomes
+     * `ROPE: String = "input x =e <e <e * <e * 160 *"`. Left alone when there is no leading fence,
+     * when the signature spans lines, or when it already carries a value of its own.
+     */
+    internal fun withDeclarationInitializer(documentation: String, initializer: String): String {
+        val trimmed = documentation.trim()
+        val opening = "```kotlin\n"
+        if (!trimmed.startsWith(opening)) return documentation
+        val closingFence = trimmed.indexOf("\n```", startIndex = opening.length)
+        if (closingFence == -1) return documentation
+        val signature = trimmed.substring(opening.length, closingFence)
+        if (signature.isBlank() || '=' in signature || '\n' in signature) return documentation
+        return opening + signature.trimEnd() + " = " + initializer + trimmed.substring(closingFence)
     }
 
     /**

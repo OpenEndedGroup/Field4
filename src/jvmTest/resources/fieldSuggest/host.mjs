@@ -359,10 +359,16 @@ export const installHost = ({ uid = "box-under-test", property = "code" } = {}) 
     const path = String(url).split("?")[0];
     const route = window._httpRoutes.get(path);
     if (!route) return Promise.reject(new Error(`no route for ${url} in the popup harness`));
-    const body = typeof route === "function" ? route(String(url)) : route;
+    const answer = typeof route === "function" ? route(String(url)) : route;
+    // A route may be `{ status, body }` instead of a bare body, so a case can serve a non-200. The
+    // popup has to *render* a failure: a 500 it silently dropped was indistinguishable from a link
+    // that does nothing, which is how a broken /api/source read for a whole session.
+    const failure = answer && typeof answer === "object" && "status" in answer;
+    const status = failure ? answer.status : 200;
+    const body = failure ? answer.body ?? "" : answer;
     return Promise.resolve({
-      ok: true,
-      status: 200,
+      ok: status >= 200 && status < 300,
+      status,
       text: () => Promise.resolve(body),
       json: () => Promise.resolve(JSON.parse(body)),
     });

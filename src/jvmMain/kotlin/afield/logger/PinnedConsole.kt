@@ -86,6 +86,10 @@ object PinnedConsole {
         val channels = listOf(PinnedChannel(STARTUP_CHANNEL, heatmap = false)) +
             (DEFAULT_PINS + env).map { PinnedChannel(it) }
         install(channels.distinctBy { it.tag })
+        // After the sink exists, so a stack trace thrown on the way up can already be pinned. Stderr
+        // does not pass through the dispatcher, so without this it lands on a row the next repaint
+        // clears, in a scroll region the terminal keeps no scrollback for. See [SessionErrorLog].
+        SessionErrorLog.install()
     }
 
     /**

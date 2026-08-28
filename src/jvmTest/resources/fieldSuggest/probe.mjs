@@ -767,6 +767,54 @@ const CASES = {
     );
   },
 
+  "a source footer that cannot load says so rather than doing nothing": async () => {
+    const clickSource = async (route) => {
+      const opened = await openPopup({
+        code: "val n = cros|",
+        metadata: [
+          candidate("cross", {
+            category: "Math",
+            documentation: "Cross product.",
+            documentationSourceName: "Vec3.kt",
+            documentationSourcePath: "src/jvmMain/kotlin/afield/math/Vec3.kt",
+            documentationSourceLine: 42,
+          }),
+        ],
+      });
+      if (route === null) window._httpRoutes.delete("/api/source");
+      else window._httpRoutes.set("/api/source", route);
+      const anchor = opened.docNode().querySelector(".afield-suggest-source-link");
+      ok(anchor, `no source link to click:\n${opened.doc()}`);
+      opened.controller.viewSource("field-source-view:?path=src/x/Vec3.kt&line=42", anchor);
+      await settle();
+      return opened.docNode().querySelector(".afield-suggest-source-code");
+    };
+
+    // The exact shape that made this worth covering: the server threw, Ktor answered 500, and the
+    // click did nothing at all.
+    const server = await clickSource({ status: 500, body: "afield/SourceFileResponse" });
+    ok(server, "a 500 must still put something in the panel");
+    ok(/500/.test(server.innerHTML), `expected the status:\n${server.innerHTML}`);
+    ok(
+      /afield\/SourceFileResponse/.test(server.innerHTML),
+      `expected the server's reason:\n${server.innerHTML}`,
+    );
+
+    // A guarded path with nothing readable behind it.
+    const missing = await clickSource(JSON.stringify({ found: false }));
+    ok(missing, "a found:false answer must still put something in the panel");
+    ok(/no readable source/.test(missing.innerHTML), `expected a reason:\n${missing.innerHTML}`);
+
+    // And a fetch that rejects outright.
+    const offline = await clickSource(null);
+    ok(offline, "a rejected fetch must still put something in the panel");
+
+    ok(
+      !/<script/i.test(server.innerHTML + missing.innerHTML + offline.innerHTML),
+      "a failure message is escaped, not spliced in as markup",
+    );
+  },
+
   // ---- volume ---------------------------------------------------------------------------------
   "a huge answer is capped, and duplicates are shown once": async () => {
     const many = [];
