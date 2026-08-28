@@ -167,14 +167,20 @@ display("plane", Plotly.plot {
 
 ![Twenty words in four colour-coded clumps, one per stem, placed only from their pairwise Levenshtein distances](assets/projection_examples/edit_distance_words.png)
 
-Read the numbers under the figure rather than the shape, because the shape is the easy part. The
+Read the numbers the fence prints rather than the shape, because the shape is the easy part. The
 mean edit distance inside a family is **2.000** and between families **6.720**, so a reader would
 expect four clumps, and four clumps is what appears. The useful question is what the projection
 *destroyed* to get them, and the answer is on the last line: by edit distance, all **20 of 20**
 words have a same-family nearest neighbour; in the plane, **18 of 20** do. The two that lose it are
-`computer` and `sampler`, and the reason is legible in the figure — `compute` and `sample` are only
-4 apart, the smallest between-family distance in the set, so those two clumps sit adjacent and their
-`-r` forms end up closer to each other than to their own stems.
+`computing` and `sampling`, and the arithmetic behind that is worth following because it is the whole
+cost of a projection in miniature. The `compute` and `sample` families are 4 apart *form for form* —
+`compute`/`sample`, `computed`/`sampled`, `computing`/`sampling`, all exactly 4, and 4 is the smallest
+between-family distance anywhere in the set. Meanwhile every `-ing` form is 3 from its own stem, the
+largest within-family distance there is. So `computing` sits 3 from its family and 4 from `sampling`,
+a margin of one, and one is what two dimensions cannot hold: in the plane its nearest neighbour is
+`sampling`. `sampling` does worse still — its plane-nearest is `computer`, which is 6 away in the
+input. Those are the two clumps that touch in the figure above, and they touch for a reason you can
+read off the distance matrix before you draw anything.
 
 The fit itself is unremarkable and worth stating anyway: the plane distances correlate with the edit
 distances at **r = 0.8475**, with a stress-1 of **0.2780**. That is not a good fit by any convention
@@ -574,10 +580,10 @@ showSignals(
 
 ![Two eigenvalue spectra of the same edit-distance matrix: the uncorrected one falls to zero after eight components while the corrected one still has usable eigenvalues at eighteen](assets/projection_examples/positive_correction.png)
 
-Uncorrected, this matrix gives you **nine** dimensions and no more. The spectrum runs 165.81,
+Uncorrected, this matrix gives you **9** dimensions and no more. The spectrum runs 165.81,
 102.20, 72.87, 64.80, 24.78, 17.39, 8.54, 4.70, then a ninth component at machine zero, and the
 tenth is genuinely negative at **−1.03** — at which point the call refuses, because there is no real
-square root of a negative eigenvalue. Corrected, all **eighteen** requestable dimensions are
+square root of a negative eigenvalue. Corrected, all **18** requestable dimensions are
 comfortably positive, the smallest of them 17.75.
 
 That is what the flag buys: **dimensions, not accuracy.** In two dimensions the *uncorrected* fit is

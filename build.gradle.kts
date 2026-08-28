@@ -1265,6 +1265,13 @@ val jvmTestTask = tasks.named<org.gradle.api.tasks.testing.Test>("jvmTest") {
     inputs.file("dev_docs/server_surface_inventory.md")
         .withPropertyName("serverSurfaceLedger")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+    // Same reason, second page. `ProjectionExamplesPageTest` recomputes every figure published by
+    // `public/docs/projection_examples.md` and asserts both that the recomputed value formats to the
+    // string on the page and that the sentence carrying it is still there. Both halves are inert if
+    // a Markdown-only edit can leave this task UP-TO-DATE.
+    inputs.file("public/docs/projection_examples.md")
+        .withPropertyName("projectionExamplesPage")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 // A known red recorded only in CI prose has been misgraded three times: once as an ordinary
