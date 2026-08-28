@@ -9,7 +9,7 @@ operations:
   - create:
       box: draw_the_gesture
       name: 1 · draw the gesture
-      frame: { x: 60.0, y: 60.0, w: 1180.0, h: 820.0 }
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 50.0 }
       properties:
         code: |
           import afield.stdlib.noir.audioai.*
@@ -38,7 +38,7 @@ operations:
   - create:
       box: generate_and_rank
       name: 2 · generate and rank
-      frame: { x: 1280.0, y: 60.0, w: 1180.0, h: 900.0 }
+      frame: { x: 380.0, y: 40.0, w: 300.0, h: 50.0 }
       properties:
         code: |
           import afield.stdlib.noir.audioai.*

@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="analysis_guide" index="0" -->
 
 ```edn [field-box id="analysis_guide" role="properties"]
-{"id" "analysis_guide" "index" 0 "name" "1 · analysis guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · analysis guide and jobs" "_tombstone" false "frame" #afield/rect [60.0 60.0 1120.0 680.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analysis_guide_code_.kt" "lines" 10 "characters" 1040 "sha256" "dab10c36384979e9e50799a3912b41a878ae7c458d0b604c2b475ac802593938"}]}
+{"id" "analysis_guide" "index" 0 "name" "1 · analysis guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · analysis guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analysis_guide_code_.kt" "lines" 10 "characters" 1040 "sha256" "dab10c36384979e9e50799a3912b41a878ae7c458d0b604c2b475ac802593938"}]}
 ```
 
 ```kotlin [field-property box="analysis_guide" name="code" path="analysis_guide_code_.kt"]
@@ -32,7 +32,7 @@ display("all durable jobs", fieldAudioJobMonitor(heightPixels = 430))
 <!-- field-box id="analysis_visualizer_gallery" index="1" -->
 
 ```edn [field-box id="analysis_visualizer_gallery" role="properties"]
-{"id" "analysis_visualizer_gallery" "index" 1 "name" "2 · synchronized visualizer gallery" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · synchronized visualizer gallery" "_tombstone" false "frame" #afield/rect [1220.0 60.0 1160.0 940.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analysis_visualizer_gallery_code_.kt" "lines" 54 "characters" 2824 "sha256" "b3dfa73cde5fe498e066d06925a75325b68ab412caa4facaeeef22ce1d055d3e"}]}
+{"id" "analysis_visualizer_gallery" "index" 1 "name" "2 · synchronized visualizer gallery" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · synchronized visualizer gallery" "_tombstone" false "frame" #afield/rect [420.0 40.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analysis_visualizer_gallery_code_.kt" "lines" 54 "characters" 2824 "sha256" "b3dfa73cde5fe498e066d06925a75325b68ab412caa4facaeeef22ce1d055d3e"}]}
 ```
 
 ```kotlin [field-property box="analysis_visualizer_gallery" name="code" path="analysis_visualizer_gallery_code_.kt"]
@@ -97,7 +97,7 @@ display("analysis board", analysisPreviewDashboardHtml(
 <!-- field-box id="analyse_nancy" index="2" -->
 
 ```edn [field-box id="analyse_nancy" role="properties"]
-{"id" "analyse_nancy" "index" 2 "name" "3 · submit, monitor, await, visualize Nancy" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · submit, monitor, await, visualize Nancy" "_tombstone" false "frame" #afield/rect [60.0 780.0 1120.0 980.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_nancy_code_.kt" "lines" 55 "characters" 2494 "sha256" "830593624ed4d0c9c212c71dc1e9b118c9480b74f85df5bc111fd4c2af8e6051"}]}
+{"id" "analyse_nancy" "index" 2 "name" "3 · submit, monitor, await, visualize Nancy" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · submit, monitor, await, visualize Nancy" "_tombstone" false "frame" #afield/rect [40.0 140.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_nancy_code_.kt" "lines" 55 "characters" 2494 "sha256" "830593624ed4d0c9c212c71dc1e9b118c9480b74f85df5bc111fd4c2af8e6051"}]}
 ```
 
 ```kotlin [field-property box="analyse_nancy" name="code" path="analyse_nancy_code_.kt"]

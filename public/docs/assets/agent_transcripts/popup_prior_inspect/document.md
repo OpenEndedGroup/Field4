@@ -25,7 +25,7 @@ of where a row appears on screen. That answer belongs to KotlinCompletionSupport
 a `category=` beside every visible row. See public/docs/completion_ranking.md.
 
 ```edn [field-box id="agent_popup_prior_inspect" role="properties"]
-{"id" "agent_popup_prior_inspect" "index" 0 "name" "What prior does the popup have" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What prior does the popup have" "_tombstone" false "frame" #afield/rect [80.0 80.0 680.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_popup_prior_inspect_code_.kt" "lines" 31 "characters" 1735 "sha256" "9abc89fb22d2b377e6ba96561cdef1b6f7c3edc66bdc826bf733789d4f265952"}]}
+{"id" "agent_popup_prior_inspect" "index" 0 "name" "What prior does the popup have" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What prior does the popup have" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_popup_prior_inspect_code_.kt" "lines" 31 "characters" 1735 "sha256" "9abc89fb22d2b377e6ba96561cdef1b6f7c3edc66bdc826bf733789d4f265952"}]}
 ```
 
 ```kotlin [field-property box="agent_popup_prior_inspect" name="code" path="agent_popup_prior_inspect_code_.kt"]

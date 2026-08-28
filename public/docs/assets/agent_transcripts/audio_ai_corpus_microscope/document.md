@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="index_and_explore_corpus" index="0" -->
 
 ```edn [field-box id="index_and_explore_corpus" role="properties"]
-{"id" "index_and_explore_corpus" "index" 0 "name" "2 · index Nancy and Candlestick, then explore" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · index Nancy and Candlestick, then explore" "_tombstone" false "frame" #afield/rect [60.0 760.0 1160.0 1120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "index_and_explore_corpus_code_.kt" "lines" 60 "characters" 2724 "sha256" "bbe11a8844f00b788f338080323456bf4b923c9c84e6a59a8e5d4562ce2d13c7"}]}
+{"id" "index_and_explore_corpus" "index" 0 "name" "2 · index Nancy and Candlestick, then explore" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · index Nancy and Candlestick, then explore" "_tombstone" false "frame" #afield/rect [420.0 40.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "index_and_explore_corpus_code_.kt" "lines" 60 "characters" 2724 "sha256" "bbe11a8844f00b788f338080323456bf4b923c9c84e6a59a8e5d4562ce2d13c7"}]}
 ```
 
 ```kotlin [field-property box="index_and_explore_corpus" name="code" path="index_and_explore_corpus_code_.kt"]
@@ -82,7 +82,7 @@ CompletableFuture.allOf(*lookups.toTypedArray()).thenCompose {
 <!-- field-box id="corpus_microscope_guide" index="1" -->
 
 ```edn [field-box id="corpus_microscope_guide" role="properties"]
-{"id" "corpus_microscope_guide" "index" 1 "name" "1 · corpus microscope guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · corpus microscope guide and jobs" "_tombstone" false "frame" #afield/rect [60.0 60.0 1120.0 650.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "corpus_microscope_guide_code_.kt" "lines" 10 "characters" 990 "sha256" "ca52470eed288ee77f94922e86f9863e686bbaa33527c3c87e64f78335977a3e"}]}
+{"id" "corpus_microscope_guide" "index" 1 "name" "1 · corpus microscope guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · corpus microscope guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "corpus_microscope_guide_code_.kt" "lines" 10 "characters" 990 "sha256" "ca52470eed288ee77f94922e86f9863e686bbaa33527c3c87e64f78335977a3e"}]}
 ```
 
 ```kotlin [field-property box="corpus_microscope_guide" name="code" path="corpus_microscope_guide_code_.kt"]

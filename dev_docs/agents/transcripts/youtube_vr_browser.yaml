@@ -8,7 +8,7 @@ operations:
   - create:
       box: youtube_vr_renderer
       name: window + renderer
-      frame: { x: -600.0, y: -300.0, w: 220.0, h: 50.0 }
+      frame: { x: 40.0, y: 40.0, w: 220.0, h: 50.0 }
       properties:
         code: |
           import afield.four.util.Options
@@ -36,7 +36,7 @@ operations:
   - create:
       box: youtube_vr_panel
       name: YouTube — interactive Chromium panel
-      frame: { x: -260.0, y: -180.0, w: 300.0, h: 50.0 }
+      frame: { x: 320.0, y: 140.0, w: 300.0, h: 50.0 }
       properties:
         code: |
           import afield.four.Target

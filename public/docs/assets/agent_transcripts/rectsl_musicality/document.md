@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="music_renderer" index="0" -->
 
 ```edn [field-box id="music_renderer" role="properties"]
-{"id" "music_renderer" "index" 0 "name" "window + renderer" "parents" ["root"] "children" ["music_groove"] "properties" {"children" #{#afield/box "music_groove"} "parents" #{#afield/box "root"} "name" "window + renderer" "_tombstone" false "frame" #afield/rect [-640.0 -360.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "music_renderer_code_.kt" "lines" 14 "characters" 248 "sha256" "873d83fc20d7d6ebad68f9c26ca854438315e9f96ce94fb55c76151b4f76375c"}]}
+{"id" "music_renderer" "index" 0 "name" "window + renderer" "parents" ["root"] "children" ["music_groove"] "properties" {"children" #{#afield/box "music_groove"} "parents" #{#afield/box "root"} "name" "window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "music_renderer_code_.kt" "lines" 14 "characters" 248 "sha256" "873d83fc20d7d6ebad68f9c26ca854438315e9f96ce94fb55c76151b4f76375c"}]}
 ```
 
 ```kotlin [field-property box="music_renderer" name="code" path="music_renderer_code_.kt"]
@@ -52,7 +52,7 @@ Nothing below is written in seconds. Edit `rectsl` and re-run to change the
 groove live. See rectsl_cheatsheet.md ("Musicality") / rectsl_examples.md.
 
 ```edn [field-box id="music_groove" role="properties"]
-{"id" "music_groove" "index" 1 "name" "rectsl musicality" "parents" ["root" "music_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "music_renderer"} "name" "rectsl musicality" "_tombstone" false "frame" #afield/rect [-300.0 -220.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "music_groove_code_.kt" "lines" 107 "characters" 3295 "sha256" "28616872584d4cd39bd95104a9fba00d12a2dcaaea77d3750f89e1a59d279aa2"}]}
+{"id" "music_groove" "index" 1 "name" "rectsl musicality" "parents" ["root" "music_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "music_renderer"} "name" "rectsl musicality" "_tombstone" false "frame" #afield/rect [300.0 140.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "music_groove_code_.kt" "lines" 107 "characters" 3295 "sha256" "28616872584d4cd39bd95104a9fba00d12a2dcaaea77d3750f89e1a59d279aa2"}]}
 ```
 
 ```kotlin [field-property box="music_groove" name="code" path="music_groove_code_.kt"]

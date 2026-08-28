@@ -9,7 +9,7 @@ operations:
   - create:
       box: render_analysis_guide
       name: 1 · render → analyse guide and jobs
-      frame: { x: 50.0, y: 50.0, w: 1120.0, h: 650.0 }
+      frame: { x: 40.0, y: 40.0, w: 340.0, h: 50.0 }
       properties:
         code: |
           import afield.stdlib.noir.audioai.*
@@ -27,7 +27,7 @@ operations:
   - create:
       box: analyse_pat_render
       name: 2 · Pat / Dirt render → analysis
-      frame: { x: 1210.0, y: 50.0, w: 1120.0, h: 980.0 }
+      frame: { x: 420.0, y: 40.0, w: 340.0, h: 50.0 }
       properties:
         code: |
           import afield.four.synth.*
@@ -65,7 +65,7 @@ operations:
   - create:
       box: analyse_dough_render
       name: 3 · Dough render → analysis
-      frame: { x: 50.0, y: 760.0, w: 1120.0, h: 980.0 }
+      frame: { x: 40.0, y: 140.0, w: 340.0, h: 50.0 }
       properties:
         code: |
           import afield.four.synth.*
@@ -100,7 +100,7 @@ operations:
   - create:
       box: analyse_faust_render
       name: 4 · Faust render → analysis
-      frame: { x: 1210.0, y: 1090.0, w: 1120.0, h: 980.0 }
+      frame: { x: 420.0, y: 140.0, w: 340.0, h: 50.0 }
       properties:
         code: |
           import afield.four.synth.*
@@ -137,7 +137,7 @@ operations:
   - create:
       box: analyse_sonic_pi_recording
       name: 5 · Sonic Pi recording → analysis
-      frame: { x: 50.0, y: 1800.0, w: 1120.0, h: 1020.0 }
+      frame: { x: 40.0, y: 240.0, w: 340.0, h: 50.0 }
       properties:
         code: |
           import afield.four.synth.*

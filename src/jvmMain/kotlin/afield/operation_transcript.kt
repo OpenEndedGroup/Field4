@@ -94,7 +94,8 @@ object OperationTranscript {
         val operationIndex: Int = -1,
         val operationCount: Int = -1,
         val launchIndex: Int = -1,
-        val launchCount: Int = -1
+        val launchCount: Int = -1,
+        val initializeCreatedBoxes: Boolean = true,
     )
 
     private data class MacroLaunchRequest(
@@ -381,7 +382,8 @@ object OperationTranscript {
         direction: String = "do",
         strict: Boolean = false,
         scope: String = "document",
-        projectName: String = ""
+        projectName: String = "",
+        initializeCreatedBoxes: Boolean = true,
     ): MacroRunResult {
         val cleanName = sanitizeMacroName(name)
         val location = macroLocation(documentPath, scope, projectName)
@@ -418,7 +420,8 @@ object OperationTranscript {
                             operationIndex = index + 1,
                             operationCount = ordered.size,
                             launchIndex = ++launchIndex,
-                            launchCount = launchCount
+                            launchCount = launchCount,
+                            initializeCreatedBoxes = initializeCreatedBoxes,
                         )
                         index++
                     }
@@ -447,7 +450,8 @@ object OperationTranscript {
                     operationIndex = index + 1,
                     operationCount = ordered.size,
                     launchIndex = if (verb in launchVerbs) ++launchIndex else -1,
-                    launchCount = launchCount
+                    launchCount = launchCount,
+                    initializeCreatedBoxes = initializeCreatedBoxes,
                 )
                 val result = runCatching {
                     applyMacroOperation(op, boxMap, normalizedDirection, strict, context, collect)
@@ -1322,13 +1326,18 @@ object OperationTranscript {
                 val mapped = boxMap[raw] ?: raw
                 if (mapped == "root" || mapped == METAROOT_ID) return false
                 val info = thisSessionInfo.get()
-                val target = box(mapped, createIfMissing = true, initIfCreated = true, root = info)
+                val target = box(
+                    mapped,
+                    createIfMissing = true,
+                    initIfCreated = context.initializeCreatedBoxes,
+                    root = info,
+                )
                 if (direction == "undo") {
                     tombstoneBox(target)
                     return true
                 }
-                target.setPropertyRaw("_tombstone", false, doResync = true)
                 (payload["name"] ?: payload["title"])?.toString()?.let { target.name = it }
+                target.setPropertyRaw("_tombstone", false, doResync = true)
                 val frameMap = (payload["frame"] ?: payload["rect"]) as? Map<*, *>
                 if (frameMap != null) target.frame = rectFromMap(frameMap)
                 (payload["properties"] as? Map<*, *>)?.forEach { (key, value) ->

@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="dataframe_typed" index="0" -->
 
 ```edn [field-box id="dataframe_typed" role="properties"]
-{"id" "dataframe_typed" "index" 0 "name" "1 - Typed columns, no strings" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Typed columns, no strings" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 270.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataframe_typed_code_.kt" "lines" 13 "characters" 437 "sha256" "e8770b348fcd4a66af8a968d6514797ed03c91c3ff22c1afb174931b3a1d8bf1"}]}
+{"id" "dataframe_typed" "index" 0 "name" "1 - Typed columns, no strings" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Typed columns, no strings" "_tombstone" false "frame" #afield/rect [40.0 40.0 280.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataframe_typed_code_.kt" "lines" 13 "characters" 437 "sha256" "e8770b348fcd4a66af8a968d6514797ed03c91c3ff22c1afb174931b3a1d8bf1"}]}
 ```
 
 ```kotlin [field-property box="dataframe_typed" name="code" path="dataframe_typed_code_.kt"]
@@ -35,7 +35,7 @@ println("mean age: " + people.age.toList().average())
 <!-- field-box id="dataframe_derived" index="1" -->
 
 ```edn [field-box id="dataframe_derived" role="properties"]
-{"id" "dataframe_derived" "index" 1 "name" "2 - A schema that changes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - A schema that changes" "_tombstone" false "frame" #afield/rect [510.0 40.0 440.0 270.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataframe_derived_code_.kt" "lines" 15 "characters" 505 "sha256" "895bf5da759ccf41b313766afe301daa95ea9116999d3eb7842048ce847c1d43"}]}
+{"id" "dataframe_derived" "index" 1 "name" "2 - A schema that changes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - A schema that changes" "_tombstone" false "frame" #afield/rect [380.0 40.0 280.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataframe_derived_code_.kt" "lines" 15 "characters" 505 "sha256" "895bf5da759ccf41b313766afe301daa95ea9116999d3eb7842048ce847c1d43"}]}
 ```
 
 ```kotlin [field-property box="dataframe_derived" name="code" path="dataframe_derived_code_.kt"]
@@ -61,7 +61,7 @@ println("decade: " + adults.decade.toList())
 <!-- field-box id="dataframe_live" index="2" -->
 
 ```edn [field-box id="dataframe_live" role="properties"]
-{"id" "dataframe_live" "index" 2 "name" "4 - Typed across the boundary" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - Typed across the boundary" "_tombstone" false "frame" #afield/rect [510.0 340.0 440.0 340.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataframe_live_code_.kt" "lines" 27 "characters" 1384 "sha256" "5b854d7e58211bb4b9279d78034b70e60ef61ddc1ec50962d103de909f84b3b1"}]}
+{"id" "dataframe_live" "index" 2 "name" "4 - Typed across the boundary" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - Typed across the boundary" "_tombstone" false "frame" #afield/rect [380.0 140.0 280.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataframe_live_code_.kt" "lines" 27 "characters" 1384 "sha256" "5b854d7e58211bb4b9279d78034b70e60ef61ddc1ec50962d103de909f84b3b1"}]}
 ```
 
 ```kotlin [field-property box="dataframe_live" name="code" path="dataframe_live_code_.kt"]
@@ -99,7 +99,7 @@ println("adults: " + p.filter { age >= 18 }.name.toList())
 <!-- field-box id="dataframe_one_pass" index="3" -->
 
 ```edn [field-box id="dataframe_one_pass" role="properties"]
-{"id" "dataframe_one_pass" "index" 3 "name" "3 - The whole chain in one pass" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - The whole chain in one pass" "_tombstone" false "frame" #afield/rect [40.0 340.0 440.0 250.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataframe_one_pass_code_.kt" "lines" 13 "characters" 391 "sha256" "1f0a1684a215fc6c0eb50991b56cd00fed3cd0756f691545ec6b5d2d3c537a8f"}]}
+{"id" "dataframe_one_pass" "index" 3 "name" "3 - The whole chain in one pass" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - The whole chain in one pass" "_tombstone" false "frame" #afield/rect [40.0 140.0 280.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataframe_one_pass_code_.kt" "lines" 13 "characters" 391 "sha256" "1f0a1684a215fc6c0eb50991b56cd00fed3cd0756f691545ec6b5d2d3c537a8f"}]}
 ```
 
 ```kotlin [field-property box="dataframe_one_pass" name="code" path="dataframe_one_pass_code_.kt"]

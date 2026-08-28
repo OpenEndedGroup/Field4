@@ -8,7 +8,7 @@ operations:
   - create:
       box: speech_embedding_guide
       name: 1 · speech embedding guide and jobs
-      frame: { x: 60.0, y: 60.0, w: 1120.0, h: 680.0 }
+      frame: { x: 40.0, y: 40.0, w: 340.0, h: 50.0 }
       properties:
         code: |
           import afield.stdlib.noir.audioai.*
@@ -24,7 +24,7 @@ operations:
   - create:
       box: speech_embedding_visualizer_gallery
       name: 2 · model-free synchronized MDS gallery
-      frame: { x: 1220.0, y: 60.0, w: 1160.0, h: 1460.0 }
+      frame: { x: 420.0, y: 40.0, w: 340.0, h: 50.0 }
       properties:
         code: |
           import afield.stdlib.*
@@ -82,7 +82,7 @@ operations:
   - create:
       box: analyse_near_drowning_speech
       name: 3 · import, submit, monitor, audition near_drowning
-      frame: { x: 60.0, y: 780.0, w: 1160.0, h: 1640.0 }
+      frame: { x: 40.0, y: 140.0, w: 340.0, h: 50.0 }
       properties:
         code: |
           import afield.Box

@@ -79,6 +79,13 @@ Leave real vertical room between boxes: an *expanded* output panel is often 150â
 tall, so boxes stacked 140px apart will have their outputs land on the next box's title.
 Space a column by what its boxes actually render, not by `frame.h`.
 
+`./gradlew checkAgentTranscriptLayouts` enforces the repository corpus: every created box
+has a numeric, positive frame; `x` and `y` are non-negative; and ordinary frames stay at or
+below `520 x 120`. A deliberately composed visual card or docs-capture subject may be larger,
+but its exact `file#box` key needs a concrete reason in
+`dev_docs/agents/transcript_layout_exceptions.yaml`. The guard rejects stale and orphaned
+exceptions, so shrinking or deleting the box also removes its exemption.
+
 Omitting `frame` entirely is **not** a shortcut for "default size" â€” the box keeps
 `Rect(0,0,0,0)` and is invisible on the canvas.
 

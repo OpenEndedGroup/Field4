@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="analyse_sonic_pi_recording" index="0" -->
 
 ```edn [field-box id="analyse_sonic_pi_recording" role="properties"]
-{"id" "analyse_sonic_pi_recording" "index" 0 "name" "5 · Sonic Pi recording → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · Sonic Pi recording → analysis" "_tombstone" false "frame" #afield/rect [50.0 1800.0 1120.0 1020.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_sonic_pi_recording_code_.kt" "lines" 39 "characters" 1493 "sha256" "4093ef26ca1e0ff5cf692b1a4a4efb9d1bceeba6a7475aec30e8576f17215f83"}]}
+{"id" "analyse_sonic_pi_recording" "index" 0 "name" "5 · Sonic Pi recording → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · Sonic Pi recording → analysis" "_tombstone" false "frame" #afield/rect [40.0 240.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_sonic_pi_recording_code_.kt" "lines" 39 "characters" 1493 "sha256" "4093ef26ca1e0ff5cf692b1a4a4efb9d1bceeba6a7475aec30e8576f17215f83"}]}
 ```
 
 ```kotlin [field-property box="analyse_sonic_pi_recording" name="code" path="analyse_sonic_pi_recording_code_.kt"]
@@ -61,7 +61,7 @@ recordSonicPiWav(
 <!-- field-box id="render_analysis_guide" index="1" -->
 
 ```edn [field-box id="render_analysis_guide" role="properties"]
-{"id" "render_analysis_guide" "index" 1 "name" "1 · render → analyse guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · render → analyse guide and jobs" "_tombstone" false "frame" #afield/rect [50.0 50.0 1120.0 650.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "render_analysis_guide_code_.kt" "lines" 11 "characters" 1222 "sha256" "61db32d0b88582f74f3b0dd25303afd4dda197795ff042af98dfe91723d13ca4"}]}
+{"id" "render_analysis_guide" "index" 1 "name" "1 · render → analyse guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · render → analyse guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "render_analysis_guide_code_.kt" "lines" 11 "characters" 1222 "sha256" "61db32d0b88582f74f3b0dd25303afd4dda197795ff042af98dfe91723d13ca4"}]}
 ```
 
 ```kotlin [field-property box="render_analysis_guide" name="code" path="render_analysis_guide_code_.kt"]
@@ -83,7 +83,7 @@ display("all durable jobs", fieldAudioJobMonitor(heightPixels = 390))
 <!-- field-box id="analyse_faust_render" index="2" -->
 
 ```edn [field-box id="analyse_faust_render" role="properties"]
-{"id" "analyse_faust_render" "index" 2 "name" "4 · Faust render → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · Faust render → analysis" "_tombstone" false "frame" #afield/rect [1210.0 1090.0 1120.0 980.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_faust_render_code_.kt" "lines" 30 "characters" 1348 "sha256" "0a496010e303e9f776d983418e8f6235e6253a1f4cfc58bb5b91db20e7a5a26e"}]}
+{"id" "analyse_faust_render" "index" 2 "name" "4 · Faust render → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · Faust render → analysis" "_tombstone" false "frame" #afield/rect [420.0 140.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_faust_render_code_.kt" "lines" 30 "characters" 1348 "sha256" "0a496010e303e9f776d983418e8f6235e6253a1f4cfc58bb5b91db20e7a5a26e"}]}
 ```
 
 ```kotlin [field-property box="analyse_faust_render" name="code" path="analyse_faust_render_code_.kt"]
@@ -124,7 +124,7 @@ renderFaustWavAsync(
 <!-- field-box id="analyse_dough_render" index="3" -->
 
 ```edn [field-box id="analyse_dough_render" role="properties"]
-{"id" "analyse_dough_render" "index" 3 "name" "3 · Dough render → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · Dough render → analysis" "_tombstone" false "frame" #afield/rect [50.0 760.0 1120.0 980.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_dough_render_code_.kt" "lines" 28 "characters" 1268 "sha256" "6a76e598c45daa450497e12432dc17c4a56343e2b491c1304ae8d9331a367972"}]}
+{"id" "analyse_dough_render" "index" 3 "name" "3 · Dough render → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · Dough render → analysis" "_tombstone" false "frame" #afield/rect [40.0 140.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_dough_render_code_.kt" "lines" 28 "characters" 1268 "sha256" "6a76e598c45daa450497e12432dc17c4a56343e2b491c1304ae8d9331a367972"}]}
 ```
 
 ```kotlin [field-property box="analyse_dough_render" name="code" path="analyse_dough_render_code_.kt"]
@@ -163,7 +163,7 @@ client.analyzeRenderedAudio(
 <!-- field-box id="analyse_pat_render" index="4" -->
 
 ```edn [field-box id="analyse_pat_render" role="properties"]
-{"id" "analyse_pat_render" "index" 4 "name" "2 · Pat / Dirt render → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · Pat / Dirt render → analysis" "_tombstone" false "frame" #afield/rect [1210.0 50.0 1120.0 980.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_pat_render_code_.kt" "lines" 31 "characters" 1350 "sha256" "c2be874cc48e91a10ea41da085eae36266998ade23509773f2eb4038917bf9b7"}]}
+{"id" "analyse_pat_render" "index" 4 "name" "2 · Pat / Dirt render → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · Pat / Dirt render → analysis" "_tombstone" false "frame" #afield/rect [420.0 40.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_pat_render_code_.kt" "lines" 31 "characters" 1350 "sha256" "c2be874cc48e91a10ea41da085eae36266998ade23509773f2eb4038917bf9b7"}]}
 ```
 
 ```kotlin [field-property box="analyse_pat_render" name="code" path="analyse_pat_render_code_.kt"]

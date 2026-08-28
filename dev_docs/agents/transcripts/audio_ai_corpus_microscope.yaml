@@ -7,7 +7,7 @@ operations:
   - create:
       box: corpus_microscope_guide
       name: 1 · corpus microscope guide and jobs
-      frame: { x: 60.0, y: 60.0, w: 1120.0, h: 650.0 }
+      frame: { x: 40.0, y: 40.0, w: 340.0, h: 50.0 }
       properties:
         code: |
           import afield.stdlib.noir.audioai.*
@@ -23,7 +23,7 @@ operations:
   - create:
       box: index_and_explore_corpus
       name: 2 · index Nancy and Candlestick, then explore
-      frame: { x: 60.0, y: 760.0, w: 1160.0, h: 1120.0 }
+      frame: { x: 420.0, y: 40.0, w: 340.0, h: 50.0 }
       properties:
         code: |
           import afield.stdlib.noir.audioai.*

@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="recstl_renderer" index="0" -->
 
 ```edn [field-box id="recstl_renderer" role="properties"]
-{"id" "recstl_renderer" "index" 0 "name" "window + renderer" "parents" ["root"] "children" ["recstl_playground"] "properties" {"children" #{#afield/box "recstl_playground"} "parents" #{#afield/box "root"} "name" "window + renderer" "_tombstone" false "frame" #afield/rect [-640.0 -360.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "recstl_renderer_code_.kt" "lines" 14 "characters" 242 "sha256" "f00fbee0e27d6e919acebae74f4ff51a8589f27bcdd5c99bcee0cf2abef8dc29"}]}
+{"id" "recstl_renderer" "index" 0 "name" "window + renderer" "parents" ["root"] "children" ["recstl_playground"] "properties" {"children" #{#afield/box "recstl_playground"} "parents" #{#afield/box "root"} "name" "window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "recstl_renderer_code_.kt" "lines" 14 "characters" 242 "sha256" "f00fbee0e27d6e919acebae74f4ff51a8589f27bcdd5c99bcee0cf2abef8dc29"}]}
 ```
 
 ```kotlin [field-property box="recstl_renderer" name="code" path="recstl_renderer_code_.kt"]
@@ -51,7 +51,7 @@ time  — scrub to a frame (while paused); moving it freezes the clock there
 See the "RectSL examples" docs page / rectsl_cheatsheet.md for the language.
 
 ```edn [field-box id="recstl_playground" role="properties"]
-{"id" "recstl_playground" "index" 1 "name" "recstl" "parents" ["root" "recstl_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "recstl_renderer"} "name" "recstl" "_tombstone" false "frame" #afield/rect [-300.0 -220.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "recstl_playground_code_.kt" "lines" 96 "characters" 3039 "sha256" "49e58beb5031ff61739153575d31939dfd6c243f1b3a2de460691f3501342c68"}]}
+{"id" "recstl_playground" "index" 1 "name" "recstl" "parents" ["root" "recstl_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "recstl_renderer"} "name" "recstl" "_tombstone" false "frame" #afield/rect [300.0 140.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "recstl_playground_code_.kt" "lines" 96 "characters" 3039 "sha256" "49e58beb5031ff61739153575d31939dfd6c243f1b3a2de460691f3501342c68"}]}
 ```
 
 ```kotlin [field-property box="recstl_playground" name="code" path="recstl_playground_code_.kt"]

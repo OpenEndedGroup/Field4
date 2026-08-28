@@ -1,0 +1,19 @@
+version: 1
+
+# Ordinary OperationTranscript boxes are compact labels: see OPERATION_TRANSCRIPT.md.
+# Entries here are capture subjects whose box rectangle is part of the intended screenshot. The guard requires
+# one reason per file#box and rejects entries that no longer point at an oversized create.frame.
+largeFrames:
+  docs_capture/completion_category_headers.yaml#agent_completion_header_alife: Box dimensions are part of the completion-header screenshot composition.
+  docs_capture/completion_category_headers.yaml#agent_completion_header_audio_ai: Box dimensions are part of the completion-header screenshot composition.
+  docs_capture/frames_lifecycle.yaml#frames_lifecycle_forever: Box dimensions are part of the four-panel lifecycle screenshot composition.
+  docs_capture/frames_lifecycle.yaml#frames_lifecycle_stops: Box dimensions are part of the four-panel lifecycle screenshot composition.
+  docs_capture/frames_lifecycle.yaml#frames_lifecycle_rerun: Box dimensions are part of the four-panel lifecycle screenshot composition.
+  docs_capture/frames_lifecycle.yaml#frames_lifecycle_cleanup: Box dimensions are part of the four-panel lifecycle screenshot composition.
+  docs_capture/keybindings_inspect.yaml#agent_keybindings_inspect: Box dimensions are part of the keybindings-panel screenshot framing.
+  docs_capture/remote_ar_kotlin_plane.yaml#agent_remote_ar_plane_head: Box height reserves the documented Remote AR capture composition.
+  docs_capture/remote_ar_kotlin_plane.yaml#agent_remote_ar_plane: Box dimensions are part of the Remote AR editor screenshot composition.
+  docs_capture/threejs_editable_fill_pixels.yaml#fill_editable_planes: Large box is the visual subject of the editable-fill comparison capture.
+  docs_capture/threejs_editable_fill_pixels.yaml#fill_editable_overlap: Large box is the visual subject of the editable-fill comparison capture.
+  docs_capture/threejs_editable_fill_pixels.yaml#fill_static_planes: Large box is the visual subject of the editable-fill comparison capture.
+  docs_capture/threejs_editable_fill_pixels.yaml#stroke_editable_curve: Large box is the visual subject of the editable-stroke comparison capture.

@@ -136,9 +136,9 @@ object AgentTranscriptMaterializer {
                 System.err.println("[error] $msg")
                 t.printStackTrace(System.err)
             } finally {
-                // Dispose KI engines before clearing the session to clean up K2 ForkJoinPool threads.
-                // OperationTranscript.runMacro triggers Box.ki lazy init even for structural-only ops,
-                // leaving thread pools alive if not explicitly disposed.
+                // Defensive for any future structural op that explicitly reaches a Kotlin engine.
+                // Ordinary create ops skip KI initialization in materializeOne: pristine starting
+                // points need box state, not hundreds of asynchronously bootstrapped compilers.
                 thisSessionInfo.get()?.boxes?.values?.forEach { box ->
                     if (box.id != "root" && box.id != METAROOT_ID) {
                         box.disposeKi()
@@ -208,7 +208,11 @@ object AgentTranscriptMaterializer {
         val macrosDir = File(document, "macros").also { it.mkdirs() }
         val filtered = linkedMapOf<String, Any?>("name" to name, "operations" to graphOps)
         File(macrosDir, "$name.yaml").writeText(Yaml().dump(filtered))
-        val build = OperationTranscript.runMacro(document.absolutePath, name)
+        val build = OperationTranscript.runMacro(
+            document.absolutePath,
+            name,
+            initializeCreatedBoxes = false,
+        )
         if (!build.success) {
             // A missing cross-transcript parent (skipped connect) is fine; only note it.
             println("[materialize] $name graph build note: ${build.message}")

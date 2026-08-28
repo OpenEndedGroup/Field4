@@ -9,7 +9,7 @@ operations:
   - create:
       box: recstl_renderer
       name: window + renderer
-      frame: { x: -640.0, y: -360.0, w: 200.0, h: 50.0 }
+      frame: { x: 40.0, y: 40.0, w: 200.0, h: 50.0 }
       properties:
         code: |
           import afield.four.util.Options
@@ -31,7 +31,7 @@ operations:
   - create:
       box: recstl_playground
       name: recstl
-      frame: { x: -300.0, y: -220.0, w: 200.0, h: 50.0 }
+      frame: { x: 300.0, y: 140.0, w: 200.0, h: 50.0 }
       properties:
         code: |
           // RectSL playground.

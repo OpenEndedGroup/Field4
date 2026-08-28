@@ -8,7 +8,7 @@ operations:
   - create:
       box: spectral_embedding_guide
       name: 1 · spectral spaces guide and jobs
-      frame: { x: 60.0, y: 60.0, w: 1120.0, h: 650.0 }
+      frame: { x: 40.0, y: 40.0, w: 340.0, h: 50.0 }
       properties:
         code: |
           import afield.stdlib.noir.audioai.*
@@ -24,7 +24,7 @@ operations:
   - create:
       box: spectral_embedding_visualizer_gallery
       name: 2 · model-free synchronized spectral gallery
-      frame: { x: 1220.0, y: 60.0, w: 1160.0, h: 1120.0 }
+      frame: { x: 420.0, y: 40.0, w: 340.0, h: 50.0 }
       properties:
         code: |
           import afield.stdlib.*
@@ -78,7 +78,7 @@ operations:
   - create:
       box: analyse_near_drowning_spectral
       name: 3 · import, submit, monitor, project near_drowning
-      frame: { x: 60.0, y: 750.0, w: 1160.0, h: 1760.0 }
+      frame: { x: 40.0, y: 140.0, w: 340.0, h: 50.0 }
       properties:
         code: |
           import afield.Box

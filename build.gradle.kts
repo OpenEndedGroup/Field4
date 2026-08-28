@@ -1618,6 +1618,14 @@ tasks.register<JavaExec>("checkAgentTranscriptIndex") {
     mainClass.set("afield.docs.AgentTranscriptIndexGuard")
 }
 
+tasks.register<JavaExec>("checkAgentTranscriptLayouts") {
+    group = "verification"
+    description = "Fails when OperationTranscript create frames are invisible, off the positive canvas, or unusually large without a reviewed per-box exception."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.docs.AgentTranscriptLayoutGuard")
+}
+
 tasks.register<JavaExec>("checkCompletionCorpusFixtures") {
     group = "verification"
     description = "Fails if tools/completion-corpus/boxes no longer matches the transcript and template corpus after real macro expansion."
@@ -1827,6 +1835,7 @@ tasks.named("check") {
     dependsOn("checkPythonTools")
     dependsOn("checkAgentTranscripts")
     dependsOn("checkAgentTranscriptIndex")
+    dependsOn("checkAgentTranscriptLayouts")
     dependsOn("checkCompletionCorpusFixtures")
     dependsOn("checkAgentDemos")
     dependsOn(checkExpectedTestFailures)
@@ -1856,6 +1865,7 @@ tasks.register("docsGates") {
     dependsOn("checkSourcePages")
     dependsOn("checkAgentTranscripts")
     dependsOn("checkAgentTranscriptIndex")
+    dependsOn("checkAgentTranscriptLayouts")
     dependsOn("checkCompletionCorpusFixtures")
     dependsOn("checkPythonTools")
     dependsOn("checkAgentDemos")
@@ -1870,6 +1880,7 @@ citationGates.configure {
         "checkKDocAttachment",
         "checkAgentTranscripts",
         "checkAgentTranscriptIndex",
+        "checkAgentTranscriptLayouts",
         "checkCompletionCorpusFixtures",
         "checkPythonTools",
         "checkAgentDemos",

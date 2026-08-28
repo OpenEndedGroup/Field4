@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="youtube_vr_renderer" index="0" -->
 
 ```edn [field-box id="youtube_vr_renderer" role="properties"]
-{"id" "youtube_vr_renderer" "index" 0 "name" "window + renderer" "parents" ["root"] "children" ["youtube_vr_panel"] "properties" {"children" #{#afield/box "youtube_vr_panel"} "parents" #{#afield/box "root"} "name" "window + renderer" "_tombstone" false "frame" #afield/rect [-600.0 -300.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_vr_renderer_code_.kt" "lines" 22 "characters" 607 "sha256" "b82cac1ce7cb268b08c1dc60e9092bac6134f5b95a50d0324b6326af42282150"}]}
+{"id" "youtube_vr_renderer" "index" 0 "name" "window + renderer" "parents" ["root"] "children" ["youtube_vr_panel"] "properties" {"children" #{#afield/box "youtube_vr_panel"} "parents" #{#afield/box "root"} "name" "window + renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_vr_renderer_code_.kt" "lines" 22 "characters" 607 "sha256" "b82cac1ce7cb268b08c1dc60e9092bac6134f5b95a50d0324b6326af42282150"}]}
 ```
 
 ```kotlin [field-property box="youtube_vr_renderer" name="code" path="youtube_vr_renderer_code_.kt"]
@@ -44,7 +44,7 @@ start(renderer::run)
 <!-- field-box id="youtube_vr_panel" index="1" -->
 
 ```edn [field-box id="youtube_vr_panel" role="properties"]
-{"id" "youtube_vr_panel" "index" 1 "name" "YouTube — interactive Chromium panel" "parents" ["root" "youtube_vr_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_vr_renderer"} "name" "YouTube — interactive Chromium panel" "_tombstone" false "frame" #afield/rect [-260.0 -180.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_vr_panel_code_.kt" "lines" 62 "characters" 2214 "sha256" "7985bd22021112226abbf38f623f05ad7ac64da6640f85fa3f55c6fa1f5b5af8"}]}
+{"id" "youtube_vr_panel" "index" 1 "name" "YouTube — interactive Chromium panel" "parents" ["root" "youtube_vr_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_vr_renderer"} "name" "YouTube — interactive Chromium panel" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_vr_panel_code_.kt" "lines" 62 "characters" 2214 "sha256" "7985bd22021112226abbf38f623f05ad7ac64da6640f85fa3f55c6fa1f5b5af8"}]}
 ```
 
 ```kotlin [field-property box="youtube_vr_panel" name="code" path="youtube_vr_panel_code_.kt"]

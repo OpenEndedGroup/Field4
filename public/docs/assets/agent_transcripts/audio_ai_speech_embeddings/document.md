@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="speech_embedding_guide" index="0" -->
 
 ```edn [field-box id="speech_embedding_guide" role="properties"]
-{"id" "speech_embedding_guide" "index" 0 "name" "1 · speech embedding guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · speech embedding guide and jobs" "_tombstone" false "frame" #afield/rect [60.0 60.0 1120.0 680.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "speech_embedding_guide_code_.kt" "lines" 10 "characters" 1214 "sha256" "6c384cfa850adef15a479532c6e0c2583402d588bfffbd46a340593f3288dc85"}]}
+{"id" "speech_embedding_guide" "index" 0 "name" "1 · speech embedding guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · speech embedding guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "speech_embedding_guide_code_.kt" "lines" 10 "characters" 1214 "sha256" "6c384cfa850adef15a479532c6e0c2583402d588bfffbd46a340593f3288dc85"}]}
 ```
 
 ```kotlin [field-property box="speech_embedding_guide" name="code" path="speech_embedding_guide_code_.kt"]
@@ -32,7 +32,7 @@ display("all durable jobs", fieldAudioJobMonitor(heightPixels = 430))
 <!-- field-box id="analyse_near_drowning_speech" index="1" -->
 
 ```edn [field-box id="analyse_near_drowning_speech" role="properties"]
-{"id" "analyse_near_drowning_speech" "index" 1 "name" "3 · import, submit, monitor, audition near_drowning" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · import, submit, monitor, audition near_drowning" "_tombstone" false "frame" #afield/rect [60.0 780.0 1160.0 1640.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_near_drowning_speech_code_.kt" "lines" 99 "characters" 4505 "sha256" "708079f878738f0fa7eef0379b7065e9bf14f61370e01a43dbeb50646b70c860"}]}
+{"id" "analyse_near_drowning_speech" "index" 1 "name" "3 · import, submit, monitor, audition near_drowning" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · import, submit, monitor, audition near_drowning" "_tombstone" false "frame" #afield/rect [40.0 140.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_near_drowning_speech_code_.kt" "lines" 99 "characters" 4505 "sha256" "708079f878738f0fa7eef0379b7065e9bf14f61370e01a43dbeb50646b70c860"}]}
 ```
 
 ```kotlin [field-property box="analyse_near_drowning_speech" name="code" path="analyse_near_drowning_speech_code_.kt"]
@@ -142,7 +142,7 @@ client.assetsByFilename("*near_drowning*").thenCompose { matches ->
 <!-- field-box id="speech_embedding_visualizer_gallery" index="2" -->
 
 ```edn [field-box id="speech_embedding_visualizer_gallery" role="properties"]
-{"id" "speech_embedding_visualizer_gallery" "index" 2 "name" "2 · model-free synchronized MDS gallery" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · model-free synchronized MDS gallery" "_tombstone" false "frame" #afield/rect [1220.0 60.0 1160.0 1460.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "speech_embedding_visualizer_gallery_code_.kt" "lines" 52 "characters" 2758 "sha256" "80a0338c4915ae633de19fc7f5b73d94fa13f99e4c8e7ac0cd6f535603aed07d"}]}
+{"id" "speech_embedding_visualizer_gallery" "index" 2 "name" "2 · model-free synchronized MDS gallery" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · model-free synchronized MDS gallery" "_tombstone" false "frame" #afield/rect [420.0 40.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "speech_embedding_visualizer_gallery_code_.kt" "lines" 52 "characters" 2758 "sha256" "80a0338c4915ae633de19fc7f5b73d94fa13f99e4c8e7ac0cd6f535603aed07d"}]}
 ```
 
 ```kotlin [field-property box="speech_embedding_visualizer_gallery" name="code" path="speech_embedding_visualizer_gallery_code_.kt"]
