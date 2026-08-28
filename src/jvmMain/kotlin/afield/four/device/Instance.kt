@@ -517,6 +517,14 @@ class Instance(validate: Boolean) {
         private var xrInitialized = false
         private var xrBootstrap: OpenXRBootstrap? = null
 
+        /**
+         * The OpenXR instance extensions we actually enabled. The optional ones are only present
+         * when the runtime advertised them, so consumers that build on them (hand tracking, body
+         * tracking) check here rather than guessing.
+         */
+        var enabledOpenXRInstanceExtensions: Set<String> = emptySet()
+            private set
+
         private fun pointerBuffer(stack: MemoryStack, names: List<String>): PointerBuffer? {
             if (names.isEmpty()) return null
             return stack.mallocPointer(names.size).apply {
@@ -535,8 +543,12 @@ class Instance(validate: Boolean) {
             val optional = listOf(
                 EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME,
                 EXTHandInteraction.XR_EXT_HAND_INTERACTION_EXTENSION_NAME,
+                // Monado vendor extension; the only route to WiVRn's body trackers.
+                afield.four.targets.MndxXDevSpace.EXTENSION_NAME,
             ).filter { it in supported }
-            return (openXRVulkanExtensions + optional).distinct()
+            val enabled = (openXRVulkanExtensions + optional).distinct()
+            enabledOpenXRInstanceExtensions = enabled.toSet()
+            return enabled
         }
 
         private fun enabledOpenXRApiLayers(): List<String> {

@@ -171,14 +171,48 @@ function installChromiumGpuSwitches() {
   appendChromiumSwitchIfMissing("enable-zero-copy");
   appendChromiumSwitchIfMissing("ozone-platform-hint", "auto");
 
-  // These two belong with the line above, not apart from it. `ignore-gpu-blocklist` already turns
-  // Vulkan on wherever the blocklist would have held it back, and leaving ANGLE on GL while Vulkan
-  // is on is the one incoherent combination of the three: Ozone then reports that Wayland and
-  // Vulkan are incompatible and Chromium cannot create a shared image at all — which is exactly
-  // what stopped the accelerated browser-texture producer from exporting a native pixmap. See
-  // dev_docs/external_browser_surfaces.md. Either both or neither; both is the accelerated one.
+  // ANGLE-over-Vulkan, but only where Ozone can actually present through it.
+  //
+  // Vulkan is what lets Chromium export a paint as a native pixmap, which is what the accelerated
+  // browser-texture producer needs (see dev_docs/external_browser_surfaces.md). But Ozone's
+  // Wayland backend has no Vulkan surface support: it logs "'--ozone-platform=wayland' is not
+  // compatible with Vulkan" and then never composites the window onto the screen. The renderer
+  // still runs perfectly well — the page loads, the websocket talks, `did-finish-load` fires — so
+  // nothing looks wrong from the main process; the window is just empty, showing only the
+  // compositor's blur of whatever is behind it. That is the whole of the failure, and it is
+  // invisible to `capturePage`, which does not go through the on-screen path.
+  //
+  // So: X11 gets it, Wayland does not. The producer is unaffected either way — it is a separate
+  // Electron process with its own switches, and being offscreen it never needs an Ozone surface.
+  if (!shouldUseAngleVulkan()) {
+    console.log(
+      `[electron,gpu] leaving ANGLE on GL: ozone platform is ${ozonePlatform()}, which cannot present Vulkan`,
+    );
+    return;
+  }
   appendChromiumSwitchIfMissing("enable-features", "Vulkan");
   appendChromiumSwitchIfMissing("use-angle", "vulkan");
+}
+
+/**
+ * Which Ozone backend this process will come up on. `ozone-platform-hint=auto` resolves to Wayland
+ * whenever a Wayland display is reachable, so that is what we reproduce here; an explicit
+ * `--ozone-platform` on the command line wins over the hint.
+ */
+function ozonePlatform() {
+  if (app.commandLine.hasSwitch("ozone-platform")) {
+    return app.commandLine.getSwitchValue("ozone-platform") || "auto";
+  }
+  return process.env.WAYLAND_DISPLAY ? "wayland" : "x11";
+}
+
+function shouldUseAngleVulkan() {
+  // The escape hatch is two-way on purpose: "1" to get the accelerated backend back on a session
+  // we decided against, "0" to rule it out on one we would otherwise have allowed.
+  const override = process.env.FIELD_ELECTRON_ANGLE_VULKAN;
+  if (override === "1") return true;
+  if (override === "0") return false;
+  return ozonePlatform() !== "wayland";
 }
 
 installChromiumGpuSwitches();

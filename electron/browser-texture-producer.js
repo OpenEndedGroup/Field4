@@ -14,7 +14,11 @@ const textureHeight = Number(required("FIELD_BROWSER_TEXTURE_HEIGHT"));
 const deviceScaleFactor = Number(process.env.FIELD_BROWSER_TEXTURE_DEVICE_SCALE_FACTOR || "1");
 const controlPort = Number(required("FIELD_BROWSER_TEXTURE_CONTROL_PORT"));
 const isLinux = process.platform === "linux";
+// The opt-in CPU fallback: no shared texture at all, pixels read back and shipped over a second
+// loopback socket. See dev_docs/external_browser_surfaces.md for why it is opt-in and what it costs.
+// Declared before the handle-transfer addresses below because it decides which of them are needed.
 const cpuBitmap = process.env.FIELD_BROWSER_TEXTURE_CPU_BITMAP === "1";
+// The receiver's address, in whichever form this platform's handle transfer needs.
 const machService = isLinux || cpuBitmap ? "" : required("FIELD_BROWSER_TEXTURE_MACH_SERVICE");
 const dmaBufSocket = isLinux && !cpuBitmap ? required("FIELD_BROWSER_TEXTURE_DMABUF_SOCKET") : "";
 const pixelPort = cpuBitmap ? Number(required("FIELD_BROWSER_TEXTURE_PIXEL_PORT")) : 0;
@@ -64,6 +68,10 @@ let crashed = false;
 let unresponsive = false;
 let cursor = "default";
 let inputTail = Promise.resolve();
+// The newest mouse move not yet handed to Chromium, and whether a link of the chain is already
+// waiting to take it. See queueInput for why a move is the one input we are allowed to drop.
+let pendingMove = null;
+let moveScheduled = false;
 const leases = new Map();
 const pendingPageRequests = new Map();
 
@@ -146,7 +154,10 @@ function installPixelChannel() {
 function sendBitmapFrame(image, frameNumber) {
   if (!pixels || !pixelsWritable) return false;
   const size = image.getSize();
-  const bitmap = image.getBitmap();
+  // `toBitmap`, not the deprecated `getBitmap`: the latter hands back a view of Chromium's own
+  // pixels rather than a copy, and the socket write below is asynchronous, so the frame can be
+  // recycled underneath a write that has not drained yet. The copy is the point, not a cost.
+  const bitmap = image.toBitmap();
   const header = Buffer.alloc(PIXEL_HEADER_BYTES);
   let at = 0;
   at = header.writeUInt32BE(PIXEL_MAGIC, at);
@@ -223,10 +234,54 @@ async function evaluate(params) {
   return result;
 }
 
-function queueInput(method, params) {
+function dispatchInput(method, params) {
   inputTail = inputTail
     .then(() => cdp(method, params))
     .catch((error) => emit("input-error", { method, error: errorObject(error) }));
+}
+
+/**
+ * Hand one input event to Chromium, in order, coalescing mouse motion.
+ *
+ * `Input.dispatchMouseEvent` does not resolve until the renderer has taken the event, and for
+ * `mouseMoved` that acknowledgement is gated on the renderer's next frame: measured here at 33ms
+ * against a 30fps offscreen tab and 16.5ms against a 60fps one, while a press/release pair costs
+ * 0.7ms and is not gated at all. So the chain can absorb at most one move per frame, and a mouse
+ * produces them far faster than that. Appending every one made the queue grow without bound —
+ * seconds of it, and still growing, with clicks stuck behind motion the user had long finished.
+ *
+ * A move that a newer move has already superseded carries no information, so it is the one input
+ * we can drop: keep at most one in flight and one pending, and the backlog is bounded at two
+ * frames no matter how fast the mouse moves. Everything else — buttons, wheel, keys, text,
+ * composition, touch — keeps its exact order, and flushes the pending move ahead of itself so a
+ * click still lands after the motion that preceded it.
+ */
+function queueInput(method, params) {
+  if (method === "Input.dispatchMouseEvent" && params.type === "mouseMoved") {
+    pendingMove = params;
+    if (moveScheduled) return;
+    moveScheduled = true;
+    inputTail = inputTail
+      .then(() => {
+        moveScheduled = false;
+        const next = pendingMove;
+        pendingMove = null;
+        // Null when a non-move flushed it while this link was waiting its turn.
+        return next ? cdp(method, next) : undefined;
+      })
+      .catch((error) => emit("input-error", { method, error: errorObject(error) }));
+    return;
+  }
+  flushPendingMove();
+  dispatchInput(method, params);
+}
+
+/** Puts any coalesced move into the chain now, so what follows it is genuinely after it. */
+function flushPendingMove() {
+  if (!pendingMove) return;
+  const params = pendingMove;
+  pendingMove = null;
+  dispatchInput("Input.dispatchMouseEvent", params);
 }
 
 async function command(name, params = {}) {
@@ -254,6 +309,7 @@ async function command(name, params = {}) {
       contents.blur();
       return stateSnapshot();
     case "flush-input":
+      flushPendingMove();
       await inputTail;
       return {};
     case "evaluate":

@@ -225,6 +225,18 @@ class FieldUiBrowserTexture(
     }
 
     companion object {
+        /**
+         * Whether this platform needs [cpuBitmapFallback] to show anything at all.
+         *
+         * On Linux Chromium's shared-texture export hands over a well-formed dma-buf that it never
+         * writes into (electron#53271), so the accelerated path produces a correct-looking,
+         * permanently black texture. Until that is fixed upstream the demos ask for the readback
+         * path here and keep the zero-copy one everywhere it works — which is why this is a
+         * platform question rather than the parameter's default: the default stays honest about
+         * what the class is for, and every call site that flips it says so in the open.
+         */
+        val cpuBitmapFallbackRequired: Boolean get() = OS == OSType.LINUX
+
         /** URL for another browser view of the document containing [box]. */
         fun fieldDocumentUrl(box: Box): String {
             val session = box.inside
@@ -696,7 +708,10 @@ private class CpuBitmapTransport(
     private fun readFrames() {
         try {
             server.accept().use { channel ->
-                val header = MemoryUtil.memAlloc(HEADER_BYTES)
+                // The producer writes the header in network order; LWJGL hands back native-order
+                // buffers, which is little-endian everywhere Field runs, so say so explicitly
+                // rather than reading a byte-swapped magic and calling the channel desynchronised.
+                val header = MemoryUtil.memAlloc(HEADER_BYTES).order(java.nio.ByteOrder.BIG_ENDIAN)
                 try {
                     while (!closed.get()) {
                         header.clear()
