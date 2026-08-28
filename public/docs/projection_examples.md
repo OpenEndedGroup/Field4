@@ -157,7 +157,7 @@ display("plane", Plotly.plot {
         }
     }
     layout {
-        title = "Twenty words placed by edit distance alone (classical MDS, 2 dimensions)"
+        title = "Twenty words placed by edit distance alone (classical MDS)"
         xaxis { title = "coordinate 1" }
         yaxis { title = "coordinate 2" }
     }
@@ -296,9 +296,9 @@ display("spiral", Plotly.plot {
     layout { title = "The input: a two-turn spiral and its 4-nearest-neighbour graph"; xaxis { title = "x" }; yaxis { title = "y" } }
 }.darkMode())
 showSignals(
-    "MDS coordinate 1 from hop counts" to normalise(geodesicAxis),
-    "MDS coordinate 1 from straight-line distances" to normalise(straightAxis),
-    "the true position along the spiral" to normalise(t),
+    "MDS, hop counts" to normalise(geodesicAxis),
+    "MDS, straight lines" to normalise(straightAxis),
+    "true position" to normalise(t),
     x = t.toList(),
     channel = "recovered",
     title = "Only one of these two recovered where along the spiral a point is",
@@ -571,7 +571,7 @@ showSignals(
     "positiveCorrection = false" to spectra[0].first.third.toList(),
     "positiveCorrection = true" to spectra[1].first.third.toList(),
     channel = "spectra",
-    title = "The eigenvalue spectrum of a 20-word Levenshtein matrix, corrected and not",
+    title = "Eigenvalue spectrum of a Levenshtein matrix, corrected and not",
     xTitle = "component",
     yTitle = "eigenvalue",
 )
