@@ -232,22 +232,49 @@ The reporter's own matrix in #49247 is the useful part:
 | Wayland (Ubuntu and Fedora), with or without it | fails |
 | XWayland | GPU process crashes, or paints arrive with `texture = null` |
 
-Which matches this machine exactly: KDE Wayland on NVIDIA fails, and every `--ozone-platform=x11`
-attempt here is XWayland, where the GPU process dies with 139 or compositing silently drops to
-software. One detail corroborates that our handle is only half-real: the working Xorg capture in
-that thread reports `supportsZeroCopyWebGpuImport: true`, and every handle here reports `false`.
+The Wayland rows match this machine, and so does XWayland — every `--ozone-platform=x11` attempt
+inside the Plasma session is XWayland, where the GPU process dies with 139 or compositing silently
+drops to software. The Xorg row does not.
 
-What this repository adds to that picture is `--use-angle=vulkan`. With it, Wayland gets *past* the
-`SkSurface` error and delivers a real dma-buf — which is further than #49247 ever got — but the
-buffer is empty, consistent with the thread's suspicion that on Wayland Vulkan reports enabled
-without actually being used for this path.
+### Tested on a real Xorg session
 
-So the remaining work is upstream, not here. To see this run on Linux today, use a real Xorg
-session; XWayland is not a substitute. Note also that the claim "forcing Chromium onto the AMD iGPU
-gives the same empty buffer" appeared in an earlier revision of this page and was wrong: the
-environment variables used did not move Chromium, which stayed on the RTX 4090, and when the Vulkan
-ICD is genuinely restricted to RADV the GPU process will not start on this NVIDIA-driven display at
-all. The AMD path is untested here.
+Worth doing properly, because `supportsZeroCopyWebGpuImport` is the field that separates the working
+Xorg capture in that thread (`true`) from every handle this machine produced under Wayland
+(`false`). A bare Xorg session was started on a spare VT (`startx <test> -- :1`; the box needed
+`xorg-server`, and an `AutoAddGPU off` snippet, because Xorg brings the NVIDIA screen up and then
+auto-adds the AMD iGPU, which the live Wayland session still holds, and dies on `drmSetMaster`).
+
+Under real Xorg the flag does flip to `true` — so this is genuinely the code path upstream reports
+working. The buffer is still empty:
+
+| variant under Xorg, `supportsZeroCopyWebGpuImport: true` | non-zero pixels |
+| --- | --- |
+| GPU import + copy, read immediately | 0 |
+| GPU import + copy, read 3s after the paint | 0 |
+| GPU import + copy of the twenty-fifth paint | 0 |
+| CPU `mmap` + `DMA_BUF_IOCTL_SYNC`, read 2s after the paint | 0 |
+
+Which rules out, in order: a Vulkan-import mistake of ours (the CPU mapping shares none of our
+modifier, stride, memory-type or layout assumptions and agrees), an unflushed write, and a pool
+warm-up. Zeros rather than garbage also argues the memory is genuinely zero rather than correct
+bytes in a layout we are misreading.
+
+So what `--use-angle=vulkan` buys on Wayland is getting *past* the `SkSurface` error to a real
+dma-buf — further than #49247 got — but the emptiness is not the Wayland/Vulkan incoherence, since
+it survives on Xorg where that incoherence is gone.
+
+One caution before treating the upstream "Xorg works fine" report as contradicting this: the
+evidence offered there is a `console.log` of `textureInfo`, which is metadata. It is the same
+metadata this machine now prints under Xorg, `supportsZeroCopyWebGpuImport: true` included. Nothing
+in that thread shows the *pixels* having been read back. So the two observations may not be in
+conflict at all — the handle may well arrive correctly on Linux while the buffer behind it is never
+filled, and only a consumer that samples it would notice.
+
+An earlier revision of this page claimed "forcing Chromium onto the AMD iGPU gives the same empty
+buffer". That was wrong and is withdrawn: the environment variables used never moved Chromium, which
+stayed on the RTX 4090, and when the Vulkan ICD is genuinely restricted to RADV the GPU process will
+not start against this NVIDIA-driven display. The AMD path remains untested here, and it is the one
+configuration anybody has claimed a passing test on.
 
 ## What came from the Windows prototype
 

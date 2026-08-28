@@ -15,9 +15,9 @@ description: |
   wait while the box is in fact running. Use `sleep` then `output`.
 
   On Linux the transport works end to end — descriptors cross, frames import, `PRESENTED` comes
-  back after the fence — but under Wayland on an NVIDIA GPU the panel is black, because Chromium
-  exports an empty dma-buf (electron#49247, closed as not planned). Use a real Xorg session for a
-  live picture; XWayland is not a substitute. See dev_docs/external_browser_surfaces.md.
+  back after the fence — but the panel is black, because Chromium exports a dma-buf it never fills.
+  That is upstream (electron#49247), and it survives a real Xorg session, so it is not the
+  Wayland/Vulkan incoherence that issue is about. See dev_docs/external_browser_surfaces.md.
 operations:
   - create:
       box: field_ui_texture_renderer
