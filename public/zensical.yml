@@ -71,6 +71,7 @@ nav:
     - Field Systems:
       - Rendering & GPU:
         - afield.four Graphics: afield_four_graphics.md
+        - Puppet Browser: puppet_browser.md
         - Fabricate Renderer: fabricate_renderer.md
         - Ray Tracing Examples: ray_tracing_examples.md
         - Particles, Cloth & Constraints: physics.md

@@ -1,5 +1,8 @@
 package afield.four.browser
 
+import afield.Box
+import afield.SessionInformation
+import afield.globalServerPort
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.double
@@ -87,5 +90,37 @@ class PuppetBrowserProtocolTest {
         assertEquals(JsonNull, result.value)
         assertEquals("Object", result.description)
         assertNull(result.objectId)
+    }
+
+    @Test
+    fun `window viewport fits browser aspect and hit tests the visible rectangle`() {
+        val pillarbox = PuppetBrowserWindowViewport.fit(1600.0, 720.0, 1280.0, 720.0)
+        assertEquals(PuppetBrowserWindowViewport(160.0, 0.0, 1280.0, 720.0), pillarbox)
+        assertNull(pillarbox.hitTest(159.0, 360.0))
+        assertEquals(0.5 to 0.5, pillarbox.hitTest(800.0, 360.0))
+
+        val letterbox = PuppetBrowserWindowViewport.fit(1280.0, 900.0, 1280.0, 720.0)
+        assertEquals(PuppetBrowserWindowViewport(0.0, 90.0, 1280.0, 720.0), letterbox)
+        assertNull(letterbox.hitTest(640.0, 89.0))
+        assertEquals(0.5 to 0.5, letterbox.hitTest(640.0, 450.0))
+    }
+
+    @Test
+    fun `field document URL preserves an ephemeral agent session`() {
+        val root = Box("root")
+        val panel = Box("panel")
+        val session = SessionInformation(
+            filename = "/tmp/agent scratch",
+            documentName = "scratch demo",
+            root = root,
+            ephemeral = true,
+        )
+        root.inside = session
+        panel.inside = session
+
+        assertEquals(
+            "https://localhost:$globalServerPort/index.html?file=scratch+demo&scratch=1&sessionKey=%2Ftmp%2Fagent+scratch",
+            FieldUiBrowserTexture.fieldDocumentUrl(panel),
+        )
     }
 }

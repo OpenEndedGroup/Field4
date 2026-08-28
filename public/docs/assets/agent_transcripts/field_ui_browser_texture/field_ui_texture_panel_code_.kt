@@ -54,6 +54,29 @@ loop {
         announced = true
         println("Field UI browser texture is live: ${browser.presentedFrame}")
         browser.evaluate("""
+            new Promise((resolve, reject) => {
+                const deadline = Date.now() + 10000
+                const prepare = () => {
+                    if (typeof window.fieldBackdoorPrepareWindowScreenshot !== "function") {
+                        if (Date.now() < deadline) return setTimeout(prepare, 100)
+                        return reject(new Error("Field screenshot preparation API did not appear"))
+                    }
+                    const result = JSON.parse(window.fieldBackdoorPrepareWindowScreenshot({
+                        uid: "field_ui_texture_panel",
+                        property: "code",
+                        showEditor: true,
+                        panIntoView: true,
+                        openOutputs: false,
+                        padding: 18
+                    }))
+                    if (result.success) resolve(result)
+                    else if (Date.now() < deadline) setTimeout(prepare, 100)
+                    else reject(new Error(result.message || "could not open the selected box editor"))
+                }
+                prepare()
+            })
+        """).thenCompose {
+            browser.evaluate("""
             (() => {
                 const probe = document.createElement("input")
                 probe.id = "field-puppet-input-probe"
@@ -61,7 +84,8 @@ loop {
                 document.body.appendChild(probe)
                 return true
             })()
-        """).thenCompose {
+            """)
+        }.thenCompose {
             scriptedInput.move(40.0 / scriptedInput.cssWidth, 28.0 / scriptedInput.cssHeight)
             scriptedInput.down()
             scriptedInput.up()

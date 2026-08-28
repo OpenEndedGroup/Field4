@@ -1,0 +1,85 @@
+name: youtube_mouse_keyboard_browser
+description: >
+  A full YouTube watch page rendered into a 16:9 native Field window and controlled directly by
+  that window's mouse and keyboard. Pointer motion, buttons, wheel, modifiers, key up/down and text
+  input travel through the puppet-browser protocol into Chromium; no headset or controller is used.
+  The EU consent page, search field and player controls are all ordinary interactive page UI.
+operations:
+  - create:
+      box: youtube_desktop_renderer
+      name: 16:9 window + renderer
+      frame: { x: 40.0, y: 40.0, w: 230.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.Rect
+          import afield.four.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+
+          Options.enableHDR = false
+          Options.enableVR = false
+          Options.profiling = false
+
+          once.renderer {
+              window = Window(
+                  "YouTube · mouse + keyboard",
+                  initialDimensions = Rect(80.0, 80.0, 1280.0, 720.0)
+              )
+              Renderer(window)
+          }
+
+          println("YouTube mouse + keyboard renderer ready")
+          start(renderer::run)
+  - create:
+      box: youtube_desktop_panel
+      name: YouTube — direct mouse + keyboard
+      frame: { x: 330.0, y: 140.0, w: 320.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.four.Target
+          import afield.four.browser.FieldUiBrowserTexture
+          import afield.four.browser.PuppetBrowserWindowPanel
+          import afield.four.modules.fromContext
+
+          val renderer: Renderer = fromContext()
+          prop<afield.four.browser.PuppetBrowser>(browserControl)
+
+          val browser = FieldUiBrowserTexture(
+              renderer = renderer,
+              url = "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+              width = 1280,
+              height = 720
+          )
+          browserControl = browser
+
+          renderer.renderList.preTargets["youtube-desktop-browser-upload"] =
+              Target { command, _ -> browser.prepareSampledImagesFor(command) }
+
+          // This is direct window input, not a synthetic controller ray. The panel letterboxes if
+          // the window is resized and uses that same fitted rectangle for its mouse hit test.
+          val screen = PuppetBrowserWindowPanel(renderer, browser, "youtube-desktop-browser")
+          screen.build(takeFocus = true)
+
+          var announced = false
+          loop {
+              if (!announced && browser.pageReady) {
+                  announced = true
+                  println("YouTube is live: click, scroll and type directly in the Chromium page")
+              }
+              frame()
+          }.end {
+              renderer.renderList.preTargets.remove("youtube-desktop-browser-upload")
+              screen.close()
+              browser.close()
+          }
+  - connect: { parent: youtube_desktop_renderer, child: youtube_desktop_panel }
+  - launch:
+      box: youtube_desktop_renderer
+      property: code
+      strand: renderer
+  - wait: { frames: 3 }
+  - launch:
+      box: youtube_desktop_panel
+      property: code
+      strand: browser-texture

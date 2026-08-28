@@ -222,8 +222,14 @@ class FieldUiBrowserTexture(
     companion object {
         /** URL for another browser view of the document containing [box]. */
         fun fieldDocumentUrl(box: Box): String {
-            val document = URLEncoder.encode(box.inside.documentName, StandardCharsets.UTF_8)
-            return "https://localhost:$globalServerPort/index.html?file=$document"
+            val session = box.inside
+            val document = URLEncoder.encode(session.documentName, StandardCharsets.UTF_8)
+            val scratchSession = if (session.ephemeral) {
+                "&scratch=1&sessionKey=${URLEncoder.encode(session.filename, StandardCharsets.UTF_8)}"
+            } else {
+                ""
+            }
+            return "https://localhost:$globalServerPort/index.html?file=$document$scratchSession"
         }
 
         private fun locateProjectRoot(): File {

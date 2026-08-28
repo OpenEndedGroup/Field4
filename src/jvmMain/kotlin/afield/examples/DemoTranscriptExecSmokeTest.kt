@@ -313,6 +313,12 @@ object DemoTranscriptExecSmokeTest {
         // macOS replay crosses IOSurface Mach rights and samples them in Vulkan. CI compiles the
         // self-contained starting scene without starting Electron or opening a native window.
         "field_ui_browser_texture",
+        // Desktop puppet-browser scene: an aspect-matched YouTube texture receives the native
+        // Window's mouse, wheel, physical keyboard and text-input stream directly through Chromium.
+        "youtube_mouse_keyboard_browser",
+        // A live YouTube tab sampled across 224 independently animated Vulkan triangles. The live
+        // replay opens Electron, reaches the network and starts media; CI compiles the whole graph.
+        "youtube_kaleidoscope",
         // Product-facing puppet-browser scene: a YouTube watch page on an aspect-correct world quad.
         // It opens Electron and a native Vulkan stereo window, so CI compiles without launching it.
         "youtube_vr_browser",

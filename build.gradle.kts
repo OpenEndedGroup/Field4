@@ -1412,6 +1412,8 @@ val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationG
     inputs.files(fileTree("dev_docs") { include("**/*.md") })
         .withPropertyName("guardedDevDocs")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file("dev_docs/agents/transcript_layout_exceptions.yaml")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
     // The non-Kotlin, non-Markdown *code* these guards scrape. Same lesson as the two blocks above,
     // one step further out: a Kotlin edit invalidates this task through the test classpath and a
     // Markdown edit through the file trees, but a change to a source file in a language that is on

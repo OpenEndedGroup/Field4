@@ -40,13 +40,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 78 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+All 81 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
 not in the same way, and the difference is worth knowing before you trust one. 56 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
 error-kind output line. (Almost always that is every box in the file. A transcript may
 create a box it does not execute — one that wants a device the build does not have, or that is meant to fail so a
-diagnostic can be shown — and only the ops it actually writes down are replayed.) 15 want
+diagnostic can be shown — and only the ops it actually writes down are replayed.) 18 want
 something the lightweight build does not own — a GLFW window and Vulkan renderer, an external audio
 service, or a camera — so those are **built and compiled**: the graph is assembled through the real
 apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal evaluation —
@@ -1088,6 +1088,28 @@ first, then the panel box.
 ![Field's live canvas, two running transcript boxes and their connection sampled from Chromium onto a Vulkan mesh](assets/browser_texture/field-ui-on-texture.png)
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/field_ui_browser_texture/metadata.edn)
+
+**youtube_mouse_keyboard_browser** — The desktop interaction proof: a full YouTube watch page
+rendered directly into a matching 1280×720 native Field window. This path does not synthesize a VR
+controller. GLFW mouse motion, buttons and wheel are mapped across the aspect-identical texture into
+Chromium CSS pixels; key up/down, modifiers and text input come from the same physical keyboard.
+That makes the EU consent controls, search field and player usable exactly as ordinary browser UI,
+while Electron continues to play page audio.
+
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/youtube_mouse_keyboard_browser/metadata.edn)
+
+**youtube_kaleidoscope** — The proof that the browser texture is ordinary native graphics data,
+not a rectangular desktop-share layer. The transcript accepts the EU consent page and starts the
+real YouTube `HTMLVideoElement`, then feeds the fully composited 1280×720 tab to 224 independently
+animated Vulkan triangles. Each shard rotates and drifts in the vertex stage; its fragment stage
+chooses a different angular fold, mirrors the browser image, separates RGB samples, and draws a
+barycentric glass edge. The live replay confirms the video clock is advancing and that Chromium
+considers the hidden tab audible.
+
+![A live YouTube page folded and colour-separated across 224 animated triangular Vulkan shards](assets/puppet_browser/youtube-kaleidoscope.png)
+
+[How it works](puppet_browser.md) ·
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/youtube_kaleidoscope/metadata.edn)
 
 **youtube_vr_browser** — The usable layer built on that transport: a full YouTube watch page, not
 an embed or screenshot, rendered at 1280×720 onto a 1.6 m × 0.9 m quad 1.7 m ahead. It is rendered

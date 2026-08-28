@@ -211,6 +211,16 @@ class ImportResolutionTest {
         )
     }
 
+    @Test
+    fun aFullyQualifiedPropertyTypeNeedsNoImport() {
+        assertEquals(
+            emptyList(),
+            CompletionCorpus.typesDeclaredWithoutAnImport(
+                "var Box.browserControl by Inheritance<afield.four.browser.PuppetBrowser>() /**/"
+            )
+        )
+    }
+
     /** `Int` needs no import, so its absence must not be reported — the guard has to know that. */
     @Test
     fun defaultImportedTypesAreNotReportedMissing() {

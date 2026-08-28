@@ -165,6 +165,23 @@ class DocumentedApiEvaluationTest {
      * and "no cheap evaluator exists" are different sentences.
      */
     private val COMPILE_ONLY_REMAINDER: Map<String, String> = mapOf(
+        "appendChild" to
+            "puppet_browser.md reaches this inside JavaScript executed by the native Electron " +
+                "producer. The graphics transcript is COMPILE_ONLY because CI has no window or " +
+                "cross-process browser-texture transport to run it.",
+        "createElement" to
+            "puppet_browser.md reaches this inside JavaScript executed by the native Electron " +
+                "producer. The graphics transcript is COMPILE_ONLY because CI has no window or " +
+                "cross-process browser-texture transport to run it.",
+        "enableDesktopInteraction" to
+            "puppet_browser.md; youtube_vr_browser is COMPILE_ONLY because it creates a native " +
+                "Vulkan/OpenXR window and routes its live controller stand-in into Chromium.",
+        "flushInput" to
+            "puppet_browser.md; this drains the external Electron input queue. The live docs " +
+                "capture exercises it, but headless CI only compiles the native graphics scene.",
+        "onPageRequest" to
+            "puppet_browser.md; this installs a handler on the live Electron-to-Field IPC channel. " +
+                "The docs capture exercises the round trip, but CI has no native producer process.",
         // The one row here that is not a good reason, and the only one a person should act on.
         // `src/jvmMain/kotlin/afield/examples/four/FieldProbeSmokeTest.kt` exists, opens a Window and
         // exercises ShaderFieldProbe — and carries no FIELD_TEST block and no Gradle task, so nothing

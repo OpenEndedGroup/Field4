@@ -37,7 +37,7 @@ start(renderer::run)
 <!-- field-box id="field_ui_texture_panel" index="1" -->
 
 ```edn [field-box id="field_ui_texture_panel" role="properties"]
-{"id" "field_ui_texture_panel" "index" 1 "name" "Field's UI — live Chromium texture" "parents" ["root" "field_ui_texture_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "field_ui_texture_renderer"} "name" "Field's UI — live Chromium texture" "_tombstone" false "frame" #afield/rect [460.0 180.0 330.0 55.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "field_ui_texture_panel_code_.kt" "lines" 95 "characters" 3398 "sha256" "0a11110dea8e6fc1460665af814f28d9a5c37a8ca15a6912b41868e1e1a5f386"} {"name" "vertex" "language" "glsl" "path" "field_ui_texture_panel_vertex_.glsl" "lines" 9 "characters" 180 "sha256" "ba17dfa14020b0511f5632daad6bb904ff815014cb1504734d7c12283faa537d"} {"name" "fragment" "language" "glsl" "path" "field_ui_texture_panel_fragment_.glsl" "lines" 8 "characters" 228 "sha256" "4a06f58cb3aac101a544fdcd7c0e0a26970362071d68fc232f1874f49598d604"}]}
+{"id" "field_ui_texture_panel" "index" 1 "name" "Field's UI — live Chromium texture" "parents" ["root" "field_ui_texture_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "field_ui_texture_renderer"} "name" "Field's UI — live Chromium texture" "_tombstone" false "frame" #afield/rect [460.0 180.0 330.0 55.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "field_ui_texture_panel_code_.kt" "lines" 119 "characters" 4582 "sha256" "6781c2448e238430796929b3c0b77e8ee3f8855b6dd8e2b63c434eae54359de0"} {"name" "vertex" "language" "glsl" "path" "field_ui_texture_panel_vertex_.glsl" "lines" 9 "characters" 180 "sha256" "ba17dfa14020b0511f5632daad6bb904ff815014cb1504734d7c12283faa537d"} {"name" "fragment" "language" "glsl" "path" "field_ui_texture_panel_fragment_.glsl" "lines" 8 "characters" 228 "sha256" "4a06f58cb3aac101a544fdcd7c0e0a26970362071d68fc232f1874f49598d604"}]}
 ```
 
 ```kotlin [field-property box="field_ui_texture_panel" name="code" path="field_ui_texture_panel_code_.kt"]
@@ -97,6 +97,29 @@ loop {
         announced = true
         println("Field UI browser texture is live: ${browser.presentedFrame}")
         browser.evaluate("""
+            new Promise((resolve, reject) => {
+                const deadline = Date.now() + 10000
+                const prepare = () => {
+                    if (typeof window.fieldBackdoorPrepareWindowScreenshot !== "function") {
+                        if (Date.now() < deadline) return setTimeout(prepare, 100)
+                        return reject(new Error("Field screenshot preparation API did not appear"))
+                    }
+                    const result = JSON.parse(window.fieldBackdoorPrepareWindowScreenshot({
+                        uid: "field_ui_texture_panel",
+                        property: "code",
+                        showEditor: true,
+                        panIntoView: true,
+                        openOutputs: false,
+                        padding: 18
+                    }))
+                    if (result.success) resolve(result)
+                    else if (Date.now() < deadline) setTimeout(prepare, 100)
+                    else reject(new Error(result.message || "could not open the selected box editor"))
+                }
+                prepare()
+            })
+        """).thenCompose {
+            browser.evaluate("""
             (() => {
                 const probe = document.createElement("input")
                 probe.id = "field-puppet-input-probe"
@@ -104,7 +127,8 @@ loop {
                 document.body.appendChild(probe)
                 return true
             })()
-        """).thenCompose {
+            """)
+        }.thenCompose {
             scriptedInput.move(40.0 / scriptedInput.cssWidth, 28.0 / scriptedInput.cssHeight)
             scriptedInput.down()
             scriptedInput.up()
