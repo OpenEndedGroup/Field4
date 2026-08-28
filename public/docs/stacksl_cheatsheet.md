@@ -244,6 +244,17 @@ Good trick: do math in `rgb2oklab`, especially channel offsets and contrast, the
 
 Define reusable words with `: name ... ;`. A call consumes one input value, runs the definition with that value as its local stack/input, then pushes the result.
 
+**A definition must therefore be net zero on the stack: consume its input, leave its result.** This is the one mistake the language invites, and it is not an error — an unbalanced definition compiles, the surplus is pruned, and everything downstream silently takes the wrong operand. Open a definition with `>name`, which *moves* the top, and not `=name`, which *copies* it:
+
+```diffstatic {data-lang=stacksl}
+: half  >x  <x 0.5 *  ;      # right: consumes one, leaves one
+: half  =x  <x 0.5 *  ;      # wrong: leaves its input under its result, so every call pushes two
+```
+
+`stack.auto` reports this. A slot whose program has an unbalanced definition, or any warning at all, writes a card into the box's `stack.auto` output channel and closes it again once the program is clean. Ask directly with `stackAutoShaderReport("…", "slotName")`, which returns a `StackAutoReport` carrying `problems`, `warnings` and `notes` and renders itself as HTML for `display()`.
+
+Only definitions something actually *calls* are checked. A **root** program legitimately ends deeper than one — its stack starts with the program's input already on it, so `input x 12 *` ends at two — and so does a definition used only as an entrypoint (`{{ stack.auto.foo:tap }}`), because there it gets root semantics.
+
 ```diffstatic {data-lang=stacksl}
 : ring
   length 0.5 0.06 pulse
@@ -312,7 +323,7 @@ coord 0.2t + fbm
 palette
 ```
 
-Use the explicit move/read form when you want to keep the working stack clean:
+Use the explicit move/read form when you want to keep the working stack clean — and **always** inside a definition, where `=name` would leave the input on the stack and unbalance the call (see [Definitions](#definitions)):
 
 ```diffstatic {data-lang=stacksl}
 uv 8 * >coord

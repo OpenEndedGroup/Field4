@@ -4,7 +4,7 @@
 
 Field's standard library is large and, until now, invisible: the only ways to read it were to open the source or to already know the name you wanted. This section is a browsable map of it — every public declaration in `afield.stdlib`, `afield.visualization` and `afield.four.synth`, with the KDoc that sits next to it in the source.
 
-**9258 public symbols across 195 source files**, 5594 of them (60%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
+**9274 public symbols across 195 source files**, 5610 of them (60%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
 
 The "documented" column is a coverage report on Field's own KDoc, not a claim about this page. Where a summary is blank the declaration has none yet.
 
@@ -12,7 +12,7 @@ The "documented" column is a coverage report on Field's own KDoc, not a claim ab
 | --- | --- | --- | --- | --- |
 | [Math](math.md) | 18 | 1581 | 1197 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 18 | 703 | 334 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 27 | 1217 | 1006 (82%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 27 | 1233 | 1022 (82%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Polytopes](polytopes.md) | 17 | 581 | 426 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 4 | 657 | 270 (41%) | Nonlinear least squares, aimed at geometry. |
 | [Imaging](imaging.md) | 6 | 255 | 209 (81%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
@@ -187,7 +187,7 @@ The "documented" column is a coverage report on Field's own KDoc, not a claim ab
 | [saved.kt](data.md#saved-kt) | Data | 7 | 7 | Per-box persistence for Kotlin values, on top of kotlinx.serialization. |  |
 | [SemanticSearchManager.kt](data.md#semanticsearchmanager-kt) | Data | 38 | 0 | Box-facing wrapper around `afield.ai.SemanticRetrievalService`, Field's embedding-based search over source, docs and workspace boxes. |  |
 | [Sequencing.kt](patterns.md#sequencing-kt) | Patterns | 54 | 0 |  | [Boolean network music examples](../boolean_network_music_examples.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
-| [shaders.kt](graphics.md#shaders-kt) | Graphics | 163 | 163 | The bridge between a box's text and a live Vulkan pipeline: shader source lives in box properties, and this file turns it into modules and keeps them hot-reloading. | [afield.four Graphics](../afield_four_graphics.md), [Running code in a box](../running_code.md), [Field Probes — instrumenting shaders](../field_probes.md) |
+| [shaders.kt](graphics.md#shaders-kt) | Graphics | 179 | 179 | The bridge between a box's text and a live Vulkan pipeline: shader source lives in box properties, and this file turns it into modules and keeps them hot-reloading. | [afield.four Graphics](../afield_four_graphics.md), [Running code in a box](../running_code.md), [Field Probes — instrumenting shaders](../field_probes.md) |
 | [Signal.kt](synthesis.md#signal-kt) | Synthesis | 104 | 19 |  | [Making a sound in Field: every path there is](../sound_paths.md), [Faust](../faust.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [smile_interpolation_regression.kt](math.md#smile-interpolation-regression-kt) | Math | 21 | 0 | Two 1D fitters that wrap the Smile library: `smileCubicSpline` (cubic spline interpolation through the data) and `smileGaussianProcess` (Gaussian-process regression with a Gaussian kernel, configured by `SmileGpOptions`). |  |
 | [smile_mds.kt](data.md#smile-mds-kt) | Data | 29 | 9 |  | [Where do these things sit, relative to each other?](../projection_examples.md) |

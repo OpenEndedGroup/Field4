@@ -13,6 +13,7 @@ import afield.logger.lprintln
 import afield.macros.Insert
 import afield.macros.MacroRegistry
 import afield.stacksl.StackSLCompileOptions
+import afield.stacksl.StackSLCompileResult
 import afield.stacksl.StackSLCompiler
 import afield.stacksl.StackSLSeverity
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -430,14 +431,207 @@ private fun parseStackAutoShaderTarget(raw: String): StackAutoShaderTarget {
     return StackAutoShaderTarget(name, entrypoint, sampleTexture)
 }
 
+/**
+ * What compiling one `stack.auto` slot had to say beyond "it compiled" — the warnings, and the stack
+ * arithmetic that says whether the program is shaped the way its author thinks.
+ *
+ * ## Why this exists
+ *
+ * `StackSLCompileResult.ok` is *errors only*, and a stack language's characteristic mistake is not an
+ * error. A definition must consume its input and leave its result — net zero. Open one with `=name`,
+ * which **copies** the top (`a -- a`), where `>name` **moves** it (`a --`), and the definition leaves
+ * its input sitting under its result. Every call then pushes two values instead of one, and everything
+ * downstream silently takes the wrong operand. The compiler emits no diagnostic at all: it prunes the
+ * surplus and carries on.
+ *
+ * Observed cost of that going unreported, on 2026-08-28: a three-channel noise force in which one
+ * channel read a raw *coordinate* off the stack rather than a noise sample — a constant of about `+6.8`
+ * on one axis — and the first of three calls pruned away entirely. It compiled, the shader compiled,
+ * `ok` was true, and it was found by a person noticing that turning the gain up translated the field
+ * instead of agitating it. The numbers that would have said so immediately were sitting in
+ * `analysis.functions[].finalStackDepth`: `2` for the definition and `6` for its root, with
+ * `prunedValues = 15`.
+ *
+ * ## What it does and does not claim
+ *
+ * [problems] is high confidence: a *definition* that does not end at depth 1 is wrong, near enough
+ * always. [warnings] is whatever the compiler said at less than ERROR severity, verbatim — those were
+ * previously discarded on the success path. [notes] is softer: pruned values are legitimate (a marked
+ * value that is never read is pruned by design), so a count is worth showing and not worth failing on.
+ *
+ * A **root** program is deliberately not checked for depth. Its stack *starts* with the program's input
+ * already on it, so `"input x 12 *"` — which pushes a second copy — legitimately ends at 2, and a
+ * program that also leaves a marked value behind ends deeper still.
+ *
+ * Reporting only. A slot with problems still binds: a program is often mid-edit, and refusing the bind
+ * would be a worse tool than saying so. See [stackAutoShaderReport] to ask directly, and
+ * [Box.stackAutoReportChannel] for where the live-coding path puts it.
+ */
+data class StackAutoReport(
+    /** The slot this is about — the `foo` of `{{ stack.auto.foo }}`. */
+    val name: String,
+    /** False when the program has an ERROR diagnostic; the caller has already been told separately. */
+    val compiled: Boolean,
+    /** Almost certainly bugs. A definition whose net stack effect is not "consume one, leave one". */
+    val problems: List<String> = emptyList(),
+    /** The compiler's own non-ERROR diagnostics, which the success path used to throw away. */
+    val warnings: List<String> = emptyList(),
+    /** Worth seeing, not worth failing on — chiefly how much computed work nothing consumes. */
+    val notes: List<String> = emptyList()
+) : ToHTML {
+
+    /** Nothing to say: it compiled, no warnings, every definition balanced, nothing pruned. */
+    val quiet: Boolean get() = compiled && problems.isEmpty() && warnings.isEmpty() && notes.isEmpty()
+
+    /** Every line, most serious first, for a log or a one-shot println. */
+    val lines: List<String>
+        get() = problems.map { "problem: $it" } + warnings + notes.map { "note: $it" }
+
+    /**
+     * The report as a small monospaced card: one coloured line per problem, warning and note, and a
+     * dim "clean" when there is nothing to say. This is what the `stack.auto` output channel shows.
+     */
+    override fun toHTML(): String = buildString {
+        append("<div style='font-family:ui-monospace,monospace;font-size:11px;line-height:1.45'>")
+        append("<div style='opacity:.65;margin-bottom:4px'>stack.auto.")
+        append(escapeHtmlText(name))
+        append(if (compiled) "</div>" else " &mdash; did not compile</div>")
+        for ((label, colour, items) in listOf(
+            Triple("problem", "#e0553a", problems),
+            Triple("warning", "#d9a13a", warnings),
+            Triple("note", "#7f8c9b", notes)
+        )) {
+            for (item in items) {
+                append("<div><span style='color:")
+                append(colour)
+                append("'>")
+                append(label)
+                append("</span>  ")
+                append(escapeHtmlText(item))
+                append("</div>")
+            }
+        }
+        if (quiet) append("<div style='opacity:.5'>clean</div>")
+        append("</div>")
+    }
+
+    /** One line, for a log or a `println`. `"stack.auto.<name>: clean"` when there is nothing to say. */
+    override fun toString(): String =
+        if (quiet) "stack.auto.$name: clean" else "stack.auto.$name: " + lines.joinToString("; ")
+}
+
+private fun escapeHtmlText(text: String): String =
+    text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+/**
+ * The box output channel the live-coding path writes a non-[StackAutoReport.quiet] report to.
+ *
+ * Opened when there is something to say and closed again when a later bind comes back clean, so it is
+ * silent while the program is fine and in front of you the moment it is not.
+ */
+const val STACK_AUTO_REPORT_CHANNEL = "stack.auto"
+
+/**
+ * Compile one StackSL program the way a `stack.auto` slot compiles it, and report what that turned up
+ * beyond success or failure.
+ *
+ * Pure: no device, no box, nothing bound or reloaded. The same call the live-coding setter makes, so a
+ * box can ask before it binds — `println(stackAutoShaderReport(program, "noiseForce"))`.
+ *
+ * @param name the slot name, used as the generated GLSL prefix
+ * @param entrypoint a StackSL definition to use as the root, as `{{ stack.auto.foo:word }}` would
+ * @param sampleTexture the sampler `sample`/`gather` words read, as `@name` would set it
+ */
+fun stackAutoShaderReport(
+    source: String,
+    name: String = "program",
+    entrypoint: String? = null,
+    sampleTexture: String = "source"
+): StackAutoReport {
+    validateStackAutoShaderName(name)
+    if (source.isBlank()) return StackAutoReport(name, compiled = true)
+
+    val result = StackSLCompiler.compile(
+        source,
+        StackSLCompileOptions(
+            prefix = name,
+            entrypoint = entrypoint ?: "main",
+            useEntrypointAsRoot = entrypoint != null,
+            tolerant = false,
+            includeHeader = false,
+            declareSamplers = false,
+            externalizeConstants = false,
+            sampleTextures = listOf(sampleTexture)
+        )
+    )
+    return stackAutoReportFor(name, result)
+}
+
+/** [stackAutoShaderReport]'s analysis half, for a result that has already been compiled. */
+internal fun stackAutoReportFor(name: String, result: StackSLCompileResult): StackAutoReport {
+    val problems = mutableListOf<String>()
+    val notes = mutableListOf<String>()
+
+    // Only definitions that something actually *calls* are checked. Two shapes are legitimately
+    // deeper than 1 and neither is a defect:
+    //
+    //  - the **root**, whose stack starts with the program's input already on it, so `"input x 12 *"`
+    //    ends at 2;
+    //  - a definition that is only ever used as an *entrypoint* (`{{ stack.auto.foo:tap }}`), because
+    //    as a root it gets root semantics. `: tap 0.2 sample ;` is exactly that, and flagging it was
+    //    this check's first false positive — caught by an existing fixture in StackSLSmokeTest.
+    //
+    // A definition nothing invokes cannot take the wrong operand from anything, so its shape is not a
+    // claim about behaviour. `calls` gives reachability for free.
+    val called = result.analysis.functions.flatMapTo(mutableSetOf()) { it.calls }
+
+    var prunedTotal = 0
+    for (f in result.analysis.functions) {
+        prunedTotal += f.prunedValues
+        if (f.name == "<root>" || f.name !in called) continue
+        if (f.finalStackDepth != 1) {
+            problems += "definition `${f.name}` ends with ${f.finalStackDepth} values on the stack, not 1 " +
+                "— it must consume its input and leave its result. `=mark` copies (`a -- a`), " +
+                "`>mark` moves (`a --`); everything after an unbalanced definition takes the wrong operand."
+        }
+    }
+    if (prunedTotal > 0) {
+        notes += "$prunedTotal computed value(s) pruned as unused — normal for a mark that is never " +
+            "read, suspicious otherwise"
+    }
+
+    return StackAutoReport(
+        name = name,
+        compiled = result.ok,
+        problems = problems,
+        warnings = result.diagnostics
+            .filter { it.severity != StackSLSeverity.ERROR }
+            .map { it.toString() },
+        notes = notes
+    )
+}
+
 private fun defaultStackAutoShaderFunction(name: String): String =
     "vec4 $name(vec4 ${name}_in) { return vec4(0.0); }"
 
-private fun compileStackAutoShaderFunction(target: StackAutoShaderTarget, source: String): String {
+private fun compileStackAutoShaderFunction(target: StackAutoShaderTarget, source: String): String =
+    compileStackAutoShaderFunctionReporting(target, source).first
+
+/**
+ * [compileStackAutoShaderFunction] plus the [StackAutoReport] the compile produced.
+ *
+ * One compile, two consumers: the GLSL for the pipeline and the report for whoever is watching. The
+ * report is `null` only for a blank slot, which compiles to the stable no-op fallback and has nothing
+ * to say about it.
+ */
+private fun compileStackAutoShaderFunctionReporting(
+    target: StackAutoShaderTarget,
+    source: String
+): Pair<String, StackAutoReport?> {
     val name = target.name
     validateStackAutoShaderName(name)
     target.entrypoint?.let(::validateStackAutoEntrypointName)
-    if (source.isBlank()) return defaultStackAutoShaderFunction(name)
+    if (source.isBlank()) return defaultStackAutoShaderFunction(name) to null
 
     val result = StackSLCompiler.compile(
         source,
@@ -453,7 +647,7 @@ private fun compileStackAutoShaderFunction(target: StackAutoShaderTarget, source
         )
     )
 
-    if (result.ok) return result.glsl
+    if (result.ok) return result.glsl to stackAutoReportFor(name, result)
 
     val diagnostics = result.diagnostics
         .filter { it.severity == StackSLSeverity.ERROR }
@@ -462,10 +656,71 @@ private fun compileStackAutoShaderFunction(target: StackAutoShaderTarget, source
     throw IllegalArgumentException("Unable to compile stack.auto.${target.key}:\n$diagnostics")
 }
 
+/**
+ * Every slot of one box that currently has something to say, rendered as one output card.
+ *
+ * A shader usually declares several `stack.auto` slots and a reload re-expands all of them, so reports
+ * arrive one per slot in whatever order the template does. The state has to be **per slot** and the
+ * output **per box**: publishing each report on its own would let a clean slot close the card a dirty
+ * one had just opened, which is exactly what the first version did — `open` immediately followed by
+ * `close`, and a real problem invisible.
+ */
+data class StackAutoReportSet(
+    /** Every slot with something to say, ordered by slot name so the card does not reshuffle. */
+    val reports: List<StackAutoReport>
+) : ToHTML {
+    /** Each slot's card, stacked, so one output area covers the whole shader. */
+    override fun toHTML(): String = reports.joinToString("") { it.toHTML() }
+
+    /** One line per slot. */
+    override fun toString(): String = reports.joinToString("\n") { it.toString() }
+}
+
+/** Per box, per slot, whatever that slot last had to say. Transient — never persisted with the box. */
+private val stackAutoReports =
+    Collections.synchronizedMap(WeakHashMap<Box, MutableMap<String, StackAutoReport>>())
+
+/**
+ * Put a [StackAutoReport] where the person editing the program will see it.
+ *
+ * A slot with nothing to say is *removed* rather than written as "clean", and the card is closed only
+ * once **every** slot is clean — so the output area is silent while the programs are fine and appears
+ * the moment one is not, without slots overwriting each other. Anything worth saying also goes to the
+ * log, because a headless run has no output area to look at.
+ */
+private fun publishStackAutoReport(box: Box, report: StackAutoReport?) {
+    if (report == null) return
+
+    val perSlot = synchronized(stackAutoReports) {
+        stackAutoReports.getOrPut(box) { java.util.concurrent.ConcurrentHashMap() }
+    }
+    val previous = if (report.quiet) perSlot.remove(report.name) else perSlot.put(report.name, report)
+
+    // Log only on a change, or a shader reload would repeat itself every frame it happens on.
+    if (!report.quiet && previous != report) {
+        val severity = if (report.problems.isNotEmpty()) "warning,graphics" else "graphics"
+        report.lines.forEach { lprintln(severity, "stack.auto.${report.name}: $it") }
+    }
+
+    val live = perSlot.values.sortedBy { it.name }
+    if (live.isEmpty()) {
+        box.displayClose(STACK_AUTO_REPORT_CHANNEL)
+        return
+    }
+    box.display(STACK_AUTO_REPORT_CHANNEL, StackAutoReportSet(live))
+    box.displayOpen(STACK_AUTO_REPORT_CHANNEL)
+}
+
 private fun stackAutoShaderFunctionFor(box: Box, target: StackAutoShaderTarget): String {
     validateStackAutoShaderName(target.name)
     box.stackAutoShaderSources.putIfAbsent(target.name, "")
-    return compileStackAutoShaderFunction(target, box.stackAutoShaderSources[target.name] ?: "")
+    val (glsl, report) = compileStackAutoShaderFunctionReporting(
+        target, box.stackAutoShaderSources[target.name] ?: ""
+    )
+    // Also here, not only on the live-coding setter: a slot bound before its shader existed is compiled
+    // for the first time during preprocessing, and that is the compile whose warnings matter most.
+    publishStackAutoReport(box, report)
+    return glsl
 }
 
 private fun stackAutoTemplateResolverFor(box: Box, emitted: MutableMap<String, StackAutoShaderTarget>): Resolver =
@@ -552,7 +807,7 @@ private fun setStackAutoShaderSource(module: Any, name: String, source: String, 
     }
 
     val compiled = try {
-        compileStackAutoShaderFunction(StackAutoShaderTarget(name), source)
+        compileStackAutoShaderFunctionReporting(StackAutoShaderTarget(name), source)
     } catch (t: Throwable) {
         reportShaderStageError(
             box,
@@ -566,7 +821,13 @@ private fun setStackAutoShaderSource(module: Any, name: String, source: String, 
 
     box.stackAutoShaderSources[name] = source
     requestStackAutoShaderUpdate(box, reloadType)
-    lprintln("graphics", "compiled stack.auto.$name (${compiled.length} chars GLSL); queued shader update.")
+    // The compile succeeded, which is not the same as the program being right. See StackAutoReport.
+    publishStackAutoReport(box, compiled.second)
+    lprintln(
+        "graphics",
+        "compiled stack.auto.$name (${compiled.first.length} chars GLSL); queued shader update." +
+            (compiled.second?.takeIf { !it.quiet }?.let { " ${it.problems.size} problem(s), ${it.warnings.size} warning(s)." } ?: "")
+    )
 }
 
 /**

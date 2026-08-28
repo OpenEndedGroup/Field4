@@ -3,6 +3,7 @@ package afield.examples.stacksl
 import afield.Box
 import afield.four.modules.ShaderKind
 import afield.stdlib.preprocess
+import afield.stdlib.stackAutoShaderReport
 import afield.stdlib.stackAutoShaderSources
 import afield.stacksl.StackSLCompileOptions
 import afield.stacksl.StackSLCompiler
@@ -57,6 +58,7 @@ object StackSLSmokeTest {
             compilesHigherOrderPhacelleNoise()
             compilesExternalHostGlslEscapeHatches()
             expandsStackAutoSamplerOverrides()
+            reportsAStackAutoProgramsArityAndWarnings()
             compilesDocsGalleryPrograms()
             loadsGalleryWorkspaceMetadataEdn()
             compilesCreativeFreedomVariants()
@@ -813,6 +815,77 @@ object StackSLSmokeTest {
         require("+ pc.bar" in result.glsl) { result.glsl }
         require(Regex("""pc\.foo = _host_v\d+;""").containsMatchIn(result.glsl)) { result.glsl }
         require(Regex("""pc\.inData\.p\[idx]\.posvel\.Z = _host_v\d+;""").containsMatchIn(result.glsl)) { result.glsl }
+    }
+
+    /**
+     * `stack.auto` must report what a successful compile does not say.
+     *
+     * `StackSLCompileResult.ok` is errors only, and a stack language's characteristic mistake is not an
+     * error: a definition opened with `=name` (which *copies*, `a -- a`) instead of `>name` (which
+     * *moves*, `a --`) leaves its input under its result, so every call pushes two values and everything
+     * downstream takes the wrong operand. The compiler prunes the surplus and says nothing.
+     *
+     * That cost a real debugging session, so this pins both halves: the broken shape is reported, and a
+     * correct program stays quiet. The second half is what keeps the report worth reading.
+     */
+    private fun reportsAStackAutoProgramsArityAndWarnings() {
+        // `=c` copies, so `half` leaves its input under its result: net +1 instead of net 0.
+        val unbalanced = """
+            : half
+              =c
+              <c 0.5 *
+            ;
+
+            input half
+        """.trimIndent()
+
+        val bad = stackAutoShaderReport(unbalanced, "noiseForce")
+        require(bad.compiled) { "the unbalanced program should still compile; that is the whole problem" }
+        require(!bad.quiet) { "an unbalanced definition must not be reported as clean: $bad" }
+        require(bad.problems.size == 1) { "expected exactly one problem, got ${bad.problems}" }
+        require("`half`" in bad.problems[0]) { "the problem should name the definition: ${bad.problems[0]}" }
+        require("2 values" in bad.problems[0]) { "the problem should state the depth: ${bad.problems[0]}" }
+        require(">mark" in bad.problems[0]) { "the problem should name the fix: ${bad.problems[0]}" }
+        // And it renders, because an output area is where this is actually read.
+        require("problem" in bad.toHTML()) { bad.toHTML() }
+
+        // `>c` moves, so the same definition balances.
+        val good = stackAutoShaderReport(unbalanced.replace("=c", ">c"), "noiseForce")
+        require(good.quiet) { "the balanced program should be clean, got: $good" }
+        require("clean" in good.toString()) { good.toString() }
+        require(good.problems.isEmpty() && good.warnings.isEmpty()) { "$good" }
+
+        // A blank slot compiles to the stable no-op fallback and has nothing to report.
+        require(stackAutoShaderReport("", "noiseForce").quiet) { "a blank slot should be quiet" }
+
+        // Non-ERROR diagnostics have to survive to the report: they were dropped on the success path,
+        // which is how a second bug in the same session went unseen. A root's stack starts with the
+        // program's input on it, so a binary word on its own finds one value where it needs two.
+        val underflow = stackAutoShaderReport("*", "noiseForce")
+        require(underflow.compiled) { "an arity underflow is a warning, not an error: $underflow" }
+        require(underflow.warnings.isNotEmpty()) {
+            "the compiler's non-error diagnostics must reach the report, got: $underflow"
+        }
+        require(!underflow.quiet) { "a program with warnings is not clean: $underflow" }
+
+        // A root legitimately ends deeper than 1 — its stack starts with the program's input on it — so
+        // depth is only checked for definitions. Without this the check would fire on `"input x 12 *"`.
+        val root = stackAutoShaderReport("input x 12 *", "edgeForce")
+        require(root.quiet) { "a root that pushes a second copy of its input is not a defect: $root" }
+
+        // And a definition nothing calls is not a claim about behaviour. This shape exists to be used as
+        // an *entrypoint* (`{{ stack.auto.foo:tap }}`), where it gets root semantics and so ends at 2.
+        // Flagging it was this check's first false positive, caught by expandsStackAutoSamplerOverrides.
+        val entrypointOnly = stackAutoShaderReport(
+            """
+            : tap 0.2 sample ;
+            0.1 sample
+            """.trimIndent(),
+            "foo"
+        )
+        require(entrypointOnly.quiet) {
+            "an uncalled definition must not be flagged; its shape constrains nothing: $entrypointOnly"
+        }
     }
 
     private fun expandsStackAutoSamplerOverrides() {
