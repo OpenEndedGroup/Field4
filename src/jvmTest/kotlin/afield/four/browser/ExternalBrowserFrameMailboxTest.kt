@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.test.assertFailsWith
 
 class ExternalBrowserFrameMailboxTest {
     private val spec = ExternalBrowserSurfaceSpec(width = 800, height = 600, slotCount = 3)
@@ -76,6 +77,17 @@ class ExternalBrowserFrameMailboxTest {
         )
         mailbox.offer(frame(1, 0, handle))
         assertIs<ExternalBrowserImageHandle.LinuxDmaBuf>(mailbox.takeLatest()!!.handle)
+    }
+
+    @Test
+    fun `a dma-buf consumed by Vulkan is not closed again by the frame lease`() {
+        val handle = ExternalBrowserImageHandle.LinuxDmaBuf(
+            planes = listOf(ExternalBrowserImageHandle.LinuxDmaBuf.Plane(fd = 999_999, stride = 4, offset = 0, size = 4)),
+            modifier = 0
+        )
+        handle.markConsumedByVulkan()
+        handle.close() // A native close here would fail on this deliberately invalid fd.
+        assertFailsWith<IllegalStateException> { handle.markConsumedByVulkan() }
     }
 
     private fun frame(

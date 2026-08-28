@@ -1,7 +1,9 @@
 # External browser surfaces
 
-Status: the platform-neutral frame/lease contract and the macOS/MoltenVK receiver are implemented.
-The Electron producer and its macOS Mach-message transport are not yet in this repository.
+Status: the platform-neutral frame/lease contract and the macOS/MoltenVK receiver are implemented
+and live-tested. Windows/D3D11 and Linux/dma-buf receivers are implemented as compile-reviewed
+first passes and still need native-machine validation. The Electron producer and its native-handle
+transports are not yet in this repository.
 
 This is the texture seam for web UI that should appear on geometry in Field/OpenXR. It does not
 choose the browser. Electron is the immediate producer because its accelerated offscreen `paint`
@@ -70,6 +72,49 @@ the browser surface resolved it through a Mach send right and copied it, the res
 back the expected BGRA pixel, and the release callback arrived after the graphics fence. The
 replayable graph is `dev_docs/agents/transcripts/external_browser_surface_macos_smoke.yaml`.
 
+## Windows implementation
+
+`WindowsExternalBrowserSurface` imports `WindowsD3D11NtHandle` with
+`VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT`. The producer cannot send Electron's handle
+integer directly because the documented `ntHandle` is local to Electron. A native producer must
+use `DuplicateHandle` to create a receiver-local NT handle in Field, then send its numeric value on
+the control channel. Field queries the handle's compatible memory types, makes a dedicated import,
+binds it to a matching Vulkan image, acquires ownership from `VK_QUEUE_FAMILY_EXTERNAL`, and closes
+its duplicate because Vulkan has retained the underlying allocation. After the copy it returns the
+image to `GENERAL` layout and external ownership before acknowledging the lease. Handles rejected
+or superseded before import are also closed.
+
+The Windows backend follows the working personal prototype but shares the bounded slot cache,
+stable resident copy, stream reset, and fence acknowledgement with macOS. It has compiled on macOS;
+the required next check is a Windows replay that enables Vulkan validation, submits a genuinely
+duplicated Electron/D3D11 handle, reads back the resident pixel, and observes `PRESENTED`.
+
+Electron documents that RGBA/BGRA/RGBAF16 output textures do not use a keyed mutex. If Electron
+adds NV12 to the negotiated surface formats, keyed-mutex acquisition and multi-plane handling must
+be designed before accepting it; this interface intentionally rejects NV12 today.
+
+## Linux implementation
+
+`LinuxExternalBrowserSurface` receives Electron `nativePixmap` fds via `SCM_RIGHTS`, never as bare
+JSON integers. It creates the image with `VK_EXT_image_drm_format_modifier`, preserving every
+plane's byte offset and row pitch, and imports the allocation with
+`VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT`. Vulkan consumes fd ownership only after a
+successful memory import; before that point, rejected or failed frames close their receiver-local
+fds. Each copy acquires the image from `VK_QUEUE_FAMILY_FOREIGN_EXT` and releases it back after the
+copy, before the producer lease is acknowledged.
+
+The first pass supports one unique dma-buf allocation with one or more modifier layout planes.
+That is the intended accelerated RGB/BGRA/RGBAF16 browser path. A nativePixmap containing distinct
+fds fails with an actionable error: supporting it correctly requires disjoint image creation,
+per-memory-plane requirement queries and `vkBindImageMemory2`, which should be added against a real
+Electron/driver combination rather than guessed on macOS.
+
+The Linux device path now enables and checks `VK_KHR_external_memory_fd`,
+`VK_EXT_external_memory_dma_buf`, `VK_EXT_image_drm_format_modifier`, and
+`VK_EXT_queue_family_foreign`. Native validation still
+needs to probe the received format/modifier tuple with `vkGetPhysicalDeviceImageFormatProperties2`
+before relying on it in production; an unsupported tuple currently fails at image creation.
+
 ## What came from the Windows prototype
 
 `src/personal/kotlin/organic/textureStreaming.kt` established the useful core: import the D3D11
@@ -84,15 +129,13 @@ parts that matter for a browser process:
 - one release acknowledgement for every offered producer lease, with `PRESENTED` delayed until the
   GPU fence.
 
-The eventual Windows backend belongs behind the same interface and should import duplicated
-D3D11 NT handles using `VK_KHR_external_memory_win32`. Linux should receive dma-buf fds through
-`SCM_RIGHTS`, preserve plane stride/offset/modifier metadata, and use Vulkan external-memory fd and
-DRM-modifier support. Both need the same producer-lease acknowledgement discipline; neither should
-pass a process-local integer handle over the JSON channel.
+The Windows and Linux first passes now live behind the same construction point. They intentionally
+stop short of claiming runtime support until each has passed its native validation/readback smoke.
 
 ## Next integration slice
 
-Build the small Electron native producer/transport first, not a browser abstraction in Kotlin.
-Once it can deliver one `MacIOSurfaceMachPort` and receive one token, add the control channel and
-forward pointer, scroll, keyboard, focus, navigation, and IME messages. The renderer API does not
-need to change for those additions.
+Build the small Electron native producer/transport first, not another browser abstraction in
+Kotlin. Its three handle-transfer operations are Mach-message send-right transfer, `DuplicateHandle`
+into Field, and Unix-domain `SCM_RIGHTS`. Once each can deliver one platform handle and receive one
+token, add the control channel and forward pointer, scroll, keyboard, focus, navigation, and IME
+messages. The renderer API does not need to change for those additions.

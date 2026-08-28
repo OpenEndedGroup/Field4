@@ -5,6 +5,11 @@ import afield.four.texture.HasImageView
 import afield.four.texture.HasImageViewArray
 import afield.four.texture.MetalIOSurface
 import afield.four.texture.PreparesSampledImages
+import org.lwjgl.system.APIUtil.apiCreateLibrary
+import org.lwjgl.system.JNI
+import org.lwjgl.system.SharedLibrary
+import org.lwjgl.system.windows.Kernel32
+import java.util.concurrent.atomic.AtomicBoolean
 
 /** Fixed properties of the resident texture exposed to Field. */
 data class ExternalBrowserSurfaceSpec(
@@ -48,9 +53,9 @@ data class BrowserSurfaceRect(val x: Int, val y: Int, val width: Int, val height
 
 /**
  * A receiver-side platform handle. IPC is responsible for turning Electron's process-local handle
- * into one of these values. The macOS implementation below owns its received Mach send right.
- * Windows and Linux are contract placeholders until their backends also implement native-handle
- * cleanup; the factory cannot create either backend yet.
+ * into one of these values. Each value owns the receiver-local handle(s) until a platform importer
+ * either consumes them or closes them. Closing a rejected or superseded frame is therefore enough
+ * to keep transport resources bounded.
  */
 sealed interface ExternalBrowserImageHandle : AutoCloseable {
     /** Releases any live receiver-side transport resource. Implementations must be idempotent. */
@@ -61,7 +66,7 @@ sealed interface ExternalBrowserImageHandle : AutoCloseable {
      * This is the normal Electron path: Electron's IOSurfaceRef itself is process-local.
      */
     class MacIOSurfaceMachPort(val value: Int) : ExternalBrowserImageHandle {
-        private val closed = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val closed = AtomicBoolean(false)
 
         init { require(value != 0) { "IOSurface Mach port must be non-zero" } }
 
@@ -79,16 +84,50 @@ sealed interface ExternalBrowserImageHandle : AutoCloseable {
         init { require(value in 1..0xFFFF_FFFFL) { "IOSurfaceID must be an unsigned non-zero 32-bit value" } }
     }
 
-    data class WindowsD3D11NtHandle(val value: Long) : ExternalBrowserImageHandle {
+    class WindowsD3D11NtHandle(val value: Long) : ExternalBrowserImageHandle {
+        private val closed = AtomicBoolean(false)
+
         init { require(value != 0L) { "NT handle must be non-zero" } }
+
+        override fun close() {
+            if (closed.compareAndSet(false, true)) ExternalBrowserNativeHandles.closeWin32(value)
+        }
+
+        override fun equals(other: Any?): Boolean = other is WindowsD3D11NtHandle && value == other.value
+        override fun hashCode(): Int = value.hashCode()
+        override fun toString(): String = "WindowsD3D11NtHandle(value=$value)"
     }
 
-    data class LinuxDmaBuf(
+    class LinuxDmaBuf(
         val planes: List<Plane>,
         /** DRM modifier bits, represented as a signed Long without reinterpretation. */
         val modifier: Long
     ) : ExternalBrowserImageHandle {
+        private val closed = AtomicBoolean(false)
+
         init { require(planes.isNotEmpty()) { "dma-buf must contain at least one plane" } }
+
+        override fun close() {
+            if (closed.compareAndSet(false, true)) {
+                var failure: Throwable? = null
+                planes.map { it.fd }.distinct().forEach { fd ->
+                    runCatching { ExternalBrowserNativeHandles.closeFd(fd) }
+                        .onFailure { if (failure == null) failure = it }
+                }
+                failure?.let { throw it }
+            }
+        }
+
+        /** Successful Vulkan fd import consumes ownership; prevent a later frame close from closing it again. */
+        internal fun markConsumedByVulkan() {
+            check(closed.compareAndSet(false, true)) { "dma-buf fds were already closed or consumed" }
+        }
+
+        override fun equals(other: Any?): Boolean =
+            other is LinuxDmaBuf && planes == other.planes && modifier == other.modifier
+
+        override fun hashCode(): Int = 31 * planes.hashCode() + modifier.hashCode()
+        override fun toString(): String = "LinuxDmaBuf(planes=$planes, modifier=$modifier)"
 
         data class Plane(val fd: Int, val stride: Int, val offset: Int, val size: Long) {
             init {
@@ -186,9 +225,29 @@ object ExternalBrowserSurfaces {
         releaseListener: BrowserFrameReleaseListener = BrowserFrameReleaseListener { }
     ): ExternalBrowserSurface = when (afield.four.util.OS) {
         afield.four.util.OSType.MACOS -> MacExternalBrowserSurface(renderer, spec, releaseListener)
-        afield.four.util.OSType.WINDOWS -> error("Windows external browser surface backend is not implemented yet")
-        afield.four.util.OSType.LINUX -> error("Linux external browser surface backend is not implemented yet")
+        afield.four.util.OSType.WINDOWS -> WindowsExternalBrowserSurface(renderer, spec, releaseListener)
+        afield.four.util.OSType.LINUX -> LinuxExternalBrowserSurface(renderer, spec, releaseListener)
         afield.four.util.OSType.OTHER -> error("External browser surfaces are unsupported on this operating system")
+    }
+}
+
+/** Tiny OS-close bindings kept lazy so this source remains loadable on every desktop OS. */
+private object ExternalBrowserNativeHandles {
+    private val closeHandleAddress: Long by lazy {
+        Kernel32.getLibrary().getFunctionAddress("CloseHandle")
+            .also { check(it != 0L) { "CloseHandle is unavailable" } }
+    }
+    private val libc: SharedLibrary by lazy { apiCreateLibrary("libc.so.6") }
+    private val closeFdAddress: Long by lazy {
+        libc.getFunctionAddress("close").also { check(it != 0L) { "libc close is unavailable" } }
+    }
+
+    fun closeWin32(handle: Long) {
+        check(JNI.callPI(handle, closeHandleAddress) != 0) { "CloseHandle failed for 0x${handle.toString(16)}" }
+    }
+
+    fun closeFd(fd: Int) {
+        check(JNI.callI(fd, closeFdAddress) == 0) { "close($fd) failed" }
     }
 }
 
