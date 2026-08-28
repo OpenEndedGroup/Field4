@@ -193,12 +193,12 @@ guard unescapes it, so FieldML's `\|>` can be cited.
 
 A citation guard proves an anchor exists. It says nothing about the *sentence* around the anchor, and
 the arithmetic in that sentence is the part that rots. `ProseNumeralContractTest` closes that gap for
-the same 26<!--count:guardedCitationPages--> pages `GUARDED_PAGES` already covers — this one among
+the same 27<!--count:guardedCitationPages--> pages `GUARDED_PAGES` already covers — this one among
 them since 2026-08-23, because a page that documents the mechanism and then states three numbers
 derived by it should be the first thing the mechanism checks.
 
-**Seven of those 25 are under `public/docs` as of 2026-08-26**, and the asymmetry they closed is worth
-naming, because it is the more instructive of the two failures available here. `citationGates` has
+**Eight of those 27 are under `public/docs` as of 2026-08-28**, and the asymmetry they closed is
+worth naming, because it is the more instructive of the two failures available here. `citationGates` has
 declared `public/docs/**.md` as a task input since 2026-08-19, so a published-page edit has never been
 able to go `UP-TO-DATE` — up-to-date checking was never the gap. `GUARDED_PAGES` was, because it is the
 only list either class scans and every entry on it was under `dev_docs`. The published tree was
