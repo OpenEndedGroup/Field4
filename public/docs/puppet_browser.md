@@ -20,7 +20,9 @@ val browser = FieldUiBrowserTexture(
     renderer = renderer,
     url = "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
     width = 1280,
-    height = 720
+    height = 720,
+    // Linux: Chromium's shared-texture export never fills the buffer (electron#53271).
+    cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired
 )
 
 val screen = PuppetBrowserWindowPanel(renderer, browser)
@@ -216,7 +218,9 @@ val browser = FieldUiBrowserTexture(
     renderer = renderer,
     url = FieldUiBrowserTexture.fieldDocumentUrl(thisBox),
     width = 1280,
-    height = 720
+    height = 720,
+    // Linux: Chromium's shared-texture export never fills the buffer (electron#53271).
+    cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired
 )
 ```
 

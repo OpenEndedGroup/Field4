@@ -15,7 +15,9 @@ val browser = FieldUiBrowserTexture(
     url = FieldUiBrowserTexture.fieldDocumentUrl(thisBox),
     width = 1280,
     height = 720,
-    readyBoxUid = thisBox.id
+    readyBoxUid = thisBox.id,
+    // Linux: Chromium's shared-texture export never fills the buffer (electron#53271).
+    cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired
 )
 browserControl = browser
 val interaction = PuppetBrowserWindowInput(browser, renderer.window)

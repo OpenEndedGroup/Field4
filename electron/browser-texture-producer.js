@@ -150,7 +150,10 @@ function installPixelChannel() {
 function sendBitmapFrame(image, frameNumber) {
   if (!pixels || !pixelsWritable) return false;
   const size = image.getSize();
-  const bitmap = image.getBitmap();
+  // `toBitmap`, not the deprecated `getBitmap`: the latter hands back a view of Chromium's own
+  // pixels rather than a copy, and the socket write below is asynchronous, so the frame can be
+  // recycled underneath a write that has not drained yet. The copy is the point, not a cost.
+  const bitmap = image.toBitmap();
   const header = Buffer.alloc(PIXEL_HEADER_BYTES);
   let at = 0;
   at = header.writeUInt32BE(PIXEL_MAGIC, at);
