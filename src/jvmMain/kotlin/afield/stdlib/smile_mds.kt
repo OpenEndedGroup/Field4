@@ -391,8 +391,8 @@ private fun fitClassicalMds(
  * - `proportion` is the *retained* eigenvalues divided by their own L1 norm
  *   (`MathEx.unitize1`), so it sums to 1 whatever fraction of the structure was kept.
  *
- * Matching Smile matters more than either, because the point of this path is that a projection does
- * not change when the machine does.
+ * Matching Smile matters more than either, so that swapping eigensolvers moves as little as it can.
+ * It does NOT make a projection machine-independent: signs are not canonicalised (see below).
  *
  * The cost difference is real and worth knowing: `dsyevd` computes **all** *n* eigenpairs of a dense
  * `n x n`, `O(n^3)`, where ARPACK computes only the *d* largest. Smile's own iterative path is the

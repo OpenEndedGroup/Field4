@@ -75,6 +75,13 @@ class ProjectionExamplesPageTest {
         val problems = ArrayList<String>()
         val checked = ArrayList<String>()
 
+        /**
+         * Claims this platform cannot decide. Kept separate from [problems] so a
+         * platform-conditional claim is visible rather than silently absent, and separate from
+         * [checked] so it cannot inflate the vacuity floor.
+         */
+        val skipped = ArrayList<String>()
+
         fun claim(page: String, what: String, format: String, computed: Double) {
             val rendered = format.format(computed)
             if (!page.contains(rendered)) {
@@ -349,11 +356,23 @@ class ProjectionExamplesPageTest {
         if (refusal !is IllegalArgumentException) {
             ledger.problems += "expected the uncorrected fit to refuse one dimension past ${usable.getValue(false).first}"
         } else {
-            val smallest = Regex("smallest retained (-?[0-9.eE-]+)").find(refusal.message.orEmpty())?.groupValues?.get(1)
-            if (smallest == null) {
-                ledger.problems += "could not read the smallest retained eigenvalue out of: ${refusal.message}"
-            } else {
-                ledger.claim(page, "the first materially negative eigenvalue", "%.2f", smallest.toDouble())
+            // Two different refusals reach here depending on which eigensolver is live, and only
+            // one of them names the eigenvalue. This tree's LAPACK fallback (smile_mds.kt, taken
+            // when bytedeco's ARPACK cannot dlopen -- as on Apple Silicon) reports "smallest
+            // retained <value>". Where ARPACK does load, Smile refuses first with its own
+            // "Some of the first N eigenvalues are < 0." (MDS.java), which carries no number.
+            // Requiring the first spelling would fail this test on every machine where the
+            // library works, which is the opposite of what it is for.
+            val message = refusal.message.orEmpty()
+            val smallest = Regex("smallest retained (-?[0-9.eE-]+)").find(message)?.groupValues?.get(1)
+            when {
+                smallest != null ->
+                    ledger.claim(page, "the first materially negative eigenvalue", "%.2f", smallest.toDouble())
+                message.contains("eigenvalues are < 0") ->
+                    ledger.skipped += "the first materially negative eigenvalue: the ARPACK-backed " +
+                        "refusal names no eigenvalue (\"$message\")"
+                else ->
+                    ledger.problems += "the fit refused, but with neither known message: $message"
             }
         }
         // The first eight eigenvalues, quoted on the page as a list.
@@ -380,5 +399,9 @@ class ProjectionExamplesPageTest {
             )
         }
         println("projection_examples.md: ${ledger.checked.size} published figure(s) recomputed and matched")
+        if (ledger.skipped.isNotEmpty()) {
+            println("projection_examples.md: ${ledger.skipped.size} claim(s) not checkable on this platform:\n  " +
+                ledger.skipped.joinToString("\n  "))
+        }
     }
 }

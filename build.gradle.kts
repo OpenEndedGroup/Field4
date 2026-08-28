@@ -107,15 +107,15 @@ val openblasVersion = "0.3.26-1.5.10"
 // out of this artifact for Smile to find by name -- there is no javacpp binding, so nothing here
 // is coupled to the 1.5.10 ABI.
 //
-// This makes the build configure and the arm64 dylib extract; it does NOT make Smile's ARPACK path
-// work here, and that is a separate, open question rather than a regression. `otool -L` on the
-// extracted libarpack.dylib wants four @rpath libraries: libarpack.2 and libopenblas.0, both of
-// which prepareSmileNative copies, plus libgfortran.5 and libquadmath.0, which neither bytedeco
-// artifact ships on macosx-arm64 — so dlopen fails with "Cannot open library: libarpack.dylib" and
-// SmileMdsTest, SpeechEmbeddingMdsTest and SpectralEmbeddingProjectionTest fail on this platform.
-// Homebrew gcc has both at /opt/homebrew/opt/gcc/lib/gcc/current, but reaching for them would
-// contradict the vendoring intent stated above, so the choice — vendor a Fortran runtime, find a
-// self-contained arpack, or let Smile fall back where ARPACK is unavailable — is left to the author.
+// This makes the build configure and the arm64 dylib extract; it does NOT make Smile's own ARPACK
+// path work here. `otool -L` on the extracted libarpack.dylib wants four @rpath libraries:
+// libarpack.2 and libopenblas.0, both of which prepareSmileNative copies, plus libgfortran.5 and
+// libquadmath.0, which neither bytedeco artifact ships on macosx-arm64 — so dlopen fails with
+// "Cannot open library: libarpack.dylib". Homebrew gcc carries both at
+// /opt/homebrew/opt/gcc/lib/gcc/current, but reaching for them would contradict the vendoring
+// intent stated above. Of the three options once left open here the third was taken: smileMds
+// probes the binding once and falls back to LAPACK's dsyevd (smile_mds.kt), so SmileMdsTest and
+// its two siblings now run on this platform. Vendoring a Fortran runtime remains unexplored.
 val arpackVersion = "3.9.1-1.5.12"
 val javacppVersion = "1.5.10"
 val javacvVersion = "1.5.10"
