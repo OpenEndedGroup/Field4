@@ -213,15 +213,41 @@ allocation can read zeros spuriously. It imports the same descriptor with the sa
 stride and reports `reqs=3686400`, exactly the declared size, so the import is well formed — it
 simply reads an empty buffer.
 
-The result does not move: Electron 42.3.3 and 44.0.0; Chromium on the RTX 4090 and forced onto the
-AMD iGPU through Mesa; `argb` and `rgbaf16` shared-texture formats; the first paint, the fifth paint
-of a continuously animating page, and the tenth paint of a fully loaded `https://youtube.com`, so
-it is not a first-frame race and not specific to Field's own page. `supportsZeroCopyWebGpuImport` is reported `false`
-throughout. A web search finds no report of this symptom and no working Linux example: Electron
-documents `nativePixmap` in its type definitions, but every code sample and every README section of
-its shared-texture documentation covers only Windows/D3D11 and macOS/IOSurface. The same producer
-design is known to work on both of those. So the remaining work is upstream in Electron/Chromium's
-Linux offscreen shared-texture path, not in this repository.
+The result does not move across Electron 42.3.3 and 44.0.0, `argb` and `rgbaf16` shared-texture
+formats, or the first paint, the fifth paint of a continuously animating page and the tenth paint of
+a fully loaded `https://youtube.com` — so it is neither a first-frame race nor anything to do with
+Field's own page. This is a known upstream problem, and it is **NVIDIA-plus-Wayland specific rather than Linux-wide**:
+[electron#49247](https://github.com/electron/electron/issues/49247), "OSR paint events do not fire in
+an NVIDIA GPU + Wayland environment", reports the same `Unable to initialize SkSurface` line, and was
+closed as not planned. `reitowo`, who wrote the shared-texture implementation, dropped Linux from it
+for lack of hardware ("Due to lack of development environment I choose drop Linux support for now",
+[PR #46811](https://github.com/electron/electron/pull/46811)) and later
+[reported it working on an AMD laptop](https://github.com/electron/electron/pull/46811#issuecomment-2859463799).
+The reporter's own matrix in #49247 is the useful part:
+
+| session | result |
+| --- | --- |
+| Ubuntu 24.04 Xorg, with `--enable-features=Vulkan` | works |
+| Xorg without that switch | same `SkSurface` error |
+| Wayland (Ubuntu and Fedora), with or without it | fails |
+| XWayland | GPU process crashes, or paints arrive with `texture = null` |
+
+Which matches this machine exactly: KDE Wayland on NVIDIA fails, and every `--ozone-platform=x11`
+attempt here is XWayland, where the GPU process dies with 139 or compositing silently drops to
+software. One detail corroborates that our handle is only half-real: the working Xorg capture in
+that thread reports `supportsZeroCopyWebGpuImport: true`, and every handle here reports `false`.
+
+What this repository adds to that picture is `--use-angle=vulkan`. With it, Wayland gets *past* the
+`SkSurface` error and delivers a real dma-buf — which is further than #49247 ever got — but the
+buffer is empty, consistent with the thread's suspicion that on Wayland Vulkan reports enabled
+without actually being used for this path.
+
+So the remaining work is upstream, not here. To see this run on Linux today, use a real Xorg
+session; XWayland is not a substitute. Note also that the claim "forcing Chromium onto the AMD iGPU
+gives the same empty buffer" appeared in an earlier revision of this page and was wrong: the
+environment variables used did not move Chromium, which stayed on the RTX 4090, and when the Vulkan
+ICD is genuinely restricted to RADV the GPU process will not start on this NVIDIA-driven display at
+all. The AMD path is untested here.
 
 ## What came from the Windows prototype
 
