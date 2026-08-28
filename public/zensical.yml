@@ -107,6 +107,11 @@ nav:
         - State Estimation Examples: state_estimation_examples.md
         - Statistics & Dependence: statistics_examples.md
         - Spectral Examples: spectral_examples.md
+      # Its own group rather than a sixth entry under "Time & Signals": the input to a projection is
+      # a set of things and one distance per pair, which is neither a time series nor a signal. The
+      # worked examples are words under an edit distance and curve samples under a graph distance.
+      - Distances & Projections:
+        - Placing Things by Distance (MDS, t-SNE): projection_examples.md
       - Colour & Images:
         - Colors Examples: colors_examples.md
         - Imaging & Computer Vision: imaging_examples.md
