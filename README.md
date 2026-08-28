@@ -116,7 +116,7 @@ launch:
 A relative path resolves against the directory you are standing in, and `-w` or
 `--workspace` say the same thing explicitly. Pointing at a single document — a
 folder holding a `metadata.edn`, or that file itself — opens the folder above it,
-which is the workspace that document lives in.
+which is the workspace that document lives in, and opens that document.
 
 With no argument, Field reopens the workspace it used last. That choice is
 recorded once per machine, in `~/.afield/last-workspace.txt`, so another clone or
@@ -134,6 +134,35 @@ comes back to it. The Gradle entry points take the same flag:
 ```bash
 ./gradlew runDesktop --args="--workspace /path/to/AFieldWorkspace"
 ```
+
+## Opening a document
+
+`-d` (or `--document`) goes straight into a document, instead of the welcome page
+and instead of whatever was open last:
+
+```bash
+./field.sh -d myDocument
+```
+
+That looks `myDocument` up in whichever workspace this launch settled on — the
+remembered one, above, unless you name another. All of these mean the same thing:
+
+```bash
+./field.sh /path/to/AFieldWorkspace -d myDocument
+./field.sh /path/to/AFieldWorkspace/myDocument
+./field.sh /path/to/AFieldWorkspace/myDocument/metadata.edn
+```
+
+The document has to exist. Field creates one that does not, so a name it does not
+recognise is reported rather than opened as a new empty document — before the
+build, not minutes into it. The Gradle entry points take the flag too:
+
+```bash
+./gradlew runDesktop --args="--workspace /path/to/AFieldWorkspace --document myDocument"
+```
+
+On Windows, `.\field.ps1` (and `field.bat`, which forwards to it) takes the same
+arguments.
 
 The default development server port is `9092`. Override it with `PORT`:
 

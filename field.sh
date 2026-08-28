@@ -11,9 +11,9 @@ cd "$DIR"
 
 # --- launcher arguments ----------------------------------------------------------
 #
-# The backend already parses --workspace itself (afield.arguments.option), and this
-# script has always forwarded "$@" to it, so that flag reached it either way. It is
-# handled here as well because three things can only be done out here: resolving a
+# The backend already parses --workspace and --document itself (afield.arguments.option),
+# and this script has always forwarded "$@" to it, so those flags reached it either way.
+# They are handled here as well because three things can only be done out here: resolving a
 # relative path against INVOKED_FROM rather than $DIR; rejecting a typo *before* the
 # minutes of Gradle that run before the backend ever looks at its arguments; and
 # printing which workspace a bare launch is about to open. That last one matters
@@ -34,12 +34,22 @@ Builds Field, then launches the backend and the Electron window together.
                            first argument is taken as the workspace
   -w, --workspace <path>   the same, stated explicitly
   --workspace=<path>       the same again
+  -d, --document <name>    open this document straight away instead of the
+                           welcome page, and instead of whatever was open last
+  --document=<name>        the same again
   --print-workspace        print the workspace this launch would use, then exit
   -h, --help               show this message
 
 A single document works too — a folder holding a metadata.edn, or that file
-itself. The workspace is then the folder above it, which is what makes the
-document visible on the welcome page.
+itself. Either as the workspace argument or after -d, that names the document to
+open and the workspace is the folder above it, which is where a document lives.
+
+  ./field.sh -d myDocument                  in the remembered workspace
+  ./field.sh ~/Documents/AFieldWorkspace -d myDocument
+  ./field.sh ~/Documents/AFieldWorkspace/myDocument     the same, as one path
+
+A document named here has to exist already: Field creates a document that does
+not, so a typo would otherwise open an empty new one under that name.
 
 With no workspace given, Field reopens the one it last used, recorded once per
 machine in
@@ -62,6 +72,14 @@ absolute_workspace_path() {
     esac
 }
 
+# What makes a directory a Field document rather than an ordinary folder: the
+# metadata file the backend writes. Both names have to count, because the welcome
+# page lists both (welcomeDirCandidates takes either SavingContext.METADATA_EDN or
+# METADATA_JSON) — recognising only one would reject a document that opens fine.
+is_document_dir() {
+    [ -f "$1/metadata.edn" ] || [ -f "$1/metadata.json" ]
+}
+
 # Sets FIELD_WORKSPACE, plus FIELD_DOCUMENT when what was named turns out to be a
 # document rather than a workspace. Both spellings get typed: dev_docs hands out
 # `./field.sh <folder holding a metadata.edn>` and `./field.sh <...>/metadata.edn`,
@@ -71,8 +89,8 @@ resolve_workspace_request() {
     RAW="$(absolute_workspace_path "$1")"
     FIELD_DOCUMENT=""
     case "$RAW" in
-        */metadata.edn) FIELD_DOCUMENT="${RAW%/metadata.edn}" ;;
-        *)              [ -f "$RAW/metadata.edn" ] && FIELD_DOCUMENT="$RAW" ;;
+        */metadata.edn|*/metadata.json) FIELD_DOCUMENT="${RAW%/*}" ;;
+        *) is_document_dir "$RAW" && FIELD_DOCUMENT="$RAW" ;;
     esac
     if [ -n "$FIELD_DOCUMENT" ]; then
         RAW="$(dirname "$FIELD_DOCUMENT")"
@@ -93,6 +111,7 @@ persisted_workspace() {
 }
 
 WORKSPACE_REQUESTED=""
+DOCUMENT_REQUESTED=""
 PRINT_WORKSPACE=0
 
 # POSIX sh has no arrays, so "$@" is rebuilt in place: each of the original $argc
@@ -125,6 +144,18 @@ while [ "$consumed" -lt "$argc" ]; do
         --workspace=*)
             WORKSPACE_REQUESTED="${arg#--workspace=}"
             ;;
+        -d|--document)
+            if [ "$consumed" -ge "$argc" ]; then
+                echo "field: $arg needs a document" >&2
+                exit 2
+            fi
+            DOCUMENT_REQUESTED="$1"
+            shift
+            consumed=$((consumed + 1))
+            ;;
+        --document=*)
+            DOCUMENT_REQUESTED="${arg#--document=}"
+            ;;
         -*)
             set -- "$@" "$arg"
             passthrough_seen=1
@@ -143,10 +174,48 @@ while [ "$consumed" -lt "$argc" ]; do
     esac
 done
 
+# A trailing slash is what tab-completing a directory leaves behind — `-d docA/` — and
+# is not part of the name. Stripped before the test below, or a completed bare name
+# would be read as a path and reported as naming a second workspace. The `?*/` guard
+# keeps a lone `/` from being stripped to nothing.
+while :; do
+    case "$DOCUMENT_REQUESTED" in
+        ?*/) DOCUMENT_REQUESTED="${DOCUMENT_REQUESTED%/}" ;;
+        *)   break ;;
+    esac
+done
+
+# A document named as a path carries its own workspace with it — a document lives one
+# level below the workspace it belongs to — so that spelling is folded into the
+# workspace request, which resolve_workspace_request already knows how to split. That
+# is what makes `-d <path>` and a bare `<path>` naming a document agree; only a bare
+# *name* still has to be looked up in the workspace, further down.
+DOCUMENT_PATH_GIVEN=0
+case "$DOCUMENT_REQUESTED" in
+    "") ;;
+    */*)
+        if [ -n "$WORKSPACE_REQUESTED" ]; then
+            echo "field: name the document by name, not by path, when you also name a workspace" >&2
+            echo "field: (a path to a document already says which workspace it is in)" >&2
+            exit 2
+        fi
+        WORKSPACE_REQUESTED="$DOCUMENT_REQUESTED"
+        DOCUMENT_REQUESTED=""
+        DOCUMENT_PATH_GIVEN=1
+        ;;
+esac
+
 FIELD_DOCUMENT=""
+WORKSPACE_WAS_A_DOCUMENT=0
 if [ -n "$WORKSPACE_REQUESTED" ]; then
     resolve_workspace_request "$WORKSPACE_REQUESTED"
     WORKSPACE_ORIGIN="from the command line"
+    if [ "$DOCUMENT_PATH_GIVEN" = 1 ] && [ -z "$FIELD_DOCUMENT" ]; then
+        echo "field: there is no Field document at $FIELD_WORKSPACE" >&2
+        echo "field: a document is a folder holding a metadata.edn — name one that exists, or leave -d off" >&2
+        exit 2
+    fi
+    [ -n "$FIELD_DOCUMENT" ] && [ "$DOCUMENT_PATH_GIVEN" = 0 ] && WORKSPACE_WAS_A_DOCUMENT=1
     if [ ! -d "$FIELD_WORKSPACE" ]; then
         echo "field: there is no workspace directory at $FIELD_WORKSPACE" >&2
         echo "field: to start a new workspace there, create it first — mkdir -p \"$FIELD_WORKSPACE\"" >&2
@@ -160,26 +229,47 @@ else
     WORKSPACE_ORIGIN="the default; nothing recorded yet"
 fi
 
+# A bare `-d <name>` is looked up in whichever workspace the block above settled on —
+# including the remembered one, which is the whole point of the short spelling.
+[ -n "$DOCUMENT_REQUESTED" ] && FIELD_DOCUMENT="$DOCUMENT_REQUESTED"
+
+# Whichever spelling it arrived by, the document has to exist. The backend *creates* a
+# document that does not (saving mkdirs its folder), so an unchecked typo would open an
+# empty new document under that name and say nothing about it. This also catches the
+# one path spelling resolve_workspace_request takes on trust — a trailing
+# `/metadata.edn` is read as "the folder above me is a document" without looking.
+# Checked before --print-workspace exits, so that reports a typo too.
+if [ -n "$FIELD_DOCUMENT" ] && ! is_document_dir "$FIELD_WORKSPACE/$FIELD_DOCUMENT"; then
+    echo "field: the workspace $FIELD_WORKSPACE has no document named $FIELD_DOCUMENT" >&2
+    echo "field: its documents are its subdirectories holding a metadata.edn; the welcome page lists them" >&2
+    exit 2
+fi
+
 if [ "$PRINT_WORKSPACE" = 1 ]; then
     printf '%s\n' "$FIELD_WORKSPACE"
     exit 0
 fi
 
-if [ -n "$FIELD_DOCUMENT" ]; then
+if [ "$WORKSPACE_WAS_A_DOCUMENT" = 1 ]; then
     echo "field: $FIELD_DOCUMENT is a document, not a workspace — using the folder that holds it" >&2
 fi
 echo "field: workspace $FIELD_WORKSPACE ($WORKSPACE_ORIGIN)" >&2
 if [ -n "$FIELD_DOCUMENT" ]; then
-    echo "field: open $FIELD_DOCUMENT from the welcome page once the window is up" >&2
+    echo "field: document $FIELD_DOCUMENT — opening it directly, not the welcome page" >&2
+    set -- "$@" --document "$FIELD_DOCUMENT"
 fi
 
 # run_in_terminal re-runs this script in a fresh terminal, where the arguments
 # parsed above are gone; put an explicitly requested workspace back on that inner
 # command line. Left empty otherwise, so the re-run consults the same preference
-# file this one just did.
+# file this one just did. The document goes back as a bare name, its path already
+# resolved into the workspace beside it.
 WORKSPACE_RELAUNCH_ARGS=""
 if [ -n "$WORKSPACE_REQUESTED" ]; then
     WORKSPACE_RELAUNCH_ARGS="--workspace '$FIELD_WORKSPACE'"
+fi
+if [ -n "$FIELD_DOCUMENT" ]; then
+    WORKSPACE_RELAUNCH_ARGS="$WORKSPACE_RELAUNCH_ARGS --document '$FIELD_DOCUMENT'"
 fi
 
 python_cmd() {

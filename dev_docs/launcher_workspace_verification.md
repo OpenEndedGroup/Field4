@@ -85,11 +85,80 @@ Three rules learned doing it:
 - **`SIGINT` was ignored.** Stopping the backend needed `SIGTERM` after a bounded wait, both times,
   cwd-verified before each signal.
 
+# Verifying that `--document` opens that document
+
+`-d, --document` (2026-08-28) has the same shape of promise and the same shape of hole: the
+launcher prints `field: document docA — opening it directly, not the welcome page`, and whether
+that sentence is true is decided by the *backend*, not by the argv the launcher hands over.
+`tools/test_field_sh_launcher.py` proves the argv and stops there, so the seam is checked here.
+
+The lever is `/app-url`. `launch_electron_when_ready` curls exactly that route and hands the answer
+to the Electron shell as `APP_URL`, so whatever it returns is the window the user gets:
+
+```kotlin
+val startupDocument = commandLineStartupDocumentName()
+    ?: lastOpenedDocumentName()?.takeIf { preferences.autoOpenLastDocumentInDesktop }
+```
+
+## The measurement
+
+Three launches of the real backend, on port 9711, against a two-document scratch workspace,
+differing only in the `--document` argument. No Electron and no rebuild needed:
+`build/field-launch/args` puts `build/classes/kotlin/jvm/main` on the classpath, so
+`./gradlew compileKotlinJvm` is enough to be running current code, and `preferSystemBrowser`
+defaults to `true`, whose branch opens no window at all.
+
+| launched with | `/app-url` returned |
+| --- | --- |
+| *(nothing)* | `…/index.html?file=dust_two` |
+| `--document docA` | `…/index.html?file=docA` ✅ |
+| `--document docB` | `…/index.html?file=docB` ✅ |
+
+The control row is the point of the flag. This machine's Field has
+`autoOpenLastDocumentInDesktop` on and `lastFn` at `dust_two`, so a bare launch reopens *that* —
+which is the document you would have had to close before going through the welcome page to reach
+the one you wanted. Naming one skips both.
+
+```sh
+WS=/tmp/verify-ws; mkdir -p "$WS/docA" "$WS/docB"
+printf '{:version 2 :boxes []}\n' | tee "$WS/docA/metadata.edn" > "$WS/docB/metadata.edn"
+
+AFIELD_SKIP_WORKSPACE_PERSIST=1 AFIELD_CODE_USE_SEMANTIC_SIDECAR=off AFIELD_HTTP_PORT=off \
+    PORT=9711 "$(cat build/field-launch/java)" @build/field-launch/args \
+    --workspace "$WS" --document docA &
+
+until curl -sk --max-time 2 https://localhost:9711/health | grep -q ok; do sleep 0.25; done
+curl -sk https://localhost:9711/app-url
+```
+
+Two things this run reconfirmed, both already rules above: `AFIELD_SKIP_WORKSPACE_PERSIST=1` is not
+optional, and identify the process before signalling it — `pgrep -f field-launch/args` matched a
+`java` that was **not** any of these three. It was the developer's own Field, on 9092, started
+twenty minutes earlier. A free port did not mean an empty process table.
+
 ## What is still not verified
+
+`field.ps1`. The `--workspace`/`--document` parsing layer landed there on 2026-08-28 as the
+Windows equivalent of `field.sh`'s, and **it has never been executed**: no PowerShell is installed
+on this machine, `brew install --cask powershell` wants an interactive `sudo`, and the disk is too
+tight for it anyway. What holds it up is therefore reading plus two static gates in
+`tools/test_field_sh_launcher.py` — `test_the_powershell_launcher_declares_the_same_options`
+(the same flags as `field.sh`, so a flag added to one launcher fails until it reaches the other)
+and `test_the_powershell_launcher_stays_readable_by_windows_powershell` (ASCII outside comments and
+CRLF throughout, because a BOM-less `.ps1` is read as ANSI by Windows PowerShell 5.1). Nothing
+checks that it *runs*. Anyone with a Windows box: `.\field.ps1 --print-workspace`,
+`.\field.ps1 -d <a document>`, and `.\field.ps1 -d nosuchthing` (expect exit 2) settle it in a
+minute, and this section should then say so.
+
+One detail worth knowing while it is unverified: PowerShell keeps the workspace record somewhere
+else. `Server.kt`'s `fieldUserConfigDir` puts it under `%APPDATA%\AField` on Windows and
+`~/.afield` everywhere else, so `field.ps1` branches on the platform to read the same file the
+backend will. Reading the Unix path on Windows would have made the launcher announce a workspace
+the backend was not about to open — the exact failure this whole page exists to catch.
 
 The four terminal-emulator branches of `run_in_terminal` (`gnome-terminal`, `konsole`, `xterm`,
 `x-terminal-emulator`). None is installed on macOS, so none has ever been executed here. They
-re-exec the script with an inner command line built as a *string*, carrying only the workspace —
-so a non-macOS double-click still drops every other passthrough argument. Deliberately left: the
-quoting work that would fix it cannot be verified on this machine, and an unverifiable fix to a
-quoting bug is worse than a named one.
+re-exec the script with an inner command line built as a *string*, carrying only the workspace and
+now the document — so a non-macOS double-click still drops every other passthrough argument.
+Deliberately left: the quoting work that would fix it cannot be verified on this machine, and an
+unverifiable fix to a quoting bug is worse than a named one.

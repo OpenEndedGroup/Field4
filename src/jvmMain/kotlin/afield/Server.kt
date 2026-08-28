@@ -734,6 +734,13 @@ private fun persistWorkspacePath(path: String) {
 val home = option("workspace") { readPersistedWorkspacePath() ?: defaultWorkspacePath() }
 val app = option("app") { File(".").absolutePath }
 
+/**
+ * `--document <name>`: the document a fresh window should open, instead of the welcome page and
+ * instead of whatever was open last. Blank when not given; normalised to a document name by
+ * [startupDocumentNameFrom].
+ */
+val documentArgument = option("document") { "" }
+
 private fun expandWorkspacePath(path: String): String {
     val trimmed = path.trim()
     if (trimmed.isBlank()) throw IllegalArgumentException("workspace path is blank")
@@ -1339,8 +1346,40 @@ internal fun isFieldAppRouteDocumentName(documentName: String?): Boolean {
             trimmed.startsWith("https://", ignoreCase = true)
 }
 
-private fun desktopStartupDocumentName(): String? =
+/**
+ * A document name out of whatever `--document` was handed. Documents live one level below the
+ * workspace, so a path names one by its last segment — `myDoc`, `/some/workspace/myDoc` and
+ * `/some/workspace/myDoc/metadata.edn` all mean `myDoc`. The launchers already normalise this (and
+ * check the document exists, which cannot be done from here without deciding whether to create
+ * it), but `./gradlew runJvm --args="--document ..."` reaches this code directly, so both spellings
+ * have to agree.
+ */
+private fun startupDocumentNameFrom(raw: String): String? {
+    var path = raw.trim().replace('\\', '/').trimEnd('/')
+    val leaf = path.substringAfterLast('/')
+    if (leaf.equals(SavingContext.METADATA_EDN, true) || leaf.equals(SavingContext.METADATA_JSON, true)) {
+        path = path.removeSuffix(leaf).trimEnd('/')
+    }
+    val name = path.substringAfterLast('/')
+    return name.takeIf {
+        it.isNotEmpty() && it != "." && it != ".." && !isFieldAppRouteDocumentName(it)
+    }
+}
+
+/** The document named on the command line, if one was. */
+private fun commandLineStartupDocumentName(): String? = startupDocumentNameFrom(documentArgument)
+
+/** The document this Field last had open, if it was a document and not the welcome page. */
+private fun lastOpenedDocumentName(): String? =
     lastFn?.trim()?.takeIf { it.isNotEmpty() && !isFieldAppRouteDocumentName(it) }
+
+/**
+ * The document a window opened now should show. `--document` wins over the last-opened one: naming
+ * a document at launch is an explicit instruction, and the point of it is to arrive in that
+ * document rather than in whatever the previous session left behind.
+ */
+private fun desktopStartupDocumentName(): String? =
+    commandLineStartupDocumentName() ?: lastOpenedDocumentName()
 
 @Volatile
 private var cachedFieldPreferencesRaw: String? = null
@@ -3370,9 +3409,14 @@ class Server {
                             val requestScheme = call.request.local.scheme
                             val requestPort = call.request.local.serverPort
                             val baseUrl = "$requestScheme://localhost:$requestPort"
-                            val lastDocument = desktopStartupDocumentName()
-                            val url = if (preferences.autoOpenLastDocumentInDesktop && lastDocument != null) {
-                                val target = URLEncoder.encode(lastDocument, "UTF-8")
+                            // A document named on the command line opens regardless of the
+                            // auto-open preference — this launch asked for it. The last-opened
+                            // document is still only reopened when that preference says to.
+                            val startupDocument = commandLineStartupDocumentName()
+                                ?: lastOpenedDocumentName()
+                                    ?.takeIf { preferences.autoOpenLastDocumentInDesktop }
+                            val url = if (startupDocument != null) {
+                                val target = URLEncoder.encode(startupDocument, "UTF-8")
                                 "$baseUrl/index.html?file=$target"
                             } else {
                                 "$baseUrl/welcome"
@@ -4961,7 +5005,11 @@ class Server {
                 ?: "https://localhost:${port}/welcome"
             lprintln("info,server", asciiWelcome)
             lprintln("info,server", "welcome to Field, ß-033")
-            lprintln("info,server", "last document: $initialURL")
+            lprintln(
+                "info,server",
+                if (commandLineStartupDocumentName() != null) "document: $initialURL"
+                else "last document: $initialURL"
+            )
             lprintln("info,server", "welcome page: https://localhost:${port}/welcome")
             globalLoopbackHttpPort?.let { httpPort ->
                 val automationUrl = desktopStartupDocumentName()

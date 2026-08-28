@@ -4,6 +4,9 @@
 $ErrorActionPreference = "Stop"
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $scriptDir = [System.IO.Path]::GetFullPath($scriptDir)
+# Captured before Set-Location: a workspace or document path typed on the command line has to
+# resolve against the directory the user is standing in, which the next line is about to leave.
+$invokedFrom = (Get-Location).ProviderPath
 Set-Location $scriptDir
 
 function Get-NormalizedPath {
@@ -207,12 +210,273 @@ function Run-Field {
     return $backend.ExitCode
 }
 
+# --- launcher arguments ----------------------------------------------------------
+#
+# The mirror of field.sh's parser, and the long note at the top of that script explains why any
+# of this happens in a launcher at all when the backend parses --workspace and --document itself.
+# Three things can only be done out here: resolving a relative path against the directory the
+# user is standing in, which Set-Location above has already left; rejecting a typo *before* the
+# minutes of Gradle that run before the backend ever looks at its arguments; and printing which
+# workspace a bare launch is about to open, because that choice is remembered once per machine,
+# so any other clone or worktree on this machine may have been the one that recorded it.
+
+# Where the backend records the workspace choice, per Server.kt's fieldUserConfigDir: Windows
+# keeps it under %APPDATA%\AField, every other platform under ~/.afield. field.ps1 can be run by
+# pwsh on those too, so both are honoured rather than the Windows one assumed - reading the wrong
+# file would announce a workspace the backend is not about to open.
+$onWindows = $true
+if ($null -ne (Get-Variable -Name IsWindows -ErrorAction SilentlyContinue)) {
+    $onWindows = $IsWindows
+}
+if ($onWindows) {
+    $appData = $env:APPDATA
+    if ([string]::IsNullOrWhiteSpace($appData)) {
+        $appData = Join-Path (Join-Path $HOME "AppData") "Roaming"
+    }
+    $workspacePreferenceFile = Join-Path (Join-Path $appData "AField") "last-workspace.txt"
+} else {
+    $workspacePreferenceFile = Join-Path (Join-Path $HOME ".afield") "last-workspace.txt"
+}
+$defaultWorkspace = Join-Path (Join-Path $HOME "Documents") "AFieldWorkspace"
+
+# field.sh says all of this on stderr, and these lines are diagnostics rather than output: only
+# --print-workspace writes to stdout, so it stays pipeable.
+function Write-FieldNote {
+    param([string] $Message)
+    [Console]::Error.WriteLine($Message)
+}
+
+function Show-FieldUsage {
+    Write-Host @"
+Usage: .\field.ps1 [<workspace>] [options] [backend arguments]
+
+Builds Field, then launches the backend and the Electron window together.
+
+  <workspace>              the directory holding your Field documents; a bare
+                           first argument is taken as the workspace
+  -w, --workspace <path>   the same, stated explicitly
+  --workspace=<path>       the same again
+  -d, --document <name>    open this document straight away instead of the
+                           welcome page, and instead of whatever was open last
+  --document=<name>        the same again
+  --print-workspace        print the workspace this launch would use, then exit
+  -h, --help               show this message
+
+A single document works too - a folder holding a metadata.edn, or that file
+itself. Either as the workspace argument or after -d, that names the document to
+open, and the workspace is the folder above it, which is where a document lives.
+
+  .\field.ps1 -d myDocument                    in the remembered workspace
+  .\field.ps1 C:\AFieldWorkspace -d myDocument
+  .\field.ps1 C:\AFieldWorkspace\myDocument    the same, as one path
+
+A document named here has to exist already: Field creates a document that does
+not, so a typo would otherwise open an empty new one under that name.
+
+With no workspace given, Field reopens the one it last used, recorded once per
+machine in
+  $workspacePreferenceFile
+so a different clone or worktree of this repository may have been what last
+wrote it. Naming a workspace here makes it the remembered one for next time.
+
+Any other argument is passed through to the backend unchanged. See also
+AFIELD_SKIP_BUILD=1 to skip the build check, and PORT to move off 9092.
+"@
+}
+
+# Expand the way the user's shell would have, had they not quoted it, and resolve against the
+# directory they were standing in rather than the checkout.
+function Resolve-FieldArgumentPath {
+    param([string] $Path)
+    $trimmed = $Path.Trim()
+    if ($trimmed -eq "~") { return $HOME }
+    if ($trimmed.StartsWith("~\") -or $trimmed.StartsWith("~/")) {
+        return [System.IO.Path]::GetFullPath((Join-Path $HOME $trimmed.Substring(2)))
+    }
+    if ([System.IO.Path]::IsPathRooted($trimmed)) {
+        return [System.IO.Path]::GetFullPath($trimmed)
+    }
+    return [System.IO.Path]::GetFullPath((Join-Path $invokedFrom $trimmed))
+}
+
+# What makes a directory a Field document rather than an ordinary folder: the metadata file the
+# backend writes. Both names are accepted because both are read (SavingContext.METADATA_EDN and
+# METADATA_JSON, either of which welcomeDirCandidates accepts), so this recognises every document
+# the welcome page lists.
+function Test-FieldDocumentDirectory {
+    param([string] $Path)
+    if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
+    if (Test-Path -LiteralPath (Join-Path $Path "metadata.edn") -PathType Leaf) { return $true }
+    if (Test-Path -LiteralPath (Join-Path $Path "metadata.json") -PathType Leaf) { return $true }
+    return $false
+}
+
+# Sets $script:fieldWorkspace, plus $script:fieldDocument when what was named turns out to be a
+# document rather than a workspace. Both spellings get typed, and a document folder passed
+# straight through as the workspace would open a workspace that merely looks empty - its
+# documents are its *subdirectories*.
+function Resolve-FieldWorkspaceRequest {
+    param([string] $Request)
+    $raw = Resolve-FieldArgumentPath $Request
+    $script:fieldDocument = ""
+    $leaf = Split-Path -Leaf $raw
+    if ($leaf -eq "metadata.edn" -or $leaf -eq "metadata.json") {
+        $raw = Split-Path -Parent $raw
+        $script:fieldDocument = Split-Path -Leaf $raw
+        $raw = Split-Path -Parent $raw
+    } elseif (Test-FieldDocumentDirectory $raw) {
+        $script:fieldDocument = $leaf
+        $raw = Split-Path -Parent $raw
+    }
+    $script:fieldWorkspace = $raw
+}
+
+$workspaceRequested = ""
+$documentRequested = ""
+$printWorkspace = $false
+$passthroughSeen = $false
+$backendArgs = @()
+
+$argIndex = 0
+while ($argIndex -lt $args.Count) {
+    $arg = [string] $args[$argIndex]
+    $argIndex += 1
+    if ($arg -eq "-h" -or $arg -eq "--help") {
+        Show-FieldUsage
+        exit 0
+    } elseif ($arg -eq "--print-workspace") {
+        $printWorkspace = $true
+    } elseif ($arg -eq "-w" -or $arg -eq "--workspace") {
+        if ($argIndex -ge $args.Count) {
+            Write-FieldNote "field: $arg needs a directory"
+            exit 2
+        }
+        $workspaceRequested = [string] $args[$argIndex]
+        $argIndex += 1
+    } elseif ($arg.StartsWith("--workspace=")) {
+        $workspaceRequested = $arg.Substring("--workspace=".Length)
+    } elseif ($arg -eq "-d" -or $arg -eq "--document") {
+        if ($argIndex -ge $args.Count) {
+            Write-FieldNote "field: $arg needs a document"
+            exit 2
+        }
+        $documentRequested = [string] $args[$argIndex]
+        $argIndex += 1
+    } elseif ($arg.StartsWith("--document=")) {
+        $documentRequested = $arg.Substring("--document=".Length)
+    } elseif ($arg.StartsWith("-")) {
+        $backendArgs += $arg
+        $passthroughSeen = $true
+    } elseif ($workspaceRequested -eq "" -and -not $passthroughSeen) {
+        # A bare path is the workspace only while it is unambiguous: once any backend argument
+        # has gone past, a bare word is more likely to be that argument's value than a workspace.
+        $workspaceRequested = $arg
+    } else {
+        $backendArgs += $arg
+        $passthroughSeen = $true
+    }
+}
+
+# A trailing separator is what tab-completing a directory leaves behind - `-d docA\` - and is not
+# part of the name. Stripped before the path test below, or a completed bare name would be read as
+# a path. Guarded so a lone separator is not stripped to nothing.
+while ($documentRequested.Length -gt 1 -and ($documentRequested.EndsWith("\") -or $documentRequested.EndsWith("/"))) {
+    $documentRequested = $documentRequested.Substring(0, $documentRequested.Length - 1)
+}
+
+# A document named as a path carries its own workspace with it - a document lives one level below
+# the workspace it belongs to - so that spelling is folded into the workspace request, which
+# Resolve-FieldWorkspaceRequest already knows how to split. That is what makes `-d <path>` and a
+# bare `<path>` naming a document agree; only a bare *name* is looked up in the workspace below.
+$documentPathGiven = $false
+if ($documentRequested -ne "" -and ($documentRequested.Contains("\") -or $documentRequested.Contains("/"))) {
+    if ($workspaceRequested -ne "") {
+        Write-FieldNote "field: name the document by name, not by path, when you also name a workspace"
+        Write-FieldNote "field: (a path to a document already says which workspace it is in)"
+        exit 2
+    }
+    $workspaceRequested = $documentRequested
+    $documentRequested = ""
+    $documentPathGiven = $true
+}
+
+$fieldWorkspace = ""
+$fieldDocument = ""
+$workspaceOrigin = ""
+$workspaceWasADocument = $false
+
+if ($workspaceRequested -ne "") {
+    Resolve-FieldWorkspaceRequest $workspaceRequested
+    $workspaceOrigin = "from the command line"
+    if ($documentPathGiven -and $fieldDocument -eq "") {
+        Write-FieldNote "field: there is no Field document at $fieldWorkspace"
+        Write-FieldNote "field: a document is a folder holding a metadata.edn - name one that exists, or leave -d off"
+        exit 2
+    }
+    if ($fieldDocument -ne "" -and -not $documentPathGiven) {
+        $workspaceWasADocument = $true
+    }
+    if ([string]::IsNullOrWhiteSpace($fieldWorkspace) -or
+        -not (Test-Path -LiteralPath $fieldWorkspace -PathType Container)) {
+        Write-FieldNote "field: there is no workspace directory at $fieldWorkspace"
+        Write-FieldNote "field: to start a new workspace there, create it first - New-Item -ItemType Directory -Force -Path `"$fieldWorkspace`""
+        exit 2
+    }
+    $backendArgs += @("--workspace", $fieldWorkspace)
+} else {
+    # Read-only, always: the backend owns this file (Server.kt persists it). A launcher that
+    # wrote it would re-point every other clone's next bare launch, including from a
+    # --print-workspace that never started anything.
+    $persisted = ""
+    if (Test-Path -LiteralPath $workspacePreferenceFile -PathType Leaf) {
+        $firstLine = Get-Content -LiteralPath $workspacePreferenceFile -TotalCount 1
+        if ($null -ne $firstLine) { $persisted = ([string] $firstLine).Trim() }
+    }
+    if ($persisted -ne "") {
+        $fieldWorkspace = $persisted
+        $workspaceOrigin = "last used, per $workspacePreferenceFile"
+    } else {
+        $fieldWorkspace = $defaultWorkspace
+        $workspaceOrigin = "the default; nothing recorded yet"
+    }
+}
+
+# A bare `-d <name>` is looked up in whichever workspace the block above settled on - including
+# the remembered one, which is the whole point of the short spelling.
+if ($documentRequested -ne "") {
+    $fieldDocument = $documentRequested.Trim()
+}
+
+# Whichever spelling it arrived by, the document has to exist. The backend *creates* a document
+# that does not (saving mkdirs its folder), so an unchecked typo would open an empty new document
+# under that name and say nothing about it. Checked before --print-workspace exits, so that
+# reports a typo too.
+if ($fieldDocument -ne "" -and -not (Test-FieldDocumentDirectory (Join-Path $fieldWorkspace $fieldDocument))) {
+    Write-FieldNote "field: the workspace $fieldWorkspace has no document named $fieldDocument"
+    Write-FieldNote "field: its documents are its subdirectories holding a metadata.edn; the welcome page lists them"
+    exit 2
+}
+
+if ($printWorkspace) {
+    Write-Output $fieldWorkspace
+    exit 0
+}
+
+if ($workspaceWasADocument) {
+    Write-FieldNote "field: $fieldDocument is a document, not a workspace - using the folder that holds it"
+}
+Write-FieldNote "field: workspace $fieldWorkspace ($workspaceOrigin)"
+if ($fieldDocument -ne "") {
+    Write-FieldNote "field: document $fieldDocument - opening it directly, not the welcome page"
+    $backendArgs += @("--document", $fieldDocument)
+}
+
 Write-Host "===================================" -ForegroundColor Cyan
 Write-Host "Starting Field4..." -ForegroundColor Cyan
 Write-Host "===================================" -ForegroundColor Cyan
 Write-Host ""
 
-$exitCode = Run-Field @args
+$exitCode = Run-Field @backendArgs
 
 if ($exitCode -ne 0) {
     Write-Host ""

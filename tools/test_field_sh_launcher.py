@@ -28,6 +28,20 @@ opened that workspace" needs a real backend, and the live A/B that settles it �
 announcing a temp directory and opening the developer's real 493-document workspace — is recorded in
 `dev_docs/launcher_workspace_verification.md`, with the recipe for repeating it.
 
+The same module now covers `--document`, which arrived later and rides on the same parser: a
+document is a *subdirectory* of a workspace, so naming one settles both, and the launcher resolves
+it to the bare `--document <name>` the backend understands. Its own reason to exist out here is
+sharper than the workspace flag's: Field *creates* a document that does not exist yet, so an
+unchecked typo does not fail — it opens an empty new document under that name and says nothing.
+`test_a_document_that_does_not_exist_is_rejected_before_gradle` is that check, and it also asserts
+the launcher did not create what it was rejecting.
+
+What the flag is *for* — arriving in that document instead of the welcome page — is the backend's
+half, and no fake `java` can show it. `test_premise_the_backend_reads_the_document_argument` pins
+the seam instead: the `option("document")` the launcher's argv feeds, and `/app-url` (what the
+launcher curls to decide the Electron window's URL) preferring it over both the welcome page and
+the last-opened document.
+
 Two invariants beyond the individual cases:
 
   * `test_every_launcher_option_is_covered_by_the_ledger` is bidirectional. It parses the option
@@ -57,6 +71,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FIELD_SH = REPO_ROOT / "field.sh"
+FIELD_PS1 = REPO_ROOT / "field.ps1"
+SERVER_KT = REPO_ROOT / "src" / "jvmMain" / "kotlin" / "afield" / "Server.kt"
 
 # The shells `field.sh` has to satisfy. `#!/bin/sh` names the first; AGENTS.md and README.md hand
 # the command to humans, whose interactive shell is bash or zsh on the machines this ships to; dash
@@ -72,6 +88,8 @@ COVERED_OPTIONS = {
     "--print-workspace",
     "-w|--workspace",
     "--workspace=*",
+    "-d|--document",
+    "--document=*",
     "-*",
     "*",
 }
@@ -98,14 +116,27 @@ class FieldShSandbox:
         self.home = root / "home"
         self.workspace = root / "ws"
         self.document = self.workspace / "docA"
+        # welcomeDirCandidates accepts either metadata name, so both have to count as a document
+        # here — a workspace's metadata.json documents are listed on the welcome page like any
+        # other, and a launcher that did not recognise them would reject a name that works.
+        self.json_document = self.workspace / "docJson"
+        # A directory in the workspace that is not a document: what `-d <path>` has to refuse.
+        self.plain_directory = self.workspace / "notADocument"
         self.invoked_from = root / "cwd"
         self.argv_file = root / "argv.txt"
 
-        for directory in (self.checkout, self.document, self.invoked_from):
+        for directory in (
+            self.checkout,
+            self.document,
+            self.json_document,
+            self.plain_directory,
+            self.invoked_from,
+        ):
             directory.mkdir(parents=True, exist_ok=True)
         (self.home / ".field4" / "gradle-jvm" / "provisioned").mkdir(parents=True, exist_ok=True)
         (self.home / ".field4" / "gradle-jvm" / "provisioned" / ".flag").write_text("")
         (self.document / "metadata.edn").write_text("{:version 2 :boxes []}\n")
+        (self.json_document / "metadata.json").write_text('{"version": 2, "boxes": []}\n')
 
         script = self.checkout / "field.sh"
         script.write_bytes(FIELD_SH.read_bytes())
@@ -197,6 +228,7 @@ class FieldShLauncherTests(unittest.TestCase):
             'WORKSPACE_PREFERENCE_FILE="$HOME/.afield/last-workspace.txt"',
             "--print-workspace",
             "resolve_workspace_request()",
+            "is_document_dir()",
             'case "$arg" in',
         ):
             self.assertIn(fragment, text, f"field.sh no longer contains {fragment!r}")
@@ -209,6 +241,71 @@ class FieldShLauncherTests(unittest.TestCase):
             f"shells declared in DECLARED_SHELLS but not installed: {missing}. Install them or "
             "drop them from the ledger — do not let the suite quietly stop covering them.",
         )
+
+    def test_premise_the_backend_reads_the_document_argument(self) -> None:
+        """`--document` in the argv is inert unless the backend acts on it, and this module drives
+        a fake `java`, so it can never see that happen. Pin the seam instead: the option the argv
+        feeds, and `/app-url` — the route the launcher curls to decide the Electron window's URL —
+        consulting it. The rest of that route's behaviour (preferring the named document over the
+        welcome page *and* over the auto-open-last-document preference) is Kotlin's to keep."""
+        text = SERVER_KT.read_text()
+        self.assertIn(
+            'option("document")',
+            text,
+            "Server.kt no longer parses --document; every --document field.sh forwards is ignored",
+        )
+        route = re.search(
+            r'get\("/app-url"\) \{(.*?)\n {24}\}', text, re.S
+        )
+        self.assertIsNotNone(route, "could not find the /app-url route in Server.kt")
+        self.assertIn(
+            "commandLineStartupDocumentName()",
+            route.group(1),
+            "/app-url no longer consults the document named on the command line, so the Electron "
+            "window opens the welcome page (or the last document) whatever field.sh forwards",
+        )
+
+    def test_the_powershell_launcher_declares_the_same_options(self) -> None:
+        """field.ps1 is the Windows equivalent and nothing here can run it — no PowerShell on the
+        machines this suite runs on (see the note in dev_docs/launcher_workspace_verification.md).
+        What is checkable statically is drift: a flag added to one launcher and not the other. The
+        ledger above is the field.sh side of this pair, so a new flag now fails twice until both
+        launchers and this module agree."""
+        ps1 = FIELD_PS1.read_text()
+        for spelling in (
+            '"-h"',
+            '"--help"',
+            '"--print-workspace"',
+            '"-w"',
+            '"--workspace"',
+            '"--workspace="',
+            '"-d"',
+            '"--document"',
+            '"--document="',
+        ):
+            self.assertIn(
+                spelling,
+                ps1,
+                f"field.ps1's parser does not mention {spelling}, which field.sh accepts",
+            )
+
+    def test_the_powershell_launcher_stays_readable_by_windows_powershell(self) -> None:
+        """A .ps1 with no byte-order mark is read as ANSI by Windows PowerShell 5.1, so a UTF-8
+        character reaches the user as mojibake — harmless in a comment, where one already sits,
+        and not harmless in a message or a path. The file is CRLF throughout; keep it that way,
+        because these scripts get edited by tooling that defaults to LF."""
+        raw = FIELD_PS1.read_bytes()
+        self.assertNotEqual(raw[:3], b"\xef\xbb\xbf", "field.ps1 gained a BOM")
+        self.assertEqual(
+            raw.count(b"\n"), raw.count(b"\r\n"), "field.ps1 has mixed line endings"
+        )
+        for number, line in enumerate(raw.split(b"\r\n"), start=1):
+            if line.lstrip().startswith(b"#"):
+                continue
+            self.assertTrue(
+                all(byte < 0x80 for byte in line),
+                f"field.ps1:{number} has non-ASCII outside a comment: {line!r}",
+            )
 
     def test_every_launcher_option_is_covered_by_the_ledger(self) -> None:
         """Bidirectional: field.sh's own `case` arms must equal the ledger, in both directions."""
@@ -306,12 +403,150 @@ class FieldShLauncherTests(unittest.TestCase):
         finally:
             sandbox.preference_file.unlink()
 
-    def test_naming_a_document_says_so_on_the_way_past(self) -> None:
+    def test_naming_a_document_opens_it_and_says_so(self) -> None:
+        """This used to print "open docA from the welcome page once the window is up" — an apology
+        for resolving a document and then not opening it. It opens it now, and both lines still
+        get said, because "the workspace is the folder above what you named" is surprising enough
+        on its own to be worth stating."""
         sandbox = self.sandbox
         result = sandbox.run(_resolved_shells()["sh"], str(sandbox.document))
         self.assertIn("is a document, not a workspace", result.stderr)
-        self.assertIn("open docA from the welcome page", result.stderr)
-        self.assertEqual(sandbox.backend_argv(), ["--workspace", str(sandbox.workspace)])
+        self.assertIn("document docA", result.stderr)
+        self.assertIn("not the welcome page", result.stderr)
+        self.assertEqual(
+            sandbox.backend_argv(),
+            ["--workspace", str(sandbox.workspace), "--document", "docA"],
+        )
+
+    # --- the document flag ----------------------------------------------------------------------
+
+    def test_a_document_reaches_the_backend_in_every_spelling(self) -> None:
+        """Every way of naming a document has to arrive as the same `--document <bare name>`: that
+        is the only form the backend resolves, against the workspace beside it."""
+        sandbox = self.sandbox
+        workspace = str(sandbox.workspace)
+        opened = ["--workspace", workspace, "--document", "docA"]
+        cases = {
+            "-d spelling": (["-w", workspace, "-d", "docA"], opened),
+            "--document spelling": ([workspace, "--document", "docA"], opened),
+            "--document= spelling": ([workspace, "--document=docA"], opened),
+            "a trailing slash on the name": ([workspace, "-d", "docA/"], opened),
+            "a bare path to the document folder": ([str(sandbox.document)], opened),
+            "a bare path to its metadata.edn": ([str(sandbox.document / "metadata.edn")], opened),
+            # A path after -d says which workspace it is in, so it settles both.
+            "-d given an absolute path": (["-d", str(sandbox.document)], opened),
+            # Relative to the directory the user is standing in, not the checkout: `cwd/` is a
+            # sibling of `ws/`, so this only resolves because INVOKED_FROM is captured first.
+            "-d given a relative path": (["-d", "../ws/docA"], opened),
+            "a document whose metadata is json": (
+                [workspace, "-d", "docJson"],
+                ["--workspace", workspace, "--document", "docJson"],
+            ),
+            # The document goes on last, after any backend arguments and the workspace.
+            "alongside backend arguments": (
+                ["--port", "1234", "-w", workspace, "-d", "docA"],
+                ["--port", "1234", "--workspace", workspace, "--document", "docA"],
+            ),
+        }
+        for shell_name, shell in _resolved_shells().items():
+            for label, (arguments, expected) in cases.items():
+                with self.subTest(shell=shell_name, case=label):
+                    result = sandbox.run(shell, *arguments)
+                    self.assertEqual(sandbox.backend_argv(), expected, result.stderr)
+
+    def test_a_bare_document_name_resolves_in_the_remembered_workspace(self) -> None:
+        """The short spelling: `./field.sh -d myDocument`, with no workspace named at all. No
+        --workspace is appended — the backend reads the same preference file this did — so what
+        this proves is that the *name* was checked against the workspace the backend will use."""
+        sandbox = self.sandbox
+        sandbox.preference_file.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            sandbox.preference_file.write_text(f"{sandbox.workspace}\n")
+            for shell_name, shell in _resolved_shells().items():
+                with self.subTest(shell=shell_name):
+                    result = sandbox.run(shell, "-d", "docA")
+                    self.assertIn("last used, per", result.stderr)
+                    self.assertEqual(sandbox.backend_argv(), ["--document", "docA"])
+        finally:
+            sandbox.preference_file.unlink()
+
+    def test_a_document_that_does_not_exist_is_rejected_before_gradle(self) -> None:
+        """The document flag's own reason to be parsed out here. A missing workspace is at least an
+        error later on; a missing *document* is not — Field creates one on save (dir.kt mkdirs its
+        folder), so an unchecked typo opens an empty new document under that name and reports
+        nothing. Rejecting it must also not be what creates it."""
+        sandbox = self.sandbox
+        for shell_name, shell in _resolved_shells().items():
+            with self.subTest(shell=shell_name):
+                result = sandbox.run(shell, str(sandbox.workspace), "-d", "docTypo")
+                self.assertEqual(result.returncode, 2, result.stdout)
+                self.assertIn("has no document named docTypo", result.stderr)
+                self.assertNotIn("stub gradlew", result.stdout)
+                self.assertEqual(sandbox.backend_argv(), [])
+                self.assertFalse(
+                    (sandbox.workspace / "docTypo").exists(),
+                    "the launcher created the document it was in the middle of rejecting",
+                )
+
+    def test_a_path_that_is_not_a_document_is_rejected_as_one(self) -> None:
+        """`-d <path>` has to fail in its own voice. Folding the path into the workspace request is
+        an implementation detail, and reporting "there is no workspace directory at ..." for a
+        document that does not exist would be the launcher describing its own internals."""
+        sandbox = self.sandbox
+        for shell_name, shell in _resolved_shells().items():
+            for label, argument in {
+                "an ordinary directory": str(sandbox.plain_directory),
+                "nothing there at all": str(sandbox.workspace / "docTypo"),
+            }.items():
+                with self.subTest(shell=shell_name, case=label):
+                    result = sandbox.run(shell, "-d", argument)
+                    self.assertEqual(result.returncode, 2, result.stdout)
+                    self.assertIn("there is no Field document at", result.stderr)
+                    self.assertEqual(sandbox.backend_argv(), [])
+
+    def test_a_document_flag_with_no_value_is_rejected(self) -> None:
+        sandbox = self.sandbox
+        for shell_name, shell in _resolved_shells().items():
+            for flag in ("-d", "--document"):
+                with self.subTest(shell=shell_name, flag=flag):
+                    # With a pushed argument ahead of it, which is where an off-by-one in the
+                    # consumed/argc bookkeeping shows up as re-reading a pushed value.
+                    result = sandbox.run(shell, "--already-pushed", flag)
+                    self.assertEqual(result.returncode, 2, result.stdout)
+                    self.assertIn(f"field: {flag} needs a document", result.stderr)
+
+    def test_a_document_path_alongside_a_named_workspace_is_rejected(self) -> None:
+        """Two answers to "which workspace" in one command line. Choosing one silently is how a
+        launch opens a document from somewhere other than the workspace it announced."""
+        sandbox = self.sandbox
+        for shell_name, shell in _resolved_shells().items():
+            with self.subTest(shell=shell_name):
+                result = sandbox.run(
+                    shell, str(sandbox.workspace), "-d", str(sandbox.document)
+                )
+                self.assertEqual(result.returncode, 2, result.stdout)
+                self.assertIn("not by path", result.stderr)
+                self.assertEqual(sandbox.backend_argv(), [])
+
+    def test_print_workspace_reports_a_document_typo_too(self) -> None:
+        """--print-workspace answers "what would I get?", and a document that is not there is part
+        of the answer. It is also the cheapest place to find out."""
+        sandbox = self.sandbox
+        for shell_name, shell in _resolved_shells().items():
+            with self.subTest(shell=shell_name):
+                result = sandbox.run(
+                    shell, "--print-workspace", str(sandbox.workspace), "-d", "docTypo"
+                )
+                self.assertEqual(result.returncode, 2, result.stdout)
+                self.assertEqual(result.stdout.strip(), "")
+                self.assertIn("has no document named docTypo", result.stderr)
+
+                # ... and still prints just the workspace when the document is real.
+                result = sandbox.run(
+                    shell, "--print-workspace", str(sandbox.workspace), "-d", "docA"
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.strip(), str(sandbox.workspace))
 
     # --- what reaches the backend ---------------------------------------------------------------
 

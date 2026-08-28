@@ -23,11 +23,24 @@ This repository builds **Field·4**, a Kotlin-based live-coding environment for 
   - Through the launcher: `./field.sh /tmp/AFieldWorkspace` (or `-w`/`--workspace`). The launcher
     resolves a relative path against your shell's cwd rather than the checkout, refuses a
     non-existent directory before spending a build on it, and takes a path to a document (a folder
-    holding a `metadata.edn`, or the file itself) as "the workspace above this". `./field.sh
-    --print-workspace` answers "which one would I get?" without launching anything.
+    holding a `metadata.edn`, or the file itself) as "the workspace above this, and open that
+    document". `./field.sh --print-workspace` answers "which one would I get?" without launching
+    anything.
   - With no argument the workspace is whatever was used last, recorded machine-wide in
     `~/.afield/last-workspace.txt` — so a sibling clone or worktree may have been what last wrote
     it. `field.sh` prints the workspace it resolved, and where that came from, before it builds.
+- Open a document directly, instead of the welcome page and instead of whatever was open last:
+  - CLI arg parsed by `option(...)`: `--document <name>`, resolved against `--workspace`; a path
+    is reduced to its last segment, so both spellings agree. `/app-url` — the route the launcher
+    curls for the Electron window's URL — prefers it over both the welcome page and the
+    last-opened document.
+  - Through the launcher: `./field.sh -d <name>`, or `--document`/`--document=`. A path works too
+    (`./field.sh -d <...>/myDoc`, or as the bare argument), and then names the workspace as well.
+    The launcher rejects a document that does not exist, which matters more than it does for a
+    workspace: Field *creates* an unknown document, so the alternative to an error is an empty new
+    document under the typo'd name.
+  - `field.ps1` accepts the same flags on Windows; that parser has never been run (see the note in
+    `dev_docs/launcher_workspace_verification.md`).
 - Ports and HTTPS:
   - `PORT` env var overrides default `9092`
   - Server uses HTTPS by default (self-signed dev cert)

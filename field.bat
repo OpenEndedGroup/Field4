@@ -12,7 +12,9 @@ echo.
 
 if exist "%SCRIPT_DIR%field.ps1" (
     set AFIELD_FIELD_PS1_NO_PAUSE=1
-    powershell.exe -ExecutionPolicy Bypass -File "%SCRIPT_DIR%field.ps1"
+    REM %* forwards whatever was typed - a workspace, -d <document>, --help - to field.ps1,
+    REM which parses them. Empty on a double-click, which is what this file is mostly for.
+    powershell.exe -ExecutionPolicy Bypass -File "%SCRIPT_DIR%field.ps1" %*
 ) else (
     call gradlew runDesktop
 )
