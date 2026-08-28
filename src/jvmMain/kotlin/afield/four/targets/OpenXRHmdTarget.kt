@@ -42,6 +42,12 @@ import afield.stdlib.linalg.*
 import org.lwjgl.vulkan.*
 import kotlin.math.tan
 
+/**
+ * WiVRn's serial for its body trackers: `wivrn-<n>`, n being 1-based
+ * (`server/driver/wivrn_generic_tracker.cpp`). The index is the joint-whitelist position.
+ */
+private val WIVRN_TRACKER_SERIAL = Regex("""wivrn-(\d+)""")
+
 private data class XrEyeSwapchain(
     val swapchain: XrSwapchain,
     val width: Int,
@@ -217,6 +223,40 @@ class OpenXRHmdTarget(
         operator fun get(joint: HandJoint): JointPose = joints[joint.ordinal]
     }
 
+    /**
+     * The body joints reachable over WiVRn, in the order its client forwards them.
+     *
+     * This is deliberately *not* the 70-joint `XR_FB_body_tracking` skeleton. WiVRn's client
+     * whitelists a handful of joints out of the headset's inside-out body tracking and relays only
+     * those (see `client/xr/fb_body_tracker.cpp`), so this enum is the whole of what the PC side
+     * can see. Enum order matches that whitelist, which is what makes the index-to-joint mapping
+     * in [inferBodyJointMapping] work.
+     */
+    enum class BodyJoint {
+        HIPS, CHEST,
+        LEFT_ARM_LOWER, RIGHT_ARM_LOWER,
+        LEFT_LOWER_LEG, RIGHT_LOWER_LEG,
+        LEFT_FOOT, RIGHT_FOOT;
+        companion object { const val COUNT = 8 }
+    }
+
+    class BodyTrackingState {
+        val joints = Array(BodyJoint.COUNT) { JointPose() }
+
+        /** True while at least one tracker is reporting a valid pose. */
+        var isActive: Boolean = false
+
+        /**
+         * The joints this WiVRn configuration actually reports — the user's "lower body" and "hip"
+         * toggles in the headset decide. Joints outside this set are never written and stay
+         * invalid; empty means we could not identify the trackers (see [bodyTrackerPose]).
+         */
+        var trackedJoints: Set<BodyJoint> = emptySet()
+            internal set
+
+        operator fun get(joint: BodyJoint): JointPose = joints[joint.ordinal]
+    }
+
     data class ControllerState(
         var active: Boolean = false,
         var poseValid: Boolean = false,
@@ -291,12 +331,41 @@ class OpenXRHmdTarget(
     private val leftHandState = HandTrackingState()
     private val rightHandState = HandTrackingState()
 
+    /** One WiVRn generic tracker: its whitelist index, its space, and the pose we located. */
+    private class BodyTracker(val index: Int, val space: XrSpace) {
+        val pose = JointPose()
+    }
+
+    private var xdevSpaceExt: MndxXDevSpace? = null
+    private var xdevList: Long = 0L
+    private var xdevGeneration: Long = -1L
+    private var bodyTrackingEnabled = false
+    private var bodyTrackers: List<BodyTracker> = emptyList()
+    private var bodyJointMapping: List<BodyJoint> = emptyList()
+    private val bodyTrackingState = BodyTrackingState()
+
     private var inputDebugPrinted = false
 
     fun handState(hand: Hand): HandTrackingState? {
         if (!handTrackingEnabled) return null
         return if (hand == Hand.LEFT) leftHandState else rightHandState
     }
+
+    /** Null when the runtime exposes no body trackers at all. */
+    fun bodyState(): BodyTrackingState? {
+        if (!bodyTrackingEnabled) return null
+        return bodyTrackingState
+    }
+
+    /** How many raw body trackers the runtime is publishing. */
+    fun bodyTrackerCount(): Int = bodyTrackers.size
+
+    /**
+     * The raw pose of the n-th tracker, bypassing the semantic mapping. Use this when the joint
+     * mapping came out empty — a runtime other than WiVRn, or a tracker count we don't recognise —
+     * and you would still rather have the poses than nothing.
+     */
+    fun bodyTrackerPose(index: Int): JointPose? = bodyTrackers.getOrNull(index)?.pose
 
     fun controllerState(hand: Hand, out: ControllerState = ControllerState()): ControllerState {
         val src = if (hand == Hand.LEFT) leftController else rightController
@@ -620,6 +689,9 @@ class OpenXRHmdTarget(
                         if (handTrackingEnabled) CPUSpan.time("xr_hand_tracking") {
                             syncHandTracking(xrSessionLocal, xrSpaceLocal, frameState.predictedDisplayTime())
                         }
+                        if (xdevList != 0L) CPUSpan.time("xr_body_tracking") {
+                            syncBodyTracking(xrSessionLocal, xrSpaceLocal, frameState.predictedDisplayTime())
+                        }
 
                         // Acquire all swapchain images first (CPU), then render, then submit+wait, then release.
                         if (acquiredIndicesScratch.size != swapchains.size) {
@@ -788,6 +860,7 @@ class OpenXRHmdTarget(
 
             initControllerActions(session)
             initHandTracking(session)
+            initBodyTracking(session)
 
             // Swapchain format selection (prefer SRGB)
             val formatCountBuf = stack.callocInt(1)
@@ -1453,6 +1526,156 @@ class OpenXRHmdTarget(
             val dist = kotlin.math.sqrt((dx * dx + dy * dy + dz * dz).toDouble()).toFloat()
             ((0.05f - dist) / 0.04f).coerceIn(0f, 1f)
         } else 0f
+    }
+
+    // -------------------------------------------------------------------------
+    // Body tracking (WiVRn generic trackers over XR_MNDX_xdev_space)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Sets up body tracking, if the runtime offers any.
+     *
+     * The obvious route, `XR_FB_body_tracking`, is a dead end under WiVRn: its server only wires
+     * Monado's `static_roles.body` when a SolarXR/SlimeVR device is present
+     * (`server/driver/wivrn_session.cpp`, inside `#if WIVRN_FEATURE_SOLARXR`), so
+     * `xrCreateBodyTrackerFB` reports unsupported for a bare Quest 3 even though the runtime
+     * advertises the extension. What the headset's own inside-out body tracking actually gives us
+     * is a handful of anonymous generic trackers, and those are only reachable through the Monado
+     * vendor extension `XR_MNDX_xdev_space`.
+     */
+    private fun initBodyTracking(session: XrSession) {
+        if (MndxXDevSpace.EXTENSION_NAME !in Instance.enabledOpenXRInstanceExtensions) return
+        val instance = xrInstance ?: return
+        val ext = MndxXDevSpace.load(instance) ?: return
+
+        val list = ext.createXDevList(session) ?: return
+        xdevSpaceExt = ext
+        xdevList = list
+        refreshBodyTrackers(session)
+        // Keep the extension loaded even with no trackers yet: the user can turn body tracking on
+        // in the headset mid-session, and refreshBodyTrackers picks that up from the generation
+        // number. bodyTrackingEnabled tracks whether we currently have any.
+    }
+
+    /**
+     * Re-enumerates the xdev list and rebuilds our tracker spaces. Cheap enough to gate on the
+     * generation number, which the runtime bumps whenever devices come or go.
+     */
+    private fun refreshBodyTrackers(session: XrSession) {
+        val ext = xdevSpaceExt ?: return
+        if (xdevList == 0L) return
+
+        val generation = ext.generationNumber(xdevList) ?: return
+        if (generation == xdevGeneration) return
+        xdevGeneration = generation
+
+        bodyTrackers.forEach { xrDestroySpace(it.space) }
+        bodyTrackers = emptyList()
+
+        val found = mutableListOf<BodyTracker>()
+        for (id in ext.enumerateXDevs(xdevList)) {
+            val props = ext.getProperties(xdevList, id) ?: continue
+            if (!props.canCreateSpace) continue
+            // WiVRn names its body trackers "WiVRn Generic Tracker #n" with serial "wivrn-n", and
+            // that n is the whitelist index we need. Matching on the serial also filters out the
+            // HMD, the controllers, and any SolarXR trackers sharing the list.
+            val index = WIVRN_TRACKER_SERIAL.matchEntire(props.serial)?.groupValues?.get(1)?.toIntOrNull() ?: continue
+            val space = ext.createXDevSpace(session, xdevList, id) ?: continue
+            found += BodyTracker(index - 1, space) // serials are 1-based
+        }
+        found.sortBy { it.index }
+
+        bodyTrackers = found
+        bodyJointMapping = inferBodyJointMapping(found.size)
+        bodyTrackingState.trackedJoints = bodyJointMapping.toSet()
+        bodyTrackingEnabled = found.isNotEmpty()
+
+        if (found.isEmpty()) {
+            bodyTrackingState.isActive = false
+            bodyTrackingState.joints.forEach { it.positionValid = false; it.orientationValid = false }
+        } else {
+            lprintln(
+                "info,openxr",
+                "body tracking enabled: ${found.size} tracker(s) -> " +
+                    if (bodyJointMapping.isEmpty()) "unmapped (use bodyTrackerPose)" else "$bodyJointMapping"
+            )
+        }
+    }
+
+    /**
+     * Works out which joint each tracker is, from how many there are.
+     *
+     * WiVRn's client forwards a fixed whitelist filtered by two user toggles, preserving order
+     * (`client/xr/fb_body_tracker.cpp: get_whitelisted_joints`). Only three counts are reachable,
+     * and each pins the mapping exactly:
+     *
+     *  - 3: lower body off — chest and both lower arms.
+     *  - 7: lower body on, hip off — the above plus lower legs and feet.
+     *  - 8: lower body and hip on — everything.
+     *
+     * Any other count means we're not talking to a WiVRn fb-body-tracking client (an HTC or Pico
+     * tracker set, or SolarXR devices), so we decline to guess and callers fall back to
+     * [bodyTrackerPose].
+     */
+    private fun inferBodyJointMapping(trackerCount: Int): List<BodyJoint> {
+        val all = BodyJoint.entries
+        val withoutHips = all.filter { it != BodyJoint.HIPS }
+        val upperBodyOnly = withoutHips.filter {
+            it == BodyJoint.CHEST || it == BodyJoint.LEFT_ARM_LOWER || it == BodyJoint.RIGHT_ARM_LOWER
+        }
+        return when (trackerCount) {
+            upperBodyOnly.size -> upperBodyOnly   // 3
+            withoutHips.size -> withoutHips       // 7
+            all.size -> all                       // 8
+            else -> emptyList()
+        }
+    }
+
+    private fun syncBodyTracking(session: XrSession, space: XrSpace, predictedTime: Long) {
+        refreshBodyTrackers(session)
+        if (bodyTrackers.isEmpty()) return
+
+        MemoryStack.stackPush().use { stack ->
+            val location = XrSpaceLocation.calloc(stack).type(XR_TYPE_SPACE_LOCATION)
+            var anyValid = false
+
+            for (tracker in bodyTrackers) {
+                val dst = tracker.pose
+                val res = xrLocateSpace(tracker.space, space, predictedTime, location)
+                if (res != XR_SUCCESS) {
+                    dst.positionValid = false
+                    dst.orientationValid = false
+                    continue
+                }
+                val flags = location.locationFlags()
+                dst.positionValid = (flags and XR_SPACE_LOCATION_POSITION_VALID_BIT.toLong()) != 0L
+                dst.orientationValid = (flags and XR_SPACE_LOCATION_ORIENTATION_VALID_BIT.toLong()) != 0L
+                if (dst.positionValid) {
+                    val p = location.pose().`position$`()
+                    dst.position.x = p.x()
+                    dst.position.y = p.y()
+                    dst.position.z = p.z()
+                }
+                if (dst.orientationValid) {
+                    val o = location.pose().orientation()
+                    dst.orientation.x = o.x()
+                    dst.orientation.y = o.y()
+                    dst.orientation.z = o.z()
+                    dst.orientation.w = o.w()
+                }
+                anyValid = anyValid || dst.positionValid || dst.orientationValid
+
+                // Mirror into the semantic slot, when we know which one that is.
+                val joint = bodyJointMapping.getOrNull(tracker.index) ?: continue
+                val slot = bodyTrackingState[joint]
+                slot.positionValid = dst.positionValid
+                slot.orientationValid = dst.orientationValid
+                if (dst.positionValid) slot.position.set(dst.position)
+                if (dst.orientationValid) slot.orientation.set(dst.orientation)
+            }
+
+            bodyTrackingState.isActive = anyValid
+        }
     }
 
     private fun syncAndUpdateControllers(session: XrSession, referenceSpace: XrSpace, predictedDisplayTime: Long) {
@@ -2515,6 +2738,15 @@ class OpenXRHmdTarget(
         leftJointsBuf?.free(); leftJointsBuf = null
         rightJointsBuf?.free(); rightJointsBuf = null
         handTrackingEnabled = false
+
+        bodyTrackers.forEach { xrDestroySpace(it.space) }
+        bodyTrackers = emptyList()
+        if (xdevList != 0L) xdevSpaceExt?.destroyXDevList(xdevList)
+        xdevList = 0L
+        xdevGeneration = -1L
+        xdevSpaceExt = null
+        bodyJointMapping = emptyList()
+        bodyTrackingEnabled = false
 
         leftGripSpace?.let { xrDestroySpace(it) }
         rightGripSpace?.let { xrDestroySpace(it) }
