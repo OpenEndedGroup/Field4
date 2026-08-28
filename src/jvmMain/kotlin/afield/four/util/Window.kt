@@ -129,6 +129,10 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
     var keyEvents : KeyEvents? = null
     private val keyListeners = mutableListOf<(Int, Int, Int, Int) -> Unit>()
     private val charListeners = mutableListOf<(Int) -> Unit>()
+    private val cursorListeners = mutableListOf<(Double, Double) -> Unit>()
+    private val mouseButtonListeners = mutableListOf<(Int, Int, Int) -> Unit>()
+    private val scrollListeners = mutableListOf<(Double, Double) -> Unit>()
+    private val focusListeners = mutableListOf<(Boolean) -> Unit>()
 
     val cursor: Vec2
         get() {
@@ -191,11 +195,21 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
         GLFW.glfwSetCharCallback(windowHandle) { _: Long, codepoint: Int ->
             charCallback(codepoint)
         }
+        GLFW.glfwSetCursorPosCallback(windowHandle) { _: Long, x: Double, y: Double ->
+            cursorListeners.toList().forEach { it(x, y) }
+        }
+        GLFW.glfwSetMouseButtonCallback(windowHandle) { _: Long, button: Int, action: Int, mods: Int ->
+            mouseButtonListeners.toList().forEach { it(button, action, mods) }
+        }
+        GLFW.glfwSetWindowFocusCallback(windowHandle) { _: Long, focused: Boolean ->
+            focusListeners.toList().forEach { it(focused) }
+        }
 
         // --- Scroll callback: accumulate until consumed in poll loop
         GLFW.glfwSetScrollCallback(windowHandle) { _: Long, xoffset: Double, yoffset: Double ->
             scrollAccumX += xoffset
             scrollAccumY += yoffset
+            scrollListeners.toList().forEach { it(xoffset, yoffset) }
         }
 
         GLFW.glfwSetInputMode(windowHandle, GLFW.GLFW_STICKY_KEYS, GLFW.GLFW_TRUE)
@@ -256,6 +270,26 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
     fun addCharListener(listener: (Int) -> Unit): () -> Unit {
         charListeners.add(listener)
         return { charListeners.remove(listener) }
+    }
+
+    fun addCursorListener(listener: (Double, Double) -> Unit): () -> Unit {
+        cursorListeners.add(listener)
+        return { cursorListeners.remove(listener) }
+    }
+
+    fun addMouseButtonListener(listener: (Int, Int, Int) -> Unit): () -> Unit {
+        mouseButtonListeners.add(listener)
+        return { mouseButtonListeners.remove(listener) }
+    }
+
+    fun addScrollListener(listener: (Double, Double) -> Unit): () -> Unit {
+        scrollListeners.add(listener)
+        return { scrollListeners.remove(listener) }
+    }
+
+    fun addFocusListener(listener: (Boolean) -> Unit): () -> Unit {
+        focusListeners.add(listener)
+        return { focusListeners.remove(listener) }
     }
 
     // --- MOUSE: pressed state (used by MouseEvents)

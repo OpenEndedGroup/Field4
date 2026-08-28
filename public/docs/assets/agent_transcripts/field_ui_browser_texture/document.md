@@ -37,14 +37,22 @@ start(renderer::run)
 <!-- field-box id="field_ui_texture_panel" index="1" -->
 
 ```edn [field-box id="field_ui_texture_panel" role="properties"]
-{"id" "field_ui_texture_panel" "index" 1 "name" "Field's UI — live Chromium texture" "parents" ["root" "field_ui_texture_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "field_ui_texture_renderer"} "name" "Field's UI — live Chromium texture" "_tombstone" false "frame" #afield/rect [460.0 180.0 330.0 55.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "field_ui_texture_panel_code_.kt" "lines" 44 "characters" 1205 "sha256" "cf432419f663c310bb865cad63dadd8da52bd9613b0854666f324a0e886f96bc"} {"name" "vertex" "language" "glsl" "path" "field_ui_texture_panel_vertex_.glsl" "lines" 9 "characters" 180 "sha256" "ba17dfa14020b0511f5632daad6bb904ff815014cb1504734d7c12283faa537d"} {"name" "fragment" "language" "glsl" "path" "field_ui_texture_panel_fragment_.glsl" "lines" 8 "characters" 228 "sha256" "4a06f58cb3aac101a544fdcd7c0e0a26970362071d68fc232f1874f49598d604"}]}
+{"id" "field_ui_texture_panel" "index" 1 "name" "Field's UI — live Chromium texture" "parents" ["root" "field_ui_texture_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "field_ui_texture_renderer"} "name" "Field's UI — live Chromium texture" "_tombstone" false "frame" #afield/rect [460.0 180.0 330.0 55.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "field_ui_texture_panel_code_.kt" "lines" 95 "characters" 3398 "sha256" "0a11110dea8e6fc1460665af814f28d9a5c37a8ca15a6912b41868e1e1a5f386"} {"name" "vertex" "language" "glsl" "path" "field_ui_texture_panel_vertex_.glsl" "lines" 9 "characters" 180 "sha256" "ba17dfa14020b0511f5632daad6bb904ff815014cb1504734d7c12283faa537d"} {"name" "fragment" "language" "glsl" "path" "field_ui_texture_panel_fragment_.glsl" "lines" 8 "characters" 228 "sha256" "4a06f58cb3aac101a544fdcd7c0e0a26970362071d68fc232f1874f49598d604"}]}
 ```
 
 ```kotlin [field-property box="field_ui_texture_panel" name="code" path="field_ui_texture_panel_code_.kt"]
 import afield.four.browser.FieldUiBrowserTexture
+import afield.four.browser.PuppetBrowser
+import afield.four.browser.PuppetBrowserUvInput
+import afield.four.browser.PuppetBrowserWindowInput
 import afield.four.modules.fromContext
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import java.util.concurrent.CompletableFuture
 
 val renderer: Renderer = fromContext()
+prop<afield.four.browser.PuppetBrowser>(browserControl)
 val browser = FieldUiBrowserTexture(
     renderer = renderer,
     url = FieldUiBrowserTexture.fieldDocumentUrl(thisBox),
@@ -52,6 +60,16 @@ val browser = FieldUiBrowserTexture(
     height = 720,
     readyBoxUid = thisBox.id
 )
+browserControl = browser
+val interaction = PuppetBrowserWindowInput(browser, renderer.window)
+val scriptedInput = PuppetBrowserUvInput(browser)
+val removeReadyBridge = browser.onPageRequest("field-ready") { payload ->
+    println("Field UI page called Field: $payload")
+    CompletableFuture.completedFuture<JsonElement>(buildJsonObject {
+        put("accepted", true)
+        put("echo", payload)
+    })
+}
 renderer.renderList.preTargets["field-ui-browser-upload"] =
     afield.four.Target { command, _ -> browser.prepareSampledImagesFor(command) }
 
@@ -78,11 +96,44 @@ loop {
     if (!announced && browser.pageReady) {
         announced = true
         println("Field UI browser texture is live: ${browser.presentedFrame}")
+        browser.evaluate("""
+            (() => {
+                const probe = document.createElement("input")
+                probe.id = "field-puppet-input-probe"
+                probe.style.cssText = "position:fixed;left:8px;top:8px;width:280px;height:40px;z-index:2147483647;opacity:.01"
+                document.body.appendChild(probe)
+                return true
+            })()
+        """).thenCompose {
+            scriptedInput.move(40.0 / scriptedInput.cssWidth, 28.0 / scriptedInput.cssHeight)
+            scriptedInput.down()
+            scriptedInput.up()
+            browser.insertText("always available in VR")
+            browser.flushInput()
+        }.thenCompose {
+            browser.evaluate("""
+                (() => {
+                    const probe = document.getElementById("field-puppet-input-probe")
+                    const input = probe.value
+                    probe.remove()
+                    return window.fieldPuppet.request("field-ready", {
+                        title: document.title,
+                        location: location.href,
+                        input
+                    })
+                })()
+            """)
+        }.whenComplete { result, error ->
+            if (error == null) println("Puppet page/Field/JavaScript round trip: ${result.value}")
+            else error.printStackTrace()
+        }
     }
     frame()
 }.end {
     renderer.renderList.modules.remove("field-ui-browser-texture")
     renderer.renderList.preTargets.remove("field-ui-browser-upload")
+    removeReadyBridge()
+    interaction.close()
     browser.close()
 }
 ```

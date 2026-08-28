@@ -123,6 +123,10 @@ class OpenXRHmdTarget(
     private var eyeViewMatrices: Array<Matrix4f> = emptyArray()
     private var eyeProjMatrices: Array<Matrix4f> = emptyArray()
 
+    /** True once the runtime has allocated a complete stereo view/projection pair. */
+    val hasEyeViews: Boolean
+        get() = eyeViewMatrices.size >= 2 && eyeProjMatrices.size >= 2
+
     /**
      * Copies the current eye's view matrix into [out] and returns it.
      * Only valid while rendering (i.e. called from module render callbacks).
