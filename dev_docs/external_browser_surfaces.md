@@ -1,10 +1,11 @@
 # External browser surfaces
 
 Status: the platform-neutral frame/lease contract, macOS/MoltenVK receiver, and Electron/macOS
-producer transport are implemented and live-tested end to end. The Linux/dma-buf receiver is
-live-tested against real dma-bufs, but against a Field-side producer: its Electron handle-transfer
-bridge does not exist yet. Windows/D3D11 is a compile-reviewed first pass still needing both its
-bridge and native-machine validation.
+producer transport are implemented and live-tested end to end. On Linux the receiver and the full
+Electron/dma-buf producer transport are implemented and live-tested — descriptors cross, frames
+import, and leases are acknowledged — but the picture is blank, because Chromium does not put the
+rendered page into the dma-buf it exports (see "What Linux is still blocked on"). Windows/D3D11 is
+a compile-reviewed first pass still needing both its bridge and native-machine validation.
 
 This is the texture seam for web UI that should appear on geometry in Field/OpenXR. It does not
 choose the browser. Electron is the immediate producer because its accelerated offscreen `paint`
@@ -152,10 +153,47 @@ same recipe was checked against Mesa RADV 26.1.4 outside Field, which chooses a 
 — the negotiation is not NVIDIA-shaped. The replayable graph is
 `dev_docs/agents/transcripts/external_browser_surface_linux_smoke.yaml`.
 
-What this does *not* cover is the transport: the smoke exports and imports inside one process, so
-the fd never crosses a process boundary. `UnixFdPass` can only send descriptors today, so the
-Electron-side bridge that the macOS Mach-port path already has still has to be written and, with
-it, an `SCM_RIGHTS` receive path.
+### The Electron transport
+
+`native/field-browser-bridge/linux_bridge.cc` is the twin of `macos_bridge.cc`, built twice from one
+source for the same reason: a Node-API addon the producer loads to send, and a plain shared object
+the JVM opens through LWJGL to receive. Keeping both halves in one translation unit is what stops
+the wire struct between them drifting.
+
+The descriptors move by `SCM_RIGHTS` over an abstract-namespace `AF_UNIX` `SOCK_SEQPACKET` socket:
+abstract so a crash leaves nothing on the filesystem to clean up, seqpacket so one `sendmsg` is
+always exactly one `recvmsg` and a frame's descriptors can never be split or coalesced. Only the
+descriptors and the frame token travel out of band; each plane's stride, offset and size and the
+allocation's DRM modifier stay on the JSON control channel, where metadata belongs. Planes name
+their descriptor by index rather than by number, so that planes sharing one allocation stay one
+allocation after transfer — `SCM_RIGHTS` would otherwise duplicate a shared fd into several
+descriptors that look unrelated, and the receiver rejects multi-allocation pixmaps.
+
+`SCM_RIGHTS` is not a stylistic choice. A descriptor number means nothing in another process, and
+the cheaper trick of passing pid plus number and re-opening `/proc/<pid>/fd/<n>` does not work for
+dma-bufs: they live on anonymous inodes and the open fails with ENXIO. (`UnixFdPass`'s note claimed
+otherwise; it has been corrected.)
+
+### What Linux is still blocked on
+
+Two Chromium switches are load-bearing, and Field's Electron head has only half of them.
+`--use-angle=vulkan` (with `--enable-features=Vulkan`) is required before Chromium will export a
+paint as a native pixmap at all; on the GL backend the shared image cannot be created, Chromium
+logs `Unable to initialize SkSurface`, and every `paint` silently arrives as a CPU bitmap with no
+texture. `--ignore-gpu-blocklist` on its own — which `electron/main.js` sets — is the worst of the
+three states: it enables Vulkan without pointing ANGLE at it, which additionally makes Ozone report
+that Wayland and Vulkan are incompatible. `--ozone-platform=x11` is not an escape route: the GPU
+process segfaults in a loop until Chromium gives up.
+
+With those switches the whole chain runs. Chromium exports a single-plane `DRM_FORMAT_MOD_LINEAR`
+dma-buf, the bridge moves it, the receiver imports it, the copy is recorded, and `PRESENTED` comes
+back after the graphics fence. The pixels, however, are all zero. That is not the import: the same
+descriptor read outside Field entirely — `mmap`ed straight from the receiving process, with a page
+of solid `rgb(255,64,32)` on the other side — is 921600 zero pixels. Two independent readers, a CPU
+mapping and a Vulkan copy, agree that Chromium never wrote the page into the buffer it handed over.
+It is not driver-specific either; forcing Chromium onto the AMD iGPU through Mesa gives the same
+empty buffer, and `supportsZeroCopyWebGpuImport` is reported as `false`. So the remaining work is
+upstream in Electron/Chromium's Linux offscreen shared-texture path, not in this repository.
 
 ## What came from the Windows prototype
 

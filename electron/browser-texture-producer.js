@@ -12,7 +12,10 @@ const targetUrl = required("FIELD_BROWSER_TEXTURE_URL");
 const width = Number(required("FIELD_BROWSER_TEXTURE_WIDTH"));
 const height = Number(required("FIELD_BROWSER_TEXTURE_HEIGHT"));
 const controlPort = Number(required("FIELD_BROWSER_TEXTURE_CONTROL_PORT"));
-const machService = required("FIELD_BROWSER_TEXTURE_MACH_SERVICE");
+const isLinux = process.platform === "linux";
+// The receiver's address, in whichever form this platform's handle transfer needs.
+const machService = isLinux ? "" : required("FIELD_BROWSER_TEXTURE_MACH_SERVICE");
+const dmaBufSocket = isLinux ? required("FIELD_BROWSER_TEXTURE_DMABUF_SOCKET") : "";
 const bridgePath = required("FIELD_BROWSER_TEXTURE_BRIDGE");
 const streamId = BigInt(required("FIELD_BROWSER_TEXTURE_STREAM_ID"));
 const slotCount = Number(process.env.FIELD_BROWSER_TEXTURE_SLOTS || "3");
@@ -21,6 +24,20 @@ const bridge = require(path.resolve(bridgePath));
 
 app.commandLine.appendSwitch("ignore-certificate-errors");
 app.commandLine.appendSwitch("ignore-gpu-blocklist");
+
+if (isLinux) {
+  // Chromium can only export a paint as a dma-buf when ANGLE is backed by Vulkan. On the GL
+  // backend the shared image cannot be created at all — it logs "Unable to initialize SkSurface"
+  // and quietly falls back to a CPU bitmap, so `paint` arrives with no texture and this producer
+  // has nothing to transfer. `ignore-gpu-blocklist` alone is the worst of both: it turns Vulkan on
+  // without pointing ANGLE at it, which additionally makes Ozone complain that Wayland and Vulkan
+  // are incompatible.
+  app.commandLine.appendSwitch("enable-features", "Vulkan");
+  app.commandLine.appendSwitch("use-angle", "vulkan");
+  app.commandLine.appendSwitch("enable-gpu-rasterization");
+  app.commandLine.appendSwitch("enable-zero-copy");
+  app.commandLine.appendSwitch("ozone-platform-hint", "auto");
+}
 
 let control;
 let controlReady = false;
@@ -74,6 +91,43 @@ function installControl() {
   });
 }
 
+let warnedAboutHandle = false;
+
+/**
+ * Reduce this platform's shared-texture handle to "how to hand it over, and what the receiver needs
+ * told about it". Returns null when Chromium produced a paint with no GPU handle at all, which is
+ * the CPU-bitmap fallback and not something this producer can transfer.
+ */
+function describeTransfer(info) {
+  if (isLinux) {
+    const pixmap = info?.handle?.nativePixmap;
+    const planes = pixmap?.planes;
+    if (!Array.isArray(planes) || planes.length === 0) return null;
+
+    // Planes commonly share one allocation. Send each descriptor once and let planes name theirs by
+    // index, so that a single dma-buf stays a single dma-buf on the far side: SCM_RIGHTS would
+    // otherwise duplicate it into several unrelated-looking descriptors.
+    const fds = [];
+    const described = planes.map((plane) => {
+      let index = fds.indexOf(plane.fd);
+      if (index < 0) index = fds.push(plane.fd) - 1;
+      return { fdIndex: index, stride: plane.stride, offset: plane.offset, size: plane.size };
+    });
+    return {
+      send: (token) => {
+        bridge.sendDmaBuf(dmaBufSocket, fds, token);
+        return { planes: described, modifier: String(pixmap.modifier) };
+      },
+    };
+  }
+
+  const ioSurface = info?.handle?.ioSurface;
+  if (!Buffer.isBuffer(ioSurface)) return null;
+  return {
+    send: (token) => ({ ioSurfaceId: bridge.sendIOSurface(machService, ioSurface, token) }),
+  };
+}
+
 function createProducer() {
   window = new BrowserWindow({
     show: false,
@@ -99,16 +153,25 @@ function createProducer() {
       return;
     }
     const info = texture.textureInfo;
-    const ioSurface = info?.handle?.ioSurface;
-    if (!Buffer.isBuffer(ioSurface)) {
+    const transfer = describeTransfer(info);
+    if (!transfer) {
       texture.release();
+      if (!warnedAboutHandle) {
+        warnedAboutHandle = true;
+        send({
+          type: "error",
+          message: isLinux
+            ? "Chromium delivered a paint with no dma-buf; GPU compositing is not exporting native pixmaps"
+            : "Chromium delivered a paint with no IOSurface handle",
+        });
+      }
       return;
     }
 
     frameId += 1n;
     const token = frameId.toString();
     try {
-      const ioSurfaceId = bridge.sendIOSurface(machService, ioSurface, frameId);
+      const extra = transfer.send(frameId);
       leases.set(token, texture);
       send({
         type: "frame",
@@ -123,7 +186,7 @@ function createProducer() {
         visibleRect: info.visibleRect,
         contentRect: info.contentRect,
         timestamp: info.timestamp,
-        ioSurfaceId,
+        ...extra,
       });
     } catch (error) {
       texture.release();
@@ -137,6 +200,7 @@ function createProducer() {
     send({ type: "error", message: `renderer exited: ${JSON.stringify(details)}` });
   });
   window.webContents.on("did-finish-load", () => {
+    console.log(`[producer] did-finish-load ${window.webContents.getURL()}`);
     (async () => {
       if (readyBoxUid) {
         const deadline = Date.now() + 30000;
@@ -151,6 +215,7 @@ function createProducer() {
           send({ type: "error", message: `Field box ${readyBoxUid} did not appear before the readiness timeout` });
           return;
         }
+        console.log(`[producer] ready box ${readyBoxUid} is present`);
       }
       send({ type: "loaded", afterFrameId: frameId.toString(), url: window.webContents.getURL() });
       window.webContents.invalidate();
@@ -164,6 +229,7 @@ function createProducer() {
 }
 
 app.whenReady().then(() => {
+  console.log(`[producer] starting for ${targetUrl}`);
   installControl();
   createProducer();
 });

@@ -2210,17 +2210,25 @@ val buildFieldBrowserBridge = tasks.register("buildFieldBrowserBridge") {
     description = "Builds the native Electron/JVM bridge used by accelerated browser textures."
     dependsOn(tasks.named("nodeSetup"))
 
-    val source = layout.projectDirectory.file("native/field-browser-bridge/macos_bridge.cc")
-    val outputDir = layout.buildDirectory.dir("field-browser-bridge/macos")
+    // Each platform builds its own source twice from one file: a Node-API addon the Electron
+    // producer loads to send its handle, and a plain shared library the JVM opens through LWJGL to
+    // receive it. Keeping both halves in one translation unit is what keeps the wire struct between
+    // them from drifting.
+    val isMac = osName.startsWith("Mac") || osName.startsWith("Darwin")
+    val isLinux = osName.startsWith("Linux")
+    val source = layout.projectDirectory.file(
+        if (isLinux) "native/field-browser-bridge/linux_bridge.cc"
+        else "native/field-browser-bridge/macos_bridge.cc"
+    )
+    val outputDir = layout.buildDirectory.dir("field-browser-bridge/${if (isLinux) "linux" else "macos"}")
+    val sharedLibraryName = if (isLinux) "libfield_browser_bridge.so" else "libfield_browser_bridge.dylib"
     inputs.file(source)
     outputs.files(
         outputDir.map { it.file("field_browser_bridge.node") },
-        outputDir.map { it.file("libfield_browser_bridge.dylib") },
+        outputDir.map { it.file(sharedLibraryName) },
     )
 
-    onlyIf {
-        osName.startsWith("Mac") || osName.startsWith("Darwin")
-    }
+    onlyIf { isMac || isLinux }
 
     doLast {
         val out = outputDir.get().asFile.also { it.mkdirs() }
@@ -2231,7 +2239,8 @@ val buildFieldBrowserBridge = tasks.register("buildFieldBrowserBridge") {
         }
 
         fun compile(vararg args: String) {
-            val command = listOf("xcrun", "clang++", "-std=c++17", "-O2") + args
+            val driver = if (isLinux) listOf("g++") else listOf("xcrun", "clang++")
+            val command = driver + listOf("-std=c++17", "-O2") + args
             val exit = ProcessBuilder(command)
                 .directory(project.projectDir)
                 .inheritIO()
@@ -2240,20 +2249,23 @@ val buildFieldBrowserBridge = tasks.register("buildFieldBrowserBridge") {
             if (exit != 0) throw GradleException("Native browser bridge compile failed (${command.joinToString(" ")})")
         }
 
+        val platformLinkArgs = if (isLinux) emptyList() else listOf("-framework", "IOSurface")
+
         compile(
-            "-dynamiclib",
+            *(if (isLinux) arrayOf("-shared", "-fPIC") else arrayOf("-dynamiclib")),
             src.absolutePath,
-            "-framework", "IOSurface",
-            "-o", File(out, "libfield_browser_bridge.dylib").absolutePath,
+            *platformLinkArgs.toTypedArray(),
+            "-o", File(out, sharedLibraryName).absolutePath,
         )
         compile(
-            "-bundle",
-            "-undefined", "dynamic_lookup",
+            // An addon resolves Node's symbols from the host process at load time, so both
+            // toolchains have to be told not to fail on them here.
+            *(if (isLinux) arrayOf("-shared", "-fPIC") else arrayOf("-bundle", "-undefined", "dynamic_lookup")),
             "-DFIELD_NODE_ADDON=1",
             "-DNODE_GYP_MODULE_NAME=field_browser_bridge",
             "-I", nodeInclude.absolutePath,
             src.absolutePath,
-            "-framework", "IOSurface",
+            *platformLinkArgs.toTypedArray(),
             "-o", File(out, "field_browser_bridge.node").absolutePath,
         )
     }
