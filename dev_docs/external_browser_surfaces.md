@@ -270,6 +270,12 @@ in that thread shows the *pixels* having been read back. So the two observations
 conflict at all — the handle may well arrive correctly on Linux while the buffer behind it is never
 filled, and only a consumer that samples it would notice.
 
+The report prepared for upstream, with the minimal pure-JS reproduction, is
+[`upstream/electron-osr-linux-shared-texture.md`](upstream/electron-osr-linux-shared-texture.md).
+Its strongest single piece of evidence is that Electron imports its own shared texture through
+`sharedTexture.importSharedTexture` and reads it back with `VideoFrame.copyTo` as 0 of 921600
+non-zero pixels — no bridge, no Vulkan of ours, nothing of Field's in the path at all.
+
 An earlier revision of this page claimed "forcing Chromium onto the AMD iGPU gives the same empty
 buffer". That was wrong and is withdrawn: the environment variables used never moved Chromium, which
 stayed on the RTX 4090, and when the Vulkan ICD is genuinely restricted to RADV the GPU process will
