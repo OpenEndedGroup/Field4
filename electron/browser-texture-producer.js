@@ -14,7 +14,11 @@ const textureHeight = Number(required("FIELD_BROWSER_TEXTURE_HEIGHT"));
 const deviceScaleFactor = Number(process.env.FIELD_BROWSER_TEXTURE_DEVICE_SCALE_FACTOR || "1");
 const controlPort = Number(required("FIELD_BROWSER_TEXTURE_CONTROL_PORT"));
 const isLinux = process.platform === "linux";
+// The opt-in CPU fallback: no shared texture at all, pixels read back and shipped over a second
+// loopback socket. See dev_docs/external_browser_surfaces.md for why it is opt-in and what it costs.
+// Declared before the handle-transfer addresses below because it decides which of them are needed.
 const cpuBitmap = process.env.FIELD_BROWSER_TEXTURE_CPU_BITMAP === "1";
+// The receiver's address, in whichever form this platform's handle transfer needs.
 const machService = isLinux || cpuBitmap ? "" : required("FIELD_BROWSER_TEXTURE_MACH_SERVICE");
 const dmaBufSocket = isLinux && !cpuBitmap ? required("FIELD_BROWSER_TEXTURE_DMABUF_SOCKET") : "";
 const pixelPort = cpuBitmap ? Number(required("FIELD_BROWSER_TEXTURE_PIXEL_PORT")) : 0;

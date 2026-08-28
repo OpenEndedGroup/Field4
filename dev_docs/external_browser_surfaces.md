@@ -285,6 +285,38 @@ stayed on the RTX 4090, and when the Vulkan ICD is genuinely restricted to RADV 
 not start against this NVIDIA-driven display. The AMD path remains untested here, and it is the one
 configuration anybody has claimed a passing test on.
 
+### The opt-in CPU bitmap fallback
+
+Since the A/B above shows Chromium rendering the page perfectly well on its *other* offscreen output
+path, there is a way to get browser content onto a Field texture on Linux today; it just is not
+zero-copy. `FieldUiBrowserTexture(cpuBitmapFallback = true)` takes it: `useSharedTexture: false`,
+pixels over a second loopback socket, and [`BitmapBrowserSurface`](../src/jvmMain/kotlin/afield/four/browser/BitmapBrowserSurface.kt)
+uploads them through a per-slot staging buffer on the frame's own command buffer, immediately before
+the existing copy into the resident texture. Everything above that seam — conflation, the stable
+texture identity, the fence-delayed release, stream resets — is the shared base, unchanged.
+
+Verified on this machine by reading the *resident* texture back and counting, so it measures what a
+shader would sample rather than what arrived on the socket:
+
+| sample | non-black pixels | distinct colours | presented frame |
+| --- | --- | --- | --- |
+| 1 | 5788 of 921600 | 17 | 3 |
+| 2 | 78600 of 921600 | 223 | 8 |
+| 3 | 69896 of 921600 | 718 | 12 |
+
+Live, changing content against the accelerated path's flat 0 — this is Field's own dark UI, so a
+low-but-growing non-black fraction is the expected shape rather than a full frame.
+
+It is opt-in and should stay that way: 1280x720 BGRA at 30 fps is about 110 MB/s across the process
+boundary and the PCIe bus that the accelerated path does not spend. Affordable for a UI panel, wrong
+for anything full-screen, and a fallback that selects itself silently is one nobody notices paying
+for.
+
+Two things the producer needs from its environment, both learned by getting them wrong: Ozone's
+`ozone-platform-hint=auto` resolves to X11 unless `XDG_SESSION_TYPE=wayland` is set, and on X11 it
+then needs `XAUTHORITY`. A shell without the desktop session's environment gets "Missing X server or
+$DISPLAY" from the producer and a texture that never becomes ready.
+
 ## What came from the Windows prototype
 
 `src/personal/kotlin/organic/textureStreaming.kt` established the useful core: import the D3D11

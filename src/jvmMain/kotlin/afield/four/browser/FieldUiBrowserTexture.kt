@@ -696,7 +696,10 @@ private class CpuBitmapTransport(
     private fun readFrames() {
         try {
             server.accept().use { channel ->
-                val header = MemoryUtil.memAlloc(HEADER_BYTES)
+                // The producer writes the header in network order; LWJGL hands back native-order
+                // buffers, which is little-endian everywhere Field runs, so say so explicitly
+                // rather than reading a byte-swapped magic and calling the channel desynchronised.
+                val header = MemoryUtil.memAlloc(HEADER_BYTES).order(java.nio.ByteOrder.BIG_ENDIAN)
                 try {
                     while (!closed.get()) {
                         header.clear()
