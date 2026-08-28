@@ -2205,10 +2205,64 @@ tasks.named("npmInstall") {
     description = "Installs npm dependencies for the Electron wrapper."
 }
 
+val buildFieldBrowserBridge = tasks.register("buildFieldBrowserBridge") {
+    group = "application"
+    description = "Builds the native Electron/JVM bridge used by accelerated browser textures."
+    dependsOn(tasks.named("nodeSetup"))
+
+    val source = layout.projectDirectory.file("native/field-browser-bridge/macos_bridge.cc")
+    val outputDir = layout.buildDirectory.dir("field-browser-bridge/macos")
+    inputs.file(source)
+    outputs.files(
+        outputDir.map { it.file("field_browser_bridge.node") },
+        outputDir.map { it.file("libfield_browser_bridge.dylib") },
+    )
+
+    onlyIf {
+        osName.startsWith("Mac") || osName.startsWith("Darwin")
+    }
+
+    doLast {
+        val out = outputDir.get().asFile.also { it.mkdirs() }
+        val nodeInclude = File(managedNodeExecutable().parentFile.parentFile, "include/node")
+        val src = source.asFile
+        if (!nodeInclude.resolve("node_api.h").isFile) {
+            throw GradleException("Managed Node headers not found at ${nodeInclude.absolutePath}")
+        }
+
+        fun compile(vararg args: String) {
+            val command = listOf("xcrun", "clang++", "-std=c++17", "-O2") + args
+            val exit = ProcessBuilder(command)
+                .directory(project.projectDir)
+                .inheritIO()
+                .start()
+                .waitFor()
+            if (exit != 0) throw GradleException("Native browser bridge compile failed (${command.joinToString(" ")})")
+        }
+
+        compile(
+            "-dynamiclib",
+            src.absolutePath,
+            "-framework", "IOSurface",
+            "-o", File(out, "libfield_browser_bridge.dylib").absolutePath,
+        )
+        compile(
+            "-bundle",
+            "-undefined", "dynamic_lookup",
+            "-DFIELD_NODE_ADDON=1",
+            "-DNODE_GYP_MODULE_NAME=field_browser_bridge",
+            "-I", nodeInclude.absolutePath,
+            src.absolutePath,
+            "-framework", "IOSurface",
+            "-o", File(out, "field_browser_bridge.node").absolutePath,
+        )
+    }
+}
+
 val electronInstall = tasks.register("electronInstall") {
     group = "application"
     description = "Installs Electron wrapper dependencies in electron/."
-    dependsOn(tasks.named("npmInstall"))
+    dependsOn(tasks.named("npmInstall"), buildFieldBrowserBridge)
 
     doLast {
         val isMac = System.getProperty("os.name").lowercase().contains("mac")
