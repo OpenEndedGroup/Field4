@@ -182,9 +182,20 @@ paint as a native pixmap at all; on the GL backend the shared image cannot be cr
 logs `Unable to initialize SkSurface`, and every `paint` silently arrives as a CPU bitmap with no
 texture. `--ignore-gpu-blocklist` on its own was the worst of the three states: it enables Vulkan without
 pointing ANGLE at it, which additionally makes Ozone report that Wayland and Vulkan are
-incompatible. `electron/main.js` set exactly that, and now sets both switches, so Field's own head
-runs coherently on ANGLE-over-Vulkan too (`ANGLE (NVIDIA, Vulkan 1.4.341, RTX 4090)`). `--ozone-platform=x11` is not an escape route: the GPU
-process segfaults in a loop until Chromium gives up.
+incompatible. `--ozone-platform=x11` is not an escape route: the GPU process segfaults in a loop
+until Chromium gives up.
+
+Both switches belong to the *producer*, and only the producer. Setting them in `electron/main.js`
+as well — which is where they first went — breaks Field's own head on any Wayland session: Ozone's
+Wayland backend has no Vulkan surface support, so the window never gets composited to the screen
+and comes up permanently empty, showing nothing but the compositor's blur of what is behind it.
+Nothing upstream of the presentation says so. The renderer loads the page, the websocket carries
+traffic, `did-finish-load` fires, and `capturePage` returns a correct image, because none of those
+go through the on-screen path; the only hint in the log is Ozone's one-line
+`'--ozone-platform=wayland' is not compatible with Vulkan`, which is also printed harmlessly when
+Vulkan is merely enabled and unused. `main.js` therefore asks for ANGLE-over-Vulkan only on X11
+(`FIELD_ELECTRON_ANGLE_VULKAN=1`/`=0` overrides either way). The producer is unaffected: it is a
+separate Electron process with its own switches, and being offscreen it needs no Ozone surface.
 
 With those switches the whole chain runs. Chromium exports a single-plane `DRM_FORMAT_MOD_LINEAR`
 dma-buf, the bridge moves it, the receiver imports it, the copy is recorded, and `PRESENTED` comes
