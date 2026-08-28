@@ -264,11 +264,12 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     /**
      * Teardown that [stopTrackedJobs] runs for resources the end phase cannot be trusted to release.
      *
-     * `Frames.atEnd` — what `.end { }` appends to — is deliberately *not* a stop-time hook, and this
-     * list exists because of that. Stop is a barrier: it bumps [launchEpoch] first, so
-     * [registerLaunchJob] cancels the end job precisely *because* its epoch is already stale. That
-     * fence is what makes the launch/stop race safe, so it stays. Anything holding an OS resource
-     * registers here instead, through [registerStopHook], and stop drains these synchronously.
+     * `Frames.atEnd` — what `.end { }` appends to — does now run on stop (see
+     * [registerEndPhaseJob]), but it runs *asynchronously*, over Runloop ticks after stop has
+     * returned, and only for a `Frames` that was suspended in `frame()` when stop arrived. A body
+     * that already returned never reaches the end phase at all. So the end phase is still the wrong
+     * place for anything holding an OS resource: that registers here instead, through
+     * [registerStopHook], and stop drains these synchronously before it returns.
      *
      * This generalises a workaround the tree already had: `Server.stop` disposes an `afield.four`
      * renderer explicitly, outside the end phase, for exactly this reason.
@@ -1189,6 +1190,24 @@ internal fun Box.registerLaunchJob(job: Job, epoch: Int): Boolean {
     }
     return true
 }
+
+/**
+ * Register the job that runs a [Frames] end phase, against the epoch *now* rather than the launch's.
+ *
+ * The end phase is the one piece of work that legitimately belongs to a launch that stop has already
+ * invalidated, because it is stop that creates it: [stopTrackedJobs] bumps [launchEpoch] and cancels
+ * the body, the body's pending `yield()` throws, and `Frames.frame()` launches the end job in the
+ * catch. Handing that job to [registerLaunchJob] with the *launch* epoch found the epoch stale and
+ * cancelled the job while it was still queued on the Framer — which is why the stop button used to
+ * skip `.end { }` (dev_docs/frames_stop_end_phase.md).
+ *
+ * Re-capturing the epoch keeps every other property of the fence: the end job still goes into
+ * [jobs], so a *second* stop cancels it, and the strand-generation fence `Frames.shouldCancelAtEnd`
+ * still cuts a multi-frame end block short. What it gives up is stop as a synchronous barrier for
+ * end-phase code: an end block that calls `frame()` runs over Runloop ticks *after* stop returns.
+ * That is why [stopHooks] still exists for anything holding an OS resource.
+ */
+internal fun Box.registerEndPhaseJob(job: Job): Boolean = registerLaunchJob(job, captureLaunchEpoch())
 
 /**
  * Register [hook] to run on the next [stopTrackedJobs]; returns the handle that unregisters it.

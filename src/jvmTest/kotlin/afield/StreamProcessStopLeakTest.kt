@@ -16,11 +16,14 @@ import kotlin.test.assertTrue
  * and it keeps that promise by installing `runner.atEnd = { proc.destroy() … }`. That is the only
  * assignment to `Frames.atEnd` anywhere in `src/` outside `Phased.kt` itself.
  *
- * [FramesSemanticsTest.boxStopCancelsTheEndBlockBeforeItCanRun] shows in the abstract that a full
- * stop cancels the end job before it is dispatched — **and that is still true**. These tests ask the
- * question that actually matters: **does a real external process outlive a stop?** It used to. It
- * does not now, because the kill moved off the end phase and onto `Box.stopHooks`, which
- * `stopTrackedJobs` drains.
+ * These tests ask the question that actually matters: **does a real external process outlive a
+ * stop?** It used to, because stop cancelled the end job before it was dispatched. Two separate
+ * things now prevent it: `Box.stopHooks`, which `stopTrackedJobs` drains synchronously, and — since
+ * [FramesSemanticsTest.boxStopStillRunsTheEndBlock] — the end phase itself.
+ *
+ * The belt-and-braces is deliberate and worth keeping: the hook is synchronous and covers the case
+ * the end phase structurally cannot, a body that already returned and so never re-enters `frame()`.
+ * `terminateProcess` is idempotent for exactly this reason, since both can fire for one stop.
  *
  * The pairing is the point: [stopKillsTheProcess] and [reRunningTheBoxKillsTheProcess] reach the
  * same outcome by two different routes — a stop hook and the end phase respectively — so a
@@ -57,7 +60,7 @@ class StreamProcessStopLeakTest {
         val launchEpoch = box.captureLaunchEpoch()
         val generation = box.runGeneration.compute("default") { _, current -> (current ?: -1) + 1 }!!
         frames.shouldend = { box.runGeneration["default"] != generation }
-        frames.onAtEndStart = { endJob -> box.registerLaunchJob(endJob, launchEpoch) }
+        frames.onAtEndStart = { endJob -> box.registerEndPhaseJob(endJob) }
         val framer = Framer()
         val job = CoroutineScope(framer).launch { runCatching { frames.body() } }
         frames.job = job
@@ -85,13 +88,11 @@ class StreamProcessStopLeakTest {
     }
 
     /**
-     * **The leak, fixed.** `Box.stop` still bumps `launchEpoch` and `registerLaunchJob` still
-     * cancels the end job — that fence is deliberate — so `runner.atEnd` still does not run. The
-     * process dies anyway, because `streamProcess` registers a `Box.stopHooks` entry that
-     * `stopTrackedJobs` drains synchronously.
+     * **The leak, fixed.** The `Box.stopHooks` entry `streamProcess` registers is drained
+     * synchronously inside `stopTrackedJobs`, so the child is already dead when `stop` returns —
+     * before the end phase, which now also runs, gets its first Runloop tick.
      *
-     * This asserted the opposite until 2026-08-19; see `dev_docs/frames_stop_end_phase.md` for the
-     * measurement that produced the fix and for why the end phase itself was left alone.
+     * This asserted the opposite until 2026-08-19; see `dev_docs/frames_stop_end_phase.md`.
      */
     @Test
     fun stopKillsTheProcess() {
@@ -109,8 +110,8 @@ class StreamProcessStopLeakTest {
 
         assertTrue(
             !sleeper.isAlive,
-            "stop must kill the child: the end phase is still cancelled by the epoch fence, so the " +
-                "Box.stopHooks drain in stopTrackedJobs is the only thing that can do it"
+            "stop must kill the child: the Box.stopHooks drain in stopTrackedJobs is what does it " +
+                "synchronously, ahead of the end phase"
         )
     }
 

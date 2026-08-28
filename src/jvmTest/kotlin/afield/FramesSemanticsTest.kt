@@ -1,6 +1,7 @@
 package afield
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -216,14 +217,21 @@ class FramesSemanticsTest {
      * Wires a [Frames] to a real [Box] the way both launchers do, so the tests below exercise the
      * actual epoch/generation fences rather than a bare `Job()`.
      *
-     * The two hooks are the whole contract a launcher installs: [Frames.shouldend] is the strand
-     * generation fence, and [Frames.onAtEndStart] registers the end-phase job with the box.
+     * The three hooks are the whole contract a launcher installs: [Frames.shouldend] is the strand
+     * generation fence, [Frames.onAtEndStart] registers the end-phase job with the box through
+     * [Box.registerEndPhaseJob], and it re-arms [Frames.shouldCancelAtEnd] against the generation as
+     * it stands once the end phase has begun, so a *second* stop can cut a multi-frame end block
+     * short. Kept in step with `registerFramesReturnValue`.
      */
     private fun launchAgainst(box: Box, frames: Frames, strand: String = "default"): Pair<Framer, kotlinx.coroutines.Job> {
         val launchEpoch = box.captureLaunchEpoch()
         val generation = box.runGeneration.compute(strand) { _, current -> (current ?: -1) + 1 }!!
         frames.shouldend = { box.runGeneration[strand] != generation }
-        frames.onAtEndStart = { endJob -> box.registerLaunchJob(endJob, launchEpoch) }
+        frames.onAtEndStart = { endJob ->
+            val endingGeneration = box.runGeneration[strand] ?: (generation + 1)
+            frames.shouldCancelAtEnd = { box.runGeneration[strand] != endingGeneration }
+            box.registerEndPhaseJob(endJob)
+        }
         val framer = Framer()
         val job = CoroutineScope(framer).launch { runCatching { frames.body() } }
         frames.job = job
@@ -232,20 +240,19 @@ class FramesSemanticsTest {
     }
 
     /**
-     * **`Box.stop` does not run `.end { }`.**
+     * **`Box.stop` runs `.end { }`.**
      *
-     * This is the one that surprised me, and it is not visible from `Phased.kt` alone.
-     * `frame()` does launch the end phase on cancellation — but it then calls `onAtEndStart`, which
-     * registers the end job with the box via [Box.registerLaunchJob]. `stopTrackedJobs` has already
-     * incremented `launchEpoch`, so that registration fails, and `registerLaunchJob` *cancels the
-     * job it was handed*. The end block is queued on the Framer and killed before it is dispatched.
-     *
-     * So `.end { }` is narrower than "on cancellation": it is "on cancellation that did not come
-     * from a full stop".
+     * It did not until 2026-08-28, and the reason is not visible from `Phased.kt` alone. `frame()`
+     * launches the end phase on cancellation, then calls `onAtEndStart`, which registers the end job
+     * with the box. That registration used to pass the *launch* epoch — but `stopTrackedJobs`
+     * increments `launchEpoch` before it cancels anything, so the epoch was already stale and
+     * `registerLaunchJob` *cancelled the job it was handed*, while it was still queued on the
+     * Framer. [Box.registerEndPhaseJob] re-captures the epoch instead, because it is stop's own
+     * cancellation that creates this job. See `dev_docs/frames_stop_end_phase.md`.
      */
     @Test
-    fun boxStopCancelsTheEndBlockBeforeItCanRun() {
-        val box = Box("stop-kills-end")
+    fun boxStopStillRunsTheEndBlock() {
+        val box = Box("stop-runs-end")
         var cleaned = false
         val f = eachFrame { }.end { cleaned = true }
         val (framer, _) = launchAgainst(box, f)
@@ -254,14 +261,163 @@ class FramesSemanticsTest {
         KotlinExecution().stop(box)
         repeat(8) { framer.frame() }
 
-        assertFalse(cleaned, "Box.stop bumps launchEpoch, so the end job is cancelled at registration")
+        assertTrue(cleaned, "the end job registers against the epoch as it stands after the stop")
     }
 
     /**
-     * Re-running the box — a generation bump with no epoch change — *does* run `.end { }`.
+     * A `.end { }` that calls `frame()` gets those frames, *after* stop has returned.
      *
-     * The contrast with [boxStopCancelsTheEndBlockBeforeItCanRun] is the whole point: the two stops
-     * a user reaches for most differ in whether cleanup happens at all.
+     * This is the half of the contract that makes the end phase a place to put a wind-down rather
+     * than only a final assignment, and it is the half that stop cannot be a synchronous barrier
+     * for: the end block runs on Runloop ticks after `stop` returned. Ten `frame()` calls, so the
+     * last value written is the tenth.
+     */
+    @Test
+    fun theEndBlockKeepsItsFramesAfterAStop() {
+        val box = Box("stop-multi-frame-end")
+        var x = 0
+        val f = loop { x++ }.end {
+            x = 20
+            repeat(10) { i ->
+                frame()
+                x = 30 + i
+            }
+        }
+        val (framer, _) = launchAgainst(box, f)
+
+        repeat(3) { framer.frame() }
+        KotlinExecution().stop(box)
+        assertEquals(3, x, "stop is not synchronous for the end phase: nothing has run yet")
+        repeat(20) { framer.frame() }
+
+        assertEquals(39, x, "the end block must get all ten of its frames")
+    }
+
+    /**
+     * A *second* stop, arriving while a multi-frame end block is mid-flight, cuts it short.
+     *
+     * The end phase is not unkillable — it is registered in `box.jobs` like anything else, and
+     * `Frames.shouldCancelAtEnd` re-fences it against the generation as it stood when it began. Both
+     * routes point the same way; this pins that a runaway end block cannot ignore the stop button.
+     */
+    @Test
+    fun aSecondStopCutsTheEndBlockShort() {
+        val box = Box("stop-twice")
+        var reached = 0
+        val f = eachFrame { }.end { repeat(100) { frame(); reached++ } }
+        val (framer, _) = launchAgainst(box, f)
+
+        repeat(3) { framer.frame() }
+        KotlinExecution().stop(box)
+        repeat(4) { framer.frame() }
+        val partway = reached
+        assertTrue(partway in 1..99, "the end block should be mid-flight here, not $partway")
+
+        KotlinExecution().stop(box)
+        repeat(20) { framer.frame() }
+        assertTrue(
+            reached < 100,
+            "a second stop must cancel the end phase; it ran to completion ($reached)"
+        )
+    }
+
+    /**
+     * The same thing again, but through the **production** launch path rather than a mirror of it.
+     *
+     * Every other case here wires the launcher's hooks by hand, which is what makes them readable —
+     * and is also how the stop/end-phase defect survived: the hand-wiring agreed with the code it
+     * copied. This case returns a `Frames` to [ReturnValueRegistry.launch] exactly as a box does,
+     * pumps `Runloop.runLoop.main` (itself a [Framer]) by hand instead of starting the Runloop
+     * thread, and presses stop through [KotlinExecution.stop]. It is the whole user-visible claim:
+     *
+     * ```
+     * var x = 0
+     * loop { x++ }.end { x = 20; 10 { frame(); x = 30 + it } }
+     * ```
+     *
+     * launch, stop, and `x` is 39.
+     */
+    @Test
+    fun theRealLaunchPathRunsAMultiFrameEndBlockOnStop() {
+        val box = Box("real-path-stop-end")
+        var x = 0
+        val f = loop { x++ }.end {
+            x = 20
+            repeat(10) { i ->
+                frame()
+                x = 30 + i
+            }
+        }
+        val runloop = Runloop.runLoop.main
+
+        val handled = ReturnValueRegistry.launch(box, f, "default") { _, _, _ -> }
+        assertTrue(handled, "a Frames must be claimed by registerFramesReturnValue")
+
+        repeat(6) { runloop.frame() }
+        assertTrue(x > 0, "the body should be running before we stop it, not $x")
+
+        KotlinExecution().stop(box)
+        // Stop cleared the running states on its way out; the end phase puts one back, which is how
+        // the front end knows the box is winding down rather than idle (`syncExecutionStatus` reads
+        // this map, not the launch's notify callback).
+        val modesDuringEnd = mutableSetOf<String?>()
+        repeat(30) {
+            runloop.frame()
+            modesDuringEnd += box.currentRunningStates["default"]?.mode
+        }
+
+        assertEquals(39, x, "stop must run the end block, frames and all")
+        assertTrue("ending" in modesDuringEnd, "the box should report the end phase: $modesDuringEnd")
+        assertEquals(null, box.currentRunningStates["default"], "and be idle once it finishes")
+    }
+
+    /**
+     * The end phase must not report *its* generation as current when a newer launch already holds
+     * the strand.
+     *
+     * Newly reachable: before stop ran the end phase, a stop-then-relaunch — which is what the docs
+     * capture's `restartTarget` does — had nothing left of the old launch to report. Now the old end
+     * phase starts while the new launch is already on record, and `execution.kt` puts that record in
+     * place *synchronously* at launch preparation, before it compiles anything. Overwriting it with
+     * the older generation makes the strand read as the previous launch winding down for as long as
+     * the compile takes, and a capture gate waiting on `watermark > stopped` waits with it.
+     *
+     * This is a reporting guard, not a correctness one: the removal at the end of the end phase keys
+     * on its own generation and so has always declined to delete a newer entry.
+     */
+    @Test
+    fun theEndPhaseDoesNotReportOverANewerLaunch() {
+        val box = Box("end-phase-vs-newer-launch")
+        var cleaned = false
+        val runloop = Runloop.runLoop.main
+
+        ReturnValueRegistry.launch(box, loop { }.end { cleaned = true }, "default") { _, _, _ -> }
+        repeat(3) { runloop.frame() }
+        val oldGeneration = box.runGeneration["default"]!!
+
+        KotlinExecution().stop(box)
+        // What a relaunch's preparation does, synchronously, before the old end phase gets a tick.
+        val newer = RunningState(oldGeneration + 5, "frames")
+        box.currentRunningStates["default"] = newer
+
+        repeat(10) { runloop.frame() }
+
+        assertTrue(cleaned, "the end block must still run — the guard is about reporting, not running")
+        assertEquals(
+            newer.watermark,
+            box.currentRunningStates["default"]?.watermark,
+            "the end phase must leave a newer launch's record alone"
+        )
+        assertEquals("frames", box.currentRunningStates["default"]?.mode)
+        box.stopTrackedJobs()
+    }
+
+    /**
+     * Re-running the box — a generation bump with no epoch change — runs `.end { }` too.
+     *
+     * The contrast with [boxStopStillRunsTheEndBlock] used to be the whole point: the two stops a
+     * user reaches for most differed in whether cleanup happened at all. They now agree, and this
+     * case is what pins the route that always worked.
      */
     @Test
     fun reRunningTheBoxStillRunsTheEndBlock() {
@@ -357,6 +513,181 @@ class FramesSemanticsTest {
         assertTrue(left > 0, "the left child never ran")
         assertTrue(right > 0, "the right child never ran")
         assertEquals(left, right, "the two children advance in step with each other")
+    }
+
+    /**
+     * **The leak `Frames.plus` used to have.** A child's end block must be stoppable.
+     *
+     * A launcher installs its fences on the `Frames` it is handed — the combined one — and the
+     * children are reached only through `body()`. So they kept the defaults, and
+     * `onAtEndStart = {}` meant a child's end job was never registered with the box: nothing could
+     * cancel it. Measured before the fix, this ticked 18 -> 58 -> 98 and kept going through every
+     * stop. `Frames.plus` now forwards all four fences, so the end job lands in `box.jobs` and the
+     * second stop reaches it, exactly as it does for a top-level end block.
+     */
+    @Test
+    fun aRunawayChildEndBlockIsKillable() {
+        val box = Box("plus-runaway-child")
+        var ticks = 0
+        val runloop = Runloop.runLoop.main
+        val combined = eachFrame { }.end { while (true) { frame(); ticks++ } } + eachFrame { }
+
+        ReturnValueRegistry.launch(box, combined, "default") { _, _, _ -> }
+        repeat(6) { runloop.frame() }
+        KotlinExecution().stop(box)
+        repeat(20) { runloop.frame() }
+
+        assertTrue(ticks > 0, "the child end block should be running after the first stop")
+        assertTrue(box.jobs.isNotEmpty(), "and its end job must be registered with the box")
+
+        KotlinExecution().stop(box)
+        repeat(20) { runloop.frame() }
+        val settled = ticks
+        repeat(40) { runloop.frame() }
+
+        assertEquals(settled, ticks, "a second stop must stop a child's end block, not just the parent's")
+    }
+
+    /** All three end blocks of `(a.end + b.end).end` run on stop, and every end job drains. */
+    @Test
+    fun bothChildrenAndTheParentRunTheirEndBlocks() {
+        val box = Box("plus-three-ends")
+        var left = false
+        var right = false
+        var parent = false
+        val runloop = Runloop.runLoop.main
+        val combined = (eachFrame { }.end { left = true } + eachFrame { }.end { right = true })
+            .end { parent = true }
+
+        ReturnValueRegistry.launch(box, combined, "default") { _, _, _ -> }
+        repeat(6) { runloop.frame() }
+        KotlinExecution().stop(box)
+        repeat(30) { runloop.frame() }
+
+        assertTrue(left && right && parent, "left=$left right=$right parent=$parent")
+        assertTrue(box.jobs.isEmpty(), "every end job must be removed once it finishes: ${box.jobs.size} left")
+        assertEquals(null, box.currentRunningStates["default"], "and the strand must not be left reporting")
+    }
+
+    /**
+     * The forwarding itself, directly: a fence set on `a + b` is visible through both children.
+     *
+     * This is the discriminating test for `Frames.plus`'s hook forwarding, and it is a flat
+     * assertion rather than a behavioural one on purpose. The behavioural cases below and above
+     * mostly cannot tell the two versions apart — children were already cancelled *indirectly*, by
+     * the parent's `finally`, so "the end block ran" and "the body stopped" look identical either
+     * way. Only [aRunawayChildEndBlockIsKillable] and this test fail when the forwarding is removed.
+     *
+     * The forwarding has to be lazy, and that is what the reassignment here checks: a launcher
+     * installs these hooks *after* `plus` has returned, so a child holding a copy would hold the
+     * defaults forever.
+     */
+    @Test
+    fun plusForwardsTheParentsFencesToBothChildren() {
+        val left = eachFrame { }
+        val right = eachFrame { }
+        val parent = left + right
+
+        // Installed after `plus` returned, exactly as a launcher does it.
+        parent.shouldend = { true }
+        parent.shouldCancelAtEnd = { true }
+        val registered = mutableListOf<String>()
+        parent.onAtEndStart = { registered += "start" }
+        parent.onAtEndFinish = { registered += "finish" }
+
+        listOf("left" to left, "right" to right).forEach { (name, child) ->
+            assertTrue(child.shouldend(), "$name child does not see the parent's shouldend")
+            assertTrue(child.shouldCancelAtEnd(), "$name child does not see the parent's shouldCancelAtEnd")
+            child.onAtEndStart(Job())
+            child.onAtEndFinish(Job())
+        }
+        assertEquals(
+            listOf("start", "finish", "start", "finish"),
+            registered,
+            "both children must route their end-phase bracket through the parent, which is what " +
+                "registers the end job with the box"
+        )
+    }
+
+    /**
+     * On a re-run, both children of `a + b` stop and both end blocks run, and every job drains.
+     *
+     * An invariant rather than a discriminating test — see
+     * [plusForwardsTheParentsFencesToBothChildren] for why. Worth keeping because it is the case a
+     * person actually stages (re-run a box holding a composed animation), and it would catch a
+     * regression that left a child running or an end job in `box.jobs`.
+     */
+    @Test
+    fun aReRunStopsBothChildrenOfPlusAndRunsTheirEndBlocks() {
+        val box = Box("plus-rerun")
+        var leftCalls = 0
+        var rightCalls = 0
+        var leftEnded = false
+        var rightEnded = false
+        val runloop = Runloop.runLoop.main
+        val combined = eachFrame { leftCalls++ }.end { leftEnded = true } +
+            eachFrame { rightCalls++ }.end { rightEnded = true }
+
+        ReturnValueRegistry.launch(box, combined, "default") { _, _, _ -> }
+        repeat(6) { runloop.frame() }
+        val atReRun = leftCalls to rightCalls
+        // What a second launch on the same strand does, and nothing else: no epoch change.
+        box.runGeneration.compute("default") { _, current -> (current ?: -1) + 1 }
+        repeat(20) { runloop.frame() }
+
+        assertEquals(atReRun.first + 1, leftCalls, "the left child should stop one body call later")
+        assertEquals(atReRun.second + 1, rightCalls, "and so should the right")
+        assertTrue(leftEnded && rightEnded, "both children run their end block")
+        assertTrue(box.jobs.isEmpty(), "and nothing is left registered: ${box.jobs.size}")
+        box.stopTrackedJobs()
+    }
+
+    /**
+     * **`frame()`'s `Boolean` is not a stop signal — it is never `false`.**
+     *
+     * Every route that stops a frame body cancels the job *before* the `yield()` that `frame()` is
+     * about to suspend on, so the yield throws and `frame()` does not return at all. The local `r`
+     * that `frame()` computes can only ever be returned as `true`. That is why `loop`'s `while (true)`
+     * gives up nothing over `eachFrame`'s `while (frame())`, and why `forever { }`'s own `Boolean` is
+     * the only return-based way to end a frame program.
+     *
+     * This is a characterization of a consequence, not a designed contract: it follows from
+     * `job?.cancel()` preceding `yield()`. If that order ever changes, `eachFrame` starts exiting
+     * through its loop condition instead of through the `catch` — and the end phase lives in the
+     * `catch`, so `.end { }` would stop running. Hence pinning it.
+     */
+    @Test
+    fun frameNeverReturnsFalse() {
+        fun outcome(stage: (Frames, kotlinx.coroutines.Job, Framer) -> Unit): String {
+            var result = "never finished"
+            val f = frames {
+                try {
+                    while (true) {
+                        if (!frame()) { result = "returned false"; break }
+                    }
+                } catch (t: Throwable) {
+                    result = "threw ${t.javaClass.simpleName}"
+                    throw t
+                }
+            }
+            val framer = Framer()
+            val job = CoroutineScope(framer).launch { runCatching { f.body() } }
+            f.job = job
+            repeat(3) { framer.frame() }
+            stage(f, job, framer)
+            repeat(4) { framer.frame() }
+            job.cancel()
+            return result
+        }
+
+        // The three ways a frame body is stopped, per the page's "What stops one" table.
+        assertEquals("threw JobCancellationException", outcome { f, _, _ -> f.shouldend = { true } },
+            "the generation-fence route")
+        assertEquals("threw JobCancellationException", outcome { _, job, _ -> job.cancel() },
+            "the direct cancel route, which is what Box.stop does")
+        assertEquals("threw JobCancellationException",
+            outcome { f, _, _ -> kotlinx.coroutines.runBlocking { f.end() } },
+            "end() from inside the body")
     }
 
     /** `then` sequences two plain suspend lambdas into one. */

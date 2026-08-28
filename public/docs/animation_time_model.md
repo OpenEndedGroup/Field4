@@ -157,9 +157,34 @@ What differs is *when the body runs relative to the boundary*:
 | `forever { }` | `loop { }`, except the body returns a `Boolean` and returning `false` ends it. |
 
 `eachFrame`'s body runs from pump 2; `loop`'s from pump 1. One pump, and it is the whole difference
-between "advance, then run" and "run, then advance". The `loop`/`forever` conditional advance is the
-part to watch: a body that calls `frame()` or `delay(ms)` itself does not get a second advance
-bolted on afterwards.
+between "advance, then run" and "run, then advance" — *for a body that does not advance itself*.
+
+The conditional advance is the part to watch, because that is where the two stop being one pump
+apart. `eachFrame` spends a frame of its own before every body call, so a body that also calls
+`frame()` or `delay(ms)` costs two frames a pass and runs half as often. `loop` does not bolt a
+second advance onto a pass that already advanced. Over eight pumps:
+
+| | body calls | frames |
+| --- | --- | --- |
+| `animate { }` | 7 | 7 |
+| `loop { }` | 8 | 7 |
+| `animate { …; frame() }` | 4 | 7 |
+| `loop { …; frame() }` | 8 | 7 |
+
+One frame per pump throughout — the frame *rate* is the Runloop's, never the builder's. So reach for
+`loop` when the body paces itself, and for `animate` when it does not.
+
+!!! note "`frame()`'s `Boolean` is never `false`"
+    Which raises the other apparent difference — `eachFrame` is `while (frame())` and `loop` is
+    `while (true)` — and it is not one. Every route that stops a frame body cancels the job *before*
+    the `yield()` that `frame()` is suspended on, so the yield throws and `frame()` does not return
+    at all. `loop` gives up nothing by ignoring the value, and `forever { }`'s own `Boolean` is the
+    only return-based way to end a frame program.
+
+    This falls out of `job?.cancel()` preceding `yield()` rather than being designed, so it is pinned
+    by `FramesSemanticsTest.frameNeverReturnsFalse` across all three stop routes. It matters more
+    than it looks: the end phase lives in that `catch`, so a `frame()` that started returning `false`
+    would exit `eachFrame` through its loop condition and stop running `.end { }` altogether.
 
 !!! note "`forever { }` needs qualifying"
     A box imports both `afield.*` and `afield.four.util.*`, and each declares a `forever` — one
@@ -169,9 +194,21 @@ bolted on afterwards.
 
 ??? aside "`forever` and `Frames.plus` have no callers in the tree"
     Nothing in Field's own source calls either the `Frames` `forever` or the parallel-composition
-    operator `Frames.plus`. Both are public and both work — the figure above drives `forever` and it
-    behaves exactly as documented — but they carry less exposure to change than the other three
-    builders.
+    operator `Frames.plus`. Both are public, and both carry less exposure to change than the other
+    three builders. `forever` behaves exactly as documented — the figure above drives it.
+
+    `Frames.plus` did not, until 2026-08-28, and the reason is worth reading if you compose frame
+    programs. A launcher installs its stop fences — `shouldend`, `onAtEndStart`, `onAtEndFinish`,
+    `shouldCancelAtEnd` — on the `Frames` it was handed, which for `a + b` is the *combined* one. The
+    children are reached only through `body()`, so they kept the defaults. The default
+    `onAtEndStart = { }` was the damaging one: a child's end job was never registered with the box,
+    so nothing could cancel it. A child `.end { }` that looped on `frame()` ran on the Runloop
+    forever, through any number of stops. `plus` now forwards all four, lazily, so a child is fenced
+    exactly as the parent is and a re-run stops each child in its own right rather than only via the
+    parent's `finally`.
+
+    One rough edge is left, and it is cosmetic: all three end phases of `(a.end + b.end).end` route
+    through the same hook pair, so the box can report `"ending"` more than once for one stop.
 
 ## What stops one
 
@@ -192,7 +229,7 @@ suspend fun frame(): Boolean {
 | how it stops | what actually happens |
 | --- | --- |
 | **You re-run the box.** | The launch bumps `runGeneration[strand]`. The old `Frames`'s `shouldend` closes over the *old* generation, sees the mismatch at the top of its next `frame()`, and cancels. This is the everyday one. |
-| **`Box.stop` / the stop button.** | `stopTrackedJobs()` is a barrier: it bumps `launchEpoch`, bumps *every* strand's generation, and cancels every job in `box.jobs` outright. It also, as a consequence, [skips your `.end { }` block](#box-stop-skips-the-end-block). |
+| **`Box.stop` / the stop button.** | `stopTrackedJobs()` is a barrier: it bumps `launchEpoch`, bumps *every* strand's generation, and cancels every job in `box.jobs` outright. Your [`.end { }` block still runs](#box-stop-and-the-end-block), but after stop has returned. |
 | **`end()` from inside the body.** | Cancels the job directly. Called before the launch has a job, it sets `stillborn` and the animation is cancelled at its first frame instead. |
 | **The body returns.** | `eachFrame`'s `while (frame())` exits, or a `frames { }` block runs off the end. Normal completion. |
 | **`forever { }` returns `false`.** | Normal completion, same as above. |
@@ -288,46 +325,79 @@ than incidental.
 
 When `atEnd` does run, it runs properly: `frame()` re-enters through `withContext(NonCancellable)`
 on a fresh `Job` that inherits the dispatcher and the box context, so the end block still gets frames
-and can still draw. It is registered with the box as well, and fenced by its own generation — so a
-*second* stop, arriving while the end block is running, cancels the end block too.
+and can still draw. Which raises the case the figure above cannot stage, because it needs the box's
+launch epoch and that is internal to Field: the stop button.
 
-### `Box.stop` skips the end block { #box-stop-skips-the-end-block }
+### `Box.stop` and the end block { #box-stop-and-the-end-block }
 
-!!! warning "Pressing stop does not run your `.end { }`. Re-running the box does."
+Pressing stop runs your `.end { }`, and gives it frames to do it in.
 
-    This page said the opposite in its first draft, and the demo document below is what caught it.
-    The figure above is right about what it measures — a cancelled `Job` reaches `atEnd` — but
-    `Box.stop` does more than cancel the job.
+For twenty days in August 2026 it did not, and the way it broke is worth knowing because the
+mechanism is still there. `stopTrackedJobs()` increments the box's `launchEpoch` before it cancels
+anything. `frame()`'s `catch` did still launch the end phase, but it handed the end job to
+`Box.registerLaunchJob` along with the epoch the *launch* had captured — and a stale epoch makes
+`registerLaunchJob` cancel the job it was given, which is exactly its purpose everywhere else. The
+end block sat in the Framer's queue and was killed before it was ever dispatched. Re-running the box
+kept working throughout, because a re-run bumps the strand generation and leaves the epoch alone,
+and that is what made it read as a subtlety of `.end { }` rather than as a regression.
 
-    `stopTrackedJobs()` increments the box's `launchEpoch` *first*. `frame()` then does launch the
-    end phase, and immediately hands the end job to `Box.registerLaunchJob`, which finds the epoch
-    stale and — this is the part that matters — **cancels the job it was given**. The end block is
-    sitting in the Framer's queue at that moment and is killed before it is ever dispatched.
+The fence was right and the epoch was wrong. The end phase is the one piece of work that legitimately
+belongs to a launch stop has already invalidated, because it is stop's own cancellation that creates
+it; asking "did a stop land between preparing this launch and dispatching it?" has only one answer
+here, and it is not the interesting one. `Box.registerEndPhaseJob` registers against the epoch as it
+stands *now*. Nothing else about the barrier changes: the end job still goes into `box.jobs`, so a
+second press of stop cancels it, and `shouldCancelAtEnd` still fences it against the generation as it
+stood when the end phase began. A runaway end block cannot ignore the stop button.
 
-    Re-running the box is different: that bumps the strand *generation* and leaves `launchEpoch`
-    alone, so the end job registers and `.end { }` runs normally.
+What stop gives up is being synchronous. The body is suspended in `yield()` when stop arrives;
+cancelling its job resumes it, and that resumption is dispatched, so the throw — and therefore the end
+phase — happens on a later Runloop tick, after `stop` has returned. So this leaves `x` at `20`, but
+not until the frame after you press stop:
 
-    Both halves are pinned on every build. The practical rule: **`.end { }` is for cleanup you want
-    when the animation retires itself or gets replaced, not for releasing something that must be
-    released when a person presses stop.** Put that in a `finally`.
+```diffstatic {data-lang=kotlin}
+var x = 0
+loop {
+    x++
+}.end {
+    x = 20
+}
+```
 
-    **This bit one thing in the standard library, and the fix is worth knowing about.**
-    `Box.streamProcess` runs an external command and streams its output into a box, and it is the
-    only place in Field's source that installs an `atEnd` — the block that calls `proc.destroy()`.
-    Its KDoc promised *"ending the Frames will kill the process"*, and pressing stop did end the
-    Frames while leaving a real `/bin/sleep` running.
+and because the end block is a normal frame body on a fresh `Job`, it can spend frames:
 
-    That leak is fixed, but **not** by making stop run the end phase. The epoch fence is what makes
-    the launch/stop race safe, so it stays, and `.end { }` stays best-effort exactly as described
-    above. Instead a box now carries `stopHooks`: a short, synchronous teardown list that
-    `stopTrackedJobs` drains after cancelling jobs, and `streamProcess` registers its kill there.
-    So the child dies on stop, while the suspending `atEnd` *user callback* — which belongs to the
-    end phase — is still skipped. Both routes are pinned: the child dying via the hook on stop, and dying
-    via the end phase on a re-run.
+```diffstatic {data-lang=kotlin}
+var x = 0
+loop {
+    x++
+}.end {
+    x = 20
+    10 {
+        frame()
+        x = 30 + it
+    }
+}
+```
 
-    The rule for your own code is unchanged, and is the reason the hook exists: **if something must
-    be released when a person presses stop, do not put it in `.end { }`.** The mechanism, the full
-    caller sweep and why this contract was chosen over the alternative are in
+which stops at `x == 39`, eleven frames after the button. Draw from there rather than only assigning:
+the end phase is where the wind-down goes, and the disc animation further down this page uses it for
+exactly that — two frames of it, to repaint the stopped state in red.
+
+!!! warning "It is still not a `finally`, and still not the place for an OS resource"
+
+    Everything above is about *cancellation*, which is the only route into `atEnd`. A body that
+    returned, or that threw, never re-enters `frame()` and so never reaches the end phase at all —
+    that is the two `no` rows in the figure above, and no amount of fixing stop changes them.
+
+    Which is why a box carries `stopHooks` as well: a short, synchronous teardown list
+    `stopTrackedJobs` drains before it returns. `Box.streamProcess` — the only place in Field's own
+    source that installs an `atEnd`, to `proc.destroy()` an external command — registers its kill
+    there, and keeps the `atEnd` too, so the child dies whether the process was still running when
+    you pressed stop or had already exited on its own. `terminateProcess` is idempotent because both
+    can fire for one stop.
+
+    The rule for your own code: **if something must be released the instant a person presses stop,
+    or must be released even when the animation ends by returning, do not rely on `.end { }`.** The
+    epoch mechanism, the caller sweep, and the design choice that was reversed here are in
     `dev_docs/frames_stop_end_phase.md`.
 
 ## Time, if you actually meant seconds
@@ -802,7 +872,7 @@ it has a row here, and removing one fails the build until the row goes.
 | `Frames.frameNumber` | Frames completed so far. Counts work, not time. |
 | `Frames.job` | The coroutine running `body`, once there is one. |
 | `Frames.body` | The suspend lambda a builder assembled. Inert until something launches it. |
-| `Frames.atEnd` | The cleanup chain, run on cancellation only. `Frames.end { }` appends to it. |
+| `Frames.atEnd` | The cleanup chain, run on cancellation only — including the stop button. `Frames.end { }` appends to it. |
 | `Frames.shouldend` | Polled at the top of every `frame()`. This is where a launcher installs its generation fence. |
 | `Frames.toString()` | `"(frames)"` — what a box shows when you evaluate one without returning it. |
 
@@ -815,7 +885,7 @@ it has a row here, and removing one fails the build until the row goes.
 | `loop` | Run the body, then advance — unless the body advanced already. |
 | `forever` | `loop`, but the body returns a `Boolean` and `false` ends it. No callers in the tree. |
 | `Frames.end` | Chain a cleanup block onto `atEnd`. Written `.end { }`, and distinct from the `end()` member. |
-| `Frames.plus` | Run two frame programs in parallel under one parent. No callers in the tree. |
+| `Frames.plus` | Run two frame programs in parallel under one parent, forwarding the parent's stop fences to both children. No callers in the tree. |
 | `Box.launchFrames` | Launch a `Frames` on the Runloop against a box, without returning it. Two overloads. |
 | `then` | Sequence two plain suspend lambdas into one. |
 

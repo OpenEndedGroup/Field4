@@ -209,9 +209,19 @@ fun registerFramesReturnValue() {
             returnValue.shouldCancelAtEnd = {
                 inside.runGeneration[strand] != endingGeneration
             }
-            if (!inside.registerLaunchJob(endJob, launchEpoch)) return@onAtEndStart
-            inside.currentRunningStates[strand] = RunningState(generation, "ending")
-            send(Message("is-running").payload(IsRunning(inside.id, true, generation, strand, "ending")))
+            // The end phase registers against the epoch *now*, not `launchEpoch`: stop bumps the
+            // epoch and it is stop's cancellation that creates this job. See registerEndPhaseJob.
+            if (!inside.registerEndPhaseJob(endJob)) return@onAtEndStart
+            // Only claim the running state if a newer launch has not already taken this strand. A
+            // stop followed immediately by a relaunch — what the docs capture's `restartTarget`
+            // does — runs this end phase alongside the new launch, and reporting the *old*
+            // generation as "ending" would leave the strand looking stopped while it runs, because
+            // the matching removal below keys on that older generation.
+            val holder = inside.currentRunningStates[strand]
+            if (holder == null || holder.watermark <= generation) {
+                inside.currentRunningStates[strand] = RunningState(generation, "ending")
+                send(Message("is-running").payload(IsRunning(inside.id, true, generation, strand, "ending")))
+            }
         }
         returnValue.onAtEndFinish = { endJob ->
             returnValue.shouldCancelAtEnd = { false }

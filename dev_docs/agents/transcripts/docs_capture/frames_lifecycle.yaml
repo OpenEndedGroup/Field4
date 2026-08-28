@@ -18,18 +18,22 @@ description: >
        work rather than seconds: it runs into the tens of thousands within a few seconds, and it is
        a different number on every machine and every run.
     4. "cleanup, and what actually triggers it" — not launched, because the point is that you drive
-       it. It is the box that corrected the page: pressing **stop** does NOT run `.end { }`.
-       `stopTrackedJobs` bumps the box's launch epoch before the end phase registers, and
-       `registerLaunchJob` cancels the end job on a stale epoch. So:
+       it. It is the box that corrected the page twice. What a cancellation reaches `.end { }`
+       and a completion does not:
 
-         * press stop inside the eight-second window  -> only the `finally` line;
+         * press stop inside the eight-second window  -> BOTH lines, `.end { }` first, on the
+           frame after the button;
          * let the eight seconds elapse               -> only the `finally` line (no cancellation);
-         * **re-run** it while it is still running    -> BOTH lines, `.end { }` first.
+         * **re-run** it while it is still running    -> BOTH lines again.
 
-       That last one is the contrast worth seeing, and box 2 shows the other way to reach it: a
-       body that calls `end()` on itself. `.end { }` means "retired or replaced", not "stopped".
-       (`afield.FramesSemanticsTest.boxStopCancelsTheEndBlockBeforeItCanRun` and
-       `reRunningTheBoxStillRunsTheEndBlock` pin both halves.)
+       The middle one is the contrast worth seeing: a cancellation is the only route into
+       `atEnd`, so `.end { }` means "cancelled", not "finished". The first one printed only the
+       `finally` line until 2026-08-28 — `stopTrackedJobs` bumps the box's launch epoch before the
+       end phase registers, and `registerLaunchJob` cancelled the end job on a stale epoch.
+       `Box.registerEndPhaseJob` re-captures the epoch, because it is stop's own cancellation that
+       creates that job. (`afield.FramesSemanticsTest.boxStopStillRunsTheEndBlock`,
+       `theRealLaunchPathRunsAMultiFrameEndBlockOnStop` and `reRunningTheBoxStillRunsTheEndBlock`
+       pin all three rows; `dev_docs/frames_stop_end_phase.md` has the history.)
 
   Two things every box here does that are worth copying:
 
@@ -252,17 +256,21 @@ operations:
           // Three things to try, in this order:
           //
           //   1. Run it and press STOP inside the eight seconds.
-          //      -> only the finally line. Pressing stop does NOT run .end { }: stopTrackedJobs
-          //         bumps the box's launch epoch first, and registerLaunchJob then cancels the end
-          //         job it is handed because that epoch is stale.
+          //      -> both lines, with .end { } first. Note that they appear on the frame AFTER the
+          //         button: cancelling the body resumes it through the dispatcher, so the end phase
+          //         lands on a later Runloop tick and stop is not a synchronous barrier for it.
           //   2. Run it and let the eight seconds elapse.
-          //      -> only the finally line. The body returned; there was no cancellation to catch.
+          //      -> only the finally line. The body returned; there was no cancellation to catch,
+          //         and a cancellation is the only route into .end { }.
           //   3. Run it, and while it is still counting, RUN IT AGAIN.
-          //      -> both lines, with .end { } first. A re-run bumps the strand generation and
-          //         leaves the launch epoch alone, so the end job registers and runs — and it runs
-          //         from inside frame()'s catch, before the cancellation unwinds the body's finally.
+          //      -> both lines again. A re-run bumps the strand generation rather than the launch
+          //         epoch, but either way the end job registers and runs — and it runs from inside
+          //         frame()'s catch, before the cancellation unwinds the body's finally.
           //
-          // So .end { } means "when this animation retires or is replaced", not "when it stops".
+          // So .end { } means "when this animation is cancelled", not "when it finishes". Case 1
+          // used to print only the finally line: stopTrackedJobs bumps the launch epoch first, and
+          // registerLaunchJob cancelled the end job it was handed because that epoch was stale.
+          // Box.registerEndPhaseJob re-captures the epoch, since it is stop that creates that job.
           val started = AnimationClock.nowSeconds()
           val runFor = 8.0
           val notes = mutableListOf<String>()

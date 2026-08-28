@@ -211,15 +211,22 @@ fun Box.launchFrames(
     val previousShouldCancelAtEnd = frames.shouldCancelAtEnd
 
     frames.onAtEndStart = onAtEndStart@{ endJob ->
-        if (!box.registerLaunchJob(endJob, launchEpoch)) return@onAtEndStart
+        // The end phase registers against the epoch *now*, not `launchEpoch`: stop bumps the epoch
+        // and it is stop's cancellation that creates this job. See Box.registerEndPhaseJob.
+        if (!box.registerEndPhaseJob(endJob)) return@onAtEndStart
         previousAtEndStart(endJob)
         val endingGeneration = box.runGeneration[strand] ?: generation
         frames.shouldCancelAtEnd = {
             previousShouldCancelAtEnd() || box.runGeneration[strand] != endingGeneration
         }
-        box.currentRunningStates[strand] = RunningState(generation, "ending")
-        if (reportRunning) {
-            send(Message("is-running").payload(IsRunning(box.id, true, generation, strand, "ending")))
+        // Only claim the running state if a newer launch has not already taken this strand; see the
+        // same guard in registerFramesReturnValue.
+        val holder = box.currentRunningStates[strand]
+        if (holder == null || holder.watermark <= generation) {
+            box.currentRunningStates[strand] = RunningState(generation, "ending")
+            if (reportRunning) {
+                send(Message("is-running").payload(IsRunning(box.id, true, generation, strand, "ending")))
+            }
         }
     }
     frames.onAtEndFinish = { endJob ->
@@ -272,21 +279,55 @@ fun Box.launchFrames(
 /**
  * Run two Frame programs in parallel. Each child advances as the parent advances,
  * and cancellation of the parent stops both children.
+ *
+ * **The children run their own [body], so they need the parent's fences.** A launcher installs
+ * [Frames.shouldend], [Frames.onAtEndStart], [Frames.onAtEndFinish] and [Frames.shouldCancelAtEnd]
+ * on whatever `Frames` it was handed — here, the combined one. The children are reached only through
+ * `body()`, so they used to keep the defaults, and the `onAtEndStart = {}` default is the one that
+ * mattered: a child's end job was never registered with the box, so nothing could cancel it. A child
+ * `.end { }` that looped on `frame()` ran on the Runloop forever, through any number of stops. This
+ * forwards all four, so a child is fenced exactly as the parent is.
+ *
+ * The forwarding is deliberately *lazy* — each child reads the parent's current hook rather than a
+ * copy — because a launcher installs those hooks after this function has returned.
+ *
+ * It also means `+` **writes to its operands**, so a `Frames` cannot be composed twice: in
+ * `val c1 = a + b; val c2 = a + d`, `a`'s fences end up pointing at `c2`. Composing twice was already
+ * wrong — both parents would drive the same `a.body()` and share its `frameNumber` — so this narrows
+ * nothing, but it is now wrong in a second way.
+ *
+ * One rough edge is left, and it is a reporting one. Up to three end phases (both children and the
+ * parent) now forward to the same `onAtEndStart`/`onAtEndFinish` pair, so the box may report
+ * `"ending"` more than once, and the first end phase to *finish* restores the parent's
+ * `shouldCancelAtEnd` while the others are still winding down. Neither weakens the stop: every end
+ * job is in [Box.jobs], which is the route `stopTrackedJobs` uses.
  */
-operator fun Frames.plus(other: Frames): Frames = frames combined@{
-    coroutineScope {
-        val a = launch(start = CoroutineStart.UNDISPATCHED) { this@plus.body() }
-        val b = launch(start = CoroutineStart.UNDISPATCHED) { other.body() }
+operator fun Frames.plus(other: Frames): Frames {
+    val left = this
+    val parent = frames combined@{
+        coroutineScope {
+            val a = launch(start = CoroutineStart.UNDISPATCHED) { left.body() }
+            val b = launch(start = CoroutineStart.UNDISPATCHED) { other.body() }
 
-        try {
-            while (a.isActive || b.isActive) {
-                if (!this@combined.frame()) break
+            try {
+                while (a.isActive || b.isActive) {
+                    if (!this@combined.frame()) break
+                }
+            } finally {
+                a.cancel()
+                b.cancel()
             }
-        } finally {
-            a.cancel()
-            b.cancel()
         }
     }
+
+    listOf(left, other).forEach { child ->
+        child.shouldend = { parent.shouldend() }
+        child.shouldCancelAtEnd = { parent.shouldCancelAtEnd() }
+        child.onAtEndStart = { endJob -> parent.onAtEndStart(endJob) }
+        child.onAtEndFinish = { endJob -> parent.onAtEndFinish(endJob) }
+    }
+
+    return parent
 }
 
 @OptIn(InternalCoroutinesApi::class)
