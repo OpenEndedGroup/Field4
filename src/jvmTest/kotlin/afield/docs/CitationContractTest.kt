@@ -169,6 +169,21 @@ class CitationContractTest {
             "public/docs/dataframe.md" to 8,
             "public/docs/keyframer_examples.md" to 5,
             "public/docs/morpho_examples.md" to 2,
+            // Added 2026-08-28 with the page it guards, rather than later, and for a reason beyond
+            // symmetry: this list decides what `ProseNumeralContractTest` scans, and
+            // `public/docs/projection_examples.md` is unusually numeral-dense — about 46 measured
+            // figures. The numbers themselves have a stronger guard than either class here
+            // (`ProjectionExamplesPageTest` reads the Markdown and recomputes every one of them, in
+            // both directions); this entry is about the *citations*, and about the page not sitting
+            // outside the corpus whose numeral census gets printed.
+            //
+            // 13 anchored citations as written, all prose `path:line#anchor`, every anchor chosen
+            // unique-in-file, so [MAX_FRAGILE] is unaffected. Eleven point at `smile_mds.kt`, one at
+            // `graph_connectivity.kt`, and one at `build.gradle.kts` — that last because the page's
+            // warning admonition is about a native-library breakage whose diagnosis lives in the
+            // build script and nowhere else. Floored at 6, about half, on the DATAFRAME_PLUGIN
+            // convention.
+            "public/docs/projection_examples.md" to 6,
         )
 
         /**
