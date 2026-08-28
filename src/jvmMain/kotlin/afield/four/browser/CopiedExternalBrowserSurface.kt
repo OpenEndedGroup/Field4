@@ -236,7 +236,7 @@ sealed class CopiedExternalBrowserSurface(
                 command.vkCommandBuffer,
                 residentImage,
                 VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
-                VK_PIPELINE_STAGE_2_COPY_BIT,
+                VK_PIPELINE_STAGE_2_CLEAR_BIT,
                 0,
                 VK_ACCESS_2_TRANSFER_WRITE_BIT,
                 VK_IMAGE_LAYOUT_UNDEFINED,
@@ -255,7 +255,7 @@ sealed class CopiedExternalBrowserSurface(
             image_layout_transition(
                 command.vkCommandBuffer,
                 residentImage,
-                VK_PIPELINE_STAGE_2_COPY_BIT,
+                VK_PIPELINE_STAGE_2_CLEAR_BIT,
                 sampledStages,
                 VK_ACCESS_2_TRANSFER_WRITE_BIT,
                 VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,

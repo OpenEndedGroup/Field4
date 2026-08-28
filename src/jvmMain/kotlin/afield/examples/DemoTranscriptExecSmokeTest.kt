@@ -309,6 +309,10 @@ object DemoTranscriptExecSmokeTest {
         "rectsl_sdf_live",
         "spin_glass",
         "imgui_vr_panel",
+        // A hidden Electron window renders Field itself into Chromium shared textures; the live
+        // macOS replay crosses IOSurface Mach rights and samples them in Vulkan. CI compiles the
+        // self-contained starting scene without starting Electron or opening a native window.
+        "field_ui_browser_texture",
         // Exercises IOSurface/Mach-port import, a Vulkan copy, and a graphics-fence callback on
         // macOS. CI still compiles both boxes everywhere; the tracked backdoor replay runs it live.
         "external_browser_surface_macos_smoke",
