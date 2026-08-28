@@ -180,20 +180,37 @@ Two Chromium switches are load-bearing, and Field's Electron head has only half 
 `--use-angle=vulkan` (with `--enable-features=Vulkan`) is required before Chromium will export a
 paint as a native pixmap at all; on the GL backend the shared image cannot be created, Chromium
 logs `Unable to initialize SkSurface`, and every `paint` silently arrives as a CPU bitmap with no
-texture. `--ignore-gpu-blocklist` on its own — which `electron/main.js` sets — is the worst of the
-three states: it enables Vulkan without pointing ANGLE at it, which additionally makes Ozone report
-that Wayland and Vulkan are incompatible. `--ozone-platform=x11` is not an escape route: the GPU
+texture. `--ignore-gpu-blocklist` on its own was the worst of the three states: it enables Vulkan without
+pointing ANGLE at it, which additionally makes Ozone report that Wayland and Vulkan are
+incompatible. `electron/main.js` set exactly that, and now sets both switches, so Field's own head
+runs coherently on ANGLE-over-Vulkan too (`ANGLE (NVIDIA, Vulkan 1.4.341, RTX 4090)`). `--ozone-platform=x11` is not an escape route: the GPU
 process segfaults in a loop until Chromium gives up.
 
 With those switches the whole chain runs. Chromium exports a single-plane `DRM_FORMAT_MOD_LINEAR`
 dma-buf, the bridge moves it, the receiver imports it, the copy is recorded, and `PRESENTED` comes
-back after the graphics fence. The pixels, however, are all zero. That is not the import: the same
-descriptor read outside Field entirely — `mmap`ed straight from the receiving process, with a page
-of solid `rgb(255,64,32)` on the other side — is 921600 zero pixels. Two independent readers, a CPU
-mapping and a Vulkan copy, agree that Chromium never wrote the page into the buffer it handed over.
-It is not driver-specific either; forcing Chromium onto the AMD iGPU through Mesa gives the same
-empty buffer, and `supportsZeroCopyWebGpuImport` is reported as `false`. So the remaining work is
-upstream in Electron/Chromium's Linux offscreen shared-texture path, not in this repository.
+back after the graphics fence. The pixels, however, are all zero, and the evidence says Chromium
+never wrote them rather than that Field failed to read them. Against a page of solid
+`rgb(255,64,32)`, three independent readers agree:
+
+| reader | non-zero pixels |
+| --- | --- |
+| Field's receiver, imported and copied on the GPU | 0 (resident texture reads back black) |
+| `mmap` of the received descriptor, outside Field entirely | 0 of 921600 |
+| a separate C `VK_EXT_image_drm_format_modifier` import + GPU copy | 0 of 921600 |
+
+The third reader exists because the second alone is not conclusive: a CPU mapping of a device-local
+allocation can read zeros spuriously. It imports the same descriptor with the same modifier and
+stride and reports `reqs=3686400`, exactly the declared size, so the import is well formed — it
+simply reads an empty buffer.
+
+The result does not move: Electron 42.3.3 and 44.0.0; Chromium on the RTX 4090 and forced onto the
+AMD iGPU through Mesa; `argb` and `rgbaf16` shared-texture formats; the first paint and the fifth
+paint of a continuously animating page. `supportsZeroCopyWebGpuImport` is reported `false`
+throughout. A web search finds no report of this symptom and no working Linux example: Electron
+documents `nativePixmap` in its type definitions, but every code sample and every README section of
+its shared-texture documentation covers only Windows/D3D11 and macOS/IOSurface. The same producer
+design is known to work on both of those. So the remaining work is upstream in Electron/Chromium's
+Linux offscreen shared-texture path, not in this repository.
 
 ## What came from the Windows prototype
 
