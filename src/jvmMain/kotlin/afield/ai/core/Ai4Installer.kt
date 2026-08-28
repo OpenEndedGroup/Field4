@@ -1433,9 +1433,6 @@ fun installAi4() {
             return textPropertyContents(target, property)
         }
 
-        fun visualVerificationAvailable(): Boolean =
-            exec.images.isNotEmpty() || chatHistoryByKey[fileKey].orEmpty().contains("data:image/")
-
         val listKotlinContextVariables: (ListKotlinContextVariablesRequest) -> ListKotlinContextVariablesResult =
             listKotlinContextVariables@{ req ->
                 val ref = requestedRefOrCurrent(req.target, defaultProperty = "code")
@@ -1686,7 +1683,17 @@ fun installAi4() {
             var visualAttached = false
             var visualMessage = ""
             var visualDataUrl = ""
-            if (success && req.visualCheck && visualVerificationAvailable()) {
+            // `visualVerificationAvailable()` used to gate this too, and it was the whole bug: it asks
+            // whether the conversation *already* contains a `data:image/`, which an agent has no way to
+            // arrange for itself. The only two things that put one there are a person attaching an image
+            // and a person typing `/screenshot`, so a fresh chat could never see the render window, and
+            // `visualCheck=true` was refused for the life of the conversation. Worse, it was refused
+            // with `visualCheckMessage` left empty, so the model got `visualCheckAttached=false` and no
+            // reason at all — which is indistinguishable from a capture that was attempted and failed.
+            //
+            // Every branch below now leaves a message behind. A refusal that cannot explain itself sends
+            // the agent off guessing, and that is exactly what happened.
+            if (req.visualCheck && success) {
                 runCatching {
                     runBlocking {
                         delay(2_000)
@@ -1694,17 +1701,23 @@ fun installAi4() {
                             AiChatScreenshotRequest(uid = target.id, target = ""),
                             sessionInfo
                         )
+                        visualMessage = screenshot.message
                         if (screenshot.success && screenshot.dataUrl.isNotBlank()) {
                             visualAttached = true
-                            visualMessage = screenshot.message
                             visualDataUrl = screenshot.dataUrl
-                        } else {
-                            visualMessage = screenshot.message
                         }
                     }
                 }.onFailure { throwable ->
                     visualMessage = throwable.message ?: throwable::class.java.simpleName
                 }
+            } else if (req.visualCheck) {
+                // Still conditional on the reload having worked, but for a real reason: this is a
+                // *post-reload* screenshot, and after a failed reload the window still shows the old
+                // shader, so attaching it would be actively misleading. Name the other tool, because
+                // "look at it as it stands" is a legitimate thing to want here.
+                visualMessage = "Not captured: the reload did not succeed, so the window still shows the " +
+                    "previous shader and a screenshot would be misleading. Fix the errors and reload " +
+                    "again, or call CaptureRenderWindow to see the window as it currently stands."
             }
 
             val message = buildString {
@@ -1727,6 +1740,50 @@ fun installAi4() {
                 visualCheckMessage = visualMessage,
                 visualDataUrl = visualDataUrl
             )
+        }
+
+        /**
+         * Look at the afield.four render window, on demand.
+         *
+         * Separate from [reloadShaders]' `visualCheck` because that one is a *post-reload* check: it
+         * only means anything when a reload has just succeeded, and it presupposes there was a shader
+         * edit at all. An agent doing graphics work wants to look *before* it changes anything, and
+         * wants to look when a reload has just failed. Until this tool existed the only route to the
+         * window was a successful shader reload, so an agent asked to inspect a scene had to call
+         * ReloadShaders on a shader it had not modified and hope — which is precisely what the logs
+         * show one doing, twice, before giving up and reporting that no image had been attached.
+         *
+         * Ungated on purpose. See the note on the gate in [reloadShaders] above.
+         */
+        val captureRenderWindow: (CaptureRenderWindowRequest) -> CaptureRenderWindowResult = { req ->
+            val settle = req.settleMs.coerceIn(0, CAPTURE_RENDER_WINDOW_MAX_SETTLE_MS)
+            // requestedRefOrCurrent already handles all three spellings: blank (this chat's box), an
+            // afield:// ref, and a bare uid.
+            val uid = runCatching { requestedRefOrCurrent(req.uid).uid }.getOrDefault(req.uid.trim())
+            runCatching {
+                runBlocking {
+                    if (settle > 0) delay(settle.toLong())
+                    val shot = captureChatScreenshot(
+                        AiChatScreenshotRequest(uid = uid, target = req.target),
+                        sessionInfo
+                    )
+                    CaptureRenderWindowResult(
+                        success = shot.success && shot.dataUrl.isNotBlank(),
+                        message = shot.message.ifBlank {
+                            if (shot.success) "Captured the render window." else "Capture failed."
+                        },
+                        title = shot.title,
+                        width = shot.width,
+                        height = shot.height,
+                        settledMs = settle,
+                        dataUrl = if (shot.success) shot.dataUrl else ""
+                    )
+                }
+            }.getOrElse { throwable ->
+                val why = throwable.message ?: throwable::class.java.simpleName
+                lprintln("warning,ai4", "CaptureRenderWindow failed for uid '$uid': $why")
+                CaptureRenderWindowResult(success = false, message = why, settledMs = settle)
+            }
         }
 
         val listMacros: (MacroListRequest) -> MacroListResult = { _ ->
@@ -2260,6 +2317,7 @@ fun installAi4() {
                             editOtherFile = editOtherFile,
                             compileKotlin = compileKotlin,
                             reloadShaders = reloadShaders,
+                            captureRenderWindow = captureRenderWindow,
                             listMacros = listMacros,
                             readMacro = readMacro,
                             writeMacro = writeMacro,
@@ -2270,7 +2328,6 @@ fun installAi4() {
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
-                            visualVerificationEnabled = visualVerificationAvailable(),
                             vectorStoreIds = vectorStoreIds,
                             onProgress = progressCallback
                         )
@@ -2326,6 +2383,7 @@ fun installAi4() {
                             editOtherFile = editOtherFile,
                             compileKotlin = compileKotlin,
                             reloadShaders = reloadShaders,
+                            captureRenderWindow = captureRenderWindow,
                             listMacros = listMacros,
                             readMacro = readMacro,
                             writeMacro = writeMacro,
@@ -2336,7 +2394,6 @@ fun installAi4() {
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
-                            visualVerificationEnabled = visualVerificationAvailable(),
                             vectorStoreIds = vectorStoreIds,
                             onTextDelta = { chunk ->
                                 if (!streamActive.get() || chunk.isEmpty()) return@chatGeneral
@@ -2374,6 +2431,7 @@ fun installAi4() {
                             editOtherFile = editOtherFile,
                             compileKotlin = compileKotlin,
                             reloadShaders = reloadShaders,
+                            captureRenderWindow = captureRenderWindow,
                             listMacros = listMacros,
                             readMacro = readMacro,
                             writeMacro = writeMacro,
@@ -2384,7 +2442,6 @@ fun installAi4() {
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
-                            visualVerificationEnabled = visualVerificationAvailable(),
                             vectorStoreIds = vectorStoreIds,
                             onProgress = progressCallback
                         )
@@ -2406,6 +2463,7 @@ fun installAi4() {
                             editOtherFile = editOtherFile,
                             compileKotlin = compileKotlin,
                             reloadShaders = reloadShaders,
+                            captureRenderWindow = captureRenderWindow,
                             listMacros = listMacros,
                             readMacro = readMacro,
                             writeMacro = writeMacro,
@@ -2416,7 +2474,6 @@ fun installAi4() {
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
-                            visualVerificationEnabled = visualVerificationAvailable(),
                             vectorStoreIds = vectorStoreIds,
                             onProgress = progressCallback
                         )
@@ -2438,6 +2495,7 @@ fun installAi4() {
                             editOtherFile = editOtherFile,
                             compileKotlin = compileKotlin,
                             reloadShaders = reloadShaders,
+                            captureRenderWindow = captureRenderWindow,
                             listMacros = listMacros,
                             readMacro = readMacro,
                             writeMacro = writeMacro,
@@ -2448,7 +2506,6 @@ fun installAi4() {
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
-                            visualVerificationEnabled = visualVerificationAvailable(),
                             vectorStoreIds = vectorStoreIds,
                             onProgress = progressCallback
                         )

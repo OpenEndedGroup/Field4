@@ -102,7 +102,10 @@ fun buildDynamicInstructions(
         toolAds += "- CompileKotlin: compile the current Kotlin code or an afield://.../code ref. Mandatory after Kotlin edits before ending the turn. If it fails, fix and rerun. Inspect setupChanges for preamble/intro/attic mutations."
     }
     if (ctx.reloadShaders != null) {
-        toolAds += "- ReloadShaders: reload graphics/compute/mesh/ray shaders for the current box or target ref. Mandatory after shader edits before ending the turn. If it fails, fix and rerun. When visual context exists, it can attach a post-reload screenshot."
+        toolAds += "- ReloadShaders: reload graphics/compute/mesh/ray shaders for the current box or target ref. Mandatory after shader edits before ending the turn. If it fails, fix and rerun. With visualCheck=true it also attaches a post-reload screenshot."
+    }
+    if (ctx.captureRenderWindow != null) {
+        toolAds += "- CaptureRenderWindow: capture the live afield.four render window and attach it as an image, so you can see what the running code draws. Needs no shader edit and no successful reload. Use it before editing to see the starting point and after to check the result; pass settleMs to let an animation settle, and note to record what you are looking for. If it reports success=false, read the message: it names the precondition that failed."
     }
     if (ctx.workspaceSymbolSearch != null) {
         toolAds += "- WorkspaceSymbolSearch: search workspace symbols by query."
@@ -135,11 +138,7 @@ fun buildDynamicInstructions(
         }
         if (ctx.reloadShaders != null) {
             steps += "Shader edits: call ReloadShaders on the edited shader ref or target box. Do not finalize on reload errors; fix and rerun until success or explain the blocker."
-            if (ctx.visualVerificationEnabled) {
-                steps += "Visual shader/rendering work: request ReloadShaders with visualCheck=true. It will wait briefly and attach a fresh screenshot when possible; inspect that image against the user's request. If the screenshot does not look right, edit and reload again before finalizing."
-            } else {
-                steps += "Visual shader/rendering work: if screenshot context appears later, use ReloadShaders with visualCheck=true and inspect the attached screenshot before finalizing."
-            }
+            steps += "Visual shader/rendering work: request ReloadShaders with visualCheck=true. It waits briefly and attaches a fresh screenshot; inspect that image against the user's request. If the screenshot does not look right, edit and reload again before finalizing."
         }
         if (steps.isEmpty()) return@buildString
         appendLine()

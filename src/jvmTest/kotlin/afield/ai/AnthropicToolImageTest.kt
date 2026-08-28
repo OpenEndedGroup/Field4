@@ -2,10 +2,14 @@ package afield.ai
 
 import afield.ai.core.ANTHROPIC_MAX_IMAGE_BASE64_CHARS
 import afield.ai.core.AgentToolExtensions
+import afield.ai.core.CaptureRenderWindowResult
 import afield.ai.core.CarriesToolImages
 import afield.ai.core.SummarisesForToolLog
 import afield.ai.core.ToolExecutionContext
+import afield.ai.core.POST_RELOAD_SCREENSHOT_CAPTION
+import afield.ai.core.ReloadShadersResult
 import afield.ai.core.ToolImage
+import afield.ai.core.aiToolMapper
 import afield.ai.core.decodeDataUrl
 import afield.ai.core.toolResultBlock
 import afield.four.modules.GeometryAgentTools
@@ -257,6 +261,134 @@ class AnthropicToolImageTest {
             blocks.mapNotNull { it.image().orElse(null) }.map { it.source().base64().orElseThrow().mediaType() },
             "in order, and with the right media types",
         )
+    }
+
+    // ------------------------------------------------------------------ the two real result types
+
+    /**
+     * The screenshot from a shader reload reaches an Anthropic model.
+     *
+     * # What was wrong
+     *
+     * The general path above was fixed on 2026-08-11; this one was not, and the reason it was missed is
+     * worth keeping. Both bridges special-cased `ReloadShadersResult` **by name** — the OpenAI bridge's
+     * comment even stated that keeping the paths apart was deliberate, because the post-reload contract
+     * had "prompt wording of its own that nothing else wants". A by-name special case is per-bridge by
+     * construction, and this bridge never grew its half: it appended a line of prose saying a screenshot
+     * had been captured and dropped the screenshot. `visualDataUrl` is `@JsonIgnore`d out of the result
+     * JSON on purpose, so the picture was in neither channel.
+     *
+     * The wording now travels as the image's caption, which is what let the special case go away.
+     *
+     * The failure mode this pins is the nastiest kind: `visualCheckAttached` still said `true`, so the
+     * model was told a picture existed, shown nothing, and left to write about it.
+     */
+    @Test
+    fun aShaderReloadScreenshotReachesTheModel() {
+        val result = ReloadShadersResult(
+            success = true,
+            target = "afield://doc/box/fragment",
+            mode = "graphics",
+            message = "Shader reload succeeded",
+            reloaded = listOf("graphics"),
+            visualCheckAttached = true,
+            visualCheckMessage = "Captured Window 1 (1600 x 900)",
+            visualDataUrl = "data:image/jpeg;base64,$pngBase64",
+        )
+
+        val blocks = blocksOf(toolResultBlock("toolu_reload", """{"success":true}""", false, result))
+        assertEquals(3, blocks.size, "the JSON result, the caption, and the picture")
+        assertEquals(
+            POST_RELOAD_SCREENSHOT_CAPTION,
+            blocks[1].text().orElseThrow().text(),
+            "the settle-delay wording that used to live in the bridge now rides on the image",
+        )
+        assertEquals(
+            pngBase64,
+            blocks[2].image().orElseThrow().source().base64().orElseThrow().data(),
+            "and the bytes are actually there",
+        )
+    }
+
+    /** A reload that captured nothing is shaped exactly as it was before any of this. */
+    @Test
+    fun aShaderReloadWithNoScreenshotIsStillAPlainString() {
+        val result = ReloadShadersResult(
+            success = true,
+            target = "afield://doc/box/fragment",
+            mode = "graphics",
+            message = "Shader reload succeeded",
+            visualCheckAttached = false,
+            visualCheckMessage = "Not captured: the reload did not succeed",
+        )
+        val param = toolResultBlock("toolu_reload_none", """{"success":true}""", false, result)
+        assertTrue(
+            param.content().orElseThrow().string().isPresent,
+            "no picture, so no block list — the overwhelmingly common case must not change shape",
+        )
+    }
+
+    /** `CaptureRenderWindow`'s whole purpose is the picture, so pin the same two properties. */
+    @Test
+    fun aRenderWindowCaptureReachesTheModel() {
+        val result = CaptureRenderWindowResult(
+            success = true,
+            message = "Captured Window 1",
+            title = "afield.four",
+            width = 1600,
+            height = 900,
+            settledMs = 250,
+            dataUrl = "data:image/jpeg;base64,$pngBase64",
+        )
+        val blocks = blocksOf(toolResultBlock("toolu_capture", """{"success":true}""", false, result))
+        assertEquals(3, blocks.size)
+        assertTrue(
+            "afield.four" in blocks[1].text().orElseThrow().text(),
+            "the caption names the window, so a turn with two captures is not ambiguous",
+        )
+        assertEquals(
+            pngBase64,
+            blocks[2].image().orElseThrow().source().base64().orElseThrow().data(),
+        )
+    }
+
+    /**
+     * The invariant [CarriesToolImages] is documented around, asserted on the real types.
+     *
+     * A base64 payload that reaches the result JSON is spent as text tokens, invisibly, and buys
+     * nothing — the model cannot see an image encoded in a JSON string. `aiToolMapper` is the mapper the
+     * bridges actually serialise a tool result with, so this is the real question and not a proxy for it.
+     */
+    @Test
+    fun neitherResultTypeLeaksItsBase64IntoTheToolJson() {
+        val reload = aiToolMapper.writeValueAsString(
+            ReloadShadersResult(
+                success = true,
+                target = "t",
+                mode = "graphics",
+                message = "ok",
+                visualCheckAttached = true,
+                visualDataUrl = "data:image/jpeg;base64,$pngBase64",
+            )
+        )
+        val capture = aiToolMapper.writeValueAsString(
+            CaptureRenderWindowResult(
+                success = true,
+                message = "ok",
+                dataUrl = "data:image/jpeg;base64,$pngBase64",
+            )
+        )
+
+        for ((name, json) in listOf("ReloadShadersResult" to reload, "CaptureRenderWindowResult" to capture)) {
+            assertFalse(pngBase64 in json, "$name leaked its image payload into the tool JSON: $json")
+            assertFalse("toolImages" in json, "$name serialised the image channel itself: $json")
+            assertFalse("data:image/" in json, "$name leaked a data URL: $json")
+        }
+
+        // ...while still saying, in the JSON, that there is something to look at. A model that is shown
+        // a picture and told nothing about it in the result is the other half of this bug.
+        assertTrue(""""visualCheckAttached":true""" in reload, "was: $reload")
+        assertTrue(""""success":true""" in capture, "was: $capture")
     }
 
     // ------------------------------------------------------------------ the data URL parser

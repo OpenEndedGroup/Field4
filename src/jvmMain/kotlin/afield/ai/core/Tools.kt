@@ -223,6 +223,17 @@ data class ShaderReloadError(
     val message: String
 )
 
+/**
+ * Caption for the post-reload screenshot.
+ *
+ * Phrased as what to look *for* rather than what it is, because on the [CarriesToolImages] path the
+ * caption is the only text travelling with the picture, and a bare picture answers no question.
+ */
+internal const val POST_RELOAD_SCREENSHOT_CAPTION: String =
+    "Post-shader-reload screenshot of the afield.four render window, captured after the settle delay. " +
+        "Inspect it against what the user asked for, together with any earlier screenshot. If the " +
+        "requested visual result is not achieved, edit and reload again before finalizing."
+
 data class ReloadShadersResult(
     val success: Boolean,
     val target: String,
@@ -234,7 +245,94 @@ data class ReloadShadersResult(
     val visualCheckMessage: String = "",
     @get:JsonIgnore
     val visualDataUrl: String = ""
+) : CarriesToolImages {
+
+    /**
+     * Derived from [visualDataUrl] rather than passed separately, so "was a picture attached" has one
+     * source of truth.
+     *
+     * Implementing the interface is what makes this screenshot reach an Anthropic model at all. Before
+     * it, [AnthropicBridge] handled this type by appending a line of prose saying a screenshot had been
+     * captured and then dropping the screenshot: `toolResultBlock` only ever reads [CarriesToolImages],
+     * and [visualDataUrl] is `@JsonIgnore`d out of the result JSON on purpose. So the model was told a
+     * picture existed and shown nothing — the same failure the interface was introduced to end, left in
+     * place here because this type predated it and both bridges special-cased it by name.
+     */
+    @get:JsonIgnore
+    override val toolImages: List<ToolImage>
+        get() =
+            if (visualDataUrl.isBlank()) emptyList()
+            else listOf(ToolImage(visualDataUrl, POST_RELOAD_SCREENSHOT_CAPTION))
+}
+
+/** Looking at the render window ---------------------------------------------- */
+
+@JsonClassDescription(
+    "Capture the live afield.four render window and attach it as an image, so you can see what the " +
+        "running code is actually drawing. Use it for any visual request: once before editing to see " +
+        "the starting point, and again afterwards to check the result. Unlike ReloadShaders' " +
+        "visualCheck this needs no shader edit and no successful reload, so it also works when a " +
+        "reload just failed — which is when looking is most useful."
 )
+data class CaptureRenderWindowRequest(
+    @JsonPropertyDescription(
+        "Which window, when more than one is visible: a 1-based index, or a substring of the window " +
+            "title. Empty picks the first capturable window visible from the target box."
+    )
+    val target: String = "",
+    @JsonPropertyDescription(
+        "Box uid or afield:// ref to look for windows from. Empty uses the box this chat belongs to."
+    )
+    val uid: String = "",
+    @JsonPropertyDescription(
+        "Milliseconds to wait before capturing, to let an animation or a recompile settle. " +
+            "Clamped to 0..5000."
+    )
+    val settleMs: Int = 0,
+    @JsonPropertyDescription(
+        "What you are looking for in this capture. Travels with the image as its caption."
+    )
+    val note: String = ""
+)
+
+/** Upper bound on [CaptureRenderWindowRequest.settleMs], so a bad number cannot stall a turn. */
+internal const val CAPTURE_RENDER_WINDOW_MAX_SETTLE_MS: Int = 5_000
+
+data class CaptureRenderWindowResult(
+    val success: Boolean,
+    val message: String,
+    val title: String = "",
+    val width: Int = 0,
+    val height: Int = 0,
+    val settledMs: Int = 0,
+    @get:JsonIgnore
+    val dataUrl: String = ""
+) : CarriesToolImages, SummarisesForToolLog {
+
+    @get:JsonIgnore
+    override val toolImages: List<ToolImage>
+        get() =
+            if (dataUrl.isBlank()) emptyList()
+            else listOf(
+                ToolImage(
+                    dataUrl,
+                    "afield.four render window${if (title.isNotBlank()) " '$title'" else ""}, " +
+                        "captured live. Describe what you actually see, then say whether it matches " +
+                        "what was asked for."
+                )
+            )
+
+    /**
+     * One line for the tool I/O log, and specifically including `images=`.
+     *
+     * The bug this tool exists to fix was invisible in the logs for exactly this reason: the old path
+     * logged `visual=false` and nothing else, so "refused to capture" and "captured and dropped it"
+     * read identically. Whether a picture was produced belongs in the log line.
+     */
+    override fun toolLogSummary(): String =
+        "success=$success images=${toolImages.size} ${width}x$height settledMs=$settledMs " +
+            "title=${title.take(60)} message=${message.take(160)}"
+}
 
 /** Macro transcript tools --------------------------------------------------- */
 
@@ -714,6 +812,7 @@ data class ToolExecutionContext(
     val editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
     val compileKotlin: ((CompileKotlinRequest) -> CompileKotlinResult)? = null,
     val reloadShaders: ((ReloadShadersRequest) -> ReloadShadersResult)? = null,
+    val captureRenderWindow: ((CaptureRenderWindowRequest) -> CaptureRenderWindowResult)? = null,
     val listMacros: ((MacroListRequest) -> MacroListResult)? = null,
     val readMacro: ((MacroReadRequest) -> MacroReadResult)? = null,
     val writeMacro: ((MacroWriteRequest) -> MacroWriteResult)? = null,
@@ -726,8 +825,7 @@ data class ToolExecutionContext(
     val agentMemory: AgentMemoryState? = null,
 
     // Optional extra tools
-    val workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
-    val visualVerificationEnabled: Boolean = false
+    val workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null
 )
 
 fun virtualFilesToAttachments(files: List<afield.ai.VirtualTextFile>): List<ContextAttachment> =

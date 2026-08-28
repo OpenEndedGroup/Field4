@@ -52,7 +52,12 @@ private fun replaceImages(text: String): String {
         sb.append(src)
         sb.append("\" alt=\"")
         sb.append(alt)
-        sb.append("\" loading=\"lazy\" />")
+        // `loading="lazy"` earns nothing on a `data:` URL -- the bytes are already inline, so there is
+        // no fetch to defer -- and it actively hurts: a screenshot below the fold stays unloaded, so it
+        // contributes no height and never fires the `load` that `renderChatMessages` settles the scroll
+        // on. Deferring stays worthwhile for a real URL.
+        if (!src.startsWith("data:")) sb.append("\" loading=\"lazy")
+        sb.append("\" />")
         index = end + 1
     }
     return sb.toString()

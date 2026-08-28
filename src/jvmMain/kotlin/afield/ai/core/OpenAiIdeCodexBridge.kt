@@ -397,39 +397,14 @@ class OpenAiIdeCodexBridge(
                     .build()
                 toolOutputs += ResponseInputItem.ofFunctionCallOutput(outputItem)
 
-                if (toolResult is ReloadShadersResult && toolResult.visualDataUrl.isNotBlank()) {
-                    conversationAdditions += buildString {
-                        appendLine("<<ai>>")
-                        appendLine("_Post-shader-reload screenshot captured after the settle delay._")
-                        if (toolResult.visualCheckMessage.isNotBlank()) {
-                            appendLine()
-                            appendLine("_${toolResult.visualCheckMessage}_")
-                        }
-                        appendLine()
-                        append("![post-shader-reload screenshot](")
-                        append(toolResult.visualDataUrl)
-                        append(")")
-                    }
-                    val visualMessage = ResponseInputItem.Message.builder()
-                        .role(ResponseInputItem.Message.Role.USER)
-                        .addInputTextContent(
-                            "Post-shader-reload screenshot captured after the requested settle delay. " +
-                                "Inspect this image in the context of the user's request and any earlier screenshot. " +
-                                "If the requested visual result is not achieved, edit/reload again before finalizing."
-                        )
-                        .addContent(
-                            ResponseInputImage.builder()
-                                .imageUrl(toolResult.visualDataUrl)
-                                .detail(ResponseInputImage.Detail.HIGH)
-                                .build()
-                        )
-                        .build()
-                    toolOutputs += ResponseInputItem.ofMessage(visualMessage)
-                }
-
-                // The general form of the block above: any tool result may carry images. Kept separate
-                // from the ReloadShaders path rather than folded into it, because that path has a
-                // settle-delay contract and prompt wording of its own that nothing else wants.
+                // Any tool result may carry images, including ReloadShaders' post-reload screenshot.
+                //
+                // That one used to be handled separately, just above here, by matching
+                // ReloadShadersResult by name -- and its settle-delay wording was the stated reason to
+                // keep the two paths apart. The wording now rides along as the image's caption, which
+                // removes the duplication and, more to the point, the divergence: a by-name special
+                // case is per-bridge by construction, and AnthropicBridge never grew its half, so
+                // under that provider the screenshot was dropped in silence. One path, both bridges.
                 val carried = (toolResult as? CarriesToolImages)?.toolImages
                     .orEmpty()
                     .filter { it.dataUrl.isNotBlank() }

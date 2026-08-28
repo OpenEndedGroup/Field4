@@ -48,6 +48,7 @@ class IdeChatHelpers(
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
         compileKotlin: ((CompileKotlinRequest) -> CompileKotlinResult)? = null,
         reloadShaders: ((ReloadShadersRequest) -> ReloadShadersResult)? = null,
+        captureRenderWindow: ((CaptureRenderWindowRequest) -> CaptureRenderWindowResult)? = null,
         listMacros: ((MacroListRequest) -> MacroListResult)? = null,
         readMacro: ((MacroReadRequest) -> MacroReadResult)? = null,
         writeMacro: ((MacroWriteRequest) -> MacroWriteResult)? = null,
@@ -58,7 +59,6 @@ class IdeChatHelpers(
         semanticRetrievalRebuild: (() -> SemanticRetrievalToolResult)? = null,
         agentMemory: AgentMemoryState? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
-        visualVerificationEnabled: Boolean = false,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
         onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null
@@ -75,6 +75,7 @@ class IdeChatHelpers(
             editOtherFile = editOtherFile,
             compileKotlin = compileKotlin,
             reloadShaders = reloadShaders,
+            captureRenderWindow = captureRenderWindow,
             listMacros = listMacros,
             readMacro = readMacro,
             writeMacro = writeMacro,
@@ -84,8 +85,7 @@ class IdeChatHelpers(
             semanticRetrievalStatus = semanticRetrievalStatus,
             semanticRetrievalRebuild = semanticRetrievalRebuild,
             agentMemory = agentMemory,
-            workspaceSymbolSearch = workspaceSymbolSearch,
-            visualVerificationEnabled = visualVerificationEnabled
+            workspaceSymbolSearch = workspaceSymbolSearch
         )
 
         val instructions = buildDynamicInstructions(
@@ -135,6 +135,7 @@ class IdeChatHelpers(
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
         compileKotlin: ((CompileKotlinRequest) -> CompileKotlinResult)? = null,
         reloadShaders: ((ReloadShadersRequest) -> ReloadShadersResult)? = null,
+        captureRenderWindow: ((CaptureRenderWindowRequest) -> CaptureRenderWindowResult)? = null,
         listMacros: ((MacroListRequest) -> MacroListResult)? = null,
         readMacro: ((MacroReadRequest) -> MacroReadResult)? = null,
         writeMacro: ((MacroWriteRequest) -> MacroWriteResult)? = null,
@@ -145,7 +146,6 @@ class IdeChatHelpers(
         semanticRetrievalRebuild: (() -> SemanticRetrievalToolResult)? = null,
         agentMemory: AgentMemoryState? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
-        visualVerificationEnabled: Boolean = imageUrls.isNotEmpty(),
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
         onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null
@@ -165,6 +165,7 @@ class IdeChatHelpers(
             editOtherFile = editOtherFile,
             compileKotlin = compileKotlin,
             reloadShaders = reloadShaders,
+            captureRenderWindow = captureRenderWindow,
             listMacros = listMacros,
             readMacro = readMacro,
             writeMacro = writeMacro,
@@ -174,8 +175,7 @@ class IdeChatHelpers(
             semanticRetrievalStatus = semanticRetrievalStatus,
             semanticRetrievalRebuild = semanticRetrievalRebuild,
             agentMemory = agentMemory,
-            workspaceSymbolSearch = workspaceSymbolSearch,
-            visualVerificationEnabled = visualVerificationEnabled || imageUrls.isNotEmpty()
+            workspaceSymbolSearch = workspaceSymbolSearch
         )
 
         val instructions = buildDynamicInstructions(
@@ -226,6 +226,7 @@ class IdeChatHelpers(
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
         compileKotlin: ((CompileKotlinRequest) -> CompileKotlinResult)? = null,
         reloadShaders: ((ReloadShadersRequest) -> ReloadShadersResult)? = null,
+        captureRenderWindow: ((CaptureRenderWindowRequest) -> CaptureRenderWindowResult)? = null,
         listMacros: ((MacroListRequest) -> MacroListResult)? = null,
         readMacro: ((MacroReadRequest) -> MacroReadResult)? = null,
         writeMacro: ((MacroWriteRequest) -> MacroWriteResult)? = null,
@@ -236,7 +237,6 @@ class IdeChatHelpers(
         semanticRetrievalRebuild: (() -> SemanticRetrievalToolResult)? = null,
         agentMemory: AgentMemoryState? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
-        visualVerificationEnabled: Boolean = false,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
         onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null
@@ -253,6 +253,7 @@ class IdeChatHelpers(
             editOtherFile = editOtherFile,
             compileKotlin = compileKotlin,
             reloadShaders = reloadShaders,
+            captureRenderWindow = captureRenderWindow,
             listMacros = listMacros,
             readMacro = readMacro,
             writeMacro = writeMacro,
@@ -262,8 +263,7 @@ class IdeChatHelpers(
             semanticRetrievalStatus = semanticRetrievalStatus,
             semanticRetrievalRebuild = semanticRetrievalRebuild,
             agentMemory = agentMemory,
-            workspaceSymbolSearch = workspaceSymbolSearch,
-            visualVerificationEnabled = visualVerificationEnabled
+            workspaceSymbolSearch = workspaceSymbolSearch
         )
 
         val instructions = buildDynamicInstructions(
@@ -316,6 +316,7 @@ class IdeChatHelpers(
         editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
         compileKotlin: ((CompileKotlinRequest) -> CompileKotlinResult)? = null,
         reloadShaders: ((ReloadShadersRequest) -> ReloadShadersResult)? = null,
+        captureRenderWindow: ((CaptureRenderWindowRequest) -> CaptureRenderWindowResult)? = null,
         listMacros: ((MacroListRequest) -> MacroListResult)? = null,
         readMacro: ((MacroReadRequest) -> MacroReadResult)? = null,
         writeMacro: ((MacroWriteRequest) -> MacroWriteResult)? = null,
@@ -326,7 +327,6 @@ class IdeChatHelpers(
         semanticRetrievalRebuild: (() -> SemanticRetrievalToolResult)? = null,
         agentMemory: AgentMemoryState? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
-        visualVerificationEnabled: Boolean = false,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
         onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null
@@ -343,6 +343,7 @@ class IdeChatHelpers(
             editOtherFile = editOtherFile,
             compileKotlin = compileKotlin,
             reloadShaders = reloadShaders,
+            captureRenderWindow = captureRenderWindow,
             listMacros = listMacros,
             readMacro = readMacro,
             writeMacro = writeMacro,
@@ -352,8 +353,7 @@ class IdeChatHelpers(
             semanticRetrievalStatus = semanticRetrievalStatus,
             semanticRetrievalRebuild = semanticRetrievalRebuild,
             agentMemory = agentMemory,
-            workspaceSymbolSearch = workspaceSymbolSearch,
-            visualVerificationEnabled = visualVerificationEnabled
+            workspaceSymbolSearch = workspaceSymbolSearch
         )
 
         val instructions = buildDynamicInstructions(

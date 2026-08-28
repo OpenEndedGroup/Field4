@@ -171,12 +171,36 @@ class AnthropicBridge(
                             onProgress?.invoke(LlmProgressUpdate("Commentary", text))
                         }
                 }
-                if (result is ReloadShadersResult && result.visualDataUrl.isNotBlank()) {
+                // The panel's copy of the conversation.
+                //
+                // The *model* gets these images inside the `tool_result`, via `toolResultBlock` — which
+                // is the better shape here and is why this bridge nests rather than appending. But the
+                // panel is plain markdown assembled from `conversationAdditions`, and this bridge only
+                // ever put prose there. So a ReloadShaders visual check rendered as a sentence claiming
+                // a screenshot had been captured, with no screenshot under it.
+                //
+                // It used to have a second job, worth recording because it is why the omission went
+                // unnoticed for so long: `Ai4Installer` decided whether the render window could be
+                // captured *at all* by searching the rendered history for a `data:image/`. Nothing on
+                // this provider ever wrote one, so that test could never come true, so `visualCheck`
+                // was refused in perpetuity and the missing attachment here had nothing to attach.
+                // That gate is gone; this block is now only about what the person sees.
+                val carried = (result as? CarriesToolImages)?.toolImages
+                    .orEmpty()
+                    .filter { it.dataUrl.isNotBlank() }
+                if (carried.isNotEmpty()) {
                     conversationAdditions += buildString {
                         appendLine("<<ai>>")
-                        appendLine("_Post-shader-reload screenshot captured after the settle delay._")
-                        if (result.visualCheckMessage.isNotBlank()) {
-                            appendLine(); appendLine("_${result.visualCheckMessage}_")
+                        carried.forEachIndexed { index, image ->
+                            if (index > 0) appendLine()
+                            if (image.caption.isNotBlank()) {
+                                appendLine("_${image.caption}_")
+                                appendLine()
+                            }
+                            append("![tool image](")
+                            append(image.dataUrl)
+                            append(")")
+                            appendLine()
                         }
                     }
                 }

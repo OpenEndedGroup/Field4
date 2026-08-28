@@ -88,6 +88,13 @@ internal fun registerBuiltInAgentTools(tools: ToolRegistry) {
             ctx.reloadShaders?.invoke(req)
                 ?: throw IllegalStateException("ReloadShaders not available for this request.")
         }
+        // Deliberately gated only on the provider existing, not on whether the conversation already
+        // happens to contain an image. Seeing the render window is the whole point of an agent editing
+        // graphics code, and making it conditional on prior visual context is what left agents blind.
+        tools.register(CaptureRenderWindowRequest::class.java, { ctx -> ctx.captureRenderWindow != null }) { ctx, req ->
+            ctx.captureRenderWindow?.invoke(req)
+                ?: throw IllegalStateException("CaptureRenderWindow not available for this request.")
+        }
         tools.register(MacroListRequest::class.java, { ctx -> ctx.listMacros != null }) { ctx, req ->
             ctx.listMacros?.invoke(req)
                 ?: throw IllegalStateException("MacroList not available for this request.")

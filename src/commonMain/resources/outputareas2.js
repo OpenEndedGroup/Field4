@@ -1315,6 +1315,70 @@ function buildAiChatPayload(uid, property, prompt, images = []) {
         };
 }
 
+// ---- chat scroll ----------------------------------------------------------
+//
+// The chat re-renders from scratch on every streamed `set-output`, and assigning `innerHTML` resets
+// `scrollTop` to 0. The old code set `scrollTop = scrollHeight` on the next line, which looks like a
+// recovery and is not: inline chat images are `data:` URLs emitted without width/height, so at that
+// instant they contribute no height at all, `scrollHeight` is barely more than one viewport, and the
+// clamp leaves the reader near the *top*. Once a screenshot is anywhere in the history that happens
+// on every update of the turn, which is what "the panel keeps scrolling itself to the top" is.
+//
+// Two rules. Stick to the bottom only if the reader was already there, so scrolling up to re-read
+// something earlier is not yanked away mid-turn. And re-apply the stick when late content actually
+// changes the height, instead of measuring once against a layout that has not happened yet.
+
+const CHAT_BOTTOM_SLACK_PX = 48;
+
+function chatPinnedToBottom(messages) {
+        const slack = messages.scrollHeight - messages.scrollTop - messages.clientHeight;
+        return slack <= CHAT_BOTTOM_SLACK_PX;
+}
+
+/**
+ * Re-render the chat transcript, keeping the reader where they were.
+ *
+ * `options.forceBottom` is for the moments where jumping to the newest turn is the point rather than
+ * an interruption: the local echo of a message you just sent, and switching the panel to another box.
+ */
+function renderChatMessages(messages, markdown, options) {
+        if (!messages) return;
+        const forceBottom = !!(options && options.forceBottom);
+        // Both measured before the teardown, because the teardown is what loses the position.
+        const stick = forceBottom || chatPinnedToBottom(messages);
+        const previousTop = messages.scrollTop;
+
+        messages.innerHTML = aiChatHistoryToHtml(markdown || "");
+        decorateAfieldLinks(messages);
+        applyCodeHighlight(messages);
+
+        if (!stick) {
+                const maxTop = Math.max(0, messages.scrollHeight - messages.clientHeight);
+                messages.scrollTop = Math.min(previousTop, maxTop);
+                // Deliberately no image handler on this path: the reader is parked somewhere above,
+                // content grows below them, and browser scroll anchoring already holds them there.
+                // Re-asserting a stored offset later would fight whatever they did in the meantime.
+                return;
+        }
+
+        const settle = () => {
+                messages.scrollTop = messages.scrollHeight;
+        };
+        settle();
+        // An inline screenshot gains its height after this call returns, so settle again per image
+        // rather than guessing a delay that is always wrong on one machine or another.
+        messages.querySelectorAll("img").forEach((img) => {
+                if (img.complete) return;
+                const once = () => {
+                        img.removeEventListener("load", once);
+                        img.removeEventListener("error", once);
+                        settle();
+                };
+                img.addEventListener("load", once);
+                img.addEventListener("error", once);
+        });
+}
+
 function ensureAiChat(container, uid, property) {
         if (container.__aiChat) {
                 const existing = container.__aiChat;
@@ -1409,18 +1473,15 @@ function ensureAiChat(container, uid, property) {
                 return attachment && typeof attachment.src === "string" ? attachment.src : "";
         }
 
-        function renderMessages() {
-                messages.innerHTML = aiChatHistoryToHtml(container.__aiChatHistory || "");
-                decorateAfieldLinks(messages);
-                applyCodeHighlight(messages);
-                messages.scrollTop = messages.scrollHeight;
+        function renderMessages(options) {
+                renderChatMessages(messages, container.__aiChatHistory || "", options);
         }
 
         function appendLocalChatTurn(role, markdown) {
                 const history = container.__aiChatHistory || "";
                 const prefix = history ? history + "\n" : "";
                 container.__aiChatHistory = prefix + (role === "you" ? "<<you>>" : "<<ai>>") + "\n" + markdown;
-                renderMessages();
+                renderMessages({ forceBottom: true });
         }
 
         function renderPreview() {
@@ -1618,7 +1679,7 @@ function ensureAiChat(container, uid, property) {
                         : text;
                 if (withImages.length > 0) {
                         container.__aiChatHistory = nextHistory + "<<you>>\n" + withImages;
-                        renderMessages();
+                        renderMessages({ forceBottom: true });
                 }
                 const images = attachments.map(attachmentSrc).filter((src) => src.length > 0);
                 sendAiChat(buildAiChatPayload(chatUid(), chatProperty(), text, images));
@@ -1835,10 +1896,7 @@ function highlightCodeBlock(block) {
 function aiChatUpdate(container, uid, markdown) {
         const chat = ensureAiChat(container, uid, container.__aiChat?.property || "code");
         container.__aiChatHistory = markdown || "";
-        chat.messages.innerHTML = aiChatHistoryToHtml(container.__aiChatHistory);
-        decorateAfieldLinks(chat.messages);
-        applyCodeHighlight(chat.messages);
-        chat.messages.scrollTop = chat.messages.scrollHeight;
+        renderChatMessages(chat.messages, container.__aiChatHistory);
         updateControllerChat(uid, markdown);
 }
 
@@ -1861,10 +1919,7 @@ function updateControllerChat(uid, markdown) {
         try {
                 const chat = ensureAiChat(container, uid, window.selectedProperty || window.currentSelectedProperty || "code");
                 container.__aiChatHistory = markdown || "";
-                chat.messages.innerHTML = aiChatHistoryToHtml(container.__aiChatHistory);
-                decorateAfieldLinks(chat.messages);
-                applyCodeHighlight(chat.messages);
-                chat.messages.scrollTop = chat.messages.scrollHeight;
+                renderChatMessages(chat.messages, container.__aiChatHistory);
         } finally {
                 container.__controllerChatUpdating = false;
         }
@@ -1889,10 +1944,7 @@ function syncControllerChatSelection() {
         const history = controllerChatHistory.get(uid) || container.__aiChatHistory || "";
         const chat = ensureAiChat(container, uid, property);
         container.__aiChatHistory = history;
-        chat.messages.innerHTML = aiChatHistoryToHtml(history);
-        decorateAfieldLinks(chat.messages);
-        applyCodeHighlight(chat.messages);
-        chat.messages.scrollTop = chat.messages.scrollHeight;
+        renderChatMessages(chat.messages, history, { forceBottom: true });
 }
 
 function installControllerChatProjection() {
