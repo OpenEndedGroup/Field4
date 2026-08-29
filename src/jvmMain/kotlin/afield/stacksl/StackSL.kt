@@ -2771,7 +2771,7 @@ private val CURL_EPSILON_DEFAULT = VolumetricNoiseConstants.DEFAULT_CURL_EPSILON
 private val GRADIENT_EPSILON_DEFAULT = VolumetricNoiseConstants.DEFAULT_GRADIENT_EPSILON.toString()
 private val WARP_STRENGTH_DEFAULT = VolumetricNoiseConstants.DEFAULT_WARP_STRENGTH.toString()
 
-private val builtinWords = setOf(
+private val builtinWordsCore = setOf(
     "noop", "input", "in", "uv", "p", "pos", "center", "centered", "time", "t", "hash", "h",
     "pi", "tau", "e",
     "dup", "drop", "swap", "over", "rot", "nip", "tuck",
@@ -2818,7 +2818,27 @@ private val builtinWords = setOf(
     "divergence", "curl",
     "phacelle", "directional-noise", "directionalnoise",
     "0->", "1->", "2->", "3->", "->0", "->1", "->2", "->3"
-) + stackSLArityVariantWords + namedColors.keys + swizzleWords + swizzleWords.map { ".$it" }
+)
+
+/**
+ * The words a human is expected to look up: the literal vocabulary plus the named colors, but
+ * WITHOUT the mechanically generated surface — arity variants like `fbm3.2` and the ~1100 swizzles
+ * — which would drown any documentation page that tried to list them.
+ *
+ * Exposed so [afield.stacksl] documentation coverage can be checked against the compiler itself
+ * rather than against a hand-maintained second list, which is the usual way these rot.
+ */
+val stackSLDocumentableWords: Set<String> = builtinWordsCore + namedColors.keys
+
+private val builtinWords = builtinWordsCore + stackSLArityVariantWords + namedColors.keys +
+    swizzleWords + swizzleWords.map { ".$it" }
+
+/**
+ * Everything the compiler will accept as a word, including the mechanically generated arity
+ * variants and swizzles. Used by the coverage guard's reverse direction, where a cheatsheet row
+ * naming `rgba` or `.xy` is legitimate and must not be reported as a typo.
+ */
+val stackSLAllWords: Set<String> get() = builtinWords
 
 private val bareSwizzleReservedWords = setOf("ryb")
 

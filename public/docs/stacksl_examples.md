@@ -1005,6 +1005,80 @@ previous one, the same trick works if you rebuild the whole module instead of
 just its `stack.auto` body — handy when the surrounding GLSL, not only the
 StackSL, is what you are editing.
 
+## Volumetric noise
+
+`noise` and `fbm` are two-dimensional. The word lowers to
+`_noise(input.xy + input.zw * 0.07)`, so a `vec4` carrying a position and a time is
+squashed into a plane, and z arrives at one fourteenth the weight of x — as a shear,
+not as a third dimension. Feed it `vec4(pos.xyz, t)` and you do not get a volume. You
+get one picture, imprinted at every depth.
+
+The top row below is the shipped 2D `fbm` sampled at six values of z. It is the same
+image six times.
+
+![Six z-slices each of the 2D fbm word, fbm3, and curl3](assets/stacksl/stacksl-volumetric-noise-slices.png)
+
+The middle row is `fbm3` over the same six slices: six unrelated fields, which is what
+a volume is supposed to look like. Measured as mean absolute difference from the first
+slice, the 2D word moves 0.017 → 0.065 across the march — a slow, monotonic drift, the
+signature of a pattern sliding sideways — while `fbm3` jumps straight to 0.130 and then
+sits at ≈0.14, which is the signature of slices that are simply independent.
+
+The bottom row is `curl3`, drawn by advecting tracers through it. Closed swirls, no
+bright knots, no holes: that is what divergence-free looks like. It matters for
+particles. A force field with sources and sinks collects your particles into the sinks
+and empties the sources; a solenoidal one moves them around forever.
+
+| Word | Stack | What it does |
+| --- | --- | --- |
+| `noise3` | `coord -- s` | 3D value noise over `coord.xyz`, exactly `0..1`. |
+| `noise4` | `coord -- s` | 4D value noise over `coord.xyzw` — a volume that animates in w. |
+| `fbm3` | `coord octaves lacunarity gain -- s` | fractal `noise3`. Arities 1..4; defaults 5, 2.0, 0.5. |
+| `fbm4` | `coord octaves lacunarity gain -- s` | fractal `noise4`. |
+| `curl3` | `coord epsilon octaves -- vec` | divergence-free curl noise; `.xyz` is the vector. |
+| `worley3`, `voronoi3` | `coord -- vec` | cellular: `.x` F1, `.y` F2, `.z` F2-F1 (cell walls), `.w` a per-cell constant. |
+| `fbmd3` | `coord epsilon octaves -- vec` | `.x` is `fbm3`, `.yzw` its gradient — a surface normal in one word. |
+| `warp3` | `coord strength octaves -- s` | domain-warped `fbm3`: filaments and folds instead of clouds. |
+
+Three things this family does that the 2D words do not.
+
+**The range really is `0..1`.** `fbm`'s five octaves have amplitudes summing to
+0.96875, not 1, so a raw `fbm` never reaches 1 and the usual `0.5 -` recentre leaves a
+constant bias of about -0.031. As a force that integrates into a drift rather than
+averaging out. `fbm3` accumulates its amplitude sum at run time and divides by it, so
+the range is exact for *any* octave count, lacunarity and gain. The 2D words are
+deliberately unchanged — renormalising them would move every rendered image in these
+pages.
+
+**No `sin()` in the hashes.** The existing `hash11`/`hash21` are
+`fract(sin(x) * 43758.5453)`, and `sin` is not bit-portable between implementations.
+The volumetric hashes are multiply/add/fract only, which are exact, so a CPU
+transcription of the shader is meaningful — and there is one, in
+`VolumetricNoiseReference`, which is what lets these words be unit-tested with no GPU.
+
+**`curl3` is solenoidal by construction.** It is the curl of a vector potential taken
+with central differences at one shared epsilon. Discrete shift operators commute, so
+the discrete divergence cancels term for term rather than merely being small: measured
+2.5e-7 against 0.58 for the three-independent-channels field people usually reach for.
+
+A particle force, the whole point:
+
+```diffstatic {data-lang=stacksl}
+input xyz 2.2 * curl3 xyz 0.4 *
+```
+
+Cell walls, which `worley3` hands you directly:
+
+```diffstatic {data-lang=stacksl}
+input 6 * worley3 z 1- 8 pow
+```
+
+A cheap two-octave field for something evaluated per particle per frame:
+
+```diffstatic {data-lang=stacksl}
+input 2 fbm3.2
+```
+
 ## Built-in vocabulary
 
 Stack and input:
@@ -1036,6 +1110,7 @@ Creative:
 
 ```diffstatic {data-lang=stacksl}
 noise perlin fbm pulse fm palette cos-palette
+noise3 noise4 fbm3 fbm4 curl3 worley3 voronoi3 fbmd3 warp3
 luma saturate clamp mirror smooth sigmoid softplus threshold band ramp posterize bias gain tonemap
 ryb ryb2rgb from-ryb rgb2ryb to-ryb
 oklab oklab2rgb from-oklab rgb2oklab to-oklab
@@ -1045,6 +1120,18 @@ sample sample0 sample1 sample2 sample3
 sample-abs prev state gather gather0 gather1 gather2 gather3
 texelSize textureSize
 laplace laplacian blur blur5 blur9 sobel gradient gradient.r gradient.g gradient.b gradient.a divergence curl
+```
+
+Volumetric noise (genuinely 3D, unlike `noise` and `fbm`, which flatten a vec4 into a plane):
+
+```diffstatic {data-lang=stacksl}
+noise3 noise4 fbm3 fbm4 curl3 fbmd3 warp3 worley3 voronoi3
+```
+
+Word references:
+
+```diffstatic {data-lang=stacksl}
+apply call invoke
 ```
 
 Constants:
