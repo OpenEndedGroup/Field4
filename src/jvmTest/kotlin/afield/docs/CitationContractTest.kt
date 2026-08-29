@@ -184,6 +184,20 @@ class CitationContractTest {
             // build script and nowhere else. Floored at 6, about half, on the DATAFRAME_PLUGIN
             // convention.
             "public/docs/projection_examples.md" to 6,
+            // Added 2026-08-29 with the page it guards. `gpu_state.md` is the state half of the GPU
+            // model — buffer residency, ping-pong, per-dispatch bindings, frame parity — and its
+            // argument is unusually dependent on pointing at code: the whole residency vocabulary is
+            // five one-line members of one buffer block, and the reader's next move after the page is
+            // to go and read them. Ten anchored citations as written, all prose `path:line#anchor`,
+            // every anchor unique-in-file, so [MAX_FRAGILE] is unaffected. Five point at
+            // `four/buffers/magic.kt`, two at `stdlib/shaders.kt`, one each at `four/Renderer.kt` and
+            // `stacksl/StackSL.kt`. Floored at 5, about half, on the DATAFRAME_PLUGIN convention.
+            //
+            // The numeral census matters here too, and the page is written for it: every measured
+            // figure on it — mean per-particle speed, the exact maximum, the sample size — is
+            // labelled as an observation from one run rather than stated as a derived count, because
+            // it *is* one, and a derivation over a running GPU is not a thing this corpus can offer.
+            "public/docs/gpu_state.md" to 5,
         )
 
         /**
