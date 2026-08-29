@@ -2,8 +2,12 @@
 
 package afield.four.fabricated
 
+import afield.Box
+import afield.ToHTML
+import afield.controlGroup
 import afield.four.modules.CompressedSplatPly
 import java.io.File
+import java.util.Locale
 
 /**
  * A directory of `.compressed.ply` frames, readable in any order.
@@ -117,7 +121,7 @@ class SplatTransport(
     val frameCount: Int,
     /** Source frames per second. Independent of the display rate. */
     var fps: Double = 12.0
-) {
+) : ToHTML {
     init {
         require(frameCount >= 1) { "frameCount must be at least 1" }
     }
@@ -210,4 +214,118 @@ class SplatTransport(
     override fun toString(): String =
         "SplatTransport(frame=$frame/${frameCount}, position=%.2f, fps=$fps, speed=$speed, ".format(position) +
             "playing=$playing, loop=$loop)"
+
+    /**
+     * A play head you can read at a glance: the track, where the head sits on it, the frame count,
+     * and the state that decides what happens next.
+     *
+     * This is what `transport.h` returns and what the value visualizer shows when you inspect the
+     * variable. It is a *snapshot* — nothing here polls. For a readout that follows the head while
+     * it plays, use [Box.transportControls], whose meter is sampled on Field's own meter thread.
+     *
+     * Palette and idiom follow the other visualizers: inline SVG, `#ccc` on `#666`, monospace, no
+     * stylesheet to install and nothing that breaks if the output panel is resized.
+     */
+    override fun toHTML(): String {
+        val width = 330
+        val frames = frameCount.coerceAtLeast(1)
+        val fraction = if (frames <= 1) 0.0 else (position / frames).coerceIn(0.0, 1.0)
+        val left = 2.0
+        val right = width - 2.0
+        val head = left + fraction * (right - left)
+        val moving = playing && speed != 0.0
+
+        // Green while it is actually advancing, grey when parked: the two states a glance should
+        // separate. Direction gets its own glyph rather than a minus sign on the speed.
+        val fill = if (moving) "#4a9d7f" else "#5a5a5a"
+        val state = when {
+            !playing -> "paused"
+            speed == 0.0 -> "held"
+            speed < 0 -> "reverse"
+            else -> "playing"
+        }
+        val glyph = when {
+            !playing || speed == 0.0 -> "&#9633;"      // hollow square
+            speed < 0 -> "&#9664;"                      // left triangle
+            else -> "&#9654;"                           // right triangle
+        }
+        fun n(value: Double) = String.format(Locale.ROOT, "%.1f", value)
+        // Java's %g keeps trailing zeros, so 12.0 came out "12.0fps". An integral rate should read
+        // as "12fps" -- this is a readout, and the ".0" is noise on the common case.
+        fun rate() =
+            if (fps == Math.floor(fps) && fps.isFinite()) fps.toLong().toString()
+            else String.format(Locale.ROOT, "%.2f", fps)
+        fun rateSpeed() = String.format(Locale.ROOT, "%+.2f", speed)
+
+        val ticks = StringBuilder()
+        // A tick every tenth, so a glance reads position as a proportion and not just a pixel.
+        for (i in 1 until 10) {
+            val x = left + (right - left) * i / 10.0
+            ticks.append("<line x1='${n(x)}' y1='20' x2='${n(x)}' y2='24' stroke='#3a3a3a' stroke-width='1'/>")
+        }
+
+        return buildString {
+            append("<div style=\"font-family: 'Iosevka Web', monospace; font-size: 12px; ")
+            append("color: #ccc; line-height: 1.4; display: inline-block;\">")
+            append("<svg width='$width' height='34' viewBox='0 0 $width 34' ")
+            append("xmlns='http://www.w3.org/2000/svg'>")
+            // Row one: which frame, and what it is doing.
+            append("<text x='2' y='11' fill='#ccc' font-size='11' font-family='monospace'>")
+            append("frame $frame / $frameCount</text>")
+            append("<text x='${width - 2}' y='11' fill='#666' font-size='11' font-family='monospace' ")
+            append("text-anchor='end'>$glyph $state &#183; ${rate()}fps &#183; ${rateSpeed()}x")
+            append(if (loop) " &#183; loop" else " &#183; clamp")
+            append("</text>")
+            // Row two: the track itself.
+            append("<line x1='${n(left)}' y1='22' x2='${n(right)}' y2='22' stroke='#333' ")
+            append("stroke-width='4' stroke-linecap='round'/>")
+            append(ticks)
+            if (head > left) {
+                append("<line x1='${n(left)}' y1='22' x2='${n(head)}' y2='22' stroke='$fill' ")
+                append("stroke-width='4' stroke-linecap='round'/>")
+            }
+            append("<circle cx='${n(head)}' cy='22' r='4.5' fill='#1b1b1b' stroke='#ccc' ")
+            append("stroke-width='1.5'/>")
+            append("<text x='2' y='33' fill='#555' font-size='8' font-family='monospace'>")
+            append("position ${n(position)}</text>")
+            append("</svg></div>")
+        }
+    }
+}
+
+/**
+ * A transport you can drive from an output area: scrub, speed, play/pause, loop and single steps.
+ *
+ * The split between the meter and the scrub slider is not redundancy, it is the shape the plumbing
+ * forces and the shape you want anyway. Field's control callbacks run **browser to JVM** only, so a
+ * slider cannot follow a play head that the JVM is advancing — drag it and it seeks, but leave it
+ * and it stays where you left it. A [ControlGroupBuilder.meter] takes a `source` lambda that
+ * Field's own `field-meter-sampler` thread polls, so the meter *does* follow. Read the meter, drive
+ * the slider.
+ *
+ * Everything is live against [transport] the moment it moves; nothing here needs the box to re-run.
+ * The one thing to know: the group is rebuilt when the box runs, and control values are cached by
+ * label, so re-running restores the slider positions rather than resetting them.
+ *
+ * @param transport the play head to drive. Held by reference, so a later `transport.fps = …` is seen.
+ * @param channel the output disclosure that receives the controls.
+ */
+fun Box.transportControls(transport: SplatTransport, channel: String = "transport") {
+    val last = (transport.frameCount - 1).coerceAtLeast(1).toDouble()
+    controlGroup(channel) {
+        meter(
+            "frame", min = 0.0, max = last,
+            initialValue = transport.position.coerceIn(0.0, last),
+            source = { transport.position.coerceIn(0.0, last) }
+        )
+        slider("scrub", min = 0.0, max = last, step = 1.0,
+            initialValue = transport.position.coerceIn(0.0, last)) { transport.seek(it) }
+        slider("speed", min = -2.0, max = 2.0, step = 0.05, initialValue = transport.speed) {
+            transport.speed = it
+        }
+        checkbox("playing", transport.playing) { transport.playing = it }
+        checkbox("loop", transport.loop) { transport.loop = it }
+        button("step back") { if (it) transport.scrubBy(-1.0) }
+        button("step forward") { if (it) transport.scrubBy(1.0) }
+    }
 }

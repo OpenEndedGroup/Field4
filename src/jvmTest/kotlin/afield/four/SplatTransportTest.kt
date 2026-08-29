@@ -152,4 +152,99 @@ class SplatTransportTest {
         t.seek(Double.NaN)
         assertTrue(t.frame in 0 until 7, "NaN must not escape the range")
     }
+
+    // ------------------------------------------------------------------------
+    // The .h readout
+    // ------------------------------------------------------------------------
+
+    @Test
+    fun `the readout names the frame and the total`() {
+        val t = SplatTransport(frameCount = 124, fps = 12.0)
+        t.seek(31.0)
+        val html = t.toHTML()
+        assertTrue("frame 31 / 124" in html, "the readout should say which frame of how many:\n$html")
+        assertTrue("12fps" in html, "and the source rate")
+    }
+
+    @Test
+    fun `the play head sits where the position says`() {
+        val t = SplatTransport(frameCount = 100)
+        fun headX(html: String): Double =
+            Regex("<circle cx='([0-9.]+)'").find(html)!!.groupValues[1].toDouble()
+
+        t.seek(0.0)
+        val start = headX(t.toHTML())
+        t.normalized = 0.5
+        val middle = headX(t.toHTML())
+        t.seek(99.0)
+        val end = headX(t.toHTML())
+
+        assertTrue(start < middle && middle < end, "head should advance: $start, $middle, $end")
+        // Half way along the track, within a pixel of the geometric centre.
+        assertTrue(Math.abs(middle - (start + end) / 2) < 2.0, "half position should be mid-track")
+    }
+
+    @Test
+    fun `the readout distinguishes the four states a glance needs`() {
+        val t = SplatTransport(frameCount = 50)
+        t.playing = true; t.speed = 1.0
+        assertTrue("playing" in t.toHTML())
+        t.speed = -1.0
+        assertTrue("reverse" in t.toHTML(), "a negative speed should read as reverse, not as -1x playing")
+        t.speed = 0.0
+        assertTrue("held" in t.toHTML(), "speed 0 is not the same state as paused")
+        t.playing = false; t.speed = 1.0
+        assertTrue("paused" in t.toHTML())
+    }
+
+    @Test
+    fun `a moving head is coloured differently from a parked one`() {
+        val t = SplatTransport(frameCount = 50)
+        t.seek(25.0)
+        t.playing = true; t.speed = 1.0
+        val moving = t.toHTML()
+        t.playing = false
+        val parked = t.toHTML()
+        assertTrue(moving != parked, "playing and paused should not render identically")
+        assertTrue("#4a9d7f" in moving, "a moving head should use the active fill")
+        assertTrue("#4a9d7f" !in parked, "a parked head should not")
+    }
+
+    @Test
+    fun `loop and clamp are stated rather than left to be guessed`() {
+        val t = SplatTransport(frameCount = 50)
+        t.loop = true
+        assertTrue("loop" in t.toHTML())
+        t.loop = false
+        val html = t.toHTML()
+        assertTrue("clamp" in html && "&#183; loop" !in html, "clamping should say so:\n$html")
+    }
+
+    @Test
+    fun `the readout is well formed and locale independent`() {
+        val t = SplatTransport(frameCount = 7)
+        t.seek(3.0)
+        val html = t.toHTML()
+        assertEquals(
+            html.split("<svg").size, html.split("</svg>").size,
+            "unbalanced svg tags"
+        )
+        assertEquals(html.split("<div").size, html.split("</div>").size, "unbalanced div tags")
+        // A comma decimal separator would make the SVG coordinates invalid; String.format with a
+        // default locale is the usual way that happens, so the readout pins Locale.ROOT.
+        assertFalse(
+            Regex("(cx|x1|x2)='[0-9]+,[0-9]+'").containsMatchIn(html),
+            "a comma decimal separator escaped into an SVG coordinate:\n$html"
+        )
+        // Nothing should render a raw NaN or Infinity into the page.
+        assertFalse("NaN" in html, "NaN in the readout")
+        assertFalse("Infinity" in html, "Infinity in the readout")
+    }
+
+    @Test
+    fun `a single-frame sequence still renders`() {
+        val html = SplatTransport(frameCount = 1).toHTML()
+        assertTrue("frame 0 / 1" in html, html)
+        assertFalse("NaN" in html, "a one-frame sequence divides by the frame count")
+    }
 }
