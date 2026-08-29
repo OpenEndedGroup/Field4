@@ -69,9 +69,18 @@ operations:
           val zStep = 0.8f
 
           val zoom = 2.2f          // spatial frequency of the field
-          val tile = 150           // pixels per slice
+          val tile = 96            // pixels per slice
           val octaves = 5.0f       // fbm3 octaves; try 2 for a cheap per-particle field
-          val tracerSteps = 24     // curl3 streamline length
+
+          // curl3 is the expensive one: every sample is 18 fbm3 evaluations. The tracer row
+          // therefore uses fewer slices, seeds every `tracerStride`-th pixel, and takes short
+          // walks. At tile=96 that is ~80k curl3 calls and about a second; raising these to
+          // 6 slices, stride 1 and 24 steps is ~40x the work and turns the box into a coffee
+          // break. Numbers, not vibes: measure before you raise them.
+          val curlSlices = 3
+          val tracerStride = 4     // seed every Nth pixel
+          val tracerSteps = 72     // steps per streamline -- this is what makes swirls legible
+          val tracerStep = 0.022f  // world units per step
           // -----------------------------------------------------------------------------
 
           val slices = (0 until 6).map { it * zStep }
@@ -145,25 +154,31 @@ operations:
           display("1 - fbm (2D), six depths: the same picture six times",
                   PngEncoder.encode(legacyPx, stripW, tile))
 
-          val (volPx, _) = strip { x, y, z -> VolumetricNoiseReference.fbm3(NoiseVec3(x, y, z), octaves) }
+          // NOT `val (volPx, _) = strip { … }`. At box scope a destructuring `_` becomes a
+          // property literally named `<unused var>`, and the JVM rejects its accessor with
+          // `ClassFormatError: Illegal method name "get<unused var>"` -- the box fails to
+          // instantiate and produces no output at all, with nothing in the box channel to say
+          // why. Take `.first` instead.
+          val volPx = strip { x, y, z -> VolumetricNoiseReference.fbm3(NoiseVec3(x, y, z), octaves) }.first
           display("2 - fbm3, the same six depths: six unrelated fields",
                   PngEncoder.encode(volPx, stripW, tile))
 
           // curl3 as tracer density. Divergence-free means the density stays even.
           run {
-              val w = slices.size * tile
+              val curlZ = slices.take(curlSlices)
+              val w = curlZ.size * tile
               val acc = FloatArray(w * tile)
-              slices.forEachIndexed { s, zs ->
+              curlZ.forEachIndexed { s, zs ->
                   val z = zs * zoom
-                  for (sy in 0 until tile) {
-                      for (sx in 0 until tile) {
+                  for (sy in 0 until tile step tracerStride) {
+                      for (sx in 0 until tile step tracerStride) {
                           var x = (sx / tile.toFloat()) * 4f - 2f
                           var y = (sy / tile.toFloat()) * 4f - 2f
                           repeat(tracerSteps) {
                               val v = VolumetricNoiseReference.curl3(NoiseVec3(x * zoom, y * zoom, z))
                               val m = sqrt(v.x * v.x + v.y * v.y) + 1e-6f
-                              x += (v.x / m) * 0.012f
-                              y += (v.y / m) * 0.012f
+                              x += (v.x / m) * tracerStep
+                              y += (v.y / m) * tracerStep
                               val ix = (((x + 2f) / 4f) * tile).toInt()
                               val iy = (((y + 2f) / 4f) * tile).toInt()
                               if (ix in 0 until tile && iy in 0 until tile) acc[iy * w + s * tile + ix] += 1f
@@ -171,14 +186,21 @@ operations:
                       }
                   }
               }
-              val peak = (acc.maxOrNull() ?: 1f).coerceAtLeast(1f)
-              val px = IntArray(acc.size) { grey(minOf(1f, acc[it] / (peak * 0.12f))) }
-              display("3 - curl3 tracers: closed swirls, no sources, no sinks",
+              // Normalising on the PEAK makes one hot pixel set the scale and everything else
+              // saturates to a black-and-white speckle. Use a high percentile and a gamma, so
+              // the streamlines read as lines.
+              val sorted = acc.filter { it > 0f }.sorted()
+              val ref = if (sorted.isEmpty()) 1f else sorted[(sorted.size * 0.995f).toInt().coerceAtMost(sorted.size - 1)]
+              val px = IntArray(acc.size) {
+                  val t = (acc[it] / ref.coerceAtLeast(1f)).coerceIn(0f, 1f)
+                  grey(Math.pow(t.toDouble(), 0.65).toFloat())
+              }
+              display("3 - curl3 tracers (${curlZ.size} depths): closed swirls, no sources, no sinks",
                       PngEncoder.encode(px, w, tile))
           }
 
           // ---- the numbers behind the pictures --------------------------------------------
-          val pts = (0 until 3000).map { i ->
+          val pts = (0 until 400).map { i ->
               val t = i.toFloat()
               NoiseVec3((t * 0.618f) % 6f - 3f, (t * 0.414f) % 6f - 3f, (t * 0.732f) % 6f - 3f)
           }
@@ -218,3 +240,6 @@ operations:
           println()
           println("--- curl3 GLSL ---")
           println(slGlsl("input xyz 2.2 * curl3 xyz 0.4 *").substringAfter("vec3 stacksl_curl3"))
+  - execute:
+      box: stacksl_volumetric_noise
+      property: code
