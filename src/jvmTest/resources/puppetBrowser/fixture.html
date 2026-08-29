@@ -25,8 +25,22 @@
     </tbody>
   </table>
 
+  <!-- No thead: the header is the first row because every cell in it is a th. -->
+  <table id="plain">
+    <tr><th>name</th><th>value</th></tr>
+    <tr><td>one</td><td>1,024</td></tr>
+    <tr><td>two</td><td>not a number</td></tr>
+  </table>
+
+  <!-- No header at all, so every row is a body row. -->
+  <table id="headerless">
+    <tr><td>x</td><td>y</td></tr>
+    <tr><td>p</td><td>q</td></tr>
+  </table>
+
   <p class="note">first note</p>
   <p class="note">second note</p>
+  <p class="quote">he said "hello" \ goodbye</p>
 
   <label for="entry">entry</label>
   <input id="entry" value="">
