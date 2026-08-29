@@ -176,12 +176,10 @@ class DocumentedApiEvaluationTest {
         "enableDesktopInteraction" to
             "puppet_browser.md; youtube_vr_browser is COMPILE_ONLY because it creates a native " +
                 "Vulkan/OpenXR window and routes its live controller stand-in into Chromium.",
-        "flushInput" to
-            "puppet_browser.md; this drains the external Electron input queue. The live docs " +
-                "capture exercises it, but headless CI only compiles the native graphics scene.",
-        "onPageRequest" to
-            "puppet_browser.md; this installs a handler on the live Electron-to-Field IPC channel. " +
-                "The docs capture exercises the round trip, but CI has no native producer process.",
+        // `flushInput` and `onPageRequest` were rows here until 2026-08-29, both justified by "CI has
+        // no native producer process". HeadlessPuppetBrowserTest now spawns one — no GPU, no network,
+        // a committed file:// fixture — and asserts on both. The backward direction of this ledger is
+        // what noticed; the rows are deleted rather than reworded.
         // The one row here that is not a good reason, and the only one a person should act on.
         // `src/jvmMain/kotlin/afield/examples/four/FieldProbeSmokeTest.kt` exists, opens a Window and
         // exercises ShaderFieldProbe — and carries no FIELD_TEST block and no Gradle task, so nothing

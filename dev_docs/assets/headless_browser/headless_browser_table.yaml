@@ -1,0 +1,153 @@
+name: headless_browser_table
+description: |
+  A web page, read as data and plotted, with **no GPU and no window**. One box, no renderer parent,
+  no Vulkan — a real Chromium tab starts, loads a page, hands back a table, and the numbers land in
+  the box's own output panel as a plot.
+
+  That is the point. Field could already put a complete Chromium tab on a Vulkan mesh, but the
+  control plane came welded to the texture: `PuppetBrowser` extended `ExternalBrowserSurface`, so
+  merely naming it obliged you to own an image view and therefore a window and a GPU. Navigation,
+  input, JavaScript, CDP and the page bridge were all unreachable from a box that only wanted the
+  DOM. `PuppetBrowserControl` is that plane on its own, and `HeadlessPuppetBrowser` implements it.
+
+  **Run the box.** It writes a small HTML document to a temporary file, opens it in a real Chromium
+  tab, waits for a row that the page adds late on purpose, pulls the table out as a header and rows,
+  and plots two of its columns. Nothing here touches a graphics card and nothing here touches the
+  network — the page is a local file this box wrote a moment earlier, so the demo works on an
+  aeroplane.
+
+  **Then point it somewhere real.** Change `pageUrl` from `null` to any `https://…` and the same six
+  lines read that site instead; change `tableSelector` to whichever table you want. Everything below
+  the browser is ordinary Kotlin, so the rows can go to a Plotly plot, an FLine, a file, or another
+  box.
+
+  What it demonstrates:
+    - `HeadlessPuppetBrowser` — the whole control plane with no renderer, no surface, no native
+      handle bridge and no readback socket. The Electron producer runs in its no-frames mode, so
+      the paints are dropped at the source rather than uploaded and ignored.
+    - `table(selector)` — a `thead` or an all-`th` first row becomes the header, every remaining
+      `tr` becomes a row, and `numbers("depth")` gives a column as `Double?` — null for a cell that
+      is not a number, because a missing reading and a reading of zero are different facts.
+    - `waitFor(condition)` — waits *in the page*, so the whole wait is one round trip, and a
+      condition that throws fails at once instead of being retried until the deadline.
+    - `text`, `count` and `attribute` for the single-value cases. `attribute` reads the markup's
+      value, not the URL Chromium resolved it to.
+
+  The same queries work unchanged on a `FieldUiBrowserTexture` you are already rendering — the
+  receiver is the control plane, not the texture.
+operations:
+  - create:
+      box: headless_browser_table
+      name: A page as data — no GPU
+      frame:
+        x: 60.0
+        y: 60.0
+        w: 340.0
+        h: 60.0
+      properties:
+        code: |
+          import afield.four.browser.HeadlessPuppetBrowser
+          import afield.four.browser.attribute
+          import afield.four.browser.count
+          import afield.four.browser.table
+          import afield.four.browser.text
+          import afield.four.browser.waitFor
+          import java.io.File
+          import java.util.concurrent.TimeUnit
+
+          // Point this at any site to read that instead; null uses the local page below.
+          val pageUrl: String? = null
+          val tableSelector = "#readings"
+
+          // The local page. Written to a temp file so the demo needs no network and no committed
+          // asset — and so it is unmistakably a *real* document parsed by a *real* Chromium.
+          val localPage = File.createTempFile("field-headless-browser-", ".html")
+          localPage.writeText(
+              """
+              <!doctype html>
+              <html lang="en"><head><meta charset="utf-8"><title>Station readings</title></head>
+              <body>
+                <h1 id="headline">Station readings</h1>
+                <a id="source" href="readings.csv" data-kind="local">source</a>
+                <table id="readings">
+                  <thead><tr><th>station</th><th>depth</th><th>count</th></tr></thead>
+                  <tbody>
+                    <tr><td>alpha</td><td>12</td><td>301</td></tr>
+                    <tr><td>beta</td><td>48</td><td>117</td></tr>
+                    <tr><td>gamma</td><td>93</td><td>4</td></tr>
+                    <tr><td>delta</td><td>140</td><td>62</td></tr>
+                    <tr><td>epsilon</td><td>176</td><td>29</td></tr>
+                  </tbody>
+                </table>
+                <script>
+                  // A row that arrives late, the way a real dashboard's data does. waitFor is what
+                  // makes the difference between reading five rows and reading six.
+                  setTimeout(() => {
+                      const row = document.createElement("tr")
+                      row.innerHTML = "<td>zeta</td><td>205</td><td>8</td>"
+                      row.id = "late-row"
+                      document.querySelector("#readings tbody").appendChild(row)
+                  }, 600)
+                </script>
+              </body></html>
+              """.trimIndent()
+          )
+
+          val url = pageUrl ?: localPage.toURI().toString()
+          // No Renderer, no Window, no Vulkan. framesPerSecond is only the pointer's latency floor;
+          // this box never moves a mouse, so 1 is right and costs Chromium almost nothing.
+          val browser = HeadlessPuppetBrowser(url = url, width = 1000, height = 700, framesPerSecond = 1)
+
+          try {
+              val loaded = browser.loaded.get(45, TimeUnit.SECONDS)
+              println("loaded \"${loaded.title}\"")
+              println("  ${loaded.url}")
+              println()
+
+              println("headline: ${browser.text("#headline").get(10, TimeUnit.SECONDS)}")
+              println("source:   ${browser.attribute("#source", "href").get(10, TimeUnit.SECONDS)}")
+              println("rows now: ${browser.count("$tableSelector tbody tr").get(10, TimeUnit.SECONDS)}")
+
+              // Wait in the page for the late row, rather than sleeping here and hoping.
+              if (pageUrl == null) {
+                  browser.waitFor("document.getElementById('late-row') !== null", timeoutMillis = 10_000)
+                      .get(15, TimeUnit.SECONDS)
+                  println("rows after the late arrival: " +
+                      "${browser.count("$tableSelector tbody tr").get(10, TimeUnit.SECONDS)}")
+              }
+              println()
+
+              val readings = browser.table(tableSelector).get(15, TimeUnit.SECONDS)
+              println("header: ${readings.header}")
+              readings.rows.forEach { println("  $it") }
+              println()
+
+              // Two parallel numeric columns is exactly the shape a plot wants. A cell that is not
+              // a number comes back null rather than zero, so drop those rather than plot a lie.
+              val labels = readings.header
+              val xName = labels.getOrNull(1) ?: "column 1"
+              val yName = labels.getOrNull(2) ?: "column 2"
+              val xs = readings.numbers(1)
+              val ys = readings.numbers(2)
+              val usable = xs.indices.filter { xs[it] != null && ys[it] != null }
+              println("${usable.size} of ${xs.size} rows are numeric in both columns")
+
+              if (usable.size >= 2) {
+                  showSignals(
+                      yName to usable.map { ys[it]!! },
+                      x = usable.map { xs[it]!! },
+                      title = "${readings.header.firstOrNull() ?: "rows"} read out of a live page",
+                      xTitle = xName,
+                      yTitle = yName,
+                  )
+              } else {
+                  println("not enough numeric rows to plot; try a different tableSelector")
+              }
+          } finally {
+              // It owns an operating-system process. Always.
+              browser.close()
+              localPage.delete()
+          }
+  - execute:
+      box: headless_browser_table
+      property: code

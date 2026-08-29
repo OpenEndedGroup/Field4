@@ -9,6 +9,11 @@ That makes this more than “a web page on a quad.” It is an always-available 
 Field scene: controllable from code, usable with a mouse and keyboard, aimable with an OpenXR
 controller, and available to every ordinary mesh, shader and render pass.
 
+The control half of it does not need the texture half. The same tab — navigation, input, JavaScript,
+CDP, the page bridge — is drivable with no renderer and no GPU at all, which is what lets a test,
+a docs build or a data box use a browser. See [a browser you do not have to
+render](#a-browser-you-do-not-have-to-render).
+
 ## First, it is simply a browser
 
 The least theatrical use is often the most important. `PuppetBrowserWindowPanel` fits a live tab to
@@ -155,6 +160,77 @@ const answer = await window.fieldPuppet.request("selected-point", {
 
 This is enough for a cooperative application to expose semantic actions while the generic pointer,
 keyboard and CDP paths remain available for every other site.
+
+## A browser you do not have to render
+
+Everything in the table above is about the *tab*, not about its pixels. Until recently you could not
+reach any of it without a renderer, because `PuppetBrowser` extended the texture interface: naming
+the control plane obliged you to own a Vulkan image view, and therefore a window and a GPU.
+
+It no longer does.
+[`PuppetBrowserControl`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/four/browser/PuppetBrowser.kt)
+is the control plane on its own, and
+[`HeadlessPuppetBrowser`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/four/browser/HeadlessPuppetBrowser.kt)
+implements it with no renderer, no Vulkan surface, no native handle bridge and no readback socket.
+The Electron producer gains a third frame mode in which the paints are dropped at the source.
+
+```diffstatic {data-lang=kotlin}
+val browser = HeadlessPuppetBrowser("https://field.graphics/")
+try {
+    browser.loaded.get(30, TimeUnit.SECONDS)
+    println("${browser.state.title} at ${browser.state.url}")
+} finally {
+    browser.close()
+}
+```
+
+`PuppetBrowser` still extends `PuppetBrowserControl` and `ExternalBrowserSurface` together, so every
+example on this page is unchanged and a box that publishes `browserControl` keeps publishing the
+same thing. What is new is that a caller who only wants the tab can say so.
+
+The producer, the wire protocol and every command are the ones the textured browser uses; only the
+paint handler differs. That is what makes this more than a convenience: the browser stack now has a
+test that can fail. `HeadlessPuppetBrowserTest` spawns a real Chromium, loads a `file://` fixture
+committed in the repository, and asserts on values read back out of the live DOM — an `evaluate`
+result, a page exception arriving as an exception rather than as `undefined`, an unsettled promise
+being awaited, the isolated world, a `window.fieldPuppet.request` round trip in both directions,
+`insertText` and a dispatched key both changing the page, `flushInput` as a barrier, and a raw CDP
+command. No GPU and no network, so it runs anywhere the repository builds.
+
+One thing that test found immediately: constructing a browser with a URL and navigating in the very
+next statement could fail with `ERR_ABORTED`, because Chromium cancelled the in-flight first load
+and Electron reported that cancellation against the *new* navigation. `navigate` now waits for the
+producer's un-awaited first load to settle. The textured browser had the same race and no way to
+notice it.
+
+### Pages as data
+
+Once a page can be driven without being drawn, the web becomes a source Field can read rather than
+only a picture it can show. The queries are extensions on `PuppetBrowserControl`, so they work
+equally on a headless browser and on a `FieldUiBrowserTexture` already in your scene:
+
+```diffstatic {data-lang=kotlin}
+val readings = browser.table("#readings").get(10, TimeUnit.SECONDS)
+
+readings.header                       // [station, depth, count]
+readings.column("station")            // [alpha, beta, gamma]
+readings.numbers("depth")             // [12.0, 48.0, 93.0]
+
+browser.text("h1")                    // the first heading, or null
+browser.texts("p.note")               // every match, in document order
+browser.attribute("#link", "href")    // the markup's value, not the resolved URL
+browser.count("#readings tbody tr")   // 3
+browser.waitFor("document.readyState === 'complete'")
+```
+
+Three deliberate choices. They evaluate in an isolated world, so a page that has shadowed
+`document.querySelectorAll` or shipped an enthusiastic polyfill cannot change what Field reads out
+of it. `numbers` returns null for a cell that is not a number rather than zero, because a missing
+reading and a reading of zero are different facts and a plot that cannot tell them apart is the
+reason to be careful here. And `waitFor` waits *in the page*, so the whole wait costs one round trip
+and a condition that throws fails at once instead of being retried until the deadline.
+
+`table` gives you two parallel numeric columns, which is exactly what a Plotly or FLine box wants.
 
 ## How desktop events land on the page
 
