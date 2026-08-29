@@ -48,6 +48,40 @@ alongside leaves (`carrier/freq`), and that properties come out in
 primary-constructor order rather than alphabetically — the order you declared
 them is the order you read them.
 
+## The slash shorthand
+
+A path already separates its segments with `/`, so the operator that starts a
+query may as well be spelled the same way. `rig / "**/freq"` *is*
+`rig.graphPaths("**/freq")` — same walk, same live refs, less ceremony at the
+call site:
+
+```diffstatic {data-lang=kotlin}
+// the same query, twice
+(rig / "**/freq").whereValueIs<Float> { it > 300f }
+rig.graphPaths("**/freq").whereValueIs<Float> { it > 300f }
+
+// and the pattern can be split across several `/` if that reads better —
+// this still reports `carrier/freq`, not a bare `freq`
+rig / "carrier" / "freq"
+```
+
+Those parentheses on the first line are not optional: `.` binds tighter than
+`/`, so `rig / "**/freq".whereValueIs<Float> { ... }` would be looking for that
+method on the *string*.
+
+`/` is defined on `Any?`, which is a wide place to put an operator, so it is
+worth being plain about what that costs. A member `div` always beats an
+extension, so ordinary division is untouched — every numeric type, and every
+vector, quaternion or signal type that spells `/` its own way, keeps its own
+arithmetic; and between two extensions the more specific receiver wins, so
+`kotlin.io.path`'s `path / "sub"` still joins a path. What is genuinely new is
+the case that used to be a compile error — a `String` on the right of `/`.
+`"a" / "b"` now type-checks and hands back an empty `PathSet` instead of being
+rejected, so a `/` you got wrong surfaces one step later than it used to. That
+is the whole of the price. The operator also has nowhere to put a
+`GraphWalkOptions` and doesn't try: when you need a depth cap, private
+properties or a custom `descendInto`, call `graphPaths` and say so.
+
 ## Patterns and predicates
 
 Two wildcards: `*` matches exactly one segment, `**` matches any number of
@@ -179,7 +213,8 @@ the group.
 Modulation and suppliers work the same way across the whole set:
 
 ```diffstatic {data-lang=kotlin}
-// one shared LFO added on top of every cutoff
+// one shared LFO added on top of every cutoff — `matches` is to `params()`
+// what `/` is to `graphPaths()`
 (rig matches "**/cutoff").modulate(sine * 40f, mode = ParamModulationMode.ADD)
 
 // or a per-entry expression, with the group's statistics in scope
