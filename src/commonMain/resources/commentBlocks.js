@@ -60,7 +60,10 @@ const CommentBlocks = (() => {
     const MIN_ALIGNED_FIELDS = 2;   // "a  b" is a candidate table row, "a b" is not
     const INDENT_VERBATIM_COLUMNS = 2;  // indented this far past the block margin means verbatim
     const STOP_TOLERANCE = 2;       // hand-set columns drift; treat stops this close as the same
-    const CHIP_TITLE_CHARS = 60;    // a folded block's borrowed title, truncated
+    const CHIP_TITLE_CHARS = 60;      // the most a folded block's borrowed title may use
+    const CHIP_TITLE_MIN_CHARS = 16;  // below this a title is a stub; drop it and keep the count
+    const CHIP_GAP_COLUMNS = 3;       // the separator padding a chip spends on itself
+    const CHIP_FOLD_MARKER_COLUMNS = 3;  // room for Monaco's own collapsed indicator
     const TAB_COLUMNS = 4;          // a tab counts this wide when measuring indentation
     // The panel hugs its own block's longest line, so each comment is a card sized to its content.
     const PANEL_PAD_COLUMNS = 3;    // breathing room between the last glyph and the right edge
@@ -650,32 +653,62 @@ const CommentBlocks = (() => {
      * header would read as a dash and a line count. Hunting down one line for the real opener is
      * what makes the collapsed state legible.
      */
-    function blockTitle(block) {
+    function blockTitle(block, maxChars) {
+        if (maxChars < CHIP_TITLE_MIN_CHARS) return "";
         for (let i = 1; i < block.bodies.length; i += 1) {
             const kind = runKindAt(block, i);
             if (kind === "blank" || kind === "rule") continue;
             const text = block.bodies[i].trim();
             if (!text) continue;
-            return text.length > CHIP_TITLE_CHARS ? text.slice(0, CHIP_TITLE_CHARS - 1) + "…" : text;
+            return text.length > maxChars ? text.slice(0, maxChars - 1) + "…" : text;
         }
         return "";
     }
 
+    /** How many columns fit on one visual row, honouring word wrap when it is on. */
+    function visibleColumns(editor) {
+        const layout = editor.getLayoutInfo && editor.getLayoutInfo();
+        if (!layout) return 0;
+        const columns = layout.wrappingColumn > 0 ? layout.wrappingColumn : layout.viewportColumn;
+        return Number.isFinite(columns) && columns > 0 ? columns : 0;
+    }
+
     function buildChips(monaco, editor, blocks) {
+        const model = editor.getModel && editor.getModel();
+        if (!model) return [];
+        const columns = visibleColumns(editor);
         const chips = [];
         for (const block of blocks) {
             const lines = block.endLine - block.startLine + 1;
             if (lines < MIN_FOLD_LINES) continue;
             if (!isFolded(editor, block.startLine)) continue;
-            // Only borrow a title when the visible line is not already carrying the text.
-            const firstKind = runKindAt(block, 0);
-            const title = firstKind === "rule" || firstKind === "blank" ? blockTitle(block) : "";
+
             const count = `${lines - 1} more lines`;
+            // Injected text is laid out after the line's own glyphs and it WRAPS rather than clips
+            // (wordWrap is on -- BootstrapMonacoInit.kt), so a chip wider than what is left of the
+            // row turns a folded block into two visual rows, which is worse than having no title.
+            // A Field header opens on a full-width separator rule and leaves nothing to spend, so
+            // the budget decides rather than a fixed width. Only borrow a title when the visible
+            // line is not already carrying the text.
+            //
+            // The budget subtracts the *measured* separators rather than counting them, because
+            // arithmetic over them drifts: the first version forgot the middot and overran by
+            // exactly one column, which is all it takes to wrap.
+            const firstKind = runKindAt(block, 0);
+            const borrows = firstKind === "rule" || firstKind === "blank";
+            const own = model.getLineContent(block.startLine).replace(/\s+$/, "").length;
+            const lead = " ".repeat(CHIP_GAP_COLUMNS);
+            const joiner = `${lead}·${lead}`;
+            const spare = columns
+                ? columns - own - lead.length - joiner.length - count.length - CHIP_FOLD_MARKER_COLUMNS
+                : CHIP_TITLE_CHARS;
+            const title = borrows ? blockTitle(block, Math.min(CHIP_TITLE_CHARS, spare)) : "";
+
             chips.push({
                 range: new monaco.Range(block.startLine, 1, block.startLine, Number.MAX_SAFE_INTEGER),
                 options: {
                     after: {
-                        content: title ? `   ${title}   ·   ${count}` : `   ${count}`,
+                        content: title ? `${lead}${title}${joiner}${count}` : `${lead}${count}`,
                         inlineClassName: "field-cb-chip"
                     },
                     stickiness: 1
@@ -824,7 +857,13 @@ const CommentBlocks = (() => {
         }
         if (editor.onDidChangeModelLanguage) editor.onDidChangeModelLanguage(() => scheduleRefresh(editor, monaco));
         // Folding changes what is hidden, which is the only thing the summary chips depend on.
-        if (editor.onDidChangeHiddenAreas) editor.onDidChangeHiddenAreas(() => refreshChips(editor, monaco));
+        // Deferred by a tick: the event fires while the fold is still being applied, and isFolded()
+        // reads getTopForLineNumber, which has not been re-laid-out yet -- so an immediate refresh
+        // decides every block is unfolded and emits no chip at all, with nothing scheduled to try
+        // again until the next keystroke.
+        if (editor.onDidChangeHiddenAreas) {
+            editor.onDidChangeHiddenAreas(() => setTimeout(() => refreshChips(editor, monaco), 0));
+        }
 
         followTokens(editor, monaco);
         setTimeout(() => refresh(editor, monaco), 0);
