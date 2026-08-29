@@ -204,6 +204,17 @@ class DocumentedApiEvaluationTest {
         "renderFaustWavAsync" to
             "audio_render_analysis.md; audio_render_analysis is COMPILE_ONLY. Suspend + GraalWasm " +
                 "Faust compile; the 22s cold compiler is the reason, not an inability.",
+        // Added 2026-08-29 with gpu_state.md, which exists to document buffer residency and is the
+        // first page in the repo to teach either of these. Both are one-line members of the buffer
+        // block and both are exercised by `gpu_state`, whose transcript is classified COMPILE_ONLY
+        // because it opens a GLFW window and a Vulkan renderer the lightweight build does not own —
+        // the same reason `threebox` is. Evaluating them needs a GPU in CI, not a new test.
+        "writeOnce" to
+            "gpu_state.md; gpu_state is COMPILE_ONLY — a device-local buffer uploaded once needs a " +
+                "real Vulkan device, which the lightweight build has no renderer for.",
+        "zeroInit" to
+            "gpu_state.md; gpu_state is COMPILE_ONLY. Zero-initialised device-local storage is a " +
+                "residency choice made at allocation, so there is nothing to assert without a device.",
     )
 
     // -----------------------------------------------------------------------------------------------
