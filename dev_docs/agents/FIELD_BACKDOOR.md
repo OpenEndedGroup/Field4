@@ -1,9 +1,9 @@
 # Field backdoor: stable contracts and code ownership
 
-`tools/field_backdoor.py` is the agent-facing client for running Field code,
-observing websocket events, and asking Field's JVM-owned Playwright browser for
-DOM state or captures. This page records the few contracts that are easy to
-misunderstand. It is not a second command reference.
+`tools/field_backdoor.py` is the agent-facing client for running Field code, 
+collaborating with users, observing websocket events, and asking Field's JVM-owned 
+Playwright browser for DOM state or captures. This page records the few contracts 
+that are easy to misunderstand. It is not a second command reference.
 
 ## Code ownership
 
@@ -292,3 +292,18 @@ regression. UI artifacts live under
 If a timed-out snippet leaves later liveness checks wedged, restart the
 backdoor-owned Field on a fresh port before treating subsequent failures as
 independent defects.
+
+# Shared Field live-coding from an external Codex task
+
+When the user is actively watching and editing a Field document, an external Codex task can productively live-code alongside them through `tools/field_backdoor.py`. This is a viable collaboration mode, not merely a test technique.
+
+- Coordinate explicitly around the user's visible Field instance and real document. In this mode, attaching to the developer session on port 9092 can be intentional; the normal advice to choose an isolated high port still applies to unattended verification or whenever ownership is uncertain.
+- Use the backdoor for semantic operations (`set`, `launch`, `stop`, output waits) while the user supplies immediate visual judgment from the native renderer. Source edits, focused compilation, document edits, and runtime feedback can form one tight loop.
+- Preserve live-coding semantics: `run` is one-shot, while `launch` establishes the animated execution and running stripe. If rendering depends on a window or renderer animation loop, make sure that owning box is actually launched. Re-launching boxes should be treated as safe and idempotent unless the box documents otherwise.
+- Distinguish persistent animation boxes from setup boxes. A setup box may finish and lose its stripe after installing render modules, callbacks, stereo bindings, or RTT hooks; that is healthy if a launched renderer loop continues servicing them. Verify this with observable telemetry or rendered output rather than stripe presence alone.
+- Re-launch after source or document changes instead of assuming old runtime objects picked them up. Wait for concrete output from the live box (for example frame/decode telemetry), and let the user confirm the actual image.
+- Do not mistake Field's error-clear wire packet for a new failure: an empty `output`/`peer-output` with `kind = error` and `line = -1` means "clear the error for this property." Automation should remove that active per-property error and keep waiting; a non-empty error at line -1 is still a real failure.
+- Live shader work fits this workflow especially well: seed built-in GLSL into editable box properties using the established `moduleHere`/`simplePLYSupport` macro pattern, then rely on Field's ordinary shader reload action. This lets the built-in implementation become a starting point while retaining reflected uniforms, caller-supplied parameters, RTT routing, and hot reload.
+- Treat the collaboration as a shared performance state: do not stop the visible server/window at handoff unless asked, do not take over an unidentified session, and report which boxes are genuinely launched versus merely configured.
+
+Validated on the `dust_two` document: the renderer/window box was launched, the Gaussian-splat module rendered into the selected RTT, stereo camera matrices were bound, playback telemetry advanced, and editing/reloading the generated splat shader worked while the user watched the result.
