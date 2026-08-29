@@ -25,9 +25,9 @@ import java.util.concurrent.atomic.AtomicReference
  * what lets a box treat a page as a data source rather than as a texture. See
  * [text], [attribute], [rows] and [waitFor] in PuppetBrowserPage.kt for that second use.
  *
- * The tab is still a real, laid-out, script-running page — offscreen rendering stays on at one
- * frame per second, which keeps `requestAnimationFrame`, timers and layout behaving as they do on
- * the texture path, and simply throws the frames away.
+ * The tab is still a real, laid-out, script-running page: offscreen rendering stays on at
+ * [framesPerSecond], which keeps `requestAnimationFrame`, timers and layout behaving as they do on
+ * the texture path, and the frames are thrown away at the producer.
  *
  * Close it. It owns an operating-system process.
  */
@@ -37,6 +37,13 @@ class HeadlessPuppetBrowser(
     width: Int = 1280,
     height: Int = 720,
     deviceScaleFactor: Double = 1.0,
+    /**
+     * Offscreen frames per second. Nothing consumes them, but Chromium only acknowledges a
+     * dispatched `mouseMoved` on the renderer's next frame, so this is the pointer's latency floor:
+     * at 1 a mouse move costs a second. Raise it if you are driving a page, drop it to 1 if you are
+     * only reading one.
+     */
+    val framesPerSecond: Int = 8,
     projectRoot: File = locateFieldProjectRoot(),
 ) : PuppetBrowserControl {
     private val closed = AtomicBoolean(false)
@@ -66,6 +73,7 @@ class HeadlessPuppetBrowser(
         eventListener = { event -> eventListeners.forEach { listener -> runCatching { listener(event) } } },
         pageRequest = ::handlePageRequest,
         loadedListener = { state -> firstLoad.complete(state) },
+        framesPerSecond = framesPerSecond,
     )
 
     override val state: PuppetBrowserState get() = browserState.get()

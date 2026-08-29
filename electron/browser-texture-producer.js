@@ -75,6 +75,13 @@ let crashed = false;
 let unresponsive = false;
 let cursor = "default";
 let inputTail = Promise.resolve();
+// The initial load, which `createProducer` starts without awaiting. A caller that navigates the
+// moment the control channel is up would otherwise race it: Chromium aborts the in-flight
+// navigation, and Electron reports that abort (net error -3) against the *new* `loadURL`, which
+// rejects for a page that was in fact about to load perfectly well. Measured on the very first
+// test of HeadlessPuppetBrowserTest, which does exactly that. It settles once, so every later
+// navigation is unaffected, and `stop` is a separate command that can still cancel a slow one.
+let initialLoad = Promise.resolve();
 // The newest mouse move not yet handed to Chromium, and whether a link of the chain is already
 // waiting to take it. See queueInput for why a move is the one input we are allowed to drop.
 let pendingMove = null;
@@ -295,6 +302,7 @@ async function command(name, params = {}) {
   const contents = window.webContents;
   switch (name) {
     case "navigate":
+      await initialLoad;
       await contents.loadURL(String(params.url));
       return stateSnapshot();
     case "back":
@@ -585,10 +593,18 @@ function createProducer() {
   });
   installPageBridge();
   installBrowserEvents();
-  // Offscreen rendering still runs in no-frames mode, at the lowest rate Chromium accepts. Keeping
-  // it on rather than showing an ordinary window is deliberate: an offscreen tab is never occluded
-  // or backgrounded, so rAF, timers and layout keep running exactly as they do on the texture path.
-  window.webContents.setFrameRate(noFrames ? 1 : cpuBitmap ? 30 : 60);
+  // Offscreen rendering still runs in no-frames mode. Keeping it on rather than showing an ordinary
+  // window is deliberate: an offscreen tab is never occluded or backgrounded, so rAF, timers and
+  // layout keep running exactly as they do on the texture path.
+  //
+  // The rate still matters there even though the paints are thrown away, because
+  // `Input.dispatchMouseEvent` for `mouseMoved` does not resolve until the renderer's next frame
+  // (see queueInput). At 1fps a single mouse move costs a second; the default below is the balance
+  // between that and rastering a picture nobody will look at. Override with
+  // FIELD_BROWSER_TEXTURE_FRAME_RATE; the two texture modes keep the rates they always had.
+  const defaultFrameRate = noFrames ? 8 : cpuBitmap ? 30 : 60;
+  const frameRate = Number(process.env.FIELD_BROWSER_TEXTURE_FRAME_RATE || defaultFrameRate);
+  window.webContents.setFrameRate(frameRate > 0 ? frameRate : defaultFrameRate);
   window.webContents.on("paint", (event, _dirtyRect, image) => {
     if (noFrames) return;
     if (cpuBitmap) {
@@ -661,7 +677,8 @@ function createProducer() {
   window.webContents.on("did-finish-load", () => {
     announceLoaded().catch((error) => emit("readiness-error", { error: errorObject(error) }));
   });
-  window.loadURL(targetUrl).catch((error) => emit("load-failed", { url: targetUrl, error: errorObject(error) }));
+  initialLoad = window.loadURL(targetUrl)
+    .catch((error) => emit("load-failed", { url: targetUrl, error: errorObject(error) }));
 }
 
 app.whenReady().then(() => {

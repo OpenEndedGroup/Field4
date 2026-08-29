@@ -85,6 +85,8 @@ internal class ElectronBrowserTextureSession(
     private val pageRequest: (id: String, name: String, value: JsonElement) -> Unit,
     /** Called on every `did-finish-load`, with the state the producer observed at that moment. */
     private val loadedListener: (PuppetBrowserState) -> Unit = {},
+    // Overrides the producer's per-mode offscreen frame rate; null keeps that mode's default.
+    framesPerSecond: Int? = null,
 ) : AutoCloseable {
     private val closed = AtomicBoolean(false)
     private val ready = CompletableFuture<Unit>()
@@ -117,6 +119,7 @@ internal class ElectronBrowserTextureSession(
                 transport?.nodeBridge?.let { environment()["FIELD_BROWSER_TEXTURE_BRIDGE"] = it.absolutePath }
                 environment()["FIELD_BROWSER_TEXTURE_STREAM_ID"] = streamId.toString()
                 if (transport == null) environment()["FIELD_BROWSER_TEXTURE_NO_FRAMES"] = "1"
+                framesPerSecond?.let { environment()["FIELD_BROWSER_TEXTURE_FRAME_RATE"] = it.toString() }
                 environment().putAll(transport?.producerEnvironment ?: emptyMap())
                 readyBoxUid?.takeIf { it.isNotBlank() }?.let {
                     environment()["FIELD_BROWSER_TEXTURE_READY_BOX_UID"] = it

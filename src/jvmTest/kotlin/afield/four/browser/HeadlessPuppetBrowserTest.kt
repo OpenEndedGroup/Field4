@@ -242,6 +242,37 @@ class HeadlessPuppetBrowserTest {
         assertEquals("Pages as data", value("document.getElementById('headline').textContent").jsonPrimitive.content)
     }
 
+    @Test
+    fun `navigating immediately after construction does not lose the race with the first load`() {
+        // The constructor starts a load without awaiting it. Navigating across that used to fail
+        // with net error -3 (ERR_ABORTED) reported against the *new* navigation, for a page that
+        // was about to load perfectly well — found by this suite's own first test on 2026-08-29.
+        val second = File(fixtures, "second.html").toURI().toString()
+        val racer = HeadlessPuppetBrowser(url = fixtureUrl, width = 400, height = 300, projectRoot = root)
+        try {
+            val state = racer.navigate(second).get(30, TimeUnit.SECONDS)
+            assertTrue(state.url.endsWith("second.html"), "navigate reported ${state.url}")
+            assertEquals(
+                "Second page",
+                racer.evaluate("document.getElementById('headline').textContent")
+                    .get(15, TimeUnit.SECONDS).value.jsonPrimitive.content,
+            )
+        } finally {
+            racer.close()
+        }
+    }
+
+    @Test
+    fun `a closed browser refuses commands instead of hanging`() {
+        val shortLived = HeadlessPuppetBrowser(url = fixtureUrl, width = 400, height = 300, projectRoot = root)
+        shortLived.loaded.get(30, TimeUnit.SECONDS)
+        shortLived.close()
+
+        val error = failureOf(shortLived.evaluate("1 + 1"))
+        assertTrue(error is PuppetBrowserCommandException, "got ${error::class.simpleName}: ${error.message}")
+        assertContains(error.message ?: "", "closed")
+    }
+
     /** Waits in the page rather than in Kotlin, so the wait costs exactly one round trip. */
     private fun waitUntil(condition: String, timeoutMillis: Long = 10_000) {
         value(
