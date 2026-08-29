@@ -39,7 +39,14 @@
     // GLSL is C's lexical family: `//` and `/* */` comments, braces, semicolons, C numeric literals.
     // cpp also carries `uniform`/`layout`/`vec4`-shaped identifiers as plain identifiers rather than
     // mismatching them, which is the correct outcome.
-    glsl: "cpp"
+    glsl: "cpp",
+    // StackSL *is* a Forth: `: name ... ;` definitions, postfix words, a data stack. The grammar
+    // registered below was written for it -- its FIELD_WORDS list is Field's own vocabulary
+    // (`fline`, `vec2`, `plot-stack`, `println`), which is why aliasing here rather than writing a
+    // second grammar is the honest move. It is not exact: StackSL's local marks (`=name`, `>name`,
+    // `<name`) and property reads (`?pc.knobs`) are not Forth and fall through as plain text, which
+    // is the right failure -- uncoloured, not miscoloured.
+    stacksl: "forth"
   };
 
   /**
