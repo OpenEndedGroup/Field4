@@ -20,12 +20,12 @@ And when the force law itself is the thing you are editing, how do you change it
 This page answers those, and the answers are mostly not code — they are decisions, each of which has
 exactly one shape that survives contact with a running renderer.
 
-The running example is `dev_docs/assets/gpu_state/gpu_state.yaml`: three boxes, 40,000 particles held
+The running example is `dev_docs/agents/transcripts/gpu_state.yaml`: three boxes, 40,000 particles held
 on a noise field, a force law you can retype while it runs, and a GPU-side histogram of speed. It is
 [the last section](#open-it) if you want to open it before reading about it.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/gpu_state/particle-field.png" capture="native-window" native-wait-frames="1500" embed=true hidden=true force=true timeout="150" duration="0" name="gpu-state-field" alt="40,000 GPU particles held on a noise field, warm where the field is fast and cool where it is slow, with density voids where it diverges" macro-file="../../dev_docs/assets/gpu_state/gpu_state.yaml" capture-box="gs_renderer"}
-// Built and launched from dev_docs/assets/gpu_state/gpu_state.yaml
+```diffstatic_runner {data-lang=kotlin screenshot="assets/gpu_state/particle-field.png" capture="native-window" native-wait-frames="1500" embed=true hidden=true force=true timeout="150" duration="0" name="gpu-state-field" alt="40,000 GPU particles held on a noise field, warm where the field is fast and cool where it is slow, with density voids where it diverges" macro-file="../../dev_docs/agents/transcripts/gpu_state.yaml" capture-box="gs_renderer"}
+// Built and launched from dev_docs/agents/transcripts/gpu_state.yaml
 // (renderer + compute + draw). The code is in the sections below.
 ```
 
@@ -284,8 +284,8 @@ The reason to bother is that the failure does not look like a slightly worse ver
 answer. Here is the identical scene with the slot bound to `input xyz 2.0 * fbm x 0.5 - 8.0 *`, one
 2D `fbm` and nothing else, and no other line changed anywhere:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/gpu_state/flat-fbm.png" capture="native-window" native-wait-frames="1500" embed=true hidden=true force=true timeout="150" duration="0" name="gpu-state-flat-fbm" alt="the same particle scene with a single 2D fbm force: the disc collapsed into creased sheets along one diagonal and pulled off-centre" macro-file="../../dev_docs/assets/gpu_state/gpu_state_flat_fbm.yaml" capture-box="gs_renderer"}
-// dev_docs/assets/gpu_state/gpu_state_flat_fbm.yaml — gpu_state.yaml with exactly one line
+```diffstatic_runner {data-lang=kotlin screenshot="assets/gpu_state/flat-fbm.png" capture="native-window" native-wait-frames="1500" embed=true hidden=true force=true timeout="150" duration="0" name="gpu-state-flat-fbm" alt="the same particle scene with a single 2D fbm force: the disc collapsed into creased sheets along one diagonal and pulled off-centre" macro-file="../../dev_docs/agents/transcripts/docs_capture/gpu_state_flat_fbm.yaml" capture-box="gs_renderer"}
+// dev_docs/agents/transcripts/docs_capture/gpu_state_flat_fbm.yaml — gpu_state.yaml with exactly one line
 // different: `simModule.force = "input xyz 2.0 * fbm x 0.5 - 8.0 *"`.
 ```
 
@@ -361,15 +361,36 @@ readback you would never leave switched on.
 
 ## Open it
 
+It ships as a starting point, so the shortest route is the welcome screen — or open the document
+directly:
+
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/gpu_state/metadata.edn) — or open
+`public/docs/assets/agent_transcripts/gpu_state/metadata.edn` from a Field workspace.
+
+Three boxes appear and a window opens. The knobs worth turning, in the order they teach something:
+
+- **`simModule.force`** on the *simulate* box is the whole point — a live `stack.auto` StackSL slot.
+  Retype it while it runs and the module rebinds on a background thread without dropping a frame.
+  Bind `input xyz 0.9 *` for a plain outward push and the disc inflates and stops; the shipped
+  program instead holds it on a noise field.
+- **The scale inside that program.** Change `input xyz 7.0 *` to `3.0` or `14.0` — the same field
+  coarser or finer. This is the knob that decides whether the picture reads as blobs or as filaments.
+- **Break it on purpose.** Open `fbm3` with `=c` instead of `>c` and the box's `stack.auto` channel
+  opens with `problem: definition \`fbm3\` ends with 2 values on the stack, not 1`. Or bind
+  `input xyz 2.0 * fbm x 0.5 - 8.0 *` — one 2D `fbm` over a 3D position — and watch the disc collapse
+  into the stripes the figure above shows.
+- **`sim.knobs`**, whose `.x` is the clock the noise walks through and `.y` the force gain. Both are
+  lambdas, so both are live.
+
+Agents replaying this headlessly want the transcript rather than the document:
+
 ```diffstatic {data-lang=bash}
 python3 tools/field_backdoor.py --port 9483 --graphics-context \
-  --command "transcript write gpustate --file dev_docs/assets/gpu_state/gpu_state.yaml" \
+  --command "transcript write gpustate --file dev_docs/agents/transcripts/gpu_state.yaml" \
   --command "transcript run gpustate"
 ```
 
-Three boxes appear and a window opens. `dev_docs/assets/gpu_state/README.md` lists the knobs worth
-turning and what each one does to the picture; the first is `simModule.force`, which is the whole
-point of the exercise.
+`dev_docs/assets/gpu_state/README.md` lists every knob and what each one does to the picture.
 
 ## Where to go next
 

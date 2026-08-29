@@ -7,7 +7,7 @@ box, and a draw box. Replay it into a fresh document with
 
 ```bash
 python3 tools/field_backdoor.py --port 9483 --graphics-context \
-  --command "transcript write gpustate --file dev_docs/assets/gpu_state/gpu_state.yaml" \
+  --command "transcript write gpustate --file dev_docs/agents/transcripts/gpu_state.yaml" \
   --command "transcript run gpustate"
 ```
 
@@ -33,15 +33,20 @@ previous one in place.
 The other knobs are the two numbers inside `sim.knobs`: `.x` is the clock the noise field walks
 through and `.y` is the force gain. Both are lambdas, so they are live too.
 
-## Why this lives here and not in the transcript corpus
+## Where the files are
 
-`dev_docs/agents/transcripts/` is policed by `AgentTranscriptIndexGuard`, which requires every yaml in
-it to carry a hand-written entry in `public/docs/agent_transcripts.md` and an `Open ↗` link to a
-committed materialized bundle under `public/docs/assets/agent_transcripts/`. That bundle is a
-generated artefact. Regenerating it is a post-merge step rather than something a feature branch does,
-and this branch already regenerates it once for an unrelated reason, so a second change there would be
-a merge hazard for no gain. `dev_docs/assets/splat_cpu_raster/` sits outside the corpus for the same
-kind of reason.
+Promoted into the guarded corpus on 2026-08-29, at the human's instruction, once the docs runner had
+demonstrably replayed it: `gpu_state.yaml` is now `dev_docs/agents/transcripts/gpu_state.yaml`, entry
+83, classified `COMPILE_ONLY` in `DemoTranscriptExecSmokeTest` beside `threebox` because it wants a
+GLFW window and a Vulkan renderer that the lightweight build does not own. It carries an entry and an
+`Open ↗` link in `public/docs/agent_transcripts.md`, a materialized bundle under
+`public/docs/assets/agent_transcripts/gpu_state/`, and a welcome-screen starting point.
+
+The one-line counterfactual variant is capture-only, so it went to
+`dev_docs/agents/transcripts/docs_capture/gpu_state_flat_fbm.yaml` instead, which is outside the
+counted 83 by design.
+
+Only this README stayed behind, because it is prose about the demo rather than part of it.
 
 ## Provenance
 
