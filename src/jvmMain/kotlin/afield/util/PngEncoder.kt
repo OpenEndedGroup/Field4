@@ -53,23 +53,52 @@ object PngEncoder {
      * @param height Image height in pixels
      * @param flipY When true, invert row order for framebuffer-style readbacks whose
      * origin is bottom-left. Vulkan image-to-buffer readbacks usually want false.
+     * @param opaque When true, force every pixel's alpha to 255 and ignore the source alpha.
+     *
+     * Pass `true` for any readback of a *presented* or otherwise composited surface — a swapchain
+     * image, a whole-window framebuffer. Such a surface is opaque by definition, and its alpha
+     * channel is leftover per-fragment coverage rather than transparency anyone meant to keep.
+     *
+     * Shipping that leftover is not cosmetic. Measured 2026-08-29 across the 207 RGBA PNGs under
+     * `public/docs/assets`: exactly three had non-opaque alpha, and all three were alpha-blended
+     * particle scenes captured through this function (`gpu_state/particle-field.png` 29.5% of pixels
+     * partially transparent, `gpu_state/flat-fbm.png` 22.7%, `field_probes/particles-galaxy.png`
+     * 8.0%). `frac(alpha == 0)` was exactly 0 in all three, so nothing was ever meant to be
+     * transparent. The effect is that the image's appearance becomes a function of the viewer's
+     * background: those figures render up to **3.28x brighter** on a white page than on a dark one,
+     * which is how the bug was found -- the same file looked like two different pictures in a docs
+     * page and in a browser tab. Opaque geometry captures were unaffected, because their swapchain
+     * alpha happens to already be 1.0, which is why this went unnoticed for as long as the
+     * `field_probes` page has existed.
+     *
+     * Forcing alpha also shrinks the file, because a constant channel compresses to nothing:
+     * `flat-fbm.png` went 7,208,908 -> 2,720,375 bytes, 2.65x smaller, with identical RGB.
      * @return ByteArray containing the complete PNG file data
      */
-    fun encodeFromBuffer(buffer: ByteBuffer, width: Int, height: Int, flipY: Boolean = false): ByteArray {
+    fun encodeFromBuffer(
+        buffer: ByteBuffer,
+        width: Int,
+        height: Int,
+        flipY: Boolean = false,
+        opaque: Boolean = false
+    ): ByteArray {
         // Reset buffer position
         buffer.rewind()
-        
+
         // Create ARGB array (PNG encoder expects ARGB ints)
         val pixels = IntArray(width * height)
-        
+
         // Read pixels, optionally flipping vertically.
         for (y in 0 until height) {
             for (x in 0 until width) {
                 val r = buffer.get().toInt() and 0xFF
                 val g = buffer.get().toInt() and 0xFF
                 val b = buffer.get().toInt() and 0xFF
-                val a = buffer.get().toInt() and 0xFF
-                
+                // Always consume the source alpha byte -- the buffer is packed RGBA and the read
+                // must advance whether or not the value is used.
+                val sourceAlpha = buffer.get().toInt() and 0xFF
+                val a = if (opaque) 0xFF else sourceAlpha
+
                 val argb = (a shl 24) or (r shl 16) or (g shl 8) or b
                 val targetY = if (flipY) height - 1 - y else y
                 pixels[x + targetY * width] = argb

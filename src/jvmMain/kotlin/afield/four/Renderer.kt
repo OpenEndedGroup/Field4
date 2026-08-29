@@ -1086,7 +1086,10 @@ class Renderer(
             capture.width,
             capture.height,
             // vkCmdCopyImageToBuffer preserves the presented swapchain's top-to-bottom row order.
-            flipY = false
+            flipY = false,
+            // A presented swapchain image is opaque; its alpha is leftover fragment coverage. Keeping
+            // it made three docs figures render up to 3.28x brighter on white than on the dark page.
+            opaque = true
         )
         val encodeMs = SaveReloadLog.elapsedMillis(startedAt)
         val writeStartedAt = System.nanoTime()
