@@ -1,0 +1,220 @@
+name: stacksl_volumetric_noise
+description: |
+  See why StackSL's `noise` and `fbm` are not 3D, and what `noise3` / `fbm3` / `curl3` /
+  `worley3` do instead. **One box, no GPU, no window** — the pictures arrive in the box's own
+  output panel as PNGs, so this runs on any machine that can start Field.
+
+  `noise` and `fbm` lower to `_noise(input.xy + input.zw * 0.07)`. Feed them
+  `vec4(pos.xyz, t)` and z arrives at one fourteenth the weight of x, as a *shear* rather than
+  as a third dimension. On a volume seen down z that reads as one picture imprinted at every
+  depth. Run the box and look at the top row: six slices of the 2D `fbm` at six different z,
+  and it is the same image six times. The middle row is `fbm3` over the same slices — six
+  unrelated fields, which is what a volume looks like.
+
+  **Move `zStep`.** It is the distance between slices. The middle row decorrelates almost
+  immediately whatever you set it to; the top row needs `zStep` up around 10 before the 2D
+  field looks like it has changed at all, and even then it has only slid sideways. That gap
+  *is* the bug.
+
+  The third row is `curl3`, drawn by advecting tracers through it. Closed swirls, no bright
+  knots, no holes: that is what divergence-free looks like, and it is why you would use it as
+  a particle force. A field with sources and sinks collects particles into the sinks; a
+  solenoidal one keeps them moving.
+
+  The box also prints, live:
+    - the GLSL each new word lowers to, straight out of `slGlsl` — so you can see that `fbm3`
+      reads `.xyz` where `fbm` reads `.xy + .zw * 0.07`;
+    - the measured divergence of `curl3` against a plain three-channel noise force, which is
+      the comparison that matters (2.5e-7 against 0.58 on the default settings);
+    - the range of each word, so the `0..1` claim is checkable rather than asserted. The 2D
+      `fbm` tops out at 0.96875 because its five octave amplitudes sum to that and nothing
+      divides it out; `fbm3` accumulates its amplitude sum at run time and divides, so it is
+      exact for any octave count.
+
+  **To use the words for real**, paste one of these into a `stack.auto` slot — they are the
+  same programs, on the GPU:
+
+      forceModule.noiseForce   = "input xyz 2.2 * curl3 xyz 0.4 *"
+      forceModule.noiseForce   = "input xyz 2 * fbmd3 yzw 0.3 *"
+      someModule.someSlot      = "input 6 * worley3 z 1- 8 pow"
+
+  Nothing in this box touches a graphics card, so the loop is edit, run, look, in about two
+  seconds. `VolumetricNoiseReference` is a CPU transcription of the exact GLSL the words emit —
+  the hashes are multiply/add/fract only, with no `sin()`, precisely so that a CPU twin is
+  meaningful. That twin is what lets the family be unit-tested with no device at all
+  (`VolumetricNoiseTest`, 28 tests), which is something StackSL has never had.
+operations:
+  - create:
+      box: stacksl_volumetric_noise
+      name: StackSL volumetric noise
+      frame:
+        x: 60.0
+        y: 60.0
+        w: 360.0
+        h: 60.0
+      properties:
+        code: |
+          import afield.stacksl.NoiseVec3
+          import afield.stacksl.VolumetricNoiseReference
+          import afield.stdlib.slGlsl
+          import afield.util.PngEncoder
+          import kotlin.math.floor
+          import kotlin.math.sqrt
+
+          // ---- knobs: edit and re-run -------------------------------------------------
+          // >>> MOVE THIS ONE FIRST <<<
+          // How far apart the six z slices are. The fbm3 row decorrelates at almost any
+          // value; the 2D fbm row needs this up near 10 before it looks different at all,
+          // and even then it has only slid sideways. That gap is the whole point.
+          val zStep = 0.8f
+
+          val zoom = 2.2f          // spatial frequency of the field
+          val tile = 150           // pixels per slice
+          val octaves = 5.0f       // fbm3 octaves; try 2 for a cheap per-particle field
+          val tracerSteps = 24     // curl3 streamline length
+          // -----------------------------------------------------------------------------
+
+          val slices = (0 until 6).map { it * zStep }
+
+          // ---- the shipped 2D lowering, transcribed --------------------------------------
+          // `fbm` really is this: _fbm(input.xy + input.zw * 0.07), five fixed octaves whose
+          // amplitudes sum to 0.96875 rather than 1.
+          fun fract(v: Float) = v - floor(v)
+
+          fun hash21(px: Float, py: Float): Float {
+              var x = fract(px * 123.34f)
+              var y = fract(py * 456.21f)
+              val d = x * (x + 45.32f) + y * (y + 45.32f)
+              x += d
+              y += d
+              return fract(x * y)
+          }
+
+          fun noise2(px: Float, py: Float): Float {
+              val ix = floor(px)
+              val iy = floor(py)
+              val ux = (px - ix).let { it * it * (3f - 2f * it) }
+              val uy = (py - iy).let { it * it * (3f - 2f * it) }
+              val a = hash21(ix, iy)
+              val b = hash21(ix + 1f, iy)
+              val c = hash21(ix, iy + 1f)
+              val d = hash21(ix + 1f, iy + 1f)
+              val lo = a + (b - a) * ux
+              val hi = c + (d - c) * ux
+              return lo + (hi - lo) * uy
+          }
+
+          fun legacyFbm(x: Float, y: Float, z: Float): Float {
+              var px = x + z * 0.07f
+              var py = y
+              var value = 0.0f
+              var amp = 0.5f
+              repeat(5) {
+                  value += amp * noise2(px, py)
+                  val nx = 1.6f * px + 1.2f * py + 17.17f
+                  val ny = -1.2f * px + 1.6f * py + 17.17f
+                  px = nx
+                  py = ny
+                  amp *= 0.5f
+              }
+              return value
+          }
+
+          // ---- drawing -------------------------------------------------------------------
+          fun grey(v: Float): Int {
+              val c = (v.coerceIn(0f, 1f) * 255).toInt()
+              return (0xFF shl 24) or (c shl 16) or (c shl 8) or c
+          }
+
+          fun strip(render: (Float, Float, Float) -> Float): Pair<IntArray, Int> {
+              val w = slices.size * tile
+              val px = IntArray(w * tile)
+              slices.forEachIndexed { s, z ->
+                  for (y in 0 until tile) {
+                      for (x in 0 until tile) {
+                          val fx = (x / tile.toFloat()) * 4f - 2f
+                          val fy = (y / tile.toFloat()) * 4f - 2f
+                          px[y * w + s * tile + x] = grey(render(fx * zoom, fy * zoom, z * zoom))
+                      }
+                  }
+              }
+              return px to w
+          }
+
+          val (legacyPx, stripW) = strip { x, y, z -> legacyFbm(x, y, z) }
+          display("1 - fbm (2D), six depths: the same picture six times",
+                  PngEncoder.encode(legacyPx, stripW, tile))
+
+          val (volPx, _) = strip { x, y, z -> VolumetricNoiseReference.fbm3(NoiseVec3(x, y, z), octaves) }
+          display("2 - fbm3, the same six depths: six unrelated fields",
+                  PngEncoder.encode(volPx, stripW, tile))
+
+          // curl3 as tracer density. Divergence-free means the density stays even.
+          run {
+              val w = slices.size * tile
+              val acc = FloatArray(w * tile)
+              slices.forEachIndexed { s, zs ->
+                  val z = zs * zoom
+                  for (sy in 0 until tile) {
+                      for (sx in 0 until tile) {
+                          var x = (sx / tile.toFloat()) * 4f - 2f
+                          var y = (sy / tile.toFloat()) * 4f - 2f
+                          repeat(tracerSteps) {
+                              val v = VolumetricNoiseReference.curl3(NoiseVec3(x * zoom, y * zoom, z))
+                              val m = sqrt(v.x * v.x + v.y * v.y) + 1e-6f
+                              x += (v.x / m) * 0.012f
+                              y += (v.y / m) * 0.012f
+                              val ix = (((x + 2f) / 4f) * tile).toInt()
+                              val iy = (((y + 2f) / 4f) * tile).toInt()
+                              if (ix in 0 until tile && iy in 0 until tile) acc[iy * w + s * tile + ix] += 1f
+                          }
+                      }
+                  }
+              }
+              val peak = (acc.maxOrNull() ?: 1f).coerceAtLeast(1f)
+              val px = IntArray(acc.size) { grey(minOf(1f, acc[it] / (peak * 0.12f))) }
+              display("3 - curl3 tracers: closed swirls, no sources, no sinks",
+                      PngEncoder.encode(px, w, tile))
+          }
+
+          // ---- the numbers behind the pictures --------------------------------------------
+          val pts = (0 until 3000).map { i ->
+              val t = i.toFloat()
+              NoiseVec3((t * 0.618f) % 6f - 3f, (t * 0.414f) % 6f - 3f, (t * 0.732f) % 6f - 3f)
+          }
+
+          fun rms(v: List<Float>) = sqrt(v.sumOf { (it * it).toDouble() }.toFloat() / v.size)
+
+          val eps = 0.05f
+          fun divergence(f: (NoiseVec3) -> NoiseVec3, p: NoiseVec3): Float {
+              val dx = f(p + NoiseVec3(eps, 0f, 0f)).x - f(p - NoiseVec3(eps, 0f, 0f)).x
+              val dy = f(p + NoiseVec3(0f, eps, 0f)).y - f(p - NoiseVec3(0f, eps, 0f)).y
+              val dz = f(p + NoiseVec3(0f, 0f, eps)).z - f(p - NoiseVec3(0f, 0f, eps)).z
+              return (dx + dy + dz) / (2f * eps)
+          }
+
+          val curl = { p: NoiseVec3 -> VolumetricNoiseReference.curl3(p, eps) }
+          val plain = { p: NoiseVec3 -> VolumetricNoiseReference.potential3(p, octaves, 2.0f, 0.5f) }
+          val curlScale = rms(pts.map { curl(it).length })
+          val plainScale = rms(pts.map { plain(it).length })
+
+          println("divergence per unit magnitude")
+          println("  curl3                       ${rms(pts.map { divergence(curl, it) / curlScale })}")
+          println("  three plain noise channels  ${rms(pts.map { divergence(plain, it) / plainScale })}")
+          println()
+
+          val legacyVals = pts.map { legacyFbm(it.x, it.y, it.z) }
+          val volVals = pts.map { VolumetricNoiseReference.fbm3(it, octaves) }
+          println("range over ${pts.size} samples")
+          println("  fbm  (2D)  ${legacyVals.min()} .. ${legacyVals.max()}   (ceiling is 0.96875, not 1)")
+          println("  fbm3       ${volVals.min()} .. ${volVals.max()}   (exactly 0..1 by construction)")
+          println()
+
+          // ---- what the words actually lower to --------------------------------------------
+          println("fbm  lowers to:  " +
+              slGlsl("input fbm").lines().first { "_fbm(" in it && "float" !in it }.trim())
+          println("fbm3 lowers to:  " +
+              slGlsl("input fbm3").lines().first { "_fbm3(" in it && "float" !in it }.trim())
+          println()
+          println("--- curl3 GLSL ---")
+          println(slGlsl("input xyz 2.2 * curl3 xyz 0.4 *").substringAfter("vec3 stacksl_curl3"))
