@@ -1,0 +1,64 @@
+<!doctype html>
+<!--
+  The page HeadlessPuppetBrowserTest drives. It is deliberately local and offline: the whole point
+  of the headless browser is that the browser stack becomes testable anywhere, and a fixture that
+  needs the network is a fixture that fails in the one place a gate has to work.
+
+  Every id and value in here is asserted somewhere in that test. Change one and the test should go
+  red; if it does not, the assertion was not worth having.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Field puppet fixture</title>
+</head>
+<body>
+  <h1 id="headline">Pages as data</h1>
+  <a id="link" href="second.html" data-kind="internal">Second page</a>
+
+  <table id="readings">
+    <thead><tr><th>station</th><th>depth</th><th>count</th></tr></thead>
+    <tbody>
+      <tr><td>alpha</td><td>12</td><td>301</td></tr>
+      <tr><td>beta</td><td>48</td><td>117</td></tr>
+      <tr><td>gamma</td><td>93</td><td>4</td></tr>
+    </tbody>
+  </table>
+
+  <p class="note">first note</p>
+  <p class="note">second note</p>
+
+  <label for="entry">entry</label>
+  <input id="entry" value="">
+  <p id="echo"></p>
+  <p id="keys"></p>
+
+  <script>
+    // A main-world global. An isolated-world evaluation must not be able to see it.
+    window.fixtureSecret = "main-world-only";
+
+    // A promise that is not already resolved, so awaiting it is a real wait rather than a formality.
+    window.deferred = new Promise((resolve) => setTimeout(() => resolve(42), 250));
+
+    const entry = document.getElementById("entry");
+    const echo = document.getElementById("echo");
+    const keys = document.getElementById("keys");
+
+    // `Input.insertText` produces an input event and no key events; a dispatched key event produces
+    // both. Recording them separately is what lets the test tell the two paths apart.
+    entry.addEventListener("input", () => { echo.textContent = entry.value; });
+    entry.addEventListener("keydown", (event) => {
+      keys.textContent = keys.textContent ? keys.textContent + " " + event.key : event.key;
+    });
+
+    // Appears late, so `waitFor` has something to actually wait for.
+    setTimeout(() => {
+      const late = document.createElement("p");
+      late.id = "late";
+      late.textContent = "arrived";
+      document.body.appendChild(late);
+      document.body.dataset.ready = "yes";
+    }, 400);
+  </script>
+</body>
+</html>
