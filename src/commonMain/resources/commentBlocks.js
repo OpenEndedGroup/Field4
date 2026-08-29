@@ -483,6 +483,14 @@ const CommentBlocks = (() => {
     /* Carries the wash through the line-number gutter so the panel reads as one band. */
     background: rgba(var(--field-white-rgb, 255, 255, 255), 0.035);
 }
+.monaco-editor .view-overlays .cdr.folded-background {
+    /* Monaco's own fold wash, a blue inherited from vs-dark's selection colour. Observed to render
+       on the row AFTER the collapsed line, which is why it reads as a stray slab sitting under the
+       fold rather than as part of it -- and on a comment fold the panel already says where the
+       block is. Editor-wide: there is no per-fold-kind hook, so brace folds lose the wash too.
+       Delete this rule to get it back. */
+    background: transparent !important;
+}
 .monaco-editor .field-cb-chip {
     color: var(--field-fg-dim, rgba(255, 255, 255, 0.53));
     font-style: italic;
@@ -673,7 +681,14 @@ const CommentBlocks = (() => {
         return Number.isFinite(columns) && columns > 0 ? columns : 0;
     }
 
-    function buildChips(monaco, editor, blocks) {
+    /**
+     * Chips at a given detail level per block.
+     *
+     * `levels` maps a block's start line to how much to say: 0 borrows a title, 1 is the line count
+     * alone, 2 says nothing. refreshChips() walks a block down the levels until Monaco reports the
+     * row actually fits.
+     */
+    function buildChips(monaco, editor, blocks, levels) {
         const model = editor.getModel && editor.getModel();
         if (!model) return [];
         const columns = visibleColumns(editor);
@@ -683,26 +698,36 @@ const CommentBlocks = (() => {
             if (lines < MIN_FOLD_LINES) continue;
             if (!isFolded(editor, block.startLine)) continue;
 
+            const level = levels.get(block.startLine) || 0;
+            if (level >= 2) continue;
+
             const count = `${lines - 1} more lines`;
             // Injected text is laid out after the line's own glyphs and it WRAPS rather than clips
             // (wordWrap is on -- BootstrapMonacoInit.kt), so a chip wider than what is left of the
-            // row turns a folded block into two visual rows, which is worse than having no title.
-            // A Field header opens on a full-width separator rule and leaves nothing to spend, so
-            // the budget decides rather than a fixed width. Only borrow a title when the visible
-            // line is not already carrying the text.
+            // row turns a folded block into two visual rows. That is not just ugly: Monaco paints
+            // `.folded-background` across the whole folded line, so the continuation row shows up
+            // as a bare blue slab under the fold.
             //
-            // The budget subtracts the *measured* separators rather than counting them, because
-            // arithmetic over them drifts: the first version forgot the middot and overran by
-            // exactly one column, which is all it takes to wrap.
+            // The budget below is a first guess only. It exists to pick a sensible title length,
+            // not to be trusted -- see refreshChips(), which asks Monaco how tall the row came out
+            // and shrinks. Re-deriving Monaco's wrap arithmetic is what overran twice.
             const firstKind = runKindAt(block, 0);
             const borrows = firstKind === "rule" || firstKind === "blank";
             const own = model.getLineContent(block.startLine).replace(/\s+$/, "").length;
             const lead = " ".repeat(CHIP_GAP_COLUMNS);
             const joiner = `${lead}·${lead}`;
+            // If the line's own glyphs leave no room for even the bare count, say nothing. The row
+            // is then exactly as wide as the rule itself, which is one row, and Monaco stops
+            // painting .folded-background across a second one. There is no way to shorten the
+            // rule -- it is real text and wordWrap owns it -- so the count is what gives.
+            if (columns && own + lead.length + count.length > columns) continue;
+
             const spare = columns
                 ? columns - own - lead.length - joiner.length - count.length - CHIP_FOLD_MARKER_COLUMNS
                 : CHIP_TITLE_CHARS;
-            const title = borrows ? blockTitle(block, Math.min(CHIP_TITLE_CHARS, spare)) : "";
+            const title = level === 0 && borrows
+                ? blockTitle(block, Math.min(CHIP_TITLE_CHARS, spare))
+                : "";
 
             chips.push({
                 range: new monaco.Range(block.startLine, 1, block.startLine, Number.MAX_SAFE_INTEGER),
@@ -718,13 +743,58 @@ const CommentBlocks = (() => {
         return chips;
     }
 
+    /**
+     * How many rows a folded block's visible line actually occupies.
+     *
+     * The next model line is hidden, so its top is the same as the fold's -- the first visible line
+     * after the block is the one to measure against.
+     */
+    function foldedRowCount(monaco, editor, model, block) {
+        const option = monaco?.editor?.EditorOption?.lineHeight;
+        const lineHeight = option === undefined || !editor.getOption ? 0 : editor.getOption(option);
+        if (!lineHeight || lineHeight <= 0) return 1;
+        const below = block.endLine + 1;
+        if (below > model.getLineCount()) return 1;
+        try {
+            const span = editor.getTopForLineNumber(below) - editor.getTopForLineNumber(block.startLine);
+            return span > 0 ? Math.round(span / lineHeight) : 1;
+        } catch (_) {
+            return 1;
+        }
+    }
+
     function refreshChips(editor, monaco = window.globalMonaco) {
         const state = stateFor(editor);
         if (!monaco || !state.visible) {
             state.chips.set([]);
             return;
         }
-        state.chips.set(buildChips(monaco, editor, state.blocks));
+        const model = editor.getModel && editor.getModel();
+        const levels = new Map();
+        state.chips.set(buildChips(monaco, editor, state.blocks, levels));
+        if (!model) return;
+
+        // Monaco's own layout is the oracle for whether a row fits. Two attempts at deriving the
+        // wrap point from layoutInfo both overran -- once by a single column -- so instead: set the
+        // chips, ask how tall each folded row came out, and take a level of detail away from any
+        // that grew. Bounded by the number of levels, so at most two extra passes.
+        for (let pass = 0; pass < 2; pass += 1) {
+            let shrank = false;
+            for (const block of state.blocks) {
+                if (block.endLine - block.startLine + 1 < MIN_FOLD_LINES) continue;
+                if (!isFolded(editor, block.startLine)) continue;
+                if (foldedRowCount(monaco, editor, model, block) <= 1) continue;
+                const level = (levels.get(block.startLine) || 0) + 1;
+                levels.set(block.startLine, level);
+                shrank = true;
+            }
+            if (!shrank) break;
+            state.chips.set(buildChips(monaco, editor, state.blocks, levels));
+            // Without this the next measurement reads the pre-set layout and the loop concludes
+            // the row fits when it does not -- which is how a two-row fold survived the first
+            // version of this loop.
+            if (editor.render) editor.render(true);
+        }
     }
 
     function refresh(editor, monaco = window.globalMonaco) {
