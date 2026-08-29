@@ -10,6 +10,8 @@ import afield.four.buffers.DynamicBuffer
 import afield.four.buffers.buffer
 import afield.four.modules.*
 import afield.four.targets.RenderTarget
+import afield.four.targets.RenderToTexture
+import afield.four.targets.StereoCamera
 import afield.four.util.Camera
 import afield.four.util.GpuRadixSort
 import afield.stdlib.linalg.Matrix4f
@@ -186,8 +188,37 @@ object GaussianSplatRenderer {
          * hands the *group* to the push constant. Binding `result.get()` pins the address to
          * `renderer.currentImage`, and then a skipped frame really does read an unwritten slot.
          */
-        val perFrameSplatData: Boolean = false
+        val perFrameSplatData: Boolean = false,
+        /**
+         * Optional offscreen destination for this cloud's graphics module.
+         *
+         * Compute sorting travels with the graphics module as module `before` work, so it runs
+         * immediately before the cloud regardless of where the caller schedules this RTT in the
+         * renderer's target graph.
+         */
+        val renderToTexture: RenderToTexture? = null,
+        /*
+         * Optional caller-owned graphics module. Supplying a `moduleHere { ... }` pointer puts the
+         * shader in a Field box: its vertex/fragment properties, reload actions, generated bindings,
+         * texture resolution, and shader errors all remain part of the normal live-coding path.
+         * Prefer [gaussianSplatModuleHere] or [gaussianSplatMultiviewModuleHere] so a new box is
+         * seeded with the built-in shader as editable starter source. Use [configureModule] on that
+         * module's parameters to retain the built-in raster state.
+         */
+        suppliedRenderModule: ModulePointer? = null
     ) {
+        init {
+            require(renderToTexture == null || renderToTexture.renderer === renderer) {
+                "A Gaussian splat cloud and its RenderToTexture must use the same Renderer"
+            }
+            require(suppliedRenderModule == null || suppliedRenderModule.current.parameters.renderer === renderer) {
+                "A Gaussian splat cloud and its supplied render module must use the same Renderer"
+            }
+        }
+
+        private val ownsRenderModule = suppliedRenderModule == null
+        private val suppliedRenderModule = suppliedRenderModule
+
         /** Live splats, which [reupload] may change. Everything downstream reads this, not [packed]. */
         var count: Int = packed?.count ?: 0
             private set
@@ -252,6 +283,7 @@ object GaussianSplatRenderer {
         )
 
         private var modelProvider: () -> Matrix4f = { Matrix4f() }
+        private var stereoCamera: StereoCamera? = null
         private var sortedOnce: Boolean = false
         private var sortedModelView: Matrix4f? = null
         private var sortAge: Int = Int.MAX_VALUE
@@ -263,6 +295,9 @@ object GaussianSplatRenderer {
         val depthKeyMesh: ComputeMesh?
         val renderModule: ModulePointer
         val renderMesh: Mesh
+
+        private val rendersMultiview: Boolean =
+            renderToTexture?.parameters?.multiviewViewMask?.let { it != 0 } == true
 
         init {
             if (packed != null) {
@@ -295,26 +330,28 @@ object GaussianSplatRenderer {
                 depthKeyModule += "depthKeys" to depthKeyMesh
             }
 
-            renderModule = Module(parameters(renderer) {
-                name = "${sourceName}_gaussian_splats"
-                primitiveType = triangles
-                depth = 1
-                depthTest = false
-                blend = true
-                srcColor = config.blend.srcColor
-                dstColor = config.blend.dstColor
-                srcAlpha = config.blend.srcAlpha
-                dstAlpha = config.blend.dstAlpha
-                colorBlendOp = config.blend.colorBlendOp
-                alphaBlendOp = config.blend.alphaBlendOp
-                viewport = this@Cloud.viewport
-                vertex = splatVertexShader
-                fragment = splatFragmentShader
-            }).pointer()
+            renderModule = suppliedRenderModule ?: Module(
+                configureModule(
+                    parameters(renderer) {
+                        vertex = if (rendersMultiview) splatMultiviewVertexShader else splatVertexShader
+                        fragment = splatFragmentShader
+                    },
+                    config = config,
+                    renderToTexture = renderToTexture,
+                    name = "${sourceName}_gaussian_splats"
+                )
+            ).pointer()
             renderMesh = Mesh(renderer, renderModule).apply {
                 resize(this@Cloud.count * 6, 0, renderModule)
-                push.bind("modelView") { modelViewMatrix() }
-                push.bind("proj") { projectionMatrix() }
+                if (rendersMultiview) {
+                    push.bind("modelViewL") { modelViewMatrix(0) }
+                    push.bind("modelViewR") { modelViewMatrix(1) }
+                    push.bind("projL") { projectionMatrix(0) }
+                    push.bind("projR") { projectionMatrix(1) }
+                } else {
+                    push.bind("modelView") { modelViewMatrix() }
+                    push.bind("proj") { projectionMatrix() }
+                }
                 push.bind("splatData") { requireNotNull(splatData.result) }
                 push.bind("sortedIndices") { requireNotNull(sortedIndices.result).get() }
                 push.bind("viewportSize") { viewportSize() }
@@ -327,6 +364,41 @@ object GaussianSplatRenderer {
                 count = this@Cloud.count
             }
             renderModule += "splats" to renderMesh
+            renderModule.current.before["depth-sort"] = Target { command, _ ->
+                renderModule.current.parameters.viewport = viewport
+                if (!sortsOnGpu || !enabled || count <= 0) return@Target
+
+                currentSortModelView = modelViewMatrix()
+                if (shouldSortThisFrame(requireNotNull(currentSortModelView))) {
+                    updateDepthRange(requireNotNull(currentSortModelView))
+                    requireNotNull(depthKeyModule).render(command, Rectanglef())
+                    computeMemoryBarrier(command, requireNotNull(depthKeys?.result).get())
+                    computeMemoryBarrier(command, requireNotNull(sortedIndices.result).get())
+
+                    if (count > 1) {
+                        when (sortMode) {
+                            SortMode.DepthBuckets -> requireNotNull(bucketSorter).sort(
+                                command = command,
+                                count = count
+                            )
+
+                            SortMode.ExactRadix -> requireNotNull(sorter).sort(
+                                commandBuffer = command,
+                                keys = requireNotNull(depthKeys.result),
+                                count = count,
+                                values = requireNotNull(sortedIndices.result),
+                                signedKeys = false
+                            )
+
+                            SortMode.None -> Unit
+                        }
+                    }
+                    markSorted(requireNotNull(currentSortModelView))
+                    graphicsMemoryBarrier(command, requireNotNull(sortedIndices.result).get())
+                } else {
+                    ageSort()
+                }
+            }
             if (!sortsOnGpu) writeIdentityIndices()
         }
 
@@ -359,70 +431,43 @@ object GaussianSplatRenderer {
             return this
         }
 
+        /**
+         * Use [stereo] for per-eye view and projection matrices when this cloud renders into a
+         * multiview RTT. Mono targets continue to use [camera]. The cloud's model transform is
+         * applied after each eye view, exactly as it is on the mono path.
+         */
+        fun bindStereoCamera(stereo: StereoCamera): Cloud {
+            require(stereo.base.renderer === renderer) {
+                "A Gaussian splat cloud and its StereoCamera must use the same Renderer"
+            }
+            stereoCamera = stereo
+            return this
+        }
+
         fun install(
             target: RenderTarget = renderer.renderList,
             name: String = sourceName
         ): Cloud {
-            if (!sortsOnGpu) {
-                // No depth-key pass, no sort, no per-frame pre-target: the buffer order is the draw
-                // order. Keep the viewport update, which the render pass still needs.
-                target.preTargets["$name-depth-sort"] = Target { _, _ ->
-                    renderModule.current.parameters.viewport = viewport
-                }
-                target += name to renderModule
-                return this
-            }
-            target.preTargets["$name-depth-sort"] = Target { command, _ ->
-                if (!enabled || count <= 0) return@Target
-
-                renderModule.current.parameters.viewport = viewport
-                currentSortModelView = modelViewMatrix()
-                if (shouldSortThisFrame(requireNotNull(currentSortModelView))) {
-                    updateDepthRange(requireNotNull(currentSortModelView))
-                    requireNotNull(depthKeyModule).render(command, Rectanglef())
-                    computeMemoryBarrier(command, requireNotNull(depthKeys?.result).get())
-                    computeMemoryBarrier(command, requireNotNull(sortedIndices.result).get())
-
-                    if (count > 1) {
-                        when (sortMode) {
-                            SortMode.DepthBuckets -> requireNotNull(bucketSorter).sort(
-                                command = command,
-                                count = count
-                            )
-
-                            SortMode.ExactRadix -> requireNotNull(sorter).sort(
-                                commandBuffer = command,
-                                keys = requireNotNull(depthKeys.result),
-                                count = count,
-                                values = requireNotNull(sortedIndices.result),
-                                signedKeys = false
-                            )
-
-                            SortMode.None -> Unit
-                        }
-                    }
-                    markSorted(requireNotNull(currentSortModelView))
-                    graphicsMemoryBarrier(command, requireNotNull(sortedIndices.result).get())
-                } else {
-                    ageSort()
-                }
-            }
-
-            target += name to renderModule
+            installRenderModule(target, name)
             return this
         }
 
         fun remove(target: RenderTarget = renderer.renderList, name: String = sourceName): Cloud {
-            target.preTargets.remove("$name-depth-sort")
-            target.modules.remove(name)
+            (renderToTexture?.modules ?: target.modules).remove(name)
             return this
+        }
+
+        private fun installRenderModule(target: RenderTarget, name: String) {
+            val rtt = renderToTexture
+            if (rtt == null) target += name to renderModule
+            else rtt += name to renderModule
         }
 
         fun cleanup() {
             sorter?.cleanup()
             bucketSorter?.cleanup()
             depthKeyModule?.current?.cleanup()
-            renderModule.current.cleanup()
+            if (ownsRenderModule) renderModule.current.cleanup()
             splatData.result?.buffers?.forEach { it.cleanup() }
             depthKeys?.result?.buffers?.forEach { it.cleanup() }
             sortedIndices.result?.buffers?.forEach { it.cleanup() }
@@ -564,17 +609,49 @@ object GaussianSplatRenderer {
             return maxDelta
         }
 
-        private fun modelViewMatrix(): Matrix4f =
-            Matrix4f(camera.modelView()).mul(modelProvider())
+        private fun modelViewMatrix(eye: Int = 0): Matrix4f {
+            val view = stereoCamera?.eyeViewMatrices()?.get(eye.coerceIn(0, 1)) ?: camera.modelView()
+            return Matrix4f(view).mul(modelProvider())
+        }
 
-        private fun projectionMatrix(): Matrix4f =
-            Matrix4f(camera.p.evaluateUniform())
+        private fun projectionMatrix(eye: Int = 0): Matrix4f {
+            val projection = stereoCamera?.projectionMatrices()?.get(eye.coerceIn(0, 1))
+                ?: camera.p.evaluateUniform()
+            return Matrix4f(projection)
+        }
 
         private fun viewportSize(): Vector2f {
             viewport?.let { return Vector2f(it.w.toFloat(), it.h.toFloat()) }
+            renderToTexture?.let { return Vector2f(it.width.toFloat(), it.height.toFloat()) }
             val extent = renderer.swapChain.swapChainExtent
             return Vector2f(extent.width().toFloat(), extent.height().toFloat())
         }
+    }
+
+    /**
+     * Apply the raster state expected by the built-in splat shaders to either an internal module or
+     * a caller's live `moduleHere` module. Shader source is deliberately not assigned here:
+     * `moduleHere` owns source through the box's vertex and fragment properties.
+     */
+    fun configureModule(
+        parameters: Parameters,
+        config: Config = Config(),
+        renderToTexture: RenderToTexture? = null,
+        name: String = "gaussian_splats"
+    ): Parameters = parameters.apply {
+        this.name = name
+        primitiveType = triangles
+        depth = 1
+        depthTest = false
+        blend = true
+        srcColor = config.blend.srcColor
+        dstColor = config.blend.dstColor
+        srcAlpha = config.blend.srcAlpha
+        dstAlpha = config.blend.dstAlpha
+        colorBlendOp = config.blend.colorBlendOp
+        alphaBlendOp = config.blend.alphaBlendOp
+        viewport = config.viewport
+        renderToTexture?.apply()
     }
 
     fun load(
@@ -582,10 +659,12 @@ object GaussianSplatRenderer {
         renderer: Renderer = fromContext(),
         camera: Camera = Camera(renderer),
         config: Config = Config(),
-        name: String = File(path).nameWithoutExtension
+        name: String = File(path).nameWithoutExtension,
+        renderToTexture: RenderToTexture? = null,
+        renderModule: ModulePointer? = null
     ): Cloud {
         val table = readPlyAsFloatTable(path)
-        return fromTable(table, renderer, camera, config, name)
+        return fromTable(table, renderer, camera, config, name, renderToTexture, renderModule)
     }
 
     fun fromTable(
@@ -593,10 +672,21 @@ object GaussianSplatRenderer {
         renderer: Renderer = fromContext(),
         camera: Camera = Camera(renderer),
         config: Config = Config(),
-        name: String = "gaussianSplats"
+        name: String = "gaussianSplats",
+        renderToTexture: RenderToTexture? = null,
+        renderModule: ModulePointer? = null
     ): Cloud {
         table.requireColumns("x", "y", "z")
-        return Cloud(renderer, camera, table, pack(table, config), config, name)
+        return Cloud(
+            renderer = renderer,
+            camera = camera,
+            table = table,
+            packed = pack(table, config),
+            config = config,
+            sourceName = name,
+            renderToTexture = renderToTexture,
+            suppliedRenderModule = renderModule
+        )
     }
 
     /**
@@ -617,12 +707,22 @@ object GaussianSplatRenderer {
         renderer: Renderer = fromContext(),
         camera: Camera = Camera(renderer),
         config: Config = Config(),
-        name: String = "splatStream"
+        name: String = "splatStream",
+        renderToTexture: RenderToTexture? = null,
+        renderModule: ModulePointer? = null
     ): Cloud {
         require(capacity > 0) { "a streaming cloud needs a capacity, got $capacity" }
         return Cloud(
-            renderer, camera, null, null, config, name, capacity,
-            perFrameSplatData = true
+            renderer = renderer,
+            camera = camera,
+            table = null,
+            packed = null,
+            config = config,
+            sourceName = name,
+            capacity = capacity,
+            perFrameSplatData = true,
+            renderToTexture = renderToTexture,
+            suppliedRenderModule = renderModule
         )
     }
 
@@ -1561,9 +1661,43 @@ void main() {
 }
 """.trimIndent()
 
-    val splatVertexShader = """
+    private fun splatVertexShaderSource(multiview: Boolean): String {
+        val stereoPrelude = if (multiview) {
+            """
+#extension GL_EXT_multiview : require
+#define SPLAT_EYE int(gl_ViewIndex)
+""".trimIndent()
+        } else {
+            "#define SPLAT_EYE 0"
+        }
+        val cameraPush = if (multiview) {
+            """
+    mat4 modelViewL;
+    mat4 modelViewR;
+    mat4 projL;
+    mat4 projR;
+""".trimIndent()
+        } else {
+            """
+    mat4 modelView;
+    mat4 proj;
+""".trimIndent()
+        }
+        val selectCamera = if (multiview) {
+            """
+    mat4 modelView = SPLAT_EYE == 0 ? pc.modelViewL : pc.modelViewR;
+    mat4 proj = SPLAT_EYE == 0 ? pc.projL : pc.projR;
+""".trimIndent()
+        } else {
+            """
+    mat4 modelView = pc.modelView;
+    mat4 proj = pc.proj;
+""".trimIndent()
+        }
+        return """
 #version 450
 #extension GL_EXT_buffer_reference : require
+$stereoPrelude
 
 layout(std430, buffer_reference) readonly buffer SplatData {
     vec4 splats[];
@@ -1574,8 +1708,7 @@ layout(std430, buffer_reference) readonly buffer SortedIndices {
 };
 
 layout(push_constant) uniform PushConstants {
-    mat4 modelView;
-    mat4 proj;
+$cameraPush
     SplatData splatData;
     SortedIndices sortedIndices;
     vec2 viewportSize;
@@ -1613,6 +1746,7 @@ void hideVertex() {
 }
 
 void main() {
+$selectCamera
     uint sortedSlot = uint(gl_VertexIndex) / 6u;
     uint cornerIndex = uint(gl_VertexIndex) % 6u;
     if (sortedSlot >= uint(pc.count)) {
@@ -1632,7 +1766,7 @@ void main() {
         return;
     }
 
-    vec4 view = pc.modelView * vec4(centerOpacity.xyz, 1.0);
+    vec4 view = modelView * vec4(centerOpacity.xyz, 1.0);
     float depth = -view.z;
     if (depth <= 0.0001) {
         hideVertex();
@@ -1644,11 +1778,11 @@ void main() {
         covA.y, covA.w, covB.x,
         covA.z, covB.x, covB.y
     );
-    mat3 viewLinear = mat3(pc.modelView);
+    mat3 viewLinear = mat3(modelView);
     mat3 covView = viewLinear * covObject * transpose(viewLinear);
 
-    float fx = abs(pc.proj[0][0]) * pc.viewportSize.x * 0.5;
-    float fy = abs(pc.proj[1][1]) * pc.viewportSize.y * 0.5;
+    float fx = abs(proj[0][0]) * pc.viewportSize.x * 0.5;
+    float fy = abs(proj[1][1]) * pc.viewportSize.y * 0.5;
     float invDepth = 1.0 / depth;
     float invDepth2 = invDepth * invDepth;
     vec3 jx = vec3(fx * invDepth, 0.0, fx * view.x * invDepth2);
@@ -1680,7 +1814,7 @@ void main() {
     vec2 corner = CORNERS[cornerIndex];
     vec2 pixelOffset = 3.0 * (corner.x * sigma1 * axis1 + corner.y * sigma2 * axis2);
 
-    vec4 clip = pc.proj * view;
+    vec4 clip = proj * view;
     gl_Position = clip;
     gl_Position.xy += (pixelOffset / max(pc.viewportSize, vec2(1.0))) * 2.0 * clip.w;
 
@@ -1692,6 +1826,13 @@ void main() {
     vSource = int(color.w + 0.5);
 }
 """.trimIndent()
+    }
+
+    /** Default single-view shader, retained as a public source for callers and tests. */
+    val splatVertexShader = splatVertexShaderSource(multiview = false)
+
+    /** Multiview variant: one draw, with camera matrices selected by `gl_ViewIndex`. */
+    val splatMultiviewVertexShader = splatVertexShaderSource(multiview = true)
 
     val splatFragmentShader = """
 #version 450
@@ -1721,14 +1862,20 @@ fun gaussianSplats(
     target: RenderTarget = renderer.renderList,
     camera: Camera = Camera(renderer),
     config: GaussianSplatRenderer.Config = GaussianSplatRenderer.Config(),
-    name: String = File(path).nameWithoutExtension
+    name: String = File(path).nameWithoutExtension,
+    renderToTexture: RenderToTexture? = null,
+    renderModule: ModulePointer? = null
 ): GaussianSplatRenderer.Cloud =
-    GaussianSplatRenderer.load(path, renderer, camera, config, name).install(target, name)
+    GaussianSplatRenderer.load(path, renderer, camera, config, name, renderToTexture, renderModule)
+        .install(target, name)
 
 fun RenderTarget.addGaussianSplats(
     path: String,
     camera: Camera = Camera(renderer),
     config: GaussianSplatRenderer.Config = GaussianSplatRenderer.Config(),
-    name: String = File(path).nameWithoutExtension
+    name: String = File(path).nameWithoutExtension,
+    renderToTexture: RenderToTexture? = null,
+    renderModule: ModulePointer? = null
 ): GaussianSplatRenderer.Cloud =
-    GaussianSplatRenderer.load(path, renderer, camera, config, name).install(this, name)
+    GaussianSplatRenderer.load(path, renderer, camera, config, name, renderToTexture, renderModule)
+        .install(this, name)

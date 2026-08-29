@@ -53,6 +53,32 @@ Do not use the default Field port for isolated verification: an already-running
 server is reused, and it may contain stale code or human work. Reuse one custom
 port within a test session; choose a new one when a fresh JVM matters.
 
+### Coordinated live coding in the user's visible Field
+
+There is one deliberate exception to the isolated-port rule: when the user is
+actively watching a known Field document and has invited the agent to work alongside
+them, the backdoor can attach to that visible session (normally port 9092). This is a
+useful collaboration mode, not just a test shortcut. Confirm the checkout and document
+first, make semantic edits through the backdoor, and let the user supply immediate
+visual judgment from the native renderer. Never attach this way to an unidentified
+session.
+
+Preserve Field's execution distinction in that loop:
+
+- `run <uid>` is a one-shot execution.
+- `launch <uid>` starts the animated form. Its immediate `data.running` records the
+  initial server signal and may be transient while code compiles or a setup box returns.
+- `wait-running <uid> --state running --settle 0.5` confirms that a renderer/animation
+  box remains live long enough to own the frame loop. A setup box can correctly stop
+  after installing callbacks or modules; verify those through telemetry or rendering.
+- Re-launching a live-coding box should normally be treated as idempotent. Use `stop`
+  first only when that box's own contract requires it.
+
+Field box actions are available without inventing a parallel RPC. For example,
+`action <uid> moduleHere_reload --property vertex` invokes the same shader reload action
+as `alt-r`; follow it with `wait-output` when a concrete compile or telemetry result is
+needed.
+
 Minimal execution:
 
 ```bash
@@ -95,6 +121,10 @@ whole stream raises `Extra data`. Decode it as a sequence with
   present.
 - `run` waits for one execution to finish. `launch` starts the running form and
   is required for loops such as `start(renderer::run)`; stop it with `stop`.
+- `wait-running <uid> [--state running|stopped] [--settle seconds]` distinguishes
+  a persistent animation stripe from the transient signal that acknowledges a launch.
+- `action <uid> <action-id> [--property name]` invokes an action already exposed by
+  that box, such as `moduleHere_reload`; it does not implement a separate reload path.
 - `connect <parent> <child> [...]` makes every later uid a child of the first.
 - Each invocation writes a unique JSONL session log under
   `.field-backdoor/logs/`; a server it launches gets a sibling
@@ -113,6 +143,11 @@ EOF
 
 The process reads stdin once and reuses it if multiple commands name
 `--file -`.
+
+An empty `output`/`peer-output` packet with `kind=error` and `line=-1` is Field's
+wire representation for *clearing* an editor error. The backdoor tracks it as state
+removal: it is neither returned as ordinary output nor allowed to abort `wait-output`
+or `wait-file`. A non-empty error at line -1 remains a real failure.
 
 ## Browser and capture contract
 

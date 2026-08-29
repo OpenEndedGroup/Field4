@@ -5,7 +5,8 @@ A one-page cheat-sheet for driving Field from an agent. For the full story see
 (build/edit/launch/save), and [`FIELD_BACKDOOR.md`](./FIELD_BACKDOOR.md) (the harness).
 
 All commands run from the repo root through `uv`. Use a custom high `--port` (e.g. 9477)
-so you get an isolated agent-owned Field, not a stale dev server on 9092.
+for isolated verification. Port 9092 is appropriate only for explicitly coordinated
+live coding in the user's visible, identified Field session.
 
 ## Run code, read output
 
@@ -26,11 +27,15 @@ EOF
 ```
 
 - Backdoor `run` executes once and waits; backdoor `launch` starts a job and waits for its
-  running signal. Transcript Kotlin-only launch groups additionally use the awaited batch
+  initial running signal, which may be transient. Use
+  `wait-running <uid> --state running --settle 0.5` when the box must keep owning an
+  animation/render loop. Transcript Kotlin-only launch groups additionally use the awaited batch
   path; mixed/non-Kotlin transcript groups do not promise the same first-frame barrier.
 - `@last` = the most recently created box this session.
 - Read the `events` array (and `data`) from the JSON. Compile errors and exceptions show up there.
 - `--value`/`--file` are **optional** on `run`/`launch <uid>`: supply one to override the box's code, omit both to run the box's currently *stored* code (same stored-code fallback as the transcript `execute`/`launch` ops).
+- `action <uid> moduleHere_reload --property vertex` invokes the box's existing live
+  shader action. Empty line-minus-one `error` packets clear old errors and are not failures.
 
 ## Build / edit / save a document (OperationTranscript)
 

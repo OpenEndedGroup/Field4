@@ -36,6 +36,7 @@ import afield.server.recordControllerOutputMessage
 import afield.server.recordControllerSelection
 import afield.server.writeFileProxyContents
 import afield.stdlib.begin
+import afield.stdlib.Action
 import com.sun.management.GarbageCollectionNotificationInfo
 import com.aallam.openai.api.BetaOpenAI
 import com.microsoft.playwright.*
@@ -2669,14 +2670,57 @@ class Server {
             handlers["perform-action"] = mutableSetOf(
                 { message, reply: (Message) -> Unit ->
                     val exec = Json.decodeFromJsonElement<Perform_action>(message.payload!!)
-                    val action = actionTable[exec.uid_action]
+                    val selected = exec.uid_currentSelection.mapNotNull { box(it, createIfMissing = false) }
+                    val selectedActions = selected
+                        .flatMap { it.gather<MutableMap<String, Action>>("actions").entries }
+                        .associate { it.key to it.value }
+                    val action = actionTable[exec.uid_action] ?: selectedActions[exec.uid_action]?.let { selectedAction ->
+                        { selection: List<Box> -> selectedAction.target(selection) }
+                    }
                     if (action == null) {
-                        lprintln("warning,server", "no such action '$action'")
+                        lprintln("warning,server", "no such action '${exec.uid_action}'")
+                        reply(
+                            Message("perform-action").payload(
+                                PerformActionResult(
+                                    actionId = exec.uid_action,
+                                    found = false,
+                                    success = false,
+                                    selectedUids = selected.map { it.id },
+                                    availableActionIds = selectedActions.keys.sorted(),
+                                    error = "no such action '${exec.uid_action}'"
+                                )
+                            )
+                        )
                     } else {
                         val previousProperty = currentActionProperty.get()
                         currentActionProperty.set(exec.uid_property.ifBlank { "code" })
                         try {
-                            action.invoke(exec.uid_currentSelection.mapNotNull { box(it, createIfMissing = false) })
+                            action.invoke(selected)
+                            reply(
+                                Message("perform-action").payload(
+                                    PerformActionResult(
+                                        actionId = exec.uid_action,
+                                        found = true,
+                                        success = true,
+                                        selectedUids = selected.map { it.id },
+                                        availableActionIds = selectedActions.keys.sorted()
+                                    )
+                                )
+                            )
+                        } catch (t: Throwable) {
+                            reply(
+                                Message("perform-action").payload(
+                                    PerformActionResult(
+                                        actionId = exec.uid_action,
+                                        found = true,
+                                        success = false,
+                                        selectedUids = selected.map { it.id },
+                                        availableActionIds = selectedActions.keys.sorted(),
+                                        error = t.message ?: t.javaClass.name
+                                    )
+                                )
+                            )
+                            throw t
                         } finally {
                             currentActionProperty.set(previousProperty)
                         }

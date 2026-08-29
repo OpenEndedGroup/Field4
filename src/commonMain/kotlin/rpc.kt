@@ -952,6 +952,16 @@ data class Perform_action(
 )
 
 @Serializable
+data class PerformActionResult(
+    val actionId: String,
+    val found: Boolean,
+    val success: Boolean,
+    val selectedUids: List<String>,
+    val availableActionIds: List<String> = emptyList(),
+    val error: String = ""
+)
+
+@Serializable
 data class CopyBoxes(val uids: List<String>)
 
 @Serializable

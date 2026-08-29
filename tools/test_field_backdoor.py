@@ -112,6 +112,179 @@ class RunningStateOrderingTests(unittest.TestCase):
         self.assertEqual(self.client.boxes["box"]["runningStrands"], {"__jobs__": 8})
 
 
+class BackdoorLiveCodingStateTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.client = FieldBackdoor(port=1, workspace=None, default_timeout=0.05, logger=_Logger())
+        self.client.boxes["box"] = {"uid": "box", "runningStrands": {}}
+        self.seq = 0
+
+    def emit(self, name: str, payload: dict) -> dict:
+        self.seq += 1
+        self.client.event_seq = self.seq
+        event = {
+            "seq": self.seq,
+            "name": name,
+            "messageName": name,
+            "uid": "box",
+            "payload": {"uid": "box", **payload},
+        }
+        self.client.event_log.append(event)
+        self.client._apply_event(event)
+        return event
+
+    def test_empty_line_minus_one_error_clears_instead_of_failing(self) -> None:
+        self.emit(
+            "peer-output",
+            {"kind": "error", "line": 12, "property": "vertex", "html": "shader failed"},
+        )
+        self.assertIsNotNone(self.client._execution_error_event("box"))
+
+        cleared = self.emit(
+            "peer-output",
+            {"kind": "error", "line": -1, "property": "vertex", "html": ""},
+        )
+
+        self.assertIsNone(self.client._execution_error_event("box"))
+        self.assertEqual(self.client.execution_errors([cleared]), [])
+        self.assertNotIn(cleared, self.client.collect_output("box", channel=None, kind="all"))
+
+    def test_clear_is_scoped_to_one_shader_property(self) -> None:
+        self.emit(
+            "peer-output",
+            {"kind": "error", "line": 2, "property": "vertex", "html": "vertex failed"},
+        )
+        fragment = self.emit(
+            "peer-output",
+            {"kind": "error", "line": 3, "property": "fragment", "html": "fragment failed"},
+        )
+        self.emit(
+            "peer-output",
+            {"kind": "error", "line": -1, "property": "vertex", "html": ""},
+        )
+
+        self.assertIs(self.client._execution_error_event("box"), fragment)
+
+    def test_wait_output_does_not_abort_on_a_cleared_error(self) -> None:
+        self.emit(
+            "peer-output",
+            {"kind": "error", "line": 8, "property": "fragment", "html": "old failure"},
+        )
+        self.emit(
+            "peer-output",
+            {"kind": "error", "line": -1, "property": "fragment", "html": ""},
+        )
+
+        events, timed_out, error = asyncio.run(
+            self.client.wait_output(
+                "box",
+                channel=None,
+                kind="all",
+                contains="not-going-to-arrive",
+                timeout=0.01,
+            )
+        )
+
+        self.assertTrue(timed_out)
+        self.assertIsNone(error)
+        self.assertEqual(events, [])
+
+    def test_nonempty_line_minus_one_error_remains_a_failure(self) -> None:
+        failure = self.emit(
+            "output",
+            {"kind": "error", "line": -1, "property": "code", "html": "runtime failed"},
+        )
+
+        self.assertIs(self.client._execution_error_event("box"), failure)
+        self.assertEqual(self.client.execution_errors([failure]), ["runtime failed"])
+
+    def test_describe_action_is_retained_and_action_uses_the_field_protocol(self) -> None:
+        self.emit(
+            "describe-action",
+            {
+                "value": [
+                    {"id": "moduleHere_reload", "description": "Reload Shader|alt r"},
+                ]
+            },
+        )
+        self.assertIn("moduleHere_reload", self.client.boxes["box"]["actionDescriptions"])
+        sent: list[tuple[str, dict, float]] = []
+
+        async def reply(name: str, payload: dict, *, timeout: float, **_kwargs) -> dict:
+            sent.append((name, payload, timeout))
+            return {
+                "payload": {
+                    "actionId": payload["uid_action"],
+                    "found": True,
+                    "success": True,
+                    "selectedUids": payload["uid_currentSelection"],
+                }
+            }
+
+        self.client.call_for_single_reply = reply  # type: ignore[method-assign]
+        data, events = asyncio.run(
+            self.client.perform_action(
+                "box",
+                action_id="moduleHere_reload",
+                property_name="vertex",
+                settle=0.0,
+                timeout=0.5,
+            )
+        )
+
+        self.assertTrue(data["success"])
+        self.assertEqual(events, [])
+        self.assertEqual(
+            sent,
+            [
+                (
+                    "perform-action",
+                    {
+                        "uid_currentSelection": ["box"],
+                        "uid_action": "moduleHere_reload",
+                        "uid_property": "vertex",
+                    },
+                    0.5,
+                )
+            ],
+        )
+
+    def test_wait_running_requires_a_settled_state(self) -> None:
+        self.client.boxes["box"]["runningStrands"] = {"default": 1}
+        data, events, timed_out = asyncio.run(
+            self.client.wait_running("box", desired_running=True, settle=0.01, timeout=0.05)
+        )
+
+        self.assertFalse(timed_out)
+        self.assertTrue(data["running"])
+        self.assertEqual(data["settledSeconds"], 0.01)
+        self.assertEqual(events, [])
+
+    def test_live_coding_commands_parse_without_overriding_stored_code(self) -> None:
+        launch = parse_command("launch box")
+        wait = parse_command("wait-running box --state running --settle 0.5")
+        action = parse_command("action box moduleHere_reload --property vertex")
+
+        self.assertIsNone(launch.value)
+        self.assertIsNone(launch.file)
+        self.assertEqual(wait.settle, 0.5)
+        self.assertEqual(action.action_id, "moduleHere_reload")
+        self.assertEqual(action.property, "vertex")
+
+    def test_set_frame_keeps_the_local_snapshot_in_sync(self) -> None:
+        sent: list[tuple[str, dict]] = []
+
+        async def send(name: str, payload: dict, **_kwargs) -> None:
+            sent.append((name, payload))
+
+        self.client.send_message = send  # type: ignore[method-assign]
+        frame = {"x": 10.0, "y": 20.0, "w": 30.0, "h": 40.0}
+        data = asyncio.run(self.client.set_frame("box", frame))
+
+        self.assertEqual(self.client.boxes["box"]["frame"], frame)
+        self.assertEqual(data["value"], frame)
+        self.assertEqual(sent[0][0], "set-rect")
+
+
 class MacroAliasTests(unittest.TestCase):
     def test_macro_and_transcript_are_exact_parser_aliases(self) -> None:
         macro = parse_command("macro run demo --scope project --project-name example")

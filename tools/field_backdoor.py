@@ -226,6 +226,46 @@ def command_result(command: str, ok: bool, data: Any = None, events: list[dict[s
     }
 
 
+def _is_error_output_event(event: dict[str, Any]) -> bool:
+    name = event.get("name") or event.get("messageName")
+    payload = event.get("payload")
+    return (
+        isinstance(payload, dict)
+        and name in {"output", "peer-output"}
+        and payload.get("kind") in {"error", "err"}
+    )
+
+
+def _is_error_clear_event(event: dict[str, Any]) -> bool:
+    """Field encodes "clear this property's error" as an empty error output at line -1."""
+    if not _is_error_output_event(event):
+        return False
+    payload = event["payload"]
+    text = payload.get("html") or payload.get("text") or payload.get("message")
+    return payload.get("line") == -1 and not str(text or "").strip()
+
+
+def _is_execution_error_event(event: dict[str, Any]) -> bool:
+    if _is_error_output_event(event):
+        return not _is_error_clear_event(event)
+    name = event.get("name") or event.get("messageName")
+    payload = event.get("payload")
+    return (
+        isinstance(payload, dict)
+        and name == "notify"
+        and str(payload.get("category", "")).strip().lower() == "error"
+        and bool(str(payload.get("text", "")).strip())
+    )
+
+
+def _execution_error_key(event: dict[str, Any]) -> tuple[str, str] | None:
+    uid = event.get("uid")
+    payload = event.get("payload")
+    if not isinstance(uid, str) or not isinstance(payload, dict):
+        return None
+    return uid, str(payload.get("property") or "__general__")
+
+
 def playwright_attach_budget(timeout: float | None, default_timeout: float) -> float:
     """Effective wait for a Playwright *attach*.
 
@@ -384,6 +424,7 @@ class FieldBackdoor:
         self.session_key: str | None = None
         self.boxes: dict[str, dict[str, Any]] = {}
         self._running_state_seen: dict[tuple[str, str], tuple[int, bool]] = {}
+        self._active_execution_errors: dict[tuple[str, str], dict[str, Any]] = {}
         self.last_box_uid: str | None = None
         self.box_aliases: dict[str, str] = {}
         self.playwright_state: dict[str, Any] | None = None
@@ -708,6 +749,13 @@ class FieldBackdoor:
         if uid is None:
             return
 
+        error_key = _execution_error_key(event)
+        if error_key is not None:
+            if _is_error_clear_event(event):
+                self._active_execution_errors.pop(error_key, None)
+            elif _is_execution_error_event(event):
+                self._active_execution_errors[error_key] = event
+
         if name == "set-string":
             box = self._ensure_box(uid)
             prop = payload.get("property")
@@ -753,6 +801,14 @@ class FieldBackdoor:
                 box["nested"] = value
             elif kind == "box_nestedIn":
                 box["nestedIn"] = value[0] if value else None
+        elif name == "describe-action":
+            value = payload.get("value") or []
+            box = self._ensure_box(uid)
+            box["actionDescriptions"] = {
+                str(item.get("id")): dict(item)
+                for item in value
+                if isinstance(item, dict) and item.get("id") is not None
+            }
         elif name == "is-running":
             box = self._ensure_box(uid)
             strand = payload.get("strand", "default")
@@ -779,11 +835,16 @@ class FieldBackdoor:
             self._replace_snapshot(payload)
 
     def _replace_snapshot(self, snapshot: dict[str, Any]) -> None:
-        self.document_name = snapshot.get("documentName")
+        previous_identity = (self.session_key, self.document_name)
+        next_session_key = snapshot.get("sessionKey")
+        next_document_name = snapshot.get("documentName")
+        self.document_name = next_document_name
         self.scratch = bool(snapshot.get("scratch"))
-        self.session_key = snapshot.get("sessionKey")
+        self.session_key = next_session_key
         self.boxes = {}
         self._running_state_seen = {}
+        if previous_identity != (next_session_key, next_document_name):
+            self._active_execution_errors = {}
         for box in snapshot.get("boxes", []):
             if isinstance(box, dict):
                 if self._truthy(box.get("_tombstone")):
@@ -824,6 +885,9 @@ class FieldBackdoor:
         self.boxes.pop(uid, None)
         self._running_state_seen = {
             key: value for key, value in self._running_state_seen.items() if key[0] != uid
+        }
+        self._active_execution_errors = {
+            key: value for key, value in self._active_execution_errors.items() if key[0] != uid
         }
         self.box_aliases = {
             alias: target
@@ -2107,9 +2171,95 @@ class FieldBackdoor:
             "property": property_name,
             "codeLength": len(code),
             "running": running,
+            "runningObservation": "initial-signal",
+            "runningMayBeTransient": True,
         }
         self.logger.log("launch_box_complete", uid=resolved, timedOut=timed_out, running=running, eventCount=len(events))
         return data, events, timed_out
+
+    async def wait_running(
+        self,
+        uid: str,
+        *,
+        desired_running: bool,
+        settle: float,
+        timeout: float,
+    ) -> tuple[dict[str, Any], list[dict[str, Any]], bool]:
+        """Wait until a box continuously holds the desired running state for ``settle`` seconds."""
+        resolved, _ = self.require_box_reference(uid)
+        settle = max(0.0, settle)
+        start_seq = self.event_seq
+        deadline = asyncio.get_running_loop().time() + timeout
+        stable_since: float | None = None
+
+        while True:
+            now = asyncio.get_running_loop().time()
+            box = self._ensure_box(resolved)
+            running = bool(box.get("runningStrands"))
+            if running == desired_running:
+                if stable_since is None:
+                    stable_since = now
+                if now - stable_since >= settle:
+                    data = {
+                        "uid": resolved,
+                        "running": running,
+                        "desiredRunning": desired_running,
+                        "settledSeconds": settle,
+                        "runningStrands": dict(box.get("runningStrands") or {}),
+                    }
+                    return data, self.events_since(start_seq), False
+            else:
+                stable_since = None
+
+            if now >= deadline:
+                data = {
+                    "uid": resolved,
+                    "running": running,
+                    "desiredRunning": desired_running,
+                    "settledSeconds": settle,
+                    "runningStrands": dict(box.get("runningStrands") or {}),
+                }
+                return data, self.events_since(start_seq), True
+            await asyncio.sleep(min(0.05, max(0.0, deadline - now)))
+
+    async def perform_action(
+        self,
+        uid: str,
+        *,
+        action_id: str,
+        property_name: str,
+        settle: float,
+        timeout: float,
+    ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        """Invoke the same box action the Field UI exposes (for example ``moduleHere_reload``)."""
+        resolved, _ = self.require_box_reference(uid)
+        start_seq = self.event_seq
+        reply = await self.call_for_single_reply(
+            "perform-action",
+            {
+                "uid_currentSelection": [resolved],
+                "uid_action": action_id,
+                "uid_property": property_name,
+            },
+            timeout=timeout,
+            reply_context={"uid": resolved, "command": "action", "action": action_id},
+        )
+        if settle > 0:
+            await asyncio.sleep(settle)
+        events = self.events_since(start_seq)
+        payload = reply.get("payload")
+        if not isinstance(payload, dict):
+            raise BackdoorError(f"perform-action returned an invalid reply for {action_id!r}")
+        data = dict(payload)
+        data.update(
+            {
+                "uid": resolved,
+                "action": action_id,
+                "property": property_name,
+                "settledSeconds": max(0.0, settle),
+            }
+        )
+        return data, events
 
     async def continue_box(self, uid: str, *, property_name: str, value: str | None, timeout: float) -> tuple[dict[str, Any], list[dict[str, Any]], bool]:
         resolved, box = self.require_box_reference(uid)
@@ -2205,6 +2355,8 @@ class FieldBackdoor:
         }[kind]
         collected = []
         for event in self.event_log:
+            if _is_error_clear_event(event):
+                continue
             if event.get("uid") != resolved:
                 continue
             if event["name"] not in accepted_names:
@@ -2219,24 +2371,13 @@ class FieldBackdoor:
         return collected
 
     def _execution_error_event(self, resolved: str) -> dict[str, Any] | None:
-        """The first execution-error event this box has emitted, if any.
-
-        Mirrors the error detection `wait-file --fail-on-error-uid` uses: a box
-        compile/runtime failure surfaces as an `output`/`peer-output` with
-        `kind` in {error, err}, or a `notify` with category `error`.
-        """
-        for event in self.event_log:
-            if event.get("uid") != resolved:
-                continue
-            name = event.get("name") or event.get("messageName")
-            payload = event.get("payload")
-            if not isinstance(payload, dict):
-                continue
-            if name in {"output", "peer-output"} and payload.get("kind") in {"error", "err"}:
-                return event
-            if name == "notify" and str(payload.get("category", "")).strip().lower() == "error":
-                return event
-        return None
+        """The newest error that is still active after applying Field's clear-error packets."""
+        active = [
+            event
+            for (uid, _property), event in self._active_execution_errors.items()
+            if uid == resolved
+        ]
+        return max(active, key=lambda event: int(event.get("seq", 0))) if active else None
 
     async def wait_output(
         self,
@@ -2306,15 +2447,14 @@ class FieldBackdoor:
         for event in events:
             if not isinstance(event, dict):
                 continue
-            name = event.get("name") or event.get("messageName")
             payload = event.get("payload")
             if not isinstance(payload, dict):
                 continue
-            if name in {"output", "peer-output"} and payload.get("kind") in {"error", "err"}:
+            if _is_execution_error_event(event) and _is_error_output_event(event):
                 html = str(payload.get("html", "")).replace("\n", " ").strip()
                 if html:
                     problems.append(html)
-            elif name == "notify" and str(payload.get("category", "")).strip().lower() == "error":
+            elif _is_execution_error_event(event):
                 text = str(payload.get("text", "")).replace("\n", " ").strip()
                 if text:
                     problems.append(text)
@@ -2577,6 +2717,19 @@ def build_command_parser() -> argparse.ArgumentParser:
         exec_parser.add_argument("--value")
         exec_parser.add_argument("--file")
         exec_parser.add_argument("--timeout", type=float)
+
+    wait_running_parser = subparsers.add_parser("wait-running", add_help=False)
+    wait_running_parser.add_argument("uid")
+    wait_running_parser.add_argument("--state", choices=("running", "stopped"), default="running")
+    wait_running_parser.add_argument("--settle", type=float, default=0.25)
+    wait_running_parser.add_argument("--timeout", type=float)
+
+    action_parser = subparsers.add_parser("action", add_help=False)
+    action_parser.add_argument("uid")
+    action_parser.add_argument("action_id")
+    action_parser.add_argument("--property", default="code")
+    action_parser.add_argument("--settle", type=float, default=0.25)
+    action_parser.add_argument("--timeout", type=float)
 
     stop_parser = subparsers.add_parser("stop", add_help=False)
     stop_parser.add_argument("uid")
@@ -3049,6 +3202,46 @@ async def dispatch_command(
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"], timedOut=timed_out, eventCount=len(events))
         return result
 
+    if args.command == "wait-running":
+        timeout = args.timeout or client.default_timeout
+        data, events, timed_out = await client.wait_running(
+            args.uid,
+            desired_running=args.state == "running",
+            settle=args.settle,
+            timeout=timeout,
+        )
+        result = command_result(command_line, not timed_out, data=data, events=events, timed_out=timed_out)
+        client.logger.log(
+            "command_dispatch_complete",
+            commandLine=command_line,
+            ok=result["ok"],
+            timedOut=timed_out,
+            eventCount=len(events),
+        )
+        return result
+
+    if args.command == "action":
+        data, events = await client.perform_action(
+            args.uid,
+            action_id=args.action_id,
+            property_name=args.property,
+            settle=max(0.0, args.settle),
+            timeout=args.timeout or client.default_timeout,
+        )
+        problems = client.execution_errors(events)
+        if problems:
+            data = dict(data)
+            data["errors"] = problems
+        ok = bool(data.get("success")) and not problems
+        result = command_result(command_line, ok, data=data, events=events)
+        client.logger.log(
+            "command_dispatch_complete",
+            commandLine=command_line,
+            ok=result["ok"],
+            eventCount=len(events),
+        )
+        return result
+
     if args.command == "stop":
         timeout = args.timeout or client.default_timeout
         if args.best_effort:
@@ -3090,13 +3283,7 @@ async def dispatch_command(
             for event in events:
                 if event.get("uid") != fail_on_error_uid:
                     continue
-                name = event.get("name") or event.get("messageName")
-                payload = event.get("payload")
-                if not isinstance(payload, dict):
-                    continue
-                if name in {"output", "peer-output"} and payload.get("kind") in {"error", "err"}:
-                    return event
-                if name == "notify" and str(payload.get("category", "")).strip().lower() == "error":
+                if _is_execution_error_event(event):
                     return event
             return None
 
@@ -3350,7 +3537,7 @@ async def repl(
             return 0
         if line == "help":
             client.logger.log("repl_help")
-            print("Commands: open, status, snapshot, boxes, sleep, playwright-open, editor-open, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, wait-native-renderer, record-window, record-editor, record-box, new-box, delete-box, connect, disconnect, set, macro, transcript, run, launch, continue, stop, wait-file, output, wait-output, raw-send, run-jvm-main, exit")
+            print("Commands: open, status, snapshot, boxes, sleep, playwright-open, editor-open, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, wait-native-renderer, record-window, record-editor, record-box, new-box, delete-box, connect, disconnect, set, macro, transcript, run, launch, continue, wait-running, action, stop, wait-file, output, wait-output, raw-send, run-jvm-main, exit")
             continue
         try:
             parsed = parse_command(line)

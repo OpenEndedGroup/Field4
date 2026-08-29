@@ -92,9 +92,9 @@ Read a user's saved macro, adapt the YAML for your ends, write it under a new na
 - **`--document` is relative to the workspace root.** An absolute path loads an *empty*
   document. To reopen something you saved, save it *into* a workspace dir and open it by
   its relative name.
-- **CLI `run`/`launch <uid>` overrides stored code** with whatever `--value` you pass
-  (empty if omitted). To run a box's stored code, use a transcript `launch`/`execute` op
-  with no inline `code:`.
+- **CLI `run`/`launch <uid>` uses stored code unless explicitly overridden.** Supplying
+  `--value` or `--file` replaces the stored property; omitting both executes its current
+  value, matching a transcript `launch`/`execute` op with no inline `code:`.
 - **Always read `output`/`events`** from the JSON result rather than assuming success.
 - Every run logs to `.field-backdoor/logs/` in the repo; `--command status` prints the paths.
 
