@@ -129,10 +129,17 @@ data class BrowserTouchPoint(
 )
 
 /**
- * High-level control surface for a Chromium tab whose pixels are an [ExternalBrowserSurface].
- * Fire-and-forget input methods retain TCP order; commands return futures completed by Electron.
+ * High-level control surface for a Chromium tab: navigation, input, JavaScript, the Chrome
+ * DevTools Protocol and the page→Field request bridge. Fire-and-forget input methods retain TCP
+ * order; commands return futures completed by Electron.
+ *
+ * It deliberately says nothing about pixels. A tab that is only being *driven* — by a test, by a
+ * docs build, by a box that wants the DOM rather than the picture — needs no texture, and until
+ * this interface was split out the type system insisted on one: [PuppetBrowser] extends
+ * [ExternalBrowserSurface], so naming the control plane obliged you to own a Vulkan image view and
+ * therefore a [afield.four.Renderer]. [HeadlessPuppetBrowser] implements this and nothing else.
  */
-interface PuppetBrowser : ExternalBrowserSurface {
+interface PuppetBrowserControl : AutoCloseable {
     val state: PuppetBrowserState
 
     fun addEventListener(listener: (PuppetBrowserEvent) -> Unit): () -> Unit
@@ -181,6 +188,12 @@ interface PuppetBrowser : ExternalBrowserSurface {
         handler: (JsonElement) -> CompletableFuture<JsonElement>,
     ): () -> Unit
 }
+
+/**
+ * A [PuppetBrowserControl] whose pixels are also a stable Field texture — the same Chromium tab,
+ * seen from the render loop as well as from the keyboard.
+ */
+interface PuppetBrowser : PuppetBrowserControl, ExternalBrowserSurface
 
 internal fun Set<BrowserModifier>.cdpBits(): Int = fold(0) { bits, modifier -> bits or modifier.cdpBit }
 

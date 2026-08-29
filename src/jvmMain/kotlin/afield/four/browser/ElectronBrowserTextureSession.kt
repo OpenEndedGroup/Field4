@@ -47,6 +47,17 @@ internal fun locateFieldProjectRoot(): File {
     }
 }
 
+/** The Electron the checkout installed, under whichever app name `electronInstall` gave it. */
+internal fun fieldElectronBinary(root: File): File {
+    val dist = File(root, "electron/node_modules/electron/dist")
+    if (OS != OSType.MACOS) return File(dist, "electron")
+    return listOf(
+        File(dist, "Field4.app/Contents/MacOS/Field4"),
+        File(dist, "Electron.app/Contents/MacOS/Field4"),
+        File(dist, "Electron.app/Contents/MacOS/Electron"),
+    ).firstOrNull { it.isFile } ?: File(dist, "Electron.app/Contents/MacOS/Electron")
+}
+
 /**
  * Everything about driving the Electron producer that does not depend on how a GPU handle crosses
  * the process boundary: launching it, the loopback JSON control channel, readiness, and turning a
@@ -56,19 +67,24 @@ internal fun locateFieldProjectRoot(): File {
  * transport is a constructor parameter rather than an overridable method because it has to exist
  * before the producer process starts — the process needs the transport's address in its
  * environment.
+ *
+ * [surface] and [transport] are both optional: with neither, the producer runs in its no-frames
+ * mode and this class is the whole browser. See [HeadlessPuppetBrowser].
  */
 internal class ElectronBrowserTextureSession(
     projectRoot: File,
-    private val surface: ExternalBrowserSurface,
+    private val surface: ExternalBrowserSurface?,
     url: String,
     spec: ExternalBrowserSurfaceSpec,
     private val writer: AtomicReference<PrintWriter?>,
     private val loadedAfterFrame: AtomicLong,
     readyBoxUid: String?,
-    private val transport: BrowserHandleTransport,
+    private val transport: BrowserHandleTransport?,
     private val stateListener: (PuppetBrowserState) -> Unit,
     private val eventListener: (PuppetBrowserEvent) -> Unit,
     private val pageRequest: (id: String, name: String, value: JsonElement) -> Unit,
+    /** Called on every `did-finish-load`, with the state the producer observed at that moment. */
+    private val loadedListener: (PuppetBrowserState) -> Unit = {},
 ) : AutoCloseable {
     private val closed = AtomicBoolean(false)
     private val ready = CompletableFuture<Unit>()
@@ -79,9 +95,9 @@ internal class ElectronBrowserTextureSession(
     private val worker: Thread
 
     init {
-        val electron = electronBinary(projectRoot)
+        val electron = fieldElectronBinary(projectRoot)
         val producer = File(projectRoot, "electron/browser-texture-producer.js")
-        listOfNotNull(electron, producer, transport.nodeBridge).forEach { file ->
+        listOfNotNull(electron, producer, transport?.nodeBridge).forEach { file ->
             require(file.isFile) {
                 "Missing browser texture runtime ${file.absolutePath}; run ./gradlew electronInstall"
             }
@@ -98,9 +114,10 @@ internal class ElectronBrowserTextureSession(
                 environment()["FIELD_BROWSER_TEXTURE_DEVICE_SCALE_FACTOR"] = spec.deviceScaleFactor.toString()
                 environment()["FIELD_BROWSER_TEXTURE_SLOTS"] = spec.slotCount.toString()
                 environment()["FIELD_BROWSER_TEXTURE_CONTROL_PORT"] = server.localPort.toString()
-                transport.nodeBridge?.let { environment()["FIELD_BROWSER_TEXTURE_BRIDGE"] = it.absolutePath }
+                transport?.nodeBridge?.let { environment()["FIELD_BROWSER_TEXTURE_BRIDGE"] = it.absolutePath }
                 environment()["FIELD_BROWSER_TEXTURE_STREAM_ID"] = streamId.toString()
-                environment().putAll(transport.producerEnvironment)
+                if (transport == null) environment()["FIELD_BROWSER_TEXTURE_NO_FRAMES"] = "1"
+                environment().putAll(transport?.producerEnvironment ?: emptyMap())
                 readyBoxUid?.takeIf { it.isNotBlank() }?.let {
                     environment()["FIELD_BROWSER_TEXTURE_READY_BOX_UID"] = it
                 }
@@ -149,7 +166,9 @@ internal class ElectronBrowserTextureSession(
             }
             "loaded" -> {
                 loadedAfterFrame.set(message.long("afterFrameId"))
-                message.objectOrNull("state")?.let { stateListener(puppetBrowserState(it)) }
+                val loaded = message.objectOrNull("state")?.let(::puppetBrowserState)
+                loaded?.let(stateListener)
+                loadedListener(loaded ?: PuppetBrowserState(url = message.string("url")))
                 println("[field-browser-texture] page loaded ${message.string("url")}")
             }
             "error" -> System.err.println("[field-browser-texture] ${message.string("message")}")
@@ -260,6 +279,10 @@ internal class ElectronBrowserTextureSession(
     }
 
     private fun offer(message: JsonObject) {
+        // The producer only announces frames when it was given somewhere to put them, so this is a
+        // protocol violation rather than a mode: fail loudly instead of dropping a leased texture.
+        val transport = transport ?: error("The producer announced a frame in no-frames mode: $message")
+        val surface = surface ?: error("The producer announced a frame with no receiving surface")
         val token = message.long("token")
         val handle = transport.receive(message, token, 5_000)
         val colorSpace = message.colorSpace("colorSpace")
@@ -304,17 +327,7 @@ internal class ElectronBrowserTextureSession(
         process.destroy()
         if (!process.waitFor(2, java.util.concurrent.TimeUnit.SECONDS)) process.destroyForcibly()
         worker.join(6_000)
-        runCatching { transport.close() }
-    }
-
-    private fun electronBinary(root: File): File {
-        val dist = File(root, "electron/node_modules/electron/dist")
-        if (OS != OSType.MACOS) return File(dist, "electron")
-        return listOf(
-            File(dist, "Field4.app/Contents/MacOS/Field4"),
-            File(dist, "Electron.app/Contents/MacOS/Field4"),
-            File(dist, "Electron.app/Contents/MacOS/Electron"),
-        ).firstOrNull { it.isFile } ?: File(dist, "Electron.app/Contents/MacOS/Electron")
+        runCatching { transport?.close() }
     }
 }
 

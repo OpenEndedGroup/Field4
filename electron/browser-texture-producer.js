@@ -18,19 +18,26 @@ const isLinux = process.platform === "linux";
 // loopback socket. See dev_docs/external_browser_surfaces.md for why it is opt-in and what it costs.
 // Declared before the handle-transfer addresses below because it decides which of them are needed.
 const cpuBitmap = process.env.FIELD_BROWSER_TEXTURE_CPU_BITMAP === "1";
+// The third frame mode: nobody wants the pixels. Everything else about this producer — the control
+// channel, events, input, the page bridge, CDP — is unchanged, so a caller that only drives the tab
+// pays for no shared texture, no native handle bridge, and no readback socket. It is what makes the
+// control plane reachable from a JVM with no Renderer, and therefore from a test. See
+// afield.four.browser.HeadlessPuppetBrowser.
+const noFrames = process.env.FIELD_BROWSER_TEXTURE_NO_FRAMES === "1";
 // The receiver's address, in whichever form this platform's handle transfer needs.
-const machService = isLinux || cpuBitmap ? "" : required("FIELD_BROWSER_TEXTURE_MACH_SERVICE");
-const dmaBufSocket = isLinux && !cpuBitmap ? required("FIELD_BROWSER_TEXTURE_DMABUF_SOCKET") : "";
-const pixelPort = cpuBitmap ? Number(required("FIELD_BROWSER_TEXTURE_PIXEL_PORT")) : 0;
-const bridgePath = cpuBitmap ? "" : required("FIELD_BROWSER_TEXTURE_BRIDGE");
+const sharedTexture = !cpuBitmap && !noFrames;
+const machService = isLinux || !sharedTexture ? "" : required("FIELD_BROWSER_TEXTURE_MACH_SERVICE");
+const dmaBufSocket = isLinux && sharedTexture ? required("FIELD_BROWSER_TEXTURE_DMABUF_SOCKET") : "";
+const pixelPort = cpuBitmap && !noFrames ? Number(required("FIELD_BROWSER_TEXTURE_PIXEL_PORT")) : 0;
+const bridgePath = sharedTexture ? required("FIELD_BROWSER_TEXTURE_BRIDGE") : "";
 const streamId = BigInt(required("FIELD_BROWSER_TEXTURE_STREAM_ID"));
 const slotCount = Number(process.env.FIELD_BROWSER_TEXTURE_SLOTS || "3");
 let readyBoxUid = process.env.FIELD_BROWSER_TEXTURE_READY_BOX_UID || "";
-const bridge = cpuBitmap ? null : require(path.resolve(bridgePath));
+const bridge = sharedTexture ? require(path.resolve(bridgePath)) : null;
 
 app.commandLine.appendSwitch("ignore-gpu-blocklist");
 
-if (isLinux && !cpuBitmap) {
+if (isLinux && sharedTexture) {
   app.commandLine.appendSwitch("enable-features", "Vulkan");
   app.commandLine.appendSwitch("use-angle", "vulkan");
   app.commandLine.appendSwitch("enable-gpu-rasterization");
@@ -567,7 +574,7 @@ function createProducer() {
     webPreferences: {
       preload: path.join(__dirname, "browser-texture-preload.js"),
       offscreen: {
-        useSharedTexture: !cpuBitmap,
+        useSharedTexture: sharedTexture,
         sharedTexturePixelFormat: "argb",
         deviceScaleFactor,
       },
@@ -578,8 +585,12 @@ function createProducer() {
   });
   installPageBridge();
   installBrowserEvents();
-  window.webContents.setFrameRate(cpuBitmap ? 30 : 60);
+  // Offscreen rendering still runs in no-frames mode, at the lowest rate Chromium accepts. Keeping
+  // it on rather than showing an ordinary window is deliberate: an offscreen tab is never occluded
+  // or backgrounded, so rAF, timers and layout keep running exactly as they do on the texture path.
+  window.webContents.setFrameRate(noFrames ? 1 : cpuBitmap ? 30 : 60);
   window.webContents.on("paint", (event, _dirtyRect, image) => {
+    if (noFrames) return;
     if (cpuBitmap) {
       if (!controlReady || !image) return;
       frameId += 1n;
@@ -654,9 +665,10 @@ function createProducer() {
 }
 
 app.whenReady().then(() => {
-  console.log(`[producer] starting for ${targetUrl}${cpuBitmap ? " (CPU bitmap fallback)" : ""}`);
+  const mode = noFrames ? " (no frames)" : cpuBitmap ? " (CPU bitmap fallback)" : "";
+  console.log(`[producer] starting for ${targetUrl}${mode}`);
   installControl();
-  if (cpuBitmap) installPixelChannel();
+  if (cpuBitmap && !noFrames) installPixelChannel();
   createProducer();
 });
 
