@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicReference
  * difference is that it is started in the producer's no-frames mode, so its paints are dropped at
  * the source. That matters beyond saving a GPU: it is what lets the browser stack be *tested*, and
  * what lets a box treat a page as a data source rather than as a texture. See
- * [text], [attribute], [rows] and [waitFor] in PuppetBrowserPage.kt for that second use.
+ * [text], [attribute], [table] and [waitFor] in PuppetBrowserPage.kt for that second use.
  *
  * The tab is still a real, laid-out, script-running page: offscreen rendering stays on at
  * [framesPerSecond], which keeps `requestAnimationFrame`, timers and layout behaving as they do on

@@ -346,9 +346,45 @@ The Windows and Linux backends live behind the same construction point. Linux ha
 native validation/readback smoke; Windows intentionally stops short of claiming runtime support
 until it passes its own.
 
+## The third frame mode: no frames at all
+
+`FIELD_BROWSER_TEXTURE_NO_FRAMES=1` runs the producer with no shared texture, no native bridge and
+no readback socket. The paint handler returns before it looks at the frame, `offscreen` stays on so
+that rAF, timers and layout behave exactly as they do on the texture paths, and everything else
+about the producer — the control channel, events, input queue and coalescing, the page bridge, CDP
+— is the same code the other two modes run.
+
+[`HeadlessPuppetBrowser`](../src/jvmMain/kotlin/afield/four/browser/HeadlessPuppetBrowser.kt) is the
+JVM side: a `PuppetBrowserControl` with a null surface and a null transport. `PuppetBrowserControl`
+is the control plane split out of `PuppetBrowser`, which used to extend `ExternalBrowserSurface` and
+therefore `HasImageView` — so before the split, *naming* the control plane obliged the caller to own
+a Vulkan image view. `PuppetBrowser` still extends both, so no existing call site changed.
+
+Why it earns its place here rather than being a convenience: it is what makes this subsystem
+testable. `src/jvmTest/kotlin/afield/four/browser/HeadlessPuppetBrowserTest.kt` spawns a real
+Chromium against `src/jvmTest/resources/puppetBrowser/fixture.html` — no GPU, no display, no network
+— and asserts on values read out of the live DOM. Two things to know about it:
+
+- `electron/browser-texture-producer.js` and `electron/browser-texture-preload.js` are declared
+  `inputs.file`s of `jvmTest` in `build.gradle.kts`. They are read from the checkout at runtime and
+  are on no JVM classpath, so without that declaration an edit to either leaves the task UP-TO-DATE
+  and the test "passes" without running. Found by mutation-testing the producer: one of five
+  deliberate breakages reported no failures purely because the task never re-ran.
+- The offscreen frame rate still matters in this mode even though the frames are discarded, because
+  `Input.dispatchMouseEvent` for `mouseMoved` does not resolve until the renderer's next frame. At
+  1fps a single mouse move costs a second. The default is 8; `FIELD_BROWSER_TEXTURE_FRAME_RATE` and
+  the `framesPerSecond` constructor parameter override it.
+
+One producer defect fell out of the first run: a `navigate` issued immediately after construction
+could fail with net error -3, because Chromium aborted the un-awaited initial load and Electron
+reported that abort against the *new* `loadURL`. `navigate` now awaits the initial load first. The
+textured browser has always had the same race; it had no test that ever tried.
+
 ## Next integration slice
 
-Carry the now-working Electron session protocol across the remaining handle transfers:
-`DuplicateHandle` into Field on Windows and Unix-domain `SCM_RIGHTS` on Linux. Then forward pointer,
-scroll, keyboard, focus, navigation, and IME messages over the existing control channel. The
-renderer API does not need to change for those additions.
+Windows is the remaining gap in the handle transfers: `DuplicateHandle` into Field, and the
+producer-side bridge to go with it. macOS (Mach/IOSurface) and Linux (Unix-domain `SCM_RIGHTS`
+dma-buf) are both implemented and live-tested, and pointer, scroll, keyboard, focus, navigation and
+IME already travel over the control channel — see `PuppetBrowser` and `PuppetBrowserInteraction`.
+The renderer API did not need to change for any of it, which was the prediction this paragraph used
+to make.
