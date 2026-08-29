@@ -72,7 +72,7 @@
   {"doc": "faust_voice", "box": "faust_voice_interface", "codeSha256": "77c54dae992377c7", "codeLines": 30, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "faust_voice", "box": "faust_voice_play", "codeSha256": "3fdc7568b5360783", "codeLines": 16, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "faust_voice", "box": "faust_voice_waveform", "codeSha256": "af2e861e5e970444", "codeLines": 16, "receivers": ["afield.Box"], "preamble": ""},
-  {"doc": "field_ui_browser_texture", "box": "field_ui_texture_panel", "codeSha256": "d083927680ba65a1", "codeLines": 119, "receivers": ["afield.Box"], "preamble": "field_ui_browser_texture__field_ui_texture_panel.preamble.kt"},
+  {"doc": "field_ui_browser_texture", "box": "field_ui_texture_panel", "codeSha256": "1ef228132596d8ac", "codeLines": 121, "receivers": ["afield.Box"], "preamble": "field_ui_browser_texture__field_ui_texture_panel.preamble.kt"},
   {"doc": "field_ui_browser_texture", "box": "field_ui_texture_renderer", "codeSha256": "f1fea735a232c0dc", "codeLines": 15, "receivers": ["afield.Box"], "preamble": "field_ui_browser_texture__field_ui_texture_renderer.preamble.kt"},
   {"doc": "fn_differentiable_fit_demo", "box": "fn_fit_demo", "codeSha256": "c441a7567aa9ca0b", "codeLines": 16, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "geometry_from_disk", "box": "disk_glb", "codeSha256": "1f67a6896e92af6c", "codeLines": 43, "receivers": ["afield.Box"], "preamble": ""},
@@ -259,9 +259,9 @@
   {"doc": "wfc_worked_example", "box": "wfc_scalar_field", "codeSha256": "003af118a73829e4", "codeLines": 92, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "wfc_worked_example", "box": "wfc_simple_tiled", "codeSha256": "9d11ed72cba41e48", "codeLines": 84, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "youtube_kaleidoscope", "box": "youtube_kaleidoscope_renderer", "codeSha256": "51805903814ade8b", "codeLines": 20, "receivers": ["afield.Box"], "preamble": "youtube_kaleidoscope__youtube_kaleidoscope_renderer.preamble.kt"},
-  {"doc": "youtube_kaleidoscope", "box": "youtube_kaleidoscope_shards", "codeSha256": "1ff0763d0995f771", "codeLines": 102, "receivers": ["afield.Box"], "preamble": "youtube_kaleidoscope__youtube_kaleidoscope_shards.preamble.kt"},
-  {"doc": "youtube_mouse_keyboard_browser", "box": "youtube_desktop_panel", "codeSha256": "f49cb06d2327cf6c", "codeLines": 36, "receivers": ["afield.Box"], "preamble": "youtube_mouse_keyboard_browser__youtube_desktop_panel.preamble.kt"},
+  {"doc": "youtube_kaleidoscope", "box": "youtube_kaleidoscope_shards", "codeSha256": "53fdd5978bf6c70f", "codeLines": 104, "receivers": ["afield.Box"], "preamble": "youtube_kaleidoscope__youtube_kaleidoscope_shards.preamble.kt"},
+  {"doc": "youtube_mouse_keyboard_browser", "box": "youtube_desktop_panel", "codeSha256": "3b1fe34ba404d983", "codeLines": 38, "receivers": ["afield.Box"], "preamble": "youtube_mouse_keyboard_browser__youtube_desktop_panel.preamble.kt"},
   {"doc": "youtube_mouse_keyboard_browser", "box": "youtube_desktop_renderer", "codeSha256": "528a18f7ef1569d0", "codeLines": 20, "receivers": ["afield.Box"], "preamble": "youtube_mouse_keyboard_browser__youtube_desktop_renderer.preamble.kt"},
-  {"doc": "youtube_vr_browser", "box": "youtube_vr_panel", "codeSha256": "213d93c4ba7e3e25", "codeLines": 62, "receivers": ["afield.Box"], "preamble": "youtube_vr_browser__youtube_vr_panel.preamble.kt"},
+  {"doc": "youtube_vr_browser", "box": "youtube_vr_panel", "codeSha256": "6ebca90887881cf7", "codeLines": 64, "receivers": ["afield.Box"], "preamble": "youtube_vr_browser__youtube_vr_panel.preamble.kt"},
   {"doc": "youtube_vr_browser", "box": "youtube_vr_renderer", "codeSha256": "98763f73243ac024", "codeLines": 22, "receivers": ["afield.Box"], "preamble": "youtube_vr_browser__youtube_vr_renderer.preamble.kt"}
 ]
