@@ -37,7 +37,7 @@ axis. `language_extensions.md:267-278` ("When To Promote") is the route decision
 
 ### Who is on which route
 
-There are **8** registered main languages (Route B). The list is derived, not curated — it is every
+There are **9** registered main languages (Route B). The list is derived, not curated — it is every
 call to `registerMainLanguageRuntime`:
 
 | id | `BoxExecution` | site | anchor |
@@ -50,6 +50,7 @@ call to `registerMainLanguageRuntime`:
 | `kotlinjs` | `KotlinJsExecution` | `src/jvmMain/kotlin/afield/remotejs/KotlinJs.kt:73` | `class KotlinJsExecution` |
 | `forth` | `ForthExecution` | `src/jvmMain/kotlin/afield/forth/ForthInterface.kt:23` | `class ForthExecution` |
 | `remotejs` | `RemoteJSExectution` | `src/jvmMain/kotlin/afield/remotejs/RemoteJS.kt:446` | `class RemoteJSExectution` |
+| `datalog` | `DatalogExecution` | `src/jvmMain/kotlin/afield/datalog/DatalogInterface.kt:44` | `class DatalogExecution` |
 
 and the `registerMainLanguageRuntime` call each one makes:
 
@@ -63,6 +64,7 @@ and the `registerMainLanguageRuntime` call each one makes:
 | `kotlinjs` | `src/jvmMain/kotlin/afield/remotejs/KotlinJs.kt:64` | `id = "kotlinjs"` |
 | `forth` | `src/jvmMain/kotlin/afield/forth/ForthInterface.kt:264` | `id = "forth"` |
 | `remotejs` | `src/jvmMain/kotlin/afield/remotejs/RemoteJS.kt:145` | `id = "remotejs"` |
+| `datalog` | `src/jvmMain/kotlin/afield/datalog/DatalogInterface.kt:280` | `id = "datalog"` |
 
 Kotlin is the ninth and is the *absence* of an entry: `mainLanguage = null` means Kotlin
 (`MainLanguageRegistry.kt:51-56`), so there is no `KotlinExecution` runtime registered here.
@@ -287,9 +289,9 @@ write a Monarch grammar for a language Monaco already knows.
 
 ### The editor's language modules
 
-**16** editor language modules load at boot (`bootstrapMonaco.js:45-50`): `bithero/glsl`,
+**17** editor language modules load at boot (`bootstrapMonaco.js:45-50`): `bithero/glsl`,
 `bithero/slang`, `bithero/msl`, `bithero/forth`, `bithero/fieldml`, `bithero/languageExtensions`,
-`bithero/stacksl`, `bithero/rectsl`, `bithero/fnrewrite`, `bithero/sonicpi`, `bithero/faust`,
+`bithero/stacksl`, `bithero/rectsl`, `bithero/datalog`, `bithero/fnrewrite`, `bithero/sonicpi`, `bithero/faust`,
 `bithero/nano`, `bithero/kotlinjs`, `bithero/morpho`, `bithero/petri`, `bithero/brief`.
 
 That list is the honest census of the editor's language surface, and it does not line up with the
@@ -611,7 +613,7 @@ precisely, because they bound what "this page is checked" means.
 
 1. **Citations.** Every table row whose last two cells are `` `path:line` `` and `` `anchor` `` is
    re-checked: the anchor must still exist **somewhere in the cited file**, found by searching it.
-   There are **135** checked citations. The line number is *advisory* — it is what you are shown, and
+   There are **137** checked citations. The line number is *advisory* — it is what you are shown, and
    it disambiguates an anchor that occurs more than once, but a stale one does not fail the build. A
    citation breaks when the thing it names is renamed or deleted, not when it moves. That is the point:
    until 2026-08-12 this guard used a ±2-line window, which meant it reached into every file any
@@ -625,7 +627,7 @@ precisely, because they bound what "this page is checked" means.
    documented here.
 3. **The Monaco-provider claim.** `msl.js` must remain the only editor resource registering a Monaco
    completion provider.
-4. **Table sizes.** **135** checked citations and **9** coverage guards, both asserted, so deleting a
+4. **Table sizes.** **137** checked citations and **9** coverage guards, both asserted, so deleting a
    ledger row is as loud as breaking one.
 
 What it does **not** check, stated so nobody assumes otherwise:
