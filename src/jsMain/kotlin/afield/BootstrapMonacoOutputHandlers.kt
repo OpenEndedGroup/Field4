@@ -446,6 +446,9 @@ fun routeMonacoOutput(payload: Output, uidOverride: String = ""): Boolean {
     val endLine = payload.endLine
     val endColumn = payload.endColumn
     val property = payload.property
+    // A run that reported an error and still finished sets this, so its own success does not wipe the
+    // diagnostic it just placed. See Output.preserveErrors.
+    val preserveErrors = payload.preserveErrors
     val w = js("window")
     if (w.LineHeatmap != null && w.LineHeatmap != undefined) {
         w.LineHeatmap.recordExecution(payload)
@@ -480,13 +483,17 @@ fun routeMonacoOutput(payload: Output, uidOverride: String = ""): Boolean {
         "ok" -> {
             monacoSetStatus(uid, true, html)
             if (routeToMain) {
-                clearErrors(w.globalEditor)
-                clearStackTraceHints(w.globalEditor)
+                if (!preserveErrors) {
+                    clearErrors(w.globalEditor)
+                    clearStackTraceHints(w.globalEditor)
+                }
                 addOutput(w.globalEditor, html, line, "ok", annotation, frameMarker, -1, -1, -1)
             }
             if (embeddedEditor != null) {
-                clearErrors(embeddedEditor.editor)
-                clearStackTraceHints(embeddedEditor.editor)
+                if (!preserveErrors) {
+                    clearErrors(embeddedEditor.editor)
+                    clearStackTraceHints(embeddedEditor.editor)
+                }
                 addOutput(embeddedEditor.editor, html, line, "ok", annotation, frameMarker, -1, -1, -1)
             }
         }

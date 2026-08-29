@@ -93,7 +93,20 @@ data class Output(
     val endLine: Int = -1,
     val endColumn: Int = -1,
     val stack: List<OutputStackLocation> = emptyList(),
-    val suggestions: List<OutputSuggestion> = emptyList()
+    val suggestions: List<OutputSuggestion> = emptyList(),
+    /**
+     * Set on an end-of-run `"ok"` when this run also reported an error, so the client keeps the
+     * error markers instead of clearing them.
+     *
+     * A run can report an error and still finish successfully. `stack.auto` is the clearest case and
+     * does it deliberately: a StackSL slot that fails to compile leaves the previous binding in place
+     * and reports the diagnostic rather than throwing, so a half-typed program cannot take the frame
+     * down. The Kotlin around it then completes, the run emits `"ok"`, and the client's `"ok"` branch
+     * calls `clearErrors`, which removes *every* error output in the editor -- including the one
+     * placed a few milliseconds earlier by this same run. The error is reported, rendered, and then
+     * deleted by its own run's success, so the editor shows nothing at all.
+     */
+    val preserveErrors: Boolean = false
 )
 
 /**

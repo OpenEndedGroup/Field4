@@ -814,7 +814,8 @@ private fun setStackAutoShaderSource(module: Any, name: String, source: String, 
             "code",
             "stack.auto.$name",
             t.message ?: "Unable to compile stack.auto.$name",
-            t
+            t,
+            lineOverride = stackAutoErrorLine(box, source, t.message)
         )
         return
     }
@@ -2577,14 +2578,52 @@ private fun reportShaderStageError(
     propertyForUI: String,
     logLabel: String,
     message: String,
-    throwable: Throwable? = null
+    throwable: Throwable? = null,
+    lineOverride: Int? = null
 ) {
     val trimmed = message.trim().ifBlank { throwable?.message ?: logLabel }
     lprintln("error,graphics", "error during $logLabel $trimmed")
     throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
     if (currentShaderReloadMayReport()) {
-        box.error(trimmed, propertyForUI, numberFromErrorMessage(trimmed) ?: 0)
+        box.error(trimmed, propertyForUI, lineOverride ?: numberFromErrorMessage(trimmed) ?: 0)
     }
+}
+
+/**
+ * The line in the box's own `code` that a failing `stack.auto` diagnostic should mark, or null.
+ *
+ * Two corrections are needed to get from a StackSL diagnostic to an editor marker, and without both
+ * the marker lands somewhere arbitrary and reads as noise.
+ *
+ * **The number is a column, not a line.** StackSL renders a location as `line:column`
+ * (`StackSL.kt:16`), so a diagnostic reads `error: 3:11: Unknown StackSL word 'fb'`. [numberFromErrorMessage]
+ * tries `glslSourceLineRegex` first, which is written for glslang's `ERROR: 0:12:` where the leading
+ * number is a *file index* and the second is the line. The two formats are the same shape and mean
+ * different things, so the generic helper confidently returns 11 -- the column -- as a line number.
+ *
+ * **And the line is relative to the StackSL, not the box.** A slot is usually assigned from a string
+ * literal partway down a Kotlin box, so StackSL line 3 is not box line 3. This locates the program
+ * inside the box's code and offsets by where it starts.
+ *
+ * Returns null when the source is not found verbatim -- it may have been built programmatically -- and
+ * the caller then falls back to the generic extraction rather than inventing a position.
+ */
+private fun stackAutoErrorLine(box: Box, source: String, message: String?): Int? {
+    val stackSlLine = message
+        ?.let { Regex("""(?:error|warning):\s*(\d+):\d+:""", RegexOption.IGNORE_CASE).find(it) }
+        ?.groupValues?.getOrNull(1)?.toIntOrNull()
+        ?: return null
+    val code = box.code.takeIf { it.isNotEmpty() } ?: return null
+    // Match the source VERBATIM first. StackSL counts lines from the start of the string it was
+    // handed, and a `"""` literal usually begins with a newline, so its line 1 is the empty remainder
+    // of the assignment's own line. Trimming that newline away here would shift every marker up by
+    // one -- which it did, on the first attempt.
+    val at = code.indexOf(source).takeIf { it >= 0 }
+        ?: code.indexOf(source.trimEnd()).takeIf { it >= 0 }
+        ?: code.indexOf(source.trim()).takeIf { it >= 0 }
+        ?: return null
+    val startLine = code.substring(0, at).count { it == '\n' } + 1
+    return startLine + stackSlLine - 1
 }
 
 private fun prepareShaderStage(

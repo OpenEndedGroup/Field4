@@ -1025,13 +1025,34 @@ private fun renderPrintedOutput(content: Any?): String {
     }
 }
 
+/**
+ * Boxes that have reported an error output since their current run began.
+ *
+ * Keyed by box id, cleared by [beginExecutionErrorScope] at the two places a run starts. The set is
+ * read once, when the run's `"ok"` goes out, to decide whether the client may clear error markers --
+ * see [Output.preserveErrors]. A run that reports an error and still succeeds (`stack.auto` does this
+ * by design) would otherwise erase its own diagnostic.
+ */
+private val boxesWithRunErrors = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+/** Called where a run starts, so an error from the *previous* run is still cleared normally. */
+internal fun beginExecutionErrorScope(box: Box) {
+    boxesWithRunErrors.remove(box.id)
+}
+
 internal fun dispatchExecutionOutput(
     box: Box,
     reply: ((Message) -> Unit)?,
     output: Output,
     originSession: WebSocketSession? = thisSession.get()
 ) {
-    val normalized = if (output.uid.isBlank()) output.copy(uid = box.id) else output
+    var normalized = if (output.uid.isBlank()) output.copy(uid = box.id) else output
+    when (normalized.kind) {
+        "error", "err" -> boxesWithRunErrors.add(box.id)
+        "ok" -> if (boxesWithRunErrors.remove(box.id)) {
+            normalized = normalized.copy(preserveErrors = true)
+        }
+    }
     logErrorOutputToTerminal(box, normalized)
     reply?.invoke(Message("output").payload(normalized))
     _sendToPeerSessions(
@@ -1331,6 +1352,7 @@ class KotlinExecution : BoxExecution {
                     configureOutputProxies(box, reply, request.originSession)
                     // Drop any stale pinned compile error up front; reportCompileDiagnostics re-pins on failure.
                     PinnedConsole.clearError(box.id)
+                    beginExecutionErrorScope(box)
 
                     var hasError = false
                     val output = mutableListOf("")
@@ -2328,6 +2350,7 @@ class KotlinExecution : BoxExecution {
 
                 // Clear any stale pinned compile error before re-running; re-pinned below on failure.
                 PinnedConsole.clearError(box.id)
+                beginExecutionErrorScope(box)
                 val returnValues: List<ResultValue?> = box.ki.withSourceProperty(property) {
                     standardExecutionPractice(box.ki, code, { compileError ->
                         hasError = true
