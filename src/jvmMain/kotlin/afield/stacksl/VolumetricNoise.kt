@@ -1,6 +1,5 @@
 package afield.stacksl
 
-import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.sqrt
@@ -466,11 +465,26 @@ internal fun expandVolumetricHelpers(requested: Set<String>): Set<String> {
     return out
 }
 
-private fun Float.g(): String {
-    if (!this.isFinite()) return "0.0"
-    val text = String.format(Locale.US, "%.7f", this).trimEnd('0').trimEnd('.')
-    return if (text.contains('.')) text else "$text.0"
+/**
+ * A GLSL float literal. `Float.toString` already gives the shortest text that round-trips to the
+ * same float, so this is exact as well as readable -- `%.7f` would have written 31.32 as
+ * `31.3199997`. Exponent forms are expanded because GLSL will not take `1.0E-4`.
+ *
+ * Shared with the tests: the anti-drift check has to look for exactly the text the emitter wrote,
+ * so both sides must format through here.
+ */
+internal fun glslFloatLiteral(value: Float): String {
+    if (!value.isFinite()) return "0.0"
+    val text = value.toString()
+    val plain = if (text.contains('e', ignoreCase = true)) {
+        java.math.BigDecimal(text).toPlainString()
+    } else {
+        text
+    }
+    return if (plain.contains('.')) plain else "$plain.0"
 }
+
+private fun Float.g(): String = glslFloatLiteral(this)
 
 private fun NoiseVec3.g(): String = "vec3(${x.g()}, ${y.g()}, ${z.g()})"
 

@@ -547,23 +547,18 @@ class VolumetricNoiseTest {
         // compiled programs further down instead.
         val callSiteDefaults = setOf("DEFAULT_CURL_EPSILON", "DEFAULT_GRADIENT_EPSILON", "DEFAULT_WARP_STRENGTH")
         val missing = K.allScalars().filterKeys { it !in callSiteDefaults }.filter { (_, v) ->
-            val formatted = String.format(java.util.Locale.US, "%.7f", v).trimEnd('0').trimEnd('.')
-            formatted !in glsl
+            glslFloatLiteral(v) !in glsl
         }
         assertTrue(missing.isEmpty(), "these constants never reached the shader: ${missing.keys}")
 
         listOf(K.OCTAVE_OFFSET, K.FIELD_OFFSET_B, K.FIELD_OFFSET_C).forEach { v ->
-            listOf(v.x, v.y, v.z).forEach { c ->
-                if (c != 0f) {
-                    val formatted = String.format(java.util.Locale.US, "%.7f", c).trimEnd('0').trimEnd('.')
-                    assertTrue(formatted in glsl, "vector constant component $formatted never reached the shader")
-                }
+            listOf(v.x, v.y, v.z).filter { it != 0f }.forEach { c ->
+                assertTrue(glslFloatLiteral(c) in glsl, "vector component ${glslFloatLiteral(c)} never reached the shader")
             }
         }
         K.OCTAVE_ROTATION_COLUMNS.forEach { col ->
             listOf(col.x, col.y, col.z).filter { it != 0f }.forEach { c ->
-                val formatted = String.format(java.util.Locale.US, "%.7f", c).trimEnd('0').trimEnd('.')
-                assertTrue(formatted in glsl, "rotation component $formatted never reached the shader")
+                assertTrue(glslFloatLiteral(c) in glsl, "rotation component ${glslFloatLiteral(c)} never reached the shader")
             }
         }
     }
