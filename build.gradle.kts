@@ -1272,6 +1272,19 @@ val jvmTestTask = tasks.named<org.gradle.api.tasks.testing.Test>("jvmTest") {
     inputs.file("public/docs/projection_examples.md")
         .withPropertyName("projectionExamplesPage")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+    // Third input, third reason, same lesson. `HeadlessPuppetBrowserTest` spawns the Electron
+    // producer, which is *read from the checkout at runtime* — it is on no JVM classpath, so an
+    // edit to it invalidates nothing and the only live test of the browser stack inherits an
+    // UP-TO-DATE green. Measured on 2026-08-29 while deliberately breaking that file to check the
+    // test could fail at all: one of five mutations reported no failures purely because the task
+    // never re-ran, and reported a genuine failure the moment it was forced to. A guard that can
+    // pass stale reads as evidence, which is worse than not having one.
+    inputs.file("electron/browser-texture-producer.js")
+        .withPropertyName("browserTextureProducer")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file("electron/browser-texture-preload.js")
+        .withPropertyName("browserTexturePreload")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 // A known red recorded only in CI prose has been misgraded three times: once as an ordinary

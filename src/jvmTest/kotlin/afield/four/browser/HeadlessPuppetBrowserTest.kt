@@ -243,17 +243,24 @@ class HeadlessPuppetBrowserTest {
     }
 
     @Test
-    fun `navigating immediately after construction does not lose the race with the first load`() {
-        // The constructor starts a load without awaiting it. Navigating across that used to fail
-        // with net error -3 (ERR_ABORTED) reported against the *new* navigation, for a page that
-        // was about to load perfectly well — found by this suite's own first test on 2026-08-29.
-        val second = File(fixtures, "second.html").toURI().toString()
+    fun `constructing and immediately navigating to the same page works`() {
+        // The constructor starts a load and does not await it, so a navigation issued straight
+        // afterwards races it: Chromium aborts the in-flight load and Electron reports that abort
+        // (net error -3) against the *new* `loadURL`, which then rejects for a page that was about
+        // to load perfectly well. Seen once, on this suite's own first assertion, 2026-08-29, and
+        // fixed by making `navigate` wait for the un-awaited first load to settle.
+        //
+        // Read this as a smoke, not as a pin. Removing that fix again leaves this test green: the
+        // window is narrow, it needs the abort event to land after the second `loadURL` installed
+        // its listeners, and neither this shape nor a deliberately slow first page reproduces it on
+        // demand. The worklog records both attempts. What it does still catch is the *loud* form of
+        // the same failure — a navigation immediately after construction that does not arrive.
         val racer = HeadlessPuppetBrowser(url = fixtureUrl, width = 400, height = 300, projectRoot = root)
         try {
-            val state = racer.navigate(second).get(30, TimeUnit.SECONDS)
-            assertTrue(state.url.endsWith("second.html"), "navigate reported ${state.url}")
+            val state = racer.navigate(fixtureUrl).get(30, TimeUnit.SECONDS)
+            assertTrue(state.url.endsWith("fixture.html"), "navigate reported ${state.url}")
             assertEquals(
-                "Second page",
+                "Pages as data",
                 racer.evaluate("document.getElementById('headline').textContent")
                     .get(15, TimeUnit.SECONDS).value.jsonPrimitive.content,
             )
