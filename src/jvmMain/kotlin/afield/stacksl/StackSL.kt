@@ -1016,7 +1016,9 @@ private class FunctionCompiler(
             }
             "curl3" -> {
                 requiredHelpers += "curl3"
-                val args = knobArgs(token, raw, requestedArity, "curl3 epsilon", CURL_EPSILON_DEFAULT) ?: return
+                val args = knobArgs(
+                    token, raw, requestedArity, "curl3 epsilon", CURL_EPSILON_DEFAULT, CURL_OCTAVES_DEFAULT
+                ) ?: return
                 val (p, epsilon, octaves) = args
                 push(
                     expr(
@@ -2088,7 +2090,8 @@ private class FunctionCompiler(
         raw: String,
         requestedArity: Int?,
         knobRole: String,
-        knobDefault: String
+        knobDefault: String,
+        octaveDefault: String = FRACTAL_OCTAVES_DEFAULT
     ): List<Int>? =
         consumeArityArgs(
             token,
@@ -2096,7 +2099,7 @@ private class FunctionCompiler(
             listOf(
                 StackSLArg("p", "input"),
                 StackSLArg(knobRole, "vec4($knobDefault)"),
-                StackSLArg("octaves", "vec4($FRACTAL_OCTAVES_DEFAULT)")
+                StackSLArg("octaves", "vec4($octaveDefault)")
             ),
             requestedArity ?: 1
         )
@@ -2768,6 +2771,7 @@ private val FRACTAL_OCTAVES_DEFAULT = VolumetricNoiseConstants.DEFAULT_OCTAVES.t
 private val FRACTAL_LACUNARITY_DEFAULT = VolumetricNoiseConstants.DEFAULT_LACUNARITY.toString()
 private val FRACTAL_GAIN_DEFAULT = VolumetricNoiseConstants.DEFAULT_GAIN.toString()
 private val CURL_EPSILON_DEFAULT = VolumetricNoiseConstants.DEFAULT_CURL_EPSILON.toString()
+private val CURL_OCTAVES_DEFAULT = VolumetricNoiseConstants.DEFAULT_CURL_OCTAVES.toString()
 private val GRADIENT_EPSILON_DEFAULT = VolumetricNoiseConstants.DEFAULT_GRADIENT_EPSILON.toString()
 private val WARP_STRENGTH_DEFAULT = VolumetricNoiseConstants.DEFAULT_WARP_STRENGTH.toString()
 
