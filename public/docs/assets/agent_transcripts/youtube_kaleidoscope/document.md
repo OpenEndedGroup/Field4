@@ -42,7 +42,7 @@ start(renderer::run)
 <!-- field-box id="youtube_kaleidoscope_shards" index="1" -->
 
 ```edn [field-box id="youtube_kaleidoscope_shards" role="properties"]
-{"id" "youtube_kaleidoscope_shards" "index" 1 "name" "YouTube — 224 Vulkan shards" "parents" ["root" "youtube_kaleidoscope_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_kaleidoscope_renderer"} "name" "YouTube — 224 Vulkan shards" "_tombstone" false "frame" #afield/rect [330.0 40.0 280.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_kaleidoscope_shards_code_.kt" "lines" 102 "characters" 3822 "sha256" "f90b734eec596c33c8f30ef4f83964443d6976f1015656968657950906284ce5"}]}
+{"id" "youtube_kaleidoscope_shards" "index" 1 "name" "YouTube — 224 Vulkan shards" "parents" ["root" "youtube_kaleidoscope_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_kaleidoscope_renderer"} "name" "YouTube — 224 Vulkan shards" "_tombstone" false "frame" #afield/rect [330.0 40.0 280.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_kaleidoscope_shards_code_.kt" "lines" 104 "characters" 3983 "sha256" "cd0aeac7cfef58e9aa0943e30e88196dfc393808cc5e539efa6c01ef15ad4ac1"}]}
 ```
 
 ```kotlin [field-property box="youtube_kaleidoscope_shards" name="code" path="youtube_kaleidoscope_shards_code_.kt"]

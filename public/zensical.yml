@@ -71,6 +71,11 @@ nav:
     - Field Systems:
       - Rendering & GPU:
         - afield.four Graphics: afield_four_graphics.md
+        # Directly after the graphics contract and before the probes page, because it is the sequel
+        # to one and the setup for the other: afield_four_graphics teaches the stateless compute
+        # dispatch, this teaches what changes when the shader's input is its own last output, and
+        # field_probes instruments exactly that kind of scene.
+        - GPU State: gpu_state.md
         - Puppet Browser: puppet_browser.md
         - Fabricate Renderer: fabricate_renderer.md
         - Ray Tracing Examples: ray_tracing_examples.md

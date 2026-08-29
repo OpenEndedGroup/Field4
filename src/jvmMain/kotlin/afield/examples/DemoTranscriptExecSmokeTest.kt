@@ -298,6 +298,7 @@ object DemoTranscriptExecSmokeTest {
         // frames that is deliberately not committed -- so compiled here and no further.
         "splat_sequence_streaming",
         "recstl_playground",
+        "gpu_state",
         "threebox",
         "rectsl_dataviz",
         "rectsl_plot_axes",

@@ -190,6 +190,54 @@ class KotlinSourcePartitionTest {
     }
 
     @Test
+    fun `a declaration starts at an annotation whose arguments wrap over several lines`() {
+        // `@Target(` … `)` above `annotation class exported`, and the same shape as a
+        // `@JsonClassDescription("…" + "…")` paragraph above an AI tool's request class. The run scan
+        // reads one line at a time, so an argument list left open at the end of one made the whole
+        // annotation unattributed filler — 36 lines across four files, over half of everything the
+        // partition could not name, and the movement that pushed SourcePartitionGuard past its ratchet.
+        val source = """
+            @Target(
+                AnnotationTarget.FUNCTION,
+                AnnotationTarget.PROPERTY
+            )
+            @Retention(AnnotationRetention.RUNTIME)
+            annotation class exported
+        """.trimIndent()
+
+        val partition = KotlinSourcePartition.partition(source)
+        assertEquals(emptyList(), KotlinSourcePartition.verify(partition), "invariants")
+        assertEquals(source.split("\n"), KotlinSourcePartition.reconstruct(partition), "reconstruction")
+        val declared = declaration(partition, "exported")
+        assertEquals(lineOf(source, "@Target("), declared.startLine, "the span starts at the wrapped annotation")
+        assertEquals(lineOf(source, "annotation class"), declared.declarationLine, "the signature does not")
+        assertTrue(
+            partition.allSpans().none { it.kind == KotlinSourcePartition.Kind.FILLER },
+            "nothing should be left over: ${partition.spans}"
+        )
+    }
+
+    @Test
+    fun `an open bracket that is not an annotation does not swallow the declaration`() {
+        // The refusal that makes the case above safe. `@JvmStatic fun of(` also ends with a bracket
+        // open, and stepping over its balance point would step over the whole signature and lose the
+        // function entirely — a far worse outcome than leaving a line unnamed.
+        val source = """
+            object Holder {
+                @JvmStatic fun of(
+                    value: Int
+                ): Int = value
+            }
+        """.trimIndent()
+
+        val partition = KotlinSourcePartition.partition(source)
+        assertEquals(emptyList(), KotlinSourcePartition.verify(partition), "invariants")
+        val function = declaration(partition, "of")
+        assertEquals(lineOf(source, "@JvmStatic fun of("), function.declarationLine, "the signature line")
+        assertEquals(lineOf(source, "): Int = value"), function.endLine, "the wrapped parameter list belongs to it")
+    }
+
+    @Test
     fun `members of a container are children, members of a function body are not`() {
         val source = """
             object Outer {

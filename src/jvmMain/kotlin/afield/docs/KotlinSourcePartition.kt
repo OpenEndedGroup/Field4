@@ -637,10 +637,19 @@ object KotlinSourcePartition {
          * Annotation-only and modifier-only lines above the keyword are part of the declaration, so the
          * span starts at the first of them while [Head.keywordLine] stays on the signature. A blank
          * line breaks the run: it is the author saying these are two different things.
+         *
+         * An annotation whose argument list runs over several lines is part of the run too — see
+         * [multiLineAnnotationEnd], which is what lets the scan step over it.
          */
         fun headAt(index: Int, hi: Int): Head? {
             var scan = index
-            while (scan < hi && isPrefixOnlyLine(scan)) scan++
+            while (scan < hi) {
+                if (isPrefixOnlyLine(scan)) {
+                    scan++
+                    continue
+                }
+                scan = multiLineAnnotationEnd(scan, hi) ?: break
+            }
             if (scan >= hi) return null
             val decl = recognize(masked.code[scan]) ?: return null
             return Head(firstLine = index, keywordLine = scan, decl = decl)
@@ -654,6 +663,50 @@ object KotlinSourcePartition {
             if (stripped.isEmpty()) return true
             val tokens = stripped.split(WHITESPACE).filter { it.isNotEmpty() }
             return tokens.isNotEmpty() && tokens.all { it in MODIFIERS }
+        }
+
+        /**
+         * The line after an annotation whose argument list opens on [index] and closes on a later line,
+         * or null when [index] is not that.
+         *
+         * [isPrefixOnlyLine] reads one line at a time, and [stripAnnotations] refuses to guess at an
+         * argument list left open at the end of one, so a wrapped annotation was invisible to the run
+         * scan in [headAt]: `@Target(` … `)` above `annotation class exported`, or a
+         * `@JsonClassDescription("…" + "…" + "…")` paragraph above an AI tool's request class. The whole
+         * run came out as unattributed FILLER and the declaration underneath began at its keyword
+         * instead of at its first annotation, which a source page renders as an anonymous fragment
+         * followed by a declaration missing its own annotations.
+         *
+         * Two deliberate refusals, both of them "return null and leave the run as FILLER", because a
+         * wrong guess here does not lose a line — it moves a declaration's start into the middle of an
+         * argument list, which is worse than not naming it:
+         *
+         *  - the opener has to be an annotation and nothing else. `@Foo(bar) fun baz(` also ends with
+         *    brackets open, and stepping over its balance point would step over the whole signature and
+         *    lose the function;
+         *  - the closing bracket has to be the last thing on its line. `) fun baz(` would balance and
+         *    then need the residue re-read as a fresh head, which is a second guess on top of the first.
+         *    Every live instance in this repository closes on a line holding only `)`.
+         */
+        fun multiLineAnnotationEnd(index: Int, hi: Int): Int? {
+            val open = openAnnotationBracket(masked.code[index]) ?: return null
+            val close = if (open.first == '(') ')' else ']'
+            var depth = open.second
+            var line = index + 1
+            // A bound, so a line that never balances cannot swallow the rest of the file while looking
+            // like one declaration. No annotation in the repository wraps over more than nine lines.
+            val last = minOf(hi, index + 1 + MAX_ANNOTATION_WRAP)
+            while (line < last) {
+                val text = masked.code[line]
+                for (character in text) {
+                    if (character == open.first) depth++ else if (character == close) depth--
+                }
+                if (depth <= 0) {
+                    return if (text.trimEnd().endsWith(close)) line + 1 else null
+                }
+                line++
+            }
+            return null
         }
 
         /**
@@ -843,6 +896,39 @@ object KotlinSourcePartition {
             rest = rest.substring(at).trimStart()
         }
         return rest
+    }
+
+    /** How many lines past its opener a wrapped annotation may close on. See [Builder.multiLineAnnotationEnd]. */
+    private const val MAX_ANNOTATION_WRAP = 12
+
+    /**
+     * The bracket an annotation on [text] leaves open at the end of the line, and how deep, or null.
+     *
+     * Complete annotations in front of it are consumed by [stripAnnotations] first, so
+     * `@Retention(RUNTIME) @Target(` reports the `@Target` bracket and `@Foo(bar) fun baz(` reports
+     * nothing — the residue there is a declaration, not an annotation, which is the distinction
+     * [Builder.multiLineAnnotationEnd] depends on.
+     */
+    private fun openAnnotationBracket(text: String): Pair<Char, Int>? {
+        val rest = stripAnnotations(text.trim())
+        if (!rest.startsWith("@")) return null
+        var at = 1
+        while (at < rest.length && (rest[at].isLetterOrDigit() || rest[at] == '_' ||
+                rest[at] == '.' || rest[at] == ':')
+        ) {
+            at++
+        }
+        if (at == 1) return null
+        if (at >= rest.length) return null
+        val open = rest[at]
+        if (open != '(' && open != '[') return null
+        val close = if (open == '(') ')' else ']'
+        var depth = 0
+        while (at < rest.length) {
+            if (rest[at] == open) depth++ else if (rest[at] == close) depth--
+            at++
+        }
+        return if (depth > 0) open to depth else null
     }
 
     /** [text] with any leading run of modifier words removed. */

@@ -4,6 +4,62 @@
   let forthRegistered = false;
   let morphoRegistered = false;
 
+  // A declared `data-lang` that highlight.js does not know is rendered PLAIN, never guessed.
+  //
+  // `highlightLine` colours one line at a time, so the old `hljs.highlightAuto` fallback was
+  // re-detecting the language for every line independently, from a single line of context. On a GLSL
+  // push-constant block that produced a different guess per line, and the text inside `// ...` was
+  // tokenised as code and lit up as keywords -- because none of the guessed languages comment with
+  // `//`. Two lines of the same block rendered correctly and three did not, which reads as a theme
+  // bug rather than a lexer one.
+  //
+  // Measured, not guessed at, on the exact block from `gpu_state.md` against this same 11.8.0 common
+  // build. `hljs.getLanguage("glsl")` is false, so every line took the fallback, and the fallback
+  // returned a DIFFERENT language per line:
+  //
+  //     layout(push_constant) uniform dat {                    -> scss
+  //     State   state;        // this frame's half ...         -> cpp
+  //     State   prevState;    // last frame's half - read      -> cpp
+  //     Anchors anchors;      // written once, read every ...  -> perl
+  //     Heat    heat;         // zero-initialised, device- ... -> perl
+  //
+  // Perl is the one that does the visible damage: `read` and `local` are Perl keywords and Perl
+  // comments with `#`, so those two words lit up *inside* a `//` comment while the two lines that
+  // happened to guess cpp rendered perfectly. Same block, five lines, three languages.
+  //
+  // The CDN bundle above is highlight.js's *common* build (~38 languages). It has kotlin, bash,
+  // javascript, python, swift, csharp, json, yaml, ruby and plaintext -- so those fences are fine --
+  // but it does NOT have glsl, and it cannot have this repo's own languages. Guessing on those is
+  // worse than not colouring them: unhighlighted code is obviously unhighlighted, whereas confidently
+  // mis-highlighted code puts keywords inside comments and gives the reader no way to tell.
+  //
+  // To add a language, either register a grammar (see forth and morpho below) or alias it here to a
+  // built-in whose lexical shape genuinely matches -- same comment syntax above all.
+  const LANGUAGE_ALIASES = {
+    // GLSL is C's lexical family: `//` and `/* */` comments, braces, semicolons, C numeric literals.
+    // cpp also carries `uniform`/`layout`/`vec4`-shaped identifiers as plain identifiers rather than
+    // mismatching them, which is the correct outcome.
+    glsl: "cpp",
+    // StackSL *is* a Forth: `: name ... ;` definitions, postfix words, a data stack. The grammar
+    // registered below was written for it -- its FIELD_WORDS list is Field's own vocabulary
+    // (`fline`, `vec2`, `plot-stack`, `println`), which is why aliasing here rather than writing a
+    // second grammar is the honest move. It is not exact: StackSL's local marks (`=name`, `>name`,
+    // `<name`) and property reads (`?pc.knobs`) are not Forth and fall through as plain text, which
+    // is the right failure -- uncoloured, not miscoloured.
+    stacksl: "forth"
+  };
+
+  /**
+   * Resolve a fence's declared language to a grammar highlight.js actually has, or null.
+   * Returning null means "render plain" -- it is a deliberate outcome, not a failure.
+   */
+  function resolveLanguage(language) {
+    if (!language) return null;
+    const key = String(language).toLowerCase();
+    const mapped = LANGUAGE_ALIASES[key] || key;
+    return hljs.getLanguage(mapped) ? mapped : null;
+  }
+
   function registerForthLanguage() {
     if (!window.hljs || forthRegistered || hljs.getLanguage("forth")) {
       forthRegistered = true;
@@ -382,12 +438,12 @@
     if (!window.hljs) return escapeHtml(line === "" ? "\u00a0" : line);
     registerForthLanguage();
     const source = line === "" ? " " : line;
-    let html;
-    if (hljs.getLanguage(language)) {
-      html = hljs.highlight(source, { language, ignoreIllegals: true }).value;
-    } else {
-      html = hljs.highlightAuto(source).value;
-    }
+    const resolved = resolveLanguage(language);
+    // No guessing: an unknown declared language renders as escaped plain text. See LANGUAGE_ALIASES.
+    // An empty line takes the same non-breaking space the no-hljs path above uses, so a blank
+    // line in an unhighlighted fence keeps its height instead of collapsing.
+    if (!resolved) return escapeHtml(line === "" ? "\u00a0" : line);
+    const html = hljs.highlight(source, { language: resolved, ignoreIllegals: true }).value;
     return line === "" ? html.replace(" ", "&nbsp;") : html;
   }
 

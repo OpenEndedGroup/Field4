@@ -42,7 +42,7 @@ start(renderer::run)
 <!-- field-box id="youtube_desktop_panel" index="1" -->
 
 ```edn [field-box id="youtube_desktop_panel" role="properties"]
-{"id" "youtube_desktop_panel" "index" 1 "name" "YouTube — direct mouse + keyboard" "parents" ["root" "youtube_desktop_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_desktop_renderer"} "name" "YouTube — direct mouse + keyboard" "_tombstone" false "frame" #afield/rect [330.0 140.0 320.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_desktop_panel_code_.kt" "lines" 36 "characters" 1202 "sha256" "4b153c5c6af4dbf8ef18041ddcbaed6398bc895456617eae157f9e0bd01f6d1c"}]}
+{"id" "youtube_desktop_panel" "index" 1 "name" "YouTube — direct mouse + keyboard" "parents" ["root" "youtube_desktop_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_desktop_renderer"} "name" "YouTube — direct mouse + keyboard" "_tombstone" false "frame" #afield/rect [330.0 140.0 320.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_desktop_panel_code_.kt" "lines" 38 "characters" 1363 "sha256" "295d294a6ae7cc73d2a55d3ed6febdf7951b73dbe66630dba547df24b1c6022a"}]}
 ```
 
 ```kotlin [field-property box="youtube_desktop_panel" name="code" path="youtube_desktop_panel_code_.kt"]

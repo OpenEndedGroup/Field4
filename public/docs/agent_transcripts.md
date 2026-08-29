@@ -40,13 +40,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 82 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+All 83 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
 not in the same way, and the difference is worth knowing before you trust one. 56 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
 error-kind output line. (Almost always that is every box in the file. A transcript may
 create a box it does not execute — one that wants a device the build does not have, or that is meant to fail so a
-diagnostic can be shown — and only the ops it actually writes down are replayed.) 19 want
+diagnostic can be shown — and only the ops it actually writes down are replayed.) 20 want
 something the lightweight build does not own — a GLFW window and Vulkan renderer, an external audio
 service, or a camera — so those are **built and compiled**: the graph is assembled through the real
 apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal evaluation —
@@ -997,6 +997,12 @@ where the resolved source frame did not move, so scrubbing a shot costs nothing 
 frame boundary. Needs your own frames: the box prints how to make them and stops if the directory is
 absent, rather than shipping somebody's capture as a fixture.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/splat_sequence_streaming/metadata.edn)
+
+**gpu_state** — A stateful GPU simulation: 40,000 particles whose positions and velocities live in a
+ping-ponged pair of device-local buffers and are never uploaded after frame one. A renderer box, a
+compute box whose force law is a live `stack.auto` StackSL slot you can retype while it runs, and a
+draw box reading the same allocation. The companion page is [GPU State](gpu_state.md).
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/gpu_state/metadata.edn)
 
 **threebox** — A self-contained renderer + compute + draw particle system: a renderer box that owns
 the `Window`/`Renderer` and pumps the loop, a compute box that simulates 100k particles into a

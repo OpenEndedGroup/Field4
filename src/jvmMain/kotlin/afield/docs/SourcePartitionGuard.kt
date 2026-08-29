@@ -75,17 +75,25 @@ object SourcePartitionGuard {
      * Blank lines between declarations are `FILLER` too and are not counted here: there is nothing to
      * learn about them and they would swamp the number that matters.
      *
-     * 63 of 564,283 lines, down from 2,622 when this guard was first run — the difference being five
+     * 33 of 589,506 lines, down from 2,622 when this guard was first run — the difference being six
      * shapes the scanner learned along the way, each of them a bug the census found and the invariants
-     * could not (see [KotlinSourcePartition] for what they were). What remains is **multi-line
-     * annotations** in two flavours: an argument list spread over several lines above a declaration
-     * (`@Target(` … `)` in `KotlinScriptEngine.kt`), and an annotated accessor (`@Synchronized` above
-     * `get() = …` in `stats.kt`). Both leave the annotation stranded from the declaration it belongs
-     * to, which a page would render as an anonymous fragment. Neither loses a line.
+     * could not (see [KotlinSourcePartition] for what they were).
+     *
+     * The sixth closed the first of the two flavours of **multi-line annotation** this note used to
+     * name as outstanding: an argument list spread over several lines above a declaration, `@Target(`
+     * … `)` in `KotlinScriptEngine.kt` and a `@JsonClassDescription("…" + "…")` paragraph in `Tools.kt`
+     * and `GeometryAgentTools.kt`. It was 36 lines, over half of the 69 this guard was reporting;
+     * `KotlinSourcePartition`'s `multiLineAnnotationEnd` steps over it now.
+     *
+     * What remains is the other flavour, the **annotated accessor** — `@Synchronized` above
+     * `get() = values.size`, four times in `stats.kt` — plus a tail of wrapped expression bodies whose
+     * continuation line begins with something `CONTINUES_BEFORE` does not list (a bare `value`, a
+     * dangling `else`). Both strand a fragment from the declaration it belongs to, which a page would
+     * render anonymously. Neither loses a line.
      *
      * Lower it whenever the scanner learns a shape; raise it only with a reason.
      */
-    private const val MAX_FILLER_CODE_LINES = 63
+    private const val MAX_FILLER_CODE_LINES = 33
 
     /**
      * The ratchet on declarations [KotlinSourceIndex] reports from *inside a function body*.
