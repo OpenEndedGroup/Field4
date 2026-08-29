@@ -51,9 +51,6 @@
     // A main-world global. An isolated-world evaluation must not be able to see it.
     window.fixtureSecret = "main-world-only";
 
-    // A promise that is not already resolved, so awaiting it is a real wait rather than a formality.
-    window.deferred = new Promise((resolve) => setTimeout(() => resolve(42), 250));
-
     const entry = document.getElementById("entry");
     const echo = document.getElementById("echo");
     const keys = document.getElementById("keys");
@@ -71,7 +68,6 @@
       late.id = "late";
       late.textContent = "arrived";
       document.body.appendChild(late);
-      document.body.dataset.ready = "yes";
     }, 400);
   </script>
 </body>
