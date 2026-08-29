@@ -977,6 +977,85 @@ private class FunctionCompiler(
                 requiredHelpers += "fbm"
                 unary(token, "fbm") { "vec4(${options.prefix}_fbm(${ref(it)}.xy + ${ref(it)}.zw * 0.07))" }
             }
+
+            // The volumetric family. Unlike `noise`/`fbm` above, these read `input.xyz` (and
+            // `.xyzw`) as a real coordinate rather than folding z into x at 1/14 weight, and their
+            // fbm divides by the accumulated amplitude so the range is exactly [0,1). See
+            // VolumetricNoise.kt for why they carry their own hashes.
+            "noise3" -> {
+                requiredHelpers += "noise3"
+                unary(token, "noise3") { "vec4(${options.prefix}_noise3(${ref(it)}.xyz))" }
+            }
+            "noise4" -> {
+                requiredHelpers += "noise4"
+                unary(token, "noise4") { "vec4(${options.prefix}_noise4(${ref(it)}))" }
+            }
+            "fbm3" -> {
+                requiredHelpers += "fbm3"
+                val args = fractalArgs(token, raw, requestedArity, "p") ?: return
+                val (p, octaves, lacunarity, gain) = args
+                push(
+                    expr(
+                        "vec4(${options.prefix}_fbm3(${ref(p)}.xyz, ${ref(octaves)}.x, " +
+                            "${ref(lacunarity)}.x, ${ref(gain)}.x))",
+                        args, token, "fbm3"
+                    )
+                )
+            }
+            "fbm4" -> {
+                requiredHelpers += "fbm4"
+                val args = fractalArgs(token, raw, requestedArity, "p") ?: return
+                val (p, octaves, lacunarity, gain) = args
+                push(
+                    expr(
+                        "vec4(${options.prefix}_fbm4(${ref(p)}, ${ref(octaves)}.x, " +
+                            "${ref(lacunarity)}.x, ${ref(gain)}.x))",
+                        args, token, "fbm4"
+                    )
+                )
+            }
+            "curl3" -> {
+                requiredHelpers += "curl3"
+                val args = knobArgs(
+                    token, raw, requestedArity, "curl3 epsilon", CURL_EPSILON_DEFAULT, CURL_OCTAVES_DEFAULT
+                ) ?: return
+                val (p, epsilon, octaves) = args
+                push(
+                    expr(
+                        "vec4(${options.prefix}_curl3(${ref(p)}.xyz, ${ref(epsilon)}.x, " +
+                            "${ref(octaves)}.x, $FRACTAL_LACUNARITY_DEFAULT, $FRACTAL_GAIN_DEFAULT), 0.0)",
+                        args, token, "curl3"
+                    )
+                )
+            }
+            "fbmd3" -> {
+                requiredHelpers += "fbmd3"
+                val args = knobArgs(token, raw, requestedArity, "fbmd3 epsilon", GRADIENT_EPSILON_DEFAULT) ?: return
+                val (p, epsilon, octaves) = args
+                push(
+                    expr(
+                        "${options.prefix}_fbmd3(${ref(p)}.xyz, ${ref(epsilon)}.x, " +
+                            "${ref(octaves)}.x, $FRACTAL_LACUNARITY_DEFAULT, $FRACTAL_GAIN_DEFAULT)",
+                        args, token, "fbmd3"
+                    )
+                )
+            }
+            "warp3" -> {
+                requiredHelpers += "warp3"
+                val args = knobArgs(token, raw, requestedArity, "warp3 strength", WARP_STRENGTH_DEFAULT) ?: return
+                val (p, strength, octaves) = args
+                push(
+                    expr(
+                        "vec4(${options.prefix}_warp3(${ref(p)}.xyz, ${ref(strength)}.x, " +
+                            "${ref(octaves)}.x, $FRACTAL_LACUNARITY_DEFAULT, $FRACTAL_GAIN_DEFAULT))",
+                        args, token, "warp3"
+                    )
+                )
+            }
+            "worley3", "voronoi3" -> {
+                requiredHelpers += "worley3"
+                unary(token, "worley3") { "${options.prefix}_worley3(${ref(it)}.xyz)" }
+            }
             "pulse" -> {
                 requiredHelpers += "pulse"
                 val args = consumeArityArgs(
@@ -1986,6 +2065,45 @@ private class FunctionCompiler(
         return consumed + missing + defaults
     }
 
+    /**
+     * `(p, octaves, lacunarity, gain)` for `fbm3`/`fbm4`. Defaulting to arity 1 rather than
+     * sniffing the stack depth is deliberate: a noise word that silently swallowed three more
+     * values when the stack happened to be deep would be exactly the class of bug the
+     * `=name`/`>name` pruning trap produces.
+     */
+    private fun fractalArgs(token: Token, raw: String, requestedArity: Int?, first: String): List<Int>? =
+        consumeArityArgs(
+            token,
+            raw,
+            listOf(
+                StackSLArg(first, "input"),
+                StackSLArg("octaves", "vec4($FRACTAL_OCTAVES_DEFAULT)"),
+                StackSLArg("lacunarity", "vec4($FRACTAL_LACUNARITY_DEFAULT)"),
+                StackSLArg("gain", "vec4($FRACTAL_GAIN_DEFAULT)")
+            ),
+            requestedArity ?: 1
+        )
+
+    /** `(p, <the word's own knob>, octaves)` for `curl3`, `fbmd3` and `warp3`. */
+    private fun knobArgs(
+        token: Token,
+        raw: String,
+        requestedArity: Int?,
+        knobRole: String,
+        knobDefault: String,
+        octaveDefault: String = FRACTAL_OCTAVES_DEFAULT
+    ): List<Int>? =
+        consumeArityArgs(
+            token,
+            raw,
+            listOf(
+                StackSLArg("p", "input"),
+                StackSLArg(knobRole, "vec4($knobDefault)"),
+                StackSLArg("octaves", "vec4($octaveDefault)")
+            ),
+            requestedArity ?: 1
+        )
+
     private fun unsupportedArity(token: Token, word: String, base: String, arity: Int?, supported: Set<Int>) {
         val suffix = arity?.let { ".$it" } ?: ""
         errorOrWarning(token, "Unsupported StackSL arity '$base$suffix'; supported arities are ${supported.sorted().joinToString(", ")}.")
@@ -2416,6 +2534,11 @@ private val stackSLArityVariantArities = mapOf(
     "gradient.a" to (1..2).toSet(),
     "divergence" to (1..2).toSet(),
     "curl" to (1..2).toSet(),
+    "fbm3" to (1..4).toSet(),
+    "fbm4" to (1..4).toSet(),
+    "curl3" to (1..3).toSet(),
+    "fbmd3" to (1..3).toSet(),
+    "warp3" to (1..3).toSet(),
     "phacelle" to (1..4).toSet(),
     "directional-noise" to (1..4).toSet(),
     "directionalnoise" to (1..4).toSet(),
@@ -2642,7 +2765,17 @@ private val namedColors = mapOf(
     "orange" to "vec4(1.0, 0.45, 0.0, 1.0)"
 )
 
-private val builtinWords = setOf(
+// Defaults for the volumetric noise words, taken from the one place they are defined so the
+// compiler, the emitted GLSL and the CPU reference cannot disagree about them.
+private val FRACTAL_OCTAVES_DEFAULT = VolumetricNoiseConstants.DEFAULT_OCTAVES.toString()
+private val FRACTAL_LACUNARITY_DEFAULT = VolumetricNoiseConstants.DEFAULT_LACUNARITY.toString()
+private val FRACTAL_GAIN_DEFAULT = VolumetricNoiseConstants.DEFAULT_GAIN.toString()
+private val CURL_EPSILON_DEFAULT = VolumetricNoiseConstants.DEFAULT_CURL_EPSILON.toString()
+private val CURL_OCTAVES_DEFAULT = VolumetricNoiseConstants.DEFAULT_CURL_OCTAVES.toString()
+private val GRADIENT_EPSILON_DEFAULT = VolumetricNoiseConstants.DEFAULT_GRADIENT_EPSILON.toString()
+private val WARP_STRENGTH_DEFAULT = VolumetricNoiseConstants.DEFAULT_WARP_STRENGTH.toString()
+
+private val builtinWordsCore = setOf(
     "noop", "input", "in", "uv", "p", "pos", "center", "centered", "time", "t", "hash", "h",
     "pi", "tau", "e",
     "dup", "drop", "swap", "over", "rot", "nip", "tuck",
@@ -2661,6 +2794,7 @@ private val builtinWords = setOf(
     "and", "or", "not", "xor", "bitxor", "gray-code", "graycode", "gray-encode", "gray-decode", "ungray", "lfsr", "bitcrush", "bit-crush",
     "mix", "lerp", "mix.c", "lerp.c", "mix.sc", "lerp.sc", "select", "if", "step", "smoothstep", "pow.safe",
     "noise", "perlin", "fbm", "pulse", "fm", "fmchirp", "palette", "cos-palette", "cosine-palette",
+    "noise3", "noise4", "fbm3", "fbm4", "curl3", "fbmd3", "warp3", "worley3", "voronoi3",
     "ryb", "ryb2rgb", "from-ryb", "rgb2ryb", "to-ryb", "ryb.c", "ryb2rgb.c", "from-ryb.c", "rgb2ryb.c", "to-ryb.c",
     "oklab", "oklab2rgb", "from-oklab", "rgb2oklab", "to-oklab",
     "saturation", "sat-color", "contrast", "grade",
@@ -2688,7 +2822,27 @@ private val builtinWords = setOf(
     "divergence", "curl",
     "phacelle", "directional-noise", "directionalnoise",
     "0->", "1->", "2->", "3->", "->0", "->1", "->2", "->3"
-) + stackSLArityVariantWords + namedColors.keys + swizzleWords + swizzleWords.map { ".$it" }
+)
+
+/**
+ * The words a human is expected to look up: the literal vocabulary plus the named colors, but
+ * WITHOUT the mechanically generated surface — arity variants like `fbm3.2` and the ~1100 swizzles
+ * — which would drown any documentation page that tried to list them.
+ *
+ * Exposed so [afield.stacksl] documentation coverage can be checked against the compiler itself
+ * rather than against a hand-maintained second list, which is the usual way these rot.
+ */
+val stackSLDocumentableWords: Set<String> = builtinWordsCore + namedColors.keys
+
+private val builtinWords = builtinWordsCore + stackSLArityVariantWords + namedColors.keys +
+    swizzleWords + swizzleWords.map { ".$it" }
+
+/**
+ * Everything the compiler will accept as a word, including the mechanically generated arity
+ * variants and swizzles. Used by the coverage guard's reverse direction, where a cheatsheet row
+ * naming `rgba` or `.xy` is legitimate and must not be reported as a typo.
+ */
+val stackSLAllWords: Set<String> get() = builtinWords
 
 private val bareSwizzleReservedWords = setOf("ryb")
 
@@ -3316,5 +3470,6 @@ private fun helperSource(prefix: String, helpers: Set<String>): String {
             appendLine("}")
             appendLine()
         }
+        append(volumetricNoiseHelperSource(prefix, helpers))
     }
 }
