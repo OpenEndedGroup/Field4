@@ -1313,6 +1313,7 @@ import afield.nano.*
 import afield.stdlib.*
 import afield.four.synth.*
 import afield.graphquery.*
+import afield.datalog.*
 import afield.stdlib.Vec2
 import afield.stdlib.Vec3
 import afield.stdlib.Vec4

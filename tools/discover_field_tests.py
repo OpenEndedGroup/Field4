@@ -40,10 +40,15 @@ DEFAULT_ROOTS = [
     "metadata_store",
 ]
 
-COMMENT_PATTERNS = [
-    re.compile(r"/\*(.*?)\*/", re.DOTALL),
-    re.compile(r"<!--(.*?)-->", re.DOTALL),
-]
+BLOCK_COMMENT_PATTERN = re.compile(r"/\*(.*?)\*/", re.DOTALL)
+HTML_COMMENT_PATTERN = re.compile(r"<!--(.*?)-->", re.DOTALL)
+
+# Source files can carry an annotation in either comment style; a markdown page only ever uses the
+# HTML one. Scanning markdown for C-style comments as well is not merely redundant, it is wrong: a
+# page that *mentions* a block comment in prose ("`/*` opens one") pairs that slash-star with the
+# next star-slash anywhere in the file, and everything between them is read as annotation metadata.
+# One such sentence in datalog.md took down discovery for the entire repository.
+COMMENT_PATTERNS = [BLOCK_COMMENT_PATTERN, HTML_COMMENT_PATTERN]
 
 KOTLIN_SNIPPET_RE = re.compile(
     r"""(?sx)
@@ -299,9 +304,11 @@ def mask_markdown_code_fences(text: str) -> str:
 
 
 def find_annotation_blocks(path: Path, text: str) -> list[AnnotationBlock]:
-    scan_text = mask_markdown_code_fences(text) if path.suffix.lower() in {".md", ".markdown"} else text
+    is_markdown = path.suffix.lower() in {".md", ".markdown"}
+    scan_text = mask_markdown_code_fences(text) if is_markdown else text
+    patterns = [HTML_COMMENT_PATTERN] if is_markdown else COMMENT_PATTERNS
     blocks: list[AnnotationBlock] = []
-    for pattern in COMMENT_PATTERNS:
+    for pattern in patterns:
         for match in pattern.finditer(scan_text):
             body_lines = normalize_comment_body(match.group(1))
             if not body_lines:
