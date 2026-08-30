@@ -3,13 +3,14 @@ package drowning
 import afield.four.Target
 import afield.four.device.CommandBuffer
 import afield.four.texture.video.FrameSetBarrier
+import afield.four.texture.video.FrameSetPacer
 import afield.four.texture.video.VideoTexture
 import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Presents one complete source-frame set before the RTT: video/depth/flow + 15 MXGs + 15 splats.
- * Decode stays asynchronous; only matching, ready data is copied on the render thread. Wall-clock
- * transport remains the requested position. [presentedFrame] is the image the audience actually sees.
+ * Decode stays asynchronous; only matching, ready data is copied on the render thread. The presenter
+ * advances transport only when a complete set commits, so public time is the image the audience sees.
  *
  * Resource boxes may register several named looks. [look] changes the requested set without closing
  * or reopening anything. The old set remains on the GPU while the new video's decoder and geometry
@@ -23,6 +24,10 @@ class DrowningPresentation(
     private val transport: DrowningTransport,
     initialLook: String = "default"
 ) : Target, AutoCloseable {
+    init {
+        transport.splats.presentationPaced = true
+    }
+
     private data class Key(val look: String, val frame: Int, val offsets: List<Int>)
     private data class PreparedLook(val frame: Int, val offsets: List<Int>)
     private data class Resources(
@@ -36,6 +41,7 @@ class DrowningPresentation(
     )
 
     private val barrier = FrameSetBarrier<Key>()
+    private val pacer = FrameSetPacer(transport.frameCount)
     private val resources = linkedMapOf<String, Resources>()
     /** Extra, explicitly pre-rolled looks. The requested look is active independently of this map. */
     private val preparedAhead = linkedMapOf<String, PreparedLook>()
@@ -45,6 +51,7 @@ class DrowningPresentation(
     private var heldSplatBank: SplatCueBank? = null
     private var activeKey: Key? = null
     private var waitingSince = 0L
+    private var readySince = 0L
     private val splatShades = linkedMapOf<String, () -> Boolean>()
     private var mxgShade: () -> Boolean = { false }
 
@@ -155,6 +162,10 @@ class DrowningPresentation(
         private set
     var lastWaitMillis = 0.0
         private set
+    var lastAssetWaitMillis = 0.0
+        private set
+    var lastLeadMillis = 0.0
+        private set
     val pendingFrame: Int get() = barrier.pending?.frame ?: -1
     val pendingLook: String get() = barrier.pending?.look ?: ""
     var waitingFor = "registration"
@@ -229,6 +240,7 @@ class DrowningPresentation(
         releaseHeld()
         synchronized(resources) { resources.values.forEach { it.splats?.invalidate() } }
         barrier.reset()
+        pacer.reset()
         activeKey = null
         splatsReadyToDraw = false
         mxgReadyToDraw = false
@@ -291,15 +303,30 @@ class DrowningPresentation(
         val mxg = set.mxg
         if (splatsActive) splats?.failure?.let { throw it }
         if (mxgActive) mxg?.failure?.let { throw it }
-        val desired = Key(targetLook, transport.frame, List(15) { transport.unwrappedFrameFor(it) - transport.frame })
         prepareStandbys(targetLook)
         val revision = transport.splats.seekGeneration * 31L + resourceRevision.get()
-        val key = barrier.select(desired, revision) ?: return
+        val now = System.nanoTime()
+        val demand = pacer.select(
+            requestedFrame = transport.frame,
+            playing = transport.playing,
+            sourceFramesPerSecond = transport.fps * transport.speed,
+            loop = transport.loop,
+            revision = revision,
+            nowNanos = now
+        )
+        barrier.revise(pacer.generation)
+        if (demand == null) {
+            waitingFor = if (!transport.playing || transport.speed == 0.0) "paused" else "end"
+            return
+        }
+        val desired = Key(targetLook, demand.frame, List(15) { transport.unwrappedFrameFor(it) - transport.frame })
+        val key = barrier.select(desired, demand.generation) ?: return
         val frames = IntArray(15) { Math.floorMod(key.frame + key.offsets[it], transport.frameCount) }
         if (activeKey != key) {
             releaseHeld()
             activeKey = key
-            waitingSince = System.nanoTime()
+            waitingSince = now
+            readySince = 0L
         }
         video.prepareFrame(key.frame.toLong())
         if (splatsActive) checkNotNull(splats).request(frames)
@@ -319,12 +346,15 @@ class DrowningPresentation(
             "MXG record/source-frame mismatch: requested ${frames.toList()}, got ${mxgReady.frames.map { it.frameIndex }}"
         }
         val videoReady = video.isFrameReady(key.frame.toLong())
+        val assetsReady = videoReady && (!splatsActive || heldSplats != null) && (!mxgActive || mxgReady != null)
+        if (assetsReady && readySince == 0L) readySince = now
         waitingFor = listOfNotNull(
             if (!videoReady) "video" else null,
             if (splatsActive && heldSplats == null) "splats" else null,
-            if (mxgActive && mxgReady == null) "mxg" else null
+            if (mxgActive && mxgReady == null) "mxg" else null,
+            if (assetsReady && !demand.isDue(now)) "clock" else null
         ).joinToString(",")
-        barrier.presentIfReady({ videoReady && (!splatsActive || heldSplats != null) && (!mxgActive || mxgReady != null) }) {
+        barrier.presentIfReady({ assetsReady && demand.isDue(now) }) {
             // All copies and look-dependent state are recorded before the RTT, never across displays.
             check(video.uploadPreparedFrame(command, key.frame.toLong()))
             if (splatsActive) {
@@ -350,7 +380,12 @@ class DrowningPresentation(
             splatsReadyToDraw = splatsActive
             mxgReadyToDraw = mxgActive
             presentations++
-            lastWaitMillis = (System.nanoTime() - waitingSince) / 1e6
+            val presentedAt = System.nanoTime()
+            pacer.markPresented(key.frame, presentedAt)
+            transport.commitPresented(key.frame, presentedAt)
+            lastWaitMillis = (presentedAt - waitingSince) / 1e6
+            lastAssetWaitMillis = ((if (readySince == 0L) presentedAt else readySince) - waitingSince) / 1e6
+            lastLeadMillis = (demand.notBeforeNanos - (if (readySince == 0L) presentedAt else readySince)) / 1e6
             releaseHeld()
             activeKey = null
         }
@@ -361,7 +396,8 @@ class DrowningPresentation(
         "pending=$pendingLook/$pendingFrame waiting=$waitingFor sets=$presentations " +
         "warm=${synchronized(preparedAhead) { preparedAhead.entries.joinToString { "${it.key}@${it.value.frame}" } }} " +
         "active=splats:$splatsActive(${activeSplatShades.size}),mxg:$mxgActive " +
-        "uploads=$splatUploads/$mxgUploads renderFrames=$renderFrames waitMs=%.1f".format(lastWaitMillis)
+        "uploads=$splatUploads/$mxgUploads renderFrames=$renderFrames waitMs=%.1f assetMs=%.1f leadMs=%+.1f"
+            .format(lastWaitMillis, lastAssetWaitMillis, lastLeadMillis)
 
     override fun close() {
         reset()

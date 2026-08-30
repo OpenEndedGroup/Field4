@@ -27,10 +27,24 @@ FFmpeg decode and RGB conversion then run on a worker while Vulkan upload remain
 
 `DrowningPresentation` owns a two-phase barrier. Register the video and the two banks with the boxes'
 upload callbacks, then schedule **only this presenter** before the main RTT (after advancing the cue
-transport). It pins one requested integer frame until all three workers are ready, records their
-uploads before the same RTT draw, then selects the latest requested position. A slow worker causes
-whole frame sets to be held/skipped; it never makes video slide over stale geometry. An explicit
-transport seek supersedes pending work. Hidden draw modules still register so re-enabling is aligned.
+transport). After frame N presents, it immediately asks all three workers for N+1, but holds the
+completed set until its source-rate deadline. That gives loading the entire display interval instead
+of beginning after the frame is already due. Ordinary wall-clock advancement cannot replace useful
+in-flight work; only an explicit seek or resource reconfiguration can. A genuine underrun therefore
+holds the previous complete set and then continues sequentially rather than entering a deadline-chasing
+skip loop. Hidden draw modules still register so re-enabling is aligned.
+
+While this presenter owns the resources it also owns advancement of `DrowningTransport`: the public
+playhead is the complete frame actually committed, not a wall clock several frames ahead of it. Score
+the palette after `DrowningPresentation.render`, so an underrun cannot move transforms/effects ahead
+of the video, MXG and splats. Setting `transport.position` remains an explicit seek and supersedes the
+prepared set normally.
+
+The pacer retains its ideal deadline across ordinary render-frame quantization, so a succession of
+small 60 Hz misses does not turn requested 8 fps into 7 fps. A miss of a whole source interval resets
+the phase rather than bursting to catch up. Short looping videos keep a second decoder cold-side: it
+is primed during the first pass and alternates with the active decoder while the exhausted one rewinds
+off-thread. Thus frame 123→0 does not put FFmpeg's rewind latency into the presentation cadence.
 
 `VideoTexture.prepareFrame / isFrameReady / uploadPreparedFrame` separate background decode from
 presentation. This exact path is for zero-based constant-frame-rate assets; it checks actual decoded
@@ -39,7 +53,9 @@ also schedule the video's normal automatic update target. `MxgFrame.writeInto(co
 records transfers into the presenter's command buffer instead of submitting independent uploads.
 
 The presenter's `describe()` reports requested, pending, and actually presented source frames for
-video, splats, and MXG, plus wait time and presentation/render counters. Nonzero per-cell offsets are
+video, splats, and MXG, plus total wait, asset-ready time, deadline headroom and presentation/render
+counters. Positive `leadMs` means the set was ready before its deadline; negative means an actual
+underrun. Nonzero per-cell offsets are
 intentional geometry offsets; the atlas itself still has one global video time. Frame-count mismatches
 fail explicitly instead of silently wrapping a short geometry sequence against a longer movie.
 

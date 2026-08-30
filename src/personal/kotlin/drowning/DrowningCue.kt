@@ -286,6 +286,7 @@ class DrowningTransport(
     val frame: Int get() = splats.frame
 
     fun advance(nowNanos: Long = System.nanoTime()): Boolean = splats.advance(nowNanos)
+    internal fun commitPresented(frame: Int, nowNanos: Long) = splats.commitPresented(frame, nowNanos)
     fun seek(frame: Double): Boolean = splats.seek(frame)
     fun scrubBy(delta: Double): Boolean = splats.scrubBy(delta)
     fun invalidate() = splats.invalidate()
