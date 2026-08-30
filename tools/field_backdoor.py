@@ -1982,8 +1982,15 @@ class FieldBackdoor:
     async def set_property(
         self, *, uid: str, property_name: str, value: str, timeout: float
     ) -> dict[str, Any]:
-        """Set a single string property on a box (e.g. notes). Direct setter."""
+        """Persist one string property and wait for Field to acknowledge the edit.
+
+        This is the agent-facing mutation path for code and separated shader properties as
+        well as small strings.  Unlike the browser-style ``set-string`` notification, the
+        direct request is acknowledged only after Field has applied its normal sidecar and
+        metadata persistence rules.
+        """
         resolved, _ = self.require_box_reference(uid)
+        self.logger.log("set_property_start", uid=resolved, property=property_name, valueLength=len(value))
         event = await self.call_for_single_reply(
             "agent-set-property",
             {"uid": resolved, "property": property_name, "value": value},
@@ -1992,6 +1999,10 @@ class FieldBackdoor:
         payload = event.get("payload")
         if not isinstance(payload, dict):
             raise BackdoorError("agent-set-property returned an invalid payload")
+        if not payload.get("ok"):
+            raise BackdoorError(str(payload.get("message") or f"Could not set {property_name} on {resolved}"))
+        self._set_local_string(resolved, property_name, value)
+        self.logger.log("set_property_complete", uid=resolved, property=property_name, valueLength=len(value))
         return payload
 
     async def get_property(
@@ -2920,6 +2931,7 @@ def build_command_parser() -> argparse.ArgumentParser:
     set_parser.add_argument("property")
     set_parser.add_argument("value", nargs="?")
     set_parser.add_argument("--file")
+    set_parser.add_argument("--timeout", type=float)
 
     for command_name in ("macro", "transcript"):
         macro_parser = subparsers.add_parser(command_name, add_help=False)
@@ -3375,7 +3387,13 @@ async def dispatch_command(
             value = client.read_text_source(args.file, command_line=command_line)
         else:
             value = args.value
-        data = await client.set_string(args.uid, args.property, value)
+        timeout = args.timeout or client.default_timeout
+        data = await client.set_property(
+            uid=args.uid,
+            property_name=args.property,
+            value=value,
+            timeout=timeout,
+        )
         result = command_result(command_line, True, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
         return result

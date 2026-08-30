@@ -120,6 +120,45 @@ class BoxReferenceTests(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(result["data"]["workspace"], self.client.workspace)
 
+    def test_set_command_uses_acknowledged_persistent_property_path(self) -> None:
+        from tools.field_backdoor import dispatch_command
+
+        self.client.boxes["box"] = {"uid": "box", "name": "box"}
+        calls: list[tuple[str, dict, float]] = []
+
+        async def reply(name: str, payload: dict, *, timeout: float, **_kwargs) -> dict:
+            calls.append((name, payload, timeout))
+            return {
+                "payload": {
+                    "ok": True,
+                    "uid": payload["uid"],
+                    "property": payload["property"],
+                    "message": "saved",
+                }
+            }
+
+        self.client.call_for_single_reply = reply  # type: ignore[method-assign]
+        result = asyncio.run(
+            dispatch_command(
+                self.client,
+                parse_command('set box vertex "shader text"'),
+                'set box vertex "shader text"',
+            )
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(self.client.boxes["box"]["vertex"], "shader text")
+        self.assertEqual(
+            calls,
+            [
+                (
+                    "agent-set-property",
+                    {"uid": "box", "property": "vertex", "value": "shader text"},
+                    self.client.default_timeout,
+                )
+            ],
+        )
+
     def test_live_document_docs_require_workspace_and_document(self) -> None:
         text = (REPO_ROOT / "dev_docs" / "agents" / "FIELD_BACKDOOR.md").read_text()
         live = text.split("### Coordinated live coding in the user's visible Field", 1)[1]

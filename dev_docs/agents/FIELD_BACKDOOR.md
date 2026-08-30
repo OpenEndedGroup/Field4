@@ -84,6 +84,13 @@ the intended on-disk document and a mature document should not unexpectedly repo
 boxes. `reusedExistingServer: true` confirms attachment, but does **not** prove that the
 document namespace is correct.
 
+`set <uid> <property> --file <path>` is the durable live-coding edit. It waits for the
+backend's `agent-set-property` acknowledgement, which applies Field's ordinary metadata
+and separated-sidecar persistence rules before returning. This matters for `code`,
+`vertex`, `fragment`, and `compute`: editing a generated sidecar file directly can appear
+to work until the next document load replaces it with the value still held by Field.
+After setting shader text, use the box's reload action or relaunch it as usual.
+
 `--attach-existing` is the explicit authorization for this collaboration mode. It
 requires a server already listening on the requested port, still rejects a Field from a
 different checkout, and bypasses only the source-newer-than-server freshness check. This
