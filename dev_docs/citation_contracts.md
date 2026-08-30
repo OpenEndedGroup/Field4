@@ -321,7 +321,7 @@ ways; a derivation with no sensible superset stays forward-only and the census s
 
 There are 54<!--count:valuePrinterRegistrationsInSource--> in compiled source. The sentence carried a
 citation that **resolved perfectly**, on a page that passed
-`citationGates` — one of the 10<!--count:citationGuardTestClasses--> focused test classes that task
+`citationGates` — one of the 11<!--count:citationGuardTestClasses--> focused test classes that task
 runs — with every anchor green. The grep behind it saw `ValuePrinterRegistry.register` and
 missed the reified wrapper `registerValuePrinter<T>`, which is how all but four of them are written.
 The conclusion happened to survive, for a reason the page never gave — see the rewritten paragraph

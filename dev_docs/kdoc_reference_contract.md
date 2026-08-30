@@ -188,6 +188,99 @@ regenerating, say so in the commit message (`git commit --no-verify`, since the 
    row, and `afield.stdlib.DocumentedBehaviourTest` exists because several of those rows were wrong
    in ways only reading the code could reveal.
 
+## Which page a file lands on, and the one label that is not an annotation
+
+A generated page is a **completion category**, and a file's category is normally the
+`@file:CompletionCategory("…")` it carries. `StdlibReferenceGenerator.fileCategory` reads exactly
+that annotation and nothing else; a file under a source root with no annotation falls through to
+`inferredCategory`, and a file that reaches `Uncategorised` is a **build failure** rather than a page
+(`StdlibReferenceGenerator.kt:340#UNCATEGORISED` says why: the drift guard certifies faithfulness, not
+correctness, so once an `uncategorised.md` is committed every guard goes green while the site ships a
+page named after the fact that nobody categorised it).
+
+That leaves a question with a sharp answer. Field's ten small-language packages carry **no**
+`@file:CompletionCategory` at all, and the whole point of publishing them was that the reference did
+not know they existed. The obvious move — annotate them — is the one move that is not available.
+
+### Why annotating is not a documentation-only change
+
+`@file:CompletionCategory` is not inert. Three facts compose:
+
+| fact | site |
+| --- | --- |
+| one spelling, `Internal`, makes completion **drop the candidate from the popup** | `src/jvmMain/kotlin/afield/KotlinCompletionSupport.kt:403#fun isHiddenCompletionCategory` |
+| `KotlinSourceIndex` files **every** declaration in an annotated file under that file's label, with no visibility filter | `src/jvmMain/kotlin/afield/ai/core/completion/KotlinSourceIndex.kt:766#private fun fileCompletionCategory` |
+| the symbol lookup ends in a **name-only** first-wins | `src/jvmMain/kotlin/afield/ai/core/completion/KotlinSourceIndex.kt:302#fun getCompletionCategoryForSymbol` |
+
+So a `@file:` line added to publish a page can change — or delete — rows in a working programmer's
+autocomplete, and can do it for a declaration in a different package that merely shares a name. The
+measured cost of the near-miss is recorded on `EXCLUDE_PREFIXES`
+(`src/jvmMain/kotlin/afield/docs/StdlibReferenceGenerator.kt:190#Excluding by path costs nothing`):
+eleven candidate files, 574 declaration names, 235 of them also declared elsewhere *and* present in
+real box code.
+
+### The mechanism actually used
+
+`CATEGORY_BY_PATH` (`src/jvmMain/kotlin/afield/docs/StdlibReferenceGenerator.kt:269#private val CATEGORY_BY_PATH`)
+maps a repo-relative path prefix to a page label, first match wins, and is read by the generator and
+by nothing else. It is not new machinery: the `afield/visualization/` entry in it *is* the hardcoded
+`if` it generalises, which has assigned a category by path since the reference shipped.
+
+Two properties make it safe, and both are checked rather than argued:
+
+- **A file's own annotation always wins.** The code is literally
+  `fileCategory(text) ?: inferredCategory(rel)`, so the path map only ever fills in for a file that
+  has no label. Nothing is ever moved out of the category its own source chose.
+- **`Languages` never enters the completion vocabulary.**
+  `src/jvmTest/kotlin/afield/docs/LanguagesCategoryTest.kt` rebuilds the vocabulary the popup can
+  see — every `CompletionCategory("…")` literal in `src/`, plus the fixed set inside
+  `KotlinCompletionSupport` — and fails if `Languages` appears in it, if any file under a
+  path-labelled prefix grows an annotation, if the label ever becomes a hidden category, or if a
+  path-labelled category has no page blurb. It also checks that every committed reference page is
+  listed in `public/zensical.yml`, because a page that is generated, committed and drift-guarded is
+  still not *published* until something links to it.
+
+**The plural in `Languages` is load-bearing.** `normalizedCompletionCategory` maps the singular
+`"language"` onto `"Kotlin"`, so a rename to the tidier-looking `Language` would file the page under
+an existing, unrelated category the moment anything normalised it. The test pins both directions.
+
+### Which packages are on the Languages page, and which are not
+
+Membership is derived, not curated: a package is there because it is on one of the two language
+integration routes that `dev_docs/small_language_anatomy.md` documents — it calls
+`registerMainLanguageRuntime` (Route B, the language a *box* is written in) or it registers a
+browser-side editor extension with a Kotlin compiler behind it (Route A). That gives `clojure`,
+`datalog`, `forth`, `ml`, `morpho`, `nano`, `python`, `rectsl`, `remotejs` and `stacksl`.
+
+Four packages that pass that test are deliberately **not** there, and one fails it:
+
+| package | why not |
+| --- | --- |
+| `petri` | labels its own files `Visualization`/`Audio`. Re-labelling would *move* symbols between completion categories, which is the change this whole design exists to avoid. |
+| `solidsl` | labels its own files `Graphics`, and the `Graphics` blurb already claims "the small shading languages' host side". |
+| `brief` | labels its own files `Solvers`. The closest call on the list. |
+| `macros` | labels `RewriteDsl.kt` `Workspace`, and the `Function` blurb already covers user-authored rewrite patterns. |
+| `graphquery` | fails the route test: a query notation over the reflective object graph, with no `BoxExecution` and no editor extension. |
+
+The rule underneath all five rows is the same one: **a file's own label wins**, so a package that has
+already chosen a category has already answered this question. Adding one to the Languages page means
+editing its annotations, which means changing completion, which means it is not a documentation task.
+
+### Adding a language package to the reference
+
+1. Add the root to `SOURCE_ROOTS`. `SourcePageGenerator` reads the same list, so its "read the
+   source" pages follow automatically — that coupling exists because the reference emits those links
+   from each file's own partition and would otherwise link to pages nobody rendered.
+2. Add a `CATEGORY_BY_PATH` prefix for it *only if* its files carry no annotation of their own. If
+   they do, they are already on a page; leave them there.
+3. Keep harnesses out via `EXCLUDE_PREFIXES` — a FIELD_TEST runner or a docs-figure generator, and
+   nothing more. The bar is deliberately low otherwise: on a page about languages a lexer, a parser
+   and a bytecode VM *are* the subject.
+4. `./gradlew generateCodebaseReference`, then read the diff on the pages you did not expect to
+   change. Widening the corpus changes cross-file `[Symbol]` resolution and the `Used in:` evidence
+   links, both of which are corpus-global.
+5. Add the page to `public/zensical.yml`, or `LanguagesCategoryTest` will tell you that you didn't.
+
 ## If the guard fires and the parser is the problem
 
 Sometimes the right fix is to teach `KDocExtractor.parseDeclaration` the form it cannot read — that
