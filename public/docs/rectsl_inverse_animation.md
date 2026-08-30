@@ -468,12 +468,14 @@ rectangle in it is real geometry sampled from the real track at a real instant, 
 shader's own answer.
 
 ??? aside "Where the oracle is, and the one seam in it"
-    The golden is a 37,057-line characterization corpus generated from pre-refactor code, and
-    `RectSLFnBackendTest` reads it as data. The one seam: the differential test has to compose group and
-    rect transforms somewhere, and the `Fn` backend is scalar-only, so that composition is transcribed
-    from `SceneProgram.sample`. A companion test runs the same transcription with the *original* tracks
-    and requires bit-equality with the golden across all 333,207 channel values, which is what stops the
-    transcription from rotting.
+    The golden is a 64,490-line characterization corpus and `RectSLFnBackendTest` reads it as data.
+    The first 37,057 lines were generated from pre-refactor code; the rest were added on 2026-08-30 for
+    the four musicality examples and therefore come from the current sampler, so they are still a
+    differential against the symbolic IR but not against code that no longer exists. The one seam: the
+    differential test has to compose group and rect transforms somewhere, and the `Fn` backend is
+    scalar-only, so that composition is transcribed from `SceneProgram.sample`. A companion test runs
+    the same transcription with the *original* tracks and requires bit-equality with the golden across
+    all 580,068 channel values, which is what stops the transcription from rotting.
 
 ## The rest of what a symbolic IR bought
 

@@ -19,6 +19,14 @@ import kotlin.test.assertTrue
  * code**. So it is 37k lines of ground truth with no code path in common with anything written
  * tonight, or indeed with the symbolic IR at all.
  *
+ * It is 64,490 lines since 2026-08-30, and the two halves are not equally good evidence. The
+ * original 34 programs' rows are byte-identical to `ddf732260`'s — regenerating for the four
+ * `musicality-*` programs `0d875cc63` added changed no existing line — so for those the oracle is
+ * still code that no longer exists. The 27,433 new rows came from today's [SceneProgram.sample],
+ * which shares no code path with the symbolic IR either, but is not independent of a sampler bug
+ * introduced after `ddf732260`. Worth knowing which row a disagreement is in before concluding
+ * what it proves.
+ *
  * The comparison is arranged so that only one thing is under test. [walkScene] is a transcription
  * of [SceneProgram.sample]'s group/rect composition, because that composition has to happen
  * somewhere and the Fn backend is scalar-only. A transcription is exactly the kind of evidence that
@@ -81,7 +89,12 @@ class RectSLFnBackendTest {
         var skippedRows = 0
         var comparedRows = 0
         val refusals = LinkedHashMap<String, Int>()
-        val perProgram = LinkedHashMap<String, Triple<Int, Int, Int>>()
+        val perProgram = LinkedHashMap<String, Coverage>()
+        // The two directions of the classification, collected as the offending tracks rather than
+        // as counts, so a failure says which track and not merely how many.
+        val refusedWithoutAPattern = mutableListOf<String>()
+        val patternsThatLowered = mutableListOf<String>()
+        val reasonsOtherThanAPattern = LinkedHashMap<String, Int>()
 
         for ((program, rows) in golden.rows) {
             val compiled = compile(program) ?: continue
@@ -92,12 +105,27 @@ class RectSLFnBackendTest {
 
             var lowered = 0
             var refused = 0
+            var patternTracks = 0
             for (track in scalarTracksOf(compiled)) {
+                val isPattern = track.dependsOnPatternTrack()
+                if (isPattern) patternTracks++
                 when (val r = lower(track)) {
-                    is RectSLFnLowering.Lowered -> lowered++
+                    is RectSLFnLowering.Lowered -> {
+                        lowered++
+                        if (isPattern) {
+                            patternsThatLowered += "$program: ${track.describe().take(110)}"
+                        }
+                    }
                     is RectSLFnLowering.Refused -> {
                         refused++
                         refusals.merge(r.why.take(70), 1, Int::plus)
+                        if (r.why != RECTSL_PATTERN_REFUSAL) {
+                            reasonsOtherThanAPattern.merge(r.why, 1, Int::plus)
+                        }
+                        if (!isPattern) {
+                            refusedWithoutAPattern +=
+                                "$program: ${track.describe().take(110)} — ${r.why.take(110)}"
+                        }
                     }
                 }
             }
@@ -136,11 +164,12 @@ class RectSLFnBackendTest {
                 }
                 if (any) comparedRows++ else skippedRows++
             }
-            perProgram[program] = Triple(lowered, refused, valuesHere)
+            perProgram[program] = Coverage(lowered, refused, valuesHere, patternTracks)
         }
 
-        val totalLowered = perProgram.values.sumOf { it.first }
-        val totalRefused = perProgram.values.sumOf { it.second }
+        val totalLowered = perProgram.values.sumOf { it.lowered }
+        val totalRefused = perProgram.values.sumOf { it.refused }
+        val totalPatterns = perProgram.values.sumOf { it.patternTracks }
         println("=== RectSL Fn backend vs the pre-refactor golden ===")
         println("programs:        ${perProgram.size}")
         println(
@@ -152,18 +181,19 @@ class RectSLFnBackendTest {
         println("worst relative:  $worstRelative")
         println("worst absolute:  $worstAbsolute")
         println("worst at:        $worstWhere")
+        println("pattern tracks:  $totalPatterns of ${totalLowered + totalRefused}")
         println("refusal reasons:")
         for ((why, count) in refusals.entries.sortedByDescending { it.value }) {
             println("  ${count.toString().padStart(5)}  $why")
         }
-        println("per program (tracks lowered/total, channel values compared):")
+        println("per program (tracks lowered/total, pattern tracks, channel values compared):")
         for ((program, counts) in perProgram) {
             println(
-                "  ${program.padEnd(22)} tracks ${counts.first}/${counts.first + counts.second}" +
-                    "   values ${counts.third}"
+                "  ${program.padEnd(28)} tracks ${counts.lowered}/${counts.lowered + counts.refused}" +
+                    "   patterns ${counts.patternTracks}   values ${counts.values}"
             )
         }
-        val silent = perProgram.filterValues { it.third == 0 }.keys
+        val silent = perProgram.filterValues { it.values == 0 }.keys
         println("programs contributing nothing: ${if (silent.isEmpty()) "none" else silent.joinToString()}")
 
         // Coverage first: a refusal-only run must not read as a pass.
@@ -173,34 +203,104 @@ class RectSLFnBackendTest {
             "the differential test only reached $comparedRows rows — coverage collapsed"
         )
         assertTrue(
-            perProgram.values.all { it.third > 0 },
+            perProgram.values.all { it.values > 0 },
             "every gallery program should contribute at least one comparable channel; these did " +
-                "not: " + perProgram.filterValues { it.third == 0 }.keys
+                "not: " + perProgram.filterValues { it.values == 0 }.keys
         )
 
         // ---- the ratchet -----------------------------------------------------------------------
         // The lowering rate above was printed and not asserted for as long as it was interesting,
         // which is the wrong way round: a printed figure nobody checks is a figure that can quietly
         // fall over. On 2026-08-19 the rate reached 100% — `HeadingTrack` was the last closable
-        // refusal and it was 116 of these 2754 tracks — so the honest floor is *zero refusals*, and
-        // that is what is asserted.
+        // refusal and it was 116 of the 2754 tracks the gallery then had — so the floor was set at
+        // *zero refusals*, with a comment predicting the day a pattern track would arrive and
+        // reach it.
         //
-        // This will fail the day the gallery gains a program built on a pattern track, because a
-        // `pat` genuinely has no differentiable form. That is not a false alarm: it is a deliberate
-        // decision to make, here, with the refusal reasons the run just printed in front of you.
-        // Lower the floor on purpose or not at all.
-        assertEquals(
-            0,
-            totalRefused,
+        // That day was `0d875cc63` (2026-08-22), which added the four `musicality-*` gallery
+        // examples, and the decision the comment asked for was taken on 2026-08-30 with the run's
+        // own refusal table in front of it: 4993 of 5020 tracks lowered, 27 refused, and **every
+        // one of the 27** gave the pattern reason. So the shape of the honest floor is not a lower
+        // number. It is the same guarantee, stated per class:
+        //
+        //  1. **A pattern is the only thing that may be refused.** Nothing else — an easing with no
+        //     `Fn`, a degenerate keyed track, a `MOD` — is permitted at any count. The 2026-08-19
+        //     result survives intact for everything that has a differentiable form; what changed is
+        //     that the corpus now also contains things that do not.
+        //  2. **Refused and pattern-built are the same set, both ways round.** Checked with
+        //     [dependsOnPatternTrack], which decides it from the track, not from the sentence. One
+        //     direction stops the refusal widening — a future `sine` filed under the pattern reason
+        //     would be caught even though its reason matched. The other stops it narrowing into
+        //     nothing: if the backend ever "lowered" a `pat`, it would be answering with a
+        //     plausible number for an interpreter it cannot see inside, and that is worse than
+        //     refusing. This is what keeps the class from being a skip list with extra steps.
+        //  3. **The class has to be non-empty.** A predicate that matched nothing would satisfy 1
+        //     and 2 vacuously, and would then be indistinguishable from having deleted the
+        //     assertion — which is exactly the outcome this is written to avoid.
+        //  4. **Coverage floors, so the concession cannot spread by attrition.** A pattern on a
+        //     *group* transform costs every channel of every descendant, so the cheapest way to
+        //     lose most of this differential without failing 1-3 is to write more of them. The
+        //     absolute counts below are the fence.
+        //
+        // A pattern has no bound to be held to, unlike the GLSL/SDF emitter's bakes, which were
+        // classified the same way on the same commit and *can* be measured against a sampled
+        // reconstruction. Here there is no reconstruction: the refusal is total, so membership of
+        // the class is the whole of what there is to check, and 2 is what makes checking it worth
+        // anything.
+        assertTrue(
+            reasonsOtherThanAPattern.isEmpty(),
             "the Fn backend lowered $totalLowered of ${totalLowered + totalRefused} gallery tracks " +
-                "(" + "%.1f".format(100.0 * totalLowered / (totalLowered + totalRefused)) + "%); " +
-                "it lowered all of them on 2026-08-19. Refusals: " +
-                refusals.entries.joinToString("; ") { "${it.value}x ${it.key}" }
+                "and every refusal is supposed to be a pattern track; these are not: " +
+                reasonsOtherThanAPattern.entries.joinToString("; ") { "${it.value}x ${it.key}" }
         )
         assertTrue(
-            comparedValues >= 333_000,
+            refusedWithoutAPattern.isEmpty(),
+            "these tracks were refused but have no pattern track under them, so the permanent " +
+                "refusal class has widened: " + refusedWithoutAPattern.take(5)
+        )
+        assertTrue(
+            patternsThatLowered.isEmpty(),
+            "these tracks are built over a pattern and the backend claimed to lower them anyway, " +
+                "which would mean answering for an interpreter it cannot see inside: " +
+                patternsThatLowered.take(5)
+        )
+        // Non-vacuity, and the counts. 27 of 5020 on 2026-08-30, and where they are is the useful
+        // part, because it is not where "the rhythm scenes refuse" would predict:
+        //
+        //  - 16 in `musicality-signals`, whose whole subject is signals read as channel values —
+        //    `sine`, `tri`, `saw`, `perlin`, `hold-pat`, `pat-range`, `->degrade`.
+        //  - 7 in `musicality-four-to-the-floor`, all from one `->every`: the mutator wraps *every*
+        //    scalar track of the rect it selects in a `CycleSwitchTrack`, so one word costs seven
+        //    channels.
+        //  - 4 in `musicality-surface`, which is a catalogue of forty-odd pattern operators and
+        //    still refuses only its four signal-word rects — `cosine`, `isaw`, `square`, `rand`,
+        //    one x channel each.
+        //  - **None** in `musicality-variation`, which spends six `pat` verbs and lowers all 1096
+        //    of its tracks.
+        //
+        // What that says: `pat` as *scene structure* is unrolled at compile time into one gated
+        // rect per event, so no interpreter survives into the sampled IR at all. What survives is a
+        // pattern still being asked a value of at sample time. So a refusal count here is not "how
+        // much rhythm is in the gallery" — it is how much of it is still a function when the
+        // sampler arrives, which is a much smaller thing and the only thing a differentiable
+        // backend could ever have minded.
+        assertTrue(totalPatterns > 0, "no gallery track depends on a pattern; assertions 1-2 are vacuous")
+        // Implied by the three assertions above, and kept as a cross-check on this test's own
+        // bookkeeping rather than on the backend: the two lists are built in different branches of
+        // the same `when`, and a mistake there would make all three read as a pass.
+        assertEquals(
+            totalPatterns,
+            totalRefused,
+            "$totalPatterns pattern-built tracks but $totalRefused refusals, which the three " +
+                "assertions above say is impossible — so this test's own counting is wrong"
+        )
+        assertTrue(
+            totalLowered >= 4_990,
+            "the Fn backend lowered only $totalLowered gallery tracks; it lowered 4993 on 2026-08-30"
+        )
+        assertTrue(
+            comparedValues >= 578_000,
             "the differential comparison covered $comparedValues channel values; it covered " +
-                "333207 on 2026-08-19, when every track lowered"
+                "578059 on 2026-08-30 (333207 on 2026-08-19, before the gallery grew)"
         )
 
         // Then agreement. The lowering is exact arithmetic, not an approximation, so the only error
@@ -451,6 +551,14 @@ class RectSLFnBackendTest {
     // -----------------------------------------------------------------------------------------
     // the corpus
     // -----------------------------------------------------------------------------------------
+
+    /** One program's share of the differential: how much lowered, how much of it is a pattern. */
+    private data class Coverage(
+        val lowered: Int,
+        val refused: Int,
+        val values: Int,
+        val patternTracks: Int
+    )
 
     private data class Row(val time: Double, val id: String, val values: DoubleArray)
 

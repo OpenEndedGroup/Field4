@@ -19,11 +19,13 @@ import kotlin.test.assertTrue
  *
  * Four kinds of check live here, and they are deliberately different kinds:
  *
- * 1. **A differential against data, not against code.** `track_characterization.txt` is a 37,057-line
- *    dump of every gallery rect's sampled channels, generated from code that no longer exists. The
- *    `AD` signed-distance field is rebuilt from the lowered `Fn` graphs and compared against exact box
- *    distances computed from those golden numbers, so the oracle shares no code path with the thing
- *    under test — not even [SceneProgram.sample].
+ * 1. **A differential against data, not against code.** `track_characterization.txt` is a 64,490-line
+ *    dump of every gallery rect's sampled channels. The `AD` signed-distance field is rebuilt from the
+ *    lowered `Fn` graphs and compared against exact box distances computed from those golden numbers,
+ *    so the oracle shares no code path with the thing under test — not even [SceneProgram.sample].
+ *    The first 37,057 lines were generated from code that no longer exists; the rest were added on
+ *    2026-08-30 for the four `musicality-*` programs and come from the *current* sampler, so they
+ *    are still a differential but not an independent one. See `RectSLFn.kt`'s header for that split.
  * 2. **A cross-check of the exact reference itself.** [CoverageRect.exactCoverage] (convex clip plus
  *    shoelace) against JTS ([exactUnionCoverage]) on the case where both apply. A bias measured
  *    against an unchecked reference is not a measurement.
@@ -47,6 +49,41 @@ class RectSLSoftRasterTest {
      * Coverage is reported and asserted alongside the disagreement for the reason
      * `RectSLFnBackendTest` gives: a differential test that quietly refused every rect would
      * otherwise read as a pass at zero disagreements.
+     *
+     * Which makes the coverage figure the interesting part, and it used to be one number — "at
+     * least 80% of golden rects lowered" — covering three quite different situations. `0d875cc63`
+     * (2026-08-22) added the four `musicality-*` examples and, once the golden was regenerated for
+     * them on 2026-08-30, that number read 54.5% and the assertion failed. Read as "the AD field
+     * got a third worse" it is alarming and wrong. What the single number was mixing:
+     *
+     *  1. **Rects the golden says are invisible.** `alpha == 0`, so [toAdField] answers with the
+     *     `1e9` sentinel and there is no distance to compare. A rhythm spends most of every bar in
+     *     this state on purpose — that is what a rhythm *is* — so four musicality scenes moved this
+     *     bucket from a rounding error to the majority of the corpus. It was never a fidelity gap
+     *     and the old 80% floor was silently absorbing it.
+     *  2. **Rects that could not be lowered.** The real gap, and the one worth bounding.
+     *  3. **Rects compared.** Everything else.
+     *
+     * So the assertions below split the three and bound each, rather than moving the floor:
+     *
+     *  - The classification is **exhaustive**, asserted as an identity. A fourth bucket appearing —
+     *     some new way for a rect to go uncompared — fails here instead of diluting a percentage.
+     *  - Every rect in bucket 2 is refused **for the one permanent reason**, checked twice over: the
+     *     reason is [RECTSL_PATTERN_REFUSAL] itself, *and* the rect genuinely has a pattern track in
+     *     its own transform or an ancestor group's, by [dependsOnPatternTrack]. The second check is
+     *     the one that matters, because the reason a rect can be skipped here and not in
+     *     `RectSLFnBackendTest` is the `AD`-versus-`Fn.eval` channel check inside [toAdField], and a
+     *     channel failing *that* is a bug in this file, not a caveat about the language. It must
+     *     never be the reason a rect is missing from this sweep, at any count.
+     *  - The coverage ratio is then taken over the rects the golden says are **visible**, which is
+     *     the population this test could in principle compare, and the whole of the shortfall from
+     *     1.0 is bucket 2 by the identity above.
+     *
+     * This is the same move the GLSL/SDF emitter's bake classification made on the same commit, with
+     * one difference worth stating: a bake can be *measured* against the track it sampled, so each
+     * class there carries a numeric bound. A refused rect cannot be measured against anything. Its
+     * class membership is the whole of the claim, which is why it is checked from the track's
+     * structure in both directions rather than from a list of names.
      */
     @Test
     fun `the AD signed distance field agrees with the pre-refactor golden dump`() {
@@ -54,12 +91,17 @@ class RectSLSoftRasterTest {
         assertTrue(golden.isNotEmpty(), "the golden dump is empty; the oracle is missing")
 
         var comparisons = 0
-        var rectsCompared = 0
         var rectsInGolden = 0
+        var rectsVisible = 0
+        var rectsCompared = 0
+        var rectsInvisible = 0
+        var rectsSkipped = 0
         var programsCompared = 0
         var worst = 0.0
         var worstWhere = ""
         val refusals = mutableListOf<String>()
+        val skipReasons = LinkedHashMap<String, Int>()
+        val skippedWithoutAPattern = mutableListOf<String>()
 
         for ((name, source) in gallerySources()) {
             val program = RectAnimationOracle.compile(source).programOrNull ?: continue
@@ -75,9 +117,21 @@ class RectSLSoftRasterTest {
             }
             programsCompared++
             val lowered = field.shapes.map { it.id }.toSet()
+            // Bucket 2, classified once per program rather than once per golden row: why each rect
+            // was skipped, and whether the track structure agrees with the reason given.
+            val patternRects = patternDependentRects(program)
+            for ((id, reason) in field.skipped) {
+                skipReasons.merge(reason, 1, Int::plus)
+                if (id !in patternRects) {
+                    skippedWithoutAPattern += "$name/$id: $reason"
+                }
+            }
             for (time in goldenTimes) {
                 val rows = golden[name to time] ?: continue
                 rectsInGolden += rows.size
+                rectsVisible += rows.count { it.alpha > 0.0 }
+                rectsSkipped += rows.count { it.id !in lowered }
+                rectsInvisible += rows.count { it.id in lowered && it.alpha <= 0.0 }
                 val visible = rows.filter { it.id in lowered && it.alpha > 0.0 }
                 rectsCompared += visible.size
                 if (visible.isEmpty()) continue
@@ -100,20 +154,98 @@ class RectSLSoftRasterTest {
                 "$rectsCompared / $rectsInGolden golden rects in $programsCompared programs" +
                 if (refusals.isEmpty()) "" else "; refused: ${refusals.take(3)}"
         )
+        println(
+            "  golden rects: $rectsCompared compared, $rectsInvisible invisible (alpha 0), " +
+                "$rectsSkipped not lowered; $rectsVisible of $rectsInGolden visible, so " +
+                "${"%.1f".format(100.0 * rectsCompared / rectsVisible)}% of what is on screen"
+        )
+        for ((reason, count) in skipReasons.entries.sortedByDescending { it.value }) {
+            println("  ${count.toString().padStart(4)} rects skipped: ${reason.take(90)}")
+        }
 
         // The population floors first: a shrinking corpus must fail here rather than flattering the
         // disagreement below it.
-        assertTrue(programsCompared >= 25, "only $programsCompared gallery programs lowered at all")
-        assertTrue(comparisons >= 200_000, "only $comparisons distance comparisons; the sweep shrank")
+        assertTrue(programsCompared >= 35, "only $programsCompared gallery programs lowered at all")
+        assertTrue(comparisons >= 300_000, "only $comparisons distance comparisons; the sweep shrank")
+
+        // The classification is exhaustive: every golden rect is compared, invisible, or not
+        // lowered, and nothing else. This looks like a tautology over three counts of the same rows
+        // and is not one, which is the only reason it is worth asserting: `alpha > 0.0` and
+        // `alpha <= 0.0` are *both* false for a NaN, so a lowered rect whose golden alpha is NaN
+        // falls into no bucket at all — dropped from the comparison and from the invisible excuse
+        // alike, with the percentage below still reading fine. The same goes for any fourth filter
+        // a later edit adds here.
+        assertEquals(
+            rectsInGolden,
+            rectsCompared + rectsInvisible + rectsSkipped,
+            "$rectsInGolden golden rects but ${rectsCompared + rectsInvisible + rectsSkipped} " +
+                "accounted for, so a rect is going uncompared for some fourth reason"
+        )
+
+        // Bucket 2 is the pattern tracks and nothing else. The `AD`-versus-`Fn.eval` channel check
+        // inside `toAdField` also lands here when it fires, and it is a bug in this file rather
+        // than a caveat about the language, so it is not permitted at any count.
         assertTrue(
-            rectsCompared.toDouble() / rectsInGolden >= 0.80,
-            "only $rectsCompared of $rectsInGolden golden rects lowered " +
-                "(${"%.1f".format(100.0 * rectsCompared / rectsInGolden)}%)"
+            skipReasons.keys.all { it == RECTSL_PATTERN_REFUSAL },
+            "a rect was skipped for something other than a pattern track: " +
+                skipReasons.filterKeys { it != RECTSL_PATTERN_REFUSAL }
+        )
+        assertTrue(
+            skippedWithoutAPattern.isEmpty(),
+            "these rects were skipped but have no pattern track in their own transform or an " +
+                "ancestor group's: " + skippedWithoutAPattern.take(5)
+        )
+        // Non-vacuous, for the reason `RectSLFnBackendTest` gives at more length: a classification
+        // that matches nothing is indistinguishable from a deleted assertion.
+        assertTrue(rectsSkipped > 0, "no rect was skipped, so the two assertions above are vacuous")
+
+        // And the coverage of what this test could compare at all. Every one of the rects missing
+        // from it is pattern-driven, by the identity and the two assertions above.
+        // 35,137 of 35,908 on 2026-08-30 — 97.85%, the missing 771 being the visible instants of
+        // the 21 rects the run reports as skipped. The floor is close to the measurement rather
+        // than comfortably below it: a new gallery program that hangs a pattern on a large group
+        // would drop this, and that is a decision to take here rather than a drift to absorb.
+        assertTrue(
+            rectsCompared.toDouble() / rectsVisible >= 0.975,
+            "only $rectsCompared of $rectsVisible visible golden rects lowered " +
+                "(${"%.1f".format(100.0 * rectsCompared / rectsVisible)}%)"
         )
         assertTrue(
             worst <= 1e-12,
             "the AD field disagrees with the golden dump by $worst at $worstWhere"
         )
+    }
+
+    /**
+     * The rect ids whose own transform, or some ancestor group's, is built over a pattern track.
+     *
+     * The ancestor walk is here rather than borrowed from [toAdField] on purpose: this is the
+     * *check* on what that function refused, and a check that shares the walk it is checking would
+     * agree with a wrong chain as readily as with a right one.
+     */
+    private fun patternDependentRects(program: SceneProgram): Set<String> {
+        val nodeMap = program.nodes.associateBy { it.id }
+        val parentOf = HashMap<String, String>()
+        for (node in program.nodes) {
+            if (node is GroupNode) node.children.forEach { parentOf[it] = node.id }
+        }
+        fun Node.channels(): List<Track<Double>> = when (this) {
+            is RectNode -> listOf(x, y, w, h, rotation, scaleX, scaleY, alpha, z)
+            is GroupNode -> listOf(x, y, rotation, scaleX, scaleY, alpha)
+        }
+        val out = LinkedHashSet<String>()
+        for (rect in program.nodes.filterIsInstance<RectNode>()) {
+            var current: Node? = rect
+            val guard = HashSet<String>()
+            while (current != null && guard.add(current.id)) {
+                if (current.channels().any { it.dependsOnPatternTrack() }) {
+                    out += rect.id
+                    break
+                }
+                current = parentOf[current.id]?.let { nodeMap[it] }
+            }
+        }
+        return out
     }
 
     /**

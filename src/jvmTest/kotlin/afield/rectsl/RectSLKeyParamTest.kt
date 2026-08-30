@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
  * larger change to the IR. This is the test for that change, and it is mostly about the two places
  * it could be wrong rather than about the happy path:
  *
- * - the constant case must be **untouched**, because a 37,057-line characterization golden pins it
+ * - the constant case must be **untouched**, because a 64,490-line characterization golden pins it
  *   bit for bit and the whole gallery is simplified against bit-identical sampling;
  * - a fitted TCB key must move its **tangents** with it, or `TrackFitResult.fitted` (which
  *   recomputes them) and `TrackFitResult.fittedFn` (which baked them) return two different

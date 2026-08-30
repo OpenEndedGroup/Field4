@@ -192,7 +192,7 @@ the table above and not yet implemented or measured here.**
 
 | what | oracle | observed |
 |---|---|---|
-| `AD` SDF vs sampled geometry | `track_characterization.txt`, 37,057 rows dumped from **pre-refactor** code | worst 1.325e-13 over 272,180 comparisons; 33,529 / 37,023 golden rects (90.6%) in 33 programs |
+| `AD` SDF vs sampled geometry | `track_characterization.txt`, 64,452 rows, the first 37,023 of them dumped from **pre-refactor** code | worst 1.325e-13 over 301,417 comparisons; 35,137 / 35,908 *visible* golden rects (97.9%) in 37 programs |
 | exact coverage | convex clip vs **JTS** | worst 7.27e-14 over 4,000 cases, 2,347 strictly partial |
 | untracked box field vs tracked | bit equality | 0.0 over >5,000 points |
 | kernel slope | central difference of its own coverage | worst relative 3.69e-10, 191 non-zero slopes |
@@ -200,8 +200,18 @@ the table above and not yet implemented or measured here.**
 
 The gallery differential lowers over the golden's own span — 1.25× each program's duration — so every
 golden instant is inside the window the lowering was declared valid on. That refuses more tracks than
-a `[0, duration]` window would, and the refusals show up as the 90.6% coverage figure rather than as
+a `[0, duration]` window would, and the refusals show up as the 97.9% coverage figure rather than as
 silence.
+
+That figure is taken over the golden rects the golden itself says are **visible**, which is a change
+made on 2026-08-30 rather than a different measurement. It used to be taken over all 64,452 rows, and
+once `0d875cc63` added four musicality examples it read 54.5% — because a rhythm spends most of every
+bar at `alpha == 0` on purpose, and an invisible rect has no distance to compare. Of the 35,908
+visible rows, the 771 that are not compared are the visible instants of 21 rects with a pattern track
+in their own transform or an ancestor group's, which is the one thing the `Fn` lowering refuses
+permanently. `RectSLSoftRasterTest` asserts that classification in both directions rather than
+asserting a percentage: every skipped rect must be pattern-built, and every pattern-built track must
+be refused.
 
 ## The mistake worth recording
 

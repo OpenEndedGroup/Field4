@@ -75,7 +75,21 @@ import kotlin.math.abs
  *   as a zero, which is indistinguishable from the guard having fired. A constant pair still folds.
  * - The pattern tracks ([PatTrack] and friends) — an interpreter over a mini-notation tree, not an
  *   expression of fixed shape. The same reason `FnNonDifferentiable` files `pat` itself, and the
- *   only refusal here that is not closable.
+ *   only refusal here that is not closable. `PatPattern` is a `(PatArc) -> List<PatEvent>` lambda:
+ *   there is nothing to inspect and no closed form to find, so this is not a lowering nobody has
+ *   got round to. Since 2026-08-22 it is also a refusal the gallery actually exercises, so it has
+ *   a name — [RECTSL_PATTERN_REFUSAL] — and a predicate that decides it from the track rather than
+ *   from the sentence: [dependsOnPatternTrack]. It costs far less than four rhythm scenes in the
+ *   gallery would suggest — 27 of 5020 tracks — and the reason is worth knowing: `pat` used as
+ *   *scene structure* is unrolled at compile time into one gated rect per event, so no interpreter
+ *   survives into the sampled IR, and `musicality-variation` lowers all 1096 of its tracks despite
+ *   spending six `pat` verbs. What survives is a pattern still being asked a value of at sample
+ *   time: a signal word read as a channel — `sine`, `cosine`, `saw`, `isaw`, `tri`, `square`,
+ *   `perlin`, `rand` all push a `VSig`, and `VSig.asTrack` is a [PatTrack] — or one of the two
+ *   gates the pattern layer installs on a rect's alpha, `->every` on the cycle count and
+ *   `->degrade` on a per-event coin flip. Those are the same tracks the GLSL/SDF emitter has to
+ *   bake rather than lower, which is not a coincidence: it is the one place both backends meet the
+ *   same wall.
  * - Degenerate keyed tracks: no keys at all (nothing to sample), or two keys sharing a time (a step
  *   between two named values, which the clamped-ramp identity cannot express).
  *
@@ -114,6 +128,18 @@ import kotlin.math.abs
  * shares no code path with the thing under test. It reports the worst disagreement, and it
  * reports coverage — how much of the corpus lowered at all — because a differential test that
  * quietly refused everything would otherwise read as a pass.
+ *
+ * That golden was regenerated on 2026-08-30, and it is worth being exact about what the new file
+ * is, because "pre-refactor ground truth" is the whole reason to trust it. `0d875cc63` (2026-08-22)
+ * added the four `musicality-*` programs and the golden had not been regenerated since, so the
+ * characterization test had been failing for eight days. Regenerating added 27,433 lines and
+ * **changed none**: every row of the original 34 programs is byte-identical to what `ddf732260`
+ * dumped, so for those rows the oracle is still code that no longer exists. The 27,433 new rows are
+ * not that. They were produced by today's [SceneProgram.sample], so against a `musicality-*` row
+ * this file's lowering is being differentiated against the *current* sampler — still a real
+ * differential, since the symbolic IR shares no code path with it, but not independent of a
+ * sampler bug introduced after `ddf732260`. The 34 older programs carry that second guarantee;
+ * the four newer ones do not, and nothing should be re-derived from them as if they did.
  */
 
 /** A track lowered to an `Fn`, or an explanation of why it was not. */
@@ -582,6 +608,56 @@ fun Track<Double>.toFn(
     }
 }
 
+/**
+ * Why a pattern track has no differentiable form.
+ *
+ * A constant rather than a literal at the refusal site because two tests now *classify* refusals
+ * by this reason rather than count them, and a classification that carries its own copy of the
+ * sentence it matches is a classification that can silently stop matching.
+ */
+const val RECTSL_PATTERN_REFUSAL: String =
+    "a pattern track is an interpreter over a mini-notation tree, not an expression of " +
+        "fixed shape — the same reason FnNonDifferentiable refuses `pat` itself"
+
+/**
+ * True when this track is, or is built over, one of the mini-notation tracks — the one class
+ * [toFn] refuses **permanently**.
+ *
+ * This exists so that "the only thing we cannot lower is a pattern" can be checked as a property
+ * of the *track* rather than as a reason on a list. The difference matters: a test that only reads
+ * [RectSLFnLowering.Refused.why] would still pass if the backend started refusing an easing and
+ * filed it under the pattern sentence, and it would also pass if the backend stopped refusing
+ * patterns and started returning something plausible instead. Compared against this predicate in
+ * both directions, neither can happen quietly. See `RectSLFnBackendTest`.
+ *
+ * The walk goes through the keys as well as the operands, even though a pattern cannot presently
+ * reach a key — [TcbKey] requires a time-invariant value and no pattern track is constant — because
+ * that is a constraint elsewhere and this predicate should not depend on it holding.
+ *
+ * Exhaustive on purpose: [Track] is sealed, so a new track kind will not compile until someone has
+ * said here whether it is one of these.
+ */
+fun Track<*>.dependsOnPatternTrack(): Boolean = when (this) {
+    // The five themselves. `CycleSwitchTrack` has operands, but it is already a pattern whatever
+    // they are: which of the two it reads is decided by the cycle count.
+    is PatTrack, is PatHoldTrack, is CycleGateTrack, is CycleSwitchTrack, is DegradeGateTrack -> true
+
+    is MappedDoubleTrack -> source.dependsOnPatternTrack()
+    is BinaryDoubleTrack -> a.dependsOnPatternTrack() || b.dependsOnPatternTrack()
+    is TernaryDoubleTrack ->
+        a.dependsOnPatternTrack() || b.dependsOnPatternTrack() || c.dependsOnPatternTrack()
+    is TimeWarpTrack -> source.dependsOnPatternTrack()
+    is HeadingTrack -> x.dependsOnPatternTrack() || y.dependsOnPatternTrack()
+
+    is TcbTrack -> keys.any { it.valueTrack.dependsOnPatternTrack() }
+    is LinearScalarTrack -> keys.any { it.valueTrack.dependsOnPatternTrack() }
+    is HoldScalarTrack -> keys.any { it.valueTrack.dependsOnPatternTrack() }
+    is EasedScalarTrack -> keys.any { it.valueTrack.dependsOnPatternTrack() }
+
+    // Leaves with nothing under them.
+    is ConstantTrack, is GateTrack, is FreeParamTrack -> false
+}
+
 /** True when the given closed window lies inside `[lo, hi)`. */
 private fun windowInside(window: Functions.Domain, lo: Double, hi: Double): Boolean =
     window.isFinite && window.start >= lo && window.endInclusive < hi
@@ -696,10 +772,7 @@ private fun lowerTrackToFn(
         is HeadingTrack -> lowerHeading(track, window)
 
         is CycleGateTrack, is CycleSwitchTrack, is DegradeGateTrack, is PatTrack, is PatHoldTrack ->
-            RectSLFnLowering.Refused(
-                "a pattern track is an interpreter over a mini-notation tree, not an expression of " +
-                    "fixed shape — the same reason FnNonDifferentiable refuses `pat` itself"
-            )
+            RectSLFnLowering.Refused(RECTSL_PATTERN_REFUSAL)
     }
 }
 
