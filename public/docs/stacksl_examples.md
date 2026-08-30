@@ -1063,7 +1063,7 @@ transcription of the shader is meaningful — and there is one, in
 **`curl3` is solenoidal by construction.** It is the curl of a vector potential taken
 with central differences at one shared epsilon. Discrete shift operators commute, so
 the discrete divergence cancels term for term rather than merely being small: measured
-2.5e-7 against 0.58 for the three-independent-channels field people usually reach for.
+1.8e-7 against 0.58 for the three-independent-channels field people usually reach for.
 
 A particle force, the whole point:
 
