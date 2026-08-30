@@ -44,12 +44,12 @@ stop.
 
 The multi-file split follows the `imaging*.kt` / `mesh*.kt` convention for a large family. All seven
 carry `@file:afield.CompletionCategory("ALife")`. Without it the generator falls back to the category
-`Uncategorised` (`StdlibReferenceGenerator.kt:614#"/visualization/" in relativePath`) — which is how
+`Uncategorised` (`StdlibReferenceGenerator.kt:819#private fun inferredCategory`) — which is how
 `alife_field.kt` first failed the reference drift guard, and how the gesture board came to be
 *published* on a page called "Uncategorised" from 2026-08-08 to 2026-08-14.
 
 That is now a hard build failure rather than a convention
-(`StdlibReferenceGenerator.kt:385#no @file:CompletionCategory, so it would be published`): the
+(`StdlibReferenceGenerator.kt:546#no @file:CompletionCategory, so it would be published`): the
 generator fails, naming the file, if any source lands in that bucket at all. The check is on the
 source condition on purpose. The drift guard compares the committed pages against what the source
 produces, so it certifies faithfulness rather than correctness — regenerate and commit an
