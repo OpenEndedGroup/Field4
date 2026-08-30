@@ -56,8 +56,11 @@ class StackSLCpuStillTemplateTest {
     fun `renderStill produces a non-constant image`() {
         val raster = StackSLCpu.renderStill("uv saturate", dim = 32, parallel = false)
         assertEquals(32, raster.width)
+        // u grows left to right; v grows bottom to top, so the top row carries the large v.
+        // See StackSLCpu.FRAG_UV_ORIGIN_IS_TOP_LEFT.
         assertEquals(0.015625f, raster.at(0, 0, 0), 0f)
-        assertEquals(0.984375f, raster.at(31, 31, 1), 0f)
+        assertEquals(0.984375f, raster.at(0, 0, 1), 0f)
+        assertEquals(0.015625f, raster.at(31, 31, 1), 0f)
         assertTrue(raster.toArgb().toSet().size > 100, "expected a gradient, got a near-constant image")
     }
 }

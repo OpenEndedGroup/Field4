@@ -78,12 +78,23 @@ object StackSLCpu {
      * triangle.
      *
      * The vertex shader is `gl_Position = vec4(pos * 2.0 - 1.0, 0, 1); fragUV = pos;` with
-     * `pos` in `{0, 2}`. In Vulkan, clip-space `y = -1` is the **top** of the framebuffer, so
-     * `fragUV.y = 0` is the top row and `fragUV.y` grows downwards — the same direction a PNG's
-     * rows run. This constant exists so the convention is stated once and asserted, rather than
+     * `pos` in `{0, 2}`. It is tempting to stop at "in Vulkan, clip-space `y = -1` is the top of
+     * the framebuffer" and conclude `fragUV.y = 0` is the top row — that is what this constant
+     * said until 2026-08-30, and it is wrong. Every afield.four render path also applies the
+     * **negative-height viewport Y-flip** (`Renderer.setViewportAndScissor`,
+     * `RenderTarget.setViewportAndScissor`, `RenderToTexture.setViewportAndScissorArray`), which
+     * inverts that: clip `y = +1` maps to image row 0. So `fragUV.y = 1` is the **top** row and
+     * `fragUV.y` grows *upwards* as a PNG's rows run downwards. See `f44227393`, which established
+     * the same for the readback and fixed `TexturePreviewCache.capture`.
+     *
+     * This was not caught earlier because the oracle was wrong in the same direction: the
+     * committed gallery PNGs this backend is measured against were themselves inverted, so a
+     * flipped CPU raster agreed with them. Regenerating those figures is what surfaced it.
+     *
+     * [renderFragment] reads this, so the convention is stated once and honoured rather than
      * being an off-by-a-flip that only shows up as an upside-down image in one of 31 comparisons.
      */
-    const val FRAG_UV_ORIGIN_IS_TOP_LEFT = true
+    const val FRAG_UV_ORIGIN_IS_TOP_LEFT = false
 
     /**
      * The compile options a `{{ stack.auto.<slot> }}` expansion uses.
@@ -181,7 +192,9 @@ object StackSLCpu {
         val stream = if (parallel) rows.parallel() else rows
         stream.forEach { y ->
             val invocation = shader.newInvocation(uniforms, samplers)
-            val v = (y + 0.5f) / height
+            // Honour the one stated convention; see [FRAG_UV_ORIGIN_IS_TOP_LEFT].
+            val vTopDown = (y + 0.5f) / height
+            val v = if (FRAG_UV_ORIGIN_IS_TOP_LEFT) vTopDown else 1.0f - vTopDown
             for (x in 0 until width) {
                 invocation.setGlobal(fragUvName, GlslValue.vec2((x + 0.5f) / width, v))
                 perPixel?.invoke(x, y, invocation)

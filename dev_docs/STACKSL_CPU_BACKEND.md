@@ -190,11 +190,27 @@ The backend is not *structurally* unable to do feedback — `CpuTexture2D` (bili
 ping-ponged in a `for` loop is the whole of `PingPongRenderToTexture`'s idea, and the demo document
 does exactly that for 72 frames. What is out of scope is the *comparison*.
 
-**Incidental finding, not fixed here:** `stacksl-feedback-trails.png` and
-`stacksl-diffusion-feedback.png` are **entirely black** — 0 non-black pixels out of 262144 each.
-`StackSLGalleryHarness.renderGallery` renders every entry through `fragmentTemplate()`, which
-declares no `source` sampler, so a feedback program cannot compile there and no still is ever
-captured. The two committed files are stale.
+**Incidental finding, since fixed:** `stacksl-feedback-trails.png` and
+`stacksl-diffusion-feedback.png` were **entirely black** — 0 non-black pixels out of 262144 each.
+`StackSLGalleryHarness.renderGallery` rendered every entry through `fragmentTemplate()`, which
+declares no `source` sampler, so a feedback program could not compile there.
+
+Two details of that first write-up were wrong. The files were not *stale*: `git log --follow` shows
+both were black in their first and only commit, so no good version ever existed. And the shader was
+not rejected where you would expect — `StackSLCompiler.compile` is called with
+`sampleTextures = listOf("source")`, so `require(compiled.ok)` PASSED and glslang rejected the
+assembled shader later, off the capture path. The target then simply kept its clear color and the
+readback *succeeded*, which is why the harness logged `wrote … (2337 bytes)` and no `runCatching`
+ever fired. An all-black readback is a silent success, not a swallowed exception.
+
+`renderGallery` now routes feedback entries through the same ping-pong path as their mp4 and
+captures frame `ANIM_FRAMES / 2` of the identical sweep, so the still is a real mid-clip frame.
+
+That fix is also why the `feedback` rows of `gallery_agreement.md` are now large (mean 13.6 and
+68.5 levels, up from 1.7 and 1.9). The old small numbers were not agreement: `renderStill` has no
+feedback history, so a near-black CPU still was being compared against a *black* GPU still. Two
+black images agree perfectly and mean nothing. The comparison remains out of scope, but the number
+now says so honestly.
 
 ## The picture
 

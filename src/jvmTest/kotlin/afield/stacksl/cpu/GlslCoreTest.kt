@@ -3,6 +3,7 @@ package afield.stacksl.cpu
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
@@ -306,15 +307,22 @@ class GlslCoreTest {
     }
 
     /**
-     * `fragUV` is sampled at PIXEL CENTRES and `y` grows downwards.
+     * `fragUV` is sampled at PIXEL CENTRES and `y` grows upwards.
      *
-     * The direction is not a matter of taste: the harness's fullscreen triangle sets
-     * `gl_Position.y = fragUV.y * 2 - 1`, and Vulkan's clip-space `y = -1` is the top of the
-     * framebuffer. It is also settled empirically by 262144 bit-identical pixels in
-     * `StackSLCpuGalleryTest` — a flip could not produce that.
+     * The direction is not a matter of taste, but the obvious derivation gets it backwards. The
+     * harness's fullscreen triangle sets `gl_Position.y = fragUV.y * 2 - 1` and Vulkan's clip
+     * `y = -1` is the top of the framebuffer — which suggests `fragUV.y` grows downwards, and is
+     * what this test asserted until 2026-08-30. It omits the **negative-height viewport Y-flip**
+     * every afield.four render path applies, which maps clip `y = +1` to image row 0. So
+     * `fragUV.y = 1` is the top row. See `f44227393`.
+     *
+     * The old empirical argument — "settled by 262144 bit-identical pixels in
+     * `StackSLCpuGalleryTest`, a flip could not produce that" — was circular: those committed
+     * PNGs were themselves inverted, so a flipped raster matched them exactly. An oracle can only
+     * settle a convention it does not share.
      */
     @Test
-    fun `fragUV runs from pixel centres with y growing downwards`() {
+    fun `fragUV runs from pixel centres with y growing upwards`() {
         val raster = StackSLCpu.renderFragment(
             """
             #version 450
@@ -324,13 +332,15 @@ class GlslCoreTest {
             """.trimIndent(),
             width = 4, height = 4, parallel = false
         )
-        assertTrue(StackSLCpu.FRAG_UV_ORIGIN_IS_TOP_LEFT)
+        assertFalse(StackSLCpu.FRAG_UV_ORIGIN_IS_TOP_LEFT)
+        // x is unaffected: u still grows left to right.
         assertEquals(0.125f, raster.at(0, 0, 0), 0f)
-        assertEquals(0.125f, raster.at(0, 0, 1), 0f)
         assertEquals(0.875f, raster.at(3, 3, 0), 0f)
-        assertEquals(0.875f, raster.at(3, 3, 1), 0f)
-        // y grows downwards: the green channel is larger at the bottom.
-        assertTrue(raster.at(0, 3, 1) > raster.at(0, 0, 1))
+        // v is flipped relative to PNG row order: row 0 is the top and carries v = 0.875.
+        assertEquals(0.875f, raster.at(0, 0, 1), 0f)
+        assertEquals(0.125f, raster.at(3, 3, 1), 0f)
+        // y grows upwards: the green channel is larger at the top.
+        assertTrue(raster.at(0, 0, 1) > raster.at(0, 3, 1))
     }
 
     // -----------------------------------------------------------------------------------------
