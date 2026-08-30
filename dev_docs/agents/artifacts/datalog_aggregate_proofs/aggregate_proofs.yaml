@@ -1,12 +1,18 @@
 name: datalog_aggregate_proofs
 description: >
-  A Datalog box that derives facts through `sum`, `count` and `max` and then asks `#why` about each
-  one — the case that used to answer "derived in round N; no proof reconstructed". Each proof names
-  the tuples that contributed and the arithmetic that combined them, and `min`/`max` label the tuple
-  that was the extreme. The last directive is a `#whynot`, which explains an *absent* fact instead.
+  Facts derived through `sum`, `count` and `max`, and `#why` about each one — the case that used to
+  answer "derived in round N; no proof reconstructed". Each proof names the tuples that contributed
+  and the arithmetic that combined them, and `min`/`max` label the tuple that was the extreme. The
+  second box asks the opposite question: why is a fact *absent*?
 
-  Two boxes: a root whose main language is Datalog, and one child holding the whole program. No
-  Window, no Renderer, no GPU, no audio — pure compute, so it runs headless.
+  Two pure-compute Kotlin boxes. No Window, no Renderer, no GPU, no audio, so it replays headless.
+
+  Kotlin boxes driving `Datalog()` rather than boxes whose main language is Datalog, deliberately:
+  the transcript `edit` op that sets `mainLanguage` does not install the language runtime the way
+  the backdoor `set` command does, so a Datalog-box version of this transcript replays into a cold
+  JVM reporting `applied=9 skipped=0 errors=0` and produces no output at all. Measured on
+  2026-08-30, port 9482 — see this directory's README for the evidence and for the box-language
+  sequence that does work. The proof text is identical either way; this is the route that replays.
 
   Replay into a fresh Field:
 
@@ -14,56 +20,75 @@ description: >
       --command 'macro write datalog_aggregate_proofs --file dev_docs/agents/artifacts/datalog_aggregate_proofs/aggregate_proofs.yaml' \
       --command 'macro run datalog_aggregate_proofs'
 
-  Or open the materialized document beside this file. See public/docs/datalog.md and
-  dev_docs/DATALOG.md.
+  See public/docs/datalog.md and dev_docs/DATALOG.md.
 operations:
   - create:
-      box: datalog_aggregate_root
-      name: Datalog
-      frame: { x: 60.0, y: 40.0, w: 120.0, h: 80.0 }
-  # The root carries the language; its children then hold Datalog rather than Kotlin. Set as an
-  # edit rather than a create property so the topology watcher sees the change and installs the
-  # runtime — the same order the docs runner uses.
-  - edit:
-      box: datalog_aggregate_root
-      property: mainLanguage
-      to: datalog
-  - create:
-      box: datalog_aggregate_proofs
-      name: aggregate proofs
-      frame: { x: 60.0, y: 160.0, w: 740.0, h: 360.0 }
+      box: datalog_aggregate_why
+      name: why, through an aggregate
+      frame: { x: 60.0, y: 60.0, w: 740.0, h: 320.0 }
       properties:
         code: |
-          % ── who is on which team, and what each of them costs ────────────────────────
-          emp(ada, sales, 100).  emp(bob, sales, 200).  emp(cy, eng, 50).  emp(di, eng, 70).
-          dept(sales).  dept(eng).
+          // A payroll, a headcount and a peak — three facts no single row states.
+          val d = Datalog()
+          d.add("""
+              #datalog
+              emp(ada, sales, 100).  emp(bob, sales, 200).
+              emp(cy, eng, 50).      emp(di, eng, 70).
+              dept(sales).  dept(eng).
 
-          % Three facts that only an aggregate can state.
-          payroll(D, S)   :- dept(D), S = sum P : { emp(_, D, P) }.
-          headcount(D, N) :- dept(D), N = count : { emp(_, D, _) }.
-          peak(D, M)      :- dept(D), M = max P : { emp(_, D, P) }.
+              payroll(D, S)   :- dept(D), S = sum P : { emp(_, D, P) }.
+              headcount(D, N) :- dept(D), N = count : { emp(_, D, _) }.
+              peak(D, M)      :- dept(D), M = max P : { emp(_, D, P) }.
 
-          % An aggregate's target has to be a variable nothing has bound yet, so "the top
-          % earner" is a second rule that joins back against the peak.
-          topEarner(D, W) :- peak(D, M), emp(W, D, M).
+              // An aggregate's target has to be a variable nothing has bound yet, so "the top
+              // earner" is a second rule that joins back against the peak.
+              topEarner(D, W) :- peak(D, M), emp(W, D, M).
+          """)
 
-          ?- payroll(D, S).
+          println(d.query("payroll(D, S)").table())
+          println()
 
-          % Before 2026-08-30 every one of these answered "no proof reconstructed".
-          #why payroll(sales, 300)
-          #why headcount(eng, 2)
-          #why topEarner(sales, bob)
+          // Before 2026-08-30 every one of these answered "no proof reconstructed".
+          listOf("payroll(sales, 300)", "headcount(eng, 2)", "topEarner(sales, bob)").forEach { goal ->
+              println(d.why(goal)?.render() ?: "$goal is not in the model")
+          }
 
-          % And the other question a person actually asks: why is a fact *absent*?
-          #whynot payroll(legal, 0)
-  - connect:
-      parent: datalog_aggregate_root
-      child: datalog_aggregate_proofs
+          // The same proof as an HTML tree, which is what a box shows you.
+          display("main", d.why("topEarner(sales, bob)"))
+  - create:
+      box: datalog_aggregate_whynot
+      name: and why not
+      frame: { x: 60.0, y: 420.0, w: 740.0, h: 260.0 }
+      properties:
+        code: |
+          // The question a query asks more often: it came back empty, and why.
+          val g = Datalog()
+          g.add("""
+              #datalog
+              edge(a, b). edge(b, c). edge(c, d).
+              path(X, Y) :- edge(X, Y).
+              path(X, Z) :- path(X, Y), edge(Y, Z).
+          """)
+          println(g.whyNot("path(a, e)").render())
+          println()
+
+          val cells = Datalog()
+          cells.add("cell(a1, 3). cell(a2, 4). cell(a3, 10). colour(a1, red).")
+          println(cells.whyNot("cell(C, V), V > 5, colour(C, red)").render())
+          println()
+
+          // "Not evaluable this early" is a different answer from "0 answers", and saying which is
+          // most of the value: the planner reorders, so this goal is fine — the *prefix* is not.
+          println(cells.whyNot("V > 50, cell(C, V)").render())
+
+          display("main", g.whyNot("path(a, e)"))
   - await:
       wait: pending
-  # No inline code: this runs the box's own stored program, so editing the box and re-running is
-  # the same thing the transcript did.
+  # No inline code on either execute: they run the boxes' own stored `code`, so editing a box by
+  # hand and re-running it does exactly what the transcript did.
   - execute:
-      box: datalog_aggregate_proofs
+      box: datalog_aggregate_why
+  - execute:
+      box: datalog_aggregate_whynot
   - await:
       wait: pending

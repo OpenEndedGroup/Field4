@@ -227,6 +227,15 @@ A replayable box that exercises the aggregate proofs and `#whynot` end to end li
 `dev_docs/agents/artifacts/datalog_aggregate_proofs/` — a transcript, not a saved document, because
 a `save` op inside a committed transcript writes into the repository every time somebody replays it.
 
+It drives `Datalog()` from **Kotlin** boxes rather than using Datalog *boxes*, and that is not a
+preference. A transcript whose `edit` op sets `mainLanguage: datalog` replays correctly against a
+Field that has already hosted a Datalog box and produces **no output at all** against a cold one,
+reporting `applied=9 skipped=0 errors=0` either way. Not a timing problem — `wait: frames: 600` does
+not help, while the backdoor `set … mainLanguage datalog` route works cold with no wait — so the
+transcript `edit` op does not install a main-language runtime the way the backdoor `set` command
+does. Measured 2026-08-30 on port 9482; the evidence table is in that directory's README. It is a
+transcript-layer gap, not a `afield.datalog` one, and is recorded rather than fixed.
+
 ## Documentation
 
 `public/docs/datalog.md` ("Datalog in a Box", staging → Small Languages). Eight captures under
