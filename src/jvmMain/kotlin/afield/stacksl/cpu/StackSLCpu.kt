@@ -196,6 +196,54 @@ object StackSLCpu {
     }
 
     /**
+     * The still template the docs gallery renders through, with [time] baked into `input.w`.
+     *
+     * This is a duplicate of `StackSLGalleryHarness.fragmentTemplate`, which is private and lives
+     * in a file that drags in the whole `afield.four` graphics stack — so it cannot be shared with
+     * a backend whose point is to need no graphics context. What keeps the copy honest is not
+     * discipline: `StackSLCpuStillTemplateTest` asserts this is **byte-identical** to the committed
+     * `definitions_fragment_.glsl` in the gallery workspace, which is what the GPU actually
+     * consumed. If the harness changes its template and the workspace is regenerated, that test
+     * goes red here.
+     *
+     * `gallery_hash12` is part of it: the harness feeds a per-pixel hash into `input.z`, so a
+     * program that reads `z` gets noise rather than a constant.
+     */
+    fun stillTemplate(time: Float = 1.75f): String = """
+        #version 450
+        layout(location = 0) in vec2 fragUV;
+        layout(location = 0) out vec4 outColor;
+
+        float gallery_hash12(vec2 p) {
+            vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+            p3 += dot(p3, p3.yzx + 33.33);
+            return fract((p3.x + p3.y) * p3.z);
+        }
+
+        {{ stack.auto.program }}
+
+        void main() {
+            vec2 uv = fragUV;
+            vec4 stackInput = vec4(uv, gallery_hash12(uv), ${"%.4f".format(time)});
+            vec3 c = program(stackInput).rgb;
+            if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+            outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+        }
+    """.trimIndent()
+
+    /**
+     * Render a StackSL program on the CPU, at [dim] square, exactly as the docs gallery renders it.
+     *
+     * The one-liner a box wants: `display(StackSLCpu.renderStill("uv 6 * fbm palette saturate").toPngBytes())`
+     * puts the picture in a box output with no graphics context, no window and no AWT.
+     *
+     * Cost, so nobody is surprised: this is an interpreter, and 512x512 of a five-octave `fbm`
+     * takes single-digit seconds across ten cores. 256 is a good size for a box.
+     */
+    fun renderStill(program: String, dim: Int = 256, time: Float = 1.75f, parallel: Boolean = true): CpuRaster =
+        renderProgram(program, stillTemplate(time), dim, dim, parallel = parallel)
+
+    /**
      * The one-call path: compile [program], substitute it into [template], render it.
      *
      * [pushParams] fills a `layout(push_constant) uniform Push { vec4 params; } pc;` block if the
