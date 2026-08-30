@@ -1060,20 +1060,51 @@ object StdlibReferenceGenerator {
 
     // ── cross-references ────────────────────────────────────────────────────────────────────────
 
+    /**
+     * Where a KDoc `[Symbol]` reference is allowed to point, resolved in two steps.
+     *
+     * A reference resolves **inside the file that wrote it** first, and against the whole corpus only
+     * if that fails. Both halves earn their place. The corpus-wide half is what lets one file's KDoc
+     * link a type another file declares, which is most of the linking on these pages. The file-local
+     * half is what `[NodeRef]` *means* when the file saying it declares a `NodeRef`: Kotlin resolves a
+     * KDoc reference in the scope it was written in, so a name that is ambiguous across the corpus is
+     * not ambiguous there, and treating it as ambiguous silently downgrades a correct link to plain
+     * code.
+     *
+     * That is not hypothetical, it is why this class exists. `afield.stdlib/interactionnets.kt`
+     * declares a `NodeRef` and so does `afield.rectsl`; the moment the second one was published, five
+     * already-resolved links in `interactionnets.kt`'s own KDoc turned back into inline code on
+     * `visualization.md` — a page nobody had touched. Corpus-wide-only resolution makes every new
+     * source root a possible silent un-linking of the pages already shipped.
+     */
+    private class TypeAnchors(
+        private val corpus: Map<String, String>,
+        private val byFile: Map<String, Map<String, String>>,
+    ) {
+        /** [name]'s anchor as seen from [doc], or null when it resolves nowhere this reference emits. */
+        fun resolve(name: String, doc: SourceDocument?): String? =
+            doc?.let { byFile[it.relativePath]?.get(name) } ?: corpus[name]
+    }
+
     /** Type simple name -> the `page.md#anchor` that documents it, for KDoc `[Symbol]` linkification. */
-    private fun buildTypeAnchorIndex(documents: List<SourceDocument>): Map<String, String> {
-        val out = mutableMapOf<String, String>()
+    private fun buildTypeAnchorIndex(documents: List<SourceDocument>): TypeAnchors {
+        val corpus = mutableMapOf<String, String>()
         val ambiguous = mutableSetOf<String>()
+        val byFile = mutableMapOf<String, MutableMap<String, String>>()
         documents.forEach { doc ->
             doc.types.forEach { type ->
                 val name = type.symbol.simpleName
                 val target = "${slug(doc.category)}.md#${typeAnchor(doc, type.symbol)}"
-                if (out.putIfAbsent(name, target) != null) ambiguous += name
+                if (corpus.putIfAbsent(name, target) != null) ambiguous += name
+                // Two types with one simple name in one file does not compile, so first-wins here is a
+                // formality rather than a policy.
+                byFile.getOrPut(doc.relativePath) { mutableMapOf() }.putIfAbsent(name, target)
             }
         }
-        // A name that two files both define cannot be linked unambiguously, so it is not linked at all.
-        ambiguous.forEach { out.remove(it) }
-        return out
+        // A name that two files both define cannot be linked unambiguously from a third, so from a
+        // third it is not linked at all. From either of the two it still resolves — see [TypeAnchors].
+        ambiguous.forEach { corpus.remove(it) }
+        return TypeAnchors(corpus, byFile)
     }
 
     /**
@@ -1185,7 +1216,7 @@ object StdlibReferenceGenerator {
     private fun renderCategoryPage(
         category: String,
         documents: List<SourceDocument>,
-        typeAnchors: Map<String, String>,
+        typeAnchors: TypeAnchors,
         evidence: Map<String, List<Pair<String, Int>>>,
     ): String = buildString {
         appendLine(BANNER)
@@ -1208,7 +1239,7 @@ object StdlibReferenceGenerator {
 
     private fun renderFileSection(
         doc: SourceDocument,
-        typeAnchors: Map<String, String>,
+        typeAnchors: TypeAnchors,
         evidence: Map<String, List<Pair<String, Int>>>,
     ): String = buildString {
         appendLine("## ${doc.fileName} { #${fileAnchor(doc)} }")
@@ -1216,7 +1247,9 @@ object StdlibReferenceGenerator {
         // demoteHeadings before fencesToDiffstatic: the latter rewrites an opening fence to
         // "```diffstatic {data-lang=…}", which FENCE_OPENER no longer matches, so a demotion run
         // afterwards mistakes the *closing* fence for an opening one and stops demoting from there on.
-        doc.overview?.let { appendLine(fencesToDiffstatic(demoteHeadings(linkify(it, typeAnchors)))); appendLine() }
+        doc.overview?.let {
+            appendLine(fencesToDiffstatic(demoteHeadings(linkify(it, typeAnchors, doc)))); appendLine()
+        }
         val source = sourcePageUrl(doc)
         if (source == null) {
             appendLine("`${doc.relativePath}`")
@@ -1245,7 +1278,7 @@ object StdlibReferenceGenerator {
             appendLine(linkToSource(doc, type.symbol.line, highlightSignature(type.symbol.signature)))
             appendLine()
             if (type.symbol.summary.isNotBlank()) {
-                appendLine(fencesToDiffstatic(linkify(type.symbol.summary, typeAnchors)))
+                appendLine(fencesToDiffstatic(linkify(type.symbol.summary, typeAnchors, doc)))
                 appendLine()
             }
             if (type.enumConstants.isNotEmpty()) {
@@ -1258,7 +1291,7 @@ object StdlibReferenceGenerator {
 
     private fun renderTable(
         symbols: List<Symbol>,
-        typeAnchors: Map<String, String>,
+        typeAnchors: TypeAnchors,
         doc: SourceDocument,
     ): String = buildString {
         appendLine("| Declaration | Summary |")
@@ -1268,7 +1301,7 @@ object StdlibReferenceGenerator {
             val declaration = linkToSource(doc, row.symbol.line, highlightSignature(signature))
             appendLine(
                 "| $declaration${overloadBadge(row)} | " +
-                    "${escapeCell(linkify(row.summary, typeAnchors))} |"
+                    "${escapeCell(linkify(row.summary, typeAnchors, doc))} |"
             )
         }
         appendLine()
@@ -1277,7 +1310,7 @@ object StdlibReferenceGenerator {
     private fun renderIndexPage(
         categories: List<String>,
         documents: List<SourceDocument>,
-        typeAnchors: Map<String, String>,
+        typeAnchors: TypeAnchors,
         evidence: Map<String, List<Pair<String, Int>>>,
     ): String = buildString {
         appendLine(BANNER)
@@ -1332,7 +1365,7 @@ object StdlibReferenceGenerator {
             // that are already all links.
             val gist = doc.overview
                 ?.let { firstSentence(it) }
-                ?.let { stripLinks(linkify(it, typeAnchors)) }
+                ?.let { stripLinks(linkify(it, typeAnchors, doc)) }
                 .orEmpty()
             val examples = evidenceLinks(doc, evidence).orEmpty()
             appendLine(
@@ -1782,18 +1815,22 @@ object StdlibReferenceGenerator {
      * target is a type this reference emits — mirroring `linkifyKDocSymbols`' rule that an
      * unresolved reference stays literal rather than becoming a dead link. Unresolved references
      * become plain inline code so the raw brackets never leak into the page.
+     *
+     * [doc] is the file the text was read from, and it is what makes a reference to a type declared
+     * in that same file resolve even when the name is ambiguous elsewhere. Null only where the text
+     * has no one declaring file. See [TypeAnchors].
      */
-    private fun linkify(text: String, typeAnchors: Map<String, String>): String {
+    private fun linkify(text: String, typeAnchors: TypeAnchors, doc: SourceDocument?): String {
         if (text.isBlank()) return text
         val alternate = Regex("""\[([^\]\[]+)]\[([A-Za-z_][\w.]*)]""")
         val simple = Regex("""\[([A-Za-z_][\w.]*)]""")
         var out = alternate.replace(text) { m ->
-            val target = typeAnchors[m.groupValues[2].substringAfterLast('.')]
+            val target = typeAnchors.resolve(m.groupValues[2].substringAfterLast('.'), doc)
             if (target != null) "[${m.groupValues[1]}]($target)" else "`${m.groupValues[1]}`"
         }
         out = simple.replace(out) { m ->
             val raw = m.groupValues[1]
-            val target = typeAnchors[raw.substringAfterLast('.')]
+            val target = typeAnchors.resolve(raw.substringAfterLast('.'), doc)
             if (target != null) "[`$raw`]($target)" else "`$raw`"
         }
         return out
