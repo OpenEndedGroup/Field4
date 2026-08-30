@@ -4,7 +4,7 @@
 
 Field's standard library is large and, until now, invisible: the only ways to read it were to open the source or to already know the name you wanted. This section is a browsable map of it — every public declaration in `afield.stdlib`, `afield.visualization` and `afield.four.synth`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**11390 public symbols across 263 source files**, 6192 of them (54%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. The one exception is [Languages](languages.md): no file in the small-language packages carries that annotation, and adding one is not a documentation-only change — the label is read by the completion popup — so those pages are grouped by source path here and the popup is left exactly as it was.
+**11458 public symbols across 268 source files**, 6240 of them (54%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. The one exception is [Languages](languages.md): no file in the small-language packages carries that annotation, and adding one is not a documentation-only change — the label is read by the completion popup — so those pages are grouped by source path here and the popup is left exactly as it was.
 
 The "documented" column is a coverage report on Field's own KDoc, not a claim about this page. Where a summary is blank the declaration has none yet.
 
@@ -23,7 +23,7 @@ The "documented" column is a coverage report on Field's own KDoc, not a claim ab
 | [Patterns](patterns.md) | 17 | 750 | 315 (42%) | Musical time, as a value. |
 | [Audio](audio.md) | 12 | 688 | 149 (21%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 18 | 520 | 344 (66%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 68 | 2116 | 582 (27%) | Field's small languages, from the host side. |
+| [Languages](languages.md) | 73 | 2184 | 630 (28%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 2 | 79 | 76 (96%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 
 ## Every file, at a glance
@@ -84,10 +84,11 @@ The "documented" column is a coverage report on Field's own KDoc, not a claim ab
 | [DatalogAst.kt](languages.md#datalogast-kt) | Languages | 35 | 16 | The abstract syntax of Field's Datalog — see `Datalog` for the facade, `DatalogParser` for the concrete syntax and `DatalogEngine` for what evaluates this. |  |
 | [DatalogBoxes.kt](languages.md#datalogboxes-kt) | Languages | 4 | 4 | The Field bridge: the live box graph as Datalog base relations. | [Datalog in a box](../datalog.md) |
 | [DatalogEditorExtension.kt](languages.md#datalogeditorextension-kt) | Languages | 6 | 1 |  |  |
-| [DatalogEngine.kt](languages.md#datalogengine-kt) | Languages | 35 | 15 | Storage and evaluation: indexed relations, a safety-directed body planner, stratification, and a semi-naive fixpoint. |  |
+| [DatalogEngine.kt](languages.md#datalogengine-kt) | Languages | 39 | 17 | Storage and evaluation: indexed relations, a safety-directed body planner, stratification, and a semi-naive fixpoint. |  |
 | [DatalogInterface.kt](languages.md#dataloginterface-kt) | Languages | 14 | 3 |  |  |
 | [DatalogObjects.kt](languages.md#datalogobjects-kt) | Languages | 4 | 4 | Any live object graph as Datalog base relations, by way of `afield.graphquery`. | [Datalog in a box](../datalog.md) |
 | [DatalogParser.kt](languages.md#datalogparser-kt) | Languages | 6 | 4 |  |  |
+| [DatalogWhyNot.kt](languages.md#datalogwhynot-kt) | Languages | 16 | 10 |  |  |
 | [Diagnostics.kt](languages.md#diagnostics-kt) | Languages | 13 | 0 |  |  |
 | [dirichlet.kt](math.md#dirichlet-kt) | Math | 11 | 0 | 2D multiplicatively weighted Voronoi (Apollonius) diagrams. |  |
 | [DirtRender.kt](audio.md#dirtrender-kt) | Audio | 7 | 7 |  | [Sound: from a pattern to something you can hear](../sound.md) |
@@ -137,6 +138,9 @@ The "documented" column is a coverage report on Field's own KDoc, not a claim ab
 | [Functions.kt](math.md#functions-kt) | Math | 548 | 461 | The `Fn` toolkit: one-dimensional signals as values you can build, compose, sample and draw. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
 | [GestureBoard.kt](audio-ai.md#gestureboard-kt) | Audio AI | 12 | 3 |  | [Gesture board: drawing toward a sound](../audio_ai_gesture_board.md) |
 | [GestureBoardVisualization.kt](audio-ai.md#gestureboardvisualization-kt) | Audio AI | 3 | 1 |  |  |
+| [GlslInterpreter.kt](languages.md#glslinterpreter-kt) | Languages | 7 | 7 |  |  |
+| [GlslParser.kt](languages.md#glslparser-kt) | Languages | 5 | 5 |  |  |
+| [GlslValue.kt](languages.md#glslvalue-kt) | Languages | 23 | 12 |  |  |
 | [graph_connectivity.kt](graphics.md#graph-connectivity-kt) | Graphics | 82 | 52 | Self-contained graph / computational-geometry library over 2D and 3D point sets (`Vec2`/`Vec3`). | [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md) |
 | [growing.kt](data.md#growing-kt) | Data | 14 | 8 | A 3-regular graph that grows by local rewriting. |  |
 | [heatmap.kt](visualization.md#heatmap-kt) | Visualization | 6 | 6 |  |  |
@@ -271,6 +275,7 @@ The "documented" column is a coverage report on Field's own KDoc, not a claim ab
 | [SpeechEmbeddingVisualization.kt](audio-ai.md#speechembeddingvisualization-kt) | Audio AI | 6 | 6 |  | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [StackSL.kt](languages.md#stacksl-kt) | Languages | 59 | 2 | StackSL — a concatenative shading language that compiles to GLSL, in one file with no runtime. | [StackSL examples](../stacksl_examples.md) |
 | [stacksl.kt](graphics.md#stacksl-kt) | Graphics | 19 | 19 | Host-side entry points for StackSL: compiling the stack language to GLSL, and evaluating it on the GPU sample by sample. | [StackSL cheatsheet](../stacksl_cheatsheet.md), [StackSL examples](../stacksl_examples.md) |
+| [StackSLCpu.kt](languages.md#stackslcpu-kt) | Languages | 13 | 12 |  |  |
 | [StandardDrawing.kt](graphics.md#standarddrawing-kt) | Graphics | 41 | 41 | The small vocabulary of `FLine` construction and styling that sketches and examples reach for first. | [FLine examples (Field graphics)](../fline_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md) |
 | [stats.kt](math.md#stats-kt) | Math | 176 | 23 | Descriptive statistics, and the SVG/HTML renderings Field uses to put them in a box output. | [Which of these signals actually depend on each other?](../statistics_examples.md) |
 | [stdlib.kt](workspace.md#stdlib-kt) | Workspace | 75 | 72 | The general-purpose helpers that every Field box already has in scope. | [Running code in a box](../running_code.md) |

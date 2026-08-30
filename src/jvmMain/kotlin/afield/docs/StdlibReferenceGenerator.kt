@@ -198,6 +198,12 @@ object StdlibReferenceGenerator {
      * the ones whose whole reason to exist is a test run or a `.png`. `RectSLCoverage.kt` reads like
      * a harness from its name and is not one: it is the closed-form coverage the soft rasterizer is
      * measured against, and it is some of the best KDoc in the package.
+     *
+     * `afield.stacksl.cpu` arrived after that paragraph was written and splits the same way. The
+     * interpreter itself — `GlslValue`, `GlslParser`, `GlslInterpreter`, `StackSLCpu` — is the
+     * subject and stays in. `StackSLCpuGallery.kt` calls itself "the oracle" and exists to run the
+     * 31 committed programs; `StackSLCpuContactSheet.kt` imports AWT to write a `.png`. Both are the
+     * test-run-or-a-picture case exactly, so they are named here rather than published.
      */
     private val EXCLUDE_PREFIXES = listOf(
         "src/jvmMain/kotlin/afield/stdlib/linalg/",
@@ -216,6 +222,8 @@ object StdlibReferenceGenerator {
         "src/jvmMain/kotlin/afield/datalog/DatalogSmokeTest.kt",
         "src/jvmMain/kotlin/afield/rectsl/RectSLFitFigure.kt",
         "src/jvmMain/kotlin/afield/rectsl/RectSLSoftRasterFigure.kt",
+        "src/jvmMain/kotlin/afield/stacksl/cpu/StackSLCpuGallery.kt",
+        "src/jvmMain/kotlin/afield/stacksl/cpu/StackSLCpuContactSheet.kt",
     )
 
     /**
