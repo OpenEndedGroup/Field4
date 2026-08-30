@@ -114,9 +114,11 @@ That is chaos, not error, and it is reported as a distribution rather than bound
 
 ### `hash11-chaos` — cannot agree, and should not be asked to
 
-`_hash11`, behind `valueNoise`, is `fract(sin(p * 127.1) * 43758.5453123)`: an
-implementation-defined `sin` at a large argument, multiplied by 43758, then `fract`ed. Both
-mechanisms at once, and the worse one is unavoidable.
+`_hash11`, behind `valueNoise`, is `fract(sin(p * 127.1) * 43758.5453123)` — the `sin` is right
+there in the emitter, `StackSL.kt:2922#helperSource` — so it is an implementation-defined `sin` at a
+large argument, multiplied by 43758, then `fract`ed. Both mechanisms at once, and the worse one is
+unavoidable. Measured consequence: `sample-hold`, the one gallery program that reaches it, disagrees
+with the GPU by a mean of 96.7 levels out of 255, which is to say the colours are unrelated.
 
 **`_hash11` and `_hash21` are not the same animal, and describing them as "the hashes" is how a
 false claim shipped in a KDoc and on a published page.** Only `_hash11` has a `sin` in it.
@@ -136,9 +138,9 @@ Two consequences worth naming:
   disagreed with today's emitter.
 - the ground truth is **8-bit** (`VK_FORMAT_R8G8B8A8_UNORM`) and clamped to `[0,1]` by the harness's
   own `main()`. So anything below half a level is invisible, "bit-exact" would be unfalsifiable, and
-  every number below is in 8-bit levels. It also means the oracle **cannot move**: there is no
-  driver variance to leave headroom for, so the asserted bounds sit one level above the measurement
-  rather than an order of magnitude above it.
+  every number below is in 8-bit levels. It also means the oracle is **frozen** — it is a set of
+  committed PNGs, not a device — so there is no driver variance to leave headroom for, and the
+  asserted bounds sit one level above the measurement rather than an order of magnitude above it.
 
 | tier | n | worst max | worst mean | worst % within one level |
 | --- | --- | --- | --- | --- |

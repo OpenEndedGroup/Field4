@@ -93,8 +93,12 @@ object StackSLCpu {
      * expansion path. They cannot be *shared* without this package depending on
      * `afield.stdlib.shaders`, and that file drags in the whole `afield.four` graphics stack —
      * which would defeat the purpose of a backend that runs with no graphics context. So the two
-     * copies are pinned against each other by a source-text drift guard in the tests
-     * (`StackSLCpuExpansionTest`) rather than by the compiler.
+     * copies are pinned against each other by `StackSLCpuExpansionTest`, which reads the option
+     * list out of `shaders.kt`'s source text and compares it against this one. A blunt instrument —
+     * it only sees a literal argument list and breaks on reformatting — but it catches the one
+     * failure that is otherwise silent: an option added or changed on the production side, leaving
+     * this backend compiling programs under different rules from the shader it claims to mirror.
+     * (Red-first checked: flipping `tolerant` here turns that test red.)
      */
     fun stackAutoOptions(slot: String, sampleTexture: String = "source"): StackSLCompileOptions =
         StackSLCompileOptions(
