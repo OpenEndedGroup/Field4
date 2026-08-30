@@ -38,10 +38,21 @@ expect:
  * `AFIELD_CODE_USE_SEMANTIC_SIDECAR_URL`, or a `build/completion-corpus/sidecar-url.txt` file. If none
  * is set, the probe SKIPs (exit 0) so it never fails CI where no sidecar is running.
  *
- * Assertions that a candidate came from AA (not a silent K1 fallback): named-argument completion, which
- * the K1 delegate does not produce at all (verified by the Stage B differential).
+ * Every check asserts the BACKEND as well as the candidate, via [KotlinInterface2.lastCompletionBackend]:
+ * a K1 fallback answer is a failure here however good the candidate list is. Candidate presence alone is
+ * not the proof it looks like — the fallback's name-position list runs to thousands of names, and used to
+ * satisfy the first "AA-only" check outright while the sidecar was still building its session.
  */
 object CompletionAaE2EProbe {
+
+    /**
+     * How long to wait for the sidecar's Analysis-API session before calling it dead. A cold sidecar
+     * indexes this JVM's whole classpath, so this is minutes-scale on the first request of its life and
+     * near-instant once another client (a running Field, an earlier probe) has already paid for it. Kept
+     * well inside the FIELD_TEST `timeoutSec` so a hung sidecar fails as a named ✗ rather than as a
+     * runner timeout with no explanation.
+     */
+    private const val SESSION_WAIT_MS = 180_000L
 
     private fun meta(r: CompletionResult?): List<SourceCodeCompletionVariant> =
         (r as? CompletionResult.Success)?.metadata ?: emptyList()
@@ -61,6 +72,24 @@ object CompletionAaE2EProbe {
         KotlinEngineConfig.activeCompletionBackend = KotlinEngineConfig.CompletionBackend.AA
         println("using AA sidecar at $url")
 
+        var pass = 0; var total = 0
+        /**
+         * Block until [ki] can actually be served by the AA sidecar, and assert it. Counted as a check so
+         * an unreachable or still-building sidecar is named once, here, instead of being inferred from
+         * twenty downstream ABSENTs.
+         */
+        fun warmed(label: String, ki: KotlinInterface2) {
+            total++
+            val t0 = System.nanoTime()
+            val outcome = runBlocking { ki.warmCompletionBackend(SESSION_WAIT_MS) }
+            val ms = (System.nanoTime() - t0) / 1_000_000
+            if (outcome.startsWith("served")) {
+                pass++; println("  ✓ [AA-session] sidecar serves the $label box's shape in ${ms}ms — $outcome")
+            } else {
+                println("  ✗ [AA-session] sidecar never served the $label box's shape (${ms}ms) — $outcome")
+            }
+        }
+
         val parent = Box("aa-e2e-parent")
         val child = Box("aa-e2e-child")
         child.parents.add(parent)
@@ -73,18 +102,36 @@ object CompletionAaE2EProbe {
         val ki = KotlinInterface2(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = child.id)
         ki.associatedBox = child
         runBlocking { ki.warmCompletion() } // warms the K1 fallback delegate
+        // …and then wait for the SIDECAR's own Analysis-API session, which it builds in the background.
+        // Until it exists the sidecar answers success-with-no-candidates ("session building"), which
+        // `complete` correctly treats as a fall-through to K1 — right for a keystroke, and fatal for a
+        // probe whose whole subject is the AA chain. Without this wait the first checks measured whoever
+        // happened to warm the sidecar first: against a freshly started one (2026-08-29) the very first
+        // check passed off the fallback's 3996-name list at `backend=K1 (AA→K1: empty: session building)`.
+        warmed("child", ki)
         println("inherited preamble (child): ${gatherPreambleUpwards(child).replace("\n", " ⏎ ")}")
 
-        var pass = 0; var total = 0
         // Which engine `check`/`absent` ask. Every check below the graphics-preamble section needs a box
         // whose inherited preamble is a *different* one, and a preamble is fixed per box chain.
         var active = ki
+        // A candidate's PRESENCE does not say which backend produced it, and every `expectFrom` tag below
+        // claims AA. The K1 fallback answers a name position with thousands of names, so a check like the
+        // "AA-only" named-argument one can be satisfied outright by the fallback and still print ✓ — which
+        // is exactly what happened on 2026-08-29 (`backend=K1 (AA→K1: empty: session building)`, 3996
+        // candidates, ✓). So the backend is asserted, not merely logged: a K1 answer is a ✗ even when the
+        // wanted candidate is present, because such a check proves nothing about the chain it names.
         fun check(desc: String, s: String, cursor: Int, want: String, expectFrom: String) {
             total++
             val m = meta(runBlocking { runCatching { active.complete(s, cursor) }.getOrNull() })
+            val backend = active.lastCompletionBackend
             val hit = m.firstOrNull { it.text.trimEnd('(', ' ', '=') == want || it.displayText.startsWith(want) }
-            if (hit != null) { pass++; println("  ✓ [$expectFrom] $desc → ${hit.displayText}  ${hit.tail}  (of ${m.size})") }
-            else println("  ✗ [$expectFrom] $desc ABSENT (of ${m.size})")
+            when {
+                hit == null -> println("  ✗ [$expectFrom] $desc ABSENT (of ${m.size}, backend=$backend)")
+                backend != KotlinEngineConfig.CompletionBackend.AA ->
+                    println("  ✗ [$expectFrom] $desc → ${hit.displayText} but backend=$backend " +
+                        "(${active.lastCompletionDetail}) — the fallback answered, so this proves nothing about AA")
+                else -> { pass++; println("  ✓ [$expectFrom] $desc → ${hit.displayText}  ${hit.tail}  (of ${m.size})") }
+            }
         }
 
         /** The mirror of [check]: [banned] must NOT be offered. Some bugs are wrong answers, not missing ones. */
@@ -202,6 +249,7 @@ object CompletionAaE2EProbe {
         val gfxKi = KotlinInterface2(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = gfxChild.id)
         gfxKi.associatedBox = gfxChild
         runBlocking { gfxKi.warmCompletion() }
+        warmed("gfx child", gfxKi)
         active = gfxKi
         println("inherited preamble (gfx child): ${gatherPreambleUpwards(gfxChild).replace("\n", " ⏎ ")}")
         val lambda = "val m = Mesh()\nm.set(3, 1) {\n    tri."

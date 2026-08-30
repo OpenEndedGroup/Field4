@@ -548,6 +548,21 @@ class KotlinInterface2(
 
 
     /**
+     * Which backend actually served the most recent [complete] call, and the [AaCompletionClient.Outcome]
+     * detail that decided it. [complete] already logs both; this makes them ASSERTABLE, which a test that
+     * means to exercise the AA chain needs: a K1 fallback answers a name position with thousands of names,
+     * so "the candidate I wanted is in the list" can be satisfied entirely by the fallback and still read
+     * as a green AA result. `CompletionAaE2EProbe` is what this exists for.
+     */
+    @Volatile
+    var lastCompletionBackend: KotlinEngineConfig.CompletionBackend? = null
+        private set
+
+    @Volatile
+    var lastCompletionDetail: String = ""
+        private set
+
+    /**
      * Completion intentionally delegates to the K1 IDE-services path.
      * K2 remains the execution backend, but autocomplete needs compiler-grade
      * language semantics rather than partial handwritten Analysis API coverage.
@@ -575,11 +590,17 @@ class KotlinInterface2(
             }
             val ms = (System.nanoTime() - startNs) / 1_000_000
             if (outcome.served) {
+                lastCompletionBackend = KotlinEngineConfig.CompletionBackend.AA
+                lastCompletionDetail = outcome.detail
                 lprintln("info,completion", "completion backend=AA box=$boxLabel ${ms}ms (${outcome.detail})")
                 return outcome.result!!
             }
+            lastCompletionBackend = KotlinEngineConfig.CompletionBackend.K1
+            lastCompletionDetail = "AA→K1: ${outcome.detail}"
             lprintln("info,completion", "completion backend=K1 box=$boxLabel ${ms}ms (AA→K1: ${outcome.detail})")
         } else {
+            lastCompletionBackend = KotlinEngineConfig.CompletionBackend.K1
+            lastCompletionDetail = "backend=k1"
             lprintln("info,completion", "completion backend=K1 box=$boxLabel (backend=k1)")
         }
         return k1CompletionDelegate().complete(s, cursor)
@@ -614,7 +635,20 @@ class KotlinInterface2(
         // The box's preamble and receivers are read on the runloop, the way [complete] reads them — this
         // is called from off-runloop callers (the docs `drive` op) and walking a box's parents while the
         // main thread edits them is not a race worth taking for a warm-up.
-        val completionPreamble = withContext(Runloop.runLoop.main) {
+        //
+        // …but only when there is a runloop to hop onto, and when we are not already on it. `Framer` only
+        // queues; `Runloop.start()` drains it, and `Runloop.start()` is the sole writer of
+        // [Runloop.mainThread] — so a null there means nothing will EVER run the dispatched block. A
+        // `run-jvm-main` subprocess is exactly that case: it constructs a Runloop and never starts one, so
+        // this hopped into a queue with no consumer and suspended for good. `CompletionAaE2EProbe` hit it
+        // and the symptom was thoroughly misleading — the probe hung at the warm-up until the runner's
+        // timeout killed it, which reads as a sidecar that never finished building its session. Being on
+        // the runloop thread already is the same trap one step in: a `runBlocking` caller there blocks the
+        // very frame that would have run the block.
+        val readPreambleHere = Runloop.mainThread.let { it == null || it == Thread.currentThread() }
+        val completionPreamble = if (readPreambleHere) {
+            resolveBoxContext()?.let { normalizePreambleText(gatherPreambleUpwards(it)) }.orEmpty()
+        } else withContext(Runloop.runLoop.main) {
             resolveBoxContext()?.let { normalizePreambleText(gatherPreambleUpwards(it)) }.orEmpty()
         }
         val receiverTypes = implicitReceivers.map { it.typeName }
