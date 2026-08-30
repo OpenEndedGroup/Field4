@@ -186,6 +186,8 @@ class DrowningScore(
     val cells = cue.cells.map { DrowningScoreCell(it.index, it.modelFromCamera) }
     val poses = linkedMapOf<String, DrowningPose>()
     val home: DrowningPose
+    /** One camera-ray depth curve shared by MXG, all splat shades and video/depth interaction. */
+    val depthRemap = DrowningDepthRemap()
     var time: Double = 0.0
         private set
     private var updating = false
@@ -237,18 +239,32 @@ class DrowningScore(
         return pose
     }
 
+    /** Change the shared depth curve without touching the 15 screen placements. */
+    fun remapDepth(
+        pivot: Float = live.depthRemap.pivot,
+        range: Float = live.depthRemap.range,
+        power: Float = live.depthRemap.power,
+        amount: Float = live.depthRemap.amount
+    ): DrowningScore = apply {
+        submitGesture { it.depthRemap.set(pivot, range, power, amount) }
+    }
+
+    fun clearDepthRemap(): DrowningScore = apply {
+        submitGesture { it.depthRemap.clear() }
+    }
+
     /**
-     * A complete, persistent keyframer view of all 15 score cells. Each cell contributes position,
-     * rotation and scale plus opacity, particle influence, projected light, resource residency and
-     * every flicker control. The values are all ordinary [KeyframeScope] persistence types, so two
-     * captures can be interpolated, saved with version history, loaded and applied without a second
-     * score-file format.
+     * A complete, persistent keyframer view of all 15 score cells and the shared depth curve. Each
+     * cell contributes position, rotation and scale plus opacity, particle influence, projected
+     * light, resource residency and every flicker control. The values are all ordinary
+     * [KeyframeScope] persistence types, so two captures can be interpolated, saved with version
+     * history, loaded and applied without a second score-file format.
      *
      * Transform components are separate deliberately: positions and scales lerp while rotations
      * slerp. The `resource` float remains above zero throughout an ordinary 1-to-0 blend, keeping
      * sparse decoders alive until the fully retired endpoint is applied.
      */
-    fun keyframes(schemaVersion: Int = 1, prefix: String = "cell"): KeyframeScope =
+    fun keyframes(schemaVersion: Int = 2, prefix: String = "cell"): KeyframeScope =
         KeyframeScope(schemaVersion).also { scope ->
             cells.indices.forEach { index ->
                 val stem = "$prefix.${index.toString().padStart(2, '0')}"
@@ -298,6 +314,18 @@ class DrowningScore(
                     get = { live[index].resourceWeight },
                     set = { value -> submitGesture { it[index].setResourceWeight(value.requireFloat("$stem.resource")) } })
             }
+            scope.target("depth.pivot",
+                get = { live.depthRemap.pivot },
+                set = { value -> submitGesture { it.depthRemap.set(pivot = value.requireFloat("depth.pivot")) } })
+            scope.target("depth.range",
+                get = { live.depthRemap.range },
+                set = { value -> submitGesture { it.depthRemap.set(range = value.requireFloat("depth.range")) } })
+            scope.target("depth.power",
+                get = { live.depthRemap.power },
+                set = { value -> submitGesture { it.depthRemap.set(power = value.requireFloat("depth.power")) } })
+            scope.target("depth.amount",
+                get = { live.depthRemap.amount },
+                set = { value -> submitGesture { it.depthRemap.set(amount = value.requireFloat("depth.amount")) } })
         }
 
     fun recall(pose: DrowningPose = home, mix: Float = 1f): DrowningScore {
@@ -386,6 +414,7 @@ class DrowningScore(
                 while (true) (queue.poll() ?: break)(this)
             }
             script?.invoke(this, time)
+            cue.depthRemap.set(depthRemap)
             cells.indices.forEach { i ->
                 val scored = cells[i]
                 val cell = cue.cells[i]

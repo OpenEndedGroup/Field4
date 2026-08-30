@@ -4,7 +4,10 @@
 
 `DrowningCue` reads and validates one `splat2-vr-circle-mosaic-v2` directory. It makes the 15 cell
 transforms, atlas rectangles, disparity/flow decoders and inverse-depth calibration available from one
-object. `DrowningCue.writePalette` writes the same data as a 15 × 14-`vec4` std430 buffer for live GLSL.
+object. `DrowningCue.writePalette` writes the same data as a 15 × 20-`vec4` std430 buffer for live
+GLSL. The final five vectors preserve the score bind pose around the shared splat buffer and carry
+the shared nonlinear depth curve without disturbing the existing transform, atlas, decode,
+calibration, or score fields.
 
 `DrowningTransport` is both the global splat/MXG playhead and a `PlaybackClock` for `VideoTexture`; its
 15 frame offsets align per-cell resources without creating 15 unrelated clocks. `MxgCueBank` performs
@@ -475,9 +478,10 @@ gestures travel through a per-session command lane and are consumed on the rende
 
 `DrowningScore.keyframes()` exposes the entire score through the ordinary keyframer rather than a
 second score format. It flattens each stable cell into persisted position/rotation/scale, opacity,
-effects, light, resource and flicker values. Rotation uses the keyframer's quaternion slerp; all
-other numeric/vector lanes lerp. Resource residency stays nonzero through an interpolation and
-reaches zero only at the retired endpoint, when sparse splat/MXG work can stop.
+effects, light, resource and flicker values, plus the four global `depth.*` curve parameters.
+Rotation uses the keyframer's quaternion slerp; all other numeric/vector lanes lerp. Resource
+residency stays nonzero through an interpolation and reaches zero only at the retired endpoint,
+when sparse splat/MXG work can stop.
 
 ```kotlin
 val keys = _cueKeyframes
@@ -490,4 +494,16 @@ val path = java.nio.file.Path.of(System.getProperty("user.home"),
     "Documents/AFieldWorkspace/dust_three/score-keys/four.json")
 b.save(path, note = "four channels")
 keys.loadLatestKey(path)()
+```
+
+The shared depth curve acts along each source-camera ray, preserving the projected video pixel while
+moving its reconstructed point. `pivot` and `range` are multiples of the calibrated convergence
+depth; `power=1` is identity, and `amount` crossfades the curve. The palette supplies the same curve
+to MXG, Gaussian splats, filled/outline splat rectangles, particle surface forces, optical-flow
+scale and projected-video depth tests.
+
+```kotlin
+score.remapDepth(pivot=1f, range=0.65f, power=1.8f, amount=1f)
+score.remapDepth(amount=0.35f) // retain the current pivot/range/power
+score.clearDepthRemap()
 ```
