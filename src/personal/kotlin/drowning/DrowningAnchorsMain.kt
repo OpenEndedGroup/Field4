@@ -35,6 +35,29 @@ object DrowningAnchorsMain {
         val bytes = ByteBuffer.allocate(a.vec4s*16)
         a.write(bytes)
         check(bytes.position() == a.vec4s*16)
-        println("ANCHOR_TEST_PASS stable slots, missing/reappearing tracks, generation on reuse/loop, bounded layout")
+        val sparse = DrowningAnchors(cells=2, slotsPerCell=1, graceFrames=0)
+        sparse.update(intArrayOf(1), listOf(frame(4, listOf(40))))
+        check(!sparse.valid(0) && sparse.valid(1) && sparse.activeCount == 1)
+        sparse.update(intArrayOf(0), listOf(frame(5, listOf(50))))
+        check(sparse.valid(0) && !sparse.valid(1) && sparse.activeCount == 1)
+
+        val sculpted = DrowningAnchors(cells=1, slotsPerCell=3)
+        val warp = MxgTreeWarp(1)
+        warp[0].set(1f, 2f, 3f, .75f)
+        sculpted.update(intArrayOf(0), listOf(frame(0, listOf(10, 20, 30))), warp)
+        val sculptedBytes = ByteBuffer.allocate(sculpted.vec4s * 16).order(ByteOrder.LITTLE_ENDIAN)
+        sculpted.write(sculptedBytes)
+        val rootSlot = (0 until sculpted.count).single { sculpted.track(it) == 10 }
+        val leafSlots = (0 until sculpted.count).filter { sculpted.track(it) != 10 }
+        val treeAt = rootSlot * 48 + 32
+        check(sculptedBytes.getFloat(treeAt) == 1f && sculptedBytes.getFloat(treeAt + 4) == 2f)
+        check(sculptedBytes.getFloat(treeAt + 8) == 3f && sculptedBytes.getFloat(treeAt + 12) == .75f)
+        check(leafSlots.all { sculptedBytes.getFloat(it * 48 + 44) == 0f })
+        warp[0].set(4f, 5f, 6f, .5f)
+        sculpted.applyTreeWarp(warp)
+        val movedBytes = ByteBuffer.allocate(sculpted.vec4s * 16).order(ByteOrder.LITTLE_ENDIAN)
+        sculpted.write(movedBytes)
+        check(movedBytes.getFloat(treeAt) == 4f && movedBytes.getFloat(treeAt + 12) == .5f)
+        println("ANCHOR_TEST_PASS stable slots, sparse cells, sculpted roots/leaves, generation on reuse/loop, bounded layout")
     }
 }

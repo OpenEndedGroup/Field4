@@ -14,7 +14,31 @@ import org.yaml.snakeyaml.Yaml
 import java.io.File
 import java.time.Instant
 import java.util.UUID
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.system.measureTimeMillis
+
+internal class InFlightOperationCoalescer<K, V> {
+    private val active = ConcurrentHashMap<K, CompletableFuture<V>>()
+
+    fun run(key: K, onJoin: (() -> Unit)? = null, operation: () -> V): V {
+        val mine = CompletableFuture<V>()
+        val existing = active.putIfAbsent(key, mine)
+        if (existing != null) {
+            onJoin?.invoke()
+            return existing.join()
+        }
+
+        try {
+            return operation().also(mine::complete)
+        } catch (failure: Throwable) {
+            mine.completeExceptionally(failure)
+            throw failure
+        } finally {
+            active.remove(key, mine)
+        }
+    }
+}
 
 object OperationTranscript {
     private const val COALESCE_FRAMES = 12L
@@ -97,6 +121,16 @@ object OperationTranscript {
         val launchCount: Int = -1,
         val initializeCreatedBoxes: Boolean = true,
     )
+
+    private data class MacroRunKey(
+        val file: String,
+        val targets: List<String>,
+        val direction: String,
+        val strict: Boolean,
+        val initializeCreatedBoxes: Boolean,
+    )
+
+    private val activeMacroRuns = InFlightOperationCoalescer<MacroRunKey, MacroRunResult>()
 
     private data class MacroLaunchRequest(
         val target: Box,
@@ -384,6 +418,48 @@ object OperationTranscript {
         scope: String = "document",
         projectName: String = "",
         initializeCreatedBoxes: Boolean = true,
+    ): MacroRunResult {
+        val cleanName = sanitizeMacroName(name)
+        val location = macroLocation(documentPath, scope, projectName)
+        if (location == null) {
+            return MacroRunResult(false, "No project macro scope is available for this document.", cleanName, direction, targetBoxes, 0, 0)
+        }
+        val file = macroFile(location, cleanName)
+        if (!file.exists()) {
+            return MacroRunResult(false, "No macro named '$cleanName'.", cleanName, direction, targetBoxes, 0, 0)
+        }
+        val normalizedDirection = if (direction.equals("undo", ignoreCase = true)) "undo" else "do"
+        val normalizedTargets = targetBoxes.filter { it.isNotBlank() }
+        val key = MacroRunKey(
+            file = file.canonicalPath,
+            targets = normalizedTargets,
+            direction = normalizedDirection,
+            strict = strict,
+            initializeCreatedBoxes = initializeCreatedBoxes,
+        )
+        return activeMacroRuns.run(key) {
+            runMacroOnce(
+                documentPath = documentPath,
+                name = cleanName,
+                targetBoxes = normalizedTargets,
+                direction = normalizedDirection,
+                strict = strict,
+                scope = scope,
+                projectName = projectName,
+                initializeCreatedBoxes = initializeCreatedBoxes,
+            )
+        }
+    }
+
+    private fun runMacroOnce(
+        documentPath: String,
+        name: String,
+        targetBoxes: List<String>,
+        direction: String,
+        strict: Boolean,
+        scope: String,
+        projectName: String,
+        initializeCreatedBoxes: Boolean,
     ): MacroRunResult {
         val cleanName = sanitizeMacroName(name)
         val location = macroLocation(documentPath, scope, projectName)

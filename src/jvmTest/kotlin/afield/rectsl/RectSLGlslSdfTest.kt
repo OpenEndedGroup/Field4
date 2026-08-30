@@ -111,14 +111,133 @@ class RectSLGlslSdfTest {
         assertTrue(missing.isEmpty(), "easings with no GLSL: ${missing.sorted()}")
     }
 
+    /**
+     * The gallery may only be approximated in one way, and each way has to stay
+     * inside the bound its own kind admits.
+     *
+     * This test used to demand that *nothing* was approximated, and that was true
+     * until `0d875cc63` (2026-08-22) added the four musicality examples. A Tidal
+     * pattern is the one thing this emitter cannot lower symbolically and never will
+     * be able to: `PatPattern` is a `(PatArc) -> List<PatEvent>` lambda, so there is
+     * no structure to inspect and no closed form to find — the emitter cannot even
+     * tell a `"bd*4"` from a `sine` from the outside. Sampling is not a shortcut here,
+     * it is the only door. So "no caveats at all" was a claim about which *examples*
+     * the gallery happened to contain, and a test that says that will either be
+     * deleted the next time someone writes a rhythm or will quietly stop the rhythm
+     * from being written.
+     *
+     * What is worth pinning instead — decided 2026-08-30, with the emitter changed to
+     * make it true rather than the test changed to accept what was there:
+     *
+     * 1. **Sampling a pattern is the only caveat allowed.** Every note has to be one
+     *    of the bakes' own sentences; anything else — an easing with no GLSL body, a
+     *    scene with no rects — is a different gap and still fails the whole gallery.
+     * 2. **A rhythm is held to a bound in seconds.** `STEPPED` means the track is
+     *    piecewise constant and the only question is *when* it steps; the answer is
+     *    now bisected to a microsecond, so there is no measurable value error left on
+     *    a probe grid at all. Before this commit the same bakes were 8.3ms out — one
+     *    frame at 120fps — which for a scene whose whole subject is rhythm was the
+     *    part that actually mattered.
+     * 3. **A signal is held to a bound in track units.** `SAMPLED` has no plateaus,
+     *    so nothing is exact; 1% of what the track does at all is the ceiling, and
+     *    the ramp emission comes in three orders under it.
+     * 4. **`rand` is admitted rather than bounded**, because it cannot be bounded: it
+     *    hashes the rational instant it is asked about, so it has no value between
+     *    samples. What is checked is that the emitter has *evidence* for saying so —
+     *    the same bake at half the rate is no worse, so refining it would not be
+     *    better — rather than a guess. That is a property of the track, not a name on
+     *    a list, which is what keeps this from being an ignore list with extra steps.
+     *
+     * The counts in the last assertion are the fence against the lazy way out: if a
+     * future change stopped bisecting edges, or classified every signal as aliased,
+     * the per-bake bounds above could still pass while the gallery quietly got worse.
+     */
     @Test
-    fun `gallery emission reports no fidelity caveats`() {
-        val noted = gallerySources().mapNotNull { (name, source) ->
-            val program = RectAnimationOracle.compile(source).programOrNull ?: return@mapNotNull null
+    fun `the gallery is approximated only by sampling patterns, within each bound`() {
+        val bakes = mutableListOf<Pair<String, RectSLSdfBake>>()
+        val otherCaveats = mutableListOf<String>()
+        for ((name, source) in gallerySources()) {
+            val program = RectAnimationOracle.compile(source).programOrNull ?: continue
             val result = RectSLGlsl.emitSdf(program)
-            if (result.ok) null else "$name: ${result.notes.joinToString("; ")}"
+            val measured = result.bakes.map { it.note }.toSet()
+            result.notes.filterNot { it in measured }.forEach { otherCaveats += "$name: $it" }
+            result.bakes.forEach { bakes += name to it }
         }
-        assertTrue(noted.isEmpty(), "programs lowered with caveats:\n${noted.joinToString("\n")}")
+        assertTrue(
+            otherCaveats.isEmpty(),
+            "the only fidelity caveat the gallery is allowed is a sampled pattern:\n" +
+                otherCaveats.joinToString("\n")
+        )
+        assertTrue(
+            bakes.all { it.second.what.startsWith("pattern") },
+            "something other than a pattern query was baked: ${bakes.map { it.second.what }.distinct()}"
+        )
+
+        bakes.sortedBy { it.first }.forEach { (name, bake) ->
+            println(
+                "[bake] %-28s %-7s %-4s %5d knot(s) of %5d, edges to %.0e s, worst %.3e (%.4f%% of %.3f)"
+                    .format(
+                        name, bake.fidelity, bake.shape, bake.knotCount, bake.sampleCount,
+                        bake.edgeTolerance, bake.worstError, bake.relativeError * 100.0, bake.valueRange
+                    )
+            )
+        }
+
+        for ((name, bake) in bakes) {
+            val where = "$name: ${bake.note}"
+            when (bake.fidelity) {
+                RectSLSdfBakeFidelity.STEPPED -> {
+                    assertTrue(
+                        bake.edgeTolerance <= RectSLGlsl.BAKE_EDGE_TOLERANCE,
+                        "a stepped bake left its edges on the sample grid ($where)"
+                    )
+                    // The only instants a stepped bake can be wrong at are the
+                    // microsecond-wide slivers beside each edge, which a probe grid
+                    // does not land in. A non-zero error here means an edge is in the
+                    // wrong *place*, not merely imprecisely placed.
+                    assertEquals(
+                        0.0, bake.worstError, 0.0,
+                        "a stepped bake disagrees with its track away from any edge ($where)"
+                    )
+                }
+                // No convergence requirement here on purpose: a piecewise-linear
+                // signal is reproduced exactly by a ramp except at its kinks, so its
+                // error does not fall with the rate either. What matters is that it
+                // is small.
+                RectSLSdfBakeFidelity.SAMPLED -> assertTrue(
+                    bake.relativeError < 0.01,
+                    "a sampled signal deviates by more than 1% of its own range ($where)"
+                )
+                // Not bounded, because it cannot be: what is checked is that the
+                // emitter has the evidence for saying so. Halving the rate has to
+                // have left the error where it was.
+                RectSLSdfBakeFidelity.ALIASED -> {
+                    assertTrue(
+                        bake.convergenceRatio < 1.5,
+                        "a bake was called aliased but halving its rate made it " +
+                            "${bake.convergenceRatio}x worse, so it is converging after all ($where)"
+                    )
+                    assertTrue(
+                        bake.relativeError > 0.01,
+                        "a bake within 1% of its track was called unresolvable ($where)"
+                    )
+                }
+            }
+        }
+
+        val byKind = bakes.groupingBy { it.second.fidelity }.eachCount()
+        assertTrue(
+            (byKind[RectSLSdfBakeFidelity.STEPPED] ?: 0) >= 4,
+            "the gallery's rhythms should bake as stepped chains with exact edges, found $byKind"
+        )
+        assertTrue(
+            (byKind[RectSLSdfBakeFidelity.SAMPLED] ?: 0) >= 4,
+            "the gallery's signals should bake as measured approximations, found $byKind"
+        )
+        assertTrue(
+            (byKind[RectSLSdfBakeFidelity.ALIASED] ?: 0) <= 2,
+            "more of the gallery is unresolvable by sampling than `rand` can explain: $byKind"
+        )
     }
 
     @Test

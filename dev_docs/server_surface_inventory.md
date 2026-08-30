@@ -33,7 +33,7 @@ What was uncovered before this page existed, and is what it adds:
 | HTTP **read** routes | 36 | nothing — the mutating census skips `get` outright |
 | **all-method** routes (`route(…) { handle { … } }`) | 13 | nothing — they name no verb, so no verb regex saw them |
 | `staticFiles` directory mounts | 5 | nothing — invisible to every route regex in the tree |
-| `/ws` **command** names (`handlers`) | 105 | nothing |
+| `/ws` **command** names (`handlers`) | 106 | nothing |
 | `/ws` **raw channels** (`rawHandlers`) | 10 | nothing — a second dispatch table nothing had counted |
 
 The second and fifth rows arrived on 2026-08-22, and the first row moved from 34 to 36 the
@@ -253,7 +253,7 @@ the file, and the reach is described per file below in prose that a human checke
 | declaring file | commands |
 | --- | --- |
 | `Server.kt` | 47 |
-| `agent_backdoor.kt` | 18 |
+| `agent_backdoor.kt` | 19 |
 | `history.kt` | 13 |
 | `executing.kt` | 9 |
 | `Ai4Installer.kt` | 4 |
@@ -295,6 +295,7 @@ no sandbox between a `/ws` frame and that.
 | `agent-create-box` | `agent_backdoor.kt` |
 | `agent-dispose-graphics-context` | `agent_backdoor.kt` |
 | `agent-ensure-graphics-context` | `agent_backdoor.kt` |
+| `agent-get-property` | `agent_backdoor.kt` |
 | `agent-native-window-screenshot` | `agent_backdoor.kt` |
 | `agent-open-document` | `agent_backdoor.kt` |
 | `agent-open-editor` | `agent_backdoor.kt` |

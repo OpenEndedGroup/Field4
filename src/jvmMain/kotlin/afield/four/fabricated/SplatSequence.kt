@@ -128,6 +128,13 @@ class SplatTransport(
 
     var playing: Boolean = true
 
+    /**
+     * When true, [advance] only services clock bookkeeping; a frame-set presenter moves time with
+     * [commitPresented]. This keeps the public playhead identical to the complete asset set actually
+     * shown instead of letting it run several frames ahead during an I/O underrun.
+     */
+    var presentationPaced: Boolean = false
+
     /** 1.0 is forward at [fps]; negative runs backwards; 0.0 is a pause that keeps [playing] true. */
     var speed: Double = 1.0
 
@@ -174,6 +181,10 @@ class SplatTransport(
             lastFrame = frame
             return true
         }
+        if (presentationPaced) {
+            lastNanos = nowNanos
+            return false
+        }
         val elapsed = (nowNanos - lastNanos) / 1e9
         lastNanos = nowNanos
         if (playing && elapsed > 0) {
@@ -200,6 +211,14 @@ class SplatTransport(
     /** Force the next [advance] to report a change, after something else invalidated the upload. */
     fun invalidate() {
         lastFrame = -1
+    }
+
+    /** Move the playhead after one complete externally-paced frame set has committed. Not a seek. */
+    fun commitPresented(frame: Int, nowNanos: Long) {
+        require(frame in 0 until frameCount)
+        clockPosition = frame.toDouble()
+        lastFrame = frame
+        lastNanos = nowNanos
     }
 
     /** Drop the clock, so the next [advance] does not count the time since the last one. */

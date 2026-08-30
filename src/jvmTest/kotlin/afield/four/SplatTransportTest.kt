@@ -131,6 +131,24 @@ class SplatTransportTest {
     }
 
     @Test
+    fun `presentation-paced transport names the frame actually committed rather than wall time`() {
+        val t = SplatTransport(frameCount = 100, fps = 24.0).apply {
+            presentationPaced = true
+            speed = 8.0 / fps
+        }
+        t.advance(0)
+        t.advance(second * 4)
+        assertEquals(0, t.frame, "an asset underrun must not move the public playhead")
+        assertEquals(0L, t.seekGeneration)
+
+        t.commitPresented(1, second * 4)
+        assertEquals(1, t.frame)
+        assertEquals(0L, t.seekGeneration, "a normal presentation is not an explicit seek")
+        t.advance(second * 8)
+        assertEquals(1, t.frame)
+    }
+
+    @Test
     fun `normalized maps the whole sequence onto zero to one`() {
         val t = SplatTransport(frameCount = 200)
         t.normalized = 0.5
