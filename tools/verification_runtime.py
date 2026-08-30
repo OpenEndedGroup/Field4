@@ -66,7 +66,12 @@ def field_instance_info(
     return payload if isinstance(payload, dict) else None
 
 
-def field_instance_problem(info: dict[str, object] | None, repo_root: Path) -> str | None:
+def field_instance_problem(
+    info: dict[str, object] | None,
+    repo_root: Path,
+    *,
+    allow_stale_source: bool = False,
+) -> str | None:
     """Explain why ``info`` is unsafe to reuse from ``repo_root``; ``None`` means safe.
 
     Identity prevents cross-worktree reuse. The server start timestamp also catches the subtler
@@ -82,6 +87,9 @@ def field_instance_problem(info: dict[str, object] | None, repo_root: Path) -> s
         return f"the server reported an invalid checkout root: {actual_root!r}"
     if resolved_actual != expected_root:
         return f"the server belongs to {resolved_actual}, not {expected_root}"
+
+    if allow_stale_source:
+        return None
 
     started_raw = info.get("startedAtEpochMs")
     if not isinstance(started_raw, (int, float)):

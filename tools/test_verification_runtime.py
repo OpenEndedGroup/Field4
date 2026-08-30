@@ -46,6 +46,29 @@ class FieldInstanceIdentityTests(unittest.TestCase):
             )
         self.assertIn("changed after the server started", problem or "")
 
+    def test_explicit_live_attachment_can_ignore_source_freshness(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "src" / "Example.kt"
+            source.parent.mkdir()
+            source.write_text("class Example\n", encoding="utf-8")
+            os.utime(source, ns=(3_000_000_000, 3_000_000_000))
+            problem = field_instance_problem(
+                {"repoRoot": str(root), "startedAtEpochMs": 2_000},
+                root,
+                allow_stale_source=True,
+            )
+        self.assertIsNone(problem)
+
+    def test_explicit_live_attachment_still_rejects_a_foreign_checkout(self) -> None:
+        with tempfile.TemporaryDirectory() as ours, tempfile.TemporaryDirectory() as foreign:
+            problem = field_instance_problem(
+                {"repoRoot": foreign, "startedAtEpochMs": 10_000},
+                Path(ours),
+                allow_stale_source=True,
+            )
+        self.assertIn("belongs to", problem or "")
+
 
 if __name__ == "__main__":
     unittest.main()

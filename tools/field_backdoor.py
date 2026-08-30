@@ -465,13 +465,22 @@ class SessionLogger:
 
 
 class FieldBackdoor:
-    def __init__(self, *, port: int, workspace: str | None, default_timeout: float, logger: SessionLogger) -> None:
+    def __init__(
+        self,
+        *,
+        port: int,
+        workspace: str | None,
+        default_timeout: float,
+        logger: SessionLogger,
+        attach_existing: bool = False,
+    ) -> None:
         self.port = port
         # A backdoor-managed Field is automation, even when the caller omitted
         # --workspace. Never let it inherit the machine-global interactive
         # preference, which may name a deleted sibling worktree.
         self.workspace = workspace or str(automation_workspace(REPO_ROOT))
         self.default_timeout = default_timeout
+        self.attach_existing = attach_existing
         self.logger = logger
         self.session_id = logger.session_id
         self.ssl_context = make_unverified_ssl_context()
@@ -508,6 +517,7 @@ class FieldBackdoor:
             port=self.port,
             workspace=self.workspace,
             defaultTimeout=self.default_timeout,
+            attachExisting=self.attach_existing,
         )
 
     async def ensure_server(self) -> None:
@@ -516,7 +526,11 @@ class FieldBackdoor:
         self.logger.log("health_check", phase="initial", port=self.port, healthy=initial_health)
         if initial_health:
             info = field_instance_info(self.port, self.ssl_context)
-            problem = field_instance_problem(info, REPO_ROOT)
+            problem = field_instance_problem(
+                info,
+                REPO_ROOT,
+                allow_stale_source=self.attach_existing,
+            )
             if problem is not None:
                 self.logger.log("server_reuse_refused", port=self.port, reason=problem, instance=info)
                 raise BackdoorError(
@@ -524,8 +538,23 @@ class FieldBackdoor:
                     "Choose a fresh --port or stop that server explicitly."
                 )
             self.reused_existing_server = True
-            self.logger.log("server_reused", port=self.port, instance=info)
+            self.logger.log(
+                "server_reused",
+                port=self.port,
+                instance=info,
+                attachExisting=self.attach_existing,
+                ignoredFreshnessProblem=(
+                    field_instance_problem(info, REPO_ROOT)
+                    if self.attach_existing
+                    else None
+                ),
+            )
             return
+
+        if self.attach_existing:
+            raise BackdoorError(
+                f"--attach-existing requested, but no Field server is listening on port {self.port}"
+            )
 
         self.managed_log_path = self.logger.root / f"{self.session_id}.managed-server.log"
         self.managed_log_file = self.managed_log_path.open("w", encoding="utf-8")
@@ -3039,6 +3068,8 @@ async def dispatch_command(
             "connected": client.websocket is not None,
             "managedServer": client.managed_process is not None,
             "reusedExistingServer": client.reused_existing_server,
+            "attachExisting": client.attach_existing,
+            "workspace": client.workspace,
             "sessionId": client.session_id,
             "logFile": str(client.logger.path),
             "managedLog": str(client.managed_log_path) if client.managed_log_path else None,
@@ -3799,6 +3830,14 @@ async def async_main(argv: list[str], logger: SessionLogger) -> int:
     parser.add_argument("--with-playwright", action="store_true")
     parser.add_argument("--command", action="append")
     parser.add_argument("--workspace")
+    parser.add_argument(
+        "--attach-existing",
+        action="store_true",
+        help=(
+            "Attach to an already-running Field from this checkout even when source changed "
+            "after it started; never starts a server and never accepts a foreign checkout."
+        ),
+    )
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT)
     parser.add_argument("single_command", nargs=argparse.REMAINDER)
@@ -3812,12 +3851,19 @@ async def async_main(argv: list[str], logger: SessionLogger) -> int:
         withPlaywright=args.with_playwright,
         commandCount=len(args.command or []),
         workspace=args.workspace,
+        attachExisting=args.attach_existing,
         port=args.port,
         timeout=args.timeout,
         singleCommand=args.single_command,
     )
 
-    client = FieldBackdoor(port=args.port, workspace=args.workspace, default_timeout=args.timeout, logger=logger)
+    client = FieldBackdoor(
+        port=args.port,
+        workspace=args.workspace,
+        default_timeout=args.timeout,
+        logger=logger,
+        attach_existing=args.attach_existing,
+    )
     client.graphics_context_enabled = bool(args.graphics_context)
     try:
         await client.ensure_server()

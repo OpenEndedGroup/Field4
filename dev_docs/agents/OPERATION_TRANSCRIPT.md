@@ -329,6 +329,13 @@ regenerated preamble both survive.
   which ops that reference your boxes are skipped, or CLI `launch`/`run` silently create
   an empty box. To reopen a saved document, either `save` it **into** a workspace dir and
   open it by its relative name, or point `--workspace` at the save location's parent.
+  Attaching to an existing Field does not inherit that Field's launcher workspace:
+  operating on a real document therefore requires both `--workspace <parent>` and
+  `--document <name>`. Check those values and a plausible nonzero `boxCount` with
+  `--command status` before replaying a transcript into a mature document. If this is
+  intentional live work in the user's already-running Field, add `--attach-existing`;
+  this preserves checkout identity checks while allowing source edits newer than that
+  Field process.
 - **`--value`/`--file` on CLI `run`/`launch <uid>` are optional and only override when
   supplied.** Omitting them leaves the argparse default `None`, so `run_box`/`launch_box`
   skip the `set_string` step and execute the box's currently *stored* code unchanged — the

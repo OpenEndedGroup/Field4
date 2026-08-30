@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 # `run_field_tests.py` imports its siblings by bare name (`from discover_field_tests import ...`), the
 # way it does when run as a script from `tools/`. Put that directory on the path before importing it
@@ -31,6 +32,7 @@ from tools.run_field_tests import build_backdoor_command  # noqa: E402  (path se
 
 class _Logger:
     session_id = "field-backdoor-test"
+    path = Path("/tmp/field-backdoor-test.jsonl")
 
     def log(self, _event: str, **_fields) -> None:
         pass
@@ -104,6 +106,65 @@ class BoxReferenceTests(unittest.TestCase):
             str(automation_workspace(REPO_ROOT)),
         )
         self.assertIn(str(REPO_ROOT), self.client.workspace)
+
+    def test_status_exposes_the_resolved_workspace(self) -> None:
+        from tools.field_backdoor import dispatch_command
+
+        result = asyncio.run(
+            dispatch_command(
+                self.client,
+                parse_command("status"),
+                "status",
+            )
+        )
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["data"]["workspace"], self.client.workspace)
+
+    def test_live_document_docs_require_workspace_and_document(self) -> None:
+        text = (REPO_ROOT / "dev_docs" / "agents" / "FIELD_BACKDOOR.md").read_text()
+        live = text.split("### Coordinated live coding in the user's visible Field", 1)[1]
+        live = live.split("Preserve Field's execution distinction", 1)[0]
+        self.assertIn("--port 9092", live)
+        self.assertIn("--attach-existing", live)
+        self.assertIn("--workspace /Users/marc/Documents/AFieldWorkspace", live)
+        self.assertIn("--document dust_three", live)
+        self.assertIn("--command status", live)
+
+    def test_explicit_live_attachment_reuses_same_checkout_despite_newer_source(self) -> None:
+        client = FieldBackdoor(
+            port=9092,
+            workspace="/tmp/AFieldWorkspace",
+            default_timeout=0.01,
+            logger=_Logger(),
+            attach_existing=True,
+        )
+        instance = {
+            "repoRoot": str(REPO_ROOT),
+            "startedAtEpochMs": 1,
+            "pid": 123,
+        }
+        with (
+            mock.patch("tools.field_backdoor.health_check", return_value=True),
+            mock.patch("tools.field_backdoor.field_instance_info", return_value=instance),
+        ):
+            asyncio.run(client.ensure_server())
+        self.assertTrue(client.reused_existing_server)
+        self.assertIsNone(client.managed_process)
+
+    def test_explicit_live_attachment_never_starts_a_missing_server(self) -> None:
+        client = FieldBackdoor(
+            port=9092,
+            workspace="/tmp/AFieldWorkspace",
+            default_timeout=0.01,
+            logger=_Logger(),
+            attach_existing=True,
+        )
+        with (
+            mock.patch("tools.field_backdoor.health_check", return_value=False),
+            self.assertRaisesRegex(BackdoorError, "no Field server is listening"),
+        ):
+            asyncio.run(client.ensure_server())
+        self.assertIsNone(client.managed_process)
 
     def test_unknown_scratch_box_explains_invocation_lifetime(self) -> None:
         with self.assertRaises(BackdoorError) as raised:

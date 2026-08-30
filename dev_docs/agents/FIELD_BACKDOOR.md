@@ -63,6 +63,33 @@ first, make semantic edits through the backdoor, and let the user supply immedia
 visual judgment from the native renderer. Never attach this way to an unidentified
 session.
 
+**Name both halves of a real document.** The backdoor does not inherit the workspace
+that launched an already-running Field. Omitting `--workspace` still selects the
+checkout-local `build/field-automation-workspace`, even on port 9092; therefore
+`--document dust_three` alone opens or creates
+`build/field-automation-workspace/dust_three`, not the document visible in the user's
+window. Start a live collaboration with a read-only preflight such as:
+
+```bash
+uv run --project . --group backdoor python tools/field_backdoor.py \
+  --json --port 9092 --attach-existing \
+  --workspace /Users/marc/Documents/AFieldWorkspace \
+  --document dust_three \
+  --command status
+```
+
+Before sending `set`, `launch`, or `launch-batch`, inspect `workspace`, `documentName`,
+`sessionKey`, and `boxCount` in the status result. The workspace and document must name
+the intended on-disk document and a mature document should not unexpectedly report zero
+boxes. `reusedExistingServer: true` confirms attachment, but does **not** prove that the
+document namespace is correct.
+
+`--attach-existing` is the explicit authorization for this collaboration mode. It
+requires a server already listening on the requested port, still rejects a Field from a
+different checkout, and bypasses only the source-newer-than-server freshness check. This
+matters during live coding: edits made after the user's Field booted are expected, while
+an unattended verification must continue to fail closed and start from a fresh port.
+
 Preserve Field's execution distinction in that loop:
 
 - `run <uid>` is a one-shot execution.
@@ -115,8 +142,11 @@ whole stream raises `Extra data`. Decode it as a sequence with
 - Scratch is the default and is scoped to one `field_backdoor.py` process.
   Put dependent commands in the same invocation: reusing `--port` in a later
   process starts a different scratch document, even when it reconnects to the
-  same Field server. Use `--document <name>` when state must span invocations;
-  the name is relative to the Field workspace, not an absolute path.
+  same Field server. For automation state that must span invocations, use
+  `--document <name>` relative to the default automation workspace. For a real saved
+  document, always pair `--workspace <parent-directory>` with the relative
+  `--document <name>`; neither an absolute document path nor the existing server's
+  launcher state supplies that pairing.
 - A box reference not present in the attached document is an error. In
   particular, never reuse a uid printed by an earlier scratch invocation.
 - `@last` means the most recently created box in this backdoor session.
