@@ -59,6 +59,7 @@ object SplatFusedPackTest {
         passed = check1(file) && passed
         passed = check1(noColorFile, "12-property chunks") && passed
         passed = checkMultiSource(file) && passed
+        passed = checkSparseSourceIdentity(file) && passed
         passed = checkSort(file) && passed
         passed = checkTransforms(file) && passed
         passed = checkCapacityGuard(file) && passed
@@ -134,6 +135,28 @@ object SplatFusedPackTest {
                 }
             }
             "15 x ${raw.count} = $total, slots identical and each carries its source index"
+        }
+    }
+
+    /** Sparse residency must not renumber cells: palette IDs remain their original 0..14 values. */
+    private fun checkSparseSourceIdentity(file: File): Boolean {
+        print("Sparse sources retain palette identity... ")
+        return guard {
+            val raw = CompressedSplatPly.readRaw(file.absolutePath)
+            val sources = listOf(
+                GaussianSplatRenderer.SplatSource(raw, sourceIndex = 4),
+                GaussianSplatRenderer.SplatSource(raw, sourceIndex = 12)
+            )
+            fun identities(sort: Vector3f?): Set<Int> {
+                val dest = floatBuffer(raw.count * sources.size)
+                GaussianSplatRenderer.packInto(sources, dest, sortAlong = sort)
+                return (0 until raw.count * sources.size).mapTo(linkedSetOf()) {
+                    dest.get(it * STRIDE + GaussianSplatRenderer.SPLAT_SOURCE_FLOAT).toInt()
+                }
+            }
+            check(identities(null) == setOf(4, 12))
+            check(identities(Vector3f(0f, 0f, 1f)) == setOf(4, 12))
+            "unsorted and sorted IDs are 4,12"
         }
     }
 

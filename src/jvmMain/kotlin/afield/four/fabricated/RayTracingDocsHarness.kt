@@ -56,26 +56,29 @@ import org.lwjgl.vulkan.VK13.VK_ACCESS_2_SHADER_SAMPLED_READ_BIT
 import org.lwjgl.vulkan.VK13.VK_ACCESS_2_SHADER_WRITE_BIT
 import org.lwjgl.vulkan.VK13.VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT
 import org.lwjgl.vulkan.VkImageSubresourceRange
-import java.awt.Color
-import java.awt.Font
-import java.awt.RenderingHints
-import java.awt.image.BufferedImage
 import java.io.File
 import java.util.ArrayDeque
 import java.util.Base64
 import javax.imageio.ImageIO
-import kotlin.math.PI
 import kotlin.math.tan
 
 /**
  * Docs and smoke-test harness for ray tracing shader support.
  *
- * Every public render method:
- * - Returns immediately with a "not supported" placeholder PNG when
- *   `renderer.device.supportsRayTracing` is false.  This lets tests and docs
- *   builds succeed on hardware that has no RT support.
- * - Runs a deterministic ray tracing example and captures the output to a
- *   PNG when RT is available.
+ * Every public render method runs a deterministic ray tracing example and captures
+ * the output to a PNG.  If ray tracing is unavailable, or the module fails to build,
+ * the method *throws*: it does not write a stand-in image.
+ *
+ * It used to write a "Ray Tracing / Not Available" card instead, so that docs builds
+ * and tests would succeed on hardware with no RT support.  They did succeed -- and on
+ * 2026-07-09 four of those cards were committed as the worked-example figures on
+ * `public/docs/ray_tracing_examples.md`, under a page that claimed every image on it
+ * was rendered by Field.  Nothing in the build could tell the difference, because a
+ * placeholder is a perfectly valid PNG.  A capture that cannot happen is an honest
+ * gap; a capture that quietly substitutes a picture of its own failure is not.
+ *
+ * `tools/check_doc_assets.py` is the backstop: it rejects a published figure whose
+ * pixels match the card this harness used to write.
  *
  * Usage pattern (mirrors StandardRendererDocsHarness):
  * ```kotlin
@@ -210,15 +213,14 @@ object RayTracingDocsHarness {
      * like a compute shader that happens to use the VK_KHR_ray_tracing_pipeline
      * entry-point type.
      *
-     * Returns a placeholder PNG when ray tracing is not supported.
+     * Throws when ray tracing is not supported, rather than writing a stand-in PNG.
      */
     suspend fun renderUvGradient(
         outputPath: String,
         renderer: Renderer = rendererFromContextOrDocument()
     ): File {
         if (!renderer.device.supportsRayTracing) {
-            lprintln("info,doc", "ray tracing not supported on this device – writing placeholder for $outputPath")
-            return writeNotSupportedPlaceholder(outputPath, "UV Gradient (RT not available)")
+            rayTracingUnavailable(outputPath, "UV Gradient")
         }
 
         val (image, imageView) = createRtOutputImage(renderer)
@@ -241,14 +243,14 @@ object RayTracingDocsHarness {
             lprintln("error,doc", "ray tracing module build failed: ${e.message}")
             image.cleanup()
             imageView.cleanup()
-            return writeNotSupportedPlaceholder(outputPath, "UV Gradient (build failed: ${e.message?.take(60)})")
+            captureFailed(outputPath, "UV Gradient", "ray tracing module build failed: ${e.message}", e)
         }
 
         if (!rtModule.valid || errors.isNotEmpty()) {
             lprintln("error,doc", "ray tracing module invalid: $errors")
             image.cleanup()
             imageView.cleanup()
-            return writeNotSupportedPlaceholder(outputPath, "UV Gradient (${summarizeShaderErrors(errors)})")
+            captureFailed(outputPath, "UV Gradient", "ray tracing module invalid: ${summarizeShaderErrors(errors)}")
         }
 
         val pointer = rtModule.pointer()
@@ -276,15 +278,14 @@ object RayTracingDocsHarness {
      * closesthit shader writes barycentric coordinates as RGB; the miss shader
      * writes a dark-blue background.
      *
-     * Returns a placeholder PNG when ray tracing is not supported.
+     * Throws when ray tracing is not supported, rather than writing a stand-in PNG.
      */
     suspend fun renderTriangleScene(
         outputPath: String,
         renderer: Renderer = rendererFromContextOrDocument()
     ): File {
         if (!renderer.device.supportsRayTracing) {
-            lprintln("info,doc", "ray tracing not supported on this device – writing placeholder for $outputPath")
-            return writeNotSupportedPlaceholder(outputPath, "Triangle Scene (RT not available)")
+            rayTracingUnavailable(outputPath, "Triangle Scene")
         }
 
         val (image, imageView) = createRtOutputImage(renderer)
@@ -324,14 +325,14 @@ object RayTracingDocsHarness {
             lprintln("error,doc", "ray tracing module build failed: ${e.message}")
             image.cleanup(); imageView.cleanup()
             vertexBuffer.cleanup(); blas.cleanup(); tlas.cleanup()
-            return writeNotSupportedPlaceholder(outputPath, "Triangle Scene (build failed: ${e.message?.take(60)})")
+            captureFailed(outputPath, "Triangle Scene", "ray tracing module build failed: ${e.message}", e)
         }
 
         if (!rtModule.valid || errors.isNotEmpty()) {
             lprintln("error,doc", "ray tracing module invalid: $errors")
             image.cleanup(); imageView.cleanup()
             vertexBuffer.cleanup(); blas.cleanup(); tlas.cleanup()
-            return writeNotSupportedPlaceholder(outputPath, "Triangle Scene (${summarizeShaderErrors(errors)})")
+            captureFailed(outputPath, "Triangle Scene", "ray tracing module invalid: ${summarizeShaderErrors(errors)}")
         }
 
         val pointer = rtModule.pointer()
@@ -356,15 +357,14 @@ object RayTracingDocsHarness {
      * Geometry is just two triangles (one quad). The closest-hit shader computes
      * tile color from world hit position, so no tile mesh splitting is required.
      *
-     * Returns a placeholder PNG when ray tracing is not supported.
+     * Throws when ray tracing is not supported, rather than writing a stand-in PNG.
      */
     suspend fun renderShaderTileScene(
         outputPath: String,
         renderer: Renderer = rendererFromContextOrDocument()
     ): File {
         if (!renderer.device.supportsRayTracing) {
-            lprintln("info,doc", "ray tracing not supported on this device – writing placeholder for $outputPath")
-            return writeNotSupportedPlaceholder(outputPath, "Shader Tiles (RT not available)")
+            rayTracingUnavailable(outputPath, "Shader Tiles")
         }
 
         val (image, imageView) = createRtOutputImage(renderer)
@@ -404,14 +404,14 @@ object RayTracingDocsHarness {
             lprintln("error,doc", "ray tracing module build failed: ${e.message}")
             image.cleanup(); imageView.cleanup()
             vertexBuffer.cleanup(); blas.cleanup(); tlas.cleanup()
-            return writeNotSupportedPlaceholder(outputPath, "Shader Tiles (build failed: ${e.message?.take(60)})")
+            captureFailed(outputPath, "Shader Tiles", "ray tracing module build failed: ${e.message}", e)
         }
 
         if (!rtModule.valid || errors.isNotEmpty()) {
             lprintln("error,doc", "ray tracing module invalid: $errors")
             image.cleanup(); imageView.cleanup()
             vertexBuffer.cleanup(); blas.cleanup(); tlas.cleanup()
-            return writeNotSupportedPlaceholder(outputPath, "Shader Tiles (${summarizeShaderErrors(errors)})")
+            captureFailed(outputPath, "Shader Tiles", "ray tracing module invalid: ${summarizeShaderErrors(errors)}")
         }
 
         val pointer = rtModule.pointer()
@@ -438,7 +438,7 @@ object RayTracingDocsHarness {
      * AABB BLAS resolved by an intersection shader. Sphere instances select
      * their mirror-material hit group through SBT record offsets.
      *
-     * Returns a placeholder PNG when ray tracing is not supported.
+     * Throws when ray tracing is not supported, rather than writing a stand-in PNG.
      */
     suspend fun renderMirrorBallsScene(
         outputPath: String,
@@ -446,8 +446,7 @@ object RayTracingDocsHarness {
         camera: Camera = cameraFromContextOrDefault(renderer)
     ): File {
         if (!renderer.device.supportsRayTracing) {
-            lprintln("info,doc", "ray tracing not supported on this device – writing placeholder for $outputPath")
-            return writeNotSupportedPlaceholder(outputPath, "Mirror Balls (RT not available)")
+            rayTracingUnavailable(outputPath, "Mirror Balls")
         }
 
         val (image, imageView) = createRtOutputImage(renderer)
@@ -557,7 +556,7 @@ object RayTracingDocsHarness {
             image.cleanup(); imageView.cleanup()
             floorVertexBuffer.cleanup(); sphereAabbBuffer.cleanup()
             floorBlas.cleanup(); sphereBlas.cleanup(); tlas.cleanup()
-            return writeNotSupportedPlaceholder(outputPath, "Mirror Balls (build failed: ${e.message?.take(60)})")
+            captureFailed(outputPath, "Mirror Balls", "ray tracing module build failed: ${e.message}", e)
         }
 
         if (!rtModule.valid || errors.isNotEmpty()) {
@@ -565,7 +564,7 @@ object RayTracingDocsHarness {
             image.cleanup(); imageView.cleanup()
             floorVertexBuffer.cleanup(); sphereAabbBuffer.cleanup()
             floorBlas.cleanup(); sphereBlas.cleanup(); tlas.cleanup()
-            return writeNotSupportedPlaceholder(outputPath, "Mirror Balls (${summarizeShaderErrors(errors)})")
+            captureFailed(outputPath, "Mirror Balls", "ray tracing module invalid: ${summarizeShaderErrors(errors)}")
         }
 
         val pointer = rtModule.pointer()
@@ -903,9 +902,10 @@ object RayTracingDocsHarness {
     }
 
     private fun tanHalfFovY(camera: Camera): Float {
-        val configured = camera.p.fov
-        val radians = if (configured > PI) Math.toRadians(configured) else configured
-        return tan(0.5 * radians).toFloat()
+        // Projection.fov is radians (see Options.fov). This used to guess the unit with
+        // `if (configured > PI) toRadians(configured)`, a heuristic that existed only because the
+        // default was a degrees literal in a radians slot.
+        return tan(0.5 * camera.p.fov).toFloat()
     }
 
     private fun transitionImageToGeneral(renderer: Renderer, image: Image) {
@@ -1105,39 +1105,24 @@ object RayTracingDocsHarness {
             .take(120)
     }
 
-    private fun writeNotSupportedPlaceholder(outputPath: String, label: String): File {
-        val w = 512; val h = 512
-        val bi = BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB)
-        val g = bi.createGraphics()
-        try {
-            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-            g.color = Color(0x1a, 0x1a, 0x22)
-            g.fillRect(0, 0, w, h)
-            g.color = Color(0x44, 0x44, 0x55)
-            val step = 32
-            var x = 0
-            while (x < w) { g.drawLine(x, 0, x, h); x += step }
-            var y = 0
-            while (y < h) { g.drawLine(0, y, w, y); y += step }
-            g.color = Color(0x88, 0x88, 0xaa)
-            g.font = Font(Font.MONOSPACED, Font.PLAIN, 14)
-            val fm = g.fontMetrics
-            val lines = listOf("Ray Tracing", "Not Available", label)
-            val totalH = lines.size * fm.height
-            var ty = (h - totalH) / 2 + fm.ascent
-            for (line in lines) {
-                val tw = fm.stringWidth(line)
-                g.drawString(line, (w - tw) / 2, ty)
-                ty += fm.height
-            }
-        } finally {
-            g.dispose()
-        }
-        val file = File(outputPath)
-        file.parentFile?.mkdirs()
-        ImageIO.write(bi, "png", file)
-        return file
-    }
+    /**
+     * A docs figure has no honest fallback.  When a capture cannot run, the build must
+     * stop -- not hand back a picture that *looks* like a render and gets committed as
+     * one.  See this object's KDoc for the four figures that reached `main` that way.
+     */
+    private fun rayTracingUnavailable(outputPath: String, scene: String): Nothing = error(
+        "$scene: this device has no VK_KHR_ray_tracing_pipeline, so $outputPath was not " +
+            "rendered. Nothing is written in its place -- run this capture on a machine with " +
+            "ray tracing support (Linux CI does; MoltenVK on macOS does not)."
+    )
+
+    /** As [rayTracingUnavailable], but for a device that has RT and still could not render. */
+    private fun captureFailed(
+        outputPath: String,
+        scene: String,
+        detail: String,
+        cause: Throwable? = null
+    ): Nothing = throw IllegalStateException("$scene: $outputPath was not rendered -- $detail", cause)
 
     private fun rendererFromContextOrDocument(): Renderer {
         try {
@@ -1182,7 +1167,9 @@ object RayTracingDocsHarness {
         void main() {
             vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
             gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
-            fragUV = pos;
+            // Texel-aligned. The source is written with imageStore at gl_LaunchIDEXT.xy, so its
+            // row 0 is the top of the picture, same as the Y-flipped viewport's clip y = +1.
+            fragUV = vec2(pos.x, 1.0 - pos.y);
         }
     """.trimIndent()
 

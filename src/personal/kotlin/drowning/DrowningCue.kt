@@ -12,8 +12,11 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.floor
+import kotlin.math.pow
+import kotlin.math.sign
 import kotlin.math.sin
 
 enum class DrowningMxgKind(val fileName: String) {
@@ -35,6 +38,66 @@ data class DrowningRect(val x: Int, val y: Int, val width: Int, val height: Int)
         width.toFloat() / atlasWidth,
         height.toFloat() / atlasHeight
     )
+}
+
+/**
+ * One curve for the camera-ray depth of every cell in a cue.
+ *
+ * [pivot] and [range] are measured in multiples of each cell's calibrated convergence depth, so a
+ * single score remains meaningful when looks have slightly different metric calibrations. The GPU
+ * palette receives those two values converted to metres. [power] `1` is exactly linear; [amount]
+ * crossfades between the calibrated and curved depths.
+ */
+class DrowningDepthRemap(
+    pivot: Float = 1f,
+    range: Float = 1f,
+    power: Float = 1f,
+    amount: Float = 1f
+) {
+    var pivot: Float = pivot
+        private set
+    var range: Float = range
+        private set
+    var power: Float = power
+        private set
+    var amount: Float = amount
+        private set
+
+    init {
+        set(pivot, range, power, amount)
+    }
+
+    fun set(
+        pivot: Float = this.pivot,
+        range: Float = this.range,
+        power: Float = this.power,
+        amount: Float = this.amount
+    ): DrowningDepthRemap = apply {
+        require(pivot.isFinite() && range.isFinite() && power.isFinite() && amount.isFinite()) {
+            "depth remap parameters must be finite"
+        }
+        this.pivot = pivot
+        this.range = abs(range).coerceAtLeast(1e-4f)
+        this.power = power.coerceIn(0.05f, 8f)
+        this.amount = amount.coerceIn(0f, 1f)
+    }
+
+    fun set(other: DrowningDepthRemap): DrowningDepthRemap =
+        set(other.pivot, other.range, other.power, other.amount)
+
+    fun clear(): DrowningDepthRemap = set(power = 1f, amount = 1f)
+
+    /** CPU reference for the identical shader curve. */
+    fun apply(depth: Float, convergenceDepth: Float): Float {
+        val centre = convergenceDepth * pivot
+        val width = abs(convergenceDepth * range).coerceAtLeast(1e-5f)
+        val normalized = (depth - centre) / width
+        val curved = centre + sign(normalized) * abs(normalized).pow(power) * width
+        return (depth + (curved - depth) * amount).coerceIn(0.01f, 100f)
+    }
+
+    override fun toString(): String =
+        "DrowningDepthRemap(pivot=$pivot, range=$range, power=$power, amount=$amount)"
 }
 
 data class DrowningCalibration(
@@ -80,8 +143,21 @@ data class DrowningCell(
     var particleInfluence: Float = 1f,
     var projectedLight: Float = 1f,
     /** A fast appearance-only shutter multiplier, normally supplied by [DrowningScore]. */
-    var flicker: Float = 1f
+    var flicker: Float = 1f,
+    /** Independent multiplier on projected RGB; unlike [projectedLight], values above one are useful. */
+    var videoGain: Float = 1f
 ) {
+    /** Score bind world -> source camera; captured once after document setup, before score motion. */
+    val bindCameraFromModel: Matrix4f = Matrix4f(cameraFromModel)
+
+    /**
+     * Capture the scored pose around which already-packed splats move. The live shader removes this
+     * pose, then applies [modelFromCamera], so score transforms do not require a second decode/pack.
+     * Any splat-specific correction already baked into the buffer deliberately survives this step.
+     */
+    fun bindScorePose() {
+        bindCameraFromModel.set(modelFromCamera).invert()
+    }
     val splatDirectory: File get() = File(directory, "frames")
     fun mxg(kind: DrowningMxgKind): File = File(directory, kind.fileName)
 
@@ -119,6 +195,7 @@ class DrowningCue private constructor(
 ) {
     val videoFile: File = File(directory, "circle-15.vrpack.mp4")
     val metadataFile: File = File(directory, "circle-15.vrpack.json")
+    val depthRemap = DrowningDepthRemap()
 
     init {
         require(format == "splat2-vr-circle-mosaic-v2") { "unsupported vrpack format '$format'" }
@@ -286,6 +363,7 @@ class DrowningTransport(
     val frame: Int get() = splats.frame
 
     fun advance(nowNanos: Long = System.nanoTime()): Boolean = splats.advance(nowNanos)
+    internal fun commitPresented(frame: Int, nowNanos: Long) = splats.commitPresented(frame, nowNanos)
     fun seek(frame: Double): Boolean = splats.seek(frame)
     fun scrubBy(delta: Double): Boolean = splats.scrubBy(delta)
     fun invalidate() = splats.invalidate()

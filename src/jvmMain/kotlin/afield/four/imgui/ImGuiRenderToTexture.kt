@@ -1,7 +1,6 @@
 package afield.four.imgui
 
 import afield.Generator
-import afield.Rect
 import afield.four.Renderer
 import afield.four.buffers.VertexBuffer
 import afield.four.device.CommandBuffer
@@ -50,13 +49,6 @@ class ImGuiRenderToTexture(
     renderer: Renderer = fromContext(),
     private val window: Window? = renderer.window,
     parameters: RTTParameters.() -> Unit = {},
-    /**
-     * When true, the on-screen blit helper ([attachTo]) flips the rendered texture vertically.
-     *
-     * This is often needed because "render target" image space vs "sampled texture" UV space
-     * can differ by a Y-flip depending on conventions.
-     */
-    var flipYWhenBlittingToScreen: Boolean = true,
     /**
      * Supersample the font atlas: scales the rasterization size and keeps on-screen size stable via FontGlobalScale.
      */
@@ -170,8 +162,10 @@ class ImGuiRenderToTexture(
         blitName: String = "$name-blit",
     ): ModulePointer {
         target.preTargets[name] = this
-        val src = if (flipYWhenBlittingToScreen) Rect(0.0, 1.0, 1.0, -1.0) else null
-        return blitToScreen(renderer = renderer, target = target, name = blitName, sourceRect = src, blend = true)
+        // No sourceRect: this used to pass Rect(0.0, 1.0, 1.0, -1.0) to cancel a vertical mirror in
+        // RenderToTexture.blitVertexShader. That shader now samples texel-aligned, so the identity
+        // crop is the correct one and a flip here would re-invert the panel.
+        return blitToScreen(renderer = renderer, target = target, name = blitName, blend = true)
     }
 
     fun cleanup() {

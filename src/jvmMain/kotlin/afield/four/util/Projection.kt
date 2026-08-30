@@ -19,6 +19,14 @@ class Projection : HasUniform<Matrix4f> {
     @JvmField
     val projectionMatrix: Matrix4f
 
+    /**
+     * Vertical field of view in **radians**, and it must be **positive**.
+     *
+     * A negative fovy does not flip the camera, it mirrors the image: `h = 1 / tan(fovy / 2)`
+     * changes sign, which negates `m00` and `m11` together and so rotates the picture 180° while
+     * preserving triangle winding. See [Options.fov] for the degrees-in-a-radians-slot bug that
+     * shipped exactly that for the whole standard-renderer path.
+     */
     var fov = Options.fov
     var zNear = Options.zNear
     var zFar = Options.zFar
@@ -66,6 +74,7 @@ class SuperProjection : HasUniform<Matrix4f> {
     @JvmField
     val projectionMatrix: Matrix4f
 
+    /** Vertical field of view in **radians**, and must be positive — see [Projection.fov]. */
     var fov = Options.fov
     var zNear = Options.zNear
     var zFar = Options.zFar

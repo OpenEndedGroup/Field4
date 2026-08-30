@@ -595,6 +595,25 @@ class KeyframeScope(val schemaVersion: Int = 0) {
     }
 
     /**
+     * Register an arbitrary live value through explicit [get] and [set] functions. This is the
+     * escape hatch for score objects, simulation state and other things that are not shader
+     * [Structure]s: [capture] calls [get], and invoking a [Key] hands its stored value to [set].
+     *
+     * The value still has ordinary keyframer semantics. [interpolate] chooses its behaviour from
+     * the runtime type returned by [get], and persistence only keeps types recognised by
+     * [KValue.fromAny]. The setter therefore receives `Any?`; it should validate or safely ignore a
+     * value of the wrong type. Registering the same [name] again replaces any earlier target.
+     */
+    fun target(name: String, get: () -> Any?, set: (Any?) -> Unit) {
+        dynamicTargets[name] = Target(
+            resolve = { null },
+            set = set,
+            get = get
+        )
+        targets.remove(name)
+    }
+
+    /**
      * Register a key against one of a graphics module's live uniform structures, resolved through the
      * pointer each time so it survives a shader reload.
      *

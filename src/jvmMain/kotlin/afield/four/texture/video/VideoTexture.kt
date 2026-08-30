@@ -17,6 +17,7 @@ import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.*
 import java.nio.ByteBuffer
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
@@ -100,6 +101,7 @@ class VideoTexture(
 
     // Current video state
     private var decoder: VideoDecoder? = null
+    private var loopDecoder: VideoDecoder? = null
     private var currentVideoPath: String? = null
     private var isPlaying = false
 
@@ -139,6 +141,7 @@ class VideoTexture(
     private val decodedFrame = AtomicReference<DecodedFrame?>()
     private val decodedFrameLock = Any()
     private var decodeWorker: Thread? = null
+    private var loopResetWorker: Thread? = null
     @Volatile private var decodeWorkerRunning = false
     @Volatile private var decodeFailure: Throwable? = null
     @Volatile var backgroundDecodeMicros: Long = 0
@@ -170,6 +173,13 @@ class VideoTexture(
             lprintln("error,video", "Failed to open video: $videoPath")
             return false
         }
+        val newLoopDecoder = if (backgroundDecode) VideoDecoder(videoPath, pixelFormat).also {
+            if (!it.open()) {
+                newDecoder.close()
+                lprintln("error,video", "Failed to open loop-ahead decoder: $videoPath")
+                return false
+            }
+        } else null
 
         val newWidth = newDecoder.width
         val newHeight = newDecoder.height
@@ -184,7 +194,9 @@ class VideoTexture(
         // Close old decoder if exists. A background decoder owns FFmpeg exclusively while running.
         stopDecodeWorker()
         decoder?.close()
+        loopDecoder?.close()
         decoder = newDecoder
+        loopDecoder = newLoopDecoder
         currentVideoPath = videoPath
 
         if (canReuseTextures) {
@@ -244,7 +256,7 @@ class VideoTexture(
             internalClock.reset()
         }
 
-        if (backgroundDecode) startDecodeWorker(newDecoder)
+        if (backgroundDecode) startDecodeWorker(newDecoder, checkNotNull(newLoopDecoder))
 
         return true
     }
@@ -509,7 +521,9 @@ class VideoTexture(
         pause()
         stopDecodeWorker()
         decoder?.close()
+        loopDecoder?.close()
         decoder = null
+        loopDecoder = null
         currentVideoPath = null
         currentTimestamp = 0.0
         uploadedFrame = false
@@ -594,18 +608,22 @@ class VideoTexture(
         LockSupport.unpark(decodeWorker)
     }
 
-    private fun startDecodeWorker(activeDecoder: VideoDecoder) {
+    private fun startDecodeWorker(activeDecoder: VideoDecoder, loopDecoder: VideoDecoder) {
         check(!decodeWorkerRunning)
         decodeFailure = null
         requestedDecode.set(null)
         pendingDecode.set(null)
         decodeWorkerRunning = true
         decodeWorker = thread(name = "video-decode-${pixelFormat.name.lowercase()}", isDaemon = true) {
-            runDecodeWorker(activeDecoder)
+            runDecodeWorker(activeDecoder, loopDecoder)
         }
     }
 
-    private fun runDecodeWorker(activeDecoder: VideoDecoder) {
+    private fun runDecodeWorker(initialDecoder: VideoDecoder, initialLoopDecoder: VideoDecoder) {
+        var activeDecoder = initialDecoder
+        var standbyDecoder = initialLoopDecoder
+        val standbyReady = AtomicBoolean(false)
+        rewindLoopDecoder(initialLoopDecoder, standbyReady, warmUp = true)
         var decoderTimestamp = Double.NaN
         try {
             while (decodeWorkerRunning) {
@@ -615,6 +633,18 @@ class VideoTexture(
                     continue
                 }
                 val frameDuration = if (activeDecoder.fps > 0) 1.0 / activeDecoder.fps else 0.033
+                var rewindAfterPublish: VideoDecoder? = null
+                // The expensive end-to-start FFmpeg seek used to puncture every short looping cue.
+                // Alternate two already-open decoders instead: the standby is sitting at frame zero,
+                // while the exhausted decoder rewinds on its own thread during the next loop.
+                if (request.exactFrame == 0L && decoderTimestamp.isFinite() &&
+                    decoderTimestamp > frameDuration * 2.0 && standbyReady.compareAndSet(true, false)) {
+                    val exhausted = activeDecoder
+                    activeDecoder = standbyDecoder
+                    standbyDecoder = exhausted
+                    rewindAfterPublish = standbyDecoder
+                    decoderTimestamp = -frameDuration
+                }
                 val already = synchronized(decodedFrameLock) { decodedFrame.get() }
                 if (request.exactFrame != null && already != null &&
                     VideoFrameIndex.decoded(already.frame.timestamp, activeDecoder.fps) == request.exactFrame) continue
@@ -668,11 +698,29 @@ class VideoTexture(
                 if (request.exactFrame != null && !reached && requestedDecode.get()?.generation == request.generation) {
                     pendingDecode.compareAndSet(null, request)
                 }
+                // The decoder stopped being active as soon as we swapped it out. Rewind it even if
+                // an explicit seek superseded frame zero before publication, otherwise one unlucky
+                // scrub at the loop boundary permanently loses the prepared standby.
+                if (rewindAfterPublish != null) {
+                    rewindLoopDecoder(checkNotNull(rewindAfterPublish), standbyReady)
+                }
             }
         } catch (t: Throwable) {
             if (decodeWorkerRunning) decodeFailure = t
         } finally {
             decodeWorkerRunning = false
+        }
+    }
+
+    private fun rewindLoopDecoder(value: VideoDecoder, ready: AtomicBoolean, warmUp: Boolean = false) {
+        loopResetWorker?.join(5_000L)
+        check(loopResetWorker?.isAlive != true) { "previous loop decoder is still rewinding" }
+        loopResetWorker = thread(name = "video-loop-rewind-${pixelFormat.name.lowercase()}", isDaemon = true) {
+            // Opening FFmpeg is not enough to pay its first-decode costs. Prime the initially cold
+            // standby during the first loop, then return it to frame zero before advertising it.
+            if (warmUp) value.decodeNextFrame()?.close()
+            if (value.seek(0.0) && decodeWorkerRunning) ready.set(true)
+            else if (decodeWorkerRunning) lprintln("warning,video", "Could not pre-rewind loop decoder")
         }
     }
 
@@ -683,6 +731,9 @@ class VideoTexture(
         decodeWorker?.join(5_000L)
         check(decodeWorker?.isAlive != true) { "video decode worker did not stop" }
         decodeWorker = null
+        loopResetWorker?.join(5_000L)
+        check(loopResetWorker?.isAlive != true) { "video loop rewind worker did not stop" }
+        loopResetWorker = null
         requestedDecode.set(null)
         pendingDecode.set(null)
         clearDecodedFrame()

@@ -9,8 +9,10 @@ import kotlin.concurrent.thread
 data class MxgCueSnapshot(
     val serial: Long,
     val requestedFrame: Int,
+    val cells: IntArray,
     val frames: List<MxgFrame>,
-    val offsets: IntArray = IntArray(frames.size)
+    val offsets: IntArray = IntArray(15),
+    val cellMask: Int = cells.fold(0) { mask, cell -> mask or (1 shl cell) }
 )
 
 /**
@@ -22,7 +24,7 @@ class MxgCueBank private constructor(
     val profiles: List<MxgProfile>,
     val kind: DrowningMxgKind
 ) : AutoCloseable {
-    private data class Request(val generation: Long, val frame: Int, val offsets: IntArray)
+    private data class Request(val generation: Long, val frame: Int, val offsets: IntArray, val cellMask: Int)
     private val requestLock = Any()
     private val reads = AtomicLong()
 
@@ -67,12 +69,18 @@ class MxgCueBank private constructor(
         return this
     }
 
-    fun request(frame: Int, offsets: IntArray = ZERO_OFFSETS): Boolean = synchronized(requestLock) {
+    fun request(
+        frame: Int,
+        offsets: IntArray = ZERO_OFFSETS,
+        cellMask: Int = (1 shl files.size) - 1
+    ): Boolean = synchronized(requestLock) {
         require(offsets.size == files.size) { "need ${files.size} MXG offsets, got ${offsets.size}" }
+        val validMask = (1 shl files.size) - 1
+        require(cellMask and validMask.inv() == 0) { "MXG cell mask has bits outside ${files.indices}" }
         if (!active || !running) return@synchronized false
         val previous = requested.get()
-        if (previous?.frame == frame && previous.offsets.contentEquals(offsets)) return@synchronized false
-        val request = Request(generation.incrementAndGet(), frame, offsets.copyOf())
+        if (previous?.frame == frame && previous.cellMask == cellMask && previous.offsets.contentEquals(offsets)) return@synchronized false
+        val request = Request(generation.incrementAndGet(), frame, offsets.copyOf(), cellMask)
         requested.set(request)
         pending.set(request)
         LockSupport.unpark(worker)
@@ -92,16 +100,21 @@ class MxgCueBank private constructor(
                 preparing = true
                 try {
                     val started = System.nanoTime()
-                    val frames = ArrayList<MxgFrame>(files.size)
-                    for ((index, file) in files.withIndex()) {
+                    val cells = files.indices.filter { request.cellMask and (1 shl it) != 0 }.toIntArray()
+                    val frames = ArrayList<MxgFrame>(cells.size)
+                    for (index in cells) {
                         if (!current(request)) break
                         reads.incrementAndGet()
+                        val file = files[index]
                         frames += file.readFrame(Math.floorMod(request.frame + request.offsets[index], file.frameCount))
                     }
                     decodeMicros = (System.nanoTime() - started) / 1_000L
                     synchronized(requestLock) {
-                        if (current(request) && frames.size == files.size) {
-                            published.set(MxgCueSnapshot(serial.incrementAndGet(), request.frame, frames, request.offsets))
+                        if (current(request) && frames.size == cells.size) {
+                            published.set(MxgCueSnapshot(
+                                serial.incrementAndGet(), request.frame, cells, frames,
+                                request.offsets, request.cellMask
+                            ))
                         }
                     }
                 } finally { preparing = false }

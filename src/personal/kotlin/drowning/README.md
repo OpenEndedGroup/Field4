@@ -4,7 +4,10 @@
 
 `DrowningCue` reads and validates one `splat2-vr-circle-mosaic-v2` directory. It makes the 15 cell
 transforms, atlas rectangles, disparity/flow decoders and inverse-depth calibration available from one
-object. `DrowningCue.writePalette` writes the same data as a 15 × 14-`vec4` std430 buffer for live GLSL.
+object. `DrowningCue.writePalette` writes the same data as a 15 × 20-`vec4` std430 buffer for live
+GLSL. The final five vectors preserve the score bind pose around the shared splat buffer and carry
+the shared nonlinear depth curve without disturbing the existing transform, atlas, decode,
+calibration, or score fields.
 
 `DrowningTransport` is both the global splat/MXG playhead and a `PlaybackClock` for `VideoTexture`; its
 15 frame offsets align per-cell resources without creating 15 unrelated clocks. `MxgCueBank` performs
@@ -16,7 +19,22 @@ for the example pack) rather than doing a 20–40 ms pack inside `record_gfx`.
 `DrowningAnchors` is the small bridge from already-presented MXG frames to particle interaction. It
 selects a bounded number of useful tracked nodes per cell, preserves track-to-slot identity through
 short losses, and advances a generation token on slot reuse or cue wrap. Consumers can therefore fade
-and reacquire rather than snapping when a track disappears. It does no file access and owns no decoder.
+and reacquire rather than snapping when a track disappears. Its third GPU record carries the same
+CPU-authored MXG tree root and effective distance-from-leaf warp used by the draw: particle attachment,
+reacquisition and world velocity therefore follow sculpted nodes rather than their original screen
+centroids. It does no file access and owns no decoder.
+
+`MxgTreeWarp` is the live scoring surface for that sculpture. Structural leaves always have zero
+weight and stay depth-aligned to their cell; roots have weight one, and `distancePower` redistributes
+intermediate nodes. Roots can be moved independently every render frame without touching the 8 fps
+decoder or rebuilding topology:
+
+```kotlin
+_mxgTreeWarp.rootsAbove(vec3(0f, 0f, 0f), height = 3f, radius = 1f, amount = .72f)
+_mxgTreeWarp[4].set(-2f, 5f, 1f, amount = .9f)
+_mxgTreeWarp.distancePower = 1.4f
+_mxgTreeWarp.moveContours = false // false: tether to screen; true: carry contours with their nodes
+```
 
 Data-bearing `.vrpack.mp4` files must use `VideoTexture(pixelFormat = VideoDecodeFormat.RGBA8)`. Their
 R/G/B channels contain disparity and optical-flow values, so the normal P010 path would lose information
@@ -27,10 +45,24 @@ FFmpeg decode and RGB conversion then run on a worker while Vulkan upload remain
 
 `DrowningPresentation` owns a two-phase barrier. Register the video and the two banks with the boxes'
 upload callbacks, then schedule **only this presenter** before the main RTT (after advancing the cue
-transport). It pins one requested integer frame until all three workers are ready, records their
-uploads before the same RTT draw, then selects the latest requested position. A slow worker causes
-whole frame sets to be held/skipped; it never makes video slide over stale geometry. An explicit
-transport seek supersedes pending work. Hidden draw modules still register so re-enabling is aligned.
+transport). After frame N presents, it immediately asks all three workers for N+1, but holds the
+completed set until its source-rate deadline. That gives loading the entire display interval instead
+of beginning after the frame is already due. Ordinary wall-clock advancement cannot replace useful
+in-flight work; only an explicit seek or resource reconfiguration can. A genuine underrun therefore
+holds the previous complete set and then continues sequentially rather than entering a deadline-chasing
+skip loop. Hidden draw modules still register so re-enabling is aligned.
+
+While this presenter owns the resources it also owns advancement of `DrowningTransport`: the public
+playhead is the complete frame actually committed, not a wall clock several frames ahead of it. Score
+the palette after `DrowningPresentation.render`, so an underrun cannot move transforms/effects ahead
+of the video, MXG and splats. Setting `transport.position` remains an explicit seek and supersedes the
+prepared set normally.
+
+The pacer retains its ideal deadline across ordinary render-frame quantization, so a succession of
+small 60 Hz misses does not turn requested 8 fps into 7 fps. A miss of a whole source interval resets
+the phase rather than bursting to catch up. Short looping videos keep a second decoder cold-side: it
+is primed during the first pass and alternates with the active decoder while the exhausted one rewinds
+off-thread. Thus frame 123→0 does not put FFmpeg's rewind latency into the presentation cadence.
 
 `VideoTexture.prepareFrame / isFrameReady / uploadPreparedFrame` separate background decode from
 presentation. This exact path is for zero-based constant-frame-rate assets; it checks actual decoded
@@ -39,7 +71,9 @@ also schedule the video's normal automatic update target. `MxgFrame.writeInto(co
 records transfers into the presenter's command buffer instead of submitting independent uploads.
 
 The presenter's `describe()` reports requested, pending, and actually presented source frames for
-video, splats, and MXG, plus wait time and presentation/render counters. Nonzero per-cell offsets are
+video, splats, and MXG, plus total wait, asset-ready time, deadline headroom and presentation/render
+counters. Positive `leadMs` means the set was ready before its deadline; negative means an actual
+underrun. Nonzero per-cell offsets are
 intentional geometry offsets; the atlas itself still has one global video time. Frame-count mismatches
 fail explicitly instead of silently wrapping a short geometry sequence against a longer movie.
 
@@ -436,3 +470,82 @@ remain false until a returning layer has joined a matching video/geometry presen
 boxes do this with zero draw instances or zero vertices, preserving the user's module enabled state
 and normal shader reload. Disabled layers are not prerequisites in the frame barrier. The atlas
 continues for other consumers; this is decoder suspension, not asset unloading.
+
+The score can also gate individual cells without changing their stable 0..14 palette identities:
+
+```kotlin
+val score = _cueScore.live
+score.only(0, 4, 9, 12, seconds = 2.0)
+score.group(6, 7).materialize(seconds = 1.5)
+score.group(0, 4).retire(seconds = 3.0)
+```
+
+Retirement keeps a cell resident until opacity, particle influence and projected light have all
+faded to zero, then omits its splat read/pack/upload and MXG decode/upload. Materialization marks the
+cell resident first; score time stays still while the new sparse asset set joins the presentation
+barrier, so its fade cannot reveal stale geometry. Sparse splats retain their original palette IDs,
+and inactive MXG meshes and anchor slots are invalidated. The packed video remains one full atlas
+decode/upload, and the fixed 15-cell palette remains intentionally tiny and stable.
+
+Use `_cueScore.live` in connected gesture boxes: their generated preamble can construct a sibling
+score object, while `live` resolves the instance currently advancing this piece. One-shot score
+gestures travel through a per-session command lane and are consumed on the render-score update.
+
+`DrowningScore.keyframes()` exposes the entire score through the ordinary keyframer rather than a
+second score format. It flattens each stable cell into persisted position/rotation/scale, opacity,
+effects, light, projected-video gain, resource and flicker values, plus the four global `depth.*`
+curve parameters.
+Rotation uses the keyframer's quaternion slerp; all other numeric/vector lanes lerp. Resource
+residency stays nonzero through an interpolation and reaches zero only at the retired endpoint,
+when sparse splat/MXG work can stop.
+
+The cue creates one persistent scope before the graphics boxes launch. Each live graphics box then
+registers its own shader controls and CPU-side geometry controls into that same scope. Re-running a
+box replaces its registrations with closures over the new live locals, so shader reload and
+copy/paste editing do not create a second keyframe universe. `floatTarget`, `booleanTarget`,
+`intTarget` and `vector3Target` are the typed bridge for values which must remain authoritative
+outside a push-constant structure; integer and Boolean controls deliberately persist as interpolable
+float lanes.
+
+```kotlin
+val keys = _cueKeyframes
+val a = keys.capture()
+// change the score or transforms here
+val b = keys.capture()
+keys.interpolate(a, b, 0.35)()
+
+val path = java.nio.file.Path.of(System.getProperty("user.home"),
+    "Documents/AFieldWorkspace/dust_three/score-keys/four.json")
+b.save(path, note = "four channels")
+keys.loadLatestKey(path)()
+```
+
+The shared depth curve acts along each source-camera ray, preserving the projected video pixel while
+moving its reconstructed point. `pivot` and `range` are multiples of the calibrated convergence
+depth; `power=1` is identity, and `amount` crossfades the curve. The palette supplies the same curve
+to MXG, Gaussian splats, filled/outline splat rectangles, particle surface forces, optical-flow
+scale and projected-video depth tests.
+
+```kotlin
+score.remapDepth(pivot=1f, range=0.65f, power=1.8f, amount=1f)
+score.remapDepth(amount=0.35f) // retain the current pivot/range/power
+score.clearDepthRemap()
+```
+
+For shuttered movement, `DrowningFrameCadence` scores exact device render frames, independently of
+the source-video clock. Each entry supplies projected-video gain, shutter and an optional rotation
+event. Rotation is derived analytically from the renderer's absolute frame counter, so an asset hold,
+skip, seek or playback-speed change cannot alter the shutter mechanism; `staggerFrames` delays
+successive members of a score group around the circle.
+
+```kotlin
+val z = DrowningFrameCadence(
+    cadenceFrame(videoGain=2.2f),
+    cadenceFrame(videoGain=1f),
+    cadenceFrame(videoGain=.18f),
+    cadenceFrame(videoGain=2.4f, rotateDegrees=24f),
+    cadenceFrame(videoGain=1f),
+    cadenceFrame(videoGain=0f, shutter=0f)
+)
+score.script = { group(0, 4, 9).cadence(z, staggerFrames=1) }
+```

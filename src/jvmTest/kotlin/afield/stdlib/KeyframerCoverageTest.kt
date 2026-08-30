@@ -55,6 +55,7 @@ class KeyframerCoverageTest {
             // ---- KeyframeScope: registration -------------------------------------------------
             "KeyframeScope::target(String, Structure)" to covered(),
             "KeyframeScope::target(String, () -> Structure?)" to covered(),
+            "KeyframeScope::target(String, () -> Any?, (Any?) -> Unit)" to covered(),
             "KeyframeScope::target(ModulePointer, String)" to
                 headless("resolves module.current.liveUniformStructures; needs a live Renderer"),
             "KeyframeScope::target(ComputeModulePointer, String)" to
@@ -328,8 +329,8 @@ class KeyframerCoverageTest {
 
         // The exact numbers published on public/docs/keyframer_examples.md. If this test has to
         // change, that page has to change in the same commit.
-        assertEquals(101, total, "total public behavioural declarations")
-        assertEquals(93, covered, "declarations covered by KeyframerTest")
+        assertEquals(102, total, "total public behavioural declarations")
+        assertEquals(94, covered, "declarations covered by KeyframerTest")
         assertEquals(8, unreachable, "declarations unreachable in a headless unit test")
 
         // Every uncovered declaration must carry a reason — no silent gaps.

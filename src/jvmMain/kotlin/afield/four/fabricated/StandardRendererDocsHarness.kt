@@ -620,7 +620,7 @@ object StandardRendererDocsHarness {
                 backgroundColor = srgbGray(0.095f)
             )
         ) { bundle, activeRenderer ->
-            bundle.scene.projection.fov = -50.0 * PI / 180.0
+            bundle.scene.projection.fov = 50.0 * PI / 180.0
             // Keep the same side-on direction as the comparison view, but leave enough distance
             // for the normalized 4.45-unit model. The old eye point sat inside ToyCar after the
             // Field-matrix TRS decomposition was corrected.

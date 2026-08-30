@@ -1806,6 +1806,27 @@ object StandardRenderer {
 		}
 	"""
 
+	/**
+	 * Fullscreen triangle for the passes that *sample* a render target: the g-buffer resolves, the
+	 * deferred lighting pass, the copies, motion blur, FXAA and every [Bundle.addShaderEffect] post
+	 * pass.
+	 *
+	 * `vUv` is deliberately **texel-aligned** — `vUv = (0, 0)` is the first row in memory, which is
+	 * the top of the picture — and not the GL-style `pos * 0.5 + 0.5`. That is not a matter of
+	 * taste. Every target here is rendered through the negative-height viewport (see
+	 * `RenderToTexture.setViewportAndScissorArray`), so clip `y = +1` lands at image row 0, and
+	 * sampler `v = 0` is also row 0. A pass that wrote `vUv = pos * 0.5 + 0.5` would read `v = 1`
+	 * at the row it is writing to `v = 0`, mirroring the image vertically **once per pass** — so
+	 * the orientation of the final image depended on the *parity* of the number of post passes.
+	 * That is how `fabricate-post-stack-vignette.png`, whose only distinguishing feature is one
+	 * extra `addShaderEffect` pass, came to be committed upside down relative to the other eleven
+	 * figures on the same docs page.
+	 *
+	 * Note this is the opposite of what a *procedural* fullscreen shader wants: `StackSLGalleryHarness`
+	 * emits GL-style `fragUV = pos` and is right to, because a StackSL program's `uv.y = 0` means
+	 * the bottom of the picture and nothing is being sampled. The convention belongs to the use, not
+	 * to the fullscreen triangle.
+	 */
 	private const val fullscreenVertex = """
 		#version 450
 		layout(location = 0) out vec2 vUv;
@@ -1816,7 +1837,8 @@ object StandardRenderer {
 		);
 		void main() {
 			vec2 pos = positions[gl_VertexIndex];
-			vUv = pos * 0.5 + 0.5;
+			// Texel-aligned: v = 0 at clip y = +1, which the Y-flipped viewport puts at row 0.
+			vUv = vec2(pos.x, -pos.y) * 0.5 + 0.5;
 			gl_Position = vec4(pos, 0.0, 1.0);
 		}
 	"""
@@ -2104,12 +2126,15 @@ object StandardRenderer {
 			return fract((p3.x + p3.y) * p3.z);
 		}
 
+		// Clip/NDC -> g-buffer texel coordinates. The Y-flipped viewport puts ndc.y = +1 at row 0,
+		// so v runs opposite to ndc.y. Same convention as vUv, which is why the two can be mixed
+		// freely below.
 		vec2 screenUvFromNdc(vec2 ndc) {
 			return vec2(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
 		}
 
 		void main() {
-			vec2 screenUv = vec2(vUv.x, 1.0 - vUv.y);
+			vec2 screenUv = vUv;
 			vec4 packedPos = texture(gPositionDepth, screenUv);
 			if (packedPos.w <= 1e-5) {
 				outAO = 1.0;

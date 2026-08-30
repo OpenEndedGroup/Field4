@@ -273,7 +273,7 @@ class SideBySideStereoTarget(
         val cam = stereoCamera.base
         val origin = cam.at
 
-        val halfFovRad = ((cam.p.fov * kotlin.math.PI / 180.0) * 0.5).toFloat()
+        val halfFovRad = (cam.p.fov * 0.5).toFloat() // Projection.fov is radians; see Options.fov
         val tanHalfFov = kotlin.math.tan(halfFovRad)
         val aspect = cam.p.aspect.takeIf { it > 0f } ?: (w / h)
 
@@ -687,7 +687,7 @@ class MultiviewSideBySideStereoTarget(
         val cam = stereoCamera.base
         val origin = cam.at
 
-        val halfFovRad = ((cam.p.fov * kotlin.math.PI / 180.0) * 0.5).toFloat()
+        val halfFovRad = (cam.p.fov * 0.5).toFloat() // Projection.fov is radians; see Options.fov
         val tanHalfFov = kotlin.math.tan(halfFovRad)
         val aspect = cam.p.aspect.takeIf { it > 0f } ?: (w / h)
 

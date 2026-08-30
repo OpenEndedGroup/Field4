@@ -862,7 +862,9 @@ object GaussianSplatRenderer {
      */
     data class SplatSource(
         val raw: CompressedSplatPly.RawSplats,
-        val transform: Matrix4f? = null
+        val transform: Matrix4f? = null,
+        /** Stable palette identity when [sources] is a sparse subset; defaults to its list index. */
+        val sourceIndex: Int? = null
     )
 
     /** Where one source's splats landed in a shared destination. Contiguous only when unsorted. */
@@ -930,6 +932,9 @@ object GaussianSplatRenderer {
                 "source $index has ${source.raw.count} splats, over the " +
                     "$MAX_PACK_SPLATS_PER_SOURCE the sort key can address"
             }
+            require((source.sourceIndex ?: index) in 0..0xff) {
+                "source identity ${source.sourceIndex} is outside the palette-addressable range 0..255"
+            }
         }
         val total = sources.sumOf { it.raw.count }
         require(dest.capacity() >= total.toLong() * SPLAT_FLOAT_STRIDE) {
@@ -951,10 +956,11 @@ object GaussianSplatRenderer {
             val built = ArrayList<PackedSpan>(sources.size)
             for (index in sources.indices) {
                 val source = sources[index].raw
-                built += PackedSpan(index, write, source.count)
+                val sourceIdentity = sources[index].sourceIndex ?: index
+                built += PackedSpan(sourceIdentity, write, source.count)
                 for (splat in 0 until source.count) {
                     emitSplat(
-                        source, splat, index, dest, write++, scaleMultiplier, inflation, config,
+                        source, splat, sourceIdentity, dest, write++, scaleMultiplier, inflation, config,
                         linear[index], bounds
                     )
                 }
@@ -998,7 +1004,8 @@ object GaussianSplatRenderer {
                 val low = (keys[slot] xor Long.MIN_VALUE).toInt()
                 val index = (low ushr PACK_SOURCE_SHIFT) and 0xFF
                 emitSplat(
-                    sources[index].raw, low and MAX_PACK_SPLATS_PER_SOURCE_MASK, index, dest, write++,
+                    sources[index].raw, low and MAX_PACK_SPLATS_PER_SOURCE_MASK,
+                    sources[index].sourceIndex ?: index, dest, write++,
                     scaleMultiplier, inflation, config, linear[index], bounds
                 )
             }

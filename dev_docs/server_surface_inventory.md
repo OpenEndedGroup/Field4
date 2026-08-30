@@ -33,7 +33,7 @@ What was uncovered before this page existed, and is what it adds:
 | HTTP **read** routes | 36 | nothing — the mutating census skips `get` outright |
 | **all-method** routes (`route(…) { handle { … } }`) | 13 | nothing — they name no verb, so no verb regex saw them |
 | `staticFiles` directory mounts | 5 | nothing — invisible to every route regex in the tree |
-| `/ws` **command** names (`handlers`) | 105 | nothing |
+| `/ws` **command** names (`handlers`) | 106 | nothing |
 | `/ws` **raw channels** (`rawHandlers`) | 10 | nothing — a second dispatch table nothing had counted |
 
 The second and fifth rows arrived on 2026-08-22, and the first row moved from 34 to 36 the
