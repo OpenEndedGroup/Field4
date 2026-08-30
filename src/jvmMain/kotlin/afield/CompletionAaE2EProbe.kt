@@ -211,6 +211,27 @@ object CompletionAaE2EProbe {
         val bad = "val q: NoSuchTypeAnywhere = TODO()\nq.fl"
         absent("unresolved receiver offers no stdlib extension", bad, bad.length, "flatMap")
 
+        // The same seam through a lambda's `it`, which is the shape people actually hit: binding `it`
+        // needs the enclosing call to type-check, so ANY unresolved link in the chain leaves it unbound —
+        // and `it` is also a root package on this classpath (fastutil's `it.unimi.dsi`), so AA's package
+        // path answered a bare `it.` with the single row `unimi`. One row is a non-empty result, which
+        // suppressed the K1 fallback that — holding the REPL's accumulated state — knew the receiver and
+        // had its members ready. Typing one character emptied the package listing and let the fallback
+        // back in, which is the whole of "it only completes if I guess a letter first".
+        //
+        // Asserted on AA's own verdict rather than through [absent], because K1 answers this same caret
+        // with 83 rows that include `unimi` themselves: the fallback's answer is not empty here, so junk
+        // in the merged result cannot tell the two backends apart. What must hold is that AA declines,
+        // and `Outcome.served` is exactly that. A run with no reachable sidecar returns a non-served
+        // outcome too, so this stays green wherever the rest of the AA checks are already SKIP/✗.
+        total++
+        val unbound = "(_noSuchLookAnywhere / \"x\").lenses<Float>().forEach {\n    it."
+        val unboundOutcome = AaCompletionClient.complete(
+            unbound, unbound.length, "", listOf(Box::class.qualifiedName!!)
+        )
+        if (!unboundOutcome.served) { pass++; println("  ✓ [AA-only] unbound lambda `it` declined by AA → K1 (${unboundOutcome.detail})") }
+        else println("  ✗ [AA-only] unbound lambda `it` SERVED by AA, suppressing the fallback (${unboundOutcome.detail})")
+
         // Only a MEMBER the box could actually write. A type's member scope is the declaration's, not the
         // use site's, and nothing filtered it: `TriOsc`'s `private var integrator/phase/freqBuf` and
         // `Signal`'s `private var _cache*` were offered — four of the top rows on a bare dot were code

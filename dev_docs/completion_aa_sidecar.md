@@ -144,6 +144,16 @@ The `Outcome(result, detail)` type (`:80`) is the fallback contract: **non-null 
 (`:116`) — if the headless session can't model some preamble/receiver form, the request falls through to
 K1 rather than showing the user nothing.
 
+The contract cuts the other way too, and this is the failure mode to watch for: **one junk row is a
+non-empty result**, so a plausible-looking guess withholds K1's correct answer instead of merely diluting
+it. `AaCompleter` therefore has to *decline* rather than guess whenever the receiver did not resolve — see
+the `KaErrorType` bail and the unbound-`it` bail in the `isDot` branch (`AaCompletion.kt:1663`). The `it`
+case is the one a person notices: an unbound `it` is also the fastutil root package on our classpath
+(`it.unimi.dsi`), so a bare `it.` came back with the single row `unimi`, K1 was suppressed, and the panel
+appeared to work only after a character had been typed (which emptied the package listing and let the
+fallback back in). `CompletionAaE2EProbe` asserts on `Outcome.served` for that caret, not on the merged
+candidates: K1 answers it with `unimi` too, so junk in the panel cannot tell the two backends apart.
+
 ### 2.5 Sidecar `/complete` → `K2CompletionAnalyzer` → `AaCompleter`
 
 The sidecar's HTTP server (`CodeUseSemanticSidecar.kt:226#HttpServer.create`) exposes `/health` (`:190`), `/analyze`

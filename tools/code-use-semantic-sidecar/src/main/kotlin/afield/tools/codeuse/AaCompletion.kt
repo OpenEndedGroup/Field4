@@ -1642,6 +1642,25 @@ class AaCompleter(
                     val sym = (recv as? KtNameReferenceExpression)?.mainReference?.resolveToSymbol()
                     sym is KaCallableSymbol
                 }.getOrDefault(false)
+                // An `it` the resolver could NOT bind to a value is a receiver we have no answer for, and
+                // the important thing is to say so rather than to guess. Binding a lambda's `it` needs the
+                // enclosing call to type-check, so in `(_look / "x").lenses<Float>().forEach { it.‸ }` —
+                // where `_look` is a REPL value the headless session cannot see — `it` binds to nothing,
+                // and both paths below then answer confidently and wrongly: the package path, because `it`
+                // really is a root package here (fastutil's `it.unimi.dsi`), returned the single row
+                // `unimi`; suppress that and the value path types the same package reference as `Unit` and
+                // returns ~29 `Any?` extensions (`also`, `let`, `onBeat`, `graphPaths`). Either way the
+                // result is NON-EMPTY, which `AaCompletionClient` reads as "AA served this" — suppressing
+                // the K1 fallback, which has the REPL's accumulated state, knows `_look`, and had
+                // `Lens.set` ready. Typing one character emptied the package listing and the fallback came
+                // back, which is the whole of "it only completes if I guess a letter first". So bail like
+                // the error-type case below: an empty AA result is what hands the question to K1.
+                //
+                // The cost is that `it.u‸` no longer offers fastutil's `unimi`. Nobody reaches that package
+                // through a bare `it`, and a dotted `it.unimi.‸` receiver is unaffected — it is not this
+                // name. What everybody does type is `it.` inside a lambda.
+                if (!recvIsValue && recvText == "it")
+                    return@analyze AaCompletionResult(emptyList(), "`it` UNBOUND (enclosing call unresolved)")
                 if (!recvIsValue && looksLikePath && isPackageName(recvText, index)) {
                     val out = packageCandidates(recvText, index).filterNot { it.isSynthetic }
                         .distinctBy { it.dedupKey }.sortedBy { it.name }
