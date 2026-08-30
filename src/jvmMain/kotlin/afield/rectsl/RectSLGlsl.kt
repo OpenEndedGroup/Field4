@@ -64,10 +64,28 @@ import kotlin.math.abs
  * no float enters the decision (see `emitDegradeGate` and [INT64_HELPER]). The two
  * that remain baked are the pattern queries, which are rational arithmetic over a
  * mini-notation tree — an interpreter, not a formula, and a different kind of
- * problem. They go through [bakeHoldChain] and are recorded in
- * [RectSLSdfResult.notes]; being piecewise constant, that bake is exact wherever an
- * edge lands on a bake sample instant and displaces an edge by at most one bake
- * interval where it does not. `RectSLSdfBakeTest` measures both halves of that.
+ * problem. There is nothing to lower symbolically even in principle: a
+ * `PatPattern` is a `(PatArc) -> List<PatEvent>` lambda, so the emitter cannot tell
+ * a `"bd*4"` from a `sine` from the outside, let alone find a closed form for it.
+ * They go through [bakeTrack], and what that costs depends on the track:
+ *
+ * - a **rhythm** is piecewise constant, so the bake is exact except for where its
+ *   edges are, and each edge is bisected to [BAKE_EDGE_TOLERANCE] — a microsecond,
+ *   the same order as the millionth of a cycle [PatTrack] quantises its own queries
+ *   to, which is the resolution the edge exists at in the first place;
+ * - a **signal** — `sine`, `tri`, `perlin` — has no plateaus and no exactness to
+ *   claim, so both a hold chain and a ramp through the samples are built and the one
+ *   that measures closer wins. That is the ramp by 100x to 3000x, except on `saw`
+ *   and `isaw`, whose once-a-cycle wrap a straight line would smear;
+ * - `rand` is neither. It hashes the reduced rational instant it is handed, so it
+ *   has no value *between* samples: a finer bake is a different signal, not a better
+ *   approximation of this one. The emitter detects that by baking it twice — halving
+ *   the rate leaves the error where it was — says so, and stops claiming otherwise.
+ *
+ * Which of the three, and what it measured, is [RectSLSdfResult.bakes]; the same
+ * thing as a sentence is [RectSLSdfResult.notes]. `RectSLSdfBakeTest` measures each
+ * regime on the timeline, and `RectSLGlslSdfTest` holds the whole gallery to the
+ * bound its own classification implies.
  */
 object RectSLGlsl {
 
@@ -305,7 +323,8 @@ float rectslSmin(float a, float b, float k) {
             sceneFunctionName = functionName,
             rectCount = emitter.rectCount,
             trackFunctionCount = emitter.trackFunctionCount,
-            notes = emitter.notes
+            notes = emitter.notes,
+            bakes = emitter.bakes
         )
     }
 
@@ -315,53 +334,252 @@ float rectslSmin(float a, float b, float k) {
     /** Ceiling on samples taken when baking a track that cannot be lowered. */
     private const val MAX_BAKE_SAMPLES = 4096
 
+    /** How much finer than its own bake grid [bakeTrack] measures the bake it produced. */
+    private const val BAKE_PROBE_REFINEMENT = 4
+
     /**
-     * The run-length-compressed hold chain a non-lowerable track becomes, exactly
-     * as [bakeHoldChain] wrote it into the shader.
+     * How closely a stepped bake places its edges, in seconds.
      *
-     * Held separately from the emitted text so the loss can be *measured* rather
-     * than described: `RectSLSdfBakeTest` evaluates [valueAt] against the track's
-     * own `sample` on a grid far finer than [sampleCount] and reports where and by
-     * how much they part company.
+     * Nothing about a pattern edge requires it to land on a sample instant, and until
+     * 2026-08-30 nothing looked for it off the grid either: the edge moved to the
+     * nearest sample, up to 8.3ms out. Bisecting the interval it was found in costs
+     * about thirteen more queries per edge and ends four orders of magnitude closer,
+     * so the sample rate is no longer what limits *when* a step happens — only how
+     * short an event can be before the bake steps over it entirely.
+     *
+     * There is little point going finer. [PatTrack.sample] quantises its own query to
+     * a millionth of a cycle, so at one cycle per second this already sits on the grid
+     * the edge itself sits on; faster than that and the sampler's own tread is the
+     * limit rather than this constant.
      */
-    internal class BakedHold(
-        val steps: List<Pair<Double, Double>>,
+    internal const val BAKE_EDGE_TOLERANCE: Double = 1e-6
+
+    /** Above this many edges, bisecting every one of them costs more than it buys. */
+    private const val MAX_REFINED_EDGES = 2048
+
+    /**
+     * How much worse a half-rate bake has to be before sampling counts as converging
+     * on the track at all.
+     *
+     * Halving the rate roughly doubles a hold chain's error and quadruples a ramp's,
+     * so 1.5x is a wide margin for the real signals. What it separates them from is
+     * `rand`, which hashes the reduced rational instant it is handed: half the samples
+     * is a different draw from the same hash rather than a coarser look at one signal,
+     * so the error does not move. An approximation that does not improve with
+     * resolution is not an approximation, and that is the whole test.
+     */
+    private const val BAKE_CONVERGENCE_FACTOR = 1.5
+
+    /**
+     * How far off a bake has to be, as a fraction of what the track does at all,
+     * before failing to converge is worth reporting as aliasing.
+     *
+     * The convergence test alone is not enough, because it catches something
+     * harmless: a *piecewise linear* signal — `tri`, `saw` — is reproduced exactly by
+     * a ramp everywhere except at its kinks, so halving the rate barely moves the
+     * error. That is a bake at 0.0002% of the track's range, and calling it
+     * "unresolved" would be alarming and wrong. Aliasing is the conjunction: the
+     * deviation matters *and* resolution does not help it.
+     */
+    private const val BAKE_ALIAS_MATERIAL = 0.01
+
+    /**
+     * The sampled track the shader actually evaluates, and what that cost.
+     *
+     * Held separately from the emitted text so the loss can be *measured* rather than
+     * described: `RectSLSdfBakeTest` evaluates [valueAt] against the track's own
+     * `sample` on a grid far finer than [sampleCount], and [worstError] is the
+     * emitter's own version of that check, taken at emit time.
+     */
+    internal data class BakedTrack(
+        val fidelity: RectSLSdfBakeFidelity,
+        val shape: RectSLSdfBakeShape,
+        /** `HOLD`: the instant each step starts. `RAMP`: the uniform sample grid. */
+        val knots: List<Pair<Double, Double>>,
         val sampleCount: Int,
-        val duration: Double
+        val duration: Double,
+        /** How far an emitted edge can sit from the track's own, in seconds. */
+        val edgeTolerance: Double,
+        /** Worst |emitted - track| found on a grid [BAKE_PROBE_REFINEMENT]x finer than the bake. */
+        val worstError: Double,
+        /** The track's own spread over `[0, duration]`, so [worstError] can be read as a fraction. */
+        val valueRange: Double,
+        /** The same measurement at half the sample rate, or `NaN` for a stepped bake. */
+        val halfRateError: Double = Double.NaN
     ) {
-        /** Gap between bake samples — the most an edge can be displaced by. */
+        /** Gap between bake samples. */
         val sampleInterval: Double get() = duration / (sampleCount - 1).coerceAtLeast(1)
 
-        /** What the emitted GLSL returns: the last step whose time is `<= t`. */
-        fun valueAt(t: Double): Double {
-            var v = steps.first().second
-            for ((time, value) in steps) if (t >= time) v = value else break
-            return v
+        val sampleRate: Double get() = 1.0 / sampleInterval
+
+        /** See [RectSLSdfBake.relativeError]. */
+        val relativeError: Double get() = if (valueRange > 0.0) worstError / valueRange else worstError
+
+        /** See [RectSLSdfBake.convergenceRatio]. */
+        val convergenceRatio: Double
+            get() = when {
+                !halfRateError.isFinite() -> Double.NaN
+                worstError > 0.0 -> halfRateError / worstError
+                else -> Double.POSITIVE_INFINITY
+            }
+
+        /** What the emitted GLSL returns. */
+        fun valueAt(t: Double): Double = when (shape) {
+            RectSLSdfBakeShape.HOLD -> {
+                var v = knots.first().second
+                for ((time, value) in knots) if (t >= time) v = value else break
+                v
+            }
+            RectSLSdfBakeShape.RAMP -> {
+                val u = (t / sampleInterval).coerceIn(0.0, (knots.size - 1).toDouble())
+                val i = minOf(u.toInt(), knots.size - 2)
+                val f = u - i
+                knots[i].second * (1.0 - f) + knots[i + 1].second * f
+            }
         }
     }
 
     /**
      * Sample a track that cannot be lowered symbolically and re-express it as the
-     * hold chain its values already describe.
+     * closest hold chain or ramp its own values admit.
      *
-     * Only reached for tracks that are piecewise constant in time, which is what
-     * makes this a fair trade rather than a lossy one: consecutive equal samples
-     * collapse, so a dropout gate over six seconds becomes a few steps. The costs
-     * are real — the baked function is flat outside `[0, duration]`, and a step
-     * falling between two samples lands on the nearer sample instant, which puts
-     * an edge up to half a sample interval out of place.
+     * Three things can come back, and which one it is depends on the *track* rather
+     * than on the bake — which is the distinction the emitter used to blur:
+     *
+     * - **stepped.** The track is piecewise constant, so the only question is where
+     *   the edges are. They are found by bisection to [BAKE_EDGE_TOLERANCE], the
+     *   resolution the sampler itself works at, so the bake is exact everywhere except
+     *   inside those microsecond slivers — which no frame or probe instant lands in.
+     *   A rhythm is this.
+     * - **sampled.** The track is a signal, so there is no exactness to claim: what is
+     *   emitted approximates it between samples, and the error is measured rather than
+     *   bounded by hand. Both a hold chain and a ramp through the samples are built and
+     *   the one that measures better wins — the ramp is 100x-3000x closer on `sine`,
+     *   `tri` and `perlin`, and *worse* on `saw` and `isaw`, whose once-a-cycle wrap a
+     *   straight line would smear across a whole interval.
+     * - **aliased.** The deviation is material — past [BAKE_ALIAS_MATERIAL] of what the
+     *   track does at all — *and* halving the sample rate does not make it worse,
+     *   which means refining the rate would not make it better: sampling is not
+     *   converging on anything. `rand` is the case, and it is reported rather than
+     *   fixed, because no rate fixes it.
      */
-    internal fun bakeHoldChain(track: Track<Double>, programDuration: Double, fps: Double): BakedHold {
+    internal fun bakeTrack(track: Track<Double>, programDuration: Double, fps: Double): BakedTrack {
         val duration = if (programDuration > 0.0) programDuration else 1.0
         val rate = maxOf(fps * 4.0, 120.0)
         val count = minOf((duration * rate).toInt() + 1, MAX_BAKE_SAMPLES)
-        val steps = mutableListOf<Pair<Double, Double>>()
-        for (i in 0 until count) {
-            val t = duration * i / (count - 1).coerceAtLeast(1)
-            val v = track.sample(t)
-            if (steps.isEmpty() || steps.last().second != v) steps += t to v
+
+        // One truth grid, finer than the bake, shared by every candidate measured
+        // below — including the half-rate control, which has to be judged against the
+        // same instants or the comparison is between two different questions.
+        val probes = BAKE_PROBE_REFINEMENT * (count - 1).coerceAtLeast(1)
+        val truth = DoubleArray(probes + 1) { track.sample(duration * it / probes) }
+        val range = (truth.max() - truth.min()).coerceAtLeast(0.0)
+
+        val full = bakeAtRate(track, duration, count, truth, range)
+        // A stepped bake is exact, so there is nothing for the control to tell us.
+        if (full.fidelity == RectSLSdfBakeFidelity.STEPPED) return full
+        val coarse = bakeAtRate(track, duration, (count + 1) / 2, truth, range)
+        val converging = coarse.worstError >= full.worstError * BAKE_CONVERGENCE_FACTOR
+        val material = full.relativeError > BAKE_ALIAS_MATERIAL
+        return full.copy(
+            fidelity = when {
+                converging || !material -> RectSLSdfBakeFidelity.SAMPLED
+                else -> RectSLSdfBakeFidelity.ALIASED
+            },
+            halfRateError = coarse.worstError
+        )
+    }
+
+    /**
+     * One bake at one rate, measured against [truth] — the grid the *caller* owns, so
+     * that two rates can be compared.
+     */
+    private fun bakeAtRate(
+        track: Track<Double>,
+        duration: Double,
+        count: Int,
+        truth: DoubleArray,
+        range: Double
+    ): BakedTrack {
+        val last = (count - 1).coerceAtLeast(1)
+        fun instant(i: Int): Double = duration * i / last
+        val samples = DoubleArray(count) { track.sample(instant(it)) }
+
+        // Run-length compression, by index: where each run of equal samples starts.
+        val runStarts = mutableListOf<Int>()
+        for (i in 0 until count) if (i == 0 || samples[i] != samples[i - 1]) runStarts += i
+
+        // Plateaus at all mean the track is stepped and a hold chain is its shape.
+        val stepped = runStarts.size * 2 <= count
+        val refine = stepped && runStarts.size <= MAX_REFINED_EDGES
+        val holdKnots = if (refine) {
+            runStarts.map { start ->
+                val time = when (start) {
+                    0 -> 0.0
+                    else -> bisectEdge(track, instant(start - 1), instant(start), samples[start - 1])
+                }
+                time to samples[start]
+            }
+        } else {
+            runStarts.map { instant(it) to samples[it] }
         }
-        return BakedHold(steps, count, duration)
+
+        val probes = truth.size - 1
+        fun measured(shape: RectSLSdfBakeShape, knots: List<Pair<Double, Double>>): BakedTrack {
+            val bake = BakedTrack(
+                fidelity = if (stepped) RectSLSdfBakeFidelity.STEPPED else RectSLSdfBakeFidelity.SAMPLED,
+                shape = shape,
+                knots = knots,
+                sampleCount = count,
+                duration = duration,
+                edgeTolerance = if (shape == RectSLSdfBakeShape.HOLD && refine) {
+                    BAKE_EDGE_TOLERANCE
+                } else {
+                    duration / last
+                },
+                worstError = 0.0,
+                valueRange = range
+            )
+            var worst = 0.0
+            for (i in 0..probes) worst = maxOf(worst, abs(bake.valueAt(duration * i / probes) - truth[i]))
+            return bake.copy(worstError = worst)
+        }
+
+        val hold = measured(RectSLSdfBakeShape.HOLD, holdKnots)
+        // A stepped track is already exact between its edges; there is nothing for a
+        // ramp to win, and it would smear every edge across an interval.
+        if (stepped) return hold
+        val ramp = measured(RectSLSdfBakeShape.RAMP, (0 until count).map { instant(it) to samples[it] })
+        return if (ramp.worstError < hold.worstError) ramp else hold
+    }
+
+    /**
+     * The first instant in `(lo, hi]` at which the track has stopped returning
+     * [heldValue], to within [BAKE_EDGE_TOLERANCE].
+     *
+     * Which side of the edge this lands on is not a rounding detail, and getting it
+     * wrong costs a whole probe rather than a microsecond. [PatTrack.sample] quantises
+     * its query to a millionth of a cycle, so the sampler's own edge sits at the first
+     * microcycle *at or after* the pattern's exact rational onset — `"1 ~ 3"` steps at
+     * 0.666667s, not at two thirds. Frame and probe instants, meanwhile, land on the
+     * exact rational. Converging from below would therefore put the emitted step in
+     * the sliver between the two and make every such frame show the next value early;
+     * converging from above puts it where the sampler has it, which is the thing the
+     * shader is supposed to agree with.
+     *
+     * The predicate is monotone across the interval for a stepped track, which is the
+     * only kind this is called for. Where it is not — two changes inside one bake
+     * interval — this finds the first of them, which is no worse than the grid instant
+     * it replaces.
+     */
+    private fun bisectEdge(track: Track<Double>, lo: Double, hi: Double, heldValue: Double): Double {
+        var low = lo
+        var high = hi
+        while (high - low > BAKE_EDGE_TOLERANCE) {
+            val mid = 0.5 * (low + high)
+            if (track.sample(mid) == heldValue) low = mid else high = mid
+        }
+        return high
     }
 
     private class Emitter(val program: SceneProgram, val options: RectSLSdfOptions = RectSLSdfOptions()) {
@@ -378,6 +596,9 @@ float rectslSmin(float a, float b, float k) {
         private val trackBodies = LinkedHashMap<String, String>()
         private val easings = LinkedHashSet<String>()
         val notes = mutableListOf<String>()
+
+        /** Every bake this emission made, with what it measured. See [emitBaked]. */
+        val bakes = mutableListOf<RectSLSdfBake>()
         var usesBounce = false
             private set
 
@@ -673,10 +894,11 @@ float rectslSmin(float a, float b, float k) {
                 // evaluate. It is: see [emitDegradeGate]. What remains baked is the
                 // pair that really cannot be lowered — rational-arithmetic queries
                 // over a mini-notation tree, which is an interpreter, not a formula.
-                // Being piecewise constant they compress to a handful of steps.
+                // A rhythm compresses to a handful of exactly-placed steps; a signal
+                // does not compress at all. See [bakeTrack] for what each costs.
                 is DegradeGateTrack -> emitDegradeGate(name, track)
-                is PatTrack -> bakeAsHold(name, track, "pattern")
-                is PatHoldTrack -> bakeAsHold(name, track, "pattern (sample-and-hold)")
+                is PatTrack -> emitBaked(name, track, "pattern")
+                is PatHoldTrack -> emitBaked(name, track, "pattern (sample-and-hold)")
             }
             return name
         }
@@ -742,30 +964,79 @@ float rectslSmin(float a, float b, float k) {
         }
 
         /**
-         * Sample a track that cannot be lowered symbolically and re-express it as
-         * the hold chain its values already describe.
+         * Sample a track that cannot be lowered symbolically and emit whichever
+         * shape [bakeTrack] found closest to it — a hold chain with bisected edges
+         * for a rhythm, a ramp through the samples for a signal.
          *
-         * Only reached for tracks that are piecewise constant in time, which is
-         * what makes this a fair trade rather than a lossy one: consecutive equal
-         * samples collapse, so a dropout gate over six seconds becomes a few
-         * steps. The costs are real and recorded in [notes] rather than hidden —
-         * the baked function is flat outside `[0, duration]`, and a step falling
-         * between two samples lands on the nearer sample instant.
+         * The cost is recorded twice over: as a sentence in [notes], and as the
+         * measurement it came from in [bakes], so a test can hold each kind of bake
+         * to the bound that kind of bake can actually meet.
          */
-        private fun bakeAsHold(name: String, track: Track<Double>, what: String): String {
-            val bake = bakeHoldChain(track, program.duration, program.fps)
-            notes += "$what baked as ${bake.steps.size} step(s) from ${bake.sampleCount} samples " +
-                "over [0, ${bake.duration}s]; constant outside that range, and an edge that falls " +
-                "between two samples is displaced by up to ${"%.5f".format(bake.sampleInterval)}s"
-            return buildString {
-                appendLine("float $name(float t) {")
-                appendLine("    float v = ${bake.steps.first().second.glslFloat()};")
-                bake.steps.drop(1).forEach { (time, value) ->
-                    appendLine("    if (t >= ${time.glslFloat()}) v = ${value.glslFloat()};")
-                }
-                appendLine("    return v;")
-                append("}")
+        private fun emitBaked(name: String, track: Track<Double>, what: String): String {
+            val bake = bakeTrack(track, program.duration, program.fps)
+            val report = RectSLSdfBake(
+                what = what,
+                fidelity = bake.fidelity,
+                shape = bake.shape,
+                knotCount = bake.knots.size,
+                sampleCount = bake.sampleCount,
+                sampleRate = bake.sampleRate,
+                duration = bake.duration,
+                edgeTolerance = bake.edgeTolerance,
+                worstError = bake.worstError,
+                valueRange = bake.valueRange,
+                halfRateError = bake.halfRateError
+            )
+            bakes += report
+            notes += report.note
+            return when (bake.shape) {
+                RectSLSdfBakeShape.HOLD -> emitBakedHold(name, report, bake)
+                RectSLSdfBakeShape.RAMP -> emitBakedRamp(name, report, bake)
             }
+        }
+
+        /** The steps as a chain of assignments: the last one whose instant has passed wins. */
+        private fun emitBakedHold(name: String, report: RectSLSdfBake, bake: BakedTrack): String = buildString {
+            appendLine("float $name(float t) {")
+            appendLine("    // ${report.note}")
+            appendLine("    float v = ${bake.knots.first().second.glslFloat()};")
+            bake.knots.drop(1).forEach { (time, value) ->
+                appendLine("    if (t >= ${time.glslFloat()}) v = ${value.glslFloat()};")
+            }
+            appendLine("    return v;")
+            append("}")
+        }
+
+        /**
+         * The samples as a `const` array read by arithmetic rather than by branching.
+         *
+         * A signal does not compress, so the chain a rhythm becomes would be one
+         * comparison per sample here — 1281 of them for a four-cycle `sine`, which is
+         * both the largest thing in the emitted shader and the slowest way to ask.
+         * The grid is uniform, so the index is a multiply; and the clamp is what keeps
+         * the promise that the bake is constant outside `[0, duration]`. Emitting the
+         * musicality section this way is 55% less GLSL than the branch chain was.
+         *
+         * The cost moves rather than vanishing: a dynamically indexed `const` array
+         * usually becomes private storage per invocation, so a 1281-knot ramp is a few
+         * KB a fragment. If that ever matters the answer is to decimate the knots —
+         * linear interpolation is accurate enough here to lose most of them — not to
+         * go back to branching.
+         */
+        private fun emitBakedRamp(name: String, report: RectSLSdfBake, bake: BakedTrack): String = buildString {
+            val n = bake.knots.size
+            appendLine("float $name(float t) {")
+            appendLine("    // ${report.note}")
+            appendLine("    const float v[$n] = float[$n](")
+            bake.knots.map { it.second }.chunked(8).forEachIndexed { index, chunk ->
+                val comma = if ((index + 1) * 8 < n) "," else ""
+                appendLine("        " + chunk.joinToString(", ") { it.glslFloat() } + comma)
+            }
+            appendLine("    );")
+            appendLine("    float u = clamp(t * ${bake.sampleRate.glslFloat()}, 0.0, ${(n - 1).toDouble().glslFloat()});")
+            appendLine("    int i = min(int(u), ${n - 2});")
+            appendLine("    return mix(v[i], v[i + 1], u - float(i));")
+            append("}")
         }
 
         private fun wrapper(name: String, expression: String): String =
@@ -936,6 +1207,135 @@ data class RectSLSdfOptions(
     }
 }
 
+/**
+ * What a bake can honestly claim, which is a property of the *track* rather than of
+ * the bake — the distinction the emitter blurred until 2026-08-30.
+ *
+ * @see RectSLGlsl.bakeTrack for how each is decided, and what each costs
+ */
+enum class RectSLSdfBakeFidelity {
+    /**
+     * Piecewise constant, plateaus genuinely flat, edges found by bisection. Exact
+     * everywhere except within [RectSLGlsl.BAKE_EDGE_TOLERANCE] of an edge. A rhythm
+     * — `"bd*4"`, `"0 3 -3 6"`, `segment`, `quantise`, `square` — is this.
+     */
+    STEPPED,
+
+    /**
+     * A signal with no plateaus, so nothing is exact and the deviation is measured
+     * instead. `sine`, `cosine`, `tri`, `perlin`, `saw`, `isaw` are this.
+     */
+    SAMPLED,
+
+    /**
+     * The deviation matters and sampling is not converging on it: halving the rate
+     * leaves the error where it was, so refining it would not move it either. `rand`
+     * is the case — it hashes the reduced rational instant it is asked about, so a
+     * finer grid is a *different* signal rather than a better approximation of this
+     * one. Both halves are required: a piecewise-linear signal also fails to improve
+     * with rate, but only by 0.0002% of its own range, which is not a caveat worth
+     * frightening anyone with.
+     */
+    ALIASED
+}
+
+/** How a bake is written into GLSL. See [RectSLSdfBakeFidelity] for what it costs. */
+enum class RectSLSdfBakeShape {
+    /** A chain of `if (t >= edge) v = value;` — the shape of a rhythm. */
+    HOLD,
+
+    /** A `const` array of uniform samples, indexed by arithmetic and interpolated. */
+    RAMP
+}
+
+/**
+ * One track the SDF emitter had to sample, and what that measurably cost.
+ *
+ * This is the same information as the matching sentence in [RectSLSdfResult.notes]
+ * — [note] *is* that sentence — as numbers rather than as prose, so a caller can
+ * hold a rhythm to a bound in *seconds* and a signal to a bound in *track units*
+ * instead of asserting that neither happened. `RectSLGlslSdfTest` does exactly that.
+ */
+data class RectSLSdfBake(
+    /** Which query was baked: `"pattern"` or `"pattern (sample-and-hold)"`. */
+    val what: String,
+    /** What this bake can honestly claim — and therefore which bound below applies. */
+    val fidelity: RectSLSdfBakeFidelity,
+    /** How it was written into GLSL, which follows from whichever measured closer. */
+    val shape: RectSLSdfBakeShape,
+    /** Steps in the emitted chain, or samples in the emitted ramp. */
+    val knotCount: Int,
+    /** Samples taken of the track, before compression. */
+    val sampleCount: Int,
+    val sampleRate: Double,
+    /** The bake covers `[0, duration]`; outside it the emitted function is constant. */
+    val duration: Double,
+    /** How far an emitted edge can sit from the track's own, in seconds. */
+    val edgeTolerance: Double,
+    /** Worst deviation from the track, in the track's own units, measured at emit time. */
+    val worstError: Double,
+    /** The track's own spread over the bake, so [worstError] can be read as a fraction. */
+    val valueRange: Double,
+    /**
+     * [worstError] again, from a bake at half the sample rate — the control that
+     * separates a signal being approximated from a track that sampling cannot
+     * converge on at all. `NaN` for a stepped bake, which is exact and has no need
+     * of it.
+     */
+    val halfRateError: Double
+) {
+    /** [worstError] as a fraction of what the track does at all. */
+    val relativeError: Double get() = if (valueRange > 0.0) worstError / valueRange else worstError
+
+    /**
+     * How much worse the same bake is at half the rate. Above ~1.5 the samples are
+     * converging on something and [worstError] is a real approximation error; at ~1
+     * they are not, and [RectSLSdfBakeFidelity.ALIASED] is what that means.
+     */
+    val convergenceRatio: Double
+        get() = when {
+            !halfRateError.isFinite() -> Double.NaN
+            worstError > 0.0 -> halfRateError / worstError
+            else -> Double.POSITIVE_INFINITY
+        }
+
+    /**
+     * The sentence that appears in [RectSLSdfResult.notes] and above the emitted
+     * function.
+     *
+     * Every number is formatted into a local before any of them is interpolated. A
+     * `String.format` over a string that already contains a formatted percentage
+     * reads the `%` in `100.000% of` as a conversion and throws, which is how the
+     * first version of this failed the whole gallery.
+     */
+    val note: String
+        get() {
+            val span = "over [0, %.3fs]".format(duration)
+            val shapeText = when (shape) {
+                RectSLSdfBakeShape.HOLD -> "$knotCount-step hold chain"
+                RectSLSdfBakeShape.RAMP -> "$knotCount-knot ramp"
+            }
+            val rate = "%.1f Hz".format(sampleRate)
+            val deviation = "worst deviation %.2e, %.3f%% of the track's own %.3f range"
+                .format(worstError, relativeError * 100.0, valueRange)
+            val placement = "%.0e s".format(edgeTolerance)
+            val control = "%.2fx".format(convergenceRatio)
+            return when (fidelity) {
+                RectSLSdfBakeFidelity.STEPPED ->
+                    "$what lowered as a $shapeText $span; edges placed to $placement and exact " +
+                        "between them; constant outside that range"
+                RectSLSdfBakeFidelity.SAMPLED ->
+                    "$what signal sampled at $rate $span as a $shapeText; $deviation; " +
+                        "constant outside that range"
+                RectSLSdfBakeFidelity.ALIASED ->
+                    "$what signal is not resolved by sampling it at $rate: the emitted $shapeText " +
+                        "$span has $deviation, and halving the rate leaves that at $control rather " +
+                        "than worsening it, so no rate fixes this — a signal hashed from the query " +
+                        "instant has no value between samples to converge on"
+            }
+        }
+}
+
 /** What [RectSLGlsl.emitSdf] produced, and anything it could not carry across. */
 data class RectSLSdfResult(
     /** [globals] then [sceneGlsl]: the whole self-contained field, ready to paste. */
@@ -953,7 +1353,13 @@ data class RectSLSdfResult(
     val rectCount: Int,
     val trackFunctionCount: Int,
     /** Fidelity caveats — empty means nothing was approximated or dropped. */
-    val notes: List<String> = emptyList()
+    val notes: List<String> = emptyList(),
+    /**
+     * The measured half of [notes]: one entry per track the emitter had to sample.
+     * `notes.size == bakes.size` means sampling a pattern was the *only* thing it
+     * could not carry across.
+     */
+    val bakes: List<RectSLSdfBake> = emptyList()
 ) {
     val ok: Boolean get() = notes.isEmpty()
 }

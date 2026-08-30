@@ -4,7 +4,7 @@
 
 Field's standard library is large and, until now, invisible: the only ways to read it were to open the source or to already know the name you wanted. This section is a browsable map of it — every public declaration in `afield.stdlib`, `afield.visualization` and `afield.four.synth`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**11458 public symbols across 268 source files**, 6240 of them (54%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. The one exception is [Languages](languages.md): no file in the small-language packages carries that annotation, and adding one is not a documentation-only change — the label is read by the completion popup — so those pages are grouped by source path here and the popup is left exactly as it was.
+**11476 public symbols across 268 source files**, 6258 of them (54%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. The one exception is [Languages](languages.md): no file in the small-language packages carries that annotation, and adding one is not a documentation-only change — the label is read by the completion popup — so those pages are grouped by source path here and the popup is left exactly as it was.
 
 The "documented" column is a coverage report on Field's own KDoc, not a claim about this page. Where a summary is blank the declaration has none yet.
 
@@ -19,11 +19,11 @@ The "documented" column is a coverage report on Field's own KDoc, not a claim ab
 | [ALife](alife.md) | 7 | 328 | 205 (62%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization) — plus the measurement layer every one of them makes its claims through, because "it produced pixels" is not evidence. |
 | [Function](function.md) | 12 | 423 | 307 (72%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Visualization](visualization.md) | 12 | 418 | 381 (91%) | Turning a value into something you can look at, without leaving the box. |
-| [Synthesis](synthesis.md) | 25 | 1058 | 375 (35%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
+| [Synthesis](synthesis.md) | 25 | 1058 | 376 (35%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 17 | 750 | 315 (42%) | Musical time, as a value. |
 | [Audio](audio.md) | 12 | 688 | 149 (21%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 18 | 520 | 344 (66%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 73 | 2184 | 630 (28%) | Field's small languages, from the host side. |
+| [Languages](languages.md) | 73 | 2202 | 647 (29%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 2 | 79 | 76 (96%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 
 ## Every file, at a glance
@@ -207,7 +207,7 @@ The "documented" column is a coverage report on Field's own KDoc, not a claim ab
 | [osc.kt](audio.md#osc-kt) | Audio | 27 | 9 | OSC in and out, wrapped around JavaOSC (`com.illposed.osc`) and driven from Field's main runloop. |  |
 | [Oscillators.kt](synthesis.md#oscillators-kt) | Synthesis | 94 | 39 |  |  |
 | [Parameters.kt](polytopes.md#parameters-kt) | Polytopes | 29 | 22 | Naming a subset of elements, and attaching a number to each one. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
-| [ParamQuery.kt](synthesis.md#paramquery-kt) | Synthesis | 57 | 4 | The synth-facing head of the graph-query layer: turn a `PathSet` into a set of *drivable parameters*. | [Querying object graphs](../graph_query.md) |
+| [ParamQuery.kt](synthesis.md#paramquery-kt) | Synthesis | 57 | 5 | The synth-facing head of the graph-query layer: turn a `PathSet` into a set of *drivable parameters*. | [Querying object graphs](../graph_query.md) |
 | [Parser.kt](languages.md#parser-kt) | Languages | 5 | 0 |  |  |
 | [PatAlgebra.kt](patterns.md#patalgebra-kt) | Patterns | 66 | 65 |  | [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md), [Sonic Pi](../sonic_pi.md) |
 | [PatClock.kt](patterns.md#patclock-kt) | Patterns | 14 | 0 |  |  |
@@ -243,7 +243,7 @@ The "documented" column is a coverage report on Field's own KDoc, not a claim ab
 | [RectSLEditorExtension.kt](languages.md#rectsleditorextension-kt) | Languages | 6 | 1 |  |  |
 | [RectSLFit.kt](languages.md#rectslfit-kt) | Languages | 21 | 18 | Inverse animation: say where a rect should be and when, and solve for the numbers. | [RectSL Inverse Animation](../rectsl_inverse_animation.md) |
 | [RectSLFn.kt](languages.md#rectslfn-kt) | Languages | 16 | 16 | RectSL tracks as differentiable `Fn` graphs — the third backend. | [RectSL Inverse Animation](../rectsl_inverse_animation.md), [A solid, written down: `afield.solidsl`](../solid_notation.md) |
-| [RectSLGlsl.kt](languages.md#rectslglsl-kt) | Languages | 16 | 11 |  | [RectSL cheatsheet](../rectsl_cheatsheet.md) |
+| [RectSLGlsl.kt](languages.md#rectslglsl-kt) | Languages | 34 | 28 |  | [RectSL cheatsheet](../rectsl_cheatsheet.md) |
 | [RectSLPattern.kt](languages.md#rectslpattern-kt) | Languages | 22 | 11 | # RectSL's musical layer — the Tidal pattern language as scene structure |  |
 | [RectSLPatternOps.kt](languages.md#rectslpatternops-kt) | Languages | 21 | 3 | The variation and layout halves of RectSL's musical layer. |  |
 | [RectSLSdfLook.kt](languages.md#rectslsdflook-kt) | Languages | 31 | 23 |  | [RectSL cheatsheet](../rectsl_cheatsheet.md), [RectSL examples](../rectsl_examples.md) |

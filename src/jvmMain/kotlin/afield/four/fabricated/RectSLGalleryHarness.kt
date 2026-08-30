@@ -250,15 +250,15 @@ object RectSLGalleryHarness {
 
     /**
      * A scene whose motion comes from the *pattern* language, so the differential
-     * covers the three tracks `emitSdf` cannot lower symbolically and bakes to a
-     * hold chain instead (`->degrade`'s 64-bit hash, and both pattern queries).
+     * covers the two tracks `emitSdf` cannot lower symbolically and samples instead
+     * (both pattern queries; `->degrade`'s 64-bit hash lowers exactly now).
      *
-     * `RectSLSdfBakeTest` measures what the bake costs on the CPU — nothing, where
-     * a pattern edge lands on a bake sample instant, and up to one bake interval of
-     * edge displacement where it does not. This scene checks the other half: that
+     * `RectSLSdfBakeTest` measures what the bake costs on the CPU — since 2026-08-30
+     * nothing at all for a rhythm, whose edges are bisected onto the sampler's own
+     * rather than snapped to the bake grid. This scene checks the other half: that
      * the *shader* faithfully evaluates the chain that was baked. It is therefore
-     * probed only at instants well away from any pattern edge, where the bake is
-     * exact, so that anything the differential finds is the shader's.
+     * probed only at instants well away from any pattern edge, so that anything the
+     * differential finds is the shader's and not the bake's.
      */
     val SDF_PATTERN_SOURCE: String = """
         #rectsl
