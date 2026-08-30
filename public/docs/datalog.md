@@ -126,6 +126,59 @@ terminates on cyclic input because the engine records which round each fact firs
 a proof may only descend to strictly earlier rounds. `path(a, a)` in the graph above gets a proof
 too, rather than an infinite regress.
 
+A proof runs through an aggregate as well, and that is the case worth having: `count` and `sum` are
+exactly the numbers you cannot check by reading. A fact derived through one is justified by the
+tuples that contributed to it, plus the arithmetic that combined them.
+
+```diffstatic {data-lang=text}
+payroll(sales, 300)   [payroll(D, S) :- dept(D), S = sum P : { emp(_1, D, P) }]
+    dept(sales)   [fact]
+    S = sum P : { emp(_1, sales, P) }   [aggregate: sum over 2 tuples = 300]
+        emp(ada, sales, 100)   [fact; contributes P = 100]
+        emp(bob, sales, 200)   [fact; contributes P = 200]
+```
+
+`min` and `max` label the tuple that was the extreme, and keep the rest of the group in the proof
+too, because "nothing bigger exists" is half of what the answer means. A group is capped at 24 lines
+of display; the value is always computed over the whole of it. A negated body literal appears as its
+own step, since "no such fact" is often the more surprising half of why a rule fired.
+
+The number in the proof is recomputed from the group and checked against the model. If the two ever
+disagreed you would get the old answer — a note saying no proof was reconstructed — rather than a
+plausible wrong tree.
+
+## Why *not*
+
+The question a query asks more often. An empty result gives no reason, so `whyNot` walks the
+conjunction and names the literal that took the answer set to zero.
+
+```diffstatic {data-lang=text}
+whynot cell(C, V), V > 5, colour(C, red)   no answers
+     1  cell(C, V)      3 answers
+     2  V > 5           1 answer
+     3  colour(C, red)  0 answers   <- nothing survives here
+    a binding that got this far: C = a3, V = 10
+```
+
+Ask about a single derived fact and it does the same walk once per rule that could have produced it,
+with the head's constants filled in, and puts the attempt that got furthest first:
+
+```diffstatic {data-lang=text}
+whynot path(a, e)   not in the model; 2 rule(s) could have produced it
+  via path(X, Z) :- path(X, Y), edge(Y, Z)
+       1  path(a, Y)  3 answers
+       2  edge(Y, e)  0 answers   <- nothing survives here
+      a binding that got this far: Y = b
+  via path(X, Y) :- edge(X, Y)
+       1  edge(a, e)  0 answers   <- nothing survives here
+```
+
+The counts come from the real engine — each prefix of the conjunction is run as a rule — so they
+cannot disagree with the query they are explaining. Three answers are kept distinct, because in an
+empty result they look identical: a literal with no matching rows, a predicate nothing defines at
+all, and a test written before the atom that binds its variable. The last of those is reported as
+"not evaluable this early" rather than as zero, which is usually the whole answer.
+
 ## Your own data, not Datalog's
 
 `facts` takes Kotlin objects and a projection, so the rules can run over whatever you already have
@@ -413,7 +466,8 @@ over(C) :- cell(C, V), V > 5.
 ```
 
 The session commands are `#help`, `#boxes` (load the live document into the base relations),
-`#relations`, `#facts <relation>`, `#program`, `#why <goal>` and `#reset`.
+`#relations`, `#facts <relation>`, `#program`, `#why <goal>`, `#whynot <goal>` and `#reset`. A `#why`
+about a fact that is not there points you at `#whynot`, which is where you wanted to be.
 
 ## The editor knows the language
 
@@ -464,7 +518,12 @@ one of these on its own is a test, so `contains(N, "shader")` filters.
 
 **Aggregates.** `count sum min max mean collect`, written `X = op Expr : { body }` (`count` takes
 no expression). `min`, `max` and `mean` of an empty group have no value, so the rule does not fire
-for that group; `count` and `sum` give 0.
+for that group; `count` and `sum` give 0. The target has to be a variable nothing has bound yet, so
+"the maximum, and who earned it" is two rules rather than one.
+
+**Explaining.** `why(goal)` returns a derivation tree, through aggregates and negation as well as
+rules, or null when the fact is not in the model. `whyNot(goal)` returns the narrowing walk instead.
+Both render as HTML in a box, and both have a `render()` for plain text.
 
 **What it refuses.** A rule whose head has a variable the body never binds. A negated goal whose
 variables are bound nowhere else. A predicate used at two different arities. Negation or

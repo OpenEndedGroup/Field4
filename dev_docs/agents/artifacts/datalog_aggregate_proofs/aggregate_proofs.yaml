@@ -1,0 +1,69 @@
+name: datalog_aggregate_proofs
+description: >
+  A Datalog box that derives facts through `sum`, `count` and `max` and then asks `#why` about each
+  one — the case that used to answer "derived in round N; no proof reconstructed". Each proof names
+  the tuples that contributed and the arithmetic that combined them, and `min`/`max` label the tuple
+  that was the extreme. The last directive is a `#whynot`, which explains an *absent* fact instead.
+
+  Two boxes: a root whose main language is Datalog, and one child holding the whole program. No
+  Window, no Renderer, no GPU, no audio — pure compute, so it runs headless.
+
+  Replay into a fresh Field:
+
+    uv run --project . --group backdoor python tools/field_backdoor.py --json --scratch --port 9477 \
+      --command 'macro write datalog_aggregate_proofs --file dev_docs/agents/artifacts/datalog_aggregate_proofs/aggregate_proofs.yaml' \
+      --command 'macro run datalog_aggregate_proofs'
+
+  Or open the materialized document beside this file. See public/docs/datalog.md and
+  dev_docs/DATALOG.md.
+operations:
+  - create:
+      box: datalog_aggregate_root
+      name: Datalog
+      frame: { x: 60.0, y: 40.0, w: 120.0, h: 80.0 }
+  # The root carries the language; its children then hold Datalog rather than Kotlin. Set as an
+  # edit rather than a create property so the topology watcher sees the change and installs the
+  # runtime — the same order the docs runner uses.
+  - edit:
+      box: datalog_aggregate_root
+      property: mainLanguage
+      to: datalog
+  - create:
+      box: datalog_aggregate_proofs
+      name: aggregate proofs
+      frame: { x: 60.0, y: 160.0, w: 740.0, h: 360.0 }
+      properties:
+        code: |
+          % ── who is on which team, and what each of them costs ────────────────────────
+          emp(ada, sales, 100).  emp(bob, sales, 200).  emp(cy, eng, 50).  emp(di, eng, 70).
+          dept(sales).  dept(eng).
+
+          % Three facts that only an aggregate can state.
+          payroll(D, S)   :- dept(D), S = sum P : { emp(_, D, P) }.
+          headcount(D, N) :- dept(D), N = count : { emp(_, D, _) }.
+          peak(D, M)      :- dept(D), M = max P : { emp(_, D, P) }.
+
+          % An aggregate's target has to be a variable nothing has bound yet, so "the top
+          % earner" is a second rule that joins back against the peak.
+          topEarner(D, W) :- peak(D, M), emp(W, D, M).
+
+          ?- payroll(D, S).
+
+          % Before 2026-08-30 every one of these answered "no proof reconstructed".
+          #why payroll(sales, 300)
+          #why headcount(eng, 2)
+          #why topEarner(sales, bob)
+
+          % And the other question a person actually asks: why is a fact *absent*?
+          #whynot payroll(legal, 0)
+  - connect:
+      parent: datalog_aggregate_root
+      child: datalog_aggregate_proofs
+  - await:
+      wait: pending
+  # No inline code: this runs the box's own stored program, so editing the box and re-running is
+  # the same thing the transcript did.
+  - execute:
+      box: datalog_aggregate_proofs
+  - await:
+      wait: pending

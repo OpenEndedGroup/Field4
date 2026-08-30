@@ -80,8 +80,13 @@ that fragment asked for, so rules can be built up and queried line by line. Rule
 so re-running the whole box is safe.
 
 Directives: `#help`, `#boxes` (load the live document), `#relations`, `#facts <p>`, `#program`,
-`#why <goal>`, `#reset`. A bare non-ground atom on its own line (`path(a, Z).`) is treated as a
-query, not as a malformed fact.
+`#why <goal>`, `#whynot <goal>`, `#reset`. A bare non-ground atom on its own line (`path(a, Z).`) is
+treated as a query, not as a malformed fact.
+
+Adding a directive means editing **two** vocabularies: `DatalogExecution.directiveHelp` and
+`directiveWords` / `directiveDocs` in `src/commonMain/resources/datalog.js`.
+`datalog.editor-extension.workout` asserts the two are equal, and a directive the highlighter does
+not know about gets underlined as a clause with no `.`.
 
 ## `#datalog` — the embedded region
 
@@ -135,6 +140,52 @@ builtin on one side and forgetting the other fails a test rather than silently m
   `count` and `sum` give 0.
 - Query rows come back sorted. Set semantics leave the order arbitrary, and an arbitrary order that
   changes between runs is a bad thing to print next to a box.
+- Rounds are numbered **globally**, not per stratum. `DlRelation.roundOf` is what makes `why`
+  terminate — a proof may only descend to a strictly earlier round — and a per-stratum counter broke
+  that across a stratum boundary, so any rule with negation or an aggregate in its body was
+  inexplicable. Strata run in topological order, so a global counter makes "older stratum implies
+  lower round" true by construction. `MAX_ROUNDS` is measured from each stratum's first round.
+- An aggregate's **target must be a variable nothing has bound yet**, which is why "the maximum, and
+  who earned it" is two rules: `peak(D, M) :- dept(D), M = max P : { emp(_, D, P) }.` and then
+  `topEarner(D, W) :- peak(D, M), emp(W, D, M).`
+
+## Explaining a fact, and explaining its absence
+
+`Datalog.why(goal)` is a top-down search over the finished model, bounded by round numbers rather
+than by an occurs-check. Three things about it are easy to get wrong:
+
+- **Literal ordering is where the bugs live.** `chooseLiteral` mirrors the planner: evaluable tests
+  first (0), bindings (1), anti-joins (0 when ready), positive scans (2), aggregates last (3, or 4
+  when one aggregate's subgoal reads another's target). A literal that cannot be evaluated yet must
+  score 99. Scoring an unevaluable comparison *below* a positive atom once made the search pick
+  `V > 5` before the `cell(C, V)` that binds `V`, fail, and report a real fact as unproven.
+- **An aggregate proof is the group plus the arithmetic.** `aggregateGroup` enumerates the subgoal
+  under the same `roundOf < beforeRound` bound as any other premise, recomputes the value with
+  `dlAggregateValue` — the same function the fixpoint uses, which is why it is top-level — and the
+  caller checks it against the model. A group that does not add up is refused, and the answer falls
+  back to the honest "no proof reconstructed". Two details are load-bearing: an aggregate's
+  dependencies are forced negative during stratification, so they always sit in a strictly earlier
+  stratum and every contributing tuple passes the round bound; and the target is *dropped* from the
+  bindings first, because the engine assigns it after the subgoal runs and leaving it in would
+  restrict the group to the tuples that happen to equal the answer.
+- **`DlDerivation.kind` says what a node is to its parent** — `DERIVED`, `AGGREGATE`, `GROUP`,
+  `ABSENCE`. A proof tree is not homogeneous, and a reader who cannot tell a rule body from an
+  aggregate's group is reading a tree that means several different things in one shape.
+  `contribution` carries what a group member gave the aggregate, so `min`/`max` can name their
+  witness. The shown group is capped at `Datalog.MAX_GROUP_MEMBERS`; the value is always computed
+  over all of it, and for `min`/`max` the extreme tuple is kept even when it falls outside the cap.
+
+`Datalog.whyNot(goal)` (`DatalogWhyNot.kt`, an extension so the fixpoint's file does not grow a
+second personality) walks prefixes of the conjunction, **running each one through a real
+`DatalogEngine`**, and names the literal whose prefix has zero answers. One solve per prefix, paid
+because a why-not that disagreed with the query it explains would be worse than none. The walk is in
+the order the goal was written, not the planner's order, because the reader is looking at their own
+text — which is also why "not evaluable this early" is reported as distinct from "0 answers". For a
+single derived atom it walks each candidate rule's body with the head's constants substituted, and
+sorts by how far each got.
+
+A comparison still contributes no proof node, deliberately: `#why over(a3)` on the published page is
+a committed capture whose proof contains `V > 5`, and adding a node there would churn the image.
 
 ## Documenting it
 
@@ -172,6 +223,10 @@ Two bugs the captures found, which no unit test had:
 `Runloop` and starts no threads — the JVM exits naturally. Everything that needs a `Box` is in
 `jvmTest` instead.
 
+A replayable box that exercises the aggregate proofs and `#whynot` end to end lives at
+`dev_docs/agents/artifacts/datalog_aggregate_proofs/` — a transcript, not a saved document, because
+a `save` op inside a committed transcript writes into the repository every time somebody replays it.
+
 ## Documentation
 
 `public/docs/datalog.md` ("Datalog in a Box", staging → Small Languages). Eight captures under
@@ -187,13 +242,21 @@ FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --g
 `incremental` keys on fence content, not on Kotlin, so a change to (say) `dlBoxRelationTable`
 reports `cache_hits` and leaves the old image in place. Use `always` with `--page`.
 
-`DlRows`, `DlSolution` and `DlDerivation` implement `ToHTML` via the repo-wide `Table`, which is
-what makes `display("main", d.query(…))` render as a table and `d.why(…)` as an indented proof.
+`DlRows` and `DlSolution` implement `ToHTML` via the repo-wide `Table`, which is what makes
+`display("main", d.query(…))` render as a table. `DlDerivation` and `DlWhyNot` render their own
+indented trees instead — the shape *is* the answer in a proof, and a table would flatten the one
+thing worth looking at.
+
+Adding the aggregate-proof and why-not prose did **not** need a recapture. The two `#why` captures on
+the page (`path(a, d)` and `#why over(a3)`) contain no aggregate, no negation and no new node kind,
+so their images are unchanged; the new examples are `data-lang=text` fences holding output that was
+actually observed in a live box, not runner fences.
 
 ## Not done yet
 
-- `#why` does not reconstruct a proof through an aggregate; it says so in the derivation's note
-  rather than guessing.
+- `whyNot` is one rule deep. It walks the bodies of the rules that could have produced a missing
+  fact, but does not then recurse into the literal that failed. Asking again about that literal is
+  the manual version and works; the automatic version is a research project.
 - A Datalog *box* gets its language id from `code_language`, which is the display label
   (`"Datalog"`); the extension compares language ids case-insensitively so that still highlights,
   but the mismatch is shared with every other box language here and was not fixed.
