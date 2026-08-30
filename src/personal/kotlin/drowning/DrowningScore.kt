@@ -59,6 +59,10 @@ class DrowningScoreCell internal constructor(val index: Int, model: Matrix4fc) {
     val opacity = DrowningEnvelope(1f)
     val particleInfluence = DrowningEnvelope(1f)
     val projectedLight = DrowningEnvelope(1f)
+    val videoGain = DrowningEnvelope(1f)
+
+    internal var cadenceShutter = 1f
+    internal var cadenceVideoGain = 1f
 
     /** Resources remain resident while a retirement fade is in flight. */
     var resident: Boolean = true
@@ -124,6 +128,77 @@ class DrowningPose internal constructor(
     internal val matrices: List<Matrix4f>
 )
 
+/** One discrete step in a source-frame cadence; [rotateDegrees] fires on the step's first frame. */
+data class DrowningCadenceFrame(
+    val frames: Int = 1,
+    val videoGain: Float = 1f,
+    val shutter: Float = 1f,
+    val rotateDegrees: Float = 0f
+) {
+    init {
+        require(frames > 0) { "cadence frames must be positive" }
+        require(videoGain.isFinite() && videoGain >= 0f) {
+            "cadence video gain must be finite and non-negative"
+        }
+        require(shutter.isFinite() && shutter in 0f..1f) { "cadence shutter must be between zero and one" }
+        require(rotateDegrees.isFinite()) { "cadence rotation must be finite" }
+    }
+}
+
+fun cadenceFrame(
+    frames: Int = 1,
+    videoGain: Float = 1f,
+    shutter: Float = 1f,
+    rotateDegrees: Float = 0f
+) = DrowningCadenceFrame(frames, videoGain, shutter, rotateDegrees)
+
+data class DrowningCadenceSample(
+    val videoGain: Float,
+    val shutter: Float,
+    val rotationDegrees: Double,
+    val stepIndex: Int,
+    val frameInStep: Int
+)
+
+/**
+ * A periodic, seek-stable source-frame score. Rotation steps accumulate analytically across cycles,
+ * so a dropped display frame or backwards seek cannot change the result.
+ */
+class DrowningFrameCadence(vararg frames: DrowningCadenceFrame) {
+    val steps = frames.toList()
+    val frameCount: Int
+    val cycleRotationDegrees: Double
+
+    init {
+        require(steps.isNotEmpty()) { "a frame cadence needs at least one step" }
+        frameCount = steps.sumOf { it.frames }
+        cycleRotationDegrees = steps.sumOf { it.rotateDegrees.toDouble() }
+    }
+
+    /** A positive [phaseFrames] delays this instance relative to source frame zero. */
+    fun sample(sourceFrame: Long, phaseFrames: Int = 0): DrowningCadenceSample {
+        val localFrame = sourceFrame - phaseFrames.toLong()
+        val cycle = Math.floorDiv(localFrame, frameCount.toLong())
+        val within = Math.floorMod(localFrame, frameCount.toLong()).toInt()
+        var accumulatedRotation = cycle * cycleRotationDegrees
+        var cursor = 0
+        steps.forEachIndexed { index, step ->
+            if (within >= cursor) accumulatedRotation += step.rotateDegrees
+            if (within < cursor + step.frames) {
+                return DrowningCadenceSample(
+                    step.videoGain,
+                    step.shutter,
+                    accumulatedRotation,
+                    index,
+                    within - cursor
+                )
+            }
+            cursor += step.frames
+        }
+        error("cadence frame $within escaped $frameCount frames")
+    }
+}
+
 class DrowningScoreGroup internal constructor(
     private val score: DrowningScore,
     val indices: IntArray
@@ -138,6 +213,11 @@ class DrowningScoreGroup internal constructor(
 
     fun light(to: Float, seconds: Double = 0.0) = apply {
         score.submitGesture { live -> indices.forEach { live[it].projectedLight.to(to, seconds, live.time) } }
+    }
+
+    /** Smooth base gain for projected RGB. Frame-cadence gain multiplies this value. */
+    fun video(to: Float, seconds: Double = 0.0) = apply {
+        score.submitGesture { live -> indices.forEach { live[it].videoGain.to(to, seconds, live.time) } }
     }
 
     /** Fade geometry, particle effects, and projected light as one musical gesture. */
@@ -170,6 +250,21 @@ class DrowningScoreGroup internal constructor(
 
     fun clearFlicker() = apply {
         score.submitGesture { live -> indices.forEach { live[it].flickerDepth = 0f } }
+    }
+
+    /**
+     * Apply one absolute source-frame cadence. Put this in [DrowningScore.script] so it is evaluated
+     * after every presented asset frame. Successive group members receive successive phase delays.
+     */
+    fun cadence(
+        pattern: DrowningFrameCadence,
+        staggerFrames: Int = 0,
+        rotationScale: Float = 1f,
+        reference: DrowningPose = score.home,
+        pivot: Vector3f? = null,
+        axis: Vector3f = Vector3f(0f, 1f, 0f)
+    ) = apply {
+        score.applyCadence(indices, pattern, staggerFrames, rotationScale, reference, pivot, axis)
     }
 }
 
@@ -204,6 +299,7 @@ class DrowningScore(
     val activeMask: Int get() = cells.fold(0) { mask, cell ->
         if (cell.resident) mask or (1 shl cell.index) else mask
     }
+    val sourceFrame: Long get() = floor(time * cue.fps + 1e-6).toLong()
 
     init {
         home = capture("home")
@@ -264,7 +360,7 @@ class DrowningScore(
      * slerp. The `resource` float remains above zero throughout an ordinary 1-to-0 blend, keeping
      * sparse decoders alive until the fully retired endpoint is applied.
      */
-    fun keyframes(schemaVersion: Int = 2, prefix: String = "cell"): KeyframeScope =
+    fun keyframes(schemaVersion: Int = 3, prefix: String = "cell"): KeyframeScope =
         KeyframeScope(schemaVersion).also { scope ->
             cells.indices.forEach { index ->
                 val stem = "$prefix.${index.toString().padStart(2, '0')}"
@@ -295,6 +391,9 @@ class DrowningScore(
                 scope.target("$stem.light",
                     get = { live[index].projectedLight.value },
                     set = { value -> submitGesture { it[index].projectedLight.set(value.requireFloat("$stem.light")) } })
+                scope.target("$stem.videoGain",
+                    get = { live[index].videoGain.value },
+                    set = { value -> submitGesture { it[index].videoGain.set(value.requireFloat("$stem.videoGain")) } })
                 scope.target("$stem.flicker.depth",
                     get = { live[index].flickerDepth },
                     set = { value -> submitGesture { it[index].flickerDepth = value.requireFloat("$stem.flicker.depth") } })
@@ -354,6 +453,31 @@ class DrowningScore(
     fun wagonWheel(turnsPerSecond: Float, time: Double = this.time, reference: DrowningPose = home): DrowningScore =
         spin((time * turnsPerSecond * 2.0 * PI).toFloat(), reference)
 
+    internal fun applyCadence(
+        indices: IntArray,
+        pattern: DrowningFrameCadence,
+        staggerFrames: Int,
+        rotationScale: Float,
+        reference: DrowningPose,
+        pivot: Vector3f?,
+        axis: Vector3f
+    ) {
+        val rotationPivot = pivot?.let(::Vector3f) ?: centre(reference)
+        val rotationAxis = Vector3f(axis)
+        require(rotationAxis.lengthSquared() > 1e-8f) { "cadence rotation axis must be non-zero" }
+        rotationAxis.normalize()
+        indices.forEachIndexed { order, index ->
+            val sample = pattern.sample(sourceFrame, order * staggerFrames)
+            val radians = (sample.rotationDegrees * rotationScale * PI / 180.0).toFloat()
+            cells[index].modelFromCamera
+                .set(Matrix4f().translate(rotationPivot).rotate(radians, rotationAxis)
+                    .translate(-rotationPivot.x, -rotationPivot.y, -rotationPivot.z))
+                .mul(reference.matrices[index])
+            cells[index].cadenceShutter = sample.shutter
+            cells[index].cadenceVideoGain = sample.videoGain
+        }
+    }
+
     /**
      * Stack the reference pose vertically. radiusScale=0 makes one spine; 1 retains its radial spread.
      * Existing per-cell orientation is preserved, including the tuned image-plane roll.
@@ -410,6 +534,10 @@ class DrowningScore(
         this.time = time
         updating = true
         try {
+            cells.forEach {
+                it.cadenceShutter = 1f
+                it.cadenceVideoGain = 1f
+            }
             gestureQueues[sessionKey]?.let { queue ->
                 while (true) (queue.poll() ?: break)(this)
             }
@@ -423,7 +551,8 @@ class DrowningScore(
                 cell.opacity = scored.opacity.sample(time)
                 cell.particleInfluence = scored.particleInfluence.sample(time)
                 cell.projectedLight = scored.projectedLight.sample(time)
-                cell.flicker = scored.shutter(time)
+                cell.flicker = scored.shutter(time) * scored.cadenceShutter
+                cell.videoGain = scored.videoGain.sample(time) * scored.cadenceVideoGain
                 scored.finishLifecycle()
             }
         } finally {

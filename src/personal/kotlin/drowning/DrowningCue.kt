@@ -143,7 +143,9 @@ data class DrowningCell(
     var particleInfluence: Float = 1f,
     var projectedLight: Float = 1f,
     /** A fast appearance-only shutter multiplier, normally supplied by [DrowningScore]. */
-    var flicker: Float = 1f
+    var flicker: Float = 1f,
+    /** Independent multiplier on projected RGB; unlike [projectedLight], values above one are useful. */
+    var videoGain: Float = 1f
 ) {
     /** Score bind world -> source camera; captured once after document setup, before score motion. */
     val bindCameraFromModel: Matrix4f = Matrix4f(cameraFromModel)

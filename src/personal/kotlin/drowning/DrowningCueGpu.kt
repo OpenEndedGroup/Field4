@@ -12,8 +12,8 @@ import java.nio.ByteOrder
  * Per cell (20 vec4s): modelFromCamera[4], cameraFromModel[4], source/depth/flow atlas rects,
  * disparity+flow decode, inverse-depth calibration, source geometry, scored appearance, the inverse
  * score bind pose for already-packed splats, and the shared depth-remap curve.
- * Atlas rects are `(u,v,w,h)`. Score is `(opacity*flicker, particleInfluence,
- * projectedLight*flicker, flicker)`.
+ * Atlas rects are `(u,v,w,h)`. Score is `(opacity*shutter, particleInfluence,
+ * projectedLight*shutter, videoGain)`.
  */
 object DrowningPaletteLayout {
     const val CELL_VEC4S = 20
@@ -59,7 +59,7 @@ fun DrowningCue.writePalette(
             putFloat(spatial.opacity.coerceAtLeast(0f) * spatial.flicker.coerceIn(0f, 1f))
             putFloat(spatial.particleInfluence.coerceAtLeast(0f))
             putFloat(spatial.projectedLight.coerceAtLeast(0f) * spatial.flicker.coerceIn(0f, 1f))
-            putFloat(spatial.flicker.coerceIn(0f, 1f))
+            putFloat(spatial.videoGain.coerceAtLeast(0f))
             putMatrix(spatial.bindCameraFromModel)
             val depth = spatialFrom.depthRemap
             putFloat(cell.calibration.convergenceDepth * depth.pivot)

@@ -478,7 +478,8 @@ gestures travel through a per-session command lane and are consumed on the rende
 
 `DrowningScore.keyframes()` exposes the entire score through the ordinary keyframer rather than a
 second score format. It flattens each stable cell into persisted position/rotation/scale, opacity,
-effects, light, resource and flicker values, plus the four global `depth.*` curve parameters.
+effects, light, projected-video gain, resource and flicker values, plus the four global `depth.*`
+curve parameters.
 Rotation uses the keyframer's quaternion slerp; all other numeric/vector lanes lerp. Resource
 residency stays nonzero through an interpolation and reaches zero only at the retired endpoint,
 when sparse splat/MXG work can stop.
@@ -506,4 +507,21 @@ scale and projected-video depth tests.
 score.remapDepth(pivot=1f, range=0.65f, power=1.8f, amount=1f)
 score.remapDepth(amount=0.35f) // retain the current pivot/range/power
 score.clearDepthRemap()
+```
+
+For shuttered movement, `DrowningFrameCadence` scores exact source frames rather than wall-clock
+intervals. Each entry supplies projected-video gain, shutter and an optional rotation event. Rotation
+is derived analytically from the absolute source frame, so dropped display frames and seeks cannot
+make it drift; `staggerFrames` delays successive members of a score group around the circle.
+
+```kotlin
+val z = DrowningFrameCadence(
+    cadenceFrame(videoGain=2.2f),
+    cadenceFrame(videoGain=1f),
+    cadenceFrame(videoGain=.18f),
+    cadenceFrame(videoGain=2.4f, rotateDegrees=24f),
+    cadenceFrame(videoGain=1f),
+    cadenceFrame(videoGain=0f, shutter=0f)
+)
+score.script = { group(0, 4, 9).cadence(z, staggerFrames=1) }
 ```
