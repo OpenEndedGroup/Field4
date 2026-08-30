@@ -126,6 +126,7 @@ class StackSLCpuWordCoverageTest {
     @Test
     fun `every GLSL builtin the emitter calls is implemented`() {
         val callRegex = Regex("""\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(""")
+        val commentRegex = Regex("""//[^\n]*|/\*.*?\*/""", RegexOption.DOT_MATCHES_ALL)
         val keywords = setOf("if", "for", "while", "return", "switch", "do")
         val missing = sortedSetOf<String>()
         stackSLDocumentableWords.forEach { word ->
@@ -139,9 +140,14 @@ class StackSLCpuWordCoverageTest {
                 )
             )
             if (!result.ok) return@forEach
+            // Comments first. `worley3` carries the line `// .x = F1, .y = F2, ...`, and a naive
+            // scan reads `F1 (` in it as a call to an unimplemented builtin named `F1` — a false
+            // positive that says nothing about the backend and would have to be suppressed by
+            // name, which is how a guard starts accumulating exceptions instead of signal.
+            val glsl = commentRegex.replace(result.glsl, " ")
             val defined = Regex("""\b(?:void|float|u?int|bool|[iub]?vec[234]|mat[234])\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(""")
-                .findAll(result.glsl).map { it.groupValues[1] }.toSet()
-            callRegex.findAll(result.glsl).map { it.groupValues[1] }.forEach { name ->
+                .findAll(glsl).map { it.groupValues[1] }.toSet()
+            callRegex.findAll(glsl).map { it.groupValues[1] }.forEach { name ->
                 if (name in keywords || name in defined) return@forEach
                 if (GlslType.byName(name) != null) return@forEach
                 if (name !in GlslBuiltins.names) missing += name

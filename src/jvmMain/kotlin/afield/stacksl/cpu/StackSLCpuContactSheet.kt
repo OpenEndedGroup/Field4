@@ -47,9 +47,14 @@ object StackSLCpuContactSheet {
     /**
      * Build the sheet. Returns the per-program statistics in the same order as the sheet's cells,
      * so the caller can print them beside the picture rather than recomputing.
+     *
+     * [only] restricts it to named entries. That exists for the test, which needs to prove the
+     * generator works end to end but must not spend a second full-gallery render (200 seconds) to
+     * do it; the committed sheet is always the whole gallery.
      */
-    fun build(repoRoot: File, outputDir: File): List<GalleryAgreement> {
-        val entries = StackSLCpuGallery.load(repoRoot)
+    fun build(repoRoot: File, outputDir: File, only: Set<String>? = null): List<GalleryAgreement> {
+        val entries = StackSLCpuGallery.load(repoRoot).filter { only == null || it.name in only }
+        require(entries.isNotEmpty()) { "no gallery entries matched $only" }
         outputDir.mkdirs()
 
         val rows = (entries.size + COLUMNS - 1) / COLUMNS
