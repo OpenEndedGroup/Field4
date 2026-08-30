@@ -19,7 +19,22 @@ for the example pack) rather than doing a 20–40 ms pack inside `record_gfx`.
 `DrowningAnchors` is the small bridge from already-presented MXG frames to particle interaction. It
 selects a bounded number of useful tracked nodes per cell, preserves track-to-slot identity through
 short losses, and advances a generation token on slot reuse or cue wrap. Consumers can therefore fade
-and reacquire rather than snapping when a track disappears. It does no file access and owns no decoder.
+and reacquire rather than snapping when a track disappears. Its third GPU record carries the same
+CPU-authored MXG tree root and effective distance-from-leaf warp used by the draw: particle attachment,
+reacquisition and world velocity therefore follow sculpted nodes rather than their original screen
+centroids. It does no file access and owns no decoder.
+
+`MxgTreeWarp` is the live scoring surface for that sculpture. Structural leaves always have zero
+weight and stay depth-aligned to their cell; roots have weight one, and `distancePower` redistributes
+intermediate nodes. Roots can be moved independently every render frame without touching the 8 fps
+decoder or rebuilding topology:
+
+```kotlin
+_mxgTreeWarp.rootsAbove(vec3(0f, 0f, 0f), height = 3f, radius = 1f, amount = .72f)
+_mxgTreeWarp[4].set(-2f, 5f, 1f, amount = .9f)
+_mxgTreeWarp.distancePower = 1.4f
+_mxgTreeWarp.moveContours = false // false: tether to screen; true: carry contours with their nodes
+```
 
 Data-bearing `.vrpack.mp4` files must use `VideoTexture(pixelFormat = VideoDecodeFormat.RGBA8)`. Their
 R/G/B channels contain disparity and optical-flow values, so the normal P010 path would lose information

@@ -22,9 +22,25 @@ val MxgCapacity.gpuBytes: Long get() = nodeBytes + segmentBytes
  * or a test target all work. For playback, allocate with `perFrame = true; streamWrites()`; the
  * background [MxgSource] never touches Vulkan and the render loop performs these two bounded copies.
  */
-fun MxgFrame.writeInto(nodes: BufferWriteable? = null, segments: BufferWriteable? = null, command: CommandBuffer? = null) {
+fun MxgFrame.writeInto(
+    nodes: BufferWriteable? = null,
+    segments: BufferWriteable? = null,
+    command: CommandBuffer? = null,
+    nodeLeafWeights: FloatArray? = null
+) {
+    require(nodeLeafWeights == null || nodeLeafWeights.size == nodeCount) {
+        "need $nodeCount MXG leaf-distance weights, got ${nodeLeafWeights?.size}"
+    }
     nodes?.let {
-        it.mapAndWrite_bytes { put(nodeBytes()) }
+        it.mapAndWrite_bytes {
+            val start = position()
+            put(nodeBytes())
+            // The decoded CPU frame remains pristine. Only its GPU copy borrows flatCentroid.x,
+            // currently unused by every drawing/anchor shader, for the procedural tree weight.
+            nodeLeafWeights?.forEachIndexed { node, weight ->
+                putFloat(start + node * MxgFrame.NODE_BYTES + 8, weight.coerceIn(0f, 1f))
+            }
+        }
         it.clean(false, command)
     }
     segments?.let {
