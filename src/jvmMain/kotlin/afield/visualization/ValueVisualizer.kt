@@ -327,6 +327,10 @@ object ValueVisualizer {
         is Matrix3dc -> formatMatrix(value)
         is Matrix4dc -> formatMatrix(value)
 
+        // kotlin.Pair, as the `to` that almost always built it. Precedes the reflective
+        // data-class fallback, which would otherwise expand it to `Pair { first -> a, second -> b }`.
+        is Pair<*, *> -> formatPair(value, depth, visited, respectDepthLimit)
+
         // Collections
         is Map<*, *> -> formatMap(value, depth, visited, respectDepthLimit)
         is List<*> -> formatList(value, depth, visited, respectDepthLimit = respectDepthLimit)
@@ -1052,9 +1056,10 @@ object ValueVisualizer {
         if (raw != null && respectDepthLimit && depth > MAX_DEPTH) {
             return FieldValue.Inline(formatDepthLimitedValue(raw))
         }
-        // Types with a dedicated compact renderer (e.g. Domain) must fall through to
+        // Types with a dedicated compact renderer (e.g. Domain, Pair) must fall through to
         // visualizeValue rather than be expanded as a generic reflective struct here.
         val isStructLike = raw != null && raw !is ToHTML && raw !is Functions.Domain &&
+            raw !is Pair<*, *> &&
             ValuePrinterRegistry.getPrinter(raw) == null &&
             ((raw is Map<*, *> && raw.isNotEmpty()) || raw::class.isData)
         if (isStructLike) {
@@ -1709,7 +1714,7 @@ object ValueVisualizer {
      *
      *  - every cell must be a scalar — a record holding a list or a nested struct has no useful
      *    single-cell text, and the struct tree shows it better than a table would;
-     *  - `kotlin.Pair` / `Triple` keep their denser inline `a → b` form;
+     *  - `kotlin.Pair` keeps its denser inline `a to b` form, and `Triple` its reflective one;
      *  - a list of lists keeps its nesting, which carries a sparkline per row that columns would
      *    swallow (`recordTable` still tables one on request);
      *  - a type that renders itself, via [ToHTML] or a registered printer, is never flattened into
@@ -1829,6 +1834,19 @@ object ValueVisualizer {
             append("<span style='color: #aaa;'>}</span>")
             append(formatSizeSuffix(size))
         }
+    }
+
+    /**
+     * `a to b` — the expression that built the pair — rather than the two-field reflective struct
+     * `Pair { first -> a, second -> b }`. Both sides recurse, so a pair of structs still expands;
+     * only the wrapper disappears.
+     */
+    private fun formatPair(
+        pair: Pair<*, *>, depth: Int, visited: MutableSet<Any>, respectDepthLimit: Boolean
+    ): String {
+        val first = visualizeValue(pair.first, depth + 1, visited, respectDepthLimit)
+        val second = visualizeValue(pair.second, depth + 1, visited, respectDepthLimit)
+        return "$first<span style='color: #777;'> to </span>$second"
     }
 
     private fun formatMap(map: Map<*, *>, depth: Int, visited: MutableSet<Any>, respectDepthLimit: Boolean): String {
