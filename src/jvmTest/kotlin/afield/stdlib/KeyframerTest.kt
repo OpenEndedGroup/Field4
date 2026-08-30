@@ -1,5 +1,8 @@
 package afield.stdlib
 
+import afield.Box
+import afield.controlGroup
+import afield.controllerControlsForBox
 import afield.four.buffers.Structure
 import afield.four.util.CameraPose
 import afield.stdlib.linalg.DualQuaternionf
@@ -222,6 +225,106 @@ class KeyframerTest {
         val structure = Structure().also { it.bind("position") { Vector3f(9f, 8f, 7f) } }
         scope.target("position", structure)
         assertEquals(Vector3f(9f, 8f, 7f), scope.capture()["position"])
+    }
+
+    @Test
+    fun typedLocalTargetsInterpolateAndValidateAtTheirBoundary() {
+        val scope = KeyframeScope()
+        var gain = 0f
+        var count = 0
+        var enabled = false
+        var position = Vector3f()
+        scope.floatTarget("gain", { gain }) { gain = it }
+        scope.intTarget("count", { count }, 0..4) { count = it }
+        scope.booleanTarget("enabled", { enabled }) { enabled = it }
+        scope.vector3Target("position", { position }) { position = it }
+
+        val a = scope.capture()
+        gain = 10f
+        count = 10
+        enabled = true
+        position.set(4f, 8f, 12f)
+        val b = scope.capture()
+        scope.interpolate(a, b, 0.5)()
+
+        assertEquals(5f, gain)
+        assertEquals(4, count, "the interpolated float is rounded, then clamped")
+        assertTrue(enabled, "the Boolean lane crosses at 0.5")
+        assertEquals(Vector3f(2f, 4f, 6f), position)
+
+        val wrong = scope.Key(mutableMapOf("gain" to "loud"))
+        assertFailsWith<IllegalStateException> { wrong() }
+    }
+
+    @Test
+    fun aContributorAddsItsLanesToAnExistingScopeUnderAPrefix() {
+        var gain = 0.25f
+        val contributor = KeyframeContributor { scope, prefix ->
+            scope.floatTarget("$prefix.gain", { gain }) { gain = it }
+        }
+        val scope = KeyframeScope().include(contributor, "voice")
+
+        assertEquals(0.25f, scope.capture()["voice.gain"])
+        scope.Key(mutableMapOf("voice.gain" to 0.75f))()
+        assertEquals(0.75f, gain)
+    }
+
+    @Test
+    fun aKeyframedControlMovesTheLocalAndItsVisibleUiWithoutCallingBackTwice() {
+        val box = Box("keyframed-control-${System.nanoTime()}")
+        box.output.displayProxy = { _, _ -> }
+        val scope = KeyframeScope()
+        var gain = 0f
+        var mix = 0.0
+        var enabled = false
+        var offset = Vector2f()
+        var tint = Vector4f(1f, 1f, 1f, 1f)
+        var label = "calm"
+        var setterCalls = 0
+
+        box.controlGroup("look") {
+            keyframeFloatSlider(
+                scope = scope,
+                name = "look.gain",
+                label = "gain",
+                min = 0.0,
+                max = 2.0,
+                get = { gain },
+                set = { gain = it; setterCalls++ }
+            )
+            keyframeSlider(scope, "look.mix", "mix", get = { mix }, set = { mix = it })
+            keyframeCheckbox(scope, "look.enabled", "enabled", get = { enabled }, set = { enabled = it })
+            keyframeVec2Control(scope, "look.offset", "offset", get = { offset }, set = { offset = it })
+            keyframeColorPicker(scope, "look.tint", "tint", get = { tint }, set = { tint = it })
+            keyframeText(scope, "look.label", "label", get = { label }, set = { label = it })
+        }
+
+        scope.Key(mutableMapOf(
+            "look.gain" to 1.25f,
+            "look.mix" to 0.75,
+            "look.enabled" to 1f,
+            "look.offset" to Vector2f(0.2f, -0.4f),
+            "look.tint" to Vector4f(0.1f, 0.2f, 0.3f, 0.4f),
+            "look.label" to "storm"
+        ))()
+        val controls = controllerControlsForBox(box.id).associateBy { it.label }
+        assertEquals(1.25f, gain)
+        assertEquals(0.75, mix)
+        assertTrue(enabled)
+        assertEquals(Vector2f(0.2f, -0.4f), offset)
+        assertEquals(Vector4f(0.1f, 0.2f, 0.3f, 0.4f), tint)
+        assertEquals("storm", label)
+        assertEquals(1.25, controls.getValue("gain").value)
+        assertEquals(0.75, controls.getValue("mix").value)
+        assertEquals(true, controls.getValue("enabled").checked)
+        assertEquals(0.2, controls.getValue("offset").x!!, 1e-6)
+        assertEquals(0.4, controls.getValue("tint").a!!, 1e-6)
+        assertEquals("storm", controls.getValue("label").text)
+        assertEquals(1, setterCalls, "ControlValueHandle.set mirrors UI and does not feed the callback back")
+
+        @Suppress("UNCHECKED_CAST")
+        val cached = box.properties["_controlGroupValues"] as Map<String, Map<String, Any?>>
+        assertEquals(1.25, cached.values.first { it["label"] == "gain" }["value"], "a rerun restores the recalled value")
     }
 
     @Test

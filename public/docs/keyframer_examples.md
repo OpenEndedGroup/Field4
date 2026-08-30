@@ -117,11 +117,86 @@ Panel 4 is the round trip closing: re-applying the original snapshot and re-capt
 `No key differences.`, so a `Key` really is a complete description of what the scope watches.
 
 Objects that are not shader `Structure`s can join the same system through an explicit getter and
-setter. For example, `scope.target("score.opacity", get = { score.opacity.value },
-set = { score.opacity.set((it as Number).toFloat()) })`
-gives that value the same capture, interpolation, persistence and version-history behaviour as a
-uniform. The getter's runtime type determines interpolation and persistence, while the setter is
-responsible for validating the `Any?` it receives when a key is applied.
+setter. The low-level form remains `target(name, get, set)`, but ordinary locals should use the typed
+forms: `floatTarget`, `doubleTarget`, `booleanTarget`, `intTarget`, `vector2Target`,
+`vector3Target`, `vector4Target`, or `stringTarget`. Their setters validate the loaded value at the
+scope boundary, and the vector forms copy mutable vectors in both directions so a saved key cannot
+quietly alias a live local.
+
+Boolean and integer locals deliberately become float lanes. That gives them meaningful interpolation:
+a Boolean crosses at `0.5`, while an integer rounds and optionally clamps on apply. This is useful for
+controls such as an instance count which changes CPU-authored geometry but should still travel smoothly
+between two looks.
+
+```diffstatic {data-lang=kotlin}
+var opacity = 0.25f
+var layers = 3
+
+val scope = KeyframeScope().apply {
+    floatTarget("outlines.opacity", { opacity }) { opacity = it }
+    intTarget("outlines.layers", { layers }, 0..64) { layers = it }
+}
+```
+
+### One value shared by a local, a control and a key
+
+A normal `controlGroup` control caches its own visible value, while a keyframe normally drives a
+Kotlin local. Registering those independently creates two authorities: recalling a key moves the
+picture but leaves the slider behind, and rerunning the box can then restore that stale slider over
+the recalled value.
+
+The `keyframe*` control helpers make the local authoritative and the UI its writable mirror. A hand
+moving the control writes the local. A key applying a value writes the same local and moves both the
+desktop control and the remote controller. The programmatic UI update refreshes the box's live rerun
+cache but does not emit one document operation per animation frame.
+
+```diffstatic {data-lang=kotlin}
+var gain = 0.35f
+var projectedOnly = false
+val keys = KeyframeScope()
+
+thisBox.controlGroup("projected light") {
+    keyframeFloatSlider(
+        scope = keys, name = "light.gain", label = "gain",
+        min = 0.0, max = 4.0,
+        get = { gain }, set = { gain = it }
+    )
+    keyframeCheckbox(
+        scope = keys, name = "light.projectedOnly", label = "projected only",
+        get = { projectedOnly }, set = { projectedOnly = it }
+    )
+}
+```
+
+There are matching helpers for a `Double` slider, vec2 control, colour picker and text input. The
+underlying grouped controls now return a `ControlValueHandle<T>` as well; `handle.set(value)` is the
+UI-only half when a custom integration needs it. It never invokes the control callback, avoiding a
+feedback loop.
+
+### A custom class contributes lanes instead of inventing a file format
+
+A score, instrument or simulation can implement `KeyframeContributor`. Its job is only to register
+stable names and live getters/setters. `include` adds those lanes to an existing scope, alongside
+shader structures, locals and controls; the ordinary `Key` JSON remains the sole persistence format.
+
+```diffstatic {data-lang=kotlin}
+class Look : KeyframeContributor {
+    var opacity = 1f
+    var position = vec(0, 0, 0)
+
+    override fun registerKeyframes(scope: KeyframeScope, prefix: String) = with(scope) {
+        floatTarget("$prefix.opacity", { opacity }) { opacity = it }
+        vector3Target("$prefix.position", { position }) { position = it }
+    }
+}
+
+val keys = KeyframeScope(schemaVersion = 2)
+    .include(Look(), prefix = "foreground")
+```
+
+Composition-specific choices stay in the contributor: what a lane means, when its setter is queued,
+whether a zero retires a resource, and how the names are versioned. Field only supplies composition,
+typed boundaries, interpolation and persistence.
 
 ??? aside "The module-pointer targets are not exercised on this page"
 
@@ -810,7 +885,7 @@ through AWT, so it throws on a headless JVM and it replaces whatever the user ha
 
 ### What is actually tested
 
-Every number stated on this page is asserted by a suite of 71 tests written against it. A companion
+Every number stated on this page is asserted by a suite of 76 tests written against it. A companion
 ledger reflects over the **members of a hand-listed set of `keyframer.kt`'s classes** and requires every
 public one to be classified as either covered or unreachable-with-a-stated-reason. That half genuinely
 cannot rot: add a method or a property to one of those classes and the build fails until it is accounted
@@ -823,7 +898,7 @@ and `enum class KeyDiffKind` (`keyframer.kt:1052#enum class KeyDiffKind { ADDED,
 and the suite is green. It is exercised by the tests; it simply is not counted, which pushes the
 figure below down rather than up.
 
-**94 of 102 public behavioural declarations are exercised (92.2%).** Data-class members the Kotlin
+**110 of 118 public behavioural declarations are exercised (93.2%).** Data-class members the Kotlin
 compiler generates are excluded, on the same grounds the
 [codebase reference](reference/index.md) excludes them.
 

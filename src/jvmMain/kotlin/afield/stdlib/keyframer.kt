@@ -2,7 +2,11 @@
 
 package afield.stdlib
 
+import afield.ControlGroupBuilder
+import afield.ControlLaw
+import afield.ControlValueHandle
 import afield.ToHTML
+import afield.defaultSignificantDigits
 import afield.four.util.Camera
 import afield.four.util.CameraPose
 import afield.four.util.applyPose
@@ -17,8 +21,11 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import afield.stdlib.linalg.Quaternionf
 import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector2fc
 import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector3fc
 import afield.stdlib.linalg.Vector4f
+import afield.stdlib.linalg.Vector4fc
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
@@ -32,6 +39,7 @@ import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.name
+import kotlin.math.roundToInt
 import afield.facts
 import afield.Table
 import afield.FieldMarkdown
@@ -39,7 +47,8 @@ import afield.CellRole
 
 /**
  * Snapshot, interpolate and persist the live state of a running sketch. A [KeyframeScope] is a set
- * of named targets — uniform `Structure` bindings, the uniform structures of a `ModulePointer` /
+ * of named targets — typed Kotlin locals, keyframe-aware `controlGroup` controls, contributors such
+ * as a score object, uniform `Structure` bindings, the uniform structures of a `ModulePointer` /
  * `ComputeModulePointer` / `MeshModulePointer`, a stackAuto shader-source slot via
  * [KeyframeScope.stackAuto], or a `Camera` pose via [KeyframeScope.camera]. `capture()` reads them
  * all into a [KeyframeScope.Key]; invoking that `Key` writes them all back.
@@ -312,15 +321,28 @@ data class StackSLString(val value: String) {
 /** [StackSLString] as a function, which is what `Key.updateCode` emits so its output can be pasted back. */
 fun stackSLString(value: String) = StackSLString(value)
 
+/**
+ * A domain object that contributes its state to an existing [KeyframeScope].
+ *
+ * This is registration, not a second serialization scheme. The object flattens itself into the same
+ * ordinary numeric/vector/code lanes as shader structures and locals, so capture, interpolation,
+ * persistence and migration defaults remain one system. [prefix] lets several objects of the same
+ * kind coexist; the contributor defines the names below that prefix.
+ */
+fun interface KeyframeContributor {
+    fun registerKeyframes(scope: KeyframeScope, prefix: String)
+}
+
 
 /**
  * A named set of live things worth snapshotting — uniform `Structure` bindings, a module's live
  * uniforms, a `stack.auto` shader slot, a `Camera` — plus the machinery to capture, blend, save and
  * reload them. This is the object you keep around for the lifetime of a sketch.
  *
- * Register targets with [target] / [stackAuto] / [camera], take a snapshot with [capture], blend two
- * snapshots with [interpolate], and write one back to its targets by invoking it. A scope holds no
- * values of its own: a [Key] does, and a `Key` is a plain map, so it outlives the frame it came from.
+ * Register targets with [target], its typed local variants, [include], [stackAuto] or [camera]; take
+ * a snapshot with [capture], blend two snapshots with [interpolate], and write one back to its targets
+ * by invoking it. A scope holds no values of its own: a [Key] does, and a `Key` is a plain map, so it
+ * outlives the frame it came from.
  *
  * A key name may be qualified with `@`: everything after the last `@` is the property name used on the
  * target, so `"glow@radius"` and `"blur@radius"` can both drive a `radius` uniform on different
@@ -612,6 +634,87 @@ class KeyframeScope(val schemaVersion: Int = 0) {
         )
         targets.remove(name)
     }
+
+    /** Register a float local without exposing an `Any?` setter at the call site. */
+    fun floatTarget(name: String, get: () -> Float, set: (Float) -> Unit) {
+        target(name, get = get, set = { value -> set(value.requireKeyframeNumber(name).toFloat()) })
+    }
+
+    /** Register a double local without exposing an `Any?` setter at the call site. */
+    fun doubleTarget(name: String, get: () -> Double, set: (Double) -> Unit) {
+        target(name, get = get, set = { value -> set(value.requireKeyframeNumber(name).toDouble()) })
+    }
+
+    /**
+     * Register a Boolean local as an interpolable float lane. Applying crosses to `true` at 0.5;
+     * this is useful when a fade eventually switches a CPU-side path as well as a shader.
+     */
+    fun booleanTarget(name: String, get: () -> Boolean, set: (Boolean) -> Unit) {
+        target(
+            name,
+            get = { if (get()) 1f else 0f },
+            set = { value -> set(value.requireKeyframeNumber(name).toFloat() >= 0.5f) }
+        )
+    }
+
+    /** Register an integer local as a float lane, rounding and clamping when a key is applied. */
+    fun intTarget(
+        name: String,
+        get: () -> Int,
+        range: IntRange = Int.MIN_VALUE..Int.MAX_VALUE,
+        set: (Int) -> Unit
+    ) {
+        target(
+            name,
+            get = { get().toFloat() },
+            set = { value -> set(value.requireKeyframeNumber(name).toFloat().roundToInt().coerceIn(range)) }
+        )
+    }
+
+    /** Register a vec2 local, copying at both boundaries so a captured key cannot alias it. */
+    fun vector2Target(name: String, get: () -> Vector2fc, set: (Vector2f) -> Unit) {
+        target(
+            name,
+            get = { Vector2f(get()) },
+            set = { value -> set(Vector2f(value.requireKeyframeType<Vector2fc>(name))) }
+        )
+    }
+
+    /** Register a vec3 local, copying at both boundaries so a captured key cannot alias it. */
+    fun vector3Target(name: String, get: () -> Vector3fc, set: (Vector3f) -> Unit) {
+        target(
+            name,
+            get = { Vector3f(get()) },
+            set = { value -> set(Vector3f(value.requireKeyframeType<Vector3fc>(name))) }
+        )
+    }
+
+    /** Register a vec4 local, copying at both boundaries so a captured key cannot alias it. */
+    fun vector4Target(name: String, get: () -> Vector4fc, set: (Vector4f) -> Unit) {
+        target(
+            name,
+            get = { Vector4f(get()) },
+            set = { value -> set(Vector4f(value.requireKeyframeType<Vector4fc>(name))) }
+        )
+    }
+
+    /** Register a string local. Strings retain the keyframer's endpoint-step interpolation. */
+    fun stringTarget(name: String, get: () -> String, set: (String) -> Unit) {
+        target(name, get = get, set = { value -> set(value.requireKeyframeType<String>(name)) })
+    }
+
+    /** Add every lane supplied by [contributor] to this scope and return the scope for chaining. */
+    fun include(contributor: KeyframeContributor, prefix: String = ""): KeyframeScope = apply {
+        contributor.registerKeyframes(this, prefix.trim('.'))
+    }
+
+    private fun Any?.requireKeyframeNumber(name: String): Number =
+        this as? Number
+            ?: error("keyframe '$name' expected a number, got ${this?.let { it::class.simpleName } ?: "null"}")
+
+    private inline fun <reified T : Any> Any?.requireKeyframeType(name: String): T =
+        this as? T
+            ?: error("keyframe '$name' expected ${T::class.simpleName}, got ${this?.let { it::class.simpleName } ?: "null"}")
 
     /**
      * Register a key against one of a graphics module's live uniform structures, resolved through the
@@ -1054,6 +1157,144 @@ class KeyframeScope(val schemaVersion: Int = 0) {
 
     private fun keyVersionFileName(version: Int): String =
         "%06d.json".format(version)
+}
+
+/**
+ * Put one `Double` local in a scope and on a visible slider, with either direction keeping the other
+ * two in step. UI gestures call [set]; applying a key calls [set] and moves the visible control.
+ */
+fun ControlGroupBuilder.keyframeSlider(
+    scope: KeyframeScope,
+    name: String,
+    label: String,
+    min: Double = 0.0,
+    max: Double = 1.0,
+    step: Double = 0.01,
+    law: ControlLaw = ControlLaw.LINEAR,
+    lawExponent: Double = 2.0,
+    lawCenter: Double = (min + max) / 2,
+    significantDigits: Int = defaultSignificantDigits(law),
+    get: () -> Double,
+    set: (Double) -> Unit
+): ControlValueHandle<Double> {
+    val handle = slider(
+        label = label,
+        min = min,
+        max = max,
+        step = step,
+        initialValue = get(),
+        law = law,
+        lawExponent = lawExponent,
+        lawCenter = lawCenter,
+        significantDigits = significantDigits,
+        onUpdate = set
+    )
+    scope.doubleTarget(name, get) { value ->
+        set(value)
+        handle.set(value)
+    }
+    return handle
+}
+
+/** [keyframeSlider] for the `Float` locals most graphics code uses. */
+fun ControlGroupBuilder.keyframeFloatSlider(
+    scope: KeyframeScope,
+    name: String,
+    label: String,
+    min: Double = 0.0,
+    max: Double = 1.0,
+    step: Double = 0.01,
+    law: ControlLaw = ControlLaw.LINEAR,
+    lawExponent: Double = 2.0,
+    lawCenter: Double = (min + max) / 2,
+    significantDigits: Int = defaultSignificantDigits(law),
+    get: () -> Float,
+    set: (Float) -> Unit
+): ControlValueHandle<Double> {
+    val handle = slider(
+        label = label,
+        min = min,
+        max = max,
+        step = step,
+        initialValue = get().toDouble(),
+        law = law,
+        lawExponent = lawExponent,
+        lawCenter = lawCenter,
+        significantDigits = significantDigits,
+        onUpdate = { set(it.toFloat()) }
+    )
+    scope.floatTarget(name, get) { value ->
+        set(value)
+        handle.set(value.toDouble())
+    }
+    return handle
+}
+
+/** A keyframed Boolean local and checkbox; the persisted lane is an interpolable 0/1 float. */
+fun ControlGroupBuilder.keyframeCheckbox(
+    scope: KeyframeScope,
+    name: String,
+    label: String,
+    get: () -> Boolean,
+    set: (Boolean) -> Unit
+): ControlValueHandle<Boolean> {
+    val handle = checkbox(label, initialValue = get(), onUpdate = set)
+    scope.booleanTarget(name, get) { value ->
+        set(value)
+        handle.set(value)
+    }
+    return handle
+}
+
+/** A keyframed vec2 local and XY control. */
+fun ControlGroupBuilder.keyframeVec2Control(
+    scope: KeyframeScope,
+    name: String,
+    label: String,
+    xRange: Pair<Double, Double> = -1.0 to 1.0,
+    yRange: Pair<Double, Double> = -1.0 to 1.0,
+    step: Double = 0.01,
+    get: () -> Vector2fc,
+    set: (Vector2f) -> Unit
+): ControlValueHandle<Vector2f> {
+    val handle = vec2Control(label, Vector2f(get()), xRange, yRange, step, onUpdate = set)
+    scope.vector2Target(name, get) { value ->
+        set(Vector2f(value))
+        handle.set(value)
+    }
+    return handle
+}
+
+/** A keyframed RGBA vec4 local and colour picker. */
+fun ControlGroupBuilder.keyframeColorPicker(
+    scope: KeyframeScope,
+    name: String,
+    label: String,
+    get: () -> Vector4fc,
+    set: (Vector4f) -> Unit
+): ControlValueHandle<Vector4f> {
+    val handle = colorPicker(label, Vector4f(get()), onUpdate = set)
+    scope.vector4Target(name, get) { value ->
+        set(Vector4f(value))
+        handle.set(value)
+    }
+    return handle
+}
+
+/** A keyframed string local and compact text control. */
+fun ControlGroupBuilder.keyframeText(
+    scope: KeyframeScope,
+    name: String,
+    label: String,
+    get: () -> String,
+    set: (String) -> Unit
+): ControlValueHandle<String> {
+    val handle = text(label, initialValue = get(), onUpdate = set)
+    scope.stringTarget(name, get) { value ->
+        set(value)
+        handle.set(value)
+    }
+    return handle
 }
 
 /**

@@ -1755,6 +1755,21 @@ private fun Box.updateCachedControlGroupValue(control: ControllerControl) {
     storeControlGroupValue(cacheKey, control)
 }
 
+/**
+ * Keep a programmatically-driven control coherent across a box rerun without recording one document
+ * edit for every animation frame. Browser gestures use [updateCachedControlGroupValue] because they
+ * are durable edits; a keyframe interpolation is already durable in its key file and only needs the
+ * live cache to agree with the value currently on screen.
+ */
+private fun Box.updateCachedControlGroupValueInMemory(control: ControllerControl) {
+    val cache = existingControlGroupCache() ?: return
+    val cacheKey = cache.entries.firstOrNull { it.value.id == control.id }?.key ?: return
+    cache[cacheKey] = control
+    val values = controlGroupValues()
+    values[cacheKey] = controlGroupStoredValue(control)
+    properties[controlGroupValuesProperty] = values
+}
+
 internal fun registerControllerControlGroup(box: Box, channel: String, controls: List<ControllerControl>) {
     val key = controllerControlGroupKey(box.id, channel)
     controllerControlGroups[key] = controls
@@ -1812,12 +1827,78 @@ internal fun updateControllerControlValue(controlId: String, update: (Controller
     return updated
 }
 
+/** The programmatic counterpart of [updateControllerControlValue]: live cache, no operation log. */
+internal fun updateControllerControlValueProgrammatically(
+    controlId: String,
+    update: (ControllerControl) -> ControllerControl
+): List<ControllerControl> {
+    val updated = mutableListOf<ControllerControl>()
+    controllerControlGroups.replaceAll { groupKey, controls ->
+        controls.map { control ->
+            if (control.id == controlId) {
+                update(control).also {
+                    updated += it
+                    controllerControlGroupBoxes[groupKey]?.updateCachedControlGroupValueInMemory(it)
+                }
+            } else {
+                control
+            }
+        }
+    }
+    return updated
+}
+
+private fun controllerControlForId(controlId: String): ControllerControl? =
+    controllerControlGroups.values.asSequence().flatten().firstOrNull { it.id == controlId }
+
+/**
+ * A writable view of one cached [controlGroup] value.
+ *
+ * [set] updates the desktop control, the remote controller surface and the box's live rerun cache.
+ * It deliberately does not invoke the control's callback: the caller is changing the authoritative
+ * Kotlin value and uses this handle to keep its UI mirror in step. This makes it safe for a keyframe
+ * to drive a control every animation frame without feeding the change back through itself or adding
+ * one operation-log entry per frame.
+ */
+class ControlValueHandle<T> internal constructor(
+    /** Stable id derived from box, channel, control type, label and occurrence. */
+    val controlId: String,
+    private val targetDocument: String?,
+    private val read: (ControllerControl) -> T?,
+    private val write: (ControllerControl, T) -> ControllerControl,
+    private val copy: (T) -> T = { it }
+) {
+    /** Show [value] everywhere this control appears. Returns false when it was already current. */
+    fun set(value: T): Boolean {
+        val safeValue = copy(value)
+        val current = controllerControlForId(controlId) ?: return false
+        if (read(current) == safeValue) return false
+        val updated = updateControllerControlValueProgrammatically(controlId) { write(it, safeValue) }
+        if (updated.isEmpty()) return false
+        targetDocument?.let { broadcastControllerControlUpdates(updated, it) }
+        return true
+    }
+}
+
 class ControlGroupBuilder(private val box: Box, private val channel: String) {
     private val htmlParts = mutableListOf<String>()
     private val controls = mutableListOf<ControllerControl>()
     private val ordinals = mutableMapOf<String, Int>()
 
     private data class CachedControl(val cacheKey: String, val id: String, val previous: ControllerControl?)
+
+    private fun <T> valueHandle(
+        id: String,
+        read: (ControllerControl) -> T?,
+        write: (ControllerControl, T) -> ControllerControl,
+        copy: (T) -> T = { it }
+    ) = ControlValueHandle(
+        id,
+        box.takeIf { it.isInsideInitialized() }?.inside?.filename,
+        read,
+        write,
+        copy
+    )
 
     /**
      * The stable identity of the next control of this [type] and [label] — no cache lookup.
@@ -1887,7 +1968,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         lawCenter: Double = (min + max) / 2,
         significantDigits: Int = defaultSignificantDigits(law),
         onUpdate: (Double) -> Unit
-    ) {
+    ): ControlValueHandle<Double> {
         val cached = cachedControl("slider", "slider", label)
         val sliderId = cached.id
         val value = cached.previous?.value?.coerceIn(min, max) ?: initialValue
@@ -1914,6 +1995,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         )
         controls += control
         box.storeControlGroupValue(cached.cacheKey, control)
+        return valueHandle(sliderId, { it.value }, { old, next -> old.copy(value = next) })
     }
 
     /**
@@ -1936,7 +2018,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         label: String,
         initialValue: Vector4f = Vector4f(1.0f, 1.0f, 1.0f, 1.0f),
         onUpdate: (Vector4f) -> Unit
-    ) {
+    ): ControlValueHandle<Vector4f> {
         val cached = cachedControl("color", "color", label)
         val controlId = cached.id
         val value = Vector4f(
@@ -1964,6 +2046,20 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         )
         controls += control
         box.storeControlGroupValue(cached.cacheKey, control)
+        return valueHandle(
+            controlId,
+            { old ->
+                if (old.r == null || old.g == null || old.b == null || old.a == null) null
+                else Vector4f(old.r.toFloat(), old.g.toFloat(), old.b.toFloat(), old.a.toFloat())
+            },
+            { old, next ->
+                old.copy(
+                    r = next.x.toDouble(), g = next.y.toDouble(), b = next.z.toDouble(),
+                    a = next.w.toDouble(), value = next.w.toDouble()
+                )
+            },
+            { Vector4f(it) }
+        )
     }
 
     /**
@@ -1998,7 +2094,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         yRange: Pair<Double, Double> = -1.0 to 1.0,
         step: Double = 0.01,
         onUpdate: (Vector2f) -> Unit
-    ) {
+    ): ControlValueHandle<Vector2f> {
         val cached = cachedControl("vec2", "vec2", label)
         val controlId = cached.id
         val value = Vector2f(
@@ -2027,6 +2123,12 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         )
         controls += control
         box.storeControlGroupValue(cached.cacheKey, control)
+        return valueHandle(
+            controlId,
+            { old -> if (old.x == null || old.y == null) null else Vector2f(old.x.toFloat(), old.y.toFloat()) },
+            { old, next -> old.copy(x = next.x.toDouble(), y = next.y.toDouble()) },
+            { Vector2f(it) }
+        )
     }
 
     /**
@@ -2149,7 +2251,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         label: String,
         initialValue: Boolean = false,
         onUpdate: (Boolean) -> Unit
-    ) {
+    ): ControlValueHandle<Boolean> {
         val cached = cachedControl("checkbox", "checkbox", label)
         val controlId = cached.id
         val value = cached.previous?.checked ?: initialValue
@@ -2167,6 +2269,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         )
         controls += control
         box.storeControlGroupValue(cached.cacheKey, control)
+        return valueHandle(controlId, { it.checked }, { old, next -> old.copy(checked = next) })
     }
 
     /**
@@ -2183,7 +2286,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         label: String,
         initialValue: String = "",
         onUpdate: (String) -> Unit
-    ) {
+    ): ControlValueHandle<String> {
         val cached = cachedControl("string", "string", label)
         val controlId = cached.id
         val value = cached.previous?.text ?: initialValue
@@ -2201,6 +2304,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         )
         controls += control
         box.storeControlGroupValue(cached.cacheKey, control)
+        return valueHandle(controlId, { it.text }, { old, next -> old.copy(text = next) })
     }
 
     /**

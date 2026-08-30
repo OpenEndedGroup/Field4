@@ -502,10 +502,17 @@ when sparse splat/MXG work can stop.
 The cue creates one persistent scope before the graphics boxes launch. Each live graphics box then
 registers its own shader controls and CPU-side geometry controls into that same scope. Re-running a
 box replaces its registrations with closures over the new live locals, so shader reload and
-copy/paste editing do not create a second keyframe universe. `floatTarget`, `booleanTarget`,
-`intTarget` and `vector3Target` are the typed bridge for values which must remain authoritative
-outside a push-constant structure; integer and Boolean controls deliberately persist as interpolable
-float lanes.
+copy/paste editing do not create a second keyframe universe. The typed `floatTarget`,
+`booleanTarget`, `intTarget` and `vector3Target` bridges now live on Field's `KeyframeScope`, because
+they are useful to every sketch with CPU-side state; the old `drowning.*` functions are compatibility
+shims for saved dust boxes. Integer and Boolean controls deliberately persist as interpolable float
+lanes.
+
+`DrowningScore` now implements Field's `KeyframeContributor`: `scope.include(score, "cue")` appends
+`cue.cell.*` and `cue.depth.*` to any larger scope. Its 15-cell names, queued gesture setters,
+residency thresholds and score semantics remain here in the composition. Field proper owns only the
+general contributor contract, typed boundaries, and the `keyframe*` control helpers which keep a
+local, grouped UI control and recalled key visibly synchronized.
 
 ```kotlin
 val keys = _cueKeyframes

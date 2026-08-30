@@ -1,6 +1,7 @@
 package drowning
 
 import afield.stdlib.KeyframeScope
+import afield.stdlib.KeyframeContributor
 import afield.stdlib.linalg.Matrix4f
 import afield.stdlib.linalg.Matrix4fc
 import afield.stdlib.linalg.Quaternionf
@@ -277,7 +278,7 @@ class DrowningScoreGroup internal constructor(
 class DrowningScore(
     private val cue: DrowningCue,
     private val sessionKey: String = cue.directory.absolutePath
-) {
+) : KeyframeContributor {
     val cells = cue.cells.map { DrowningScoreCell(it.index, it.modelFromCamera) }
     val poses = linkedMapOf<String, DrowningPose>()
     val home: DrowningPose
@@ -365,12 +366,28 @@ class DrowningScore(
      */
     fun keyframes(schemaVersion: Int = 4, prefix: String = "cell"): KeyframeScope =
         KeyframeScope(schemaVersion).also { scope ->
+            registerKeyframeTargets(scope, cellPrefix = prefix, globalPrefix = "")
+        }
+
+    /** Contribute this score to a larger scope; [prefix] qualifies both `cell.*` and `depth.*`. */
+    override fun registerKeyframes(scope: KeyframeScope, prefix: String) {
+        registerKeyframeTargets(
+            scope,
+            cellPrefix = qualifyKeyframe(prefix, "cell"),
+            globalPrefix = prefix
+        )
+    }
+
+    private fun registerKeyframeTargets(
+        scope: KeyframeScope,
+        cellPrefix: String,
+        globalPrefix: String
+    ) {
             cells.indices.forEach { index ->
-                val stem = "$prefix.${index.toString().padStart(2, '0')}"
-                scope.target("$stem.position",
+                val stem = "$cellPrefix.${index.toString().padStart(2, '0')}"
+                scope.vector3Target("$stem.position",
                     get = { live[index].modelFromCamera.getTranslation(Vector3f()) },
-                    set = { value ->
-                        val position = Vector3f(value.requireKeyType<Vector3f>("$stem.position"))
+                    set = { position ->
                         submitGesture { it.setTransform(index, position = position) }
                     })
                 scope.target("$stem.rotation",
@@ -379,56 +396,56 @@ class DrowningScore(
                         val rotation = Quaternionf(value.requireKeyType<Quaternionf>("$stem.rotation")).normalize()
                         submitGesture { it.setTransform(index, rotation = rotation) }
                     })
-                scope.target("$stem.scale",
+                scope.vector3Target("$stem.scale",
                     get = { live[index].modelFromCamera.getScale(Vector3f()) },
-                    set = { value ->
-                        val scale = Vector3f(value.requireKeyType<Vector3f>("$stem.scale"))
+                    set = { scale ->
                         submitGesture { it.setTransform(index, scale = scale) }
                     })
-                scope.target("$stem.opacity",
+                scope.floatTarget("$stem.opacity",
                     get = { live[index].opacity.value },
-                    set = { value -> submitGesture { it[index].opacity.set(value.requireFloat("$stem.opacity")) } })
-                scope.target("$stem.effects",
+                    set = { value -> submitGesture { it[index].opacity.set(value) } })
+                scope.floatTarget("$stem.effects",
                     get = { live[index].particleInfluence.value },
-                    set = { value -> submitGesture { it[index].particleInfluence.set(value.requireFloat("$stem.effects")) } })
-                scope.target("$stem.light",
+                    set = { value -> submitGesture { it[index].particleInfluence.set(value) } })
+                scope.floatTarget("$stem.light",
                     get = { live[index].projectedLight.value },
-                    set = { value -> submitGesture { it[index].projectedLight.set(value.requireFloat("$stem.light")) } })
-                scope.target("$stem.videoGain",
+                    set = { value -> submitGesture { it[index].projectedLight.set(value) } })
+                scope.floatTarget("$stem.videoGain",
                     get = { live[index].videoGain.value },
-                    set = { value -> submitGesture { it[index].videoGain.set(value.requireFloat("$stem.videoGain")) } })
-                scope.target("$stem.flicker.depth",
+                    set = { value -> submitGesture { it[index].videoGain.set(value) } })
+                scope.floatTarget("$stem.flicker.depth",
                     get = { live[index].flickerDepth },
-                    set = { value -> submitGesture { it[index].flickerDepth = value.requireFloat("$stem.flicker.depth") } })
-                scope.target("$stem.flicker.hz",
+                    set = { value -> submitGesture { it[index].flickerDepth = value } })
+                scope.floatTarget("$stem.flicker.hz",
                     get = { live[index].flickerHz },
-                    set = { value -> submitGesture { it[index].flickerHz = value.requireFloat("$stem.flicker.hz") } })
-                scope.target("$stem.flicker.duty",
+                    set = { value -> submitGesture { it[index].flickerHz = value } })
+                scope.floatTarget("$stem.flicker.duty",
                     get = { live[index].flickerDuty },
-                    set = { value -> submitGesture { it[index].flickerDuty = value.requireFloat("$stem.flicker.duty") } })
-                scope.target("$stem.flicker.phase",
+                    set = { value -> submitGesture { it[index].flickerDuty = value } })
+                scope.floatTarget("$stem.flicker.phase",
                     get = { live[index].flickerPhase },
-                    set = { value -> submitGesture { it[index].flickerPhase = value.requireFloat("$stem.flicker.phase") } })
-                scope.target("$stem.flicker.softness",
+                    set = { value -> submitGesture { it[index].flickerPhase = value } })
+                scope.floatTarget("$stem.flicker.softness",
                     get = { live[index].flickerSoftness },
-                    set = { value -> submitGesture { it[index].flickerSoftness = value.requireFloat("$stem.flicker.softness") } })
-                scope.target("$stem.resource",
+                    set = { value -> submitGesture { it[index].flickerSoftness = value } })
+                scope.floatTarget("$stem.resource",
                     get = { live[index].resourceWeight },
-                    set = { value -> submitGesture { it[index].setResourceWeight(value.requireFloat("$stem.resource")) } })
+                    set = { value -> submitGesture { it[index].setResourceWeight(value) } })
             }
-            scope.target("depth.pivot",
+            val depth = qualifyKeyframe(globalPrefix, "depth")
+            scope.floatTarget("$depth.pivot",
                 get = { live.depthRemap.pivot },
-                set = { value -> submitGesture { it.depthRemap.set(pivot = value.requireFloat("depth.pivot")) } })
-            scope.target("depth.range",
+                set = { value -> submitGesture { it.depthRemap.set(pivot = value) } })
+            scope.floatTarget("$depth.range",
                 get = { live.depthRemap.range },
-                set = { value -> submitGesture { it.depthRemap.set(range = value.requireFloat("depth.range")) } })
-            scope.target("depth.power",
+                set = { value -> submitGesture { it.depthRemap.set(range = value) } })
+            scope.floatTarget("$depth.power",
                 get = { live.depthRemap.power },
-                set = { value -> submitGesture { it.depthRemap.set(power = value.requireFloat("depth.power")) } })
-            scope.target("depth.amount",
+                set = { value -> submitGesture { it.depthRemap.set(power = value) } })
+            scope.floatTarget("$depth.amount",
                 get = { live.depthRemap.amount },
-                set = { value -> submitGesture { it.depthRemap.set(amount = value.requireFloat("depth.amount")) } })
-        }
+                set = { value -> submitGesture { it.depthRemap.set(amount = value) } })
+    }
 
     fun recall(pose: DrowningPose = home, mix: Float = 1f): DrowningScore {
         val t = mix.coerceIn(0f, 1f)
@@ -620,5 +637,5 @@ class DrowningScore(
 private inline fun <reified T : Any> Any?.requireKeyType(name: String): T =
     this as? T ?: error("score key '$name' needs ${T::class.simpleName}, got ${this?.let { it::class.simpleName } ?: "null"}")
 
-private fun Any?.requireFloat(name: String): Float =
-    (this as? Number)?.toFloat() ?: error("score key '$name' needs a number, got ${this?.let { it::class.simpleName } ?: "null"}")
+private fun qualifyKeyframe(prefix: String, name: String): String =
+    prefix.trim('.').takeIf { it.isNotEmpty() }?.let { "$it.$name" } ?: name

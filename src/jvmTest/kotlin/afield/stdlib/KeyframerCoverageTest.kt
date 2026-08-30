@@ -56,6 +56,15 @@ class KeyframerCoverageTest {
             "KeyframeScope::target(String, Structure)" to covered(),
             "KeyframeScope::target(String, () -> Structure?)" to covered(),
             "KeyframeScope::target(String, () -> Any?, (Any?) -> Unit)" to covered(),
+            "KeyframeScope::floatTarget(String, () -> Float, (Float) -> Unit)" to covered(),
+            "KeyframeScope::doubleTarget(String, () -> Double, (Double) -> Unit)" to covered(),
+            "KeyframeScope::booleanTarget(String, () -> Boolean, (Boolean) -> Unit)" to covered(),
+            "KeyframeScope::intTarget(String, () -> Int, ranges.IntRange, (Int) -> Unit)" to covered(),
+            "KeyframeScope::vector2Target(String, () -> Vector2fc, (Vector2f) -> Unit)" to covered(),
+            "KeyframeScope::vector3Target(String, () -> Vector3fc, (Vector3f) -> Unit)" to covered(),
+            "KeyframeScope::vector4Target(String, () -> Vector4fc, (Vector4f) -> Unit)" to covered(),
+            "KeyframeScope::stringTarget(String, () -> String, (String) -> Unit)" to covered(),
+            "KeyframeScope::include(KeyframeContributor, String)" to covered(),
             "KeyframeScope::target(ModulePointer, String)" to
                 headless("resolves module.current.liveUniformStructures; needs a live Renderer"),
             "KeyframeScope::target(ComputeModulePointer, String)" to
@@ -147,6 +156,7 @@ class KeyframerCoverageTest {
             "KeyVersionInfo::file" to covered(),
             "StackSLString::value" to covered(),
             "StackSLString::toString()" to covered(),
+            "KeyframeContributor::registerKeyframes(KeyframeScope, String)" to covered(),
             "KeyDiff::leftName" to covered(),
             "KeyDiff::rightName" to covered(),
             "KeyDiff::entries" to covered(),
@@ -160,6 +170,12 @@ class KeyframerCoverageTest {
             // ---- reachable only outside the class list above ---------------------------------
             "KValue.Companion::fromAny(Any?)" to covered(),
             "<top-level>::stackSLString(String)" to covered(),
+            "<top-level>::keyframeSlider" to covered(),
+            "<top-level>::keyframeFloatSlider" to covered(),
+            "<top-level>::keyframeCheckbox" to covered(),
+            "<top-level>::keyframeVec2Control" to covered(),
+            "<top-level>::keyframeColorPicker" to covered(),
+            "<top-level>::keyframeText" to covered(),
             "<top-level>::Key.h" to covered(),
             "NumKind::<enum entries>" to covered(),
         )
@@ -168,6 +184,12 @@ class KeyframerCoverageTest {
         val MANUAL = setOf(
             "KValue.Companion::fromAny(Any?)",
             "<top-level>::stackSLString(String)",
+            "<top-level>::keyframeSlider",
+            "<top-level>::keyframeFloatSlider",
+            "<top-level>::keyframeCheckbox",
+            "<top-level>::keyframeVec2Control",
+            "<top-level>::keyframeColorPicker",
+            "<top-level>::keyframeText",
             "<top-level>::Key.h",
             "NumKind::<enum entries>",
         )
@@ -178,7 +200,7 @@ class KeyframerCoverageTest {
             KValue.Vec4::class, KValue.Quat::class, KValue.DualQuat::class,
             KValue.CameraPoseValue::class, KValue.StackSL::class, KValue.Str::class,
             KValue.SourceBlock::class,
-            KeyDTO::class, KeyVersionInfo::class, StackSLString::class,
+            KeyDTO::class, KeyVersionInfo::class, StackSLString::class, KeyframeContributor::class,
             KeyDiff::class, KeyDiffEntry::class,
         )
     }
@@ -329,8 +351,8 @@ class KeyframerCoverageTest {
 
         // The exact numbers published on public/docs/keyframer_examples.md. If this test has to
         // change, that page has to change in the same commit.
-        assertEquals(102, total, "total public behavioural declarations")
-        assertEquals(94, covered, "declarations covered by KeyframerTest")
+        assertEquals(118, total, "total public behavioural declarations")
+        assertEquals(110, covered, "declarations covered by KeyframerTest")
         assertEquals(8, unreachable, "declarations unreachable in a headless unit test")
 
         // Every uncovered declaration must carry a reason — no silent gaps.
