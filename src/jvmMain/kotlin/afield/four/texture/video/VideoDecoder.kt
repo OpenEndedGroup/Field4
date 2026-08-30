@@ -13,6 +13,8 @@ import org.bytedeco.ffmpeg.swscale.SwsContext
 import org.bytedeco.javacpp.DoublePointer
 import org.bytedeco.javacpp.PointerPointer
 import java.nio.ByteBuffer
+import java.util.ArrayDeque
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.min
 
 /**
@@ -45,6 +47,7 @@ class VideoDecoder(
     private var isOpen = false
     private var inputEnded = false
     private var drainSent = false
+    private val tightBufferPool = VideoFrameBufferPool()
 
     init {
         // Note: av_register_all() is deprecated in FFmpeg 4.0+, registration is now implicit
@@ -218,12 +221,18 @@ class VideoDecoder(
                         return null
                     }
                     val rowBytes = width * 2
-                    DecodedPlanes(
-                        copyPlaneTight(frameOutput!!.data(0), lumaStride, rowBytes, height),
-                        copyPlaneTight(frameOutput!!.data(1), chromaStride, rowBytes, height / 2),
-                        rowBytes,
-                        rowBytes
-                    )
+                    val luma = copyPlaneTight(frameOutput!!.data(0), lumaStride, rowBytes, height, tightBufferPool)
+                    try {
+                        DecodedPlanes(
+                            luma,
+                            copyPlaneTight(frameOutput!!.data(1), chromaStride, rowBytes, height / 2, tightBufferPool),
+                            rowBytes,
+                            rowBytes
+                        )
+                    } catch (t: Throwable) {
+                        tightBufferPool.release(luma)
+                        throw t
+                    }
                 }
                 VideoDecodeFormat.RGBA8 -> {
                     val rgbaStride = frameOutput!!.linesize(0)
@@ -233,8 +242,8 @@ class VideoDecoder(
                     }
                     val rowBytes = width * 4
                     DecodedPlanes(
-                        copyPlaneTight(frameOutput!!.data(0), rgbaStride, rowBytes, height),
-                        EMPTY_DIRECT_BUFFER,
+                        copyPlaneTight(frameOutput!!.data(0), rgbaStride, rowBytes, height, tightBufferPool),
+                        EMPTY_BUFFER,
                         rowBytes,
                         0
                     )
@@ -249,7 +258,11 @@ class VideoDecoder(
                 plane1 = planes.plane1,
                 plane0Stride = planes.stride0,
                 plane1Stride = planes.stride1,
-                timestamp = frame!!.best_effort_timestamp() * av_q2d(formatContext!!.streams(videoStreamIndex).time_base())
+                timestamp = frame!!.best_effort_timestamp() * av_q2d(formatContext!!.streams(videoStreamIndex).time_base()),
+                release = {
+                    tightBufferPool.release(planes.plane0)
+                    tightBufferPool.release(planes.plane1)
+                }
             )
         } catch (e: Exception) {
             lprintln("error,video", "Error decoding frame: ${e.message}")
@@ -330,7 +343,7 @@ class VideoDecoder(
     }
 }
 
-private val EMPTY_DIRECT_BUFFER: ByteBuffer = ByteBuffer.allocateDirect(0).asReadOnlyBuffer()
+private val EMPTY_BUFFER: ByteBuffer = ByteBuffer.allocate(0).asReadOnlyBuffer()
 
 private data class DecodedPlanes(
     val plane0: ByteBuffer,
@@ -339,30 +352,69 @@ private data class DecodedPlanes(
     val stride1: Int
 )
 
+/** Small cross-thread pool for the one or two frames that can be awaiting a Vulkan upload. */
+private class VideoFrameBufferPool(private val maxRetained: Int = 4) {
+    private val available = ArrayDeque<ByteBuffer>()
+
+    @Synchronized
+    fun acquire(size: Int): ByteBuffer {
+        val iterator = available.iterator()
+        while (iterator.hasNext()) {
+            val candidate = iterator.next()
+            if (candidate.capacity() >= size) {
+                iterator.remove()
+                candidate.clear()
+                candidate.limit(size)
+                return candidate
+            }
+        }
+        return ByteBuffer.allocate(size)
+    }
+
+    @Synchronized
+    fun release(buffer: ByteBuffer) {
+        if (buffer.capacity() == 0 || buffer.isDirect || available.size >= maxRetained) return
+        buffer.clear()
+        available.addLast(buffer)
+    }
+}
+
 private fun copyPlaneTight(
     pointer: org.bytedeco.javacpp.BytePointer,
     sourceStride: Int,
     rowBytes: Int,
-    rows: Int
+    rows: Int,
+    pool: VideoFrameBufferPool
 ): ByteBuffer {
     require(sourceStride >= rowBytes) { "source stride $sourceStride is smaller than row width $rowBytes" }
     val source = pointer.capacity(sourceStride.toLong() * rows).asByteBuffer()
-    val copy = ByteBuffer.allocateDirect(rowBytes * rows)
-    repeat(rows) { row ->
-        val line = source.duplicate()
-        line.position(row * sourceStride)
-        line.limit(row * sourceStride + rowBytes)
-        copy.put(line)
+    // This is transient CPU upload storage, not memory passed directly to Vulkan. Keeping it on the
+    // managed heap is load-bearing for large atlases: sequential playback can replace several
+    // 6912x1440 RGBA frames per second, and equally short-lived allocateDirect buffers otherwise
+    // accumulate behind the Cleaner until the JVM's native footprint exhausts system memory.
+    val copy = pool.acquire(rowBytes * rows)
+    try {
+        repeat(rows) { row ->
+            val line = source.duplicate()
+            line.position(row * sourceStride)
+            line.limit(row * sourceStride + rowBytes)
+            copy.put(line)
+        }
+        return copy.flip()
+    } catch (t: Throwable) {
+        pool.release(copy)
+        throw t
     }
-    return copy.flip()
 }
 
 enum class VideoDecodeFormat { P010, RGBA8 }
 
 /**
  * A decoded upload frame. P010 uses both planes; RGBA8 uses [plane0] and leaves [plane1] empty.
+ * The owner must [close] the frame after upload or when superseding it so its large backing buffers
+ * can be reused without waiting for garbage collection.
  */
-data class VideoFrame(
+class VideoFrame(
     val width: Int,
     val height: Int,
     val format: VideoDecodeFormat,
@@ -370,10 +422,16 @@ data class VideoFrame(
     val plane1: ByteBuffer,
     val plane0Stride: Int,
     val plane1Stride: Int,
-    val timestamp: Double
-) {
+    val timestamp: Double,
+    private val release: () -> Unit = {}
+) : AutoCloseable {
+    private val released = AtomicBoolean()
     val lumaData: ByteBuffer get() = plane0
     val chromaData: ByteBuffer get() = plane1
     val lumaStride: Int get() = plane0Stride
     val chromaStride: Int get() = plane1Stride
+
+    override fun close() {
+        if (released.compareAndSet(false, true)) release()
+    }
 }

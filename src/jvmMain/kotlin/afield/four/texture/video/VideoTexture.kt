@@ -136,6 +136,7 @@ class VideoTexture(
     private val requestedDecode = AtomicReference<DecodeRequest?>()
     private val pendingDecode = AtomicReference<DecodeRequest?>()
     private val decodedFrame = AtomicReference<DecodedFrame?>()
+    private val decodedFrameLock = Any()
     private var decodeWorker: Thread? = null
     @Volatile private var decodeWorkerRunning = false
     @Volatile private var decodeFailure: Throwable? = null
@@ -235,7 +236,7 @@ class VideoTexture(
         pendingFrameRefresh = true
         lastRequestedFrame = Long.MIN_VALUE
         seenDecodedSerial = -1L
-        decodedFrame.set(null)
+        clearDecodedFrame()
 
         // Reset internal clock when loading a new video
         if (clock == null) {
@@ -356,6 +357,7 @@ class VideoTexture(
         while (attempts < maxAttempts) {
             val frame = activeDecoder.decodeNextFrame() ?: break
 
+            decodedFrame?.close()
             decodedFrame = frame
             attempts++
 
@@ -377,52 +379,55 @@ class VideoTexture(
         lprint("info, video", "decoded frame in ${attempts} attempts")
 
         val frame = decodedFrame ?: return false
+        try {
+            // Check if we're past the video duration
+            if (frame.timestamp >= activeDecoder.duration) {
+                // Loop back to start
+                activeDecoder.seek(0.0)
+                lastFrameTimestamp = 0.0
 
-        // Check if we're past the video duration
-        if (frame.timestamp >= activeDecoder.duration) {
-            // Loop back to start
-            activeDecoder.seek(0.0)
-            lastFrameTimestamp = 0.0
+                // Reset internal clock if we're using it
+                if (clock == null) {
+                    internalClock.seek(0.0)
+                }
 
-            // Reset internal clock if we're using it
-            if (clock == null) {
-                internalClock.seek(0.0)
+                return false
             }
 
-            return false
-        }
+            // Switch to next slot
+            val nextSlot = (currentSlot.get() + 1) % textureSlots
 
-        // Switch to next slot
-        val nextSlot = (currentSlot.get() + 1) % textureSlots
-
-        when (pixelFormat) {
-            VideoDecodeFormat.P010 -> {
-                val lumaTexture = lumaTextures[nextSlot] ?: return false
-                val chromaTexture = chromaTextures[nextSlot] ?: return false
-                lumaTexture.upload(commandBuffer, frame.plane0)
-                chromaTexture.upload(commandBuffer, frame.plane1)
+            when (pixelFormat) {
+                VideoDecodeFormat.P010 -> {
+                    val lumaTexture = lumaTextures[nextSlot] ?: return false
+                    val chromaTexture = chromaTextures[nextSlot] ?: return false
+                    lumaTexture.upload(commandBuffer, frame.plane0)
+                    chromaTexture.upload(commandBuffer, frame.plane1)
+                }
+                VideoDecodeFormat.RGBA8 -> {
+                    val rgbaTexture = rgbaTextures[nextSlot] ?: return false
+                    rgbaTexture.upload(commandBuffer, frame.plane0)
+                }
             }
-            VideoDecodeFormat.RGBA8 -> {
-                val rgbaTexture = rgbaTextures[nextSlot] ?: return false
-                rgbaTexture.upload(commandBuffer, frame.plane0)
+
+            // Update current slot
+            currentSlot.set(nextSlot)
+
+            // Track the timestamp of this frame
+            lastFrameTimestamp = frame.timestamp
+            currentTimestamp = frame.timestamp
+            uploadedFrame = true
+            uploadedFrameIndex = if (fps > 0) VideoFrameIndex.decoded(frame.timestamp, fps) else -1
+
+            // If we were paused and refreshing after a scrub, stop the temporary refresh
+            if (!isPlaying && pendingFrameRefresh) {
+                pendingFrameRefresh = false
             }
+
+            return true
+        } finally {
+            frame.close()
         }
-
-        // Update current slot
-        currentSlot.set(nextSlot)
-
-        // Track the timestamp of this frame
-        lastFrameTimestamp = frame.timestamp
-        currentTimestamp = frame.timestamp
-        uploadedFrame = true
-        uploadedFrameIndex = if (fps > 0) VideoFrameIndex.decoded(frame.timestamp, fps) else -1
-
-        // If we were paused and refreshing after a scrub, stop the temporary refresh
-        if (!isPlaying && pendingFrameRefresh) {
-            pendingFrameRefresh = false
-        }
-
-        return true
     }
 
     /**
@@ -479,17 +484,21 @@ class VideoTexture(
 
     fun isFrameReady(frameIndex: Long): Boolean {
         decodeFailure?.let { throw IllegalStateException("background video decode failed", it) }
-        val ready = decodedFrame.get() ?: return false
-        return VideoFrameIndex.decoded(ready.frame.timestamp, fps) == frameIndex
+        return synchronized(decodedFrameLock) {
+            val ready = decodedFrame.get() ?: return@synchronized false
+            VideoFrameIndex.decoded(ready.frame.timestamp, fps) == frameIndex
+        }
     }
 
     /** Record this exact image's upload before the same draw as its matching geometry. Never waits. */
     fun uploadPreparedFrame(commandBuffer: CommandBuffer, frameIndex: Long): Boolean {
         decodeFailure?.let { throw IllegalStateException("background video decode failed", it) }
-        val ready = decodedFrame.get() ?: return false
-        if (VideoFrameIndex.decoded(ready.frame.timestamp, fps) != frameIndex) return false
-        if (seenDecodedSerial == ready.serial) return uploadedFrameIndex == frameIndex
-        return uploadDecodedFrame(commandBuffer, ready)
+        return synchronized(decodedFrameLock) {
+            val ready = decodedFrame.get() ?: return@synchronized false
+            if (VideoFrameIndex.decoded(ready.frame.timestamp, fps) != frameIndex) return@synchronized false
+            if (seenDecodedSerial == ready.serial) return@synchronized uploadedFrameIndex == frameIndex
+            uploadDecodedFrame(commandBuffer, ready)
+        }
     }
 
     /**
@@ -545,9 +554,11 @@ class VideoTexture(
             requestBackgroundDecode(targetFrame * frameDuration)
         }
 
-        val ready = decodedFrame.get() ?: return false
-        if (ready.serial == seenDecodedSerial) return false
-        return uploadDecodedFrame(commandBuffer, ready)
+        return synchronized(decodedFrameLock) {
+            val ready = decodedFrame.get() ?: return@synchronized false
+            if (ready.serial == seenDecodedSerial) return@synchronized false
+            uploadDecodedFrame(commandBuffer, ready)
+        }
     }
 
     private fun uploadDecodedFrame(commandBuffer: CommandBuffer, ready: DecodedFrame): Boolean {
@@ -603,7 +614,7 @@ class VideoTexture(
                     continue
                 }
                 val frameDuration = if (activeDecoder.fps > 0) 1.0 / activeDecoder.fps else 0.033
-                val already = decodedFrame.get()
+                val already = synchronized(decodedFrameLock) { decodedFrame.get() }
                 if (request.exactFrame != null && already != null &&
                     VideoFrameIndex.decoded(already.frame.timestamp, activeDecoder.fps) == request.exactFrame) continue
                 val delta = request.timestamp - decoderTimestamp
@@ -631,17 +642,24 @@ class VideoTexture(
                     decoderTimestamp = frame.timestamp
                     attempts++
                     backgroundDecodeMicros = (System.nanoTime() - frameStarted) / 1_000L
-                    if (request.exactFrame != null) {
-                        val frameIndex = VideoFrameIndex.decoded(frame.timestamp, activeDecoder.fps)
-                        check(frameIndex <= request.exactFrame) { "video skipped requested frame ${request.exactFrame}, got $frameIndex" }
-                        if (frameIndex == request.exactFrame) {
-                            decodedFrame.set(DecodedFrame(decodeSerial.incrementAndGet(), frame))
-                            reached = true
-                            break
+                    var published = false
+                    try {
+                        if (request.exactFrame != null) {
+                            val frameIndex = VideoFrameIndex.decoded(frame.timestamp, activeDecoder.fps)
+                            check(frameIndex <= request.exactFrame) { "video skipped requested frame ${request.exactFrame}, got $frameIndex" }
+                            if (frameIndex == request.exactFrame) {
+                                publishDecodedFrame(frame)
+                                published = true
+                                reached = true
+                                break
+                            }
+                        } else {
+                            publishDecodedFrame(frame)
+                            published = true
+                            if (frame.timestamp + frameDuration * 0.5 >= latestTarget) break
                         }
-                    } else {
-                        decodedFrame.set(DecodedFrame(decodeSerial.incrementAndGet(), frame))
-                        if (frame.timestamp + frameDuration * 0.5 >= latestTarget) break
+                    } finally {
+                        if (!published) frame.close()
                     }
                 }
                 // Long-GOP seeks can need more than one bounded decode pass. Keep the exact request
@@ -666,7 +684,19 @@ class VideoTexture(
         decodeWorker = null
         requestedDecode.set(null)
         pendingDecode.set(null)
-        decodedFrame.set(null)
+        clearDecodedFrame()
+    }
+
+    private fun publishDecodedFrame(frame: VideoFrame) {
+        synchronized(decodedFrameLock) {
+            decodedFrame.getAndSet(DecodedFrame(decodeSerial.incrementAndGet(), frame))?.frame?.close()
+        }
+    }
+
+    private fun clearDecodedFrame() {
+        synchronized(decodedFrameLock) {
+            decodedFrame.getAndSet(null)?.frame?.close()
+        }
     }
 }
 
