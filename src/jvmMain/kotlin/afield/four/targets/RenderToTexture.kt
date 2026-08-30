@@ -781,6 +781,10 @@ open class RenderToTexture(
      * [viewport] clips the destination on the screen target, [sourceRect] crops the sampled source
      * texture, and the returned [ModulePointer] identifies the generated blit module.
      *
+     * [sourceRect] is in normalized texel space with **y measured downwards from the top row**,
+     * matching `blitVertexShader`. It is not a place to flip an image: `Rect(0.0, 1.0, 1.0, -1.0)`
+     * used to be how callers cancelled a mirror in that shader, and the mirror is now gone.
+     *
      * If [warper] is supplied, it should be the GLSL body of `vec2 warp(vec2 x, float t)`. `x` is
      * the unwarped NDC vertex position, `t` is `time.x`, and the return value is added as an NDC
      * offset. Warped blits use a viewport-local grid sized by [numSegmentsW] and [numSegmentsH],
@@ -1139,20 +1143,35 @@ open class RenderToTexture(
                 void main() {
                     vec2 ndc = inPosition * 2.0 - 1.0;
                     gl_Position = vec4(ndc + warp(ndc, push.time.x), 0.0, 1.0);
-                    fragUV = inPosition;
+                    // Texel-aligned, matching blitVertexShader — see its KDoc.
+                    fragUV = vec2(inPosition.x, 1.0 - inPosition.y);
                 }
             """.trimIndent()
         }
 
+        /**
+         * Fullscreen triangle for [blitImageToScreen].
+         *
+         * `fragUV` is **texel-aligned**: `fragUV.y = 0` is the first row in memory, the top of the
+         * source image. The source was rendered through the negative-height viewport, so clip
+         * `y = +1` is its row 0, and this shader's own output goes to a swapchain rendered through
+         * the same convention — so the identity mapping is `fragUV.y = 1 - (clip.y + 1) / 2`.
+         *
+         * This used to be a bare `fragUV = pos`, GL-style, which mirrored every RTT vertically on
+         * its way to the window. It went unnoticed for a long time because the two things that
+         * would have shown it up both cancelled it: the standard renderer's own post chain carried
+         * an odd number of matching mirrors, and `ImGuiRenderToTexture` passed
+         * `Rect(0.0, 1.0, 1.0, -1.0)` as `sourceRect` to undo it locally.
+         */
         private val blitVertexShader = """
             #version 460
             layout(location = 0) out vec2 fragUV;
-            
+
             void main() {
                 // Fullscreen triangle: vertices 0,1,2 -> (-1,-1), (3,-1), (-1,3)
                 vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
                 gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
-                fragUV = pos;
+                fragUV = vec2(pos.x, 1.0 - pos.y);
             }
         """.trimIndent()
 

@@ -169,6 +169,36 @@ _STACKSL_GALLERY_INPUTS: tuple[str, ...] = (
     "src/jvmMain/kotlin/afield/four/fabricated/StackSLGalleryHarness.kt",
 )
 
+# The twelve StandardRenderer figures on fabricate_renderer.md are the sharpest case
+# for the argument above, and they were the last to get it. Their fences carry a scene
+# keyword and nothing else, but what those scenes *look like* is decided by the whole
+# render path: the projection matrix the camera builds, the fullscreen passes the post
+# stack chains, the shapes the generators emit. None of that is nameable from a fence.
+#
+# Two orientation bugs shipped straight through that gap. `Options.fov` held a degrees
+# literal in a radians slot, so `tan(15 rad)` came out negative and every perspective
+# matrix quietly negated m00 and m11 — a 180 degree rotation, and being a rotation it
+# preserved winding, so nothing downstream objected. And `fullscreenVertex` derived a
+# GL-style uv while the viewport is Y-flipped, mirroring the image once per sampling
+# pass, which made the orientation of a figure depend on how many post effects its
+# scene happened to add. Neither edit touched a fence, so a docs build would have
+# reused all twelve stale figures and had no way to say so.
+#
+# Deliberately *not* listed: FourVisualizers.kt (TexturePreviewCache, the readback) and
+# targets/RenderToTexture.kt (the viewport). Both can move these pixels, but both are hot
+# files, and the orientation decisions in them are pinned by CaptureOrientationTest, which
+# fails the build rather than silently changing a figure. The criterion for this list is
+# "can change these pixels *silently*", not "can change these pixels".
+_CAPTURE_PATH_INPUTS: tuple[str, ...] = (
+    "src/jvmMain/kotlin/afield/four/fabricated/StandardRendererDocsHarness.kt",
+    "src/jvmMain/kotlin/afield/four/fabricated/standardRenderer.kt",
+    "src/jvmMain/kotlin/afield/four/fabricated/standardShapes.kt",
+    "src/jvmMain/kotlin/afield/four/fabricated/FabricateScene.kt",
+    "src/jvmMain/kotlin/afield/four/fabricated/FabricatePostEffects.kt",
+    "src/jvmMain/kotlin/afield/four/util/Options.kt",
+    "src/jvmMain/kotlin/afield/four/util/Projection.kt",
+)
+
 # scene keyword -> repo-relative glob patterns whose content the render depends on
 FABRICATE_SCENE_INPUTS: dict[str, tuple[str, ...]] = {
     "rectsl-gallery": _RECTSL_GALLERY_INPUTS,
@@ -183,6 +213,19 @@ FABRICATE_SCENE_INPUTS: dict[str, tuple[str, ...]] = {
     ),
     "stacksl-gallery": _STACKSL_GALLERY_INPUTS,
     "stacksl-animations": _STACKSL_GALLERY_INPUTS,
+    # Every StandardRenderer scene on fabricate_renderer.md — see _CAPTURE_PATH_INPUTS.
+    "default-scene": _CAPTURE_PATH_INPUTS,
+    "shiny-torii-checkerboard": _CAPTURE_PATH_INPUTS,
+    "camera-depth-study": _CAPTURE_PATH_INPUTS,
+    "shader-generated-checkerboard": _CAPTURE_PATH_INPUTS,
+    "metalness": _CAPTURE_PATH_INPUTS,
+    "shadows": _CAPTURE_PATH_INPUTS,
+    "ambient-occlusion": _CAPTURE_PATH_INPUTS,
+    "blended-transparency": _CAPTURE_PATH_INPUTS,
+    "post-stack-vignette": _CAPTURE_PATH_INPUTS,
+    "toy-car-gltf": _CAPTURE_PATH_INPUTS,
+    "multi-light-skybox": _CAPTURE_PATH_INPUTS,
+    "tonemap-bloom": _CAPTURE_PATH_INPUTS,
 }
 
 

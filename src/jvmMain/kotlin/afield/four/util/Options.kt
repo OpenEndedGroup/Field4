@@ -175,7 +175,31 @@ object Options {
     var enableRayTracing: Boolean = !isMac
     var requestedImages = 3
     var vsync = true
-    val fov: Double = 30.0
+    /**
+     * Default vertical field of view, in **radians** — [Projection] and [SuperProjection] hand it
+     * straight to `setPerspective(fovy, …)` and `tan(fov / 2)` respectively.
+     *
+     * It is written as `10π - 30` rather than as a plain number because that is what it is: the
+     * unique positive fov reproducing the framing that this field's previous value, a bare `30.0`,
+     * actually produced. `30.0` was a *degrees* literal in a radians slot, and it did not merely
+     * widen the lens — `15 rad` wraps into the second quadrant, so `tan(15) = -0.856` is
+     * **negative**, `h = 1 / tan(fov / 2)` came out at `-1.168`, and every perspective matrix in
+     * the tree silently negated both `m00` and `m11`. That is a 180° rotation of the picture, and
+     * being a rotation rather than a mirror it preserves triangle winding, so backface culling
+     * never complained about it. It reached the docs as figures rendered upside down *and*
+     * left-right reversed: in the pre-fix `fabricate-default-scene.png` the green torus at world
+     * `x = -0.95` measures at image `x = 0.376`, the wrong side of centre.
+     *
+     * Since `tan(15) = -tan(5π - 15)`, `2(5π - 15) = 10π - 30 ≈ 1.4159` is the positive fov with
+     * the identical `|tan(fov / 2)|`, so the sign bug is gone and the framing every committed
+     * figure was composed against is unchanged to the last float. It works out at 81.13°, which is
+     * wide but is the lens those compositions were made with; narrowing it to a conventional 30° is
+     * a reframing, not a bug fix, and is deliberately not bundled in here.
+     *
+     * **Must stay positive.** A negative fovy re-introduces the mirror rather than flipping the
+     * camera, and does it silently. `ProjectionOrientationTest` pins the sign.
+     */
+    val fov: Double = 10.0 * Math.PI - 30.0
     val zNear: Double = 0.001
     val zFar: Double = 1000.0
 

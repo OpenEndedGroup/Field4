@@ -64,7 +64,6 @@ import java.io.File
 import java.util.ArrayDeque
 import java.util.Base64
 import javax.imageio.ImageIO
-import kotlin.math.PI
 import kotlin.math.tan
 
 /**
@@ -903,9 +902,10 @@ object RayTracingDocsHarness {
     }
 
     private fun tanHalfFovY(camera: Camera): Float {
-        val configured = camera.p.fov
-        val radians = if (configured > PI) Math.toRadians(configured) else configured
-        return tan(0.5 * radians).toFloat()
+        // Projection.fov is radians (see Options.fov). This used to guess the unit with
+        // `if (configured > PI) toRadians(configured)`, a heuristic that existed only because the
+        // default was a degrees literal in a radians slot.
+        return tan(0.5 * camera.p.fov).toFloat()
     }
 
     private fun transitionImageToGeneral(renderer: Renderer, image: Image) {
@@ -1182,7 +1182,9 @@ object RayTracingDocsHarness {
         void main() {
             vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
             gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
-            fragUV = pos;
+            // Texel-aligned. The source is written with imageStore at gl_LaunchIDEXT.xy, so its
+            // row 0 is the top of the picture, same as the Y-flipped viewport's clip y = +1.
+            fragUV = vec2(pos.x, 1.0 - pos.y);
         }
     """.trimIndent()
 

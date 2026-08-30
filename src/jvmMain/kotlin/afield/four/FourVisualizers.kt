@@ -560,7 +560,7 @@ fun registerFourVisualizers() {
             row("target", vec3(cam.target)),
             row("up", vec3(cam.up)),
             row("distance", num(dist)),
-            row("fov", num("%.1f°".format(proj.fov))),
+            row("fov", num("%.1f°".format(Math.toDegrees(proj.fov)))),
             row("near / far", "${num("%.3f".format(proj.zNear))} / ${num("%.1f".format(proj.zFar))}"),
             if (proj.orthoness > 0.0) row("orthoness", num("%.2f".format(proj.orthoness))) else null,
             if (proj.ox != 0.0 || proj.oy != 0.0) row("offset", "${num("%.2f".format(proj.ox))}, ${num("%.2f".format(proj.oy))}") else null

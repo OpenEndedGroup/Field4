@@ -197,16 +197,42 @@ internal object CaptureOrientation {
     )
 
     /**
-     * Paths that are *not* in [paths] because they are not readback→encode paths, kept here so
-     * that the next person to grep `flipY` in `afield.four` does not have to re-derive it:
+     * The *other* axis of the same word: how a shader turns a clip position into a **texture
+     * coordinate**. Not a row order in a buffer, so not in [paths] — but it shares [paths]'
+     * premise, and getting it wrong produces the identical symptom, so it is written down here
+     * rather than left for the next person to re-derive.
      *
-     * - `ImGuiRenderToTexture.flipYWhenBlittingToScreen` is a texture-sampling convention on a
-     *   blitted quad (`Rect(0.0, 1.0, 1.0, -1.0)` as source UVs), not a row order in a buffer.
-     *   It is a *different* axis of the same word and correctly independent of this table.
+     * The rule follows from the negative-height viewport alone. Clip `y = +1` is image row 0, and
+     * sampler `v = 0` is image row 0, so a pass sampling a render target must use
+     * `v = 0.5 - clip.y * 0.5` — **texel-aligned**, v running *opposite* to clip y. The GL-style
+     * `v = clip.y * 0.5 + 0.5` reads the row it is writing to `v = 0` from `v = 1`: one vertical
+     * mirror, per pass.
+     *
+     * Per pass is what makes it nastier than a row order. A single wrong flip in an encoder is
+     * uniformly wrong and therefore findable; a wrong flip in a *chained* fullscreen pass makes the
+     * output orientation depend on the **parity** of the chain, so the same renderer emits both
+     * handednesses depending on how many post effects a scene happens to add. The standard
+     * renderer's built-in chain — lighting, transparency copy, motion blur, FXAA — carried four
+     * such mirrors and cancelled; `fabricate-post-stack-vignette.png` added one
+     * `addShaderEffect` pass and was committed upside down relative to the other eleven figures on
+     * its page, and `ImGuiRenderToTexture` cancelled `blitVertexShader`'s mirror locally with a
+     * `Rect(0.0, 1.0, 1.0, -1.0)` source crop. Three sites, three different local repairs, no
+     * shared statement of the rule.
+     *
+     * Sites now texel-aligned, all with the reason at the site:
+     * - `StandardRenderer.fullscreenVertex` — the whole deferred chain plus every post effect.
+     * - `RenderToTexture.blitVertexShader` and `segmentedBlitVertexShader` — RTT to swapchain.
+     * - `RayTracingDocsHarness.RT_IMAGE_BLIT_VERTEX` — storage image to swapchain.
+     * - `StandardRenderer.aoFragment`'s `screenUvFromNdc`, and `lightingFragment`'s inverse of it.
+     *
+     * Deliberately **not** texel-aligned, because it samples nothing:
+     * `StackSLGalleryHarness.FULLSCREEN_VERTEX` emits GL-style `fragUV = pos` and feeds it to a
+     * StackSL program, whose `uv.y = 0` means the bottom of the picture. The convention belongs to
+     * the use, not to the fullscreen triangle — which is the distinction the three repairs above
+     * were each groping at separately.
      */
-    val deliberatelyExcluded: List<String> = listOf(
-        "ImGuiRenderToTexture.flipYWhenBlittingToScreen"
-    )
+    val samplingConventionNote: String =
+        "clip y = +1 is image row 0, so a pass sampling a render target uses v = 0.5 - clip.y * 0.5"
 
     /**
      * Every place `afield.four` sets up a `VkViewport`.
@@ -258,8 +284,9 @@ internal object CaptureOrientation {
             symbol = "renderAdditional",
             why = "ImGui's own RTT. Spells the flip inline rather than through a Rect, but is the " +
                     "same convention — which is why an ImGui RTT read back directly is top-down " +
-                    "like any other, and its separate flipYWhenBlittingToScreen is about sampling " +
-                    "a quad at display time, not row order."
+                    "like any other. It used to carry a flipYWhenBlittingToScreen flag as well; " +
+                    "that was a display-time sampling flip cancelling a mirror in " +
+                    "blitVertexShader, and both are gone. See samplingConventionNote."
         )
     )
 }
