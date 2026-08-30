@@ -44,6 +44,8 @@ object DatalogSmokeTest {
         testSafetyErrors()
         testQueryApi()
         testProvenance()
+        testAggregateProvenance()
+        testCrossStratumProvenance()
         testKotlinFacts()
         testIdempotentAdd()
         testParserSurface()
@@ -348,6 +350,161 @@ object DatalogSmokeTest {
         val loop = cyclic.why("path(a, a)")
         check(loop != null && !loop.render().contains("truncated")) { "cyclic proof: ${loop?.render()}" }
     }
+
+    /**
+     * A fact derived through an aggregate is justified by the tuples that contributed to it, plus
+     * the arithmetic that combined them. Until this landed `#why` answered such a fact with
+     * "no proof reconstructed", which is the one thing a reader cannot check by eye.
+     *
+     * The oracle here is deliberately **set equality on the group**, not "the proof mentions ada".
+     * An existence check passes on a group that also swept in `cy` from the other department — which
+     * is precisely the failure that would make an aggregate proof worse than an apology.
+     */
+    private fun testAggregateProvenance() {
+        val d = Datalog()
+        d.add(
+            """
+            emp(ada, sales, 100). emp(bob, sales, 200). emp(cy, eng, 50).
+            dept(sales). dept(eng).
+            payroll(D, S) :- dept(D), S = sum P : { emp(_, D, P) }.
+            """
+        )
+        // Premise: the model really does contain the fact whose proof is under test, and it really
+        // was derived (not stated). If either stops being true this test must fail loudly rather
+        // than quietly assert nothing.
+        check(d.ask("payroll(sales, 300)")) { "premise: payroll(sales, 300) should be in the model" }
+        check(d.solve()["payroll"]!!.roundOf(listOf("sales", 300L)) > 0) {
+            "premise: payroll(sales, 300) must be derived, not stated"
+        }
+
+        val why = d.why("payroll(sales, 300)")
+        check(why != null) { "payroll(sales, 300) should have a derivation" }
+        val text = why.render()
+        check(!text.contains("no proof reconstructed")) { "an aggregate must now be proved:\n$text" }
+
+        val aggregateNodes = proofNodes(why).filter { it.kind == DlPremiseKind.AGGREGATE }
+        check(aggregateNodes.size == 1) { "exactly one aggregate step:\n$text" }
+        val group = aggregateNodes.single().premises.map { it.fact }.toSet()
+        check(group == setOf("emp(ada, sales, 100)", "emp(bob, sales, 200)")) {
+            "the group must be exactly the sales rows, no more and no fewer: $group\n$text"
+        }
+        check(aggregateNodes.single().because().contains("sum over 2 tuples = 300")) {
+            "the aggregate step must state the arithmetic:\n$text"
+        }
+        check(text.contains("contributes P = 100") && text.contains("contributes P = 200")) {
+            "each tuple must say what it contributed:\n$text"
+        }
+        // Counterfactual, floored at a number rather than "differs": the old answer was a single
+        // node with an apology. A real proof of this fact has the head, the `dept` premise, the
+        // aggregate step and both group members — at least five nodes — and is not empty.
+        check(text.isNotEmpty()) { "the rendered proof must be non-empty" }
+        check(proofNodes(why).size >= 5) { "a reconstructed aggregate proof has ≥5 nodes:\n$text" }
+
+        // min/max name their witness, which is most of what "why is the max 200" means.
+        val m = Datalog()
+        m.add(
+            """
+            emp(ada, sales, 100). emp(bob, sales, 200). emp(cy, sales, 150).
+            dept(sales).
+            best(D, S) :- dept(D), S = max P : { emp(_, D, P) }.
+            """
+        )
+        check(m.ask("best(sales, 200)")) { "premise: best(sales, 200) should be in the model" }
+        val maxWhy = m.why("best(sales, 200)")
+        check(maxWhy != null) { "best(sales, 200) should have a derivation" }
+        val maxText = maxWhy.render()
+        check(maxText.contains("emp(bob, sales, 200)") && maxText.contains("the max")) {
+            "max must label the tuple that was the max:\n$maxText"
+        }
+        check(maxText.contains("emp(ada, sales, 100)")) {
+            "the other tuples are part of the proof too — nothing bigger exists:\n$maxText"
+        }
+
+        // A ledger rather than a spot check: *every* row the aggregate rule derived must prove, and a
+        // total that is not in the model must not. One group quietly reconstructed for the wrong
+        // department would show up here as an apology, and a spot check on `sales` would not see it.
+        val ledger = Datalog()
+        ledger.add(
+            """
+            emp(ada, sales, 100). emp(bob, sales, 200). emp(cy, eng, 50). emp(di, eng, 70).
+            emp(el, art, 5).
+            dept(sales). dept(eng). dept(art).
+            payroll(D, S) :- dept(D), S = sum P : { emp(_, D, P) }.
+            """
+        )
+        val totals = ledger.rowsOf("payroll").associate { it[0] as String to it[1] }
+        check(totals == mapOf("sales" to 300L, "eng" to 120L, "art" to 5L)) {
+            "premise: the totals themselves must be right before their proofs mean anything: $totals"
+        }
+        totals.forEach { (dept, total) ->
+            val proof = ledger.why("payroll($dept, $total)")
+            check(proof != null) { "payroll($dept, $total) should have a derivation" }
+            check(!proof.render().contains("no proof reconstructed")) {
+                "every derived total must prove, not just the first:\n${proof.render()}"
+            }
+            val members = proofNodes(proof).filter { it.kind == DlPremiseKind.AGGREGATE }
+                .single().premises.map { it.fact }
+            check(members.size == ledger.rowsOf("emp").count { it[1] == dept }) {
+                "the group for $dept has the wrong size: $members"
+            }
+        }
+        check(ledger.why("payroll(sales, 299)") == null) { "a total that is not in the model has no proof" }
+    }
+
+    /**
+     * Negation and aggregation both open a stratum, and rounds used to restart at 1 in each one, so
+     * `Datalog.why`'s "a premise is strictly older than its conclusion" filter threw away every
+     * candidate across a stratum boundary and reported a real fact as unproven. Rounds are global
+     * now; this is the fence.
+     */
+    private fun testCrossStratumProvenance() {
+        val d = Datalog()
+        d.add(
+            """
+            edge(a, b). edge(b, c). edge(c, d).
+            path(X, Y) :- edge(X, Y).
+            path(X, Z) :- path(X, Y), edge(Y, Z).
+            indirect(X, Y) :- path(X, Y), !edge(X, Y).
+            """
+        )
+        // Premise: the boundary is actually exercised — `path(a, d)` needs more than one round, so a
+        // per-stratum counter really would have put it above `indirect(a, d)`.
+        val pathRound = d.solve()["path"]!!.roundOf(listOf("a", "d"))
+        check(pathRound >= 2) { "premise: path(a, d) should take several rounds, took $pathRound" }
+        check(d.ask("indirect(a, d)")) { "premise: indirect(a, d) should be in the model" }
+
+        val why = d.why("indirect(a, d)")
+        check(why != null) { "indirect(a, d) should have a derivation" }
+        val text = why.render()
+        check(!text.contains("no proof reconstructed")) { "a proof across a stratum boundary:\n$text" }
+        check(text.contains("path(a, d)")) { "the proof must descend into path:\n$text" }
+        check(text.contains("edge(a, b)")) { "and bottom out at stated edges:\n$text" }
+        // The negated literal is half the reason the rule fired; a proof that omits it is silent
+        // about the half a reader is least able to reconstruct.
+        val absences = proofNodes(why).filter { it.kind == DlPremiseKind.ABSENCE }
+        check(absences.size == 1 && absences.single().fact == "!edge(a, d)") {
+            "the negated literal must appear as its own step: ${absences.map { it.fact }}\n$text"
+        }
+
+        // `!p(X, _)` is an existential: the search has to ask whether *any* row matches.
+        val e = Datalog()
+        e.add(
+            """
+            node(a). node(b). node(c). edge(a, b).
+            leaf(X) :- node(X), !edge(X, _).
+            """
+        )
+        check(rowsText(e.query("leaf(X)")) == "b; c") { "premise: leaves are b and c" }
+        val leafWhy = e.why("leaf(c)")
+        check(leafWhy != null && !leafWhy.render().contains("no proof reconstructed")) {
+            "an existentially negated literal must be provable:\n${leafWhy?.render()}"
+        }
+        check(e.why("leaf(a)") == null) { "leaf(a) is not in the model, so it has no proof" }
+    }
+
+    /** Every node of a proof, root first. */
+    private fun proofNodes(d: DlDerivation): List<DlDerivation> =
+        listOf(d) + d.premises.flatMap { proofNodes(it) }
 
     private fun testKotlinFacts() {
         data class Staff(val name: String, val dept: String, val pay: Int)
