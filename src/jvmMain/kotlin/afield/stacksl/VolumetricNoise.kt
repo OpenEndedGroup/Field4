@@ -25,12 +25,20 @@ import kotlin.math.sqrt
 //    range is exactly [0,1) for any octave count, lacunarity and gain. The bug cannot recur
 //    because nothing is hard-coded to be recomputed.
 //
-// 2. The hashes contain no `sin()`. `_hash11`/`_hash21` are `fract(sin(x) * 43758.5453)`, and
-//    `sin` is not bit-portable: its precision is implementation-defined, it loses all meaning
-//    for large arguments, and no CPU implementation can be trusted to agree with a GPU's. The
-//    hashes below are multiply/add/fract only, which are IEEE-754 exact operations. That is what
-//    makes [VolumetricNoiseReference] a real reference and not an approximation, and it is why
-//    this family could not have been built on the existing `_hash21`.
+// 2. The hashes contain no `sin()`. The two existing hashes are NOT the same animal, and an
+//    earlier version of this comment ran them together and was wrong about the one that
+//    matters. `_hash11(float)` really is `fract(sin(p * 127.1) * 43758.5453123)`, and `sin` is
+//    not bit-portable: its precision is implementation-defined, it loses all meaning for large
+//    arguments, and no CPU implementation can be trusted to agree with a GPU's. `_hash21(vec2)`
+//    — the hash that actually feeds `_noise` and `_fbm` — has no `sin` at all; it is
+//    `fract(p * vec2(123.34, 456.21))`, `p += dot(p, p + 45.32)`, `fract(p.x * p.y)`, so it is
+//    already multiply/add/fract and already IEEE-754 exact. (Exact is not the same as stable:
+//    `fract` of a large product amplifies a last-bit difference in its ARGUMENT to O(1), which
+//    is why an exactly-specified noise can still disagree visibly across backends.)
+//    So the reason this family could not have been built on `_hash21` is DIMENSIONALITY, not
+//    `sin`: `_hash21` takes a `vec2`, and a 3D/4D family needs a hash over 3 and 4 inputs. The
+//    hashes below are multiply/add/fract only for the same reason `_hash21` is, and that is what
+//    makes [VolumetricNoiseReference] a real reference and not an approximation.
 //
 // 3. `curl3` is divergence-free by construction, not approximately. It is the curl of a vector
 //    potential taken with central differences at ONE shared epsilon. Discrete shift operators
