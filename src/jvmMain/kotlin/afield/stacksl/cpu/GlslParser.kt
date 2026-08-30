@@ -457,7 +457,7 @@ private class GlslShaderParser(source: String) {
         return e
     }
 
-    private val assignOps = setOf("=", "+=", "-=", "*=", "/=", "%=")
+    private val assignOps = setOf("=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=")
 
     private fun parseAssignment(): GExpr {
         val left = parseTernary()

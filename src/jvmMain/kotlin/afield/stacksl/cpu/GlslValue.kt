@@ -127,9 +127,14 @@ data class GlslType(val base: GlslBase, val rows: Int, val cols: Int = 1) {
             "vec2" -> VEC2
             "vec3" -> VEC3
             "vec4" -> VEC4
-            "ivec2" -> of(GlslBase.INT, 2)
-            "ivec3" -> of(GlslBase.INT, 3)
-            "ivec4" -> of(GlslBase.INT, 4)
+            // `uvec` folds onto `INT`. Everything the StackSL emitter does with an unsigned
+            // vector is 16-bit — `toBits16` masks with `uvec4(65535u)` and `fromBits16` divides
+            // by 65535 — so no value ever exceeds 2^16 and a `Float` holds it exactly (a `Float`
+            // is exact on integers to 2^24). A true 32-bit `uint` would NOT fit, and that bound
+            // is checked rather than assumed: see `GlslCoreTest.uvec stays inside 16 bits`.
+            "ivec2", "uvec2" -> of(GlslBase.INT, 2)
+            "ivec3", "uvec3" -> of(GlslBase.INT, 3)
+            "ivec4", "uvec4" -> of(GlslBase.INT, 4)
             "bvec2" -> of(GlslBase.BOOL, 2)
             "bvec3" -> of(GlslBase.BOOL, 3)
             "bvec4" -> of(GlslBase.BOOL, 4)
@@ -358,7 +363,8 @@ internal fun glslConstruct(type: GlslType, args: List<GlslValue>): GlslValue {
             for (i in 0 until type.rows) out[i * type.rows + i] = v
             return GlslValue(type, out)
         }
-        return GlslValue(type, FloatArray(type.components) { v })
+        val broadcast = if (type.base == GlslBase.INT) v.toInt().toFloat() else v
+        return GlslValue(type, FloatArray(type.components) { broadcast })
     }
     if (args.size == 1 && args[0].type.isMatrix && type.isMatrix) {
         // mat3(mat4) etc: take the top-left submatrix, identity-filled.
@@ -378,7 +384,12 @@ internal fun glslConstruct(type: GlslType, args: List<GlslValue>): GlslValue {
     if (flat.size < type.components) {
         throw GlslEvalError("$type(...) got ${flat.size} components, needs ${type.components}")
     }
-    return GlslValue(type, FloatArray(type.components) { flat[it] })
+    // GLSL's float-to-int conversion truncates towards zero, so `uvec4(2.7)` is 2 and not 3.
+    // The emitter always writes `uvec4(round(...))` and therefore never depends on this, which
+    // is exactly why it would be an easy thing to get quietly wrong.
+    return GlslValue(type, FloatArray(type.components) {
+        if (type.base == GlslBase.INT) flat[it].toInt().toFloat() else flat[it]
+    })
 }
 
 /**
@@ -427,7 +438,7 @@ internal object GlslBuiltins {
         "lessThan", "lessThanEqual", "greaterThan", "greaterThanEqual", "equal", "notEqual",
         "any", "all", "not", "isnan", "isinf",
         "matrixCompMult", "transpose",
-        "texture", "textureLod"
+        "texture", "textureLod", "textureSize", "textureGather"
     )
 
     fun call(name: String, a: List<GlslValue>, samplers: GlslSamplers): GlslValue? = when (name) {
@@ -541,6 +552,8 @@ internal object GlslBuiltins {
 
         "texture" -> samplers.sample(a[0], a[1])
         "textureLod" -> samplers.sample(a[0], a[1])
+        "textureSize" -> samplers.size(a[0])
+        "textureGather" -> samplers.gather(a[0], a[1], if (a.size > 2) a[2].asInt else 0)
 
         else -> null
     }
@@ -565,13 +578,42 @@ internal object GlslBuiltins {
 /**
  * Where `texture(sampler, uv)` gets its answer.
  *
- * The default refuses, because a shader that samples has no defined CPU answer without someone
- * supplying the texture — and returning black would quietly turn a feedback program into a
- * plausible-looking wrong image, which is the failure mode this whole backend exists to prevent.
+ * The default ([REFUSE]) refuses, because a shader that samples has no defined CPU answer without
+ * someone supplying the texture — and returning black would quietly turn a feedback program into
+ * a plausible-looking wrong image, which is the failure mode this whole backend exists to prevent.
+ *
+ * [sample] is the one thing an implementation must provide. [size] and [gather] have defaults so
+ * that the StackSL words which reach `textureSize` and `textureGather` — the `texelsize` and
+ * `gather` families, 30 words between them — *run* rather than throwing; but read what those
+ * defaults are before believing a number that came out of them, because the default [gather] is
+ * four [sample] calls at half-texel offsets, which is what a linear-filtered gather looks like
+ * and not what the hardware instruction actually returns.
  */
 fun interface GlslSamplers {
     /** [sampler] is the value the sampler name evaluated to; [uv] the coordinate. */
     fun sample(sampler: GlslValue, uv: GlslValue): GlslValue
+
+    /** `textureSize(s, lod)` as an `ivec2`. Defaults to 1x1, which makes `texelsize` 1.0. */
+    fun size(sampler: GlslValue): GlslValue =
+        GlslValue(GlslType.of(GlslBase.INT, 2), floatArrayOf(1f, 1f))
+
+    /**
+     * `textureGather(s, uv, channel)`: component [channel] of the four texels in the footprint.
+     *
+     * The default APPROXIMATES, by sampling at four half-texel offsets in GLSL's
+     * `(-,+) (+,+) (+,-) (-,-)` order. On hardware `textureGather` returns unfiltered texels; here
+     * it returns whatever [sample] returns at those coordinates, which for a linear-filtered
+     * sampler is a blend. Override it if the difference matters to you.
+     */
+    fun gather(sampler: GlslValue, uv: GlslValue, channel: Int): GlslValue {
+        val dim = size(sampler)
+        val hx = 0.5f / dim.c[0]
+        val hy = 0.5f / dim.c[1]
+        val u = uv.c[0]
+        val v = uv.c[1]
+        fun at(dx: Float, dy: Float) = sample(sampler, GlslValue.vec2(u + dx, v + dy)).c[channel]
+        return GlslValue.vec4(at(-hx, hy), at(hx, hy), at(hx, -hy), at(-hx, -hy))
+    }
 
     companion object {
         val REFUSE = GlslSamplers { _, _ ->
@@ -580,4 +622,54 @@ fun interface GlslSamplers {
             )
         }
     }
+}
+
+/**
+ * A CPU texture a StackSL feedback program can read: RGBA floats, bilinear, clamp-to-edge.
+ *
+ * This is what makes the feedback words (`sample`, `prev`, `ema`, `blur5`, `sobel`, …) runnable
+ * with no GPU: ping-pong two of these and the CPU backend reproduces the whole
+ * `PingPongRenderToTexture` idea in a few lines. It is *not* a claim to match the GPU's sampler —
+ * the harness binds `VK_FILTER_LINEAR` with the driver's own clamp behaviour and its own
+ * rounding, and the two feedback gallery entries are excluded from every asserted comparison for
+ * that reason.
+ */
+class CpuTexture2D(val width: Int, val height: Int, val rgba: FloatArray) : GlslSamplers {
+    init {
+        require(rgba.size == width * height * 4) { "texture is ${rgba.size} floats, expected ${width * height * 4}" }
+    }
+
+    constructor(raster: CpuRaster) : this(raster.width, raster.height, raster.rgba.copyOf())
+
+    override fun size(sampler: GlslValue): GlslValue =
+        GlslValue(GlslType.of(GlslBase.INT, 2), floatArrayOf(width.toFloat(), height.toFloat()))
+
+    override fun sample(sampler: GlslValue, uv: GlslValue): GlslValue {
+        val fx = uv.c[0] * width - 0.5f
+        val fy = uv.c[1] * height - 0.5f
+        val x0 = kotlin.math.floor(fx).toInt()
+        val y0 = kotlin.math.floor(fy).toInt()
+        val tx = fx - x0
+        val ty = fy - y0
+        val out = FloatArray(4)
+        for (ch in 0 until 4) {
+            val a = texel(x0, y0, ch)
+            val b = texel(x0 + 1, y0, ch)
+            val c0 = texel(x0, y0 + 1, ch)
+            val d = texel(x0 + 1, y0 + 1, ch)
+            out[ch] = GlslMathAccess.mix(GlslMathAccess.mix(a, b, tx), GlslMathAccess.mix(c0, d, tx), ty)
+        }
+        return GlslValue(GlslType.VEC4, out)
+    }
+
+    private fun texel(x: Int, y: Int, channel: Int): Float {
+        val cx = x.coerceIn(0, width - 1)
+        val cy = y.coerceIn(0, height - 1)
+        return rgba[((cy * width) + cx) * 4 + channel]
+    }
+}
+
+/** [GlslMath] is internal; this is the one place a public class needs its `mix`. */
+internal object GlslMathAccess {
+    fun mix(x: Float, y: Float, a: Float) = GlslMath.mix(x, y, a)
 }

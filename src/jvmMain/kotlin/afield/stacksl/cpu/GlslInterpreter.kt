@@ -251,6 +251,7 @@ class GlslInvocation internal constructor(
                     else pairwise(current, rhs) { a, b -> a * b }
                     "/=" -> divide(current, rhs)
                     "%=" -> pairwise(current, rhs) { a, b -> GlslMath.mod(a, b) }
+                    "&=", "|=", "^=", "<<=", ">>=" -> bitwise(e.op.dropLast(1), current, rhs)
                     else -> throw GlslUnsupported("assignment '${e.op}'")
                 }
             }
@@ -281,6 +282,7 @@ class GlslInvocation internal constructor(
             "/" -> divide(a, b)
             "%" -> pairwise(a, b) { x, y -> GlslMath.mod(x, y) }
             "^^" -> GlslValue.bool(a.asBool != b.asBool)
+            "&", "|", "^", "<<", ">>" -> bitwise(op, a, b)
             "<" -> GlslValue.bool(a.asFloat < b.asFloat)
             ">" -> GlslValue.bool(a.asFloat > b.asFloat)
             "<=" -> GlslValue.bool(a.asFloat <= b.asFloat)
@@ -288,6 +290,40 @@ class GlslInvocation internal constructor(
             "==" -> GlslValue.bool(a.c.contentEquals(b.c))
             "!=" -> GlslValue.bool(!a.c.contentEquals(b.c))
             else -> throw GlslUnsupported("binary operator '$op' is not in the StackSL subset")
+        }
+    }
+
+    /**
+     * The integer bit operators, on values stored as `Float`.
+     *
+     * This is safe *because of a bound the emitter guarantees*, not in general: every `uvec4` the
+     * StackSL emitter produces goes through `toBits16`, which is
+     * `uvec4(round(clamp(v, 0, 1) * 65535.0))`, so no component ever exceeds 65535. A `Float`
+     * represents every integer below 2^24 exactly, so the round trip through `Int` here loses
+     * nothing. A genuine 32-bit `uint` would lose its low bits, and a shader that produced one
+     * would be silently wrong — so an operand out of range is refused rather than truncated.
+     */
+    private fun bitwise(op: String, a: GlslValue, b: GlslValue): GlslValue {
+        if (a.type.base != GlslBase.INT || b.type.base != GlslBase.INT) {
+            throw GlslUnsupported("bit operator '$op' on ${a.type} and ${b.type} — integers only")
+        }
+        return pairwise(a, b) { x, y ->
+            if (Math.abs(x) > EXACT_INT_LIMIT || Math.abs(y) > EXACT_INT_LIMIT) {
+                throw GlslEvalError(
+                    "bit operator '$op' on $x, $y: outside the range a Float holds exactly, so the " +
+                        "result would silently lose low bits"
+                )
+            }
+            val xi = x.toInt()
+            val yi = y.toInt()
+            when (op) {
+                "&" -> xi and yi
+                "|" -> xi or yi
+                "^" -> xi xor yi
+                "<<" -> xi shl yi
+                ">>" -> xi ushr yi
+                else -> throw GlslUnsupported("bit operator '$op'")
+            }.toFloat()
         }
     }
 
@@ -379,6 +415,9 @@ class GlslInvocation internal constructor(
          * a runaway in milliseconds rather than hanging a render of 262144 pixels.
          */
         const val MAX_LOOP_ITERATIONS = 100_000
+
+        /** 2^24: the largest integer a `Float` and its successor both represent exactly. */
+        const val EXACT_INT_LIMIT = 16_777_216f
     }
 }
 
