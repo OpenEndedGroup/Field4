@@ -36,6 +36,43 @@ import java.util.Locale
 import java.util.Properties
 import java.util.concurrent.TimeUnit
 
+/**
+ * Python as a Field main language: a box whose source is Python, executed **in this process** by
+ * CPython through JEP.
+ *
+ * In-process is the whole design and every consequence below follows from it. There is no
+ * subprocess and no socket, so a Python box and a Kotlin box exchange objects rather than text; and
+ * there is exactly **one interpreter and one namespace per Field process**, so two Python boxes
+ * share globals whether or not you wanted them to. That is a deliberate trade — it is what makes a
+ * cell in one box see a `DataFrame` another box built — and it is the first thing to know before
+ * debugging "why does this variable already exist".
+ *
+ * Read it in four layers:
+ *
+ *  - **Configuration.** JEP needs a real CPython to bind against, chosen once and persisted:
+ *    [PythonSettingsRequest], [PythonSettingsStatus] and [PythonInstallResult] are that
+ *    negotiation, and `restartRequired` is honest — a new interpreter binding cannot be swapped
+ *    into a live JVM. [makeInterpreter] runs early and returns silently when nothing is
+ *    configured, which is why a checkout with no Python simply has no Python boxes rather than a
+ *    broken startup.
+ *  - **[PythonExecution]**, the `BoxExecution`. Beyond the usual output proxying it carries the
+ *    cooperative event loop: an `asyncio` loop implemented in Python that yields to Field's runloop
+ *    instead of blocking it, so `await` inside a box does not stop the editor.
+ *  - **Output.** Everything a box prints funnels through one formatter, and three cases are special
+ *    on purpose: a `\r` becomes a Field progress bar (which is how `tqdm` renders as a real one),
+ *    an object exposing `HTML`/`Image`/`Markdown`/`Math`/`JSON` renders as itself, and a library
+ *    that tries to open a browser page — plotly's `fig.show()`, bokeh, folium — is intercepted and
+ *    the HTML delivered into the box as an iframe `srcdoc`. Nothing here opens a browser.
+ *  - **Registration.** [installPython] and [pythonTopologyNeedsUpdating] are the same two-call
+ *    shape every main language uses; see `dev_docs/small_language_anatomy.md`.
+ *
+ * A large part of this file is Python source held in Kotlin string literals — the event loop, the
+ * display types, the output shims. It is code that has to run *inside* the interpreter, so it lives
+ * here rather than in a `.py` on disk, where a fresh checkout could be missing it.
+ *
+ * [Python in Field](../python.md) is the prose.
+ */
+
 var Box.isPythonRoot by Delegation<Boolean?>()
 var Box._pythonLocals by Delegation<LinkedHashMap<*,*>>(defaultValue = { LinkedHashMap<Any, Any>() })
 
