@@ -109,12 +109,57 @@ object StdlibReferenceGenerator {
      * beside it, because exactly one file in that package carried a `@file:CompletionCategory` and
      * every other one would have landed in `uncategorised.md` — a worse reference than none. (The
      * file count is deliberately not written here: nothing guards it, and the package is growing.)
+     *
+     * The ten roots after those three are Field's **small languages**, and they arrived by the same
+     * argument with one extra step. The languages are the most distinctive thing in this tree and
+     * none of them was here; `afield.datalog` had a prose page and an entry on
+     * `dev_docs/small_language_anatomy.md` while this reference did not know the package existed.
+     * The extra step is that a language package is only allowed in when it carries no
+     * `@file:CompletionCategory` of its own, so that publishing it needs no annotation anywhere —
+     * see [CATEGORY_BY_PATH] for how the label is assigned instead, and why it has to be.
+     *
+     * Membership is *derived*, not curated. A package is on this list because it is on one of the
+     * two language integration routes that `dev_docs/small_language_anatomy.md` documents:
+     *
+     * - **Route B**, a promoted main language — the language a *box* is written in. The list is
+     *   every package containing a call to
+     *   [afield.runtime.registerMainLanguageRuntime]: `morpho`, `nano`, `clojure`, `python`, `ml`
+     *   (FieldML), `remotejs` (which registers two ids, `remotejs` and `kotlinjs`), `forth`,
+     *   `datalog`.
+     * - **Route A with a Kotlin compiler behind it** — an embedded-region extension that appears
+     *   inside a Kotlin string, compiled on the JVM: `rectsl`, `stacksl`.
+     *
+     * `petri`, `solidsl`, `brief` and `macros` are all deliberately absent, and not because they are
+     * uninteresting: each one already labels its own files (`Visualization`/`Audio`, `Graphics`,
+     * `Solvers`, `Workspace` respectively), so each is already published under a category its own
+     * source chose. `graphquery` is absent because it is a query notation over the reflective object
+     * graph rather than a language on either route — no `BoxExecution`, no editor extension.
      */
     private val SOURCE_ROOTS = listOf(
         "src/jvmMain/kotlin/afield/stdlib",
         "src/jvmMain/kotlin/afield/visualization",
         "src/jvmMain/kotlin/afield/four/synth",
+        "src/jvmMain/kotlin/afield/clojure",
+        "src/jvmMain/kotlin/afield/datalog",
+        "src/jvmMain/kotlin/afield/forth",
+        "src/jvmMain/kotlin/afield/ml",
+        "src/jvmMain/kotlin/afield/morpho",
+        "src/jvmMain/kotlin/afield/nano",
+        "src/jvmMain/kotlin/afield/python",
+        "src/jvmMain/kotlin/afield/rectsl",
+        "src/jvmMain/kotlin/afield/remotejs",
+        "src/jvmMain/kotlin/afield/stacksl",
     )
+
+    /**
+     * [SOURCE_ROOTS], for the one other generator that has to agree with it.
+     *
+     * [SourcePageGenerator] renders a docs page per source file and used to carry its own identical
+     * copy of this list. Identical and independent is the worst of both: a reference row's
+     * "read the source" link is emitted from the file's own partition rather than from that corpus,
+     * so a root added here and not there ships a page of links to pages nobody rendered.
+     */
+    internal fun sourceRoots(): List<String> = SOURCE_ROOTS
 
     /**
      * Paths (repo-relative prefixes) skipped inside [SOURCE_ROOTS]. A whole file path is a valid
@@ -145,6 +190,14 @@ object StdlibReferenceGenerator {
      * Excluding by path costs nothing in exchange: these files carry no `@file:CompletionCategory`,
      * exactly as they did before this package was published, so their completion behaviour is
      * unchanged rather than merely believed to be unchanged.
+     *
+     * The three small-language entries at the end are the same statement about the same kind of
+     * file: one FIELD_TEST harness and two docs-figure generators. The bar applied to the rest of
+     * those packages was deliberately low — a lexer, a parser and a bytecode VM stay in, because on
+     * a page about languages the implementation *is* the subject — so the only files kept out are
+     * the ones whose whole reason to exist is a test run or a `.png`. `RectSLCoverage.kt` reads like
+     * a harness from its name and is not one: it is the closed-form coverage the soft rasterizer is
+     * measured against, and it is some of the best KDoc in the package.
      */
     private val EXCLUDE_PREFIXES = listOf(
         "src/jvmMain/kotlin/afield/stdlib/linalg/",
@@ -160,6 +213,9 @@ object StdlibReferenceGenerator {
         "src/jvmMain/kotlin/afield/four/synth/SonicPiSmokeTest.kt",
         "src/jvmMain/kotlin/afield/four/synth/SoundRenderPathDocs.kt",
         "src/jvmMain/kotlin/afield/four/synth/SynthCookbookCompileDemo.kt",
+        "src/jvmMain/kotlin/afield/datalog/DatalogSmokeTest.kt",
+        "src/jvmMain/kotlin/afield/rectsl/RectSLFitFigure.kt",
+        "src/jvmMain/kotlin/afield/rectsl/RectSLSoftRasterFigure.kt",
     )
 
     /**
@@ -174,18 +230,98 @@ object StdlibReferenceGenerator {
     private val EXCLUDE_CATEGORIES = setOf("Internal")
 
     /**
+     * The category the small-language packages are published under, and the one label in this file
+     * that no source file carries. Named as a constant because it is the join between
+     * [CATEGORY_BY_PATH], [CATEGORY_BLURBS] and [documentedPackages], and because the *plural* is
+     * load-bearing: [afield.KotlinCompletionSupport] normalises the singular `"language"` to
+     * `"Kotlin"`, so the tidier-looking spelling would name a different category.
+     */
+    internal const val LANGUAGES = "Languages"
+
+    /**
+     * The category a file lands in when it carries no `@file:CompletionCategory` — matched on the
+     * repo-relative path, first entry wins, [UNCATEGORISED] when nothing does.
+     *
+     * **This map is read by this generator and by nothing else, and that is the entire point.** The
+     * alternative — annotating the files — was rejected for the reason spelled out at length in
+     * [EXCLUDE_PREFIXES]: `@file:CompletionCategory` is not inert. It is read by
+     * [afield.KotlinCompletionSupport.isHiddenCompletionCategory], on the strength of which one
+     * spelling of it removes candidates from the completion popup; [KotlinSourceIndex] records every
+     * declaration in an annotated file under that file's label with no visibility filter; and
+     * [KotlinSourceIndex.getCompletionCategoryForSymbol] ends in a name-only
+     * `categories.firstOrNull()`, so a label on one file can answer for a same-named declaration
+     * declared somewhere else entirely. Nothing in these thirteen packages is annotated today, and
+     * publishing them here does not change that: [KotlinSourceIndex.fileCompletionCategory] matches
+     * only a literal `@file:` annotation, so with none present it keeps returning null for every one
+     * of these files and the completion popup cannot tell the difference. A documentation change must
+     * not be able to alter completion, and the way to guarantee that is for the label to live where
+     * completion cannot see it.
+     *
+     * The mechanism is not new — the `afield/visualization/` entry below is the original hardcoded
+     * `if` this map generalises, and it has assigned a category by path since the reference shipped.
+     * `LanguagesCategoryTest` pins both halves: that the map's labels stay unhidden and unannotated,
+     * and that adding language roots left every pre-existing page byte-identical.
+     *
+     * `Languages` is plural on purpose. [afield.KotlinCompletionSupport] normalises the *singular*
+     * `"language"` to `"Kotlin"`, so a file (or a future entry here) spelled `Language` would be
+     * quietly filed under the Kotlin category instead. The test pins the plural.
+     */
+    private val CATEGORY_BY_PATH: List<Pair<String, String>> = listOf(
+        "src/jvmMain/kotlin/afield/visualization/" to "Visualization",
+        "src/jvmMain/kotlin/afield/clojure/" to LANGUAGES,
+        "src/jvmMain/kotlin/afield/datalog/" to LANGUAGES,
+        "src/jvmMain/kotlin/afield/forth/" to LANGUAGES,
+        "src/jvmMain/kotlin/afield/ml/" to LANGUAGES,
+        "src/jvmMain/kotlin/afield/morpho/" to LANGUAGES,
+        "src/jvmMain/kotlin/afield/nano/" to LANGUAGES,
+        "src/jvmMain/kotlin/afield/python/" to LANGUAGES,
+        "src/jvmMain/kotlin/afield/rectsl/" to LANGUAGES,
+        "src/jvmMain/kotlin/afield/remotejs/" to LANGUAGES,
+        "src/jvmMain/kotlin/afield/stacksl/" to LANGUAGES,
+    )
+
+    /** The distinct categories [CATEGORY_BY_PATH] can assign — the set `LanguagesCategoryTest` checks. */
+    internal fun pathAssignedCategories(): Set<String> = CATEGORY_BY_PATH.map { it.second }.toSet()
+
+    /** The path prefixes [CATEGORY_BY_PATH] assigns a category to, for the same test. */
+    internal fun pathAssignedPrefixes(): List<String> = CATEGORY_BY_PATH.map { it.first }
+
+    /** Just the prefixes [CATEGORY_BY_PATH] files under [category]. */
+    internal fun pathAssignedPrefixesFor(category: String): List<String> =
+        CATEGORY_BY_PATH.filter { it.second == category }.map { it.first }
+
+    /**
+     * [category]'s page blurb, or null when it has none — which would publish a page with a heading
+     * and no description. `LanguagesCategoryTest` refuses that for any path-assigned category.
+     */
+    internal fun categoryBlurb(category: String): String? = CATEGORY_BLURBS[category]
+
+    /**
      * The package names of [SOURCE_ROOTS], as the pages name them in prose.
      *
      * Derived rather than written out, because the sentence "every public declaration in X and Y"
      * appears on two generated pages and a third root was added after both were written.
+     *
+     * The small-language roots are named as a group rather than inline, because ten more
+     * back-quoted package names in the middle of the opening sentence of the reference is a list,
+     * not a sentence. The split is derived from [CATEGORY_BY_PATH] rather than declared twice: a
+     * root belongs to the group exactly when that map files it under [LANGUAGES].
      */
     private fun documentedPackages(): String {
-        val names = SOURCE_ROOTS.map { it.substringAfter("kotlin/").replace('/', '.') }.map { "`$it`" }
-        return when (names.size) {
+        fun names(roots: List<String>) =
+            roots.map { "`" + it.substringAfter("kotlin/").replace('/', '.') + "`" }
+        fun prose(names: List<String>) = when (names.size) {
             0 -> ""
             1 -> names.single()
             else -> names.dropLast(1).joinToString(", ") + " and " + names.last()
         }
+        val (languageRoots, rest) = SOURCE_ROOTS.partition { root ->
+            CATEGORY_BY_PATH.any { (prefix, category) -> category == LANGUAGES && prefix == "$root/" }
+        }
+        val head = prose(names(rest))
+        if (languageRoots.isEmpty()) return head
+        return head + ", plus the ${languageRoots.size} small-language packages (" +
+            prose(names(languageRoots)) + ")"
     }
 
     /**
@@ -313,6 +449,30 @@ object StdlibReferenceGenerator {
             "`Protocol.kt` for the vocabulary and `FieldAudioClient.kt` for the verbs; " +
             "[Field Audio service reference](../field_audio_service_reference.md) is the " +
             "service-side contract the types mirror.",
+        LANGUAGES to "Field's small languages, from the host side. A box can be *written* in one " +
+            "of them — a per-box property picks the language and a `BoxExecution` runs it, which is " +
+            "how `datalog`, `forth`, `nano`, `morpho`, `clojure`, `python`, FieldML and the two " +
+            "`remotejs` runtimes work — or a program can be *embedded*, a triple-quoted Kotlin " +
+            "string whose first line names the language and whose contents are compiled on the JVM, " +
+            "which is how RectSL and StackSL work. What is documented below is the Kotlin that " +
+            "either shape hands you: the compiler you give a program to, the result and the " +
+            "diagnostics it gives back, and the bridge a running program calls host values through. " +
+            "The notation itself is on the cheatsheets, and that is where the pictures are. Read " +
+            "`Datalog.kt` first — it is the smallest complete example of the shape all of these " +
+            "have, a value you add source to, query, and then ask `why` of — then " +
+            "`DatalogEngine.kt` for what the implementation underneath actually costs, `StackSL.kt` " +
+            "for the compile-and-diagnose surface both embedded languages share, " +
+            "`ForthInterpreter.kt` and `NanoVM.kt` for the two implementations you can read end to " +
+            "end in a sitting, and `HostBridge.kt` for FieldML's reflective JVM bridge — the file " +
+            "to read before wiring any language to Kotlin values. `dev_docs/` carries the map of " +
+            "what a new language has to touch on the way in, in `small_language_anatomy.md`, and " +
+            "that page is guarded, so it rather than this one is where a claim about which " +
+            "languages exist is checked. The prose, with pictures: " +
+            "[Language extensions](../language_extensions.md) for the route decision, then " +
+            "[Datalog](../datalog.md), [RectSL](../rectsl_cheatsheet.md), " +
+            "[StackSL](../stacksl_cheatsheet.md), [FieldML](../fieldml_cheatsheet.md), " +
+            "[MorphoHDL](../morpho_examples.md), [Nano](../nano_examples.md), " +
+            "[Forth](../forth_examples.md) and [Python](../python.md).",
         "Workspace" to "The box's own surroundings: properties, persistence, and the handful of " +
             "names every box already has in scope.",
     )
@@ -657,7 +817,8 @@ object StdlibReferenceGenerator {
 
     /** Last-resort bucket for a file that carries no `@file:CompletionCategory`. */
     private fun inferredCategory(relativePath: String): String =
-        if ("/visualization/" in relativePath) "Visualization" else UNCATEGORISED
+        CATEGORY_BY_PATH.firstOrNull { (prefix, _) -> relativePath.startsWith(prefix) }?.second
+            ?: UNCATEGORISED
 
     /**
      * The file's own opening KDoc, plus the line of the declaration it would otherwise have been
@@ -1060,20 +1221,51 @@ object StdlibReferenceGenerator {
 
     // ── cross-references ────────────────────────────────────────────────────────────────────────
 
+    /**
+     * Where a KDoc `[Symbol]` reference is allowed to point, resolved in two steps.
+     *
+     * A reference resolves **inside the file that wrote it** first, and against the whole corpus only
+     * if that fails. Both halves earn their place. The corpus-wide half is what lets one file's KDoc
+     * link a type another file declares, which is most of the linking on these pages. The file-local
+     * half is what `[NodeRef]` *means* when the file saying it declares a `NodeRef`: Kotlin resolves a
+     * KDoc reference in the scope it was written in, so a name that is ambiguous across the corpus is
+     * not ambiguous there, and treating it as ambiguous silently downgrades a correct link to plain
+     * code.
+     *
+     * That is not hypothetical, it is why this class exists. `afield.stdlib/interactionnets.kt`
+     * declares a `NodeRef` and so does `afield.rectsl`; the moment the second one was published, five
+     * already-resolved links in `interactionnets.kt`'s own KDoc turned back into inline code on
+     * `visualization.md` — a page nobody had touched. Corpus-wide-only resolution makes every new
+     * source root a possible silent un-linking of the pages already shipped.
+     */
+    private class TypeAnchors(
+        private val corpus: Map<String, String>,
+        private val byFile: Map<String, Map<String, String>>,
+    ) {
+        /** [name]'s anchor as seen from [doc], or null when it resolves nowhere this reference emits. */
+        fun resolve(name: String, doc: SourceDocument?): String? =
+            doc?.let { byFile[it.relativePath]?.get(name) } ?: corpus[name]
+    }
+
     /** Type simple name -> the `page.md#anchor` that documents it, for KDoc `[Symbol]` linkification. */
-    private fun buildTypeAnchorIndex(documents: List<SourceDocument>): Map<String, String> {
-        val out = mutableMapOf<String, String>()
+    private fun buildTypeAnchorIndex(documents: List<SourceDocument>): TypeAnchors {
+        val corpus = mutableMapOf<String, String>()
         val ambiguous = mutableSetOf<String>()
+        val byFile = mutableMapOf<String, MutableMap<String, String>>()
         documents.forEach { doc ->
             doc.types.forEach { type ->
                 val name = type.symbol.simpleName
                 val target = "${slug(doc.category)}.md#${typeAnchor(doc, type.symbol)}"
-                if (out.putIfAbsent(name, target) != null) ambiguous += name
+                if (corpus.putIfAbsent(name, target) != null) ambiguous += name
+                // Two types with one simple name in one file does not compile, so first-wins here is a
+                // formality rather than a policy.
+                byFile.getOrPut(doc.relativePath) { mutableMapOf() }.putIfAbsent(name, target)
             }
         }
-        // A name that two files both define cannot be linked unambiguously, so it is not linked at all.
-        ambiguous.forEach { out.remove(it) }
-        return out
+        // A name that two files both define cannot be linked unambiguously from a third, so from a
+        // third it is not linked at all. From either of the two it still resolves — see [TypeAnchors].
+        ambiguous.forEach { corpus.remove(it) }
+        return TypeAnchors(corpus, byFile)
     }
 
     /**
@@ -1185,7 +1377,7 @@ object StdlibReferenceGenerator {
     private fun renderCategoryPage(
         category: String,
         documents: List<SourceDocument>,
-        typeAnchors: Map<String, String>,
+        typeAnchors: TypeAnchors,
         evidence: Map<String, List<Pair<String, Int>>>,
     ): String = buildString {
         appendLine(BANNER)
@@ -1208,7 +1400,7 @@ object StdlibReferenceGenerator {
 
     private fun renderFileSection(
         doc: SourceDocument,
-        typeAnchors: Map<String, String>,
+        typeAnchors: TypeAnchors,
         evidence: Map<String, List<Pair<String, Int>>>,
     ): String = buildString {
         appendLine("## ${doc.fileName} { #${fileAnchor(doc)} }")
@@ -1216,7 +1408,9 @@ object StdlibReferenceGenerator {
         // demoteHeadings before fencesToDiffstatic: the latter rewrites an opening fence to
         // "```diffstatic {data-lang=…}", which FENCE_OPENER no longer matches, so a demotion run
         // afterwards mistakes the *closing* fence for an opening one and stops demoting from there on.
-        doc.overview?.let { appendLine(fencesToDiffstatic(demoteHeadings(linkify(it, typeAnchors)))); appendLine() }
+        doc.overview?.let {
+            appendLine(fencesToDiffstatic(demoteHeadings(linkify(it, typeAnchors, doc)))); appendLine()
+        }
         val source = sourcePageUrl(doc)
         if (source == null) {
             appendLine("`${doc.relativePath}`")
@@ -1245,7 +1439,7 @@ object StdlibReferenceGenerator {
             appendLine(linkToSource(doc, type.symbol.line, highlightSignature(type.symbol.signature)))
             appendLine()
             if (type.symbol.summary.isNotBlank()) {
-                appendLine(fencesToDiffstatic(linkify(type.symbol.summary, typeAnchors)))
+                appendLine(fencesToDiffstatic(linkify(type.symbol.summary, typeAnchors, doc)))
                 appendLine()
             }
             if (type.enumConstants.isNotEmpty()) {
@@ -1258,7 +1452,7 @@ object StdlibReferenceGenerator {
 
     private fun renderTable(
         symbols: List<Symbol>,
-        typeAnchors: Map<String, String>,
+        typeAnchors: TypeAnchors,
         doc: SourceDocument,
     ): String = buildString {
         appendLine("| Declaration | Summary |")
@@ -1268,7 +1462,7 @@ object StdlibReferenceGenerator {
             val declaration = linkToSource(doc, row.symbol.line, highlightSignature(signature))
             appendLine(
                 "| $declaration${overloadBadge(row)} | " +
-                    "${escapeCell(linkify(row.summary, typeAnchors))} |"
+                    "${escapeCell(linkify(row.summary, typeAnchors, doc))} |"
             )
         }
         appendLine()
@@ -1277,7 +1471,7 @@ object StdlibReferenceGenerator {
     private fun renderIndexPage(
         categories: List<String>,
         documents: List<SourceDocument>,
-        typeAnchors: Map<String, String>,
+        typeAnchors: TypeAnchors,
         evidence: Map<String, List<Pair<String, Int>>>,
     ): String = buildString {
         appendLine(BANNER)
@@ -1296,7 +1490,10 @@ object StdlibReferenceGenerator {
             "**$total public symbols across ${documents.size} source files**, $documented of them " +
                 "(${documented * 100 / total}%) carrying a KDoc summary. Pages are grouped by the " +
                 "`@file:CompletionCategory` label the source itself carries, which is the same grouping " +
-                "the editor's autocomplete uses."
+                "the editor's autocomplete uses. The one exception is [$LANGUAGES](${slug(LANGUAGES)}.md): " +
+                "no file in the small-language packages carries that annotation, and adding one is not a " +
+                "documentation-only change — the label is read by the completion popup — so those pages " +
+                "are grouped by source path here and the popup is left exactly as it was."
         )
         appendLine()
         appendLine(
@@ -1332,7 +1529,7 @@ object StdlibReferenceGenerator {
             // that are already all links.
             val gist = doc.overview
                 ?.let { firstSentence(it) }
-                ?.let { stripLinks(linkify(it, typeAnchors)) }
+                ?.let { stripLinks(linkify(it, typeAnchors, doc)) }
                 .orEmpty()
             val examples = evidenceLinks(doc, evidence).orEmpty()
             appendLine(
@@ -1782,18 +1979,22 @@ object StdlibReferenceGenerator {
      * target is a type this reference emits — mirroring `linkifyKDocSymbols`' rule that an
      * unresolved reference stays literal rather than becoming a dead link. Unresolved references
      * become plain inline code so the raw brackets never leak into the page.
+     *
+     * [doc] is the file the text was read from, and it is what makes a reference to a type declared
+     * in that same file resolve even when the name is ambiguous elsewhere. Null only where the text
+     * has no one declaring file. See [TypeAnchors].
      */
-    private fun linkify(text: String, typeAnchors: Map<String, String>): String {
+    private fun linkify(text: String, typeAnchors: TypeAnchors, doc: SourceDocument?): String {
         if (text.isBlank()) return text
         val alternate = Regex("""\[([^\]\[]+)]\[([A-Za-z_][\w.]*)]""")
         val simple = Regex("""\[([A-Za-z_][\w.]*)]""")
         var out = alternate.replace(text) { m ->
-            val target = typeAnchors[m.groupValues[2].substringAfterLast('.')]
+            val target = typeAnchors.resolve(m.groupValues[2].substringAfterLast('.'), doc)
             if (target != null) "[${m.groupValues[1]}]($target)" else "`${m.groupValues[1]}`"
         }
         out = simple.replace(out) { m ->
             val raw = m.groupValues[1]
-            val target = typeAnchors[raw.substringAfterLast('.')]
+            val target = typeAnchors.resolve(raw.substringAfterLast('.'), doc)
             if (target != null) "[`$raw`]($target)" else "`$raw`"
         }
         return out

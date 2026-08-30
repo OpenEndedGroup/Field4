@@ -19,6 +19,41 @@ import org.openjdk.nashorn.api.tree.Diagnostic
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * RemoteJS — JavaScript that runs in a *browser somewhere else*, written in a Field box here.
+ *
+ * The value proposition is not "Field can run JavaScript". It is that the box is on this machine and
+ * the execution is on a **head**: a browser tab, an Electron window, a phone, a Vision Pro. A head
+ * connects inbound over the WebSocket Field already has, announces an id and its capabilities, and
+ * from then on a box can be pointed at one head, at all of them, or at a filtered subset.
+ * [knownOpenRemoteClients] and [remoteClientCapabilities] are that registry, keyed by head id, and
+ * they are the reason nearly everything here takes a `filterSession` rather than a connection.
+ *
+ * ### The one function to read
+ *
+ * [executeRemoteJS] is the language. Its parameter list *is* the semantics, and three of them carry
+ * most of the weight:
+ *
+ *  - `doASTA` routes the source through [Asta] first — Nashorn's parser, used to rewrite the
+ *    fragment so that a runtime error in the head can be reported back at the right line *in the
+ *    box*. Turn it off and errors arrive without a location.
+ *  - `lifecycleName` and `launchable` are what make a fragment restartable and time-scrubbable
+ *    rather than fire-and-forget, and `timeStart`/`timeEnd` are the window it is live for.
+ *  - `handleTo` is the return channel: a head can send values back, dispatched through
+ *    [returnHandlers], so this is a duplex language and not a one-way pipe.
+ *
+ * [RemoteJSExectution] is the `BoxExecution` for a box written *in* JavaScript;
+ * [installRemoteJSMainLanguage] registers it, and [becomeRemote] is the imperative version for a
+ * box that is being converted. Note the two ids: this file registers `remotejs`, and `KotlinJs.kt`
+ * beside it registers `kotlinjs` — the same transport, but the box is written in Kotlin and
+ * cross-compiled, with `KotlinToJsCompiler.kt` doing the compiling and
+ * [afield.remotejs.KotlinJsHeadProfile] describing what each kind of head can be asked to do. Two
+ * main languages, one package.
+ *
+ * `dev_docs/small_language_anatomy.md` is the map of the integration points every main language
+ * touches.
+ */
+
 val knownOpenRemoteClients = ConcurrentHashMap<String, WebSocketSession>()
 val remoteClientCapabilities = ConcurrentHashMap<String, JSONObject>()
 val returnHandlers = ConcurrentHashMap<String, (JSONObject) -> Boolean>()

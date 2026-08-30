@@ -43,6 +43,7 @@ nav:
       - Patterns: reference/patterns.md
       - Audio: reference/audio.md
       - Audio AI: reference/audio-ai.md
+      - Languages: reference/languages.md
       - Workspace: reference/workspace.md
     - Libraries & APIs:
       - Linear Algebra: linear_algebra.md

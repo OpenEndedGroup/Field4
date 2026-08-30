@@ -1389,6 +1389,12 @@ val citationGuardTestClasses = listOf(
     // sources, both of which already invalidate this task, so it needs no declaration of its own —
     // and it is in this list rather than in jvmTest so that it runs in the same task it audits.
     "afield.docs.GateInputDeclarationTest",
+    // The reference's page labels, and the property that a documentation change cannot alter the
+    // completion popup. Here rather than in the broad jvmTest because it reads
+    // `public/zensical.yml` and `public/docs/reference/` — a nav entry deleted, or a generated page
+    // added without one, changes no Kotlin at all and must not be able to inherit an UP-TO-DATE
+    // green. See dev_docs/kdoc_reference_contract.md.
+    "afield.docs.LanguagesCategoryTest",
 )
 
 // These tests read Markdown and JavaScript directly from the checkout. Keeping them inside the broad
@@ -1419,6 +1425,9 @@ val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationG
         .withPropertyName("publishedDocs")
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file("public/docs_hooks.py").withPathSensitivity(PathSensitivity.RELATIVE)
+    // `LanguagesCategoryTest.every committed reference page is reachable from the docs nav` reads the
+    // site navigation, which is neither Kotlin nor Markdown, so nothing else here invalidates on it.
+    inputs.file("public/zensical.yml").withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file("build.gradle.kts").withPathSensitivity(PathSensitivity.RELATIVE)
     // The dev_docs pages these guards read, for the same reason as the line above: the citation
     // corpus and the server-surface ledger both live under dev_docs, which is not `public/docs`.

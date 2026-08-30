@@ -44,6 +44,64 @@ import kotlin.math.round
 import kotlin.math.sin
 import kotlin.math.sqrt
 
+/**
+ * RectSL — Field's rectangle scene language, and the largest single file in the tree.
+ *
+ * A RectSL program is a *finite animated scene made of rectangles*, written as a small stack
+ * language inside a Kotlin triple-quoted string whose first line is `#rectsl`. It is not a
+ * simulation and not a renderer: the language decides where rectangles are over a fixed duration
+ * and what material metadata each one carries, and StackSL (`afield.stacksl`) decides how a
+ * material shades. That division is the reason both are small.
+ *
+ * ### The pipeline, which is also the reading order
+ *
+ * Four types, and every entry point in this file is a step between two of them:
+ *
+ * ```
+ * String  --tokenize-->  List<Token>  --eval-->  SceneProgram  --sample(t)-->  SampledScene  --lower-->  RectMesh
+ * ```
+ *
+ *  - [RectLangTokenizer] is the whole of the syntax. There is no parser: the language is
+ *    postfix, so tokenizing *is* parsing.
+ *  - [RectLangVm] is the evaluator, and where the vocabulary lives. Words spelled `->something`
+ *    are mutators that write through to the active rect, group or scene; everything else
+ *    transforms stack values. The arrow is part of the word.
+ *  - [SceneProgram] is the compiled result and the value worth understanding first. It is
+ *    **time-independent** — a wall, a duration, an fps and a list of nodes whose properties are
+ *    [Track]s rather than numbers — which is what makes a scene something you can ask questions
+ *    of rather than only play. `sample(t)` walks it and returns a [SampledScene], a flat
+ *    z-ordered list of [SampledRect]s with no tracks left in it.
+ *  - [lowerSampledScene] turns that into a [RectMesh]: four [RectVertex]es and six indices per
+ *    rect, with colour, material index and per-object shader data interleaved, ready for an
+ *    `afield.four` buffer.
+ *
+ * [RectAnimationOracle] is the one object that names all five steps, and
+ * [compileRectSL] is the same compile with host-built curves bound in by name — the
+ * `afield.stdlib.Functions` half of the bridge, so a program can lay out an array from a curve the
+ * host fitted or evolved.
+ *
+ * ### What the tracks buy, and why they are not just interpolation
+ *
+ * Half this file is [Track] and its implementations, because a property being a function of time
+ * rather than a number is what the rest of the package is built on. A track is symbolic and
+ * composable — [TcbTrack] for Kochanek–Bartels keys, [EasedScalarTrack], [TimeWarpTrack],
+ * [GateTrack] for life windows, [HeadingTrack] for face-travel, plus unary/binary/ternary
+ * combinators — so a scene can be *differentiated*, *fitted* (`RectSLFit.kt`), *measured*
+ * (`RectSLCoverage.kt` computes exact pixel coverage in closed form) and *translated* to GLSL
+ * (`RectSLGlsl.kt`) rather than only evaluated frame by frame.
+ *
+ * ### Where the rest of the package sits
+ *
+ * `RectSLPattern.kt` / `RectSLPatternOps.kt` make a Tidal pattern the scene's structure — a
+ * pattern is a track and an event is a live window. `RectSLSoftRaster.kt` is the differentiable
+ * rasterizer, `RectSLFn.kt` lowers scenes into the `Functions` algebra, `RectSLSdfLook.kt` and
+ * `RectSLGlsl.kt` are the two GPU paths, `RectSLSimplify.kt` shrinks a program, and
+ * `RectSLEditorExtension.kt` is the three lines that register the browser-side editor mode.
+ *
+ * [RectSL cheatsheet](../rectsl_cheatsheet.md) is the word-by-word reference with worked pictures;
+ * [RectSL examples](../rectsl_examples.md) is the gallery.
+ */
+
 data class Vec2d(val x: Double, val y: Double) {
     operator fun plus(other: Vec2d): Vec2d = Vec2d(x + other.x, y + other.y)
     operator fun minus(other: Vec2d): Vec2d = Vec2d(x - other.x, y - other.y)

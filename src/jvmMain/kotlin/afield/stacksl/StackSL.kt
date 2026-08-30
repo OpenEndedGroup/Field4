@@ -2,6 +2,46 @@ package afield.stacksl
 
 import java.util.Locale
 
+/**
+ * StackSL — a concatenative shading language that compiles to GLSL, in one file with no runtime.
+ *
+ * A StackSL program is a sequence of words over a `vec4` stack, and it lowers to exactly one GLSL
+ * function: `vec4 stack(vec4 stack_in)`, conventionally called with `vec4(x, y, z_or_hash, time)`.
+ * There is no interpreter here and nothing executes on the JVM — [StackSLCompiler.compile] is a
+ * source-to-source translation, which is why the whole language is a compiler and a diagnostic
+ * type and nothing else.
+ *
+ * ### The three values to know
+ *
+ *  - [StackSLCompileOptions] decides the shape of the emitted GLSL rather than the meaning of the
+ *    program: the symbol prefix, the entry point name, whether a header and samplers are declared,
+ *    which textures `sample` may read, and — the one that changes semantics —
+ *    `defaultValues`, the wrap/default convention used when a word wants an operand the stack does
+ *    not have. `tolerant` decides whether that is a warning or an error.
+ *  - [StackSLCompileResult] is GLSL, diagnostics and an analysis. `ok` is *diagnostics with no
+ *    ERROR*, not "the GLSL is non-empty", because a tolerant compile emits usable GLSL and
+ *    complains at the same time.
+ *  - [StackSLAnalysis] is the part worth reading before debugging a program that produced a black
+ *    frame. Per function it reports `maxStackDepth`, `finalStackDepth`, `producedValues`,
+ *    `usedValues` and `prunedValues`, plus [StackSLDanglingWire] for each value that was pushed and
+ *    never consumed. A definition whose arity does not work out is **pruned silently** in the
+ *    emitted shader — the diagnostic and this analysis are the only places it says so.
+ *
+ * [compileStackSL] and [compileStackSLToGlsl] are the two convenience entry points; the second
+ * throws away everything except the source, which is usually the wrong trade.
+ *
+ * ### Where StackSL sits relative to its neighbours
+ *
+ * `afield.stdlib/stacksl.kt` — on the [Graphics](graphics.md) page, because it is host API rather
+ * than language — is how a box actually reaches a StackSL string. `afield.rectsl` compiles through
+ * this file: RectSL decides where rectangles are, StackSL decides how their materials shade, and
+ * `RectSLGlsl.kt` is the join. `VolumetricNoise.kt` beside this file is the noise vocabulary the
+ * emitted GLSL calls into.
+ *
+ * [StackSL cheatsheet](../stacksl_cheatsheet.md) is the word-by-word reference;
+ * [StackSL examples](../stacksl_examples.md) is the gallery.
+ */
+
 enum class StackSLSeverity {
     ERROR,
     WARNING,
