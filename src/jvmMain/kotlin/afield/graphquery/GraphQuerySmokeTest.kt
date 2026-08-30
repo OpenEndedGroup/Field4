@@ -116,6 +116,48 @@ object GraphQuerySmokeTest {
         requireEquals(0, v.graphPaths("nope").size, "no match")
         // ** absorbs zero segments
         requireEquals(listOf("freq"), osc().graphPaths("**/freq").paths(), "zero-segment double star")
+
+        // A `*` inside a segment globs within that one name, and never across a `/`.
+        requireEquals(
+            listOf("carrier/gain", "modulator/gain"),
+            v.graphPaths("**/" + "*ain").paths(),
+            "glob inside a segment"
+        )
+        requireEquals(listOf("carrier", "modulator"), v.graphPaths("*a*r").paths(), "glob at one level")
+        requireEquals(0, v.graphPaths("*req").size, "a within-segment glob is still one segment")
+        requireEquals(0, v.graphPaths("carrier*freq").size, "a within-segment glob cannot cross a /")
+
+        // Names are matched ignoring case, literal segments included.
+        requireEquals(listOf("carrier/freq"), v.graphPaths("CARRIER/Freq").paths(), "case-insensitive literal")
+        requireEquals(
+            listOf("carrier/gain", "modulator/gain"),
+            v.graphPaths("**/" + "*AIN").paths(),
+            "case-insensitive glob"
+        )
+
+        // Two spellings of one name are two slots, and one pattern finds both. The literal
+        // fast path has to notice that and defer to the walk, which is what this pins.
+        val twins = mutableMapOf<String, Any?>("freq" to 1f, "Freq" to 2f)
+        requireEquals(listOf("freq", "Freq"), twins.graphPaths("freq").paths(), "case-variant siblings")
+
+        // `|` unions whole patterns: one walk, each slot once, in walk order.
+        requireEquals(
+            listOf("carrier/freq", "carrier/label", "modulator/freq", "modulator/label"),
+            v.graphPaths("**/freq | **/label").paths(),
+            "alternation"
+        )
+        requireEquals(
+            v.graphPaths("**").paths(),
+            v.graphPaths("**/freq | **").paths(),
+            "overlapping branches report each slot once"
+        )
+        requireEquals(
+            listOf("carrier", "modulator/gain"),
+            v.graphPaths("modulator/gain|carrier").paths(),
+            "branch order does not change walk order"
+        )
+        requireEquals(0, v.graphPaths("|").size, "nothing but bars matches nothing")
+
         println("  ok: glob semantics")
     }
 

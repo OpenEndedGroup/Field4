@@ -282,7 +282,12 @@ class GraphQueryCoreTest {
             "nested" to Nested(voice(), 2),
             "map" to mutableMapOf<String, Any?>("a" to osc(), "b" to osc(), "n" to null),
             "list" to mutableListOf<Any?>(osc(), osc()),
-            "array" to arrayOf<Any?>(osc(), osc())
+            "array" to arrayOf<Any?>(osc(), osc()),
+            // Two keys differing only in case. Matching ignores case, so one pattern names
+            // both slots — and the literal fast path, which can only report one, has to
+            // notice and stand down. A map is the fixture because map keys collide without
+            // any help from Kotlin naming rules.
+            "caseTwins" to mutableMapOf<String, Any?>("freq" to 1f, "Freq" to 2f, "gain" to osc())
         )
         val patterns = listOf(
             "**",
@@ -302,7 +307,30 @@ class GraphQueryCoreTest {
             "n",
             "nope",
             "carrier/nope",
-            "**/nope"
+            "**/nope",
+            // Case: right, wrong, and colliding.
+            "CARRIER/freq",
+            "Carrier",
+            "FREQ",
+            "freq",
+            "**/FREQ",
+            "GAIN/" + "*",
+            // Globs inside one segment.
+            "*req",
+            "car*",
+            "ca*er",
+            "**/" + "*req",
+            "carrier/g*",
+            "*" + "/*ain",
+            "no*such*thing",
+            // Alternation, including overlapping and lopsided branches.
+            "carrier/freq | modulator/gain",
+            "**/freq | **/label",
+            "**/freq | **",
+            "a | 0/freq | nope",
+            "freq | FREQ",
+            "carrier |",
+            "*" + "ain | **/" + "*req"
         )
 
         val options = GraphWalkOptions()
@@ -313,6 +341,134 @@ class GraphQueryCoreTest {
                 assertEquals(slow, fast, "pattern '$pattern' on $rootName diverged")
             }
         }
+    }
+
+    // ── within-segment globs and case ───────────────────────────────────────
+
+    @Test
+    fun aGlobInsideASegmentMatchesPartOfAName() {
+        val v = voice()
+
+        assertEquals(listOf("carrier/gain", "modulator/gain"), v.graphPaths("**/" + "*ain").paths())
+        assertEquals(listOf("carrier", "modulator"), v.graphPaths("*" + "a*r").paths())
+        assertEquals(
+            listOf("carrier/gain", "carrier/label", "carrier/enabled"),
+            v.graphPaths("carrier/" + "*a*").paths()
+        )
+        assertTrue(v.graphPaths("*" + "Alpha").isEmpty, "nothing here ends in Alpha")
+    }
+
+    @Test
+    fun aGlobInsideASegmentDoesNotCrossASeparator() {
+        val n = Nested(voice(), 2)
+
+        // `*req` is one segment's worth, so the depth-2 freqs are out of reach until `**`
+        // says otherwise.
+        assertTrue(n.graphPaths("*req").isEmpty, "a within-segment glob is still one segment")
+        assertEquals(
+            listOf("inner/carrier/freq", "inner/modulator/freq"),
+            n.graphPaths("**/" + "*req").paths()
+        )
+
+        // And it cannot span a separator even when the joined name would match.
+        assertTrue(n.graphPaths("inner*freq").isEmpty, "no crossing a `/`")
+    }
+
+    @Test
+    fun namesAreMatchedIgnoringCase() {
+        val v = voice()
+
+        assertEquals(listOf("carrier/freq"), v.graphPaths("CARRIER/FREQ").paths())
+        assertEquals(listOf("carrier/freq", "modulator/freq"), v.graphPaths("**/Freq").paths())
+        assertEquals(listOf("carrier/gain", "modulator/gain"), v.graphPaths("**/" + "*AIN").paths())
+
+        // Including the literal single-slot resolver and the set's own lookup.
+        assertNotNull(v.graphPath("Carrier/Gain"))
+        assertNotNull(v.graphPaths("**")["CARRIER/label"])
+    }
+
+    @Test
+    fun caseVariantSiblingsAreBothMatched() {
+        val twins = mutableMapOf<String, Any?>("freq" to 1f, "Freq" to 2f)
+
+        // Two slots, one pattern. The exactly-spelled one comes first because that is the
+        // map's own order, but neither is hidden.
+        assertEquals(listOf("freq", "Freq"), twins.graphPaths("freq").paths())
+        assertEquals(listOf(1f, 2f), twins.graphPaths("FREQ").values())
+
+        // `graphPath` is single-slot by contract, and prefers the exact spelling.
+        assertEquals("freq", twins.graphPath("freq")?.path)
+        assertEquals("Freq", twins.graphPath("Freq")?.path)
+    }
+
+    // ── alternation ─────────────────────────────────────────────────────────
+
+    @Test
+    fun aBarUnionsWholePatterns() {
+        val v = voice()
+
+        assertEquals(
+            listOf("carrier/freq", "carrier/label", "modulator/freq", "modulator/label"),
+            v.graphPaths("**/freq | **/label").paths()
+        )
+
+        // Branches of different depths and shapes, and the spaces are optional.
+        assertEquals(listOf("carrier", "modulator/gain"), v.graphPaths("carrier|modulator/gain").paths())
+        assertEquals(listOf("carrier", "modulator/gain"), v.graphPaths("carrier | modulator/gain").paths())
+    }
+
+    @Test
+    fun alternationReportsEachSlotOnceInWalkOrder() {
+        val v = voice()
+
+        // Overlapping branches: `**` already covers every freq. One walk, so each slot is
+        // reported once, and the order is the graph's rather than the pattern's.
+        val overlapping = v.graphPaths("**/freq | **").paths()
+        assertEquals(v.graphPaths("**").paths(), overlapping)
+
+        // Order follows the walk even when the branches are given back to front.
+        assertEquals(
+            listOf("carrier/freq", "modulator/gain"),
+            v.graphPaths("modulator/gain | carrier/freq").paths()
+        )
+    }
+
+    @Test
+    fun alternationComposesWithGlobsAndCase() {
+        val v = voice()
+
+        assertEquals(
+            listOf("carrier/gain", "carrier/label", "modulator/gain", "modulator/label"),
+            v.graphPaths("**/" + "*ain | **/LABEL").paths()
+        )
+    }
+
+    @Test
+    fun emptyAlternativesAreDropped() {
+        val v = voice()
+
+        assertEquals(v.graphPaths("carrier").paths(), v.graphPaths("carrier |").paths())
+        assertEquals(v.graphPaths("carrier").paths(), v.graphPaths("| carrier").paths())
+        assertTrue(v.graphPaths("|").isEmpty, "nothing but bars matches nothing")
+    }
+
+    @Test
+    fun alternationIsVisibleOnACompiledPattern() {
+        assertEquals(1, GraphQuery.compile("**/freq").alternatives)
+        assertEquals(2, GraphQuery.compile("**/freq | gain").alternatives)
+
+        // More than one branch means there is no single path to descend.
+        assertTrue(GraphQuery.compile("carrier/freq").isStatic)
+        assertFalse(GraphQuery.compile("carrier/freq | modulator/freq").isStatic)
+    }
+
+    @Test
+    fun matchingAndExcludingSpeakTheSameLanguage() {
+        val all = voice().graphPaths("**")
+        val some = "**/freq | **/gain"
+
+        assertEquals(listOf("carrier/freq", "carrier/gain", "modulator/freq", "modulator/gain"), all.matching(some).paths())
+        assertEquals(all.size, all.matching(some).size + all.excluding(some).size)
     }
 
     /**

@@ -24,6 +24,8 @@ import kotlin.reflect.jvm.isAccessible
  * ```kotlin
  * val cutoffs = patch.graphPaths("**\/cutoff")     // every cutoff at any depth
  * patch.graphPaths("osc/" + "*").writable()        // one level down, settable only
+ * patch.graphPaths("**" + "/" + "*Alpha")         // a glob inside one segment
+ * patch.graphPaths("gain | **" + "/cutoff")        // either pattern, each slot once
  * patch.graphPaths("**").where { (it.get() as? Float ?: 0f) > 0.5f }
  * ```
  *
@@ -160,16 +162,16 @@ class PathSet internal constructor(
 
     fun deduplicated(): PathSet = dedup()
 
-    /** Glob-filter an existing set with the same `*` / `**` rules as [graphPaths]. */
+    /** Glob-filter an existing set with the same `*` / `**` / `|` rules as [graphPaths]. */
     fun matching(pattern: String): PathSet {
-        val segments = splitGlob(pattern)
-        return PathSet(root, refs.filter { globMatches(it.pathSegments, segments) })
+        val branches = splitAlternatives(pattern)
+        return PathSet(root, refs.filter { globMatchesAny(it.pathSegments, branches) })
     }
 
     /** Glob-filter *out* the matches — the complement of [matching]. */
     fun excluding(pattern: String): PathSet {
-        val segments = splitGlob(pattern)
-        return PathSet(root, refs.filterNot { globMatches(it.pathSegments, segments) })
+        val branches = splitAlternatives(pattern)
+        return PathSet(root, refs.filterNot { globMatchesAny(it.pathSegments, branches) })
     }
 
     // ── predicates: the XPath `[...]` half of the story ─────────────────────
@@ -222,10 +224,13 @@ class PathSet internal constructor(
 
     fun first(): GraphPathRef = refs.firstOrNull() ?: error("PathSet is empty")
 
-    /** Look up a single exact path, or null. */
+    /** Look up a single literal path — case-insensitive, like the patterns — or null. */
     operator fun get(path: String): GraphPathRef? {
         val wanted = splitPath(path)
-        return refs.firstOrNull { it.pathSegments == wanted }
+        return refs.firstOrNull { ref ->
+            ref.pathSegments.size == wanted.size &&
+                ref.pathSegments.indices.all { ref.pathSegments[it].equals(wanted[it], ignoreCase = true) }
+        }
     }
 
     override fun iterator(): Iterator<GraphPathRef> = refs.iterator()
@@ -380,7 +385,14 @@ internal object GraphReflectionCache {
 internal class StaticResolution(
     val ref: GraphPathRef,
     val value: Any?,
-    val ancestors: List<Any>
+    val ancestors: List<Any>,
+    /**
+     * True when every segment matched an edge name *exactly*. A segment that only matched
+     * ignoring case may have case-variant siblings, and this resolver can only ever report
+     * one of them — so the pattern layer uses this to decide whether the fast path is still
+     * allowed to speak for the full walk.
+     */
+    val allExact: Boolean = true
 )
 
 internal object GraphWalker {
@@ -450,6 +462,7 @@ internal object GraphWalker {
         if (root == null || segments.isEmpty()) return null
         var current: Any? = root
         var ref: GraphPathRef? = null
+        var allExact = true
         val chain = mutableListOf<Any>()
         segments.forEachIndexed { index, segment ->
             val node = current ?: return null
@@ -457,7 +470,9 @@ internal object GraphWalker {
             if (index > options.maxDepth) return null
             if (chain.any { it === node }) return null
             chain.add(node)
-            val edge = edgeNamed(node, segment, options) ?: return null
+            val exact = edgeNamedExactly(node, segment, options)
+            val edge = exact ?: edgeNamedIgnoringCase(node, segment, options) ?: return null
+            if (exact == null || caseAmbiguous(node, segment, options)) allExact = false
             val value = safeGet(edge.getter)
             ref = GraphPathRef(
                 pathSegments = segments.subList(0, index + 1).toList(),
@@ -468,7 +483,7 @@ internal object GraphWalker {
             current = value
         }
         val resolved = ref ?: return null
-        return StaticResolution(resolved, current, chain)
+        return StaticResolution(resolved, current, chain, allExact)
     }
 
     /**
@@ -486,8 +501,11 @@ internal object GraphWalker {
         return refs
     }
 
-    /** One named edge, resolved directly. Mirrors [reflectiveEdges] case by case. */
-    private fun edgeNamed(node: Any, name: String, options: GraphWalkOptions): LiveGraphEdge? {
+    /**
+     * One named edge, resolved directly by its exact name. Mirrors [reflectiveEdges] case by
+     * case, so this stays O(1)-ish rather than building every edge of the node.
+     */
+    private fun edgeNamedExactly(node: Any, name: String, options: GraphWalkOptions): LiveGraphEdge? {
         (node as? LiveGraphInspectable)?.liveGraphChildren()?.firstOrNull { it.name == name }
             ?.let { return it }
 
@@ -533,6 +551,47 @@ internal object GraphWalker {
             }
         }
     }
+
+    /**
+     * Could this segment name more than one edge once case is ignored?
+     *
+     * Two properties differing only in case are two slots, and a pattern matches both — but
+     * [resolveStatic] can only ever report one of them, so it has to know when to stand down.
+     *
+     * What counts is two *different spellings*, not two hits: a custom edge and a reflected
+     * property that share a name are merged into one edge by [edgesFor], so seeing `leaf`
+     * twice is not ambiguity. Index names cannot collide on case at all.
+     *
+     * Cheap on purpose — names only, out of the cached property map or the map's own keys,
+     * with no allocation, no edge built and no value read. That is what keeps a named path's
+     * cost proportional to its length.
+     */
+    private fun caseAmbiguous(node: Any, name: String, options: GraphWalkOptions): Boolean {
+        var spelling: String? = null
+        var ambiguous = false
+        fun consider(candidate: String) {
+            if (!candidate.equals(name, ignoreCase = true)) return
+            val already = spelling
+            if (already == null) spelling = candidate else if (already != candidate) ambiguous = true
+        }
+        (node as? LiveGraphInspectable)?.liveGraphChildren()?.forEach { consider(it.name) }
+        when (node) {
+            is Map<*, *> -> node.keys.forEach { key -> consider(key?.toString() ?: return@forEach) }
+            is List<*>, is Array<*> -> Unit
+            else -> GraphReflectionCache.propertyMap(node::class, options.includePrivate)
+                .keys.forEach { consider(it) }
+        }
+        return ambiguous
+    }
+
+    /**
+     * The same lookup ignoring case, consulted only when the exact name missed. It goes
+     * through [edgesFor] deliberately: an edge found this way is then the very edge the full
+     * walk would have reported, and the first match wins so the answer is the declaration
+     * order one rather than an arbitrary one.
+     */
+    private fun edgeNamedIgnoringCase(node: Any, name: String, options: GraphWalkOptions): LiveGraphEdge? =
+        edgesFor(node, options).firstOrNull { it.name.equals(name, ignoreCase = true) }
 
     private fun edgesFor(node: Any, options: GraphWalkOptions): List<LiveGraphEdge> {
         val custom = (node as? LiveGraphInspectable)?.liveGraphChildren()?.toList().orEmpty()
@@ -661,29 +720,52 @@ internal object GraphWalker {
  * ```
  *
  * `osc` is descended directly, and only that subtree is traversed. A fully literal pattern
- * resolves in O(depth) with no traversal and no wasted allocation at all.
+ * resolves in O(depth) with no traversal and no wasted allocation at all. A segment holding a
+ * within-segment glob (`"osc*"`) is not part of the literal prefix — it has to be matched
+ * against the names that are actually there, which means walking. A pattern with more than
+ * one `|` branch walks too, and that is the deliberate trade: one walk filtered by every
+ * branch at once, which is both simpler and cheaper than a query per branch, and it reports
+ * each slot once even when two branches would have claimed it.
  */
-class GraphPattern internal constructor(val pattern: String, internal val segments: List<String>) {
+class GraphPattern internal constructor(val pattern: String, internal val branches: List<List<String>>) {
+
+    /**
+     * The single branch, when there is one. Every optimization below needs one path shape to
+     * descend, so alternation deliberately gives all of them up rather than guessing.
+     */
+    private val onlyBranch: List<String>? = branches.singleOrNull()
 
     /** Leading segments that are plain names — the part we can descend without searching. */
     internal val staticPrefix: List<String> =
-        segments.takeWhile { it != "*" && it != "**" }
+        onlyBranch?.takeWhile { !it.contains('*') } ?: emptyList()
 
     /** True when the whole pattern is literal, so exactly one slot can match. */
-    val isStatic: Boolean get() = staticPrefix.size == segments.size
+    val isStatic: Boolean get() = onlyBranch != null && staticPrefix.size == onlyBranch.size
 
-    fun matches(path: String): Boolean = globMatches(splitPath(path), segments)
+    /** How many alternatives this pattern was written with. */
+    val alternatives: Int get() = branches.size
+
+    fun matches(path: String): Boolean = globMatchesAny(splitPath(path), branches)
 
     /** Run this pattern against a root. */
     fun resolve(root: Any?, options: GraphWalkOptions = GraphWalkOptions()): PathSet {
-        if (root == null) return PathSet(root, emptyList())
+        if (root == null || branches.isEmpty()) return PathSet(root, emptyList())
 
         // Fully literal: resolve the chain directly, no traversal.
+        //
+        // `allExact` is what keeps the two strategies honest. A literal segment matches
+        // ignoring case, so `"freq"` can reach a slot actually called `Freq` — but if a node
+        // holds both, only the walk can report both, while this resolver returns one. So a
+        // literal pattern takes the fast path only when it named its slots exactly, and
+        // otherwise falls through to the walk below. Getting the case right is the common
+        // case, so the optimization is intact in practice.
         if (isStatic) {
-            val resolved = GraphWalker.resolveStatic(root, segments, options)
+            val resolved = GraphWalker.resolveStatic(root, onlyBranch!!, options)
                 ?: return PathSet(root, emptyList())
-            if (resolved.value == null && !options.includeNulls) return PathSet(root, emptyList())
-            return PathSet(root, listOf(resolved.ref))
+            if (resolved.allExact) {
+                if (resolved.value == null && !options.includeNulls) return PathSet(root, emptyList())
+                return PathSet(root, listOf(resolved.ref))
+            }
         }
 
         // Literal prefix then wildcards: descend the prefix, walk only that subtree.
@@ -692,10 +774,12 @@ class GraphPattern internal constructor(val pattern: String, internal val segmen
         if (staticPrefix.isNotEmpty()) {
             val resolved = GraphWalker.resolveStatic(root, staticPrefix, options)
                 ?: return PathSet(root, emptyList())
-            val refs = mutableListOf<GraphPathRef>()
-            if (resolved.value != null || options.includeNulls) refs += resolved.ref
-            refs += GraphWalker.scanSubtree(resolved.value, staticPrefix, options, resolved.ancestors)
-            return PathSet(root, refs.filter { globMatches(it.pathSegments, segments) })
+            if (resolved.allExact) {
+                val refs = mutableListOf<GraphPathRef>()
+                if (resolved.value != null || options.includeNulls) refs += resolved.ref
+                refs += GraphWalker.scanSubtree(resolved.value, staticPrefix, options, resolved.ancestors)
+                return PathSet(root, refs.filter { globMatchesAny(it.pathSegments, branches) })
+            }
         }
 
         return GraphWalker.scan(root, options).matching(pattern)
@@ -710,7 +794,7 @@ object GraphQuery {
 
     /** Parse (and cache) a pattern for repeated use. */
     fun compile(pattern: String): GraphPattern =
-        cache.computeIfAbsent(pattern) { GraphPattern(it, splitGlob(it)) }
+        cache.computeIfAbsent(pattern) { GraphPattern(it, splitAlternatives(it)) }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -720,16 +804,22 @@ object GraphQuery {
 /**
  * Walk this object graph and return every slot whose address matches [pattern].
  *
- * `*` matches one segment, `**` matches any number including zero. A literal prefix is
- * resolved directly rather than by traversing everything, so `"osc/filter/cutoff"` costs
- * three property reads.
+ * `*` matches one segment and `**` matches any number of segments including zero. A `*`
+ * *inside* a segment globs within that one name — `"*Alpha"` finds `contourAlpha`, `"osc*"`
+ * finds `osc1` and `osc2` — and never crosses a `/`. Names are matched ignoring case, so
+ * `"cutoff"` reaches `cutOff`. A `|` separates whole patterns and the matches are unioned:
+ * `"**" + "/" + "*alpha | **" + "/w"` collects both, each slot once, in walk order.
+ *
+ * A literal prefix is resolved directly rather than by traversing everything, so
+ * `"osc/filter/cutoff"` costs three property reads. Alternation gives that up — with more
+ * than one branch there is no single path to descend, so it walks.
  */
 fun Any?.graphPaths(
     pattern: String = "**",
     options: GraphWalkOptions = GraphWalkOptions()
 ): PathSet = GraphQuery.compile(pattern).resolve(this, options)
 
-/** The single slot at an exact literal [path], or null. */
+/** The single slot at a literal [path] — matched ignoring case — or null. */
 fun Any?.graphPath(
     path: String,
     options: GraphWalkOptions = GraphWalkOptions()
@@ -751,6 +841,25 @@ internal fun splitPath(path: String): List<String> =
 internal fun splitGlob(path: String): List<String> =
     path.split("/").map { it.trim() }.filter { it.isNotEmpty() }
 
+/**
+ * Split a pattern into its alternatives on `|`, each already split into segments.
+ *
+ * `|` separates *whole patterns*, so `"** slash *alpha | ** slash w"` — written with real
+ * separators — is two branches, and a slot matches when it satisfies either. The trimming that [splitGlob] already does is what makes
+ * the spaces round the bar optional.
+ *
+ * The corollary is worth stating because it will catch someone: `"**\/freq|gain"` is
+ * `"**\/freq"` or `"gain"`, *not* two leaves under `**`. Repeat the prefix on both sides.
+ *
+ * Empty alternatives are dropped, so a trailing bar is harmless and `"|"` matches nothing.
+ */
+internal fun splitAlternatives(pattern: String): List<List<String>> =
+    pattern.split('|').map { splitGlob(it) }.filter { it.isNotEmpty() }
+
+/** True when [path] satisfies any one of [branches] — the whole of what `|` means. */
+internal fun globMatchesAny(path: List<String>, branches: List<List<String>>): Boolean =
+    branches.any { globMatches(path, it) }
+
 internal fun globMatches(
     path: List<String>,
     pattern: List<String>,
@@ -765,9 +874,39 @@ internal fun globMatches(
             else (pathIndex..path.size).any { next -> globMatches(path, pattern, next, patternIndex + 1) }
         }
         "*" -> pathIndex < path.size && globMatches(path, pattern, pathIndex + 1, patternIndex + 1)
-        else -> pathIndex < path.size && token == path[pathIndex] &&
+        else -> pathIndex < path.size && segmentMatches(path[pathIndex], token) &&
                 globMatches(path, pattern, pathIndex + 1, patternIndex + 1)
     }
+}
+
+/**
+ * Does one path segment satisfy one pattern token?
+ *
+ * A token that contains a `*` is a glob *within* one segment: `"*Alpha"` finds
+ * `contourAlpha`, `"contour*"` finds it too, and neither can cross a `/` — segment-crossing
+ * stays the exclusive job of `**`. A token with no `*` is a plain name.
+ *
+ * Both comparisons ignore case, on the grounds that a slot is usually a name you half
+ * remember rather than one you are quoting. The consequence worth knowing is that two
+ * properties differing only in case are both matched by one pattern; they are still two
+ * distinct slots, and [deduplicateRefs] keeps treating them as such.
+ */
+internal fun segmentMatches(segment: String, token: String): Boolean =
+    if (token.contains('*')) segmentGlob(token).matches(segment)
+    else token.equals(segment, ignoreCase = true)
+
+private val segmentGlobs = ConcurrentHashMap<String, Regex>()
+
+/**
+ * Compile (and cache) one within-segment glob. Each run of `*` becomes "any run of
+ * non-separator characters" and every literal chunk between them is quoted, so a property
+ * name containing regex metacharacters cannot smuggle syntax into the pattern.
+ */
+private fun segmentGlob(token: String): Regex = segmentGlobs.computeIfAbsent(token) { raw ->
+    Regex(
+        raw.split('*').joinToString("[^/]*") { chunk -> if (chunk.isEmpty()) "" else Regex.escape(chunk) },
+        RegexOption.IGNORE_CASE
+    )
 }
 
 /**

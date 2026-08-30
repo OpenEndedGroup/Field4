@@ -218,9 +218,10 @@ class ParamSet internal constructor(
 
     fun bases(): List<Float> = entries.map { it.base }
 
+    /** Narrow by pattern, on exactly the terms `graphPaths` uses — globs, case and `|` alike. */
     fun matching(pattern: String): ParamSet {
-        val segments = afield.graphquery.splitGlob(pattern)
-        return ParamSet(root, entries.filter { afield.graphquery.globMatches(splitPath(it.rawPath), segments) })
+        val branches = afield.graphquery.splitAlternatives(pattern)
+        return ParamSet(root, entries.filter { afield.graphquery.globMatchesAny(splitPath(it.rawPath), branches) })
     }
 
     fun set(value: Float): ParamSet = apply {

@@ -46,6 +46,48 @@ class GraphQuerySynthHeadTest {
 
     private fun ParamSet.tracked(): ParamSet = also { cleanup += it }
 
+    // ── the pattern surface, as `matches` sees it ───────────────────────────
+
+    /**
+     * `matches` is `params()` with a nicer face, so it shares one glob engine with `/` and
+     * `graphPaths`. This pins that the sharing is real: a within-segment glob and a
+     * misremembered capitalisation both work here without ParamQuery knowing about either.
+     */
+    @Test
+    fun matchesInheritsGlobsWithinASegmentAndCaseInsensitivity() {
+        val patch = Patch(Param(800f), Param(0.3f))
+
+        assertEquals(listOf("cutoff"), (patch matches "cut*").paths())
+        assertEquals(listOf("cutoff"), (patch matches "CUTOFF").paths())
+        assertEquals(listOf("resonance"), (patch matches "*ance").paths())
+
+        // And the same two features through ParamSet's own filter. (`**` also reports each
+        // Param's own `base` edge, so filtering a one-segment pattern is the tidier check.)
+        assertEquals(listOf("cutoff"), (patch matches "**").matching("*OFF").paths())
+    }
+
+    @Test
+    fun matchesUnionsAlternatives() {
+        val voice = Voice(Osc(220f, 0.8f), Osc(440f, 0.2f))
+
+        assertEquals(
+            listOf("carrier/freq", "modulator/freq", "modulator/gain"),
+            (voice matches "**/freq | modulator/gain").paths()
+        )
+        assertEquals(listOf("carrier/gain"), (voice matches "**").matching("carrier/gain | nope").paths())
+    }
+
+    @Test
+    fun matchesGlobsStayInsideOneSegment() {
+        val voice = Voice(Osc(220f, 0.8f), Osc(440f, 0.2f))
+
+        assertTrue((voice matches "*req").isEmpty, "one segment only")
+        assertEquals(
+            listOf("carrier/freq", "modulator/freq"),
+            (voice matches "**/" + "*REQ").paths()
+        )
+    }
+
     // ── native Param binding ────────────────────────────────────────────────
 
     /** A `Param`-valued edge binds as a native param, exposing the live [Param] object. */

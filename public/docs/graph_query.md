@@ -85,9 +85,27 @@ properties or a custom `descendInto`, call `graphPaths` and say so.
 ## Patterns and predicates
 
 Two wildcards: `*` matches exactly one segment, `**` matches any number of
-segments including zero. That covers *where* a slot lives. To filter on what a
-slot actually *holds*, add a predicate — this is the half that globbing alone
-can't express.
+segments including zero. A `*` *inside* a segment globs within that one name, so
+`"*Alpha"` finds `contourAlpha` and `"osc*"` finds `osc1` and `osc2` — but it
+stays inside its segment, because crossing a `/` is `**`'s job and only `**`'s.
+Names are matched ignoring case, so `"cutoff"` reaches `cutOff`. If one object
+really does hold two names differing only in case, one pattern matches both of
+them, and they remain two distinct slots.
+
+A `|` separates whole patterns and unions what they find:
+
+```diffstatic {data-lang=kotlin}
+// everything that reads like an alpha, plus every w component, at any depth
+look / "**/*alpha | **/w"
+```
+
+One walk answers both branches, so each slot appears once even when two branches
+would have claimed it, and the order is the graph's rather than the pattern's.
+Because `|` separates *whole* patterns, `"**/freq|gain"` means `"**/freq"` or
+`"gain"` — not two leaves under `**`. Repeat the prefix on both sides.
+
+That covers *where* a slot lives. To filter on what a slot actually *holds*, add
+a predicate — this is the half that globbing alone can't express.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_query/predicates.png" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="graph-query-predicates" w="760" h="300"}
 :::static
@@ -171,6 +189,15 @@ val everything = reads
 display("main", "naming a path: $named edge reads — " +
         "walking all ${all.size} slots: $everything edge reads")
 ```
+
+Three things are *not* part of a literal prefix, and each falls back to the walk.
+A segment holding a within-segment glob (`"osc*"`) has to be compared against the
+names that are actually there. A literal segment you spelled with the wrong case
+can have a sibling differing only in case — which the walk would report and a
+single descent could not — so it defers rather than answer for it. And a pattern
+with more than one `|` branch has no single path to descend at all; it walks once
+and filters by every branch, which is both simpler and cheaper than running a
+query per branch.
 
 That example also shows `LiveGraphInspectable`: implement it and you decide what
 your object's children are, instead of letting reflection guess. Custom edges

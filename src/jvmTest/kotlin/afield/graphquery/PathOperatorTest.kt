@@ -93,6 +93,38 @@ class PathOperatorTest {
         assertTrue((nothing / "**").isEmpty)
     }
 
+    @Test
+    fun divCarriesTheWholePatternSurface() {
+        val rig = rig()
+
+        // A glob inside one segment — the shape you reach for when you remember how a slot's
+        // name *ends* rather than where it lives.
+        // Note the inner parens: `/` binds tighter than `+`, so the pattern has to be
+        // assembled before it is handed over.
+        assertEquals(listOf("carrier/gain", "modulator/gain"), (rig / ("**/" + "*ain")).paths())
+        assertEquals(listOf("carrier", "modulator"), (rig / "*a*r").paths())
+
+        // And case you half remember.
+        assertEquals(listOf("carrier/freq"), (rig / "CARRIER/Freq").paths())
+        assertEquals(listOf("carrier/label", "modulator/label"), (rig / "**/LABEL").paths())
+
+        // Chained, both features at once.
+        assertEquals(listOf("carrier/freq"), (rig / "CARRIER" / "fr*").paths())
+    }
+
+    @Test
+    fun divTakesAlternationToo() {
+        class Look(var contourAlpha: Float, var fillAlpha: Float, var contourColor: Rig)
+        val look = Look(1f, 0.25f, rig())
+
+        // The shape this operator exists for: two things you want at once, named by how
+        // their slots read rather than by where they sit.
+        assertEquals(
+            listOf("contourAlpha", "fillAlpha", "contourColor/name"),
+            (look / ("**/" + "*alpha | **/name")).paths()
+        )
+    }
+
     // ── what the wide receiver must not break ───────────────────────────────
 
     /** A type that already spells `/` its own way, including with a String on the right. */
