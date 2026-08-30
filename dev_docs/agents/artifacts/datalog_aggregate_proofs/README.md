@@ -107,8 +107,20 @@ Measured on 2026-08-30, port 9482, each run against a freshly started Field:
 Not a timing problem: `wait: frames: 600` — ten seconds of pumped runloop, and `frames` really does
 pump it while `millis` is a bare `delay()` that does not (`operation_transcript.kt`,
 `waitForRunloopFrames` against `waitForMacroMillis`) — did not help, while the backdoor `set` route
-worked cold with no wait at all. So the transcript `edit` op does not install a main-language runtime
-the way the backdoor `set` command does. That is a transcript-layer gap, recorded here rather than
+worked cold with no wait at all.
+
+The first version of this note blamed the `edit` op, and that was wrong: a transcript `edit` and the
+backdoor's `set` are the **same call** (`setPropertyRaw(property, …, doResync = true)` —
+`operation_transcript.kt:1314`, `agent_backdoor.kt:657`), and the transcript side additionally runs
+`refreshMainLanguageRuntimes`. What differs is the row's *second* column, the execute step. Transcript
+`execute` calls `executeFragmentAndWait`, whose default body forwards to fire-and-forget
+`executeFragment` (`execution.kt:66-68`) and which **only** `KotlinExecution` overrides
+(`execution.kt:2021`) — ten other `BoxExecution` implementations, `DatalogExecution` among them, inherit
+the default. The backdoor's `run` instead sends `execute-all` through the server and polls `is-running`
+until false. Note the table changes two variables per row, so it localises the problem to the route but
+not to the step; the call sites are what settle it.
+
+That is a transcript-layer gap affecting every non-Kotlin box language, recorded here rather than
 fixed, because it is not `afield.datalog`'s bug.
 
 The failure shape is why this is written down at length: it works for whoever wrote it and is silent

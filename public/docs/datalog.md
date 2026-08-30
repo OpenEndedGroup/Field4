@@ -523,7 +523,8 @@ for that group; `count` and `sum` give 0. The target has to be a variable nothin
 
 **Explaining.** `why(goal)` returns a derivation tree, through aggregates and negation as well as
 rules, or null when the fact is not in the model. `whyNot(goal)` returns the narrowing walk instead.
-Both render as HTML in a box, and both have a `render()` for plain text.
+Both implement `ToHTML`, so `display(…)` of either from a Kotlin box draws an indented table; the
+`#why` and `#whynot` directives inside a Datalog box print `render()`'s plain text instead.
 
 **What it refuses.** A rule whose head has a variable the body never binds. A negated goal whose
 variables are bound nowhere else. A predicate used at two different arities. Negation or

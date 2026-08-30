@@ -231,10 +231,23 @@ It drives `Datalog()` from **Kotlin** boxes rather than using Datalog *boxes*, a
 preference. A transcript whose `edit` op sets `mainLanguage: datalog` replays correctly against a
 Field that has already hosted a Datalog box and produces **no output at all** against a cold one,
 reporting `applied=9 skipped=0 errors=0` either way. Not a timing problem — `wait: frames: 600` does
-not help, while the backdoor `set … mainLanguage datalog` route works cold with no wait — so the
-transcript `edit` op does not install a main-language runtime the way the backdoor `set` command
-does. Measured 2026-08-30 on port 9482; the evidence table is in that directory's README. It is a
-transcript-layer gap, not a `afield.datalog` one, and is recorded rather than fixed.
+not help, while the backdoor route works cold with no wait. Measured 2026-08-30 on port 9482; the
+evidence table is in that directory's README.
+
+The cause is **not** the property-setting op, which was this note's first guess and was wrong: a
+transcript `edit` and the backdoor's `set` are the *same call* — `setPropertyRaw(property, …,
+doResync = true)` at `operation_transcript.kt:1314` and `agent_backdoor.kt:657`, `name` special-case
+included — and the transcript side has the extra `refreshMainLanguageRuntimes` step. The difference
+is the **execute** step. Transcript `execute` calls `BoxExecution.executeFragmentAndWait`
+in-process, and that interface's default body (`execution.kt:66-68`) just forwards to the
+fire-and-forget `executeFragment`; `KotlinExecution` (`execution.kt:2021`) is its **only** override,
+against ten other implementations including `DatalogExecution`. So for every non-Kotlin language the
+"and wait" does not wait, and the macro's collector races runloop scheduling. The backdoor's `run`
+takes a different route entirely — it sends an `execute-all` message through the server's normal
+handling and then polls for `is-running` to go false — which is why it works cold.
+
+It is a transcript-layer gap affecting every non-Kotlin box language, not a `afield.datalog` one,
+and is recorded rather than fixed.
 
 ## Documentation
 
