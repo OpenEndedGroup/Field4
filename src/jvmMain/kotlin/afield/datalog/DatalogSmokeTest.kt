@@ -632,6 +632,61 @@ object DatalogSmokeTest {
             "a two-rule why-not is at least six lines; got ${text.lines().size}:\n$text"
         }
 
+        // ── the counterfactual, which is what makes the accusation honest ───────────────────────
+        //
+        // A why-not that names the wrong atom is worse than no why-not, because it is confidently
+        // wrong, and no amount of "it named *an* atom" catches that. So: take the atom this report
+        // accused — `edge(Y, e)` — make exactly that atom satisfiable and nothing else, and the goal
+        // must go from empty to answered. If the accusation were misdirected, adding the accused
+        // fact would leave the goal just as empty as before.
+        val fixed = Datalog()
+        fixed.add(
+            """
+            edge(a, b). edge(b, c). edge(c, d).
+            path(X, Y) :- edge(X, Y).
+            path(X, Z) :- path(X, Y), edge(Y, Z).
+            """
+        )
+        check(fixed.query("path(a, e)").size == 0) { "premise: the counterfactual starts from empty" }
+        // `edge(d, e)` is the accused literal with a `path(a, Y)` row substituted for Y. Nothing
+        // else about the program changes.
+        fixed.fact("edge", "d", "e")
+        val after = fixed.query("path(a, e)").size
+        check(after >= 1) {
+            "satisfying the accused atom must make the goal answerable; still $after rows"
+        }
+        check(fixed.whyNot("path(a, e)").present) {
+            "and why-not must now decline to explain it: ${fixed.whyNot("path(a, e)").render()}"
+        }
+
+        // The reverse direction too: a fact that satisfies some *other* atom must not rescue the
+        // goal, or "which atom failed" was never being measured in the first place.
+        val decoy = Datalog()
+        decoy.add(
+            """
+            edge(a, b). edge(b, c). edge(c, d).
+            path(X, Y) :- edge(X, Y).
+            path(X, Z) :- path(X, Y), edge(Y, Z).
+            """
+        )
+        decoy.fact("edge", "z", "y")
+        check(decoy.query("path(a, e)").isEmpty) {
+            "an unrelated edge must not make path(a, e) true — the accusation was specific"
+        }
+        check(decoy.whyNot("path(a, e)").attempts.first().culprit?.literal == "edge(Y, e)") {
+            "and the same atom is still accused: ${decoy.whyNot("path(a, e)").render()}"
+        }
+
+        // The same pairing on the flat conjunction: `V > 50` was accused, so a cell that satisfies
+        // `V > 50` and nothing else must flip the goal, exactly once.
+        val relaxed = Datalog()
+        relaxed.add("cell(a1, 3). cell(a2, 4). cell(a3, 10).")
+        check(relaxed.query("cell(C, V), V > 50").isEmpty) { "premise: empty before the counterfactual" }
+        relaxed.fact("cell", "a4", 99)
+        check(relaxed.query("cell(C, V), V > 50").size == 1) {
+            "the accused test, satisfied, answers exactly once: ${relaxed.query("cell(C, V), V > 50").size}"
+        }
+
         // A predicate nothing defines is a different answer from a predicate with no matching rows.
         val unknown = g.whyNot("reachable(a, b)")
         check(unknown.note?.contains("nothing defines reachable/2") == true) {
