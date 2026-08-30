@@ -360,7 +360,7 @@ class DrowningScore(
      * slerp. The `resource` float remains above zero throughout an ordinary 1-to-0 blend, keeping
      * sparse decoders alive until the fully retired endpoint is applied.
      */
-    fun keyframes(schemaVersion: Int = 3, prefix: String = "cell"): KeyframeScope =
+    fun keyframes(schemaVersion: Int = 4, prefix: String = "cell"): KeyframeScope =
         KeyframeScope(schemaVersion).also { scope ->
             cells.indices.forEach { index ->
                 val stem = "$prefix.${index.toString().padStart(2, '0')}"

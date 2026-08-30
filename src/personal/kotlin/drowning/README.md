@@ -499,6 +499,14 @@ Rotation uses the keyframer's quaternion slerp; all other numeric/vector lanes l
 residency stays nonzero through an interpolation and reaches zero only at the retired endpoint,
 when sparse splat/MXG work can stop.
 
+The cue creates one persistent scope before the graphics boxes launch. Each live graphics box then
+registers its own shader controls and CPU-side geometry controls into that same scope. Re-running a
+box replaces its registrations with closures over the new live locals, so shader reload and
+copy/paste editing do not create a second keyframe universe. `floatTarget`, `booleanTarget`,
+`intTarget` and `vector3Target` are the typed bridge for values which must remain authoritative
+outside a push-constant structure; integer and Boolean controls deliberately persist as interpolable
+float lanes.
+
 ```kotlin
 val keys = _cueKeyframes
 val a = keys.capture()
