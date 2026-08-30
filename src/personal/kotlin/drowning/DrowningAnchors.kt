@@ -25,10 +25,19 @@ class DrowningAnchors(val cells: Int = 15, val slotsPerCell: Int = 32, val grace
     fun track(slot: Int) = tracks[slot]
     fun valid(slot: Int) = values[slot * 8 + 3] > 0f
 
-    fun update(frames: List<MxgFrame>) {
-        require(frames.size == cells)
+    fun update(frames: List<MxgFrame>) = update(IntArray(cells) { it }, frames)
+
+    fun update(cellIndices: IntArray, frames: List<MxgFrame>) {
+        require(cellIndices.size == frames.size)
+        require(cellIndices.distinct().size == cellIndices.size && cellIndices.all { it in 0 until cells })
         activeCount = 0
-        frames.forEachIndexed { cell, frame ->
+        val supplied = cellIndices.toSet()
+        for (cell in 0 until cells) if (cell !in supplied) {
+            previousFrames[cell] = -1
+            for (slot in cell * slotsPerCell until (cell + 1) * slotsPerCell) values[slot * 8 + 3] = 0f
+        }
+        frames.forEachIndexed { frameIndex, frame ->
+            val cell = cellIndices[frameIndex]
             val first = cell * slotsPerCell
             val last = first + slotsPerCell
             val previous = previousFrames[cell]

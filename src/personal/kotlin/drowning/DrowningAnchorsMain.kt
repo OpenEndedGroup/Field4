@@ -35,6 +35,11 @@ object DrowningAnchorsMain {
         val bytes = ByteBuffer.allocate(a.vec4s*16)
         a.write(bytes)
         check(bytes.position() == a.vec4s*16)
-        println("ANCHOR_TEST_PASS stable slots, missing/reappearing tracks, generation on reuse/loop, bounded layout")
+        val sparse = DrowningAnchors(cells=2, slotsPerCell=1, graceFrames=0)
+        sparse.update(intArrayOf(1), listOf(frame(4, listOf(40))))
+        check(!sparse.valid(0) && sparse.valid(1) && sparse.activeCount == 1)
+        sparse.update(intArrayOf(0), listOf(frame(5, listOf(50))))
+        check(sparse.valid(0) && !sparse.valid(1) && sparse.activeCount == 1)
+        println("ANCHOR_TEST_PASS stable slots, sparse cells, generation on reuse/loop, bounded layout")
     }
 }

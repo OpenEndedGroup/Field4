@@ -28,7 +28,7 @@ class DrowningPresentation(
         transport.splats.presentationPaced = true
     }
 
-    private data class Key(val look: String, val frame: Int, val offsets: List<Int>)
+    private data class Key(val look: String, val frame: Int, val offsets: List<Int>, val cellMask: Int)
     private data class PreparedLook(val frame: Int, val offsets: List<Int>)
     private data class Resources(
         var video: VideoTexture? = null,
@@ -54,6 +54,10 @@ class DrowningPresentation(
     private var readySince = 0L
     private val splatShades = linkedMapOf<String, () -> Boolean>()
     private var mxgShade: () -> Boolean = { false }
+    private var observedCellMask = FULL_CELL_MASK
+
+    /** Evaluated on the render thread; wire this to [DrowningScore.activeMask]. */
+    var channelMask: () -> Int = { FULL_CELL_MASK }
 
     var splatsEnabled = true
     var mxgEnabled = true
@@ -63,8 +67,8 @@ class DrowningPresentation(
         private set
     private var splatsReadyToDraw = false
     private var mxgReadyToDraw = false
-    val splatsVisible: Boolean get() = splatsActive && splatsReadyToDraw
-    val mxgVisible: Boolean get() = mxgActive && mxgReadyToDraw
+    val splatsVisible: Boolean get() = splatsActive && splatsReadyToDraw && presentedCellMask != 0
+    val mxgVisible: Boolean get() = mxgActive && mxgReadyToDraw && presentedCellMask != 0
     var activeSplatShades: Set<String> = emptySet()
         private set
     var splatUploads: Long = 0
@@ -130,13 +134,18 @@ class DrowningPresentation(
         val set = synchronized(resources) { resources[name] } ?: return false
         val frame = prepared.frame
         val offsets = prepared.offsets
+        val cellMask = checkedCellMask()
+        val cells = activeCells(cellMask)
         val frames = IntArray(15) { Math.floorMod(frame + offsets[it], transport.frameCount) }
         if (set.video?.isFrameReady(frame.toLong()) != true) return false
-        if (splatsActive && set.splats?.latestFrames()?.contentEquals(frames) != true) return false
+        val splatBank = set.splats
+        if (splatsActive && (splatBank?.latestCellMask() != cellMask ||
+                splatBank.latestFrames()?.contentEquals(frames) != true)) return false
         if (mxgActive) {
             val ready = set.mxg?.latest ?: return false
-            if (ready.requestedFrame != frame || ready.offsets.toList() != offsets) return false
-            if (ready.frames.map { it.frameIndex } != frames.toList()) return false
+            if (ready.requestedFrame != frame || ready.offsets.toList() != offsets ||
+                ready.cellMask != cellMask || !ready.cells.contentEquals(cells)) return false
+            if (ready.frames.map { it.frameIndex } != cells.map { frames[it] }) return false
         }
         return true
     }
@@ -155,6 +164,8 @@ class DrowningPresentation(
     var presentedSplatFrames: List<Int> = emptyList()
         private set
     var presentedMxgFrames: List<Int> = emptyList()
+        private set
+    var presentedCellMask: Int = FULL_CELL_MASK
         private set
     var presentations: Long = 0
         private set
@@ -247,10 +258,10 @@ class DrowningPresentation(
         resourceRevision.incrementAndGet()
     }
 
-    private fun updateDemand(targetLook: String) {
+    private fun updateDemand(targetLook: String, cellMask: Int) {
         activeSplatShades = splatShades.filterValues { it() }.keys.toSet()
-        val needSplats = splatsEnabled && activeSplatShades.isNotEmpty()
-        val needMxg = mxgEnabled && mxgShade()
+        val needSplats = cellMask != 0 && splatsEnabled && activeSplatShades.isNotEmpty()
+        val needMxg = cellMask != 0 && mxgEnabled && mxgShade()
         if (needSplats != splatsActive || needMxg != mxgActive) {
             releaseHeld()
             barrier.reset() // Drop a pending disabled layer; permit rejoin even while paused.
@@ -270,7 +281,7 @@ class DrowningPresentation(
         }
     }
 
-    private fun prepareStandbys(targetLook: String) {
+    private fun prepareStandbys(targetLook: String, cellMask: Int) {
         val warm = synchronized(preparedAhead) { preparedAhead.toMap() }
         val standbys = synchronized(resources) {
             resources.mapNotNull { (name, set) ->
@@ -282,15 +293,23 @@ class DrowningPresentation(
                 Math.floorMod(prepared.frame + prepared.offsets[it], transport.frameCount)
             }
             standby.video?.prepareFrame(prepared.frame.toLong())
-            if (splatsActive) standby.splats?.request(frames)
-            if (mxgActive) standby.mxg?.request(prepared.frame, prepared.offsets.toIntArray())
+            if (splatsActive) standby.splats?.request(frames, cellMask)
+            if (mxgActive) standby.mxg?.request(prepared.frame, prepared.offsets.toIntArray(), cellMask)
         }
     }
 
     override fun render(command: CommandBuffer, index: Int) {
         renderFrames++
         val targetLook = wantedLook
-        updateDemand(targetLook)
+        val cellMask = checkedCellMask()
+        if (cellMask != observedCellMask) {
+            releaseHeld()
+            barrier.reset()
+            activeKey = null
+            observedCellMask = cellMask
+            resourceRevision.incrementAndGet()
+        }
+        updateDemand(targetLook, cellMask)
         val set = synchronized(resources) { resources[targetLook] }
         val video = set?.video
         if (set == null || video == null ||
@@ -303,7 +322,7 @@ class DrowningPresentation(
         val mxg = set.mxg
         if (splatsActive) splats?.failure?.let { throw it }
         if (mxgActive) mxg?.failure?.let { throw it }
-        prepareStandbys(targetLook)
+        prepareStandbys(targetLook, cellMask)
         val revision = transport.splats.seekGeneration * 31L + resourceRevision.get()
         val now = System.nanoTime()
         val demand = pacer.select(
@@ -319,9 +338,13 @@ class DrowningPresentation(
             waitingFor = if (!transport.playing || transport.speed == 0.0) "paused" else "end"
             return
         }
-        val desired = Key(targetLook, demand.frame, List(15) { transport.unwrappedFrameFor(it) - transport.frame })
+        val desired = Key(
+            targetLook, demand.frame,
+            List(15) { transport.unwrappedFrameFor(it) - transport.frame }, cellMask
+        )
         val key = barrier.select(desired, demand.generation) ?: return
         val frames = IntArray(15) { Math.floorMod(key.frame + key.offsets[it], transport.frameCount) }
+        val cells = activeCells(key.cellMask)
         if (activeKey != key) {
             releaseHeld()
             activeKey = key
@@ -329,21 +352,22 @@ class DrowningPresentation(
             readySince = 0L
         }
         video.prepareFrame(key.frame.toLong())
-        if (splatsActive) checkNotNull(splats).request(frames)
-        if (mxgActive) checkNotNull(mxg).request(key.frame, key.offsets.toIntArray())
+        if (splatsActive) checkNotNull(splats).request(frames, key.cellMask)
+        if (mxgActive) checkNotNull(mxg).request(key.frame, key.offsets.toIntArray(), key.cellMask)
         if (splatsActive && heldSplats == null) {
             checkNotNull(splats).takeLatest()?.let { snapshot ->
-                if (snapshot.frames.contentEquals(frames)) {
+                if (snapshot.cellMask == key.cellMask && snapshot.frames.contentEquals(frames)) {
                     heldSplats = snapshot
                     heldSplatBank = splats
                 } else splats.release(snapshot)
             }
         }
         val mxgReady = mxg?.latest?.takeIf {
-            it.requestedFrame == key.frame && it.offsets.toList() == key.offsets
+            it.requestedFrame == key.frame && it.offsets.toList() == key.offsets &&
+                it.cellMask == key.cellMask && it.cells.contentEquals(cells)
         }
-        if (mxgActive && mxgReady != null) check(mxgReady.frames.map { it.frameIndex } == frames.toList()) {
-            "MXG record/source-frame mismatch: requested ${frames.toList()}, got ${mxgReady.frames.map { it.frameIndex }}"
+        if (mxgActive && mxgReady != null) check(mxgReady.frames.map { it.frameIndex } == cells.map { frames[it] }) {
+            "MXG record/source-frame mismatch: requested ${cells.map { frames[it] }}, got ${mxgReady.frames.map { it.frameIndex }}"
         }
         val videoReady = video.isFrameReady(key.frame.toLong())
         val assetsReady = videoReady && (!splatsActive || heldSplats != null) && (!mxgActive || mxgReady != null)
@@ -372,11 +396,12 @@ class DrowningPresentation(
             presentedLook = key.look
             presentedFrame = key.frame
             presentedVideoFrame = video.uploadedFrameIndex
-            presentedSplatFrames = if (splatsActive) checkNotNull(heldSplats).frames.toList() else emptyList()
+            presentedCellMask = key.cellMask
+            presentedSplatFrames = if (splatsActive) cells.map { checkNotNull(heldSplats).frames[it] } else emptyList()
             presentedMxgFrames = if (mxgActive) checkNotNull(mxgReady).frames.map { it.frameIndex } else emptyList()
             check(presentedVideoFrame == presentedFrame.toLong())
-            if (splatsActive) check(presentedSplatFrames == frames.toList())
-            if (mxgActive) check(presentedMxgFrames == frames.toList())
+            if (splatsActive) check(presentedSplatFrames == cells.map { frames[it] })
+            if (mxgActive) check(presentedMxgFrames == cells.map { frames[it] })
             splatsReadyToDraw = splatsActive
             mxgReadyToDraw = mxgActive
             presentations++
@@ -395,6 +420,7 @@ class DrowningPresentation(
         "splats=${presentedSplatFrames.distinct()} mxg=${presentedMxgFrames.distinct()} " +
         "pending=$pendingLook/$pendingFrame waiting=$waitingFor sets=$presentations " +
         "warm=${synchronized(preparedAhead) { preparedAhead.entries.joinToString { "${it.key}@${it.value.frame}" } }} " +
+        "cells=${Integer.bitCount(presentedCellMask)}/${Integer.bitCount(observedCellMask)} " +
         "active=splats:$splatsActive(${activeSplatShades.size}),mxg:$mxgActive " +
         "uploads=$splatUploads/$mxgUploads renderFrames=$renderFrames waitMs=%.1f assetMs=%.1f leadMs=%+.1f"
             .format(lastWaitMillis, lastAssetWaitMillis, lastLeadMillis)
@@ -407,5 +433,17 @@ class DrowningPresentation(
                 it.mxg?.setActive(false)
             }
         }
+    }
+
+    private fun checkedCellMask(): Int {
+        val value = channelMask()
+        require(value and FULL_CELL_MASK.inv() == 0) { "channel mask has bits outside 0..14: $value" }
+        return value
+    }
+
+    private fun activeCells(mask: Int): IntArray = (0 until 15).filter { mask and (1 shl it) != 0 }.toIntArray()
+
+    companion object {
+        private const val FULL_CELL_MASK = (1 shl 15) - 1
     }
 }

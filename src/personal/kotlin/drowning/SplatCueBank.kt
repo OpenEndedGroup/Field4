@@ -22,6 +22,7 @@ import kotlin.math.min
 data class SplatCueSnapshot(
     val serial: Long,
     val frames: IntArray,
+    val cellMask: Int,
     val floats: FloatBuffer,
     val packed: GaussianSplatRenderer.PackedFrame
 )
@@ -39,7 +40,7 @@ class SplatCueBank(
     private val sortAlong: Vector3f? = null,
     parallelism: Int = min(8, sequences.size)
 ) : AutoCloseable {
-    private data class Request(val frames: IntArray, val epoch: Long)
+    private data class Request(val frames: IntArray, val cellMask: Int, val epoch: Long)
     private val requestLock = Any()
     private val epoch = AtomicLong()
     private val reads = AtomicLong()
@@ -99,6 +100,7 @@ class SplatCueBank(
 
     /** Inspect the prepared source-frame identities without taking ownership of the upload buffer. */
     fun latestFrames(): IntArray? = published.get()?.frames?.copyOf()
+    fun latestCellMask(): Int? = published.get()?.cellMask
 
     /** Reprepare the same frame after a presenter or GPU consumer has been replaced. */
     fun invalidate() = synchronized(requestLock) {
@@ -121,14 +123,16 @@ class SplatCueBank(
         return this
     }
 
-    fun request(frames: IntArray): Boolean = synchronized(requestLock) {
+    fun request(frames: IntArray, cellMask: Int = (1 shl sequences.size) - 1): Boolean = synchronized(requestLock) {
         require(frames.size == sequences.size) {
             "need ${sequences.size} splat frames, got ${frames.size}"
         }
         if (!active || !running) return@synchronized false
         val previous = requested.get()
-        if (previous != null && previous.frames.contentEquals(frames)) return@synchronized false
-        val request = Request(frames.copyOf(), epoch.get())
+        val validMask = (1 shl sequences.size) - 1
+        require(cellMask and validMask.inv() == 0) { "splat cell mask has bits outside ${sequences.indices}" }
+        if (previous != null && previous.cellMask == cellMask && previous.frames.contentEquals(frames)) return@synchronized false
+        val request = Request(frames.copyOf(), cellMask, epoch.get())
         requested.set(request)
         pending.set(request)
         LockSupport.unpark(coordinator)
@@ -149,7 +153,9 @@ class SplatCueBank(
                 try {
                     if (!current(request)) continue
                     val started = System.nanoTime()
-                    val jobs: List<Future<CompressedSplatPly.RawSplats?>> = sequences.mapIndexed { index, sequence ->
+                    val cells = sequences.indices.filter { request.cellMask and (1 shl it) != 0 }
+                    val jobs: List<Future<CompressedSplatPly.RawSplats?>> = cells.map { index ->
+                        val sequence = sequences[index]
                         pool.submit(Callable {
                             if (!current(request)) null else {
                                 reads.incrementAndGet()
@@ -165,7 +171,10 @@ class SplatCueBank(
                     try {
                         if (!current(request)) continue
                         val packStarted = System.nanoTime()
-                        val sources = splats.mapIndexed { index, raw -> SplatSource(checkNotNull(raw), transforms[index]) }
+                        val sources = splats.mapIndexed { packedIndex, raw ->
+                            val cell = cells[packedIndex]
+                            SplatSource(checkNotNull(raw), transforms[cell], sourceIndex = cell)
+                        }
                         val packed = GaussianSplatRenderer.packInto(
                             sources = sources, dest = floats, config = config,
                             sortAlong = sortAlong, parallelSort = true
@@ -173,7 +182,9 @@ class SplatCueBank(
                         packMicros = (System.nanoTime() - packStarted) / 1_000L
                         synchronized(requestLock) {
                             if (current(request)) {
-                                val next = SplatCueSnapshot(serial.incrementAndGet(), request.frames, floats, packed)
+                                val next = SplatCueSnapshot(
+                                    serial.incrementAndGet(), request.frames, request.cellMask, floats, packed
+                                )
                                 published.getAndSet(next)?.let(::release)
                                 handedOff = true
                             }

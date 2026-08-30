@@ -452,3 +452,23 @@ remain false until a returning layer has joined a matching video/geometry presen
 boxes do this with zero draw instances or zero vertices, preserving the user's module enabled state
 and normal shader reload. Disabled layers are not prerequisites in the frame barrier. The atlas
 continues for other consumers; this is decoder suspension, not asset unloading.
+
+The score can also gate individual cells without changing their stable 0..14 palette identities:
+
+```kotlin
+val score = _cueScore.live
+score.only(0, 4, 9, 12, seconds = 2.0)
+score.group(6, 7).materialize(seconds = 1.5)
+score.group(0, 4).retire(seconds = 3.0)
+```
+
+Retirement keeps a cell resident until opacity, particle influence and projected light have all
+faded to zero, then omits its splat read/pack/upload and MXG decode/upload. Materialization marks the
+cell resident first; score time stays still while the new sparse asset set joins the presentation
+barrier, so its fade cannot reveal stale geometry. Sparse splats retain their original palette IDs,
+and inactive MXG meshes and anchor slots are invalidated. The packed video remains one full atlas
+decode/upload, and the fixed 15-cell palette remains intentionally tiny and stable.
+
+Use `_cueScore.live` in connected gesture boxes: their generated preamble can construct a sibling
+score object, while `live` resolves the instance currently advancing this piece. One-shot score
+gestures travel through a per-session command lane and are consumed on the render-score update.
