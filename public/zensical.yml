@@ -21,6 +21,7 @@ nav:
   - Working in a Document:
     - Spatial Navigation: spatial_navigation.md
     - Snapping: snapping.md
+    - Files, and Where They Live: files_and_paths.md
     - Your History with Field: history_overview.md
     - Document History: document_history.md
     - Inline History (History Lens): history_lens.md

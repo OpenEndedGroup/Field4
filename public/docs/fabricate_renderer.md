@@ -580,6 +580,11 @@ For local debugging, the throwaway Three.js probe loads the same `ToyCar.glb` an
 ![ToyCar comparison between the throwaway Three.js probe and Field StandardRenderer](assets/fabricate-toy-car-three-throwaway-comparison.png)
 
 ```diffstatic {data-lang=kotlin}
+// A repository-relative path, because this page's asset ships with the docs and the capture runs
+// from the repository root. In a document of your own, name the asset and let Field resolve it:
+//     val toyCarPath = "ToyCar.glb".absolutePath
+// which looks inside the document folder first and the workspace project second. See
+// "Files, and where they live" under Working in a Document.
 val toyCarPath = File("public/docs/assets/fabricate_demo/ToyCar.glb").absolutePath
 val loaded = bundle.registerGltf(
     path = toyCarPath,
@@ -635,6 +640,8 @@ For tooling that wants only the pure scene representation, `FabricateGltfBridge.
 The environment asset is already local. Load the EXR directly when the environment should participate in roughness-aware IBL. Ask the texture loader for prefiltered radiance mips so glossy materials can sample lower LODs as roughness rises. The PNG companion is just a debug/preview fallback now.
 
 ```diffstatic {data-lang=kotlin}
+// Again a docs-repository path. In a document of your own, drop the EXR into the document folder
+// and ask for it by name: "venice_sunset_1k.exr".absolutePath.
 val veniceExr = File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath
 
 val environment = LoadedTexture.fromExrFile(
