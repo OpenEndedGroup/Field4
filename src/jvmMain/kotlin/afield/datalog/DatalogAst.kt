@@ -163,6 +163,42 @@ internal fun dlArithText(arith: DlArith): String = when (arith) {
     is DlACall -> "${arith.fn}(${arith.args.joinToString(", ") { dlArithText(it) }})"
 }
 
+/**
+ * Replace the variables [bindings] knows about with the values they took, leaving the rest as
+ * variables.
+ *
+ * This exists so a proof can print the *instantiated* form of a literal — `child(a, C)` rather than
+ * `child(P, C)` — beside the group it produced. A reader shown `N = count : { child(P, C) }` above a
+ * list of tuples has to work out which `P` this was; shown `N = count : { child(a, C) }` they do
+ * not. Rendering only; never fed back to the engine, which plans over the original.
+ */
+internal fun dlSubstitute(literal: DlLiteral, bindings: Map<String, Any?>): DlLiteral = when (literal) {
+    is DlAtom -> literal.copy(terms = literal.terms.map { dlSubstituteTerm(it, bindings) })
+    is DlCompare -> literal.copy(
+        left = dlSubstituteArith(literal.left, bindings),
+        right = dlSubstituteArith(literal.right, bindings),
+    )
+    is DlAggregate -> literal.copy(
+        over = literal.over?.let { dlSubstituteArith(it, bindings) },
+        body = literal.body.map { dlSubstitute(it, bindings) },
+    )
+}
+
+private fun dlSubstituteTerm(term: DlTerm, bindings: Map<String, Any?>): DlTerm = when (term) {
+    is DlConst -> term
+    is DlVar -> if (bindings.containsKey(term.name)) DlConst(bindings[term.name]) else term
+}
+
+internal fun dlSubstituteArith(arith: DlArith, bindings: Map<String, Any?>): DlArith = when (arith) {
+    is DlAValue -> DlAValue(dlSubstituteTerm(arith.term, bindings))
+    is DlABinary -> arith.copy(
+        left = dlSubstituteArith(arith.left, bindings),
+        right = dlSubstituteArith(arith.right, bindings),
+    )
+    is DlAUnary -> arith.copy(operand = dlSubstituteArith(arith.operand, bindings))
+    is DlACall -> arith.copy(args = arith.args.map { dlSubstituteArith(it, bindings) })
+}
+
 /** Every variable mentioned, in first-appearance order. */
 internal fun dlVarsOf(literals: List<DlLiteral>): List<DlVar> {
     val out = LinkedHashSet<DlVar>()

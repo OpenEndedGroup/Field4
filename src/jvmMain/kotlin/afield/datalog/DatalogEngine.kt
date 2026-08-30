@@ -16,7 +16,8 @@ import afield.ToHTML
  *    buffer and are merged at the end of the iteration, so every fact's [DlRelation.roundOf] is
  *    strictly greater than the rounds of the facts that derived it. That is what makes
  *    [Datalog.why] terminate without an occurs-check hack: a proof may only descend to
- *    strictly earlier rounds.
+ *    strictly earlier rounds. The counter is *global*, not per-stratum, so the same ordering holds
+ *    across a stratum boundary and a proof may descend through negation and aggregation too.
  *  - **Negation and aggregation are stratified.** Both are "negative" edges in the dependency graph;
  *    a negative edge inside a strongly-connected component is rejected up front with the cycle
  *    spelled out, rather than producing an answer that depends on evaluation order.
@@ -147,6 +148,32 @@ private fun asNumber(value: Any?, context: String): Number = when (value) {
     else -> throw DlException("$context: ${value::class.java.simpleName} is not a number")
 }
 
+/**
+ * Combine an aggregate's group into its one value. `solutions` is how many times the subgoal
+ * succeeded (which is what `count` reports) and `values` are the evaluations of the `over`
+ * expression, one per solution — empty for `count`, which has no `over`.
+ *
+ * Top-level rather than a method on [DatalogEngine] because [Datalog.why] recomputes an aggregate
+ * from the group it reconstructed and then checks the answer against the fact in the model. Two
+ * implementations of `sum` that agreed on the day they were written would be a proof that lies
+ * later; there is one.
+ *
+ * Returning null means "no value" — `min`/`max`/`mean` of nothing — which makes the enclosing rule
+ * not fire, and makes a reconstructed proof of such a fact impossible, correctly.
+ */
+fun dlAggregateValue(op: String, solutions: Int, values: List<Any?>): Any? = when (op) {
+    "count" -> solutions.toLong()
+    "sum" -> if (values.isEmpty()) 0L else values.fold(0.0 to true) { (acc, allLong), v ->
+        (acc + asNumber(v, "sum").toDouble()) to (allLong && v is Long)
+    }.let { (total, allLong) -> if (allLong) dlNormalize(total) else total }
+    "min" -> values.minWithOrNull { a, b -> dlCompareValues(a, b) }
+    "max" -> values.maxWithOrNull { a, b -> dlCompareValues(a, b) }
+    "mean" -> if (values.isEmpty()) null
+    else dlNormalize(values.sumOf { asNumber(it, "mean").toDouble() } / values.size)
+    "collect" -> values.sortedWith { a, b -> dlCompareValues(a, b) }
+    else -> throw DlException("unknown aggregate '$op'")
+}
+
 private fun truthy(value: Any?): Boolean = when (value) {
     is Boolean -> value
     null -> false
@@ -187,7 +214,8 @@ class DatalogEngine(
         arity.forEach { (name, n) -> db.getOrPut(name) { DlRelation(name, n) } }
 
         val strata = stratify()
-        strata.forEach { stratum -> evaluateStratum(stratum) }
+        var round = 1
+        strata.forEach { stratum -> round = evaluateStratum(stratum, round) }
 
         if (undefined.isNotEmpty()) {
             warningList.add(
@@ -648,10 +676,24 @@ class DatalogEngine(
     private fun relation(pred: String): DlRelation =
         db.getOrPut(pred) { DlRelation(pred, arity[pred] ?: 0) }
 
-    private fun evaluateStratum(stratum: List<DlRule>) {
+    /**
+     * Saturate one stratum, numbering the facts it derives from [firstRound] upwards. Returns the
+     * round the *next* stratum should start at.
+     *
+     * The counter is threaded through rather than restarted per stratum, and that is load-bearing
+     * rather than tidy. [Datalog.why] only accepts a premise whose round is strictly lower than its
+     * conclusion's, which is what makes proof search terminate without an occurs-check. With a
+     * per-stratum counter a rule in a later stratum got round 1 while the predicate it reads sat in
+     * an earlier stratum at round 5, every candidate premise was filtered out, and `#why` reported a
+     * real fact as unproven — the visible symptom of a rule with negation or an aggregate in its
+     * body, since those are exactly the constructs that create a stratum boundary. Strata are
+     * evaluated in topological order, so a global counter makes "older stratum ⇒ lower round" true
+     * by construction.
+     */
+    private fun evaluateStratum(stratum: List<DlRule>, firstRound: Int): Int {
         val preds = stratum.map { it.head.pred }.toSet()
         val plans = stratum.map { plan(it, preds) }
-        var round = 1
+        var round = firstRound
         var delta: Map<String, DlRelation>? = null
 
         while (true) {
@@ -677,10 +719,12 @@ class DatalogEngine(
                     added.getOrPut(pred) { DlRelation(pred, arity[pred] ?: row.size) }.add(row, round)
                 }
             }
-            if (added.isEmpty()) return
+            if (added.isEmpty()) return round + 1
             delta = added
             round++
-            if (round > MAX_ROUNDS) {
+            // Measured from this stratum's first round, so the ceiling stays "rounds spent on one
+            // fixpoint" now that the counter is global.
+            if (round - firstRound >= MAX_ROUNDS) {
                 throw DlException("fixpoint did not converge after $MAX_ROUNDS rounds — is a rule generating new values?")
             }
         }
@@ -784,27 +828,13 @@ class DatalogEngine(
                     solutions++
                     step.over?.let { collected.add(evalArith(it, env, plan)) }
                 }
-                val value = aggregate(step.op, solutions, collected) ?: return
+                val value = dlAggregateValue(step.op, solutions, collected) ?: return
                 val saved = env[step.slot]
                 env[step.slot] = value
                 execute(plan, steps, env, stepIndex + 1, delta, deltaOrdinal, emit)
                 env[step.slot] = saved
             }
         }
-    }
-
-    /** null means "no value" — `min`/`max`/`mean` of nothing, which makes the enclosing rule not fire. */
-    private fun aggregate(op: String, solutions: Int, values: List<Any?>): Any? = when (op) {
-        "count" -> solutions.toLong()
-        "sum" -> if (values.isEmpty()) 0L else values.fold(0.0 to true) { (acc, allLong), v ->
-            (acc + asNumber(v, "sum").toDouble()) to (allLong && v is Long)
-        }.let { (total, allLong) -> if (allLong) dlNormalize(total) else total }
-        "min" -> values.minWithOrNull { a, b -> dlCompareValues(a, b) }
-        "max" -> values.maxWithOrNull { a, b -> dlCompareValues(a, b) }
-        "mean" -> if (values.isEmpty()) null
-        else dlNormalize(values.sumOf { asNumber(it, "mean").toDouble() } / values.size)
-        "collect" -> values.sortedWith { a, b -> dlCompareValues(a, b) }
-        else -> throw DlException("unknown aggregate '$op'")
     }
 
     private fun valueOf(arg: DlArg, env: Array<Any?>): Any? = when (arg) {
@@ -908,17 +938,46 @@ fun dlCallFunction(name: String, args: List<Any?>): Any? {
 }
 
 /**
+ * What a premise *is* to the step above it. A proof tree is not homogeneous, and a reader who
+ * cannot tell a rule body from an aggregate's group is reading a tree that means several different
+ * things in the same shape.
+ */
+enum class DlPremiseKind {
+    /** A fact, or a fact re-derived by a rule — the ordinary case, and the whole tree before this. */
+    DERIVED,
+
+    /**
+     * The evaluation of an aggregate subgoal. Its premises are the *group* — the tuples that were
+     * summed, counted or compared — not the body of a rule.
+     */
+    AGGREGATE,
+
+    /**
+     * One solution of an aggregate subgoal, when that subgoal has more than one atom and so needs a
+     * node of its own to hold them together. A single-atom subgoal contributes its atom directly,
+     * with a [DlDerivation.contribution].
+     */
+    GROUP,
+
+    /** A negated body literal that held: the witness is that nothing matches it. No premises. */
+    ABSENCE,
+}
+
+/**
  * One step of a proof: a fact, the rule that produced it, and the facts that rule consumed.
  *
  * [note] says so when the search could not reconstruct a proof for a fact that is nonetheless in
- * the model — today that means a fact derived through an aggregate, which the
- * top-down search does not re-run.
+ * the model. [kind] says what this node is to its parent, and [contribution] what it gave to an
+ * aggregate above it — "which tuple was the max" is most of what a person wants from an aggregate
+ * proof, and it lives on the tuple rather than in a separate list so it survives any rendering.
  */
 class DlDerivation(
     val fact: String,
     val rule: DlRule?,
     val premises: List<DlDerivation>,
     val note: String? = null,
+    val kind: DlPremiseKind = DlPremiseKind.DERIVED,
+    val contribution: String? = null,
 ) : ToHTML {
     fun render(indent: String = ""): String = buildString {
         append(indent).append(fact)
@@ -932,12 +991,15 @@ class DlDerivation(
      * Two recursive rules for one predicate have the same head, so a head-only label made every
      * step of a transitive-closure proof read identically — which is the opposite of what a proof
      * is for.
+     *
+     * A [contribution] is appended rather than replacing the label, because a group member is often
+     * itself derived and losing its rule would cut the proof off one level early.
      */
     fun because(limit: Int = 72): String {
-        note?.let { return it }
-        val r = rule ?: return "fact"
-        val text = r.toString().removeSuffix(".")
-        return if (text.length <= limit) text else text.take(limit - 1) + "…"
+        val head = note ?: rule?.toString()?.removeSuffix(".")?.let {
+            if (it.length <= limit) it else it.take(limit - 1) + "…"
+        } ?: "fact"
+        return if (contribution == null) head else "$head; $contribution"
     }
 
     override fun toString() = render()
@@ -955,9 +1017,18 @@ class DlDerivation(
     }
 
     private fun StringBuilder.appendNode(node: DlDerivation, depth: Int) {
+        // An aggregate step is a different kind of thing from a rule step, so it gets a different
+        // hook (Σ) and a different colour. Everything else keeps the elbow it always had, so an
+        // existing proof renders byte-identically.
+        val hook = when (node.kind) {
+            DlPremiseKind.AGGREGATE -> "&Sigma; "
+            DlPremiseKind.ABSENCE -> "&empty; "
+            else -> "&#8627; "
+        }
+        val colour = if (node.kind == DlPremiseKind.AGGREGATE) DL_KEY_COLOUR else DL_VALUE_COLOUR
         append("<div style='padding-left:" + (depth * 18) + "px'>")
-        if (depth > 0) append("<span style='color:$DL_MUTED_COLOUR'>&#8627; </span>")
-        append("<span style='color:$DL_VALUE_COLOUR'>" + escapeDlHtml(node.fact) + "</span>")
+        if (depth > 0) append("<span style='color:$DL_MUTED_COLOUR'>$hook</span>")
+        append("<span style='color:$colour'>" + escapeDlHtml(node.fact) + "</span>")
         append("<span style='color:$DL_MUTED_COLOUR'>&nbsp;&nbsp;[" + escapeDlHtml(node.because()) + "]</span>")
         append("</div>")
         node.premises.forEach { appendNode(it, depth + 1) }

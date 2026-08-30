@@ -239,7 +239,14 @@ class DatalogExecution(val inside: Box) : BoxExecution {
         "program" -> datalog.program().ifBlank { "(empty)" }
         "why" -> {
             if (directive.argument.isBlank()) "usage: #why <goal>"
-            else datalog.why(directive.argument)?.render() ?: "${directive.argument} is not in the model"
+            // A fact that is absent is the commonest reason to ask why, so point at the verb that
+            // answers *that* question rather than stopping at "no".
+            else datalog.why(directive.argument)?.render()
+                ?: "${directive.argument} is not in the model — try #whynot ${directive.argument}"
+        }
+        "whynot" -> {
+            if (directive.argument.isBlank()) "usage: #whynot <goal>"
+            else datalog.whyNot(directive.argument).render()
         }
         "facts" -> {
             val pred = directive.argument.trim()
@@ -275,6 +282,7 @@ class DatalogExecution(val inside: Box) : BoxExecution {
             "facts <p>" to "print the rows of one relation",
             "program" to "print the accumulated program as source",
             "why <goal>" to "explain how a fact was derived",
+            "whynot <goal>" to "explain why a goal has no answers",
             "reset" to "forget every fact and rule in this box",
         )
     }

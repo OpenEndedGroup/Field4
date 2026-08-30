@@ -26,7 +26,7 @@
   // shared at run time — but they can be compared at build time.
   const aggregateOps = ["collect", "count", "max", "mean", "min", "sum"];
   const functionWords = ["abs", "atan2", "cat", "ceil", "contains", "cos", "endsWith", "exp", "floor", "hypot", "indexOf", "int", "len", "log", "lower", "max", "min", "not", "num", "pow", "round", "sign", "sin", "split", "sqrt", "startsWith", "str", "substr", "tan", "trim", "upper"];
-  const directiveWords = ["boxes", "facts", "help", "program", "relations", "reset", "why"];
+  const directiveWords = ["boxes", "facts", "help", "program", "relations", "reset", "why", "whynot"];
   // The relations afield.datalog's box bridge defines, offered once a program has said #boxes.
   const boxRelations = [
     ["box", "box(Id) — every live box in the document"],
@@ -88,6 +88,7 @@
     ["facts", "#facts <relation> — print the rows of one relation"],
     ["program", "#program — print the accumulated program as source"],
     ["why", "#why <goal> — explain how a fact was derived"],
+    ["whynot", "#whynot <goal> — explain why a goal has no answers"],
     ["reset", "#reset — forget every fact and rule in this box"],
   ]);
 

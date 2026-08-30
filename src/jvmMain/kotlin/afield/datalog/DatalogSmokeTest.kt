@@ -44,6 +44,10 @@ object DatalogSmokeTest {
         testSafetyErrors()
         testQueryApi()
         testProvenance()
+        testAggregateProvenance()
+        testCrossStratumProvenance()
+        testEveryAggregateOpProves()
+        testWhyNot()
         testKotlinFacts()
         testIdempotentAdd()
         testParserSurface()
@@ -348,6 +352,359 @@ object DatalogSmokeTest {
         val loop = cyclic.why("path(a, a)")
         check(loop != null && !loop.render().contains("truncated")) { "cyclic proof: ${loop?.render()}" }
     }
+
+    /**
+     * A fact derived through an aggregate is justified by the tuples that contributed to it, plus
+     * the arithmetic that combined them. Until this landed `#why` answered such a fact with
+     * "no proof reconstructed", which is the one thing a reader cannot check by eye.
+     *
+     * The oracle here is deliberately **set equality on the group**, not "the proof mentions ada".
+     * An existence check passes on a group that also swept in `cy` from the other department — which
+     * is precisely the failure that would make an aggregate proof worse than an apology.
+     */
+    private fun testAggregateProvenance() {
+        val d = Datalog()
+        d.add(
+            """
+            emp(ada, sales, 100). emp(bob, sales, 200). emp(cy, eng, 50).
+            dept(sales). dept(eng).
+            payroll(D, S) :- dept(D), S = sum P : { emp(_, D, P) }.
+            """
+        )
+        // Premise: the model really does contain the fact whose proof is under test, and it really
+        // was derived (not stated). If either stops being true this test must fail loudly rather
+        // than quietly assert nothing.
+        check(d.ask("payroll(sales, 300)")) { "premise: payroll(sales, 300) should be in the model" }
+        check(d.solve()["payroll"]!!.roundOf(listOf("sales", 300L)) > 0) {
+            "premise: payroll(sales, 300) must be derived, not stated"
+        }
+
+        val why = d.why("payroll(sales, 300)")
+        check(why != null) { "payroll(sales, 300) should have a derivation" }
+        val text = why.render()
+        check(!text.contains("no proof reconstructed")) { "an aggregate must now be proved:\n$text" }
+
+        val aggregateNodes = proofNodes(why).filter { it.kind == DlPremiseKind.AGGREGATE }
+        check(aggregateNodes.size == 1) { "exactly one aggregate step:\n$text" }
+        val group = aggregateNodes.single().premises.map { it.fact }.toSet()
+        check(group == setOf("emp(ada, sales, 100)", "emp(bob, sales, 200)")) {
+            "the group must be exactly the sales rows, no more and no fewer: $group\n$text"
+        }
+        check(aggregateNodes.single().because().contains("sum over 2 tuples = 300")) {
+            "the aggregate step must state the arithmetic:\n$text"
+        }
+        check(text.contains("contributes P = 100") && text.contains("contributes P = 200")) {
+            "each tuple must say what it contributed:\n$text"
+        }
+        // Counterfactual, floored at a number rather than "differs": the old answer was a single
+        // node with an apology. A real proof of this fact has the head, the `dept` premise, the
+        // aggregate step and both group members — at least five nodes — and is not empty.
+        check(text.isNotEmpty()) { "the rendered proof must be non-empty" }
+        check(proofNodes(why).size >= 5) { "a reconstructed aggregate proof has ≥5 nodes:\n$text" }
+
+        // min/max name their witness, which is most of what "why is the max 200" means.
+        val m = Datalog()
+        m.add(
+            """
+            emp(ada, sales, 100). emp(bob, sales, 200). emp(cy, sales, 150).
+            dept(sales).
+            best(D, S) :- dept(D), S = max P : { emp(_, D, P) }.
+            """
+        )
+        check(m.ask("best(sales, 200)")) { "premise: best(sales, 200) should be in the model" }
+        val maxWhy = m.why("best(sales, 200)")
+        check(maxWhy != null) { "best(sales, 200) should have a derivation" }
+        val maxText = maxWhy.render()
+        check(maxText.contains("emp(bob, sales, 200)") && maxText.contains("the max")) {
+            "max must label the tuple that was the max:\n$maxText"
+        }
+        check(maxText.contains("emp(ada, sales, 100)")) {
+            "the other tuples are part of the proof too — nothing bigger exists:\n$maxText"
+        }
+
+        // A ledger rather than a spot check: *every* row the aggregate rule derived must prove, and a
+        // total that is not in the model must not. One group quietly reconstructed for the wrong
+        // department would show up here as an apology, and a spot check on `sales` would not see it.
+        val ledger = Datalog()
+        ledger.add(
+            """
+            emp(ada, sales, 100). emp(bob, sales, 200). emp(cy, eng, 50). emp(di, eng, 70).
+            emp(el, art, 5).
+            dept(sales). dept(eng). dept(art).
+            payroll(D, S) :- dept(D), S = sum P : { emp(_, D, P) }.
+            """
+        )
+        val totals = ledger.rowsOf("payroll").associate { it[0] as String to it[1] }
+        check(totals == mapOf("sales" to 300L, "eng" to 120L, "art" to 5L)) {
+            "premise: the totals themselves must be right before their proofs mean anything: $totals"
+        }
+        totals.forEach { (dept, total) ->
+            val proof = ledger.why("payroll($dept, $total)")
+            check(proof != null) { "payroll($dept, $total) should have a derivation" }
+            check(!proof.render().contains("no proof reconstructed")) {
+                "every derived total must prove, not just the first:\n${proof.render()}"
+            }
+            val members = proofNodes(proof).filter { it.kind == DlPremiseKind.AGGREGATE }
+                .single().premises.map { it.fact }
+            check(members.size == ledger.rowsOf("emp").count { it[1] == dept }) {
+                "the group for $dept has the wrong size: $members"
+            }
+        }
+        check(ledger.why("payroll(sales, 299)") == null) { "a total that is not in the model has no proof" }
+    }
+
+    /**
+     * Negation and aggregation both open a stratum, and rounds used to restart at 1 in each one, so
+     * `Datalog.why`'s "a premise is strictly older than its conclusion" filter threw away every
+     * candidate across a stratum boundary and reported a real fact as unproven. Rounds are global
+     * now; this is the fence.
+     */
+    private fun testCrossStratumProvenance() {
+        val d = Datalog()
+        d.add(
+            """
+            edge(a, b). edge(b, c). edge(c, d).
+            path(X, Y) :- edge(X, Y).
+            path(X, Z) :- path(X, Y), edge(Y, Z).
+            indirect(X, Y) :- path(X, Y), !edge(X, Y).
+            """
+        )
+        // Premise: the boundary is actually exercised — `path(a, d)` needs more than one round, so a
+        // per-stratum counter really would have put it above `indirect(a, d)`.
+        val pathRound = d.solve()["path"]!!.roundOf(listOf("a", "d"))
+        check(pathRound >= 2) { "premise: path(a, d) should take several rounds, took $pathRound" }
+        check(d.ask("indirect(a, d)")) { "premise: indirect(a, d) should be in the model" }
+
+        val why = d.why("indirect(a, d)")
+        check(why != null) { "indirect(a, d) should have a derivation" }
+        val text = why.render()
+        check(!text.contains("no proof reconstructed")) { "a proof across a stratum boundary:\n$text" }
+        check(text.contains("path(a, d)")) { "the proof must descend into path:\n$text" }
+        check(text.contains("edge(a, b)")) { "and bottom out at stated edges:\n$text" }
+        // The negated literal is half the reason the rule fired; a proof that omits it is silent
+        // about the half a reader is least able to reconstruct.
+        val absences = proofNodes(why).filter { it.kind == DlPremiseKind.ABSENCE }
+        check(absences.size == 1 && absences.single().fact == "!edge(a, d)") {
+            "the negated literal must appear as its own step: ${absences.map { it.fact }}\n$text"
+        }
+
+        // `!p(X, _)` is an existential: the search has to ask whether *any* row matches.
+        val e = Datalog()
+        e.add(
+            """
+            node(a). node(b). node(c). edge(a, b).
+            leaf(X) :- node(X), !edge(X, _).
+            """
+        )
+        check(rowsText(e.query("leaf(X)")) == "b; c") { "premise: leaves are b and c" }
+        val leafWhy = e.why("leaf(c)")
+        check(leafWhy != null && !leafWhy.render().contains("no proof reconstructed")) {
+            "an existentially negated literal must be provable:\n${leafWhy?.render()}"
+        }
+        check(e.why("leaf(a)") == null) { "leaf(a) is not in the model, so it has no proof" }
+    }
+
+    /**
+     * A **bidirectional ledger over every aggregate operator**, rather than one case per operator
+     * somebody remembers to add.
+     *
+     * The expected values are a map keyed by operator, and the test asserts *set equality* between
+     * its keys and [DatalogParser.aggregateOps] in both directions. A seventh operator added to the
+     * language fails here until it is given a proof case; an operator deleted fails here too, rather
+     * than quietly yielding an empty loop — which is how a hand-maintained list of six goes green
+     * over a real gap.
+     *
+     * The oracle per operator is exact string equality on the aggregate step's label, so it pins the
+     * group size *and* the value in one assertion. Anything weaker passes on a proof that reports
+     * the right number over the wrong group.
+     */
+    private fun testEveryAggregateOpProves() {
+        val expected = mapOf(
+            "count" to "2",
+            "sum" to "300",
+            "min" to "100",
+            "max" to "200",
+            "mean" to "150",
+            "collect" to "[100, 200]",
+        )
+        check(expected.keys == DatalogParser.aggregateOps) {
+            "the ledger and the language must agree on the operator set: " +
+                "${expected.keys} vs ${DatalogParser.aggregateOps}"
+        }
+
+        val covered = LinkedHashSet<String>()
+        expected.forEach { (op, value) ->
+            val subgoal = if (op == "count") "N = count : { emp(_, D, _) }" else "N = $op P : { emp(_, D, P) }"
+            val d = Datalog()
+            d.add(
+                """
+                emp(ada, sales, 100). emp(bob, sales, 200). emp(cy, eng, 50).
+                dept(sales). dept(eng).
+                agg(D, N) :- dept(D), $subgoal.
+                """
+            )
+            // Premise: both groups fired, and the row under test was derived rather than stated.
+            val rows = d.rowsOf("agg")
+            check(rows.size == 2) { "$op: premise — one row per department, got $rows" }
+            val row = rows.first { it[0] == "sales" }
+            check(d.solve()["agg"]!!.roundOf(row) > 0) { "$op: premise — agg(sales, …) must be derived" }
+
+            val proof = d.why("agg(sales, N)")
+            check(proof != null) { "$op: agg(sales, …) should have a derivation" }
+            val text = proof.render()
+            check(!text.contains("no proof reconstructed")) { "$op: must be proved:\n$text" }
+
+            val node = proofNodes(proof).single { it.kind == DlPremiseKind.AGGREGATE }
+            check(node.because() == "aggregate: $op over 2 tuples = $value") {
+                "$op: the aggregate step must state the group size and the value: ${node.because()}"
+            }
+            check(node.premises.map { it.fact }.toSet() ==
+                setOf("emp(ada, sales, 100)", "emp(bob, sales, 200)")) {
+                "$op: the group must be exactly the sales rows: ${node.premises.map { it.fact }}"
+            }
+            // `count` has no `over` expression, so its members contribute their existence and
+            // nothing else. Every other operator must say what each tuple gave it.
+            check(node.premises.all { (it.contribution != null) == (op != "count") }) {
+                "$op: contribution presence must follow whether the operator has an expression:\n$text"
+            }
+            covered.add(op)
+        }
+        check(covered == DatalogParser.aggregateOps) {
+            "every operator must have been exercised: $covered"
+        }
+    }
+
+    /**
+     * A silent empty answer gives no reason, and a reader with no reason guesses. `whyNot` walks the
+     * conjunction and names the literal that took the answer set to zero.
+     *
+     * The oracle is **set equality on the step ledger**, not "the report mentions edge": a walk that
+     * silently dropped a literal, or invented one, passes an existence check and fails this.
+     */
+    private fun testWhyNot() {
+        val d = Datalog()
+        d.add("cell(a1, 3). cell(a2, 4). cell(a3, 10). colour(a1, red).")
+
+        // Premise: the goal really does come back empty, and its first literal really does not.
+        check(d.query("cell(C, V), V > 50").isEmpty) { "premise: the goal must have no answers" }
+        check(d.query("cell(C, V)").size == 3) { "premise: cell has three rows" }
+
+        val flat = d.whyNot("cell(C, V), V > 50")
+        check(!flat.present) { "the goal has no answers, so present must be false" }
+        check(flat.steps.map { it.literal } == listOf("cell(C, V)", "V > 50")) {
+            "every literal gets exactly one step, in order: ${flat.steps.map { it.literal }}"
+        }
+        check(flat.steps[0].answers == 3) { "the first literal has three answers: ${flat.steps[0].answers}" }
+        check(flat.culprit?.literal == "V > 50") { "the test is the culprit: ${flat.culprit?.literal}" }
+        check(flat.witness == mapOf("C" to "a1", "V" to 3L)) {
+            "and one binding that got as far as the test is shown: ${flat.witness}"
+        }
+
+        // A goal that *does* have answers must say so rather than inventing a failure.
+        val fine = d.whyNot("cell(C, V), V > 5")
+        check(fine.present && fine.culprit == null) { "a satisfiable goal is not a why-not" }
+
+        // A single derived atom is walked once per rule that could have produced it, best first.
+        val g = Datalog()
+        g.add(
+            """
+            edge(a, b). edge(b, c). edge(c, d).
+            path(X, Y) :- edge(X, Y).
+            path(X, Z) :- path(X, Y), edge(Y, Z).
+            """
+        )
+        check(!g.ask("path(a, e)")) { "premise: path(a, e) must be absent" }
+        val why = g.whyNot("path(a, e)")
+        val text = why.render()
+        check(why.attempts.size == 2) { "both rules for path/2 are attempts:\n$text" }
+        // Best first: the recursive rule got one literal in, the base rule got none. A report that
+        // led with the rule that failed immediately would bury the informative half.
+        val best = why.attempts.first()
+        check(best.depth == 1) { "the closest attempt satisfied one literal, not ${best.depth}:\n$text" }
+        check(best.steps.map { it.literal } == listOf("path(a, Y)", "edge(Y, e)")) {
+            "the recursive body, with the head's constants substituted: ${best.steps.map { it.literal }}"
+        }
+        check(best.culprit?.literal == "edge(Y, e)") { "the second literal is what fails:\n$text" }
+        check(best.witness == mapOf("Y" to "b")) { "the witness is deterministic: ${best.witness}" }
+        check(why.attempts.last().depth == 0) { "the base rule fails on its only literal:\n$text" }
+        check(text.contains("nothing survives here")) { "the report must point at the failure:\n$text" }
+        check(text.isNotEmpty() && text.lines().size >= 6) {
+            "a two-rule why-not is at least six lines; got ${text.lines().size}:\n$text"
+        }
+
+        // ── the counterfactual, which is what makes the accusation honest ───────────────────────
+        //
+        // A why-not that names the wrong atom is worse than no why-not, because it is confidently
+        // wrong, and no amount of "it named *an* atom" catches that. So: take the atom this report
+        // accused — `edge(Y, e)` — make exactly that atom satisfiable and nothing else, and the goal
+        // must go from empty to answered. If the accusation were misdirected, adding the accused
+        // fact would leave the goal just as empty as before.
+        val fixed = Datalog()
+        fixed.add(
+            """
+            edge(a, b). edge(b, c). edge(c, d).
+            path(X, Y) :- edge(X, Y).
+            path(X, Z) :- path(X, Y), edge(Y, Z).
+            """
+        )
+        check(fixed.query("path(a, e)").size == 0) { "premise: the counterfactual starts from empty" }
+        // `edge(d, e)` is the accused literal with a `path(a, Y)` row substituted for Y. Nothing
+        // else about the program changes.
+        fixed.fact("edge", "d", "e")
+        val after = fixed.query("path(a, e)").size
+        check(after >= 1) {
+            "satisfying the accused atom must make the goal answerable; still $after rows"
+        }
+        check(fixed.whyNot("path(a, e)").present) {
+            "and why-not must now decline to explain it: ${fixed.whyNot("path(a, e)").render()}"
+        }
+
+        // The reverse direction too: a fact that satisfies some *other* atom must not rescue the
+        // goal, or "which atom failed" was never being measured in the first place.
+        val decoy = Datalog()
+        decoy.add(
+            """
+            edge(a, b). edge(b, c). edge(c, d).
+            path(X, Y) :- edge(X, Y).
+            path(X, Z) :- path(X, Y), edge(Y, Z).
+            """
+        )
+        decoy.fact("edge", "z", "y")
+        check(decoy.query("path(a, e)").isEmpty) {
+            "an unrelated edge must not make path(a, e) true — the accusation was specific"
+        }
+        check(decoy.whyNot("path(a, e)").attempts.first().culprit?.literal == "edge(Y, e)") {
+            "and the same atom is still accused: ${decoy.whyNot("path(a, e)").render()}"
+        }
+
+        // The same pairing on the flat conjunction: `V > 50` was accused, so a cell that satisfies
+        // `V > 50` and nothing else must flip the goal, exactly once.
+        val relaxed = Datalog()
+        relaxed.add("cell(a1, 3). cell(a2, 4). cell(a3, 10).")
+        check(relaxed.query("cell(C, V), V > 50").isEmpty) { "premise: empty before the counterfactual" }
+        relaxed.fact("cell", "a4", 99)
+        check(relaxed.query("cell(C, V), V > 50").size == 1) {
+            "the accused test, satisfied, answers exactly once: ${relaxed.query("cell(C, V), V > 50").size}"
+        }
+
+        // A predicate nothing defines is a different answer from a predicate with no matching rows.
+        val unknown = g.whyNot("reachable(a, b)")
+        check(unknown.note?.contains("nothing defines reachable/2") == true) {
+            "an undefined predicate must say so: ${unknown.note}"
+        }
+
+        // A test written before the atom that binds it is not "zero answers", it is "not yet askable"
+        // — and saying which is the whole content of the answer.
+        val early = d.whyNot("V > 50, cell(C, V)")
+        check(early.steps.first().answers == null) {
+            "an unevaluable prefix is null, not 0: ${early.steps.first().answers}"
+        }
+        check(early.steps.first().describe().contains("not evaluable")) { early.render() }
+    }
+
+    /** Every node of a proof, root first. */
+    private fun proofNodes(d: DlDerivation): List<DlDerivation> =
+        listOf(d) + d.premises.flatMap { proofNodes(it) }
 
     private fun testKotlinFacts() {
         data class Staff(val name: String, val dept: String, val pay: Int)
