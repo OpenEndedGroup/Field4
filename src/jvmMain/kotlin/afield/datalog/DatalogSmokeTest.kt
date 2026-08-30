@@ -46,6 +46,7 @@ object DatalogSmokeTest {
         testProvenance()
         testAggregateProvenance()
         testCrossStratumProvenance()
+        testEveryAggregateOpProves()
         testWhyNot()
         testKotlinFacts()
         testIdempotentAdd()
@@ -501,6 +502,76 @@ object DatalogSmokeTest {
             "an existentially negated literal must be provable:\n${leafWhy?.render()}"
         }
         check(e.why("leaf(a)") == null) { "leaf(a) is not in the model, so it has no proof" }
+    }
+
+    /**
+     * A **bidirectional ledger over every aggregate operator**, rather than one case per operator
+     * somebody remembers to add.
+     *
+     * The expected values are a map keyed by operator, and the test asserts *set equality* between
+     * its keys and [DatalogParser.aggregateOps] in both directions. A seventh operator added to the
+     * language fails here until it is given a proof case; an operator deleted fails here too, rather
+     * than quietly yielding an empty loop — which is how a hand-maintained list of six goes green
+     * over a real gap.
+     *
+     * The oracle per operator is exact string equality on the aggregate step's label, so it pins the
+     * group size *and* the value in one assertion. Anything weaker passes on a proof that reports
+     * the right number over the wrong group.
+     */
+    private fun testEveryAggregateOpProves() {
+        val expected = mapOf(
+            "count" to "2",
+            "sum" to "300",
+            "min" to "100",
+            "max" to "200",
+            "mean" to "150",
+            "collect" to "[100, 200]",
+        )
+        check(expected.keys == DatalogParser.aggregateOps) {
+            "the ledger and the language must agree on the operator set: " +
+                "${expected.keys} vs ${DatalogParser.aggregateOps}"
+        }
+
+        val covered = LinkedHashSet<String>()
+        expected.forEach { (op, value) ->
+            val subgoal = if (op == "count") "N = count : { emp(_, D, _) }" else "N = $op P : { emp(_, D, P) }"
+            val d = Datalog()
+            d.add(
+                """
+                emp(ada, sales, 100). emp(bob, sales, 200). emp(cy, eng, 50).
+                dept(sales). dept(eng).
+                agg(D, N) :- dept(D), $subgoal.
+                """
+            )
+            // Premise: both groups fired, and the row under test was derived rather than stated.
+            val rows = d.rowsOf("agg")
+            check(rows.size == 2) { "$op: premise — one row per department, got $rows" }
+            val row = rows.first { it[0] == "sales" }
+            check(d.solve()["agg"]!!.roundOf(row) > 0) { "$op: premise — agg(sales, …) must be derived" }
+
+            val proof = d.why("agg(sales, N)")
+            check(proof != null) { "$op: agg(sales, …) should have a derivation" }
+            val text = proof.render()
+            check(!text.contains("no proof reconstructed")) { "$op: must be proved:\n$text" }
+
+            val node = proofNodes(proof).single { it.kind == DlPremiseKind.AGGREGATE }
+            check(node.because() == "aggregate: $op over 2 tuples = $value") {
+                "$op: the aggregate step must state the group size and the value: ${node.because()}"
+            }
+            check(node.premises.map { it.fact }.toSet() ==
+                setOf("emp(ada, sales, 100)", "emp(bob, sales, 200)")) {
+                "$op: the group must be exactly the sales rows: ${node.premises.map { it.fact }}"
+            }
+            // `count` has no `over` expression, so its members contribute their existence and
+            // nothing else. Every other operator must say what each tuple gave it.
+            check(node.premises.all { (it.contribution != null) == (op != "count") }) {
+                "$op: contribution presence must follow whether the operator has an expression:\n$text"
+            }
+            covered.add(op)
+        }
+        check(covered == DatalogParser.aggregateOps) {
+            "every operator must have been exercised: $covered"
+        }
     }
 
     /**
