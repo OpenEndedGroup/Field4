@@ -261,14 +261,81 @@ class BackdoorLiveCodingStateTests(unittest.TestCase):
 
     def test_live_coding_commands_parse_without_overriding_stored_code(self) -> None:
         launch = parse_command("launch box")
+        launch_batch = parse_command("launch-batch parent child draw --property code --strand scene")
         wait = parse_command("wait-running box --state running --settle 0.5")
         action = parse_command("action box moduleHere_reload --property vertex")
 
         self.assertIsNone(launch.value)
         self.assertIsNone(launch.file)
+        self.assertEqual(launch_batch.uids, ["parent", "child", "draw"])
+        self.assertEqual(launch_batch.property, "code")
+        self.assertEqual(launch_batch.strand, "scene")
         self.assertEqual(wait.settle, 0.5)
         self.assertEqual(action.action_id, "moduleHere_reload")
         self.assertEqual(action.property, "vertex")
+
+    def test_launch_batch_forwards_one_ordered_native_chord(self) -> None:
+        self.client.boxes = {
+            "parent": {"uid": "parent", "code": "println(\"parent\")", "runningStrands": {}},
+            "child": {"uid": "child", "code": "println(\"child\")", "runningStrands": {}},
+        }
+        sent: list[tuple[str, dict, dict]] = []
+
+        async def send(name: str, payload: dict, **kwargs) -> None:
+            sent.append((name, payload, kwargs))
+            for execution in payload["executions"]:
+                self.seq += 1
+                event = {
+                    "seq": self.seq,
+                    "name": "is-running",
+                    "messageName": "is-running",
+                    "uid": execution["uid"],
+                    "payload": {
+                        "uid": execution["uid"],
+                        "strand": execution["strand"],
+                        "watermark": 1,
+                        "mode": "launching",
+                        "isRunning": True,
+                    },
+                }
+                self.client.event_seq = self.seq
+                self.client.event_log.append(event)
+                self.client._apply_event(event)
+
+        self.client.send_message = send  # type: ignore[method-assign]
+        data, events, timed_out = asyncio.run(
+            self.client.launch_batch(
+                ["parent", "child"],
+                property_name="code",
+                strand="default",
+                timeout=0.05,
+            )
+        )
+
+        self.assertFalse(timed_out)
+        self.assertTrue(data["queued"])
+        self.assertEqual(data["acknowledgedUids"], ["parent", "child"])
+        self.assertEqual([event["uid"] for event in events], ["parent", "child"])
+        self.assertEqual(len(sent), 1)
+        name, payload, kwargs = sent[0]
+        self.assertEqual(name, "launch-batch")
+        self.assertEqual([item["uid"] for item in payload["executions"]], ["parent", "child"])
+        self.assertEqual(
+            [item["code"] for item in payload["executions"]],
+            ["println(\"parent\")", "println(\"child\")"],
+        )
+        self.assertEqual(kwargs["reply_context"]["command"], "launch-batch")
+
+    def test_launch_batch_rejects_a_duplicate_box(self) -> None:
+        with self.assertRaisesRegex(BackdoorError, "same box more than once"):
+            asyncio.run(
+                self.client.launch_batch(
+                    ["box", "box"],
+                    property_name="code",
+                    strand="default",
+                    timeout=0.05,
+                )
+            )
 
     def test_set_frame_keeps_the_local_snapshot_in_sync(self) -> None:
         sent: list[tuple[str, dict]] = []

@@ -31,6 +31,9 @@ EOF
   `wait-running <uid> --state running --settle 0.5` when the box must keep owning an
   animation/render loop. Transcript Kotlin-only launch groups additionally use the awaited batch
   path; mixed/non-Kotlin transcript groups do not promise the same first-frame barrier.
+- `launch-batch <parent> <child> <draw>` sends one ordered chord through the same
+  `launch-batch` path as a multi-box canvas gesture. The server queues evaluation and gives each
+  preceding box runloop turns before evaluating the next; another batch extends the queue.
 - `@last` = the most recently created box this session.
 - Read the `events` array (and `data`) from the JSON. Compile errors and exceptions show up there.
 - `--value`/`--file` are **optional** on `run`/`launch <uid>`: supply one to override the box's code, omit both to run the box's currently *stored* code (same stored-code fallback as the transcript `execute`/`launch` ops).

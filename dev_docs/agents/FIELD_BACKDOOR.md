@@ -68,6 +68,10 @@ Preserve Field's execution distinction in that loop:
 - `run <uid>` is a one-shot execution.
 - `launch <uid>` starts the animated form. Its immediate `data.running` records the
   initial server signal and may be transient while code compiles or a setup box returns.
+- `launch-batch <uid> <uid> [...]` is the command-line form of a canvas chord. It sends
+  one ordered `launch-batch` request, so the server's shared launch queue—not timing in
+  the Python client—keeps evaluation ordered and gives each preceding box runloop turns
+  before the next evaluates. A second batch extends that same queue.
 - `wait-running <uid> --state running --settle 0.5` confirms that a renderer/animation
   box remains live long enough to own the frame loop. A setup box can correctly stop
   after installing callbacks or modules; verify those through telemetry or rendering.
@@ -119,6 +123,9 @@ whole stream raises `Extra data`. Decode it as a sequence with
 - `run <uid>` and `launch <uid>` use the box's stored `code` when neither
   `--value` nor `--file` is supplied. The flags replace stored code only when
   present.
+- `launch-batch <uid> <uid> [...] [--property name] [--strand name]` launches the
+  listed boxes as one ordered chord using each box's stored property. Its result waits
+  for every box's pending queue signal; those signals do not imply persistent stripes.
 - `run` waits for one execution to finish. `launch` starts the running form and
   is required for loops such as `start(renderer::run)`; stop it with `stop`.
 - `wait-running <uid> [--state running|stopped] [--settle seconds]` distinguishes

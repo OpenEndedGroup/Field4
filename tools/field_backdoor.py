@@ -2177,6 +2177,112 @@ class FieldBackdoor:
         self.logger.log("launch_box_complete", uid=resolved, timedOut=timed_out, running=running, eventCount=len(events))
         return data, events, timed_out
 
+    async def launch_batch(
+        self,
+        uids: list[str],
+        *,
+        property_name: str,
+        strand: str,
+        timeout: float,
+    ) -> tuple[dict[str, Any], list[dict[str, Any]], bool]:
+        """Submit one ordered multi-box chord through Field's native ``launch-batch`` path.
+
+        The initial ``is-running`` packets are pending/queue acknowledgements, not a promise that
+        every box will keep a stripe. The server owns the important semantic barrier: launches
+        evaluate in the supplied order, with runloop yields between boxes, and another batch sent
+        while this one is active extends the same queue.
+        """
+        if not uids:
+            raise BackdoorError("launch-batch requires at least one box")
+
+        resolved_boxes = [self.require_box_reference(uid) for uid in uids]
+        resolved = [uid for uid, _box in resolved_boxes]
+        if len(set(resolved)) != len(resolved):
+            raise BackdoorError("launch-batch cannot contain the same box more than once")
+
+        executions = [
+            {
+                "uid": uid,
+                "type": "launch",
+                "line": 0,
+                "code": str(box.get(property_name) or ""),
+                "singleLine": False,
+                "property": property_name,
+                "strand": strand,
+            }
+            for uid, box in resolved_boxes
+        ]
+        reply_name = f"launch_batch_{uuid.uuid4().hex}"
+        start_seq = self.event_seq
+        self.logger.log(
+            "launch_batch_start",
+            uids=resolved,
+            property=property_name,
+            strand=strand,
+            timeout=timeout,
+        )
+        await self.send_message(
+            "launch-batch",
+            {"executions": executions},
+            reply_to=reply_name,
+            reply_context={"uids": resolved, "command": "launch-batch"},
+        )
+
+        def predicate():
+            events = self.events_since(start_seq)
+            acknowledged = {
+                event.get("uid")
+                for event in events
+                if event.get("name") == "is-running"
+                and event.get("uid") in resolved
+                and (event.get("payload") or {}).get("isRunning") is True
+                and ((event.get("payload") or {}).get("strand") or "default") == strand
+            }
+            if len(acknowledged) == len(resolved):
+                return events, acknowledged
+            return None
+
+        timed_out = False
+        acknowledged: set[str] = set()
+        try:
+            events, acknowledged = await self.wait_for(
+                predicate,
+                timeout,
+                f"launch-batch:{','.join(resolved)}",
+            )
+        except asyncio.TimeoutError:
+            timed_out = True
+            events = self.events_since(start_seq)
+            acknowledged = {
+                event.get("uid")
+                for event in events
+                if event.get("name") == "is-running"
+                and event.get("uid") in resolved
+                and (event.get("payload") or {}).get("isRunning") is True
+                and ((event.get("payload") or {}).get("strand") or "default") == strand
+            }
+        finally:
+            self.reply_contexts.pop(reply_name, None)
+
+        data = {
+            "uids": resolved,
+            "boxCount": len(resolved),
+            "property": property_name,
+            "strand": strand,
+            "queued": len(acknowledged) == len(resolved),
+            "acknowledgedUids": [uid for uid in resolved if uid in acknowledged],
+            "runningObservation": "pending-signal",
+            "runningMayBeTransient": True,
+        }
+        self.logger.log(
+            "launch_batch_complete",
+            uids=resolved,
+            timedOut=timed_out,
+            queued=data["queued"],
+            eventCount=len(events),
+        )
+        return data, events, timed_out
+
     async def wait_running(
         self,
         uid: str,
@@ -2718,6 +2824,12 @@ def build_command_parser() -> argparse.ArgumentParser:
         exec_parser.add_argument("--file")
         exec_parser.add_argument("--timeout", type=float)
 
+    launch_batch_parser = subparsers.add_parser("launch-batch", add_help=False)
+    launch_batch_parser.add_argument("uids", nargs="+")
+    launch_batch_parser.add_argument("--property", default="code")
+    launch_batch_parser.add_argument("--strand", default="default")
+    launch_batch_parser.add_argument("--timeout", type=float)
+
     wait_running_parser = subparsers.add_parser("wait-running", add_help=False)
     wait_running_parser.add_argument("uid")
     wait_running_parser.add_argument("--state", choices=("running", "stopped"), default="running")
@@ -3202,6 +3314,30 @@ async def dispatch_command(
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"], timedOut=timed_out, eventCount=len(events))
         return result
 
+    if args.command == "launch-batch":
+        if auto_playwright:
+            await ensure_playwright_attached(
+                client,
+                timeout=auto_playwright_timeout or command_timeout(args.timeout, client.default_timeout),
+                reason=f"command:launch-batch:{','.join(args.uids)}",
+            )
+        timeout = args.timeout or client.default_timeout
+        data, events, timed_out = await client.launch_batch(
+            args.uids,
+            property_name=args.property,
+            strand=args.strand,
+            timeout=timeout,
+        )
+        result = command_result(command_line, not timed_out, data=data, events=events, timed_out=timed_out)
+        client.logger.log(
+            "command_dispatch_complete",
+            commandLine=command_line,
+            ok=result["ok"],
+            timedOut=timed_out,
+            eventCount=len(events),
+        )
+        return result
+
     if args.command == "wait-running":
         timeout = args.timeout or client.default_timeout
         data, events, timed_out = await client.wait_running(
@@ -3537,7 +3673,7 @@ async def repl(
             return 0
         if line == "help":
             client.logger.log("repl_help")
-            print("Commands: open, status, snapshot, boxes, sleep, playwright-open, editor-open, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, wait-native-renderer, record-window, record-editor, record-box, new-box, delete-box, connect, disconnect, set, macro, transcript, run, launch, continue, wait-running, action, stop, wait-file, output, wait-output, raw-send, run-jvm-main, exit")
+            print("Commands: open, status, snapshot, boxes, sleep, playwright-open, editor-open, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, wait-native-renderer, record-window, record-editor, record-box, new-box, delete-box, connect, disconnect, set, macro, transcript, run, launch, launch-batch, continue, wait-running, action, stop, wait-file, output, wait-output, raw-send, run-jvm-main, exit")
             continue
         try:
             parsed = parse_command(line)
