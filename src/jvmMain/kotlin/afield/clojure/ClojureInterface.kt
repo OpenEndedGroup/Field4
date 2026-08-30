@@ -18,6 +18,34 @@ import java.io.Writer
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
+/**
+ * Clojure as a Field main language: a box whose source is Clojure, evaluated by the real Clojure
+ * runtime on this JVM.
+ *
+ * Nothing here implements a Lisp. `clojure.jar` is on the classpath and this file is the adapter
+ * between Field's box-execution contract and `clojure.java.api.Clojure` — which is why the whole
+ * language is one 500-line file while `afield.datalog` and `afield.rectsl`, whose compilers Field
+ * owns, are packages.
+ *
+ * Read it in three layers:
+ *
+ *  - [ClojureHost] is the interpreter, and the only part with no Field in it. It keeps a namespace
+ *    per box lineage, evaluates through `load-string`, and returns the value of the last form —
+ *    plus the one deliberate convenience that makes a Clojure box behave like a Kotlin one: if that
+ *    value is an `IFn`, it is *invoked with no arguments*, so "the box returns a function" and "the
+ *    box does the thing" are the same gesture. `compileOnly` is the same read path with evaluation
+ *    withheld, which is where the editor's syntax errors come from, carrying line and column.
+ *  - [ClojureExecution] is the `BoxExecution`, so it is the half that knows about boxes: output
+ *    proxying, `is-running`, per-fragment generation counting, and `complete`, whose candidates
+ *    come from Compliment if that namespace loads and from nothing if it does not — completion is
+ *    optional here by design rather than by omission.
+ *  - [installClojure] and [clojureTopologyNeedsUpdating] are the registration, and they are
+ *    identical in shape to every other main language: one `registerMainLanguageRuntime` call, one
+ *    `TopologyWatcher` that swaps a child box's execution when the graph changes.
+ *
+ * `dev_docs/small_language_anatomy.md` is the map of those integration points.
+ */
+
 class StreamingWriter(
     private val onText: (String) -> Unit
 ) : Writer() {
