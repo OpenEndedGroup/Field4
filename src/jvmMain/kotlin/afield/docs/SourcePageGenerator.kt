@@ -86,12 +86,14 @@ object SourcePageGenerator {
      *
      * Everything else in `src/` is deliberately absent. 789 pages of internals is the shape
      * `20e64da5` deleted Dokka for; a page nobody has a reason to arrive at is not documentation.
+     *
+     * **Which packages those are is [StdlibReferenceGenerator]'s answer, not a second copy of it.**
+     * The two lists were identical and independent, and that is a dead-link generator rather than a
+     * duplication nit: [StdlibReferenceGenerator] emits a "read the source" link for any file it can
+     * partition, judging that from the file itself and not from this corpus, so the first root added
+     * on one side and not the other publishes a page full of links to pages that were never rendered.
      */
-    private val REFERENCE_PACKAGE_ROOTS = listOf(
-        "src/jvmMain/kotlin/afield/stdlib",
-        "src/jvmMain/kotlin/afield/visualization",
-        "src/jvmMain/kotlin/afield/four/synth",
-    )
+    private fun referencePackageRoots(): List<String> = StdlibReferenceGenerator.sourceRoots()
 
     /** One rendered page, and everything needed to check and index it. */
     data class Page(
@@ -200,7 +202,7 @@ object SourcePageGenerator {
 
     /** The files that get a page: the reference packages, plus whatever the published prose cites. */
     private fun collectSources(repo: File): List<File> {
-        val fromPackages = REFERENCE_PACKAGE_ROOTS
+        val fromPackages = referencePackageRoots()
             .map { File(repo, it) }
             .filter { it.isDirectory }
             .flatMap { root -> root.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList() }

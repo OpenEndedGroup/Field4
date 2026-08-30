@@ -117,6 +117,16 @@ object StdlibReferenceGenerator {
     )
 
     /**
+     * [SOURCE_ROOTS], for the one other generator that has to agree with it.
+     *
+     * [SourcePageGenerator] renders a docs page per source file and used to carry its own identical
+     * copy of this list. Identical and independent is the worst of both: a reference row's
+     * "read the source" link is emitted from the file's own partition rather than from that corpus,
+     * so a root added here and not there ships a page of links to pages nobody rendered.
+     */
+    internal fun sourceRoots(): List<String> = SOURCE_ROOTS
+
+    /**
      * Paths (repo-relative prefixes) skipped inside [SOURCE_ROOTS]. A whole file path is a valid
      * prefix, and that is how single files are named here.
      *
