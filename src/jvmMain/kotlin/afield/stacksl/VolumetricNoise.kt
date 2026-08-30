@@ -25,12 +25,24 @@ import kotlin.math.sqrt
 //    range is exactly [0,1) for any octave count, lacunarity and gain. The bug cannot recur
 //    because nothing is hard-coded to be recomputed.
 //
-// 2. The hashes contain no `sin()`. `_hash11`/`_hash21` are `fract(sin(x) * 43758.5453)`, and
-//    `sin` is not bit-portable: its precision is implementation-defined, it loses all meaning
-//    for large arguments, and no CPU implementation can be trusted to agree with a GPU's. The
-//    hashes below are multiply/add/fract only, which are IEEE-754 exact operations. That is what
-//    makes [VolumetricNoiseReference] a real reference and not an approximation, and it is why
-//    this family could not have been built on the existing `_hash21`.
+// 2. The hashes contain no `sin()`. The two existing hashes are NOT the same animal, and an
+//    earlier version of this comment ran them together and was wrong about the one that
+//    matters. `_hash11(float)` really is `fract(sin(p * 127.1) * 43758.5453123)`, and `sin` is
+//    not bit-portable: its precision is implementation-defined, it loses all meaning for large
+//    arguments, and no CPU implementation can be trusted to agree with a GPU's. `_hash21(vec2)`
+//    — the hash that actually feeds `_noise` and `_fbm` — has no `sin` at all; it is
+//    `fract(p * vec2(123.34, 456.21))`, `p += dot(p, p + 45.32)`, `fract(p.x * p.y)`, so it is
+//    already multiply/add/fract and already IEEE-754 exact. (Exact is not the same as stable:
+//    `fract` of a large product amplifies a last-bit difference in its ARGUMENT to O(1), which
+//    is why an exactly-specified noise can still disagree visibly across backends.)
+//    So the reason this family could not have been built on `_hash21` is DIMENSIONALITY, not
+//    `sin`: `_hash21` takes a `vec2`, and a 3D/4D family needs a hash over 3 and 4 inputs. The
+//    hashes below are multiply/add/fract only for the same reason `_hash21` is, and that is what
+//    makes [VolumetricNoiseReference] a real reference and not an approximation — and that is
+//    now MACHINE-CHECKED rather than asserted: `StackSLCpuVolumetricCrossCheckTest` evaluates the
+//    emitted GLSL with `afield.stacksl.cpu` and compares every function here against it,
+//    bit-for-bit. It was that check which found the one place this file was NOT a faithful
+//    transliteration (the algebraic form of [mix]) and it is what keeps it faithful now.
 //
 // 3. `curl3` is divergence-free by construction, not approximately. It is the curl of a vector
 //    potential taken with central differences at ONE shared epsilon. Discrete shift operators
@@ -167,7 +179,27 @@ object VolumetricNoiseReference {
 
     private fun fract(v: Float): Float = v - floor(v)
     private fun fract(v: NoiseVec3) = NoiseVec3(fract(v.x), fract(v.y), fract(v.z))
-    private fun mix(a: Float, b: Float, t: Float): Float = a + (b - a) * t
+    /**
+     * GLSL's `mix`, in GLSL's own algebra: `x * (1 - a) + y * a`.
+     *
+     * The obvious rewrite `a + (b - a) * t` is algebraically identical and a DIFFERENT
+     * floating-point expression, and it is what this function used to be. That one line was the
+     * entire residual between this reference and the emitted shader it claims to mirror: measured
+     * over 4000 samples, `noise3` matched only 2054 of them, off by up to 1.8e-7, while `hash31`,
+     * `hash33` and `hash41` — which contain no `mix` — were already bit-exact 20000 times out of
+     * 20000. `curl3`, which reaches `noise3` through `potential3`, matched 5 times in 300.
+     *
+     * With the spec's form every function in this file is bit-exact against the GLSL that
+     * `StackSL.kt` emits, evaluated by `afield.stacksl.cpu` — see
+     * `StackSLCpuVolumetricCrossCheckTest`, which also contains the experiment that located this:
+     * `noise3` reimplemented twice, differing only in how `mix` is spelled, each version matching
+     * one of the two sides at 4000/4000.
+     *
+     * Every call site here mirrors a literal `mix(...)` in the emitted text (`helperSource`'s
+     * `noise3` and `noise4_slice` blocks), so the spec's form is correct at all of them and there
+     * is no site where the rewrite would have been the faithful reading.
+     */
+    private fun mix(a: Float, b: Float, t: Float): Float = a * (1.0f - t) + b * t
     private fun smooth(f: Float): Float = f * f * (3.0f - 2.0f * f)
 
     /** vec3 -> [0,1). Multiply/add/fract only; see the header on why that matters. */

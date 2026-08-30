@@ -1050,16 +1050,20 @@ the range is exact for *any* octave count, lacunarity and gain. The 2D words are
 deliberately unchanged — renormalising them would move every rendered image in these
 pages.
 
-**No `sin()` in the hashes.** The existing `hash11`/`hash21` are
-`fract(sin(x) * 43758.5453)`, and `sin` is not bit-portable between implementations.
-The volumetric hashes are multiply/add/fract only, which are exact, so a CPU
+**No `sin()` in the hashes.** The two existing hashes differ, and it is worth being
+precise about which. `hash11`, the one behind `valueNoise`, is
+`fract(sin(p * 127.1) * 43758.5453123)`, and `sin` is not bit-portable between
+implementations. `hash21`, the one behind `noise` and `fbm`, has no `sin` in it at all —
+it is multiply/add/fract already. What `hash21` cannot be is three-dimensional: it takes
+a `vec2`, and *that*, not `sin`, is why the volumetric family needed its own hashes.
+Those are multiply/add/fract over 3 and 4 inputs, which are exact, so a CPU
 transcription of the shader is meaningful — and there is one, in
 `VolumetricNoiseReference`, which is what lets these words be unit-tested with no GPU.
 
 **`curl3` is solenoidal by construction.** It is the curl of a vector potential taken
 with central differences at one shared epsilon. Discrete shift operators commute, so
 the discrete divergence cancels term for term rather than merely being small: measured
-2.5e-7 against 0.58 for the three-independent-channels field people usually reach for.
+1.8e-7 against 0.58 for the three-independent-channels field people usually reach for.
 
 A particle force, the whole point:
 

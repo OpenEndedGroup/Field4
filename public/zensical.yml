@@ -88,6 +88,7 @@ nav:
         - ImGui as a VR Panel: imgui_vr_panel.md
     - Small Languages:
       - Language Extensions: language_extensions.md
+      - Datalog in a Box: datalog.md
       - FieldML Cheatsheet: fieldml_cheatsheet.md
       - FieldML Examples: fieldml_examples.md
       - FieldML JVM Bridge: fieldml_host_bridge.md

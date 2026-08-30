@@ -40,6 +40,7 @@ object GraphQuerySmokeTest {
         testCycleAndAliasHandling()
         testWritability()
         testPredicates()
+        testSlashOperator()
         testTypedLenses()
         testCompiledPatterns()
         testFastPathAgreesWithFullWalk()
@@ -190,6 +191,28 @@ object GraphQuerySmokeTest {
             "excluding is the complement of matching"
         )
         println("  ok: predicates")
+    }
+
+    private fun testSlashOperator() {
+        val v = voice()
+
+        // The sugar is the same query.
+        requireEquals(
+            v.graphPaths("**/freq").paths(),
+            (v / "**/freq").paths(),
+            "slash is graphPaths"
+        )
+
+        // A chain splits the pattern without losing the address it was reached by.
+        requireEquals(listOf("carrier/freq"), (v / "carrier" / "freq").paths(), "chained slash")
+        (v / "carrier" / "freq").lenses<Float>().set(330f)
+        requireEquals(330f, v.carrier.freq, "write through a chained slash")
+
+        // A typed leaf has nothing below it, so this reports nothing rather than the
+        // LensSet's own fields.
+        require(((v / "**/freq").lenses<Float>() / "**").isEmpty) { "slash off a typed leaf" }
+
+        println("  ok: slash operator")
     }
 
     private fun testTypedLenses() {

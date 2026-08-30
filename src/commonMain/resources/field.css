@@ -572,6 +572,15 @@
     border-bottom: 1px solid var(--field-accent-muted);
 }
 
+/* Preformatted text is Iosevka wherever it comes from. Anything that builds its own output HTML
+   -- a box language's execution, a `display()` of a preformatted string -- otherwise inherits the
+   browser's default monospace, and a query result rendered in Courier beside an Iosevka editor is
+   the tell. An element selector, so any rule that sets a family deliberately still wins. */
+pre,
+pre code {
+    font-family: var(--field-font-code), var(--field-font-code-fallback);
+}
+
 .field-md code {
     font-family: var(--field-font-code);
     color: var(--field-code-accent);

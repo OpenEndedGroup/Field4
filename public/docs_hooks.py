@@ -4129,7 +4129,7 @@ def docs_runner_fieldml_root_alias(*, target_uid: str) -> str:
 # `mainLanguage`. See src/jvmMain/kotlin/afield/runtime/LanguageRuntimeSupport.kt:54-69: the toggle
 # walks `root.children`, so the root itself stays Kotlin and the fence body has to live one level
 # down. `fieldml` predates this set and produces byte-identical commands through it.
-MAIN_LANGUAGE_ROOT_LANGUAGES = ("fieldml", "python")
+MAIN_LANGUAGE_ROOT_LANGUAGES = ("fieldml", "python", "datalog")
 
 
 def docs_runner_language_root_alias(*, target_uid: str, language: str) -> str:

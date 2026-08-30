@@ -125,6 +125,14 @@ class GraphPathRef internal constructor(
         return true
     }
 
+    /**
+     * The same live slot, re-addressed under [prefix]. Used when a query is continued from a
+     * ref rather than from the original root, so `rig / "carrier" / "freq"` still reports
+     * `carrier/freq` rather than the bare `freq` the second walk would have produced.
+     */
+    internal fun rebased(prefix: List<String>): GraphPathRef =
+        GraphPathRef(prefix + pathSegments, owner, getter, setter)
+
     override fun toString(): String = path
 }
 
