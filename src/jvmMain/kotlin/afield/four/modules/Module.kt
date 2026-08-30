@@ -187,6 +187,26 @@ data class Parameters(
             } else null
         }
     }
+
+    /**
+     * Bind providers whose image views can change between frames (video ring buffers, ping-pong
+     * targets, and similar resources). Unlike [textures], this keeps the provider itself live
+     * instead of capturing one of its current image views while the module is configured.
+     */
+    fun textureArrays(vararg t: Pair<String, HasImageViewArray>) {
+        val m = t.associate { it }
+        this.textureResolver = { texture ->
+            val provider = m[texture.name]
+            if (provider != null) {
+                val first = provider.imageViewArray.firstOrNull()
+                    ?: error("Texture provider '${texture.name}' has no image views")
+                val sampler = (provider as? HasDefaultTextureSampler)?.defaultSampler ?: TextureSampler(
+                    renderer = fromContext(), sampledTextureMipLevels(first), true
+                )
+                provider to sampler
+            } else null
+        }
+    }
 }
 
 private fun sampledTextureMipLevels(view: HasImageView): Int {

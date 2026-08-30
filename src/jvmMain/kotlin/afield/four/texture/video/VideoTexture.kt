@@ -17,7 +17,11 @@ import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.*
 import java.nio.ByteBuffer
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.locks.LockSupport
+import kotlin.concurrent.thread
 
 /**
  * VideoTexture manages video playback with P010 format support.
@@ -27,12 +31,40 @@ import java.util.concurrent.atomic.AtomicInteger
  * @param renderer The Vulkan renderer
  * @param clock Optional external clock for synchronization (e.g., AudioClock for A/V sync).
  *              If null, uses internal SystemClock which may drift over long durations.
+ * @param backgroundDecode Decode and RGB conversion on a worker, leaving only the Vulkan upload in
+ *              the render callback. Useful for large data-bearing atlases; false preserves the
+ *              original synchronous behavior.
  */
 class VideoTexture(
     private val renderer: Renderer = fromContext(),
     private val clock: PlaybackClock? = null,
-    private val textureSlots: Int = 2
+    private val textureSlots: Int = 2,
+    /** P010 for display video; RGBA8 for movies whose RGB channels carry numeric data. */
+    val pixelFormat: VideoDecodeFormat = VideoDecodeFormat.P010,
+    val backgroundDecode: Boolean = false
 ) : HasImageViewArray, afield.four.Target, HasBrowsable {
+
+    /**
+     * Optional sampled-image indirection. A module may keep this VideoTexture as its stable descriptor
+     * provider while a frame-set presenter atomically changes which already-loaded VideoTexture its
+     * shaders see. Decoding and uploading still happen on the source texture itself.
+     */
+    @Volatile private var sampledSource: VideoTexture? = null
+
+    fun sampleFrom(source: VideoTexture?) {
+        val next = source?.takeUnless { it === this }
+        if (next != null) {
+            require(next.pixelFormat == pixelFormat) {
+                "cannot sample ${next.pixelFormat} through a $pixelFormat VideoTexture"
+            }
+            require(next.width == width && next.height == height) {
+                "sampled video dimensions ${next.width}x${next.height} do not match ${width}x${height}"
+            }
+        }
+        sampledSource = next
+    }
+
+    val sampledFrom: VideoTexture get() = sampledSource ?: this
 
     // Inspector support: expose state + version tied to timestamp
     override fun browsable(): Browsable? = object : Browsable {
@@ -79,6 +111,7 @@ class VideoTexture(
 
     private var currentTimestamp = 0.0
     private var lastFrameTimestamp = 0.0
+    @Volatile private var uploadedFrame = false
 
     // Video dimensions
     private var videoWidth = 0
@@ -87,12 +120,29 @@ class VideoTexture(
     // Texture slot arrays for luma and chroma
     private var lumaTextures = arrayOfNulls<VideoPlaneTexture>(textureSlots)
     private var chromaTextures = arrayOfNulls<VideoPlaneTexture>(textureSlots)
+    private var rgbaTextures = arrayOfNulls<VideoPlaneTexture>(textureSlots)
 
     // Current slot index - indicates most recent frame
     private val currentSlot = AtomicInteger(0)
 
     // When true, allow a one-off update while paused to reflect a scrubbed position
     private var pendingFrameRefresh = false
+
+    private data class DecodeRequest(val generation: Long, val timestamp: Double, val exactFrame: Long? = null)
+    private data class DecodedFrame(val serial: Long, val frame: VideoFrame)
+
+    private val decodeGeneration = AtomicLong()
+    private val decodeSerial = AtomicLong()
+    private val requestedDecode = AtomicReference<DecodeRequest?>()
+    private val pendingDecode = AtomicReference<DecodeRequest?>()
+    private val decodedFrame = AtomicReference<DecodedFrame?>()
+    private var decodeWorker: Thread? = null
+    @Volatile private var decodeWorkerRunning = false
+    @Volatile private var decodeFailure: Throwable? = null
+    @Volatile var backgroundDecodeMicros: Long = 0
+        private set
+    private var lastRequestedFrame = Long.MIN_VALUE
+    private var seenDecodedSerial = -1L
 
     // Format constants for P010
     private val lumaFormat = VK10.VK_FORMAT_R16_UNORM  // 16-bit luma
@@ -113,7 +163,7 @@ class VideoTexture(
         }
 
         // Create new decoder
-        val newDecoder = VideoDecoder(videoPath)
+        val newDecoder = VideoDecoder(videoPath, pixelFormat)
         if (!newDecoder.open()) {
             lprintln("error,video", "Failed to open video: $videoPath")
             return false
@@ -123,10 +173,14 @@ class VideoTexture(
         val newHeight = newDecoder.height
 
         // Check if we can reuse existing textures (same dimensions)
-        val texturesAllocated = lumaTextures.all { it != null } && chromaTextures.all { it != null }
+        val texturesAllocated = when (pixelFormat) {
+            VideoDecodeFormat.P010 -> lumaTextures.all { it != null } && chromaTextures.all { it != null }
+            VideoDecodeFormat.RGBA8 -> rgbaTextures.all { it != null }
+        }
         val canReuseTextures = (newWidth == videoWidth && newHeight == videoHeight && texturesAllocated)
 
-        // Close old decoder if exists
+        // Close old decoder if exists. A background decoder owns FFmpeg exclusively while running.
+        stopDecodeWorker()
         decoder?.close()
         decoder = newDecoder
         currentVideoPath = videoPath
@@ -143,35 +197,52 @@ class VideoTexture(
             videoWidth = newWidth
             videoHeight = newHeight
 
-            // Create new texture pairs
+            // Create the upload textures for the selected decode contract.
             for (i in 0 until textureSlots) {
-                lumaTextures[i] = VideoPlaneTexture(
-                    renderer = renderer,
-                    width = videoWidth,
-                    height = videoHeight,
-                    format = lumaFormat,
-                    name = "video_luma_$i"
-                )
-
-                chromaTextures[i] = VideoPlaneTexture(
-                    renderer = renderer,
-                    width = videoWidth / 2,  // Chroma is subsampled 2x
-                    height = videoHeight / 2,
-                    format = chromaFormat,
-                    name = "video_chroma_$i"
-                )
+                when (pixelFormat) {
+                    VideoDecodeFormat.P010 -> {
+                        lumaTextures[i] = VideoPlaneTexture(
+                            renderer = renderer,
+                            width = videoWidth,
+                            height = videoHeight,
+                            format = lumaFormat,
+                            name = "video_luma_$i"
+                        )
+                        chromaTextures[i] = VideoPlaneTexture(
+                            renderer = renderer,
+                            width = videoWidth / 2,
+                            height = videoHeight / 2,
+                            format = chromaFormat,
+                            name = "video_chroma_$i"
+                        )
+                    }
+                    VideoDecodeFormat.RGBA8 -> rgbaTextures[i] = VideoPlaneTexture(
+                        renderer = renderer,
+                        width = videoWidth,
+                        height = videoHeight,
+                        format = VK10.VK_FORMAT_R8G8B8A8_UNORM,
+                        name = "video_rgba_$i"
+                    )
+                }
             }
         }
 
         currentTimestamp = 0.0
         lastFrameTimestamp = 0.0
+        uploadedFrame = false
+        uploadedFrameIndex = -1
         currentSlot.set(0)
         pendingFrameRefresh = true
+        lastRequestedFrame = Long.MIN_VALUE
+        seenDecodedSerial = -1L
+        decodedFrame.set(null)
 
         // Reset internal clock when loading a new video
         if (clock == null) {
             internalClock.reset()
         }
+
+        if (backgroundDecode) startDecodeWorker(newDecoder)
 
         return true
     }
@@ -208,6 +279,15 @@ class VideoTexture(
     fun seek(timestampSeconds: Double): Boolean {
         lprint("info,video", "Seeking to $timestampSeconds")
         decoder?.let { dec ->
+            if (backgroundDecode) {
+                currentTimestamp = timestampSeconds
+                lastFrameTimestamp = timestampSeconds
+                lastRequestedFrame = Long.MIN_VALUE
+                pendingFrameRefresh = true
+                if (clock == null) internalClock.seek(timestampSeconds)
+                requestBackgroundDecode(timestampSeconds)
+                return true
+            }
             if (dec.seek(timestampSeconds)) {
                 currentTimestamp = timestampSeconds
                 lastFrameTimestamp = timestampSeconds
@@ -245,12 +325,24 @@ class VideoTexture(
         // Get target timestamp from the active clock
         val targetTimestamp = activeClock.getCurrentTime()
 
+        if (backgroundDecode) {
+            return updateFromBackground(commandBuffer, activeDecoder, targetTimestamp)
+        }
+
         // Check if we need to decode a new frame
         // We decode if:
         // 1. We're significantly behind the clock (more than one frame)
         // 2. We're paused and need a refresh
         val frameDuration = if (activeDecoder.fps > 0) 1.0 / activeDecoder.fps else 0.033
-        val needsNewFrame = (targetTimestamp - lastFrameTimestamp) >= frameDuration || allowWhilePaused
+        val delta = targetTimestamp - lastFrameTimestamp
+        // An external timeline can scrub or loop. Decoding forward from the old cursor cannot reach a
+        // time behind it, and walking hundreds of frames after a large jump is the wrong latency.
+        val discontinuity = delta < -frameDuration * 0.5 || delta > frameDuration * 12.0
+        if (discontinuity) {
+            if (!activeDecoder.seek(targetTimestamp.coerceAtLeast(0.0))) return false
+            lastFrameTimestamp = targetTimestamp - frameDuration
+        }
+        val needsNewFrame = discontinuity || (targetTimestamp - lastFrameTimestamp) >= frameDuration || allowWhilePaused
 
         if (!needsNewFrame) {
             return false
@@ -303,12 +395,18 @@ class VideoTexture(
         // Switch to next slot
         val nextSlot = (currentSlot.get() + 1) % textureSlots
 
-        // Upload frame data to textures
-        val lumaTexture = lumaTextures[nextSlot] ?: return false
-        val chromaTexture = chromaTextures[nextSlot] ?: return false
-
-        lumaTexture.upload(commandBuffer, frame.lumaData)
-        chromaTexture.upload(commandBuffer, frame.chromaData)
+        when (pixelFormat) {
+            VideoDecodeFormat.P010 -> {
+                val lumaTexture = lumaTextures[nextSlot] ?: return false
+                val chromaTexture = chromaTextures[nextSlot] ?: return false
+                lumaTexture.upload(commandBuffer, frame.plane0)
+                chromaTexture.upload(commandBuffer, frame.plane1)
+            }
+            VideoDecodeFormat.RGBA8 -> {
+                val rgbaTexture = rgbaTextures[nextSlot] ?: return false
+                rgbaTexture.upload(commandBuffer, frame.plane0)
+            }
+        }
 
         // Update current slot
         currentSlot.set(nextSlot)
@@ -316,6 +414,8 @@ class VideoTexture(
         // Track the timestamp of this frame
         lastFrameTimestamp = frame.timestamp
         currentTimestamp = frame.timestamp
+        uploadedFrame = true
+        uploadedFrameIndex = if (fps > 0) VideoFrameIndex.decoded(frame.timestamp, fps) else -1
 
         // If we were paused and refreshing after a scrub, stop the temporary refresh
         if (!isPlaying && pendingFrameRefresh) {
@@ -344,8 +444,12 @@ class VideoTexture(
      */
     override val imageViewArray: List<HasImageView>
         get() {
+            sampledSource?.let { return it.imageViewArray }
             val slot = currentSlot.get()
-            return listOfNotNull(lumaTextures[slot], chromaTextures[slot])
+            return when (pixelFormat) {
+                VideoDecodeFormat.P010 -> listOfNotNull(lumaTextures[slot], chromaTextures[slot])
+                VideoDecodeFormat.RGBA8 -> listOfNotNull(rgbaTextures[slot])
+            }
         }
 
     /**
@@ -357,16 +461,49 @@ class VideoTexture(
     val fps: Double get() = decoder?.fps ?: 0.0
     val timestamp: Double get() = currentTimestamp
     val playing: Boolean get() = isPlaying
+    /** True after at least one decoded frame has reached its Vulkan image. */
+    val hasFrame: Boolean get() = uploadedFrame
+
+    /** Source-frame identity of the image selected for the next draw, not the requested clock. */
+    var uploadedFrameIndex: Long = -1
+        private set
+
+    /** Prepare a CFR source frame off-thread without uploading it. Do not also schedule [update]. */
+    fun prepareFrame(frameIndex: Long) {
+        require(backgroundDecode) { "prepareFrame requires backgroundDecode=true" }
+        require(frameIndex >= 0 && fps > 0) { "load a video and request a non-negative frame" }
+        decodeFailure?.let { throw IllegalStateException("background video decode failed", it) }
+        if (requestedDecode.get()?.exactFrame == frameIndex) return
+        requestBackgroundDecode(frameIndex / fps, frameIndex)
+    }
+
+    fun isFrameReady(frameIndex: Long): Boolean {
+        decodeFailure?.let { throw IllegalStateException("background video decode failed", it) }
+        val ready = decodedFrame.get() ?: return false
+        return VideoFrameIndex.decoded(ready.frame.timestamp, fps) == frameIndex
+    }
+
+    /** Record this exact image's upload before the same draw as its matching geometry. Never waits. */
+    fun uploadPreparedFrame(commandBuffer: CommandBuffer, frameIndex: Long): Boolean {
+        decodeFailure?.let { throw IllegalStateException("background video decode failed", it) }
+        val ready = decodedFrame.get() ?: return false
+        if (VideoFrameIndex.decoded(ready.frame.timestamp, fps) != frameIndex) return false
+        if (seenDecodedSerial == ready.serial) return uploadedFrameIndex == frameIndex
+        return uploadDecodedFrame(commandBuffer, ready)
+    }
 
     /**
      * Unload the current video and free resources.
      */
     fun unload() {
         pause()
+        stopDecodeWorker()
         decoder?.close()
         decoder = null
         currentVideoPath = null
         currentTimestamp = 0.0
+        uploadedFrame = false
+        uploadedFrameIndex = -1
         // Note: We keep the Vulkan textures allocated for potential reuse
     }
 
@@ -384,6 +521,8 @@ class VideoTexture(
             lumaTextures[i] = null
             chromaTextures[i]?.cleanup()
             chromaTextures[i] = null
+            rgbaTextures[i]?.cleanup()
+            rgbaTextures[i] = null
         }
         videoWidth = 0
         videoHeight = 0
@@ -391,6 +530,143 @@ class VideoTexture(
 
     override fun render(command: CommandBuffer, index: Int) {
         update(command)
+    }
+
+    private fun updateFromBackground(
+        commandBuffer: CommandBuffer,
+        activeDecoder: VideoDecoder,
+        targetTimestamp: Double
+    ): Boolean {
+        decodeFailure?.let { throw IllegalStateException("background video decode failed", it) }
+        val frameDuration = if (activeDecoder.fps > 0) 1.0 / activeDecoder.fps else 0.033
+        val targetFrame = VideoFrameIndex.requested(targetTimestamp, 1.0 / frameDuration)
+        if (targetFrame != lastRequestedFrame) {
+            lastRequestedFrame = targetFrame
+            requestBackgroundDecode(targetFrame * frameDuration)
+        }
+
+        val ready = decodedFrame.get() ?: return false
+        if (ready.serial == seenDecodedSerial) return false
+        return uploadDecodedFrame(commandBuffer, ready)
+    }
+
+    private fun uploadDecodedFrame(commandBuffer: CommandBuffer, ready: DecodedFrame): Boolean {
+        val frame = ready.frame
+        val nextSlot = (currentSlot.get() + 1) % textureSlots
+        when (pixelFormat) {
+            VideoDecodeFormat.P010 -> {
+                val lumaTexture = lumaTextures[nextSlot] ?: return false
+                val chromaTexture = chromaTextures[nextSlot] ?: return false
+                lumaTexture.upload(commandBuffer, frame.plane0)
+                chromaTexture.upload(commandBuffer, frame.plane1)
+            }
+            VideoDecodeFormat.RGBA8 -> {
+                val rgbaTexture = rgbaTextures[nextSlot] ?: return false
+                rgbaTexture.upload(commandBuffer, frame.plane0)
+            }
+        }
+        seenDecodedSerial = ready.serial
+        currentSlot.set(nextSlot)
+        lastFrameTimestamp = frame.timestamp
+        currentTimestamp = frame.timestamp
+        uploadedFrame = true
+        uploadedFrameIndex = if (fps > 0) VideoFrameIndex.decoded(frame.timestamp, fps) else -1
+        pendingFrameRefresh = false
+        return true
+    }
+
+    private fun requestBackgroundDecode(timestamp: Double, exactFrame: Long? = null) {
+        val request = DecodeRequest(decodeGeneration.incrementAndGet(), timestamp.coerceAtLeast(0.0), exactFrame)
+        requestedDecode.set(request)
+        pendingDecode.set(request)
+        LockSupport.unpark(decodeWorker)
+    }
+
+    private fun startDecodeWorker(activeDecoder: VideoDecoder) {
+        check(!decodeWorkerRunning)
+        decodeFailure = null
+        requestedDecode.set(null)
+        pendingDecode.set(null)
+        decodeWorkerRunning = true
+        decodeWorker = thread(name = "video-decode-${pixelFormat.name.lowercase()}", isDaemon = true) {
+            runDecodeWorker(activeDecoder)
+        }
+    }
+
+    private fun runDecodeWorker(activeDecoder: VideoDecoder) {
+        var decoderTimestamp = Double.NaN
+        try {
+            while (decodeWorkerRunning) {
+                val request = pendingDecode.getAndSet(null)
+                if (request == null) {
+                    LockSupport.parkNanos(2_000_000L)
+                    continue
+                }
+                val frameDuration = if (activeDecoder.fps > 0) 1.0 / activeDecoder.fps else 0.033
+                val already = decodedFrame.get()
+                if (request.exactFrame != null && already != null &&
+                    VideoFrameIndex.decoded(already.frame.timestamp, activeDecoder.fps) == request.exactFrame) continue
+                val delta = request.timestamp - decoderTimestamp
+                // Forward playback is deliberately sequential. A long-GOP movie may seek back to
+                // frame zero anyway, and repeatedly restarting that decode is both slower and prone
+                // to starving. Backward motion (including loop wrap) still seeks immediately.
+                if (!decoderTimestamp.isFinite() || delta < -frameDuration * 0.5 ||
+                    (request.exactFrame != null && delta <= frameDuration * 0.5)) {
+                    check(activeDecoder.seek(request.timestamp)) { "could not seek video to ${request.timestamp}s" }
+                    decoderTimestamp = request.timestamp - frameDuration
+                }
+
+                var attempts = 0
+                var reached = false
+                while (decodeWorkerRunning && attempts < 48) {
+                    if (request.exactFrame != null && requestedDecode.get()?.generation != request.generation) break
+                    val latestTarget = requestedDecode.get()?.timestamp ?: request.timestamp
+                    if (decoderTimestamp.isFinite() && latestTarget < decoderTimestamp - frameDuration * 0.5) break
+                    val frameStarted = System.nanoTime()
+                    val frame = activeDecoder.decodeNextFrame()
+                    if (frame == null) {
+                        check(request.exactFrame == null) { "video ended before requested source frame ${request.exactFrame}" }
+                        break
+                    }
+                    decoderTimestamp = frame.timestamp
+                    attempts++
+                    backgroundDecodeMicros = (System.nanoTime() - frameStarted) / 1_000L
+                    if (request.exactFrame != null) {
+                        val frameIndex = VideoFrameIndex.decoded(frame.timestamp, activeDecoder.fps)
+                        check(frameIndex <= request.exactFrame) { "video skipped requested frame ${request.exactFrame}, got $frameIndex" }
+                        if (frameIndex == request.exactFrame) {
+                            decodedFrame.set(DecodedFrame(decodeSerial.incrementAndGet(), frame))
+                            reached = true
+                            break
+                        }
+                    } else {
+                        decodedFrame.set(DecodedFrame(decodeSerial.incrementAndGet(), frame))
+                        if (frame.timestamp + frameDuration * 0.5 >= latestTarget) break
+                    }
+                }
+                // Long-GOP seeks can need more than one bounded decode pass. Keep the exact request
+                // alive, but never overwrite a newer seek/loop request.
+                if (request.exactFrame != null && !reached && requestedDecode.get()?.generation == request.generation) {
+                    pendingDecode.compareAndSet(null, request)
+                }
+            }
+        } catch (t: Throwable) {
+            if (decodeWorkerRunning) decodeFailure = t
+        } finally {
+            decodeWorkerRunning = false
+        }
+    }
+
+    private fun stopDecodeWorker() {
+        decodeWorkerRunning = false
+        LockSupport.unpark(decodeWorker)
+        decodeWorker?.interrupt()
+        decodeWorker?.join(5_000L)
+        check(decodeWorker?.isAlive != true) { "video decode worker did not stop" }
+        decodeWorker = null
+        requestedDecode.set(null)
+        pendingDecode.set(null)
+        decodedFrame.set(null)
     }
 }
 
@@ -532,7 +808,8 @@ private class VideoPlaneTexture(
                 dstAccessMask = VK10.VK_ACCESS_TRANSFER_WRITE_BIT
             }
             oldLayout == VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && newLayout == VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL -> {
-                srcStage = VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                // Video can drive vertex projection and compute forces as well as fragment colour.
+                srcStage = VK10.VK_PIPELINE_STAGE_ALL_COMMANDS_BIT
                 srcAccessMask = VK10.VK_ACCESS_SHADER_READ_BIT
                 dstStage = VK10.VK_PIPELINE_STAGE_TRANSFER_BIT
                 dstAccessMask = VK10.VK_ACCESS_TRANSFER_WRITE_BIT
@@ -540,7 +817,7 @@ private class VideoPlaneTexture(
             oldLayout == VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL -> {
                 srcStage = VK10.VK_PIPELINE_STAGE_TRANSFER_BIT
                 srcAccessMask = VK10.VK_ACCESS_TRANSFER_WRITE_BIT
-                dstStage = VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                dstStage = VK10.VK_PIPELINE_STAGE_ALL_COMMANDS_BIT
                 dstAccessMask = VK10.VK_ACCESS_SHADER_READ_BIT
             }
             else -> throw RuntimeException("Unsupported layout transition: $oldLayout -> $newLayout")

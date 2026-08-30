@@ -1781,7 +1781,17 @@ class Renderer(
         nameContextObjects(context, windowContexts.indexOf(context))
     }
 
+    @Volatile
     var running = false
+
+    /**
+     * Identifies the newest call to [run] or [runForever]. Live coding commonly re-launches the
+     * renderer box without stopping it first. Each invocation used to enter the render loop with
+     * its own local frame counter, so two coroutines could alternate submissions against the same
+     * per-frame fences and command buffers. The newest invocation now takes ownership at the next
+     * coroutine yield / loop boundary; an older invocation simply retires.
+     */
+    private val runInvocation = AtomicLong(0)
 
     private fun cleanupSecondaryMap(map: MutableMap<String, Array<CommandBuffer>>) {
         map.values.forEach { arr -> arr.forEach { it.cleanup() } }
@@ -1843,10 +1853,11 @@ class Renderer(
     }
 
     fun runForever(update: () -> Unit) {
+        val invocation = runInvocation.incrementAndGet()
         running = true
         var initialTime = System.nanoTime()
         var frame = 0
-        while (running && windows.any { !it.shouldClose() }) {
+        while (running && runInvocation.get() == invocation && windows.any { !it.shouldClose() }) {
             afield.logger.PinnedConsole.beat("render")
             windows.forEach { it.pollEvents() }
             update()
@@ -1859,13 +1870,17 @@ class Renderer(
                 frame = 0
             }
         }
-        cleanup()
+        // A newer live-code launch owns the same renderer now; do not tear its device down.
+        if (runInvocation.get() == invocation) cleanup()
     }
 
     suspend fun run() {
+        val invocation = runInvocation.incrementAndGet()
         running = true
+        lastRunFpsLogNs = 0L
+        lastRunFpsFrame = 0
         var frame = 0
-        while (running && windows.any { !it.shouldClose() }) {
+        while (running && runInvocation.get() == invocation && windows.any { !it.shouldClose() }) {
             logTime("pollEvents") { windows.forEach { it.pollEvents() } }
             logTime("render") { render() }
             frame++
@@ -1881,7 +1896,7 @@ class Renderer(
                 lastRunFpsFrame = frame
             }
             logTime_("compute") { yield() }
-            if (coroutineContext[Job]!!.isCancelled) break
+            if (coroutineContext[Job]!!.isCancelled || runInvocation.get() != invocation) break
         }
     }
 

@@ -246,6 +246,22 @@ object CompressedSplatPly {
         }
     }
 
+    /** Read only the header and return the number of splats, without touching the packed payload. */
+    fun rawCount(path: String): Int {
+        val file = File(path)
+        require(file.exists()) { "PLY file not found: $path" }
+        return RandomAccessFile(file, "r").use { raf ->
+            val header = parseFloatTableHeader(raf)
+            when (val recognition = recognise(header)) {
+                is Recognition.Compressed -> recognition.layout.splatCount
+                is Recognition.Malformed ->
+                    error("'$path' looks like a compressed splat PLY but ${recognition.reason}")
+                Recognition.Plain ->
+                    error("'$path' is not a compressed splat PLY — it has no packed_* vertex properties")
+            }
+        }
+    }
+
     // ------------------------------------------------------------------------
     // Reading
     // ------------------------------------------------------------------------

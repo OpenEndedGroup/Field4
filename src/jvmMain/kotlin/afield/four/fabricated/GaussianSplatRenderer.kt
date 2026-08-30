@@ -524,7 +524,31 @@ object GaussianSplatRenderer {
                 // whatever bookkeeping the write wrapper does on the way out.
                 target.position(total * SPLAT_FLOAT_STRIDE)
             }
-            val written = requireNotNull(frame)
+            return applyPackedFrame(requireNotNull(frame))
+        }
+
+        /**
+         * Upload a frame that [packInto] prepared on another thread.
+         *
+         * Only the mapped-buffer copy and the small draw-count update remain on the render thread.
+         * The input buffer is duplicated, so this method neither changes its position nor retains
+         * it after returning; a producer may safely recycle it immediately afterwards.
+         */
+        fun reuploadPacked(floats: FloatBuffer, frame: PackedFrame): PackedFrame {
+            require(frame.count <= capacity) {
+                "$sourceName has capacity $capacity but was handed ${frame.count} packed splats"
+            }
+            val copy = floats.duplicate().apply {
+                position(0)
+                limit(frame.count * SPLAT_FLOAT_STRIDE)
+            }
+            requireNotNull(splatData.result).write {
+                put(copy, padding = false)
+            }
+            return applyPackedFrame(frame)
+        }
+
+        private fun applyPackedFrame(written: PackedFrame): PackedFrame {
             count = written.count
             boundsMin = written.boundsMin
             boundsMax = written.boundsMax

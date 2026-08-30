@@ -15,6 +15,22 @@ import kotlin.test.assertTrue
  */
 class SplatTransportTest {
 
+    @Test
+    fun `only explicit seeks invalidate pending presentation work`() {
+        val t = SplatTransport(124, 24.0)
+        t.advance(0)
+        t.advance(125_000_000)
+        assertEquals(0L, t.seekGeneration)
+        t.position = 123.0
+        assertEquals(1L, t.seekGeneration)
+        t.advance(250_000_000)
+        assertEquals(1L, t.seekGeneration, "normal loop wrap is not a seek")
+        t.normalized = 0.5
+        assertEquals(2L, t.seekGeneration)
+        t.seek(0.0)
+        assertEquals(3L, t.seekGeneration)
+    }
+
     private val second = 1_000_000_000L
 
     @Test

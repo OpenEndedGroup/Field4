@@ -120,9 +120,10 @@ whole stream raises `Extra data`. Decode it as a sequence with
 - A box reference not present in the attached document is an error. In
   particular, never reuse a uid printed by an earlier scratch invocation.
 - `@last` means the most recently created box in this backdoor session.
-- `run <uid>` and `launch <uid>` use the box's stored `code` when neither
-  `--value` nor `--file` is supplied. The flags replace stored code only when
-  present.
+- `run <uid>` and `launch <uid>` use the box's stored selected string property (`code` by default)
+  when neither `--value` nor `--file` is supplied. `--property` also works for custom live-coding
+  properties omitted from the compact snapshot; the backdoor fetches their actual value rather than
+  silently executing an empty string. The flags replace the selected stored property only when present.
 - `launch-batch <uid> <uid> [...] [--property name] [--strand name]` launches the
   listed boxes as one ordered chord using each box's stored property. Its result waits
   for every box's pending queue signal; those signals do not imply persistent stripes.
@@ -135,7 +136,10 @@ whole stream raises `Extra data`. Decode it as a sequence with
 - `connect <parent> <child> [...]` makes every later uid a child of the first.
 - Each invocation writes a unique JSONL session log under
   `.field-backdoor/logs/`; a server it launches gets a sibling
-  `.managed-server.log`. These are disposable diagnostic artifacts.
+  `.managed-server.log`. These are disposable diagnostic artifacts. A session log is capped at
+  16 MiB and the directory is pruned toward 256 MiB by default, configurable with
+  `AFIELD_BACKDOOR_LOG_MAX_BYTES` and `AFIELD_BACKDOOR_LOG_TOTAL_MAX_BYTES`; reaching either budget
+  drops diagnostics rather than interrupting the websocket receiver or the work it is observing.
 
 For non-trivial Kotlin, use stdin or a file instead of shell-escaped `--value`:
 

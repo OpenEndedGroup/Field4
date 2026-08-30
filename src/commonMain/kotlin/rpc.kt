@@ -748,6 +748,22 @@ data class AgentSetPropertyResponse(
     val message: String = ""
 )
 
+/** Read a string property that is not part of the compact document snapshot. */
+@Serializable
+data class AgentGetPropertyRequest(
+    val uid: String,
+    val property: String
+)
+
+@Serializable
+data class AgentGetPropertyResponse(
+    val ok: Boolean,
+    val uid: String,
+    val property: String,
+    val value: String? = null,
+    val message: String = ""
+)
+
 @Serializable
 data class AgentWaitFramesResponse(
     val ok: Boolean,

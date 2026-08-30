@@ -148,7 +148,10 @@ fun executing() {
             val exec = Json.decodeFromJsonElement<Execute>(message.payload!!)
             val box = box(exec.uid)
 
-            lprintln("info,execution", "stop all has been called")
+            lprintln(
+                "info,execution",
+                "stop all has been called for '${box.name}' (${box.id}) strand=${exec.strand}"
+            )
 
             OperationTranscript.recordStop(box)
             stop(box, entrypoint = "stop-all")

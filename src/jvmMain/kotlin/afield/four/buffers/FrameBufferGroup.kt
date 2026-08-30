@@ -37,6 +37,7 @@ class FrameBufferGroup(
     var lastWritten = -1
     private val stagingBuffers = mutableListOf<VulkanBuffer>()
     private val readbackBuffers = mutableListOf<VulkanBuffer>()
+    private val pendingLock = Any()
     private val pendingUploads = mutableSetOf<Int>()
     private val pendingZeros = mutableSetOf<Int>()
     private var transferFence: Fence? = null
@@ -87,8 +88,10 @@ class FrameBufferGroup(
             buffers.add(builder(it))
         }
         if (accessPattern == BufferAccessPattern.DEVICE_LOCAL_ZERO) {
-            pendingZeros.clear()
-            buffers.indices.forEach { pendingZeros += it }
+            synchronized(pendingLock) {
+                pendingZeros.clear()
+                buffers.indices.forEach { pendingZeros += it }
+            }
         }
     }
 
@@ -158,27 +161,35 @@ class FrameBufferGroup(
 
     override fun clean(hostReading: Boolean, cmd: CommandBuffer?): FrameBufferGroup {
         if (hostReading) return this
-        if (pendingZeros.isEmpty() && (!usesStagedUploads || pendingUploads.isEmpty())) return this
+        // Compute and graphics command buffers are recorded in parallel. Exactly one recorder must
+        // claim each staged copy; iterating and removing from the shared sets raced, duplicated copies,
+        // and occasionally ended the renderer with ConcurrentModificationException.
+        val (zeros, uploads) = synchronized(pendingLock) {
+            if (pendingZeros.isEmpty() && (!usesStagedUploads || pendingUploads.isEmpty())) return this
+            val claimedZeros = pendingZeros.toList()
+            val claimedUploads = if (usesStagedUploads) pendingUploads.toList() else emptyList()
+            pendingZeros.clear()
+            pendingUploads.clear()
+            claimedZeros to claimedUploads
+        }
         if (cmd == null) {
-            pendingZeros.toList().forEach { submitZeroNow(it) }
-            pendingUploads.toList().forEach { submitUploadNow(it) }
+            zeros.forEach { submitZeroNow(it) }
+            uploads.forEach { submitUploadNow(it) }
             return this
         }
-        pendingZeros.toList().forEach { imageIndex ->
+        zeros.forEach { imageIndex ->
             if (cmd.inRenderPassInstance) {
                 submitZeroNow(imageIndex)
             } else {
                 recordZero(cmd, imageIndex)
             }
-            pendingZeros.remove(imageIndex)
         }
-        pendingUploads.toList().forEach { imageIndex ->
+        uploads.forEach { imageIndex ->
             if (cmd.inRenderPassInstance) {
                 submitUploadNow(imageIndex)
             } else {
                 recordUpload(cmd, imageIndex)
             }
-            pendingUploads.remove(imageIndex)
         }
         return this
     }
@@ -218,7 +229,9 @@ class FrameBufferGroup(
 
     private fun noteWrite(imageIndex: Int) {
         markAsWritten(imageIndex)
-        if (usesStagedUploads) pendingUploads += imageIndex % buffers.size
+        if (usesStagedUploads) synchronized(pendingLock) {
+            pendingUploads += imageIndex % buffers.size
+        }
     }
 
     private fun recordUpload(cmd: CommandBuffer, imageIndex: Int) {
@@ -243,7 +256,8 @@ class FrameBufferGroup(
                 .srcAccessMask(VK_ACCESS_2_TRANSFER_WRITE_BIT)
                 .dstStageMask(VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT)
                 .dstAccessMask(
-                    VK_ACCESS_2_SHADER_READ_BIT or VK_ACCESS_2_SHADER_WRITE_BIT or
+                    VK_ACCESS_2_TRANSFER_WRITE_BIT or
+                            VK_ACCESS_2_SHADER_READ_BIT or VK_ACCESS_2_SHADER_WRITE_BIT or
                             VK_ACCESS_2_UNIFORM_READ_BIT or VK_ACCESS_2_SHADER_STORAGE_READ_BIT or
                             VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT
                 )
@@ -277,7 +291,6 @@ class FrameBufferGroup(
             fence.fenceWait()
             cmd.cleanup()
         }
-        pendingUploads.remove(imageIndex % buffers.size)
     }
 
     private fun recordZero(cmd: CommandBuffer, imageIndex: Int) {
@@ -304,7 +317,6 @@ class FrameBufferGroup(
             fence.fenceWait()
             cmd.cleanup()
         }
-        pendingZeros.remove(imageIndex % buffers.size)
     }
 
     private fun copyToReadbackNow(imageIndex: Int) {

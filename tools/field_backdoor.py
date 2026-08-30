@@ -130,6 +130,11 @@ LOG_STRING_PREVIEW = 512
 # kind. Override with AFIELD_BACKDOOR_LOG_KEEP, or 0 to disable pruning.
 LOG_KEEP = int(os.environ.get("AFIELD_BACKDOOR_LOG_KEEP", "300"))
 LOG_COLLECTION_PREVIEW = 32
+# A busy graphics document can emit thousands of telemetry packets per second. Individual values are
+# summarized above, but the number of records is still unbounded unless the session and directory
+# have byte budgets too. Logging must never be able to stop the websocket receiver or fill the disk.
+LOG_MAX_BYTES = int(os.environ.get("AFIELD_BACKDOOR_LOG_MAX_BYTES", str(16 * 1024 * 1024)))
+LOG_TOTAL_MAX_BYTES = int(os.environ.get("AFIELD_BACKDOOR_LOG_TOTAL_MAX_BYTES", str(256 * 1024 * 1024)))
 GRAPHICS_CONTEXT_WAIT_SEC = 0.5
 GRAPHICS_CONTEXT_BOX_NAME = "renderer"
 GRADLE_WRAPPER = REPO_ROOT / ("gradlew.bat" if os.name == "nt" else "gradlew")
@@ -142,6 +147,11 @@ class BackdoorError(RuntimeError):
 
 class CommandParseError(BackdoorError):
     pass
+
+
+def exception_message(exc: BaseException) -> str:
+    """Never turn a useful exception type (notably asyncio.TimeoutError) into a blank CLI error."""
+    return str(exc).strip() or type(exc).__name__
 
 
 def make_unverified_ssl_context() -> ssl.SSLContext:
@@ -344,8 +354,12 @@ def _summarize_for_log(value: Any) -> Any:
 
 class SessionLogger:
     @staticmethod
-    def prune(root: Path, keep: int = LOG_KEEP) -> None:
-        """Keep only the newest `keep` logs of each kind; best-effort."""
+    def prune(
+        root: Path,
+        keep: int = LOG_KEEP,
+        max_total_bytes: int = LOG_TOTAL_MAX_BYTES,
+    ) -> None:
+        """Bound both file count and total bytes; diagnostic-log cleanup is best-effort."""
         if keep <= 0 or not root.exists():
             return
         try:
@@ -356,10 +370,26 @@ class SessionLogger:
                         stale.unlink()
                     except OSError:
                         pass
+            if max_total_bytes > 0:
+                files = sorted(
+                    [*root.glob("*.jsonl"), *root.glob("*.managed-server.log")],
+                    key=lambda p: p.stat().st_mtime,
+                    reverse=True,
+                )
+                total = sum(path.stat().st_size for path in files)
+                for stale in reversed(files):
+                    if total <= max_total_bytes or stale == files[0]:
+                        break
+                    try:
+                        size = stale.stat().st_size
+                        stale.unlink()
+                        total -= size
+                    except OSError:
+                        pass
         except OSError:
             pass
 
-    def __init__(self, root: Path, argv: list[str]) -> None:
+    def __init__(self, root: Path, argv: list[str], max_bytes: int = LOG_MAX_BYTES) -> None:
         self.root = root
         self.root.mkdir(parents=True, exist_ok=True)
         self.prune(root)
@@ -367,6 +397,11 @@ class SessionLogger:
         self.session_id = f"{stamp}-pid{os.getpid()}-{uuid.uuid4().hex[:8]}"
         self.path = self.root / f"{self.session_id}.jsonl"
         self.handle = self.path.open("a", encoding="utf-8")
+        self.max_bytes = max_bytes
+        self.bytes_written = 0
+        self.dropped_records = 0
+        self.write_error: str | None = None
+        self.capped = False
         self.log(
             "session_start",
             argv=argv,
@@ -376,26 +411,57 @@ class SessionLogger:
             logPath=str(self.path),
         )
 
-    def log(self, event: str, **fields: Any) -> None:
+    def _record(self, event: str, fields: dict[str, Any], *, force: bool = False) -> None:
         record = {"timestamp": utc_timestamp(), "event": event}
         record.update(_summarize_for_log(fields))
-        self.handle.write(json.dumps(record, ensure_ascii=True, default=str) + "\n")
-        self.handle.flush()
+        line = json.dumps(record, ensure_ascii=True, default=str) + "\n"
+        encoded_size = len(line.encode("utf-8"))
+        if not force and self.max_bytes > 0 and self.bytes_written + encoded_size > self.max_bytes:
+            self.capped = True
+            self.dropped_records += 1
+            return
+        try:
+            self.handle.write(line)
+            self.handle.flush()
+            self.bytes_written += encoded_size
+        except OSError as exc:
+            # Diagnostics are never allowed to kill the actual backdoor receiver. In particular,
+            # ENOSPC used to close the websocket and turn a healthy long JVM probe into "error: ''".
+            self.write_error = f"{type(exc).__name__}: {exc}"
+
+    def log(self, event: str, **fields: Any) -> None:
+        if self.write_error is None:
+            self._record(event, fields)
 
     def exception(self, event: str, exc: BaseException, **fields: Any) -> None:
-        self.log(
+        if self.write_error is not None:
+            return
+        self._record(
             event,
-            errorType=type(exc).__name__,
-            error=str(exc),
-            traceback="".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
-            **fields,
+            {
+                "errorType": type(exc).__name__,
+                "error": exception_message(exc),
+                "traceback": "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
+                **fields,
+            },
+            force=True,
         )
 
     def close(self) -> None:
         if self.handle.closed:
             return
-        self.log("session_end")
-        self.handle.close()
+        if self.write_error is None and self.capped:
+            self._record(
+                "session_log_capped",
+                {"maxBytes": self.max_bytes, "bytesWritten": self.bytes_written, "droppedRecords": self.dropped_records},
+                force=True,
+            )
+        if self.write_error is None:
+            self._record("session_end", {}, force=True)
+        try:
+            self.handle.close()
+        except OSError:
+            pass
 
 
 class FieldBackdoor:
@@ -1899,6 +1965,33 @@ class FieldBackdoor:
             raise BackdoorError("agent-set-property returned an invalid payload")
         return payload
 
+    async def get_property(
+        self, *, uid: str, property_name: str, timeout: float
+    ) -> str:
+        """Fetch a string property omitted from the compact box snapshot."""
+        resolved, _ = self.require_box_reference(uid)
+        event = await self.call_for_single_reply(
+            "agent-get-property",
+            {"uid": resolved, "property": property_name},
+            timeout=timeout,
+        )
+        payload = event.get("payload")
+        if not isinstance(payload, dict):
+            raise BackdoorError("agent-get-property returned an invalid payload")
+        if not payload.get("ok") or not isinstance(payload.get("value"), str):
+            raise BackdoorError(str(payload.get("message") or f"Could not read {property_name} from {resolved}"))
+        value = payload["value"]
+        self._set_local_string(resolved, property_name, value)
+        return value
+
+    async def execution_code(
+        self, resolved: str, box: dict[str, Any], property_name: str, timeout: float
+    ) -> str:
+        value = box.get(property_name)
+        if isinstance(value, str):
+            return value
+        return await self.get_property(uid=resolved, property_name=property_name, timeout=timeout)
+
     async def ai_tools_list(self, *, timeout: float) -> list[dict[str, Any]]:
         """List the ai4 agent tools available for the attached document."""
         event = await self.call_for_single_reply("agent-ai-tools-list", {}, timeout=timeout)
@@ -2074,7 +2167,7 @@ class FieldBackdoor:
         self.logger.log("run_box_start", uid=resolved, property=property_name, timeout=timeout, hasInlineValue=value is not None)
         if value is not None:
             await self.set_string(resolved, property_name, value)
-        code = str(box.get(property_name) or "")
+        code = await self.execution_code(resolved, box, property_name, timeout)
         reply_name = f"exec_{uuid.uuid4().hex}"
         start_seq = self.event_seq
         await self.send_message(
@@ -2124,7 +2217,7 @@ class FieldBackdoor:
         self.logger.log("launch_box_start", uid=resolved, property=property_name, timeout=timeout, hasInlineValue=value is not None)
         if value is not None:
             await self.set_string(resolved, property_name, value)
-        code = str(box.get(property_name) or "")
+        code = await self.execution_code(resolved, box, property_name, timeout)
         reply_name = f"launch_{uuid.uuid4().hex}"
         start_seq = self.event_seq
         await self.send_message(
@@ -2372,7 +2465,7 @@ class FieldBackdoor:
         self.logger.log("continue_box_start", uid=resolved, property=property_name, timeout=timeout, hasInlineValue=value is not None)
         if value is not None:
             await self.set_string(resolved, property_name, value)
-        code = str(box.get(property_name) or "")
+        code = await self.execution_code(resolved, box, property_name, timeout)
         reply_name = f"continue_{uuid.uuid4().hex}"
         start_seq = self.event_seq
         await self.send_message(
@@ -3686,7 +3779,7 @@ async def repl(
             )
         except Exception as exc:
             client.logger.exception("repl_command_error", exc, commandLine=line)
-            result = command_result(line, False, data={"error": str(exc)})
+            result = command_result(line, False, data={"error": exception_message(exc)})
         print_result(result, json_mode=json_mode, logger=client.logger)
 
 
@@ -3767,7 +3860,7 @@ async def async_main(argv: list[str], logger: SessionLogger) -> int:
                     )
                 except Exception as exc:
                     logger.exception("batch_command_error", exc, commandLine=line)
-                    result = command_result(line, False, data={"error": str(exc)})
+                    result = command_result(line, False, data={"error": exception_message(exc)})
                 print_result(result, json_mode=args.json, logger=logger)
                 if not result["ok"]:
                     logger.log("async_main_exit", exitCode=1)

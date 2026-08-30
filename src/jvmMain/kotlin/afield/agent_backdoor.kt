@@ -1078,6 +1078,32 @@ fun installAgentBackdoorHandlers() {
         Handled.yes
     })
 
+    handlers["agent-get-property"] = mutableSetOf({ message, reply ->
+        val request = Json.decodeFromJsonElement<AgentGetPropertyRequest>(message.payload!!)
+        val info = thisSessionInfo.get()
+        val target = info.boxes[request.uid]
+        val response = if (target == null) {
+            AgentGetPropertyResponse(
+                ok = false, uid = request.uid, property = request.property,
+                message = "No box '${request.uid}' in ${info.documentName}."
+            )
+        } else {
+            val raw = if (request.property == "name") target.name else target.getPropertyRaw(request.property)
+            if (raw is String) {
+                AgentGetPropertyResponse(
+                    ok = true, uid = request.uid, property = request.property, value = raw
+                )
+            } else {
+                AgentGetPropertyResponse(
+                    ok = false, uid = request.uid, property = request.property,
+                    message = "${target.name.ifBlank { request.uid }} has no string property '${request.property}'."
+                )
+            }
+        }
+        reply(Message("agent-get-property").payload(response))
+        Handled.yes
+    })
+
     handlers["agent-create-box"] = mutableSetOf({ message, reply ->
         val request = Json.decodeFromJsonElement<AgentCreateBox>(message.payload!!)
         val info = thisSessionInfo.get()

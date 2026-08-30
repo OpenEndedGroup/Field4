@@ -143,6 +143,8 @@ class BufferParameters(
     fun zeroInitialized() {
         accessPattern = BufferAccessPattern.DEVICE_LOCAL_ZERO
         stagedUploads = false
+        // FrameBufferGroup establishes the initial contents with vkCmdFillBuffer.
+        usage = usage or VK_BUFFER_USAGE_TRANSFER_DST_BIT
         memory = (memory and hostMemoryBits.inv()) or VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
     }
 

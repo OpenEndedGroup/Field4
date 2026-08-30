@@ -3,6 +3,7 @@ import asyncio
 import re
 import shlex
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -18,7 +19,9 @@ from tools.field_backdoor import (
     CommandParseError,
     FieldBackdoor,
     REPO_ROOT,
+    SessionLogger,
     build_command_parser,
+    exception_message,
     parse_command,
 )
 from tools.verification_runtime import automation_workspace
@@ -31,6 +34,58 @@ class _Logger:
 
     def log(self, _event: str, **_fields) -> None:
         pass
+
+
+class SessionLoggerTests(unittest.TestCase):
+    def test_message_less_timeout_keeps_its_exception_type(self) -> None:
+        self.assertEqual(exception_message(asyncio.TimeoutError()), "TimeoutError")
+
+    def test_session_byte_cap_drops_telemetry_without_growing_forever(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            logger = SessionLogger(Path(root), ["test"], max_bytes=1_200)
+            for index in range(100):
+                logger.log("ws_receive_raw", index=index, raw="x" * 4_000)
+            logger.close()
+
+            text = logger.path.read_text()
+            self.assertTrue(logger.capped)
+            self.assertGreater(logger.dropped_records, 0)
+            self.assertIn('"event": "session_log_capped"', text)
+            self.assertLess(logger.path.stat().st_size, 4_000)
+
+    def test_log_write_failure_never_escapes_into_the_receiver(self) -> None:
+        class FullDisk:
+            closed = False
+
+            def write(self, _value: str) -> None:
+                raise OSError(28, "No space left on device")
+
+            def flush(self) -> None:
+                pass
+
+            def close(self) -> None:
+                self.closed = True
+
+        with tempfile.TemporaryDirectory() as root:
+            logger = SessionLogger(Path(root), ["test"])
+            logger.handle.close()
+            logger.handle = FullDisk()  # type: ignore[assignment]
+            logger.log("ws_receive_raw", raw="still not fatal")
+            logger.log("another", value=1)
+            logger.close()
+            self.assertIn("No space left on device", logger.write_error or "")
+
+    def test_prune_enforces_a_total_byte_budget(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            directory = Path(root)
+            for index in range(5):
+                path = directory / f"{index}.jsonl"
+                path.write_bytes(b"x" * 1_000)
+                path.touch()
+            SessionLogger.prune(directory, keep=10, max_total_bytes=2_200)
+            remaining = list(directory.glob("*.jsonl"))
+            self.assertLessEqual(sum(path.stat().st_size for path in remaining), 2_200)
+            self.assertGreaterEqual(len(remaining), 1)
 
 
 class BoxReferenceTests(unittest.TestCase):
@@ -71,6 +126,35 @@ class BoxReferenceTests(unittest.TestCase):
         with self.assertRaises(BackdoorError):
             asyncio.run(attempt())
         self.assertNotIn("box-from-an-earlier-process", self.client.boxes)
+
+    def test_execution_fetches_a_custom_property_missing_from_the_compact_snapshot(self) -> None:
+        self.client.boxes["box"] = {"uid": "box", "name": "Box", "code": "ordinary()"}
+        calls: list[tuple[str, dict]] = []
+
+        async def reply(name, payload, **_kwargs):
+            calls.append((name, payload))
+            return {
+                "payload": {
+                    "ok": True,
+                    "uid": "box",
+                    "property": "look_switch_test",
+                    "value": "switchLooks()",
+                }
+            }
+
+        self.client.call_for_single_reply = reply  # type: ignore[method-assign]
+        code = asyncio.run(
+            self.client.execution_code(
+                "box", self.client.boxes["box"], "look_switch_test", timeout=0.01
+            )
+        )
+
+        self.assertEqual(code, "switchLooks()")
+        self.assertEqual(self.client.boxes["box"]["look_switch_test"], "switchLooks()")
+        self.assertEqual(
+            calls,
+            [("agent-get-property", {"uid": "box", "property": "look_switch_test"})],
+        )
 
 
 class RunningStateOrderingTests(unittest.TestCase):

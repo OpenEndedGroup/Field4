@@ -76,13 +76,13 @@ class SplatSequence(
      * The largest total splat count any [window] consecutive frames can reach, which is what a
      * [GaussianSplatRenderer.streaming] cloud's capacity has to be.
      *
-     * Reads the whole sequence, so call it once at setup. It is the true peak over the windows that
-     * can actually occur rather than the sum of the [window] largest frames anywhere — that
-     * over-allocates, harmlessly, and is what to use if reading everything up front is too slow.
+     * Reads only each compressed PLY header, so it does not evict useful decoded frames from the
+     * playback cache. It is the true peak over the windows that can actually occur rather than the
+     * sum of the [window] largest frames anywhere.
      */
     fun peakWindowSplats(window: Int): Int {
         require(window in 1..frameCount) { "window $window outside 1..$frameCount" }
-        val counts = IntArray(frameCount) { raw(it).count }
+        val counts = IntArray(frameCount) { CompressedSplatPly.rawCount(files[it].absolutePath) }
         var running = 0
         for (i in 0 until window) running += counts[i]
         var peak = running
@@ -135,9 +135,16 @@ class SplatTransport(
     var loop: Boolean = true
 
     /** Fractional play head. Assign to scrub; [frame] is what the renderer should show. */
-    var position: Double = 0.0
+    private var clockPosition = 0.0
+    /** Increases on an explicit scrub/seek, not on ordinary wall-clock advancement. */
+    var seekGeneration: Long = 0
+        private set
+
+    var position: Double
+        get() = clockPosition
         set(value) {
-            field = normalise(value)
+            clockPosition = normalise(value)
+            seekGeneration++
         }
 
     /** The frame [position] resolves to. */
@@ -170,7 +177,7 @@ class SplatTransport(
         val elapsed = (nowNanos - lastNanos) / 1e9
         lastNanos = nowNanos
         if (playing && elapsed > 0) {
-            position += elapsed.coerceAtMost(maxCatchUpSeconds) * fps * speed
+            clockPosition = normalise(clockPosition + elapsed.coerceAtMost(maxCatchUpSeconds) * fps * speed)
         }
         val now = frame
         if (now == lastFrame) return false
