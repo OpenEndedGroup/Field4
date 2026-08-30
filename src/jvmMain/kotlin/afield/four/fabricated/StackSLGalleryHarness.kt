@@ -62,6 +62,13 @@ object StackSLGalleryHarness {
     private const val PRE_TARGET_NAME = "stacksl-gallery-rtt"
     private const val PRE_TARGET_NAME_FEEDBACK = "stacksl-gallery-feedback"
     private const val FEEDBACK_WARMUP_FRAMES = 60
+
+    /**
+     * Which frame of the feedback sweep becomes the still. The still runs the
+     * *same* warmup + time sweep as the mp4 and captures this frame, so the PNG
+     * is a real mid-clip frame of the very animation it sits next to.
+     */
+    private const val FEEDBACK_STILL_FRAME = ANIM_FRAMES / 2
     private const val SLOT = "program"
     private val DATA_IMAGE_RE = Regex("base64,([^']+)")
 
@@ -136,15 +143,31 @@ object StackSLGalleryHarness {
             examples.forEach { example ->
                 val file = File(outputDir, "stacksl-${example.name}.png")
                 runCatching {
-                    buildProgramModule(renderer, rtt, templateBox, example.program, fragmentTemplate(example.time), example.name)
-                    waitForRendererFrames(renderer, WAIT_FRAMES)
-                    captureTo(renderer, rtt, file, example.name)
+                    // Feedback programs sample `source`, and only the ping-pong
+                    // template declares that sampler — the plain still template
+                    // cannot host them (glslang rejects the assembled shader and
+                    // the target stays at its clear color). So they take the same
+                    // evolving path their mp4 does.
+                    if (example.feedback) {
+                        renderFeedbackStill(renderer, templateBox, example, file)
+                    } else {
+                        buildProgramModule(renderer, rtt, templateBox, example.program, fragmentTemplate(example.time), example.name)
+                        waitForRendererFrames(renderer, WAIT_FRAMES)
+                        captureTo(renderer, rtt, file, example.name)
+                    }
+                    requireNotAllBlack(file, example.name)
                 }
                     .onSuccess {
                         lprintln("info,doc", "stacksl gallery wrote ${file.name} (${file.length()} bytes)")
                         if (example.name == HERO_NAME) heroFile = file
                     }
-                    .onFailure { t -> lprintln("error,doc", "stacksl gallery example '${example.name}' failed: ${t.message}") }
+                    .onFailure { t ->
+                        // Never leave a rejected still on disk: a black or partial PNG
+                        // that survives a failed run looks exactly like a good asset to
+                        // every downstream consumer. Better a missing file than a fake.
+                        if (file.delete()) lprintln("error,doc", "stacksl gallery discarded ${file.name}")
+                        lprintln("error,doc", "stacksl gallery example '${example.name}' failed: ${t.message}")
+                    }
             }
         } finally {
             teardown(renderer, rtt)
@@ -196,20 +219,28 @@ object StackSLGalleryHarness {
         return written
     }
 
+    /** Mutable `time` cell shared with the push-constant lambda for a feedback run. */
+    private class FeedbackTime {
+        var value = 0f
+    }
+
     /**
-     * Render a feedback (ping-pong) clip: the fragment samples the previous frame
-     * through `source`, so the image evolves on its own each renderer frame. No
-     * `time` sweep is needed — the loop *is* the animation. Uses a
-     * [PingPongRenderToTexture] so the previous frame is available to sample while
-     * the current one is written.
+     * Set up one feedback (ping-pong) program and run [body] against it.
+     *
+     * The fragment samples the previous frame through `source`, so the image
+     * evolves on its own each renderer frame — a [PingPongRenderToTexture] keeps
+     * the previous frame readable while the current one is written. The program is
+     * built once, warmed for [FEEDBACK_WARMUP_FRAMES] so the feedback develops
+     * structure, and then handed to [body] together with the `time` cell driving
+     * `pc.params.x`. Both the mp4 and the still go through here, so they cannot
+     * drift apart.
      */
-    private suspend fun renderFeedbackAnimation(
+    private suspend fun <T> withFeedbackProgram(
         renderer: Renderer,
         templateBox: Box,
         example: Example,
-        outputDir: File,
-        ffmpeg: String
-    ): File {
+        body: suspend (PingPongRenderToTexture, FeedbackTime) -> T
+    ): T {
         val pp = PingPongRenderToTexture(renderer, frameCount = 2) {
             width = OUTPUT_DIM
             height = OUTPUT_DIM
@@ -226,33 +257,82 @@ object StackSLGalleryHarness {
         val sourceProvider = object : HasImageViewArray {
             override val imageViewArray: List<HasImageView> get() = listOf(pp.otherImageView)
         }
-
-        val framesDir = Files.createTempDirectory("stacksl-feedback-${example.name}").toFile()
+        val time = FeedbackTime()
         try {
-            var currentTime = 0f
             val mesh = buildProgramModule(
                 renderer, pp, templateBox, example.program, feedbackFragmentTemplate(), example.name,
                 source = sourceProvider to sampler
             )
-            mesh.push.bind("params") { afield.stdlib.vec(currentTime, 0f, 0f, 0f) }
+            mesh.push.bind("params") { afield.stdlib.vec(time.value, 0f, 0f, 0f) }
             waitForRendererFrames(renderer, FEEDBACK_WARMUP_FRAMES) // let the feedback develop structure
-            for (i in 0 until ANIM_FRAMES) {
-                currentTime = i.toFloat() / ANIM_FPS * example.timeSpeed
-                waitForRendererFrames(renderer, ANIM_SETTLE_FRAMES)
-                val view = pp.otherImageView.imageView
-                captureImageTo(renderer, view.image, pp.colorFormats[0], File(framesDir, "frame_%05d.png".format(i)), example.name)
-            }
-            val mp4 = File(outputDir, "stacksl-${example.name}.mp4")
-            encodeMp4(ffmpeg, framesDir, "frame_%05d.png", ANIM_FPS, mp4)
-            require(mp4.length() > 0L) { "ffmpeg wrote an empty mp4 for '${example.name}'" }
-            return mp4
+            return body(pp, time)
         } finally {
-            framesDir.deleteRecursively()
             renderer.renderList.preTargets.remove(PRE_TARGET_NAME_FEEDBACK)
             pp.modules[MODULE_NAME]?.let { disposeModule(it) }
             pp.modules.clear()
             runCatching { sampler.cleanup() }
             disposeRtt(pp)
+        }
+    }
+
+    /** Read back the ping-pong frame that is currently readable (the previous one). */
+    private suspend fun captureFeedbackTo(
+        renderer: Renderer,
+        pp: PingPongRenderToTexture,
+        outputFile: File,
+        label: String
+    ) = captureImageTo(renderer, pp.otherImageView.imageView.image, pp.colorFormats[0], outputFile, label)
+
+    /** Advance the feedback sweep to frame [upTo] inclusive, rendering each step. */
+    private suspend fun sweepFeedback(renderer: Renderer, example: Example, time: FeedbackTime, upTo: Int) {
+        for (i in 0..upTo) {
+            time.value = i.toFloat() / ANIM_FPS * example.timeSpeed
+            waitForRendererFrames(renderer, ANIM_SETTLE_FRAMES)
+        }
+    }
+
+    /**
+     * Capture a single still for a feedback program: run the same warmup and time
+     * sweep the mp4 does and read back frame [FEEDBACK_STILL_FRAME]. The plain
+     * [fragmentTemplate] cannot host these programs at all — it declares no
+     * `source` sampler — so the still needs the ping-pong path too.
+     */
+    private suspend fun renderFeedbackStill(
+        renderer: Renderer,
+        templateBox: Box,
+        example: Example,
+        outputFile: File
+    ) = withFeedbackProgram(renderer, templateBox, example) { pp, time ->
+        sweepFeedback(renderer, example, time, FEEDBACK_STILL_FRAME)
+        captureFeedbackTo(renderer, pp, outputFile, example.name)
+    }
+
+    /**
+     * Render a feedback (ping-pong) clip: every frame of the sweep is read back and
+     * encoded, so the mp4 shows the image feeding back into itself. The still
+     * produced by [renderFeedbackStill] is frame [FEEDBACK_STILL_FRAME] of exactly
+     * this sequence.
+     */
+    private suspend fun renderFeedbackAnimation(
+        renderer: Renderer,
+        templateBox: Box,
+        example: Example,
+        outputDir: File,
+        ffmpeg: String
+    ): File = withFeedbackProgram(renderer, templateBox, example) { pp, time ->
+        val framesDir = Files.createTempDirectory("stacksl-feedback-${example.name}").toFile()
+        try {
+            for (i in 0 until ANIM_FRAMES) {
+                time.value = i.toFloat() / ANIM_FPS * example.timeSpeed
+                waitForRendererFrames(renderer, ANIM_SETTLE_FRAMES)
+                captureFeedbackTo(renderer, pp, File(framesDir, "frame_%05d.png".format(i)), example.name)
+            }
+            val mp4 = File(outputDir, "stacksl-${example.name}.mp4")
+            encodeMp4(ffmpeg, framesDir, "frame_%05d.png", ANIM_FPS, mp4)
+            require(mp4.length() > 0L) { "ffmpeg wrote an empty mp4 for '${example.name}'" }
+            mp4
+        } finally {
+            framesDir.deleteRecursively()
         }
     }
 
@@ -375,6 +455,28 @@ object StackSLGalleryHarness {
         outputFile.delete()
         outputFile.writeBytes(Base64.getDecoder().decode(encoded))
         require(outputFile.length() > 0L) { "StackSL gallery readback wrote an empty image for '$label'" }
+    }
+
+    /**
+     * A gallery still that is *entirely* black is never a legitimate asset. When a
+     * fragment shader fails to build, the target simply keeps its clear color and
+     * the readback still "succeeds" — which is how two black PNGs were committed
+     * without any example ever reporting a failure. Check the pixels, not the
+     * byte count.
+     */
+    private fun requireNotAllBlack(file: File, label: String) {
+        val image = javax.imageio.ImageIO.read(file)
+            ?: error("could not re-read the StackSL still for '$label': ${file.absolutePath}")
+        for (y in 0 until image.height) {
+            for (x in 0 until image.width) {
+                if (image.getRGB(x, y) and 0x00ffffff != 0) return
+            }
+        }
+        error(
+            "StackSL still for '$label' is entirely black (${image.width}x${image.height}) — " +
+                "the program almost certainly never drew; check that its fragment template " +
+                "declares every sampler the program reads"
+        )
     }
 
     private fun resolveFfmpeg(): String {

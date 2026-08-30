@@ -939,6 +939,25 @@ object StackSLSmokeTest {
             require("vec4 program(vec4 program_in)" in expanded) {
                 "stack.auto expansion for gallery program '${example.name}' missing entrypoint:\n$expanded"
             }
+
+            // A program whose expansion reads `source` can only be hosted by the
+            // gallery's feedback (ping-pong) template, which is the only one that
+            // declares that sampler. Getting this pairing wrong compiles fine at
+            // the StackSL level and then fails inside glslang, leaving the render
+            // target at its clear color — i.e. it silently produces a black still.
+            // So pin `feedback:` in the workspace metadata to what the program
+            // actually reads.
+            val samplesSource = Regex("""\bsource\b""").containsMatchIn(expanded)
+            require(samplesSource == example.feedback) {
+                if (samplesSource) {
+                    "gallery program '${example.name}' samples `source` but its metadata.yaml does not " +
+                        "set `feedback: true` — the plain still template declares no sampler, so this " +
+                        "would render an all-black PNG"
+                } else {
+                    "gallery program '${example.name}' is marked `feedback: true` but never samples " +
+                        "`source` — it does not need the ping-pong path"
+                }
+            }
         }
     }
 
