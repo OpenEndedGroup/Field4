@@ -575,7 +575,7 @@ The visual target is Don McCurdy's glTF Viewer with the same ToyCar model and Ve
 
 ![ToyCar in Don McCurdy's glTF Viewer, close comparison framing](assets/fabricate-toy-car-donmccurdy-reference-close.png)
 
-For local debugging, the throwaway Three.js probe loads the same `ToyCar.glb` and Venice EXR with `PMREMGenerator`. It confirms that the visible grime and surface variation come from the GLB texture maps, not from procedural dirt in the viewer. The Field docs harness pins the ToyCar capture to the same 50-degree comparison FOV, written in radians. It used to be written as a *negative* radian value, with a comment claiming that preserved a Vulkan projection convention; it did not. `Options.fov` held a degrees literal in a radians slot, so `tan(15 rad)` came out negative and every perspective matrix quietly negated both `m00` and `m11` — and the negative fov here was matching that sign rather than working around a convention.
+For local debugging, the throwaway Three.js probe loads the same `ToyCar.glb` and Venice EXR with `PMREMGenerator`. It confirms that the visible grime and surface variation come from the GLB texture maps, not from procedural dirt in the viewer. The Field docs harness pins the ToyCar capture to the same 50-degree comparison FOV, represented as a signed radian value to preserve the current Vulkan-oriented projection convention.
 
 ![ToyCar comparison between the throwaway Three.js probe and Field StandardRenderer](assets/fabricate-toy-car-three-throwaway-comparison.png)
 
