@@ -203,6 +203,28 @@ class KeyframerTest {
     }
 
     @Test
+    fun arbitraryGetterSetterTargetCapturesInterpolatesAndApplies() {
+        val scope = KeyframeScope()
+        var live = Vector3f(1f, 2f, 3f)
+        scope.target("position", get = { Vector3f(live) }, set = { value ->
+            live = Vector3f(value as Vector3f)
+        })
+
+        val a = scope.capture()
+        live.set(5f, 6f, 7f)
+        val b = scope.capture()
+        scope.interpolate(a, b, 0.25)()
+
+        assertEquals(Vector3f(2f, 3f, 4f), live)
+        assertEquals(Vector3f(2f, 3f, 4f), scope.capture()["position"])
+
+        // A later registration replaces the custom target just as it does either Structure form.
+        val structure = Structure().also { it.bind("position") { Vector3f(9f, 8f, 7f) } }
+        scope.target("position", structure)
+        assertEquals(Vector3f(9f, 8f, 7f), scope.capture()["position"])
+    }
+
+    @Test
     fun applyingAKeySkipsNamesWithNoTarget() {
         // What makes an older key file safe to apply to a scope that has been rearranged.
         val scope = KeyframeScope()

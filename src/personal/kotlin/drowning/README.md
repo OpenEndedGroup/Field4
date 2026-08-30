@@ -472,3 +472,22 @@ decode/upload, and the fixed 15-cell palette remains intentionally tiny and stab
 Use `_cueScore.live` in connected gesture boxes: their generated preamble can construct a sibling
 score object, while `live` resolves the instance currently advancing this piece. One-shot score
 gestures travel through a per-session command lane and are consumed on the render-score update.
+
+`DrowningScore.keyframes()` exposes the entire score through the ordinary keyframer rather than a
+second score format. It flattens each stable cell into persisted position/rotation/scale, opacity,
+effects, light, resource and flicker values. Rotation uses the keyframer's quaternion slerp; all
+other numeric/vector lanes lerp. Resource residency stays nonzero through an interpolation and
+reaches zero only at the retired endpoint, when sparse splat/MXG work can stop.
+
+```kotlin
+val keys = _cueKeyframes
+val a = keys.capture()
+// change the score or transforms here
+val b = keys.capture()
+keys.interpolate(a, b, 0.35)()
+
+val path = java.nio.file.Path.of(System.getProperty("user.home"),
+    "Documents/AFieldWorkspace/dust_three/score-keys/four.json")
+b.save(path, note = "four channels")
+keys.loadLatestKey(path)()
+```

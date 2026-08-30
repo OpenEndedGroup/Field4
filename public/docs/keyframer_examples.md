@@ -116,6 +116,13 @@ use the same uniform name.
 Panel 4 is the round trip closing: re-applying the original snapshot and re-capturing gives
 `No key differences.`, so a `Key` really is a complete description of what the scope watches.
 
+Objects that are not shader `Structure`s can join the same system through an explicit getter and
+setter. For example, `scope.target("score.opacity", get = { score.opacity.value },
+set = { score.opacity.set((it as Number).toFloat()) })`
+gives that value the same capture, interpolation, persistence and version-history behaviour as a
+uniform. The getter's runtime type determines interpolation and persistence, while the setter is
+responsible for validating the `Any?` it receives when a key is applied.
+
 ??? aside "The module-pointer targets are not exercised on this page"
 
     Besides a `Structure`, a scope can target a live module's uniform structures —
@@ -803,7 +810,7 @@ through AWT, so it throws on a headless JVM and it replaces whatever the user ha
 
 ### What is actually tested
 
-Every number stated on this page is asserted by a suite of 70 tests written against it. A companion
+Every number stated on this page is asserted by a suite of 71 tests written against it. A companion
 ledger reflects over the **members of a hand-listed set of `keyframer.kt`'s classes** and requires every
 public one to be classified as either covered or unreachable-with-a-stated-reason. That half genuinely
 cannot rot: add a method or a property to one of those classes and the build fails until it is accounted
@@ -816,7 +823,7 @@ and `enum class KeyDiffKind` (`keyframer.kt:1052#enum class KeyDiffKind { ADDED,
 and the suite is green. It is exercised by the tests; it simply is not counted, which pushes the
 figure below down rather than up.
 
-**93 of 101 public behavioural declarations are exercised (92.1%).** Data-class members the Kotlin
+**94 of 102 public behavioural declarations are exercised (92.2%).** Data-class members the Kotlin
 compiler generates are excluded, on the same grounds the
 [codebase reference](reference/index.md) excludes them.
 

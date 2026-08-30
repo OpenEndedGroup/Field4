@@ -1,5 +1,6 @@
 package drowning
 
+import afield.stdlib.KeyframeScope
 import afield.stdlib.linalg.Matrix4f
 import afield.stdlib.linalg.Matrix4fc
 import afield.stdlib.linalg.Quaternionf
@@ -62,6 +63,8 @@ class DrowningScoreCell internal constructor(val index: Int, model: Matrix4fc) {
     /** Resources remain resident while a retirement fade is in flight. */
     var resident: Boolean = true
         private set
+    var resourceWeight: Float = 1f
+        private set
     private var wantsResident: Boolean = true
 
     var flickerDepth = 0f
@@ -82,6 +85,7 @@ class DrowningScoreCell internal constructor(val index: Int, model: Matrix4fc) {
 
     internal fun materialize(seconds: Double, now: Double) {
         resident = true
+        resourceWeight = 1f
         wantsResident = true
         listOf(opacity, particleInfluence, projectedLight).forEach {
             if (!it.isTarget(1f)) it.to(1f, seconds, now)
@@ -97,7 +101,16 @@ class DrowningScoreCell internal constructor(val index: Int, model: Matrix4fc) {
 
     internal fun finishLifecycle() {
         if (!wantsResident && opacity.isSettledAt(0f) &&
-            particleInfluence.isSettledAt(0f) && projectedLight.isSettledAt(0f)) resident = false
+            particleInfluence.isSettledAt(0f) && projectedLight.isSettledAt(0f)) {
+            resident = false
+            resourceWeight = 0f
+        }
+    }
+
+    internal fun setResourceWeight(value: Float) {
+        resourceWeight = value.coerceIn(0f, 1f)
+        wantsResident = resourceWeight > 0f
+        resident = wantsResident
     }
 
     private fun smoothstep(a: Float, b: Float, x: Float): Float {
@@ -223,6 +236,69 @@ class DrowningScore(
         poses[name] = pose
         return pose
     }
+
+    /**
+     * A complete, persistent keyframer view of all 15 score cells. Each cell contributes position,
+     * rotation and scale plus opacity, particle influence, projected light, resource residency and
+     * every flicker control. The values are all ordinary [KeyframeScope] persistence types, so two
+     * captures can be interpolated, saved with version history, loaded and applied without a second
+     * score-file format.
+     *
+     * Transform components are separate deliberately: positions and scales lerp while rotations
+     * slerp. The `resource` float remains above zero throughout an ordinary 1-to-0 blend, keeping
+     * sparse decoders alive until the fully retired endpoint is applied.
+     */
+    fun keyframes(schemaVersion: Int = 1, prefix: String = "cell"): KeyframeScope =
+        KeyframeScope(schemaVersion).also { scope ->
+            cells.indices.forEach { index ->
+                val stem = "$prefix.${index.toString().padStart(2, '0')}"
+                scope.target("$stem.position",
+                    get = { live[index].modelFromCamera.getTranslation(Vector3f()) },
+                    set = { value ->
+                        val position = Vector3f(value.requireKeyType<Vector3f>("$stem.position"))
+                        submitGesture { it.setTransform(index, position = position) }
+                    })
+                scope.target("$stem.rotation",
+                    get = { live[index].modelFromCamera.getUnnormalizedRotation(Quaternionf()).normalize() },
+                    set = { value ->
+                        val rotation = Quaternionf(value.requireKeyType<Quaternionf>("$stem.rotation")).normalize()
+                        submitGesture { it.setTransform(index, rotation = rotation) }
+                    })
+                scope.target("$stem.scale",
+                    get = { live[index].modelFromCamera.getScale(Vector3f()) },
+                    set = { value ->
+                        val scale = Vector3f(value.requireKeyType<Vector3f>("$stem.scale"))
+                        submitGesture { it.setTransform(index, scale = scale) }
+                    })
+                scope.target("$stem.opacity",
+                    get = { live[index].opacity.value },
+                    set = { value -> submitGesture { it[index].opacity.set(value.requireFloat("$stem.opacity")) } })
+                scope.target("$stem.effects",
+                    get = { live[index].particleInfluence.value },
+                    set = { value -> submitGesture { it[index].particleInfluence.set(value.requireFloat("$stem.effects")) } })
+                scope.target("$stem.light",
+                    get = { live[index].projectedLight.value },
+                    set = { value -> submitGesture { it[index].projectedLight.set(value.requireFloat("$stem.light")) } })
+                scope.target("$stem.flicker.depth",
+                    get = { live[index].flickerDepth },
+                    set = { value -> submitGesture { it[index].flickerDepth = value.requireFloat("$stem.flicker.depth") } })
+                scope.target("$stem.flicker.hz",
+                    get = { live[index].flickerHz },
+                    set = { value -> submitGesture { it[index].flickerHz = value.requireFloat("$stem.flicker.hz") } })
+                scope.target("$stem.flicker.duty",
+                    get = { live[index].flickerDuty },
+                    set = { value -> submitGesture { it[index].flickerDuty = value.requireFloat("$stem.flicker.duty") } })
+                scope.target("$stem.flicker.phase",
+                    get = { live[index].flickerPhase },
+                    set = { value -> submitGesture { it[index].flickerPhase = value.requireFloat("$stem.flicker.phase") } })
+                scope.target("$stem.flicker.softness",
+                    get = { live[index].flickerSoftness },
+                    set = { value -> submitGesture { it[index].flickerSoftness = value.requireFloat("$stem.flicker.softness") } })
+                scope.target("$stem.resource",
+                    get = { live[index].resourceWeight },
+                    set = { value -> submitGesture { it[index].setResourceWeight(value.requireFloat("$stem.resource")) } })
+            }
+        }
 
     fun recall(pose: DrowningPose = home, mix: Float = 1f): DrowningScore {
         val t = mix.coerceIn(0f, 1f)
@@ -353,8 +429,27 @@ class DrowningScore(
         destination.identity().translate(translation).rotate(rotation).scale(scale)
     }
 
+    private fun setTransform(
+        index: Int,
+        position: Vector3f? = null,
+        rotation: Quaternionf? = null,
+        scale: Vector3f? = null
+    ) {
+        val matrix = cells[index].modelFromCamera
+        val p = position ?: matrix.getTranslation(Vector3f())
+        val r = rotation ?: matrix.getUnnormalizedRotation(Quaternionf()).normalize()
+        val s = scale ?: matrix.getScale(Vector3f())
+        matrix.identity().translate(p).rotate(r).scale(s)
+    }
+
     companion object {
         private val liveScores = ConcurrentHashMap<String, WeakReference<DrowningScore>>()
         private val gestureQueues = ConcurrentHashMap<String, ConcurrentLinkedQueue<(DrowningScore) -> Unit>>()
     }
 }
+
+private inline fun <reified T : Any> Any?.requireKeyType(name: String): T =
+    this as? T ?: error("score key '$name' needs ${T::class.simpleName}, got ${this?.let { it::class.simpleName } ?: "null"}")
+
+private fun Any?.requireFloat(name: String): Float =
+    (this as? Number)?.toFloat() ?: error("score key '$name' needs a number, got ${this?.let { it::class.simpleName } ?: "null"}")
