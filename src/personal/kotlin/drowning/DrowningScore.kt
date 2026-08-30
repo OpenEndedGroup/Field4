@@ -128,7 +128,7 @@ class DrowningPose internal constructor(
     internal val matrices: List<Matrix4f>
 )
 
-/** One discrete step in a source-frame cadence; [rotateDegrees] fires on the step's first frame. */
+/** One discrete step in a render-frame cadence; [rotateDegrees] fires on the step's first frame. */
 data class DrowningCadenceFrame(
     val frames: Int = 1,
     val videoGain: Float = 1f,
@@ -161,8 +161,8 @@ data class DrowningCadenceSample(
 )
 
 /**
- * A periodic, seek-stable source-frame score. Rotation steps accumulate analytically across cycles,
- * so a dropped display frame or backwards seek cannot change the result.
+ * A periodic device-frame score. Rotation steps accumulate analytically across cycles, so every
+ * rendered frame has an absolute result even if the asset transport holds, skips or seeks.
  */
 class DrowningFrameCadence(vararg frames: DrowningCadenceFrame) {
     val steps = frames.toList()
@@ -175,9 +175,9 @@ class DrowningFrameCadence(vararg frames: DrowningCadenceFrame) {
         cycleRotationDegrees = steps.sumOf { it.rotateDegrees.toDouble() }
     }
 
-    /** A positive [phaseFrames] delays this instance relative to source frame zero. */
-    fun sample(sourceFrame: Long, phaseFrames: Int = 0): DrowningCadenceSample {
-        val localFrame = sourceFrame - phaseFrames.toLong()
+    /** A positive [phaseFrames] delays this instance relative to render frame zero. */
+    fun sample(renderFrame: Long, phaseFrames: Int = 0): DrowningCadenceSample {
+        val localFrame = renderFrame - phaseFrames.toLong()
         val cycle = Math.floorDiv(localFrame, frameCount.toLong())
         val within = Math.floorMod(localFrame, frameCount.toLong()).toInt()
         var accumulatedRotation = cycle * cycleRotationDegrees
@@ -253,8 +253,8 @@ class DrowningScoreGroup internal constructor(
     }
 
     /**
-     * Apply one absolute source-frame cadence. Put this in [DrowningScore.script] so it is evaluated
-     * after every presented asset frame. Successive group members receive successive phase delays.
+     * Apply one absolute device-render cadence. Put this in [DrowningScore.script] so it is evaluated
+     * once per render independently of asset playback. Successive members receive phase delays.
      */
     fun cadence(
         pattern: DrowningFrameCadence,
@@ -284,6 +284,9 @@ class DrowningScore(
     /** One camera-ray depth curve shared by MXG, all splat shades and video/depth interaction. */
     val depthRemap = DrowningDepthRemap()
     var time: Double = 0.0
+        private set
+    /** Absolute device-render frame supplied by the owner, independent of source time. */
+    var renderFrame: Long = 0L
         private set
     private var updating = false
 
@@ -467,8 +470,11 @@ class DrowningScore(
         require(rotationAxis.lengthSquared() > 1e-8f) { "cadence rotation axis must be non-zero" }
         rotationAxis.normalize()
         indices.forEachIndexed { order, index ->
-            val sample = pattern.sample(sourceFrame, order * staggerFrames)
-            val radians = (sample.rotationDegrees * rotationScale * PI / 180.0).toFloat()
+            val sample = pattern.sample(renderFrame, order * staggerFrames)
+            // A cadence can run for hours; reduce the equivalent orientation before converting to
+            // Float so a monotonically increasing renderer frame never costs rotational precision.
+            val degrees = Math.IEEEremainder(sample.rotationDegrees * rotationScale, 360.0)
+            val radians = (degrees * PI / 180.0).toFloat()
             cells[index].modelFromCamera
                 .set(Matrix4f().translate(rotationPivot).rotate(radians, rotationAxis)
                     .translate(-rotationPivot.x, -rotationPivot.y, -rotationPivot.z))
@@ -529,9 +535,10 @@ class DrowningScore(
         return this
     }
 
-    fun update(time: Double) {
+    fun update(time: Double, renderFrame: Long) {
         liveScores[sessionKey] = WeakReference(this)
         this.time = time
+        this.renderFrame = renderFrame
         updating = true
         try {
             cells.forEach {
@@ -559,6 +566,10 @@ class DrowningScore(
             updating = false
         }
     }
+
+    /** Compatibility tick for non-renderer tests and old snippets; live renderers should pass theirs. */
+    @Deprecated("Pass the owning renderer's frameCounter so cadence follows the device")
+    fun update(time: Double) = update(time, renderFrame + 1L)
 
     internal fun submitGesture(gesture: (DrowningScore) -> Unit) {
         if (updating) gesture(this)

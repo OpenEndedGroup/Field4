@@ -532,10 +532,11 @@ score.remapDepth(amount=0.35f) // retain the current pivot/range/power
 score.clearDepthRemap()
 ```
 
-For shuttered movement, `DrowningFrameCadence` scores exact source frames rather than wall-clock
-intervals. Each entry supplies projected-video gain, shutter and an optional rotation event. Rotation
-is derived analytically from the absolute source frame, so dropped display frames and seeks cannot
-make it drift; `staggerFrames` delays successive members of a score group around the circle.
+For shuttered movement, `DrowningFrameCadence` scores exact device render frames, independently of
+the source-video clock. Each entry supplies projected-video gain, shutter and an optional rotation
+event. Rotation is derived analytically from the renderer's absolute frame counter, so an asset hold,
+skip, seek or playback-speed change cannot alter the shutter mechanism; `staggerFrames` delays
+successive members of a score group around the circle.
 
 ```kotlin
 val z = DrowningFrameCadence(
