@@ -49,7 +49,8 @@ class VideoTexture(
      * provider while a frame-set presenter atomically changes which already-loaded VideoTexture its
      * shaders see. Decoding and uploading still happen on the source texture itself.
      */
-    @Volatile private var sampledSource: VideoTexture? = null
+    @Volatile
+    private var sampledSource: VideoTexture? = null
 
     fun sampleFrom(source: VideoTexture?) {
         val next = source?.takeUnless { it === this }

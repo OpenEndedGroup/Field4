@@ -253,7 +253,7 @@ the file, and the reach is described per file below in prose that a human checke
 | declaring file | commands |
 | --- | --- |
 | `Server.kt` | 47 |
-| `agent_backdoor.kt` | 18 |
+| `agent_backdoor.kt` | 19 |
 | `history.kt` | 13 |
 | `executing.kt` | 9 |
 | `Ai4Installer.kt` | 4 |
@@ -295,6 +295,7 @@ no sandbox between a `/ws` frame and that.
 | `agent-create-box` | `agent_backdoor.kt` |
 | `agent-dispose-graphics-context` | `agent_backdoor.kt` |
 | `agent-ensure-graphics-context` | `agent_backdoor.kt` |
+| `agent-get-property` | `agent_backdoor.kt` |
 | `agent-native-window-screenshot` | `agent_backdoor.kt` |
 | `agent-open-document` | `agent_backdoor.kt` |
 | `agent-open-editor` | `agent_backdoor.kt` |
