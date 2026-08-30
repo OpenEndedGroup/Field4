@@ -46,6 +46,7 @@ object DatalogSmokeTest {
         testProvenance()
         testAggregateProvenance()
         testCrossStratumProvenance()
+        testWhyNot()
         testKotlinFacts()
         testIdempotentAdd()
         testParserSurface()
@@ -500,6 +501,79 @@ object DatalogSmokeTest {
             "an existentially negated literal must be provable:\n${leafWhy?.render()}"
         }
         check(e.why("leaf(a)") == null) { "leaf(a) is not in the model, so it has no proof" }
+    }
+
+    /**
+     * A silent empty answer gives no reason, and a reader with no reason guesses. `whyNot` walks the
+     * conjunction and names the literal that took the answer set to zero.
+     *
+     * The oracle is **set equality on the step ledger**, not "the report mentions edge": a walk that
+     * silently dropped a literal, or invented one, passes an existence check and fails this.
+     */
+    private fun testWhyNot() {
+        val d = Datalog()
+        d.add("cell(a1, 3). cell(a2, 4). cell(a3, 10). colour(a1, red).")
+
+        // Premise: the goal really does come back empty, and its first literal really does not.
+        check(d.query("cell(C, V), V > 50").isEmpty) { "premise: the goal must have no answers" }
+        check(d.query("cell(C, V)").size == 3) { "premise: cell has three rows" }
+
+        val flat = d.whyNot("cell(C, V), V > 50")
+        check(!flat.present) { "the goal has no answers, so present must be false" }
+        check(flat.steps.map { it.literal } == listOf("cell(C, V)", "V > 50")) {
+            "every literal gets exactly one step, in order: ${flat.steps.map { it.literal }}"
+        }
+        check(flat.steps[0].answers == 3) { "the first literal has three answers: ${flat.steps[0].answers}" }
+        check(flat.culprit?.literal == "V > 50") { "the test is the culprit: ${flat.culprit?.literal}" }
+        check(flat.witness == mapOf("C" to "a1", "V" to 3L)) {
+            "and one binding that got as far as the test is shown: ${flat.witness}"
+        }
+
+        // A goal that *does* have answers must say so rather than inventing a failure.
+        val fine = d.whyNot("cell(C, V), V > 5")
+        check(fine.present && fine.culprit == null) { "a satisfiable goal is not a why-not" }
+
+        // A single derived atom is walked once per rule that could have produced it, best first.
+        val g = Datalog()
+        g.add(
+            """
+            edge(a, b). edge(b, c). edge(c, d).
+            path(X, Y) :- edge(X, Y).
+            path(X, Z) :- path(X, Y), edge(Y, Z).
+            """
+        )
+        check(!g.ask("path(a, e)")) { "premise: path(a, e) must be absent" }
+        val why = g.whyNot("path(a, e)")
+        val text = why.render()
+        check(why.attempts.size == 2) { "both rules for path/2 are attempts:\n$text" }
+        // Best first: the recursive rule got one literal in, the base rule got none. A report that
+        // led with the rule that failed immediately would bury the informative half.
+        val best = why.attempts.first()
+        check(best.depth == 1) { "the closest attempt satisfied one literal, not ${best.depth}:\n$text" }
+        check(best.steps.map { it.literal } == listOf("path(a, Y)", "edge(Y, e)")) {
+            "the recursive body, with the head's constants substituted: ${best.steps.map { it.literal }}"
+        }
+        check(best.culprit?.literal == "edge(Y, e)") { "the second literal is what fails:\n$text" }
+        check(best.witness == mapOf("Y" to "b")) { "the witness is deterministic: ${best.witness}" }
+        check(why.attempts.last().depth == 0) { "the base rule fails on its only literal:\n$text" }
+        check(text.contains("nothing survives here")) { "the report must point at the failure:\n$text" }
+        check(text.isNotEmpty() && text.lines().size >= 6) {
+            "a two-rule why-not is at least six lines; got ${text.lines().size}:\n$text"
+        }
+
+        // A predicate nothing defines is a different answer from a predicate with no matching rows.
+        val unknown = g.whyNot("reachable(a, b)")
+        check(unknown.note?.contains("nothing defines reachable/2") == true) {
+            "an undefined predicate must say so: ${unknown.note}"
+        }
+
+        // A test written before the atom that binds it is not "zero answers", it is "not yet askable"
+        // — and saying which is the whole content of the answer.
+        val early = d.whyNot("V > 50, cell(C, V)")
+        check(early.steps.first().answers == null) {
+            "an unevaluable prefix is null, not 0: ${early.steps.first().answers}"
+        }
+        check(early.steps.first().describe().contains("not evaluable")) { early.render() }
     }
 
     /** Every node of a proof, root first. */
