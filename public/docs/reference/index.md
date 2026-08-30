@@ -119,7 +119,7 @@ The "documented" column is a coverage report on Field's own KDoc, not a claim ab
 | [FieldMLRuntimePrelude.kt](languages.md#fieldmlruntimeprelude-kt) | Languages | 2 | 0 |  |  |
 | [FieldMLTypePrelude.kt](languages.md#fieldmltypeprelude-kt) | Languages | 10 | 3 |  |  |
 | [FieldPersistence.kt](audio-ai.md#fieldpersistence-kt) | Audio AI | 5 | 5 | How a Field document remembers audio work: ids and judgements in a box property, and not one sample of audio. |  |
-| [FileManager.kt](data.md#filemanager-kt) | Data | 28 | 28 | Path resolution for the running Field session: turns a short spec into a real `File` or `Path`. |  |
+| [FileManager.kt](data.md#filemanager-kt) | Data | 28 | 28 | Path resolution for the running Field session: turns a short spec into a real `File` or `Path`. | [Files, and where they live](../files_and_paths.md) |
 | [Filters.kt](synthesis.md#filters-kt) | Synthesis | 44 | 5 |  |  |
 | [fline_graph_connectivity.kt](graphics.md#fline-graph-connectivity-kt) | Graphics | 13 | 5 | Bridge from drawn geometry to the graph algorithms: turns one or more `FLine`s into a welded point graph. |  |
 | [FM.kt](synthesis.md#fm-kt) | Synthesis | 10 | 9 |  |  |

@@ -169,6 +169,11 @@ triangle instanced by an identity node, a translated node, a *child* of that tra
 
 The round trip is worth doing once yourself, because what comes back is not always what went out.
 
+Both examples below write into a temp directory, because a docs page must not leave files in the
+repository when it runs. In a document of your own you would not do that: name the file and let
+Field place it, with `"ball.obj".file` landing in the document's own `files/` folder next to the
+boxes that made it. [Files, and where they live](files_and_paths.md) is that resolver in full.
+
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/geometry_from_disk/roundtrip.png" wait="9.0" capture="box" open-outputs="true" padding="20"}
 :::static
 // A coloured sphere, out to both formats and back. Nothing is written into the repository: this is a
@@ -286,6 +291,9 @@ characteristic becomes its triangle count. Save the *unshaded* mesh and let the 
 it, or weld after reading. All five of those counts are asserted.
 
 ## PLY, and what a scan carries
+
+A temp directory again, for the same reason as above; `"square.ply".file` is the form to reach for
+in a document.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/geometry_from_disk/ply.png" wait="9.0" capture="box" open-outputs="true" padding="20"}
 :::static
