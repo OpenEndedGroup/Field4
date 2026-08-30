@@ -66,7 +66,7 @@ The "documented" column is a coverage report on Field's own KDoc, not a claim ab
 | [CeresGeometry.kt](solvers.md#ceresgeometry-kt) | Solvers | 351 | 104 | The constraint vocabulary for Field's Ceres point solver, and the encoding that ships it to a backend. |  |
 | [CeresRealization.kt](polytopes.md#ceresrealization-kt) | Polytopes | 20 | 15 | Optional bridge: run a `RelaxationPlan` on the native Ceres solver instead of the built-in one. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [charts.kt](visualization.md#charts-kt) | Visualization | 93 | 85 | Plots — the structure, the scales, and the one renderer for them. | [Charts as FLines](../chart.md) |
-| [ClojureInterface.kt](languages.md#clojureinterface-kt) | Languages | 32 | 1 |  |  |
+| [ClojureInterface.kt](languages.md#clojureinterface-kt) | Languages | 32 | 1 | Clojure as a Field main language: a box whose source is Clojure, evaluated by the real Clojure runtime on this JVM. |  |
 | [clustering.kt](data.md#clustering-kt) | Data | 81 | 81 | Clustering for lists of `Float`, `Vec2`, `Vec3` and `Vec4`. | [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md) |
 | [CodecVisualization.kt](audio-ai.md#codecvisualization-kt) | Audio AI | 18 | 18 | The EnCodec reconstruction microscope: what a neural codec kept, what it threw away, and what it wrote down in between. | [EnCodec reconstruction microscope](../audio_ai_codec.md) |
 | [Colormaps.kt](visualization.md#colormaps-kt) | Visualization | 21 | 4 |  |  |
@@ -229,12 +229,12 @@ The "documented" column is a coverage report on Field's own KDoc, not a claim ab
 | [PolytopeVisualizers.kt](polytopes.md#polytopevisualizers-kt) | Polytopes | 1 | 1 | The single place this package knows that Field has a screen — and it is one function long. |  |
 | [props.kt](workspace.md#props-kt) | Workspace | 4 | 4 | The `prop` / `rootProp` macro pair — the typed, inheritable box-property slot. |  |
 | [Protocol.kt](audio-ai.md#protocol-kt) | Audio AI | 267 | 195 | The wire vocabulary of Field Audio — one Kotlin type per JSON object in the pinned service contract, and nothing else. | [Field Audio service reference](../field_audio_service_reference.md), [Beat and pitch analysis: from source to synchronized views](../audio_ai_analysis.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
-| [PythonInterface.kt](languages.md#pythoninterface-kt) | Languages | 42 | 2 |  | [Python in a box](../python.md) |
+| [PythonInterface.kt](languages.md#pythoninterface-kt) | Languages | 42 | 2 | Python as a Field main language: a box whose source is Python, executed **in this process** by CPython through JEP. | [Python in a box](../python.md) |
 | [quantilewarp.kt](graphics.md#quantilewarp-kt) | Graphics | 53 | 53 | Reshapes a scalar signal's distribution by fitting a monotone 8-knot PCHIP curve from the measured quantiles of recent samples onto the quantiles of a chosen target distribution — `TargetDistributions.UnitNormal` by default, or any `QuantileFunction`. | [Which of these signals actually depend on each other?](../statistics_examples.md), [afield.four Graphics](../afield_four_graphics.md) |
 | [randoms.kt](math.md#randoms-kt) | Math | 15 | 15 | Box-scoped randomness. | [State estimation: tracking what you cannot measure](../state_estimation_examples.md) |
 | [RealizationSolver.kt](polytopes.md#realizationsolver-kt) | Polytopes | 34 | 27 | The middle realization verb: improve an embedding you already have. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [Realize.kt](polytopes.md#realize-kt) | Polytopes | 16 | 15 | Coordinates from combinatorics alone, and the gauge that makes an answer a *representative*. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
-| [RectSL.kt](languages.md#rectsl-kt) | Languages | 556 | 40 |  | [RectSL Inverse Animation](../rectsl_inverse_animation.md), [RectSL examples](../rectsl_examples.md), [RectSL cheatsheet](../rectsl_cheatsheet.md) |
+| [RectSL.kt](languages.md#rectsl-kt) | Languages | 556 | 40 | RectSL — Field's rectangle scene language, and the largest single file in the tree. | [RectSL Inverse Animation](../rectsl_inverse_animation.md), [RectSL examples](../rectsl_examples.md), [RectSL cheatsheet](../rectsl_cheatsheet.md) |
 | [RectSLCoverage.kt](languages.md#rectslcoverage-kt) | Languages | 35 | 35 | The **exact** coverage a soft raster is approximating, and the measurement of how far off it is. |  |
 | [RectSLEditorExtension.kt](languages.md#rectsleditorextension-kt) | Languages | 6 | 1 |  |  |
 | [RectSLFit.kt](languages.md#rectslfit-kt) | Languages | 21 | 18 | Inverse animation: say where a rect should be and when, and solve for the numbers. | [RectSL Inverse Animation](../rectsl_inverse_animation.md) |
@@ -245,7 +245,7 @@ The "documented" column is a coverage report on Field's own KDoc, not a claim ab
 | [RectSLSdfLook.kt](languages.md#rectslsdflook-kt) | Languages | 31 | 23 |  | [RectSL cheatsheet](../rectsl_cheatsheet.md), [RectSL examples](../rectsl_examples.md) |
 | [RectSLSimplify.kt](languages.md#rectslsimplify-kt) | Languages | 2 | 2 | An algebraic simplifier over the track IR — the last of the four capabilities `ddf732260` said a symbolic IR would allow. |  |
 | [RectSLSoftRaster.kt](languages.md#rectslsoftraster-kt) | Languages | 61 | 61 | The third lowering: a RectSL scene as a **differentiable raster**, so a picture can be fitted. |  |
-| [RemoteJS.kt](languages.md#remotejs-kt) | Languages | 28 | 2 |  |  |
+| [RemoteJS.kt](languages.md#remotejs-kt) | Languages | 28 | 2 | RemoteJS — JavaScript that runs in a *browser somewhere else*, written in a Field box here. |  |
 | [RenderedAudioAnalysis.kt](audio-ai.md#renderedaudioanalysis-kt) | Audio AI | 28 | 14 |  | [Render Field music, then analyse it](../audio_render_analysis.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [Sampling.kt](synthesis.md#sampling-kt) | Synthesis | 81 | 30 |  |  |
 | [saved.kt](data.md#saved-kt) | Data | 7 | 7 | Per-box persistence for Kotlin values, on top of kotlinx.serialization. |  |
@@ -269,7 +269,7 @@ The "documented" column is a coverage report on Field's own KDoc, not a claim ab
 | [SpectralEmbeddingProjection.kt](audio-ai.md#spectralembeddingprojection-kt) | Audio AI | 41 | 9 |  | [Short-time spectral spaces](../audio_ai_spectral_embeddings.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [SpeechEmbeddingMds.kt](audio-ai.md#speechembeddingmds-kt) | Audio AI | 54 | 12 |  |  |
 | [SpeechEmbeddingVisualization.kt](audio-ai.md#speechembeddingvisualization-kt) | Audio AI | 6 | 6 |  | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
-| [StackSL.kt](languages.md#stacksl-kt) | Languages | 59 | 2 |  | [StackSL examples](../stacksl_examples.md) |
+| [StackSL.kt](languages.md#stacksl-kt) | Languages | 59 | 2 | StackSL — a concatenative shading language that compiles to GLSL, in one file with no runtime. | [StackSL examples](../stacksl_examples.md) |
 | [stacksl.kt](graphics.md#stacksl-kt) | Graphics | 19 | 19 | Host-side entry points for StackSL: compiling the stack language to GLSL, and evaluating it on the GPU sample by sample. | [StackSL cheatsheet](../stacksl_cheatsheet.md), [StackSL examples](../stacksl_examples.md) |
 | [StandardDrawing.kt](graphics.md#standarddrawing-kt) | Graphics | 41 | 41 | The small vocabulary of `FLine` construction and styling that sketches and examples reach for first. | [FLine examples (Field graphics)](../fline_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md) |
 | [stats.kt](math.md#stats-kt) | Math | 176 | 23 | Descriptive statistics, and the SVG/HTML renderings Field uses to put them in a box output. | [Which of these signals actually depend on each other?](../statistics_examples.md) |
