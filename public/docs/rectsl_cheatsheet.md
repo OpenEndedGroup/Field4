@@ -740,15 +740,42 @@ boundary, where the gate is discontinuous anyway.
 
 The two that remain baked are the pattern queries, which are rational arithmetic
 over a mini-notation tree — an interpreter rather than a formula, and a different
-kind of problem. They become a run-length-compressed hold chain and `emitSdf` says so
-in `notes`. Both are piecewise constant, so that bake is **exact** wherever a pattern
-edge lands on a bake sample instant, which is most of the time: the bake runs at
-`max(fps × 4, 120)` Hz and pattern edges are cycle fractions. Where an edge falls
-between two samples it moves to the nearer one, displacing it by at most one bake
-interval — 8.3 ms at 30 fps. Measured on the timeline rather than assumed: `pat`
-disagreed with its own sampler on **0%** of a grid 40× finer than the bake;
-sample-and-hold `hold-pat` on **0.81%**, every one of those points within one bake
-interval of a real edge. Nothing is lost in the middle of a plateau.
+kind of problem. Nothing here can be lowered even in principle: a `PatPattern` is a
+`(PatArc) -> List<PatEvent>` lambda, so the emitter cannot tell a `"bd*4"` from a
+`sine` from the outside, let alone find a closed form for it. It samples them, and
+what the sampling costs depends on which of the two the track turns out to be.
+`emitSdf` returns one `RectSLSdfBake` per sampled track — the classification, the
+rate, and the measurement it made of itself — and the sentence in `notes` is that
+report read aloud.
+
+A **rhythm** is piecewise constant, so the only question is *where its edges are*,
+and since 2026-08-30 that question is answered by bisection rather than by the
+sample grid. Each edge is placed to a microsecond, which is the resolution
+`PatTrack` works at anyway: it quantises its query to a millionth of a cycle, so
+`"1 ~ 3"` steps at 0.666667s rather than at two thirds, and the emitted step has to
+land on the same side of that or every frame instant sitting on the exact rational
+shows the next value early. Before that the edge moved to the nearest sample, up to
+8.3 ms out — which, for a section whose whole subject is rhythm, was the part that
+mattered. The five stepped bakes in the gallery now disagree with their own sampler
+at no instant the emitter probes, and the two focused cases in `RectSLSdfBakeTest`
+agree across a grid 40× finer than the bake.
+
+A **signal** — `sine`, `tri`, `perlin` — has no plateaus and so no exactness to
+claim. Both a hold chain and a ramp through the samples are built and measured, and
+the closer one is emitted: for `sine` over a 0-to-1 range that is the ramp, at
+0.000024 against the staircase's 0.0086; for `saw` and `isaw` it is the staircase,
+because a straight line would smear the once-a-cycle wrap across a whole interval.
+The gallery's seven sampled tracks are worst-case **0.31%** of what the track does
+at all, and the ramps among them are under 0.005%.
+
+`rand` is neither, and the emitter now says so rather than implying it is a rhythm.
+It hashes the reduced rational instant it is handed, so it has no value *between*
+samples: bake it eight times finer and the deviation does not fall (0.96 → 0.97 of a
+0-to-1 range). That is what an `ALIASED` bake reports — the deviation matters *and*
+halving the rate does not make it worse, so raising the rate would not make it
+better. One gallery track is in that state, `3 rand 0.2 quantize` in the
+musicality-surface example, and it is reported rather than fixed because no rate
+fixes it.
 
 The gate's lowering is held to a stronger standard than that, because it can be:
 6720 (ordinal, cycle, probability, salt) points agree **bit for bit** with the CPU

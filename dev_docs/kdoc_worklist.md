@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 6240 of 11458 public symbols in `afield.stdlib`, `afield.visualization` and `afield.four.synth`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 6258 of 11476 public symbols in `afield.stdlib`, `afield.visualization` and `afield.four.synth`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
 
 **813 undocumented entry points** (types, top-level functions and values) and 4129 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -27,7 +27,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Protocol.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt) | Audio AI | field_audio_service_reference, audio_ai_analysis, visualizers | 11 | 61 | 73% |
 | [StackSL.kt](../src/jvmMain/kotlin/afield/stacksl/StackSL.kt) | Languages | stacksl_examples | 11 | 44 | 3% |
 | [DirtSamples.kt](../src/jvmMain/kotlin/afield/four/synth/DirtSamples.kt) | Audio | boolean_network_music_examples | 8 | 42 | 5% |
-| [ParamQuery.kt](../src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt) | Synthesis | graph_query | 4 | 47 | 7% |
+| [ParamQuery.kt](../src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt) | Synthesis | graph_query | 4 | 46 | 8% |
 | [GestureBoard.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoard.kt) | Audio AI | audio_ai_gesture_board | 4 | 5 | 25% |
 | [MorphoInterface.kt](../src/jvmMain/kotlin/afield/morpho/MorphoInterface.kt) | Languages | morpho_examples | 4 | 4 | 42% |
 | [contours.kt](../src/jvmMain/kotlin/afield/stdlib/contours.kt) | Graphics | spatial_geometry_examples | 4 | 3 | 70% |
@@ -76,8 +76,8 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [RealizationSolver.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/RealizationSolver.kt) | Polytopes | polytope_examples | 0 | 7 | 79% |
 | [typography_field.kt](../src/jvmMain/kotlin/afield/stdlib/typography_field.kt) | Graphics | typography_examples | 0 | 7 | 77% |
 | [wfc_field.kt](../src/jvmMain/kotlin/afield/stdlib/wfc_field.kt) | Data | wfc_examples | 0 | 7 | 78% |
+| [RectSLGlsl.kt](../src/jvmMain/kotlin/afield/rectsl/RectSLGlsl.kt) | Languages | rectsl_cheatsheet | 0 | 6 | 82% |
 | [imaging_filters.kt](../src/jvmMain/kotlin/afield/stdlib/imaging_filters.kt) | Imaging | imaging_examples, visualizers, agent_transcripts | 0 | 6 | 82% |
-| [RectSLGlsl.kt](../src/jvmMain/kotlin/afield/rectsl/RectSLGlsl.kt) | Languages | rectsl_cheatsheet | 0 | 5 | 68% |
 | [mesh.kt](../src/jvmMain/kotlin/afield/stdlib/mesh.kt) | Graphics | mesh_examples | 0 | 5 | 89% |
 | [CorpusOperations.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/CorpusOperations.kt) | Audio AI | audio_ai_corpus_microscope | 0 | 5 | 44% |
 | [CeresRealization.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/CeresRealization.kt) | Polytopes | polytope_examples | 0 | 5 | 75% |
@@ -233,7 +233,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `ParamModulationMode` | class | `src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt:46` |
 | `ParamPath` | class | `src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt:114` |
 | `ParamSet` | class | `src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt:167` |
-| `ParamSetScope` | class | `src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt:328` |
+| `ParamSetScope` | class | `src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt:329` |
 | `ScheduledNote` | class | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:26` |
 | `NoteWindowSnapshot` | class | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:87` |
 | `NoteSequenceScope` | class | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:113` |

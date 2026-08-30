@@ -23,13 +23,22 @@ import kotlin.test.assertTrue
  * first test here holds the lane algebra to bit-for-bit agreement with the CPU.
  *
  * **The pattern queries still bake**, and that is measured rather than asserted.
- * Both are piecewise constant in time, which is what makes baking a fair trade: a
- * step function re-expressed as a hold chain is *exact* everywhere except within one
- * sample interval of an edge, where the edge lands on the nearer sample instant. So
- * the two things worth knowing are how much of the timeline disagrees, and whether
- * every disagreement really sits beside an edge rather than in the middle of a
- * plateau. Both are printed, and then held to a bound derived from the bake rate
- * rather than to a hopeful constant.
+ * What the bake costs turned out to depend on the track, though, and saying
+ * "piecewise constant" about all of them was wrong the moment `0d875cc63`
+ * (2026-08-22) put a `sine` on the wall. Three regimes, three currencies, one test
+ * each:
+ *
+ * - a **rhythm** is piecewise constant, so the only question is *when* it steps.
+ *   Since 2026-08-30 each edge is bisected rather than snapped to the sample grid,
+ *   which took the displacement from 8.3ms to a microsecond; what is checked here is
+ *   that the disagreement is confined to those edges and nowhere else.
+ * - a **signal** has no plateaus, so there is nothing exact to check and the
+ *   currency is value: how far the emitted ramp sits from the track, as a fraction of
+ *   what the track does at all.
+ * - **`rand`** is neither, and this is the test that says so out loud: baking it
+ *   eight times finer does not help, because it hashes the rational instant it is
+ *   handed and has no value between samples to converge on. An approximation that
+ *   does not improve with resolution is not an approximation.
  */
 class RectSLSdfBakeTest {
 
@@ -112,7 +121,7 @@ class RectSLSdfBakeTest {
 
     /** A pattern read straight as a value: `"0 1 2 3" ->x`. */
     @Test
-    fun `a pattern-driven track bakes to within half a sample of its edges`() {
+    fun `a rhythm bakes exactly except within a microsecond of each edge`() {
         val program = compile(
             """
             #rectsl
@@ -125,12 +134,12 @@ class RectSLSdfBakeTest {
         )
         val pats = program.tracksOfKind<PatTrack>()
         assertTrue(pats.isNotEmpty(), "expected a PatTrack from a bare pattern string")
-        report("pat", program, pats)
+        report("pat", program, pats, RectSLSdfBakeFidelity.STEPPED)
     }
 
     /** The sample-and-hold reading, which holds a value across a rest. */
     @Test
-    fun `a sample-and-hold pattern bakes to within half a sample of its edges`() {
+    fun `a sample-and-hold rhythm bakes exactly except within a microsecond of each edge`() {
         val program = compile(
             """
             #rectsl
@@ -143,13 +152,95 @@ class RectSLSdfBakeTest {
         )
         val pats = program.tracksOfKind<PatHoldTrack>()
         assertTrue(pats.isNotEmpty(), "expected a PatHoldTrack from hold-pat")
-        report("hold-pat", program, pats)
+        report("hold-pat", program, pats, RectSLSdfBakeFidelity.STEPPED)
     }
 
     /**
-     * The emitter has to *say* it approximated. This is the half that keeps the
-     * measurement honest: if a future change lowered these symbolically the notes
-     * would go away, and this test would demand the bake measurements go with them.
+     * A continuous signal is the case the old wording did not cover: there are no
+     * plateaus, so "exact except at the edges" means nothing, and the bake is an
+     * approximation in value from end to end. It is emitted as a ramp through the
+     * samples rather than a staircase, which is what keeps it three orders inside the
+     * bound this asserts — a hold chain of the same `sine` is off by 0.0086 of a
+     * 0-to-1 range, and the ramp by 0.000024.
+     */
+    @Test
+    fun `a signal bakes as a ramp within a thousandth of its own range`() {
+        val program = compile(
+            """
+            #rectsl
+            ->wall 8 8 abstract
+            ->duration 4
+            ->fps 30
+            ->cps 1
+            "r" rect  1 ->square  sine 6 * 3 -  ->x ;
+            """
+        )
+        val pats = program.tracksOfKind<PatTrack>()
+        assertTrue(pats.isNotEmpty(), "expected a PatTrack from the sine signal")
+        val bakes = report("sine", program, pats, RectSLSdfBakeFidelity.SAMPLED)
+        assertTrue(
+            bakes.all { it.shape == RectSLSdfBakeShape.RAMP },
+            "a smooth signal should be emitted as a ramp, got ${bakes.map { it.shape }}"
+        )
+    }
+
+    /**
+     * `rand` cannot be baked at any rate, and the emitter has to say so rather than
+     * report a small-sounding sample interval.
+     *
+     * The evidence is that resolution does not help: `rand` hashes the *reduced
+     * rational* instant it is handed, so 8x the samples is a different draw from the
+     * same hash rather than a closer look at one signal. A test that only checked the
+     * error would be checking a property of the grid; this checks that the error is
+     * indifferent to it.
+     */
+    @Test
+    fun `rand is reported as aliased because a finer bake does not help`() {
+        val program = compile(
+            """
+            #rectsl
+            ->wall 8 8 abstract
+            ->duration 4
+            ->fps 30
+            ->cps 1
+            "r" rect  1 ->square  3 rand 6 * 3 -  ->x ;
+            """
+        )
+        val pats = program.tracksOfKind<PatTrack>()
+        assertTrue(pats.isNotEmpty(), "expected a PatTrack from rand")
+        val track = pats.first()
+
+        val coarse = RectSLGlsl.bakeTrack(track, program.duration, program.fps)
+        val fine = RectSLGlsl.bakeTrack(track, program.duration, program.fps * 8.0)
+        println(
+            "[bake] rand      %d samples -> worst %.4f, %d samples -> worst %.4f (range %.3f)"
+                .format(coarse.sampleCount, coarse.worstError, fine.sampleCount, fine.worstError, coarse.valueRange)
+        )
+        assertEquals(
+            RectSLSdfBakeFidelity.ALIASED, coarse.fidelity,
+            "rand has no value between samples, so the bake must not claim to approximate it"
+        )
+        assertTrue(
+            coarse.convergenceRatio < 1.5,
+            "the aliasing verdict rests on the half-rate control, which came back at " +
+                "${coarse.convergenceRatio}x"
+        )
+        assertTrue(
+            fine.sampleCount > coarse.sampleCount * 4,
+            "the control needs a genuinely finer bake, got ${fine.sampleCount} vs ${coarse.sampleCount}"
+        )
+        assertTrue(
+            fine.worstError > coarse.worstError * 0.5,
+            "8x the samples reduced the error from ${coarse.worstError} to ${fine.worstError}, so this " +
+                "track is resolvable after all and should not be reported as aliased"
+        )
+    }
+
+    /**
+     * The emitter has to *say* it approximated, in both currencies: a sentence a
+     * reader can act on, and the measurement it came from. This is the half that
+     * keeps the story honest — if a future change lowered these symbolically the
+     * notes would go away, and this test would demand the bake measurements go too.
      */
     @Test
     fun `a baked scene reports its caveats and an unbaked one does not`() {
@@ -165,9 +256,17 @@ class RectSLSdfBakeTest {
             )
         )
         assertTrue(!baked.ok, "a pattern-driven scene must not claim a clean lowering")
+        assertEquals(
+            baked.notes.size, baked.bakes.size,
+            "every caveat on a pattern scene should be a measured bake, was ${baked.notes}"
+        )
+        assertEquals(
+            baked.bakes.map { it.note }, baked.notes,
+            "the prose and the measurement must be the same list, not two lists"
+        )
         assertTrue(
-            baked.notes.any { it.contains("baked as") && it.contains("step(s)") },
-            "the caveat should say how many steps the bake became, was ${baked.notes}"
+            baked.notes.any { it.contains("hold chain") && it.contains("edges placed to") },
+            "the caveat should say what shape the bake took and how well placed it is, was ${baked.notes}"
         )
 
         val clean = RectSLGlsl.emitSdf(
@@ -239,23 +338,35 @@ class RectSLSdfBakeTest {
     // --- the measurement ----------------------------------------------------
 
     /**
-     * Compare the hold chain the shader evaluates against the track's own sampler
-     * on a grid 40x finer than the bake, and hold the result to what a
-     * piecewise-constant bake can possibly cost.
+     * Compare what the shader evaluates against the track's own sampler on a grid
+     * 40x finer than the bake, and hold the result to what that *kind* of bake can
+     * possibly cost — seconds for a rhythm, track units for a signal.
      */
-    private fun report(label: String, program: SceneProgram, tracks: List<Track<Double>>) {
+    private fun report(
+        label: String,
+        program: SceneProgram,
+        tracks: List<Track<Double>>,
+        expected: RectSLSdfBakeFidelity
+    ): List<RectSLGlsl.BakedTrack> {
         val duration = program.duration
-        // The emitter's own rate: max(fps * 4, 120) samples per second.
-        val bakeInterval = duration / (RectSLGlsl.bakeHoldChain(tracks.first(), duration, program.fps).sampleCount - 1)
-        val probes = 40 * (duration / bakeInterval).toInt()
+        val bakes = tracks.map { RectSLGlsl.bakeTrack(it, duration, program.fps) }
+        val probes = 40 * (bakes.first().sampleCount - 1)
+        val probeStep = duration / probes
 
         var worstFraction = 0.0
         var worstValueError = 0.0
         var worstEdgeDistance = 0.0
-        var totalSteps = 0
-        for (track in tracks) {
-            val bake = RectSLGlsl.bakeHoldChain(track, duration, program.fps)
-            totalSteps += bake.steps.size
+        var worstRelativeError = 0.0
+        var totalKnots = 0
+        var mostDisagreements = 0
+        var fewestEdges = Int.MAX_VALUE
+        for ((index, track) in tracks.withIndex()) {
+            val bake = bakes[index]
+            assertEquals(
+                expected, bake.fidelity,
+                "$label: expected a $expected bake, the emitter classified it ${bake.fidelity}"
+            )
+            totalKnots += bake.knots.size
             // Where the sampler's own value changes — the true edges.
             val edges = mutableListOf<Double>()
             var previous = track.sample(0.0)
@@ -271,9 +382,14 @@ class RectSLSdfBakeTest {
                     disagreements++
                     mismatched += t
                     worstValueError = maxOf(worstValueError, err)
+                    if (bake.valueRange > 0.0) {
+                        worstRelativeError = maxOf(worstRelativeError, err / bake.valueRange)
+                    }
                 }
             }
             worstFraction = maxOf(worstFraction, disagreements.toDouble() / (probes + 1))
+            mostDisagreements = maxOf(mostDisagreements, disagreements)
+            fewestEdges = minOf(fewestEdges, edges.size)
             // Every disagreement must sit next to a real edge: that is the difference
             // between "the bake displaced an edge" and "the bake invented a value".
             for (t in mismatched) {
@@ -283,28 +399,43 @@ class RectSLSdfBakeTest {
         }
 
         println(
-            ("[bake] %-9s %d track(s), %d step(s) total, bake interval %.5fs: " +
-                "disagrees on %.4f%% of the timeline, worst value error %.3f, " +
-                "every disagreement within %.5fs of a real edge")
+            ("[bake] %-9s %d track(s), %d knot(s) total, %s, bake interval %.5fs: " +
+                "disagrees on %.4f%% of the timeline, worst error %.3e (%.4f%% of range), " +
+                "every disagreement within %.6fs of a real edge")
                 .format(
-                    label, tracks.size, totalSteps, bakeInterval,
-                    worstFraction * 100.0, worstValueError, worstEdgeDistance
+                    label, tracks.size, totalKnots, bakes.first().shape, bakes.first().sampleInterval,
+                    worstFraction * 100.0, worstValueError, worstRelativeError * 100.0, worstEdgeDistance
                 )
         )
 
-        // A step landing on the nearer sample instant displaces an edge by at most
-        // one bake interval, so at a 40x finer probe grid at most ~1/40 + a probe of
-        // the timeline can disagree. The generous 3x covers the endpoints.
-        assertTrue(
-            worstFraction < 3.0 / 40.0,
-            "$label: the bake disagrees on ${worstFraction * 100}% of the timeline, far more than " +
-                "edge displacement can explain — it is losing whole plateaus, not just edges"
-        )
-        assertTrue(
-            worstEdgeDistance <= bakeInterval * 1.5,
-            "$label: a disagreement sat ${worstEdgeDistance}s from any real edge (bake interval " +
-                "${bakeInterval}s) — the bake is inventing values in the middle of a plateau"
-        )
+        when (expected) {
+            RectSLSdfBakeFidelity.STEPPED -> {
+                // The steps are bisected onto the track's own edges now, so the only
+                // instants that can disagree are the sub-microsecond slivers beside
+                // them: at most one probe per edge, and each one adjacent to an edge.
+                assertTrue(
+                    mostDisagreements <= fewestEdges,
+                    "$label: $mostDisagreements probe(s) disagree but the track only has $fewestEdges " +
+                        "edge(s) — that is more than displaced edges can explain"
+                )
+                assertTrue(
+                    worstEdgeDistance <= probeStep,
+                    "$label: a disagreement sat ${worstEdgeDistance}s from any real edge (probe step " +
+                        "${probeStep}s) — the bake is wrong in the middle of a plateau, not at an edge"
+                )
+                assertTrue(
+                    bakes.all { it.edgeTolerance <= RectSLGlsl.BAKE_EDGE_TOLERANCE },
+                    "$label: the edges were left on the sample grid, not bisected onto the track's"
+                )
+            }
+            RectSLSdfBakeFidelity.SAMPLED -> assertTrue(
+                worstRelativeError < 1e-3,
+                "$label: the emitted signal is ${worstRelativeError * 100}% of its own range away from " +
+                    "the track, which is more than interpolating between samples should cost"
+            )
+            RectSLSdfBakeFidelity.ALIASED -> Unit
+        }
+        return bakes
     }
 
     /** The emitted field, made into a shader shaderc will actually accept. */
