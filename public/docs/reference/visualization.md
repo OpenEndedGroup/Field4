@@ -4,7 +4,7 @@
 
 Turning a value into something you can look at, without leaving the box.
 
-12 source file(s), 418 public symbol(s), 381 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+13 source file(s), 467 public symbol(s), 415 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -699,6 +699,142 @@ This bundle is intentionally pragmatic rather than dogmatic.
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">betaBridgeDemo</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Net</span></code>](source/jvmMain/afield/stdlib/interactionnets/#L2594) | A minimal APP/LAM bridge demo. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">duplicatedConstantDemo</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Net</span></code>](source/jvmMain/afield/stdlib/interactionnets/#L2614) | A tiny nonlinear sketch: a single `CONST` is demanded by two roots through a `DUP`, so the rewrite system has to copy it. No `LAM` and no body — `betaBridgeDemo` is the one with those. This is not a full term encoder, but it gives the rewrite system something resource-sensitive to do. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">eraseApplicationDemo</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Net</span></code>](source/jvmMain/afield/stdlib/interactionnets/#L2626) | Erase an application tree to demonstrate explicit garbage collection. |
+
+## keyframeBrowser.kt { #keyframebrowser-kt }
+
+Reading a *collection* of saved keys the way [`KeyframeScope`](graphics.md#keyframer-kt-keyframescope) reads one: a glob of key files in,
+a slot-major summary out.
+
+### Why slot-major
+
+A directory of keys is a sparse three-axis cube — file × version × slot — and only one of those
+axes tells you anything you did not already know. You know your file names. What you cannot see
+from a directory listing is which slots you actually kept pushing on, which have been frozen since
+the first save, and which are missing from half the files because the scope grew a target after
+they were written. So this pivots to slots, and every summary here is computed across files
+rather than within one.
+
+### What is read, and what is not
+
+`load` decodes each matched file straight to [`KeyDTO`](graphics.md#keyframer-kt-keydto) rather than going through
+`KeyframeScope.loadKey`. That is deliberate: `loadKey` fills `KeyframeScope.missingKey` defaults
+for names a file lacks, which is exactly right when you are about to apply a key and exactly wrong
+when you are trying to *see* which names a file lacks. The browser wants the file as written.
+
+Version history is read lazily. `load` calls `KeyframeScope.keyVersions` for each file, which
+lists a directory and parses one manifest, but it does not open the numbered snapshots. Those are
+only read when `slotHistory` is asked for one slot's trajectory — a hundred saves of ten files is
+a thousand files, and no one wants that on open.
+
+### Failure is per-file
+
+A collection with one unparseable file still browses. `load` records the failure in
+`KeyframeCollection.problems` and carries on, because the alternative — one bad file making the
+other nine invisible — is how you lose an afternoon.
+
+`src/jvmMain/kotlin/afield/stdlib/keyframeBrowser.kt` — [read the source](source/jvmMain/afield/stdlib/keyframeBrowser/)
+
+### Top-level functions { #keyframebrowser-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">keyFilesMatching</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">Path</span><span class="p">,</span> <span class="n">pattern</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&#42;&#42; &quot;</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/keyframeBrowser/#L86) | Every regular file under `root` whose path relative to `root` matches the glob `pattern`, sorted by path, **excluding anything inside a `.versions` directory**. |
+
+### KeyframeFile { #keyframebrowser-kt-keyframefile }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KeyframeFile</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">Path</span><span class="p">,</span> <span class="k">val</span> <span class="n">relative</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">schemaVersion</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">values</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">KValue</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">versions</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">KeyVersionInfo</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/keyframeBrowser/#L112)
+
+One key file as the browser sees it: what is on disk, plus how many times it has been saved.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">Int</span></code> | Stable index within the collection, used as the wire identity for selection and diffing. |
+| <code class="highlight"><span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">Path</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">relative</span><span class="p">:</span> <span class="nc">String</span></code> | `path` relative to the collection root, with `/` separators — what the UI shows. |
+| <code class="highlight"><span class="k">val</span> <span class="n">schemaVersion</span><span class="p">:</span> <span class="nc">Int</span></code> | `KeyDTO.schemaVersion` as written. Zero both when it was written as zero and when absent. |
+| <code class="highlight"><span class="k">val</span> <span class="n">values</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">KValue</span><span class="p">&gt;</span></code> | The file's entries exactly as written — no `KeyframeScope.missingKey` defaults applied. |
+| <code class="highlight"><span class="k">val</span> <span class="n">versions</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">KeyVersionInfo</span><span class="p">&gt;</span></code> | The save history from `<file>.versions`, oldest first; empty when nothing has been saved. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">latest</span><span class="p">:</span> <span class="nc">KeyVersionInfo</span><span class="o">?</span></code>](source/jvmMain/afield/stdlib/keyframeBrowser/#L126) | The most recent history row, which carries the note and timestamp the file name cannot. |
+
+### KeyframeCollection { #keyframebrowser-kt-keyframecollection }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">KeyframeCollection</span><span class="p">(</span><span class="k">val</span> <span class="n">root</span><span class="p">:</span> <span class="nc">Path</span><span class="p">,</span> <span class="k">val</span> <span class="n">pattern</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">files</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">KeyframeFile</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">problems</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">scopeSlots</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptySet</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/keyframeBrowser/#L135)
+
+A loaded collection of key files and the slot pivot over them.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">root</span><span class="p">:</span> <span class="nc">Path</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pattern</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">files</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">KeyframeFile</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">problems</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> | Per-file failures, one human-readable line each. A collection with problems still browses. |
+| <code class="highlight"><span class="k">val</span> <span class="n">scopeSlots</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> | Slot names the live scope watches, from `scope.capture().values.keys`. Used to mark a slot the scope has but no file does — the "you have never saved this" row, which is the one thing a collection cannot tell you about itself. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">slotNames</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/keyframeBrowser/#L149) | Every slot name in any file, plus any `scopeSlots` no file has, sorted. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">versionCount</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stdlib/keyframeBrowser/#L152) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">schemaVersions</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/keyframeBrowser/#L155) | The distinct `KeyDTO.schemaVersion`s present, ascending — more than one means schema drift. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">latest</span><span class="p">:</span> <span class="nc">KeyVersionInfo</span><span class="o">?</span></code>](source/jvmMain/afield/stdlib/keyframeBrowser/#L158) | The newest history row across every file, by timestamp. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">file</span><span class="p">(</span><span class="n">id</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">KeyframeFile</span><span class="o">?</span></code>](source/jvmMain/afield/stdlib/keyframeBrowser/#L161) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">slots</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">SlotSummary</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/keyframeBrowser/#L164) | The pivot: one [`SlotSummary`](visualization.md#keyframebrowser-kt-slotsummary) per name in `slotNames`, in the same order. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">slot</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">SlotSummary</span></code>](source/jvmMain/afield/stdlib/keyframeBrowser/#L167) | The summary for one slot — what value it takes in each file, and what that set looks like. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">slotHistory</span><span class="p">(</span><span class="n">fileId</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">KeyVersionInfo</span><span class="p">,</span> <span class="nc">KValue</span><span class="o">?</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/keyframeBrowser/#L178) | One slot's trajectory through a single file's save history, oldest first — the view that answers "what did I actually keep pushing on". |
+
+### SlotBand { #keyframebrowser-kt-slotband }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SlotBand</span><span class="p">(</span><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">lo</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">hi</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">marks</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/keyframeBrowser/#L253)
+
+A low–high band with the individual values marked inside it, as a range strip is drawn.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">lo</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">hi</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">marks</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> | Each value's position in `0..1` across `lo..hi`. A degenerate band puts every mark at 0.5. |
+
+### SlotVariant { #keyframebrowser-kt-slotvariant }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SlotVariant</span><span class="p">(</span><span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">preview</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">count</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">fileIds</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/keyframeBrowser/#L263)
+
+One distinct value of a slot that varies discretely, and which files hold it.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span></code> | Full text — source for a code slot, the string itself for a string slot. |
+| <code class="highlight"><span class="k">val</span> <span class="n">preview</span><span class="p">:</span> <span class="nc">String</span></code> | First line, clipped, for the collapsed row. |
+| <code class="highlight"><span class="k">val</span> <span class="n">count</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">fileIds</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> |  |
+
+### SlotDisplay { #keyframebrowser-kt-slotdisplay }
+
+[<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">SlotDisplay</span></code>](source/jvmMain/afield/stdlib/keyframeBrowser/#L279)
+
+How a slot's spread should be drawn. The split is not cosmetic: it follows `KeyframeScope.interpolate`, which blends numbers and vectors and *steps* strings, StackSL source and source blocks. A slot that steps has no range, only a set of variants, and drawing a bar for one would claim a continuum that does not exist.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Range</span><span class="p">(</span><span class="k">val</span> <span class="n">band</span><span class="p">:</span> <span class="nc">SlotBand</span><span class="p">,</span> <span class="k">val</span> <span class="n">fileIds</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">SlotDisplay</span></code>](source/jvmMain/afield/stdlib/keyframeBrowser/#L282) | A single numeric band. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Components</span><span class="p">(</span><span class="k">val</span> <span class="n">bands</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">SlotBand</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">fileIds</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">SlotDisplay</span></code>](source/jvmMain/afield/stdlib/keyframeBrowser/#L286) | One band per component — `x`/`y`/`z`, or the four of a quaternion. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Swatches</span><span class="p">(</span><span class="k">val</span> <span class="n">colors</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">fileIds</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">bands</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">SlotBand</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">SlotDisplay</span></code>](source/jvmMain/afield/stdlib/keyframeBrowser/#L290) | A `vec4` whose components all sit in `0..1` in every file: shown as colour, plus its bands. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Poses</span><span class="p">(</span><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">fileIds</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">arcDegrees</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">bands</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">SlotBand</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">SlotDisplay</span></code>](source/jvmMain/afield/stdlib/keyframeBrowser/#L297) | A rigid transform or camera pose: the translations as a 2D scatter (x across, z up — the plan view a camera move is usually read in), the orientation spread as an angle. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Variants</span><span class="p">(</span><span class="k">val</span> <span class="n">variants</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">SlotVariant</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">SlotDisplay</span></code>](source/jvmMain/afield/stdlib/keyframeBrowser/#L306) | A slot that steps rather than blends. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Note</span><span class="p">(</span><span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">severity</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;info&quot;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">SlotDisplay</span></code>](source/jvmMain/afield/stdlib/keyframeBrowser/#L310) | Nothing to draw: the slot is absent, or holds types that cannot be summarised together. |
+
+### SlotSummary { #keyframebrowser-kt-slotsummary }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SlotSummary</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">typeLabel</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">presentIn</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">total</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">inScope</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">summaryText</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">display</span><span class="p">:</span> <span class="nc">SlotDisplay</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/keyframeBrowser/#L315)
+
+The pivot's output for one slot name.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span></code> | The [`KValue`](graphics.md#keyframer-kt-kvalue) serial name shared by every present value, `"mixed"`, or `"absent"`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">typeLabel</span><span class="p">:</span> <span class="nc">String</span></code> | Human label for the type column — `float`, `vec4`, `pose`, `stacksl`, `mixed (num, string)`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">presentIn</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">total</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">inScope</span><span class="p">:</span> <span class="nc">Boolean</span></code> | True when a live scope watches this name. |
+| <code class="highlight"><span class="k">val</span> <span class="n">summaryText</span><span class="p">:</span> <span class="nc">String</span></code> | The right-hand column: `2.0 – 11.4`, `7 swatches`, `3 variants`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">display</span><span class="p">:</span> <span class="nc">SlotDisplay</span></code> |  |
 
 ## Colormaps.kt { #colormaps-kt }
 

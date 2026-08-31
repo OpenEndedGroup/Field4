@@ -5,9 +5,12 @@ import afield.macros.Insert
 import afield.server.Inspector
 import afield.server.LogStream
 import afield.server.broadcastControllerControlUpdates
+import afield.server.registerKeyframeBrowser
 import afield.stdlib.FLineFaceCoordinates
 import afield.stdlib.FLineHitKind
 import afield.stdlib.FLineIntersection
+import afield.stdlib.FileManager
+import afield.stdlib.KeyframeScope
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import afield.stdlib.linalg.Vector2f
@@ -15,6 +18,7 @@ import afield.stdlib.linalg.Vector4f
 import java.io.File
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.nio.file.Path
 import java.util.*
 import java.util.concurrent.TimeUnit
 
@@ -782,6 +786,68 @@ fun Box.remoteAr(
 """.trimIndent())
     displayOpen(channel)
 }
+
+
+/**
+ * Browse a directory of saved keys in this box's output area.
+ *
+ * Not to be confused with `Box.keyframes` (`keyframes.kt:617`), which is the animation *curve*
+ * editor for one named channel. This browses the `Key` files a [KeyframeScope] saved — a
+ * different thing under a nearby name, which is why this one is not called `keyframes` too.
+ *
+ * The collection is every file under [root] matching the glob [pattern], **excluding** the numbered
+ * snapshots inside each key's `.versions` directory — those are reached through the version rail on
+ * a slot, not listed as keys of their own. The view is slot-major: one row per name across every
+ * file, with the range that name takes, because a list of your own file names tells you nothing you
+ * did not already know.
+ *
+ * Passing [scope] is what turns a viewer into a tool. With it, the browser can mark a slot the scope
+ * watches that no file holds — the "you have never saved this" row — and the Apply button becomes
+ * live. Without it the browser is read-only, which is also what happens if the scope is garbage
+ * collected while the browser is still open; it is held weakly on purpose.
+ *
+ * ```kotlin
+ * val scope = KeyframeScope()
+ * scope.target("glow@radius", glow)
+ * keyframeBrowser("looks", scope = scope)
+ * ```
+ *
+ * @param root directory to search
+ * @param pattern glob, matched against paths relative to [root]
+ * @param channel output-area channel the browser is shown on, and its disclosure title
+ * @param scope the live scope, for scope-only slots and Apply; read-only without it
+ * @param height iframe height in CSS pixels
+ */
+fun Box.keyframeBrowser(
+    root: Path,
+    pattern: String = "**/*.json",
+    channel: String = "keyframes",
+    scope: KeyframeScope? = null,
+    height: Int = 460
+) {
+    val token = registerKeyframeBrowser(root, pattern, scope)
+    display(
+        channel,
+        """
+<iframe
+  class="field-keyframe-browser"
+  src="/keyframe_browser.html?root=$token"
+  data-afield-autosize="off"
+  style="display:block;width:100%;height:${height}px;border:0;background:transparent">
+</iframe>
+""".trimIndent()
+    )
+    displayOpen(channel)
+}
+
+/** [keyframeBrowser] against a directory named as a string, resolved through the document's files. */
+fun Box.keyframeBrowser(
+    root: String,
+    pattern: String = "**/*.json",
+    channel: String = "keyframes",
+    scope: KeyframeScope? = null,
+    height: Int = 460
+) = keyframeBrowser(FileManager.current().path(root), pattern, channel, scope, height)
 
 fun Box.logs(
     channel: String = "internal logging",

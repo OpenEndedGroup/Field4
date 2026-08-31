@@ -1,0 +1,216 @@
+package afield.server
+
+import afield.stdlib.KeyframeScope
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.stackSLString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import java.nio.file.Files
+import java.nio.file.Path
+import kotlin.test.Test
+import kotlin.test.assertContains
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+
+/**
+ * The wire half of the keyframe browser: what the iframe actually receives.
+ *
+ * The claims worth testing here are the ones about *reuse*, because those are the ones that fail
+ * silently. A saved `Vector3f` is supposed to come back through `.h` as the same axis-widget SVG a
+ * live one would produce, and the diff panel is supposed to be `KeyDiff.toHTML` rather than a second
+ * implementation of it. Both would "work" — producing something plausible on screen — if they had
+ * quietly fallen back to `toString()`, which is exactly how the `DataFrame` printer regression
+ * described in [afield.ValuePrinterRegistry] went unnoticed for eight months. So these assert on the
+ * markup that only the real path can produce.
+ */
+class KeyframeBrowserProtocolTest {
+
+    private val json = Json { ignoreUnknownKeys = true }
+
+    private fun tempDir(): Path = Files.createTempDirectory("keyframe-browser-protocol-test")
+
+    private fun save(dir: Path, name: String, vararg values: Pair<String, Any?>, note: String? = null) {
+        val scope = KeyframeScope()
+        scope.saveKey(dir.resolve(name), scope.Key(values.toMap().toMutableMap()), note)
+    }
+
+    private fun reply(
+        dir: Path,
+        op: String,
+        scope: KeyframeScope? = null,
+        slot: String? = null,
+        fileId: Int? = null,
+        otherId: Int? = null
+    ): JsonObject = json.parseToJsonElement(
+        keyframeBrowserRequestForTesting(dir, "**/*.json", op, scope, slot, fileId, otherId)
+    ).jsonObject
+
+    /** The open payload: the header numbers, the file list and the slot pivot, all in one message. */
+    @Test
+    fun openCarriesTheCollectionHeaderFilesAndSlots() {
+        val dir = tempDir()
+        save(dir, "warm.json", "glow@radius" to 2f, "tint" to Vector3f(1f, 0f, 0f), note = "warmer rim")
+        save(dir, "cool.json", "glow@radius" to 9f, "tint" to Vector3f(0f, 0f, 1f))
+
+        val out = reply(dir, "open")
+        assertTrue(out["ok"]!!.jsonPrimitive.boolean)
+        assertEquals(2, out["fileCount"]!!.jsonPrimitive.int)
+        assertEquals(2, out["versionCount"]!!.jsonPrimitive.int)
+        assertEquals(2, out["slotCount"]!!.jsonPrimitive.int)
+        assertFalse(out["hasScope"]!!.jsonPrimitive.boolean, "no scope was passed")
+
+        val files = out["files"]!!.jsonArray.map { it.jsonObject["relative"]!!.jsonPrimitive.content }
+        assertEquals(listOf("cool.json", "warm.json"), files, "files come back sorted by path")
+
+        val slots = out["slots"]!!.jsonArray.map { it.jsonObject }
+        assertEquals(listOf("glow@radius", "tint"), slots.map { it["name"]!!.jsonPrimitive.content })
+
+        // The polymorphic display union has to arrive tagged, or the page cannot branch on it.
+        val radius = slots.first { it["name"]!!.jsonPrimitive.content == "glow@radius" }
+        assertEquals("range", radius["display"]!!.jsonObject["type"]!!.jsonPrimitive.content)
+        assertEquals("2 – 9", radius["summaryText"]!!.jsonPrimitive.content)
+        assertEquals(
+            "components",
+            slots.first { it["name"]!!.jsonPrimitive.content == "tint" }["display"]!!
+                .jsonObject["type"]!!.jsonPrimitive.content
+        )
+    }
+
+    /** With a scope, Apply is offered and scope-only slots appear. */
+    @Test
+    fun openReportsALiveScope() {
+        val dir = tempDir()
+        save(dir, "a.json", "r" to 2f)
+        val scope = KeyframeScope()
+        scope.floatTarget("r", { 2f }, {})
+        scope.floatTarget("never-saved", { 1f }, {})
+
+        val out = reply(dir, "open", scope = scope)
+        assertTrue(out["hasScope"]!!.jsonPrimitive.boolean)
+        assertContains(
+            out["slots"]!!.jsonArray.map { it.jsonObject["name"]!!.jsonPrimitive.content },
+            "never-saved"
+        )
+    }
+
+    /**
+     * The reuse claim, asserted on markup only `.h` produces.
+     *
+     * `renderVec3Thumbnail` draws an isometric arrow with a fixed-pixel `x`/`y`/`z` reference frame,
+     * so an axis label and the arrow's `#6cf` stroke are both present in a real render and both
+     * absent from any `toString()` fallback — which for a `Vector3f` would be plain text.
+     */
+    @Test
+    fun aSavedVectorIsRenderedByTheSameVisualizerALiveOneUses() {
+        val dir = tempDir()
+        save(dir, "a.json", "p" to Vector3f(1f, 2f, 3f))
+
+        val html = reply(dir, "slot", slot = "p")["html"]!!.jsonPrimitive.content
+        assertContains(html, "<svg", message = "a Vector3f should reach `.h`, which draws it")
+        assertContains(html, "#6cf", message = "the arrow colour ValueVisualizer uses for a vector")
+        assertContains(html, "a.json", message = "each file is named beside its value")
+    }
+
+    /** StackSL source is shown as source, not as the wrapper's `toString`. */
+    @Test
+    fun stackSlSourceIsShownAsCode() {
+        val dir = tempDir()
+        save(dir, "a.json", "field" to stackSLString("x y +\ndup *"))
+
+        val html = reply(dir, "slot", slot = "field")["html"]!!.jsonPrimitive.content
+        assertContains(html, "x y +")
+        assertContains(html, "dup *")
+        assertFalse(html.contains("StackSLString"), "the wrapper's class name must not leak into the panel")
+    }
+
+    /** A file the slot is absent from says so rather than being left out of the table. */
+    @Test
+    fun theSlotPanelListsFilesTheSlotIsMissingFrom() {
+        val dir = tempDir()
+        save(dir, "has.json", "r" to 1f)
+        save(dir, "hasnt.json", "other" to 1f)
+
+        val html = reply(dir, "slot", slot = "r")["html"]!!.jsonPrimitive.content
+        assertContains(html, "hasnt.json")
+        assertContains(html, "absent")
+    }
+
+    /** The version rail appears for a file saved more than once, with one tick per save. */
+    @Test
+    fun theSlotPanelDrawsAVersionRailForARepeatedlySavedFile() {
+        val dir = tempDir()
+        val scope = KeyframeScope()
+        val path = dir.resolve("looks.json")
+        listOf(1f, 4f, 9f).forEachIndexed { i, v ->
+            scope.saveKey(path, scope.Key(mutableMapOf("r" to v)), "save $i")
+        }
+
+        val html = reply(dir, "slot", slot = "r")["html"]!!.jsonPrimitive.content
+        assertContains(html, "across saves")
+        assertEquals(3, Regex("kb-tick").findAll(html).count(), "one tick per save")
+        assertContains(html, "1 – 9 over 3 saves")
+        assertContains(html, "save 2", message = "the manifest note rides along in the tick tooltip")
+    }
+
+    /**
+     * The diff panel is `KeyDiff.toHTML`, not a reimplementation — checked on the card heading that
+     * only `KeyDiff` emits, and on the `field-md` wrapper `FieldMarkdown.card` puts around it.
+     */
+    @Test
+    fun diffIsTheExistingKeyDiffRendering() {
+        val dir = tempDir()
+        save(dir, "a.json", "r" to 1f, "gone" to 2f)
+        save(dir, "b.json", "r" to 5f, "added" to 3f)
+
+        val out = reply(dir, "diff", fileId = 0, otherId = 1)
+        assertEquals("a.json → b.json", out["title"]!!.jsonPrimitive.content)
+        val html = out["html"]!!.jsonPrimitive.content
+        assertContains(html, "field-md", message = "the card wrapper KeyDiff renders into")
+        assertContains(html, "Key diff", message = "KeyDiff's own heading")
+        assertContains(html, "3 changes", message = "one changed, one removed, one added")
+    }
+
+    /** `updateCode` comes back as pasteable Kotlin with the float suffix that keeps types honest. */
+    @Test
+    fun codeReturnsPasteableKotlin() {
+        val dir = tempDir()
+        save(dir, "a.json", "glow@radius" to 2.5f)
+
+        val text = reply(dir, "code", fileId = 0)["text"]!!.jsonPrimitive.content
+        assertContains(text, "key.updateAndApply {")
+        assertContains(text, """this["glow@radius"] = 2.5f""")
+    }
+
+    /** Apply without a scope is refused with an actionable message rather than silently doing nothing. */
+    @Test
+    fun applyWithoutAScopeIsRefusedAndSaysWhy() {
+        val dir = tempDir()
+        save(dir, "a.json", "r" to 1f)
+
+        val out = reply(dir, "apply", fileId = 0)
+        assertFalse(out["ok"]!!.jsonPrimitive.boolean)
+        assertContains(out["error"]!!.jsonPrimitive.content, "no live scope")
+    }
+
+    /** An unknown token is an error, not an empty collection that reads as "you have saved nothing". */
+    @Test
+    fun anUnknownTokenIsAnError() {
+        val request = """{"channel":"__keyframe_browser__","reqId":"1","op":"open","root":"kb-nope"}"""
+        val out = json.parseToJsonElement(keyframeBrowserRawForTesting(request)!!).jsonObject
+        assertFalse(out["ok"]!!.jsonPrimitive.boolean)
+        assertContains(out["error"]!!.jsonPrimitive.content, "unknown keyframe browser token")
+    }
+
+    /** A message on someone else's channel is declined, so the raw-handler chain keeps looking. */
+    @Test
+    fun aMessageForAnotherChannelIsNotClaimed() {
+        val request = """{"channel":"__h2_explorer__","reqId":"1","op":"open","root":"x"}"""
+        assertEquals(null, keyframeBrowserRawForTesting(request))
+    }
+}

@@ -397,7 +397,7 @@ no sandbox between a `/ws` frame and that.
 
 ## The other `/ws` dispatch table: `rawHandlers`
 
-Nine **raw channels**, and until 2026-08-22 the one server surface of the five with no row
+Ten **raw channels**, and until 2026-08-22 the one server surface of the five with no row
 anywhere. `handlers` is keyed by a decoded message `address`; `rawHandlers` is keyed by a
 channel name, and `Server.kt#rawHandlers.values` fans the **whole frame text** out to every
 callback registered under it. So a `rawHandlers` channel is a `/ws` endpoint that parses the
@@ -415,6 +415,7 @@ census from **105 to 105** — the fix that mattered was adding the table below,
 | `rawHandlers["__browsing__"]` | `browsing.kt` |
 | `rawHandlers["__h2_explorer__"]` | `h2explorer.kt` |
 | `rawHandlers["__inspecting__"]` | `inspecting.kt` |
+| `rawHandlers["__keyframe_browser__"]` | `keyframeBrowsing.kt` |
 | `rawHandlers["__keyframes__"]` | `keyframes.kt` |
 | `rawHandlers["__logs__"]` | `logstream.kt` |
 | `rawHandlers["__spreadsheet__"]` | `spreadsheet.kt` |
@@ -423,10 +424,10 @@ census from **105 to 105** — the fix that mattered was adding the table below,
 | `rawHandlers["__visionpose__"]` | `VisionPose.kt` |
 | `rawHandlers["remote"]` | `RemoteJS.kt` |
 
-Four of the ten are keyed by a `const val` rather than a literal — `H2_EXPLORER_CHANNEL`,
-`SPREADSHEET_CHANNEL`, `VISION_METAL_CHANNEL`, `VISION_POSE_CHANNEL` — which is why the discovery
-resolves the key expression the same way it resolves a `route(…)` prefix, and fails loudly rather
-than filing a channel under a made-up name.
+Five of the eleven are keyed by a `const val` rather than a literal — `H2_EXPLORER_CHANNEL`,
+`KEYFRAME_BROWSER_CHANNEL`, `SPREADSHEET_CHANNEL`, `VISION_METAL_CHANNEL`, `VISION_POSE_CHANNEL` —
+which is why the discovery resolves the key expression the same way it resolves a `route(…)`
+prefix, and fails loudly rather than filing a channel under a made-up name.
 
 That failure is not hypothetical: `__visionpose__` arrived with a smoke test that reached the
 registered handler as `rawHandlers[VISION_POSE_CHANNEL]` from *another* file, where the constant
