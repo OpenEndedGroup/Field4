@@ -145,6 +145,18 @@ object FieldMLMacroLayer {
             "as plyModelHere, point-cloud shaders",
             "_plyPointCloudHere", "afield.four.modules.SimplePLYSupportKt",
         ),
+        shaders(
+            "gaussianSplatModuleHere",
+            "_moduleHere",
+            "graphics module with the built-in mono splat shaders; unlike plyModelHere it does not " +
+                "pass resolvesToCall, so macro_moduleHereWithDefaultShaders keeps the generic default",
+        ),
+        shaders(
+            "gaussianSplatMultiviewModuleHere",
+            "_moduleHere",
+            "as gaussianSplatModuleHere, with the multiview vertex shader that selects a per-eye " +
+                "matrix with gl_ViewIndex",
+        ),
         Route(
             "prop", Reach.NATIVE_FORM,
             "generates `var Box.<name> by Inheritance<T>()` (props.kt:71); the delegate is " +
