@@ -7,11 +7,13 @@ and resolves the deposits into a persistent field. Splats, splat rectangles/outl
 edges, and MXG geometry can all sample that same field.
 
 The experiment deliberately does not add another video, splat, or MXG decoder. It reuses the shared
-particle state and matrix palette and adds two device-local buffers, about 2.4 MiB in total at the
+particle state and matrix palette and adds four device-local buffers, about 4.75 MiB in total at the
 default `96 x 54 x 15` layout:
 
 - accumulation: scalar integer weight, weighted U velocity, weighted V velocity, and count;
-- atlas: float density, U velocity, V velocity, and memory.
+- atlas: the crisp float density, U velocity, V velocity, and memory field used for drawing;
+- blur scratch: the intermediate horizontal pass, never exposed to consumers;
+- dynamics atlas: the separably blurred field used by particle forces.
 
 The scalar accumulation members are important on MoltenVK. Integer atomics on components of an
 `ivec4` are valid Vulkan GLSL, but SPIRV-Cross can translate them into an address-of a Metal vector
@@ -19,12 +21,19 @@ component. Metal rejects that form; four named scalar members generate legal ato
 
 ## Frame order
 
-The `dust - particle feedback atlas` box installs three compute meshes with explicit barriers:
+The `dust - particle feedback atlas` box installs five compute meshes with explicit barriers:
 
 1. clear the integer accumulation buffer;
 2. scatter the current particle positions and UV velocities into four bilinear neighbours;
 3. resolve deposits plus previous atlas memory into the float atlas;
-4. expose the atlas to graphics after a compute-to-graphics barrier.
+4. blur horizontally into scratch, then vertically into the dynamics atlas;
+5. expose the crisp atlas to graphics and the blurred atlas to next-frame compute.
+
+This is an intentional one-render-frame feedback loop: this frame's integrated particles produce
+the atlas, and the next frame's surface-interaction pass reads it. Velocity is blurred as
+density-weighted momentum, so empty pixels cannot smear arbitrary directions into a hill. The crisp
+atlas remains untouched for projected light, erasure, and UV warp; only dynamics receives the broad
+landscape that makes hill climbing and vortices coherent.
 
 Launch it after `dust - forces`, because its `state` binding reads the positions integrated on this
 render frame. It moves `dust-history` back to the tail of the compute list so trail capture observes
@@ -51,6 +60,8 @@ The Field box owns all artistic values and registers them with the cue keyframe 
 - `density response`: compression from accumulated weight to density;
 - `velocity response`: how rapidly new motion replaces remembered motion;
 - `max UV step`: clamp against projection discontinuities;
+- `force blur radius`: Gaussian dynamics radius from 0 to 8 atlas texels;
+- `force blur mix`: interpolate between crisp and fully blurred dynamics;
 - `light`: emitted light where particle density is present;
 - `erase`: exponential removal of the consumer's ordinary appearance;
 - `UV warp`: offset video sampling by the remembered UV velocity;
@@ -60,6 +71,16 @@ The helper classes in `src/personal/kotlin/drowning/DrowningFeedback.kt` describ
 carry the four mutable look values. The cue allocates that zeroed storage before MXG/splats launch,
 which breaks the launch cycle without adding a decoder. The compute shader and every interpretation
 remain in the document's GLSL, where they can be reloaded during rehearsal.
+
+The `dust - surface interaction` box adds the corresponding keyframeable force vocabulary:
+
+- `crowd follow`: blend each particle's render-frame velocity toward remembered UV motion,
+  unprojected through current depth and the current scripted cell transform;
+- `trail pressure`: positive values climb sparse regions and spill away from crowded regions until
+  `target density` is reached; negative values invert the response;
+- `trail curl`: rotate the density gradient around the local depth normal to produce vortices;
+- `old-path memory`: choose current density versus the atlas memory lane for the force landscape;
+- `feedback step cap`: bound the world-space displacement contributed in one render frame.
 
 Do not leave `fieldProbe` in the full resolve loop. At the default resolution that adds 77,760
 diagnostic writes every display frame to a pass whose output is already visible in six live-coded
