@@ -1,0 +1,823 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Keyframe browser</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!--
+      field.css is what owns `field-md`, and `field-md` is what KeyDiff.toHTML and the `.h`
+      cards render into. Without it the diff panel arrives as an unstyled slab — that is the
+      one thing a standalone iframe does not get for free from the output area.
+    -->
+    <link rel="stylesheet" href="/field.css">
+    <style>
+        :root {
+            color-scheme: dark;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            color: #d8dbe4;
+            font-size: 12px;
+            line-height: 1.45;
+        }
+
+        #kb {
+            padding: 10px 12px 14px;
+        }
+
+        .kb-head {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 2px;
+        }
+
+        .kb-title {
+            font-family: var(--field-mono-font, ui-monospace, monospace);
+            font-size: 13px;
+            color: #eef1f8;
+        }
+
+        .kb-dim {
+            color: #7e838f;
+        }
+
+        .kb-badge {
+            font-size: 11px;
+            padding: 1px 7px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.09);
+            color: #9aa0ac;
+        }
+
+        .kb-badge.kb-warn {
+            background: rgba(239, 159, 39, 0.13);
+            border-color: rgba(239, 159, 39, 0.3);
+            color: #f0b866;
+        }
+
+        .kb-sub {
+            color: #6e737e;
+            font-size: 11px;
+            margin-bottom: 10px;
+        }
+
+        .kb-problems {
+            border-left: 2px solid #e24b4a;
+            background: rgba(226, 75, 74, 0.08);
+            padding: 5px 8px;
+            margin: 0 0 10px;
+            border-radius: 0;
+            color: #f0a3a2;
+            font-size: 11px;
+        }
+
+        /* --- file chips: the diff selector, and the legend for the range marks --- */
+        .kb-files {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+
+        .kb-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.03);
+            color: #b8bdc8;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .kb-chip:hover {
+            border-color: rgba(255, 255, 255, 0.22);
+        }
+
+        .kb-chip.kb-on {
+            border-color: #6cf;
+            background: rgba(102, 204, 255, 0.12);
+            color: #cfe9fb;
+        }
+
+        .kb-chip-n {
+            font-family: var(--field-mono-font, ui-monospace, monospace);
+            color: #6e737e;
+        }
+
+        .kb-chip.kb-on .kb-chip-n {
+            color: #6cf;
+        }
+
+        .kb-actions {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .kb-btn {
+            font: inherit;
+            font-size: 11px;
+            padding: 3px 10px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: transparent;
+            color: #c6cbd6;
+            cursor: pointer;
+        }
+
+        .kb-btn:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .kb-btn:disabled {
+            opacity: 0.34;
+            cursor: default;
+        }
+
+        /* --- the slot table --- */
+        .kb-grid {
+            display: grid;
+            grid-template-columns: minmax(120px, 1.5fr) 70px 46px minmax(140px, 3fr) minmax(88px, 1fr);
+            gap: 0;
+            font-size: 12px;
+        }
+
+        .kb-grid > .kb-hdr {
+            font-size: 11px;
+            color: #6e737e;
+            padding: 0 8px 5px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+        }
+
+        .kb-row {
+            display: grid;
+            grid-column: 1 / -1;
+            grid-template-columns: subgrid;
+            align-items: center;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+        }
+
+        .kb-row:hover {
+            background: rgba(255, 255, 255, 0.035);
+        }
+
+        .kb-row.kb-open {
+            background: rgba(102, 204, 255, 0.06);
+        }
+
+        .kb-row > * {
+            padding: 4px 8px 4px 0;
+            min-width: 0;
+        }
+
+        .kb-name {
+            font-family: var(--field-mono-font, ui-monospace, monospace);
+            font-size: 11px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .kb-name.kb-scope-only {
+            color: #f0b866;
+        }
+
+        .kb-name.kb-mixed {
+            color: #f0b866;
+        }
+
+        .kb-type,
+        .kb-count {
+            font-size: 11px;
+            color: #7e838f;
+        }
+
+        .kb-count.kb-partial {
+            color: #f0b866;
+        }
+
+        .kb-count.kb-none {
+            color: #e88;
+        }
+
+        .kb-spread {
+            text-align: right;
+            font-family: var(--field-mono-font, ui-monospace, monospace);
+            font-size: 11px;
+            color: #8f949f;
+            padding-right: 0;
+        }
+
+        /* --- range strips --- */
+        .kb-strip {
+            /* Block, not the span default: an inline box takes no height, so the strip collapses and
+               every absolutely-positioned mark stacks on its left edge. */
+            display: block;
+            position: relative;
+            height: 14px;
+            background: rgba(255, 255, 255, 0.045);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 2px;
+        }
+
+        .kb-strip + .kb-strip {
+            margin-top: 2px;
+        }
+
+        .kb-strip-fill {
+            position: absolute;
+            inset: 0;
+            background: rgba(102, 204, 255, 0.16);
+            border-radius: 2px;
+        }
+
+        .kb-mark {
+            position: absolute;
+            top: 1px;
+            bottom: 1px;
+            width: 2px;
+            margin-left: -1px;
+            background: #6cf;
+            border-radius: 1px;
+        }
+
+        .kb-strip-label {
+            position: absolute;
+            left: 4px;
+            top: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            font-size: 9px;
+            color: #6e737e;
+            font-family: var(--field-mono-font, ui-monospace, monospace);
+            pointer-events: none;
+        }
+
+        .kb-swatches {
+            display: flex;
+            gap: 2px;
+            height: 14px;
+        }
+
+        .kb-swatch {
+            flex: 1;
+            min-width: 6px;
+            border-radius: 2px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .kb-variants {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .kb-variant {
+            font-size: 10px;
+            font-family: var(--field-mono-font, ui-monospace, monospace);
+            padding: 1px 6px;
+            border-radius: 3px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.03);
+            color: #a9aeb9;
+            max-width: 220px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .kb-variant.kb-top {
+            border-color: rgba(102, 204, 255, 0.4);
+            background: rgba(102, 204, 255, 0.1);
+            color: #cfe9fb;
+        }
+
+        .kb-scatter {
+            height: 34px;
+            background: rgba(255, 255, 255, 0.045);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 2px;
+        }
+
+        .kb-note {
+            font-size: 11px;
+            color: #7e838f;
+        }
+
+        .kb-note.kb-warn {
+            color: #f0b866;
+        }
+
+        /* --- detail + result panels --- */
+        .kb-panel {
+            grid-column: 1 / -1;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+            padding: 4px 0 10px;
+        }
+
+        .kb-detail-head {
+            font-size: 11px;
+            color: #9aa0ac;
+            margin: 4px 0 6px;
+        }
+
+        .kb-detail-sub {
+            margin-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.07);
+            padding-top: 8px;
+        }
+
+        .kb-values {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 11px;
+        }
+
+        .kb-values th {
+            text-align: left;
+            font-weight: 400;
+            color: #7e838f;
+            font-family: var(--field-mono-font, ui-monospace, monospace);
+            vertical-align: top;
+            padding: 3px 10px 3px 0;
+            white-space: nowrap;
+            width: 1%;
+        }
+
+        .kb-values td {
+            vertical-align: top;
+            padding: 3px 0;
+        }
+
+        .kb-missing {
+            color: #6e737e;
+            font-style: italic;
+        }
+
+        .kb-src {
+            margin: 2px 0;
+            padding: 4px 6px;
+            border-left: 2px solid rgba(255, 255, 255, 0.18);
+            background: rgba(255, 255, 255, 0.04);
+            white-space: pre-wrap;
+            font-size: 11px;
+            color: #cdd2dc;
+        }
+
+        .kb-history {
+            margin: 6px 0;
+        }
+
+        .kb-history-name {
+            font-size: 10px;
+            color: #7e838f;
+            font-family: var(--field-mono-font, ui-monospace, monospace);
+        }
+
+        .kb-history-rail {
+            display: flex;
+            gap: 2px;
+            align-items: stretch;
+            height: 14px;
+            margin: 2px 0;
+        }
+
+        .kb-tick {
+            width: 7px;
+            background: rgba(102, 204, 255, 0.5);
+            border-radius: 1px;
+            cursor: help;
+        }
+
+        .kb-tick:hover {
+            background: #6cf;
+        }
+
+        .kb-tick-absent {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .kb-history-range {
+            font-size: 10px;
+        }
+
+        .kb-out {
+            margin-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.09);
+            padding-top: 10px;
+        }
+
+        .kb-code {
+            margin: 4px 0 0;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 4px;
+            white-space: pre;
+            overflow-x: auto;
+            font-size: 11px;
+            color: #cdd2dc;
+        }
+
+        .kb-status {
+            font-size: 11px;
+            color: #7e838f;
+            padding: 8px 0;
+        }
+
+        .kb-status.kb-bad {
+            color: #f0a3a2;
+        }
+
+        .kb-empty {
+            max-width: 560px;
+            color: #9aa0ac;
+        }
+
+        .kb-empty-head {
+            font-size: 13px;
+            color: #eef1f8;
+            margin-bottom: 8px;
+        }
+
+        .kb-empty p {
+            margin: 8px 0;
+        }
+
+        .kb-empty code {
+            font-family: var(--field-mono-font, ui-monospace, monospace);
+            color: #cdd2dc;
+        }
+
+        /* Let the value cards from `.h` sit in a table cell without their app-level margins. */
+        .kb-values .field-md {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+<div id="kb">
+    <div class="kb-status" id="status">connecting…</div>
+</div>
+
+<script src="/iframe_autosize.js"></script>
+<script>
+    const ROOT_TOKEN = new URLSearchParams(location.search).get('root');
+    const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
+    const CHANNEL = "__keyframe_browser__";
+
+    const kbEl = document.getElementById('kb');
+
+    let ws = null;
+    let reqSeq = 1;
+    const pending = new Map();
+
+    let collection = null;
+    const selected = new Set();   // file ids, for diff / apply / code
+    let openSlot = null;          // slot name whose detail panel is showing
+    let outPanel = null;          // { title, html } or { title, text }
+
+    function esc(s) {
+        return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => (
+            { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+        ));
+    }
+
+    function sendReq(op, payload = {}) {
+        const reqId = String(reqSeq++);
+        return new Promise((resolve, reject) => {
+            if (!ws || ws.readyState !== 1) {
+                reject(new Error("socket not connected"));
+                return;
+            }
+            pending.set(reqId, { resolve, reject });
+            ws.send(JSON.stringify({ channel: CHANNEL, reqId, op, root: ROOT_TOKEN, ...payload }));
+        });
+    }
+
+    function status(text, bad) {
+        kbEl.innerHTML = `<div class="kb-status${bad ? ' kb-bad' : ''}">${esc(text)}</div>`;
+    }
+
+    /**
+     * What you see having typed this URL rather than arriving from a box. Not an error: there is no
+     * query string that would have worked, because the token is minted per call and carries a live
+     * reference to the KeyframeScope that Apply writes through. So this says what to run instead.
+     */
+    function noToken() {
+        kbEl.innerHTML = `
+            <div class="kb-empty">
+              <div class="kb-empty-head">Keyframe browser</div>
+              <p>This page is opened from a box, not by its URL. Run one of these and it will appear
+                 in that box's output area:</p>
+              <pre class="kb-code">keyframeBrowser("looks")
+
+// with the live scope, which adds Apply and shows
+// slots the scope watches that no key file holds
+keyframeBrowser("looks", scope = myScope)</pre>
+              <p><code>?root=</code> is a token minted by that call. It records which directory and
+                 glob you are browsing, and holds a weak reference to the scope — so it is not a path
+                 you could type here, and there is no URL that reaches a collection without it.</p>
+            </div>`;
+    }
+
+    // ---------------------------------------------------------------- strips
+
+    function stripHtml(band, fileIds, showLabel) {
+        const marks = band.marks.map((m, i) => {
+            const id = fileIds ? fileIds[i] : null;
+            const file = id != null && collection ? collection.files.find((f) => f.id === id) : null;
+            const title = file ? `${file.relative}\n${band.label}` : band.label;
+            return `<span class="kb-mark" style="left:${(m * 100).toFixed(2)}%" title="${esc(title)}"></span>`;
+        }).join("");
+        const degenerate = band.lo === band.hi;
+        const fill = degenerate ? "" : `<span class="kb-strip-fill"></span>`;
+        const label = showLabel ? `<span class="kb-strip-label">${esc(band.label)}</span>` : "";
+        return `<span class="kb-strip">${fill}${label}${marks}</span>`;
+    }
+
+    function scatterHtml(points, fileIds) {
+        // Plan view; y is flipped so +z reads as "away" going up, the way a top-down sketch does.
+        const dots = points.map((p, i) => {
+            const id = fileIds ? fileIds[i] : null;
+            const file = id != null && collection ? collection.files.find((f) => f.id === id) : null;
+            const x = 4 + p[0] * 192;
+            const y = 30 - p[1] * 26;
+            return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.6" fill="#7F77DD"><title>${esc(file ? file.relative : "")}</title></circle>`;
+        }).join("");
+        const path = points.length > 1
+            ? `<polyline points="${points.map((p) => `${(4 + p[0] * 192).toFixed(1)},${(30 - p[1] * 26).toFixed(1)}`).join(" ")}" fill="none" stroke="#7F77DD" stroke-width="1" opacity="0.55"/>`
+            : "";
+        return `<span class="kb-scatter" style="display:block"><svg viewBox="0 0 200 34" preserveAspectRatio="none" style="width:100%;height:100%;display:block">${path}${dots}</svg></span>`;
+    }
+
+    function displayHtml(slot) {
+        const d = slot.display;
+        switch (d.type) {
+            case "range":
+                return stripHtml(d.band, d.fileIds, false);
+            case "components":
+                return d.bands.map((b) => stripHtml(b, d.fileIds, true)).join("");
+            case "swatches":
+                return `<span class="kb-swatches">` + d.colors.map((c, i) => {
+                    const id = d.fileIds[i];
+                    const file = collection ? collection.files.find((f) => f.id === id) : null;
+                    return `<span class="kb-swatch" style="background:${esc(c)}" title="${esc((file ? file.relative + "\n" : "") + c)}"></span>`;
+                }).join("") + `</span>`;
+            case "poses":
+                return scatterHtml(d.points, d.fileIds);
+            case "variants":
+                return `<span class="kb-variants">` + d.variants.map((v, i) => (
+                    `<span class="kb-variant${i === 0 ? " kb-top" : ""}" title="${esc(v.text)}">${esc(v.preview || "(empty)")} ×${v.count}</span>`
+                )).join("") + `</span>`;
+            case "note":
+                return `<span class="kb-note${d.severity === "warn" ? " kb-warn" : ""}">${esc(d.text)}</span>`;
+            default:
+                return "";
+        }
+    }
+
+    // ---------------------------------------------------------------- render
+
+    function render() {
+        if (!collection) return;
+        const c = collection;
+        const parts = [];
+
+        parts.push(`<div class="kb-head">`);
+        parts.push(`<span class="kb-title">${esc(c.pattern)}</span>`);
+        parts.push(`<span class="kb-dim">${c.fileCount} keys · ${c.versionCount} versions · ${c.slotCount} slots</span>`);
+        if (c.schemaVersions.length > 1) {
+            parts.push(`<span class="kb-badge kb-warn">schema ${c.schemaVersions.join(", ")}</span>`);
+        } else if (c.schemaVersions.length === 1) {
+            parts.push(`<span class="kb-badge">schema ${c.schemaVersions[0]}</span>`);
+        }
+        if (!c.hasScope) {
+            parts.push(`<span class="kb-badge">read-only — no scope</span>`);
+        }
+        parts.push(`</div>`);
+
+        const stamp = [c.latestTimestamp ? `last save ${c.latestTimestamp}` : null,
+            c.latestNote ? `"${c.latestNote}"` : null].filter(Boolean).join(" · ");
+        parts.push(`<div class="kb-sub">${esc(c.root)}${stamp ? " · " + esc(stamp) : ""}</div>`);
+
+        if (c.problems.length) {
+            parts.push(`<div class="kb-problems">` + c.problems.map(esc).join("<br>") + `</div>`);
+        }
+
+        if (!c.fileCount) {
+            parts.push(`<div class="kb-status">No key files matched. Save one with <code>scope.saveKey(path, key)</code>.</div>`);
+            kbEl.innerHTML = parts.join("");
+            return;
+        }
+
+        parts.push(`<div class="kb-files">`);
+        c.files.forEach((f) => {
+            const on = selected.has(f.id);
+            const title = [f.relative, `schema ${f.schemaVersion}`, `${f.slotCount} slots`,
+                `${f.versions} saves`, f.timestamp, f.note].filter(Boolean).join("\n");
+            parts.push(
+                `<span class="kb-chip${on ? " kb-on" : ""}" data-file="${f.id}" title="${esc(title)}">` +
+                `<span class="kb-chip-n">${f.id + 1}</span>${esc(f.relative)}</span>`
+            );
+        });
+        parts.push(`</div>`);
+
+        const one = selected.size === 1;
+        const two = selected.size === 2;
+        parts.push(`<div class="kb-actions">`);
+        parts.push(`<button class="kb-btn" id="kb-apply" ${one && c.hasScope ? "" : "disabled"}>Apply</button>`);
+        parts.push(`<button class="kb-btn" id="kb-diff" ${two ? "" : "disabled"}>Diff pair</button>`);
+        parts.push(`<button class="kb-btn" id="kb-code" ${one ? "" : "disabled"}>Copy updateCode</button>`);
+        parts.push(`<button class="kb-btn" id="kb-reload">Reload</button>`);
+        parts.push(`<span class="kb-dim">${selected.size ? selected.size + " selected" : "select a key to apply, two to diff"}</span>`);
+        parts.push(`</div>`);
+
+        parts.push(`<div class="kb-grid">`);
+        parts.push(`<span class="kb-hdr">slot</span><span class="kb-hdr">type</span><span class="kb-hdr">in</span>`);
+        parts.push(`<span class="kb-hdr">range across keys</span><span class="kb-hdr kb-spread">spread</span>`);
+
+        c.slots.forEach((slot) => {
+            const isOpen = openSlot === slot.name;
+            const nameCls = slot.kind === "absent" && slot.inScope ? " kb-scope-only"
+                : slot.kind === "mixed" ? " kb-mixed" : "";
+            const countCls = slot.presentIn === 0 ? " kb-none"
+                : slot.presentIn < slot.total ? " kb-partial" : "";
+            parts.push(`<div class="kb-row${isOpen ? " kb-open" : ""}" data-slot="${esc(slot.name)}">`);
+            parts.push(`<span class="kb-name${nameCls}" title="${esc(slot.name)}">${esc(slot.name)}</span>`);
+            parts.push(`<span class="kb-type">${esc(slot.typeLabel)}</span>`);
+            parts.push(`<span class="kb-count${countCls}">${slot.presentIn}/${slot.total}</span>`);
+            parts.push(`<span>${displayHtml(slot)}</span>`);
+            parts.push(`<span class="kb-spread">${esc(slot.summaryText)}</span>`);
+            parts.push(`</div>`);
+            if (isOpen && slot.detailHtml) {
+                parts.push(`<div class="kb-panel">${slot.detailHtml}</div>`);
+            } else if (isOpen) {
+                parts.push(`<div class="kb-panel"><div class="kb-status">loading…</div></div>`);
+            }
+        });
+        parts.push(`</div>`);
+
+        if (outPanel) {
+            parts.push(`<div class="kb-out">`);
+            parts.push(`<div class="kb-detail-head">${esc(outPanel.title)}`);
+            if (outPanel.copied) parts.push(` <span class="kb-dim">— copied to clipboard</span>`);
+            parts.push(`</div>`);
+            parts.push(outPanel.html ? outPanel.html : `<pre class="kb-code">${esc(outPanel.text)}</pre>`);
+            parts.push(`</div>`);
+        }
+
+        kbEl.innerHTML = parts.join("");
+        wire();
+    }
+
+    function wire() {
+        kbEl.querySelectorAll(".kb-chip").forEach((el) => {
+            el.addEventListener("click", () => {
+                const id = Number(el.dataset.file);
+                if (selected.has(id)) selected.delete(id);
+                else {
+                    // Two is the useful maximum: one to apply, two to diff. A third would silently
+                    // make Diff mean something the buttons do not say, so the oldest drops out.
+                    if (selected.size >= 2) selected.delete(selected.values().next().value);
+                    selected.add(id);
+                }
+                outPanel = null;
+                render();
+            });
+        });
+
+        kbEl.querySelectorAll(".kb-row").forEach((el) => {
+            el.addEventListener("click", async () => {
+                const name = el.dataset.slot;
+                if (openSlot === name) { openSlot = null; render(); return; }
+                openSlot = name;
+                render();
+                const slot = collection.slots.find((s) => s.name === name);
+                if (slot && !slot.detailHtml) {
+                    try {
+                        const res = await sendReq("slot", { slot: name });
+                        slot.detailHtml = res.html;
+                    } catch (e) {
+                        slot.detailHtml = `<div class="kb-status kb-bad">${esc(e.message || e)}</div>`;
+                    }
+                    if (openSlot === name) render();
+                }
+            });
+        });
+
+        const on = (id, fn) => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener("click", fn);
+        };
+
+        on("kb-reload", () => { void open(); });
+
+        on("kb-diff", async () => {
+            const [a, b] = [...selected];
+            try {
+                const res = await sendReq("diff", { fileId: a, otherId: b });
+                outPanel = { title: res.title, html: res.html };
+            } catch (e) {
+                outPanel = { title: "diff failed", text: String(e.message || e) };
+            }
+            render();
+        });
+
+        on("kb-apply", async () => {
+            const [a] = [...selected];
+            try {
+                const res = await sendReq("apply", { fileId: a });
+                outPanel = { title: res.title, text: res.text };
+            } catch (e) {
+                outPanel = { title: "apply failed", text: String(e.message || e) };
+            }
+            render();
+        });
+
+        on("kb-code", async () => {
+            const [a] = [...selected];
+            try {
+                const res = await sendReq("code", { fileId: a });
+                let copied = false;
+                try {
+                    await navigator.clipboard.writeText(res.text);
+                    copied = true;
+                } catch {
+                    // Clipboard access can be refused in an iframe; the code is on screen either way,
+                    // so this is a missing convenience rather than a failure worth reporting as one.
+                }
+                outPanel = { title: res.title, text: res.text, copied };
+            } catch (e) {
+                outPanel = { title: "updateCode failed", text: String(e.message || e) };
+            }
+            render();
+        });
+    }
+
+    async function open() {
+        const res = await sendReq("open");
+        collection = res;
+        // Drop selections and open panels that no longer name anything, so a Reload after a save
+        // does not leave the buttons acting on a file that has gone.
+        [...selected].forEach((id) => { if (!collection.files.some((f) => f.id === id)) selected.delete(id); });
+        if (openSlot && !collection.slots.some((s) => s.name === openSlot)) openSlot = null;
+        outPanel = null;
+        render();
+    }
+
+    function connect() {
+        if (!ROOT_TOKEN) {
+            // The page opened with no `?root=`, which is what you get from typing the URL. Say what
+            // the token is for rather than only that it is missing: it is not a path you could have
+            // guessed and typed, it is a registration that also carries the weak scope reference
+            // Apply needs, so there is no URL that would have worked here.
+            noToken();
+            return;
+        }
+        ws = new WebSocket(WS_URL);
+        ws.onopen = async () => {
+            try {
+                await open();
+            } catch (e) {
+                status(`failed: ${e.message || e}`, true);
+            }
+        };
+        ws.onmessage = (ev) => {
+            let msg;
+            try { msg = JSON.parse(ev.data); } catch { return; }
+            if (!msg || !msg.reqId) return;
+            const p = pending.get(String(msg.reqId));
+            if (!p) return;
+            pending.delete(String(msg.reqId));
+            if (msg.ok === false) p.reject(new Error(msg.error || "request failed"));
+            else p.resolve(msg);
+        };
+        ws.onclose = () => {
+            pending.forEach((p) => p.reject(new Error("socket closed")));
+            pending.clear();
+            if (!collection) status("disconnected — retrying", true);
+            setTimeout(connect, 1500);
+        };
+        ws.onerror = () => { if (!collection) status("socket error", true); };
+    }
+
+    connect();
+</script>
+</body>
+</html>
