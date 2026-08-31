@@ -3122,6 +3122,12 @@ class KotlinExecution : BoxExecution {
             val implicitReceiverHint: String? =
                 inside.ki.implicitReceivers.firstOrNull()?.typeName?.substringAfterLast('.')
 
+            // The box's shader-binding comments, gathered and parsed at most once per request — the walk
+            // and the parse are far too expensive to repeat for each of a thousand candidate rows.
+            val shaderBindingDocs: ShaderBindingDocs.Lookup by lazy(LazyThreadSafetyMode.NONE) {
+                ShaderBindingDocs.indexFor(inside)
+            }
+
             val caretReceiverQualifiedName: String? by lazy(LazyThreadSafetyMode.NONE) {
                 KotlinCompletionSupport.receiverQualifiedNameAtCompletion(inside, allCode, position).also {
                     if (completionTraceEnabled()) {
@@ -3143,6 +3149,19 @@ class KotlinExecution : BoxExecution {
                 // Skip for dot-completion (member access) since the simple name is ambiguous —
                 // e.g. "add" could be Vector3f.add or LittleHistory.add.
                 val isDotCompletion = KotlinCompletionSupport.isDotSelection(allCode, c.bounds.start)
+
+                // A `// note` written next to a push constant in the shader, carried into the preamble by
+                // the generated accessor and read back off it (see [afield.ShaderBindingDocs]). Runs first
+                // because it is box-local and receiver-matched: it should win over an index hit for a
+                // repository symbol that merely shares the name. Dot completion only — a `Mesh` extension
+                // is not in scope as a bare name, so a bare row named `time` is somebody else's.
+                if (isDotCompletion && candidateName.isNotEmpty()) {
+                    shaderBindingDocs.documentationFor(
+                        member = candidateName,
+                        receiverType = it.extraInfo["receiverQualifiedName"] as? String
+                            ?: it.extraInfo["receiverType"] as? String
+                    )?.let { note -> extraDoc = note }
+                }
 
                 // KDoc lookup for name completions (not dot-completion) — check extraInfo first, then index
                 if (extraDoc.isEmpty() && candidateName.isNotEmpty() && !isDotCompletion) {

@@ -149,6 +149,126 @@ private val glslFieldRegex = Regex(
 private fun stripGlslComments(source: String): String =
     source.replace(glslBlockCommentRegex, "").replace(glslLineCommentRegex, "")
 
+/**
+ * Blank out C-style block comments while keeping every newline, so the result still lines up with the
+ * original line-for-line. [parseGlslMemberComments] scans line by line and must not mistake a `//`
+ * that lives *inside* a block comment for a real trailing comment.
+ */
+private fun blankGlslBlockComments(source: String): String {
+    val out = StringBuilder(source)
+    glslBlockCommentRegex.findAll(source).forEach { match ->
+        for (i in match.range) if (out[i] != '\n') out[i] = ' '
+    }
+    return out.toString()
+}
+
+/** Matches the text just before a `{` when it opens a named block: `struct Params`, `uniform Push`, `buffer Blob`. */
+private val glslBlockOpenerRegex = Regex("""\b(?:struct|uniform|buffer)\s+([A-Za-z_][A-Za-z0-9_]*)\s*$""")
+private val glslRunsOfWhitespaceRegex = Regex("""\s+""")
+/** The trailing identifier of `} pc;` — the instance name a block declares for itself. */
+private val glslTrailingIdentifierRegex = Regex("""([A-Za-z_][A-Za-z0-9_]*)\s*$""")
+
+/**
+ * Scrape the `// trailing comment` off every member declaration inside a GLSL block — the push-constant
+ * block, a `struct`, a UBO, an SSBO — so a human note written next to a uniform can travel to the Kotlin
+ * accessor generated for it (see `afield.stdlib.insertForShader`, which appends it to the generated
+ * preamble line, and `afield.ShaderBindingDocs`, which reads it back for the completion popup).
+ *
+ * ```glsl
+ * layout(push_constant) uniform Push {
+ *     float time;   // seconds since the box started
+ * } pc;
+ * ```
+ *
+ * The returned map is keyed three ways for the same comment, so a caller can look it up with whatever
+ * name it happens to hold: `"Push.time"` (block type name), `"pc.time"` (the block's instance name, when
+ * it declares one — reflection names push-constant blocks either way), and the bare `"time"`. The bare
+ * key is **omitted when it would be ambiguous**: if two blocks both declare `time` with *different*
+ * comments, neither wins and only the qualified keys survive.
+ *
+ * This is a lexical scan of the source string, not reflection, with the limits that implies: it sees
+ * only declarations in the text it is given, so a push-constant block that arrives through `#include`
+ * (resolved by glslang at compile time, never inlined into `Introspection.source`) has no comments to
+ * find, and one declaration per line is assumed — `float a; float b; // both` documents `b` only.
+ */
+fun parseGlslMemberComments(source: String): Map<String, String> {
+    val qualified = LinkedHashMap<String, String>()
+    val byName = LinkedHashMap<String, String>()
+    val ambiguous = mutableSetOf<String>()
+    // Instance name -> block type name, from the `} pc;` tail. Filled in as blocks close, which is
+    // always *after* their members were recorded, so the aliases are applied in a second pass.
+    val instanceAliases = LinkedHashMap<String, String>()
+    val blocks = ArrayDeque<String>()
+    var carry = ""
+    var closedBlock: String? = null
+
+    blankGlslBlockComments(source).lines().forEach { rawLine ->
+        if (rawLine.trimStart().startsWith("#")) {
+            carry = ""
+            return@forEach
+        }
+        val commentAt = rawLine.indexOf("//")
+        val code = if (commentAt >= 0) rawLine.substring(0, commentAt) else rawLine
+        val comment = if (commentAt >= 0) rawLine.substring(commentAt + 2).trim() else ""
+
+        val statement = StringBuilder(carry)
+        // The declaration the line's last `;` terminated, and how deeply nested it was — the comment at
+        // the end of the line belongs to that one.
+        var documented: String? = null
+        var documentedBlock = ""
+
+        code.forEach { c ->
+            when (c) {
+                '{' -> {
+                    blocks.addLast(glslBlockOpenerRegex.find(statement.toString().trim())?.groupValues?.get(1) ?: "")
+                    statement.setLength(0)
+                }
+                '}' -> {
+                    closedBlock = blocks.removeLastOrNull()
+                    statement.setLength(0)
+                }
+                ';' -> {
+                    val text = statement.toString().trim().replace(glslRunsOfWhitespaceRegex, " ")
+                    val justClosed = closedBlock
+                    if (justClosed != null) {
+                        // `} pc;` — the block's instance name, an alias for everything inside it.
+                        if (justClosed.isNotEmpty()) {
+                            glslTrailingIdentifierRegex.find(text)?.groupValues?.get(1)
+                                ?.let { instanceAliases[it] = justClosed }
+                        }
+                        closedBlock = null
+                    } else if (text.isNotEmpty()) {
+                        documented = text
+                        // "" for an unnamed block, which is what excludes function bodies below.
+                        documentedBlock = blocks.lastOrNull() ?: ""
+                    }
+                    statement.setLength(0)
+                }
+                else -> statement.append(c)
+            }
+        }
+        carry = statement.toString()
+
+        val declaration = documented ?: return@forEach
+        // A NAMED block only. GLSL requires interface blocks to be named, so this costs nothing real and
+        // it excludes every unnamed `{ … }` — above all a function body, where `float x; // scratch` is a
+        // local variable's note and has no business documenting a Kotlin accessor.
+        if (comment.isEmpty() || documentedBlock.isEmpty()) return@forEach
+        val member = glslFieldRegex.matchEntire(declaration)?.groupValues?.getOrNull(1) ?: return@forEach
+        qualified["$documentedBlock.$member"] = comment
+        val seen = byName[member]
+        if (seen == null) byName[member] = comment else if (seen != comment) ambiguous += member
+    }
+
+    instanceAliases.forEach { (instance, block) ->
+        qualified.filterKeys { it.startsWith("$block.") }.forEach { (key, comment) ->
+            qualified["$instance.${key.substringAfter('.')}"] = comment
+        }
+    }
+
+    return qualified + byName.filterKeys { it !in ambiguous }
+}
+
 private fun parseGlslDeclaredStructures(source: String): List<GlslDeclaredStructure> {
     val clean = stripGlslComments(source)
 
@@ -325,6 +445,24 @@ open class Introspected {
     val samplers = mutableListOf<Sampler>()
     val pushConstants = mutableListOf<PushConstant>()
     val structureTypes = mutableListOf<StructureType>()
+
+    /**
+     * The `// trailing comment` a human wrote next to a member declaration in the shader source, keyed
+     * by `Block.member`, `instance.member` and (when unambiguous) the bare `member` — see
+     * [parseGlslMemberComments] for exactly how it is scraped and what it cannot see.
+     *
+     * Reflection throws comments away, so this is the one channel by which a note next to a push
+     * constant reaches Kotlin: the generated preamble line carries it as its own trailing comment, and
+     * the completion popup reads it back from there. Empty for an [Introspected] built by hand.
+     */
+    val memberComments = mutableMapOf<String, String>()
+
+    /**
+     * The comment for a member, preferring the one qualified by [block] (the push-constant block, struct
+     * or UBO name) and falling back to the bare member name. Null when the source said nothing.
+     */
+    fun memberComment(member: String, block: String? = null): String? =
+        block?.let { memberComments["$it.$member"] } ?: memberComments[member]
 
     lateinit var code: ShaderSPIRVUtils.SPIRV
     override fun toString(): String {
@@ -662,6 +800,9 @@ class Introspection private constructor(
     var valid = false
 
     init {
+        // Lexical, so it neither needs nor waits for a successful compile: a shader that fails to
+        // compile still has its comments read, and a failure in here must never mask the real error.
+        runCatching { memberComments.putAll(parseGlslMemberComments(source)) }
         try {
             val spirv = precompiledSpirv ?: ShaderSPIRVUtils.compileShader(
                 ShaderCompileSource(

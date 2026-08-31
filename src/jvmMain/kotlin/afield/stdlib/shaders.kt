@@ -3039,7 +3039,8 @@ private fun buildShaderStructurePreamble(prefix: String, introspections: List<In
 
         val primitiveProperties = structure.members.filter { nestedLayoutFor(it) == null }.map { member ->
             val ty = kotlinBindingTypeName(member)
-            "    var ${kotlinMemberName(member.name)} by Structure.FromStructure<$ty>()"
+            "    var ${kotlinMemberName(member.name)} by Structure.FromStructure<$ty>()" +
+                shaderCommentSuffix(introspections, member.name, structure.glslName)
         }
 
         val helperSuffix = sanitizeKotlinFunctionSuffix(structure.className)
@@ -3542,27 +3543,52 @@ private fun kotlinBindingTypeName(member: Introspected.Member): String =
     if (member.physicalPointer) "afield.four.buffers.HasBuffer"
     else member.type.fold({ it.kotlinTypeName }, { "Any" })
 
+/**
+ * The `// …` note the shader source carried at the end of a member's declaration line, formatted to
+ * append to the generated preamble declaration for it — `""` when the source said nothing.
+ *
+ * A *trailing* line comment, rather than a KDoc block in front, for two reasons: the preamble is
+ * line-oriented and keyed by the `/*marker*/` that must stay at the START of the line
+ * (`preambleLineKey`), and a shader author's comment is arbitrary text that could otherwise close the
+ * KDoc it was pasted into. The comment is normalised to one line and capped, so a paragraph-length
+ * note cannot stretch the preamble.
+ *
+ * @param block the enclosing push-constant block, struct or UBO name, to disambiguate a member name
+ * that several blocks share
+ */
+private fun shaderCommentSuffix(
+    introspections: List<Introspection>,
+    member: String,
+    block: String? = null
+): String {
+    val comment = introspections.firstNotNullOfOrNull { it.memberComment(member, block) } ?: return ""
+    val oneLine = comment.replace(Regex("""\s+"""), " ").trim().take(240)
+    return if (oneLine.isEmpty()) "" else " // $oneLine"
+}
+
 private fun buildComputeInsert(ci: Introspection, box: Box? = null): Insert {
     var postImport = ""
+    val commentSources = listOf(ci)
     postImport += buildShaderStructurePreamble("compute", listOf(ci))
     buildStackAutoShaderPreamble(box).takeIf { it.isNotBlank() }?.let {
         postImport += it + "\n"
     }
 
     // Push constants
-    ci.pushConstants.flatMap { it.members }.distinctBy { it.name }.forEach { member ->
+    ci.pushConstants.flatMap { pc -> pc.members.map { pc.name to it } }.distinctBy { it.second.name }.forEach { (block, member) ->
+            val note = shaderCommentSuffix(commentSources, member.name, block)
             postImport += prefixed(
                 "compute-pc-structure:${member.name}",
-                "var Structure.${member.name} by Structure.FromStructure<Any>()"
+                "var Structure.${member.name} by Structure.FromStructure<Any>()$note"
             ) + "\n"
             val ty = kotlinBindingTypeName(member)
             postImport += prefixed(
                 "compute-pc-binding:${member.name}",
-                "var ComputeMesh.${member.name} by ComputeMesh.BoundFromStructure<$ty>()"
+                "var ComputeMesh.${member.name} by ComputeMesh.BoundFromStructure<$ty>()$note"
             ) + "\n"
             postImport += prefixed(
                 "compute-pc-binding-group:${member.name}",
-                "var ComputeMeshGroup.${member.name} by ComputeMeshGroup.BoundFromStructure<$ty>()"
+                "var ComputeMeshGroup.${member.name} by ComputeMeshGroup.BoundFromStructure<$ty>()$note"
             ) + "\n"
     }
 
@@ -3580,7 +3606,8 @@ private fun buildComputeInsert(ci: Introspection, box: Box? = null): Insert {
             val ty = kotlinBindingTypeName(m)
             postImport += prefixed(
                 "compute-ubo-member:${ubo.name}:${m.name}",
-                "var Structure.${m.name} by Structure.FromStructure<$ty>()"
+                "var Structure.${m.name} by Structure.FromStructure<$ty>()" +
+                    shaderCommentSuffix(commentSources, m.name, ubo.name)
             ) + "\n"
         }
     }
@@ -3734,25 +3761,28 @@ fun Box.attachShader(module: ComputeModulePointer, overwriteProperties: Boolean 
 // ------------------------------
 private fun buildMeshInsert(ti: Introspection, mi: Introspection, fi: Introspection, box: Box? = null): Insert {
     var postImport = ""
+    val commentSources = listOf(ti, mi, fi)
     postImport += buildShaderStructurePreamble("mesh", listOf(ti, mi, fi))
     buildStackAutoShaderPreamble(box).takeIf { it.isNotBlank() }?.let {
         postImport += it + "\n"
     }
 
     // Push constants across task+mesh+fragment
-    (ti.pushConstants + mi.pushConstants + fi.pushConstants).flatMap { it.members }.distinctBy { it.name }.forEach { member ->
+    (ti.pushConstants + mi.pushConstants + fi.pushConstants).flatMap { pc -> pc.members.map { pc.name to it } }
+        .distinctBy { it.second.name }.forEach { (block, member) ->
+            val note = shaderCommentSuffix(commentSources, member.name, block)
             postImport += prefixed(
                 "mesh-pc-structure:${member.name}",
-                "var Structure.${member.name} by Structure.FromStructure<Any>()"
+                "var Structure.${member.name} by Structure.FromStructure<Any>()$note"
             ) + "\n"
             val ty = kotlinBindingTypeName(member)
             postImport += prefixed(
                 "mesh-pc-binding:${member.name}",
-                "var MeshMesh.${member.name} by MeshMesh.BoundFromStructure<$ty>()"
+                "var MeshMesh.${member.name} by MeshMesh.BoundFromStructure<$ty>()$note"
             ) + "\n"
             postImport += prefixed(
                 "mesh-pc-binding-group:${member.name}",
-                "var MeshMeshGroup.${member.name} by MeshMeshGroup.BoundFromStructure<$ty>()"
+                "var MeshMeshGroup.${member.name} by MeshMeshGroup.BoundFromStructure<$ty>()$note"
             ) + "\n"
     }
 
@@ -3770,7 +3800,8 @@ private fun buildMeshInsert(ti: Introspection, mi: Introspection, fi: Introspect
             val ty = kotlinBindingTypeName(m)
             postImport += prefixed(
                 "mesh-ubo-member:${ubo.name}:${m.name}",
-                "var Structure.${m.name} by Structure.FromStructure<$ty>()"
+                "var Structure.${m.name} by Structure.FromStructure<$ty>()" +
+                    shaderCommentSuffix(commentSources, m.name, ubo.name)
             ) + "\n"
         }
     }
@@ -3932,17 +3963,20 @@ private fun prepareRayTracingStages(box: Box): List<PreparedShaderStage>? {
 
 private fun buildRayTracingInsert(introspections: List<Introspection>): Insert {
     var postImport = ""
+    val commentSources = introspections
     postImport += buildShaderStructurePreamble("ray", introspections)
 
-    introspections.flatMap { it.pushConstants }.flatMap { it.members }.distinctBy { it.name }.forEach { member ->
+    introspections.flatMap { it.pushConstants }.flatMap { pc -> pc.members.map { pc.name to it } }
+        .distinctBy { it.second.name }.forEach { (block, member) ->
+            val note = shaderCommentSuffix(commentSources, member.name, block)
             postImport += prefixed(
                 "ray-pc-structure:${member.name}",
-                "var Structure.${member.name} by Structure.FromStructure<Any>()"
+                "var Structure.${member.name} by Structure.FromStructure<Any>()$note"
             ) + "\n"
             val ty = kotlinBindingTypeName(member)
             postImport += prefixed(
                 "ray-pc-binding:${member.name}",
-                "var RayTracingDispatch.${member.name} by RayTracingDispatch.BoundFromStructure<$ty>()"
+                "var RayTracingDispatch.${member.name} by RayTracingDispatch.BoundFromStructure<$ty>()$note"
             ) + "\n"
     }
 
@@ -3955,7 +3989,8 @@ private fun buildRayTracingInsert(introspections: List<Introspection>): Insert {
             val ty = kotlinBindingTypeName(member)
             postImport += prefixed(
                 "ray-ubo-member:${ubo.name}:${member.name}",
-                "var Structure.${member.name} by Structure.FromStructure<$ty>()"
+                "var Structure.${member.name} by Structure.FromStructure<$ty>()" +
+                    shaderCommentSuffix(commentSources, member.name, ubo.name)
             ) + "\n"
         }
     }
@@ -4479,6 +4514,7 @@ fun insertForShader(
     box: Box? = null
 ): Insert {
     var postImport = ""
+    val commentSources = listOf(vi, fi)
     vi.inputs.forEach {
         postImport += prefixed(
             "graphics-input:${it.name}",
@@ -4492,20 +4528,22 @@ fun insertForShader(
         postImport += it + "\n"
     }
 
-    (vi.pushConstants + fi.pushConstants).flatMap { it.members }.distinctBy { it.name }.forEach { member ->
+    (vi.pushConstants + fi.pushConstants).flatMap { pc -> pc.members.map { pc.name to it } }
+        .distinctBy { it.second.name }.forEach { (block, member) ->
+            val note = shaderCommentSuffix(commentSources, member.name, block)
             postImport += prefixed(
                 "graphics-pc-structure:${member.name}",
-                "var Structure.${member.name} by Structure.FromStructure<Any>()"
+                "var Structure.${member.name} by Structure.FromStructure<Any>()$note"
             ) + "\n"
             val ty = kotlinBindingTypeName(member)
             postImport += prefixed(
                 "graphics-pc-binding:${member.name}",
-                "var Mesh.${member.name} by Mesh.BoundFromStructure<$ty>()"
+                "var Mesh.${member.name} by Mesh.BoundFromStructure<$ty>()$note"
             ) + "\n"
 
             postImport += prefixed(
                 "graphics-pc-binding-group:${member.name}",
-                "var MeshGroup.${member.name} by MeshGroup.BoundFromStructure<$ty>()"
+                "var MeshGroup.${member.name} by MeshGroup.BoundFromStructure<$ty>()$note"
             ) + "\n"
     }
 
@@ -4518,7 +4556,8 @@ fun insertForShader(
             val ty = kotlinBindingTypeName(m)
             postImport += prefixed(
                 "graphics-ubo-member:${it.name}:${m.name}",
-                "var Structure.${m.name} by Structure.FromStructure<$ty>()"
+                "var Structure.${m.name} by Structure.FromStructure<$ty>()" +
+                    shaderCommentSuffix(commentSources, m.name, it.name)
             ) + "\n"
         }
     }
