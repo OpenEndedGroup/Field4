@@ -103,10 +103,12 @@
             border-color: rgba(255, 255, 255, 0.22);
         }
 
+        /* Amber is "selected", everywhere: the chip and the datapoints it lights up in every row
+           are the same fact, so they are the same colour. */
         .kb-chip.kb-on {
-            border-color: #6cf;
-            background: rgba(102, 204, 255, 0.12);
-            color: #cfe9fb;
+            border-color: #EF9F27;
+            background: rgba(239, 159, 39, 0.13);
+            color: #f3ce96;
         }
 
         .kb-chip-n {
@@ -115,7 +117,7 @@
         }
 
         .kb-chip.kb-on .kb-chip-n {
-            color: #6cf;
+            color: #EF9F27;
         }
 
         .kb-actions {
@@ -255,6 +257,72 @@
             border-radius: 1px;
         }
 
+        /* An unselected mark is the cool default; the selected key's is warm and wider, so it
+           reads out of a crowd of marks without needing the others dimmed. */
+        .kb-mark-sel {
+            background: #EF9F27;
+            width: 3px;
+            margin-left: -1.5px;
+            top: -1px;
+            bottom: -1px;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55);
+            z-index: 2;
+        }
+
+        .kb-brushable {
+            cursor: ew-resize;
+        }
+
+        .kb-brush {
+            position: absolute;
+            top: -1px;
+            bottom: -1px;
+            background: rgba(239, 159, 39, 0.16);
+            border-left: 1px solid rgba(239, 159, 39, 0.7);
+            border-right: 1px solid rgba(239, 159, 39, 0.7);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .kb-brushnote {
+            font-size: 11px;
+            color: #f0b866;
+            margin-top: 8px;
+        }
+
+        .kb-brushnote code {
+            font-family: var(--field-mono-font, ui-monospace, monospace);
+        }
+
+        .kb-brushnote a {
+            color: #8f949f;
+            margin-left: 6px;
+        }
+
+        .kb-swatch-sel {
+            outline: 2px solid #EF9F27;
+            outline-offset: 1px;
+        }
+
+        .kb-swatch,
+        .kb-dot,
+        .kb-variant {
+            cursor: pointer;
+        }
+
+        /* Two classes deep on purpose: this block sits above `.kb-variant`, whose `border`
+           shorthand would otherwise win the tie on source order and swallow the accent. */
+        .kb-variant.kb-variant-sel {
+            border-color: #EF9F27;
+            background: rgba(239, 159, 39, 0.14);
+            color: #f3ce96;
+        }
+
+        .kb-key-stamp {
+            font-size: 10px;
+            margin-bottom: 6px;
+        }
+
         .kb-strip-label {
             position: absolute;
             left: 4px;
@@ -301,17 +369,24 @@
             white-space: nowrap;
         }
 
+        /* The most common variant is named by its own count, so it gets no border of its own:
+           the border means "selected" and nothing else, or the two read as the same thing. */
         .kb-variant.kb-top {
-            border-color: rgba(102, 204, 255, 0.4);
-            background: rgba(102, 204, 255, 0.1);
-            color: #cfe9fb;
+            color: #cfd4de;
         }
 
         .kb-scatter {
+            display: block;
             height: 34px;
             background: rgba(255, 255, 255, 0.045);
             border: 1px solid rgba(255, 255, 255, 0.07);
             border-radius: 2px;
+        }
+
+        .kb-scatter svg {
+            width: 100%;
+            height: 100%;
+            display: block;
         }
 
         .kb-note {
@@ -491,6 +566,8 @@
     const selected = new Set();   // file ids, for diff / apply / code
     let openSlot = null;          // slot name whose detail panel is showing
     let outPanel = null;          // { title, html } or { title, text }
+    let brush = null;             // { slot, band, a, b, label, range, hits, total }
+    let suppressRowClick = false; // a drag that ended on a row must not also expand it
 
     function esc(s) {
         return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => (
@@ -538,58 +615,173 @@ keyframeBrowser("looks", scope = myScope)</pre>
 
     // ---------------------------------------------------------------- strips
 
-    function stripHtml(band, fileIds, showLabel) {
-        const marks = band.marks.map((m, i) => {
+    /**
+     * A file id's position among a display's marks, or -1. Every display ships a `fileIds` array
+     * parallel to its marks/colors/points, so "is this datapoint the selected key" is an index
+     * lookup rather than anything the server has to be asked again.
+     */
+    function selIndices(fileIds) {
+        const out = new Set();
+        if (!fileIds) return out;
+        fileIds.forEach((id, i) => { if (selected.has(id)) out.add(i); });
+        return out;
+    }
+
+    function fileName(id) {
+        const f = collection && collection.files.find((x) => x.id === id);
+        return f ? f.relative : "";
+    }
+
+    function bandValueAt(band, fraction) {
+        return band.lo + fraction * (band.hi - band.lo);
+    }
+
+    function stripHtml(band, fileIds, showLabel, slotName, bandIndex) {
+        const sel = selIndices(fileIds);
+        // Selected marks are emitted last so they paint over an unselected mark sitting at the same
+        // value — two keys agreeing on a number is common, and the highlight has to win that overlap.
+        const order = band.marks.map((m, i) => i).sort((a, b) => (sel.has(a) ? 1 : 0) - (sel.has(b) ? 1 : 0));
+        const marks = order.map((i) => {
+            const m = band.marks[i];
             const id = fileIds ? fileIds[i] : null;
-            const file = id != null && collection ? collection.files.find((f) => f.id === id) : null;
-            const title = file ? `${file.relative}\n${band.label}` : band.label;
-            return `<span class="kb-mark" style="left:${(m * 100).toFixed(2)}%" title="${esc(title)}"></span>`;
+            const on = sel.has(i);
+            const title = `${fileName(id)}\n${band.label} = ${fmt(bandValueAt(band, m))}`;
+            return `<span class="kb-mark${on ? " kb-mark-sel" : ""}" data-file="${id}"` +
+                ` style="left:${(m * 100).toFixed(2)}%" title="${esc(title)}"></span>`;
         }).join("");
         const degenerate = band.lo === band.hi;
         const fill = degenerate ? "" : `<span class="kb-strip-fill"></span>`;
         const label = showLabel ? `<span class="kb-strip-label">${esc(band.label)}</span>` : "";
-        return `<span class="kb-strip">${fill}${label}${marks}</span>`;
+        // The brush overlay for this band, when the current brush is on it.
+        let brushEl = "";
+        if (brush && brush.slot === slotName && brush.band === bandIndex) {
+            const l = Math.min(brush.a, brush.b), w = Math.abs(brush.b - brush.a);
+            brushEl = `<span class="kb-brush" style="left:${(l * 100).toFixed(2)}%;width:${(w * 100).toFixed(2)}%"></span>`;
+        }
+        const brushable = !degenerate && fileIds && fileIds.length > 1;
+        return `<span class="kb-strip${brushable ? " kb-brushable" : ""}"` +
+            ` data-slot="${esc(slotName)}" data-band="${bandIndex}">${fill}${label}${brushEl}${marks}</span>`;
+    }
+
+    function fmt(v) {
+        if (!isFinite(v)) return String(v);
+        if (v === Math.round(v) && Math.abs(v) < 1e6) return String(Math.round(v));
+        return Number(v.toPrecision(4)).toString();
     }
 
     function scatterHtml(points, fileIds) {
         // Plan view; y is flipped so +z reads as "away" going up, the way a top-down sketch does.
-        const dots = points.map((p, i) => {
-            const id = fileIds ? fileIds[i] : null;
-            const file = id != null && collection ? collection.files.find((f) => f.id === id) : null;
-            const x = 4 + p[0] * 192;
-            const y = 30 - p[1] * 26;
-            return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.6" fill="#7F77DD"><title>${esc(file ? file.relative : "")}</title></circle>`;
-        }).join("");
+        const sel = selIndices(fileIds);
+        const px = (p) => 4 + p[0] * 192;
+        const py = (p) => 30 - p[1] * 26;
         const path = points.length > 1
-            ? `<polyline points="${points.map((p) => `${(4 + p[0] * 192).toFixed(1)},${(30 - p[1] * 26).toFixed(1)}`).join(" ")}" fill="none" stroke="#7F77DD" stroke-width="1" opacity="0.55"/>`
+            ? `<polyline points="${points.map((p) => `${px(p).toFixed(1)},${py(p).toFixed(1)}`).join(" ")}" fill="none" stroke="#7F77DD" stroke-width="1" opacity="0.55"/>`
             : "";
-        return `<span class="kb-scatter" style="display:block"><svg viewBox="0 0 200 34" preserveAspectRatio="none" style="width:100%;height:100%;display:block">${path}${dots}</svg></span>`;
+        const order = points.map((p, i) => i).sort((a, b) => (sel.has(a) ? 1 : 0) - (sel.has(b) ? 1 : 0));
+        const dots = order.map((i) => {
+            const p = points[i];
+            const id = fileIds ? fileIds[i] : null;
+            const on = sel.has(i);
+            return `<circle class="kb-dot${on ? " kb-dot-sel" : ""}" data-file="${id}"` +
+                ` cx="${px(p).toFixed(1)}" cy="${py(p).toFixed(1)}" r="${on ? 4.2 : 2.6}"` +
+                ` fill="${on ? "#EF9F27" : "#7F77DD"}"><title>${esc(fileName(id))}</title></circle>`;
+        }).join("");
+        return `<span class="kb-scatter"><svg viewBox="0 0 200 34" preserveAspectRatio="none">${path}${dots}</svg></span>`;
     }
 
     function displayHtml(slot) {
         const d = slot.display;
         switch (d.type) {
             case "range":
-                return stripHtml(d.band, d.fileIds, false);
+                return stripHtml(d.band, d.fileIds, false, slot.name, 0);
             case "components":
-                return d.bands.map((b) => stripHtml(b, d.fileIds, true)).join("");
-            case "swatches":
+                return d.bands.map((b, i) => stripHtml(b, d.fileIds, true, slot.name, i)).join("");
+            case "swatches": {
+                const sel = selIndices(d.fileIds);
                 return `<span class="kb-swatches">` + d.colors.map((c, i) => {
                     const id = d.fileIds[i];
-                    const file = collection ? collection.files.find((f) => f.id === id) : null;
-                    return `<span class="kb-swatch" style="background:${esc(c)}" title="${esc((file ? file.relative + "\n" : "") + c)}"></span>`;
+                    return `<span class="kb-swatch${sel.has(i) ? " kb-swatch-sel" : ""}" data-file="${id}"` +
+                        ` style="background:${esc(c)}" title="${esc(fileName(id) + "\n" + c)}"></span>`;
                 }).join("") + `</span>`;
+            }
             case "poses":
                 return scatterHtml(d.points, d.fileIds);
             case "variants":
-                return `<span class="kb-variants">` + d.variants.map((v, i) => (
-                    `<span class="kb-variant${i === 0 ? " kb-top" : ""}" title="${esc(v.text)}">${esc(v.preview || "(empty)")} ×${v.count}</span>`
-                )).join("") + `</span>`;
+                // A variant is already a dedup: `variantsOf` groups by value text and counts. Clicking
+                // one selects every key that holds it, which is the categorical answer to brushing.
+                return `<span class="kb-variants">` + d.variants.map((v, i) => {
+                    const on = v.fileIds.some((id) => selected.has(id));
+                    return `<span class="kb-variant${i === 0 ? " kb-top" : ""}${on ? " kb-variant-sel" : ""}"` +
+                        ` data-files="${v.fileIds.join(",")}" title="${esc(v.text)}">` +
+                        `${esc(v.preview || "(empty)")} ×${v.count}</span>`;
+                }).join("") + `</span>`;
             case "note":
                 return `<span class="kb-note${d.severity === "warn" ? " kb-warn" : ""}">${esc(d.text)}</span>`;
             default:
                 return "";
         }
+    }
+
+    // ---------------------------------------------------------------- selection
+
+    /**
+     * Selection is an arbitrary set, not a max-of-two. A plain click means "just this one", a
+     * shift-click adds or removes, and a brush replaces the whole set with whatever fell inside it.
+     *
+     * The panel below follows from the *size*: one key shows its contents, two show a diff (which
+     * already puts both sides' values on screen, so it subsumes the contents view), and more than
+     * two show neither — but every datapoint in every row stays highlighted, which is the point of
+     * a wide selection.
+     */
+    function selectOnly(ids) {
+        selected.clear();
+        ids.forEach((id) => selected.add(id));
+        afterSelectionChange();
+    }
+
+    function selectToggle(ids) {
+        const allOn = ids.every((id) => selected.has(id));
+        ids.forEach((id) => { if (allOn) selected.delete(id); else selected.add(id); });
+        afterSelectionChange();
+    }
+
+    function afterSelectionChange() {
+        outPanel = null;
+        render();
+        refreshSelectionPanel();
+    }
+
+    /** Fetch whatever panel the current selection size calls for. */
+    async function refreshSelectionPanel() {
+        const ids = [...selected];
+        try {
+            if (ids.length === 1) {
+                const res = await sendReq("key", { fileId: ids[0] });
+                if (sameSelection(ids)) outPanel = { title: res.title, html: res.html };
+            } else if (ids.length === 2) {
+                const res = await sendReq("diff", { fileId: ids[0], otherId: ids[1] });
+                if (sameSelection(ids)) outPanel = { title: res.title, html: res.html };
+            } else {
+                return;
+            }
+        } catch (e) {
+            if (sameSelection(ids)) outPanel = { title: "failed", text: String(e.message || e) };
+        }
+        render();
+    }
+
+    /** Guards against a slow reply landing after the selection has moved on. */
+    function sameSelection(ids) {
+        return ids.length === selected.size && ids.every((id) => selected.has(id));
+    }
+
+    function bandOf(slotName, index) {
+        const slot = collection && collection.slots.find((s) => s.name === slotName);
+        if (!slot) return null;
+        const d = slot.display;
+        if (d.type === "range") return { band: d.band, fileIds: d.fileIds };
+        if (d.type === "components") return { band: d.bands[index], fileIds: d.fileIds };
+        return null;
     }
 
     // ---------------------------------------------------------------- render
@@ -638,14 +830,13 @@ keyframeBrowser("looks", scope = myScope)</pre>
         });
         parts.push(`</div>`);
 
-        const one = selected.size === 1;
-        const two = selected.size === 2;
+        const n = selected.size;
         parts.push(`<div class="kb-actions">`);
-        parts.push(`<button class="kb-btn" id="kb-apply" ${one && c.hasScope ? "" : "disabled"}>Apply</button>`);
-        parts.push(`<button class="kb-btn" id="kb-diff" ${two ? "" : "disabled"}>Diff pair</button>`);
-        parts.push(`<button class="kb-btn" id="kb-code" ${one ? "" : "disabled"}>Copy updateCode</button>`);
+        parts.push(`<button class="kb-btn" id="kb-apply" ${n === 1 && c.hasScope ? "" : "disabled"}>Apply</button>`);
+        parts.push(`<button class="kb-btn" id="kb-code" ${n === 1 ? "" : "disabled"}>Copy updateCode</button>`);
+        parts.push(`<button class="kb-btn" id="kb-clear" ${n ? "" : "disabled"}>Clear</button>`);
         parts.push(`<button class="kb-btn" id="kb-reload">Reload</button>`);
-        parts.push(`<span class="kb-dim">${selected.size ? selected.size + " selected" : "select a key to apply, two to diff"}</span>`);
+        parts.push(`<span class="kb-dim">${selectionHint(n)}</span>`);
         parts.push(`</div>`);
 
         parts.push(`<div class="kb-grid">`);
@@ -673,6 +864,12 @@ keyframeBrowser("looks", scope = myScope)</pre>
         });
         parts.push(`</div>`);
 
+        if (brush) {
+            parts.push(`<div class="kb-brushnote">brushed <code>${esc(brush.slot)}</code>` +
+                ` ${esc(brush.label)} — ${esc(brush.range)} · ${brush.hits} of ${brush.total} keys` +
+                ` <a href="#" id="kb-unbrush">clear brush</a></div>`);
+        }
+
         if (outPanel) {
             parts.push(`<div class="kb-out">`);
             parts.push(`<div class="kb-detail-head">${esc(outPanel.title)}`);
@@ -680,30 +877,60 @@ keyframeBrowser("looks", scope = myScope)</pre>
             parts.push(`</div>`);
             parts.push(outPanel.html ? outPanel.html : `<pre class="kb-code">${esc(outPanel.text)}</pre>`);
             parts.push(`</div>`);
+        } else if (selected.size > 2) {
+            parts.push(`<div class="kb-out"><div class="kb-status">` +
+                `${selected.size} keys selected — their values are highlighted in every row above. ` +
+                `Narrow to one for its contents, two for a diff.</div></div>`);
         }
 
         kbEl.innerHTML = parts.join("");
         wire();
     }
 
+    function selectionHint(n) {
+        if (n === 0) return "click a key for its contents · shift-click a second for a diff · drag across a range to brush";
+        if (n === 1) return "1 selected — shift-click another for a diff";
+        if (n === 2) return "2 selected — diff below";
+        return `${n} selected`;
+    }
+
     function wire() {
         kbEl.querySelectorAll(".kb-chip").forEach((el) => {
-            el.addEventListener("click", () => {
+            el.addEventListener("click", (ev) => {
                 const id = Number(el.dataset.file);
-                if (selected.has(id)) selected.delete(id);
-                else {
-                    // Two is the useful maximum: one to apply, two to diff. A third would silently
-                    // make Diff mean something the buttons do not say, so the oldest drops out.
-                    if (selected.size >= 2) selected.delete(selected.values().next().value);
-                    selected.add(id);
-                }
-                outPanel = null;
-                render();
+                brush = null;
+                if (ev.shiftKey) selectToggle([id]);
+                else if (selected.size === 1 && selected.has(id)) selectOnly([]);
+                else selectOnly([id]);
             });
         });
 
+        // A datapoint inside a row is a handle on the key that produced it.
+        kbEl.querySelectorAll(".kb-swatch, .kb-dot").forEach((el) => {
+            el.addEventListener("click", (ev) => {
+                ev.stopPropagation();
+                const id = Number(el.dataset.file);
+                brush = null;
+                if (ev.shiftKey) selectToggle([id]); else selectOnly([id]);
+            });
+        });
+
+        kbEl.querySelectorAll(".kb-variant").forEach((el) => {
+            el.addEventListener("click", (ev) => {
+                ev.stopPropagation();
+                const ids = String(el.dataset.files || "").split(",").filter(Boolean).map(Number);
+                brush = null;
+                if (ev.shiftKey) selectToggle(ids); else selectOnly(ids);
+            });
+        });
+
+        kbEl.querySelectorAll(".kb-brushable").forEach((el) => wireBrush(el));
+
         kbEl.querySelectorAll(".kb-row").forEach((el) => {
-            el.addEventListener("click", async () => {
+            el.addEventListener("click", async (ev) => {
+                // A drag that started on a strip must not also be read as "expand this slot".
+                if (suppressRowClick) { suppressRowClick = false; return; }
+                if (ev.target.closest(".kb-strip, .kb-swatch, .kb-variant, .kb-scatter")) return;
                 const name = el.dataset.slot;
                 if (openSlot === name) { openSlot = null; render(); return; }
                 openSlot = name;
@@ -727,17 +954,8 @@ keyframeBrowser("looks", scope = myScope)</pre>
         };
 
         on("kb-reload", () => { void open(); });
-
-        on("kb-diff", async () => {
-            const [a, b] = [...selected];
-            try {
-                const res = await sendReq("diff", { fileId: a, otherId: b });
-                outPanel = { title: res.title, html: res.html };
-            } catch (e) {
-                outPanel = { title: "diff failed", text: String(e.message || e) };
-            }
-            render();
-        });
+        on("kb-clear", () => { brush = null; selectOnly([]); });
+        on("kb-unbrush", (ev) => { ev.preventDefault(); brush = null; selectOnly([]); });
 
         on("kb-apply", async () => {
             const [a] = [...selected];
@@ -755,12 +973,8 @@ keyframeBrowser("looks", scope = myScope)</pre>
             try {
                 const res = await sendReq("code", { fileId: a });
                 let copied = false;
-                try {
-                    await navigator.clipboard.writeText(res.text);
-                    copied = true;
-                } catch {
-                    // Clipboard access can be refused in an iframe; the code is on screen either way,
-                    // so this is a missing convenience rather than a failure worth reporting as one.
+                try { await navigator.clipboard.writeText(res.text); copied = true; } catch {
+                    // Clipboard access can be refused in an iframe; the code is on screen either way.
                 }
                 outPanel = { title: res.title, text: res.text, copied };
             } catch (e) {
@@ -770,6 +984,68 @@ keyframeBrowser("looks", scope = myScope)</pre>
         });
     }
 
+    /**
+     * Drag across a numeric strip to keep only the keys whose value falls inside.
+     *
+     * The comparison happens in the strip's own 0..1 space, because that is what `band.marks`
+     * already is — so brushing needs no unit conversion and no second request. The value range in
+     * the note is the inverse map back through `lo..hi`, purely for the label.
+     */
+    function wireBrush(el) {
+        const slotName = el.dataset.slot;
+        const bandIndex = Number(el.dataset.band);
+        let startX = null;
+        let overlay = null;
+
+        const fractionOf = (clientX) => {
+            const r = el.getBoundingClientRect();
+            return Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+        };
+
+        el.addEventListener("mousedown", (ev) => {
+            if (ev.button !== 0) return;
+            ev.preventDefault();
+            ev.stopPropagation();
+            startX = fractionOf(ev.clientX);
+            overlay = document.createElement("span");
+            overlay.className = "kb-brush";
+            el.appendChild(overlay);
+
+            const move = (e2) => {
+                const f = fractionOf(e2.clientX);
+                const l = Math.min(startX, f), w = Math.abs(f - startX);
+                overlay.style.left = (l * 100).toFixed(2) + "%";
+                overlay.style.width = (w * 100).toFixed(2) + "%";
+            };
+            const up = (e2) => {
+                window.removeEventListener("mousemove", move);
+                window.removeEventListener("mouseup", up);
+                const f = fractionOf(e2.clientX);
+                const a = Math.min(startX, f), b = Math.max(startX, f);
+                suppressRowClick = true;
+                // A click rather than a drag: too narrow to mean an interval, so treat it as "clear".
+                if (b - a < 0.01) { brush = null; selectOnly([]); return; }
+                applyBrush(slotName, bandIndex, a, b);
+            };
+            window.addEventListener("mousemove", move);
+            window.addEventListener("mouseup", up);
+        });
+    }
+
+    function applyBrush(slotName, bandIndex, a, b) {
+        const found = bandOf(slotName, bandIndex);
+        if (!found) return;
+        const { band, fileIds } = found;
+        const hits = [];
+        band.marks.forEach((m, i) => { if (m >= a && m <= b) hits.push(fileIds[i]); });
+        brush = {
+            slot: slotName, band: bandIndex, a, b, label: band.label,
+            range: `${fmt(bandValueAt(band, a))} – ${fmt(bandValueAt(band, b))}`,
+            hits: hits.length, total: fileIds.length
+        };
+        selectOnly(hits);
+    }
+
     async function open() {
         const res = await sendReq("open");
         collection = res;
@@ -777,6 +1053,7 @@ keyframeBrowser("looks", scope = myScope)</pre>
         // does not leave the buttons acting on a file that has gone.
         [...selected].forEach((id) => { if (!collection.files.some((f) => f.id === id)) selected.delete(id); });
         if (openSlot && !collection.slots.some((s) => s.name === openSlot)) openSlot = null;
+        brush = null;
         outPanel = null;
         render();
     }

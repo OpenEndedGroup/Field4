@@ -1,6 +1,8 @@
 package afield.server
 
 import afield.stdlib.KeyframeScope
+import afield.four.util.CameraPose
+import afield.stdlib.linalg.Quaternionf
 import afield.stdlib.linalg.Vector3f
 import afield.stdlib.stackSLString
 import kotlinx.serialization.json.Json
@@ -156,6 +158,60 @@ class KeyframeBrowserProtocolTest {
         assertEquals(3, Regex("kb-tick").findAll(html).count(), "one tick per save")
         assertContains(html, "1 – 9 over 3 saves")
         assertContains(html, "save 2", message = "the manifest note rides along in the tick tooltip")
+    }
+
+    /**
+     * The contents panel: one row per slot, so a plain click on a key answers "what is in this"
+     * without going via a diff.
+     */
+    @Test
+    fun keyReturnsEverySlotOfOneFileWithItsSaveMetadata() {
+        val dir = tempDir()
+        save(dir, "a.json", "r" to 2f, "p" to Vector3f(1f, 2f, 3f), "label" to "warm", note = "first pass")
+
+        val out = reply(dir, "key", fileId = 0)
+        assertEquals("a.json", out["title"]!!.jsonPrimitive.content)
+        val html = out["html"]!!.jsonPrimitive.content
+        listOf("r", "p", "label").forEach { assertContains(html, ">$it<", message = "slot $it should have a row") }
+        assertContains(html, "schema 0 · 3 slots · 1 save", message = "singular, and the counts a Key alone cannot know")
+        assertContains(html, "first pass", message = "the save note")
+        assertContains(html, "<svg", message = "an ordinary vector still goes through `.h`")
+    }
+
+    /**
+     * The one place the contents panel deliberately does *not* use `.h`.
+     *
+     * `.h` on a `CameraPose` reflects the data class and renders seven derived accessors with four
+     * vector thumbnails. That is right when the pose is what you are looking at — the slot panel
+     * still does it — and wrong when it is one slot of five, because it pushes the other four off
+     * the panel. Measured: the same key card went from 9905 to 2200 characters and 4 SVGs to 1.
+     */
+    @Test
+    fun aCameraPoseCollapsesInTheContentsPanelButNotInTheSlotPanel() {
+        val dir = tempDir()
+        val pose = CameraPose(Quaternionf(), Vector3f(3f, 1.5f, 2f), 5.2f)
+        save(dir, "a.json", "camera" to pose, "r" to 2f)
+
+        val card = reply(dir, "key", fileId = 0)["html"]!!.jsonPrimitive.content
+        assertContains(card, "cameraPose(position=(3, 1.5, 2), focus=5.2)")
+        assertContains(card, "open the slot row", message = "the compact line has to say where the full one is")
+        assertFalse(card.contains("focusDistance"), "the reflected accessor list is what we are collapsing")
+
+        // ...and the slot panel, which is where that click lands, still renders it in full.
+        val panel = reply(dir, "slot", slot = "camera")["html"]!!.jsonPrimitive.content
+        assertContains(panel, "focusDistance", message = "the slot panel keeps the full `.h` rendering")
+        assertContains(panel, "<svg")
+    }
+
+    /** An empty key file says so rather than rendering an empty table. */
+    @Test
+    fun aKeyFileWithNoValuesSaysSo() {
+        val dir = tempDir()
+        val scope = KeyframeScope()
+        scope.saveKey(dir.resolve("empty.json"), scope.Key(mutableMapOf()), "nothing captured")
+
+        val html = reply(dir, "key", fileId = 0)["html"]!!.jsonPrimitive.content
+        assertContains(html, "holds no values")
     }
 
     /**

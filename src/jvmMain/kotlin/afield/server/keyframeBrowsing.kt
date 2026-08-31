@@ -13,7 +13,9 @@ import afield.stdlib.KeyframeScope
 import afield.stdlib.SlotSummary
 import afield.stdlib.SourceBackedBlock
 import afield.stdlib.StackSLString
+import afield.four.util.CameraPose
 import afield.stdlib.formatSlotNumber
+import afield.stdlib.linalg.DualQuaternionf
 import afield.thisSession
 import io.ktor.websocket.Frame
 import kotlinx.serialization.Serializable
@@ -269,11 +271,67 @@ private fun shortValue(v: KValue): String = when (v) {
     is KValue.Vec3 -> "vec(${formatSlotNumber(v.x.toDouble())}, ${formatSlotNumber(v.y.toDouble())}, ${formatSlotNumber(v.z.toDouble())})"
     is KValue.Vec4 -> "vec(${formatSlotNumber(v.x.toDouble())}, ${formatSlotNumber(v.y.toDouble())}, ${formatSlotNumber(v.z.toDouble())}, ${formatSlotNumber(v.w.toDouble())})"
     is KValue.Quat -> "quat(…)"
-    is KValue.DualQuat -> "dualquat(…)"
-    is KValue.CameraPoseValue -> "cameraPose(focus=${formatSlotNumber(v.focusDistance.toDouble())})"
+    is KValue.DualQuat -> (v.toAny() as DualQuaternionf).getTranslation().let { t ->
+        "dualquat(translation=(${formatSlotNumber(t.x.toDouble())}, ${formatSlotNumber(t.y.toDouble())}, " +
+            "${formatSlotNumber(t.z.toDouble())}))"
+    }
+    is KValue.CameraPoseValue -> (v.toAny() as CameraPose).let { p ->
+        "cameraPose(position=(${formatSlotNumber(p.position.x.toDouble())}, " +
+            "${formatSlotNumber(p.position.y.toDouble())}, ${formatSlotNumber(p.position.z.toDouble())}), " +
+            "focus=${formatSlotNumber(v.focusDistance.toDouble())})"
+    }
     is KValue.Str -> v.value.lineSequence().firstOrNull()?.take(48).orEmpty()
     is KValue.StackSL -> v.value.lineSequence().firstOrNull()?.take(48).orEmpty()
     is KValue.SourceBlock -> "sourceBlock@${v.boxId}"
+}
+
+/**
+ * One key file's whole contents — the panel a plain click on its chip opens.
+ *
+ * A row per slot, values through [valueHtml] and so through `.h`, with two exceptions that are
+ * about *this* view rather than about the types.
+ *
+ * `.h` on a `CameraPose` or a `DualQuaternionf` reflects over the data class and renders every
+ * derived accessor — for a pose that is seven rows and four vector thumbnails, which is the right
+ * answer when the pose is the thing you are looking at and the wrong one when it is one slot of
+ * five. Measured on a four-slot key: the pose alone was taller than the whole rest of the card, so
+ * the other four slots fell off the bottom of the panel. Here they collapse to a summary line, and
+ * the full `.h` rendering is one click away in that slot's own row — which is the division this
+ * browser already has between the overview table and the slot panel.
+ */
+private fun keyFragment(file: afield.stdlib.KeyframeFile, key: KeyframeScope.Key): String = buildString {
+    append("<div class='kb-detail'>")
+    append("<div class='kb-detail-head'>")
+    append("<code>${esc(file.relative)}</code>")
+    append(" <span class='kb-dim'>schema ${file.schemaVersion} · ${file.values.size} slots")
+    if (file.versions.isNotEmpty()) append(" · ${file.versions.size} save${if (file.versions.size == 1) "" else "s"}")
+    append("</span>")
+    append("</div>")
+    file.latest?.let { v ->
+        append("<div class='kb-dim kb-key-stamp'>")
+        append(esc(v.timestamp))
+        v.note?.let { append(" · \"").append(esc(it)).append("\"") }
+        append("</div>")
+    }
+
+    if (file.values.isEmpty()) {
+        append("<div class='kb-status'>This key file holds no values.</div>")
+        append("</div>")
+        return@buildString
+    }
+
+    append("<table class='kb-values'>")
+    file.values.entries.sortedBy { it.key }.forEach { (name, v) ->
+        append("<tr><th>${esc(name)}</th><td>")
+        when (v) {
+            is KValue.CameraPoseValue, is KValue.DualQuat ->
+                append("<span class='kb-dim'>${esc(shortValue(v))} — open the slot row for the full rendering</span>")
+            else -> append(valueHtml(v))
+        }
+        append("</td></tr>")
+    }
+    append("</table>")
+    append("</div>")
 }
 
 /** Rebuild a file's entries as live values, for diffing and applying. */
@@ -338,6 +396,20 @@ private object KeyframeBrowserProtocol {
                     json.encodeToString(
                         KBFragment.serializer(),
                         KBFragment(req.reqId, title = name, html = slotFragment(c, summary))
+                    )
+                }
+
+                "key" -> {
+                    val c = handle.collection()
+                    val file = req.fileId?.let { c.file(it) } ?: return fail("missing or unknown file")
+                    val scope = KeyframeScope()
+                    json.encodeToString(
+                        KBFragment.serializer(),
+                        KBFragment(
+                            req.reqId,
+                            title = file.relative,
+                            html = keyFragment(file, scope.Key(liveValues(file.values)))
+                        )
                     )
                 }
 
