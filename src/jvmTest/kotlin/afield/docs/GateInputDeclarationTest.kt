@@ -140,7 +140,7 @@ class GateInputDeclarationTest {
             .find(build)?.groupValues?.get(1)
         assertTrue(block != null, "could not find the citationGates registration in build.gradle.kts")
         val trees = Regex("""inputs\.files\(fileTree\("([^"]+)"\)\s*\{([\s\S]*?)\}\)""")
-            .findAll(block!!)
+            .findAll(block)
             .map { m -> m.groupValues[1] to Regex("""include\("([^"]+)"\)""")
                 .findAll(m.groupValues[2]).map { it.groupValues[1] }.toList() }
             .toList()
