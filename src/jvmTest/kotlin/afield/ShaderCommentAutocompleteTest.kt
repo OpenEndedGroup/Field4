@@ -110,6 +110,38 @@ class ShaderCommentAutocompleteTest {
     }
 
     @Test
+    fun theFirstMemberAfterAnUnnamedBlockCloseKeepsItsComment() {
+        // A `}` arms a one-shot "the block's tail is coming" state, so that `} pc;` is read as an alias
+        // rather than as a member declaration. An UNNAMED block — a function body, or the `}` of a
+        // `{% include %}` / `{{ slot }}` template marker still sitting in the source string — closes
+        // without a `;`, so that state used to survive to the next `;`. That `;` is the FIRST member of
+        // the next block, and its comment was swallowed. `state` below is exactly the member the
+        // `gpu_state` transcript lost: its push block follows a template marker and a probe include.
+        val comments = parseGlslMemberComments(
+            """
+            #version 450
+            layout(std430, buffer_reference) buffer State { vec4 a[]; };
+
+            void probe(float v) { /* a function body: an unnamed block, closed with no semicolon */ }
+            {% include "fieldProbe" %}
+            {{ stack.auto.force }}
+
+            layout(push_constant) uniform dat {
+                State state;   // this frame's half of the ping-pong
+                State prev;    // last frame's half
+            } pc;
+            """.trimIndent()
+        )
+
+        assertEquals("this frame's half of the ping-pong", comments["dat.state"])
+        assertEquals("last frame's half", comments["dat.prev"])
+        // The tail of the *named* block is still read as an alias, not as a member.
+        assertEquals("this frame's half of the ping-pong", comments["pc.state"])
+        assertEquals("this frame's half of the ping-pong", comments["state"])
+        assertNull(comments["a"], "a buffer-reference member with no comment stays undocumented: $comments")
+    }
+
+    @Test
     fun theGeneratedAccessorsCarryTheComment() {
         val vi = Introspection(vertexSource, ShaderKind.VERTEX_SHADER)
         val fi = Introspection(fragmentSource, ShaderKind.FRAGMENT_SHADER)

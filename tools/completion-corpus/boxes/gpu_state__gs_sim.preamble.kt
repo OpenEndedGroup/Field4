@@ -141,9 +141,9 @@ var MeshModulePointer.force: String
     get() = afield.stdlib.stackAutoShaderSource(this, "force")
     set(value) { afield.stdlib.stackAutoShaderSource(this, "force", value) }
 /*end*/
-/*compute-pc-structure:state*/ var Structure.state by Structure.FromStructure<Any>()
-/*compute-pc-binding:state*/ var ComputeMesh.state by ComputeMesh.BoundFromStructure<afield.four.buffers.HasBuffer>()
-/*compute-pc-binding-group:state*/ var ComputeMeshGroup.state by ComputeMeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>()
+/*compute-pc-structure:state*/ var Structure.state by Structure.FromStructure<Any>() // this frame's half of the ping-pong — written
+/*compute-pc-binding:state*/ var ComputeMesh.state by ComputeMesh.BoundFromStructure<afield.four.buffers.HasBuffer>() // this frame's half of the ping-pong — written
+/*compute-pc-binding-group:state*/ var ComputeMeshGroup.state by ComputeMeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>() // this frame's half of the ping-pong — written
 /*compute-pc-structure:prevState*/ var Structure.prevState by Structure.FromStructure<Any>() // last frame's half — read
 /*compute-pc-binding:prevState*/ var ComputeMesh.prevState by ComputeMesh.BoundFromStructure<afield.four.buffers.HasBuffer>() // last frame's half — read
 /*compute-pc-binding-group:prevState*/ var ComputeMeshGroup.prevState by ComputeMeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>() // last frame's half — read
