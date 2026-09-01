@@ -329,11 +329,21 @@
             pointer-events: none;
         }
 
-        /* Two component plots side by side, over a magnitude strip. */
+        /* Two columns — a plot over the two bands that made it — then |v| across the bottom. */
         .kb-quad {
             display: flex;
             gap: 6px;
             margin-bottom: 2px;
+        }
+
+        .kb-quad-col {
+            display: block;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .kb-quad-col .kb-strip {
+            margin-top: 2px;
         }
 
         .kb-plot {
@@ -754,15 +764,22 @@ keyframeBrowser("looks", scope = myScope)</pre>
             case "components":
                 return d.bands.map((b, i) => stripHtml(b, d.fileIds, true, slot.name, i)).join("");
             case "vec4plot": {
-                // Two plots and a magnitude, rather than a guess that four numbers mean a colour.
-                // Where they *might* — every component inside 0..1 — each point is filled with its
-                // own RGB, so a tint shows its colours without the display being about colour.
-                const plot = (pts, ax, ay, ci) => scatter2d(pts, d.fileIds, ax, ay, d.colors, d.bands, ci);
+                // Two columns, each a plot over the two bands it is made of, then |v| across the
+                // bottom. The pairing is only a suggestion — a vec4 is very often four unrelated
+                // things packed for a shader — so every component gets its own brushable band and
+                // sits directly under the plot that used it. Band indices are 0..3 for x/y/z/w and
+                // 4 for the magnitude; `bandOf` reads them back the same way.
+                const col = (pts, ax, ay, ci) =>
+                    `<span class="kb-quad-col">` +
+                    scatter2d(pts, d.fileIds, ax, ay, d.colors, d.bands, ci) +
+                    stripHtml(d.bands[ci[0]], d.fileIds, true, slot.name, ci[0]) +
+                    stripHtml(d.bands[ci[1]], d.fileIds, true, slot.name, ci[1]) +
+                    `</span>`;
                 return `<span class="kb-quad">` +
-                    plot(d.xy, "x", "y", [0, 1]) +
-                    plot(d.zw, "z", "w", [2, 3]) +
+                    col(d.xy, "x", "y", [0, 1]) +
+                    col(d.zw, "z", "w", [2, 3]) +
                     `</span>` +
-                    stripHtml(d.length, d.fileIds, true, slot.name, 0);
+                    stripHtml(d.length, d.fileIds, true, slot.name, 4);
             }
             case "poses":
                 return scatterHtml(d.points, d.fileIds);
@@ -841,9 +858,12 @@ keyframeBrowser("looks", scope = myScope)</pre>
         const d = slot.display;
         if (d.type === "range") return { band: d.band, fileIds: d.fileIds };
         if (d.type === "components") return { band: d.bands[index], fileIds: d.fileIds };
-        // A vec4 renders exactly one brushable band, its magnitude — the plots are not brushable
-        // because a 1D drag cannot express a region of a 2D scatter.
-        if (d.type === "vec4plot") return { band: d.length, fileIds: d.fileIds };
+        // 0..3 are x/y/z/w, 4 is |v|. The plots themselves are not brushable: a 1D drag cannot
+        // express a region of a 2D scatter, and the component bands underneath cover the cases a
+        // box brush would — including the common one where the four numbers are unrelated.
+        if (d.type === "vec4plot") {
+            return { band: index === 4 ? d.length : d.bands[index], fileIds: d.fileIds };
+        }
         return null;
     }
 

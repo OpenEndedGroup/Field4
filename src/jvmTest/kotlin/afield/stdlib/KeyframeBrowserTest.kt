@@ -254,6 +254,37 @@ class KeyframeBrowserTest {
     }
 
     /**
+     * Each component keeps its own band, scaled to itself.
+     *
+     * This is what the four brushable strips read from, and it is why a vec4 cannot just be the two
+     * plots: a vec4 very often packs four unrelated numbers for a shader, so "keys whose w is under
+     * -30" has to be answerable without the other three components being involved. Per-component
+     * scaling is the load-bearing part — a `w` running -44..-8 must span its own strip rather than
+     * being squashed by an `x` that never leaves zero.
+     */
+    @Test
+    fun everyVec4ComponentKeepsItsOwnBandForBrushing() {
+        val dir = tempDir()
+        save(dir, "a.json", "plane" to Vector4f(0f, 1f, 0f, -12.5f))
+        save(dir, "b.json", "plane" to Vector4f(0f, 1f, 0f, -44f))
+        save(dir, "c.json", "plane" to Vector4f(0f, 1f, 0f, -8f))
+
+        val plot = KeyframeCollection.load(dir, "**/*.json").slot("plane").display as SlotDisplay.Vec4Plot
+        assertEquals(listOf("x", "y", "z", "w"), plot.bands.map { it.label })
+
+        val w = plot.bands[3]
+        assertEquals(-44.0, w.lo)
+        assertEquals(-8.0, w.hi)
+        // a=-12.5 sits ((-12.5) - (-44)) / 36 = 0.875 along its own band, not squashed by x or y
+        assertEquals(listOf(0.875, 0.0, 1.0), w.marks)
+
+        // x never moves, so its band is degenerate — the page reads that as "not brushable" rather
+        // than offering a filter that could only ever select everything.
+        assertEquals(plot.bands[0].lo, plot.bands[0].hi)
+        assertEquals(listOf(0.5, 0.5, 0.5), plot.bands[0].marks)
+    }
+
+    /**
      * The colour guess survives only where it costs nothing: inside the unit cube the points carry
      * their own RGB, so an RGBA tint reads as colour *within* the plots rather than replacing them.
      */
