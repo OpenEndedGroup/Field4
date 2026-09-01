@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 6311 of 11545 public symbols in `afield.stdlib`, `afield.visualization` and `afield.four.synth`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 6312 of 11546 public symbols in `afield.stdlib`, `afield.visualization` and `afield.four.synth`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
 
 **813 undocumented entry points** (types, top-level functions and values) and 4145 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -169,7 +169,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [HostBridge.kt](../src/jvmMain/kotlin/afield/ml/core/HostBridge.kt) | Languages | — | 0 | 15 | 48% |
 | [MorphoNetlist.kt](../src/jvmMain/kotlin/afield/morpho/MorphoNetlist.kt) | Languages | — | 0 | 15 | 48% |
 | [InteractiveSolving.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/InteractiveSolving.kt) | Solvers | — | 0 | 15 | 65% |
-| [keyframeBrowser.kt](../src/jvmMain/kotlin/afield/stdlib/keyframeBrowser.kt) | Visualization | — | 0 | 15 | 69% |
+| [keyframeBrowser.kt](../src/jvmMain/kotlin/afield/stdlib/keyframeBrowser.kt) | Visualization | — | 0 | 15 | 70% |
 | [Summaries.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Summaries.kt) | Polytopes | — | 0 | 15 | 74% |
 | [pointing.kt](../src/jvmMain/kotlin/afield/stdlib/pointing.kt) | Graphics | — | 0 | 13 | 67% |
 | [HostTypes.kt](../src/jvmMain/kotlin/afield/ml/type/HostTypes.kt) | Languages | — | 0 | 12 | 60% |

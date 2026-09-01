@@ -12,7 +12,11 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.nio.file.Files
 import java.nio.file.Path
+import java.time.Duration
 import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
@@ -21,6 +25,7 @@ import kotlin.math.abs
 import kotlin.math.acos
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.math.sqrt
 import kotlin.math.max
 import kotlin.streams.asSequence
 
@@ -106,6 +111,52 @@ fun keyFilesMatching(root: Path, pattern: String = "**/*.json"): List<Path> {
             .sortedBy { it.toString() }
             .toList()
     }
+}
+
+/**
+ * A save's timestamp as a person reads it: relative while that is the useful thing to know, and an
+ * ordinary date once it is not.
+ *
+ * `KeyVersionInfo.timestamp` is an ISO-8601 instant, which is the right thing to *store* and the
+ * wrong thing to show — `2026-08-31T19:10:40.505567Z` takes a second of parsing to learn that a save
+ * happened four minutes ago, and buries the one fact you wanted. The cutovers are where the relative
+ * form stops being more informative than the absolute one: within the hour you think in minutes,
+ * within the day in hours, and past a week you think in dates.
+ *
+ * Rendered in [zone], the machine's own by default, because Field is a local application and the
+ * save happened on this desk. The exact instant is not thrown away — every caller keeps it as the
+ * hover title, so precision is one mouse-rest away.
+ *
+ * [now] is a parameter rather than a call to `Instant.now()` so this is testable without freezing a
+ * clock. A timestamp in the future — clock skew, a file copied from another machine — reads as
+ * "just now" rather than as a negative duration.
+ */
+fun friendlyTime(
+    timestamp: String,
+    now: Instant = Instant.now(),
+    zone: ZoneId = ZoneId.systemDefault()
+): String {
+    val then = runCatching { Instant.parse(timestamp) }.getOrElse { return timestamp }
+    val seconds = Duration.between(then, now).seconds
+    if (seconds < 45) return "just now"
+    if (seconds < 90) return "a minute ago"
+
+    val minutes = seconds / 60
+    if (minutes < 60) return "$minutes minutes ago"
+
+    val local = then.atZone(zone)
+    val today = now.atZone(zone).toLocalDate()
+    val day = local.toLocalDate()
+    val clock = DateTimeFormatter.ofPattern("HH:mm").format(local)
+
+    val hours = minutes / 60
+    if (day == today) return if (hours < 2) "an hour ago" else "$hours hours ago"
+    if (day == today.minusDays(1)) return "yesterday $clock"
+
+    val daysAgo = ChronoUnit.DAYS.between(day, today)
+    if (daysAgo in 2..6) return "${DateTimeFormatter.ofPattern("EEE").format(local)} $clock"
+    if (day.year == today.year) return "${DateTimeFormatter.ofPattern("d MMM").format(local)} $clock"
+    return DateTimeFormatter.ofPattern("d MMM yyyy").format(local)
 }
 
 /** One key file as the browser sees it: what is on disk, plus how many times it has been saved. */
@@ -285,9 +336,37 @@ sealed interface SlotDisplay {
     @Serializable @SerialName("components")
     data class Components(val bands: List<SlotBand>, val fileIds: List<Int>) : SlotDisplay
 
-    /** A `vec4` whose components all sit in `0..1` in every file: shown as colour, plus its bands. */
-    @Serializable @SerialName("swatches")
-    data class Swatches(val colors: List<String>, val fileIds: List<Int>, val bands: List<SlotBand>) : SlotDisplay
+    /**
+     * A `vec4`, as two 2D plots and a magnitude.
+     *
+     * Four numbers under one name have no single natural picture, and the first version of this
+     * guessed: components all inside `0..1` meant colour, so it drew swatches. That reads well for an
+     * RGBA tint and says nothing at all about a plane equation or a homogeneous point, and the guess
+     * is invisible once made — a row of colours does not admit it might be showing you a normal.
+     *
+     * So the shape is the shape: `(x, y)` in one plot, `(z, w)` in the other, and `|v|` as an
+     * ordinary band. Each plot is normalised over its own two components jointly, so a pair that
+     * barely moves is not stretched to full width. Nothing is claimed about meaning, and the
+     * magnitude band is brushable like any other number.
+     *
+     * The colour guess survives only where it costs nothing: when every component *is* inside
+     * `0..1`, [colors] is non-null and each plotted point is filled with that RGB. An RGBA tint then
+     * shows its colours inside the plots rather than needing a row of its own.
+     */
+    @Serializable @SerialName("vec4plot")
+    data class Vec4Plot(
+        /** `(x, y)` per file, each normalised `0..1` over the joint extent of x and y. */
+        val xy: List<List<Double>>,
+        /** `(z, w)` per file, normalised over the joint extent of z and w. */
+        val zw: List<List<Double>>,
+        /** Per-file `#rrggbb` from x/y/z, or null when a component leaves `0..1` in any file. */
+        val colors: List<String>? = null,
+        /** `|v|` across the collection — the one band of this display that can be brushed. */
+        val length: SlotBand,
+        val fileIds: List<Int>,
+        /** The four raw component bands, for the axis labels and the numbers behind the plots. */
+        val bands: List<SlotBand>
+    ) : SlotDisplay
 
     /**
      * A rigid transform or camera pose: the translations as a 2D scatter (x across, z up — the plan
@@ -506,24 +585,32 @@ private fun summariseSlot(name: String, files: List<KeyframeFile>, inScope: Bool
 
         "vec4" -> {
             val bands = buildComponentBands(values)
-            // A vec4 whose every component sits inside 0..1 in every file is almost always a colour,
-            // and a row of swatches says more in the same width than four near-identical bars. The
-            // bands ride along regardless, so nothing is hidden by the guess.
-            val colorish = values.all { v ->
-                componentsOf(v).all { (_, c) -> c in 0.0..1.0 }
-            }
-            if (colorish) {
-                val colors = values.map { v ->
-                    val c = componentsOf(v).map { it.second }
-                    // Round rather than truncate: a mid-grey 0.5 is 128, and truncation would send
-                    // everything in [254/255, 1) to 254 while only an exact 1.0 reached 255.
+            val comps = values.map { v -> componentsOf(v).map { it.second } }
+            val lengths = comps.map { c -> sqrt(c.sumOf { it * it }) }
+            val lengthBand = bandOf("|v|", lengths)
+
+            // Only where it costs nothing: if every component is inside 0..1 in every file the points
+            // can carry their own colour, so an RGBA tint shows as colour without the display having
+            // to be *about* colour. Round rather than truncate — a mid-grey 0.5 is 128, and
+            // truncation would send everything in [254/255, 1) to 254 while only 1.0 reached 255.
+            val colors = if (comps.all { c -> c.all { it in 0.0..1.0 } }) {
+                comps.map { c ->
                     fun channel(x: Double) = (x * 255).roundToInt().coerceIn(0, 255)
                     "#%02x%02x%02x".format(channel(c[0]), channel(c[1]), channel(c[2]))
                 }
-                summary("${colors.distinct().size} swatches", SlotDisplay.Swatches(colors, fileIds, bands))
-            } else {
-                summary(spreadText(bands), SlotDisplay.Components(bands, fileIds))
-            }
+            } else null
+
+            summary(
+                "|v| ${bandText(lengthBand)}",
+                SlotDisplay.Vec4Plot(
+                    xy = jointlyNormalised(comps.map { it[0] }, comps.map { it[1] }),
+                    zw = jointlyNormalised(comps.map { it[2] }, comps.map { it[3] }),
+                    colors = colors,
+                    length = lengthBand,
+                    fileIds = fileIds,
+                    bands = bands
+                )
+            )
         }
 
         "quat" -> {
@@ -545,19 +632,12 @@ private fun summariseSlot(name: String, files: List<KeyframeFile>, inScope: Bool
             if (kind == "cameraPose") {
                 bands += bandOf("focus", values.map { (it as KValue.CameraPoseValue).focusDistance.toDouble() })
             }
-            // Plan view: x across, z up. Normalised over the union of both extents so the scatter is
-            // not stretched into a line by a camera that only moved along one axis.
-            val xs = translations.map { it.x.toDouble() }
-            val zs = translations.map { it.z.toDouble() }
-            val lo = min(xs.minOrNull() ?: 0.0, zs.minOrNull() ?: 0.0)
-            val hi = max(xs.maxOrNull() ?: 0.0, zs.maxOrNull() ?: 0.0)
-            val span = (hi - lo).takeIf { it > 0.0 }
-            val points = translations.map {
-                listOf(
-                    if (span == null) 0.5 else (it.x.toDouble() - lo) / span,
-                    if (span == null) 0.5 else (it.z.toDouble() - lo) / span
-                )
-            }
+            // Plan view: x across, z up, on the shared joint normaliser so a camera that only moved
+            // along one axis is not stretched into a full-width line.
+            val points = jointlyNormalised(
+                translations.map { it.x.toDouble() },
+                translations.map { it.z.toDouble() }
+            )
             summary("${formatSlotNumber(spread)}° arc", SlotDisplay.Poses(points, fileIds, spread, bands))
         }
 
@@ -568,6 +648,26 @@ private fun summariseSlot(name: String, files: List<KeyframeFile>, inScope: Bool
         }
 
         else -> summary("—", SlotDisplay.Note("no summary for $kind"))
+    }
+}
+
+/**
+ * Two component series as points in `0..1`, scaled over the extent of **both** together.
+ *
+ * Normalising each axis on its own would make a pair that barely moves in `y` fill the plot
+ * vertically, which reads as variation that is not there. Sharing one extent keeps the aspect
+ * honest: a flat series stays flat. A pair that does not move at all lands in the middle.
+ */
+private fun jointlyNormalised(xs: List<Double>, ys: List<Double>): List<List<Double>> {
+    val all = (xs + ys).filter { it.isFinite() }
+    val lo = all.minOrNull() ?: 0.0
+    val hi = all.maxOrNull() ?: 0.0
+    val span = (hi - lo).takeIf { it > 0.0 }
+    return xs.indices.map { i ->
+        listOf(
+            if (span == null) 0.5 else (xs[i] - lo) / span,
+            if (span == null) 0.5 else (ys[i] - lo) / span
+        )
     }
 }
 

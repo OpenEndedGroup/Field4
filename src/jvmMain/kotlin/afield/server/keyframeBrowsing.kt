@@ -15,6 +15,7 @@ import afield.stdlib.SourceBackedBlock
 import afield.stdlib.StackSLString
 import afield.four.util.CameraPose
 import afield.stdlib.formatSlotNumber
+import afield.stdlib.friendlyTime
 import afield.stdlib.linalg.DualQuaternionf
 import afield.thisSession
 import io.ktor.websocket.Frame
@@ -117,7 +118,10 @@ private data class KBFile(
     val schemaVersion: Int,
     val slotCount: Int,
     val versions: Int,
+    /** The exact instant, kept for the hover title. */
     val timestamp: String? = null,
+    /** [timestamp] as `friendlyTime` renders it — what the chip and the header actually show. */
+    val ago: String? = null,
     val note: String? = null
 )
 
@@ -133,6 +137,7 @@ private data class KBOpen(
     val slotCount: Int,
     val schemaVersions: List<Int>,
     val latestTimestamp: String? = null,
+    val latestAgo: String? = null,
     val latestNote: String? = null,
     val hasScope: Boolean,
     val files: List<KBFile>,
@@ -242,7 +247,7 @@ private fun slotFragment(collection: KeyframeCollection, summary: SlotSummary): 
                 val label = buildString {
                     append("v${info.index}")
                     info.note?.let { append(" — ").append(it) }
-                    append("\n").append(info.timestamp)
+                    append("\n").append(friendlyTime(info.timestamp)).append("  (").append(info.timestamp).append(")")
                     append("\n").append(value?.let { shortValue(it) } ?: "absent")
                 }
                 val cls = if (value == null) "kb-tick kb-tick-absent" else "kb-tick"
@@ -308,8 +313,8 @@ private fun keyFragment(file: afield.stdlib.KeyframeFile, key: KeyframeScope.Key
     append("</span>")
     append("</div>")
     file.latest?.let { v ->
-        append("<div class='kb-dim kb-key-stamp'>")
-        append(esc(v.timestamp))
+        append("<div class='kb-dim kb-key-stamp' title='${esc(v.timestamp)}'>")
+        append(esc(friendlyTime(v.timestamp)))
         v.note?.let { append(" · \"").append(esc(it)).append("\"") }
         append("</div>")
     }
@@ -369,6 +374,7 @@ private object KeyframeBrowserProtocol {
                             slotCount = c.slotNames.size,
                             schemaVersions = c.schemaVersions,
                             latestTimestamp = c.latest?.timestamp,
+                            latestAgo = c.latest?.timestamp?.let { friendlyTime(it) },
                             latestNote = c.latest?.note,
                             hasScope = handle.scope?.get() != null,
                             files = c.files.map {
@@ -380,6 +386,7 @@ private object KeyframeBrowserProtocol {
                                     slotCount = it.values.size,
                                     versions = it.versions.size,
                                     timestamp = it.latest?.timestamp,
+                                    ago = it.latest?.timestamp?.let { t -> friendlyTime(t) },
                                     note = it.latest?.note
                                 )
                             },
