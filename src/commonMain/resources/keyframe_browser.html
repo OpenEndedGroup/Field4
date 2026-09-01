@@ -9,159 +9,232 @@
       cards render into. Without it the diff panel arrives as an unstyled slab — that is the
       one thing a standalone iframe does not get for free from the output area.
     -->
+    <!--
+      Every Field page that wants Field's typeface links iosevka.css; a stylesheet's @font-face is
+      per-document, so an iframe that skips it silently falls back. This one did, which is why the
+      panel did not match the rest of the app.
+    -->
+    <link rel="stylesheet" href="/iosevka.css">
     <link rel="stylesheet" href="/field.css">
     <style>
+        /*
+          The panel language is the macro recorder's and Document History's, because this is a Field
+          panel and should not invent a third: black ground, #242424 cards for content, #050505 for
+          controls and code, one uppercase grey label per section. Values come from field.css
+          (`.macro-recorder-*`, around line 2498) rather than being eyeballed.
+        */
         :root {
             color-scheme: dark;
+            --kb-card: #242424;
+            --kb-card-edge: #050505;
+            --kb-sunken: #050505;
+            --kb-control-edge: #2b2b2b;
+            --kb-control-edge-hover: #464646;
+            --kb-text: #d8d8d8;
+            --kb-muted: #8a8a8a;
+            --kb-fainter: #777777;
+            --kb-sel: #EF9F27;
+            --kb-cool: #6cf;
         }
 
         body {
             margin: 0;
             padding: 0;
-            background: transparent;
-            color: #d8dbe4;
-            font-size: 12px;
+            background: #000000;
+            color: var(--kb-text);
+            font-family: var(--field-font);
+            font-size: 10.2px;
             line-height: 1.45;
         }
 
         #kb {
-            padding: 10px 12px 14px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
         }
 
+        /* Literal text — globs, slot names, paths, values — renders as written. Field turns on
+           discretionary ligatures globally (`* { font-feature-settings: "dlig" 1 }`), which is right
+           for prose and wrong for a `**/*.json` you might have to retype. */
+        .kb-mono {
+            font-family: var(--field-font-code);
+            font-feature-settings: normal;
+            font-variant-ligatures: none;
+        }
+
+        /* --- head ------------------------------------------------------------------------- */
         .kb-head {
             display: flex;
             align-items: baseline;
-            gap: 10px;
+            gap: 8px;
             flex-wrap: wrap;
-            margin-bottom: 2px;
+            min-height: 20px;
         }
 
         .kb-title {
-            font-family: var(--field-mono-font, ui-monospace, monospace);
-            font-size: 13px;
-            color: #eef1f8;
+            font-size: 11px;
+            font-weight: 500;
+            color: #f0f0f0;
         }
 
-        .kb-dim {
-            color: #7e838f;
-        }
+        .kb-dim { color: var(--kb-muted); }
+        .kb-fainter { color: var(--kb-fainter); }
 
         .kb-badge {
-            font-size: 11px;
-            padding: 1px 7px;
-            border-radius: 4px;
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.09);
-            color: #9aa0ac;
+            font-size: 9.8px;
+            padding: 1px 6px;
+            border-radius: 6px;
+            background: var(--kb-sunken);
+            border: 1px solid var(--kb-control-edge);
+            color: var(--kb-muted);
         }
 
         .kb-badge.kb-warn {
-            background: rgba(239, 159, 39, 0.13);
-            border-color: rgba(239, 159, 39, 0.3);
+            border-color: rgba(239, 159, 39, 0.35);
             color: #f0b866;
         }
 
         .kb-sub {
-            color: #6e737e;
-            font-size: 11px;
-            margin-bottom: 10px;
+            color: var(--kb-fainter);
+            font-size: 9.8px;
+            margin-top: -3px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* --- metric boxes, as Document History counts its boxes and properties --------------- */
+        .kb-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+            gap: 5px;
+        }
+
+        .kb-metric {
+            border: 1px solid var(--kb-card-edge);
+            border-radius: 6px;
+            background: var(--kb-card);
+            padding: 4px 8px;
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .kb-metric-label {
+            color: var(--kb-muted);
+            font-size: 9.8px;
+            text-transform: uppercase;
+        }
+
+        .kb-metric-value {
+            font-size: 14px;
+            color: var(--kb-text);
+        }
+
+        .kb-metric.is-on .kb-metric-value { color: var(--kb-sel); }
+
+        /* --- sections ----------------------------------------------------------------------- */
+        .kb-section-title {
+            color: var(--kb-muted);
+            font-size: 9.8px;
+            text-transform: uppercase;
+            margin-bottom: 2px;
         }
 
         .kb-problems {
-            border-left: 2px solid #e24b4a;
-            background: rgba(226, 75, 74, 0.08);
-            padding: 5px 8px;
-            margin: 0 0 10px;
-            border-radius: 0;
-            color: #f0a3a2;
-            font-size: 11px;
+            border: 1px solid rgba(255, 133, 133, 0.3);
+            border-radius: 6px;
+            background: var(--kb-card);
+            padding: 5px 6px;
+            color: #ff8585;
+            font-size: 9.8px;
         }
 
-        /* --- file chips: the diff selector, and the legend for the range marks --- */
+        /* --- keys ----------------------------------------------------------------------------- */
         .kb-files {
             display: flex;
             gap: 5px;
             flex-wrap: wrap;
-            margin-bottom: 8px;
         }
 
         .kb-chip {
             display: inline-flex;
             align-items: center;
-            gap: 5px;
-            font-size: 11px;
-            padding: 2px 8px;
-            border-radius: 4px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            background: rgba(255, 255, 255, 0.03);
-            color: #b8bdc8;
+            gap: 6px;
+            font-size: 10.2px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--kb-card-edge);
+            background: var(--kb-card);
+            color: var(--kb-text);
             cursor: pointer;
             user-select: none;
         }
 
-        .kb-chip:hover {
-            border-color: rgba(255, 255, 255, 0.22);
-        }
+        .kb-chip:hover { border-color: var(--kb-control-edge-hover); }
 
         /* Amber is "selected", everywhere: the chip and the datapoints it lights up in every row
            are the same fact, so they are the same colour. */
         .kb-chip.kb-on {
-            border-color: #EF9F27;
-            background: rgba(239, 159, 39, 0.13);
+            border-color: var(--kb-sel);
             color: #f3ce96;
         }
 
-        .kb-chip-n {
-            font-family: var(--field-mono-font, ui-monospace, monospace);
-            color: #6e737e;
-        }
+        .kb-chip-n { color: var(--kb-muted); }
+        .kb-chip.kb-on .kb-chip-n { color: var(--kb-sel); }
 
-        .kb-chip.kb-on .kb-chip-n {
-            color: #EF9F27;
-        }
-
+        /* --- controls ------------------------------------------------------------------------ */
         .kb-actions {
             display: flex;
-            gap: 6px;
+            gap: 5px;
             align-items: center;
             flex-wrap: wrap;
-            margin-bottom: 10px;
         }
 
         .kb-btn {
-            font: inherit;
-            font-size: 11px;
-            padding: 3px 10px;
-            border-radius: 4px;
-            border: 1px solid rgba(255, 255, 255, 0.16);
-            background: transparent;
-            color: #c6cbd6;
+            border: 1px solid var(--kb-control-edge);
+            background: var(--kb-sunken);
+            color: var(--kb-muted);
+            border-radius: 6px;
+            font-family: var(--field-font);
+            font-size: 10.2px;
+            min-height: 26px;
+            padding: 0 8px;
             cursor: pointer;
         }
 
         .kb-btn:hover:not(:disabled) {
-            background: rgba(255, 255, 255, 0.06);
-            border-color: rgba(255, 255, 255, 0.3);
+            border-color: var(--kb-control-edge-hover);
+            background: #101010;
+            color: #f0f0f0;
         }
 
         .kb-btn:disabled {
-            opacity: 0.34;
+            opacity: 0.38;
             cursor: default;
+            color: #6a6a6a;
+            border-color: #1c1c1c;
         }
 
-        /* --- the slot table --- */
+        .kb-hint {
+            color: var(--kb-fainter);
+            font-size: 9.8px;
+        }
+
+        /* --- the slot table: one card per slot ------------------------------------------------ */
         .kb-grid {
             display: grid;
-            grid-template-columns: minmax(120px, 1.5fr) 70px 46px minmax(140px, 3fr) minmax(88px, 1fr);
-            gap: 0;
-            font-size: 12px;
+            grid-template-columns: minmax(110px, 1.4fr) 62px 42px minmax(150px, 3fr) minmax(84px, 1fr);
+            row-gap: 5px;
         }
 
         .kb-grid > .kb-hdr {
-            font-size: 11px;
-            color: #6e737e;
-            padding: 0 8px 5px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+            font-size: 9.8px;
+            color: var(--kb-muted);
+            text-transform: uppercase;
+            padding: 0 8px 3px 6px;
         }
 
         .kb-row {
@@ -170,81 +243,77 @@
             grid-template-columns: subgrid;
             align-items: center;
             cursor: pointer;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+            border: 1px solid var(--kb-card-edge);
+            border-radius: 6px;
+            background: var(--kb-card);
         }
 
-        .kb-row:hover {
-            background: rgba(255, 255, 255, 0.035);
-        }
+        .kb-row:hover { border-color: #3a3a3a; }
 
         .kb-row.kb-open {
-            background: rgba(102, 204, 255, 0.06);
+            border-color: var(--kb-control-edge-hover);
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
         }
 
         .kb-row > * {
-            padding: 4px 8px 4px 0;
+            padding: 5px 8px 5px 0;
             min-width: 0;
         }
 
+        .kb-row > *:first-child { padding-left: 6px; }
+        .kb-row > *:last-child { padding-right: 6px; }
+
         .kb-name {
-            font-family: var(--field-mono-font, ui-monospace, monospace);
-            font-size: 11px;
+            font-family: var(--field-font-code);
+            font-feature-settings: normal;
+            font-variant-ligatures: none;
+            font-size: 10.2px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
 
-        .kb-name.kb-scope-only {
-            color: #f0b866;
-        }
-
-        .kb-name.kb-mixed {
-            color: #f0b866;
-        }
+        .kb-name.kb-scope-only,
+        .kb-name.kb-mixed { color: #f0b866; }
 
         .kb-type,
         .kb-count {
-            font-size: 11px;
-            color: #7e838f;
+            font-size: 9.8px;
+            color: var(--kb-muted);
         }
 
-        .kb-count.kb-partial {
-            color: #f0b866;
-        }
-
-        .kb-count.kb-none {
-            color: #e88;
-        }
+        .kb-count.kb-partial { color: #f0b866; }
+        .kb-count.kb-none { color: #ff8585; }
 
         .kb-spread {
             text-align: right;
-            font-family: var(--field-mono-font, ui-monospace, monospace);
-            font-size: 11px;
-            color: #8f949f;
-            padding-right: 0;
+            font-family: var(--field-font-code);
+            font-feature-settings: normal;
+            font-variant-ligatures: none;
+            font-size: 9.8px;
+            color: #9a9a9a;
         }
 
-        /* --- range strips --- */
+        /* --- range strips --------------------------------------------------------------------- */
         .kb-strip {
             /* Block, not the span default: an inline box takes no height, so the strip collapses and
                every absolutely-positioned mark stacks on its left edge. */
             display: block;
             position: relative;
             height: 14px;
-            background: rgba(255, 255, 255, 0.045);
-            border: 1px solid rgba(255, 255, 255, 0.07);
-            border-radius: 2px;
+            background: var(--kb-sunken);
+            border: 1px solid #1c1c1c;
+            border-radius: 4px;
         }
 
-        .kb-strip + .kb-strip {
-            margin-top: 2px;
-        }
+        .kb-strip + .kb-strip { margin-top: 2px; }
 
         .kb-strip-fill {
             position: absolute;
             inset: 0;
-            background: rgba(102, 204, 255, 0.16);
-            border-radius: 2px;
+            background: rgba(102, 204, 255, 0.13);
+            border-radius: 3px;
         }
 
         .kb-mark {
@@ -253,25 +322,23 @@
             bottom: 1px;
             width: 2px;
             margin-left: -1px;
-            background: #6cf;
+            background: var(--kb-cool);
             border-radius: 1px;
         }
 
         /* An unselected mark is the cool default; the selected key's is warm and wider, so it
            reads out of a crowd of marks without needing the others dimmed. */
         .kb-mark-sel {
-            background: #EF9F27;
+            background: var(--kb-sel);
             width: 3px;
             margin-left: -1.5px;
             top: -1px;
             bottom: -1px;
-            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55);
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
             z-index: 2;
         }
 
-        .kb-brushable {
-            cursor: ew-resize;
-        }
+        .kb-brushable { cursor: ew-resize; }
 
         .kb-brush {
             position: absolute;
@@ -284,38 +351,6 @@
             z-index: 1;
         }
 
-        .kb-brushnote {
-            font-size: 11px;
-            color: #f0b866;
-            margin-top: 8px;
-        }
-
-        .kb-brushnote code {
-            font-family: var(--field-mono-font, ui-monospace, monospace);
-        }
-
-        .kb-brushnote a {
-            color: #8f949f;
-            margin-left: 6px;
-        }
-
-        .kb-variant {
-            cursor: pointer;
-        }
-
-        /* Two classes deep on purpose: this block sits above `.kb-variant`, whose `border`
-           shorthand would otherwise win the tie on source order and swallow the accent. */
-        .kb-variant.kb-variant-sel {
-            border-color: #EF9F27;
-            background: rgba(239, 159, 39, 0.14);
-            color: #f3ce96;
-        }
-
-        .kb-key-stamp {
-            font-size: 10px;
-            margin-bottom: 6px;
-        }
-
         .kb-strip-label {
             position: absolute;
             left: 4px;
@@ -323,13 +358,24 @@
             bottom: 0;
             display: flex;
             align-items: center;
-            font-size: 9px;
-            color: #6e737e;
-            font-family: var(--field-mono-font, ui-monospace, monospace);
+            font-size: 8.6px;
+            color: var(--kb-muted);
+            font-family: var(--field-font-code);
             pointer-events: none;
         }
 
-        /* Two columns — a plot over the two bands that made it — then |v| across the bottom. */
+        .kb-brushnote {
+            border: 1px solid rgba(239, 159, 39, 0.3);
+            border-radius: 6px;
+            background: var(--kb-card);
+            padding: 5px 6px;
+            font-size: 9.8px;
+            color: #f0b866;
+        }
+
+        .kb-brushnote a { color: var(--kb-muted); margin-left: 6px; }
+
+        /* --- plots ------------------------------------------------------------------------------ */
         .kb-quad {
             display: flex;
             gap: 6px;
@@ -342,19 +388,26 @@
             min-width: 0;
         }
 
-        .kb-quad-col .kb-strip {
-            margin-top: 2px;
-        }
+        .kb-quad-col .kb-strip { margin-top: 2px; }
 
-        .kb-plot {
+        .kb-plot,
+        .kb-scatter {
             display: block;
             position: relative;
-            flex: 1;
-            min-width: 0;
             height: 38px;
-            background: rgba(255, 255, 255, 0.045);
-            border: 1px solid rgba(255, 255, 255, 0.07);
-            border-radius: 2px;
+            background: var(--kb-sunken);
+            border: 1px solid #1c1c1c;
+            border-radius: 4px;
+        }
+
+        .kb-plot { flex: 1; min-width: 0; }
+        .kb-scatter { height: 34px; }
+
+        .kb-scatter-path {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
         }
 
         /* Dots are positioned in HTML rather than drawn in SVG. An SVG scatter that fills a
@@ -366,7 +419,7 @@
             height: 6px;
             margin: -3px 0 0 -3px;
             border-radius: 50%;
-            box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.45);
+            box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.5);
             cursor: pointer;
         }
 
@@ -374,23 +427,21 @@
             width: 9px;
             height: 9px;
             margin: -4.5px 0 0 -4.5px;
-            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.65);
             z-index: 2;
         }
 
         .kb-axis {
             position: absolute;
+            left: 3px;
+            top: 0;
             font-size: 8px;
             color: #63676f;
-            font-family: var(--field-mono-font, ui-monospace, monospace);
+            font-family: var(--field-font-code);
             pointer-events: none;
         }
 
-        .kb-axis {
-            left: 3px;
-            top: 0;
-        }
-
+        /* --- variants ---------------------------------------------------------------------------- */
         .kb-variants {
             display: flex;
             gap: 4px;
@@ -398,80 +449,74 @@
         }
 
         .kb-variant {
-            font-size: 10px;
-            font-family: var(--field-mono-font, ui-monospace, monospace);
-            padding: 1px 6px;
-            border-radius: 3px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            background: rgba(255, 255, 255, 0.03);
+            font-size: 9.8px;
+            font-family: var(--field-font-code);
+            font-feature-settings: normal;
+            font-variant-ligatures: none;
+            padding: 2px 6px;
+            border-radius: 6px;
+            border: 1px solid var(--kb-control-edge);
+            background: var(--kb-sunken);
             color: #a9aeb9;
             max-width: 220px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            cursor: pointer;
         }
 
         /* The most common variant is named by its own count, so it gets no border of its own:
            the border means "selected" and nothing else, or the two read as the same thing. */
-        .kb-variant.kb-top {
-            color: #cfd4de;
+        .kb-variant.kb-top { color: #cfd4de; }
+
+        /* Two classes deep on purpose: this rule must beat `.kb-variant`'s border shorthand. */
+        .kb-variant.kb-variant-sel {
+            border-color: var(--kb-sel);
+            background: rgba(239, 159, 39, 0.14);
+            color: #f3ce96;
         }
 
-        .kb-scatter {
-            display: block;
-            position: relative;
-            height: 34px;
-            background: rgba(255, 255, 255, 0.045);
-            border: 1px solid rgba(255, 255, 255, 0.07);
-            border-radius: 2px;
-        }
+        .kb-note { font-size: 9.8px; color: var(--kb-muted); }
+        .kb-note.kb-warn { color: #f0b866; }
 
-        .kb-scatter-path {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-        }
-
-        .kb-note {
-            font-size: 11px;
-            color: #7e838f;
-        }
-
-        .kb-note.kb-warn {
-            color: #f0b866;
-        }
-
-        /* --- detail + result panels --- */
+        /* --- detail panels: sunken under the row that opened them ---------------------------- */
         .kb-panel {
             grid-column: 1 / -1;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.045);
-            padding: 4px 0 10px;
+            border: 1px solid var(--kb-control-edge-hover);
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            background: #1b1b1b;
+            padding: 6px 8px 8px;
+            margin-top: -5px;
+            cursor: default;
         }
 
         .kb-detail-head {
-            font-size: 11px;
-            color: #9aa0ac;
-            margin: 4px 0 6px;
+            font-size: 9.8px;
+            color: var(--kb-muted);
+            margin: 2px 0 5px;
         }
 
         .kb-detail-sub {
-            margin-top: 12px;
-            border-top: 1px solid rgba(255, 255, 255, 0.07);
-            padding-top: 8px;
+            margin-top: 10px;
+            border-top: 1px solid #2b2b2b;
+            padding-top: 7px;
+            text-transform: uppercase;
         }
 
         .kb-values {
             border-collapse: collapse;
             width: 100%;
-            font-size: 11px;
+            font-size: 9.8px;
         }
 
         .kb-values th {
             text-align: left;
             font-weight: 400;
-            color: #7e838f;
-            font-family: var(--field-mono-font, ui-monospace, monospace);
+            color: var(--kb-muted);
+            font-family: var(--field-font-code);
+            font-feature-settings: normal;
+            font-variant-ligatures: none;
             vertical-align: top;
             padding: 3px 10px 3px 0;
             white-space: nowrap;
@@ -484,34 +529,33 @@
         }
 
         .kb-missing {
-            color: #6e737e;
+            color: var(--kb-fainter);
             font-style: italic;
         }
 
         .kb-src {
             margin: 2px 0;
-            padding: 4px 6px;
-            border-left: 2px solid rgba(255, 255, 255, 0.18);
-            background: rgba(255, 255, 255, 0.04);
+            padding: 5px 6px;
+            border-radius: 6px;
+            background: var(--kb-sunken);
+            border: 1px solid #1c1c1c;
             white-space: pre-wrap;
-            font-size: 11px;
+            font-size: 9.8px;
+            font-family: var(--field-font-code);
             color: #cdd2dc;
         }
 
-        .kb-history {
-            margin: 6px 0;
-        }
+        .kb-history { margin: 6px 0; }
 
         .kb-history-name {
-            font-size: 10px;
-            color: #7e838f;
-            font-family: var(--field-mono-font, ui-monospace, monospace);
+            font-size: 9.4px;
+            color: var(--kb-muted);
+            font-family: var(--field-font-code);
         }
 
         .kb-history-rail {
             display: flex;
             gap: 2px;
-            align-items: stretch;
             height: 14px;
             margin: 2px 0;
         }
@@ -519,74 +563,75 @@
         .kb-tick {
             width: 7px;
             background: rgba(102, 204, 255, 0.5);
-            border-radius: 1px;
+            border-radius: 2px;
             cursor: help;
         }
 
-        .kb-tick:hover {
-            background: #6cf;
-        }
+        .kb-tick:hover { background: var(--kb-cool); }
+        .kb-tick-absent { background: #1c1c1c; }
+        .kb-history-range { font-size: 9.4px; }
+        .kb-key-stamp { font-size: 9.4px; margin-bottom: 5px; }
 
-        .kb-tick-absent {
-            background: rgba(255, 255, 255, 0.08);
-        }
-
-        .kb-history-range {
-            font-size: 10px;
-        }
-
+        /* --- the selection panel, as a disclosure like MACRO YAML ------------------------------ */
         .kb-out {
-            margin-top: 12px;
-            border-top: 1px solid rgba(255, 255, 255, 0.09);
-            padding-top: 10px;
+            border: 1px solid var(--kb-card-edge);
+            border-radius: 6px;
+            background: var(--kb-card);
+            padding: 6px 8px 8px;
         }
+
+        .kb-out > summary {
+            cursor: pointer;
+            color: var(--kb-muted);
+            font-size: 9.8px;
+            text-transform: uppercase;
+            list-style-position: inside;
+        }
+
+        .kb-out-body { margin-top: 6px; }
 
         .kb-code {
-            margin: 4px 0 0;
-            padding: 8px;
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 4px;
+            margin: 0;
+            padding: 7px;
+            background: var(--kb-sunken);
+            border: 1px solid #1c1c1c;
+            border-radius: 6px;
             white-space: pre;
             overflow-x: auto;
-            font-size: 11px;
+            font-size: 9.8px;
+            font-family: var(--field-font-code);
             color: #cdd2dc;
         }
 
         .kb-status {
-            font-size: 11px;
-            color: #7e838f;
-            padding: 8px 0;
+            font-size: 9.8px;
+            color: var(--kb-muted);
+            padding: 6px 0;
         }
 
-        .kb-status.kb-bad {
-            color: #f0a3a2;
-        }
+        .kb-status.kb-bad { color: #ff8585; }
 
         .kb-empty {
             max-width: 560px;
-            color: #9aa0ac;
+            color: var(--kb-muted);
+            font-size: 10.2px;
         }
 
         .kb-empty-head {
-            font-size: 13px;
-            color: #eef1f8;
+            font-size: 11px;
+            color: #f0f0f0;
             margin-bottom: 8px;
         }
 
-        .kb-empty p {
-            margin: 8px 0;
-        }
+        .kb-empty p { margin: 8px 0; }
 
         .kb-empty code {
-            font-family: var(--field-mono-font, ui-monospace, monospace);
-            color: #cdd2dc;
+            font-family: var(--field-font-code);
+            color: var(--kb-text);
         }
 
         /* Let the value cards from `.h` sit in a table cell without their app-level margins. */
-        .kb-values .field-md {
-            margin: 0;
-        }
+        .kb-values .field-md { margin: 0; }
     </style>
 </head>
 <body>
@@ -874,22 +919,23 @@ keyframeBrowser("looks", scope = myScope)</pre>
         const c = collection;
         const parts = [];
 
+        // Head: the folder you are browsing, with the glob as a chip beside it. The glob used to be
+        // the title, which reads as noise — a bare `?` or `**` tells you nothing about where you are.
+        const folder = String(c.root).replace(/\/+$/, "").split("/").slice(-2).join("/");
         parts.push(`<div class="kb-head">`);
-        parts.push(`<span class="kb-title">${esc(c.pattern)}</span>`);
-        parts.push(`<span class="kb-dim">${c.fileCount} keys · ${c.versionCount} versions · ${c.slotCount} slots</span>`);
+        parts.push(`<span class="kb-title kb-mono">${esc(folder || c.root)}</span>`);
+        parts.push(`<span class="kb-badge kb-mono" title="glob, matched against paths relative to the root">${esc(c.pattern)}</span>`);
         if (c.schemaVersions.length > 1) {
             parts.push(`<span class="kb-badge kb-warn">schema ${c.schemaVersions.join(", ")}</span>`);
         } else if (c.schemaVersions.length === 1) {
             parts.push(`<span class="kb-badge">schema ${c.schemaVersions[0]}</span>`);
         }
-        if (!c.hasScope) {
-            parts.push(`<span class="kb-badge">read-only — no scope</span>`);
-        }
+        if (!c.hasScope) parts.push(`<span class="kb-badge">read-only</span>`);
         parts.push(`</div>`);
 
         const stamp = [c.latestAgo ? `last save ${c.latestAgo}` : null,
             c.latestNote ? `"${c.latestNote}"` : null].filter(Boolean).join(" · ");
-        parts.push(`<div class="kb-sub" title="${esc(c.latestTimestamp || "")}">` +
+        parts.push(`<div class="kb-sub" title="${esc(c.root)}${c.latestTimestamp ? " · " + esc(c.latestTimestamp) : ""}">` +
             `${esc(c.root)}${stamp ? " · " + esc(stamp) : ""}</div>`);
 
         if (c.problems.length) {
@@ -897,11 +943,23 @@ keyframeBrowser("looks", scope = myScope)</pre>
         }
 
         if (!c.fileCount) {
-            parts.push(`<div class="kb-status">No key files matched. Save one with <code>scope.saveKey(path, key)</code>.</div>`);
+            parts.push(`<div class="kb-status">No key files matched. Save one with <code class="kb-mono">scope.saveKey(path, key)</code>.</div>`);
             kbEl.innerHTML = parts.join("");
             return;
         }
 
+        const metric = (label, value, on) =>
+            `<div class="kb-metric${on ? " is-on" : ""}"><span class="kb-metric-label">${esc(label)}</span>` +
+            `<span class="kb-metric-value">${esc(String(value))}</span></div>`;
+        parts.push(`<div class="kb-metrics">`);
+        parts.push(metric("keys", c.fileCount));
+        parts.push(metric("versions", c.versionCount));
+        parts.push(metric("slots", c.slotCount));
+        parts.push(metric("selected", selected.size, selected.size > 0));
+        parts.push(`</div>`);
+
+        parts.push(`<div>`);
+        parts.push(`<div class="kb-section-title">keys</div>`);
         parts.push(`<div class="kb-files">`);
         c.files.forEach((f) => {
             const on = selected.has(f.id);
@@ -909,9 +967,11 @@ keyframeBrowser("looks", scope = myScope)</pre>
                 `${f.versions} saves`, f.ago, f.timestamp, f.note].filter(Boolean).join("\n");
             parts.push(
                 `<span class="kb-chip${on ? " kb-on" : ""}" data-file="${f.id}" title="${esc(title)}">` +
-                `<span class="kb-chip-n">${f.id + 1}</span>${esc(f.relative)}</span>`
+                `<span class="kb-chip-n">${f.id + 1}</span>` +
+                `<span class="kb-mono">${esc(f.relative)}</span></span>`
             );
         });
+        parts.push(`</div>`);
         parts.push(`</div>`);
 
         const n = selected.size;
@@ -920,9 +980,17 @@ keyframeBrowser("looks", scope = myScope)</pre>
         parts.push(`<button class="kb-btn" id="kb-code" ${n === 1 ? "" : "disabled"}>Copy updateCode</button>`);
         parts.push(`<button class="kb-btn" id="kb-clear" ${n ? "" : "disabled"}>Clear</button>`);
         parts.push(`<button class="kb-btn" id="kb-reload">Reload</button>`);
-        parts.push(`<span class="kb-dim">${selectionHint(n)}</span>`);
+        parts.push(`<span class="kb-hint">${selectionHint(n)}</span>`);
         parts.push(`</div>`);
 
+        if (brush) {
+            parts.push(`<div class="kb-brushnote">brushed <span class="kb-mono">${esc(brush.slot)}</span>` +
+                ` ${esc(brush.label)} — ${esc(brush.range)} · ${brush.hits} of ${brush.total} keys` +
+                ` <a href="#" id="kb-unbrush">clear brush</a></div>`);
+        }
+
+        parts.push(`<div>`);
+        parts.push(`<div class="kb-section-title">slots</div>`);
         parts.push(`<div class="kb-grid">`);
         parts.push(`<span class="kb-hdr">slot</span><span class="kb-hdr">type</span><span class="kb-hdr">in</span>`);
         parts.push(`<span class="kb-hdr">range across keys</span><span class="kb-hdr kb-spread">spread</span>`);
@@ -947,20 +1015,18 @@ keyframeBrowser("looks", scope = myScope)</pre>
             }
         });
         parts.push(`</div>`);
+        parts.push(`</div>`);
 
-        if (brush) {
-            parts.push(`<div class="kb-brushnote">brushed <code>${esc(brush.slot)}</code>` +
-                ` ${esc(brush.label)} — ${esc(brush.range)} · ${brush.hits} of ${brush.total} keys` +
-                ` <a href="#" id="kb-unbrush">clear brush</a></div>`);
-        }
-
+        // The selection panel is a disclosure, like MACRO YAML in the recorder — it is the tallest
+        // thing on screen and you do not always want it open.
         if (outPanel) {
-            parts.push(`<div class="kb-out">`);
-            parts.push(`<div class="kb-detail-head">${esc(outPanel.title)}`);
-            if (outPanel.copied) parts.push(` <span class="kb-dim">— copied to clipboard</span>`);
-            parts.push(`</div>`);
+            parts.push(`<details class="kb-out" open>`);
+            parts.push(`<summary>${esc(outPanel.title)}`);
+            if (outPanel.copied) parts.push(` — copied to clipboard`);
+            parts.push(`</summary>`);
+            parts.push(`<div class="kb-out-body">`);
             parts.push(outPanel.html ? outPanel.html : `<pre class="kb-code">${esc(outPanel.text)}</pre>`);
-            parts.push(`</div>`);
+            parts.push(`</div></details>`);
         } else if (selected.size > 2) {
             parts.push(`<div class="kb-out"><div class="kb-status">` +
                 `${selected.size} keys selected — their values are highlighted in every row above. ` +
