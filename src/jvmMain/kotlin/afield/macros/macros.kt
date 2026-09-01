@@ -114,14 +114,34 @@ fun searchUpwards(f: HasHierarchy, name: String, found: (String?) -> Unit) {
     }
 }
 
+/**
+ * The text a box actually compiles against: its own preamble in full, plus — from every ancestor —
+ * the `import` lines and the lines tagged with the trailing inherit marker (an empty block comment;
+ * spelled out rather than written here, because a comment marker inside a KDoc nests). `prop`,
+ * `@exported` and the FieldML host bridge all tag what they mean to publish; `moduleHere`'s
+ * generated shader accessors deliberately do not, so they stay in the box whose shader declared
+ * them. Documented for users in `public/docs/running_code.md` ("Property inheritance").
+ *
+ * The marker gate applies to every ancestor *uniformly*, including one whose `preamble` has never
+ * been written. It did not used to: `isFirstBox` was cleared after the null check, so a box with no
+ * preamble of its own never consumed the flag and the first ancestor that had a preamble was treated
+ * as the starting box — its whole preamble, marker or no marker, was inherited, executed by
+ * [checkPreambleAndExecute] and then written into the child permanently. Which of the two behaviours
+ * a box got turned on whether anything had happened to read `Box.preamble` first (the `Delegation`
+ * default writes `""` back on a bare read), so it was an ordering accident rather than a contract.
+ */
 fun gatherPreambleUpwards(startingAt: Box): String {
     var total = ""
     var isFirstBox = true
     searchUpwards(startingAt, "preamble") {
+        val wasFirstBox = isFirstBox
+        // Consume the flag whether or not this box has a preamble at all: an unset preamble is still
+        // this box's turn in the walk, and must not hand "first box" status to an ancestor.
+        isFirstBox = false
         if (it == null) return@searchUpwards
         it.split("\n").forEach { line ->
             // For the first box (startingAt), include all lines
-            if (isFirstBox) {
+            if (wasFirstBox) {
                 if (line.trim().startsWith("import")) total = line + "\n" + total
                 else total = total + "\n" + line
             } else {
@@ -133,7 +153,6 @@ fun gatherPreambleUpwards(startingAt: Box): String {
                 }
             }
         }
-        isFirstBox = false
     }
 
 

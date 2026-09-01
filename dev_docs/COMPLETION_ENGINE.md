@@ -71,6 +71,28 @@ The preamble, not a live registry, is the carrier on purpose: it is saved with t
 note survives a restart and is present for the first completion of a session, before any shader has
 been reloaded. Covered by `ShaderCommentAutocompleteTest`.
 
+**Where it stops.** `gatherPreambleUpwards` (`macros/macros.kt`) takes the box's own preamble whole
+and filters every ancestor's down to `import` lines plus the lines carrying the trailing
+inherit marker — the empty block comment that `prop` and `@exported` append (see
+`public/docs/running_code.md`, "Property inheritance"). The generated shader accessors are keyed by a
+*leading* comment instead, for preamble merging, and carry no inherit marker, so a note stays in the
+box whose shader declared it. That matters here more than for an ordinary accessor: `time` is a name
+two unrelated shaders will both use, and a note inherited from a parent's `Push.time` would document
+a child's own, differently-typed `time` with prose written about a different shader.
+
+That gate used to have a hole, and it is worth knowing about because a saved document may still carry
+its residue. `searchUpwards` reads the property with `getPropertyRaw`, which answers `null` for a
+property nothing has written, and `gatherPreambleUpwards` returned on that `null` *before* clearing
+its `isFirstBox` flag. So a box whose `preamble` had never been written never consumed the flag, and
+the first ancestor that did have a preamble was treated as the starting box: its whole preamble came
+down unfiltered, was executed by `checkPreambleAndExecute`, and was then written into the child — at
+which point the gate applied forever, over lines that should never have crossed. Which of the two
+behaviours a box got turned on whether anything had happened to read `Box.preamble` first, because
+`Delegation`'s default writes `""` back on a bare read (`stdlib/stdlib.kt`). It was an ordering
+accident, not an exemption, and it is fixed: the flag is consumed whether or not the box has a
+preamble. Pinned by `ShaderCommentAutocompleteTest.aBoxWithNoPreambleOfItsOwnStillOnlyInheritsMarkedLines`
+and `.aGeneratedShaderBindingDoesNotCrossAConnectEdge`.
+
 ## Context-dependent completion expectations (Phase 0 corpus)
 
 Some completion behavior cannot be expressed as a `(source string, cursor)` fixture because
