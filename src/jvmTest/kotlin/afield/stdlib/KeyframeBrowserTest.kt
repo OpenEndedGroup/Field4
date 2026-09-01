@@ -231,32 +231,100 @@ class KeyframeBrowserTest {
         assertEquals("x 0 – 10", slot.summaryText, "the widest component is the one worth naming")
     }
 
-    /** A vec4 inside the unit cube reads as colour — and keeps its bands, so the guess hides nothing. */
+    /**
+     * A vec4 is two plots and a magnitude, whatever it turns out to mean.
+     *
+     * The summary is `|v|` rather than a component range, because that is the one scalar a vec4 has
+     * regardless of interpretation — and it is the band that can be brushed.
+     */
     @Test
-    fun aUnitVec4IsShownAsSwatchesAsWellAsBands() {
+    fun aVec4BecomesTwoPlotsAndAMagnitude() {
+        val dir = tempDir()
+        save(dir, "a.json", "v" to Vector4f(1f, 0f, 0f, 0f))
+        save(dir, "b.json", "v" to Vector4f(0f, 0f, 0f, 2f))
+
+        val slot = KeyframeCollection.load(dir, "**/*.json").slot("v")
+        val plot = slot.display as SlotDisplay.Vec4Plot
+        assertEquals(2, plot.xy.size)
+        assertEquals(2, plot.zw.size)
+        assertEquals(4, plot.bands.size, "the raw component bands stay, for the axis numbers")
+        assertEquals(1.0, plot.length.lo)
+        assertEquals(2.0, plot.length.hi)
+        assertEquals("|v| 1 – 2", slot.summaryText)
+    }
+
+    /**
+     * Each component keeps its own band, scaled to itself.
+     *
+     * This is what the four brushable strips read from, and it is why a vec4 cannot just be the two
+     * plots: a vec4 very often packs four unrelated numbers for a shader, so "keys whose w is under
+     * -30" has to be answerable without the other three components being involved. Per-component
+     * scaling is the load-bearing part — a `w` running -44..-8 must span its own strip rather than
+     * being squashed by an `x` that never leaves zero.
+     */
+    @Test
+    fun everyVec4ComponentKeepsItsOwnBandForBrushing() {
+        val dir = tempDir()
+        save(dir, "a.json", "plane" to Vector4f(0f, 1f, 0f, -12.5f))
+        save(dir, "b.json", "plane" to Vector4f(0f, 1f, 0f, -44f))
+        save(dir, "c.json", "plane" to Vector4f(0f, 1f, 0f, -8f))
+
+        val plot = KeyframeCollection.load(dir, "**/*.json").slot("plane").display as SlotDisplay.Vec4Plot
+        assertEquals(listOf("x", "y", "z", "w"), plot.bands.map { it.label })
+
+        val w = plot.bands[3]
+        assertEquals(-44.0, w.lo)
+        assertEquals(-8.0, w.hi)
+        // a=-12.5 sits ((-12.5) - (-44)) / 36 = 0.875 along its own band, not squashed by x or y
+        assertEquals(listOf(0.875, 0.0, 1.0), w.marks)
+
+        // x never moves, so its band is degenerate — the page reads that as "not brushable" rather
+        // than offering a filter that could only ever select everything.
+        assertEquals(plot.bands[0].lo, plot.bands[0].hi)
+        assertEquals(listOf(0.5, 0.5, 0.5), plot.bands[0].marks)
+    }
+
+    /**
+     * The colour guess survives only where it costs nothing: inside the unit cube the points carry
+     * their own RGB, so an RGBA tint reads as colour *within* the plots rather than replacing them.
+     */
+    @Test
+    fun aUnitVec4CarriesItsColourOnThePoints() {
         val dir = tempDir()
         save(dir, "a.json", "tint" to Vector4f(1f, 0f, 0f, 1f))
         save(dir, "b.json", "tint" to Vector4f(0f, 0.5f, 1f, 1f))
 
-        val slot = KeyframeCollection.load(dir, "**/*.json").slot("tint")
-        val sw = slot.display as SlotDisplay.Swatches
-        assertEquals(listOf("#ff0000", "#0080ff"), sw.colors)
-        assertEquals(4, sw.bands.size, "the component bands ride along with the swatches")
-        assertEquals("2 swatches", slot.summaryText)
+        val plot = KeyframeCollection.load(dir, "**/*.json").slot("tint").display as SlotDisplay.Vec4Plot
+        assertEquals(listOf("#ff0000", "#0080ff"), plot.colors)
     }
 
-    /** A vec4 with a component outside 0..1 is not a colour, and is not drawn as one. */
+    /** One component out of `0..1` anywhere and the colour guess is off — for every file, not just that one. */
     @Test
-    fun aVec4OutsideTheUnitCubeIsNotTreatedAsColour() {
+    fun aVec4LeavingTheUnitCubeCarriesNoColourAtAll() {
         val dir = tempDir()
         save(dir, "a.json", "v" to Vector4f(1f, 0f, 0f, 1f))
         save(dir, "b.json", "v" to Vector4f(0f, 0f, 40f, 1f))
 
-        val slot = KeyframeCollection.load(dir, "**/*.json").slot("v")
-        assertTrue(
-            slot.display is SlotDisplay.Components,
-            "a vec4 reaching 40 is a position or a plane, not an RGBA — got ${slot.display}"
-        )
+        val plot = KeyframeCollection.load(dir, "**/*.json").slot("v").display as SlotDisplay.Vec4Plot
+        assertNull(plot.colors, "a vec4 reaching 40 is a position or a plane, not an RGBA")
+    }
+
+    /**
+     * Both axes of a plot share one extent.
+     *
+     * Normalising each axis alone would spread a component that never moves across the full width,
+     * which reads as variation that is not in the data. Here x runs 0..4 and y is pinned at 1, so
+     * the points must land at x = 0 and 1 with y flat — not at two different heights.
+     */
+    @Test
+    fun aVec4PlotNormalisesBothAxesTogether() {
+        val dir = tempDir()
+        save(dir, "a.json", "v" to Vector4f(0f, 1f, 0f, 0f))
+        save(dir, "b.json", "v" to Vector4f(4f, 1f, 0f, 0f))
+
+        val plot = KeyframeCollection.load(dir, "**/*.json").slot("v").display as SlotDisplay.Vec4Plot
+        assertEquals(listOf(0.0, 0.25), plot.xy[0])
+        assertEquals(listOf(1.0, 0.25), plot.xy[1])
     }
 
     /**
@@ -341,6 +409,48 @@ class KeyframeBrowserTest {
         val note = slot.display as SlotDisplay.Note
         assertEquals("warn", note.severity)
         assertContains(note.text, "changed type between saves")
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Timestamps
+    // -----------------------------------------------------------------------------------------
+
+    /**
+     * The cutovers, each checked on both sides, against a fixed `now` and a fixed zone so this does
+     * not drift with the wall clock or the machine's locale.
+     *
+     * `now` is a Tuesday afternoon, chosen so "yesterday" and the weekday form are distinguishable
+     * from each other and from the same-year date form.
+     */
+    @Test
+    fun friendlyTimeReadsAsAPersonWouldSayIt() {
+        val zone = java.time.ZoneId.of("UTC")
+        val now = java.time.Instant.parse("2026-09-01T15:00:00Z")   // Tuesday
+        fun at(iso: String) = friendlyTime(iso, now, zone)
+
+        assertEquals("just now", at("2026-09-01T14:59:30Z"), "30s")
+        assertEquals("a minute ago", at("2026-09-01T14:58:40Z"), "80s")
+        assertEquals("5 minutes ago", at("2026-09-01T14:55:00Z"))
+        assertEquals("59 minutes ago", at("2026-09-01T14:01:00Z"), "still minutes at the boundary")
+        assertEquals("an hour ago", at("2026-09-01T13:30:00Z"))
+        assertEquals("4 hours ago", at("2026-09-01T11:00:00Z"))
+        assertEquals("yesterday 09:15", at("2026-08-31T09:15:00Z"))
+        assertEquals("Sat 22:05", at("2026-08-29T22:05:00Z"), "inside the week, so the weekday")
+        assertEquals("12 Aug 08:00", at("2026-08-12T08:00:00Z"), "past a week, but this year")
+        assertEquals("3 Mar 2025", at("2025-03-03T08:00:00Z"), "another year drops the clock")
+    }
+
+    /** Clock skew reads as "just now", not as a negative duration. */
+    @Test
+    fun aTimestampFromTheFutureDoesNotReadAsNegative() {
+        val now = java.time.Instant.parse("2026-09-01T15:00:00Z")
+        assertEquals("just now", friendlyTime("2026-09-01T15:10:00Z", now, java.time.ZoneId.of("UTC")))
+    }
+
+    /** An unparseable timestamp is handed back untouched rather than throwing inside a render. */
+    @Test
+    fun anUnparseableTimestampIsPassedThrough() {
+        assertEquals("not a date", friendlyTime("not a date", java.time.Instant.now()))
     }
 
     // -----------------------------------------------------------------------------------------

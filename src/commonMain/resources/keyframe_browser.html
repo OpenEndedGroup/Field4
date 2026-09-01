@@ -299,13 +299,6 @@
             margin-left: 6px;
         }
 
-        .kb-swatch-sel {
-            outline: 2px solid #EF9F27;
-            outline-offset: 1px;
-        }
-
-        .kb-swatch,
-        .kb-dot,
         .kb-variant {
             cursor: pointer;
         }
@@ -336,17 +329,66 @@
             pointer-events: none;
         }
 
-        .kb-swatches {
+        /* Two columns — a plot over the two bands that made it — then |v| across the bottom. */
+        .kb-quad {
             display: flex;
-            gap: 2px;
-            height: 14px;
+            gap: 6px;
+            margin-bottom: 2px;
         }
 
-        .kb-swatch {
+        .kb-quad-col {
+            display: block;
             flex: 1;
-            min-width: 6px;
+            min-width: 0;
+        }
+
+        .kb-quad-col .kb-strip {
+            margin-top: 2px;
+        }
+
+        .kb-plot {
+            display: block;
+            position: relative;
+            flex: 1;
+            min-width: 0;
+            height: 38px;
+            background: rgba(255, 255, 255, 0.045);
+            border: 1px solid rgba(255, 255, 255, 0.07);
             border-radius: 2px;
-            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        /* Dots are positioned in HTML rather than drawn in SVG. An SVG scatter that fills a
+           responsive width needs preserveAspectRatio="none", which scales x and y differently and
+           turns every circle into an ellipse — measured at ~1.9x horizontally in the slot table. */
+        .kb-pt {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            margin: -3px 0 0 -3px;
+            border-radius: 50%;
+            box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.45);
+            cursor: pointer;
+        }
+
+        .kb-pt-sel {
+            width: 9px;
+            height: 9px;
+            margin: -4.5px 0 0 -4.5px;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
+            z-index: 2;
+        }
+
+        .kb-axis {
+            position: absolute;
+            font-size: 8px;
+            color: #63676f;
+            font-family: var(--field-mono-font, ui-monospace, monospace);
+            pointer-events: none;
+        }
+
+        .kb-axis {
+            left: 3px;
+            top: 0;
         }
 
         .kb-variants {
@@ -377,16 +419,18 @@
 
         .kb-scatter {
             display: block;
+            position: relative;
             height: 34px;
             background: rgba(255, 255, 255, 0.045);
             border: 1px solid rgba(255, 255, 255, 0.07);
             border-radius: 2px;
         }
 
-        .kb-scatter svg {
+        .kb-scatter-path {
+            position: absolute;
+            inset: 0;
             width: 100%;
             height: 100%;
-            display: block;
         }
 
         .kb-note {
@@ -671,22 +715,45 @@ keyframeBrowser("looks", scope = myScope)</pre>
 
     function scatterHtml(points, fileIds) {
         // Plan view; y is flipped so +z reads as "away" going up, the way a top-down sketch does.
+        // The travel line stays in a stretched SVG underneath — a line is still the right line in a
+        // stretched space — while the dots are positioned in HTML so they stay round at any width.
         const sel = selIndices(fileIds);
-        const px = (p) => 4 + p[0] * 192;
-        const py = (p) => 30 - p[1] * 26;
         const path = points.length > 1
-            ? `<polyline points="${points.map((p) => `${px(p).toFixed(1)},${py(p).toFixed(1)}`).join(" ")}" fill="none" stroke="#7F77DD" stroke-width="1" opacity="0.55"/>`
+            ? `<svg class="kb-scatter-path" viewBox="0 0 100 100" preserveAspectRatio="none">` +
+              `<polyline points="${points.map((p) => `${(6 + p[0] * 88).toFixed(1)},${(88 - p[1] * 76).toFixed(1)}`).join(" ")}"` +
+              ` fill="none" stroke="#7F77DD" stroke-width="0.7" opacity="0.55" vector-effect="non-scaling-stroke"/></svg>`
             : "";
         const order = points.map((p, i) => i).sort((a, b) => (sel.has(a) ? 1 : 0) - (sel.has(b) ? 1 : 0));
         const dots = order.map((i) => {
             const p = points[i];
-            const id = fileIds ? fileIds[i] : null;
+            const id = fileIds[i];
             const on = sel.has(i);
-            return `<circle class="kb-dot${on ? " kb-dot-sel" : ""}" data-file="${id}"` +
-                ` cx="${px(p).toFixed(1)}" cy="${py(p).toFixed(1)}" r="${on ? 4.2 : 2.6}"` +
-                ` fill="${on ? "#EF9F27" : "#7F77DD"}"><title>${esc(fileName(id))}</title></circle>`;
+            return `<span class="kb-pt${on ? " kb-pt-sel" : ""}" data-file="${id}" title="${esc(fileName(id))}"` +
+                ` style="left:${(6 + p[0] * 88).toFixed(2)}%;top:${(88 - p[1] * 76).toFixed(2)}%;` +
+                `background:${on ? "#EF9F27" : "#7F77DD"}"></span>`;
         }).join("");
-        return `<span class="kb-scatter"><svg viewBox="0 0 200 34" preserveAspectRatio="none">${path}${dots}</svg></span>`;
+        return `<span class="kb-scatter">${path}${dots}</span>`;
+    }
+
+    function scatter2d(points, fileIds, ax, ay, colors, bands, compIdx) {
+        const sel = selIndices(fileIds);
+        const order = points.map((p, i) => i).sort((a, b) => (sel.has(a) ? 1 : 0) - (sel.has(b) ? 1 : 0));
+        const dots = order.map((i) => {
+            const p = points[i];
+            const id = fileIds[i];
+            const on = sel.has(i);
+            const bx = bands[compIdx[0]], by = bands[compIdx[1]];
+            const tip = `${fileName(id)}\n${ax} = ${fmt(bandValueAt(bx, bx.marks[i]))}` +
+                `\n${ay} = ${fmt(bandValueAt(by, by.marks[i]))}`;
+            const fill = on ? "#EF9F27" : (colors ? colors[i] : "#7F77DD");
+            return `<span class="kb-pt${on ? " kb-pt-sel" : ""}" data-file="${id}" title="${esc(tip)}"` +
+                ` style="left:${(6 + p[0] * 88).toFixed(2)}%;top:${(88 - p[1] * 76).toFixed(2)}%;background:${esc(fill)}"></span>`;
+        }).join("");
+        // One label per plot rather than a letter in each of two corners: a component that barely
+        // varies bunches every dot against one edge, and whichever corner the letter sat in would be
+        // the one covered. The tooltip names each axis with its value, so the label only has to say
+        // which pair this is.
+        return `<span class="kb-plot"><span class="kb-axis">${esc(ax)}·${esc(ay)}</span>${dots}</span>`;
     }
 
     function displayHtml(slot) {
@@ -696,13 +763,23 @@ keyframeBrowser("looks", scope = myScope)</pre>
                 return stripHtml(d.band, d.fileIds, false, slot.name, 0);
             case "components":
                 return d.bands.map((b, i) => stripHtml(b, d.fileIds, true, slot.name, i)).join("");
-            case "swatches": {
-                const sel = selIndices(d.fileIds);
-                return `<span class="kb-swatches">` + d.colors.map((c, i) => {
-                    const id = d.fileIds[i];
-                    return `<span class="kb-swatch${sel.has(i) ? " kb-swatch-sel" : ""}" data-file="${id}"` +
-                        ` style="background:${esc(c)}" title="${esc(fileName(id) + "\n" + c)}"></span>`;
-                }).join("") + `</span>`;
+            case "vec4plot": {
+                // Two columns, each a plot over the two bands it is made of, then |v| across the
+                // bottom. The pairing is only a suggestion — a vec4 is very often four unrelated
+                // things packed for a shader — so every component gets its own brushable band and
+                // sits directly under the plot that used it. Band indices are 0..3 for x/y/z/w and
+                // 4 for the magnitude; `bandOf` reads them back the same way.
+                const col = (pts, ax, ay, ci) =>
+                    `<span class="kb-quad-col">` +
+                    scatter2d(pts, d.fileIds, ax, ay, d.colors, d.bands, ci) +
+                    stripHtml(d.bands[ci[0]], d.fileIds, true, slot.name, ci[0]) +
+                    stripHtml(d.bands[ci[1]], d.fileIds, true, slot.name, ci[1]) +
+                    `</span>`;
+                return `<span class="kb-quad">` +
+                    col(d.xy, "x", "y", [0, 1]) +
+                    col(d.zw, "z", "w", [2, 3]) +
+                    `</span>` +
+                    stripHtml(d.length, d.fileIds, true, slot.name, 4);
             }
             case "poses":
                 return scatterHtml(d.points, d.fileIds);
@@ -781,6 +858,12 @@ keyframeBrowser("looks", scope = myScope)</pre>
         const d = slot.display;
         if (d.type === "range") return { band: d.band, fileIds: d.fileIds };
         if (d.type === "components") return { band: d.bands[index], fileIds: d.fileIds };
+        // 0..3 are x/y/z/w, 4 is |v|. The plots themselves are not brushable: a 1D drag cannot
+        // express a region of a 2D scatter, and the component bands underneath cover the cases a
+        // box brush would — including the common one where the four numbers are unrelated.
+        if (d.type === "vec4plot") {
+            return { band: index === 4 ? d.length : d.bands[index], fileIds: d.fileIds };
+        }
         return null;
     }
 
@@ -804,9 +887,10 @@ keyframeBrowser("looks", scope = myScope)</pre>
         }
         parts.push(`</div>`);
 
-        const stamp = [c.latestTimestamp ? `last save ${c.latestTimestamp}` : null,
+        const stamp = [c.latestAgo ? `last save ${c.latestAgo}` : null,
             c.latestNote ? `"${c.latestNote}"` : null].filter(Boolean).join(" · ");
-        parts.push(`<div class="kb-sub">${esc(c.root)}${stamp ? " · " + esc(stamp) : ""}</div>`);
+        parts.push(`<div class="kb-sub" title="${esc(c.latestTimestamp || "")}">` +
+            `${esc(c.root)}${stamp ? " · " + esc(stamp) : ""}</div>`);
 
         if (c.problems.length) {
             parts.push(`<div class="kb-problems">` + c.problems.map(esc).join("<br>") + `</div>`);
@@ -822,7 +906,7 @@ keyframeBrowser("looks", scope = myScope)</pre>
         c.files.forEach((f) => {
             const on = selected.has(f.id);
             const title = [f.relative, `schema ${f.schemaVersion}`, `${f.slotCount} slots`,
-                `${f.versions} saves`, f.timestamp, f.note].filter(Boolean).join("\n");
+                `${f.versions} saves`, f.ago, f.timestamp, f.note].filter(Boolean).join("\n");
             parts.push(
                 `<span class="kb-chip${on ? " kb-on" : ""}" data-file="${f.id}" title="${esc(title)}">` +
                 `<span class="kb-chip-n">${f.id + 1}</span>${esc(f.relative)}</span>`
@@ -906,7 +990,7 @@ keyframeBrowser("looks", scope = myScope)</pre>
         });
 
         // A datapoint inside a row is a handle on the key that produced it.
-        kbEl.querySelectorAll(".kb-swatch, .kb-dot").forEach((el) => {
+        kbEl.querySelectorAll(".kb-pt").forEach((el) => {
             el.addEventListener("click", (ev) => {
                 ev.stopPropagation();
                 const id = Number(el.dataset.file);
@@ -930,7 +1014,7 @@ keyframeBrowser("looks", scope = myScope)</pre>
             el.addEventListener("click", async (ev) => {
                 // A drag that started on a strip must not also be read as "expand this slot".
                 if (suppressRowClick) { suppressRowClick = false; return; }
-                if (ev.target.closest(".kb-strip, .kb-swatch, .kb-variant, .kb-scatter")) return;
+                if (ev.target.closest(".kb-strip, .kb-plot, .kb-variant, .kb-scatter")) return;
                 const name = el.dataset.slot;
                 if (openSlot === name) { openSlot = null; render(); return; }
                 openSlot = name;
@@ -1034,7 +1118,12 @@ keyframeBrowser("looks", scope = myScope)</pre>
 
     function applyBrush(slotName, bandIndex, a, b) {
         const found = bandOf(slotName, bandIndex);
-        if (!found) return;
+        if (!found) {
+            // Reachable only if a display grows a strip without teaching bandOf about it, which is
+            // exactly the bug the vec4 magnitude band shipped with. Say so rather than no-op.
+            console.warn("[keyframe-browser] no brushable band for", slotName, bandIndex);
+            return;
+        }
         const { band, fileIds } = found;
         const hits = [];
         band.marks.forEach((m, i) => { if (m >= a && m <= b) hits.push(fileIds[i]); });
