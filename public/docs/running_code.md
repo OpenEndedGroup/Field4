@@ -142,6 +142,8 @@ Two things have to be true for a child to use a parent's value:
 
     That ` /**/` suffix is exactly why `prop` (and `@exported`) tag their generated lines with it — it is the "inherit me into descendants" marker.
 
+    The filter applies to every ancestor, including one that has no preamble of its own. So the accessors `moduleHere { }` generates from a box's shaders (below) do *not* come down: they are untagged, and `time` or `worldToClip` is a name two unrelated shaders will both use. A child that wants them regenerates its own, which it gets for free — `vertex`/`fragment` are themselves `Inheritance` properties, so a child with no shaders of its own inherits the parent's *source* and its own `moduleHere { }` generates accessors from it.
+
 2. **The value is fetched at read time** by the `Inheritance` delegate's walk up `parents`. The preamble only carries the *accessor*; the *value* stays on whichever box set it.
 
 ### Which box is whose parent decides what is visible
@@ -271,7 +273,7 @@ So `//%-` is not cosmetic here — it is what makes "set some state, then run a 
 - During interactive execution, Kotlin box code is **fragmented** on `//%-`, and each fragment is **macro-expanded, compiled, and evaluated in turn** — so a fragment sees the runtime effects of earlier fragments in that box.
 - **Macros** (`prop`, `moduleHere`, …) rewrite calls *before* compilation and inject glue into the **preamble**; some also mutate box state or compile shaders during expansion.
 - **`@exported`** promotes declarations into the preamble *after* a run.
-- The **preamble** is the shared glue layer: a box's effective preamble is gathered from itself plus its ancestors' `import` and ` /**/`-tagged lines — which is how typed accessors from `prop`/`@exported`/`moduleHere` reach child boxes.
+- The **preamble** is the shared glue layer: a box's effective preamble is gathered from itself plus its ancestors' `import` and ` /**/`-tagged lines — which is how typed accessors from `prop`/`@exported` reach child boxes. `moduleHere`'s generated shader accessors are *not* tagged, so they stay in the box whose shader declared them.
 - **Property inheritance** resolves values by walking *up the box graph*, so **connecting boxes** (topology) decides what a box can see — the reason a graphics box must be a child of its renderer.
 
 See also: [Feature Overview](funFeatures.md) (user-level `prop`/`connect`/`once`), [afield.four Graphics](afield_four_graphics.md) (graphics API), [StackSL Examples](stacksl_examples.md) (`stack.auto`), [RectSL Examples](rectsl_examples.md), and the [Kotlin Overview](kotlin_overview.md).

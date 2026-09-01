@@ -3,11 +3,13 @@ package afield
 import afield.four.modules.Introspection
 import afield.four.modules.ShaderKind
 import afield.four.modules.parseGlslMemberComments
+import afield.macros.gatherPreambleUpwards
 import afield.stdlib.applyInsertToPreamble
 import afield.stdlib.insertForShader
 import afield.stdlib.normalizePreambleText
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -210,6 +212,75 @@ class ShaderCommentAutocompleteTest {
             1,
             box.preamble.lines().count { it.contains("var Mesh.time") },
             "a reload should replace the commented line, not append a second copy"
+        )
+    }
+
+    @Test
+    fun aBoxWithNoPreambleOfItsOwnStillOnlyInheritsMarkedLines() {
+        // The preamble gather takes the STARTING box's preamble whole and filters every ancestor's down
+        // to imports plus the inherit marker. A box whose `preamble` has never been written is still the
+        // starting box: it contributes nothing, and its parent is still an ancestor.
+        //
+        // It used to escape the gate. `searchUpwards` reads the property with `getPropertyRaw`, which
+        // answers null for a property nothing has written, and the callback returned on null BEFORE
+        // clearing its first-box flag — so the first ancestor that had a preamble was treated as the
+        // starting box and its whole preamble came down. Whether a box got that or the gate turned on
+        // whether anything had happened to read `Box.preamble` first, because the `Delegation` default
+        // writes "" back on a bare read.
+        val parent = Box("preamble-gate-parent")
+        parent.setPropertyRaw(
+            "preamble",
+            """
+            import java.nio.*
+            var Box.shared by Inheritance<Int>() /**/
+            /*graphics-pc-binding:time*/ var Mesh.time by Mesh.BoundFromStructure<Float>()
+            """.trimIndent()
+        )
+
+        val unwritten = Box("preamble-gate-child-unwritten")
+        unwritten.parents.add(parent)
+        assertNull(unwritten.getPropertyRaw("preamble"), "the child's preamble must start out unwritten")
+
+        val written = Box("preamble-gate-child-written")
+        written.parents.add(parent)
+        written.setPropertyRaw("preamble", "")
+
+        listOf("never written" to unwritten, "written empty" to written).forEach { (state, child) ->
+            val gathered = gatherPreambleUpwards(child)
+            assertTrue("import java.nio.*" in gathered, "$state: an ancestor's imports always come down")
+            assertTrue("var Box.shared" in gathered, "$state: a marked ancestor line comes down")
+            assertFalse(
+                "var Mesh.time" in gathered,
+                "$state: an unmarked ancestor line must not come down:\n$gathered"
+            )
+        }
+    }
+
+    @Test
+    fun aGeneratedShaderBindingDoesNotCrossAConnectEdge() {
+        // `moduleHere`'s generated accessors are keyed by a LEADING marker comment (for preamble merging)
+        // and carry no trailing inherit marker, so they stay in the box whose shader declared them —
+        // including the trailing note, which would otherwise document a child's identically-named row
+        // with a comment written about a different shader.
+        val vi = Introspection(vertexSource, ShaderKind.VERTEX_SHADER)
+        val fi = Introspection(fragmentSource, ShaderKind.FRAGMENT_SHADER)
+        assertTrue(vi.valid && fi.valid, "shaders did not compile")
+
+        val shaderBox = Box("shader-binding-parent")
+        applyInsertToPreamble(shaderBox, insertForShader(vi, fi, args = listOf("()")))
+        assertEquals(
+            "seconds since the box started",
+            ShaderBindingDocs.indexFor(shaderBox).documentationFor("time", "Mesh"),
+            "the declaring box documents its own binding"
+        )
+
+        val child = Box("shader-binding-child")
+        child.parents.add(shaderBox)
+        val gathered = gatherPreambleUpwards(child)
+        assertFalse("var Mesh.time" in gathered, "generated bindings must not cross a connect edge:\n$gathered")
+        assertNull(
+            ShaderBindingDocs.indexFor(child).documentationFor("time", "Mesh"),
+            "a child must not inherit documentation for a binding it does not have"
         )
     }
 

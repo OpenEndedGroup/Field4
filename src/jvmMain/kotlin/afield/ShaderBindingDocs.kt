@@ -81,8 +81,15 @@ object ShaderBindingDocs {
     private val classRegex = Regex("""\bclass\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(""")
 
     /**
-     * The bindings documented for a box, from its *inherited* preamble — so an accessor declared by a
-     * parent box documents the child's rows too, exactly as completion resolves it.
+     * The bindings documented for a box, from its *inherited* preamble — the same text completion
+     * resolves against, so the lookup and the candidate list agree about what is in scope.
+     *
+     * Inherited, not cross-box: `gatherPreambleUpwards` filters an ancestor's preamble down to imports
+     * and the marked-inheritable lines, and the generated shader accessors are marked by a *leading*
+     * key comment rather than the trailing inherit marker. So a note travels with the box whose shader
+     * declared it, and a child that happens to have an identically-named binding of its own is
+     * documented by its own shader's comment or not at all. Pinned by
+     * `ShaderCommentAutocompleteTest.aGeneratedShaderBindingDoesNotCrossAConnectEdge`.
      *
      * Resolve this ONCE per completion request and ask the result about each row: gathering and parsing
      * a preamble per candidate would put a box walk and a full-text compare on a path that runs over a
