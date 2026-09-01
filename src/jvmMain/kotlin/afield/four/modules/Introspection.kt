@@ -221,10 +221,16 @@ fun parseGlslMemberComments(source: String): Map<String, String> {
             when (c) {
                 '{' -> {
                     blocks.addLast(glslBlockOpenerRegex.find(statement.toString().trim())?.groupValues?.get(1) ?: "")
+                    // A block opening before the pending tail's `;` arrived means there was no tail.
+                    closedBlock = null
                     statement.setLength(0)
                 }
                 '}' -> {
-                    closedBlock = blocks.removeLastOrNull()
+                    // Only a NAMED block has a tail worth waiting for. An unnamed `}` — a function body,
+                    // or the `}` of a `{% include %}` / `{{ slot }}` template marker sitting in the source
+                    // — must not arm this: the pending state survives to the next `;`, and that `;` is the
+                    // first member of whatever block comes next, whose comment would then be eaten.
+                    closedBlock = blocks.removeLastOrNull()?.takeIf { it.isNotEmpty() }
                     statement.setLength(0)
                 }
                 ';' -> {
@@ -232,10 +238,8 @@ fun parseGlslMemberComments(source: String): Map<String, String> {
                     val justClosed = closedBlock
                     if (justClosed != null) {
                         // `} pc;` — the block's instance name, an alias for everything inside it.
-                        if (justClosed.isNotEmpty()) {
-                            glslTrailingIdentifierRegex.find(text)?.groupValues?.get(1)
-                                ?.let { instanceAliases[it] = justClosed }
-                        }
+                        glslTrailingIdentifierRegex.find(text)?.groupValues?.get(1)
+                            ?.let { instanceAliases[it] = justClosed }
                         closedBlock = null
                     } else if (text.isNotEmpty()) {
                         documented = text
