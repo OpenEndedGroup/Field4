@@ -90,6 +90,26 @@ fun Box.clearNested() {
     }
 }
 
+/**
+ * Nest this box inside [parent] — or, with `null`, un-nest it — converting the frame to and from
+ * parent-relative coordinates, and moving the connection edge along with the containment.
+ *
+ * **Nesting connects.** That is what [onNestedChange] and [onNestedInChange] have done since
+ * `cbeded171` ("Auto-parent nested boxes to nest container"), but this function did not, for two
+ * compounding reasons: it runs inside [withNestingGuard], which those hooks bail out of, and it
+ * mutates `nested` in place, so a `Delegation` set-hook would never have fired for it anyway. Since
+ * `nestInto` is the path the `-nest-into` / `-un-nest` actions and subtree import all take, the effect
+ * was that almost every nested box in a document had no edge, while a box nested by assigning
+ * `nestedIn` — `workspace/copy.kt`, which duplicates a nested box — had one. Duplicating a nested box
+ * gave the copy a parent its original never had, and with it the container's inherited preamble.
+ *
+ * So the two are the same operation now, and a box nested into a graphics box does inherit its
+ * imports and marked preamble lines (`macros/macros.kt#fun gatherPreambleUpwards`).
+ *
+ * The asymmetry that remains is the one the hooks already had: un-nesting disconnects, so if the box
+ * held a connection to its nest parent for some *other* reason, un-nesting takes that away too.
+ * `Box.disconnect` removes only this one edge, so a box's document-root edge is untouched either way.
+ */
 fun Box.nestInto(parent: Box?) {
     withNestingGuard {
         val oldParent = nestedIn
@@ -99,6 +119,7 @@ fun Box.nestInto(parent: Box?) {
             frame = frame.copy(x = frame.x + oldOffsetX, y = frame.y + oldOffsetY)
             oldParent.nested.remove(this)
             needsResync.add(oldParent to "nested")
+            if (oldParent != parent) oldParent.disconnect(this)
         }
 
         if (parent != null) {
@@ -107,6 +128,7 @@ fun Box.nestInto(parent: Box?) {
             frame = frame.copy(x = frame.x - newOffsetX, y = frame.y - newOffsetY)
             parent.nested.add(this)
             needsResync.add(parent to "nested")
+            parent.connect(this)
         }
 
         nestedIn = parent
