@@ -747,8 +747,16 @@ keyframeBrowser("looks", scope = myScope)</pre>
             const l = Math.min(brush.a, brush.b), w = Math.abs(brush.b - brush.a);
             brushEl = `<span class="kb-brush" style="left:${(l * 100).toFixed(2)}%;width:${(w * 100).toFixed(2)}%"></span>`;
         }
+        // A band whose values are all equal cannot be brushed — any interval selects everything —
+        // so it says so on hover rather than just failing to respond to a drag.
         const brushable = !degenerate && fileIds && fileIds.length > 1;
+        const why = brushable
+            ? `drag to keep only the keys inside`
+            : (fileIds && fileIds.length < 2
+                ? `only ${fileIds ? fileIds.length : 0} key has this slot — nothing to brush`
+                : `every key has ${band.label} = ${fmt(band.lo)} — nothing to brush`);
         return `<span class="kb-strip${brushable ? " kb-brushable" : ""}"` +
+            ` title="${esc(band.label + ": " + why)}"` +
             ` data-slot="${esc(slotName)}" data-band="${bandIndex}">${fill}${label}${brushEl}${marks}</span>`;
     }
 
