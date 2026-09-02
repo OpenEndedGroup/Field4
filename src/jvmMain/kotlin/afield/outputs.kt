@@ -812,10 +812,30 @@ fun Box.remoteAr(
  * keyframeBrowser("looks", scope = scope)
  * ```
  *
+ * # Why the size is in pixels
+ *
+ * [width] is a pixel count and not a percentage, and that is load-bearing rather than a style
+ * choice. An output panel sizes itself to its content, and for an iframe it reads that size from
+ * `iframe.style.width` / `.style.height` with a `parseFloat`-based parser
+ * (`outputareas2.js`, `iframeIntrinsicSize`); a percentage parses as zero, which means "no
+ * intrinsic width". The usual second source is an `afield-iframe-size` event from
+ * `iframe_autosize.js`, and this iframe opts out of that with `data-afield-autosize="off"` —
+ * the panel is `overflow: hidden` with its own scrolling regions, so measuring it would only ever
+ * report the size it already had.
+ *
+ * With neither source the panel falls back to measuring an iframe that is itself `width: 100%` of
+ * the panel, which can never grow it, and a fresh panel holding nothing else opens at its closed
+ * width: the browser rendered 192 pixels wide inside a 200-pixel panel and two thirds of it was
+ * off the right edge. A pixel [width] is the panel's size; the CSS then stretches the iframe to
+ * fill the panel it just caused. Pass a non-positive [width] for the old `width: 100%` behaviour,
+ * which is still the right thing when the panel is already the size you want — a panel you have
+ * dragged to a size keeps it, and autosizing skips it from then on.
+ *
  * @param root directory to search
  * @param pattern glob, matched against paths relative to [root]
  * @param channel output-area channel the browser is shown on, and its disclosure title
  * @param scope the live scope, for scope-only slots and Apply; read-only without it
+ * @param width iframe width in CSS pixels; non-positive means "fill the panel you are already in"
  * @param height iframe height in CSS pixels
  */
 fun Box.keyframeBrowser(
@@ -823,20 +843,11 @@ fun Box.keyframeBrowser(
     pattern: String = "**/*.json",
     channel: String = "keyframes",
     scope: KeyframeScope? = null,
+    width: Int = 900,
     height: Int = 460
 ) {
     val token = registerKeyframeBrowser(root, pattern, scope)
-    display(
-        channel,
-        """
-<iframe
-  class="field-keyframe-browser"
-  src="/keyframe_browser.html?root=$token"
-  data-afield-autosize="off"
-  style="display:block;width:100%;height:${height}px;border:0;background:transparent">
-</iframe>
-""".trimIndent()
-    )
+    display(channel, keyframeBrowserIframe(token, width, height))
     displayOpen(channel)
 }
 
@@ -846,8 +857,25 @@ fun Box.keyframeBrowser(
     pattern: String = "**/*.json",
     channel: String = "keyframes",
     scope: KeyframeScope? = null,
+    width: Int = 900,
     height: Int = 460
-) = keyframeBrowser(FileManager.current().path(root), pattern, channel, scope, height)
+) = keyframeBrowser(FileManager.current().path(root), pattern, channel, scope, width, height)
+
+/**
+ * The browser's iframe markup, split out so `KeyframeBrowserTest` can hold the sizing contract
+ * described on [keyframeBrowser] without standing up a box and a browser.
+ */
+internal fun keyframeBrowserIframe(token: String, width: Int, height: Int): String {
+    val declaredWidth = if (width > 0) "${width}px" else "100%"
+    return """
+<iframe
+  class="field-keyframe-browser"
+  src="/keyframe_browser.html?root=$token"
+  data-afield-autosize="off"
+  style="display:block;width:$declaredWidth;height:${height}px;border:0;background:transparent">
+</iframe>
+""".trimIndent()
+}
 
 fun Box.logs(
     channel: String = "internal logging",

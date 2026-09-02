@@ -1,6 +1,7 @@
 package afield.stdlib
 
 import afield.four.util.CameraPose
+import afield.keyframeBrowserIframe
 import afield.stdlib.linalg.Quaternionf
 import afield.stdlib.linalg.Vector3f
 import afield.stdlib.linalg.Vector4f
@@ -551,5 +552,33 @@ class KeyframeBrowserTest {
             0, c.slot("legacy").presentIn,
             "the file does not contain `legacy`, and the browser must say so"
         )
+    }
+
+    // ---- the panel's own size ---------------------------------------------------------------
+
+    @Test
+    fun theBrowserIframeDeclaresItsWidthInPixels() {
+        val html = keyframeBrowserIframe("token", 900, 460)
+        // The output area measures the panel from these two declarations with a `parseFloat`-based
+        // parser, and a percentage parses as zero. `width:100%` is how the browser came up 192
+        // pixels wide inside a 200-pixel panel with two thirds of it off the right edge.
+        for (axis in listOf("width", "height")) {
+            val declared = Regex("""[;"]$axis:\s*([^;"]+)""").find(html)?.groupValues?.get(1)?.trim()
+            assertTrue(declared != null, "$axis is not declared in $html")
+            assertTrue(declared.endsWith("px"), "$axis must be in px, not '$declared'")
+            assertTrue(
+                declared.removeSuffix("px").toDoubleOrNull()?.let { it > 0 } == true,
+                "$axis '$declared' does not parse to a positive number"
+            )
+        }
+        // The iframe opts out of `iframe_autosize.js`, which is the other way a frame could report a
+        // size. If that ever changes, the pixel width above stops being the only source.
+        assertContains(html, "data-afield-autosize=\"off\"")
+    }
+
+    @Test
+    fun aNonPositiveWidthIsStillTheFillMyColumnEscapeHatch() {
+        assertContains(keyframeBrowserIframe("token", 0, 460), "width:100%")
+        assertContains(keyframeBrowserIframe("token", -1, 460), "width:100%")
     }
 }
