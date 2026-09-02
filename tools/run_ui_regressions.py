@@ -974,6 +974,98 @@ try {
 }
 """
 
+H2_PANEL_SIZING_SNIPPET = """\
+val rows = (1..40).map { mapOf("index" to it, "label" to "row-$it", "value" to it * it) }
+display("explorer", rows.h2)
+displayOpen("explorer")
+"""
+
+# The `.h2` explorer is the worst case for panel auto-sizing: `data-afield-autosize="off"` plus a
+# `width:100%` frame means the panel has nothing to measure but itself, and the frame is stacked
+# under its own summary row so its height is not the content height either. Both used to fail
+# silently -- a 1040pt box got a 200px panel showing a 192x205 frame -- which is invisible unless
+# something asserts the geometry.
+H2_PANEL_SIZING_JS = r"""
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const errors = [];
+const onError = (event) => errors.push(String(event.error && (event.error.stack || event.error.message) || event.message || event));
+window.addEventListener("error", onError);
+const waitFor = async (predicate, timeoutMs = 12000) => {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const value = predicate();
+    if (value) return value;
+    await delay(100);
+  }
+  return predicate();
+};
+try {
+  const box = [...document.querySelectorAll(".box")]
+    .find((candidate) => String(candidate.textContent || "").includes("H2PanelSizingRegression"))
+    || (window.selectedList && window.selectedList[0])
+    || [...document.querySelectorAll(".box")].at(-1);
+  if (!box) return { ok: false, reason: "box not found", errors };
+
+  const outputArea = await waitFor(() => box.querySelector(".outputArea"), 8000);
+  if (outputArea) {
+    outputArea.style.visibility = "visible";
+    outputArea.style.height = "auto";
+  }
+  const frame = await waitFor(() => box.querySelector(".disclosure .value-viz-h2 > iframe"), 12000);
+  if (!frame) return { ok: false, reason: "h2 iframe never appeared", errors };
+  const panel = frame.closest(".disclosure");
+  const summary = frame.previousElementSibling;
+
+  // Let the auto-size passes settle, then read the geometry the reader actually sees.
+  await waitFor(() => {
+    const width = frame.getBoundingClientRect().width;
+    return width > 0 && Math.abs(width - box.getBoundingClientRect().width) < 40;
+  }, 12000);
+  await delay(400);
+
+  const boxRect = box.getBoundingClientRect();
+  const panelRect = panel.getBoundingClientRect();
+  const frameRect = frame.getBoundingClientRect();
+  const summaryHeight = summary ? summary.getBoundingClientRect().height : 0;
+  const declaredHeight = parseFloat(frame.style.height || "0") || 0;
+
+  const result = {
+    boxWidth: Math.round(boxRect.width),
+    panelWidth: Math.round(panelRect.width),
+    frameWidth: Math.round(frameRect.width),
+    frameHeight: Math.round(frameRect.height),
+    declaredHeight: Math.round(declaredHeight),
+    summaryHeight: Math.round(summaryHeight),
+    panelOverflowRight: Math.round(panelRect.right - boxRect.right),
+    errors,
+  };
+
+  // The panel claims the room the box gives it, and stops there. A frame that measured itself
+  // stayed at the 200px header width; a frame given a hardcoded pixel width overflowed a narrow box.
+  result.panelTracksBox = result.panelWidth >= result.boxWidth - 24 &&
+    result.panelOverflowRight <= 2;
+  // The declared frame height is a statement about the frame alone. The panel has to make room for
+  // the summary row above it too, so the frame must still get its full height.
+  result.frameKeepsDeclaredHeight = result.declaredHeight > 0 &&
+    result.frameHeight >= result.declaredHeight - 2;
+
+  result.ok = result.panelTracksBox &&
+    result.frameKeepsDeclaredHeight &&
+    result.summaryHeight > 0 &&
+    result.errors.length === 0;
+  if (!result.ok) {
+    result.reason = !result.panelTracksBox
+      ? `panel ${result.panelWidth}px does not track box ${result.boxWidth}px`
+      : !result.frameKeepsDeclaredHeight
+        ? `frame ${result.frameHeight}px is shorter than the declared ${result.declaredHeight}px`
+        : "unexpected h2 panel geometry";
+  }
+  return result;
+} finally {
+  window.removeEventListener("error", onError);
+}
+"""
+
 TOAST_RESTACK_JS = r"""
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const errors = [];
@@ -3132,6 +3224,8 @@ def prepare_generated_files() -> dict[str, Path]:
         "editor_open_edit_sync_js": write_generated_file("editor-open-edit-sync.js", EDITOR_OPEN_EDIT_SYNC_JS),
         "insert_stack_marker_js": write_generated_file("insert-stack-marker.js", INSERT_STACK_MARKER_JS),
         "output_area_basics_js": write_generated_file("output-area-basics.js", OUTPUT_AREA_BASICS_JS),
+        "h2_panel_sizing_snippet": write_generated_file("h2-panel-sizing.kt", H2_PANEL_SIZING_SNIPPET),
+        "h2_panel_sizing_js": write_generated_file("h2-panel-sizing.js", H2_PANEL_SIZING_JS),
         "toast_restack_js": write_generated_file("toast-restack.js", TOAST_RESTACK_JS),
         "controllers_editable_lines_js": write_generated_file("controllers-editable-lines.js", CONTROLLERS_EDITABLE_LINES_JS),
         "controllers_static_lines_js": write_generated_file("controllers-static-lines.js", CONTROLLERS_STATIC_LINES_JS),
@@ -3234,6 +3328,17 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 shell_join(["page-eval", "--body", "--file", str(files["output_area_basics_js"]), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "@last", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="h2-panel-sizing",
+            description="A .h2 value explorer panel takes the width of the box it is under and leaves its iframe the full height it declared.",
+            commands=[
+                "new-box --name H2PanelSizingRegression --w 1040 --h 200",
+                shell_join(["run", "@last", "--file", str(files["h2_panel_sizing_snippet"]), "--timeout", timeout_text]),
+                "sleep 1.5",
+                shell_join(["page-eval", "--body", "--file", str(files["h2_panel_sizing_js"]), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
         ),
         UiRegression(
             id="error-fix-import-executes",
