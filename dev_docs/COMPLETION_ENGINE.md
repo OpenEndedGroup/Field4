@@ -93,6 +93,15 @@ accident, not an exemption, and it is fixed: the flag is consumed whether or not
 preamble. Pinned by `ShaderCommentAutocompleteTest.aBoxWithNoPreambleOfItsOwnStillOnlyInheritsMarkedLines`
 and `.aGeneratedShaderBindingDoesNotCrossAConnectEdge`.
 
+**What counts as an ancestor.** `gatherPreambleUpwards` walks `parents`, so only a *connection* edge
+carries a preamble — and a nested box now has one. `nesting.kt#fun Box.nestInto` connects the
+container to the box it nests, matching what `onNestedChange` / `onNestedInChange` have done since
+`cbeded171`; it did not until `nestInto` was fixed, because it runs inside the nesting re-entrancy
+guard those hooks bail out of and mutates `nested` in place where a `Delegation` set-hook cannot see
+it. The visible effect was that a box dropped into a nest canvas inherited nothing from the box
+drawn around it, while a *copy* of that box — `workspace/copy.kt` assigns `nestedIn`, so the hook
+fired — inherited everything. `NestingConnectsTest` holds both routes to the one contract.
+
 ## Context-dependent completion expectations (Phase 0 corpus)
 
 Some completion behavior cannot be expressed as a `(source string, cursor)` fixture because
