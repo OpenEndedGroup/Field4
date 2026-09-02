@@ -1556,17 +1556,39 @@ private fun fitOutputDisclosuresForScreenshot(outputArea: HTMLElement) {
         }
 }
 
+// A `data-afield-autosize="off"` frame that declares no width of its own has no width to report and
+// none to contribute here. `outputareas2.js` (`fillWidthForDisclosure`) deliberately gives such a
+// frame the width of the box it is under, because measuring the frame only ever returns the panel
+// width it already had. Measuring it *again* on this side and then widening the box to match closes
+// that loop from the outside: the box chases the panel it just widened, and a `.h2` docs figure grew
+// until it hit the window-width cap. A fill frame is as wide as it is told to be; only content with
+// a width of its own gets to move the box.
+private fun isFillWidthIframe(element: Element): Boolean {
+    if (element.tagName.uppercase() != "IFRAME") return false
+    if ((element.getAttribute("data-afield-autosize") ?: "").trim().lowercase() != "off") return false
+    val html = element as? HTMLElement ?: return false
+    if (dataAttributePixelsOrZero(html, "data-afield-intrinsic-width") > 0.0) return false
+    val inline = html.style.width.trim().lowercase()
+    return inline.isEmpty() || inline == "auto" || inline.endsWith("%")
+}
+
+private fun containsFillWidthIframe(element: Element): Boolean =
+    isFillWidthIframe(element) ||
+        element.querySelectorAll("iframe").asList().any { it is Element && isFillWidthIframe(it) }
+
 private fun fitBoxWidthToOutputsForScreenshot(box: HTMLElement, outputArea: HTMLElement) {
     val currentWidth = box.getBoundingClientRect().width
     val maxContentWidth = outputArea.querySelectorAll(".disclosure-content").asList()
         .mapNotNull { it as? HTMLElement }
         .map { content ->
-            val scrollW = content.scrollWidth.toDouble()
+            val contentIsFillWidth = containsFillWidthIframe(content)
+            val scrollW = if (contentIsFillWidth) 0.0 else content.scrollWidth.toDouble()
             val contentRect = content.getBoundingClientRect()
             val childW = content.children.asList()
                 .mapNotNull { child ->
                     val element = child
                     if (!isOverlayVisible(element)) return@mapNotNull null
+                    if (containsFillWidthIframe(element)) return@mapNotNull null
                     val edgeW = element.getBoundingClientRect().right - contentRect.left
                     val html = element as? HTMLElement
                     val intrinsicWidth =
@@ -1603,14 +1625,21 @@ private fun fitBoxWidthToOutputsForScreenshot(box: HTMLElement, outputArea: HTML
     val disclosureWidth = (maxContentWidth + 56.0)
         .coerceAtMost(max(1040.0, window.innerWidth.toDouble() * 0.94))
 
+    // A panel holding a fill frame is already exactly as wide as it should be -- the auto-sizer gave
+    // it the width of its box. Overwriting that with the width the *other* panels needed shrinks it,
+    // and because the auto-size passes keep running after this and put the box width back, the panel
+    // ends up wider than the clip that was measured here: the `.h2` table spilled past the right edge
+    // of the figure with its `value` column outside the frame. Leave those panels alone.
     outputArea.querySelectorAll(".disclosure").asList()
         .mapNotNull { it as? HTMLElement }
+        .filterNot(::containsFillWidthIframe)
         .forEach { disclosure ->
             disclosure.style.width = "${disclosureWidth}px"
             disclosure.style.maxWidth = "none"
         }
     outputArea.querySelectorAll(".disclosure-content").asList()
         .mapNotNull { it as? HTMLElement }
+        .filterNot(::containsFillWidthIframe)
         .forEach { content ->
             content.style.width = "${disclosureWidth}px"
             content.style.maxWidth = "none"

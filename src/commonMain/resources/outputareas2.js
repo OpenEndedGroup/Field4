@@ -273,6 +273,38 @@ function disclosureInterface(container) {
                 return { width, height };
         }
 
+        // `data-afield-autosize="off"` says two things: do not wait for this frame to report a
+        // size, and -- when it also declares no width of its own -- it has none to report.
+        // `iframe_autosize.js` returns early for such a frame, so `afieldIntrinsicWidth` never
+        // arrives and the width fallback below measures the frame's own box, which for a
+        // `width:100%` frame *is* the panel we are trying to size. The measurement can only ever
+        // confirm the width the panel already had; a `.h2` value explorer opened at the 200px
+        // header width and stayed there forever.
+        function isFillWidthIframe(iframe) {
+                if (!(iframe instanceof HTMLIFrameElement)) return false;
+                if (normalizedCssValue(iframe.getAttribute("data-afield-autosize")) !== "off") return false;
+                if (parsePixels(iframe.dataset.afieldIntrinsicWidth || "") > 0) return false;
+                return !hasConcreteCssSize(iframe.style.width) &&
+                        !hasConcreteCssSize(iframe.getAttribute("width") || "");
+        }
+
+        // The honest natural width for a fill frame is the room the owning box gives the panel:
+        // from the panel's own left edge to the box's right edge. Measuring outwards like this is
+        // the whole point -- anything inside the panel is downstream of the width we are choosing.
+        // It seeds the width and never caps it: a non-nested panel is deliberately left
+        // `maxW: POSITIVE_INFINITY` by `boundsForId`, and content with a real intrinsic width still
+        // wins the `Math.max` below. With no owning box (a standalone page) it contributes nothing
+        // and the old behaviour stands.
+        function fillWidthForDisclosure(d) {
+                if (!d || d.inline || !d.cw || !d.wrap) return 0;
+                if (!Array.from(d.cw.querySelectorAll("iframe")).some(isFillWidthIframe)) return 0;
+                const box = typeof d.wrap.closest === "function" ? d.wrap.closest(".box") : null;
+                if (!box) return 0;
+                return Math.max(0, Math.floor(
+                        box.getBoundingClientRect().right - d.wrap.getBoundingClientRect().left
+                ));
+        }
+
         function iframeIntrinsicSize(iframe) {
                 if (!(iframe instanceof HTMLIFrameElement)) return { width: 0, height: 0 };
 
@@ -386,8 +418,21 @@ function disclosureInterface(container) {
 
                         if (node instanceof HTMLIFrameElement) {
                                 const iframeSize = iframeIntrinsicSize(node);
-                                width = Math.max(width, iframeSize.width);
-                                height = Math.max(height, iframeSize.height);
+                                // An iframe stacked under a sibling -- the `.h2` explorer sits below its
+                                // own summary row of `outliner` / `columns` links, in one flex column --
+                                // starts partway down the content box, so its own height is not the whole
+                                // content height. Every non-iframe node below already measures from the
+                                // content edge; the iframe branch skipping that left the panel short by
+                                // exactly the height of whatever sat above the frame.
+                                const frameRect = node.getBoundingClientRect();
+                                const offsetLeft = Math.max(0, frameRect.left - box.left - paddingLeft);
+                                const offsetTop = Math.max(0, frameRect.top - box.top - paddingTop);
+                                if (iframeSize.width > 0) {
+                                        width = Math.max(width, Math.ceil(offsetLeft + iframeSize.width));
+                                }
+                                if (iframeSize.height > 0) {
+                                        height = Math.max(height, Math.ceil(offsetTop + iframeSize.height));
+                                }
                                 return;
                         }
 
@@ -406,7 +451,7 @@ function disclosureInterface(container) {
                         }
                 });
 
-                width = Math.max(width + paddingX, headerWidth(d));
+                width = Math.max(width + paddingX, headerWidth(d), fillWidthForDisclosure(d));
                 height = Math.max(height + paddingY, 20);
                 return { width, height };
         }
