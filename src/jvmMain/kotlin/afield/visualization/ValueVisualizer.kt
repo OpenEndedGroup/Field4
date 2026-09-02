@@ -1306,9 +1306,67 @@ object ValueVisualizer {
             append(formatNumericLiteral(v.w()))
             append(formatPunctuation(")"))
         }
-        // The dominant payload is the text; the panel just draws the (x, y) arrow.
         return withLinalgThumbnail(text, VEC_THUMBNAIL_SIZE, VEC_THUMBNAIL_SIZE) {
-            renderVec2Thumbnail(v.x(), v.y())
+            renderVec4Thumbnail(v.x(), v.y(), v.z(), v.w())
+        }
+    }
+
+    /**
+     * A `vec4` as four signed bars from a shared zero line, labelled `x`/`y`/`z`/`w`.
+     *
+     * It used to draw the `(x, y)` arrow and nothing else — the panel showed a 2D vector for a 4D
+     * value and dropped `z` and `w` without saying so, which is a picture that is simply wrong for
+     * the common case of four numbers packed together for a shader. Four numbers have no faithful
+     * arrow, so this shows them as four numbers.
+     *
+     * Bars share one scale (the largest magnitude), so relative size is readable across components,
+     * and they take their colour from [matrixCellColor] — the same diverging positive/negative ramp
+     * the matrix grids use, since this is the same question about the same kind of value. A
+     * non-finite component gets that helper's distinct dark-red cell rather than a bar of NaN
+     * height. Returns null when every component is non-finite, which [withLinalgThumbnail] reads as
+     * "text only".
+     */
+    private fun renderVec4Thumbnail(x: Float, y: Float, z: Float, w: Float): String? {
+        val comps = listOf("x" to x, "y" to y, "z" to z, "w" to w)
+        if (comps.none { it.second.isFinite() }) return null
+
+        val size = VEC_THUMBNAIL_SIZE.toDouble()
+        val maxAbs = comps.mapNotNull { (_, c) -> c.takeIf { it.isFinite() }?.let { abs(it.toDouble()) } }
+            .maxOrNull() ?: 0.0
+        val labelBand = 11.0
+        val plotTop = 4.0
+        val plotBottom = size - labelBand
+        val zero = (plotTop + plotBottom) / 2.0
+        val halfHeight = (plotBottom - zero) - 2.0
+        val slot = size / comps.size
+        val barWidth = slot * 0.52
+
+        return buildString {
+            append(svgOpen(VEC_THUMBNAIL_SIZE, VEC_THUMBNAIL_SIZE))
+            appendAxis(this, 3.0, zero, size - 3.0, zero)
+            comps.forEachIndexed { i, (label, value) ->
+                val cx = slot * (i + 0.5)
+                val left = cx - barWidth / 2.0
+                if (!value.isFinite()) {
+                    append(
+                        "<rect x='${plotNum(left)}' y='${plotNum(zero - 3.0)}' width='${plotNum(barWidth)}' " +
+                            "height='6' fill='${matrixCellColor(value, maxAbs)}'/>"
+                    )
+                } else {
+                    val t = if (maxAbs > 0.0) abs(value.toDouble()) / maxAbs else 0.0
+                    val h = (t * halfHeight).coerceAtLeast(if (value == 0f) 0.0 else 1.0)
+                    val top = if (value >= 0f) zero - h else zero
+                    append(
+                        "<rect x='${plotNum(left)}' y='${plotNum(top)}' width='${plotNum(barWidth)}' " +
+                            "height='${plotNum(h)}' fill='${matrixCellColor(value, maxAbs)}'/>"
+                    )
+                }
+                append(
+                    "<text x='${plotNum(cx)}' y='${plotNum(size - 2.0)}' fill='#666' font-size='7' " +
+                        "font-family='monospace' text-anchor='middle'>$label</text>"
+                )
+            }
+            append("</svg>")
         }
     }
 

@@ -38,11 +38,43 @@ class LinalgThumbnailVisualizerTest {
         assertTrue(">x<" in html && ">y<" in html && ">z<" in html, "expected x/y/z axis labels")
     }
 
+    /**
+     * A vec4's panel has to account for all four components.
+     *
+     * This test used to assert only that *some* SVG appeared, which is how `formatVec4` came to draw
+     * the `(x, y)` arrow and silently drop `z` and `w` — a 2D picture of a 4D value, with a passing
+     * test over it. So the assertions are now about the four components specifically: a labelled bar
+     * each, and the diverging sign colours the matrix grids already use.
+     */
     @Test
-    fun `vec4 draws the xy panel beneath its text`() {
+    fun `vec4 draws a labelled signed bar for every component`() {
         val html = visualize(Vector4f(1f, 0f, -1f, 0.5f))
         assertTrue("vec4" in html, "expected the vec4 text head")
         assertTrue("<svg" in html, "expected an appended SVG thumbnail")
+        listOf("x", "y", "z", "w").forEach {
+            assertTrue(">$it<" in html, "expected a `$it` axis label — all four components are shown")
+        }
+        assertTrue(Regex("<rect").findAll(html).count() >= 4, "expected one bar per component")
+        // 1f is positive and -1f negative at the same magnitude, so both ends of the ramp appear.
+        assertTrue("#66ccff" in html, "expected the positive end of the diverging ramp for x = 1")
+        assertTrue("#f88833" in html, "expected the negative end of the ramp for z = -1")
+        assertFalse("<polygon" in html, "a vec4 is not an arrow; that was the bug")
+    }
+
+    /** Every component non-finite leaves the text alone rather than drawing an empty frame. */
+    @Test
+    fun `an all-NaN vec4 falls back to text only`() {
+        val html = visualize(Vector4f(Float.NaN, Float.NaN, Float.NaN, Float.NaN))
+        assertTrue("vec4" in html, "expected the vec4 text head")
+        assertFalse("<svg" in html, "nothing to draw, so no panel")
+    }
+
+    /** One bad component still draws the others. */
+    @Test
+    fun `a partly NaN vec4 still draws the finite components`() {
+        val html = visualize(Vector4f(2f, Float.NaN, -3f, 1f))
+        assertTrue("<svg" in html, "expected a panel for the three finite components")
+        assertTrue("#4a3030" in html, "expected the non-finite cell colour for y")
     }
 
     @Test
