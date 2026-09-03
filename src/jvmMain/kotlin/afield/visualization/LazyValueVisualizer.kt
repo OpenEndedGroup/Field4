@@ -70,11 +70,21 @@ object H2ValueRegistry {
      * registries are the pair of extension points a third-party type reaches Field through, and
      * having them disagree about what "registered for this type" means is the bug twice.
      */
-    internal fun adapt(value: Any): H2ValueSnapshot? {
+    internal fun adapt(value: Any): H2ValueSnapshot? = adapterFor(value)?.invoke(value)
+
+    /**
+     * The adapter registered for [value]'s type, **without running it**.
+     *
+     * Split from [adapt] for the explorer's drill: deciding whether a row can be entered asks this
+     * question once per visible row, and an adapter is arbitrary user code — `Box`'s walks a
+     * property bag, `DataFrame`'s wraps a frame. Answering "is one registered" by invoking it would
+     * do that work up to a windowful of times to render chevrons nobody clicked.
+     */
+    internal fun adapterFor(value: Any): ((Any) -> H2ValueSnapshot)? {
         var clazz: Class<*>? = value::class.java
         while (clazz != null) {
-            adapters[clazz]?.let { return it(value) }
-            findInInterfaceClosure(clazz.interfaces)?.let { return it(value) }
+            adapters[clazz]?.let { return it }
+            findInInterfaceClosure(clazz.interfaces)?.let { return it }
             clazz = clazz.superclass
         }
         return null
@@ -131,15 +141,20 @@ private object H2TokenRetention {
 object LazyValueVisualizer {
     fun visualize(value: Any?, appendable: Boolean = false): String {
         val adapted = value?.let { H2ValueRegistry.adapt(it) }
-        if (adapted == null && !isHeavyStructure(value)) return ValueVisualizer.visualize(value, appendable = appendable)
+        if (adapted == null && !isExplorable(value)) return ValueVisualizer.visualize(value, appendable = appendable)
 
         val rawValue = adapted?.value ?: value
-        val wrapped = wrapForInspector(rawValue, title = adapted?.title ?: "value")
+        // `wrapUnadapted`, not `wrapForInspector`: `adapted` above is this value's registry lookup,
+        // and `rawValue` is already the substitute. The front door would only run the registry a
+        // second time over that substitute.
+        val wrapped = wrapUnadapted(rawValue, title = adapted?.title ?: "value")
         val token = "h2-${UUID.randomUUID()}"
         H2TokenRetention.remember(token, rawValue)
         val outlinerPath = Inspector.linkPathFor(wrapped ?: "null", browsePath = H2_OUTLINER_PATH, uid = token)
         val columnsPath = Inspector.linkPathFor(wrapped ?: "null", browsePath = H2_COLUMNS_PATH, uid = token)
         val embeddedPath = "$H2_EMBED_EXPLORER_PATH?root=$token"
+        val ownerUid = Box.context.get()?.id
+        val titleForViews = adapted?.title?.ifBlank { null } ?: "Value"
 
         return buildString {
             append("<div class='value-viz-h2")
@@ -149,18 +164,57 @@ object LazyValueVisualizer {
             append("<span style='color:#9cf;'>")
             append(escapeHtml(adapted?.summary ?: summary(rawValue)))
             append("</span>")
-            append("<a href='")
-            append(escapeHtmlAttr(outlinerPath))
-            append("' target='_blank' style='color:#8cf;text-decoration:none;'>outliner</a>")
-            append("<a href='")
-            append(escapeHtmlAttr(columnsPath))
-            append("' target='_blank' style='color:#777;text-decoration:none;'>columns</a>")
+            append(outputAreaLinkHtml(outlinerPath, "outliner", "#8cf", ownerUid, titleForViews))
+            append(outputAreaLinkHtml(columnsPath, "columns", "#777", ownerUid, titleForViews))
             append("</div>")
             append("<iframe data-afield-autosize='off' src='")
             append(escapeHtmlAttr(embeddedPath))
             append("' loading='lazy' style='position:static;display:block;width:100%;height:${H2_IFRAME_HEIGHT_PX}px;flex:1 1 auto;min-height:0;border:1px solid #333;border-radius:4px;background:#000;'></iframe>")
             append("</div>")
         }
+    }
+
+    /**
+     * One of the panel's two view links, opening **in the box's own output area** rather than a
+     * browser tab.
+     *
+     * `afieldOpenLazyValueInOutputArea` (`jsMain/Outputs.kt`) has done this since before `.h2` grew
+     * an explorer: it reads the three `data-afield-view-*`/`data-afield-box-uid` attributes and hands
+     * them to `upsertLazyValueViewer`, which opens a disclosure in the output area with the iframe
+     * inside it. The inline `.h` expander [lazyInlineExpanderHtml] renders its own "columns" link
+     * exactly this way. These two links were the only place in the file that did not, and a `.h2`
+     * panel is the surface most likely to be clicked, so a value explored from a box left the box.
+     *
+     * `target="_blank"` stays as the `href` fallback, which is what happens when the page's JS is
+     * absent — a docs capture, a saved page, an offline viewer. The handler returns false, so the
+     * navigation only occurs when nothing claimed the click.
+     *
+     * [ownerUid] is null outside a box's execution context. There is no output area to open into
+     * then, so the link degrades to the old behaviour rather than becoming inert.
+     */
+    private fun outputAreaLinkHtml(
+        path: String,
+        label: String,
+        colour: String,
+        ownerUid: String?,
+        viewTitle: String
+    ): String = buildString {
+        append("<a href='")
+        append(escapeHtmlAttr(path))
+        if (!ownerUid.isNullOrBlank()) {
+            append("' data-afield-view-src='")
+            append(escapeHtmlAttr(path))
+            append("' data-afield-box-uid='")
+            append(escapeHtmlAttr(ownerUid))
+            append("' data-afield-view-title='")
+            append(escapeHtmlAttr("$viewTitle — $label"))
+            append("' onclick='window.afieldOpenLazyValueInOutputArea && window.afieldOpenLazyValueInOutputArea(this); return false;'")
+            append(" style='color:$colour;text-decoration:none;cursor:pointer;'>")
+        } else {
+            append("' target='_blank' style='color:$colour;text-decoration:none;'>")
+        }
+        append(label)
+        append("</a>")
     }
 
     private fun summary(value: Any?): String = when (value) {
@@ -170,13 +224,17 @@ object LazyValueVisualizer {
             ?: "${value::class.simpleName ?: "List"} (size=${value.size})"
         is Array<*> -> unitCollectionSummary(value.asList(), value::class.simpleName ?: "Array")
             ?: "${value::class.simpleName ?: "Array"} (size=${value.size})"
+        is Collection<*> -> "${value::class.simpleName ?: "Collection"} (size=${value.size})"
         is IntArray -> "IntArray (size=${value.size})"
         is LongArray -> "LongArray (size=${value.size})"
         is FloatArray -> "FloatArray (size=${value.size})"
         is DoubleArray -> "DoubleArray (size=${value.size})"
         is FloatBuffer -> "FloatBuffer (pos=${value.position()}, limit=${value.limit()}, capacity=${value.capacity()})"
         is IntBuffer -> "IntBuffer (pos=${value.position()}, limit=${value.limit()}, capacity=${value.capacity()})"
-        else -> value::class.simpleName ?: value::class.java.simpleName
+        // A reflected domain object gets a property count, because "Foo" alone tells a person
+        // nothing about whether the tree below it is worth opening.
+        else -> if (H2Reflect.isExplorableObject(value)) H2Reflect.summaryLine(value)
+        else value::class.simpleName ?: value::class.java.simpleName
     }
 
     private fun unitCollectionSummary(values: List<*>, kind: String): String? {
@@ -192,14 +250,57 @@ object LazyValueVisualizer {
         return "$kind (size=${values.size})$suffix"
     }
 
+    /**
+     * Whether `.h2` engages for [value] at all, as opposed to handing it straight to `.h`.
+     *
+     * The union of two rules, kept separate because they are settled by different arguments:
+     *
+     *  - [isHeavyStructure] — a collection or buffer. **There is no size threshold here, and that
+     *    is the point.** This gate used to be strictly narrower than the machinery behind it: it
+     *    admitted `IntArray` but not `ByteArray`, `List` but not `Set`, while `wrapForInspector`
+     *    below and `makeSource` in `h2explorer.kt` both already rendered all of them. The gate's job
+     *    is to admit exactly what the three downstream surfaces can draw, so the rule is now
+     *    "anything with indexable elements", and any future addition belongs in all three places or
+     *    none.
+     *  - [H2Reflect.isExplorableObject] — a domain object with properties worth a tree. See that
+     *    function for why the property floor is 2 rather than `.h`'s elision point.
+     */
+    private fun isExplorable(value: Any?): Boolean =
+        isHeavyStructure(value) || H2Reflect.isExplorableObject(value)
+
+    /**
+     * Whether `.h2` would open an explorer for [value] rather than hand it to `.h`.
+     *
+     * The same question the opening guard in [visualize] asks, exposed because the explorer's drill
+     * has to ask it per row: a row can be entered exactly when the value behind it is one `.h2`
+     * would have explored had someone typed `.h2` on it directly. Deliberately *this* function and
+     * not a structural copy of it in `h2explorer.kt` — there are already three type ladders over
+     * this value space and a fourth that disagreed with them would put a chevron on a row that
+     * opens empty, or withhold one from a row that would have opened fine.
+     */
+    internal fun canExplore(value: Any?): Boolean =
+        value != null && (H2ValueRegistry.adapterFor(value) != null || isExplorable(value))
+
+    /**
+     * A collection, array or buffer — something whose *elements* are the content.
+     *
+     * `Collection` rather than `List` covers a `Set`, an `ArrayDeque` and a `Queue`; the price is
+     * that [wrapForInspector] and `makeSource` snapshot a non-`List` collection with `toList()`,
+     * because both surfaces address rows by index and only a `List` can answer that without a copy.
+     * A `List` therefore keeps its no-copy path deliberately, ahead of the general case.
+     */
     private fun isHeavyStructure(value: Any?): Boolean {
         return value is Map<*, *> ||
-            value is List<*> ||
+            value is Collection<*> ||
             value is Array<*> ||
+            value is ByteArray ||
+            value is ShortArray ||
             value is IntArray ||
             value is LongArray ||
             value is FloatArray ||
             value is DoubleArray ||
+            value is BooleanArray ||
+            value is CharArray ||
             value is FloatBuffer ||
             value is IntBuffer
     }
@@ -283,7 +384,69 @@ internal fun lazyInlineExpanderHtml(
     }
 }
 
-private fun wrapForInspector(value: Any?, title: String? = null): Any? {
+/**
+ * The `Browsable` (or bare value) that `/tree` and `/browse` show for [value].
+ *
+ * `internal` rather than private because `H2Reflect`'s reflective tree re-enters it for each
+ * property: a property holding a list must get the same paging a top-level list gets, or the two
+ * routes disagree about the same object depending on how you reached it.
+ *
+ * ## A registered adapter wins at every depth, not only at the root
+ *
+ * [LazyValueVisualizer.visualize] consults [H2ValueRegistry] for the value a person typed `.h2` on,
+ * and until this function did too, nothing consulted it again. That made the registry a *root-only*
+ * mechanism, which is not what it reads like at its call sites, and it broke the one invariant the
+ * `Box` adapter exists to hold: the adapter reports `liveKi` rather than reading `Box.ki` — a
+ * `lazyVar` that compiles a K2 REPL engine on read — and then hands `box.properties` to the map
+ * pager. `children`, `parents`, `nested` and `nestedIn` are `Delegation` properties, so they sit in
+ * that bag holding raw `Box` objects, the pager resolves an element through this function, and the
+ * reflective default took whatever the arms below did not claim. A neighbouring box reached at
+ * `properties -> children -> [0]` was therefore reflected and its `ki` read. `H2Reflect`'s own KDoc
+ * states why that must not happen; the guard simply did not survive one hop.
+ *
+ * Adapters are also the better rendering wherever they apply, so this is a fix and a feature: a
+ * nested `DataFrame` or `FrameBufferGroup` now pages through its own adapter instead of being
+ * reflected into `position`/`limit`.
+ *
+ * The dispatch is deliberately **one hop, not a loop**. An adapter's substitute is handed to
+ * [wrapUnadapted], which never re-consults the registry, so a pair of adapters that substituted for
+ * each other cannot spin. `H2ValueSnapshot.value` also defaults to substituting nothing, so an
+ * adapter written only to supply a `summary` hands back the object it was given — the `!==` check is
+ * what keeps that case a leaf rather than an infinite regress. All three adapters in the tree today
+ * substitute (`Box` -> map, `DataFrame` -> list, `FrameBufferGroup` -> array), so both guards are
+ * load-bearing for the next adapter rather than for these.
+ */
+internal fun wrapForInspector(value: Any?, title: String? = null): Any? {
+    val adapted = value?.let { H2ValueRegistry.adapt(it) }
+    if (adapted != null && adapted.value !== value) {
+        return wrapUnadapted(adapted.value, adaptedLabel(title, adapted))
+    }
+    return wrapUnadapted(value, title)
+}
+
+/**
+ * The node label for a value an adapter substituted.
+ *
+ * Same `label — summary` shape `H2ReflectiveBrowsable.heading()` uses, and for the same reason: a
+ * nested box reached at `[0]` reads `[0] — Box neighbour`, because `[0]` alone does not say which
+ * box and the adapter's own title does not say where it sits. A caller with no label, or the top
+ * level's placeholder `"value"`, takes the adapter's title unchanged.
+ */
+private fun adaptedLabel(callerTitle: String?, adapted: H2ValueSnapshot): String? {
+    val own = adapted.title ?: adapted.summary
+    if (own.isNullOrBlank()) return callerTitle
+    if (callerTitle.isNullOrBlank() || callerTitle == "value") return own
+    return "$callerTitle — $own"
+}
+
+/**
+ * [wrapForInspector] with the registry already consulted.
+ *
+ * Split out so that the adapter lookup happens exactly once per value: [LazyValueVisualizer.visualize]
+ * has already adapted the root before it wraps, and calling the front door there would run the
+ * registry over the substitute for nothing.
+ */
+private fun wrapUnadapted(value: Any?, title: String? = null): Any? {
     return when (value) {
         null -> null
         is Quantity -> QuantityBrowsable(value)
@@ -305,7 +468,14 @@ private fun wrapForInspector(value: Any?, title: String? = null): Any? {
         is CharArray -> PagedListBrowsable(value.asList(), title = title)
         is FloatBuffer -> FloatBufferBrowsable(value, title = title)
         is IntBuffer -> IntBufferBrowsable(value, title = title)
-        else -> value
+        // After `List`, so a list keeps the no-copy path: a `Set` or a `Queue` is snapshotted
+        // because the pager addresses rows by index and only a `List` can do that in place.
+        is Collection<*> -> PagedListBrowsable(value.toList(), title = title)
+        // The reflective default, reached only for types with no registered adapter — `wrapForInspector`
+        // has already taken those. Returns null for anything `H2Reflect` declines — a scalar, a
+        // platform type, a value whose `.h` rendering is already the whole story — and then the raw
+        // value falls through to the Inspector's leaf renderer, exactly as before this existed.
+        else -> H2Reflect.browsableFor(value, title) ?: value
     }
 }
 
@@ -762,3 +932,14 @@ inline fun <reified T : Any> registerH2Value(noinline adapter: (T) -> H2ValueSna
 }
 
 internal fun h2GetRawValue(token: String): Any? = H2TokenRetention.fetch(token)
+
+/**
+ * Test seam: the value a registered `.h2` adapter substitutes for [value], or [value] itself when
+ * no adapter matches.
+ *
+ * [H2ValueRegistry] is an object with an `internal adapt`, and the substitution it performs is the
+ * whole content of a hand-written adapter — so without this, an adapter's *shape* (does an `Fn`
+ * become an x/f(x) table?) could only be checked through the full HTML string, which is a test that
+ * passes on a coincidence.
+ */
+internal fun h2AdaptedValue(value: Any): Any? = H2ValueRegistry.adapt(value)?.value ?: value

@@ -1,5 +1,7 @@
 package afield.server
 
+import afield.H2Property
+import afield.H2Reflect
 import afield.Handled
 import afield.RunsAt
 import afield.h2GetRawValue
@@ -35,14 +37,24 @@ private data class H2Request(
     val root: String? = null,
     val start: Int? = null,
     val count: Int? = null,
-    val stride: Int? = null
+    val stride: Int? = null,
+    /**
+     * Row indices from the retained root to the value being viewed, outermost first.
+     *
+     * The client owns the path and the server re-resolves it from the root on every request, so a
+     * drill mints no new token and inherits the root's ten-minute lifetime rather than starting its
+     * own. `[7, 3]` means "row 7 of the root, then row 3 of that".
+     */
+    val path: List<Int>? = null
 )
 
 @Serializable
 private data class H2Row(
     val index: Int,
     val key: String? = null,
-    val cells: List<String>
+    val cells: List<String>,
+    /** Whether this row holds a value `.h2` would explore, so the client can offer to enter it. */
+    val enterable: Boolean = false
 )
 
 @Serializable
@@ -57,7 +69,12 @@ private data class H2OpenResponse(
     val maxStride: Int,
     val defaultStride: Int,
     val columnNames: List<String>,
-    val hasKeys: Boolean = false
+    val hasKeys: Boolean = false,
+    val textColumns: List<Int> = emptyList(),
+    /** One label per path element, for the client's trail back out. Empty at the root. */
+    val breadcrumb: List<String> = emptyList(),
+    /** The path actually resolved, which is the request's path truncated where it stopped. */
+    val path: List<Int> = emptyList()
 )
 
 @Serializable
@@ -72,6 +89,7 @@ private data class H2WindowResponse(
     val stride: Int,
     val columnNames: List<String>,
     val hasKeys: Boolean = false,
+    val textColumns: List<Int> = emptyList(),
     val rows: List<H2Row>
 )
 
@@ -90,6 +108,19 @@ private interface H2Source {
     val maxStride: Int
     val defaultStride: Int
     val hasKeys: Boolean get() = false
+
+    /**
+     * Column indices the client must render as text: no decimal alignment, no z-score banding.
+     *
+     * The client decides numeric-ness per *cell* and then pads every numeric cell to the column's
+     * widest fraction (`makeAlignedNumberNode`), which is right for a buffer or a numeric stream and
+     * wrong for a heterogeneous column. A property table's value column holds `7`, `0.25` and
+     * `trail-7` at once, so an `Int` property rendered as `7.00` — measured, not hypothetical — and
+     * the column's mean and standard deviation were computed over whichever cells happened to
+     * parse. Only the source knows a column is heterogeneous, so only the source can say.
+     */
+    val textColumns: List<Int> get() = emptyList()
+
     fun normalizeStride(raw: Int?): Int {
         val s = (raw ?: defaultStride).coerceIn(minStride, maxStride)
         return s
@@ -98,6 +129,56 @@ private interface H2Source {
     fun totalRows(stride: Int): Int
     fun columns(stride: Int): List<String>
     fun rows(start: Int, count: Int, stride: Int): List<H2Row>
+
+    /**
+     * The value behind row [index], or null when this source's rows are not values you can enter.
+     *
+     * Null is the default and the honest answer for the buffer and primitive-array sources: their
+     * rows are numbers, and a number is already wholly on screen. Only the three sources whose rows
+     * stand for *other objects* — a list's elements, a map's values, an object's properties —
+     * override it.
+     *
+     * Row-index addressing rather than a key or a name, because that is what the client already
+     * has: the window it rendered is a range of indices, so a click knows its index and nothing
+     * else. It is also why [childAt] must agree with [rows] about ordering, which is why both read
+     * the same backing collection in the same iteration order.
+     */
+    fun childAt(index: Int): Any? = null
+}
+
+/**
+ * Whether row [index] of [source] holds something worth entering.
+ *
+ * Asks `LazyValueVisualizer.canExplore`, which is the same gate that decides whether `.h2` opens an
+ * explorer at all, so a chevron appears exactly where typing `.h2` on that value would have given
+ * you one. Not a structural test written here: this file's `makeSource` is already one of several
+ * ladders over this value space, and a fourth opinion would offer rows that open empty.
+ */
+private fun rowIsEnterable(source: H2Source, index: Int): Boolean =
+    h2CanEnter(source.childAt(index))
+
+/**
+ * Whether [child] is worth offering a way into.
+ *
+ * Type policy is `canExplore`'s and stays there. This adds one thing it cannot answer, because it is
+ * a question about the instance rather than the type: an *empty* container is explorable — `.h2` on
+ * an empty map opens a table of nothing, which is honest at the top level where you asked for it —
+ * but as a row it would be a chevron that opens nothing, and having clicked it you would have to
+ * find your way back for no information.
+ *
+ * Only the three kinds whose emptiness is O(1) are checked. Deliberately not `totalRows` on a
+ * constructed source, which is the fully general answer and the wrong trade: `ListSource`'s
+ * constructor samples up to 512 elements to pick its mode, and this runs once per visible row, so a
+ * windowful of rows would sample tens of thousands of elements to decide which chevrons to draw.
+ */
+private fun h2CanEnter(child: Any?): Boolean {
+    if (!afield.LazyValueVisualizer.canExplore(child)) return false
+    return when (child) {
+        is Collection<*> -> child.isNotEmpty()
+        is Map<*, *> -> child.isNotEmpty()
+        is Array<*> -> child.isNotEmpty()
+        else -> true
+    }
 }
 
 private fun ceilDiv(value: Int, by: Int): Int {
@@ -400,6 +481,18 @@ private class ListSource(private val list: List<*>) : H2Source {
         }
     }
 
+    /**
+     * The element at [index] — except in `NUMERIC_STREAM`, where a row is not an element.
+     *
+     * That mode packs `stride` numbers per row, so row 3 at stride 4 covers elements 12..15 and
+     * there is no single value a click could mean. Null there is the difference between "cannot
+     * enter" and "enters the wrong thing". The other three modes are one row per element, and
+     * `VECTOR` needs no special case: `canExplore` refuses a vector, because `.h` draws its
+     * components better than a property list would.
+     */
+    override fun childAt(index: Int): Any? =
+        if (mode == Mode.NUMERIC_STREAM) null else list.getOrNull(index)
+
     override fun rows(start: Int, count: Int, stride: Int): List<H2Row> {
         val s = stride.coerceAtLeast(1)
         val totalRows = totalRows(s)
@@ -410,12 +503,26 @@ private class ListSource(private val list: List<*>) : H2Source {
         when (mode) {
             Mode.GENERIC -> {
                 for (row in safeStart until safeEnd) {
-                    out.add(H2Row(index = row, cells = listOf(preview(list[row]))))
+                    out.add(
+                        H2Row(
+                            index = row,
+                            cells = listOf(preview(list[row])),
+                            enterable = h2CanEnter(list[row])
+                        )
+                    )
                 }
             }
             Mode.RECORD -> {
                 for (row in safeStart until safeEnd) {
-                    out.add(H2Row(index = row, cells = recordCells(list[row], recordColumns)))
+                    out.add(
+                        H2Row(
+                            index = row,
+                            cells = recordCells(list[row], recordColumns),
+                            // A record row is already flattened to columns, but entering it shows the
+                            // whole map, including any key the uniform-column set left out.
+                            enterable = h2CanEnter(list[row])
+                        )
+                    )
                 }
             }
             Mode.VECTOR -> {
@@ -453,6 +560,17 @@ private class MapSource(private val map: Map<*, *>) : H2Source {
     override fun totalRows(stride: Int): Int = map.size
     override fun columns(stride: Int): List<String> = listOf("value")
 
+    /** The entry *value* at [index]; a map's keys are already whole in the key column. */
+    override fun childAt(index: Int): Any? {
+        if (index < 0 || index >= map.size) return null
+        var i = 0
+        for ((_, v) in map) {
+            if (i == index) return v
+            i++
+        }
+        return null
+    }
+
     override fun rows(start: Int, count: Int, stride: Int): List<H2Row> {
         val safeStart = start.coerceIn(0, map.size)
         val safeEnd = (safeStart + count.coerceAtLeast(0)).coerceIn(safeStart, map.size)
@@ -467,7 +585,8 @@ private class MapSource(private val map: Map<*, *>) : H2Source {
                     H2Row(
                         index = i,
                         key = preview(k),
-                        cells = listOf(preview(v))
+                        cells = listOf(preview(v)),
+                        enterable = h2CanEnter(v)
                     )
                 )
             }
@@ -489,13 +608,124 @@ internal fun h2ExplorerCellsForTesting(
     value: Any?,
     start: Int = 0,
     count: Int = 4,
+    path: List<Int> = emptyList(),
 ): Pair<List<String>, List<List<String>>> {
-    val source = makeSource(value)
+    val (source, _, _) = sourceAtPath(value, path)
     val stride = source.normalizeStride(null)
     return source.columns(stride) to source.rows(start, count, stride).map { it.cells }
 }
 
+/**
+ * Test seam for the drill: what the explorer would show at [path], and how it labels the trail.
+ *
+ * Returns the resolved source's title, the breadcrumb, the path that actually resolved (a stale or
+ * out-of-range step truncates it), and each row's key with whether it can be entered. Exists for the
+ * same reason [h2ExplorerCellsForTesting] does — everything in this file is private, so without a
+ * seam the drill's only oracle would be a browser.
+ */
+internal fun h2ExplorerDrillForTesting(
+    value: Any?,
+    path: List<Int> = emptyList(),
+    count: Int = 32,
+): H2DrillProbe {
+    val (source, breadcrumb, resolved) = sourceAtPath(value, path)
+    val stride = source.normalizeStride(null)
+    val rows = source.rows(0, count, stride)
+    return H2DrillProbe(
+        title = source.title,
+        kind = source.kind,
+        totalRows = source.totalRows(stride),
+        breadcrumb = breadcrumb,
+        resolvedPath = resolved,
+        rows = rows.map { it.key to it.enterable }
+    )
+}
+
+/** What [h2ExplorerDrillForTesting] observed. */
+internal data class H2DrillProbe(
+    val title: String,
+    val kind: String,
+    val totalRows: Int,
+    val breadcrumb: List<String>,
+    val resolvedPath: List<Int>,
+    val rows: List<Pair<String?, Boolean>>
+)
+
+/**
+ * A domain object as one row per property: the property name in the key column, then its value and
+ * declared type.
+ *
+ * `hasKeys` is on, and the name goes in the *key* column rather than a data column, because the
+ * client styles the key column as left-aligned text with its own show/hide toggle
+ * (`getColumnDefs` in `h2_explorer.html`) while every `columnNames` column is styled `"num"` and
+ * right-aligns. A right-aligned property name is the tell that this got wired the other way round.
+ *
+ * Rows come from [H2Reflect.properties] — the same enumerator the `/tree` and `/browse` `Browsable`
+ * reads — so the iframe and the outliner cannot report different children for one object. A
+ * property whose getter threw arrives carrying its failure text and occupies a row; it is not
+ * dropped.
+ */
+private class PropertyRowsSource(private val value: Any) : H2Source {
+    private val properties: List<H2Property> by lazy { H2Reflect.properties(value) }
+
+    override val kind: String = "object"
+    override val title: String = H2Reflect.summaryLine(value)
+    override val minStride: Int = 1
+    override val maxStride: Int = 1
+    override val defaultStride: Int = 1
+    override val hasKeys: Boolean = true
+
+    override fun totalRows(stride: Int): Int = properties.size
+    override fun columns(stride: Int): List<String> = listOf("value", "type")
+
+    /** The property's read value, and null for one whose getter threw — there is nothing to open. */
+    override fun childAt(index: Int): Any? =
+        properties.getOrNull(index)?.takeIf { it.failure == null }?.value
+
+    // Both: the value column mixes numbers, strings, booleans and collection summaries, and the
+    // type column is names. Neither is a numeric series.
+    override val textColumns: List<Int> = listOf(0, 1)
+
+    override fun rows(start: Int, count: Int, stride: Int): List<H2Row> {
+        val safeStart = start.coerceIn(0, properties.size)
+        val safeEnd = (safeStart + count.coerceAtLeast(0)).coerceIn(safeStart, properties.size)
+        if (safeStart >= safeEnd) return emptyList()
+        return (safeStart until safeEnd).map { i ->
+            val p = properties[i]
+            H2Row(
+                index = i,
+                key = p.label,
+                cells = listOf(p.cellText, p.typeName),
+                // A property whose getter threw has no value to enter, whatever its declared type.
+                enterable = p.failure == null && h2CanEnter(p.value)
+            )
+        }
+    }
+}
+
+/**
+ * The [H2Source] for [value], consulting [afield.H2ValueRegistry] first.
+ *
+ * The registry lookup is not optional now that rows can be entered. It used to be: both callers
+ * passed a root, `visualize` had already substituted the adapter's value before retaining it under
+ * the token, and this surface was flat, so no nested value ever reached here. A drill changes that —
+ * every value below the root arrives through [sourceAtPath] — and without the lookup a nested `Box`
+ * would be handed to `PropertyRowsSource`, which reflects, which reads `Box.ki`, which compiles a K2
+ * REPL engine for a box nobody ran. The comment that used to sit on the reflective arm below
+ * predicted exactly this and asked whoever added the drill to fix it here.
+ *
+ * One hop, like `wrapForInspector`: an adapter's substitute is dispatched structurally and never
+ * re-consults the registry, and `!==` keeps an adapter that substitutes nothing from recursing.
+ */
 private fun makeSource(value: Any?): H2Source {
+    if (value != null) {
+        val adapted = afield.H2ValueRegistry.adapterFor(value)?.invoke(value)
+        if (adapted != null && adapted.value !== value) return makeSourceUnadapted(adapted.value)
+    }
+    return makeSourceUnadapted(value)
+}
+
+private fun makeSourceUnadapted(value: Any?): H2Source {
     return when (value) {
         null -> ScalarSource(null)
         is FloatBuffer -> FloatBufferSource(value)
@@ -511,8 +741,46 @@ private fun makeSource(value: Any?): H2Source {
         is List<*> -> ListSource(value)
         is Array<*> -> ListSource(value.asList())
         is Map<*, *> -> MapSource(value)
-        else -> ScalarSource(value)
+        // After `List`, so a list keeps its no-copy path: a `Set` or a `Queue` is snapshotted,
+        // because `rows(start, count)` addresses by index and only a `List` answers that in place.
+        is Collection<*> -> ListSource(value.toList())
+        // The reflective default. `ScalarSource` — one row, one cell, `toString()` — remains the
+        // answer for anything `H2Reflect` declines, which is what every non-collection used to get
+        // and is why forcing a domain object through the gate alone would have shown an empty frame.
+        //
+        else -> if (H2Reflect.isExplorableObject(value)) PropertyRowsSource(value) else ScalarSource(value)
     }
+}
+
+/**
+ * Walk [path] from [rootValue], returning the source to render and one label per step taken.
+ *
+ * Clamps rather than fails. A path can go stale between requests — the value behind it is live box
+ * state, a map can lose the key you were inside, a list can shorten — and the useful answer then is
+ * the deepest still-valid ancestor, not an error dialog. So a step that cannot be resolved ends the
+ * walk, and the returned path is the prefix that worked, which the client adopts as its new
+ * position. That is why [H2OpenResponse] echoes `path` back rather than trusting the request's.
+ *
+ * Labels come from the row the step entered, so the trail reads in the reader's own terms —
+ * `properties` / `children` / `[0]` — rather than as indices.
+ */
+private fun sourceAtPath(rootValue: Any?, path: List<Int>): Triple<H2Source, List<String>, List<Int>> {
+    var source = makeSource(rootValue)
+    val labels = ArrayList<String>(path.size)
+    val taken = ArrayList<Int>(path.size)
+
+    for (index in path) {
+        val child = source.childAt(index) ?: break
+        if (!h2CanEnter(child)) break
+        val label = source.rows(index, 1, source.normalizeStride(null))
+            .firstOrNull()
+            ?.let { it.key ?: it.cells.firstOrNull() }
+            ?: "[$index]"
+        source = makeSource(child)
+        labels.add(label)
+        taken.add(index)
+    }
+    return Triple(source, labels, taken)
 }
 
 private object H2ExplorerProtocol {
@@ -524,7 +792,7 @@ private object H2ExplorerProtocol {
 
         val token = req.root ?: return json.encodeToString(H2ErrorResponse(req.reqId, error = "missing root token"))
         val value = h2GetRawValue(token) ?: return json.encodeToString(H2ErrorResponse(req.reqId, error = "unknown or expired root token"))
-        val source = makeSource(value)
+        val (source, breadcrumb, resolvedPath) = sourceAtPath(value, req.path ?: emptyList())
 
         return when (req.op) {
             "open" -> {
@@ -540,7 +808,10 @@ private object H2ExplorerProtocol {
                         maxStride = source.maxStride,
                         defaultStride = source.defaultStride,
                         columnNames = source.columns(stride),
-                        hasKeys = source.hasKeys
+                        hasKeys = source.hasKeys,
+                        textColumns = source.textColumns,
+                        breadcrumb = breadcrumb,
+                        path = resolvedPath
                     )
                 )
             }
@@ -563,6 +834,7 @@ private object H2ExplorerProtocol {
                         stride = stride,
                         columnNames = source.columns(stride),
                         hasKeys = source.hasKeys,
+                        textColumns = source.textColumns,
                         rows = rows
                     )
                 )

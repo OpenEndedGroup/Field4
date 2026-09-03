@@ -73,6 +73,17 @@ object DataFrameVisualizer {
                 title = "DataFrame"
             )
         }
+
+        // …and say that out loud, because since `H2Reflect` the sentence above stopped being true on
+        // its own. The reflective default claims any type it can read two properties from, and
+        // `DataColumn`/`GroupBy` are neither platform types nor adapter-served, so `.h2` on a column
+        // showed three reflected properties instead of `columnHead`. Measured on
+        // `ValueColumnImpl`/`GroupByImpl`: both `isExplorableObject` before this call and not after.
+        // `DataRow` needs no entry — reflection finds zero readable properties on `DataRowImpl`, so
+        // it fails the two-property floor by itself — but it is named here anyway, because relying on
+        // a third-party implementation detail to enforce our own decision is how this broke once.
+        listOf(DataColumn::class.java, DataRow::class.java, GroupBy::class.java)
+            .forEach { H2Reflect.refuseReflection(it) }
     }
 
     /** `12 rows × 3 columns`, the line worth having above any table. */
