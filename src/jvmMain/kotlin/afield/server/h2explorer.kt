@@ -59,7 +59,8 @@ private data class H2OpenResponse(
     val maxStride: Int,
     val defaultStride: Int,
     val columnNames: List<String>,
-    val hasKeys: Boolean = false
+    val hasKeys: Boolean = false,
+    val textColumns: List<Int> = emptyList()
 )
 
 @Serializable
@@ -74,6 +75,7 @@ private data class H2WindowResponse(
     val stride: Int,
     val columnNames: List<String>,
     val hasKeys: Boolean = false,
+    val textColumns: List<Int> = emptyList(),
     val rows: List<H2Row>
 )
 
@@ -92,6 +94,19 @@ private interface H2Source {
     val maxStride: Int
     val defaultStride: Int
     val hasKeys: Boolean get() = false
+
+    /**
+     * Column indices the client must render as text: no decimal alignment, no z-score banding.
+     *
+     * The client decides numeric-ness per *cell* and then pads every numeric cell to the column's
+     * widest fraction (`makeAlignedNumberNode`), which is right for a buffer or a numeric stream and
+     * wrong for a heterogeneous column. A property table's value column holds `7`, `0.25` and
+     * `trail-7` at once, so an `Int` property rendered as `7.00` — measured, not hypothetical — and
+     * the column's mean and standard deviation were computed over whichever cells happened to
+     * parse. Only the source knows a column is heterogeneous, so only the source can say.
+     */
+    val textColumns: List<Int> get() = emptyList()
+
     fun normalizeStride(raw: Int?): Int {
         val s = (raw ?: defaultStride).coerceIn(minStride, maxStride)
         return s
@@ -524,6 +539,10 @@ private class PropertyRowsSource(private val value: Any) : H2Source {
     override fun totalRows(stride: Int): Int = properties.size
     override fun columns(stride: Int): List<String> = listOf("value", "type")
 
+    // Both: the value column mixes numbers, strings, booleans and collection summaries, and the
+    // type column is names. Neither is a numeric series.
+    override val textColumns: List<Int> = listOf(0, 1)
+
     override fun rows(start: Int, count: Int, stride: Int): List<H2Row> {
         val safeStart = start.coerceIn(0, properties.size)
         val safeEnd = (safeStart + count.coerceAtLeast(0)).coerceIn(safeStart, properties.size)
@@ -586,7 +605,8 @@ private object H2ExplorerProtocol {
                         maxStride = source.maxStride,
                         defaultStride = source.defaultStride,
                         columnNames = source.columns(stride),
-                        hasKeys = source.hasKeys
+                        hasKeys = source.hasKeys,
+                        textColumns = source.textColumns
                     )
                 )
             }
@@ -609,6 +629,7 @@ private object H2ExplorerProtocol {
                         stride = stride,
                         columnNames = source.columns(stride),
                         hasKeys = source.hasKeys,
+                        textColumns = source.textColumns,
                         rows = rows
                     )
                 )

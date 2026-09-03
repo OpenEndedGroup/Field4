@@ -248,7 +248,7 @@
     let openInfo = null;
     let stride = 1;
     let showKeys = true;
-    let windowData = { start: 0, rows: [], totalRows: 0, stride: 1, columnNames: [], hasKeys: false, kind: "unknown" };
+    let windowData = { start: 0, rows: [], totalRows: 0, stride: 1, columnNames: [], hasKeys: false, textColumns: [], kind: "unknown" };
     const pageCache = new Map(); // key => rows
     let inflightWindowKey = null;
     let lastRequestedStart = -1;
@@ -494,6 +494,10 @@
 
     function renderRows() {
         const { rows, start, totalRows, columnNames, hasKeys } = windowData;
+        // Columns the source declared heterogeneous. Without this a property table's value column
+        // pads `7` out to `7.00` to line up with a `0.25` three rows down, and bands both against a
+        // mean computed from whichever cells parsed as numbers.
+        const textColumns = new Set(windowData.textColumns || []);
         suppressScrollEventsUntilMs = performance.now() + 120;
         const rowTemplate = renderHeader(columnNames, hasKeys);
 
@@ -527,7 +531,7 @@
                 const v = cells[i] ?? "";
                 const c = document.createElement("div");
                 const raw = String(v);
-                const looksNumeric = raw !== "" && NUMERIC_RE.test(raw);
+                const looksNumeric = !textColumns.has(i) && raw !== "" && NUMERIC_RE.test(raw);
                 if (looksNumeric) {
                     c.className = `cell num ${bandForNumeric(raw, numericStats[i])}`;
                 } else {
@@ -618,6 +622,7 @@
                 stride: resp.stride || stride,
                 columnNames: resp.columnNames || [],
                 hasKeys: !!resp.hasKeys,
+                textColumns: resp.textColumns || [],
                 kind: resp.kind || openInfo.kind
             };
             openInfo.totalRows = data.totalRows;
@@ -666,6 +671,7 @@
             stride,
             columnNames: resp.columnNames || [],
             hasKeys: !!resp.hasKeys,
+            textColumns: resp.textColumns || [],
             kind: resp.kind || "unknown"
         };
         renderRows();
