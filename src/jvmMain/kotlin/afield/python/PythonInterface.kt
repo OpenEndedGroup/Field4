@@ -1446,9 +1446,10 @@ class PythonInterface {
          *
          * **Both dimensions must stay in `px`.** The output area sizes its panel from the iframe's
          * own declared size and reads it with a `parseFloat`-based parser
-         * (`src/commonMain/resources/outputareas2.js:278-287`); a percentage parses as zero, so it
-         * falls back to measuring an iframe that is itself waiting to be sized, and every embed
-         * ends up in a ~480px column. Held to that by
+         * (`src/commonMain/resources/outputareas2.js`, `parsePixels`). A percentage does **not**
+         * parse as zero -- `parseFloat("100%")` is 100 -- so such a frame claims one hundred pixels,
+         * which loses to the header's floor, and every embed ends up in a ~480px column. Held to
+         * that by
          * [afield.python.PythonOutputContractTest.theEmbedIframeDeclaresBothAxesInPixels].
          *
          * **The background is `transparent`, not `#fff`.** A white frame around a `plotly_dark`

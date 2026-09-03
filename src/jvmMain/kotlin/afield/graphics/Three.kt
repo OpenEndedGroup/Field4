@@ -376,8 +376,12 @@ fun Box.three(
     // and sizes the disclosure to the result — and only then does the CSS stretch the iframe to fill
     // the panel it just caused. The inline size sets the panel; the panel sets the iframe.
     //
-    // `parsePixels` returns 0 for a percentage, so the `width: 100%` that `threeLines` has always
-    // written measures as "no intrinsic width" and the panel falls back to its current size. That is
+    // `parsePixels` is `parseFloat`, so `parsePixels("100%")` is **100**, not 0. The `width: 100%`
+    // that `threeLines` has always written therefore reports an intrinsic width of one hundred
+    // pixels -- positive, and meaningless -- which loses the panel's final `Math.max` to
+    // `headerWidth`'s `CLOSED_W` floor, so the panel keeps its current size. The outcome is the one
+    // this comment always described; the mechanism is not "measures as no intrinsic width", and the
+    // difference matters because 100 > 0 also means the bounding-rect fallback never runs. That is
     // right for an FLine viewer, which wants to fill its column, and wrong for a migrated mesh figure:
     // it silently collapsed 1520- and 2040-pixel-wide galleries to a uniform 1136 and lost a third of
     // every picture. A [width] in pixels is how a figure keeps the size its author drew it at.

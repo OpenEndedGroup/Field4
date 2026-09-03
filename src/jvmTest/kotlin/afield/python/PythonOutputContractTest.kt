@@ -133,7 +133,11 @@ class PythonOutputContractTest {
             val parsed = declared.removeSuffix("px").toDoubleOrNull()
             assertTrue(parsed != null && parsed > 0, "$axis '$declared' does not parse to a positive number")
         }
-        assertFalse(style.contains("%"), "a percentage in $style parses as zero in outputareas2.js")
+        assertFalse(
+            style.contains("%"),
+            "a percentage in $style is meaningless to outputareas2.js: `parsePixels` is `parseFloat`, " +
+                "so \"100%\" reports 100 pixels rather than 0, and the panel keeps its closed size"
+        )
     }
 
     @Test

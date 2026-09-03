@@ -251,9 +251,12 @@ The pixel width matters more than it looks. `field.css` says
 `.disclosure-content iframe { width: 100% !important }`, which reads as though an inline size is
 ignored — it is not. `outputareas2.js` *measures* the output panel from `iframe.style.width` and
 sizes the disclosure to the result, and only then does the CSS stretch the iframe to fill the panel
-it just caused. A percentage measures as "no intrinsic width", which is right for an FLine viewer
-filling its column and wrong for a migrated figure: it silently collapsed 1520- and 2040-pixel-wide
-galleries to a uniform 1136 and lost a third of every picture.
+it just caused. A percentage claims a meaningless size rather than no size — `parsePixels` is
+`parseFloat`, so `"100%"` reports one hundred pixels — and a hundred loses to the header's floor, so
+the panel keeps whatever width it already had. That is right for an FLine viewer filling its column
+and wrong for a migrated figure: it silently collapsed 1520- and 2040-pixel-wide galleries to a
+uniform 1136 and lost a third of every picture. `output_panel_sizing.md` sets out the measurement
+rules in full.
 
 ## Which renderer draws this
 

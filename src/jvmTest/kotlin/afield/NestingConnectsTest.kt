@@ -288,19 +288,28 @@ class NestingConnectsTest {
         SavingContext().loadFromEdnText(edn, dir, initIfCreated = false)
 
         assertEquals(afterFirst, loadedChild.parents.toList(), "a second load must add nothing")
+        // Presence, which is what this can show. Non-duplication is not: `children` is a
+        // `MutableSet<Box>` and `Box` is an `open class` with no `equals` override, so identity
+        // equality over a set makes this count 0 or 1 by construction. The set earns that, not the
+        // code under test, and an earlier message here claimed the credit.
         assertEquals(
             1,
             loadedContainer.children.count { it == loadedChild },
-            "and must not duplicate the edge: ${loadedContainer.children}"
+            "the edge must still be there after a second load: ${loadedContainer.children}"
         )
     }
 
     @Test
     fun everyStoredNestedBoxUnderOneContainerGainsAnEdge() {
         // Sized on the worst real case: `moreNestingBehavior` holds seven live boxes nested in one
-        // container and not one of them has a persisted edge. The floor is asserted, not the shape,
-        // so shrinking the fixture cannot quietly weaken the claim.
+        // container and not one of them has a persisted edge.
         val nestedCount = 7
+        // `nestedCount` builds the fixture AND floors the result below, so on its own it is
+        // self-referential: shrink it to two and the fixture makes two children, the floor asks for
+        // two, and the test passes having proved less. This pins the size against the real case, so
+        // shrinking it fails here instead of quietly weakening the claim. An earlier comment said
+        // the floor already prevented that. It did not.
+        assertTrue(nestedCount >= 7, "the fixture must stay at least as large as moreNestingBehavior")
         val source = fileBackedSession("many-stored-nested")
         val container = boxIn(source, "container").also { it.preamble = markedPreamble }
         source.root.connect(container)

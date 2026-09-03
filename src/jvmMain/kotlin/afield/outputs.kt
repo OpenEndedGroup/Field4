@@ -817,8 +817,10 @@ fun Box.remoteAr(
  * [width] is a pixel count and not a percentage, and that is load-bearing rather than a style
  * choice. An output panel sizes itself to its content, and for an iframe it reads that size from
  * `iframe.style.width` / `.style.height` with a `parseFloat`-based parser
- * (`outputareas2.js`, `iframeIntrinsicSize`); a percentage parses as zero, which means "no
- * intrinsic width". The usual second source is an `afield-iframe-size` event from
+ * (`outputareas2.js`, `iframeIntrinsicSize`). A percentage does **not** parse as zero:
+ * `parseFloat("100%")` is 100, so such a frame claims an intrinsic width of one hundred pixels,
+ * which loses to `headerWidth`'s `CLOSED_W` floor and leaves the panel at its closed size. The
+ * usual second source is an `afield-iframe-size` event from
  * `iframe_autosize.js`, and this iframe opts out of that with `data-afield-autosize="off"` —
  * the panel is `overflow: hidden` with its own scrolling regions, so measuring it would only ever
  * report the size it already had.

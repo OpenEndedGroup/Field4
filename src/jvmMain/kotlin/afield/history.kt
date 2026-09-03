@@ -1336,12 +1336,17 @@ object HistoryManager {
         }
         needsResync.add(box to "parents")
 
-        // Last, and after the removals above, because those are what make it necessary: the passes
-        // above make `children` and `parents` agree with *the restored snapshot*, which for a version
-        // predating `398cb0ca9` means agreeing that a nested box has no container edge. Re-deriving
-        // it here restores the nesting invariant the snapshot could not have recorded. Ordering is
-        // load-bearing — run before the removals and the `linkedParents - desiredParents` pass would
-        // take the edge straight back out.
+        // Last, because the passes above are what make it necessary: they make `children` and
+        // `parents` agree with *the restored snapshot*, which for a version predating `398cb0ca9`
+        // means agreeing that a nested box has no container edge. Re-deriving it here restores the
+        // nesting invariant the snapshot could not have recorded.
+        //
+        // Placed last for that reading, not because reversing it would break: `desiredParents` is
+        // read from `box.parents` *inside* its own pass above, so re-deriving first would simply put
+        // the edge into `desiredParents` and `linkedParents - desiredParents` would not contain it.
+        // An earlier version of this comment claimed the ordering was load-bearing and that running
+        // first would take the edge straight back out. It would not, and saying so sent a reviewer
+        // to the wrong risk.
         reconcileNestingEdges(listOf(box))
     }
 

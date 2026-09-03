@@ -560,7 +560,9 @@ class KeyframeBrowserTest {
     fun theBrowserIframeDeclaresItsWidthInPixels() {
         val html = keyframeBrowserIframe("token", 900, 460)
         // The output area measures the panel from these two declarations with a `parseFloat`-based
-        // parser, and a percentage parses as zero. `width:100%` is how the browser came up 192
+        // parser, and a percentage is meaningless to it: `parseFloat("100%")` is 100, not 0, so the
+        // frame claims a hundred pixels and loses to the header's floor. `width:100%` is how the
+        // browser came up 192
         // pixels wide inside a 200-pixel panel with two thirds of it off the right edge.
         for (axis in listOf("width", "height")) {
             val declared = Regex("""[;"]$axis:\s*([^;"]+)""").find(html)?.groupValues?.get(1)?.trim()

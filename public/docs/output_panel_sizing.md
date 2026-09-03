@@ -48,12 +48,18 @@ The first two go through `parsePixels`
 (`src/commonMain/resources/outputareas2.js:34#function parsePixels`), which is `parseFloat` and
 nothing else, and this is where a percentage width goes wrong.
 
-It is worth being exact about *how*, because four accounts of this bug already existed in the tree
-before this page — both fix commits, the `keyframeBrowser` KDoc at
-`src/jvmMain/kotlin/afield/outputs.kt:817#[width] is a pixel count and not a percentage`, and a
-comment in the test that pins it
-(`src/jvmTest/kotlin/afield/stdlib/KeyframeBrowserTest.kt:563#a percentage parses as zero`) — and all
-four say a percentage "parses as zero" and reason from there. It does not.
+It is worth being exact about *how*, because the tree said otherwise in seven places before this
+page: both fix commits, and five in code — the `keyframeBrowser` KDoc at
+`src/jvmMain/kotlin/afield/outputs.kt#[width] is a pixel count and not a percentage`, a comment in
+the test that pins it
+(`src/jvmTest/kotlin/afield/stdlib/KeyframeBrowserTest.kt#meaningless to it`), the `threeLines`
+comment at
+`src/jvmMain/kotlin/afield/graphics/Three.kt#not 0. The `, the embed-style KDoc at
+`src/jvmMain/kotlin/afield/python/PythonInterface.kt#A percentage does`, and a live assertion
+message at
+`src/jvmTest/kotlin/afield/python/PythonOutputContractTest.kt#is meaningless to outputareas2.js`.
+Every one of them said a percentage "parses as zero" and reasoned from there. It does not — and all
+five have since been corrected against this section.
 `parseFloat("100%")` is **100**. A `width:100%` frame reports an intrinsic width of one hundred
 pixels: a number, positive, and meaningless.
 
@@ -215,7 +221,7 @@ is not the panel a person sees, and the reason is on
 `src/jsMain/kotlin/afield/Main.kt:1514#private fun fitOutputDisclosuresForScreenshot`.
 
 The widths in that picture are pixels in a PNG, so treat them as pixels in a PNG. The measured
-version lives in `tools/run_ui_regressions.py:3333#id="h2-panel-sizing"`, which asserts geometry
+version lives in `tools/run_ui_regressions.py:3447#id="h2-panel-sizing"`, which asserts geometry
 rather than photographing it — see [what is pinned](#what-is-pinned-and-what-is-not).
 
 ## Height is measured from the content edge
@@ -318,7 +324,7 @@ nobody touched would come out `userSized` and never auto-size again.
 kind: browser-driven, building a real box, running real Kotlin, waiting for the auto-size passes to
 settle, and then reading geometry out of the live DOM.
 
-`tools/run_ui_regressions.py:3333#id="h2-panel-sizing"` builds a box at `--w 1040 --h 200`, displays
+`tools/run_ui_regressions.py:3447#id="h2-panel-sizing"` builds a box at `--w 1040 --h 200`, displays
 40 rows as a `.h2` value explorer, and asserts both axes of the resulting panel:
 
 - `tools/run_ui_regressions.py:1045#result.panelTracksBox =` — the panel is within 24px of the box's
@@ -330,7 +336,7 @@ settle, and then reading geometry out of the live DOM.
   the height it declared, which is the height-axis bug, and the case additionally asserts
   `summaryHeight > 0` so that the fixture cannot pass by having nothing above the frame.
 
-`tools/run_ui_regressions.py:3322#id="output-area-basics"` covers the surrounding behaviour —
+`tools/run_ui_regressions.py:3436#id="output-area-basics"` covers the surrounding behaviour —
 `display` creating and replacing channel content, embedded scripts executing, output actually being
 visible — rather than geometry.
 
