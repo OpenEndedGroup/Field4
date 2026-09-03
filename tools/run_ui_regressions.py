@@ -1066,6 +1066,118 @@ try {
 }
 """
 
+H2_DOMAIN_EXPLORER_SNIPPET = """\
+data class Trail(val id: Int, val x: Double, val y: Double, val label: String, val closed: Boolean)
+
+display("dataclass", Trail(7, 0.25, 0.75, "trail-7", true).h2)
+displayOpen("dataclass")
+"""
+
+# The other `.h2` regression exercises a LIST -- the shape `.h2` has always handled. This one
+# exercises a plain domain object, which until `H2Reflect.kt` fell through the gate and rendered as
+# `.h`: no iframe at all. And it asserts the CELLS, not just the geometry, because a domain object
+# that reaches the explorer but arrives as a `ScalarSource` shows one column named "value" holding
+# one `toString()` row -- indistinguishable from an empty frame at a glance, and exactly what fixing
+# the gate alone would have produced. The data class is declared in the box, so this also covers a
+# box-compiled type reaching Kotlin reflection at all.
+H2_DOMAIN_EXPLORER_JS = r"""
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const errors = [];
+const onError = (event) => errors.push(String(event.error && (event.error.stack || event.error.message) || event.message || event));
+window.addEventListener("error", onError);
+const waitFor = async (predicate, timeoutMs = 12000) => {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const value = predicate();
+    if (value) return value;
+    await delay(100);
+  }
+  return predicate();
+};
+try {
+  const box = [...document.querySelectorAll(".box")]
+    .find((candidate) => String(candidate.textContent || "").includes("H2DomainExplorerRegression"))
+    || (window.selectedList && window.selectedList[0])
+    || [...document.querySelectorAll(".box")].at(-1);
+  if (!box) return { ok: false, reason: "box not found", errors };
+
+  const outputArea = await waitFor(() => box.querySelector(".outputArea"), 8000);
+  if (outputArea) {
+    outputArea.style.visibility = "visible";
+    outputArea.style.height = "auto";
+  }
+
+  const frame = await waitFor(() => box.querySelector(".disclosure .value-viz-h2 > iframe"), 12000);
+  if (!frame) return { ok: false, reason: "no h2 iframe: a domain object did not engage .h2 at all", errors };
+
+  // Same origin, so the iframe's own DOM is readable -- which is the only way to see whether the
+  // explorer drew rows or an empty grid.
+  const doc = await waitFor(() => frame.contentDocument, 8000);
+  if (!doc) return { ok: false, reason: "iframe document unreachable", errors };
+
+  await waitFor(() => {
+    const text = String(doc.body && doc.body.innerText || "");
+    return /trail-7/.test(text) ? text : null;
+  }, 15000);
+
+  const bodyText = String(doc.body && doc.body.innerText || "");
+  const summaryText = String((frame.previousElementSibling || {}).innerText || "");
+
+  // The reflected property names, straight out of the constructor.
+  const expected = ["id", "x", "y", "label", "closed"];
+  const found = expected.filter((name) => new RegExp(`(^|\\s)${name}(\\s|$)`, "m").test(bodyText));
+
+  const result = {
+    summaryText: summaryText.slice(0, 160),
+    bodyTextHead: bodyText.slice(0, 400),
+    foundProperties: found,
+    errors,
+  };
+
+  // The summary line names the type and counts its properties, rather than just saying "Trail".
+  result.summaryNamesProperties = /Trail/.test(summaryText) && /5\s+propert/.test(summaryText);
+  // Every constructor property reached the grid.
+  result.allPropertiesRendered = found.length === expected.length;
+  // The declared types are a column of their own, so this is the property table and not a
+  // one-cell scalar fallback.
+  result.rendersDeclaredTypes = /\bInt\b/.test(bodyText) && /\bDouble\b/.test(bodyText) && /\bBoolean\b/.test(bodyText);
+  // And the values are the real ones, not a summary string. Whitespace is collapsed first: the
+  // grid used to split a numeric cell into integer / dot / fraction spans for decimal alignment,
+  // so `0.25` arrived in innerText as "0\n.\n25". The `textColumns` hint now keeps a property
+  // column textual -- an `Int` property rendered as `7.00` before it -- but the flatten stays, so
+  // this assertion cannot come back as a false red if a cell is ever split again.
+  const flat = bodyText.replace(/\s+/g, "");
+  result.rendersValues = /trail-7/.test(flat) && /0\.25/.test(flat) && /0\.75/.test(flat) &&
+    /\btrue\b/.test(bodyText);
+  // The decimal-alignment regression: an Int property must not be padded to the column's widest
+  // fraction. `7.00` in the value column is the exact signature.
+  result.intNotDecimalPadded = !/id7\.00/.test(flat);
+
+  result.ok = result.summaryNamesProperties &&
+    result.allPropertiesRendered &&
+    result.rendersDeclaredTypes &&
+    result.rendersValues &&
+    result.intNotDecimalPadded &&
+    result.errors.length === 0;
+  if (!result.ok) {
+    result.reason = !result.allPropertiesRendered
+      ? `only ${found.length}/5 properties reached the grid: ${found}`
+      : !result.rendersDeclaredTypes
+        ? "no declared-type column, so this is not the property table"
+        : !result.rendersValues
+          ? "property values are missing or summarised"
+          : !result.summaryNamesProperties
+            ? `summary line does not count properties: ${result.summaryText}`
+            : !result.intNotDecimalPadded
+              ? "an Int property was decimal-padded to 7.00 by the numeric column aligner"
+              : "unexpected h2 domain explorer content";
+  }
+  return result;
+} finally {
+  window.removeEventListener("error", onError);
+}
+"""
+
 TOAST_RESTACK_JS = r"""
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const errors = [];
@@ -3226,6 +3338,8 @@ def prepare_generated_files() -> dict[str, Path]:
         "output_area_basics_js": write_generated_file("output-area-basics.js", OUTPUT_AREA_BASICS_JS),
         "h2_panel_sizing_snippet": write_generated_file("h2-panel-sizing.kt", H2_PANEL_SIZING_SNIPPET),
         "h2_panel_sizing_js": write_generated_file("h2-panel-sizing.js", H2_PANEL_SIZING_JS),
+        "h2_domain_explorer_snippet": write_generated_file("h2-domain-explorer.kt", H2_DOMAIN_EXPLORER_SNIPPET),
+        "h2_domain_explorer_js": write_generated_file("h2-domain-explorer.js", H2_DOMAIN_EXPLORER_JS),
         "toast_restack_js": write_generated_file("toast-restack.js", TOAST_RESTACK_JS),
         "controllers_editable_lines_js": write_generated_file("controllers-editable-lines.js", CONTROLLERS_EDITABLE_LINES_JS),
         "controllers_static_lines_js": write_generated_file("controllers-static-lines.js", CONTROLLERS_STATIC_LINES_JS),
@@ -3337,6 +3451,17 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 shell_join(["run", "@last", "--file", str(files["h2_panel_sizing_snippet"]), "--timeout", timeout_text]),
                 "sleep 1.5",
                 shell_join(["page-eval", "--body", "--file", str(files["h2_panel_sizing_js"]), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="h2-domain-explorer",
+            description="A .h2 on a plain domain object opens a real property table -- one row per property, with its declared type and value -- and not the one-cell toString() fallback a non-collection used to get.",
+            commands=[
+                "new-box --name H2DomainExplorerRegression --w 900 --h 260",
+                shell_join(["run", "@last", "--file", str(files["h2_domain_explorer_snippet"]), "--timeout", timeout_text]),
+                "sleep 1.5",
+                shell_join(["page-eval", "--body", "--file", str(files["h2_domain_explorer_js"]), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
         ),
