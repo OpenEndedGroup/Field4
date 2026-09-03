@@ -127,6 +127,16 @@ fun reconcileNestingEdges(boxes: Collection<Box>): Int {
     }
 
     boxes.forEach { box ->
+        // A deleted box gets no edges re-derived either way round. The version of this that lived in
+        // `SavingContext` filtered tombstoned *children* and a tombstoned *container* but never asked
+        // whether `box` itself was deleted, so a tombstone that still carried `nestedIn` — 11 of them
+        // in the surveyed workspace — re-added a `children` edge on its live container, and a live
+        // box under a deleted container gained a `parents` edge that would have fed the deleted box's
+        // preamble back into it. On the document-open path that was invisible, because
+        // `agent_backdoor.kt` prunes tombstoned parents and children immediately afterwards. The
+        // other callers of this function have no such prune.
+        if (box.getPropertyRaw("_tombstone").isTrue()) return@forEach
+
         box.nested
             .filter { !it.getPropertyRaw("_tombstone").isTrue() }
             .forEach { child ->
