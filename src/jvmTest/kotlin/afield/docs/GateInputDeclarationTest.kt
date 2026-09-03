@@ -125,7 +125,9 @@ class GateInputDeclarationTest {
     // What `citationGates` declares
     // -----------------------------------------------------------------------------------------------
 
-    private data class Declared(val trees: List<Pair<String, List<String>>>, val files: Set<String>)
+    private data class DeclaredTree(val dir: String, val includes: List<String>, val excludes: List<String>)
+
+    private data class Declared(val trees: List<DeclaredTree>, val files: Set<String>)
 
     /**
      * The `citationGates` registration block, parsed.
@@ -140,9 +142,12 @@ class GateInputDeclarationTest {
             .find(build)?.groupValues?.get(1)
         assertTrue(block != null, "could not find the citationGates registration in build.gradle.kts")
         val trees = Regex("""inputs\.files\(fileTree\("([^"]+)"\)\s*\{([\s\S]*?)\}\)""")
-            .findAll(block!!)
-            .map { m -> m.groupValues[1] to Regex("""include\("([^"]+)"\)""")
-                .findAll(m.groupValues[2]).map { it.groupValues[1] }.toList() }
+            .findAll(block)
+            .map { m -> DeclaredTree(
+                m.groupValues[1],
+                Regex("""include\("([^"]+)"\)""").findAll(m.groupValues[2]).map { it.groupValues[1] }.toList(),
+                Regex("""exclude\("([^"]+)"\)""").findAll(m.groupValues[2]).map { it.groupValues[1] }.toList(),
+            ) }
             .toList()
         // Inlined rather than bound to a local, and that is not style. KotlinSourceIndex's brace
         // tracking loses this function's body somewhere in the chained `.map { m -> ... }` above, so
@@ -166,10 +171,18 @@ class GateInputDeclarationTest {
         // reading `src/jvmMain/kotlin` as *text* is covered by the same edge for the same reason.
         if (rel == "src" || rel.startsWith("src/")) return "test classpath"
         val isDir = File(root, rel).isDirectory
-        d.trees.forEach { (dir, includes) ->
+        d.trees.forEach { (dir, includes, excludes) ->
             if (rel == dir) return "fileTree(\"$dir\") root"
             if (rel.startsWith("$dir/")) {
                 val sub = rel.removePrefix("$dir/")
+                // An exclude un-covers, and it is checked before the includes because that is the
+                // order Gradle resolves them in. Without this branch the model is *optimistic*: it
+                // would keep reporting a path as covered by a tree that no longer carries it, which
+                // is the one direction this class must never be wrong in. Added 2026-09-01 with the
+                // `exclude("**/build/**")` that closes #71 — the exclude is what makes the citation
+                // gate stop overlapping `tools/*/build`, and it is only safe to write once the model
+                // that certifies these declarations can see it.
+                excludes.forEach { exc -> if (matches(sub, exc)) return null }
                 // A directory inside a declared tree: whatever the guard reads under it that matches
                 // an include is declared, and a new matching file appearing is a change Gradle sees.
                 if (isDir) return "inside fileTree(\"$dir\")"
@@ -325,6 +338,48 @@ class GateInputDeclarationTest {
                     "UP-TO-DATE over a changed truth."
             )
         }
+    }
+
+    /**
+     * The exclude on the `tools` tree is real, and the model can see it.
+     *
+     * Both halves matter and neither is enough alone.
+     *
+     * The build file must still exclude every `build` directory under the tree. The glob is written
+     * in the assertion below rather than in this sentence, because it contains a comment terminator.
+     * Without it `:citationGates` declares an input location that overlaps `:tools:imaging-bench`
+     * and `:tools:linalg-bench` output, and Gradle fails the task outright — that was #71, red on
+     * `main` from 2026-08-27 to 2026-09-01.
+     *
+     * And [coverage] must *honour* the exclude, because the danger of an exclude is the quiet one:
+     * the declaration narrows while the model that certifies declarations goes on calling the
+     * narrowed paths covered, which turns this class optimistic in the one direction it exists to
+     * refuse.
+     *
+     * A committed reproducer stays covered; a generated one under a subproject's `build` does not.
+     */
+    @Test
+    fun theToolsTreeExcludesBuildOutputAndTheModelHonoursIt() {
+        val d = declared()
+        assertTrue(
+            d.trees.any { it.dir == "tools" && "**/build/**" in it.excludes },
+            "the citationGates `fileTree(\"tools\")` no longer excludes `**/build/**`. Gradle will " +
+                "fail the task with one implicit-dependency validation problem per task writing " +
+                "under `tools` — five of them on 2026-09-01 — and `check` goes red for a reason " +
+                "that has nothing to do with citations. See #71."
+        )
+        assertTrue(
+            coverage("tools/imaging-bench/build/generated/Reproducer.py", d) == null,
+            "a path under an excluded `build` directory is reported as a declared input. The " +
+                "exclude narrowed the real declaration and the model did not follow, so every " +
+                "`covered` verdict about `tools` is now optimistic."
+        )
+        assertTrue(
+            coverage("tools/completion_diff.py", d) != null,
+            "a committed `tools/*.py` reproducer stopped being covered. The exclude was written to " +
+                "drop generated output only; if it drops the reproducers too, `ImpossibilityClaimGuard` " +
+                "can pass stale over a tool that lost its `def`."
+        )
     }
 
     /**

@@ -1474,7 +1474,27 @@ val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationG
     // "this directory contains a declared tree" branch in that class, which counted `tools` as
     // covered because `tools/code-use-semantic-sidecar` sits underneath it. A partly-declared
     // parent is not a declared input.
-    inputs.files(fileTree("tools") { include("**/*.py") })
+    //
+    // The `exclude` is not tidiness, it is what keeps this declaration legal. `tools` also holds
+    // in-repo Gradle subprojects, and `:tools:imaging-bench` and `:tools:linalg-bench` write
+    // generated sources and classes into `tools/*/build`. Declaring the tree without the exclude
+    // makes `tools` an input location that overlaps those outputs, and Gradle fails
+    // `:citationGates` with one "uses this output ... without declaring an explicit or implicit
+    // dependency" validation problem per producing task — three on 2026-08-27 when the tree was
+    // widened, five by 2026-09-01 as `linalg-bench` grew tasks, and one more for every such task
+    // anyone adds under `tools` in future. It is a build-graph defect rather than a citation
+    // failure, and it made `check` red on `main` for five days.
+    //
+    // Measured 2026-09-01 rather than argued: the same minimal graph
+    // (`citationGates :tools:imaging-bench:compileKotlin :tools:linalg-bench:compileKotlin
+    // --rerun-tasks`) reports 5 validation problems without this exclude and 0 with it.
+    //
+    // Excluding build output loses no coverage — `ImpossibilityClaimGuard.validateReproducer`
+    // accepts committed `tools/**.py` reproducers, never a generated one. And it is only safe to
+    // write because `GateInputDeclarationTest.coverage()` now parses excludes too; until it did,
+    // this line would have narrowed the real declaration while the model that certifies these
+    // declarations went on calling the narrowed paths covered.
+    inputs.files(fileTree("tools") { include("**/*.py"); exclude("**/build/**") })
         .withPropertyName("guardedReproducerTools")
         .withPathSensitivity(PathSensitivity.RELATIVE)
     // The agent transcript corpus. It lives under `dev_docs` but it is yaml, so the `**/*.md` tree

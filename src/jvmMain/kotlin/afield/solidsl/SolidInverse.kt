@@ -161,7 +161,7 @@ fun SolidExpr.sampleField(
         val x = lo.x + rng.nextDouble() * (hi.x - lo.x)
         val y = lo.y + rng.nextDouble() * (hi.y - lo.y)
         val z = lo.z + rng.nextDouble() * (hi.z - lo.z)
-        xs[i] = x.toDouble(); ys[i] = y.toDouble(); zs[i] = z.toDouble()
+        xs[i] = x; ys[i] = y; zs[i] = z
         ds[i] = f.at(xs[i], ys[i], zs[i])
     }
     return SolidSamples(xs, ys, zs, ds)
