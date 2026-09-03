@@ -56,13 +56,26 @@ nav:
       - DataFrames in a Box: dataframe.md
       - Querying Object Graphs: graph_query.md
       - Rewriting Your Own Syntax: pattern_rewrite.md
-    - Under the Hood:
-      - What Field Exposes: server_surface.md
-      # Under the Hood rather than beside three_output.md, which is the only other page in the tree
-      # that touches panel sizing: that page tells a `three` caller which knob to turn, this one is
-      # the measurement contract itself, read by whoever is about to emit a new kind of output.
-      - Output Panel Sizing: output_panel_sizing.md
-      - Building & Testing: building_and_testing.md
+  # Internals: hand-written, and about mechanism rather than task. Read these when you are
+  # extending Field or working out why it did something, not when you are writing a box.
+  #
+  # A top-level section rather than a subsection of Reference, which these three sat under until
+  # now. Reference is generated from source — "exactly as finished as the source it is read out
+  # of", as the comment above it says — and none of these is: they are prose about contracts that
+  # no KDoc states. Filing them under a generated tree implied they were extracted, and buried the
+  # one audience they have.
+  #
+  # They stay in `public/docs` rather than moving to `dev_docs` for a mechanical reason as well as
+  # an editorial one: `dev_docs/docs_capture_owners.json` covers 64 `public/docs/` captures and
+  # zero under `dev_docs/`, so a page whose figure comes from a `diffstatic_runner` fence loses its
+  # producer the moment it moves, and the figure becomes a committed asset nothing regenerates.
+  - Internals:
+    - What Field Exposes: server_surface.md
+    # Beside server_surface.md rather than three_output.md, the only other page that touches panel
+    # sizing: that page tells a `three` caller which knob to turn, this one is the measurement
+    # contract itself, read by whoever is about to emit a new kind of output.
+    - Output Panel Sizing: output_panel_sizing.md
+    - Building & Testing: building_and_testing.md
   - Staging area:
     - Staging Overview: staging.md
     - Working with AI:
