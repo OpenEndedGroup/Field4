@@ -58,6 +58,10 @@ nav:
       - Rewriting Your Own Syntax: pattern_rewrite.md
     - Under the Hood:
       - What Field Exposes: server_surface.md
+      # Under the Hood rather than beside three_output.md, which is the only other page in the tree
+      # that touches panel sizing: that page tells a `three` caller which knob to turn, this one is
+      # the measurement contract itself, read by whoever is about to emit a new kind of output.
+      - Output Panel Sizing: output_panel_sizing.md
       - Building & Testing: building_and_testing.md
   - Staging area:
     - Staging Overview: staging.md
