@@ -118,7 +118,40 @@ private val H2_PLATFORM_PACKAGE_PREFIXES = listOf(
     "java.", "javax.", "jdk.", "sun.", "com.sun.", "kotlin.", "kotlinx."
 )
 
+/**
+ * Types a library has declared unreflectable, by [H2Reflect.refuseReflection].
+ *
+ * The package-prefix list above cannot express this. A third-party type whose compact `.h` rendering
+ * *is* the whole story is not a platform type and has no adapter to register — there was simply no
+ * way to say "on the `.h2` surface too, use `.h`", so the reflective default claimed it.
+ *
+ * Measured cost of not having this seam: `DataFrameVisualizer.install()` registers `.h` printers for
+ * `DataColumn` and `GroupBy` and states in a comment that both "fall through to the default lazy
+ * rendering" because their compact form is already the whole story — and the reflective default
+ * silently reversed that, showing three reflected properties instead of `columnHead` /
+ * `groupBySummary`. (`DataRow` was named in the same comment and was never affected: Kotlin
+ * reflection reports zero readable properties on `DataRowImpl`, so it fails the two-property floor
+ * on its own.)
+ */
+private val h2RefusedTypes = ConcurrentHashMap.newKeySet<Class<*>>()
+
 internal object H2Reflect {
+
+    /**
+     * Declare that `.h2` must not reflect into [clazz] or its subtypes — its `.h` rendering is the
+     * value, and an expanded property list would be a regression rather than more detail.
+     *
+     * Assignability rather than exact identity, because the type worth naming is nearly always the
+     * public interface (`DataColumn`) and the value at runtime is nearly always a private
+     * implementation of it (`ValueColumnImpl`). Same resolution intent as [H2ValueRegistry.adapt]
+     * and `ValuePrinterRegistry.getPrinter`; a plain assignability scan is enough here because the
+     * set holds a handful of entries and the alternative is three subtly different rules.
+     *
+     * Call it beside the `.h` printer it defends, so the decision and its reason stay in one place.
+     */
+    fun refuseReflection(clazz: Class<*>) {
+        h2RefusedTypes.add(clazz)
+    }
 
     /**
      * `memberProperties` per class, cached.
@@ -280,7 +313,7 @@ internal object H2Reflect {
         // rather than the data.
         is Buffer, is Collection<*>, is Map<*, *> -> true
 
-        else -> isPlatformType(value::class.java)
+        else -> isPlatformType(value::class.java) || isRefusedType(value::class.java)
     }
 
     /** True for a JVM/Kotlin platform type. An empty package is a box's own compiled code — admitted. */
@@ -289,6 +322,10 @@ internal object H2Reflect {
         if (!name.contains('.')) return false
         return H2_PLATFORM_PACKAGE_PREFIXES.any { name.startsWith(it) }
     }
+
+    /** True when [clazz] or any supertype of it was passed to [refuseReflection]. */
+    private fun isRefusedType(clazz: Class<*>): Boolean =
+        h2RefusedTypes.any { it.isAssignableFrom(clazz) }
 
     private fun renderType(type: KType): String {
         val base = (type.classifier as? KClass<*>)?.simpleName ?: type.toString().substringAfterLast('.')

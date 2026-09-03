@@ -7,6 +7,8 @@ import afield.stdlib.Functions
 import afield.stdlib.Quantity
 import afield.stdlib.withUnit
 import eu.sirotin.kotunil.base.mm
+import org.jetbrains.kotlinx.dataframe.api.dataFrameOf
+import org.jetbrains.kotlinx.dataframe.api.groupBy
 import java.io.File
 import kotlin.math.abs
 import kotlin.math.sin
@@ -629,6 +631,39 @@ class H2StructuredExplorerTest {
         // and a node labelled only `[0]` is the thing this composition exists to avoid.
         val heading = element.heading()
         assertTrue("[0]" in heading && "Adaptable" in heading, "expected `[0] — Adaptable…`; got `$heading`")
+    }
+
+    /**
+     * A library can keep `.h` on the `.h2` surface, and `DataFrameVisualizer` is the case that
+     * needed it.
+     *
+     * `install()` registers `.h` printers for `DataColumn`, `DataRow` and `GroupBy` and says in a
+     * comment that all three "fall through to the default lazy rendering" because their compact form
+     * is already the whole story. `H2Reflect` reversed that for two of them without anyone noticing:
+     * they are neither platform types nor adapter-served, and reflection reads three properties off
+     * each, which clears the floor. `DataRow` was never affected — reflection finds zero readable
+     * properties on `DataRowImpl` — so this pins the decision rather than the accident.
+     *
+     * The frame itself must stay adapter-served, which is the other half: a refusal that swallowed
+     * `DataFrame` would turn `.h2` on a table back into a summary line.
+     */
+    @Test
+    fun `a library can keep h on the h2 surface, and DataFrame's columns do`() {
+        DataFrameVisualizer.install()
+        val frame = dataFrameOf("a", "b")(1, "x", 2, "y", 3, "z")
+
+        assertFalse(
+            H2Reflect.isExplorableObject(frame.columns()[0]),
+            "a DataColumn must keep `columnHead`, not become a reflected property list"
+        )
+        assertFalse(
+            H2Reflect.isExplorableObject(frame.groupBy("b")),
+            "a GroupBy must keep `groupBySummary`"
+        )
+        assertFalse(H2Reflect.isExplorableObject(frame[0]), "a DataRow must keep `rowFacts`")
+
+        // The other half of the decision: the frame is adapter-served and must stay that way.
+        assertTrue(h2AdaptedValue(frame) !== frame, "a DataFrame must still stream its rows")
     }
 
     /**
