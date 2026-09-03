@@ -10,10 +10,11 @@ whatever size `contentSizeForDisclosure` decides the content wants, re-measured 
 (`src/commonMain/resources/outputareas2.js:17#const AUTO_SIZE_PASSES`) as fonts load and iframes
 boot.
 
-That decision has produced three shipped bugs in the last week, and all three were the same
-mistake: an author declared a size the panel had no way to read, and the panel dutifully measured
-the only thing left, which was itself. Nothing throws when that happens. The panel just sits at the
-width it was already at, and every symptom points at the content rather than at the measurement.
+That decision produced three fixes in the first week of September 2026, and all three were the same
+mistake: an author declared a size in a vocabulary the panel cannot read, and the panel sized itself
+from whatever was left. Nothing throws when that happens, nothing is logged, and the panel is not
+even obviously wrong — it is a plausible size, arrived at from no evidence. Every symptom points at
+the content rather than at the measurement, which is why this page is entered from the symptoms.
 
 ## If you arrived here from a symptom
 
@@ -24,7 +25,7 @@ width it was already at, and every symptom points at the content rather than at 
 | a docs figure came out ~1958px wide, or its right-hand column is cropped off | the screenshot-prep pass and the auto-sizer are chasing each other | [the screenshot pass is a second sizer](#the-screenshot-pass-is-a-second-sizer) |
 | a panel ignores the size the content asked for | somebody dragged that panel once | [a dragged panel stops listening](#a-dragged-panel-stops-listening) |
 
-## The five sources of a width
+## Where a width can come from
 
 `contentSizeForDisclosure` (`src/commonMain/resources/outputareas2.js:361#function contentSizeForDisclosure`)
 walks every visible node inside the panel and collects candidate widths. They are candidates, not a
@@ -47,10 +48,12 @@ The first two go through `parsePixels`
 (`src/commonMain/resources/outputareas2.js:34#function parsePixels`), which is `parseFloat` and
 nothing else, and this is where a percentage width goes wrong.
 
-It is worth being exact about *how*, because the three accounts of this bug that already existed in
-the tree before this page — both fix commits and the `keyframeBrowser` KDoc at
-`src/jvmMain/kotlin/afield/outputs.kt:817#[width] is a pixel count and not a percentage` — all say a
-percentage "parses as zero" and then reason from there. It does not.
+It is worth being exact about *how*, because four accounts of this bug already existed in the tree
+before this page — both fix commits, the `keyframeBrowser` KDoc at
+`src/jvmMain/kotlin/afield/outputs.kt:817#[width] is a pixel count and not a percentage`, and a
+comment in the test that pins it
+(`src/jvmTest/kotlin/afield/stdlib/KeyframeBrowserTest.kt:563#a percentage parses as zero`) — and all
+four say a percentage "parses as zero" and reason from there. It does not.
 `parseFloat("100%")` is **100**. A `width:100%` frame reports an intrinsic width of one hundred
 pixels: a number, positive, and meaningless.
 
@@ -146,8 +149,6 @@ function of the panel's width. Anything inside the panel is downstream of the nu
 so no inward measurement can be evidence for it — it can only echo the current value back. The
 enclosing box is the nearest thing that is *upstream*: its width was decided by the author, or by a
 drag, before this panel existed.
-
-Two properties of that function are load-bearing and easy to break by accident.
 
 It seeds the `Math.max` and it never caps. A non-nested panel is left
 `maxW: Number.POSITIVE_INFINITY` on purpose
@@ -297,9 +298,9 @@ permanently, per panel, per session, and the bug was only ever visible on a pane
 
 ## What is pinned, and what is not
 
-Two cases in `tools/run_ui_regressions.py` cover this area. They are browser-driven: they build a
-real box, run real Kotlin, wait for the auto-size passes to settle, and then read geometry out of the
-live DOM.
+`tools/run_ui_regressions.py` has the only executable checks on any of this, and they are the good
+kind: browser-driven, building a real box, running real Kotlin, waiting for the auto-size passes to
+settle, and then reading geometry out of the live DOM.
 
 `tools/run_ui_regressions.py:3333#id="h2-panel-sizing"` builds a box at `--w 1040 --h 200`, displays
 40 rows as a `.h2` value explorer, and asserts both axes of the resulting panel:
@@ -319,13 +320,17 @@ visible — rather than geometry.
 
 What neither pins, honestly:
 
-- **the fill-frame population.** Both cases exercise one fill frame, the `.h2` explorer's. The
-  lazy-output frame and the value-viewer frame are fill frames by the same three-part test and are
-  not under a geometry assertion anywhere.
+- **the fill-frame population.** `h2-panel-sizing` exercises one fill frame; `output-area-basics`
+  exercises none. The lazy-output frame and the value-viewer frame are fill frames by the same
+  three-part test and are under no geometry assertion anywhere.
+  `src/jvmTest/kotlin/afield/stdlib/KeyframeBrowserTest.kt:580#fun aNonPositiveWidthIsStillTheFillMyColumnEscapeHatch`
+  pins `keyframeBrowser`'s *markup* — that a non-positive width still spells `100%` — without
+  standing up a browser, so it says nothing about what a panel then does with it.
 - **the screenshot-prep loop.** The ~1958px figure was diagnosed by looking at a committed PNG. The
   regression cases photograph a box but assert nothing about the crop, so a reintroduced feedback
   loop would show up as a figure someone notices, not as a red build.
-- **agreement between the two `isFillWidthIframe` implementations.** Nothing compares them. They are
-  120 lines apart in two languages and drifting is a matter of one edit.
+- **agreement between the two `isFillWidthIframe` implementations.** Nothing compares them. They live
+  in different files in different languages, one of them a browser resource and one of them compiled,
+  and drifting is a matter of one edit to either.
 - **the widths in the figure above.** They are pixels in a PNG. The assertions are in the
   regression case, not on this page.

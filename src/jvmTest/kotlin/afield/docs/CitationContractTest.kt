@@ -211,17 +211,18 @@ class CitationContractTest {
             // A page whose argument is "these names are the contract" and that cannot report a
             // rename is not doing the job.
             //
-            // 42 anchored citations as written, all prose `path:line#anchor`, across 8 files:
+            // 44 anchored citations as written, all prose `path:line#anchor`, across 9 files:
             // 18 in `outputareas2.js`, 9 in `Main.kt`, 6 in `run_ui_regressions.py`, 3 in
-            // `outputs.kt`, 2 each in `iframe_autosize.js` and `Outputs.kt`, and one each in
-            // `Three.kt` and `PythonInterface.kt`. Every anchor was chosen unique-in-file — verified
-            // by counting containments, not by trusting the choice — so all 42 report unbounded
+            // `outputs.kt`, 2 each in `iframe_autosize.js`, `Outputs.kt` and `KeyframeBrowserTest.kt`,
+            // and one each in `Three.kt` and `PythonInterface.kt`. Every anchor was chosen
+            // unique-in-file — verified by counting containments, not by trusting the choice — so all
+            // 44 report unbounded
             // headroom and [MAX_FRAGILE] is unaffected. Every path is written repo-relative rather
             // than abbreviated, deliberately: `Main.kt` matches three files in this tree
             // (`jsMain`, `jsVision`, and the linalg generator), so an abbreviated citation to it
             // could not resolve at all.
             //
-            // Floored at 21, half, on the DATAFRAME_PLUGIN convention. Note for whoever adds the
+            // Floored at 21, about half, on the DATAFRAME_PLUGIN convention. Note for whoever adds the
             // next page: this entry takes the floor sum from 358 to **359**, one under
             // [MIN_UNIQUE_ANCHORS]. Its KDoc asks for a ratchet the moment the sum passes that
             // constant, because past it the corpus-wide floor is dominated by the per-page floors
