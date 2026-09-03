@@ -102,6 +102,36 @@ it. The visible effect was that a box dropped into a nest canvas inherited nothi
 drawn around it, while a *copy* of that box — `workspace/copy.kt` assigns `nestedIn`, so the hook
 fired — inherited everything. `NestingConnectsTest` holds both routes to the one contract.
 
+One correction to the paragraph above, and it matters if you are ever chasing this. "Inherited
+nothing" was true of the *file*, not of the running document. A third enforcement point already
+existed: `reconcileNestingEdges` — which sat unnamed and untested inside
+`SavingContext.reconcileLoadedTopology` from 2026-04-30 — re-derives the container edge from
+`nested`/`nestedIn` on every EDN load. So a document saved before the `nestInto` fix opens *with* its
+nest edges and inherits correctly; what it lacks is only the persisted copy of them, until its next
+save. Surveying one real workspace of 401 documents and 4479 boxes: 31 of the 33 live boxes with
+`nestedIn` set have no persisted edge, and all nine documents that contain live nesting were last
+written before that repair landed, which is exactly why it had never shown up in a file.
+
+The reconciliation is now named, lives beside the two live routes in `nesting.kt`, and runs on every
+path that materialises boxes from stored state rather than only the EDN loader — the legacy-JSON
+upgrade, history restore and cherry-pick, and an externally edited `metadata.edn` each used to skip
+it. It only ever *adds* an edge: a missing edge is byte-identical to a deliberately removed one, so
+the only thing re-deriving can honestly repair is a value that is derived, which since the `nestInto`
+fix is what the nest edge is. Un-nesting removing the edge follows from the same argument, and is
+deliberate rather than an oversight.
+
+`dev_docs/nesting_edge_demo/` is a four-box document stored in exactly the pre-fix shape — `nestedIn`
+set, no edge, a container whose preamble carries one import and one marked line. Copy it somewhere
+writable and open it to watch the edge appear and the preamble cross:
+
+    D=$(mktemp -d) && cp -R dev_docs/nesting_edge_demo "$D/" && \
+      AFIELD_JDWP_PORT=off python3 tools/field_backdoor.py --port 9502 --workspace "$D" \
+        --document nesting_edge_demo --command "run edge-probe" --command "sleep 10" \
+        --command "output edge-probe"
+
+Copy first: opening a document rewrites its `metadata.edn` from memory, which for this one means
+saving the repaired edges and spending the demonstration.
+
 ## Context-dependent completion expectations (Phase 0 corpus)
 
 Some completion behavior cannot be expressed as a `(source string, cursor)` fixture because

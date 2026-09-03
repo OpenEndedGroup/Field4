@@ -464,6 +464,15 @@ object HistoryManager {
                 }
             }
 
+            // 2b. Re-derive the container edge every nested box in the restored snapshot implies.
+            // `restorePersistentProperties` is a bare `setPropertyRaw` loop, so it reinstates
+            // `parents` exactly as the version recorded it — and a version written before `398cb0ca9`
+            // recorded nesting with no edge at all, which is nearly every nested box that exists.
+            // Restoring one therefore *removed* the edge from a live session that had it, and step 4
+            // below persisted that. Document open would have repaired it, but only at the next open;
+            // between the two, a nested box silently stopped inheriting its container's preamble.
+            reconcileNestingEdges(sessionInfo.boxes.values.toList() + sessionInfo.root)
+
             // 3. Record the transition
             recordTransition(documentPath, currentVersion.index, targetVersionIndex)
 
@@ -1326,6 +1335,14 @@ object HistoryManager {
             }
         }
         needsResync.add(box to "parents")
+
+        // Last, and after the removals above, because those are what make it necessary: the passes
+        // above make `children` and `parents` agree with *the restored snapshot*, which for a version
+        // predating `398cb0ca9` means agreeing that a nested box has no container edge. Re-deriving
+        // it here restores the nesting invariant the snapshot could not have recorded. Ordering is
+        // load-bearing — run before the removals and the `linkedParents - desiredParents` pass would
+        // take the edge straight back out.
+        reconcileNestingEdges(listOf(box))
     }
 
     /**
