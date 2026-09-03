@@ -36,9 +36,13 @@ import kotlin.reflect.jvm.isAccessible
  * the row/column stream behind the embedded `/h2-explorer` iframe, and the summary line in the
  * widget itself. Before this file, only collections had all three; anything else fell through
  * [LazyValueVisualizer.visualize]'s opening guard to `ValueVisualizer` and `.h2` was byte-for-byte
- * `.h`. Registering a per-type [H2ValueSnapshot] adapter was the only escape, and after a year there
- * were two of them (`FrameBufferGroup`, `DataFrame`) against 54 `registerValuePrinter<` calls on the
- * `.h` seam — so the registration strategy was never going to lift the population.
+ * `.h`. Registering a per-type [H2ValueSnapshot] adapter was the only escape, and the registry
+ * shipped on 2026-06-14 carrying one adapter written in the same commit (`FrameBufferGroup`) and had
+ * gained exactly one more before this file existed — `DataFrame`, on 2026-08-21, thirteen days
+ * earlier. Two, against **54** `registerValuePrinter<` call sites on the older `.h` seam, 50 of them
+ * production (`git grep -c 'registerValuePrinter<' -- '*.kt'` over 7 files, with 3 occurrences in a
+ * test and 1 in a `dev_docs` sample). So the registration strategy was never going to lift the
+ * population.
  *
  * [properties] is deliberately the *single* enumerator. `/tree` reading one set of children and the
  * iframe reading another is the kind of divergence you only notice when a person says "it says four
