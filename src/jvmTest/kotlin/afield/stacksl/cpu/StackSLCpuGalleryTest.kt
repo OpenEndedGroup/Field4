@@ -216,7 +216,7 @@ class StackSLCpuGalleryTest {
         var withHistory: CpuRaster? = null
         repeat(frames) { frame ->
             withHistory = renderAt(frame / 24f, previous)
-            previous = CpuTexture2D(withHistory!!)
+            previous = CpuTexture2D(withHistory)
         }
 
         // The same frame with NO history. If `texture()` were being ignored — the failure a

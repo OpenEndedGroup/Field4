@@ -94,12 +94,16 @@ object MetadataNestedImportSmokeTest {
                 "Imported names wrong: ${imported.map { it.name }}"
             }
 
-            // Nesting is the nested/nestedIn topology (the client relocates boxes into the
-            // nest canvas by nestedIn); it deliberately does NOT re-wire children/parents,
-            // matching the interactive "-nest-into" action.
+            // Nesting is the nested/nestedIn topology — the client relocates boxes into the nest
+            // canvas by nestedIn — AND a connection edge, so the nest parent's preamble and context
+            // reach what is inside it. Matches the interactive "-nest-into" action.
             imported.forEach { child ->
                 require(child.nestedIn == nestParent) { "Imported box must be nested in the new parent" }
                 require(child in nestParent.nested) { "Imported box must be in the parent's nested set" }
+                require(nestParent in child.parents) { "Nesting must connect the nest parent to the child" }
+                require(child in nestParent.children) { "Nest parent must have the child among its children" }
+                // The document-root edge the box arrived with survives alongside it.
+                require(target.root in child.parents) { "Nesting must not take away the document-root edge" }
             }
 
             // nestInto converts world frames to parent-relative coordinates.

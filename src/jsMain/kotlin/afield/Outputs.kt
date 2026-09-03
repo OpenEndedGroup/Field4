@@ -884,6 +884,28 @@ fun afieldExpandLazyValue(linkLike: dynamic) {
     }
 }
 
+/**
+ * How tall the output-area value viewer opens, in pixels.
+ *
+ * A pixel count and not a percentage, for the reason `b8aa72f3d` and `84e436da6` each reached
+ * independently: an output panel measures an iframe from its `height` attribute, its inline
+ * `style.height`, or `data-afield-intrinsic-height`, and falls back to the bounding rect only when
+ * all three are non-positive. This frame carries `data-afield-autosize="off"`, so
+ * `iframe_autosize.js` never reports a height, and its CSS
+ * (`.value-viz-output-viewer-frame { height: auto }`) is invisible to that measurement. The
+ * bounding rect was then circular — the frame sized to a container that sized to the frame — and
+ * resolved to nothing, so the viewer opened as a one-line sliver with a scrollbar and no content.
+ *
+ * Matching `LazyValueVisualizer`'s own `H2_IFRAME_HEIGHT_PX`, so a value opened into the output area
+ * and the same value shown in a `.h2` panel start the same size. `flex: 1 1 auto` and
+ * `min-height: 0` stay in the CSS, so dragging the disclosure still resizes it.
+ *
+ * Pre-existing: the CSS rule dates to `415d03fe3` and the sliver affected the inline `.h` expander's
+ * "columns" link too. It only became visible when `.h2`'s outliner and columns links stopped opening
+ * in a browser tab.
+ */
+private const val LAZY_VIEWER_HEIGHT_PX = 253
+
 private fun upsertLazyValueViewer(boxUid: String, title: String, src: String) {
     val box = findBoxByUid(boxUid) ?: run {
         console.warn("[lazy-value] box not found for viewer: $boxUid")
@@ -909,7 +931,8 @@ private fun upsertLazyValueViewer(boxUid: String, title: String, src: String) {
     contentRoot.innerHTML = """
         <div class="value-viz-output-viewer">
             <iframe data-afield-autosize="off" src="${src}" loading="lazy"
-                class="value-viz-output-viewer-frame"></iframe>
+                class="value-viz-output-viewer-frame"
+                style="height:${LAZY_VIEWER_HEIGHT_PX}px"></iframe>
         </div>
     """.trimIndent()
     (inter.open as (String) -> Unit).invoke(channelId)

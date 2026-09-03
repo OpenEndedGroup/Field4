@@ -129,7 +129,7 @@ class PythonOutputContractTest {
         for (axis in listOf("width", "height")) {
             val declared = Regex("""\b$axis:\s*([^;]+);""").find(style)?.groupValues?.get(1)?.trim()
             assertTrue(declared != null, "$axis is not declared in $style")
-            assertTrue(declared!!.endsWith("px"), "$axis must be in px, not '$declared'")
+            assertTrue(declared.endsWith("px"), "$axis must be in px, not '$declared'")
             val parsed = declared.removeSuffix("px").toDoubleOrNull()
             assertTrue(parsed != null && parsed > 0, "$axis '$declared' does not parse to a positive number")
         }

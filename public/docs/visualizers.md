@@ -644,7 +644,15 @@ display("heavy", big.h2)
 println("display helpers ready")
 ```
 
-Use `.h` when the structure is small enough that you want a pleasant, immediate rendering. Use `.h2` when you want to browse a large map, list, array, or buffer without turning the output area into soup.
+Use `.h` when the structure is small enough that you want a pleasant, immediate rendering. Use `.h2` when you want to browse instead of read. That covers a large map, list, array or buffer without turning the output area into soup, and it covers your own data classes and Field's own types too.
+
+`.h2` on a plain object gives you its properties as a scrollable table: one row per property, with its declared type and its value. Above the table sit `outliner` and `columns` links, which open the same value in the full tree and column browsers. There is nothing to register; it reflects. If a property's getter throws, the row is still there, marked, with the exception text in its value cell.
+
+Four things are special-cased, because their fields are not where the interesting content is. A `Box` shows its name, frame, code size, run state, its whole property bag, and a table of its `parents`, `children`, `nested` and `nestedIn` edges. An `Fn` shows a sampled table of `x` and `f(x)` across its domain, because a function is its values and its one substantive field is a private closure. An `FLine` shows its node table: instruction kind, control-point count and endpoint per row. An exception shows its message, its cause chain and its stack.
+
+Some values `.h2` hands straight back to `.h`, because the compact rendering already *is* the value: numbers, strings, enums, a `Pair`, a vector, a matrix (which `.h` draws as a heatmap), and a `Quantity`, whose whole point is a number next to a unit.
+
+To see all of it at once, insert the **h2 Explorer Examples** template and run its boxes top to bottom.
 
 ### Markdown, when the figure is captions and tables
 

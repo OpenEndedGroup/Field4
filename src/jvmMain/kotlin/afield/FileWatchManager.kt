@@ -522,9 +522,11 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
                 )
                 
                 // Load these boxes
+                val created = mutableListOf<Box>()
                 for (transfer in transfers.filter { it.id in newBoxIds }) {
                     val box = box(transfer.id, createIfMissing = true, initIfCreated = true, root = sessionInfo)
-                    
+                    created += box
+
                     // Apply properties from metadata
                     for ((name, value) in transfer.properties) {
                         val resolved = if (name in TOPOLOGY_KEYS) {
@@ -545,7 +547,18 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
                     
                     lprintln("info,file-watch", "Created box from metadata: ${box.name} (${box.id})")
                 }
-                
+
+                // This loop sets forward refs on the new boxes only — [TOPOLOGY_KEYS] carries
+                // `nested`/`nestedIn` in, but the inverse edge belongs on a box that was already live
+                // in the session and is never revisited here. An externally added nested box is
+                // exactly what an agent writing `metadata.edn` produces, so it is worth repairing at
+                // the point the box arrives rather than at the next document open. Scoped to the new
+                // boxes: their own `nested` and `nestedIn` are the only new information.
+                val repaired = reconcileNestingEdges(created)
+                if (repaired > 0) {
+                    lprintln("info,file-watch", "re-derived $repaired nest edge(s) for externally added boxes")
+                }
+
                 notify("Loaded ${newBoxIds.size} new box(es) from external metadata changes", "file-watch")
             }
             

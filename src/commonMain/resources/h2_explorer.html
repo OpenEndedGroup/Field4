@@ -185,6 +185,26 @@
             font-size:12px;
         }
 
+        /* The trail out. Hidden entirely at the root, so the toolbar is unchanged until you drill. */
+        #crumbs{ display:none; gap:2px; align-items:center; white-space:nowrap; }
+        #crumbs.active{ display:flex; }
+        #crumbs .crumb{
+            color:var(--accent);
+            cursor:pointer;
+            padding:0 3px;
+            border-radius:3px;
+            max-width:14ch;
+            overflow:hidden;
+            text-overflow:ellipsis;
+        }
+        #crumbs .crumb:hover{ background:#1d2b33; }
+        #crumbs .sep{ color:var(--muted); }
+
+        /* An enterable row. The chevron is in the index gutter, so it costs no column width. */
+        .row.enterable{ cursor:pointer; }
+        .row.enterable:hover{ background:#16222a; }
+        .row.enterable .idx::after{ content:"›"; color:var(--accent); margin-left:4px; }
+
         #spacerTop, #spacerBottom{
             width:100%;
             pointer-events:none;
@@ -200,6 +220,7 @@
 <body>
 <div id="root">
     <div id="toolbar">
+        <div id="crumbs"></div>
         <div id="summary">loading...</div>
         <div id="meta"></div>
         <div class="tool" id="strideTool" style="display:none;">
@@ -248,7 +269,7 @@
     let openInfo = null;
     let stride = 1;
     let showKeys = true;
-    let windowData = { start: 0, rows: [], totalRows: 0, stride: 1, columnNames: [], hasKeys: false, kind: "unknown" };
+    let windowData = { start: 0, rows: [], totalRows: 0, stride: 1, columnNames: [], hasKeys: false, textColumns: [], kind: "unknown" };
     const pageCache = new Map(); // key => rows
     let inflightWindowKey = null;
     let lastRequestedStart = -1;
@@ -257,10 +278,15 @@
     let rowHeightPx = ROW_H;
     let suppressScrollEventsUntilMs = 0;
     let pendingScrollWindowStart = null;
+    // Row indices from the retained root to whatever is on screen. The server re-resolves this on
+    // every request and echoes back the part that still resolved, which we adopt -- so a value that
+    // changed under us lands on its deepest surviving ancestor instead of erroring.
+    let path = [];
+    let breadcrumb = [];
 
     function sendReq(op, payload = {}) {
         const reqId = String(reqSeq++);
-        const msg = { channel: CHANNEL, reqId, op, ...payload };
+        const msg = { channel: CHANNEL, reqId, op, path, ...payload };
         return new Promise((resolve, reject) => {
             if (!ws || ws.readyState !== 1) {
                 reject(new Error("socket not connected"));
@@ -279,7 +305,7 @@
             connected = true;
             statusEl.textContent = "loading...";
             try {
-                await openRoot();
+                await openAt();
             } catch (e) {
                 statusEl.textContent = `failed: ${e.message || e}`;
             }
@@ -494,6 +520,10 @@
 
     function renderRows() {
         const { rows, start, totalRows, columnNames, hasKeys } = windowData;
+        // Columns the source declared heterogeneous. Without this a property table's value column
+        // pads `7` out to `7.00` to line up with a `0.25` three rows down, and bands both against a
+        // mean computed from whichever cells parsed as numbers.
+        const textColumns = new Set(windowData.textColumns || []);
         suppressScrollEventsUntilMs = performance.now() + 120;
         const rowTemplate = renderHeader(columnNames, hasKeys);
 
@@ -509,6 +539,19 @@
             const rowEl = document.createElement("div");
             rowEl.className = "row";
             rowEl.style.gridTemplateColumns = rowTemplate;
+            // `enterable` is the server's answer, computed from the same gate that decides whether
+            // `.h2` would open an explorer for that value at all -- so a chevron appears exactly
+            // where typing `.h2` on the value behind the row would have given you one.
+            if (row.enterable) {
+                rowEl.classList.add("enterable");
+                rowEl.title = "open this value here";
+                rowEl.addEventListener("click", (ev) => {
+                    // A drag to select text inside a cell must not navigate.
+                    if (window.getSelection && String(window.getSelection()).length > 0) return;
+                    ev.preventDefault();
+                    enterPath(path.concat([row.index]));
+                });
+            }
 
             const idx = document.createElement("div");
             idx.className = "cell idx";
@@ -527,7 +570,7 @@
                 const v = cells[i] ?? "";
                 const c = document.createElement("div");
                 const raw = String(v);
-                const looksNumeric = raw !== "" && NUMERIC_RE.test(raw);
+                const looksNumeric = !textColumns.has(i) && raw !== "" && NUMERIC_RE.test(raw);
                 if (looksNumeric) {
                     c.className = `cell num ${bandForNumeric(raw, numericStats[i])}`;
                 } else {
@@ -618,6 +661,7 @@
                 stride: resp.stride || stride,
                 columnNames: resp.columnNames || [],
                 hasKeys: !!resp.hasKeys,
+                textColumns: resp.textColumns || [],
                 kind: resp.kind || openInfo.kind
             };
             openInfo.totalRows = data.totalRows;
@@ -636,12 +680,54 @@
         }
     }
 
-    async function openRoot() {
+    const crumbsEl = document.getElementById('crumbs');
+
+    /**
+     * Draw the trail. Clicking a crumb truncates the path to it; the leading crumb is the root.
+     */
+    function renderCrumbs() {
+        crumbsEl.innerHTML = "";
+        if (!breadcrumb.length) {
+            crumbsEl.classList.remove("active");
+            return;
+        }
+        crumbsEl.classList.add("active");
+        const add = (label, depth, title) => {
+            const el = document.createElement("span");
+            el.className = "crumb";
+            el.textContent = label;
+            el.title = title || label;
+            el.addEventListener("click", () => enterPath(path.slice(0, depth)));
+            crumbsEl.appendChild(el);
+            const sep = document.createElement("span");
+            sep.className = "sep";
+            sep.textContent = "/";
+            crumbsEl.appendChild(sep);
+        };
+        add("root", 0, "back to the top");
+        // The last crumb is where we are, so it gets no click of its own beyond a no-op re-open.
+        breadcrumb.forEach((label, i) => add(label, i + 1));
+    }
+
+    /** Go to [nextPath] and redraw. One code path for entering, for a crumb, and for the root. */
+    async function enterPath(nextPath) {
+        path = nextPath.slice();
+        pageCache.clear();
+        viewportEl.scrollTop = 0;
+        await openAt();
+        await loadWindow(0);
+    }
+
+    async function openAt() {
         if (!ROOT_TOKEN) {
             statusEl.textContent = "missing root token";
             return;
         }
         const resp = await sendReq("open", { root: ROOT_TOKEN });
+        // The server truncates a path it could not walk, so adopt what it actually resolved.
+        path = Array.isArray(resp.path) ? resp.path.slice() : [];
+        breadcrumb = Array.isArray(resp.breadcrumb) ? resp.breadcrumb.slice() : [];
+        renderCrumbs();
         openInfo = resp;
         stride = resp.defaultStride || 1;
         showKeys = true;
@@ -666,6 +752,7 @@
             stride,
             columnNames: resp.columnNames || [],
             hasKeys: !!resp.hasKeys,
+            textColumns: resp.textColumns || [],
             kind: resp.kind || "unknown"
         };
         renderRows();

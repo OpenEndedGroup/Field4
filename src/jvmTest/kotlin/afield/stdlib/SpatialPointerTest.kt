@@ -493,7 +493,7 @@ class SpatialPointerTest {
         val radius = 4.0 * kotlin.math.sqrt(
             ((bounds[3] - bounds[0]) * (bounds[3] - bounds[0]) +
                 (bounds[4] - bounds[1]) * (bounds[4] - bounds[1]) +
-                (bounds[5] - bounds[2]) * (bounds[5] - bounds[2])).toDouble()
+                (bounds[5] - bounds[2]) * (bounds[5] - bounds[2]))
         )
 
         val idsSeen = HashSet<Int>()

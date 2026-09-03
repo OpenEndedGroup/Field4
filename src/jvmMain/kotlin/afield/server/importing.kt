@@ -218,9 +218,11 @@ fun importMetadataAsNest(
     nestParent.name = nestName.ifBlank { NEST_IMPORT_DEFAULT_NAME }
     nestParent.frame = Rect(anchorX, anchorY, width, NEST_IMPORT_HEADER_HEIGHT)
 
-    // nestInto sets nested/nestedIn (converting each frame to parent-relative). Like the
-    // interactive "-nest-into" action it leaves the boxes' document-root edge in place —
-    // the client relocates a box into the nest canvas by its nestedIn, not by re-parenting.
+    // nestInto sets nested/nestedIn (converting each frame to parent-relative) and connects the
+    // nest parent to each child, like the interactive "-nest-into" action. The client still
+    // relocates a box into the nest canvas by its nestedIn; the edge is what makes the nest
+    // parent's preamble and context reach what is inside it. The boxes' document-root edge is
+    // untouched — `disconnect` only ever removes the one edge it names.
     topLevel.forEach { child -> child.nestInto(nestParent) }
 
     nestParent.resyncAll()
