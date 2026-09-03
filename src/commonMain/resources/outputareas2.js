@@ -717,6 +717,7 @@ function disclosureInterface(container) {
 
         function applyClosed(d) {
                 if (d.inline) return;
+                d.selfResizeUntil = Date.now() + 250;
                 d.wrap.classList.remove("open");
                 d.cw.style.display = "none";
                 d.cw.style.height = "0px";
@@ -766,6 +767,9 @@ function disclosureInterface(container) {
                         wrapWidth: d.wrap.style.width
                 };
 
+                // Same guard applyOpen uses: this function resizes d.cw to measure it, and the
+                // user-resize observer must not read that as a person dragging the grip.
+                d.selfResizeUntil = Date.now() + 250;
                 applySizeBoundsForId(id, d);
                 d.wrap.classList.add("open");
                 d.cw.style.display = "block";
@@ -813,6 +817,29 @@ function disclosureInterface(container) {
                 d.cw.addEventListener("scroll", () => saveScroll(id, d));
                 d.cw.addEventListener("mouseup", () => rememberSize(id, d));
                 d.cw.addEventListener("mouseleave", () => rememberSize(id, d));
+
+                // A drag of the native `resize: both` grip is only recorded if `rememberSize` runs,
+                // and the two listeners above are both mouse events on `d.cw` — which is exactly the
+                // element a panel full of iframe does not reliably get them on. Mouse events raised
+                // inside an iframe belong to that iframe's document and never reach this one
+                // (measured), so a release over the frame is simply lost; then the next auto-size
+                // pass reads the stale `st.width`/`st.height` and the panel snaps back to the size
+                // it had before the drag.
+                //
+                // Observing the box removes the question of where the pointer went. The native
+                // resizer's whole effect is inline width/height on `d.cw`, so the box changing size
+                // outside a self-caused window *is* the user having resized it.
+                if (!d.userResizeObserver && typeof ResizeObserver !== "undefined") {
+                        d.userResizeObserver = new ResizeObserver(() => {
+                                // applyOpen and primeAutoSizeForOpen both resize d.cw themselves;
+                                // recording those would set `userSized` and permanently disable
+                                // auto-size for a panel nobody touched.
+                                if (d.selfResizeUntil && Date.now() < d.selfResizeUntil) return;
+                                if (d.cw.style.display === "none") return;
+                                rememberSize(id, d);
+                        });
+                        d.userResizeObserver.observe(d.cw);
+                }
 
                 if (!d.contentMutationObserver && typeof MutationObserver !== "undefined") {
                         d.contentMutationObserver = new MutationObserver(() => {
@@ -914,6 +941,10 @@ function disclosureInterface(container) {
                 if (d.contentMutationObserver && typeof d.contentMutationObserver.disconnect === "function") {
                         d.contentMutationObserver.disconnect();
                         d.contentMutationObserver = null;
+                }
+                if (d.userResizeObserver && typeof d.userResizeObserver.disconnect === "function") {
+                        d.userResizeObserver.disconnect();
+                        d.userResizeObserver = null;
                 }
                 if (d.contentResizeObserver && typeof d.contentResizeObserver.disconnect === "function") {
                         d.contentResizeObserver.disconnect();
