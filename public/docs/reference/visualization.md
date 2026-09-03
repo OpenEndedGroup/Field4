@@ -4,7 +4,7 @@
 
 Turning a value into something you can look at, without leaving the box.
 
-13 source file(s), 468 public symbol(s), 416 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+15 source file(s), 469 public symbol(s), 416 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -923,6 +923,69 @@ Makes Kotlin DataFrame values render as Field values — `.h`, `.h2`, `display` 
 | [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">HEAD&#95;ROWS</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/visualization/DataFrameVisualizer/#L51) | Rows shown in the compact `.h` form. `.h2` streams the whole frame instead. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">install</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/visualization/DataFrameVisualizer/#L58) | Register every DataFrame renderer. Idempotent, and safe to call from any thread. |
 
+## H2DomainAdapters.kt { #h2domainadapters-kt }
+
+`.h2` adapters for the Field types where the *reflective* default in `H2Reflect.kt` reads badly.
+
+`H2Reflect` lifted `.h2` from "types someone registered" to "everything", and for a data class or
+a plain domain object a property tree is exactly right. Four families it is wrong for, each for
+its own reason, and each reason is the argument for the adapter:
+
+ - **`Box`** — reflection would touch `Box.ki`, a `lazyVar` that *builds a K2 REPL engine on
+   read*. Exploring a box would compile one. This is the concrete case behind the side-effect
+   limit `H2Reflect`'s KDoc admits it cannot detect, and the reason `Box` is served here.
+ - **`Functions.Fn`** — its only non-derived field is a private `(Double) -> Double`. A function's
+   content is its *values*, so the adapter samples it.
+ - **`FLine`** — a polyline's content is its node list, and `nodes` is one property among four.
+ - **`Throwable`** — a `java.*` type, refused by the platform-package narrowing, and the value a
+   box produces most often when something is wrong.
+
+Each adapter returns a shape the existing explorer machinery already renders well —
+a `LinkedHashMap` gets map paging, and a `List<Map<String, Any?>>` hits the explorer's RECORD
+mode and becomes a real table with one column per key. That is deliberate: an adapter that
+invented its own rendering would have to be maintained in three places.
+
+`src/jvmMain/kotlin/afield/visualization/H2DomainAdapters.kt` — [read the source](source/jvmMain/afield/visualization/H2DomainAdapters/)
+
+### Top-level functions { #h2domainadapters-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">registerH2DomainAdapters</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/visualization/H2DomainAdapters/#L38) |  |
+
+## H2Reflect.kt { #h2reflect-kt }
+
+The reflective half of `.h2`: what a domain object's *children* are, computed once and shared by
+every surface that shows them.
+
+`.h2` renders a value three separate times — the `Browsable` tree behind `/tree` and `/browse`,
+the row/column stream behind the embedded `/h2-explorer` iframe, and the summary line in the
+widget itself. Before this file, only collections had all three; anything else fell through
+`LazyValueVisualizer.visualize`'s opening guard to `ValueVisualizer` and `.h2` was byte-for-byte
+`.h`. Registering a per-type [`H2ValueSnapshot`](visualization.md#lazyvaluevisualizer-kt-h2valuesnapshot) adapter was the only escape, and the registry
+shipped on 2026-06-14 carrying one adapter written in the same commit (`FrameBufferGroup`) and had
+gained exactly one more before this file existed — `DataFrame`, on 2026-08-21, thirteen days
+earlier. Two, against **54** `registerValuePrinter<` call sites on the older `.h` seam, 50 of them
+production (`git grep -c 'registerValuePrinter<' -- '*.kt'` over 7 files, with 3 occurrences in a
+test and 1 in a `dev_docs` sample). So the registration strategy was never going to lift the
+population.
+
+`properties` is deliberately the *single* enumerator. `/tree` reading one set of children and the
+iframe reading another is the kind of divergence you only notice when a person says "it says four
+fields over here and six over there", so both go through here.
+
+### What this does not know
+
+A `KProperty1` getter is opaque: there is no way to tell a field read from a computed property
+that opens a file, allocates a GPU buffer or — the case that actually bit — builds a K2 REPL
+engine. `Box.ki` is a `lazyVar` that compiles on read, which is exactly why `Box` is served by a
+hand-written adapter in `H2DomainAdapters.kt` rather than by this file. The two narrowings in
+`readsWellInline` (platform packages, and types whose `.h` rendering *is* the value) are the
+general mitigation; they are not a proof. If a type's getters are expensive or effectful, give it
+an adapter.
+
+`src/jvmMain/kotlin/afield/visualization/H2Reflect.kt` — [read the source](source/jvmMain/afield/visualization/H2Reflect/)
+
 ## ImagingVisualizer.kt { #imagingvisualizer-kt }
 
 `src/jvmMain/kotlin/afield/visualization/ImagingVisualizer.kt` — [read the source](source/jvmMain/afield/visualization/ImagingVisualizer/)
@@ -964,13 +1027,13 @@ content.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="k">reified</span> <span class="nc">T</span> <span class="p">:</span> <span class="nc">Any</span><span class="p">&gt;</span> <span class="nf">registerH2Value</span><span class="p">(</span><span class="k">noinline</span> <span class="n">adapter</span><span class="p">:</span> <span class="p">(</span><span class="nc">T</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">H2ValueSnapshot</span><span class="p">)</span></code>](source/jvmMain/afield/visualization/LazyValueVisualizer/#L760) |  |
+| [<code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="k">reified</span> <span class="nc">T</span> <span class="p">:</span> <span class="nc">Any</span><span class="p">&gt;</span> <span class="nf">registerH2Value</span><span class="p">(</span><span class="k">noinline</span> <span class="n">adapter</span><span class="p">:</span> <span class="p">(</span><span class="nc">T</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">H2ValueSnapshot</span><span class="p">)</span></code>](source/jvmMain/afield/visualization/LazyValueVisualizer/#L930) |  |
 
 ### Top-level values { #lazyvaluevisualizer-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="nc">Any</span><span class="o">?</span><span class="p">.</span><span class="n">h2</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/visualization/LazyValueVisualizer/#L757) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="nc">Any</span><span class="o">?</span><span class="p">.</span><span class="n">h2</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/visualization/LazyValueVisualizer/#L927) |  |
 
 ### H2ValueSnapshot { #lazyvaluevisualizer-kt-h2valuesnapshot }
 
@@ -992,11 +1055,11 @@ content.
 
 ### LazyValueVisualizer { #lazyvaluevisualizer-kt-lazyvaluevisualizer }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">LazyValueVisualizer</span></code>](source/jvmMain/afield/visualization/LazyValueVisualizer/#L131)
+[<code class="highlight"><span class="k">object</span> <span class="nc">LazyValueVisualizer</span></code>](source/jvmMain/afield/visualization/LazyValueVisualizer/#L141)
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">visualize</span><span class="p">(</span><span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">,</span> <span class="n">appendable</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/visualization/LazyValueVisualizer/#L132) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">visualize</span><span class="p">(</span><span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">,</span> <span class="n">appendable</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/visualization/LazyValueVisualizer/#L142) |  |
 
 ## ValueVisualizer.kt { #valuevisualizer-kt }
 
