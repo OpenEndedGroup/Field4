@@ -134,7 +134,10 @@ object LazyValueVisualizer {
         if (adapted == null && !isExplorable(value)) return ValueVisualizer.visualize(value, appendable = appendable)
 
         val rawValue = adapted?.value ?: value
-        val wrapped = wrapForInspector(rawValue, title = adapted?.title ?: "value")
+        // `wrapUnadapted`, not `wrapForInspector`: `adapted` above is this value's registry lookup,
+        // and `rawValue` is already the substitute. The front door would only run the registry a
+        // second time over that substitute.
+        val wrapped = wrapUnadapted(rawValue, title = adapted?.title ?: "value")
         val token = "h2-${UUID.randomUUID()}"
         H2TokenRetention.remember(token, rawValue)
         val outlinerPath = Inspector.linkPathFor(wrapped ?: "null", browsePath = H2_OUTLINER_PATH, uid = token)
@@ -323,8 +326,63 @@ internal fun lazyInlineExpanderHtml(
  * `internal` rather than private because `H2Reflect`'s reflective tree re-enters it for each
  * property: a property holding a list must get the same paging a top-level list gets, or the two
  * routes disagree about the same object depending on how you reached it.
+ *
+ * ## A registered adapter wins at every depth, not only at the root
+ *
+ * [LazyValueVisualizer.visualize] consults [H2ValueRegistry] for the value a person typed `.h2` on,
+ * and until this function did too, nothing consulted it again. That made the registry a *root-only*
+ * mechanism, which is not what it reads like at its call sites, and it broke the one invariant the
+ * `Box` adapter exists to hold: the adapter reports `liveKi` rather than reading `Box.ki` — a
+ * `lazyVar` that compiles a K2 REPL engine on read — and then hands `box.properties` to the map
+ * pager. `children`, `parents`, `nested` and `nestedIn` are `Delegation` properties, so they sit in
+ * that bag holding raw `Box` objects, the pager resolves an element through this function, and the
+ * reflective default took whatever the arms below did not claim. A neighbouring box reached at
+ * `properties -> children -> [0]` was therefore reflected and its `ki` read. `H2Reflect`'s own KDoc
+ * states why that must not happen; the guard simply did not survive one hop.
+ *
+ * Adapters are also the better rendering wherever they apply, so this is a fix and a feature: a
+ * nested `DataFrame` or `FrameBufferGroup` now pages through its own adapter instead of being
+ * reflected into `position`/`limit`.
+ *
+ * The dispatch is deliberately **one hop, not a loop**. An adapter's substitute is handed to
+ * [wrapUnadapted], which never re-consults the registry, so a pair of adapters that substituted for
+ * each other cannot spin. `H2ValueSnapshot.value` also defaults to substituting nothing, so an
+ * adapter written only to supply a `summary` hands back the object it was given — the `!==` check is
+ * what keeps that case a leaf rather than an infinite regress. All three adapters in the tree today
+ * substitute (`Box` -> map, `DataFrame` -> list, `FrameBufferGroup` -> array), so both guards are
+ * load-bearing for the next adapter rather than for these.
  */
 internal fun wrapForInspector(value: Any?, title: String? = null): Any? {
+    val adapted = value?.let { H2ValueRegistry.adapt(it) }
+    if (adapted != null && adapted.value !== value) {
+        return wrapUnadapted(adapted.value, adaptedLabel(title, adapted))
+    }
+    return wrapUnadapted(value, title)
+}
+
+/**
+ * The node label for a value an adapter substituted.
+ *
+ * Same `label — summary` shape `H2ReflectiveBrowsable.heading()` uses, and for the same reason: a
+ * nested box reached at `[0]` reads `[0] — Box neighbour`, because `[0]` alone does not say which
+ * box and the adapter's own title does not say where it sits. A caller with no label, or the top
+ * level's placeholder `"value"`, takes the adapter's title unchanged.
+ */
+private fun adaptedLabel(callerTitle: String?, adapted: H2ValueSnapshot): String? {
+    val own = adapted.title ?: adapted.summary
+    if (own.isNullOrBlank()) return callerTitle
+    if (callerTitle.isNullOrBlank() || callerTitle == "value") return own
+    return "$callerTitle — $own"
+}
+
+/**
+ * [wrapForInspector] with the registry already consulted.
+ *
+ * Split out so that the adapter lookup happens exactly once per value: [LazyValueVisualizer.visualize]
+ * has already adapted the root before it wraps, and calling the front door there would run the
+ * registry over the substitute for nothing.
+ */
+private fun wrapUnadapted(value: Any?, title: String? = null): Any? {
     return when (value) {
         null -> null
         is Quantity -> QuantityBrowsable(value)
@@ -349,7 +407,8 @@ internal fun wrapForInspector(value: Any?, title: String? = null): Any? {
         // After `List`, so a list keeps the no-copy path: a `Set` or a `Queue` is snapshotted
         // because the pager addresses rows by index and only a `List` can do that in place.
         is Collection<*> -> PagedListBrowsable(value.toList(), title = title)
-        // The reflective default. Returns null for anything `H2Reflect` declines — a scalar, a
+        // The reflective default, reached only for types with no registered adapter — `wrapForInspector`
+        // has already taken those. Returns null for anything `H2Reflect` declines — a scalar, a
         // platform type, a value whose `.h` rendering is already the whole story — and then the raw
         // value falls through to the Inspector's leaf renderer, exactly as before this existed.
         else -> H2Reflect.browsableFor(value, title) ?: value

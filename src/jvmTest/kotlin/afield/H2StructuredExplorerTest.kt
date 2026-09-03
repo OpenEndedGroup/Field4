@@ -20,6 +20,14 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
+ * Bounds for [H2StructuredExplorerTest.walkBrowsableTree]. Deep enough to clear the two hops that
+ * matter — a `Box`'s property bag, then a collection inside it, then its element — and shallow
+ * enough that a cyclic graph cannot turn a failing test into a hanging one.
+ */
+private const val WALK_MAX_DEPTH = 8
+private const val WALK_MAX_NODES = 4000
+
+/**
  * `.h2` on a domain object is a browsable tree, not a copy of `.h`.
  *
  * Until `H2Reflect.kt`, `LazyValueVisualizer.visualize` opened with
@@ -70,6 +78,25 @@ class H2StructuredExplorerTest {
     private class OneProperty(val only: Int)
 
     /**
+     * A type with a registered adapter, for testing the registry contract rather than the two
+     * production types that happen to implement it.
+     *
+     * `Box` proves the mechanism for `Box`; a `DataFrame` needs the dataframe plugin and a
+     * `FrameBufferGroup` needs a GPU, so neither is a test this suite can run. A local type with a
+     * local adapter tests what the contract actually promises — *any* registered adapter wins at any
+     * depth — and it is the honest way to cover the claim for the adapters nobody has written yet.
+     */
+    private class Adaptable(val hidden: Int, val alsoHidden: Int)
+
+    /**
+     * An adapter that substitutes **nothing**, which `H2ValueSnapshot`'s defaults make the easy
+     * thing to write: `value` defaults to the object itself, so an adapter added purely to supply a
+     * `summary` looks like this. It is the case the `!==` guard in `wrapForInspector` exists for,
+     * and without a test the guard is an assertion in a comment.
+     */
+    private class SummaryOnly(val a: Int, val b: Int)
+
+    /**
      * `isHeavyStructure` exactly as it was at `693b6b717`, before this change.
      *
      * Restated rather than referenced on purpose: it is a nine-line pure predicate, so a copy is
@@ -112,6 +139,40 @@ class H2StructuredExplorerTest {
     private fun explorerCellsOf(value: Any?, count: Int = 4): Pair<List<String>, List<List<String>>> {
         val raw = value?.let { h2AdaptedValue(it) } ?: value
         return h2ExplorerCellsForTesting(raw, start = 0, count = count)
+    }
+
+    /** What [walkBrowsableTree] saw: how many nodes it forced, and every child key it collected. */
+    private data class TreeWalk(val visited: Int, val keys: List<String>) {
+        /** Child keys with the `⚠`/range decoration stripped, as a person reads them. */
+        fun bareKeys(): List<String> = keys.map { it.substringAfter("] ", it).removePrefix("⚠ ").trim() }
+    }
+
+    /**
+     * Force every node reachable from [root], collecting the child keys of each.
+     *
+     * `dir()` is resolved on click, so a test that calls it once has exercised one level and proved
+     * nothing about the rest of the tree. This is the "click everything" harness: it forces both
+     * `dir()` and `html()`, because a node can be cheap to enumerate and expensive to render.
+     *
+     * Bounded twice over — [WALK_MAX_DEPTH] and [WALK_MAX_NODES] — because the object graphs behind
+     * `.h2` are cyclic and a budgetless walk here would hang the suite rather than fail it.
+     */
+    private fun walkBrowsableTree(root: Any?): TreeWalk {
+        var visited = 0
+        val keys = ArrayList<String>()
+
+        fun walk(node: Any?, depth: Int) {
+            if (visited >= WALK_MAX_NODES || depth > WALK_MAX_DEPTH) return
+            val browsable = node as? Browsable ?: return
+            visited++
+            runCatching { browsable.html() }
+            val children = runCatching { browsable.dir() }.getOrNull() ?: return
+            keys.addAll(children.keys)
+            children.values.forEach { walk(it, depth + 1) }
+        }
+
+        walk(wrapForInspector(root, title = "value"), 0)
+        return TreeWalk(visited, keys)
     }
 
     // -- the premise ------------------------------------------------------------------------------
@@ -447,6 +508,155 @@ class H2StructuredExplorerTest {
 
         assertTrue("value-viz-h2" in html, "premise: the Box adapter engaged at all")
         assertNull(box.liveKi, "exploring a box must not compile one")
+    }
+
+    /**
+     * The same claim as the test above, one hop deeper, which is where it was false.
+     *
+     * The `Box` adapter avoids `Box.ki` carefully — it reports `liveKi`, and its comment says why —
+     * and then hands `box.properties` to the map pager. `children`, `parents`, `nested` and
+     * `nestedIn` are `Delegation` properties, so they are *in* that bag holding raw [Box] objects;
+     * the pager resolves an element through `wrapForInspector`; and before the registry lookup moved
+     * into `wrapForInspector`, the reflective default took anything the arms above it did not claim.
+     * So a neighbouring box reached at `properties -> children -> [0]` was reflected, `ki` was read
+     * (`Boxes.kt#var ki: KotlinScriptEngine by kiDelegate`), and a K2 REPL engine was compiled for a
+     * box nobody ran. The guard existed exactly one hop deep.
+     *
+     * This walks the *whole* tree rather than one hand-written path, because the route is positional
+     * (`[0]`, `[i] children`) and a hand-written path stops testing the moment a key name or an
+     * ordering changes — so it also covers routes nobody has thought of yet.
+     *
+     * **What this test can and cannot observe.** The discriminating assertion is that `ki` never
+     * appears as a *property name* anywhere in the tree, because that name appears if and only if a
+     * `Box` was reflected. It deliberately does not assert "no engine was compiled": in a bare unit
+     * test `makeKI` throws, `H2Reflect.properties` catches it per property and renders `⚠ ki`, so
+     * `liveKi` stays null whether or not the box was reflected and an engine-based assertion would
+     * be a tautology here. The `liveKi` checks below are kept as cheap corroboration, not as the
+     * claim. Reading `ki` is what is verified; compiling is what reading it does in a live Field,
+     * where `makeKI` can succeed, and that half is reasoned rather than observed.
+     */
+    @Test
+    fun `exploring a Box's whole tree never reflects a Box`() {
+        registerH2DomainAdapters()
+        val container = Box("h2-deep-container").also { it.name = "container" }
+        val neighbour = Box("h2-deep-neighbour").also { it.name = "neighbour" }
+        container.children.add(neighbour)
+        neighbour.parents.add(container)
+
+        assertNull(container.liveKi, "premise: a fresh container has no engine")
+        assertNull(neighbour.liveKi, "premise: a fresh neighbour has no engine")
+
+        // Premise, asserted rather than assumed: the neighbour really is reachable as a raw Box
+        // through the property bag, which is the entire route. If `children` ever stops being a
+        // `Delegation` property this fails HERE, loudly, rather than passing for the wrong reason.
+        assertTrue(
+            container.properties.values.any { v -> v is Collection<*> && v.any { it === neighbour } },
+            "premise: the neighbour sits in the property bag as a raw Box; got ${container.properties.keys}"
+        )
+
+        val walk = walkBrowsableTree(h2AdaptedValue(container))
+        val bare = walk.bareKeys()
+
+        // Premise: the walk reached past the adapter's own rows into the property bag. Without this
+        // a walk that stopped at depth 1 would satisfy the `ki` assertion by never looking.
+        assertTrue(walk.visited > 3, "premise: the walk descended; visited=${walk.visited}")
+        assertTrue(bare.any { it == "children" }, "premise: the walk entered the property bag; got $bare")
+
+        assertFalse(
+            bare.any { it == "ki" },
+            "a Box was reflected somewhere in the tree — `ki` is reflection's fingerprint. Keys: $bare"
+        )
+        assertNull(neighbour.liveKi, "corroboration: no neighbour engine materialised")
+        assertNull(container.liveKi, "corroboration: no container engine materialised")
+    }
+
+    /**
+     * A registered adapter wins at depth, not only at the root.
+     *
+     * The companion to the test above: that one says the expensive thing does not happen, this one
+     * says the right thing does. A plain `listOf(box)` is the shortest honest stand-in for every
+     * container that holds boxes — it reaches the same `wrapForInspector` element call the property
+     * bag's `children` set does, without depending on the bag's key names or ordering.
+     */
+    @Test
+    fun `a Box reached as a nested value renders through its adapter, not by reflection`() {
+        registerH2DomainAdapters()
+        val neighbour = Box("h2-nested-neighbour").also { it.name = "neighbour" }
+
+        val node = wrapForInspector(listOf(neighbour), title = "boxes") as? Browsable
+        val children = assertNotNull(node?.dir(), "a list of boxes must page")
+        val element = assertNotNull(children["[0]"], "expected the element at [0]; got ${children.keys}")
+        val elementNode = assertNotNull(element as? Browsable, "a nested Box must itself be browsable")
+        val keys = assertNotNull(elementNode.dir(), "a nested Box must have children").keys
+            .map { it.substringAfter("] ", it) }
+
+        // `engine` is an adapter-only row: it exists precisely because the adapter chose to report
+        // `liveKi` rather than read `ki`. Reflection surfaces `ki` itself among the property names,
+        // so these two assertions distinguish the two renderings rather than merely counting rows.
+        assertTrue(keys.any { "engine" in it }, "expected the adapter's `engine` row; got $keys")
+        assertFalse(keys.any { it == "ki" }, "a nested Box must not be reflected; got $keys")
+        assertNull(neighbour.liveKi, "resolving the node must not compile an engine")
+    }
+
+    /**
+     * The registry contract, stated over a type this suite owns: **any** registered adapter wins at
+     * any depth, and its label carries both where the value sits and what it is.
+     *
+     * `Box` covers the production case, but `Box` is also the type the fix was written for. This is
+     * the general claim, and it is the one the KDoc on `wrapForInspector` makes — which matters most
+     * for the adapters nobody has written yet, since they are the ones nobody will re-test.
+     */
+    @Test
+    fun `any registered adapter wins at depth, not only at the root`() {
+        H2ValueRegistry.register(Adaptable::class.java) { subject ->
+            H2ValueSnapshot(
+                value = linkedMapOf("shown" to subject.hidden, "alsoShown" to subject.alsoHidden),
+                summary = "Adaptable(${subject.hidden})",
+                title = "Adaptable"
+            )
+        }
+
+        val node = assertNotNull(wrapForInspector(listOf(Adaptable(7, 9)), title = "items") as? Browsable)
+        val element = assertNotNull(assertNotNull(node.dir())["[0]"] as? Browsable)
+        val keys = assertNotNull(element.dir()).keys.map { it.substringAfter("] ", it) }
+
+        // The adapter's substitute, not the reflected object: `shown` exists only in the snapshot,
+        // `hidden` exists only on the class.
+        assertTrue(keys.any { "shown" in it }, "expected the adapter's substituted map; got $keys")
+        assertFalse(keys.any { it == "hidden" }, "the raw object was reflected instead; got $keys")
+
+        // `[0] — Adaptable`: the position says where it sits, the adapter's title says what it is,
+        // and a node labelled only `[0]` is the thing this composition exists to avoid.
+        val heading = element.heading()
+        assertTrue("[0]" in heading && "Adaptable" in heading, "expected `[0] — Adaptable…`; got `$heading`")
+    }
+
+    /**
+     * An adapter that substitutes nothing terminates as a leaf instead of recursing.
+     *
+     * `H2ValueSnapshot(value = …)` defaults to the object itself, so this is the adapter someone
+     * writes when they only want a nicer `summary`. Before the `!==` guard the front door would hand
+     * that object straight back to itself. The assertion is simply that this returns at all — a
+     * `StackOverflowError` here is the regression, and it would take the whole panel with it.
+     *
+     * **This test passes with the registry lookup removed, and that is not a defect in it.** Its
+     * three siblings above discriminate the fix; this one guards the guard, and the only edit it
+     * catches is someone keeping the lookup and dropping the `!==`. Measured: with the lookup
+     * neutered, 3 of the 4 new tests fail and this one passes.
+     */
+    @Test
+    fun `an adapter that substitutes nothing does not recurse`() {
+        H2ValueRegistry.register(SummaryOnly::class.java) { subject ->
+            H2ValueSnapshot(value = subject, summary = "SummaryOnly(${subject.a})")
+        }
+
+        val wrapped = wrapForInspector(SummaryOnly(1, 2), title = "value")
+
+        // Falls through to the reflective default, which is the right answer: the adapter expressed
+        // no opinion about structure, only about the summary line.
+        val node = assertNotNull(wrapped as? Browsable, "a two-property object should still be browsable")
+        val keys = assertNotNull(node.dir()).keys.map { it.substringAfter("] ", it) }
+        assertTrue(keys.any { it == "a" } && keys.any { it == "b" }, "expected reflected properties; got $keys")
     }
 
     @Test

@@ -576,6 +576,13 @@ private fun makeSource(value: Any?): H2Source {
         // The reflective default. `ScalarSource` — one row, one cell, `toString()` — remains the
         // answer for anything `H2Reflect` declines, which is what every non-collection used to get
         // and is why forcing a domain object through the gate alone would have shown an empty frame.
+        //
+        // Unlike `wrapForInspector`, this does NOT consult `H2ValueRegistry`, and today it does not
+        // need to: both callers pass a root, `visualize` substitutes the adapter's value before
+        // retaining it under the token, and this surface is flat — a nested value becomes an
+        // `h2PreviewOf` text cell, never another `H2Source`. If a drill-down op is added here,
+        // consult the registry at that point, or a nested `Box` gets reflected and its `ki` read,
+        // which is the bug `wrapForInspector`'s registry lookup exists to prevent on the tree side.
         else -> if (H2Reflect.isExplorableObject(value)) PropertyRowsSource(value) else ScalarSource(value)
     }
 }
