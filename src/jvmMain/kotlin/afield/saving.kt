@@ -1503,7 +1503,7 @@ class SavingContext {
 
     private fun loadJson(root: String, filterId: (String) -> String, initIfCreated: Boolean = true): Set<Box> {
         val transfers = format.decodeFromString<Set<Box_transfer>>(File(root, METADATA_JSON).readText())
-        return transfers.map {
+        val boxes = transfers.map {
             val id = filterId(it.id)
             val b = box(id, createIfMissing = true, initIfCreated = initIfCreated)
             it.properties.forEach { (name, element) ->
@@ -1518,6 +1518,15 @@ class SavingContext {
             }
             b
         }.toSet()
+
+        // The JSON path grew its own materialization loop rather than sharing `instantiateTransfers`,
+        // and so never gained the repair that path has done since `03ad66360`. That mattered more here
+        // than anywhere: [load] re-saves this result as EDN when `upgradeOnLoad`, so a legacy document
+        // was converted *and* had its unrepaired topology written into the new `metadata.edn`, which
+        // then read back repaired one open later. Reconciling before the upgrade makes the conversion
+        // write what the loader would have derived anyway.
+        reconcileLoadedTopology(boxes)
+        return boxes
     }
 
     fun fromTypedPair(
