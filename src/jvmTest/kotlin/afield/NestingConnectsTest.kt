@@ -364,6 +364,65 @@ class NestingConnectsTest {
         )
     }
 
+    @Test
+    fun restoringAVersionThatPredatesTheEdgeDoesNotTakeItAway() {
+        // The nastiest shape this had, because document open would have hidden it: history restore
+        // reinstates `parents` verbatim from the snapshot, and a snapshot written before `398cb0ca9`
+        // records nesting with no edge. So restoring one *removed* an edge from a live session that
+        // had it, saved that, and left the box quietly not inheriting until the document was closed
+        // and reopened.
+        val s = fileBackedSession("history-restore")
+        val dir = File(s.filename)
+        val container = boxIn(s, "container").also { it.preamble = markedPreamble }
+        val child = boxIn(s, "child").also { it.preamble = "" }
+        s.root.connect(container)
+        s.root.connect(child)
+        child.nestInto(container)
+        assertTrue(container in child.parents, "fixture: the live session starts *with* the edge")
+
+        val saving = SavingContext()
+
+        // The old version: the same document with the edge taken back out, which is how every
+        // pre-fix save of a nested box looks on disk.
+        val restoredParents = child.parents.toMutableSet()
+        val restoredChildren = container.children.toMutableSet()
+        child.setPropertyRaw("parents", restoredParents.toMutableSet().apply { remove(container) })
+        container.setPropertyRaw("children", restoredChildren.toMutableSet().apply { remove(child) })
+        assertFalse(container in child.parents, "fixture: and the snapshot is taken without it")
+        val oldVersionEdn = saving.exportEdnPackage(setOf(s.root, container, child), s.filename)
+        child.setPropertyRaw("parents", restoredParents)
+        container.setPropertyRaw("children", restoredChildren)
+        assertTrue(container in child.parents, "fixture: live state put back before the restore")
+
+        // `HistoryManager` reads a version list as the sorted `backups/metadata_backup_*.edn` followed
+        // by the live `metadata.edn`, so writing one backup makes index 0 the old version.
+        File(dir, "backups").mkdirs()
+        File(dir, "backups/metadata_backup_00000.edn").writeText(oldVersionEdn)
+        File(dir, SavingContext.METADATA_EDN)
+            .writeText(saving.exportEdnPackage(setOf(s.root, container, child), s.filename))
+        assertEquals(
+            2,
+            HistoryManager.listVersions(s.filename).size,
+            "fixture: one backup plus the live metadata.edn"
+        )
+
+        // Asserted, not ignored: `restoreVersion` swallows every exception and returns false, so a
+        // test that only looked at box state could not tell a repair from a restore that never ran.
+        assertTrue(
+            HistoryManager.restoreVersion(s.filename, s, 0),
+            "the restore itself must succeed"
+        )
+
+        assertEquals(container, child.nestedIn, "the restored version still nests the child")
+        assertTrue(
+            container in child.parents,
+            "restoring a version that predates the edge must not take it away: ${child.parents}"
+        )
+        assertTrue(child in container.children, "and the inverse: ${container.children}")
+        assertTrue(s.root in child.parents, "leaving the document-root edge alone: ${child.parents}")
+        assertTrue("var Box.sharedByMarker" in gatherPreambleUpwards(child), "so inheritance survives")
+    }
+
     // ---------------------------------------------------------------------------------------------
     // Depth, and the cycle a nest edge now makes reachable in the `parents` graph.
     // ---------------------------------------------------------------------------------------------
