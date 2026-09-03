@@ -198,6 +198,37 @@ class CitationContractTest {
             // labelled as an observation from one run rather than stated as a derived count, because
             // it *is* one, and a derivation over a running GPU is not a thing this corpus can offer.
             "public/docs/gpu_state.md" to 5,
+            // Added 2026-09-03 with the page it guards. The output-panel sizing contract, which had
+            // been documented in exactly one paragraph of `public/docs/three_output.md` and in three
+            // commit messages, after producing three shipped bugs in a week.
+            //
+            // Guarded from its first day for a reason specific to it: the page's whole subject is a
+            // set of small named functions in two languages that only make sense pointed at
+            // (`isFillWidthIframe`, `fillWidthForDisclosure`, `contentSizeForDisclosure`,
+            // `iframeIntrinsicSize`), one of which exists twice — once in
+            // `src/commonMain/resources/outputareas2.js` and once in `src/jsMain/kotlin/afield/Main.kt`
+            // — and the page's closing section says plainly that nothing compares the two copies.
+            // A page whose argument is "these names are the contract" and that cannot report a
+            // rename is not doing the job.
+            //
+            // 40 anchored citations as written, all prose `path:line#anchor`, across 8 files:
+            // 18 in `outputareas2.js`, 7 in `Main.kt`, 6 in `run_ui_regressions.py`, 3 in
+            // `outputs.kt`, 2 each in `iframe_autosize.js` and `Outputs.kt`, and one each in
+            // `Three.kt` and `PythonInterface.kt`. Every anchor was chosen unique-in-file — verified
+            // by counting containments, not by trusting the choice — so all 40 report unbounded
+            // headroom and [MAX_FRAGILE] is unaffected. Every path is written repo-relative rather
+            // than abbreviated, deliberately: `Main.kt` matches three files in this tree
+            // (`jsMain`, `jsVision`, and the linalg generator), so an abbreviated citation to it
+            // could not resolve at all.
+            //
+            // Floored at 20, about half, on the DATAFRAME_PLUGIN convention.
+            //
+            // No `css` in `CitationGuard.EXT`, so the page's references to the
+            // `.disclosure-content iframe { width: 100% !important }` rule in `field.css` are
+            // deliberately written as prose without a `path:line` form. A backticked
+            // `field.css:491` would look like a citation to a reader and be invisible to every
+            // guard here, including the bare-citation census — the worst of both.
+            "public/docs/output_panel_sizing.md" to 20,
         )
 
         /**
