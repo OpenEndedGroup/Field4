@@ -54,12 +54,19 @@ Extension points, in the order to try them:
 ### The two limits worth knowing before you extend this
 
 **A getter is opaque.** There is no way to tell a field read from a computed property that opens a
-file, allocates a GPU buffer, or compiles a K2 REPL engine. `Box.ki` is the last of those, which is
-why `Box` is served by a hand-written adapter and not by reflection —
-`H2StructuredExplorerTest.exploring a Box does not build its Kotlin engine` asserts that by
-identity, so deleting the adapter fails there rather than downstream. The general mitigation is
-`H2Reflect.readsWellInline`'s refusal of JVM and Kotlin platform packages; it is not a proof. **If a
-type's getters are expensive or effectful, give it an adapter.**
+file, allocates a GPU buffer, or compiles a K2 REPL engine
+(reproducer: `H2StructuredExplorerTest.kt#fun reflectionCannotTellAPlainFieldReadFromAnEffectfulGetter`).
+`javaField` is the obvious candidate and fails in both directions, measured 2026-09-03: it is
+**non-null** for a `by lazy` property and for `Box.code` (both have a `$delegate` field, and reading
+either runs the delegate's `getValue`), and **null** for a pure `get() = 7` — the same answer it
+gives for `Box.ki`, which compiles a REPL engine on read. So no threshold on it separates the two.
+
+`Box.ki` is why `Box` is served by a hand-written adapter and not by reflection;
+`H2StructuredExplorerTest`'s "exploring a Box does not build its Kotlin engine" asserts that by
+identity, so deleting the adapter fails there rather than downstream with a compiled engine and no
+explanation. The general mitigation is `H2Reflect.readsWellInline`'s refusal of JVM and Kotlin
+platform packages, which is a heuristic and not a proof. **If a type's getters are expensive or
+effectful, give it an adapter.**
 
 **Cycles have two different answers.** `H2ReflectiveBrowsable` threads an identity path chain and
 renders `[circular reference]` where the graph closes. `PagedListBrowsable` and `PagedMapBrowsable`

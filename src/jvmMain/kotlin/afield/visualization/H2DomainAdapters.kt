@@ -38,22 +38,20 @@ private const val H2_STACK_FRAMES = 64
 fun registerH2DomainAdapters() {
 
     // ── Box ──────────────────────────────────────────────────────────
-    /**
-     * A box as an ordered map: identity, geometry, code size, run state, its property bag, and its
-     * four kinds of edge.
-     *
-     * Read-safety is the whole design. Every entry below is a property-bag lookup or a field read.
-     * `ki` and `liveKi` are never touched — `ki` compiles on read — and neither is anything else
-     * whose getter does work.
-     *
-     * The edges are flattened to **label tables**, not to the `Box` objects themselves, and that is
-     * not squeamishness: a box graph is cyclic by construction (`398cb0ca9` made `nestInto` create
-     * the `parents`/`children` edge that pairs with `nested`/`nestedIn`, so a nested box and its
-     * container now point at each other), and `PagedListBrowsable`/`PagedMapBrowsable` carry no
-     * cycle guard — the Inspector resolves `dir()` on click, so handing the pager a cycle lets a
-     * person walk parent→child→parent without end. A table of `name`/`id`/`edge` rows also happens
-     * to be what someone asking "what is this box connected to" wants to read.
-     */
+    // A box as an ordered map: identity, geometry, code size, run state, its property bag, and its
+    // four kinds of edge.
+    //
+    // Read-safety is the whole design. Every entry below is a property-bag lookup or a field read.
+    // `ki` and `liveKi` are never touched — `ki` compiles on read — and neither is anything else
+    // whose getter does work.
+    //
+    // The edges are flattened to **label tables**, not to the `Box` objects themselves, and that is
+    // not squeamishness: a box graph is cyclic by construction (`398cb0ca9` made `nestInto` create
+    // the `parents`/`children` edge that pairs with `nested`/`nestedIn`, so a nested box and its
+    // container now point at each other), and `PagedListBrowsable`/`PagedMapBrowsable` carry no
+    // cycle guard — the Inspector resolves `dir()` on click, so handing the pager a cycle lets a
+    // person walk parent→child→parent without end. A table of `name`/`id`/`edge` rows also happens
+    // to be what someone asking "what is this box connected to" wants to read.
     registerH2Value<Box> { box ->
         val name = box.name.ifBlank { box.id }
         // `Box.code` is declared `String` and can be null. `var code by Delegation<String>()` is
@@ -93,14 +91,12 @@ fun registerH2DomainAdapters() {
     }
 
     // ── Functions.Fn ─────────────────────────────────────────────────
-    /**
-     * A function as a sampled `x`, `f(x)` table.
-     *
-     * `evalSafe` rather than `eval`, so a sample landing exactly on an endpoint of an
-     * exclusive-feeling domain cannot walk outside it, and `runCatching` per sample because a
-     * function assembled from a graph can divide by zero at one x and be perfectly well behaved at
-     * the next — one bad sample must not empty the table.
-     */
+    // A function as a sampled `x`, `f(x)` table.
+    //
+    // `evalSafe` rather than `eval`, so a sample landing exactly on an endpoint of an
+    // exclusive-feeling domain cannot walk outside it, and `runCatching` per sample because a
+    // function assembled from a graph can divide by zero at one x and be perfectly well behaved at
+    // the next — one bad sample must not empty the table.
     registerH2Value<Functions.Fn> { fn ->
         val domain = fn.domain
         val usable = domain.min.isFinite() && domain.max.isFinite() && domain.max > domain.min
@@ -128,14 +124,12 @@ fun registerH2DomainAdapters() {
     }
 
     // ── FLine ────────────────────────────────────────────────────────
-    /**
-     * A polyline as its node table: one row per drawing instruction.
-     *
-     * `endpoint` reads the last stored control point rather than calling `Node.end`, which **throws
-     * on a `Close`** — a `Close` is `Node(0)` and stores no point of its own, so its end is the
-     * start of the subpath it closes and a lone node cannot know it (see `FLine.Node.end`'s KDoc).
-     * A `Close` row therefore carries blanks, which is honest, instead of an exception.
-     */
+    // A polyline as its node table: one row per drawing instruction.
+    //
+    // `endpoint` reads the last stored control point rather than calling `Node.end`, which **throws
+    // on a `Close`** — a `Close` is `Node(0)` and stores no point of its own, so its end is the
+    // start of the subpath it closes and a lone node cannot know it (see `FLine.Node.end`'s KDoc).
+    // A `Close` row therefore carries blanks, which is honest, instead of an exception.
     registerH2Value<FLine> { line ->
         val nodes = line.nodes.toList()
         val rows = nodes.mapIndexed { i, node ->
@@ -158,14 +152,12 @@ fun registerH2DomainAdapters() {
     }
 
     // ── Throwable ────────────────────────────────────────────────────
-    /**
-     * An exception as message, cause chain and stack.
-     *
-     * `Throwable` is `java.lang`, so the platform-package narrowing in `H2Reflect` refuses it, and
-     * the reflective default would in any case find `stackTrace`, `suppressed` and
-     * `localizedMessage` — the JVM's names, not the three things a person wants. The cause chain is
-     * walked with an identity guard because `initCause(this)` is legal and does happen.
-     */
+    // An exception as message, cause chain and stack.
+    //
+    // `Throwable` is `java.lang`, so the platform-package narrowing in `H2Reflect` refuses it, and
+    // the reflective default would in any case find `stackTrace`, `suppressed` and
+    // `localizedMessage` — the JVM's names, not the three things a person wants. The cause chain is
+    // walked with an identity guard because `initCause(this)` is legal and does happen.
     registerH2Value<Throwable> { t ->
         val causes = ArrayList<String>()
         val seen = ArrayList<Throwable>()

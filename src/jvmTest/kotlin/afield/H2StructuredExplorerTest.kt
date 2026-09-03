@@ -10,6 +10,8 @@ import eu.sirotin.kotunil.base.mm
 import java.io.File
 import kotlin.math.abs
 import kotlin.math.sin
+import kotlin.reflect.full.memberProperties
+import kotlin.reflect.jvm.javaField
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -351,6 +353,67 @@ class H2StructuredExplorerTest {
             }
         }
         assertTrue(broken.isEmpty(), "still not browsable: $broken")
+    }
+
+    // -- why the side-effect limit is a limit and not laziness -----------------------------------
+
+    /**
+     * Kotlin reflection offers no predicate that separates a plain field read from a getter that
+     * runs arbitrary code, and `javaField` — the obvious candidate — fails in **both** directions.
+     *
+     * This is the evidence for `H2Reflect`'s central caveat and for `dev_docs/VALUE_VISUALIZER.md`'s
+     * claim that a getter is opaque. Without it that claim is a shrug; with it, someone who thinks
+     * they can auto-detect effectful properties and retire the hand-written adapters can see in
+     * thirty seconds why not.
+     *
+     * Measured 2026-09-03 on the bundled 2.4.255-SNAPSHOT fork.
+     */
+    @Test
+    // Named without backticks on purpose: `dev_docs/VALUE_VISUALIZER.md` cites this test as a
+    // reproducer anchor, and the impossibility-claim gate matches the anchor LITERALLY against the
+    // file text — a backtick-quoted name makes the citation unresolvable.
+    fun reflectionCannotTellAPlainFieldReadFromAnEffectfulGetter() {
+        val sample = Sample::class.memberProperties.associateBy { it.name }
+        val boxProps = Box::class.memberProperties.associateBy { it.name }
+
+        // Premise: all four properties are visible to reflection at all. If a Kotlin release stops
+        // exposing one of them, this test must fail here rather than silently comparing nulls.
+        listOf("plain", "computed", "lazyish").forEach {
+            assertNotNull(sample[it], "premise: `$it` must be reflectable")
+        }
+        assertNotNull(boxProps["ki"], "premise: `Box.ki` must be reflectable")
+        assertNotNull(boxProps["code"], "premise: `Box.code` must be reflectable")
+
+        // Direction one: a NON-NULL javaField does not mean a plain field read.
+        // `by lazy` and `Box.code`'s `Delegation` both have a `$delegate` backing field, and reading
+        // either runs the delegate's `getValue` — which for `Box.code` is a property-bag lookup that
+        // can return null through a non-null-typed property, and for `Box.ki` compiles a REPL engine.
+        assertNotNull(sample["lazyish"]!!.javaField, "a `by lazy` property has a \$delegate field")
+        assertNotNull(boxProps["code"]!!.javaField, "`Box.code`'s Delegation has a \$delegate field")
+        assertEquals("lazyish\$delegate", sample["lazyish"]!!.javaField!!.name)
+
+        // Direction two: a NULL javaField does not mean effectful. `get() = 7` is pure and has none.
+        assertNull(sample["computed"]!!.javaField, "a computed property has no backing field")
+        // And `Box.ki`, the effectful case this whole design turns on, also has none — so the two
+        // land on the same side of the only test available.
+        assertNull(boxProps["ki"]!!.javaField, "`Box.ki` has no backing field either")
+
+        // The conclusion, stated as the assertion: `javaField == null` puts a pure `get() = 7` and
+        // an engine-compiling delegate in the same bucket, so no threshold on it can separate them.
+        assertEquals(
+            sample["computed"]!!.javaField == null,
+            boxProps["ki"]!!.javaField == null,
+            "if these ever differ, javaField became a usable discriminator and H2Reflect's " +
+                "side-effect caveat — and every hand-written adapter justified by it — should be revisited"
+        )
+    }
+
+    /** Three property shapes with different effects on read, and no reflective way to tell them apart. */
+    @Suppress("unused")
+    private class Sample {
+        val plain: Int = 5
+        val computed: Int get() = 7
+        val lazyish: Int by lazy { 9 }
     }
 
     // -- the hand-written adapters ---------------------------------------------------------------
