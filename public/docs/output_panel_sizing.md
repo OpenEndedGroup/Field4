@@ -292,9 +292,25 @@ measured size differs from its stored size by more than 2px, and every auto-size
 gated on it. `autosize="fixed"` in the channel spec turns the whole mechanism off up front
 (`src/commonMain/resources/outputareas2.js:665#autoSizeModeForDisclosure(d) !== "fixed"`).
 
-This is why `keyframeBrowser`'s 200px panel never came up in daily use. The first drag fixed it
-permanently, per panel, per session, and the bug was only ever visible on a panel nobody had touched
-— which is to say, on a fresh box, and in every docs capture.
+That gate is what made `keyframeBrowser`'s 200px panel look like it only affected fresh boxes: a
+panel you had dragged stayed dragged, so the bug was visible on a panel nobody had touched — a fresh
+box, and every docs capture.
+
+Except that the drag itself did not reliably stick, and for the panels most likely to need one it
+usually did not. Until 2026-09-03 `rememberSize` ran only from `mouseup` and `mouseleave` on the
+panel (`src/commonMain/resources/outputareas2.js:814#d.cw.addEventListener("mouseup"`), and a mouse
+event raised inside an iframe belongs to that iframe's document — it never reaches the one holding
+the panel. Release the grip over the frame and nothing recorded the new size; the next auto-size
+pass read the unchanged `st.width`/`st.height` and put the panel back. Dragging an iframe panel
+bigger and watching it snap shut on release is the same bug as the 200px panel, wearing the fix.
+
+A `ResizeObserver` on the panel box now records it instead
+(`src/commonMain/resources/outputareas2.js:833#d.userResizeObserver = new ResizeObserver`), which
+does not care where the pointer went: the native grip's whole effect is inline width/height on the
+element, so the box changing size outside a self-caused window *is* somebody having dragged it. The
+three entry points that resize the box themselves — `applyOpen`, `primeAutoSizeForOpen` and
+`applyClosed` — all mark `selfResizeUntil` so their own work is not mistaken for a drag, or a panel
+nobody touched would come out `userSized` and never auto-size again.
 
 ## What is pinned, and what is not
 
