@@ -1,5 +1,6 @@
 package afield
 
+import afield.logger.lprintln
 import afield.stdlib.Delegation
 
 private val nestingMutationDepth = ThreadLocal.withInitial { 0 }
@@ -207,8 +208,27 @@ fun Box.clearNested() {
  * where nothing will now re-derive it away. Keeping it would instead leave a phantom edge with no
  * gesture that explains it. `Box.disconnect` removes only this one edge, so a box's document-root
  * edge is untouched either way.
+ *
+ * **Refuses to nest a box inside itself or inside one of its own nested descendants**, returning
+ * `false` and changing nothing. Nesting has always allowed that — one such cycle exists in the
+ * surveyed workspace, `35ee4ea3 ⇄ 79c4856c` in `nestedAgain2`, where each box is the other's
+ * `nestedIn` — and it used to be contained: `collectAllNestedBoxes` guards its walk explicitly for
+ * exactly this reason. What changed is that connecting on nest puts the same cycle into the
+ * `parents` graph, which is walked by far more code than `nested` is. Every walker checked survives
+ * it (`searchUpwards` carries a `seen` set, so preamble gathering terminates), so this is a bad
+ * state rather than a hang — but it is a bad state that no gesture should be able to ask for.
+ *
+ * @return `true` if the nesting was applied, `false` if it was refused as a cycle.
  */
-fun Box.nestInto(parent: Box?) {
+fun Box.nestInto(parent: Box?): Boolean {
+    if (parent != null && parent.isNestedWithin(this)) {
+        lprintln(
+            "warning,nesting",
+            "refusing to nest ${this.name} into ${parent.name}: that would make a nesting cycle"
+        )
+        return false
+    }
+
     withNestingGuard {
         val oldParent = nestedIn
         if (oldParent != null) {
@@ -232,6 +252,24 @@ fun Box.nestInto(parent: Box?) {
         nestedIn = parent
         needsResync.add(this to "nestedIn")
     }
+    return true
+}
+
+/**
+ * Is this box [ancestor] itself, or nested somewhere inside it?
+ *
+ * Walks `nestedIn` upward, and carries a `seen` set because it has to survive the cycles it exists to
+ * stop being created: `nestedAgain2` in the surveyed workspace already holds one, so the very first
+ * caller can be handed a graph that would otherwise loop forever.
+ */
+fun Box.isNestedWithin(ancestor: Box): Boolean {
+    val seen = mutableSetOf<Box>()
+    var at: Box? = this
+    while (at != null && seen.add(at)) {
+        if (at == ancestor) return true
+        at = at.nestedIn
+    }
+    return false
 }
 
 /**

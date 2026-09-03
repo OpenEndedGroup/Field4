@@ -588,10 +588,15 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                 }
                 val parent = boxes.first()
                 val children = boxes.drop(1)
-                children.forEach { child ->
-                    child.nestInto(parent)
-                }
-                notify("Nested ${children.size} into ${parent.name}")
+                // Count what actually nested, not what was asked for: `nestInto` refuses a cycle, and
+                // selecting a container after one of the boxes already inside it is the easy way to
+                // ask for one.
+                val nested = children.count { child -> child.nestInto(parent) }
+                val refused = children.size - nested
+                notify(
+                    if (refused == 0) "Nested $nested into ${parent.name}"
+                    else "Nested $nested into ${parent.name}, refused $refused already containing it"
+                )
             }
 
             actionTable["-un-nest"] = { boxes ->
