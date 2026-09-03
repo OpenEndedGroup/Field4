@@ -70,11 +70,21 @@ object H2ValueRegistry {
      * registries are the pair of extension points a third-party type reaches Field through, and
      * having them disagree about what "registered for this type" means is the bug twice.
      */
-    internal fun adapt(value: Any): H2ValueSnapshot? {
+    internal fun adapt(value: Any): H2ValueSnapshot? = adapterFor(value)?.invoke(value)
+
+    /**
+     * The adapter registered for [value]'s type, **without running it**.
+     *
+     * Split from [adapt] for the explorer's drill: deciding whether a row can be entered asks this
+     * question once per visible row, and an adapter is arbitrary user code — `Box`'s walks a
+     * property bag, `DataFrame`'s wraps a frame. Answering "is one registered" by invoking it would
+     * do that work up to a windowful of times to render chevrons nobody clicked.
+     */
+    internal fun adapterFor(value: Any): ((Any) -> H2ValueSnapshot)? {
         var clazz: Class<*>? = value::class.java
         while (clazz != null) {
-            adapters[clazz]?.let { return it(value) }
-            findInInterfaceClosure(clazz.interfaces)?.let { return it(value) }
+            adapters[clazz]?.let { return it }
+            findInInterfaceClosure(clazz.interfaces)?.let { return it }
             clazz = clazz.superclass
         }
         return null
@@ -257,6 +267,19 @@ object LazyValueVisualizer {
      */
     private fun isExplorable(value: Any?): Boolean =
         isHeavyStructure(value) || H2Reflect.isExplorableObject(value)
+
+    /**
+     * Whether `.h2` would open an explorer for [value] rather than hand it to `.h`.
+     *
+     * The same question the opening guard in [visualize] asks, exposed because the explorer's drill
+     * has to ask it per row: a row can be entered exactly when the value behind it is one `.h2`
+     * would have explored had someone typed `.h2` on it directly. Deliberately *this* function and
+     * not a structural copy of it in `h2explorer.kt` — there are already three type ladders over
+     * this value space and a fourth that disagreed with them would put a chevron on a row that
+     * opens empty, or withhold one from a row that would have opened fine.
+     */
+    internal fun canExplore(value: Any?): Boolean =
+        value != null && (H2ValueRegistry.adapterFor(value) != null || isExplorable(value))
 
     /**
      * A collection, array or buffer — something whose *elements* are the content.
