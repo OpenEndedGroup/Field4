@@ -809,3 +809,14 @@ inline fun <reified T : Any> registerH2Value(noinline adapter: (T) -> H2ValueSna
 }
 
 internal fun h2GetRawValue(token: String): Any? = H2TokenRetention.fetch(token)
+
+/**
+ * Test seam: the value a registered `.h2` adapter substitutes for [value], or [value] itself when
+ * no adapter matches.
+ *
+ * [H2ValueRegistry] is an object with an `internal adapt`, and the substitution it performs is the
+ * whole content of a hand-written adapter — so without this, an adapter's *shape* (does an `Fn`
+ * become an x/f(x) table?) could only be checked through the full HTML string, which is a test that
+ * passes on a coincidence.
+ */
+internal fun h2AdaptedValue(value: Any): Any? = H2ValueRegistry.adapt(value)?.value ?: value
