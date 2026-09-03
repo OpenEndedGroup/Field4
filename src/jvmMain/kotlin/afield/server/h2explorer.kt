@@ -1,5 +1,7 @@
 package afield.server
 
+import afield.H2Property
+import afield.H2Reflect
 import afield.Handled
 import afield.RunsAt
 import afield.h2GetRawValue
@@ -495,6 +497,44 @@ internal fun h2ExplorerCellsForTesting(
     return source.columns(stride) to source.rows(start, count, stride).map { it.cells }
 }
 
+/**
+ * A domain object as one row per property: the property name in the key column, then its value and
+ * declared type.
+ *
+ * `hasKeys` is on, and the name goes in the *key* column rather than a data column, because the
+ * client styles the key column as left-aligned text with its own show/hide toggle
+ * (`getColumnDefs` in `h2_explorer.html`) while every `columnNames` column is styled `"num"` and
+ * right-aligns. A right-aligned property name is the tell that this got wired the other way round.
+ *
+ * Rows come from [H2Reflect.properties] — the same enumerator the `/tree` and `/browse` `Browsable`
+ * reads — so the iframe and the outliner cannot report different children for one object. A
+ * property whose getter threw arrives carrying its failure text and occupies a row; it is not
+ * dropped.
+ */
+private class PropertyRowsSource(private val value: Any) : H2Source {
+    private val properties: List<H2Property> by lazy { H2Reflect.properties(value) }
+
+    override val kind: String = "object"
+    override val title: String = H2Reflect.summaryLine(value)
+    override val minStride: Int = 1
+    override val maxStride: Int = 1
+    override val defaultStride: Int = 1
+    override val hasKeys: Boolean = true
+
+    override fun totalRows(stride: Int): Int = properties.size
+    override fun columns(stride: Int): List<String> = listOf("value", "type")
+
+    override fun rows(start: Int, count: Int, stride: Int): List<H2Row> {
+        val safeStart = start.coerceIn(0, properties.size)
+        val safeEnd = (safeStart + count.coerceAtLeast(0)).coerceIn(safeStart, properties.size)
+        if (safeStart >= safeEnd) return emptyList()
+        return (safeStart until safeEnd).map { i ->
+            val p = properties[i]
+            H2Row(index = i, key = p.label, cells = listOf(p.cellText, p.typeName))
+        }
+    }
+}
+
 private fun makeSource(value: Any?): H2Source {
     return when (value) {
         null -> ScalarSource(null)
@@ -511,7 +551,13 @@ private fun makeSource(value: Any?): H2Source {
         is List<*> -> ListSource(value)
         is Array<*> -> ListSource(value.asList())
         is Map<*, *> -> MapSource(value)
-        else -> ScalarSource(value)
+        // After `List`, so a list keeps its no-copy path: a `Set` or a `Queue` is snapshotted,
+        // because `rows(start, count)` addresses by index and only a `List` answers that in place.
+        is Collection<*> -> ListSource(value.toList())
+        // The reflective default. `ScalarSource` — one row, one cell, `toString()` — remains the
+        // answer for anything `H2Reflect` declines, which is what every non-collection used to get
+        // and is why forcing a domain object through the gate alone would have shown an empty frame.
+        else -> if (H2Reflect.isExplorableObject(value)) PropertyRowsSource(value) else ScalarSource(value)
     }
 }
 

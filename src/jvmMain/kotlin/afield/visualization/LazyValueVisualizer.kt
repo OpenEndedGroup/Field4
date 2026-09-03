@@ -131,7 +131,7 @@ private object H2TokenRetention {
 object LazyValueVisualizer {
     fun visualize(value: Any?, appendable: Boolean = false): String {
         val adapted = value?.let { H2ValueRegistry.adapt(it) }
-        if (adapted == null && !isHeavyStructure(value)) return ValueVisualizer.visualize(value, appendable = appendable)
+        if (adapted == null && !isExplorable(value)) return ValueVisualizer.visualize(value, appendable = appendable)
 
         val rawValue = adapted?.value ?: value
         val wrapped = wrapForInspector(rawValue, title = adapted?.title ?: "value")
@@ -170,13 +170,17 @@ object LazyValueVisualizer {
             ?: "${value::class.simpleName ?: "List"} (size=${value.size})"
         is Array<*> -> unitCollectionSummary(value.asList(), value::class.simpleName ?: "Array")
             ?: "${value::class.simpleName ?: "Array"} (size=${value.size})"
+        is Collection<*> -> "${value::class.simpleName ?: "Collection"} (size=${value.size})"
         is IntArray -> "IntArray (size=${value.size})"
         is LongArray -> "LongArray (size=${value.size})"
         is FloatArray -> "FloatArray (size=${value.size})"
         is DoubleArray -> "DoubleArray (size=${value.size})"
         is FloatBuffer -> "FloatBuffer (pos=${value.position()}, limit=${value.limit()}, capacity=${value.capacity()})"
         is IntBuffer -> "IntBuffer (pos=${value.position()}, limit=${value.limit()}, capacity=${value.capacity()})"
-        else -> value::class.simpleName ?: value::class.java.simpleName
+        // A reflected domain object gets a property count, because "Foo" alone tells a person
+        // nothing about whether the tree below it is worth opening.
+        else -> if (H2Reflect.isExplorableObject(value)) H2Reflect.summaryLine(value)
+        else value::class.simpleName ?: value::class.java.simpleName
     }
 
     private fun unitCollectionSummary(values: List<*>, kind: String): String? {
@@ -192,14 +196,44 @@ object LazyValueVisualizer {
         return "$kind (size=${values.size})$suffix"
     }
 
+    /**
+     * Whether `.h2` engages for [value] at all, as opposed to handing it straight to `.h`.
+     *
+     * The union of two rules, kept separate because they are settled by different arguments:
+     *
+     *  - [isHeavyStructure] — a collection or buffer. **There is no size threshold here, and that
+     *    is the point.** This gate used to be strictly narrower than the machinery behind it: it
+     *    admitted `IntArray` but not `ByteArray`, `List` but not `Set`, while `wrapForInspector`
+     *    below and `makeSource` in `h2explorer.kt` both already rendered all of them. The gate's job
+     *    is to admit exactly what the three downstream surfaces can draw, so the rule is now
+     *    "anything with indexable elements", and any future addition belongs in all three places or
+     *    none.
+     *  - [H2Reflect.isExplorableObject] — a domain object with properties worth a tree. See that
+     *    function for why the property floor is 2 rather than `.h`'s elision point.
+     */
+    private fun isExplorable(value: Any?): Boolean =
+        isHeavyStructure(value) || H2Reflect.isExplorableObject(value)
+
+    /**
+     * A collection, array or buffer — something whose *elements* are the content.
+     *
+     * `Collection` rather than `List` covers a `Set`, an `ArrayDeque` and a `Queue`; the price is
+     * that [wrapForInspector] and `makeSource` snapshot a non-`List` collection with `toList()`,
+     * because both surfaces address rows by index and only a `List` can answer that without a copy.
+     * A `List` therefore keeps its no-copy path deliberately, ahead of the general case.
+     */
     private fun isHeavyStructure(value: Any?): Boolean {
         return value is Map<*, *> ||
-            value is List<*> ||
+            value is Collection<*> ||
             value is Array<*> ||
+            value is ByteArray ||
+            value is ShortArray ||
             value is IntArray ||
             value is LongArray ||
             value is FloatArray ||
             value is DoubleArray ||
+            value is BooleanArray ||
+            value is CharArray ||
             value is FloatBuffer ||
             value is IntBuffer
     }
@@ -283,7 +317,14 @@ internal fun lazyInlineExpanderHtml(
     }
 }
 
-private fun wrapForInspector(value: Any?, title: String? = null): Any? {
+/**
+ * The `Browsable` (or bare value) that `/tree` and `/browse` show for [value].
+ *
+ * `internal` rather than private because `H2Reflect`'s reflective tree re-enters it for each
+ * property: a property holding a list must get the same paging a top-level list gets, or the two
+ * routes disagree about the same object depending on how you reached it.
+ */
+internal fun wrapForInspector(value: Any?, title: String? = null): Any? {
     return when (value) {
         null -> null
         is Quantity -> QuantityBrowsable(value)
@@ -305,7 +346,13 @@ private fun wrapForInspector(value: Any?, title: String? = null): Any? {
         is CharArray -> PagedListBrowsable(value.asList(), title = title)
         is FloatBuffer -> FloatBufferBrowsable(value, title = title)
         is IntBuffer -> IntBufferBrowsable(value, title = title)
-        else -> value
+        // After `List`, so a list keeps the no-copy path: a `Set` or a `Queue` is snapshotted
+        // because the pager addresses rows by index and only a `List` can do that in place.
+        is Collection<*> -> PagedListBrowsable(value.toList(), title = title)
+        // The reflective default. Returns null for anything `H2Reflect` declines — a scalar, a
+        // platform type, a value whose `.h` rendering is already the whole story — and then the raw
+        // value falls through to the Inspector's leaf renderer, exactly as before this existed.
+        else -> H2Reflect.browsableFor(value, title) ?: value
     }
 }
 
