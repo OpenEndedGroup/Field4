@@ -211,24 +211,28 @@ class CitationContractTest {
             // A page whose argument is "these names are the contract" and that cannot report a
             // rename is not doing the job.
             //
-            // 40 anchored citations as written, all prose `path:line#anchor`, across 8 files:
-            // 18 in `outputareas2.js`, 7 in `Main.kt`, 6 in `run_ui_regressions.py`, 3 in
+            // 42 anchored citations as written, all prose `path:line#anchor`, across 8 files:
+            // 18 in `outputareas2.js`, 9 in `Main.kt`, 6 in `run_ui_regressions.py`, 3 in
             // `outputs.kt`, 2 each in `iframe_autosize.js` and `Outputs.kt`, and one each in
             // `Three.kt` and `PythonInterface.kt`. Every anchor was chosen unique-in-file — verified
-            // by counting containments, not by trusting the choice — so all 40 report unbounded
+            // by counting containments, not by trusting the choice — so all 42 report unbounded
             // headroom and [MAX_FRAGILE] is unaffected. Every path is written repo-relative rather
             // than abbreviated, deliberately: `Main.kt` matches three files in this tree
             // (`jsMain`, `jsVision`, and the linalg generator), so an abbreviated citation to it
             // could not resolve at all.
             //
-            // Floored at 20, about half, on the DATAFRAME_PLUGIN convention.
+            // Floored at 21, half, on the DATAFRAME_PLUGIN convention. Note for whoever adds the
+            // next page: this entry takes the floor sum from 358 to **359**, one under
+            // [MIN_UNIQUE_ANCHORS]. Its KDoc asks for a ratchet the moment the sum passes that
+            // constant, because past it the corpus-wide floor is dominated by the per-page floors
+            // and stops binding on the property it names. The next entry of any size crosses it.
             //
             // No `css` in `CitationGuard.EXT`, so the page's references to the
             // `.disclosure-content iframe { width: 100% !important }` rule in `field.css` are
             // deliberately written as prose without a `path:line` form. A backticked
             // `field.css:491` would look like a citation to a reader and be invisible to every
             // guard here, including the bare-citation census — the worst of both.
-            "public/docs/output_panel_sizing.md" to 20,
+            "public/docs/output_panel_sizing.md" to 21,
         )
 
         /**

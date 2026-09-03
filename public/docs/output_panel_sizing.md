@@ -170,7 +170,7 @@ Two frames in one box, identical content, differing only in the width each decla
 `data-afield-autosize="off"`, so neither will ever report a size of its own — the difference is
 entirely in what `iframeIntrinsicSize` can read off the tag.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/output_panel_sizing/fill-vs-fixed.png" capture="box" open-outputs="true" wait="3.0" w="1040" h="160" padding="18" timeout="120" name="output-panel-sizing-fill-vs-fixed" alt="A Field box roughly 1040 points wide holding two open output panels. The upper panel, titled 'no width of its own', spans the full width of the box and its dark blue frame fills it edge to edge. The lower panel, titled '640 pixels wide', is visibly narrower — a little over half the box — and stops well short of the box's right edge."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/output_panel_sizing/fill-vs-fixed.png" capture="box" open-outputs="true" wait="3.0" w="1040" h="160" padding="18" timeout="120" embed=true name="output-panel-sizing-fill-vs-fixed" alt="A Field box roughly 1040 points wide holding two open output panels, one above the other. The upper panel, titled 'no width of its own', spans the full width of the box and its dark blue frame fills it edge to edge. The lower panel, titled '640 pixels wide', is visibly narrower — a little under two thirds of the box — and stops well short of the box's right edge. Both frames are far taller than the 66 pixels their markup declares."}
 // Two frames whose ONLY difference is the width each declares. Both are
 // data-afield-autosize="off", so iframe_autosize.js returns early in both and
 // neither will ever dispatch afield-iframe-size.
@@ -205,9 +205,17 @@ displayOpen("640 pixels wide")
 The upper panel is the whole width of the box because nothing in it had a width; the lower panel is
 640 pixels plus the content padding because something in it did. Neither panel measured itself.
 
-The numbers on that figure are read off a picture, so treat them as a picture. The measured version
-lives in `tools/run_ui_regressions.py:3333#id="h2-panel-sizing"`, which asserts geometry rather than
-photographing it — see [what is pinned](#what-is-pinned-and-what-is-not).
+Both frames in that picture are about two hundred pixels tall, and their markup says 66. That is not
+the auto-sizer disagreeing with itself — it is the screenshot-prep pass, which floors *any* panel
+containing an iframe at 220 pixels
+(`src/jsMain/kotlin/afield/Main.kt:1548#content.querySelector("iframe") != null -> 220.0`) before the
+picture is taken. Worth knowing when you use a docs figure as evidence about height: a captured panel
+is not the panel a person sees, and the reason is on
+`src/jsMain/kotlin/afield/Main.kt:1514#private fun fitOutputDisclosuresForScreenshot`.
+
+The widths in that picture are pixels in a PNG, so treat them as pixels in a PNG. The measured
+version lives in `tools/run_ui_regressions.py:3333#id="h2-panel-sizing"`, which asserts geometry
+rather than photographing it — see [what is pinned](#what-is-pinned-and-what-is-not).
 
 ## Height is measured from the content edge
 
@@ -244,6 +252,8 @@ docs runner or the screenshot API is about to photograph a box. It exists becaus
 cropped to its content rather than to whatever width the box happened to be dragged to, and it works
 in the opposite direction from everything above: it measures the panels and then grows
 `box.style.width` to fit them (`src/jsMain/kotlin/afield/Main.kt:1652#if (desiredWidth > currentWidth + 2.0)`).
+Its height sibling `fitOutputDisclosuresForScreenshot` overwrites panel heights outright, which is
+where the 220px floor in the figure above comes from.
 
 Put that next to a panel that takes its width from its box and you have a cycle with no fixed point.
 The panel grows to the box, the prep pass grows the box to the panel, the auto-size passes are still
