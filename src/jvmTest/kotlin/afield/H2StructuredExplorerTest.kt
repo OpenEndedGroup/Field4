@@ -634,6 +634,46 @@ class H2StructuredExplorerTest {
     }
 
     /**
+     * The panel's two view links open in the box's output area, not a browser tab.
+     *
+     * `afieldOpenLazyValueInOutputArea` has existed for longer than `.h2`'s explorer and the inline
+     * `.h` expander already used it; these two links were the only place in the file that did not,
+     * which sent a value explored from a box out of the box. The `href` stays as the fallback for a
+     * page with no JS — a docs capture, a saved page — and the handler returns false so navigation
+     * happens only when nothing claimed the click.
+     */
+    @Test
+    fun `the panel's view links open in the output area, and degrade outside a box`() {
+        registerH2DomainAdapters()
+        val owner = Box("h2-link-owner").also { it.name = "owner" }
+
+        // Premise: no box context is the state every other test in this file runs in, so the
+        // fallback is what they have been asserting all along.
+        assertNull(Box.context.get(), "premise: no ambient box context")
+        val outsideABox = LazyValueVisualizer.visualize(listOf(1, 2, 3))
+        assertTrue("target='_blank'" in outsideABox, "outside a box the links must still navigate")
+        assertFalse("afieldOpenLazyValueInOutputArea" in outsideABox, "no output area to open into")
+
+        Box.context.set(owner)
+        try {
+            val insideABox = LazyValueVisualizer.visualize(listOf(1, 2, 3))
+            assertEquals(
+                2,
+                Regex("afieldOpenLazyValueInOutputArea\\(this\\)").findAll(insideABox).count(),
+                "both the outliner and columns links must open in the output area"
+            )
+            assertTrue("data-afield-box-uid='h2-link-owner'" in insideABox, "the handler needs the owning box")
+            assertTrue("data-afield-view-src='" in insideABox, "the handler needs the view URL")
+            assertFalse("target='_blank'" in insideABox, "inside a box neither link should open a tab")
+            // The href survives as the no-JS fallback, so the link is never inert.
+            assertTrue(Regex("<a href='/tree\\?root=h2-").containsMatchIn(insideABox), "outliner href kept")
+            assertTrue(Regex("<a href='/browse\\?root=h2-").containsMatchIn(insideABox), "columns href kept")
+        } finally {
+            Box.context.remove()
+        }
+    }
+
+    /**
      * A library can keep `.h` on the `.h2` surface, and `DataFrameVisualizer` is the case that
      * needed it.
      *

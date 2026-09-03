@@ -143,6 +143,8 @@ object LazyValueVisualizer {
         val outlinerPath = Inspector.linkPathFor(wrapped ?: "null", browsePath = H2_OUTLINER_PATH, uid = token)
         val columnsPath = Inspector.linkPathFor(wrapped ?: "null", browsePath = H2_COLUMNS_PATH, uid = token)
         val embeddedPath = "$H2_EMBED_EXPLORER_PATH?root=$token"
+        val ownerUid = Box.context.get()?.id
+        val titleForViews = adapted?.title?.ifBlank { null } ?: "Value"
 
         return buildString {
             append("<div class='value-viz-h2")
@@ -152,18 +154,57 @@ object LazyValueVisualizer {
             append("<span style='color:#9cf;'>")
             append(escapeHtml(adapted?.summary ?: summary(rawValue)))
             append("</span>")
-            append("<a href='")
-            append(escapeHtmlAttr(outlinerPath))
-            append("' target='_blank' style='color:#8cf;text-decoration:none;'>outliner</a>")
-            append("<a href='")
-            append(escapeHtmlAttr(columnsPath))
-            append("' target='_blank' style='color:#777;text-decoration:none;'>columns</a>")
+            append(outputAreaLinkHtml(outlinerPath, "outliner", "#8cf", ownerUid, titleForViews))
+            append(outputAreaLinkHtml(columnsPath, "columns", "#777", ownerUid, titleForViews))
             append("</div>")
             append("<iframe data-afield-autosize='off' src='")
             append(escapeHtmlAttr(embeddedPath))
             append("' loading='lazy' style='position:static;display:block;width:100%;height:${H2_IFRAME_HEIGHT_PX}px;flex:1 1 auto;min-height:0;border:1px solid #333;border-radius:4px;background:#000;'></iframe>")
             append("</div>")
         }
+    }
+
+    /**
+     * One of the panel's two view links, opening **in the box's own output area** rather than a
+     * browser tab.
+     *
+     * `afieldOpenLazyValueInOutputArea` (`jsMain/Outputs.kt`) has done this since before `.h2` grew
+     * an explorer: it reads the three `data-afield-view-*`/`data-afield-box-uid` attributes and hands
+     * them to `upsertLazyValueViewer`, which opens a disclosure in the output area with the iframe
+     * inside it. The inline `.h` expander [lazyInlineExpanderHtml] renders its own "columns" link
+     * exactly this way. These two links were the only place in the file that did not, and a `.h2`
+     * panel is the surface most likely to be clicked, so a value explored from a box left the box.
+     *
+     * `target="_blank"` stays as the `href` fallback, which is what happens when the page's JS is
+     * absent — a docs capture, a saved page, an offline viewer. The handler returns false, so the
+     * navigation only occurs when nothing claimed the click.
+     *
+     * [ownerUid] is null outside a box's execution context. There is no output area to open into
+     * then, so the link degrades to the old behaviour rather than becoming inert.
+     */
+    private fun outputAreaLinkHtml(
+        path: String,
+        label: String,
+        colour: String,
+        ownerUid: String?,
+        viewTitle: String
+    ): String = buildString {
+        append("<a href='")
+        append(escapeHtmlAttr(path))
+        if (!ownerUid.isNullOrBlank()) {
+            append("' data-afield-view-src='")
+            append(escapeHtmlAttr(path))
+            append("' data-afield-box-uid='")
+            append(escapeHtmlAttr(ownerUid))
+            append("' data-afield-view-title='")
+            append(escapeHtmlAttr("$viewTitle — $label"))
+            append("' onclick='window.afieldOpenLazyValueInOutputArea && window.afieldOpenLazyValueInOutputArea(this); return false;'")
+            append(" style='color:$colour;text-decoration:none;cursor:pointer;'>")
+        } else {
+            append("' target='_blank' style='color:$colour;text-decoration:none;'>")
+        }
+        append(label)
+        append("</a>")
     }
 
     private fun summary(value: Any?): String = when (value) {
