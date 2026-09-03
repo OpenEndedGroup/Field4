@@ -1471,24 +1471,14 @@ class SavingContext {
             box.children
                 .filter { !it.getPropertyRaw("_tombstone").isTrue() }
                 .forEach { child -> ensureConnection(box, child) }
-
-            box.nested
-                .filter { !it.getPropertyRaw("_tombstone").isTrue() }
-                .forEach { child ->
-                    if (child.nestedIn != box) {
-                        child.setPropertyRaw("nestedIn", box)
-                    }
-                    ensureConnection(box, child)
-                }
-
-            val nestedParent = box.nestedIn
-            if (nestedParent != null && !nestedParent.getPropertyRaw("_tombstone").isTrue()) {
-                if (!nestedParent.nested.contains(box)) {
-                    nestedParent.setPropertyRaw("nested", nestedParent.nested.toMutableSet().apply { add(box) })
-                }
-                ensureConnection(nestedParent, box)
-            }
         }
+
+        // The nesting half of the same repair, and the load-bearing one: nearly every nested box in
+        // a document predating `398cb0ca9` is persisted with `nestedIn` set and no edge at all. It
+        // lived here, unnamed, from `03ad66360` until it was lifted to `nesting.kt` beside the two
+        // live routes that maintain the same invariant, so that the paths which also materialise
+        // boxes from persisted state can share it.
+        reconcileNestingEdges(boxes)
     }
 
     fun loadFromEdnText(
