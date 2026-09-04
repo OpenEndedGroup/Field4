@@ -4,9 +4,6 @@ Press `ctrl-space` in a Field editor and something has to choose which of a few 
 you see first. This page is about that choice: where it is made, what it is made from, and how you —
 writing a class in a Field box or in Field's own source — get a say in it.
 
-One thing to establish before the rest of the page makes sense, because it sends most people to the
-wrong file:
-
 !!! important "The server sends everything. The browser does the ranking."
 
     Field's completion server does not sort, filter or truncate. It answers a caret with *every*
@@ -18,16 +15,16 @@ wrong file:
     find it. What Kotlin decides is what each row *carries* — its category, where it was declared,
     and its receiver type's own prior. The browser turns those into an order.
 
-That division is deliberate. It means the popup can re-rank on every keystroke without another
-round trip, and it means the things a person does — which completion they accepted, and when — can
-weigh on the order without ever leaving their machine.
+The split buys two things. The popup can re-rank on every keystroke without another round trip,
+and which completions a person has accepted before can weigh on the order without leaving their
+machine.
 
 ## One caret, end to end
 
 Take a concrete caret. You have an `FLine` in hand, you type a `.`, and you press nothing else —
-there is no prefix, no letters to match against. Six things happen.
+there is no prefix, no letters to match against. Six steps, in order.
 
-### 1. The server answers with everything
+### The server answers with everything
 
 For `f.` on an `FLine` that is on the order of 250 rows: the class's own members, extension functions
 written for `FLine`, and the extensions that apply to literally every value in Kotlin — `also`,
@@ -35,21 +32,15 @@ written for `FLine`, and the extensions that apply to literally every value in K
 `!query || Number.isFinite(entry.fuzzy)`, and with an empty query the left half short-circuits, so at
 a bare dot *no row is filtered out at all*.
 
-### 2. Each row says where it was declared
+### Each row says where it was declared
 
 Every candidate carries a `declaredIn`: a class's fully-qualified name for a member
 (`afield.graphics.FLine`), or a package for a top-level extension. This is the field that decides the
 row's **category**, which is the field that decides which **section** it renders under.
 
-It has to be `declaredIn`, and until recently it was not. The categoriser,
-`KotlinSourceIndex.getCompletionCategoryForSymbol`, used to be keyed on the bare simple *name* — and
-in Field's source tree `scale` is declared in 42 categorised files, `close` in 21, `copy` in 16. On a
-collision it picked the first. That is how `FLine.close` came to be filed under `Solvers` and
-`FLine.scale` under `Synthesis`: not because anything knew anything about `FLine`, but because some
-other file that happens to declare a `close` was reached first.
-
-Now the question is asked the way the index can actually answer it, in three steps, and the third
-step is the interesting one:
+It has to be `declaredIn` rather than the member's bare name, because bare names collide: in
+Field's source tree `scale` is declared in 42 categorised files, `close` in 21, `copy` in 16. The
+categoriser, `KotlinSourceIndex.getCompletionCategoryForSymbol`, asks in three steps:
 
 | step | question asked | answer if it hits |
 |---|---|---|
@@ -57,19 +48,18 @@ step is the interesting one:
 | 2 | does `declaredIn`'s package contain a match? | the vote, scoped to one package instead of 42 files |
 | 3 | `declaredIn` names something outside this tree | **decline** — a namesake here says nothing about `java.lang.Math` |
 
-The third row is the one that surprises people, because its consequence looks like a regression and
-is not. A receiver you did not write and cannot annotate — `java.lang.Math`,
-`kotlin.collections.List` — now gets a uniform "no category" for every one of its members rather
-than a scatter of borrowed ones. Uniform means they all tie, and when everything ties the
-popup falls back to the order the server sent, which for a foreign type is alphabetical. So a bare
-dot on a foreign receiver is alphabetical. That reflects how little Field knows about `java.lang.Math`, where
-the old behaviour hid it behind noise.
+The third row has a consequence worth spelling out. A receiver you did not write and cannot
+annotate — `java.lang.Math`, `kotlin.collections.List` — gets a uniform "no category" for every one
+of its members rather than a scatter of borrowed ones. Uniform means they all tie, and when
+everything ties the popup falls back to the order the server sent, which for a foreign type is
+alphabetical. So a bare dot on a foreign receiver is alphabetical, which is about as much as Field
+knows about `java.lang.Math`.
 
-### 3. The receiver's type states its own prior
+### The receiver's type states its own prior
 
 Here is the part you can control. A class can name the members that answer *"what do you actually do
-with one of these"*, in the order a person reaches for them, with `@CommonMembers`. `FLine` is the
-first type in Field to do it:
+with one of these"*, in the order a person reaches for them, with `@CommonMembers`. `FLine` uses
+it:
 
 ```diffstatic {data-lang=kotlin}
 @CommonMembers("moveTo", "lineTo", "cubicTo", "close", "here", "rot", "scale", "copy")
@@ -87,14 +77,14 @@ into a **1-based position**, or `0` for "this type said nothing". Resolution:
   is "this type has no annotation".
 
 The qualified name comes from the candidate itself when the Analysis API served the completion. When the
-K1 fallback did, no candidate carries one, and the server resolves the caret's receiver itself instead —
-the live value's own class, else the declared type, else the constructor called to make it. Without that
-the prior would be silently absent for the first `ctrl-space` after launch, which is the popup most
-people meet first; [the K1 fallback](#the-k1-fallback) is that story.
+K1 fallback did, no candidate carries one, and the server resolves the caret's receiver itself instead:
+the live value's own class, else the declared type, else the constructor called to make it. Otherwise
+the prior would be absent for the first `ctrl-space` after launch — see
+[the K1 fallback](#the-k1-fallback).
 
 The position rides across the wire as `Metadata.commonMemberRank`.
 
-### 4. The browser scores every row
+### The browser scores every row
 
 `rankItems` adds up, per row: how well the text fuzzy-matches what you typed, the category weight,
 **recency** (have you accepted this completion before, and how recently), a nudge for AI suggestions,
@@ -103,13 +93,13 @@ a penalty for `equals`/`hashCode`/`toString` in member position, a penalty for d
 nothing about the thing in your hand), a server-supplied context boost, **the receiver's prior**, and
 finally a hair of the server's original index so that ties break in the order the server chose.
 
-### 5. It keeps the top 80
+### It keeps the top 80
 
 `MAX_VISIBLE_ITEMS` is 80. This is why "is the right answer in the response" and "can a person see
 it" are two different questions, and only the second one is yours. A completion at index 159 of 249
 is in the payload and is nowhere on screen.
 
-### 6. Then — and this is the step that surprises people — it regroups into sections
+### Last, it regroups into sections
 
 The rendering step is one line:
 
@@ -126,36 +116,29 @@ section appears where its best-ranked member ranked), and the **order within** a
 decide anything across a section boundary. A row cannot be lifted past a row in an earlier section,
 no matter what it scored.
 
-!!! tip "The rule of thumb"
+!!! tip "Where a row lands"
 
     Where a row lands on screen is *(which section, then rank within that section)*. If a completion
-    is much further down than its score should put it, the thing to check is not the ranking — it is
-    which **section header** it ended up under.
+    is much further down than its score should put it, check which **section header** it ended up
+    under before suspecting the ranking.
 
-This is not a hypothetical. Before `declaredIn` fixed the categoriser, five of `FLine`'s eight common
-members were filed under someone else's category. Their prior was working perfectly; it lifted each
-of them to the top of a section nobody was looking at, seventy-odd rows down the list. And the three
-that were *correct* — `lineTo`, `cubicTo`, `here` — were correct precisely because they collide with
-nothing, so they fell through to the fallback and got `Graphics`. The name lookup was worse than its
-own fallback. One classification change, same payload and same ranker, moved `moveTo` from off-screen
-to first.
+That is easy to underestimate. Put five of `FLine`'s eight common members into someone else's
+category and their prior still works perfectly: it lifts each of them to the top of a section nobody
+is looking at, seventy-odd rows down. Same payload, same ranker, and one classification change moves
+`moveTo` from off-screen to first.
 
 ## Seeing it
 
-Both figures below are photographs of a live Field. Neither is a drawing, and neither has been arranged
-to agree with the prose.
+Both figures below are photographs of a live Field rather than drawings.
 
-The first is a real `ctrl-space`: a box containing `val f = FLine()` and a bare `f.`, driven by real
-keypresses, with the popup panel captured while it is open — and served by the same Analysis API backend
-an ordinary `./field.sh` session uses.
+The first is a `ctrl-space` on a box containing `val f = FLine()` and a bare `f.`, driven by real
+keypresses, with the popup captured while it is open, served by the same Analysis API backend an
+ordinary `./field.sh` session uses.
 
-??? aside "How reproducible these two figures are"
-    Measured 2026-08-18, `docs_capture_audit --repeat 2` reproduced the popup byte-for-byte across both
-    runs, and graded the prior table `jitter` at maxΔ9 on 0.0056 % of pixels — antialiasing, not content.
-    Both are otherwise deterministic, so if either changes materially, something real changed. The popup's
-    clip has also been seen to pick up a few dozen intermittent pixels at its extreme top-left, inside the
-    padding and outside the panel; the rows, the section header and the doc panel have been identical every
-    time.
+??? aside "Provenance"
+    `docs_capture_audit --repeat 2` reproduces the popup byte-for-byte, and grades the prior table's
+    jitter at maxΔ9 on 0.0056 % of pixels. Both figures are otherwise deterministic, so if either
+    changes materially, something real changed.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" warm-completion=true screenshot="assets/popup-decides-fline-dot.png" padding="6" wait="0" timeout="140" embed=true hidden=true name="popup-decides-fline-dot" alt="A real Field completion popup at a bare dot on an FLine. A single section header reads GRAPHICS. Under it, in this order: moveTo(x: Number, y: Number, z: Number), lineTo(same), cubicTo(x0: Number, y0: Number, z0: Number, x1: Number...), close(), here (FLine.Node), rot(angle: Number, center: Vec2), scale(scale: Number), copy(), then arcLength(). Those are FLine's eight @CommonMembers in declared order, followed by the first member the class says nothing about. The documentation panel on the right reads Category Graphics above a signature card for moveTo and its documentation."}
 // Fresh and deterministic: clear the recency store so nothing this machine happens to have accepted
@@ -177,56 +160,34 @@ ui.waitForSelector(".afield-suggest-row", 20000.0)
 ui.pause(1400)
 ```
 
-**That is the prior working.** All eight of `FLine`'s `@CommonMembers` are there, in the order the
-annotation lists them — `moveTo`, `lineTo`, `cubicTo`, `close`, `here`, `rot`, `scale`, `copy` — and the
-first member the class says nothing about, `arcLength()`, comes ninth. One `GRAPHICS` header, which is
-the sectioning claim confirmed in the same picture: every `FLine` member is categorised from where it is
-declared, so they all land in one section, and inside one section the prior is free to decide.
+All eight of `FLine`'s `@CommonMembers` are there, in the order the annotation lists them —
+`moveTo`, `lineTo`, `cubicTo`, `close`, `here`, `rot`, `scale`, `copy` — and the first member the
+class says nothing about, `arcLength()`, comes ninth. One `GRAPHICS` header, which is the sectioning
+claim confirmed in the same picture: every `FLine` member is categorised from where it is declared,
+so they all land in one section, and inside one section the prior is free to decide.
 
-### The K1 fallback, and what it used to cost { #the-k1-fallback }
+### The K1 fallback { #the-k1-fallback }
 
-K1 serves **every** completion until the sidecar's Analysis API session exists — including the first
-`ctrl-space` after launch, which is the popup most people meet first. That used to cost you the prior
-outright. `CommonMemberPrior` keys on the receiver's *qualified* name, and only the sidecar's reply
-carries one; a K1 result names no receiver at all, so `rankOf(null, "moveTo")` returned 0. The server now
-resolves the caret's own receiver when the backend named none, so the prior applies on both paths. Two
-consecutive completions on one caret, from an ordinary session's log:
+K1 serves **every** completion until the sidecar's Analysis API session exists, including the first
+`ctrl-space` after launch. `CommonMemberPrior` keys on the receiver's *qualified* name and only the
+sidecar's reply carries one; a K1 result names no receiver at all, so `rankOf(null, "moveTo")` would
+be 0. The server resolves the caret's own receiver when the backend names none, so the prior applies
+on both paths. Two consecutive completions on one caret, from an ordinary session's log:
 
 ```diffstatic {data-lang=text}
 completion backend=K1 … (AA→K1: empty: session building (warming up; using K1 meanwhile))
 completion backend=AA … 1616ms (44 candidates)
 ```
 
-Measured after the fix on a K1-served `f.`: the server logs
-`completion prior-receiver resolved='afield.graphics.FLine'`, and the popup renders `moveTo`, `lineTo`,
-`cubicTo`, `close`, `here`, `scale`, `copy` — the declared order, out of the fallback backend.
-
-??? aside "The figure found that by contradicting the page"
-    For its first days the popup figure showed the opposite of everything above, and nothing failed. The
-    rows were alphabetical — `breakNext`, `currentPoint`, `here`, `nodes`, `properties`, then
-    `breakNext()`, `byFiltering`, `byThickening`, `center()` — with `moveTo` nowhere in the visible nine.
-    Field's own completion-interaction log gave the reason as one number: all 80 presented rows scored
-    `25.988, 25.976, 25.964, …`, each exactly `0.012` below the one above, which is the
-    `originalIndex * 0.012` tie-break and nothing else, descending from a constant equal to the `Graphics`
-    category weight. Fuzzy is 0 at an empty prefix, recency is 0 because the driver clears it, and the
-    prior was 0 on every row. Two defects, one cause: `activeCompletionBackend` read `AA` in a process
-    where nothing AA ever served a completion, and everything downstream believed the config rather than
-    the log.
-
-??? aside "The docs build was photographing the wrong backend"
-    The docs build starts Field with `./gradlew runJvm`, and `./field.sh` was the only thing in the tree
-    that starts the Analysis API sidecar and exports its URL — the one thing that engages
-    `AaCompletionClient`. So every completion figure in these docs was a photograph of the K1 fallback,
-    and each capture's own log said so: `completion backend=K1 … (AA→K1: no-sidecar-url)`. The runner now
-    starts, or reuses, the same sidecar `./field.sh` would; it warms that sidecar first, because a fresh
-    one answers *"session building"* for the first seconds of its life and falls back to K1 just as
-    legitimately; and it fails the fence when the log for that capture says the completion fell back.
+On a K1-served `f.` the server logs `completion prior-receiver resolved='afield.graphics.FLine'`,
+and the popup renders `moveTo`, `lineTo`, `cubicTo`, `close`, `here`, `scale`, `copy` — the declared
+order, out of the fallback backend.
 
 ### What the sidecar returns for this caret
 
-Measured directly, since a figure shows nine rows and the panel has rather more than nine. Asking a live
-sidecar's `/complete` for `val f = FLine()` then `f.`, with the running JVM's own classpath, returns
-**254 candidates, 248 of them carrying `receiverQualifiedName = afield.graphics.FLine`** — the exact key
+A figure shows nine rows and the panel has rather more. Asking a live sidecar's `/complete` for `val
+f = FLine()` then `f.`, with the running JVM's own classpath, returns **254 candidates, 248 of them
+carrying `receiverQualifiedName = afield.graphics.FLine`** — the exact key
 `CommonMemberPrior.rankOf` looks up. All eight common members are among them, across every overload:
 
 | member | rows returned | all carry the receiver | prior position |
@@ -240,31 +201,20 @@ sidecar's `/complete` for `val f = FLine()` then `f.`, with the running JVM's ow
 | `scale` | 11 | yes | 7 |
 | `copy` | 2 | yes | 8 |
 
-Thirty-seven rows over eight names — which is incidentally the clearest possible demonstration of why
-the annotation takes *names* rather than callable references, since one entry covers `scale`'s eleven
-overloads.
+Thirty-seven rows over eight names, which is why the annotation takes *names* rather than callable
+references: one entry covers `scale`'s eleven overloads.
 
-**What still differs between the two backends, now that the prior does not.** The first `ctrl-space`
-after launch is still K1-served, and a K1 result carries less than a sidecar result does: no
-`declaredIn`, so the section a row lands in is inferred from its name and its type rather than read off
-its declaration; no `declarationProximity`, so nothing pushes `also`/`apply`/`let` below the names that
-are about *this* type; and no expected-type match. The rows are the compiler's own, and the prior now
-applies — but the *sections* can be less trustworthy for a second or two. Your Field's log names the
-backend and the reason on every request, so this is never guesswork.
+**What still differs between the two backends.** The first `ctrl-space` after launch is still
+K1-served, and a K1 result carries less than a sidecar result does: no `declaredIn`, so the section
+a row lands in is inferred from its name and its type rather than read off its declaration; no
+`declarationProximity`, so nothing pushes `also`/`apply`/`let` below the names that are about *this*
+type; and no expected-type match. The rows are the compiler's own and the prior applies, but the
+*sections* can be less trustworthy for a second or two. Your Field's log names the backend and the
+reason on every request.
 
-??? aside "A discriminator that did not discriminate"
-    An earlier draft of this page argued a capture was K1-served because every logged row had an empty
-    `declarationProximity`, a field only the sidecar populates. That inference was wrong. A sidecar-served
-    response was subsequently measured with that field blank on all 44 of its rows: it is populated for
-    *member* completions, so blank means "not a dot completion" at least as often as it means K1.
-    Everything asserted above rests instead on the `completion backend=…` line each session logs for
-    itself, which names the backend and the fallback reason directly. Recorded because a plausible
-    discriminator that fails silently is worse than none at all.
-
-The second figure asks Field for the prior in numbers. It is not a transcription: the box calls
-`afield.CommonMemberPrior` — the very object the completion server calls, once per candidate, on every
-keystroke — so the table is the popup's own arithmetic, and cannot go stale: if the band moves, the
-figure moves with it.
+The second figure asks Field for the prior in numbers. The box calls `afield.CommonMemberPrior`, the
+object the completion server calls once per candidate on every keystroke, so the table is the popup's
+own arithmetic and moves when the band moves.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/popup-decides-prior-table.png" capture="box" w="700" h="190" wait="1.2" timeout="120" embed=true hidden=true name="popup-decides-prior-table" alt="A Field box output panel labelled main. A heading reads: @CommonMembers on afield.graphics.FLine — 8 members, first scores 40, less 2 per position. Below it a three-column table headed position, member, prior score, with eight rows: 1 moveTo 40, 2 lineTo 38, 3 cubicTo 36, 4 close 34, 5 here 32, 6 rot 30, 7 scale 28, 8 copy 26."}
 :::static
@@ -324,22 +274,19 @@ Four things can decide an order, and they rank against each other in a fixed pre
 
 The prior's band is chosen to sit exactly in that gap: **above** the highest category weight, so a
 called-out member clears a page of uncategorised rows, and **below** what recency can reach, so what
-you use still wins over what the author guessed. The numbers are `COMMON_MEMBER_BASE = 40` decaying `2`
-per position, against a category ceiling of `28` and a recency ceiling near `62`.
+you use still wins over what the author guessed. The numbers are `COMMON_MEMBER_BASE = 40` decaying
+`2` per position, against a category ceiling of `28` and a recency ceiling near `62`.
 
-Two things enforce that arrangement rather than merely intending it. The magnitude lives on **both**
-sides of the wire — `CommonMemberPrior.BASE`/`STEP` in Kotlin and `COMMON_MEMBER_BASE`/
-`COMMON_MEMBER_STEP` in JavaScript — and the build asserts the two agree, because a server that ranks
-members the client scores differently is worse than no prior at all. And the
-weights themselves are under active revision; treat the four literals above as a snapshot and the
-*ordering* as the contract.
+The magnitude lives on **both** sides of the wire — `CommonMemberPrior.BASE`/`STEP` in Kotlin and
+`COMMON_MEMBER_BASE`/`COMMON_MEMBER_STEP` in JavaScript — and the build asserts the two agree, since a
+server that ranks members the client scores differently would be worse than no prior. The weights are
+under revision, so treat the four literals above as a snapshot and the *ordering* as the contract.
 
-There is one more reason the prior exists at all, and it is the sharpest argument for it: **recency is
-`localStorage`.** It is empty for a new user, empty in a fresh browser profile, and empty in every
-test, because the test harness clears it. So the term with the most authority is exactly the term that
-is unavailable when a person meets Field for the first time — and unavailable to any test that wants
-to assert what the popup should do. A list written in the source is the same answer for all four
-cases.
+The prior also covers a gap recency cannot: **recency is `localStorage`.** It is empty for a new user,
+empty in a fresh browser profile, and empty in every test, because the harness clears it. So the term
+with the most authority is unavailable when a person meets Field for the first time, and unavailable
+to any test that wants to assert what the popup should do. A list written in the source is the same
+answer in all four cases.
 
 ## Writing `@CommonMembers` on your own class
 
@@ -365,30 +312,28 @@ entry covers every overload of a name — `FLine.moveTo` has four — and a prop
 same as a function. Only the bare name is matched, so a display string like `moveTo(v: Vec3)` still
 resolves.
 
-**A typo is a build failure, not a silent no-op.** A name that does not resolve to a member would
-simply stop ranking, invisibly, and nothing would ever tell you — so a name that does not resolve to a
-member of the annotated class fails the build. This is the whole reason
-the annotation can be trusted: the failure mode it would otherwise have is undetectable by
-inspection.
+**A typo is a build failure.** A name that does not resolve to a member of the annotated class fails
+the build. The alternative failure is that the name simply stops ranking, with nothing said about
+it, which is undetectable by inspection.
 
 **Order is the claim.** Position 1 scores most; each later position sheds a little. Write them in the
 order a person reaches for them, not alphabetically. `FLine`'s order follows its own KDoc — build the
 path, then move it around.
 
-**Keep it short.** This is the first page of the manual, not an index. Past roughly ten entries the
-order stops being a real claim about what people reach for, and since scoring decays by position a
-long tail earns almost nothing anyway.
+**Keep it short.** It is the first page of the manual rather than an index. Past roughly ten entries
+the order stops being a real claim about what people reach for, and since scoring decays by position
+a long tail earns almost nothing anyway.
 
 **Inheritance is one-directional.** A subclass inherits its parent's list, and may re-declare a name
-to move it — but `CommonMemberPrior.declaredNames`, which the guard test checks against the class's
-actual members, reads *only* the class's own annotation. A class is answerable for the
-list it writes, not for one it inherited.
+to move it, but `CommonMemberPrior.declaredNames`, which the guard test checks against the class's
+actual members, reads *only* the class's own annotation. A class is checked against the list it
+writes.
 
 ## Asking the popup to show its reasoning
 
-A rank on its own tells you the answer moved without telling you what moved above it, which is not
-enough to tell a ranking bug from a ranking decision. So the presentation probe can dump the rows a
-person would actually see, with the two inputs that placed them:
+A rank on its own says the answer moved without saying what moved above it, which is not enough to
+tell a ranking bug from a ranking decision. The presentation probe dumps the rows a person would
+actually see, with the two inputs that placed them:
 
 ```diffstatic {data-lang=text}
 FIELD_RANK_DUMP=14 FIELD_RANK_DUMP_CASE='FLine bare dot' \
@@ -420,47 +365,38 @@ eight of them are `FLine`'s eight `@CommonMembers` in declared order:
       10  breakNext   category="Graphics" commonMemberRank=0
 ```
 
-That is the whole mechanism in one screenful. Ranks 1–8 carry a non-zero `commonMemberRank` and are in
-the annotation's order; rank 9 onwards is `commonMemberRank=0` and falls back to the alphabet within
-the same section. Every row reads `category="Graphics"`, which is why the prior is *visible* at all —
-put five of those eight in someone else's category and the same prior would put them at the top of
-five different sections, seventy rows down.
+Ranks 1–8 carry a non-zero `commonMemberRank` and are in the annotation's order; rank 9 onwards is
+`commonMemberRank=0` and falls back to the alphabet within the same section. Every row reads
+`category="Graphics"`, which is why the prior is *visible* at all — put five of those eight in
+someone else's category and the same prior would put them at the top of five different sections,
+seventy rows down.
 
-The cases it replays are real recorded `/complete` payloads, ranked by the verbatim `fieldSuggest.js`,
-so the numbers are the popup's own and not a transcription of its formula. Parameter lists are elided
-above; ranks, names, categories and ranks are verbatim — which is why `breakNext` occupies two rows.
-A function and a property of the same name are two separate completions, and the popup shows both.
-
-There is a joke buried in that elision, and it is this page's own subject biting back. Field's
-codebase reference decides "which docs pages use this source file" by matching call-shaped tokens that
-only one documented file declares. `PatComposition.kt` — Field's *pattern* algebra — declares a `rot`,
-and so does `FLine`. Quoting the member *with its parameter list* was enough, with one other
-coincidence, to publish this page on `patterns.md` as a worked example of a file it has never
-mentioned. The parameters came off, and the claim went away. It is exactly the failure `declaredIn`
-was introduced to fix, in a different subsystem, found by writing about it — and the reason the
-"Where this lives" table below cites symbols rather than call syntax.
+The cases it replays are real recorded `/complete` payloads, ranked by the verbatim
+`fieldSuggest.js`, so the numbers are the popup's own rather than a transcription of its formula.
+Parameter lists are elided above; ranks, names and categories are verbatim, which is why `breakNext`
+occupies two rows. A function and a property of the same name are two separate completions, and the
+popup shows both.
 
 ## When a row is not where you expect
 
 In rough order of how often each turns out to be the answer:
 
 1. **It is in another section.** Check the header above it. Ranking cannot cross a section boundary.
-2. **The section it landed in was inferred, not read.** On a freshly launched Field the first request
-   or two are served by K1 while the sidecar builds its session. The prior applies on that path too
-   (it did not until 2026-08-18), but a K1 result carries no `declaredIn`, so its category is guessed
-   from the row's name and type — and a row in the wrong section cannot be lifted out of it. Ask
-   again a second later. Your Field's own log names the backend and the reason on every request —
+2. **The section it landed in was inferred rather than read.** On a freshly launched Field the first
+   request or two are served by K1 while the sidecar builds its session. The prior applies on that
+   path too, but a K1 result carries no `declaredIn`, so its category is guessed from the row's name
+   and type, and a row in the wrong section cannot be lifted out of it. Ask again a second later.
+   Your Field's own log names the backend and the reason on every request:
    `completion backend=AA … (N candidates)` or `backend=K1 … (AA→K1: <why>)`.
-3. **Its receiver is a foreign type.** A type you did not write has no `@CommonMembers` and now gets
-   no borrowed category, so a bare dot on it is alphabetical. Type a letter or two; with a prefix,
+3. **Its receiver is a foreign type.** A type you did not write has no `@CommonMembers` and gets no
+   borrowed category, so a bare dot on it is alphabetical. Type a letter or two; with a prefix,
    fuzzy matching dominates everything else on this page.
 4. **You are past row 80.** The popup renders at most 80 rows of however many the server sent.
-5. **Recency is outvoting the prior.** By design. It is also per-browser-profile, which is why a
-   colleague's popup and yours can legitimately disagree.
+5. **Recency is outvoting the prior.** That is the intended order. It is also per-browser-profile,
+   which is why a colleague's popup and yours can legitimately disagree.
 6. **The category weights predate the server's category vocabulary.** Most of the categories the
-   Kotlin side sends score nothing at all, which is a known defect rather than a subtlety — there is
-   a characterization test that pins the current behaviour precisely so that fixing it is a visible
-   change.
+   Kotlin side sends score nothing at all. That is a known defect; a characterization test pins the
+   current behaviour so that fixing it shows up as a change.
 
 ## Where this lives
 
@@ -478,5 +414,5 @@ In rough order of how often each turns out to be the answer:
 | the guard on which backend a figure captured | `tools/test_docs_runner_completion_backend.py` |
 | the internals, at length | `dev_docs/completion_aa_sidecar.md` |
 
-Symbol names rather than line numbers, because a line number in a page like this one is the first
-thing to rot, and a name survives every edit that does not rename it.
+Symbol names rather than line numbers: a line number in a page like this one is the first thing to
+rot, and a name survives every edit that does not rename it.

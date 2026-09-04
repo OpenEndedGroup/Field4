@@ -4,7 +4,7 @@ Field keeps document backups as you work. The history view lets you inspect thos
 
 ![Document history timeline](assets/history-panel.png)
 
-This is for document-level recovery, not just stepping back one edit. For a lighter-weight, in-editor version of the same idea — scrubbing a single line back through time — see the [History Lens](history_lens.md).
+It is for document-level recovery rather than for undoing single edits. To scrub one line back through its versions without leaving the editor, see the [History Lens](history_lens.md).
 
 ## Open the history view
 
@@ -13,7 +13,7 @@ You can open history in two ways:
 - run `Show Document History` from the command palette
 - open `/history?file=<document-name>` directly on the Field server
 
-There is no keyboard shortcut — it is command-palette (or URL) only. The history view opens in a dedicated iframe layered over the document, not inside a normal box.
+There is no keyboard shortcut. The history view opens in a dedicated iframe layered over the document, rather than inside a box.
 
 ## What the timeline shows
 
@@ -39,23 +39,22 @@ To restore a whole version:
 5. Confirm when prompted ("Restore the whole document to version #N?").
 
 Saving the restored result rotates the previous on-disk `metadata.edn` into the backup set, so the
-last saved state remains available in history. As with any recovery tool, unsaved in-memory edits
-are not an additional durable checkpoint; let Field save (or make an explicit save) before a
-high-stakes restore.
+last saved state stays available in history. Unsaved in-memory edits are not in the backup set at
+all, so save before a restore you care about.
 
 ### Restore just a few boxes
 
-You do not have to take a whole version. Select the boxes you care about and choose **Apply — selected boxes** to cherry-pick only those boxes out of the target version, leaving the rest of your document untouched. This is the right tool when one box has drifted but the rest of your work is good.
+You do not have to take a whole version. Select the boxes you care about and choose **Apply — selected boxes** to cherry-pick only those boxes out of the target version, leaving the rest of your document untouched. Use it when one box has drifted and the rest of your work is good.
 
 ## What restore does
 
-Restore is not a shallow file copy. It rebuilds document state from the target version.
+Restore rebuilds document state from the target version rather than copying a file over the current one.
 
-Boxes that exist in the chosen version are restored with their saved properties. Boxes that do **not** exist in that older version are **tombstoned** rather than permanently deleted — that keeps the restore reversible and avoids throwing data away. Each restore also records the transition, so the jump you just made is itself part of the history.
+Boxes that exist in the chosen version are restored with their saved properties. Boxes that do **not** exist in that older version are **tombstoned** rather than deleted, so the restore stays reversible. Each restore records its own transition, so the jump is itself part of the history.
 
 ## Digging deeper
 
-The panel is richer than a plain timeline. Depending on what you select you can also:
+Depending on what you have selected, the panel also offers:
 
 - **Search changes** — filter versions to those that touched a given piece of text.
 - **Blame a line** — see which version last changed a particular line.
@@ -63,11 +62,11 @@ The panel is richer than a plain timeline. Depending on what you select you can 
 - **Review version jumps** — the sidebar lists the restore transitions you have made, so the act of moving through history is itself recoverable.
 - **See per-version metrics** — boxes, properties and lines for the selected version.
 
-Use bookmarks for view-state jumps, and history for content-state recovery.
+Bookmarks move the view; history recovers content.
 
 ## Where versions come from
 
-History is built from the document backup files Field writes while saving. Each save, if the content actually changed, rotates the previous `metadata.edn` into a `backups/metadata_backup_*.edn` file (older backups are pruned to a limit). In practice this means:
+History is built from the document backup files Field writes while saving. Each save, if the content changed, rotates the previous `metadata.edn` into a `backups/metadata_backup_*.edn` file, and older backups are pruned to a limit. So:
 
 - the history view becomes useful once the document has been saved a few times
 - the backup list reflects real saved states, not transient editor changes

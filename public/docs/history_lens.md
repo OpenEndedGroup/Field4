@@ -1,8 +1,8 @@
 # Inline History: the History Lens
 
-The [document history](document_history.md) view is a whole-document affair — you leave the editor, look at a timeline, and restore. Often that is more than you want, because the question is only what one line used to say.
+The [document history](document_history.md) view works on the whole document. You leave the editor, pick a version out of a timeline, and restore it. That is a lot of machinery for the question you usually have, which is what one line said a few saves ago.
 
-The **History Lens** answers that in place, without leaving the editor.
+The **History Lens** answers that question where the line is.
 
 ![The History Lens open below a line of code](assets/history-lens.png)
 
@@ -10,18 +10,18 @@ The **History Lens** answers that in place, without leaving the editor.
 
 Put your cursor on a line (or select a range), **right-click**, and choose **Show History Lens for Line / Selection** from the editor context menu.
 
-The lens opens as a small zone directly beneath your selection. There is no keyboard shortcut — it lives in the context menu so it is always attached to the thing you right-clicked on.
+The lens opens as a small zone directly beneath your selection. It has no keyboard shortcut; it is in the context menu only.
 
 ## What it shows
 
-The lens traces the selected line or range through saved versions using line alignment and selection
-change detection, then lists the versions relevant to that trace. It is a per-line time machine, a
-little like `git blame` crossed with a scrubber; it is not a dump of every save.
+The lens traces the selected line or range back through the saved versions, using line alignment
+and selection-change detection, and lists the versions where that trace changed. Saves that left
+the line alone are skipped.
 
 Each row is one matching version, labelled the same way the [history panel](document_history.md)
 labels it (`#2858`, `#2857`, …), with metadata such as box count, size, and age. The value at that
-version is shown with changed tokens highlighted, so you can see *what* moved between the listed
-versions, not just *that* it moved.
+version is shown with changed tokens highlighted, so the difference between two rows is legible
+without reading both in full.
 
 Step through the versions with the ‹ › arrows to preview each one. When you find the state you want, the **Rollback** buttons put it back at the scope you choose:
 
@@ -31,7 +31,7 @@ Step through the versions with the ‹ › arrows to preview each one. When you 
 
 ## How it relates to the history panel
 
-The History Lens and the [document history panel](document_history.md) are two faces of the same underlying record — they read from the same saved versions. The difference is scope and ceremony:
+The History Lens and the [document history panel](document_history.md) read the same saved versions. They differ in how much of the document they work on:
 
 - **History panel** — whole document, its own view, restore or cherry-pick whole boxes.
 - **History Lens** — one line or selection, inline in the editor, lift a single past value back.
@@ -40,9 +40,9 @@ Reach for the lens when the question is "what did *this* used to be?" and for th
 
 ## A different "history" in the editor
 
-Field has a second, unrelated inline visual also called `history`, which is easy to confuse with this one.
+Field has a second inline visual also called `history`, and the two are easy to confuse.
 
-The **`history()` visualizer** (`m.history(value)`) draws a live chart of the last N *runtime* values of an expression, printed inline next to the code that produced it. That is about the history of a *value while your code runs* — not the history of your *source across saves*. It is covered with its siblings `histogram()` and `stats()` on the [Visualizers & Controls](visualizers.md) page.
+The **`history()` visualizer** (`m.history(value)`) draws a live chart of the last N *runtime* values of an expression, printed inline next to the code that produced it. It tracks a value while your code runs, rather than your source across saves. It is covered with its siblings `histogram()` and `stats()` on the [Visualizers & Controls](visualizers.md) page.
 
 | | History Lens | `history()` visualizer |
 | --- | --- | --- |
