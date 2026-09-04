@@ -197,7 +197,7 @@ the same 30<!--count:guardedCitationPages--> pages `GUARDED_PAGES` already cover
 them since 2026-08-23, because a page that documents the mechanism and then states three numbers
 derived by it should be the first thing the mechanism checks.
 
-**Ten of those 29 are under `public/docs` as of 2026-09-03**, and the asymmetry they closed is
+**Eleven of those 30 are under `public/docs` as of 2026-09-04**, and the asymmetry they closed is
 worth naming, because it is the more instructive of the two failures available here. `citationGates` has
 declared `public/docs/**.md` as a task input since 2026-08-19, so a published-page edit has never been
 able to go `UP-TO-DATE` — up-to-date checking was never the gap. `GUARDED_PAGES` was, because it is the

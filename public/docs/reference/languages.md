@@ -2768,6 +2768,8 @@ Nano disassembler: converts a `ByteArray` bytecode program back into human-reada
 
 `src/jvmMain/kotlin/afield/nano/NanoInterface.kt` — [read the source](source/jvmMain/afield/nano/NanoInterface/)
 
+**Used in:** [What a document is on disk](../document_on_disk.md)
+
 ### Top-level functions { #nanointerface-kt-functions }
 
 | Declaration | Summary |

@@ -247,6 +247,38 @@ class CitationContractTest {
             // `field.css:491` would look like a citation to a reader and be invisible to every
             // guard here, including the bare-citation census — the worst of both.
             "public/docs/output_panel_sizing.md" to 21,
+            // Added 2026-09-04 with the page it guards. The on-disk document format: which of the
+            // seven artifacts in a document directory wins on load, when each is written, and what
+            // each keeps in `backups/`. Nothing published stated any of that — over the 111
+            // `public/docs/*.md` pages, `grep -l 'metadata\.edn'` selected 15 and every one was a
+            // demo-bundle path inside an examples page.
+            //
+            // Guarded from its first day because the page's load-bearing claim is one line of code
+            // and cannot be paraphrased safely: `saving.kt`'s `FileInline` branch, where the loose
+            // sidecar beats the inline copy inside `metadata.edn` when the file exists. A page that
+            // says "the sidecar wins" and cannot report that branch being inverted is not doing the
+            // job — and the inversion is a one-token change, since the branch is gated on a
+            // defaulted `preferInlineFiles` parameter that one caller in `history.kt` already
+            // passes `true`.
+            //
+            // 47 anchored citations as written, all prose `path:line#anchor`, across 12 files:
+            // 26 in `saving.kt`, 7 in `FileWatchManager.kt`, 3 in `Boxes.kt`, 2 each in `history.kt`
+            // and `operation_transcript.kt`, and one each in `HistoryMetrics.kt`, `outputs.kt`,
+            // `workspace/transcript.kt`, `workspace/dir.kt`, `CompletionCorpus.kt`,
+            // `HistoryFileInlineSmokeTest.kt` and the page's own producer
+            // `DocumentOnDiskSmokeTest.kt`. Every anchor was checked unique-in-file by
+            // counting containments across the whole file rather than by trusting the choice, so all
+            // 47 report unbounded headroom and [MAX_FRAGILE] is unaffected. Four anchors were
+            // lengthened or moved for that reason: `preferInlineFiles = version.file.name !=
+            // "metadata.edn"` occurs three times in `history.kt`, so the citation points at
+            // `loadVersionSnapshot` instead, and `Box.ioPersistentProperties.add(propertyName)`
+            // occurs five times in one `when` in `outputs.kt`, so it points at the enclosing
+            // `syncToProperty`. Paths are repo-relative throughout.
+            //
+            // Floored at 24, about half, on the DATAFRAME_PLUGIN convention. This entry is what took
+            // the floor sum from 359 to 383 and past [MIN_UNIQUE_ANCHORS], so that constant was
+            // ratcheted in the same commit, as its KDoc had been asking for.
+            "public/docs/document_on_disk.md" to 24,
         )
 
         /**
@@ -266,8 +298,26 @@ class CitationContractTest {
          *
          * Set above that 327 sum on purpose. If a future branch raises the per-page floors past 360,
          * raise this with them or it lapses back into being dominated.
+         *
+         * **Ratcheted 2026-09-04, 360 → 500**, because that is exactly what happened: adding
+         * `public/docs/document_on_disk.md` at a floor of 24 took the [GUARDED_PAGES] sum from 359 to
+         * **383**, past 360, and a corpus-wide floor under the sum of the per-page floors is not a
+         * floor at all — [everyGuardedPageKeepsItsCitations] would have failed first, every time, and
+         * this assertion would have been unreachable. Measured the same run, with the page in:
+         * **529 unique of 572 parsed**, 572 resolved by symbol, 0 broken, 0 below the fragility
+         * ceiling, across 30 guarded pages. 500 leaves 29 unique anchors of slack — enough that
+         * lengthening or relocating a handful of anchors during a merge does not fail a build, and
+         * tight enough that a page losing its citations wholesale does.
+         *
+         * The same reasoning applies next time. This constant has to stay above the per-page floor
+         * sum *and* near the measurement; the two are 117 apart today, and it is the second of those
+         * that makes the assertion mean anything.
+         *
+         * Note for whoever greps: there is a **second**, unrelated `MIN_UNIQUE_ANCHORS` in
+         * `SmallLanguageAnatomyTest`, floored at 111 over its own single page. It is not this one and
+         * does not move with it.
          */
-        const val MIN_UNIQUE_ANCHORS = 360
+        const val MIN_UNIQUE_ANCHORS = 500
 
         /**
          * Corpus ceiling on anchors fragile enough to be confused by fewer than
