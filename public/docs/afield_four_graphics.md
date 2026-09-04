@@ -1412,7 +1412,7 @@ Slang requires `slangc` to be available; without it the `vertex_fragment` proper
 The last lesson is the shortest, because the work is packaged:
 
 ```diffstatic {data-lang=kotlin}
-import organic.*
+import afield.stdlib.*
 
 var dla = ShaderDlaSystem() {
     width = window.width

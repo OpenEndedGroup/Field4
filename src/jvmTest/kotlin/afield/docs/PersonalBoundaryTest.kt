@@ -25,10 +25,10 @@ import kotlin.test.assertEquals
  *
  * 1. **A published page that cannot compile for anyone else.** A code fence on
  *    `public/docs/afield_four_graphics.md` and box files in the loadable `canonical_graphics`
- *    bundle name packages that exist on exactly one machine. This is a correctness bug for every
- *    other reader, not a matter of taste — and two of the three box files turned out to be carrying
- *    a *dead* private import over code that `afield` already provides, so the leak was not even
- *    buying them anything.
+ *    bundle named packages that existed on exactly one machine — a correctness bug for every other
+ *    reader, not a matter of taste. Two of the three box files turned out to be carrying a *dead*
+ *    private import over code `afield` already provided, so the leak was not even buying them
+ *    anything; the third was a real dependency and the fix was to move it into `afield`.
  * 2. **A citation nobody can follow, and a ledger that has to track it.** Prose that cites a private
  *    path offers evidence no reader can open. The second-order cost is the bookkeeping: before this
  *    guard, `CloseNodeCitationDriftTest` carried an exemption list naming three private files purely
@@ -58,8 +58,8 @@ import kotlin.test.assertEquals
  *
  * Measured when this was written, over the [SCAN_ROOTS] corpus: 22 legitimate roots accounting for
  * 15 000+ import statements, against **8** occurrences of four private packages. The signal-to-noise
- * is what makes the inverted form practical. After the first cleanup pass the remainder is **3**
- * occurrences of **one** package, all three the same dependency — see [GRANDFATHERED].
+ * is what makes the inverted form practical. The remainder after cleanup is **zero**: see
+ * [GRANDFATHERED] for what the twelve entries were and how each was retired.
  *
  * ### The grandfathered set is a debt list, and it is bidirectional
  *
@@ -158,28 +158,24 @@ class PersonalBoundaryTest {
          * positive to be silenced. The `canonical_graphics` entries are the expensive ones: a
          * loadable bundle whose box code cannot compile for anybody but its author.
          */
-        private val GRANDFATHERED = mapOf(
-            // All three are the same dependency: `organic.ShaderDlaSystem`, which powers section 8 of
-            // the graphics page, the corpus box that section shows, and that box's `#afield/file-inline`
-            // copy. The lesson section 8 draws is general -- `installInto()` writes a packaged effect's
-            // shaders into the box's own properties, so it arrives as editable source rather than as a
-            // closed component -- and the vehicle is private, with no `afield` equivalent to port to.
-            // That makes this an editorial decision rather than a mechanical fix, and it is the
-            // archetype this whole guard exists to surface: a general lesson taught through a private
-            // piece.
-            "public/docs/afield_four_graphics.md" to
-                "section 8 teaches `installInto()` through a private DLA system; the fence imports organic.*",
-            "public/docs/assets/canonical_graphics/e39270ec-8faf-4d26-8f4e-ce4d23ec4af1_code_.kt" to
-                "the corpus box for section 8 constructs organic.ShaderDlaSystem",
-            "public/docs/assets/canonical_graphics/metadata.edn" to
-                "the file-inline copy of the box above",
+        private val GRANDFATHERED = mapOf<String, String>(
+            // Empty, and [MAX_GRANDFATHERED] is 0, so it cannot refill without a deliberate edit.
+            //
+            // It held twelve entries when the boundary became a rule. Nine were paid down by keeping
+            // each finding and dropping the path it hung on, and two of those turned out to be *dead*
+            // private imports over code `afield` already had. The last three were one dependency:
+            // `ShaderDlaSystem`, which section 8 of the graphics page teaches a general lesson
+            // through. It now lives at [afield.stdlib.ShaderDlaSystem], beside the rest of the alife
+            // family, so the page, its corpus box and that box's file-inline copy all compile for
+            // every reader. The lift was mechanical -- the class imported only `afield.*` and lwjgl,
+            // and three of its imports were `afield.stdlib` members already.
         )
 
         /**
          * A ceiling, not a target. Lowering it is the point; raising it should require saying why in
          * a commit message somebody will read.
          */
-        private const val MAX_GRANDFATHERED = 3
+        private const val MAX_GRANDFATHERED = 0
 
         /**
          * A floor under the corpus, so a broken [SCAN_ROOTS] entry fails loudly instead of turning
