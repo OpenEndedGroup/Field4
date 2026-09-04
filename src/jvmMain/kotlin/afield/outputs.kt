@@ -11,6 +11,7 @@ import afield.stdlib.FLineHitKind
 import afield.stdlib.FLineIntersection
 import afield.stdlib.FileManager
 import afield.stdlib.KeyframeScope
+import afield.stdlib.everyKeyGlob
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import afield.stdlib.linalg.Vector2f
@@ -801,6 +802,13 @@ fun Box.remoteAr(
  * file, with the range that name takes, because a list of your own file names tells you nothing you
  * did not already know.
  *
+ * [pattern] defaults to [everyKeyGlob], which is every file at any depth, because `saveKey` writes
+ * the path you hand it and appends no extension — so a default that asked for one found nothing in
+ * an ordinary directory of keys. Files that turn out not to be keys are counted as *ignored* rather
+ * than reported as errors, and narrowing the pattern now tells you how many keys the narrowing hid
+ * (`KeyframeCollection.skipSummary`). Java globs support brace alternation, so `{?,??}` is a legal
+ * way to say "one- and two-character names".
+ *
  * Passing [scope] is what turns a viewer into a tool. With it, the browser can mark a slot the scope
  * watches that no file holds — the "you have never saved this" row — and the Apply button becomes
  * live. Without it the browser is read-only, which is also what happens if the scope is garbage
@@ -842,7 +850,7 @@ fun Box.remoteAr(
  */
 fun Box.keyframeBrowser(
     root: Path,
-    pattern: String = "**/*.json",
+    pattern: String = everyKeyGlob,
     channel: String = "keyframes",
     scope: KeyframeScope? = null,
     width: Int = 900,
@@ -856,7 +864,7 @@ fun Box.keyframeBrowser(
 /** [keyframeBrowser] against a directory named as a string, resolved through the document's files. */
 fun Box.keyframeBrowser(
     root: String,
-    pattern: String = "**/*.json",
+    pattern: String = everyKeyGlob,
     channel: String = "keyframes",
     scope: KeyframeScope? = null,
     width: Int = 900,

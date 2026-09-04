@@ -1,6 +1,8 @@
 package afield.server
 
 import afield.stdlib.KeyframeScope
+import afield.stdlib.everyKeyGlob
+import afield.four.buffers.Structure
 import afield.four.util.CameraPose
 import afield.stdlib.linalg.Quaternionf
 import afield.stdlib.linalg.Vector3f
@@ -48,9 +50,16 @@ class KeyframeBrowserProtocolTest {
         scope: KeyframeScope? = null,
         slot: String? = null,
         fileId: Int? = null,
-        otherId: Int? = null
+        otherId: Int? = null,
+        // Defaulted to the suffix-bearing glob the fixtures above were written for, so the pattern
+        // tests can vary it without touching them. The *product's* default is `everyKeyGlob`.
+        //
+        // A `//` comment and not a KDoc block on purpose: KDocExtractor.parseDeclaration cannot read
+        // a parameter, so a block here is dropped and its prose is published under whatever symbol
+        // parses next. See dev_docs/kdoc_reference_contract.md.
+        pattern: String = "**/*.json"
     ): JsonObject = json.parseToJsonElement(
-        keyframeBrowserRequestForTesting(dir, "**/*.json", op, scope, slot, fileId, otherId)
+        keyframeBrowserRequestForTesting(dir, pattern, op, scope, slot, fileId, otherId)
     ).jsonObject
 
     /** The open payload: the header numbers, the file list and the slot pivot, all in one message. */
@@ -252,6 +261,136 @@ class KeyframeBrowserProtocolTest {
         val out = reply(dir, "apply", fileId = 0)
         assertFalse(out["ok"]!!.jsonPrimitive.boolean)
         assertContains(out["error"]!!.jsonPrimitive.content, "no live scope")
+    }
+
+    /**
+     * A collection shaped like a real one: six keys named `a b c d d2 d3` and the `.DS_Store` macOS
+     * leaves behind. Every other fixture in this file is named `warm.json` and friends, eight
+     * characters and up, which is precisely why none of them could reproduce a one-character glob
+     * losing four keys.
+     */
+    private fun humansKeyDirectory(): Path {
+        val dir = tempDir()
+        listOf("a", "b", "c", "d", "d2", "d3").forEachIndexed { i, n ->
+            save(dir, n, "glow@radius" to (i + 1).toFloat())
+        }
+        dir.resolve(".DS_Store").let { Files.writeString(it, "Bud1 junk") }
+        return dir
+    }
+
+    private fun strings(o: JsonObject, key: String) =
+        o[key]!!.jsonArray.map { it.jsonPrimitive.content }
+
+    /**
+     * The default pattern, on the wire, over a directory of extension-less keys.
+     *
+     * This is the payload the iframe renders, and the number in it is the one that used to be zero:
+     * the browser reported "No key files matched" over six perfectly good keys because the default
+     * glob demanded a suffix `saveKey` never writes. Asserted by *name* rather than by position,
+     * because a positional column check goes vacuous the moment the list is reordered.
+     */
+    @Test
+    fun theDefaultPatternPutsEveryExtensionlessKeyOnTheWire() {
+        val out = reply(humansKeyDirectory(), "open", pattern = everyKeyGlob)
+
+        assertEquals(6, out["fileCount"]!!.jsonPrimitive.int)
+        assertTrue(out["fileCount"]!!.jsonPrimitive.int >= 6, "floor: six keys on disk, six on the wire")
+        assertEquals(
+            listOf("a", "b", "c", "d", "d2", "d3"),
+            out["files"]!!.jsonArray.map { it.jsonObject["relative"]!!.jsonPrimitive.content }
+        )
+        // Junk is a notice, not an alarm. `problems` is now damage only.
+        assertEquals(emptyList(), strings(out, "problems"))
+        assertEquals("1 file ignored", out["notice"]!!.jsonPrimitive.content)
+        assertEquals(
+            listOf(".DS_Store"),
+            out["skipped"]!!.jsonArray
+                .filter { it.jsonObject["kind"]!!.jsonPrimitive.content == "NotAKey" }
+                .map { it.jsonObject["relative"]!!.jsonPrimitive.content }
+        )
+    }
+
+    /**
+     * A narrowed pattern reaches the iframe carrying the count of what it hid, and the flag that
+     * turns the widen button on.
+     *
+     * Silence in this payload is the original defect: nothing in the old message could have told a
+     * person that switching from `?` to `??` had dropped four keys.
+     */
+    @Test
+    fun aNarrowedPatternArrivesWithTheHiddenCountAndTheWidenAffordance() {
+        val out = reply(humansKeyDirectory(), "open", pattern = "??")
+
+        assertEquals(2, out["fileCount"]!!.jsonPrimitive.int)
+        assertTrue(out["canShowAll"]!!.jsonPrimitive.boolean, "the widen button must be offered")
+        assertContains(out["notice"]!!.jsonPrimitive.content, "4 more keys here are hidden")
+        assertEquals(
+            listOf("a", "b", "c", "d"),
+            out["skipped"]!!.jsonArray
+                .filter { it.jsonObject["kind"]!!.jsonPrimitive.content == "Hidden" }
+                .map { it.jsonObject["relative"]!!.jsonPrimitive.content },
+            "and named, so the notice says which keys rather than only how many"
+        )
+    }
+
+    /**
+     * One click, six keys. `showAll` widens the handle's pattern and returns the same open payload,
+     * so the button and a reload share a code path and cannot drift apart.
+     */
+    @Test
+    fun showAllWidensANarrowedPatternInPlace() {
+        val dir = humansKeyDirectory()
+
+        val narrow = reply(dir, "open", pattern = "??")
+        assertEquals(2, narrow["fileCount"]!!.jsonPrimitive.int)
+
+        val wide = reply(dir, "showAll", pattern = "??")
+        assertEquals("open", wide["type"]!!.jsonPrimitive.content, "the same reply shape, not a new one")
+        assertEquals(everyKeyGlob, wide["pattern"]!!.jsonPrimitive.content)
+        assertEquals(6, wide["fileCount"]!!.jsonPrimitive.int)
+        assertTrue(wide["fileCount"]!!.jsonPrimitive.int >= 6, "floor: widening must reveal all six")
+        assertEquals(
+            listOf("a", "b", "c", "d", "d2", "d3"),
+            wide["files"]!!.jsonArray.map { it.jsonObject["relative"]!!.jsonPrimitive.content }
+        )
+        assertEquals(
+            0,
+            wide["skipped"]!!.jsonArray.count { it.jsonObject["kind"]!!.jsonPrimitive.content == "Hidden" },
+            "nothing is hidden once the pattern is everything"
+        )
+    }
+
+    /**
+     * The orphan account on the wire, so the iframe can draw it without recomputing it.
+     *
+     * A read-only browse must send an empty list rather than every slot it holds: with no scope
+     * there is no disagreement to report, and claiming one on every row would be a false alarm in
+     * exactly the place a viewer is most often opened.
+     */
+    @Test
+    fun openCarriesTheSlotsTheScopeNoLongerWatches() {
+        val dir = tempDir()
+        save(dir, "a", "glow@radius" to 1f, "glow@blur" to 4f)
+
+        val glow = Structure()
+        glow.bind("radius") { 3f }
+        val scope = KeyframeScope()
+        scope.target("glow@radius", glow)
+
+        val withScope = reply(dir, "open", scope = scope, pattern = everyKeyGlob)
+        assertTrue(withScope["hasScope"]!!.jsonPrimitive.boolean)
+        assertEquals(listOf("glow@blur"), strings(withScope, "orphanedSlots"))
+        assertEquals(
+            listOf(true),
+            withScope["slots"]!!.jsonArray
+                .filter { it.jsonObject["name"]!!.jsonPrimitive.content == "glow@blur" }
+                .map { it.jsonObject["orphaned"]!!.jsonPrimitive.boolean },
+            "the row itself carries the flag, keyed by name rather than by column position"
+        )
+
+        val readOnly = reply(dir, "open", pattern = everyKeyGlob)
+        assertFalse(readOnly["hasScope"]!!.jsonPrimitive.boolean)
+        assertEquals(emptyList(), strings(readOnly, "orphanedSlots"), "no scope, no accusation")
     }
 
     /** An unknown token is an error, not an empty collection that reads as "you have saved nothing". */

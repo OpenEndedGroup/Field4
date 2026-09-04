@@ -1,5 +1,6 @@
 package afield.stdlib
 
+import afield.four.buffers.Structure
 import afield.four.util.CameraPose
 import afield.keyframeBrowserIframe
 import afield.stdlib.linalg.Quaternionf
@@ -8,11 +9,13 @@ import afield.stdlib.linalg.Vector4f
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
+import kotlin.io.path.name
 import kotlin.io.path.writeText
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.test.assertNull
 
@@ -500,11 +503,19 @@ class KeyframeBrowserTest {
     // -----------------------------------------------------------------------------------------
 
     /**
-     * One unreadable file must not take the collection with it. Losing an afternoon to a stray
-     * `package.json` in the looks directory is exactly the failure this prevents.
+     * A file that will not decode must not take the collection with it. Losing an afternoon to a
+     * stray `package.json` in the looks directory is exactly the failure this prevents.
+     *
+     * This test used to assert that both intruders landed in `problems`, and that assertion is now
+     * inverted on purpose. Neither of these files is *damage*: one is a JSON object that never
+     * mentioned `values`, the other is not JSON at all, and neither has a `.versions` directory
+     * beside it, so Field did not write either. They are somebody else's files sharing a folder, and
+     * a red row for them is a permanent false alarm — `.DS_Store` produced one in every key
+     * directory macOS had ever opened. They are still reported, still named, and still one line
+     * each; they are reported as *ignored*.
      */
     @Test
-    fun anUnreadableFileIsReportedAndTheRestStillLoad() {
+    fun aFileThatWillNotDecodeIsNamedAndTheRestStillLoad() {
         val dir = tempDir()
         save(dir, "good.json", "r" to 1f)
         dir.resolve("notakey.json").writeText("""{"name":"something else entirely"}""")
@@ -512,10 +523,48 @@ class KeyframeBrowserTest {
 
         val c = KeyframeCollection.load(dir, "**/*.json")
         assertEquals(listOf("good.json"), c.files.map { it.relative })
-        assertEquals(2, c.problems.size, "both bad files are named: ${c.problems}")
-        assertTrue(c.problems.any { it.startsWith("broken.json") })
-        assertTrue(c.problems.any { it.startsWith("notakey.json") })
+
+        assertEquals(emptyList(), c.problems, "neither intruder is damage, so neither is red")
+        assertEquals(2, c.ignoredCount, "both are still named: ${c.skipped}")
+        assertEquals(
+            listOf("broken.json", "notakey.json"),
+            c.skipped.filter { it.kind == SkipKind.NotAKey }.map { it.relative }.sorted()
+        )
+        assertContains(c.skipped.single { it.relative == "broken.json" }.detail, "not JSON")
+        assertContains(c.skipped.single { it.relative == "notakey.json" }.detail, "values")
+        assertEquals("2 files ignored", c.skipSummary())
+
         assertEquals(1.0, (c.slot("r").display as SlotDisplay.Range).band.lo)
+    }
+
+    /**
+     * The same two intruders, and a *third* file that really is damage, in one directory — because
+     * the whole value of the split is that the two coexist and read differently.
+     *
+     * The damaged one is a key saved through the real writer and then truncated, so its `.versions`
+     * directory is intact beside it. That directory is the ownership proof: without it a truncated
+     * key is just malformed JSON, indistinguishable from the `broken.json` above, and the file that
+     * most needs a red row would be filed as junk.
+     */
+    @Test
+    fun damageAndJunkInOneDirectoryReadDifferently() {
+        val dir = tempDir()
+        save(dir, "good.json", "r" to 1f)
+        val truncated = save(dir, "half.json", "r" to 2f)
+        truncated.writeText(Files.readString(truncated).take(9))
+        dir.resolve("broken.json").writeText("{ this is not json")
+
+        val c = KeyframeCollection.load(dir, "**/*.json")
+
+        assertEquals(listOf("good.json"), c.files.map { it.relative })
+        assertEquals(1, c.problems.size, "exactly one red row: ${c.problems}")
+        assertContains(c.problems.single(), "half.json")
+        assertContains(c.problems.single(), "save history is intact")
+        assertEquals(1, c.ignoredCount)
+        assertEquals(
+            listOf("broken.json"),
+            c.skipped.filter { it.kind == SkipKind.NotAKey }.map { it.relative }
+        )
     }
 
     /** An empty or missing directory browses as an empty collection rather than throwing. */
@@ -576,6 +625,327 @@ class KeyframeBrowserTest {
         // The iframe opts out of `iframe_autosize.js`, which is the other way a frame could report a
         // size. If that ever changes, the pixel width above stops being the only source.
         assertContains(html, "data-afield-autosize=\"off\"")
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Key discovery — the human's own directory
+    // -----------------------------------------------------------------------------------------
+
+    /**
+     * The fixture that the rest of this file did not have, and whose absence is why none of it
+     * caught the bug it is named for.
+     *
+     * Every other collection here is named `looks.json`, `top.json`, `nested.json` — eight
+     * characters and up, every one of them. A fixture like that cannot fail the way a real directory
+     * failed: `?` matches nothing in it, so `?` looks harmless, and a page written from such a
+     * fixture once told a person their working pattern was fine. This one is the real thing, copied
+     * name for name from a live session's `files/` directory: six keys called `a b c d d2 d3`, one
+     * and two characters, with `d`/`d2`/`d3` sharing a prefix — plus the `.DS_Store` that macOS
+     * leaves in any folder a Finder window has opened.
+     *
+     * A claim true of a fixture is not true of the reader unless the fixture is shaped like the
+     * reader's disk.
+     */
+    private fun humansKeyDirectory(): Path {
+        val dir = tempDir()
+        save(dir, "a", "glow@radius" to 1f)
+        save(dir, "b", "glow@radius" to 2f)
+        save(dir, "c", "glow@radius" to 3f)
+        save(dir, "d", "glow@radius" to 4f)
+        save(dir, "d2", "glow@radius" to 5f)
+        save(dir, "d3", "glow@radius" to 6f)
+        // Not written through `save`, and deliberately not JSON: this is junk, not a key, and it has
+        // no `.versions` directory beside it.
+        dir.resolve(".DS_Store").writeText("Bud1 junk")
+        return dir
+    }
+
+    /**
+     * The regression. The default pattern must find every key in a directory of keys saved the
+     * ordinary way.
+     *
+     * `KeyframeScope.saveKey` writes the path it is handed and appends nothing, so
+     * `capture().save("d3".path)` produces a file called `d3`. The old default asked for a `.json`
+     * suffix and therefore matched **zero** of these six, and the browser said "No key files
+     * matched" over a full directory. The floor is asserted beside the number because a six that
+     * silently becomes a four is the entire failure being pinned here.
+     */
+    @Test
+    fun theDefaultPatternFindsEveryKeySavedTheOrdinaryWay() {
+        val dir = humansKeyDirectory()
+
+        val names = keyFilesMatching(dir).map { it.name }
+        assertEquals(listOf("a", "b", "c", "d", "d2", "d3"), names.filter { it != ".DS_Store" })
+
+        val c = KeyframeCollection.load(dir)
+        assertEquals(6, c.files.size, "all six keys must be rows")
+        assertTrue(c.files.size >= 6, "floor: fewer than six means the default narrowed again")
+        assertEquals(
+            listOf("a", "b", "c", "d", "d2", "d3"),
+            c.files.map { it.relative },
+            "and in directory order, so the chips read the way the folder does"
+        )
+    }
+
+    /**
+     * The old default, run against the same directory, so the fix is measured rather than asserted.
+     *
+     * This is the number the person actually saw. Nothing about the *files* changed between this test
+     * and the one above it — only the glob.
+     */
+    @Test
+    fun theOldJsonOnlyDefaultFoundNoneOfThem() {
+        val dir = humansKeyDirectory()
+        assertEquals(
+            emptyList(),
+            keyFilesMatching(dir, "**/*.json"),
+            "a suffix-demanding glob matches no extension-less key, and the .versions snapshots that " +
+                "do carry .json are excluded, so this can only ever be empty"
+        )
+    }
+
+    /**
+     * Step zero, pinned: Java's glob supports brace alternation, so the expressiveness was never
+     * missing.
+     *
+     * `?` is exactly one character and `??` exactly two, so no single-length pattern can span
+     * `a b c d` and `d2 d3` — which is how trying `?` and then `??` traded four keys for two and
+     * found six neither time. `{?,??}` spans both, today, with no code change. This test is here so
+     * that a later "let us add a comma syntax" is answered by a failing assumption rather than by an
+     * argument.
+     */
+    @Test
+    fun braceAlternationAlreadySpansOneAndTwoCharacterKeyNames() {
+        val dir = humansKeyDirectory()
+        fun found(pattern: String) = keyFilesMatching(dir, pattern).map { it.name }
+
+        assertEquals(listOf("a", "b", "c", "d"), found("?"), "the first pattern tried")
+        assertEquals(listOf("d2", "d3"), found("??"), "the second, and the last act of that evening")
+        assertEquals(listOf("a", "b", "c", "d", "d2", "d3"), found("{?,??}"), "both, in one glob")
+        assertTrue(found("{?,??}").size >= 6, "floor: the alternation must span both lengths")
+    }
+
+    /**
+     * `.DS_Store` is not a problem. It is one line of notice and no colour at all.
+     *
+     * This is the row that used to be indistinguishable from a corrupt key — same list, same red —
+     * in a directory where nothing was wrong. A permanent false alarm teaches you to stop reading the
+     * alarm.
+     */
+    @Test
+    fun osJunkIsIgnoredRatherThanReportedAsAProblem() {
+        val c = KeyframeCollection.load(humansKeyDirectory())
+
+        assertEquals(emptyList(), c.problems, "nothing here is damaged, so nothing may be red")
+        assertEquals(1, c.ignoredCount)
+        assertEquals(0, c.hiddenCount)
+        assertEquals(
+            listOf(".DS_Store"),
+            c.skipped.filter { it.kind == SkipKind.NotAKey }.map { it.relative }
+        )
+        assertEquals("1 file ignored", c.skipSummary())
+    }
+
+    /**
+     * A truncated key *is* a problem, and what tells it apart from junk is its history.
+     *
+     * A half-written key is not valid JSON, so a content-only ladder would call it "not JSON, not a
+     * key" and file real damage as an OS turd — the important case, backwards. Its `.versions`
+     * directory is still beside it and still holds every earlier save, which both proves Field wrote
+     * the file and is exactly what the person now needs.
+     */
+    @Test
+    fun aTruncatedKeyIsDamageBecauseItsHistoryStillNamesItAsOurs() {
+        val dir = humansKeyDirectory()
+        val d3 = dir.resolve("d3")
+        d3.writeText(Files.readString(d3).take(12))  // a write that stopped halfway
+
+        val c = KeyframeCollection.load(dir)
+
+        assertEquals(5, c.files.size, "the other five keys still browse")
+        assertEquals(1, c.problems.size, "and the broken one is the only red row: ${c.problems}")
+        assertContains(c.problems.single(), "d3")
+        assertEquals(
+            listOf(SkipKind.Damaged),
+            c.skipped.filter { it.relative == "d3" }.map { it.kind }
+        )
+        // The junk is still junk. Damage and junk coexisting is the whole point of the split.
+        assertEquals(1, c.ignoredCount)
+    }
+
+    /** The ladder, a rung at a time, with no filesystem in sight. */
+    @Test
+    fun theClassifierLadderRungByRung() {
+        // Ownership wins over content: anything with a history beside it is ours, however unreadable.
+        assertEquals(SkipKind.Damaged, classifyNonKey("d3", "{ trunca", hasVersionsDir = true).first)
+        assertEquals(SkipKind.Damaged, classifyNonKey("d3", null, hasVersionsDir = true).first)
+        // Without a history, the file speaks for itself.
+        assertEquals(SkipKind.NotAKey, classifyNonKey(".DS_Store", "Bud1", hasVersionsDir = false).first)
+        assertEquals(SkipKind.NotAKey, classifyNonKey("README", "hello", hasVersionsDir = false).first)
+        assertEquals(SkipKind.NotAKey, classifyNonKey("nums.json", "[1,2,3]", hasVersionsDir = false).first)
+        assertEquals(SkipKind.NotAKey, classifyNonKey("other.json", "{\"a\":1}", hasVersionsDir = false).first)
+        // Presents as a key and is not decodable as one: damage, history or no history.
+        assertEquals(SkipKind.Damaged, classifyNonKey("k.json", "{\"values\":7}", hasVersionsDir = false).first)
+    }
+
+    /**
+     * Narrowing says what it hid. This is the message that was missing on the evening of the
+     * `?`-then-`??` fumble.
+     */
+    @Test
+    fun aNarrowedPatternReportsTheKeysItHid() {
+        val dir = humansKeyDirectory()
+
+        val two = KeyframeCollection.load(dir, "??")
+        assertEquals(2, two.files.size)
+        assertEquals(4, two.hiddenCount, "a b c d are keys that '??' cannot match")
+        assertTrue(two.hiddenCount >= 4, "floor: silence here is the original bug")
+        assertEquals(
+            listOf("a", "b", "c", "d"),
+            two.skipped.filter { it.kind == SkipKind.Hidden }.map { it.relative },
+            "named, not just counted, because a count you cannot act on is half a message"
+        )
+        assertContains(two.skipSummary()!!, "4 more keys here are hidden by this pattern")
+        assertEquals(emptyList(), two.problems, "narrowing is not damage")
+
+        val four = KeyframeCollection.load(dir, "?")
+        assertEquals(4, four.files.size)
+        assertEquals(2, four.hiddenCount, "d2 and d3 are keys that '?' cannot match")
+
+        // And the glob that spans both hides no *key*. It still steps over the `.DS_Store`, which is
+        // reported as ignored rather than hidden: a narrowing that excludes junk has excluded
+        // nothing you wanted, and saying "1 more key is hidden" about an OS turd would be a lie.
+        val all = KeyframeCollection.load(dir, "{?,??}")
+        assertEquals(6, all.files.size)
+        assertEquals(0, all.hiddenCount, "the alternation hides no key")
+        assertEquals("1 file ignored", all.skipSummary())
+        assertEquals(emptyList(), all.problems)
+    }
+
+    /**
+     * Row ids are dense over the rows, not over the matched paths.
+     *
+     * They used to be the index into the matched-path list, so every skipped file left a hole and the
+     * browser's chips numbered 1, 2, 4. Under a default that matches everything there is more junk to
+     * step over, so the holes would have gone from an oddity to the normal case — and `.DS_Store`
+     * sorts first, which would have made the *first* chip read 2.
+     */
+    @Test
+    fun rowIdsAreDenseEvenWhenJunkSortsFirst() {
+        val c = KeyframeCollection.load(humansKeyDirectory())
+        assertEquals((0 until 6).toList(), c.files.map { it.id })
+        assertEquals(0, c.files.first().id, "the first chip must read 1, not 2")
+        // And `file(id)` still agrees with the ids it handed out.
+        c.files.forEach { assertEquals(it.relative, c.file(it.id)?.relative) }
+    }
+
+    /**
+     * `keyFilesMatching`'s contract for its other callers: an *explicit* pattern reaches the glob
+     * untouched, and the `.versions` exclusion holds whatever the pattern is.
+     *
+     * Only the default moved. Pinned because a default and a parameter are easy to conflate, and a
+     * change to the second would break callers that already say what they want.
+     */
+    @Test
+    fun anExplicitPatternIsUnchangedByTheNewDefault() {
+        val dir = tempDir()
+        dir.resolve("looks").createDirectories()
+        save(dir, "top.json", "a" to 1f)
+        save(dir.resolve("looks"), "nested.json", "a" to 2f)
+        dir.resolve("notes.txt").writeText("not a key")
+
+        // Explicit and suffix-bearing: exactly the two keys, no notes.txt, no snapshots.
+        assertEquals(
+            listOf("looks/nested.json", "top.json"),
+            keyFilesMatching(dir, "*.json").map { dir.relativize(it).toString() }.sorted()
+        )
+        // The wide default sees the third file too, and calls it ignored rather than a problem.
+        val c = KeyframeCollection.load(dir)
+        assertEquals(2, c.files.size)
+        assertEquals(listOf("notes.txt"), c.skipped.map { it.relative })
+        assertEquals(emptyList(), c.problems)
+        // The exclusion is not a property of the pattern. Two saved keys, and no snapshot is a row.
+        assertTrue(
+            keyFilesMatching(dir, everyKeyGlob).none { it.toString().contains(".versions") },
+            "the .versions exclusion must survive the widest possible glob"
+        )
+    }
+
+
+    // -----------------------------------------------------------------------------------------
+    // A saved slot the scope no longer watches
+    // -----------------------------------------------------------------------------------------
+
+    /**
+     * The disagreement that was silent in only one direction.
+     *
+     * `scopeSlots` has always drawn the "you have never saved this" row: a slot the scope watches
+     * that no file holds. Its mirror image — a slot a *file* holds that the scope no longer watches
+     * — rendered as an ordinary row, with its real saved range, and `KeyframeScope.loadKey` is
+     * explicit that those names "simply have nowhere to go on apply". So a rename half-done looked
+     * like a working slot and applied to nothing.
+     */
+    @Test
+    fun aSavedSlotTheScopeNoLongerWatchesIsMarkedOrphaned() {
+        val dir = tempDir()
+        // Two slots saved. The scope has since been renamed and watches only one of them, plus a
+        // third it has never saved.
+        save(dir, "a", "glow@radius" to 1f, "glow@blur" to 4f)
+        save(dir, "b", "glow@radius" to 2f, "glow@blur" to 5f)
+
+        val glow = Structure()
+        glow.bind("radius") { 3f }
+        glow.bind("feather") { 0.5f }
+        val scope = KeyframeScope()
+        scope.target("glow@radius", glow)
+        scope.target("glow@feather", glow)
+
+        val c = KeyframeCollection.load(dir, everyKeyGlob, scope)
+
+        assertTrue(c.scopeAttached)
+        assertEquals(listOf("glow@blur"), c.orphanedSlots, "saved, and now wired to nothing")
+
+        val blur = c.slot("glow@blur")
+        assertTrue(blur.orphaned, "the row must say the value applies to nowhere")
+        assertEquals(2, blur.presentIn, "and it is still a real, fully-present slot: ${blur.summaryText}")
+
+        // The mirror image still works, and is NOT reported as orphaned - nothing was saved to orphan.
+        val feather = c.slot("glow@feather")
+        assertTrue(feather.inScope)
+        assertEquals(0, feather.presentIn)
+        assertFalse(feather.orphaned, "'never saved' and 'saved but unwired' are different rows")
+
+        // And a live slot is neither.
+        val radius = c.slot("glow@radius")
+        assertTrue(radius.inScope)
+        assertFalse(radius.orphaned)
+    }
+
+    /**
+     * With no scope attached, nothing is orphaned — because nothing can be known.
+     *
+     * This is the whole reason [KeyframeCollection.scopeAttached] exists as a flag separate from
+     * `scopeSlots.isEmpty()`. A read-only browser has no opinion about which slots are live, and a
+     * scope that is attached and watches nothing has a very strong one; both leave `scopeSlots`
+     * empty. Without the flag the marker either stays silent in the case that matters or cries wolf
+     * on every row of every read-only browse.
+     */
+    @Test
+    fun aReadOnlyBrowseNeverClaimsASlotIsDisconnected() {
+        val dir = tempDir()
+        save(dir, "a", "glow@radius" to 1f)
+
+        val readOnly = KeyframeCollection.load(dir, everyKeyGlob, scope = null)
+        assertFalse(readOnly.scopeAttached)
+        assertEquals(emptyList(), readOnly.orphanedSlots, "with no scope there is nothing to disagree with")
+        assertFalse(readOnly.slot("glow@radius").orphaned)
+
+        // An attached scope watching nothing is the opposite answer from the same empty scopeSlots.
+        val empty = KeyframeCollection.load(dir, everyKeyGlob, scope = KeyframeScope())
+        assertTrue(empty.scopeAttached)
+        assertEquals(emptySet(), empty.scopeSlots, "the two cases are indistinguishable by scopeSlots alone")
+        assertEquals(listOf("glow@radius"), empty.orphanedSlots, "and must still be told apart")
+        assertTrue(empty.slot("glow@radius").orphaned)
     }
 
     @Test
