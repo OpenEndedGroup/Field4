@@ -500,7 +500,9 @@ class KeyframeCollection(
                     problems += "${rel(path)}: version history unreadable (${e.message ?: e::class.simpleName})"
                     emptyList()
                 }
-                path to KeyframeFile(
+                KeyframeFile(
+                    // Filled in by the mapIndexed below, which is the only thing that knows the
+                    // row's position once the skipped files have been dropped.
                     id = -1,
                     path = path,
                     relative = rel(path),
@@ -508,7 +510,7 @@ class KeyframeCollection(
                     values = dto.values,
                     versions = versions
                 )
-            }.mapIndexed { index, (_, file) -> file.copy(id = index) }
+            }.mapIndexed { index, file -> file.copy(id = index) }
 
             // What the pattern hid. Only worth asking when the pattern is narrower than "everything",
             // and only answerable by opening the excluded files — a key has no distinguishing name.

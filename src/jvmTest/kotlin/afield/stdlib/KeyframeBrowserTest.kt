@@ -15,6 +15,7 @@ import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.test.assertNull
 
@@ -912,12 +913,12 @@ class KeyframeBrowserTest {
         val feather = c.slot("glow@feather")
         assertTrue(feather.inScope)
         assertEquals(0, feather.presentIn)
-        assertTrue(!feather.orphaned, "'never saved' and 'saved but unwired' are different rows")
+        assertFalse(feather.orphaned, "'never saved' and 'saved but unwired' are different rows")
 
         // And a live slot is neither.
         val radius = c.slot("glow@radius")
         assertTrue(radius.inScope)
-        assertTrue(!radius.orphaned)
+        assertFalse(radius.orphaned)
     }
 
     /**
@@ -935,9 +936,9 @@ class KeyframeBrowserTest {
         save(dir, "a", "glow@radius" to 1f)
 
         val readOnly = KeyframeCollection.load(dir, everyKeyGlob, scope = null)
-        assertTrue(!readOnly.scopeAttached)
+        assertFalse(readOnly.scopeAttached)
         assertEquals(emptyList(), readOnly.orphanedSlots, "with no scope there is nothing to disagree with")
-        assertTrue(!readOnly.slot("glow@radius").orphaned)
+        assertFalse(readOnly.slot("glow@radius").orphaned)
 
         // An attached scope watching nothing is the opposite answer from the same empty scopeSlots.
         val empty = KeyframeCollection.load(dir, everyKeyGlob, scope = KeyframeScope())
