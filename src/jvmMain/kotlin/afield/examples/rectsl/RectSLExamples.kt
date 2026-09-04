@@ -413,8 +413,7 @@ object RectSLExamples {
                         "  fence: ```$fence\n" +
                         "  first line: ${source.lineSequence().firstOrNull { it.isNotBlank() }?.trim()}\n" +
                         "  ${result.diagnostics.joinToString("\n  ")}\n" +
-                        "If this block is not a RectSL program, give it a data-lang other " +
-                        "than `rectsl` or `text` — those two are the ones this check compiles."
+                        "If this block is not a RectSL program, do not label it `data-lang=rectsl`."
                 }
             }
         } finally {
@@ -428,7 +427,7 @@ object RectSLExamples {
     /**
      * Every operator documented in `rectsl_cheatsheet.md` must appear in at least one
      * *worked, animated* example — a gallery `*_rectsl_.rectsl` program or a
-     * `data-lang=rectsl`/`data-lang=text` code block in `rectsl_examples.md`. This
+     * `data-lang=rectsl` code block in `rectsl_examples.md`. This
      * makes "every operator is demonstrated" an enforced invariant, not a fact that
      * silently rots the next time a word is added.
      *
@@ -494,8 +493,8 @@ object RectSLExamples {
 
     /**
      * Every fenced block on a public page that this harness will try to compile *as
-     * RectSL* — which is `data-lang=rectsl` and, by long-standing convention on
-     * these pages, `data-lang=text`.
+     * RectSL*. RectSL has its own fence label; `data-lang=text` is prose or observed output and
+     * must not become a program merely because it happens to live on this page.
      *
      * The fence header is returned alongside the body because that is what a
      * failure usually turns out to be about. A numeric report written as
@@ -503,9 +502,9 @@ object RectSLExamples {
      * which names a word rather than the fence; the fix is to choose a different
      * `data-lang`, and nothing in the message used to say so.
      */
-    private fun rectslCodeBlocks(text: String): List<Pair<String, String>> =
+    internal fun rectslCodeBlocks(text: String): List<Pair<String, String>> =
         Regex("```([^\\n]*)\\n(.*?)```", RegexOption.DOT_MATCHES_ALL).findAll(text)
-            .filter { "data-lang=rectsl" in it.groupValues[1] || "data-lang=text" in it.groupValues[1] }
+            .filter { "data-lang=rectsl" in it.groupValues[1] }
             .map { it.groupValues[1].trim() to it.groupValues[2] }
             .toList()
 
