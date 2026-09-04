@@ -4,7 +4,7 @@
 
 Field's standard library is large and, until now, invisible: the only ways to read it were to open the source or to already know the name you wanted. This section is a browsable map of it — every public declaration in `afield.stdlib`, `afield.visualization` and `afield.four.synth`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**11561 public symbols across 271 source files**, 6325 of them (54%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. The one exception is [Languages](languages.md): no file in the small-language packages carries that annotation, and adding one is not a documentation-only change — the label is read by the completion popup — so those pages are grouped by source path here and the popup is left exactly as it was.
+**11714 public symbols across 275 source files**, 6406 of them (54%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. The one exception is [Languages](languages.md): no file in the small-language packages carries that annotation, and adding one is not a documentation-only change — the label is read by the completion popup — so those pages are grouped by source path here and the popup is left exactly as it was.
 
 The "documented" column is a coverage report on Field's own KDoc, not a claim about this page. Where a summary is blank the declaration has none yet.
 
@@ -21,7 +21,7 @@ The "documented" column is a coverage report on Field's own KDoc, not a claim ab
 | [Visualization](visualization.md) | 15 | 483 | 429 (88%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 25 | 1058 | 376 (35%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 17 | 750 | 315 (42%) | Musical time, as a value. |
-| [Audio](audio.md) | 12 | 688 | 149 (21%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
+| [Audio](audio.md) | 16 | 841 | 230 (27%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 18 | 520 | 344 (66%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 73 | 2204 | 649 (29%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 2 | 79 | 76 (96%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
@@ -184,6 +184,10 @@ The "documented" column is a coverage report on Field's own KDoc, not a claim ab
 | [mesh_repair.kt](graphics.md#mesh-repair-kt) | Graphics | 78 | 46 | Why a mesh is not a solid, and what can be done about it — the paved road between "I loaded a file" and `toSolid()`. | [Solids that cannot fail: Manifold in Field](../manifold.md), [Geometry from disk](../geometry_from_disk.md) |
 | [mesh_sdf.kt](graphics.md#mesh-sdf-kt) | Graphics | 36 | 36 | Modelling with functions: a `ScalarField3D` is `(Vec3) -> Float`, the signed-distance primitives and combinators that let you write a shape as an expression, and `marchingCubes`, which turns any such expression into a watertight `TriMesh`. | [Meshes and 3D geometry](../mesh_examples.md), [Field's 3D output](../three_output.md), [Typography as geometry — a string becomes contours](../typography_examples.md) |
 | [mesh_topology.kt](graphics.md#mesh-topology-kt) | Graphics | 33 | 33 | What a `TriMesh` *is*, as opposed to where it is: adjacency, boundaries, components, manifoldness, orientation, and the Euler characteristic those add up to — plus the repairs (`TriMesh.weld`, `TriMesh.fixWinding`, `TriMesh.removeDegenerateTriangles`) that turn a mesh which fails those checks into one that passes. | [Meshes and 3D geometry](../mesh_examples.md), [Geometry from disk](../geometry_from_disk.md), [Solids that cannot fail: Manifold in Field](../manifold.md) |
+| [Midi.kt](audio.md#midi-kt) | Audio | 81 | 35 |  |  |
+| [MidiDevices.kt](audio.md#mididevices-kt) | Audio | 51 | 33 |  |  |
+| [MidiPat.kt](audio.md#midipat-kt) | Audio | 18 | 12 |  |  |
+| [MidiSmokeTest.kt](audio.md#midismoketest-kt) | Audio | 3 | 1 |  |  |
 | [modelling.kt](graphics.md#modelling-kt) | Graphics | 67 | 0 | A self-tuning controller for pushing the *distribution* of a scalar signal towards a target shape. |  |
 | [MorphoCircuit.kt](languages.md#morphocircuit-kt) | Languages | 15 | 11 |  |  |
 | [MorphoFLines.kt](languages.md#morphoflines-kt) | Languages | 12 | 11 | Drawing a MorphoHDL circuit with Field's FLines. | [Somebody else's language, running in Field](../morpho_examples.md) |
