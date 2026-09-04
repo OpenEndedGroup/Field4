@@ -53,12 +53,12 @@ lines(listOf(f1 + vec(0, 0, 0), f3 + vec(180, 0, 0)), w = 320.0, h = 170.0, fitT
 
 ## Seeing an `FLine`: static and editable viewers
 
-There are now two main ways to inspect `FLine` geometry in Field:
+There are two main ways to inspect `FLine` geometry in Field:
 
 - `lines(...)` renders an SVG-style 2D view in an output area.
 - `threeLines(...)` renders the same geometry in the Three.js viewer.
 
-Both now accept `editable = true`. With `editable = false` they are viewers. With `editable = true` they become lightweight editors for the underlying `FLine` data rather than just pictures of it.
+Both accept `editable = true`. With `editable = false` they are viewers. With `editable = true` they become lightweight editors for the underlying `FLine` data rather than just pictures of it.
 
 ### 2D output: `lines(...)`
 
@@ -135,7 +135,7 @@ val stem = fline {
 lines(listOf(petal, stem), w = 420.0, h = 420.0, fitToSize = true, editable = true)
 ```
 
-The important distinction is that this is not editing a copy of the SVG. It mutates the `FLine` you passed in, so it is useful as a geometry sketchpad, a control-shape editor, or a quick way to pull a hand-tuned curve back into your code.
+This is not editing a copy of the SVG: it mutates the `FLine` you passed in, so it is useful as a geometry sketchpad, a control-shape editor, or a quick way to pull a hand-tuned curve back into your code.
 
 ### 3D output: `threeLines(...)`
 
@@ -222,11 +222,11 @@ That gives you a useful split of responsibilities:
 - `lines(...)` for direct 2D inspection and editing.
 - `threeLines(...)` for orbiting, spatial debugging, and editing geometry in depth.
 
-The two viewers are close in spirit by design. If you learn one, the other should feel familiar rather than like a separate subsystem.
+The two viewers are close in spirit: learn one and the other should feel familiar rather than like a separate subsystem.
 
 ### The 3D output area as an instrument: `threeInspect(...)`
 
-A 3D preview of something that gets *built* gets asked three questions that a picture cannot answer: **how far apart are these two things**, **what does this look like in section**, and **how does it come apart**. `threeInspect(...)` is `threeLines(...)` plus those three, and it returns a view you can keep driving rather than a viewer you have to re-run a box to change.
+`threeInspect(...)` is `threeLines(...)` plus the three things a picture cannot answer about something that gets *built*: **how far apart are these two things**, **what does this look like in section**, and **how does it come apart**. It returns a view you can keep driving, so changing any of the three does not mean re-running the box.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -251,7 +251,7 @@ fun Box.threeInspect(
 
 #### Measuring
 
-A `ThreeMeasurement` is a dimension the figure carries from the moment it is drawn: two elements, and the **closest approach** between them — not centroid to centroid, which on a panel drawing is a different number and not the one you would take to a saw. The dimension is drawn in the scene with witness lines and a legible number, so it orbits with the figure.
+A `ThreeMeasurement` is a dimension the figure carries from the moment it is drawn: two elements, and the **closest approach** between them. That is not centroid to centroid, which on a panel drawing is a different number. The dimension is drawn in the scene with witness lines and a legible number, so it orbits with the figure.
 
 You can also click the ruler in the viewer's toolbar and pick two elements yourself.
 
@@ -317,7 +317,7 @@ A measurement is in **model space**: it reads the real distance between the two 
 
 #### Exploding
 
-`ThreeExplode` has two modes because there are two questions. `radial` slides every group away from the figure's centre, which reads well on an irregular assembly like a routed conduit run. `axis` slides every group along one direction, spaced by its **rank** in that direction rather than by its distance — which is what a layered wall needs, because four skins 12 mm apart stay in a clump under a distance-proportional explode while the far one leaves the frame.
+`ThreeExplode` has two modes. `radial` slides every group away from the figure's centre, which reads well on an irregular assembly like a routed conduit run. `axis` slides every group along one direction, spaced by its **rank** in that direction rather than by its distance. A layered wall needs the rank version: four skins 12 mm apart stay in a clump under a distance-proportional explode, while the far one leaves the frame.
 
 The ranks are centred, so the assembly stays put as the slider moves instead of walking out of view.
 
@@ -368,7 +368,7 @@ val view = threeInspect(
 
 `ThreeSection` cuts the figure at a **fraction of its own bounds** measured along the section normal, so `0.42` means the same thing on a 3 m wall and a 30 mm bracket and the slider is meaningful without knowing the model's scale.
 
-The part that makes it a section rather than a hidden half is the cut *outline*: the viewer computes where the plane crosses each triangle of the fill and each line segment, and draws those crossings brightly over the clipped figure. Hiding the front half shows you the inside of a shell; the outline shows you the cut, which on a fabrication drawing is the whole content of a section.
+The cut *outline* is what makes it a section rather than a hidden half: the viewer computes where the plane crosses each triangle of the fill and each line segment, and draws those crossings brightly over the clipped figure. Hiding the front half shows you the inside of a shell; the outline shows you the cut, which on a fabrication drawing is the content of a section.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/three_inspect_section.png" wait="3.0" capture="box" open-outputs="true" w="1200"}
 :::static
@@ -422,13 +422,13 @@ threeInspect(
 
 The status line reports the total length of the cut and where the plane sits, both in the figure's own units — `cut 9600 mm` above is exactly four 2400-wide skins.
 
-Everything clips: fills, strokes and point sprites. `MeshStandardMaterial` gets clipping from three.js for free, but the viewer draws strokes and points with custom `ShaderMaterial`s, which do not — so those carry three.js's own `clipping_planes_*` chunks explicitly. Without them a section clipped the fills and left the wireframe and the conduits hanging in the air past the cut, which reads as a rendering bug rather than as a drawing.
+Everything clips: fills, strokes and point sprites. `MeshStandardMaterial` gets clipping from three.js for free; the viewer draws strokes and points with custom `ShaderMaterial`s, which do not, so those carry three.js's own `clipping_planes_*` chunks explicitly. Without them the wireframe and the conduits would hang in the air past the cut.
 
 #### Open it and feel it
 
 `public/docs/assets/three_inspector_demo/metadata.edn` is a loadable Field document with one Kotlin box: a wall detail with four skins and five conduit runs, two authored dimensions, and all three controls live. Open it in a fresh Field, run the box, and drag the explode slider.
 
-The fence below runs that document's box **verbatim** — the build asserts the two are character-for-character identical, so the screenshot underneath is a picture of the demo you would open and not of a tidied-up cousin of it.
+The fence below is that document's box, character for character, and the build asserts it. The screenshot underneath is that demo.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_inspector_demo/opened.png" wait="3.0" capture="box" open-outputs="true" w="1200"}
 :::static
@@ -574,15 +574,15 @@ on that element — `u` along a segment (the curve parameter, for a cubic), and 
 which for a four-corner face are true bilinear coordinates, so they are a position **on a panel**.
 `onElement` is the point on the element itself rather than where the pointer was, so its `z` is
 interpolated along the element: a 3D line drawn into the flat 2D output still reports a depth. Every field
-past `position` is defaulted, so a callback written against the original two still compiles.
+past `position` is defaulted, so a two-field callback still compiles.
 
-Two things worth knowing before you read a number off it. `u` on a **cubic** is the Bézier parameter, not
+Two cautions before you read a number off it. `u` on a **cubic** is the Bézier parameter, not
 arc length — on a curve whose controls crowd its start those differ enormously (measured: parameter 0.5 at
 16.8% of the length). And `(u, v)` on a face means different things on different faces, so the record says
 which: `faceCoordinates` is `BILINEAR` only for a four-corner face whose solve is checked and passes,
 `BOUNDING_BOX` for anything else, and `NONE` — with `NaN` — for a face with no plane. The Three.js
-renderer answers with the same record, working in each face's own plane; it has the easier job of the two,
-because the raycast already knows whether it hit the strokes, the fill or the points.
+renderer answers with the same record, working in each face's own plane; its raycast already knows
+whether it hit the strokes, the fill or the points.
 
 `lineIndex` and `label` are what let **one** closure serve a whole figure instead of one closure per
 part. `Box.inspect(lines)` is that pattern packaged: it renders exactly what `lines(...)` renders and
@@ -2676,7 +2676,7 @@ fun circleArm(angle: Double): Double
 
 It hands back several ordinary `CubicTo` nodes fitted to that curve, which means nothing downstream has to know about any of it — renderers, boolean ops, offsetting and hit-testing all keep working. The joins are G1 by construction, because every one of them uses the hyperbezier's own tangent.
 
-What makes the family worth having is how it behaves as the arms grow. `circleArm(theta)` is the arm length at which the curve is an *exact* circular arc — and an exact Euler spiral when the two tangent angles disagree. Push the arms out past that and a hyperbezier tightens towards a corner, where a cubic merely bulges.
+The interesting behaviour is what happens as the arms grow. `circleArm(theta)` is the arm length at which the curve is an *exact* circular arc — and an exact Euler spiral when the two tangent angles disagree. Push the arms out past that and a hyperbezier tightens towards a corner, where a cubic merely bulges.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/hyperbezier_arm_length_progression.png" embed=true}
 :::static
