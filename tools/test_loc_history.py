@@ -17,13 +17,29 @@ from __future__ import annotations
 
 import functools
 import subprocess
+import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from loc_history import (COUNTED_EXT, GENERATED_DIRS, LANGS, SUBMODULES,
                          VENDORED_DIRS, VENDORED_NAMES, classify, language)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+IGNORED_UNINITIALIZED_SUBMODULE_ENTRIES = {".DS_Store"}
+
+
+def submodule_checkout_state(checkout: Path) -> str:
+    """Classify an optional submodule checkout as absent, present, or partially broken."""
+    if (checkout / ".git").exists():
+        return "present"
+    if not checkout.exists():
+        return "absent"
+    meaningful = [
+        entry for entry in checkout.iterdir()
+        if entry.name not in IGNORED_UNINITIALIZED_SUBMODULE_ENTRIES
+    ]
+    return "broken" if meaningful else "absent"
 
 
 @functools.cache
@@ -142,21 +158,102 @@ class SubmoduleTest(unittest.TestCase):
         self.assertEqual(
             classify("services/field-audio-ai/web/vendor/chart.js"), "vendored")
 
-    def test_declared_submodules_are_real_checkouts(self) -> None:
-        """A stale SUBMODULES entry silently contributes nothing — fail loudly instead."""
+    def test_declared_submodules_are_gitlinks(self) -> None:
+        """A stale SUBMODULES entry silently contributes nothing — enforce it at HEAD."""
+        for path in SUBMODULES:
+            line = subprocess.run(
+                ["git", "-C", str(REPO_ROOT), "ls-files", "--stage", "--", path],
+                capture_output=True, check=True, text=True,
+            ).stdout.strip()
+            self.assertTrue(line, f"{path} is not tracked at HEAD")
+            self.assertEqual(line.split(maxsplit=1)[0], "160000", f"{path} is not a gitlink")
+
+    def test_populated_submodules_are_real_checkouts(self) -> None:
+        """An untouched fresh-worktree submodule is optional; partial content is not."""
+        absent: list[str] = []
         for path, checkout in SUBMODULES.items():
-            self.assertTrue((REPO_ROOT / path).exists(), f"{path} is not in the tree")
-            self.assertTrue((checkout / ".git").exists(),
-                            f"{path} has no checkout at {checkout} — git submodule update")
+            state = submodule_checkout_state(checkout)
+            self.assertNotEqual(
+                state,
+                "broken",
+                f"{path} is partially populated at {checkout} but has no .git metadata",
+            )
+            if state == "absent":
+                absent.append(path)
+        if absent:
+            self.skipTest(
+                "optional submodule checkout absent: " + ", ".join(absent) +
+                " (initialize only for Field Audio integration work)"
+            )
 
     def test_submodule_contributes_counted_files(self) -> None:
         """If the pin holds no counted language the band would be flat at zero."""
+        absent: list[str] = []
         for path, checkout in SUBMODULES.items():
+            state = submodule_checkout_state(checkout)
+            self.assertNotEqual(
+                state,
+                "broken",
+                f"{path} is partially populated at {checkout} but has no .git metadata",
+            )
+            if state == "absent":
+                absent.append(path)
+                continue
             tracked = subprocess.run(
                 ["git", "-C", str(checkout), "ls-files"],
                 capture_output=True, check=True).stdout.decode().splitlines()
             hits = [f for f in tracked if COUNTED_EXT.search(f)]
             self.assertTrue(hits, f"{path} has no .{{{','.join(LANGS)}}} files")
+        if absent:
+            self.skipTest(
+                "optional submodule checkout absent: " + ", ".join(absent) +
+                " (count remains pinned by the Field4 gitlink)"
+            )
+
+    def test_checkout_state_distinguishes_absent_from_broken(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.assertEqual(submodule_checkout_state(root / "missing"), "absent")
+
+            checkout = root / "checkout"
+            checkout.mkdir()
+            self.assertEqual(submodule_checkout_state(checkout), "absent")
+            (checkout / ".DS_Store").write_bytes(b"finder metadata")
+            self.assertEqual(submodule_checkout_state(checkout), "absent")
+
+            (checkout / "README.md").write_text("partial checkout", encoding="utf-8")
+            self.assertEqual(submodule_checkout_state(checkout), "broken")
+            (checkout / ".git").write_text("gitdir: elsewhere", encoding="utf-8")
+            self.assertEqual(submodule_checkout_state(checkout), "present")
+
+
+class SubmoduleCheckoutContractTest(unittest.TestCase):
+    def run_checkout_test(self, checkout: Path) -> unittest.TestResult:
+        result = unittest.TestResult()
+        with mock.patch.dict(SUBMODULES, {"services/example": checkout}, clear=True):
+            SubmoduleTest("test_populated_submodules_are_real_checkouts").run(result)
+        return result
+
+    def test_uninitialized_fresh_worktree_checkout_is_skipped(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            checkout = Path(directory) / "services" / "example"
+            checkout.mkdir(parents=True)
+            result = self.run_checkout_test(checkout)
+        self.assertEqual(result.failures, [])
+        self.assertEqual(result.errors, [])
+        self.assertEqual(len(result.skipped), 1)
+        self.assertIn("optional submodule checkout absent", result.skipped[0][1])
+
+    def test_partially_populated_checkout_still_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            checkout = Path(directory) / "services" / "example"
+            checkout.mkdir(parents=True)
+            (checkout / "README.md").write_text("partial", encoding="utf-8")
+            result = self.run_checkout_test(checkout)
+        self.assertEqual(result.errors, [])
+        self.assertEqual(result.skipped, [])
+        self.assertEqual(len(result.failures), 1)
+        self.assertIn("partially populated", result.failures[0][1])
 
 
 class LanguageSetTest(unittest.TestCase):

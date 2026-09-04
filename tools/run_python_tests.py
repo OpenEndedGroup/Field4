@@ -91,7 +91,7 @@ def main() -> int:
         return 1
 
     loader = unittest.TestLoader()
-    rows: list[tuple[str, int, int, int]] = []
+    rows: list[tuple[str, int, int, int, int]] = []
     failed = False
 
     for name in names:
@@ -99,7 +99,7 @@ def main() -> int:
             suite = loader.loadTestsFromName(name)
         except Exception as exc:  # noqa: BLE001 — any import-time explosion is a real failure
             print(f"\n=== {name}: could not be loaded: {exc!r}", flush=True)
-            rows.append((name, 0, 0, 1))
+            rows.append((name, 0, 0, 1, 0))
             failed = True
             continue
 
@@ -110,20 +110,25 @@ def main() -> int:
         ran = result.testsRun
         fails = len(result.failures)
         errors = len(result.errors)
-        rows.append((name, ran, fails, errors))
+        skipped = len(result.skipped)
+        rows.append((name, ran, fails, errors, skipped))
         if fails or errors or not result.wasSuccessful():
             failed = True
 
     width = max(len(name) for name, *_ in rows)
     print("\nPython tool test suites:", flush=True)
-    for name, ran, fails, errors in rows:
-        passed = ran - fails - errors
+    for name, ran, fails, errors, skipped in rows:
+        passed = ran - fails - errors - skipped
         print(f"  {name.ljust(width)}  {passed:>3} passed / {ran:>3} run"
-              + (f", {fails} failed, {errors} errored" if fails or errors else ""), flush=True)
-    total_ran = sum(ran for _, ran, _, _ in rows)
-    total_bad = sum(fails + errors for _, _, fails, errors in rows)
-    print(f"  {'TOTAL'.ljust(width)}  {total_ran - total_bad:>3} passed / {total_ran:>3} run"
-          + (f", {total_bad} not passing" if total_bad else ""), flush=True)
+              + (f", {fails} failed, {errors} errored" if fails or errors else "")
+              + (f", {skipped} skipped" if skipped else ""), flush=True)
+    total_ran = sum(ran for _, ran, _, _, _ in rows)
+    total_bad = sum(fails + errors for _, _, fails, errors, _ in rows)
+    total_skipped = sum(skipped for _, _, _, _, skipped in rows)
+    total_passed = total_ran - total_bad - total_skipped
+    print(f"  {'TOTAL'.ljust(width)}  {total_passed:>3} passed / {total_ran:>3} run"
+          + (f", {total_bad} not passing" if total_bad else "")
+          + (f", {total_skipped} skipped" if total_skipped else ""), flush=True)
 
     return 1 if failed else 0
 
