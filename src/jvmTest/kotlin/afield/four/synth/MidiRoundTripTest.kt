@@ -394,6 +394,95 @@ class MidiRoundTripTest {
     }
 
     @Test
+    fun `a transcription of real audio exports to MIDI and matches its ground truth`() {
+        // The end-to-end bridge the brief called the most motivated on the list: synthesized audio
+        // -> pitch detection -> Standard MIDI File -> read back -> compared against the corpus's
+        // own reference notes. Nothing here is a fixture I chose to flatter the result: the audio,
+        // the detector and the ground truth all come from PatTranscriptionCorpus.
+        //
+        // "detached-scale" is the clean case — PatPitchTranscriptionTest measures 15 of 16 notes
+        // recovered on it — so a failure here is the MIDI bridge losing something, not the pitch
+        // tracker struggling.
+        val case = PatTranscriptionCorpus.CASES.first { it.label == "detached-scale" }
+        val result = PatTranscriptionCorpus.run(case)
+
+        // Premise first. If the detector found nothing, everything below is vacuous.
+        assertTrue(
+            result.transcription.notes.size >= 14,
+            "premise: the detector should recover at least 14 notes on the clean case, " +
+                "got ${result.transcription.notes.size}"
+        )
+        assertTrue(result.reference.size >= 14, "premise: ground truth has ${result.reference.size} notes")
+
+        val bpm = 120.0
+        val clip = result.transcription.toMidiClip(bpm = bpm, name = case.label)
+        assertEquals(
+            result.transcription.notes.size, clip.notes.size,
+            "the bridge dropped notes on the way into the clip"
+        )
+
+        val file = clip.writeTo(File(temp, "transcription.mid"))
+        val read = readMidiClip(file)
+        assertTrue(
+            read.notes.size >= 14,
+            "expected at least 14 notes back out of the file, got ${read.notes.size}"
+        )
+
+        // Pitch: every note that survived the file must still name the pitch the detector found.
+        assertEquals(
+            result.transcription.notes.map { it.midi },
+            read.notes.sortedBy { it.startBeats }.map { it.pitch },
+            "pitches changed between the detector and the file"
+        )
+
+        // And those pitches must actually be the ground truth, not merely self-consistent. Compared
+        // as a set because the detector may split or merge a note, which is a detector property and
+        // not this bridge's business.
+        val truth = result.reference.map { kotlin.math.round(it.midi).toInt() }.toSet()
+        val got = read.notes.map { it.pitch }.toSet()
+        assertTrue(
+            got.isNotEmpty() && truth.containsAll(got),
+            "the file contains pitches the ground truth does not: ${got - truth} (truth $truth)"
+        )
+        assertTrue(
+            got.size >= 7,
+            "expected at least 7 distinct pitches from a scale, got ${got.size}: $got"
+        )
+
+        // Timing: onsets must survive as *beats* at the stated tempo, not be re-quantized. The
+        // existing miniNotation route cannot do this — it snaps to a step grid — so this is the
+        // property that makes the bridge worth having, and it is asserted rather than asserted-of.
+        val beatsPerSecond = bpm / 60.0
+        result.transcription.notes.sortedBy { it.startSample }
+            .zip(read.notes.sortedBy { it.startBeats })
+            .forEach { (detected, written) ->
+                assertEquals(
+                    detected.startSeconds * beatsPerSecond, written.startBeats, 1e-3,
+                    "onset drifted for MIDI ${detected.midi}"
+                )
+            }
+
+        // At least one onset must be genuinely off any coarse grid, or the assertion above would
+        // hold even for a route that quantized everything.
+        val offGrid = read.notes.count { n ->
+            val sixteenths = n.startBeats * 4.0
+            kotlin.math.abs(sixteenths - kotlin.math.round(sixteenths)) > 0.02
+        }
+        // Floored at 4 against a measured 7 of 15. A floor of 1 would technically prove the point
+        // but would also survive a bridge that quantized 14 of 15 onsets, which is most of the
+        // damage the mini-notation route does.
+        assertTrue(
+            offGrid >= 4,
+            "only $offGrid onset(s) sit off the sixteenth grid (measured 7 of 15); a quantizing " +
+                "bridge would look like this"
+        )
+        println(
+            "transcription -> MIDI: ${read.notes.size} notes, ${got.size} distinct pitches, " +
+                "$offGrid off-grid onsets, ${file.length()} bytes"
+        )
+    }
+
+    @Test
     fun `MIDI device enumeration reports what is actually present`() {
         val all = MidiDevices.list()
         // The JDK always ships Gervill and the Real Time Sequencer, so an empty list means

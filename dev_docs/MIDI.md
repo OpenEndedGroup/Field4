@@ -136,6 +136,14 @@ dynamic marking — nothing in the pitch tracker measures loudness — so a quie
 note comes out loud. This is documented rather than implied because the field is called `velocity`
 and a reader would otherwise reasonably assume it meant one.
 
+The bridge is verified end to end, on audio rather than on a fixture. The test takes the corpus's
+`detached-scale` case — synthesized audio, the real detector, and the corpus's own reference notes as
+ground truth — writes a MIDI file and reads it back: **15 notes, 8 distinct pitches, every one of
+them inside the ground truth, and 7 of the 15 onsets off the sixteenth grid.** That last number is
+the one that matters, and it is floored at 4 rather than at 1: it is what distinguishes this route
+from the `miniNotation` one, which would have snapped all 15 onto a step grid. Nothing about the
+audio, the detector or the truth is chosen by this page.
+
 ## The piano roll is geometry, so it is FLines
 
 ![a two-track piano roll drawn as FLines](assets/midi/piano_roll.png)
@@ -219,7 +227,7 @@ What the assertion is on matters. **A WAV of pure silence is exactly as large as
 file size proves nothing; `MidiDevices.kt:287#data class MidiRenderResult(` carries measured peak and
 RMS amplitude. Measured on this machine, a C-major triad at velocity 110 through Gervill's
 `Emergency GM sound set` renders 1.50 s at **peak 0.600, RMS 0.0787**. The floors in
-`MidiRoundTripTest.kt:485#rendered WAV is silent or near-silent`
+`MidiRoundTripTest.kt:574#rendered WAV is silent or near-silent`
 are 0.05 and 0.005 — about a twelfth and a fifteenth of those, loose enough to survive a different
 soundbank, since the "Emergency" set is itself a fallback, but tight enough that silence fails.
 
@@ -236,7 +244,7 @@ difference, green.
 - `MidiRoundTripTest.kt:143#val random = Random(20260904)` compares
   200 seeded random notes as multisets keyed on pitch, velocity, channel, start tick and duration
   tick — multisets because two notes can share a start tick and the reader owes no relative order.
-- `MidiRoundTripTest.kt:441#assertNotNull(got, "sent a note to`
+- `MidiRoundTripTest.kt:530#assertNotNull(got, "sent a note to`
   really ran: it opened both directions of `Bus 1` and asserted a `NOTE_ON` survived the wire with
   channel, pitch and velocity intact. Where no bidirectional hardware port exists it prints a skip
   naming the devices it *did* see. It does not fake a device and it does not fail.
