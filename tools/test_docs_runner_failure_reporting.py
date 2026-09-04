@@ -108,6 +108,7 @@ class _SummaryRecorder:
         self.broken_failures = ["broken"]
         self.server_starts = 1
         self.server_restarts = 0
+        self.session_captures = 0
         self._sidecar_started_by_runner = False
         self._sidecar_url = None
         self.shared_log_path = Path("/tmp/field-docs-runner.log")
@@ -125,7 +126,40 @@ class RunnerSummaryAccountingTests(unittest.TestCase):
         self.assertIn("regenerated=5", summary)
         self.assertIn("skipped=23 (cache_hits=5 reused_existing=7 missing=11)", summary)
         self.assertIn("failures=2", summary)
+        self.assertIn("warm_session_captures=0", summary)
         self.assertNotIn("skipped=25", summary)
+
+
+class _WarmFallbackRecorder:
+    def __init__(self):
+        self._session_failures = 0
+        self.session_enabled = True
+        self.events = []
+
+    def _stop_session(self, *, reason):
+        self.events.append(("stop", reason))
+
+    def _restart_shared_field_server(self, *, reason):
+        self.events.append(("restart", reason))
+
+    _session_fallback = docs_hooks.RunnerState._session_fallback
+
+
+class WarmSessionFallbackTests(unittest.TestCase):
+    def test_circuit_breaker_recycles_field_before_per_process_retry(self):
+        state = _WarmFallbackRecorder()
+
+        result = state._session_fallback("batch not ok")
+
+        self.assertIsNone(result)
+        self.assertFalse(state.session_enabled)
+        self.assertEqual(
+            state.events,
+            [
+                ("stop", "circuit breaker tripped"),
+                ("restart", "warm-session miss: batch not ok"),
+            ],
+        )
 
 
 class _LogPicker:

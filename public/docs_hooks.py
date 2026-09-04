@@ -1614,7 +1614,13 @@ class RunnerState:
             LOG.warning("Field docs runner warm-session cleanup delete not ok: %s", json.dumps(resp)[:300])
 
     def _session_fallback(self, reason: str) -> None:
-        """Record a warm-session miss and trip the circuit breaker if needed."""
+        """Record a warm-session miss and trip the circuit breaker if needed.
+
+        A failed warm batch can leave more than its daemon in a bad state: the
+        shared Field JVM, scratch document, or Playwright page may also be
+        poisoned.  Recycle the runner-owned server before the authoritative
+        per-process retry instead of letting that retry inherit warm state.
+        """
         self._session_failures += 1
         LOG.warning(
             "Field docs runner warm-session miss (%s/%s): %s; using per-process path",
@@ -1628,6 +1634,7 @@ class RunnerState:
             )
             self.session_enabled = False
             self._stop_session(reason="circuit breaker tripped")
+            self._restart_shared_field_server(reason=f"warm-session miss: {reason}")
         return None
 
     def _load_cache(self) -> tuple[dict[str, str], dict[str, dict[str, Any]]]:
@@ -1703,7 +1710,7 @@ class RunnerState:
         LOG.info(
             "Field docs runner summary: regenerated=%s (screenshots=%s videos=%s), "
             "skipped=%s (cache_hits=%s reused_existing=%s missing=%s), failures=%s, "
-            "server_starts=%s server_restarts=%s elapsed=%.1fs",
+            "warm_session_captures=%s server_starts=%s server_restarts=%s elapsed=%.1fs",
             regenerated,
             self.screenshots_run,
             self.videos_run,
@@ -1712,6 +1719,7 @@ class RunnerState:
             self.assets_reused,
             self.missing_assets,
             len(self.failures),
+            self.session_captures,
             self.server_starts,
             self.server_restarts,
             elapsed,
