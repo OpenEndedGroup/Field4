@@ -305,14 +305,31 @@ values were 5 005 of 23 546 bytes — 21% of the file, in 12 keys. That is one d
 but the mechanism is general: every editor keeps cursor and fold state per box per property, and it
 persists.
 
-The persistence filter runs *before* the sidecar branch, which makes the two lists' small
-disagreement matter. `ioSeparateProperties` has 30 entries and `ioPersistentProperties` covers 29 of
-them; the odd one out is `remote_js`, which is declared sidecar-backed with a `.js` extension and is
-not persistent, so it is dropped at the filter and no `*_remote_js_.js` is ever written. Measured on
-2026-09-04 across the 401 directories containing a `metadata.edn` in
-`~/Documents/AFieldWorkspace`: `find . -name '*_remote_js_.js'` over the whole tree matches nothing,
-against 3 847 `*_code_.kt`. The workspace search even builds a suffix for it
-(`src/jvmMain/kotlin/afield/workspace/dir.kt:1147#"remote_js",`) and can never hit one.
+That filter runs *before* the sidecar branch
+(`src/jvmMain/kotlin/afield/saving.kt:150#fun toTransfer(boxes: Set<Box>, directory: String): List<BoxTransferEdn>`),
+so a property listed in `ioSeparateProperties` alone is written nowhere: the sidecar branch is never
+reached, and nothing lands inline in `metadata.edn` either. The two lists have to agree, and since
+2026-09-04 they do. All 29 keys in
+`src/jvmMain/kotlin/afield/Boxes.kt:496#var ioSeparateProperties = mutableMapOf(` are matched by one
+of the 63 patterns, and
+`src/jvmMain/kotlin/afield/examples/SidecarPropertyRegistrationSmokeTest.kt:48#object SidecarPropertyRegistrationSmokeTest`
+(`examples.saving.sidecar-property-registration`) is what holds that: it checks the whole registry
+rather than any one property, then drives a save through `toTransfer` and asserts that a property in
+neither list leaves no sidecar and no EDN key.
+
+Until that day one entry sat outside the invariant, and it was resolved by deleting the registration
+rather than by completing it. `remote_js` claimed a `.js` sidecar while appearing in neither
+`ioPersistentProperties` nor `uiResyncProperties`, so it could not have round-tripped even if
+something had set it, and it was never a box property at all. It is what the RemoteJS/WebXR
+language root is *called*: box `c04566d0` in `templates/remote/metadata.json` carries
+`"name" "remote_js"` beside `mainLanguage = remotejs` and `isRemoteJSRoot = true`, and the
+Javascript in that template lives in the root's children, under `code` and `customization`. The
+entry had been in `Boxes.kt` since the file's first commit (52a1d563e, 2025-11-03) and nothing ever
+wrote it. Measured that day across the 401 directories containing a `metadata.edn` in
+`~/Documents/AFieldWorkspace`: 3 847 `*_code_.kt` and 354 `*_customization_.js`, against
+`find . -name '*_remote_js_.js'` over the whole tree, which matches nothing. The workspace search's
+sidecar-suffix list lost the same name in the same change
+(`src/jvmMain/kotlin/afield/workspace/dir.kt:1120#private val workspaceSearchProperties = linkedSetOf(`).
 
 The root box is excluded from the sidecar branch by id, so the root's `metadata` property stays
 inline in `metadata.edn` — that is the property

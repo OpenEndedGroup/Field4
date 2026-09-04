@@ -523,7 +523,17 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "callable_s" to "slang",
             "code" to "kt",
             "customization" to "js",
-            "remote_js" to "js",
+            // No "remote_js" here. `remote_js` is the *name* the RemoteJS/WebXR language-root box
+            // carries — box c04566d0 in templates/remote/metadata.json is `"name" "remote_js"` next
+            // to `mainLanguage = remotejs` — not a property any box holds. Registering the name as
+            // a property key was a confusion present since 52a1d563e (2025-11-03), the first commit
+            // carrying this file, and nothing ever wrote it: that root keeps its text in `code`,
+            // and its children keep their Javascript in `code` and `customization` above. Measured
+            // across ~/Documents/AFieldWorkspace on 2026-09-04, over the 401 directories holding a
+            // metadata.edn: 354 `*_customization_.js` sidecars and zero `*_remote_js_.js`. It was
+            // absent from ioPersistentProperties and uiResyncProperties too, so it could not have
+            // round-tripped even if something had set it. See SidecarPropertyRegistrationSmokeTest,
+            // which now requires every key here to have a matching ioPersistentProperties pattern.
             "notes" to "md",
             "metadata" to "yaml"
         )

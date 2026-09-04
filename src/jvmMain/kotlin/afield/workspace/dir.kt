@@ -1144,7 +1144,6 @@ private val workspaceSearchProperties = linkedSetOf(
     "intersection_s",
     "callable_s",
     "customization",
-    "remote_js",
     "metadata"
 )
 
