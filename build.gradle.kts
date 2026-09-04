@@ -1409,6 +1409,14 @@ val citationGuardTestClasses = listOf(
     // is the only task that declares dev_docs/**.md as an input, so it is the only one that cannot go
     // UP-TO-DATE after a Markdown-only edit. See dev_docs/impossibility_claims.md.
     "afield.docs.ImpossibilityClaimContractTest",
+    // The one-way boundary around `src/personal/`: Field may read private work, nothing committed may
+    // depend on it. Here rather than in the broad jvmTest for the same reason as its neighbours — it
+    // reads `.md` and `.edn` as well as `.kt`, because box code is committed three ways (a loose
+    // sidecar, an `#afield/file-inline` string, a page fence) and a leak through the embedded copy is
+    // as broken for a reader as one in the sidecar. citationGates is the only task that declares
+    // published and dev Markdown as inputs, so it is the only one that cannot inherit an UP-TO-DATE
+    // pass after a Markdown-only edit.
+    "afield.docs.PersonalBoundaryTest",
     // "Compiled is not run": which APIs a published page teaches that CI only ever type-checks. Here
     // for the same reason as the two above — it reads Markdown and transcript yaml, so it must not be
     // able to inherit an UP-TO-DATE result from an unchanged test classpath.
@@ -1471,6 +1479,38 @@ val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationG
     // corpus and the server-surface ledger both live under dev_docs, which is not `public/docs`.
     inputs.files(fileTree("dev_docs") { include("**/*.md") })
         .withPropertyName("guardedDevDocs")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    // Committed box code, in the three forms it is committed in: a loose `<uid>_code_.kt` sidecar, an
+    // `#afield/file-inline` string inside `metadata.edn`, and a program embedded in an operation
+    // transcript. `PersonalBoundaryTest` reads all three looking for an import of a private package,
+    // and the `**/*.md` trees above do not cover any of them — which `GateInputDeclarationTest`
+    // caught on the commit that added that guard, naming all five paths. Without these the task goes
+    // UP-TO-DATE after an edit to a bundle's box code and serves its previous verdict as fresh.
+    // One `include` per pattern, not the multi-argument form: `GateInputDeclarationTest` parses these
+    // declarations out of this file's *text* with `include\("([^"]+)"\)`, which requires the closing
+    // paren after the first string. `include("a", "b")` is therefore invisible to it — a declaration
+    // Gradle honours and the guard cannot see. It fails in the safe direction (a spurious "undeclared"
+    // rather than a spurious pass) and it cost a commit to find, so match the idiom: every other
+    // fileTree in this block is single-argument too.
+    inputs.files(fileTree("dev_docs") {
+        include("**/*.kt")
+        include("**/*.edn")
+        include("**/*.yaml")
+    })
+        .withPropertyName("guardedDevDocsBoxCode")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.files(fileTree("public/docs") {
+        include("**/*.kt")
+        include("**/*.edn")
+        include("**/*.yaml")
+    })
+        .withPropertyName("guardedPublishedBoxCode")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.files(fileTree("templates") {
+        include("**/*.kt")
+        include("**/*.edn")
+    })
+        .withPropertyName("guardedTemplateBoxCode")
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file("dev_docs/agents/transcript_layout_exceptions.yaml")
         .withPathSensitivity(PathSensitivity.RELATIVE)
