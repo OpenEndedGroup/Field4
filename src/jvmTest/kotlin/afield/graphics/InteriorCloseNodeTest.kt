@@ -597,10 +597,12 @@ class InteriorCloseNodeTest {
         // Repository source only. `src/personal` is the human's gitignored sketch tree: it is absent
         // from a worktree and present on the real checkout, so walking it makes this guard pass here
         // and fail there. That is exactly how 2026-07-28's `checkKDocAttachment` shipped green at 625
-        // files and went red at 735 on merge (fixed the same way, in 639b4fa5). Concretely, today
-        // `src/personal/kotlin/organic/FLineLinearizer.kt:91-101` branches on MoveTo/LineTo with an
-        // `else -> Unit` and never names Close — see the note in dev_docs/fline_close_nodes.md, which
-        // records it as a deliberately-unfixed adjacent finding, not as something this guard owns.
+        // files and went red at 735 on merge (fixed the same way, in 639b4fa5). Concretely, today one
+        // linearizer in that tree branches on MoveTo/LineTo with an `else -> Unit` and never names
+        // Close — see the note in dev_docs/fline_close_nodes.md, which records it as a
+        // deliberately-unfixed adjacent finding, not as something this guard owns. Described rather
+        // than cited, because a path into a tree CI does not have is not a citation anybody can
+        // follow; `PersonalBoundaryTest` makes that a rule.
         val sourceRoots = listOf("jvmMain", "jvmTest", "commonMain", "jsMain")
             .map { File(root, "src/$it") }
             .filter { it.isDirectory }

@@ -189,17 +189,13 @@ class CloseNodeCitationDriftTest {
         val doc = File(root, "dev_docs/fline_close_nodes.md")
         assertTrue(doc.isFile, "no dev_docs/fline_close_nodes.md")
 
-        // Citations into `src/personal`, which is gitignored and absent from this worktree
-        // altogether. They cannot be pinned from here, so they are declared instead: this list is
-        // the admission that CI does not verify them, and it is short on purpose.
-        val outsideThisRepo = setOf(
-            "flinesAndJTS.kt" to 69,    // src/personal/kotlin/euclid — the deprecated JTS shim
-            "Flines.kt" to 28,          // src/personal/kotlin/sentences — how it builds its curves
-            "FLineLinearizer.kt" to 91, // src/personal/kotlin/organic — the adjacent finding, not fixed
-        )
-
-        val known = citations.map { (p, l, _) -> p.substringAfterLast('/') to l } +
-            outsideThisRepo.toList()
+        // This used to carry an exemption list for three citations into the gitignored private tree,
+        // declared unverifiable because CI has no such files. The page no longer cites them: the
+        // findings they supported are still there, stated as findings about a surveyed population
+        // rather than as paths a reader cannot open (see `PersonalBoundaryTest`, which now makes that
+        // a rule). So every citation the page makes is one this test checks, with no remainder — and
+        // the assertion below is stronger for having nothing to subtract.
+        val known = citations.map { (p, l, _) -> p.substringAfterLast('/') to l }
         // `Foo.kt:123` and `Foo.kt:123-456`; a range is matched at its first line
         val pattern = Regex("""([A-Za-z_0-9]+\.kt):(\d+)(?:-\d+)?""")
         val unchecked = pattern.findAll(doc.readText())

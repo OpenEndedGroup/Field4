@@ -37,7 +37,7 @@ must be visible to live completion.
 `src/personal` is gitignored. On the machine where these fixtures were last written it contains
 
 ```
-src/personal/kotlin/plans/rectgame.kt:1710:  data class Window(
+<a private file>:1710:  data class Window(
 ```
 
 so the candidate list there has a fourth entry. The line below is the real warning, from a worktree

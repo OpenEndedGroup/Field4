@@ -1,4 +1,3 @@
-import splat.*
 var table = readPlyAsFloatTable("/Users/marc/Desktop/lego_point_cloud_6999.ply")
 _print(table.offsets)
 

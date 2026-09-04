@@ -227,8 +227,7 @@ here", whose `notes` read
 
 Seventeen tools over a two-level rectilinear house model — describe, set-from-script, validate, place
 fittings, move a wall and let the rooms follow, panelize, export, undo — registered through
-`AgentToolExtensions` from `src/personal/kotlin/house/HouseAiTools.kt`. That cluster is personal,
-gitignored code and is not in this repository; it is described here because it is the reason the seam
+`AgentToolExtensions` from a private, gitignored tool cluster that is not in this repository; it is described here because it is the reason the seam
 is shaped the way it is, and because two of its habits are worth stealing:
 
 - **`commit=false` as a first-class argument.** A tool that changes something takes a preview flag and

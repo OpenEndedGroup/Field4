@@ -216,16 +216,16 @@ band").
 
 **How long, and who was hurt.** `_flineToJavaShape` has had no `Close` branch since `52a1d563e`
 (2025-11-03), the first commit of this build layout — nine months. And **neither affected API has a
-single caller anywhere in the repo, `src/personal` included**. The only `flineToJavaShape` call in
-the human's own code is `src/personal/kotlin/euclid/flinesAndJTS.kt:69`, inside a `@Deprecated` shim
-whose public functions have no callers, and whose input is AWT-derived and therefore `Close`-free
-anyway. So: a real defect, on real public API, that shipped for nine months and demonstrably bit
+single caller anywhere in the repo, the author's private tree included**. The only
+`flineToJavaShape` call in that tree is inside a `@Deprecated` shim whose own public functions have
+no callers, and whose input is AWT-derived and therefore `Close`-free anyway. (The private survey is
+reported rather than cited: it establishes the size of the population, and a path into a gitignored
+tree is evidence no reader of this page could open.) So: a real defect, on real public API, that shipped for nine months and demonstrably bit
 nobody.
 
-**Not the sentence diagrams.** `src/personal/kotlin/sentences/` builds all its geometry three ways —
-`moveTo`+`cubicTo` per curve (`Flines.kt:28-35`), one deliberately open `lineTo` bracket
-(`:124-128`), and glyph outlines from `font.createGlyphVector(frc, text).outline` through
-`javaShapeToFLine` (`:196`, `:204`). It calls `.close()` nowhere, never uses the `'z'` path DSL, and
+**Not the sentence diagrams.** The private sentence-diagram code builds all its geometry three ways —
+`moveTo`+`cubicTo` per curve, one deliberately open `lineTo` bracket, and glyph outlines from
+`font.createGlyphVector(frc, text).outline` through `javaShapeToFLine`. It calls `.close()` nowhere, never uses the `'z'` path DSL, and
 never `+=`s an FLine; and since `javaShapeToFLine` converts `SEG_CLOSE` to a `lineTo`, its glyph
 outlines carry no `Close` node to begin with. It also calls none of the affected functions — its
 only Field graphics call is the inbound AWT→FLine direction. Either reason alone is sufficient.
@@ -256,10 +256,11 @@ branches on `FLine.MoveTo`/`LineTo`/`CubicTo` — 25 of them today — either to
 or to appear in a four-entry exemption table with a written reason. A new `when` that forgets the
 fourth node type fails the build, and an exemption that stops being true fails it too.
 
-One adjacent finding, **not fixed**, because it is in gitignored personal code this branch treats as
-read-only: `src/personal/kotlin/organic/FLineLinearizer.kt:91-101` walks `line.nodes` with
+One adjacent finding, **not fixed**, because it is in gitignored private code this branch treats as
+read-only: one linearizer there walks `line.nodes` with
 `when (node) { is FLine.MoveTo -> …; is FLine.LineTo -> …; else -> Unit }`. That `else` swallows
-both `CubicTo` and `Close` — the same shape of bug `_flineToJavaShape` had.
+both `CubicTo` and `Close` — the same shape of bug `_flineToJavaShape` had. Named without a path for
+the same reason as above; the transferable part is the shape, not the location.
 
 ## Seeing it
 

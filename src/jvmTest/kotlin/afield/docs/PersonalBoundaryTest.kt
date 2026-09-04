@@ -23,15 +23,23 @@ import kotlin.test.assertEquals
  *
  * Three distinct costs, in the order they matter:
  *
- * 1. **A published page that cannot compile for anyone else.** `import organic.*` in a code fence on
- *    `public/docs/afield_four_graphics.md`, and three box files in the loadable
- *    `canonical_graphics` bundle, name packages that exist on exactly one machine. This is a
- *    correctness bug for every other reader, not a matter of taste.
- * 2. **A public gate that a private rename turns red.** A committed test that pins a line number
- *    inside `src/personal/` couples the build to a file no one else has and no one else can fix.
+ * 1. **A published page that cannot compile for anyone else.** A code fence on
+ *    `public/docs/afield_four_graphics.md` and box files in the loadable `canonical_graphics`
+ *    bundle name packages that exist on exactly one machine. This is a correctness bug for every
+ *    other reader, not a matter of taste — and two of the three box files turned out to be carrying
+ *    a *dead* private import over code that `afield` already provides, so the leak was not even
+ *    buying them anything.
+ * 2. **A citation nobody can follow, and a ledger that has to track it.** Prose that cites a private
+ *    path offers evidence no reader can open. The second-order cost is the bookkeeping: before this
+ *    guard, `CloseNodeCitationDriftTest` carried an exemption list naming three private files purely
+ *    to declare that CI could not verify them, which is a maintenance burden created by the citation
+ *    rather than by the finding.
  * 3. **A general tool promoting a particular artwork.** The reason this is worth enforcing rather
  *    than merely preferring: the intent is to study private work *for the general lessons*, and a
- *    lesson that arrives carrying the name of the piece it came from has not been generalised.
+ *    lesson that arrives carrying the name of the piece it came from has not been generalised. The
+ *    corollary that makes the rule liveable: a private survey may still *support* a claim about a
+ *    population — "the only caller in the private tree is a deprecated shim" is a finding worth
+ *    publishing — it just may not be cited as a location.
  *
  * ### Why an allowlist of public roots rather than a list of private packages
  *
@@ -50,7 +58,8 @@ import kotlin.test.assertEquals
  *
  * Measured when this was written, over the [SCAN_ROOTS] corpus: 22 legitimate roots accounting for
  * 15 000+ import statements, against **8** occurrences of four private packages. The signal-to-noise
- * is what makes the inverted form practical.
+ * is what makes the inverted form practical. After the first cleanup pass the remainder is **3**
+ * occurrences of **one** package, all three the same dependency — see [GRANDFATHERED].
  *
  * ### The grandfathered set is a debt list, and it is bidirectional
  *
@@ -132,6 +141,14 @@ class PersonalBoundaryTest {
             "src/personal/resources",
             "src/personal/docs",
             "src/personal/transcripts",
+            // A path the *reader* is told to create, not one of the author's files.
+            // `dev_docs/HERMETIC_COMPLETION_INPUTS.md` reproduces a completion-fixture failure by
+            // writing a throwaway `probe` package into the private root and deleting it again, which
+            // is a recipe rather than a dependency: it works on any machine, and it names nothing
+            // that exists before the reader runs it. Worth distinguishing explicitly, because the
+            // rule this class enforces is about *depending on private content* and a literal string
+            // match cannot tell the difference on its own.
+            "src/personal/kotlin/probe",
         )
 
         /**
@@ -142,39 +159,27 @@ class PersonalBoundaryTest {
          * loadable bundle whose box code cannot compile for anybody but its author.
          */
         private val GRANDFATHERED = mapOf(
-            "dev_docs/agents/snippets/dust_particle_seed_check.kt" to
-                "imports drowning.* and uses DustLayout/_cloud/_links — this is the piece's own " +
-                "regression check, committed as an agent snippet. Delete or rewrite against afield.*",
+            // All three are the same dependency: `organic.ShaderDlaSystem`, which powers section 8 of
+            // the graphics page, the corpus box that section shows, and that box's `#afield/file-inline`
+            // copy. The lesson section 8 draws is general -- `installInto()` writes a packaged effect's
+            // shaders into the box's own properties, so it arrives as editable source rather than as a
+            // closed component -- and the vehicle is private, with no `afield` equivalent to port to.
+            // That makes this an editorial decision rather than a mechanical fix, and it is the
+            // archetype this whole guard exists to surface: a general lesson taught through a private
+            // piece.
             "public/docs/afield_four_graphics.md" to
-                "a published code fence imports organic.* — broken for every reader but one",
-            "public/docs/assets/canonical_graphics/072074d3-5bf4-4889-a7ad-b9c109ab3677_code_.kt" to
-                "loadable bundle box imports euclid.*",
-            "public/docs/assets/canonical_graphics/de832c1f-f451-4f99-8684-9f77df8f67d8_code_.kt" to
-                "loadable bundle box imports splat.*",
+                "section 8 teaches `installInto()` through a private DLA system; the fence imports organic.*",
             "public/docs/assets/canonical_graphics/e39270ec-8faf-4d26-8f4e-ce4d23ec4af1_code_.kt" to
-                "loadable bundle box imports organic.*",
+                "the corpus box for section 8 constructs organic.ShaderDlaSystem",
             "public/docs/assets/canonical_graphics/metadata.edn" to
-                "the file-inline copies of the three box files above",
-            // Deep citations into the private tree.
-            "dev_docs/fline_close_nodes.md" to
-                "four citations into private files in the `euclid`, `sentences` and `organic` packages, as evidence",
-            "dev_docs/HERMETIC_COMPLETION_INPUTS.md" to
-                "cites a private file in the `plans` package, and writes a probe file under the private root",
-            "dev_docs/external_browser_surfaces.md" to
-                "cites a private file in the `organic` package as the origin of the approach",
-            "dev_docs/ai/AGENT_TOOL_EXTENSIONS.md" to
-                "cites a private file in the `house` package as the worked example",
-            "src/jvmTest/kotlin/afield/graphics/CloseNodeCitationDriftTest.kt" to
-                "pins line numbers inside three private files, so a private rename reddens a public gate",
-            "src/jvmTest/kotlin/afield/graphics/InteriorCloseNodeTest.kt" to
-                "cites a private file in the `organic` package, with a line range, in a comment",
+                "the file-inline copy of the box above",
         )
 
         /**
          * A ceiling, not a target. Lowering it is the point; raising it should require saying why in
          * a commit message somebody will read.
          */
-        private const val MAX_GRANDFATHERED = 12
+        private const val MAX_GRANDFATHERED = 3
 
         /**
          * A floor under the corpus, so a broken [SCAN_ROOTS] entry fails loudly instead of turning

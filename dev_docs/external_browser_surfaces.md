@@ -330,7 +330,8 @@ $DISPLAY" from the producer and a texture that never becomes ready.
 
 ## What came from the Windows prototype
 
-`src/personal/kotlin/organic/textureStreaming.kt` established the useful core: import the D3D11
+A Windows texture-streaming prototype in the author's private tree established the useful core:
+import the D3D11
 allocation, copy into a resident sampled image, restore layouts, and close the received NT handle
 after Vulkan has retained the memory. The general contract keeps that shape while tightening the
 parts that matter for a browser process:
