@@ -263,7 +263,7 @@ There was no conversation: the service could not be reached, or did not answer i
 
 ### FieldAudioClient { #fieldaudioclient-kt-fieldaudioclient }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">FieldAudioClient</span><span class="p">(</span><span class="n">baseUrl</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;http: private val callbackExecutor: Executor = DEFAULT&#95;EXECUTOR)</span></code>](source/jvmMain/afield/stdlib/noir/audioai/FieldAudioClient/#L133)
+[<code class="highlight"><span class="k">class</span> <span class="nf">FieldAudioClient</span><span class="p">(</span><span class="n">baseUrl</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;http://127.0.0.1:8765&quot;</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">callbackExecutor</span><span class="p">:</span> <span class="nc">Executor</span> <span class="o">=</span> <span class="nc">DEFAULT&#95;EXECUTOR</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/noir/audioai/FieldAudioClient/#L133)
 
 Non-blocking, backend-neutral client for Field's audio model service.
 

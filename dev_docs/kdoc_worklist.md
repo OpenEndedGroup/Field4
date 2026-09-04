@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 6312 of 11547 public symbols in `afield.stdlib`, `afield.visualization` and `afield.four.synth`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 6406 of 11714 public symbols in `afield.stdlib`, `afield.visualization` and `afield.four.synth`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
 
-**814 undocumented entry points** (types, top-level functions and values) and 4145 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**814 undocumented entry points** (types, top-level functions and values) and 4217 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -160,17 +160,19 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [NanoVM.kt](../src/jvmMain/kotlin/afield/nano/NanoVM.kt) | Languages | — | 0 | 56 | 12% |
 | [PatTranscriptionCorpus.kt](../src/jvmMain/kotlin/afield/four/synth/PatTranscriptionCorpus.kt) | Patterns | — | 0 | 50 | 35% |
 | [PatTranscription.kt](../src/jvmMain/kotlin/afield/four/synth/PatTranscription.kt) | Patterns | — | 0 | 49 | 33% |
+| [Midi.kt](../src/jvmMain/kotlin/afield/four/synth/Midi.kt) | Audio | — | 0 | 46 | 43% |
 | [SpeechEmbeddingMds.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/SpeechEmbeddingMds.kt) | Audio AI | — | 0 | 42 | 22% |
 | [PatPitchDetection.kt](../src/jvmMain/kotlin/afield/four/synth/PatPitchDetection.kt) | Patterns | — | 0 | 23 | 51% |
 | [DatalogEngine.kt](../src/jvmMain/kotlin/afield/datalog/DatalogEngine.kt) | Languages | — | 0 | 19 | 43% |
 | [RectSLPatternOps.kt](../src/jvmMain/kotlin/afield/rectsl/RectSLPatternOps.kt) | Languages | — | 0 | 18 | 14% |
 | [osc.kt](../src/jvmMain/kotlin/afield/stdlib/osc.kt) | Audio | — | 0 | 18 | 33% |
+| [MidiDevices.kt](../src/jvmMain/kotlin/afield/four/synth/MidiDevices.kt) | Audio | — | 0 | 17 | 64% |
 | [MorphoGenerator.kt](../src/jvmMain/kotlin/afield/morpho/MorphoGenerator.kt) | Languages | — | 0 | 17 | 39% |
 | [Colormaps.kt](../src/jvmMain/kotlin/afield/visualization/Colormaps.kt) | Visualization | — | 0 | 17 | 19% |
+| [keyframeBrowser.kt](../src/jvmMain/kotlin/afield/stdlib/keyframeBrowser.kt) | Visualization | — | 0 | 16 | 75% |
 | [HostBridge.kt](../src/jvmMain/kotlin/afield/ml/core/HostBridge.kt) | Languages | — | 0 | 15 | 48% |
 | [MorphoNetlist.kt](../src/jvmMain/kotlin/afield/morpho/MorphoNetlist.kt) | Languages | — | 0 | 15 | 48% |
 | [InteractiveSolving.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/InteractiveSolving.kt) | Solvers | — | 0 | 15 | 65% |
-| [keyframeBrowser.kt](../src/jvmMain/kotlin/afield/stdlib/keyframeBrowser.kt) | Visualization | — | 0 | 15 | 70% |
 | [Summaries.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Summaries.kt) | Polytopes | — | 0 | 15 | 74% |
 | [pointing.kt](../src/jvmMain/kotlin/afield/stdlib/pointing.kt) | Graphics | — | 0 | 13 | 67% |
 | [HostTypes.kt](../src/jvmMain/kotlin/afield/ml/type/HostTypes.kt) | Languages | — | 0 | 12 | 60% |
@@ -181,6 +183,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [GlslValue.kt](../src/jvmMain/kotlin/afield/stacksl/cpu/GlslValue.kt) | Languages | — | 0 | 9 | 52% |
 | [fline_graph_connectivity.kt](../src/jvmMain/kotlin/afield/stdlib/fline_graph_connectivity.kt) | Graphics | — | 0 | 8 | 38% |
 | [FaustDsp.kt](../src/jvmMain/kotlin/afield/four/synth/FaustDsp.kt) | Synthesis | — | 0 | 6 | 53% |
+| [MidiPat.kt](../src/jvmMain/kotlin/afield/four/synth/MidiPat.kt) | Audio | — | 0 | 6 | 66% |
 | [PatOnsetDetection.kt](../src/jvmMain/kotlin/afield/four/synth/PatOnsetDetection.kt) | Patterns | — | 0 | 6 | 57% |
 | [NanoAssembler.kt](../src/jvmMain/kotlin/afield/nano/NanoAssembler.kt) | Languages | — | 0 | 6 | 33% |
 | [growing.kt](../src/jvmMain/kotlin/afield/stdlib/growing.kt) | Data | — | 0 | 6 | 57% |
@@ -197,6 +200,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [pointing_render.kt](../src/jvmMain/kotlin/afield/stdlib/pointing_render.kt) | Graphics | — | 0 | 3 | 82% |
 | [DatalogParser.kt](../src/jvmMain/kotlin/afield/datalog/DatalogParser.kt) | Languages | — | 0 | 2 | 66% |
 | [Buf.kt](../src/jvmMain/kotlin/afield/four/synth/Buf.kt) | Synthesis | — | 0 | 2 | 90% |
+| [MidiSmokeTest.kt](../src/jvmMain/kotlin/afield/four/synth/MidiSmokeTest.kt) | Audio | — | 0 | 2 | 33% |
 | [MorphoSim.kt](../src/jvmMain/kotlin/afield/morpho/MorphoSim.kt) | Languages | — | 0 | 2 | 77% |
 | [FM.kt](../src/jvmMain/kotlin/afield/four/synth/FM.kt) | Synthesis | — | 0 | 1 | 90% |
 | [MorphoLayout3D.kt](../src/jvmMain/kotlin/afield/morpho/MorphoLayout3D.kt) | Languages | — | 0 | 1 | 90% |
