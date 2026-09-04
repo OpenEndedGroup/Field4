@@ -1,5 +1,6 @@
 package afield.stdlib
 
+import afield.four.buffers.Structure
 import afield.four.util.CameraPose
 import afield.keyframeBrowserIframe
 import afield.stdlib.linalg.Quaternionf
@@ -869,6 +870,82 @@ class KeyframeBrowserTest {
         )
     }
 
+
+    // -----------------------------------------------------------------------------------------
+    // A saved slot the scope no longer watches
+    // -----------------------------------------------------------------------------------------
+
+    /**
+     * The disagreement that was silent in only one direction.
+     *
+     * `scopeSlots` has always drawn the "you have never saved this" row: a slot the scope watches
+     * that no file holds. Its mirror image — a slot a *file* holds that the scope no longer watches
+     * — rendered as an ordinary row, with its real saved range, and `KeyframeScope.loadKey` is
+     * explicit that those names "simply have nowhere to go on apply". So a rename half-done looked
+     * like a working slot and applied to nothing.
+     */
+    @Test
+    fun aSavedSlotTheScopeNoLongerWatchesIsMarkedOrphaned() {
+        val dir = tempDir()
+        // Two slots saved. The scope has since been renamed and watches only one of them, plus a
+        // third it has never saved.
+        save(dir, "a", "glow@radius" to 1f, "glow@blur" to 4f)
+        save(dir, "b", "glow@radius" to 2f, "glow@blur" to 5f)
+
+        val glow = Structure()
+        glow.bind("radius") { 3f }
+        glow.bind("feather") { 0.5f }
+        val scope = KeyframeScope()
+        scope.target("glow@radius", glow)
+        scope.target("glow@feather", glow)
+
+        val c = KeyframeCollection.load(dir, everyKeyGlob, scope)
+
+        assertTrue(c.scopeAttached)
+        assertEquals(listOf("glow@blur"), c.orphanedSlots, "saved, and now wired to nothing")
+
+        val blur = c.slot("glow@blur")
+        assertTrue(blur.orphaned, "the row must say the value applies to nowhere")
+        assertEquals(2, blur.presentIn, "and it is still a real, fully-present slot: ${blur.summaryText}")
+
+        // The mirror image still works, and is NOT reported as orphaned - nothing was saved to orphan.
+        val feather = c.slot("glow@feather")
+        assertTrue(feather.inScope)
+        assertEquals(0, feather.presentIn)
+        assertTrue(!feather.orphaned, "'never saved' and 'saved but unwired' are different rows")
+
+        // And a live slot is neither.
+        val radius = c.slot("glow@radius")
+        assertTrue(radius.inScope)
+        assertTrue(!radius.orphaned)
+    }
+
+    /**
+     * With no scope attached, nothing is orphaned — because nothing can be known.
+     *
+     * This is the whole reason [KeyframeCollection.scopeAttached] exists as a flag separate from
+     * `scopeSlots.isEmpty()`. A read-only browser has no opinion about which slots are live, and a
+     * scope that is attached and watches nothing has a very strong one; both leave `scopeSlots`
+     * empty. Without the flag the marker either stays silent in the case that matters or cries wolf
+     * on every row of every read-only browse.
+     */
+    @Test
+    fun aReadOnlyBrowseNeverClaimsASlotIsDisconnected() {
+        val dir = tempDir()
+        save(dir, "a", "glow@radius" to 1f)
+
+        val readOnly = KeyframeCollection.load(dir, everyKeyGlob, scope = null)
+        assertTrue(!readOnly.scopeAttached)
+        assertEquals(emptyList(), readOnly.orphanedSlots, "with no scope there is nothing to disagree with")
+        assertTrue(!readOnly.slot("glow@radius").orphaned)
+
+        // An attached scope watching nothing is the opposite answer from the same empty scopeSlots.
+        val empty = KeyframeCollection.load(dir, everyKeyGlob, scope = KeyframeScope())
+        assertTrue(empty.scopeAttached)
+        assertEquals(emptySet(), empty.scopeSlots, "the two cases are indistinguishable by scopeSlots alone")
+        assertEquals(listOf("glow@radius"), empty.orphanedSlots, "and must still be told apart")
+        assertTrue(empty.slot("glow@radius").orphaned)
+    }
 
     @Test
     fun aNonPositiveWidthIsStillTheFillMyColumnEscapeHatch() {

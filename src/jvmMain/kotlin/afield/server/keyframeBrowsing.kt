@@ -171,7 +171,12 @@ private data class KBOpen(
     /** `KeyframeCollection.skipSummary`, or null when nothing was skipped. */
     val notice: String? = null,
     /** True when widening the pattern would reveal more keys — enables the "show every key" button. */
-    val canShowAll: Boolean = false
+    val canShowAll: Boolean = false,
+    /**
+     * Slots some key holds that the live scope does not watch. Empty with no scope attached, so a
+     * read-only browser never claims a slot is disconnected when it simply cannot tell.
+     */
+    val orphanedSlots: List<String> = emptyList()
 )
 
 @Serializable
@@ -423,7 +428,8 @@ private object KeyframeBrowserProtocol {
                             problems = c.problems,
                             skipped = c.skipped,
                             notice = c.skipSummary(),
-                            canShowAll = c.hiddenCount > 0 || c.pattern != everyKeyGlob
+                            canShowAll = c.hiddenCount > 0 || c.pattern != everyKeyGlob,
+                            orphanedSlots = c.orphanedSlots
                         )
                     )
                 }

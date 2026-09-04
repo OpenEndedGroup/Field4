@@ -1199,7 +1199,12 @@ kfs.target("glow@radius", glow)
 
 listOf("a", "b", "c", "d", "d2", "d3").forEachIndexed { i, name ->
     glow.bind("radius") { 1f + i * 3f }
-    kfs.capture().save(dir.resolve(name), "look $name")
+    // `glow@blur` is saved into every key and is NOT one of the scope's targets, so it is a value
+    // that Apply would silently drop -- the mirror image of the "you have never saved this" row,
+    // and the direction that had no marker.
+    val key = kfs.capture()
+    key["glow@blur"] = 2f + i
+    key.save(dir.resolve(name), "look $name")
 }
 // The file macOS leaves in any folder a Finder window has opened. Not a key, and not a problem.
 Files.writeString(dir.resolve(".DS_Store"), "Bud1 (this is not a key)")
@@ -1260,12 +1265,17 @@ try {
   await waitFor(() => chips(doc).length ? chips(doc) : null, 20000);
 
   const narrowChips = chips(doc);
-  const notice = doc.querySelector(".kb-notice");
-  const noticeText = String((notice && notice.innerText) || "");
+  // Every notice card, joined -- NOT `querySelector(".kb-notice")`. There is more than one kind of
+  // card now (discovery, and saved-slots-that-apply-to-nowhere), and a first-match read silently
+  // starts answering about whichever one happens to render first. That is a positional check going
+  // vacuous on a reorder, and it is how the first draft of this test failed.
+  const notices = () => [...doc.querySelectorAll(".kb-notice")].map((n) => String(n.innerText || ""));
+  const noticeText = notices().join(" | ");
   const problems = doc.querySelector(".kb-problems");
   const button = doc.querySelector("#kb-showall");
 
-  const result = { narrowChips, noticeText: noticeText.slice(0, 200), errors };
+  const narrowNotices = notices();
+  const result = { narrowChips, narrowNotices, noticeText: noticeText.slice(0, 300), errors };
 
   // 1. The narrow pattern really is narrow: two of six, and the two that `??` can match.
   result.narrowShowsTwo = narrowChips.length === 2 &&
@@ -1291,10 +1301,32 @@ try {
     wideChips.join(",") === "a,b,c,d,d2,d3";
   // 6. Floor, next to the number: six keys were saved, so fewer than six is the bug returning.
   result.atLeastSixKeys = wideChips.length >= 6;
-  // 7. Nothing is hidden any more, so the hidden clause is gone from the notice.
-  const wideNotice = doc.querySelector(".kb-notice");
-  result.wideNoticeText = String((wideNotice && wideNotice.innerText) || "").slice(0, 200);
+  // 7. Nothing is hidden any more, so the hidden clause is gone from the notices. Read across ALL
+  //    notice cards, not just the first: an orphan card now sits above the skip card, and checking
+  //    only `querySelector` would have silently started reading the wrong one.
+  result.wideNoticeText = notices().join(" | ").slice(0, 300);
   result.nothingHiddenOnceWidened = !/hidden by this pattern/.test(result.wideNoticeText);
+
+  // 8. `glow@blur` is saved in all six keys and watched by no target, so Apply would drop it. The
+  //    row used to render exactly like a live slot, with its real range, which is why the value of
+  //    this assertion is that it names the slot rather than counting rows.
+  result.orphanNoticed = /1 saved slot the live scope no longer watches/.test(result.wideNoticeText) &&
+    /glow@blur/.test(result.wideNoticeText);
+  const orphanNames = [...doc.querySelectorAll(".kb-name.kb-orphan")]
+    .map((node) => String(node.textContent || "").trim()).sort();
+  result.orphanNames = orphanNames;
+  result.orphanRowMarked = orphanNames.length === 1 && orphanNames[0] === "glow@blur";
+  // And the slot the scope DOES watch is not marked, so the marker is not simply on every row.
+  const liveNames = [...doc.querySelectorAll(".kb-name")]
+    .filter((node) => !node.classList.contains("kb-orphan"))
+    .map((node) => String(node.textContent || "").trim());
+  result.liveSlotNotMarked = liveNames.includes("glow@radius");
+  // 9. Card order is a decision, not an accident: "you cannot see four of your keys" outranks "one
+  //    slot you can see is unwired", and the top card is the one that gets read. Asserted at the
+  //    narrow phase, where both cards are on screen at once.
+  result.narrowNoticeOrder = narrowNotices.length === 2 &&
+    /hidden by this pattern/.test(narrowNotices[0]) &&
+    /no longer watches/.test(narrowNotices[1]);
 
   result.ok = result.narrowShowsTwo &&
     result.noticeCountsHiddenKeys &&
@@ -1303,6 +1335,10 @@ try {
     result.showAllRevealsEveryKey &&
     result.atLeastSixKeys &&
     result.nothingHiddenOnceWidened &&
+    result.orphanNoticed &&
+    result.orphanRowMarked &&
+    result.liveSlotNotMarked &&
+    result.narrowNoticeOrder &&
     result.errors.length === 0;
   if (!result.ok) {
     result.reason = !result.narrowShowsTwo
@@ -1317,7 +1353,15 @@ try {
               ? `widening drew ${wideChips.length} chips (${wideChips}), expected all six`
               : !result.nothingHiddenOnceWidened
                 ? `still claims keys are hidden after widening: "${result.wideNoticeText}"`
-                : "unexpected keyframe browser content";
+                : !result.orphanNoticed
+                  ? `nothing says glow@blur applies to nowhere: "${result.wideNoticeText}"`
+                  : !result.orphanRowMarked
+                    ? `the struck-through rows were ${orphanNames}, expected just glow@blur`
+                    : !result.liveSlotNotMarked
+                      ? "glow@radius is watched by the scope and must not be marked orphaned"
+                      : !result.narrowNoticeOrder
+                        ? `notice cards are in the wrong order: ${result.narrowNotices}`
+                        : "unexpected keyframe browser content";
   }
   return result;
 } finally {
@@ -3623,7 +3667,8 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             id="keyframe-browser-discovery",
             description=(
                 "The keyframe browser says how many keys its pattern is hiding, does not report a .DS_Store as a "
-                "problem, and its \"show every key\" button widens a narrowed glob to all six keys in one click."
+                "problem, its \"show every key\" button widens a narrowed glob to all six keys in one click, and a "
+                "saved slot the live scope no longer watches is struck through and named as one Apply would drop."
             ),
             commands=[
                 "new-box --name KeyframeBrowserDiscoveryRegression --w 900 --h 420",

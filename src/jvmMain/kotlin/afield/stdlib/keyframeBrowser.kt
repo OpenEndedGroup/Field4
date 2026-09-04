@@ -345,6 +345,18 @@ class KeyframeCollection(
      */
     val scopeSlots: Set<String> = emptySet(),
     /**
+     * Whether a live scope was passed to [load] at all — which is **not** the same question as
+     * whether [scopeSlots] is empty, and conflating the two is what made the orphan marker below
+     * impossible to draw safely.
+     *
+     * A read-only browser (no scope) has no opinion about which slots are live, so every saved slot
+     * would look orphaned. A scope that is attached and watches nothing has a very strong opinion:
+     * every saved slot really *is* orphaned. Both produce an empty [scopeSlots]. Without this flag
+     * the browser must either stay silent in the case that matters or cry wolf in the case that does
+     * not.
+     */
+    val scopeAttached: Boolean = false,
+    /**
      * Every file under [root] that is not a row here, and why — the browser's account of what it did
      * *not* show you. See [SkipKind] for the three reasons and [skipSummary] for the one line.
      *
@@ -402,7 +414,19 @@ class KeyframeCollection(
     fun slots(): List<SlotSummary> = slotNames.map { slot(it) }
 
     /** The summary for one slot — what value it takes in each file, and what that set looks like. */
-    fun slot(name: String): SlotSummary = summariseSlot(name, files, scopeSlots.contains(name))
+    fun slot(name: String): SlotSummary =
+        summariseSlot(name, files, scopeSlots.contains(name), scopeAttached)
+
+    /**
+     * Slot names that some key on disk holds and the live scope does **not** watch — the saves that
+     * now apply to nowhere.
+     *
+     * Empty when no scope is attached, because a read-only browser cannot know. See
+     * [SlotSummary.orphaned] for why this direction was silent while its mirror image was not.
+     */
+    val orphanedSlots: List<String>
+        get() = if (!scopeAttached) emptyList()
+        else slotNames.filter { name -> name !in scopeSlots && files.any { name in it.values } }
 
     /**
      * One slot's trajectory through a single file's save history, oldest first — the view that
@@ -517,6 +541,7 @@ class KeyframeCollection(
 
             return KeyframeCollection(
                 root, pattern, files, problems, scopeSlots,
+                scopeAttached = scope != null,
                 skipped = skipped.sortedWith(compareBy({ it.kind.ordinal }, { it.relative })),
                 skipSurveyTruncated = truncated
             )
@@ -630,6 +655,20 @@ data class SlotSummary(
     val total: Int,
     /** True when a live scope watches this name. */
     val inScope: Boolean,
+    /**
+     * True when a key on disk holds this slot and the attached scope does **not** watch it — a saved
+     * value that Apply will silently drop.
+     *
+     * This is the mirror image of the "you have never saved this" row that [inScope] already draws,
+     * and only one of the two was ever visible. `KeyframeScope.loadKey` is explicit that "a file
+     * whose values have since left the scope loads fine — the extra names simply have nowhere to go
+     * on apply", so the failure is a *quiet* one: the row renders exactly like a live slot, with its
+     * real saved range, and applying the key writes it nowhere. A rename half-done looks like a
+     * working slot.
+     *
+     * Always false with no scope attached: see [KeyframeCollection.scopeAttached].
+     */
+    val orphaned: Boolean,
     /** The right-hand column: `2.0 – 11.4`, `7 swatches`, `3 variants`. */
     val summaryText: String,
     val display: SlotDisplay
@@ -752,7 +791,12 @@ private fun angularSpreadDegrees(quats: List<Quaternionf>): Double {
     return Math.toDegrees(worst)
 }
 
-private fun summariseSlot(name: String, files: List<KeyframeFile>, inScope: Boolean): SlotSummary {
+private fun summariseSlot(
+    name: String,
+    files: List<KeyframeFile>,
+    inScope: Boolean,
+    scopeAttached: Boolean
+): SlotSummary {
     val present: List<Pair<Int, KValue>> = files.mapNotNull { f -> f.values[name]?.let { f.id to it } }
     val total = files.size
     val fileIds = present.map { it.first }
@@ -766,6 +810,7 @@ private fun summariseSlot(name: String, files: List<KeyframeFile>, inScope: Bool
             presentIn = 0,
             total = total,
             inScope = inScope,
+            orphaned = false,
             summaryText = "—",
             display = SlotDisplay.Note(
                 if (inScope) "in the scope, in no key on disk — capture would fill it"
@@ -787,6 +832,7 @@ private fun summariseSlot(name: String, files: List<KeyframeFile>, inScope: Bool
             presentIn = present.size,
             total = total,
             inScope = inScope,
+            orphaned = scopeAttached && !inScope,
             summaryText = "${kinds.size} types",
             display = SlotDisplay.Note(
                 counts.joinToString(", ") { "${it.key} ×${it.value}" } + " — this slot changed type between saves",
@@ -799,7 +845,12 @@ private fun summariseSlot(name: String, files: List<KeyframeFile>, inScope: Bool
     val typeLabel = typeLabelFor(kind, values)
 
     fun summary(text: String, display: SlotDisplay) =
-        SlotSummary(name, kind, typeLabel, present.size, total, inScope, text, display)
+        SlotSummary(
+            name, kind, typeLabel, present.size, total, inScope,
+            orphaned = scopeAttached && !inScope,
+            summaryText = text,
+            display = display
+        )
 
     return when (kind) {
         "num" -> {

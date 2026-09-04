@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory" "isClojureRoot" "isDatalogRoot" "isForthRoot" "isFieldMLRoot" "isMorphoRoot" "isNanoRoot" "nanoLaunchDelayMs" "nanoMemoryInit" "isKotlinJsRoot" "mainLanguage" "spreadsheet"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory" "isClojureRoot" "isDatalogRoot" "isForthRoot" "isFieldMLRoot" "isMorphoRoot" "isNanoRoot" "nanoLaunchDelayMs" "nanoMemoryInit" "isKotlinJsRoot" "mainLanguage" "spreadsheet"]}
 ```
 
 ## 1. 2 - Junk is not damage
@@ -73,9 +73,98 @@ println("e is unparseable, and e.versions still holds " +
 keyframeBrowser(dir, channel = "junk is not damage", scope = kfs, height = 380)
 ```
 
-## 2. 1 - Six keys, and the pattern that showed two
+## 2. 3 - A saved slot that applies to nowhere
 
-<!-- field-box id="kf_before_after" index="1" -->
+<!-- field-box id="kf_orphaned_slots" index="1" -->
+
+### Narrative
+
+From `code`
+
+A saved slot that applies to nowhere.
+
+The browser has always drawn one half of this: a slot the scope watches that no key holds — the
+"you have never saved this" row. The other half was silent. A slot a *key* holds that the scope no
+longer watches renders as an ordinary row, with its real saved range across every key, and
+`KeyframeScope.loadKey` is explicit about what happens next: "a file whose values have since left
+the scope loads fine — the extra names simply have nowhere to go on apply."
+
+So a rename half-done looks exactly like a working slot, and Apply quietly drops it.
+
+```edn [field-box id="kf_orphaned_slots" role="properties"]
+{"id" "kf_orphaned_slots" "index" 1 "name" "3 - A saved slot that applies to nowhere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - A saved slot that applies to nowhere" "_tombstone" false "frame" #afield/rect [40.0 600.0 760.0 540.0] "preamble" "" "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_orphaned_slots_code_.kt" "lines" 64 "characters" 2945 "sha256" "64804ca66f37c662e8eaf23f552c7f6ca740fc84f2c1a4b7281bc4072c022a32"}]}
+```
+
+```kotlin [field-property box="kf_orphaned_slots" name="code" path="kf_orphaned_slots_code_.kt"]
+// A saved slot that applies to nowhere.
+//
+// The browser has always drawn one half of this: a slot the scope watches that no key holds — the
+// "you have never saved this" row. The other half was silent. A slot a *key* holds that the scope no
+// longer watches renders as an ordinary row, with its real saved range across every key, and
+// `KeyframeScope.loadKey` is explicit about what happens next: "a file whose values have since left
+// the scope loads fine — the extra names simply have nowhere to go on apply."
+//
+// So a rename half-done looks exactly like a working slot, and Apply quietly drops it.
+
+import afield.stdlib.KeyframeCollection
+import afield.stdlib.KeyframeScope
+import afield.stdlib.everyKeyGlob
+import afield.four.buffers.Structure
+import java.nio.file.Files
+
+val dir = Files.createTempDirectory("keyframe-orphaned-slots")
+
+// Three keys saved back when the pass had a `blur` as well as a `radius`.
+run {
+    val old = Structure()
+    val past = KeyframeScope()
+    past.target("glow@radius", old)
+    past.target("glow@blur", old)
+    listOf(1f to 4f, 6f to 5f, 11f to 6f).forEachIndexed { i, (r, b) ->
+        old.bind("radius") { r }
+        old.bind("blur") { b }
+        past.capture().save(dir.resolve(listOf("a", "b", "c")[i]), "look ${listOf("a", "b", "c")[i]}")
+    }
+}
+
+// The pass as it is today: `blur` is gone, and a `feather` has arrived that nothing has ever saved.
+val glow = Structure()
+glow.bind("radius") { 7f }
+glow.bind("feather") { 0.5f }
+val kfs = KeyframeScope()
+kfs.target("glow@radius", glow)
+kfs.target("glow@feather", glow)
+
+val c = KeyframeCollection.load(dir, everyKeyGlob, kfs)
+
+println("slots in view:      " + c.slotNames)
+println("watched by the scope: " + c.scopeSlots.sorted())
+println("saved, and wired to nothing: " + c.orphanedSlots + "   <- Apply drops these")
+println()
+c.slots().forEach { s ->
+    val tag = when {
+        s.orphaned -> "ORPHANED  (saved in ${s.presentIn}/${s.total} keys, applies to nowhere)"
+        s.inScope && s.presentIn == 0 -> "never saved (the scope watches it, no key holds it)"
+        else -> "live"
+    }
+    println("  ${s.name.padEnd(14)} ${tag}")
+}
+println()
+// The flag is not just "scopeSlots is empty". A read-only browse cannot know which slots are live,
+// and must not accuse every row; an attached scope watching nothing must accuse every row. Both
+// leave scopeSlots empty, so `scopeAttached` is what tells them apart.
+val readOnly = KeyframeCollection.load(dir, everyKeyGlob, scope = null)
+println("read-only browse: scopeAttached=${readOnly.scopeAttached}, orphaned=${readOnly.orphanedSlots}")
+println("  (no scope, so no accusation — this is why scopeAttached exists as its own flag)")
+
+// `glow@blur` is struck through and named in the header; `glow@radius` is plain; `glow@feather` is
+// the amber "never saved" row this browser already had.
+keyframeBrowser(dir, channel = "saved, but wired to nothing", scope = kfs, height = 400)
+```
+
+## 3. 1 - Six keys, and the pattern that showed two
+
+<!-- field-box id="kf_before_after" index="2" -->
 
 ### Narrative
 
@@ -90,7 +179,7 @@ because `saveKey` writes the path it is handed and appends nothing.
 Run this box. Two browsers appear. The top one is what you used to get.
 
 ```edn [field-box id="kf_before_after" role="properties"]
-{"id" "kf_before_after" "index" 1 "name" "1 - Six keys, and the pattern that showed two" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Six keys, and the pattern that showed two" "_tombstone" false "frame" #afield/rect [40.0 40.0 760.0 520.0] "preamble" "" "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_before_after_code_.kt" "lines" 69 "characters" 3492 "sha256" "8825e27eafc628a115c08c61f3476052adaf98d21ce04f0d01ef47bde273f076"}]}
+{"id" "kf_before_after" "index" 2 "name" "1 - Six keys, and the pattern that showed two" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Six keys, and the pattern that showed two" "_tombstone" false "frame" #afield/rect [40.0 40.0 760.0 520.0] "preamble" "" "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_before_after_code_.kt" "lines" 69 "characters" 3492 "sha256" "8825e27eafc628a115c08c61f3476052adaf98d21ce04f0d01ef47bde273f076"}]}
 ```
 
 ```kotlin [field-property box="kf_before_after" name="code" path="kf_before_after_code_.kt"]

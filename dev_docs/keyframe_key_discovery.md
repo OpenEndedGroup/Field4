@@ -1,8 +1,8 @@
 # The keyframe browser could not show you your own keys
 
-A note on a discovery failure, what caused it, and the four changes that answer it. The loadable
+A note on a discovery failure, what caused it, and the five changes that answer it. The loadable
 version is [`dev_docs/agents/demos/keyframe_key_discovery/`](agents/demos/keyframe_key_discovery/) —
-open its `metadata.edn` and run the two boxes.
+open its `metadata.edn` and run the three boxes.
 
 ## The evidence
 
@@ -157,13 +157,48 @@ directly — that a stray JSON file and a non-JSON blob both land in `problems`.
 into its KDoc. A companion, `damageAndJunkInOneDirectoryReadDifferently`, puts all three kinds in one
 directory, because the value of the split is precisely that they coexist and read differently.
 
+## 5. The disagreement that was silent in one direction
+
+`scopeSlots` has always drawn one half of a scope/file mismatch: a slot the scope watches that no key
+holds, the amber "you have never saved this" row. Its mirror image was invisible. A slot a *key*
+holds that the scope no longer watches rendered as an ordinary row, with its real saved range across
+every key — and `KeyframeScope.loadKey` is explicit about what happens next: "a file whose values
+have since left the scope loads fine — the extra names simply have nowhere to go on apply."
+
+**So a rename half-done looked exactly like a working slot, and Apply quietly dropped it.**
+`SlotSummary.orphaned` now marks it, `KeyframeCollection.orphanedSlots` counts and names it, and the
+row is struck through rather than recoloured — the two existing amber classes mean "look at this
+value", and this is a claim about the *wiring*, not the value.
+
+The load-bearing part is `KeyframeCollection.scopeAttached`, which is **not** the same question as
+`scopeSlots.isEmpty()`. A read-only browse has no opinion about which slots are live; an attached
+scope watching nothing has a very strong one. Both leave `scopeSlots` empty. Without a separate flag
+the marker must either stay silent in the case that matters or accuse every row of every read-only
+browse — and a viewer opened without a scope is the common case, so that second failure would have
+been the loud one. `aReadOnlyBrowseNeverClaimsASlotIsDisconnected` pins both directions.
+
+Card order is a decision too, and it is asserted: the discovery notice renders above the orphan
+notice, because "you cannot see four of your keys" outranks "one slot you can see is unwired", and
+the top card is the one that gets read.
+
+## A test that went vacuous while I watched
+
+Worth recording, because it is the failure mode this repo keeps writing down. The UI regression read
+its header line with `doc.querySelector(".kb-notice")`. That was correct with one notice card. Adding
+the orphan card gave it a *first* match that was a different card, and the assertion about hidden keys
+silently started answering a question about orphaned slots — it failed loudly only by luck, because
+the new card happened to render first. A first-match DOM read is a positional check, and positional
+checks go vacuous on a reorder. It now joins the text of *every* `.kb-notice` and separately pins
+their order.
+
 ## Not done
 
 - **`slotHistory` has no surface for a long history.** One live directory has nine saves of `d`; the
   version rail is reached per slot per file, which is right, but nothing summarises "you have saved
-  this nine times and the last three did not move".
-- **A scope slot and a file slot can still disagree quietly** in one direction: `scopeSlots` marks a
-  slot the scope watches and no file holds, but a file holding a slot the *scope* no longer watches is
-  shown as an ordinary row. It applies to nowhere.
+  this seven times and the last three did not move it". (Counted: that directory holds seven numbered
+  snapshots and a manifest listing seven rows — the brief's "nine entries" is `ls -la` including `.`
+  and `..`.)
+- The `HIDDEN_SCAN_BUDGET` truncation path — `skipSurveyTruncated`, and the "at least N" wording it
+  turns on — has no test. It needs a directory of more than 512 files.
 - The `Hidden` survey does not distinguish a key hidden by the pattern from one hidden by the
   `.versions` exclusion, because the second is never a mistake.

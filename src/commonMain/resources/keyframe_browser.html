@@ -298,6 +298,16 @@
         .kb-name.kb-scope-only,
         .kb-name.kb-mixed { color: #f0b866; }
 
+        /* A saved slot the scope no longer watches. Struck through rather than recoloured: the two
+           amber classes above mean "look at this", and this one means "this is not connected to
+           anything" — a different claim, and one a colour alone reads as a warning about the value
+           rather than about the wiring. */
+        .kb-name.kb-orphan {
+            color: var(--kb-muted);
+            text-decoration: line-through;
+            text-decoration-thickness: 1px;
+        }
+
         .kb-type,
         .kb-count {
             font-size: 9.8px;
@@ -981,6 +991,19 @@ keyframeBrowser("looks", scope = myScope)</pre>
                 `</div>`);
         }
 
+        // Saved slots that no longer go anywhere. Separate from the skip notice because this is not
+        // about discovery at all: every one of these rows IS shown, and shown with its real range,
+        // which is exactly why the disconnection needed saying out loud.
+        if (c.orphanedSlots && c.orphanedSlots.length) {
+            const n = c.orphanedSlots.length;
+            parts.push(`<div class="kb-notice" title="${esc(c.orphanedSlots.join("\n"))}">` +
+                `<span>${n} saved ${n === 1 ? "slot" : "slots"} the live scope no longer ` +
+                `${n === 1 ? "watches" : "watch"}: <span class="kb-mono">` +
+                `${esc(c.orphanedSlots.slice(0, 4).join(", "))}` +
+                `${n > 4 ? ", \u2026" : ""}</span> \u2014 Apply drops ` +
+                `${n === 1 ? "it" : "them"}</span></div>`);
+        }
+
         if (!c.fileCount) {
             // Two different empty states. An empty directory needs a save; a directory full of keys
             // your glob cannot see needs a wider glob, and saying "save one" there is a lie that
@@ -1049,12 +1072,18 @@ keyframeBrowser("looks", scope = myScope)</pre>
 
         c.slots.forEach((slot) => {
             const isOpen = openSlot === slot.name;
+            // `kb-orphan` is checked last of the three so a slot that is both mixed-type and
+            // orphaned still reports the type problem, which is the more actionable of the two.
             const nameCls = slot.kind === "absent" && slot.inScope ? " kb-scope-only"
-                : slot.kind === "mixed" ? " kb-mixed" : "";
+                : slot.kind === "mixed" ? " kb-mixed"
+                : slot.orphaned ? " kb-orphan" : "";
             const countCls = slot.presentIn === 0 ? " kb-none"
                 : slot.presentIn < slot.total ? " kb-partial" : "";
             parts.push(`<div class="kb-row${isOpen ? " kb-open" : ""}" data-slot="${esc(slot.name)}">`);
-            parts.push(`<span class="kb-name${nameCls}" title="${esc(slot.name)}">${esc(slot.name)}</span>`);
+            const nameTitle = slot.orphaned
+                ? `${slot.name}\nsaved here, but the live scope does not watch it \u2014 Apply drops this value`
+                : slot.name;
+            parts.push(`<span class="kb-name${nameCls}" title="${esc(nameTitle)}">${esc(slot.name)}</span>`);
             parts.push(`<span class="kb-type">${esc(slot.typeLabel)}</span>`);
             parts.push(`<span class="kb-count${countCls}">${slot.presentIn}/${slot.total}</span>`);
             parts.push(`<span>${displayHtml(slot)}</span>`);

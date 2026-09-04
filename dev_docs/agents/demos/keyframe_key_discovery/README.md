@@ -1,7 +1,7 @@
 # Six keys — a document you can open
 
 Open `metadata.edn` in Field (**File ▸ Open**, or `./field.sh <path to this folder>/metadata.edn`)
-and run the two boxes. No GPU, no window, no sidecar: a `KeyframeScope` needs none of them, and each
+and run the three boxes. No GPU, no window, no sidecar: a `KeyframeScope` needs none of them, and each
 box writes its key directory into a fresh temp dir, so nothing lands in this document or in your
 workspace.
 
@@ -21,8 +21,11 @@ said that switching between them had traded four keys for two.
 | --- | --- | --- |
 | **1 — six keys, and the pattern that showed two** | six keys named `a b c d d2 d3` plus the `.DS_Store` macOS leaves behind, browsed twice in one box | the **top** panel is `pattern = "??"`: two keys, and now a line saying *"4 more keys here are hidden by this pattern · 1 file ignored"* with a **show every key** button that widens it in one click. The **bottom** panel is the default: six keys, with the `.DS_Store` counted as *ignored* rather than reported as an error |
 | **2 — junk is not damage** | four good keys, two files that were never keys, and one key Field wrote and then truncated | exactly **one** red row. What tells the truncated key apart from the junk is not its bytes — it is unparseable either way — but the `.versions` directory still beside it, which is both the proof Field wrote it and the thing you now want |
+| **3 — a saved slot that applies to nowhere** | three keys saved back when the pass had a `blur`; the scope today watches `radius` and a `feather` nothing has ever saved | three rows, three states. `glow@feather` is the amber *never saved* row the browser already had. `glow@blur` is saved in all three keys, draws its real range, and is watched by nothing — so it is **struck through** and named in the header as one Apply would drop. `glow@radius` is plain |
 
-Box 1 is the before/after. Box 2 is why the split earns its keep: before it, a `.DS_Store` in a
+Box 1 is the before/after. Box 3 is the one to read twice: the browser had always drawn *one* half
+of a scope/file disagreement — the slot the scope watches that no key holds — and the other half was
+silent, rendering as an ordinary working row. Box 2 is why the junk/damage split earns its keep: before it, a `.DS_Store` in a
 directory where nothing was wrong produced a red row indistinguishable from a corrupt key, in every
 key directory a Finder window had ever opened. A permanent false alarm teaches you to stop reading
 the alarm.

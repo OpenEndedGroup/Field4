@@ -2,6 +2,7 @@ package afield.server
 
 import afield.stdlib.KeyframeScope
 import afield.stdlib.everyKeyGlob
+import afield.four.buffers.Structure
 import afield.four.util.CameraPose
 import afield.stdlib.linalg.Quaternionf
 import afield.stdlib.linalg.Vector3f
@@ -357,6 +358,39 @@ class KeyframeBrowserProtocolTest {
             wide["skipped"]!!.jsonArray.count { it.jsonObject["kind"]!!.jsonPrimitive.content == "Hidden" },
             "nothing is hidden once the pattern is everything"
         )
+    }
+
+    /**
+     * The orphan account on the wire, so the iframe can draw it without recomputing it.
+     *
+     * A read-only browse must send an empty list rather than every slot it holds: with no scope
+     * there is no disagreement to report, and claiming one on every row would be a false alarm in
+     * exactly the place a viewer is most often opened.
+     */
+    @Test
+    fun openCarriesTheSlotsTheScopeNoLongerWatches() {
+        val dir = tempDir()
+        save(dir, "a", "glow@radius" to 1f, "glow@blur" to 4f)
+
+        val glow = Structure()
+        glow.bind("radius") { 3f }
+        val scope = KeyframeScope()
+        scope.target("glow@radius", glow)
+
+        val withScope = reply(dir, "open", scope = scope, pattern = everyKeyGlob)
+        assertTrue(withScope["hasScope"]!!.jsonPrimitive.boolean)
+        assertEquals(listOf("glow@blur"), strings(withScope, "orphanedSlots"))
+        assertEquals(
+            listOf(true),
+            withScope["slots"]!!.jsonArray
+                .filter { it.jsonObject["name"]!!.jsonPrimitive.content == "glow@blur" }
+                .map { it.jsonObject["orphaned"]!!.jsonPrimitive.boolean },
+            "the row itself carries the flag, keyed by name rather than by column position"
+        )
+
+        val readOnly = reply(dir, "open", pattern = everyKeyGlob)
+        assertFalse(readOnly["hasScope"]!!.jsonPrimitive.boolean)
+        assertEquals(emptyList(), strings(readOnly, "orphanedSlots"), "no scope, no accusation")
     }
 
     /** An unknown token is an error, not an empty collection that reads as "you have saved nothing". */
