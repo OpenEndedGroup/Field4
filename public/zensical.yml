@@ -75,6 +75,12 @@ nav:
     # sizing: that page tells a `three` caller which knob to turn, this one is the measurement
     # contract itself, read by whoever is about to emit a new kind of output.
     - Output Panel Sizing: output_panel_sizing.md
+    # After the two runtime-contract pages and before the build one, because it is the artifact
+    # boundary between them: the format `SavingContext.save` writes and the loader reads back. Not
+    # under Reference for the same reason as its neighbours — nothing generates it — and it stays in
+    # `public/docs` with a producer that survives here: its figure is emitted by
+    # `examples.document-on-disk.smoke`, which asserts the page still carries it verbatim.
+    - What a Document Is on Disk: document_on_disk.md
     - Building & Testing: building_and_testing.md
   - Staging area:
     - Staging Overview: staging.md
