@@ -30,4 +30,4 @@ guard="$repo_root/tools/check_staged_generated_artifacts.py"
 # in which case there is no "what just arrived" to speak of.
 git rev-parse --verify --quiet ORIG_HEAD >/dev/null 2>&1 || exit 0
 
-python3 "$guard" --since ORIG_HEAD || true
+uv run --project "$repo_root" --frozen python "$guard" --since ORIG_HEAD || true

@@ -1530,10 +1530,15 @@ def run_one_test(
                 f"{test_id}: runner watchdog fired after {duration_ms / 1000.0:.1f}s "
                 f"(outer limit {outer_timeout:.0f}s); {completed_text}"
             )
+        result["failureKind"] = "test" if failures else None
     except RunnerError as exc:
         failures = [str(exc)]
         result["backdoorResults"] = []
         result["backdoorResult"] = None
+        # No parseable transport result means the test's assertions never ran. It still fails the
+        # catalog, but keeping it distinct prevents one server stall from masquerading as N product
+        # regressions in the machine-readable summary.
+        result["failureKind"] = "infrastructure"
 
     result["ok"] = not failures
     result["failures"] = failures
@@ -1774,6 +1779,12 @@ def run(args: argparse.Namespace) -> int:
         "selectedCount": len(tests),
         "passed": passed,
         "failed": failed,
+        "failureKinds": {
+            "test": sum(1 for result in results if result.get("failureKind") == "test"),
+            "infrastructure": sum(
+                1 for result in results if result.get("failureKind") == "infrastructure"
+            ),
+        },
         "skippedCount": len(skipped),
         "skipped": [
             {"id": t.get("id"), "reason": f"skipOn {platform_skip_reason(t)} on {sys.platform}"}
@@ -1798,6 +1809,12 @@ def run(args: argparse.Namespace) -> int:
     else:
         skip_note = f", {len(skipped)} skipped" if skipped else ""
         print(f"Summary: {passed} passed, {failed} failed{skip_note}")
+        if failed:
+            kinds = report["failureKinds"]
+            print(
+                "Failure kinds: "
+                f"{kinds['test']} test/assertion, {kinds['infrastructure']} infrastructure/transport"
+            )
         print(f"Results: {results_path}")
 
     return 0 if failed == 0 else 1

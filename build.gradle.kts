@@ -1147,6 +1147,19 @@ tasks {
 tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     jvmArgs(vectorizationJvmArgs)
 
+    // Rendering a MIDI sequence to audio offline needs `com.sun.media.sound.AudioSynthesizer`, the
+    // internal interface that `MidiSystem.getSynthesizer()` actually returns. It is what exposes
+    // `openStream`, and `openStream` is the only way to pull Gervill's output faster than real time
+    // — every public alternative writes to an audio line and cannot be captured headlessly.
+    // `java.desktop` does not export that package, so without this flag the call fails at invoke
+    // time with IllegalAccessException, and `MidiRoundTripTest` skips its audio assertions.
+    //
+    // Test-only on purpose. `requiredRunJvmArgs()` deliberately does not get this: the shipping
+    // application has no reason to render MIDI to a file, and `renderToWav` checks
+    // `midiRenderUnavailableReason()` and degrades with a stated reason rather than throwing, so a
+    // JVM launched without the flag still behaves correctly.
+    jvmArgs("--add-exports=java.desktop/com.sun.media.sound=ALL-UNNAMED")
+
     // Gradle gives a test worker 512m by default, and that is not enough to hold a ClassGraph scan of
     // Field's classpath. Both of PropMacroRegressionTest's cases were failing with
     // `ClassGraphException … Caused by: OutOfMemoryError` rather than with an assertion — a uniform
@@ -1336,17 +1349,20 @@ val expectedFailureTests = tasks.register<org.gradle.api.tasks.testing.Test>("ex
     shouldRunAfter(jvmTestTask)
 }
 
+val rootPythonCommand = listOf("uv", "run", "--project", ".", "--frozen", "python")
+
 val checkExpectedTestFailures = tasks.register<Exec>("checkExpectedTestFailures") {
     group = "verification"
     description = "Fails when a registered JVM test passes/disappears or an unregistered test enters the expected-failure task."
     dependsOn(expectedFailureTests)
     workingDir = rootDir
     commandLine(
-        "python3",
+        rootPythonCommand + listOf(
         "tools/check_expected_test_failures.py",
         "--registry", expectedTestFailureRegistry.absolutePath,
         "--results", layout.buildDirectory.dir("test-results/expectedFailureTests").get().asFile.absolutePath,
         "--root", rootDir.absolutePath,
+        )
     )
 }
 
@@ -1402,6 +1418,15 @@ val citationGuardTestClasses = listOf(
 // classpath. citationGates declares those non-classpath inputs below and is attached to `check`, so run
 // the contract tests there exactly once instead of making every docs edit rerun the entire JVM suite.
 jvmTestTask.configure {
+    // A substantial set of ordinary tests reads published Markdown directly. Without declaring it,
+    // a docs-only edit can inherit an UP-TO-DATE jvmTest result and make `check` look green without
+    // re-reading the page. This deliberately prefers a slower honest check over stale evidence.
+    inputs.files(fileTree("public/docs") { include("**/*.md") })
+        .withPropertyName("publishedDocsReadByJvmTests")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file("public/docs/assets/afield_four_graphics/00-traditional-triangle.png")
+        .withPropertyName("nativeCaptureOrientationWitness")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
     filter {
         citationGuardTestClasses.forEach(::excludeTestsMatching)
     }
@@ -1835,7 +1860,7 @@ tasks.register<Exec>("fieldAudioDocsCheck") {
     description = "Checks Field's committed Field Audio reference against the pinned submodule."
     dependsOn(fieldAudioContractCheck)
     workingDir = rootDir
-    commandLine("python3", "tools/sync_field_audio_docs.py", "--check")
+    commandLine(rootPythonCommand + listOf("tools/sync_field_audio_docs.py", "--check"))
     requireFieldAudioCheckout()
 }
 
@@ -1843,7 +1868,7 @@ tasks.register<Exec>("fieldAudioDocsRefresh") {
     group = "documentation"
     description = "Explicitly refreshes Field's committed reference from the pinned service checkout."
     workingDir = rootDir
-    commandLine("python3", "tools/sync_field_audio_docs.py")
+    commandLine(rootPythonCommand + listOf("tools/sync_field_audio_docs.py"))
     requireFieldAudioCheckout()
 }
 
@@ -1884,6 +1909,13 @@ tasks.named("check") {
     dependsOn("checkAgentDemos")
     dependsOn(checkExpectedTestFailures)
     dependsOn(citationGates)
+}
+
+tasks.register("certify") {
+    group = "verification"
+    description = "Runs the complete check graph and continues after failures so independent gate results are visible."
+    dependsOn("check")
+    gradle.startParameter.setContinueOnFailure(true)
 }
 
 // These documentation gates are attached to `check` with no ordering constraint, which means Gradle is free

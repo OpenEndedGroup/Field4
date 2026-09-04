@@ -640,19 +640,55 @@ object KotlinSourcePartition {
          *
          * An annotation whose argument list runs over several lines is part of the run too — see
          * [multiLineAnnotationEnd], which is what lets the scan step over it.
+         *
+         * So is a `//` comment sitting *inside* the run, between an annotation and the keyword it
+         * belongs to — see [lineCommentRunEnd]. Such a comment explains the declaration underneath it
+         * (in the two places the repository does this it explains the *name*: why `@Test` below is not
+         * backtick-quoted, and why an `FLine` carries the serializer it does), so the annotations above
+         * it belong to the same declaration and not to a fragment of their own. Only a blank line
+         * breaks the run; a comment is the author still talking about the same thing. Requiring a
+         * prefix line first is what keeps this from turning every comment in the file into the start
+         * of a declaration — a comment run reached with nothing above it is a [Kind.COMMENT] span, and
+         * [build] has already claimed it by the time this is asked.
          */
         fun headAt(index: Int, hi: Int): Head? {
             var scan = index
+            var sawPrefix = false
             while (scan < hi) {
                 if (isPrefixOnlyLine(scan)) {
+                    sawPrefix = true
                     scan++
                     continue
+                }
+                if (sawPrefix) {
+                    val afterComment = lineCommentRunEnd(scan, hi)
+                    if (afterComment != null) {
+                        scan = afterComment
+                        continue
+                    }
                 }
                 scan = multiLineAnnotationEnd(scan, hi) ?: break
             }
             if (scan >= hi) return null
             val decl = recognize(masked.code[scan]) ?: return null
             return Head(firstLine = index, keywordLine = scan, decl = decl)
+        }
+
+        /**
+         * The line after the run of `//`-comment lines starting at [index], or null when [index] is not
+         * one.
+         *
+         * Deliberately blind to block comments and KDoc. A `/** … */` between an annotation and its
+         * declaration is a different thing — [KDocAttachmentGuard] has an opinion about where a KDoc
+         * may sit, and quietly absorbing one into a declaration span would hide the case it exists to
+         * find. Neither shape occurs in the repository today; only the `//` one does.
+         */
+        fun lineCommentRunEnd(index: Int, hi: Int): Int? {
+            if (masked.blockEnd[index] >= index) return null
+            if (!masked.lineComment[index]) return null
+            var last = index
+            while (last + 1 < hi && masked.lineComment[last + 1]) last++
+            return last + 1
         }
 
         /** A non-blank line carrying only annotations and/or modifiers — no declaration keyword. */

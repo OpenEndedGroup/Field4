@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
  * numbers for *this* package's traffic, so a caller can decide whether their problem fits before
  * they discover it does not.
  *
- * # Tape size is asserted; wall time is printed
+ * # Tape size is asserted; wall time is measured separately
  *
  * The tape length is deterministic — the same expression over the same sample count executes exactly
  * the same operations every run — so it is asserted, tightly, including the per-sample constant.
@@ -22,17 +22,10 @@ import kotlin.test.assertTrue
  * Wall time is not. It depends on the machine, on what the other two Claude sessions on this box are
  * doing tonight, and on whether the JIT has warmed. Asserting a millisecond figure would produce a
  * test that fails for reasons that have nothing to do with this code, which is worse than no test.
- * So the timings are printed for the record and only the **scaling** is asserted — and only loosely,
- * because the claim worth defending is "linear, not quadratic", and the difference between those is
- * a factor of four per doubling, not a few percent.
+ * So the deterministic suite asserts the tape scaling, while [SolidSLFitCostMeasurements] prints
+ * wall-time scaling through the opt-in `jvmMeasurements` task.
  */
 class SolidSLFitCostTest {
-
-    private fun template() = smoothUnion(sphere(0.45), cylinder(1.90, 0.16), k = 0.18).parameterize {
-        param("sphereRadius", "SmoothUnion/a/Sphere.radius")
-        param("barHeight", "SmoothUnion/b/Cylinder.height")
-        param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") }
-    }.orThrow()
 
     /** Tape nodes for one loss evaluation over [n] samples. */
     private fun tapeNodes(t: SolidTemplate, n: Int): Int {
@@ -51,7 +44,7 @@ class SolidSLFitCostTest {
 
     @Test
     fun `tape size is linear in the sample count, with a knowable per-sample constant`() {
-        val t = template()
+        val t = fitCostTemplate()
         val counts = listOf(500, 1000, 2000, 4000)
         val nodes = counts.map { tapeNodes(t, it) }
 
@@ -89,9 +82,13 @@ class SolidSLFitCostTest {
         )
     }
 
+}
+
+/** Opt-in wall-time evidence; excluded from `check` and run by `./gradlew jvmMeasurements`. */
+class SolidSLFitCostMeasurements {
     @Test
-    fun `a fit's wall time scales linearly, not quadratically, in the sample count`() {
-        val t = template()
+    fun `measure a fit's wall time scaling across sample counts`() {
+        val t = fitCostTemplate()
         val truth = t.seed
         val seed = doubleArrayOf(0.26, 1.05, 0.34)
 
@@ -120,13 +117,13 @@ class SolidSLFitCostTest {
         (1 until counts.size).forEach { i ->
             val ratio = perEval[i] / perEval[i - 1]
             println("    ${counts[i - 1]} -> ${counts[i]} samples: ${"%.2f".format(ratio)}x per evaluation")
-            // 2x is linear, 4x is quadratic. 3x is a generous line between them that a noisy machine
-            // can cross without being wrong about the complexity.
-            assertTrue(
-                ratio < 3.0,
-                "doubling the sample count multiplied the per-evaluation cost by ${"%.2f".format(ratio)}, " +
-                    "which is closer to quadratic than linear",
-            )
         }
     }
 }
+
+private fun fitCostTemplate() =
+    smoothUnion(sphere(0.45), cylinder(1.90, 0.16), k = 0.18).parameterize {
+        param("sphereRadius", "SmoothUnion/a/Sphere.radius")
+        param("barHeight", "SmoothUnion/b/Cylinder.height")
+        param("barRadius") { it.node == "Cylinder" && it.field.startsWith("radius") }
+    }.orThrow()

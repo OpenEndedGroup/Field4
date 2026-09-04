@@ -916,7 +916,7 @@ object StdlibReferenceGenerator {
      * KDoc *inside* its rendered signature, and a long one is then truncated mid-comment with no
      * closing bracket. `AudioVisualizerSource` shipped in exactly that state.
      */
-    private fun signatureAt(lines: List<String>, line: Int, kind: String): String {
+    internal fun signatureAt(lines: List<String>, line: Int, kind: String): String {
         if (line - 1 !in lines.indices) return ""
         // A typealias *is* its right-hand side, so `=` opens the interesting part rather than ending
         // the header. Everywhere else `=` starts an initializer or expression body and is the stop.
@@ -927,6 +927,9 @@ object StdlibReferenceGenerator {
         var done = false
         var codeLines = 0
         var inBlockComment = false
+        // Only a raw literal can still be open at a line break, so it is the only literal state
+        // carried between lines; [literalEnd] closes the others within the line that opens them.
+        var inRawString = false
         while (index < lines.size && !done && codeLines < MAX_SIGNATURE_LINES) {
             val raw = lines[index]
             var i = 0
@@ -934,6 +937,15 @@ object StdlibReferenceGenerator {
             while (i < raw.length) {
                 val ch = raw[i]
                 val previous = raw.getOrNull(i - 1)
+                if (inRawString) {
+                    val close = raw.indexOf("\"\"\"", i)
+                    val stop = if (close < 0) raw.length else close + 3
+                    builder.append(raw, i, stop)
+                    contributed = true
+                    inRawString = close < 0
+                    i = stop
+                    continue
+                }
                 if (inBlockComment) {
                     if (ch == '*' && raw.getOrNull(i + 1) == '/') {
                         inBlockComment = false
@@ -944,6 +956,19 @@ object StdlibReferenceGenerator {
                     continue
                 }
                 when {
+                    // A literal is copied through verbatim before either comment rule can look
+                    // at it: a default value's own text is not code, and reading it as code is
+                    // what published a truncated glob for a default whose real value was a
+                    // recursive json glob. See [literalEnd].
+                    ch == '"' || ch == '\'' -> {
+                        val end = literalEnd(raw, i)
+                        val stop = if (end < 0) raw.length else end
+                        builder.append(raw, i, stop)
+                        contributed = true
+                        inRawString = end < 0
+                        i = stop
+                        continue
+                    }
                     ch == '/' && raw.getOrNull(i + 1) == '/' -> { i = raw.length; continue }
                     // Kotlin block comments nest, but a nested one inside a *signature* is not a
                     // thing that happens; the flat scan is enough and cannot run away.
@@ -976,6 +1001,38 @@ object StdlibReferenceGenerator {
             }
         }
         return tidySignature(builder.toString())
+    }
+
+    /**
+     * The index just past the string or character literal that starts at [start] in [line], or `-1`
+     * when a raw `"""` literal is still open at the end of the line.
+     *
+     * [signatureAt] has to know where literals are before it can recognise a comment, because a
+     * default value can spell a comment marker inside a string. The glob default of
+     * [afield.stdlib.keyFilesMatching] did exactly that: a recursive wildcard followed by a slash
+     * and a second wildcard opens a block comment as far as a scan that does not know it is inside
+     * a string, and the published signature lost the rest of the default silently — it advertised a
+     * glob the code does not have. A default URL spells the line-comment marker the same way.
+     *
+     * Escapes are honoured, so a literal whose last character is an escaped quote does not close
+     * early. An unterminated `'` is treated as an ordinary character rather than swallowing the
+     * line, since a lone quote is far likelier to be broken input than a real char literal.
+     */
+    private fun literalEnd(line: String, start: Int): Int {
+        if (line.startsWith("\"\"\"", start)) {
+            val close = line.indexOf("\"\"\"", start + 3)
+            return if (close < 0) -1 else close + 3
+        }
+        val quote = line[start]
+        var i = start + 1
+        while (i < line.length) {
+            when {
+                line[i] == '\\' -> i += 2
+                line[i] == quote -> return i + 1
+                else -> i++
+            }
+        }
+        return if (quote == '\'') start + 1 else line.length
     }
 
     private const val MAX_SIGNATURE_LINES = 40
@@ -1036,14 +1093,48 @@ object StdlibReferenceGenerator {
 
     private val LEADING_ANNOTATION = Regex("""^@\w[\w.]*\s*(\([^)]*\))?\s*""")
 
+    /**
+     * [transform] applied to every stretch of [signature] that is *not* inside a string or
+     * character literal, with the literals copied through verbatim.
+     *
+     * The rewrites in [tidySignature] are about the *shape* of a declaration — collapsing the runs
+     * of whitespace a multi-line header leaves behind, closing up the space after an open bracket.
+     * A default value that happens to contain those same spellings is not that shape, and rewriting
+     * it changes what the page says the code does: `prefix: String = "( "` published as `"("` is a
+     * different default. Same argument as [literalEnd], one layer later.
+     */
+    private fun outsideLiterals(signature: String, transform: (String) -> String): String {
+        val out = StringBuilder(signature.length)
+        val plain = StringBuilder()
+        var i = 0
+        while (i < signature.length) {
+            val ch = signature[i]
+            if (ch == '"' || ch == '\'') {
+                val end = literalEnd(signature, i)
+                val stop = if (end < 0) signature.length else end
+                out.append(transform(plain.toString()))
+                plain.setLength(0)
+                out.append(signature, i, stop)
+                i = stop
+            } else {
+                plain.append(ch)
+                i++
+            }
+        }
+        out.append(transform(plain.toString()))
+        return out.toString()
+    }
+
     private fun tidySignature(raw: String): String {
-        var s = raw.replace(Regex("\\s+"), " ").trim()
+        var s = outsideLiterals(raw) { it.replace(Regex("\\s+"), " ") }.trim()
         while (true) {
             val m = LEADING_ANNOTATION.find(s) ?: break
             if (m.range.first != 0) break
             s = s.substring(m.range.last + 1).trimStart()
         }
-        s = s.replace("( ", "(").replace(" )", ")").replace(" ,", ",").replace(",)", ")")
+        s = outsideLiterals(s) {
+            it.replace("( ", "(").replace(" )", ")").replace(" ,", ",").replace(",)", ")")
+        }
         // `val x: Int get() = …` stops at the `=`, leaving a dangling accessor: it is not part of
         // the declaration a caller writes.
         s = s.removeSuffix("get()").trimEnd()

@@ -513,7 +513,7 @@ Field's, so a version bump that changes anything cannot pass unnoticed:
 | `faust.editor-extension.workout` | the shipped `faust.js` under node against the shipped vocabulary — regions, tokenizer, lexical diagnostics, qualified completion, the line arithmetic from both ends |
 | `faust.box.controls` | the compiler reached from inside a real box, generated controls, offline render into an output area |
 | `faust.box.compile-error` | a bad program's line survives the trip, and the compiler recovers afterwards |
-| `synth.faust.poly` | the polyphonic path, 101 checks: control discovery and its refusal, the onset detector's own sanity, onset timing in samples, pitch in cents, the polyphony-against-monophony spectral proof, a patterned parameter, voice allocation, whether a steal clicks (it does, measurably, and the knob that stops it), how many bytes a block allocates on the audio thread, and the cost curve |
+| `synth.faust.poly` | the polyphonic path, 99 deterministic checks: control discovery and its refusal, the onset detector's own sanity, onset timing in samples, pitch in cents, the polyphony-against-monophony spectral proof, a patterned parameter, voice allocation, whether a steal clicks (it does, measurably, and the knob that stops it), how many bytes a block allocates on the audio thread, and absolute real-time budget checks; relative wall-clock ratios remain diagnostic output |
 
 What none of them covers is the launch itself — a box staying lit while sound comes out of a speaker.
 That is the generic audio return-value path, and it needs an audio device, so it is verified by

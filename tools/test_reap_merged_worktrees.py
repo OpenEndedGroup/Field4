@@ -23,6 +23,12 @@ class ReapMergedWorktreesTests(unittest.TestCase):
         self.assertFalse(branch_is_in_scope("nightly/ci-journal"))
         self.assertFalse(branch_is_in_scope(None))
 
+    def test_completed_mode_is_documented_as_branch_preserving(self) -> None:
+        source = Path("tools/reap_merged_worktrees.py").read_text()
+        self.assertIn("--completed", source)
+        self.assertIn("branches preserved", source)
+        self.assertIn("if not completed:", source)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -193,11 +193,11 @@ guard unescapes it, so FieldML's `\|>` can be cited.
 
 A citation guard proves an anchor exists. It says nothing about the *sentence* around the anchor, and
 the arithmetic in that sentence is the part that rots. `ProseNumeralContractTest` closes that gap for
-the same 30<!--count:guardedCitationPages--> pages `GUARDED_PAGES` already covers — this one among
+the same 31<!--count:guardedCitationPages--> pages `GUARDED_PAGES` already covers — this one among
 them since 2026-08-23, because a page that documents the mechanism and then states three numbers
 derived by it should be the first thing the mechanism checks.
 
-**Eleven of those 30 are under `public/docs` as of 2026-09-04**, and the asymmetry they closed is
+**Eleven of those 31 are under `public/docs` as of 2026-09-04**, and the asymmetry they closed is
 worth naming, because it is the more instructive of the two failures available here. `citationGates` has
 declared `public/docs/**.md` as a task input since 2026-08-19, so a published-page edit has never been
 able to go `UP-TO-DATE` — up-to-date checking was never the gap. `GUARDED_PAGES` was, because it is the
@@ -511,8 +511,15 @@ It depends on all seven generated-artifact gates plus a focused `citationGates` 
 `:allTests` in the way. `citationGates` runs `CitationContractTest`, `SmallLanguageAnatomyTest`,
 `CloseNodeCitationDriftTest`, and the build-wiring regression that pins this dependency. Its filter
 fails when it matches no tests, and it runs after the seven non-test gates so a citation failure cannot
-hide whether those gates ran. It does not alter what `check` does; `check --continue` remains the way
-to run the complete test suite as well.
+hide whether those gates ran. It does not alter what `check` does. For the complete repository use:
+
+```
+./gradlew certify
+```
+
+`certify` runs the existing `check` graph and enables Gradle continuation from the task itself, so a
+caller cannot forget `--continue` and let one failure hide independent gate verdicts. Plain `check`
+retains Gradle's normal fail-fast behavior.
 
 So one command now verifies a citation change at both layers:
 
