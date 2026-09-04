@@ -55,6 +55,10 @@ class RectSLGlslSdfTest {
      * be the point at which `ShaderSPIRVUtils` failed with a bare "Out of stack
      * space." — LWJGL's MemoryStack, not the shader compiler. Keep a scene that
      * crosses that line in the suite so the encoding path cannot regress.
+     *
+     * The compiled size matters too: `Module.createShaderModule` used to stage
+     * the finished SPIR-V on the same stack. The probe fragment below is the
+     * largest shader the live SDF harness actually submits to Vulkan.
      */
     @Test
     fun `a shader larger than the LWJGL memory stack still compiles`() {
@@ -72,6 +76,19 @@ class RectSLGlslSdfTest {
             "rectsl-large.frag", wrapAsFragment(biggest.second.glsl), ShaderKind.FRAGMENT_SHADER
         )
         assertTrue((spirv.bytecode()?.remaining() ?: 0) > 0, "${biggest.first} produced empty SPIR-V")
+
+        val probe = ShaderSPIRVUtils.compileShader(
+            "rectsl-large-probe.frag",
+            RectSLSdfShader.probeFragment(biggest.second),
+            ShaderKind.FRAGMENT_SHADER
+        )
+        val probeBytes = probe.bytecode()?.remaining() ?: 0
+        assertTrue(
+            probeBytes > 64 * 1024,
+            "expected the probe fragment for ${biggest.first} to compile past the 64KB stack " +
+                "limit, so Module.createShaderModule cannot go back to staging SPIR-V there; " +
+                "it was $probeBytes bytes"
+        )
     }
 
     /**
