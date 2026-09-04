@@ -990,7 +990,7 @@ uniform, at a share that stays near a fifth of the sensing run's.
     clipped away. Caught by extracting the last frame and looking at it beside the still — which is the only
     way that class of mistake ever gets caught.
 
-```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/physarum.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="1100" embed=true name="alife-physarum-video" alt="two Physarum populations from the same seed: the sensing one expands into a branching transport network, the blind one into a uniform blob"}
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/physarum.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="7" fps="20" timeout="300" w="1100" embed=true name="alife-physarum-video" alt="two Physarum populations from the same seed: the sensing one expands into a branching transport network, the blind one into a uniform blob"}
 :::static
 :::fold draw both trails on one derived colour range, and measure the share every frame
 // Both panels on ONE derived range, not on each other's maxima: a cell an agent occupies every
