@@ -93,6 +93,17 @@ data class MidiNote(
     val velocity: Int = 100,
     val channel: Int = 0
 ) {
+    // Validated at construction rather than clamped at write time. `toSequence` does coerce, but
+    // silently: an author who computes a velocity of 170 would get 127 in the file and no warning,
+    // and the arithmetic that produced 170 would stay wrong. This caught exactly that mistake in
+    // this file's own piano-roll figure generator, which climbed velocity by 8 per note across 16
+    // notes from a base of 50.
+    init {
+        require(pitch in 0..127) { "MIDI pitch must be 0..127, was $pitch" }
+        require(velocity in 0..127) { "MIDI velocity must be 0..127, was $velocity" }
+        require(channel in 0..15) { "MIDI channel must be 0..15, was $channel" }
+    }
+
     val endBeats: Double get() = startBeats + durationBeats
 
     /** Concert pitch of this note, via the same conversion the rest of the synth package uses. */

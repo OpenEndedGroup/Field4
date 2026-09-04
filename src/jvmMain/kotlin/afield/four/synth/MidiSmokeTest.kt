@@ -46,6 +46,9 @@ object MidiSmokeTest {
             reportDevices()
             testOutputPort()
             reportRendering(dir)
+            // Only when an output directory was named on the command line, so a CI run writes
+            // nothing into the repository. This is the committed figure's generator.
+            if (outputDirectory != null) writeRollFigure(outputDirectory)
             println("Midi smoke tests passed")
             true
         } catch (t: Throwable) {
@@ -153,6 +156,51 @@ object MidiSmokeTest {
             output.noteOff(60)
         }
         println("output port: opened \"${out.name}\" (${out.implementation}), sent a note, closed cleanly")
+    }
+
+    /**
+     * Write the committed piano-roll figure's HTML, through the same `linesToHTML` that
+     * `Box.lines` uses — so the figure is Field's real FLine renderer output and not a
+     * second drawing of the same data.
+     *
+     * The clip is deliberately not uniform: a rising melody over a slower bass line, with
+     * velocities that climb, so that a roll drawn upside down, with x and y swapped, or with
+     * velocity colouring broken is visibly wrong rather than plausibly wrong.
+     */
+    private fun writeRollFigure(dir: File) {
+        val melody = pat("c5 e5 g5 b5 c6 b5 g5 e5").with(sustain(0.8))
+        val bass = pat("c3 c3 g3 g3")
+
+        val clip = MidiClip(
+            tracks = listOf(
+                MidiTrackData(
+                    notes = melody.toMidiClip(cycles = 2, beatsPerCycle = 8).notes
+                        .mapIndexed { i, n -> n.copy(velocity = 48 + i * 5) },
+                    name = "lead"
+                ),
+                MidiTrackData(
+                    notes = bass.toMidiClip(cycles = 2, beatsPerCycle = 8, channel = 1).notes,
+                    name = "bass"
+                )
+            ),
+            tempoMap = listOf(0.0 to 104.0),
+            name = "figure"
+        )
+
+        val lines = clip.toFLines()
+        val html = afield.graphics.linesToHTML(lines, w = 900.0, h = 320.0, fitToSize = true)
+        dir.mkdirs()
+        val out = File(dir, "piano_roll.html")
+        out.writeText(html)
+
+        // Print the geometry the figure claims, so the PNG can be checked against numbers rather
+        // than against an impression.
+        val noteLines = lines.filter { it.properties.containsKey("midi.pitch") }
+        println(
+            "roll figure: ${out.absolutePath} (${out.length()} bytes), " +
+                "${noteLines.size} notes, pitch ${clip.notes.minOf { it.pitch }}..${clip.notes.maxOf { it.pitch }}, " +
+                "beats 0..${clip.durationBeats}, velocity ${clip.notes.minOf { it.velocity }}..${clip.notes.maxOf { it.velocity }}"
+        )
     }
 
     private fun reportRendering(dir: File) {

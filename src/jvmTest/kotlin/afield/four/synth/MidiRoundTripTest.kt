@@ -6,6 +6,7 @@ import kotlin.random.Random
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -277,6 +278,29 @@ class MidiRoundTripTest {
         assertEquals(1, open.channel)
         assertEquals(3.0, open.startBeats, 1e-9)
         assertEquals(1.0, open.durationBeats, 1e-9)
+    }
+
+    @Test
+    fun `an out-of-range note is refused at construction rather than clamped on write`() {
+        // `toSequence` coerces, but silently, so an author whose arithmetic produced 170 would get
+        // 127 in the file and never learn the arithmetic was wrong. That is exactly the mistake this
+        // file's own piano-roll figure generator made. Constructing the note is where it must fail.
+        assertFailsWith<IllegalArgumentException> { MidiNote(60, 0.0, 1.0, velocity = 170) }
+        assertFailsWith<IllegalArgumentException> { MidiNote(60, 0.0, 1.0, velocity = -1) }
+        assertFailsWith<IllegalArgumentException> { MidiNote(pitch = 128, startBeats = 0.0, durationBeats = 1.0) }
+        assertFailsWith<IllegalArgumentException> { MidiNote(pitch = -1, startBeats = 0.0, durationBeats = 1.0) }
+        assertFailsWith<IllegalArgumentException> { MidiNote(60, 0.0, 1.0, channel = 16) }
+
+        // The legal extremes must still be constructible, or the guard is too tight.
+        MidiNote(0, 0.0, 1.0, velocity = 0, channel = 0)
+        MidiNote(127, 0.0, 1.0, velocity = 127, channel = 15)
+
+        // And the message has to name the offending value, since that value is the clue.
+        val message = assertFailsWith<IllegalArgumentException> {
+            MidiNote(60, 0.0, 1.0, velocity = 170)
+        }.message
+        assertNotNull(message)
+        assertTrue("170" in message, "the error should quote the bad value, was: $message")
     }
 
     @Test
