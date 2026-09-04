@@ -1147,6 +1147,19 @@ tasks {
 tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     jvmArgs(vectorizationJvmArgs)
 
+    // Rendering a MIDI sequence to audio offline needs `com.sun.media.sound.AudioSynthesizer`, the
+    // internal interface that `MidiSystem.getSynthesizer()` actually returns. It is what exposes
+    // `openStream`, and `openStream` is the only way to pull Gervill's output faster than real time
+    // — every public alternative writes to an audio line and cannot be captured headlessly.
+    // `java.desktop` does not export that package, so without this flag the call fails at invoke
+    // time with IllegalAccessException, and `MidiRoundTripTest` skips its audio assertions.
+    //
+    // Test-only on purpose. `requiredRunJvmArgs()` deliberately does not get this: the shipping
+    // application has no reason to render MIDI to a file, and `renderToWav` checks
+    // `midiRenderUnavailableReason()` and degrades with a stated reason rather than throwing, so a
+    // JVM launched without the flag still behaves correctly.
+    jvmArgs("--add-exports=java.desktop/com.sun.media.sound=ALL-UNNAMED")
+
     // Gradle gives a test worker 512m by default, and that is not enough to hold a ClassGraph scan of
     // Field's classpath. Both of PropMacroRegressionTest's cases were failing with
     // `ClassGraphException … Caused by: OutOfMemoryError` rather than with an assertion — a uniform

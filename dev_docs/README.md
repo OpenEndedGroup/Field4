@@ -38,6 +38,7 @@ notes. The entries below point to the canonical note for each maintained subsyst
 - [`box_shared_state_races.md`](./box_shared_state_races.md) — current concurrency ownership for box/session collections, remaining ownership gaps, and deterministic regression requirements
 - [`DOCS_IMPROVEMENT_AGENT.md`](./DOCS_IMPROVEMENT_AGENT.md) — the documentation annotation panel and the `codex exec` run behind it: the threat model (Field binds `0.0.0.0` on purpose, so a route that must not be reachable from the network guards itself), the enable/token/working-directory contract, and what is deliberately left unsolved
 - [`field_audio_seam_stub.md`](./field_audio_seam_stub.md) — how the `afield.stdlib.noir.audioai` seam is tested when the Python service it talks to is not installed: the in-process Ktor stub, the protocol facts it takes from the service rather than from the Kotlin, the explicit list of what it deliberately does *not* model, and the defects it found — each quoted with the failure it was seen to produce
+- [`MIDI.md`](./MIDI.md) — the Standard MIDI File surface: why the work was a *lift* rather than a new reader (both directions already ran in production, privately, inside `AbletonSet.kt`), the three time representations and which conversion has to stay an exact rational, the two keys the `Pat` vocabulary does not have and what export reads instead, the measured fact that opening a MIDI input stops the JVM exiting, and why the audio assertion is on peak amplitude and not file size
 
 ## Feature Notes (post-consolidation survivors)
 

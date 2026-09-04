@@ -26,6 +26,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [BooleanNetworkSequencing.kt](../src/jvmMain/kotlin/afield/four/synth/BooleanNetworkSequencing.kt) | Patterns | boolean_network_music_examples | 13 | 19 | 2% |
 | [Protocol.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt) | Audio AI | field_audio_service_reference, audio_ai_analysis, visualizers | 11 | 61 | 73% |
 | [StackSL.kt](../src/jvmMain/kotlin/afield/stacksl/StackSL.kt) | Languages | stacksl_examples | 11 | 44 | 3% |
+| [NanoInterface.kt](../src/jvmMain/kotlin/afield/nano/NanoInterface.kt) | Languages | document_on_disk | 9 | 7 | 15% |
 | [DirtSamples.kt](../src/jvmMain/kotlin/afield/four/synth/DirtSamples.kt) | Audio | boolean_network_music_examples | 8 | 42 | 5% |
 | [ParamQuery.kt](../src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt) | Synthesis | graph_query | 4 | 46 | 8% |
 | [GestureBoard.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoard.kt) | Audio AI | audio_ai_gesture_board | 4 | 5 | 25% |
@@ -105,7 +106,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Filters.kt](../src/jvmMain/kotlin/afield/four/synth/Filters.kt) | Synthesis | — | 11 | 28 | 11% |
 | [units.kt](../src/jvmMain/kotlin/afield/stdlib/units.kt) | Math | — | 11 | 9 | 27% |
 | [ClojureInterface.kt](../src/jvmMain/kotlin/afield/clojure/ClojureInterface.kt) | Languages | — | 10 | 21 | 3% |
-| [NanoInterface.kt](../src/jvmMain/kotlin/afield/nano/NanoInterface.kt) | Languages | — | 9 | 7 | 15% |
 | [Sampling.kt](../src/jvmMain/kotlin/afield/four/synth/Sampling.kt) | Synthesis | — | 7 | 39 | 37% |
 | [AbletonSetDebugDrawing.kt](../src/jvmMain/kotlin/afield/four/synth/AbletonSetDebugDrawing.kt) | Audio | — | 7 | 19 | 0% |
 | [Evaluator.kt](../src/jvmMain/kotlin/afield/ml/core/Evaluator.kt) | Languages | — | 7 | 18 | 0% |
@@ -295,6 +295,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `EField` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:121` |
 | `BinaryOp` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:127` |
 | `EBinary` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:144` |
+| `NanoAssemblyException` | class | `src/jvmMain/kotlin/afield/nano/NanoInterface.kt:568` |
 | `PythonSettingsRequest` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:148` |
 | `PythonSettingsStatus` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:154` |
 | `PythonInstallResult` | class | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:169` |
@@ -327,6 +328,5 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `TcbTrack` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:731` |
 | `LinearScalarTrack` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:819` |
 | `HoldScalarTrack` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:840` |
-| `MappedDoubleTrack` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1018` |
 
 …and **694 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.

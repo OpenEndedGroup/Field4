@@ -201,7 +201,7 @@ The "documented" column is a coverage report on Field's own KDoc, not a claim ab
 | [NanoAssembler.kt](languages.md#nanoassembler-kt) | Languages | 9 | 3 |  |  |
 | [NanoComputeShader.kt](languages.md#nanocomputeshader-kt) | Languages | 8 | 8 |  |  |
 | [NanoDisassembler.kt](languages.md#nanodisassembler-kt) | Languages | 4 | 3 |  |  |
-| [NanoInterface.kt](languages.md#nanointerface-kt) | Languages | 19 | 3 |  |  |
+| [NanoInterface.kt](languages.md#nanointerface-kt) | Languages | 19 | 3 |  | [What a document is on disk](../document_on_disk.md) |
 | [NanoVisualization.kt](languages.md#nanovisualization-kt) | Languages | 21 | 3 |  |  |
 | [NanoVM.kt](languages.md#nanovm-kt) | Languages | 64 | 8 |  |  |
 | [NpyIntTensor.kt](audio-ai.md#npyinttensor-kt) | Audio AI | 6 | 6 | A dependency-free reader for the integer NPY tensors the audio service emits — the codec token grids, in practice. |  |
