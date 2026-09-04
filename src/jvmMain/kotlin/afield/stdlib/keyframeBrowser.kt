@@ -10,6 +10,8 @@ import afield.stdlib.linalg.Vector3f
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.decodeFromJsonElement
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Duration
@@ -74,8 +76,36 @@ private val keyBrowserJson = Json {
 }
 
 /**
+ * The glob that means "every key in this directory and below", and the default wherever a key
+ * collection is opened.
+ *
+ * It is `**` rather than a recursive-json glob, and that correction is the whole point of naming it.
+ * [KeyframeScope.saveKey] writes the path it is *given*, verbatim — it appends no extension — so
+ * `scope.capture().save("d3".path)` produces a file called `d3` with no suffix at all. A default
+ * that demanded a `.json` suffix therefore matched **none** of a directory of keys saved that
+ * ordinary way, and a browser opened on it said "No key files matched" over six perfectly good keys.
+ * The extension only ever appears on the numbered snapshots inside `<file>.versions`, which
+ * [keyFilesMatching] excludes on purpose — so the one place a suffix was guaranteed is the one place
+ * this layer refuses to look.
+ *
+ * Matching everything is affordable because the walk visits every file whatever the pattern is; the
+ * pattern only ever decided which visited paths were *kept*. What matching everything does cost is
+ * junk — a `.DS_Store` sits in any directory a Finder window has ever opened — and that is paid for
+ * by [classifyNonKey], which files an OS turd as *ignored* rather than as a problem.
+ *
+ * Narrowing is still available and now says what it hid: see [KeyframeCollection.skipped].
+ */
+const val everyKeyGlob: String = "**"
+
+/**
  * Every regular file under [root] whose path relative to [root] matches the glob [pattern], sorted
  * by path, **excluding anything inside a `.versions` directory**.
+ *
+ * The pattern is a plain Java glob and gets no preprocessing beyond separator normalization, which
+ * means **brace alternation already works**: `{?,??}` matches `a b c d` *and* `d2 d3`, where neither
+ * `?` (exactly one character) nor `??` (exactly two) can match both. That was measured against
+ * `FileSystems.getDefault().getPathMatcher` before this sentence was written, and it is the reason
+ * no alternation syntax was added here — the expressiveness was never missing, only findable.
  *
  * That exclusion is the whole reason this is not three lines at the call site. A key file's history
  * lives in `<file>.versions/000000.json` beside it, so the obvious recursive-json glob finds every
@@ -88,7 +118,7 @@ private val keyBrowserJson = Json {
  * Unlike `FileManager`'s glob resolution — which is `findFirst` and answers "which file did you
  * mean" — this answers "which files are there", so it returns all of them.
  */
-fun keyFilesMatching(root: Path, pattern: String = "**/*.json"): List<Path> {
+fun keyFilesMatching(root: Path, pattern: String = everyKeyGlob): List<Path> {
     if (!root.exists() || !root.isDirectory()) return emptyList()
     val normalized = pattern.replace('\\', '/')
     val matcher = root.fileSystem.getPathMatcher("glob:$normalized")
@@ -112,6 +142,125 @@ fun keyFilesMatching(root: Path, pattern: String = "**/*.json"): List<Path> {
             .toList()
     }
 }
+
+/**
+ * Why a file under the collection root is not a row in the browser.
+ *
+ * Three reasons, and keeping them apart is the difference between a notice and an alarm. Before this
+ * split there was one list called `problems`, and `.DS_Store` — a file the operating system wrote
+ * without asking, in a directory whose keys are all fine — produced a red row indistinguishable
+ * from a truncated key. A permanent false alarm is worse than no alarm, because it trains you to
+ * stop reading the box it appears in.
+ *
+ * The precedent is [keyFilesMatching]'s `.versions` exclusion: decide deliberately what is not a
+ * key, and write down why.
+ */
+enum class SkipKind {
+    /**
+     * Matched the pattern, is not a key at all, and was never going to be. OS metadata, a README,
+     * an image. Not your problem and not worth a colour.
+     */
+    NotAKey,
+
+    /**
+     * Matched the pattern and *claims* to be a key — it is a JSON object with a `values` member —
+     * but could not be read back. A truncated write, a hand-edit gone wrong, a schema that moved.
+     * This is the row that deserves to be red, and the only kind that reaches
+     * [KeyframeCollection.problems].
+     */
+    Damaged,
+
+    /**
+     * Is a perfectly readable key that the *pattern* excluded. Nothing is wrong with it; you simply
+     * cannot see it.
+     *
+     * This kind exists because of a specific failure. A person browsing six keys named `a b c d d2
+     * d3` tried `pattern = "?"`, saw four, tried `pattern = "??"`, saw two, and stopped — and
+     * nothing anywhere told them that the second pattern had dropped four keys the first one found.
+     * A narrowing that reports what it narrowed away cannot fail that quietly.
+     */
+    Hidden
+}
+
+/** One file under the root that is not a browser row, and the one line explaining that. */
+@Serializable
+data class SkippedFile(
+    /** Path relative to the collection root, `/`-separated. */
+    val relative: String,
+    val kind: SkipKind,
+    /** One human-readable line. Never a stack trace. */
+    val detail: String
+)
+
+/**
+ * Decide which [SkipKind] a non-row file is.
+ *
+ * ## The ownership test comes first, and it is not the file name
+ *
+ * [hasVersionsDir] is whether a `<file>.versions` directory sits beside this file, and it is the
+ * first rung because it is the only *authoritative* one. [KeyframeScope.saveKey] appends a numbered
+ * snapshot on **every** save without exception, so a sibling `.versions` directory means Field wrote
+ * this file as a key. Nothing else in a key directory has one.
+ *
+ * That rung exists because the obvious ladder gets the important case backwards. A truncated key —
+ * a write interrupted halfway — is not valid JSON, so a content-first ladder reaches "not JSON, not
+ * a key" and files real damage as junk. Its `.versions` directory is still there, and still full of
+ * the saves you are about to want, so the file that most needs a red row is exactly the one a
+ * content sniff would have swallowed.
+ *
+ * ## Then the content, for files nobody claims
+ *
+ * With no history beside it, the file has to speak for itself: a dotfile was written by a tool, a
+ * non-JSON blob is somebody else's, JSON with no `values` member is a different format that happens
+ * to share a folder. Only a document that *presents* as a key and then fails to decode is damage.
+ *
+ * [text] is null when the file could not be read at all. Kept `internal` and pure — the one
+ * filesystem question is a parameter — so the ladder can be tested a rung at a time.
+ */
+internal fun classifyNonKey(name: String, text: String?, hasVersionsDir: Boolean): Pair<SkipKind, String> {
+    if (hasVersionsDir) {
+        return SkipKind.Damaged to when {
+            text == null -> "unreadable, but its save history is intact"
+            else -> "damaged key — its save history is intact, so open the version rail"
+        }
+    }
+
+    if (text == null) return SkipKind.NotAKey to "unreadable, and not a key Field wrote"
+
+    // A dotfile with no history beside it was put there by a tool, not by you. `.DS_Store` is the
+    // case that motivated this whole enum; it is checked by name before its bytes because its bytes
+    // are binary and the JSON parser's complaint about them is noise dressed as information.
+    if (name.startsWith(".")) return SkipKind.NotAKey to "hidden file, not a key"
+
+    val element = runCatching { keyBrowserJson.parseToJsonElement(text) }.getOrNull()
+        ?: return SkipKind.NotAKey to "not JSON, not a key"
+
+    val obj = element as? JsonObject
+        ?: return SkipKind.NotAKey to "JSON, but not a key (not an object)"
+
+    if (!obj.containsKey("values")) return SkipKind.NotAKey to "JSON, but not a key (no \"values\")"
+
+    val failure = runCatching { keyBrowserJson.decodeFromJsonElement<KeyDTO>(obj) }.exceptionOrNull()
+        ?: return SkipKind.Damaged to "decoded on the second attempt — please report this"
+    return SkipKind.Damaged to
+        "damaged key (${failure.message?.lineSequence()?.firstOrNull() ?: failure::class.simpleName})"
+}
+
+/** Whether a `<path>.versions` directory sits beside [path] — i.e. whether Field wrote it as a key. */
+private fun hasVersionsDir(path: Path): Boolean =
+    runCatching { path.resolveSibling("${path.name}.versions").isDirectory() }.getOrDefault(false)
+
+/**
+ * How many non-matching files [KeyframeCollection.load] will open to find out whether the pattern is
+ * hiding a key.
+ *
+ * The count only bites when a pattern is *narrow*, because the default [everyKeyGlob] leaves nothing
+ * non-matching to classify — so the extra reads appear exactly when the answer is wanted and vanish
+ * when it is not. The cap is here so that pointing a narrow glob at a directory of ten thousand
+ * files costs a bounded number of opens rather than all of them; past it the collection says the
+ * survey was cut short instead of implying the remainder are fine.
+ */
+private const val HIDDEN_SCAN_BUDGET = 512
 
 /**
  * A save's timestamp as a person reads it: relative while that is the useful thing to know, and an
@@ -194,8 +343,46 @@ class KeyframeCollection(
      * scope has but no file does — the "you have never saved this" row, which is the one thing a
      * collection cannot tell you about itself.
      */
-    val scopeSlots: Set<String> = emptySet()
+    val scopeSlots: Set<String> = emptySet(),
+    /**
+     * Every file under [root] that is not a row here, and why — the browser's account of what it did
+     * *not* show you. See [SkipKind] for the three reasons and [skipSummary] for the one line.
+     *
+     * [problems] is the [SkipKind.Damaged] subset re-rendered as prose, so this list is a superset of
+     * it and the two never disagree.
+     */
+    val skipped: List<SkippedFile> = emptyList(),
+    /**
+     * True when the hidden-key survey stopped at [HIDDEN_SCAN_BUDGET] rather than finishing. The
+     * counts below are then floors, not totals, and [skipSummary] says so — a truncated survey that
+     * reports a total is how an absence gets claimed from a population that was silently redefined.
+     */
+    val skipSurveyTruncated: Boolean = false
 ) {
+    /** Readable keys that the pattern excluded — the count that would have caught the `?`/`??` trap. */
+    val hiddenCount: Int get() = skipped.count { it.kind == SkipKind.Hidden }
+
+    /** Files that were never keys. A notice, not an alarm. */
+    val ignoredCount: Int get() = skipped.count { it.kind == SkipKind.NotAKey }
+
+    /**
+     * One line for what the browser did not show, or null when it showed everything.
+     *
+     * Ordered by what a person can act on: a hidden key is a pattern to widen, an ignored file is
+     * nothing at all. "6 keys, 1 file ignored" beats silence, and "4 more keys here are hidden by
+     * this pattern" beats both.
+     */
+    fun skipSummary(): String? {
+        val parts = mutableListOf<String>()
+        val floor = if (skipSurveyTruncated) "at least " else ""
+        if (hiddenCount > 0) parts += "$floor$hiddenCount more " +
+            (if (hiddenCount == 1) "key here is" else "keys here are") +
+            " hidden by this pattern"
+        if (ignoredCount > 0) parts += "$ignoredCount " +
+            (if (ignoredCount == 1) "file" else "files") + " ignored"
+        return parts.takeIf { it.isNotEmpty() }?.joinToString(" · ")
+    }
+
     /** Every slot name in any file, plus any [scopeSlots] no file has, sorted. */
     val slotNames: List<String> =
         (files.flatMap { it.values.keys } + scopeSlots).distinct().sorted()
@@ -242,13 +429,26 @@ class KeyframeCollection(
          *
          * [scope] is optional and read-only: it is used for [scopeSlots] (via `capture()`, which
          * touches nothing live) so the browser can show a slot the scope watches and no file holds.
+         *
+         * Two things are recorded besides the rows. A matched file that is not a key is classified by
+         * [classifyNonKey] into [SkipKind.NotAKey] or [SkipKind.Damaged], so junk stops being an
+         * error. And when [pattern] is narrower than [everyKeyGlob], the files it excluded are
+         * surveyed too — up to [HIDDEN_SCAN_BUDGET] of them — so the collection can say how many keys
+         * the narrowing hid. Both land in [skipped]; only damage reaches [problems].
          */
         fun load(
             root: Path,
-            pattern: String = "**/*.json",
+            pattern: String = everyKeyGlob,
             scope: KeyframeScope? = null
         ): KeyframeCollection {
             val problems = mutableListOf<String>()
+            val skipped = mutableListOf<SkippedFile>()
+            fun rel(path: Path) = root.relativize(path).toString().replace('\\', '/')
+            fun skip(path: Path, kind: SkipKind, detail: String) {
+                skipped += SkippedFile(rel(path), kind, detail)
+                if (kind == SkipKind.Damaged) problems += "${rel(path)}: $detail"
+            }
+
             val paths = runCatching { keyFilesMatching(root, pattern) }.getOrElse { e ->
                 problems += "could not search $root: ${e.message ?: e::class.simpleName}"
                 emptyList()
@@ -258,29 +458,54 @@ class KeyframeCollection(
             // with no targets and no missingKey defaults adds nothing per file.
             val reader = KeyframeScope()
 
-            val files = paths.mapIndexedNotNull { index, path ->
-                val text = runCatching { Files.readString(path) }.getOrElse { e ->
-                    problems += "${root.relativize(path)}: unreadable (${e.message ?: e::class.simpleName})"
-                    return@mapIndexedNotNull null
-                }
-                val dto = runCatching { keyBrowserJson.decodeFromString<KeyDTO>(text) }.getOrElse { e ->
-                    // Not a key file, or a damaged one. Either way the other files are still fine, and
-                    // saying which one failed is more use than a stack trace over the whole directory.
-                    problems += "${root.relativize(path)}: not a readable key (${e.message?.lineSequence()?.firstOrNull() ?: e::class.simpleName})"
-                    return@mapIndexedNotNull null
+            // Ids are dense over the *rows*, not over the matched paths. That is a change: they used
+            // to be the index into `paths`, so every junk file left a gap and the browser's chips
+            // numbered 1, 2, 4. Under the wider default there is more junk to skip, so the gaps would
+            // have become the common case rather than the odd one.
+            val files = paths.mapNotNull { path ->
+                val text = runCatching { Files.readString(path) }.getOrNull()
+                val dto = text?.let { runCatching { keyBrowserJson.decodeFromString<KeyDTO>(it) }.getOrNull() }
+                if (dto == null) {
+                    // Not a key file, or a damaged one — and which of those it is decides whether this
+                    // gets a colour. The other files are fine either way.
+                    val (kind, detail) = classifyNonKey(path.name, text, hasVersionsDir(path))
+                    skip(path, kind, detail)
+                    return@mapNotNull null
                 }
                 val versions = runCatching { reader.keyVersions(path) }.getOrElse { e ->
-                    problems += "${root.relativize(path)}: version history unreadable (${e.message ?: e::class.simpleName})"
+                    problems += "${rel(path)}: version history unreadable (${e.message ?: e::class.simpleName})"
                     emptyList()
                 }
-                KeyframeFile(
-                    id = index,
+                path to KeyframeFile(
+                    id = -1,
                     path = path,
-                    relative = root.relativize(path).toString().replace('\\', '/'),
+                    relative = rel(path),
                     schemaVersion = dto.schemaVersion,
                     values = dto.values,
                     versions = versions
                 )
+            }.mapIndexed { index, (_, file) -> file.copy(id = index) }
+
+            // What the pattern hid. Only worth asking when the pattern is narrower than "everything",
+            // and only answerable by opening the excluded files — a key has no distinguishing name.
+            var truncated = false
+            if (pattern.replace('\\', '/') != everyKeyGlob) {
+                val matched = paths.toSet()
+                val excluded = runCatching { keyFilesMatching(root, everyKeyGlob) }.getOrDefault(emptyList())
+                    .filter { it !in matched }
+                truncated = excluded.size > HIDDEN_SCAN_BUDGET
+                for (path in excluded.take(HIDDEN_SCAN_BUDGET)) {
+                    val text = runCatching { Files.readString(path) }.getOrNull()
+                    val dto = text?.let { runCatching { keyBrowserJson.decodeFromString<KeyDTO>(it) }.getOrNull() }
+                    // A file Field wrote as a key counts as hidden even if it will not decode: the
+                    // pattern is hiding it either way, and widening is what surfaces the damage. An
+                    // excluded non-key is not news at all.
+                    if (dto != null || hasVersionsDir(path)) {
+                        skipped += SkippedFile(rel(path), SkipKind.Hidden, "a key, excluded by the pattern")
+                    } else {
+                        skipped += SkippedFile(rel(path), SkipKind.NotAKey, "not a key, and excluded by the pattern")
+                    }
+                }
             }
 
             val scopeSlots = scope?.let {
@@ -290,7 +515,11 @@ class KeyframeCollection(
                 }
             } ?: emptySet()
 
-            return KeyframeCollection(root, pattern, files, problems, scopeSlots)
+            return KeyframeCollection(
+                root, pattern, files, problems, scopeSlots,
+                skipped = skipped.sortedWith(compareBy({ it.kind.ordinal }, { it.relative })),
+                skipSurveyTruncated = truncated
+            )
         }
     }
 }

@@ -1178,6 +1178,154 @@ try {
 }
 """
 
+# The keyframe browser's discovery failure, end to end in the real iframe.
+#
+# The names are the ones a live session actually produced: `a b c d d2 d3`, saved with
+# `capture().save("d3".path)`, which writes an *extension-less* file because `saveKey` appends
+# nothing. The old default glob asked for `**/*.json` and so matched none of them; the session then
+# hand-typed `?` (four keys) and `??` (two), and nothing said that the second had dropped four the
+# first had found. This snippet opens the browser at `??` on purpose, so the regression starts from
+# the state that failed.
+KEYFRAME_BROWSER_DISCOVERY_SNIPPET = """\
+import afield.stdlib.KeyframeScope
+import afield.four.buffers.Structure
+import java.nio.file.Files
+
+val dir = Files.createTempDirectory("ui-regression-keyframe-discovery")
+val glow = Structure()
+glow.bind("radius") { 4.0f }
+val kfs = KeyframeScope()
+kfs.target("glow@radius", glow)
+
+listOf("a", "b", "c", "d", "d2", "d3").forEachIndexed { i, name ->
+    glow.bind("radius") { 1f + i * 3f }
+    kfs.capture().save(dir.resolve(name), "look $name")
+}
+// The file macOS leaves in any folder a Finder window has opened. Not a key, and not a problem.
+Files.writeString(dir.resolve(".DS_Store"), "Bud1 (this is not a key)")
+
+keyframeBrowser(dir, pattern = "??", scope = kfs, width = 860, height = 380)
+println("keyframe browser opened on " + dir)
+"""
+
+# Asserts the CELLS -- the key chips inside the iframe -- and not just that a browser appeared. The
+# distinction matters here more than usual: the failure being pinned is a browser that renders
+# perfectly while showing two of your six keys, so "the iframe exists" and "the panel is the right
+# size" are both true in the broken state. The chip *names* are the only thing that separates them,
+# and they are read as a set rather than by position, because a positional column check goes vacuous
+# on a reorder.
+#
+# Then it clicks "show every key" and reads the chips again. That click is the one-action fix for the
+# state the session ended in, so a regression that only checked the notice text would pass with a
+# dead button.
+KEYFRAME_BROWSER_DISCOVERY_JS = r"""
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const errors = [];
+const onError = (event) => errors.push(String(event.error && (event.error.stack || event.error.message) || event.message || event));
+window.addEventListener("error", onError);
+const waitFor = async (predicate, timeoutMs = 12000) => {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const value = predicate();
+    if (value) return value;
+    await delay(100);
+  }
+  return predicate();
+};
+const chips = (doc) => [...doc.querySelectorAll(".kb-chip .kb-mono")]
+  .map((node) => String(node.textContent || "").trim())
+  .filter(Boolean)
+  .sort();
+try {
+  const box = [...document.querySelectorAll(".box")]
+    .find((candidate) => String(candidate.textContent || "").includes("KeyframeBrowserDiscoveryRegression"))
+    || (window.selectedList && window.selectedList[0])
+    || [...document.querySelectorAll(".box")].at(-1);
+  if (!box) return { ok: false, reason: "box not found", errors };
+
+  const outputArea = await waitFor(() => box.querySelector(".outputArea"), 8000);
+  if (outputArea) {
+    outputArea.style.visibility = "visible";
+    outputArea.style.height = "auto";
+  }
+
+  const frame = await waitFor(() => box.querySelector("iframe.field-keyframe-browser"), 15000);
+  if (!frame) return { ok: false, reason: "no keyframe browser iframe in the box output", errors };
+
+  // Same origin, so the browser's own DOM is readable -- the only way to see which keys it drew.
+  const doc = await waitFor(() => frame.contentDocument, 8000);
+  if (!doc) return { ok: false, reason: "iframe document unreachable", errors };
+
+  // The socket has to connect and the open reply has to land before there are any chips at all.
+  await waitFor(() => chips(doc).length ? chips(doc) : null, 20000);
+
+  const narrowChips = chips(doc);
+  const notice = doc.querySelector(".kb-notice");
+  const noticeText = String((notice && notice.innerText) || "");
+  const problems = doc.querySelector(".kb-problems");
+  const button = doc.querySelector("#kb-showall");
+
+  const result = { narrowChips, noticeText: noticeText.slice(0, 200), errors };
+
+  // 1. The narrow pattern really is narrow: two of six, and the two that `??` can match.
+  result.narrowShowsTwo = narrowChips.length === 2 &&
+    narrowChips.join(",") === "d2,d3";
+  // 2. And it SAYS so. This line is the whole fix: silence here is what let four keys vanish.
+  result.noticeCountsHiddenKeys = /4 more keys here are hidden by this pattern/.test(noticeText);
+  // 3. The .DS_Store is counted as ignored, and nothing is red. A permanent false alarm in every
+  //    directory a Finder window has opened is worse than no alarm at all.
+  result.junkIsNotAnAlarm = /1 file ignored/.test(noticeText) && problems === null;
+  // 4. The widen affordance exists.
+  result.offersShowAll = !!button;
+
+  if (button) {
+    button.click();
+    // Six is strictly more than two, so waiting for the count to grow is a real barrier rather
+    // than a sleep.
+    await waitFor(() => (chips(doc).length > narrowChips.length ? chips(doc) : null), 20000);
+  }
+  const wideChips = chips(doc);
+  result.wideChips = wideChips;
+  // 5. One click, every key -- read as a set, so a chip reorder cannot fake this.
+  result.showAllRevealsEveryKey = wideChips.length === 6 &&
+    wideChips.join(",") === "a,b,c,d,d2,d3";
+  // 6. Floor, next to the number: six keys were saved, so fewer than six is the bug returning.
+  result.atLeastSixKeys = wideChips.length >= 6;
+  // 7. Nothing is hidden any more, so the hidden clause is gone from the notice.
+  const wideNotice = doc.querySelector(".kb-notice");
+  result.wideNoticeText = String((wideNotice && wideNotice.innerText) || "").slice(0, 200);
+  result.nothingHiddenOnceWidened = !/hidden by this pattern/.test(result.wideNoticeText);
+
+  result.ok = result.narrowShowsTwo &&
+    result.noticeCountsHiddenKeys &&
+    result.junkIsNotAnAlarm &&
+    result.offersShowAll &&
+    result.showAllRevealsEveryKey &&
+    result.atLeastSixKeys &&
+    result.nothingHiddenOnceWidened &&
+    result.errors.length === 0;
+  if (!result.ok) {
+    result.reason = !result.narrowShowsTwo
+      ? `pattern "??" drew ${narrowChips.length} chips (${narrowChips}), expected d2 and d3`
+      : !result.noticeCountsHiddenKeys
+        ? `the header does not say how many keys the pattern hid: "${result.noticeText}"`
+        : !result.junkIsNotAnAlarm
+          ? "a .DS_Store is still being reported as a problem rather than ignored"
+          : !result.offersShowAll
+            ? "no \"show every key\" button, so the hidden count cannot be acted on"
+            : !result.showAllRevealsEveryKey
+              ? `widening drew ${wideChips.length} chips (${wideChips}), expected all six`
+              : !result.nothingHiddenOnceWidened
+                ? `still claims keys are hidden after widening: "${result.wideNoticeText}"`
+                : "unexpected keyframe browser content";
+  }
+  return result;
+} finally {
+  window.removeEventListener("error", onError);
+}
+"""
+
+
 TOAST_RESTACK_JS = r"""
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const errors = [];
@@ -3340,6 +3488,12 @@ def prepare_generated_files() -> dict[str, Path]:
         "h2_panel_sizing_js": write_generated_file("h2-panel-sizing.js", H2_PANEL_SIZING_JS),
         "h2_domain_explorer_snippet": write_generated_file("h2-domain-explorer.kt", H2_DOMAIN_EXPLORER_SNIPPET),
         "h2_domain_explorer_js": write_generated_file("h2-domain-explorer.js", H2_DOMAIN_EXPLORER_JS),
+        "keyframe_browser_discovery_snippet": write_generated_file(
+            "keyframe-browser-discovery.kt", KEYFRAME_BROWSER_DISCOVERY_SNIPPET
+        ),
+        "keyframe_browser_discovery_js": write_generated_file(
+            "keyframe-browser-discovery.js", KEYFRAME_BROWSER_DISCOVERY_JS
+        ),
         "toast_restack_js": write_generated_file("toast-restack.js", TOAST_RESTACK_JS),
         "controllers_editable_lines_js": write_generated_file("controllers-editable-lines.js", CONTROLLERS_EDITABLE_LINES_JS),
         "controllers_static_lines_js": write_generated_file("controllers-static-lines.js", CONTROLLERS_STATIC_LINES_JS),
@@ -3462,6 +3616,20 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 shell_join(["run", "@last", "--file", str(files["h2_domain_explorer_snippet"]), "--timeout", timeout_text]),
                 "sleep 1.5",
                 shell_join(["page-eval", "--body", "--file", str(files["h2_domain_explorer_js"]), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="keyframe-browser-discovery",
+            description=(
+                "The keyframe browser says how many keys its pattern is hiding, does not report a .DS_Store as a "
+                "problem, and its \"show every key\" button widens a narrowed glob to all six keys in one click."
+            ),
+            commands=[
+                "new-box --name KeyframeBrowserDiscoveryRegression --w 900 --h 420",
+                shell_join(["run", "@last", "--file", str(files["keyframe_browser_discovery_snippet"]), "--timeout", timeout_text]),
+                "sleep 2.0",
+                shell_join(["page-eval", "--body", "--file", str(files["keyframe_browser_discovery_js"]), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
         ),
