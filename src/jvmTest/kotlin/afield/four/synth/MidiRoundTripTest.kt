@@ -260,6 +260,73 @@ class MidiRoundTripTest {
     }
 
     @Test
+    fun `a non-default PPQ survives, at both a coarser and a finer grid`() {
+        // The page claims the reader recovers the file's own PPQ. 480 is what Field writes, so
+        // testing only 480 would never distinguish "reads the header" from "hardcodes 480".
+        for (ppq in listOf(96, 192, 960)) {
+            val notes = listOf(
+                MidiNote(60, 0.0, 1.0, 100),
+                MidiNote(67, 1.5, 0.25, 90),
+                MidiNote(72, 2.0, 3.0, 120)
+            )
+            val clip = MidiClip(
+                tracks = listOf(MidiTrackData(notes = notes)),
+                tempoMap = listOf(0.0 to 120.0),
+                ppq = ppq
+            )
+            val read = readMidiClip(clip.writeTo(File(temp, "ppq$ppq.mid")))
+
+            assertEquals(ppq, read.ppq, "PPQ $ppq did not survive the round trip")
+            assertTrue(read.notes.size >= 3, "expected at least 3 notes at PPQ $ppq, got ${read.notes.size}")
+            read.notes.sortedBy { it.startBeats }.zip(notes.sortedBy { it.startBeats })
+                .forEach { (got, want) ->
+                    // A quarter of a beat at PPQ 96 is 24 ticks, so every start and length here is
+                    // exactly representable at all three grids and the tolerance can stay tight.
+                    assertEquals(want.startBeats, got.startBeats, 1e-9, "start at PPQ $ppq")
+                    assertEquals(want.durationBeats, got.durationBeats, 1e-9, "duration at PPQ $ppq")
+                    assertEquals(want.pitch, got.pitch, "pitch at PPQ $ppq")
+                }
+        }
+    }
+
+    @Test
+    fun `control changes round-trip with their controller value and beat`() {
+        // dev_docs/MIDI.md claims CC events round-trip. This is that claim's test.
+        val ccs = listOf(
+            MidiControlChange(controller = 1, value = 0, beats = 0.0),
+            MidiControlChange(controller = 1, value = 64, beats = 1.0),
+            MidiControlChange(controller = 1, value = 127, beats = 2.0),
+            MidiControlChange(controller = 74, value = 32, beats = 2.5),
+            MidiControlChange(controller = 7, value = 100, beats = 3.0, channel = 2)
+        )
+        val clip = MidiClip(
+            tracks = listOf(
+                MidiTrackData(
+                    notes = listOf(MidiNote(60, 0.0, 4.0, 100)),
+                    name = "with automation",
+                    controlChanges = ccs
+                )
+            ),
+            tempoMap = listOf(0.0 to 120.0)
+        )
+
+        val read = readMidiClip(clip.writeTo(File(temp, "cc.mid")))
+        val readCcs = read.tracks.flatMap { it.controlChanges }
+
+        assertTrue(readCcs.size >= 5, "expected at least 5 CC events back, got ${readCcs.size}")
+        val sortKey = compareBy<MidiControlChange>({ it.beats }, { it.controller })
+        ccs.sortedWith(sortKey).zip(readCcs.sortedWith(sortKey)).forEach { (want, got) ->
+            assertEquals(want.controller, got.controller, "controller number")
+            assertEquals(want.value, got.value, "controller value")
+            assertEquals(want.beats, got.beats, 1e-9, "controller beat")
+            assertEquals(want.channel, got.channel, "controller channel")
+        }
+        // The note must still be there: a writer that emitted CC and dropped notes would otherwise
+        // pass everything above.
+        assertEquals(1, read.notes.size, "the note was lost alongside the automation")
+    }
+
+    @Test
     fun `a foreign file with running status and a tempo change imports as a clip`() {
         // The same hand-assembled bytes AbletonMidiReadCharacterizationTest uses, read through the
         // new public entry point rather than through AbletonSet. This is the "survives a file this

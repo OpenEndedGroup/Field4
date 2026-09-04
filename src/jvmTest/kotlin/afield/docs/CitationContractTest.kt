@@ -58,9 +58,9 @@ class CitationContractTest {
          */
         val GUARDED_PAGES = mapOf(
             "dev_docs/small_language_anatomy.md" to 134,
-            // The Standard MIDI File surface, added 2026-09-04 with the page it guards. 29 anchored
+            // The Standard MIDI File surface, added 2026-09-04 with the page it guards. 30 anchored
             // citations as written, every anchor verified unique-in-file before the page was
-            // committed, so all 29 report unbounded headroom and the corpus fragility ceiling is
+            // committed, so all 30 report unbounded headroom and the corpus fragility ceiling is
             // unaffected. Floored at 14 on the DATAFRAME_PLUGIN convention: about half, so a page
             // becoming a little less citation-dense costs a doc edit rather than a red build, while
             // deleting half of them fails.

@@ -219,7 +219,7 @@ What the assertion is on matters. **A WAV of pure silence is exactly as large as
 file size proves nothing; `MidiDevices.kt:287#data class MidiRenderResult(` carries measured peak and
 RMS amplitude. Measured on this machine, a C-major triad at velocity 110 through Gervill's
 `Emergency GM sound set` renders 1.50 s at **peak 0.600, RMS 0.0787**. The floors in
-`MidiRoundTripTest.kt:418#rendered WAV is silent or near-silent`
+`MidiRoundTripTest.kt:485#rendered WAV is silent or near-silent`
 are 0.05 and 0.005 — about a twelfth and a fifteenth of those, loose enough to survive a different
 soundbank, since the "Emergency" set is itself a fallback, but tight enough that silence fails.
 
@@ -236,7 +236,7 @@ difference, green.
 - `MidiRoundTripTest.kt:143#val random = Random(20260904)` compares
   200 seeded random notes as multisets keyed on pitch, velocity, channel, start tick and duration
   tick — multisets because two notes can share a start tick and the reader owes no relative order.
-- `MidiRoundTripTest.kt:374#assertNotNull(got, "sent a note to`
+- `MidiRoundTripTest.kt:441#assertNotNull(got, "sent a note to`
   really ran: it opened both directions of `Bus 1` and asserted a `NOTE_ON` survived the wire with
   channel, pitch and velocity intact. Where no bidirectional hardware port exists it prints a skip
   naming the devices it *did* see. It does not fake a device and it does not fail.
@@ -272,6 +272,9 @@ does not carry the `--add-exports` — it says offline rendering is unavailable 
 - **SMPTE division.** `tickToSeconds` returns 0.0 when `resolution <= 0`, which is the guard a real
   SMPTE-division file reaches, since `Sequence.resolution` is then frames-per-second and not PPQ.
   That guard is inherited unchanged from `AbletonSet` and is not a claim that SMPTE files work.
-- **Control-change curves from the keyframe layer.** `MidiControlChange` exists and round-trips, but
-  nothing connects it to keyframes yet.
+- **Control-change curves from the keyframe layer.** `MidiControlChange`
+  (`Midi.kt:78#data class MidiControlChange(`) is written, read and round-trip tested for
+  controller, value, beat and channel. Nothing consumes it: `git grep -l MidiControlChange`
+  over the tracked `*.kt` selects two files, `Midi.kt` and `MidiRoundTripTest.kt`. Wiring it to
+  the keyframe layer is the obvious next step and is not started.
 - **Sysex, pitch bend, aftertouch.** Not read, not written.
