@@ -199,10 +199,9 @@ object SourcePartitionGuard {
                 .filter { it.fillerCodeLines > 0 }
                 .forEach { println("  ${it.fillerCodeLines}\t${it.path}") }
             println()
-            println("What those lines look like, in the three worst files:")
+            println("What those lines look like, in each affected file:")
             reports
                 .sortedByDescending { it.fillerCodeLines }
-                .take(3)
                 .filter { it.fillerCodeLines > 0 }
                 .forEach { report ->
                     println("  ${report.path}")

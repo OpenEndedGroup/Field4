@@ -212,5 +212,41 @@ class SidecarHealthTests(unittest.TestCase):
         self.assertEqual("ok", docs_hooks.sidecar_workspace_status(url + "/analyze", REPO_ROOT))
 
 
+class SidecarLifecycleTests(unittest.TestCase):
+    class Process:
+        pid = 4242
+
+        def __init__(self):
+            self.waited = False
+
+        def poll(self):
+            return None
+
+        def wait(self, timeout):
+            self.waited = True
+            return 0
+
+    def test_runner_stops_only_the_sidecar_it_started(self):
+        process = self.Process()
+        state = unittest.mock.Mock()
+        state._sidecar_started_by_runner = True
+        state._sidecar_process = process
+        state._sidecar_url = "http://127.0.0.1:18424"
+        with unittest.mock.patch("docs_hooks.os.killpg") as killpg:
+            docs_hooks.RunnerState._stop_semantic_sidecar(state)
+        killpg.assert_called_once_with(4242, docs_hooks.signal.SIGTERM)
+        self.assertTrue(process.waited)
+        self.assertFalse(state._sidecar_started_by_runner)
+        self.assertIsNone(state._sidecar_process)
+
+    def test_runner_leaves_a_reused_sidecar_alone(self):
+        state = unittest.mock.Mock()
+        state._sidecar_started_by_runner = False
+        state._sidecar_process = None
+        with unittest.mock.patch("docs_hooks.os.killpg") as killpg:
+            docs_hooks.RunnerState._stop_semantic_sidecar(state)
+        killpg.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

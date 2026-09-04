@@ -24,6 +24,17 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
             ["checkCodebaseReference", "checkKDocAttachment", "citationGates"],
         )
 
+    def test_shader_macro_change_also_selects_completion_corpus_guard(self) -> None:
+        self.assertEqual(
+            task_names(["src/jvmMain/kotlin/afield/stdlib/shaders.kt"]),
+            [
+                "checkCodebaseReference",
+                "checkKDocAttachment",
+                "checkCompletionCorpusFixtures",
+                "citationGates",
+            ],
+        )
+
     def test_source_cited_by_close_node_contract_selects_citation_gate(self) -> None:
         self.assertEqual(
             task_names(["src/jvmMain/kotlin/afield/graphics/someSkiko.kt"]),

@@ -1,8 +1,10 @@
 """Regression tests for smoke catalog ordering and for `--id` selection diagnostics."""
 
 import sys
+import subprocess
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -15,6 +17,7 @@ from tools.run_field_tests import (  # noqa: E402
     load_coverage_state,
     order_tests_by_coverage,
     record_coverage_result,
+    run_one_test,
     unmatched_ids,
     write_coverage_state,
 )
@@ -82,6 +85,30 @@ class CoverageOrderingTests(unittest.TestCase):
             path.write_text("{broken", encoding="utf-8")
             with self.assertRaisesRegex(RunnerError, "Cannot read smoke coverage state"):
                 load_coverage_state(path)
+
+    def test_transport_failure_is_not_reported_as_a_test_assertion(self) -> None:
+        process = subprocess.CompletedProcess(["fake"], 1, stdout="", stderr="connection refused")
+        with unittest.mock.patch(
+            "tools.run_field_tests.build_backdoor_command", return_value=(["fake", "--command"], {})
+        ), unittest.mock.patch(
+            "tools.run_field_tests.run_with_watchdog", return_value=(process, 12, False)
+        ):
+            result = run_one_test({"id": "transport", "runner": "jvm-main"}, port=9999, workspace=None)
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["failureKind"], "infrastructure")
+        self.assertIn("connection refused", result["failures"][0])
+
+    def test_parseable_failed_command_is_a_test_failure(self) -> None:
+        payload = '{"ok":false,"command":"run","data":{"error":"assertion failed"}}\n'
+        process = subprocess.CompletedProcess(["fake"], 1, stdout=payload, stderr="")
+        with unittest.mock.patch(
+            "tools.run_field_tests.build_backdoor_command", return_value=(["fake", "--command"], {})
+        ), unittest.mock.patch(
+            "tools.run_field_tests.run_with_watchdog", return_value=(process, 12, False)
+        ):
+            result = run_one_test({"id": "assertion", "runner": "jvm-main"}, port=9999, workspace=None)
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["failureKind"], "test")
 
 
 if __name__ == "__main__":

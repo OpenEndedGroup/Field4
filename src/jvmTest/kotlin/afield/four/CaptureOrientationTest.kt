@@ -1,6 +1,7 @@
 package afield.four
 
 import afield.util.PngEncoder
+import java.io.File
 import java.nio.ByteBuffer
 import java.nio.file.Files
 import java.nio.file.Path
@@ -132,6 +133,23 @@ class CaptureOrientationTest {
         assertTrue(
             corners["top-left"] != corners["top-right"],
             "flipY must not mirror X as well"
+        )
+    }
+
+    @Test
+    fun committedTraditionalTriangleHasTheReviewedWindowOrientation() {
+        val file = File("public/docs/assets/afield_four_graphics/00-traditional-triangle.png")
+        val image = assertNotNull(ImageIO.read(file), "committed orientation witness did not decode: $file")
+        fun colouredAt(y: Int): Int = (0 until image.width).count { x ->
+            val rgb = image.getRGB(x, y)
+            ((rgb shr 16) and 0xff) + ((rgb shr 8) and 0xff) + (rgb and 0xff) > 40
+        }
+        val nearTop = colouredAt(image.height / 12)
+        val nearBottom = colouredAt(image.height * 11 / 12)
+        assertTrue(
+            nearBottom > nearTop * 4,
+            "the committed window capture appears vertically mirrored: coloured pixels near top=" +
+                "$nearTop, near bottom=$nearBottom. Regenerate through writeWindowCapturePng and review it."
         )
     }
 

@@ -42,6 +42,14 @@ class DocsGatesWiringTest {
             "check no longer depends on citationGates, so docs-only edits can inherit a stale jvmTest result",
         )
         assertTrue(
+            Regex("""tasks\.register\(\"certify\"\)[\s\S]*?dependsOn\(\"check\"\)""").containsMatchIn(build),
+            "certify no longer runs the complete check graph",
+        )
+        assertTrue(
+            Regex("""tasks\.register\(\"certify\"\)[\s\S]*?setContinueOnFailure\(true\)""").containsMatchIn(build),
+            "certify no longer enables Gradle continuation and can hide independent gate failures",
+        )
+        assertTrue(
             Regex("""jvmTestTask\.configure\s*\{[\s\S]*?citationGuardTestClasses\.forEach\(::excludeTestsMatching\)""")
                 .containsMatchIn(build),
             "citation contract tests are no longer excluded from broad jvmTest and would execute twice",
@@ -62,6 +70,22 @@ class DocsGatesWiringTest {
         assertTrue(
             """withPropertyName("publishedDocs")""" in build,
             "citationGates no longer declares public/docs/**.md as an input",
+        )
+        assertTrue(
+            """withPropertyName("publishedDocsReadByJvmTests")""" in build,
+            "broad jvmTest can inherit an UP-TO-DATE result after a published Markdown edit",
+        )
+        assertTrue(
+            """withPropertyName("nativeCaptureOrientationWitness")""" in build,
+            "broad jvmTest can inherit an UP-TO-DATE result after its committed orientation witness changes",
+        )
+        assertTrue(
+            """val rootPythonCommand = listOf("uv", "run", "--project", ".", "--frozen", "python")""" in build,
+            "root-owned Python gates no longer use the project-pinned interpreter",
+        )
+        assertTrue(
+            !Regex("""commandLine\(\s*"python3"""").containsMatchIn(build),
+            "a Gradle gate has reintroduced a PATH-dependent bare python3",
         )
         // The same argument, for the two input kinds added on 2026-08-27 after each was measured
         // going UP-TO-DATE over a file its guard reads. Swift is on no JVM classpath;

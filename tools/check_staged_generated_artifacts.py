@@ -66,6 +66,7 @@ def _completion_input(path: str) -> bool:
             "src/jvmMain/kotlin/afield/KotlinInterface.kt",
             "src/jvmMain/kotlin/afield/KotlinInterface2.kt",
             "src/jvmMain/kotlin/afield/KotlinScriptEngine.kt",
+            "src/jvmMain/kotlin/afield/stdlib/shaders.kt",
         }
     )
 

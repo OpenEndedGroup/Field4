@@ -552,6 +552,7 @@ class RunnerState:
         self._sidecar_url: str | None = None
         self._sidecar_checked = False
         self._sidecar_started_by_runner = False
+        self._sidecar_process: subprocess.Popen[str] | None = None
         self._closed = False
         self.failures: list[str] = []
         # Captures that failed but had a committed asset already on disk to fall back
@@ -1037,11 +1038,10 @@ class RunnerState:
     def _ensure_semantic_sidecar(self) -> str | None:
         """Make the default completion backend actually available to the shared Field, and return its URL.
 
-        Mirrors `field.sh ensure_semantic_sidecar`: reuse a healthy sidecar for THIS checkout on the
-        checkout-derived port, otherwise start one there. Long-lived by design and deliberately not torn
-        down with the build -- the next docs build, and any `./field.sh` in this checkout, reuse it and skip
-        the Analysis-API cold start. Returns None when there is none (a `=off` build, or a start that
-        failed); the completion guard, not this, is what decides whether that matters.
+        Reuse a healthy sidecar for THIS checkout on the checkout-derived port, otherwise start one there.
+        A reused sidecar remains externally owned. A process started by this docs run is owned by the run
+        and is stopped from [close], including fail-fast exits; leaving it behind made the docs port look
+        clean while a Gradle launcher and JVM continued running on the sidecar port.
         """
         if self._sidecar_url is not None or self._sidecar_checked:
             return self._sidecar_url
@@ -1079,7 +1079,7 @@ class RunnerState:
         log_path.parent.mkdir(parents=True, exist_ok=True)
         gradle_wrapper = "gradlew.bat" if os.name == "nt" else "./gradlew"
         command = [
-            str(self.repo_root / gradle_wrapper), "-p", "tools/code-use-semantic-sidecar", "run",
+            str(self.repo_root / gradle_wrapper), "--no-daemon", "-p", "tools/code-use-semantic-sidecar", "run",
             f"--args=--port {port} --workspace {self.repo_root}",
         ]
         LOG.info("Field docs runner starting completion sidecar on port %s (log: %s)", port, log_path)
@@ -1112,6 +1112,7 @@ class RunnerState:
                 LOG.info("Field docs runner completion sidecar ready on %s", url)
                 self._sidecar_url = url
                 self._sidecar_started_by_runner = True
+                self._sidecar_process = process
                 return self._sidecar_url
             time.sleep(1.0)
         LOG.warning(
@@ -1119,6 +1120,34 @@ class RunnerState:
             SIDECAR_START_DEADLINE_SEC, log_path
         )
         return None
+
+    def _stop_semantic_sidecar(self) -> None:
+        """Stop only the completion sidecar this RunnerState started."""
+        process = self._sidecar_process
+        if not self._sidecar_started_by_runner or process is None:
+            return
+        LOG.info("Field docs runner stopping completion sidecar at %s", self._sidecar_url)
+        if process.poll() is None:
+            try:
+                if os.name == "nt":
+                    process.terminate()
+                else:
+                    os.killpg(process.pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+            try:
+                process.wait(timeout=8)
+            except subprocess.TimeoutExpired:
+                try:
+                    if os.name == "nt":
+                        process.kill()
+                    else:
+                        os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                process.wait(timeout=5)
+        self._sidecar_process = None
+        self._sidecar_started_by_runner = False
 
     def _start_shared_field_server_once(self) -> str | None:
         """Start one shared Field server and wait for health.
@@ -1643,6 +1672,7 @@ class RunnerState:
         self.save()
         self._stop_session(reason="runner close")
         self._stop_shared_field_server()
+        self._stop_semantic_sidecar()
 
     def log_summary(self) -> None:
         if self.summary_logged:
@@ -1667,12 +1697,6 @@ class RunnerState:
             self.server_restarts,
             elapsed,
         )
-        if self._sidecar_started_by_runner and self._sidecar_url:
-            LOG.info(
-                "Field docs runner left the completion sidecar it started running at %s (long-lived by "
-                "design -- the next docs build and any ./field.sh in this checkout reuse it)",
-                self._sidecar_url,
-            )
         if self.failures:
             # Distinguish honestly: fallbacks still render a real (committed) image;
             # broken failures leave the HTML pointing at a missing asset.

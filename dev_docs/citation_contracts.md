@@ -511,8 +511,15 @@ It depends on all seven generated-artifact gates plus a focused `citationGates` 
 `:allTests` in the way. `citationGates` runs `CitationContractTest`, `SmallLanguageAnatomyTest`,
 `CloseNodeCitationDriftTest`, and the build-wiring regression that pins this dependency. Its filter
 fails when it matches no tests, and it runs after the seven non-test gates so a citation failure cannot
-hide whether those gates ran. It does not alter what `check` does; `check --continue` remains the way
-to run the complete test suite as well.
+hide whether those gates ran. It does not alter what `check` does. For the complete repository use:
+
+```
+./gradlew certify
+```
+
+`certify` runs the existing `check` graph and enables Gradle continuation from the task itself, so a
+caller cannot forget `--continue` and let one failure hide independent gate verdicts. Plain `check`
+retains Gradle's normal fail-fast behavior.
 
 So one command now verifies a citation change at both layers:
 

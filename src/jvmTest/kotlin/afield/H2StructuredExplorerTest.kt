@@ -431,10 +431,10 @@ class H2StructuredExplorerTest {
      *
      * Measured 2026-09-03 on the bundled 2.4.255-SNAPSHOT fork.
      */
-    @Test
     // Named without backticks on purpose: `dev_docs/VALUE_VISUALIZER.md` cites this test as a
     // reproducer anchor, and the impossibility-claim gate matches the anchor LITERALLY against the
     // file text — a backtick-quoted name makes the citation unresolvable.
+    @Test
     fun reflectionCannotTellAPlainFieldReadFromAnEffectfulGetter() {
         val sample = Sample::class.memberProperties.associateBy { it.name }
         val boxProps = Box::class.memberProperties.associateBy { it.name }

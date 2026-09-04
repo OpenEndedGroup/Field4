@@ -7,4 +7,4 @@ guard="$repo_root/tools/check_staged_generated_artifacts.py"
 # core.hooksPath is shared by all worktrees. Older branches must remain committable before this
 # guard lands in them; once the script exists in that checkout, the hook becomes active there.
 [ -f "$guard" ] || exit 0
-exec python3 "$guard"
+exec uv run --project "$repo_root" --frozen python "$guard"

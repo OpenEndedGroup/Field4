@@ -1349,17 +1349,20 @@ val expectedFailureTests = tasks.register<org.gradle.api.tasks.testing.Test>("ex
     shouldRunAfter(jvmTestTask)
 }
 
+val rootPythonCommand = listOf("uv", "run", "--project", ".", "--frozen", "python")
+
 val checkExpectedTestFailures = tasks.register<Exec>("checkExpectedTestFailures") {
     group = "verification"
     description = "Fails when a registered JVM test passes/disappears or an unregistered test enters the expected-failure task."
     dependsOn(expectedFailureTests)
     workingDir = rootDir
     commandLine(
-        "python3",
+        rootPythonCommand + listOf(
         "tools/check_expected_test_failures.py",
         "--registry", expectedTestFailureRegistry.absolutePath,
         "--results", layout.buildDirectory.dir("test-results/expectedFailureTests").get().asFile.absolutePath,
         "--root", rootDir.absolutePath,
+        )
     )
 }
 
@@ -1415,6 +1418,15 @@ val citationGuardTestClasses = listOf(
 // classpath. citationGates declares those non-classpath inputs below and is attached to `check`, so run
 // the contract tests there exactly once instead of making every docs edit rerun the entire JVM suite.
 jvmTestTask.configure {
+    // A substantial set of ordinary tests reads published Markdown directly. Without declaring it,
+    // a docs-only edit can inherit an UP-TO-DATE jvmTest result and make `check` look green without
+    // re-reading the page. This deliberately prefers a slower honest check over stale evidence.
+    inputs.files(fileTree("public/docs") { include("**/*.md") })
+        .withPropertyName("publishedDocsReadByJvmTests")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file("public/docs/assets/afield_four_graphics/00-traditional-triangle.png")
+        .withPropertyName("nativeCaptureOrientationWitness")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
     filter {
         citationGuardTestClasses.forEach(::excludeTestsMatching)
     }
@@ -1848,7 +1860,7 @@ tasks.register<Exec>("fieldAudioDocsCheck") {
     description = "Checks Field's committed Field Audio reference against the pinned submodule."
     dependsOn(fieldAudioContractCheck)
     workingDir = rootDir
-    commandLine("python3", "tools/sync_field_audio_docs.py", "--check")
+    commandLine(rootPythonCommand + listOf("tools/sync_field_audio_docs.py", "--check"))
     requireFieldAudioCheckout()
 }
 
@@ -1856,7 +1868,7 @@ tasks.register<Exec>("fieldAudioDocsRefresh") {
     group = "documentation"
     description = "Explicitly refreshes Field's committed reference from the pinned service checkout."
     workingDir = rootDir
-    commandLine("python3", "tools/sync_field_audio_docs.py")
+    commandLine(rootPythonCommand + listOf("tools/sync_field_audio_docs.py"))
     requireFieldAudioCheckout()
 }
 
@@ -1897,6 +1909,13 @@ tasks.named("check") {
     dependsOn("checkAgentDemos")
     dependsOn(checkExpectedTestFailures)
     dependsOn(citationGates)
+}
+
+tasks.register("certify") {
+    group = "verification"
+    description = "Runs the complete check graph and continues after failures so independent gate results are visible."
+    dependsOn("check")
+    gradle.startParameter.setContinueOnFailure(true)
 }
 
 // These documentation gates are attached to `check` with no ordering constraint, which means Gradle is free
