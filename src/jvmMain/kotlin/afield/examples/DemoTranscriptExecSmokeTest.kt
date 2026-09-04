@@ -405,6 +405,11 @@ object DemoTranscriptExecSmokeTest {
                 System.err.println("[error] $msg")
                 t.printStackTrace(System.err)
             } finally {
+                // Each transcript owns a disposable document session. Dropping only the thread-local
+                // reference leaves every box's K2 REPL engine alive, so the full corpus accumulates
+                // dozens of FIR sessions and eventually loses otherwise-standard imports in later
+                // boxes. Use the same lifecycle boundary as closing a real Field document.
+                thisSessionInfo.get()?.cleanup()
                 thisSessionInfo.remove()
             }
         }
