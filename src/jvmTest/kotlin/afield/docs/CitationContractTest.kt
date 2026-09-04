@@ -58,6 +58,19 @@ class CitationContractTest {
          */
         val GUARDED_PAGES = mapOf(
             "dev_docs/small_language_anatomy.md" to 134,
+            // The Standard MIDI File surface, added 2026-09-04 with the page it guards. 30 anchored
+            // citations as written, every anchor verified unique-in-file before the page was
+            // committed, so all 30 report unbounded headroom and the corpus fragility ceiling is
+            // unaffected. Floored at 14 on the DATAFRAME_PLUGIN convention: about half, so a page
+            // becoming a little less citation-dense costs a doc edit rather than a red build, while
+            // deleting half of them fails.
+            //
+            // Five of the 29 point into the two test classes rather than at the implementation, and
+            // deliberately: the page's claims about *what is verified* are the ones most likely to
+            // rot into overstatement, so they cite the assertion that backs them. Those five anchor
+            // on a line inside each test rather than on its name, because these are backtick-named
+            // functions and an anchor containing a backtick cannot survive a markdown code span.
+            "dev_docs/MIDI.md" to 14,
             "dev_docs/fline_fill_orientation.md" to 20,
             "dev_docs/completion_aa_sidecar.md" to 24,
             // The DataFrame compiler-plugin wiring note. Written with 54 anchored citations, 52 of

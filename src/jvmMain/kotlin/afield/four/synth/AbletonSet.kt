@@ -932,50 +932,29 @@ data class AbletonSamplePitchAnalysis(
                 notes = readPitchNotes(midiFile)
             )
 
-        private fun readPitchNotes(midiFile: File): List<AbletonPitchEstimate> {
-            val sequence = MidiSystem.getSequence(midiFile)
-            val tempos = sequence.tempoEvents()
-            val active = mutableMapOf<Pair<Int, Int>, ArrayDeque<ActiveMidiNote>>()
-            val out = mutableListOf<AbletonPitchEstimate>()
-
-            sequence.tracks.forEach { track ->
-                for (i in 0 until track.size()) {
-                    val event = track.get(i)
-                    val message = event.message as? ShortMessage ?: continue
-                    when (message.command) {
-                        ShortMessage.NOTE_ON -> {
-                            val pitch = message.data1
-                            val velocity = message.data2
-                            val key = message.channel to pitch
-                            if (velocity > 0) {
-                                active.getOrPut(key) { ArrayDeque() }.addLast(
-                                    ActiveMidiNote(
-                                        pitch = pitch,
-                                        velocity = velocity,
-                                        channel = message.channel,
-                                        startTick = event.tick
-                                    )
-                                )
-                            } else {
-                                closeActiveNote(active, key, event.tick, tempos, sequence.resolution, out)
-                            }
-                        }
-                        ShortMessage.NOTE_OFF -> {
-                            val key = message.channel to message.data1
-                            closeActiveNote(active, key, event.tick, tempos, sequence.resolution, out)
-                        }
-                    }
+        /**
+         * Read the note-on/note-off pairs out of a `basic-pitch` MIDI file.
+         *
+         * The note pairing, tempo map and tick-to-seconds conversion this used to inline are now
+         * `Sequence.readTimedNotes()` in Midi.kt, which is the same code generalised — this
+         * function is the caller, and `AbletonMidiReadCharacterizationTest` is the fence that says
+         * the generalisation did not change what comes out. The sort is kept here rather than
+         * pushed down because it is this reader's contract, not the file format's:
+         * `dominantPitchAtSeconds` breaks velocity ties by picking the earlier note, which only
+         * works if equal-start notes arrive loudest-first.
+         */
+        private fun readPitchNotes(midiFile: File): List<AbletonPitchEstimate> =
+            MidiSystem.getSequence(midiFile).readTimedNotes()
+                .map {
+                    AbletonPitchEstimate(
+                        midiPitch = it.pitch,
+                        velocity = it.velocity,
+                        startSeconds = it.startSeconds,
+                        endSeconds = it.endSeconds,
+                        channel = it.channel
+                    )
                 }
-            }
-
-            val endTick = sequence.tickLength
-            for ((key, queue) in active) {
-                while (queue.isNotEmpty()) {
-                    closeActiveNote(active, key, endTick, tempos, sequence.resolution, out)
-                }
-            }
-            return out.sortedWith(compareBy<AbletonPitchEstimate> { it.startSeconds }.thenByDescending { it.velocity })
-        }
+                .sortedWith(compareBy<AbletonPitchEstimate> { it.startSeconds }.thenByDescending { it.velocity })
     }
 }
 
@@ -1047,17 +1026,9 @@ private data class AbletonSamplePitchAnalysisKey(
     val length: Long
 )
 
-private data class ActiveMidiNote(
-    val pitch: Int,
-    val velocity: Int,
-    val channel: Int,
-    val startTick: Long
-)
-
-private data class MidiTempoEvent(
-    val tick: Long,
-    val microsPerQuarter: Int
-)
+// `ActiveMidiNote` and `MidiTempoEvent` used to live here, private to this file. They are now in
+// Midi.kt, along with `Sequence.tempoEvents()`, `tickToSeconds`, `ticksToSeconds` and the
+// note-on/note-off pairing loop — see `readPitchNotes` above, which is now a caller.
 
 private fun configuredBasicPitchExecutable(): File? =
     (System.getProperty("afield.basicPitch.exe") ?: System.getenv("AFIELD_BASIC_PITCH_EXE"))
@@ -1128,63 +1099,10 @@ private fun runBasicPitch(executable: File, sourceFile: File, onsetThreshold: Do
     return deterministic
 }
 
-private fun javax.sound.midi.Sequence.tempoEvents(): List<MidiTempoEvent> {
-    val tempos = mutableListOf(MidiTempoEvent(0L, 500_000))
-    tracks.forEach { track ->
-        for (i in 0 until track.size()) {
-            val event = track.get(i)
-            val meta = event.message as? MetaMessage ?: continue
-            if (meta.type == 0x51 && meta.data.size >= 3) {
-                val data = meta.data
-                val micros = ((data[0].toInt() and 0xff) shl 16) or
-                    ((data[1].toInt() and 0xff) shl 8) or
-                    (data[2].toInt() and 0xff)
-                tempos += MidiTempoEvent(event.tick, micros)
-            }
-        }
-    }
-    return tempos.sortedBy { it.tick }
-}
-
-private fun closeActiveNote(
-    active: MutableMap<Pair<Int, Int>, ArrayDeque<ActiveMidiNote>>,
-    key: Pair<Int, Int>,
-    endTick: Long,
-    tempos: List<MidiTempoEvent>,
-    resolution: Int,
-    out: MutableList<AbletonPitchEstimate>
-) {
-    val note = active[key]?.removeFirstOrNull() ?: return
-    val startSeconds = tickToSeconds(note.startTick, tempos, resolution)
-    val endSeconds = tickToSeconds(endTick, tempos, resolution)
-    if (endSeconds <= startSeconds) return
-    out += AbletonPitchEstimate(
-        midiPitch = note.pitch,
-        velocity = note.velocity,
-        startSeconds = startSeconds,
-        endSeconds = endSeconds,
-        channel = note.channel
-    )
-}
-
-private fun tickToSeconds(tick: Long, tempos: List<MidiTempoEvent>, resolution: Int): Double {
-    if (resolution <= 0) return 0.0
-    var seconds = 0.0
-    var cursorTick = 0L
-    var microsPerQuarter = 500_000
-
-    for (event in tempos.sortedBy { it.tick }) {
-        if (event.tick > tick) break
-        seconds += ticksToSeconds(event.tick - cursorTick, microsPerQuarter, resolution)
-        cursorTick = event.tick
-        microsPerQuarter = event.microsPerQuarter
-    }
-    seconds += ticksToSeconds(tick - cursorTick, microsPerQuarter, resolution)
-    return seconds
-}
-
-private fun ticksToSeconds(ticks: Long, microsPerQuarter: Int, resolution: Int): Double =
-    ticks.toDouble() * microsPerQuarter.toDouble() / 1_000_000.0 / resolution.toDouble()
+// `tempoEvents()`, `closeActiveNote`, `tickToSeconds` and `ticksToSeconds` used to live here.
+// They are in Midi.kt now — `tempoEvents`, `tickToSeconds` and `ticksToSeconds` under the same
+// names and with unchanged bodies, and `closeActiveNote` generalised to emit `MidiTimedNote`
+// instead of `AbletonPitchEstimate` so it can serve both this reader and `readMidiClip`.
 
 data class AbletonAutomationEnvelope(
     val id: String,
