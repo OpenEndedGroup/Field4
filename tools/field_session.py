@@ -42,6 +42,13 @@ from typing import Any
 # field_backdoor.py lives in the same directory; sys.path[0] is tools/ when run
 # as `python tools/field_session.py`.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+try:
+    from .field_python_env import ensure_repo_python  # noqa: E402
+except ImportError:  # Executed as tools/field_session.py rather than imported as a package.
+    from field_python_env import ensure_repo_python  # noqa: E402
+
+ensure_repo_python()
+
 import field_backdoor as fb  # noqa: E402
 
 

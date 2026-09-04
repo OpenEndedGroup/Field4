@@ -23,69 +23,15 @@ from collections import deque
 from pathlib import Path
 from typing import Any, TextIO
 
-def _is_running_interpreter(candidate: Path) -> bool:
-    """True if ``candidate`` is the interpreter executing this process.
+try:
+    from .field_python_env import ensure_repo_python
+except ImportError:  # Executed as tools/field_backdoor.py rather than imported as a package.
+    from field_python_env import ensure_repo_python
 
-    ``os.path.samefile`` rather than string comparison: a venv ships ``python``, ``python3`` and
-    ``python3.12`` as links to one binary, so the path a caller constructs rarely matches the
-    spelling in ``sys.executable``.
-    """
-    try:
-        return os.path.samefile(str(candidate), sys.executable)
-    except OSError:
-        return False
+if __name__ == "__main__":
+    ensure_repo_python()
 
-
-def _reexec_under_repo_env_if_needed() -> None:
-    """Self-heal the "wrong Python interpreter" trap.
-
-    Agents/humans naturally type ``python tools/field_backdoor.py``, but the
-    ambient interpreter (e.g. system/conda Python) usually lacks ``websockets``.
-    Rather than dying with a pip hint, transparently re-exec the *current* entry
-    script under the repo's ``.venv`` (or via ``uv run``), which has the deps.
-    Guarded by an env var so it can never loop.
-    """
-    try:
-        import websockets  # noqa: F401
-        return
-    except ImportError:
-        pass
-    if os.environ.get("FIELD_BACKDOOR_REEXEC") == "1":
-        raise SystemExit(
-            "field_backdoor: 'websockets' is unavailable even after re-exec into the repo environment.\n"
-            "Run: uv sync --group backdoor   (or: python3 -m pip install websockets)"
-        )
-    import shutil
-    repo_root = Path(__file__).resolve().parent.parent
-    entry = os.path.abspath(sys.argv[0]) if sys.argv and sys.argv[0] else str(Path(__file__).resolve())
-    env = {**os.environ, "FIELD_BACKDOOR_REEXEC": "1"}
-    venv_py = repo_root / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python3")
-    # Only re-exec the repo venv if we are not *already* running it. `uv run` without a
-    # `--group` builds a base-only `.venv` and then runs `.venv/bin/python`, so websockets is
-    # missing in the very interpreter this branch would re-exec into: the re-exec cannot help,
-    # and because the module runs this at import time it re-runs the whole *entry script* first.
-    # On 2026-08-22 that entry script was `tools/run_python_tests.py`, so the twelve tool suites
-    # ran a second time and the runner then died inside an import, discarding its own summary —
-    # the gate reported three PIL errors and no totals for what was really a missing dependency
-    # group. Compare by inode, not by path: `sys.executable` is `.venv/bin/python` while this
-    # builds `.venv/bin/python3`, two names for one file.
-    if venv_py.exists() and not _is_running_interpreter(venv_py):
-        os.execve(str(venv_py), [str(venv_py), entry, *sys.argv[1:]], env)
-    uv = shutil.which("uv")
-    if uv:
-        os.execvpe(
-            uv, [uv, "run", "--project", str(repo_root), "--group", "backdoor",
-                 "python", entry, *sys.argv[1:]], env,
-        )
-    raise SystemExit(
-        "field_backdoor.py requires the 'websockets' package and no repo .venv or uv was found.\n"
-        "Run via: uv run --project . --group backdoor python tools/field_backdoor.py ..."
-    )
-
-
-_reexec_under_repo_env_if_needed()
-
-import websockets  # noqa: E402  (guaranteed importable after the shim above)
+import websockets  # noqa: E402
 from verification_runtime import (  # noqa: E402
     automation_server_environment,
     automation_workspace,

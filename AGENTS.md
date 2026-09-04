@@ -55,7 +55,7 @@ Use `uv` for agent-facing Python tooling so the docs runner and the backdoor sha
 
 Do not use ambient `python`, `pip`, or a Python `playwright` import as the gate for browser screenshots. Field's screenshot and UI-regression path uses the repo `uv` environment plus the JVM/server-owned Playwright instance. The root `pyproject.toml` intentionally does not need the Python Playwright package for `tools/field_backdoor.py --with-playwright`, `tools/run_ui_regressions.py`, or docs captures.
 
-As a safety net, `tools/field_backdoor.py` (and anything importing it, e.g. `tools/field_session.py`, `tools/run_field_tests.py`) now self-heals the interpreter: if the invoking Python lacks `websockets`, it transparently re-execs under the repo `.venv` (or `uv run`). So a bare `python tools/field_backdoor.py ...` no longer dies on a missing dependency. Running through `uv run --group backdoor` is still preferred and avoids the re-exec hop.
+As a safety net, the agent-facing entrypoints (`tools/field_backdoor.py`, `tools/field_session.py`, `tools/run_field_tests.py`, and `tools/field_mcp.py`) explicitly self-heal the interpreter before importing their optional dependencies: if the invoking Python lacks them, the entrypoint transparently re-execs under the repo `.venv` (or `uv run`). Importing `field_backdoor` as a library never restarts the importing process. So a bare `python tools/field_backdoor.py ...` no longer dies on a missing dependency. Running through `uv run --group backdoor` is still preferred and avoids the re-exec hop.
 
 - Backdoor status:
 

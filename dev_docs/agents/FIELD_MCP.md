@@ -29,7 +29,7 @@ e.g. `curl -LsSf https://astral.sh/uv/install.sh | sh` or `brew install uv`, the
 `.venv` at the repo root is the interpreter every Field Python tool expects (see
 [`FIELD_BACKDOOR.md`](./FIELD_BACKDOOR.md#uv-dependency-recipes)).
 
-`tools/field_mcp.py` also self-heals: if it is started under an interpreter without
+`tools/field_mcp.py` explicitly self-heals before importing the backdoor library: if it is started under an interpreter without
 `websockets`, it re-execs into `.venv` (or `uv run`). Pointing `.mcp.json` directly at
 `.venv/bin/python3` keeps the MCP stdout stream clean (pure JSON-RPC), so that is the
 recommended form as long as the venv is present.

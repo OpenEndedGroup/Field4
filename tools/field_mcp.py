@@ -44,10 +44,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-# Importing field_backdoor triggers its interpreter self-heal shim. When this
-# server is launched via the repo .venv python (as .mcp.json does), websockets
-# is already importable and the shim is a no-op, so stdout stays pristine.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+try:
+    from .field_python_env import ensure_repo_python  # noqa: E402
+except ImportError:  # Executed as tools/field_mcp.py rather than imported as a package.
+    from field_python_env import ensure_repo_python  # noqa: E402
+
+# Explicitly bootstrap before importing the backdoor library. Keeping this call in the entrypoint
+# means importing field_backdoor can never restart an arbitrary test runner or MCP host.
+ensure_repo_python()
 
 from field_backdoor import (  # noqa: E402
     DEFAULT_PORT,

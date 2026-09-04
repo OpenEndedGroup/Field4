@@ -16,6 +16,13 @@ import time
 from pathlib import Path
 from typing import Any
 
+try:
+    from .field_python_env import ensure_repo_python
+except ImportError:  # Executed as tools/run_field_tests.py rather than imported as a package.
+    from field_python_env import ensure_repo_python
+
+ensure_repo_python(("websockets", "PIL"))
+
 from PIL import Image, ImageChops, ImageStat
 
 from discover_field_tests import DEFAULT_ROOTS, discover
