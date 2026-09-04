@@ -142,10 +142,13 @@ data class PatOnsetMatch(
  *
  * Two things are not judged. Neither renderer controls its own zero — a Sonic Pi
  * recording starts before the music and an offline render starts exactly at it — so the train is
- * anchored on its earliest onset and then shifted by the **median** of the matched residuals, which
- * stops the first onset being privileged into a free 0 ms. And the constant lag that shift removes
- * is reported rather than asserted: a sequencer whose events all arrive 40 ms late is still a
- * correct sequencer. What is measured is the *shape* — the intervals, and whether they drift.
+ * anchored on its earliest onset and then cross-correlated against the schedule. Candidate shifts
+ * come from every observed/scheduled pair; the shift that produces the most one-to-one matches wins,
+ * with total error and then the smallest shift breaking ties. This has to be independent of the
+ * final tolerance test: deriving a shift only from points already inside that window cannot recover
+ * a constant lag larger than the window. The constant lag removed is reported rather than asserted:
+ * a sequencer whose events all arrive 40 ms late is still a correct sequencer. What is measured is
+ * the *shape* — the intervals, and whether they drift.
  */
 fun patMatchOnsets(
     observedSeconds: List<Double>,
@@ -157,19 +160,46 @@ fun patMatchOnsets(
     }
     val anchored = observedSeconds.map { it - observedSeconds.first() }
 
-    fun residuals(train: List<Double>): List<Double> = scheduledSeconds
-        .filter { it <= train.last() + tolerance }
-        .mapNotNull { want ->
-            val nearest = train.minByOrNull { abs(it - want) } ?: return@mapNotNull null
-            if (abs(nearest - want) <= tolerance) nearest - want else null
-        }
+    data class Alignment(val residuals: List<Double>)
 
-    val coarse = residuals(anchored)
-    val offset = if (coarse.isEmpty()) 0.0 else coarse.sorted()[coarse.size / 2]
+    fun align(train: List<Double>, schedule: List<Double>): Alignment {
+        val residuals = mutableListOf<Double>()
+        var observedIndex = 0
+        var scheduledIndex = 0
+        while (observedIndex < train.size && scheduledIndex < schedule.size) {
+            val residual = train[observedIndex] - schedule[scheduledIndex]
+            when {
+                abs(residual) <= tolerance -> {
+                    residuals += residual
+                    observedIndex++
+                    scheduledIndex++
+                }
+                residual < 0.0 -> observedIndex++
+                else -> scheduledIndex++
+            }
+        }
+        return Alignment(residuals)
+    }
+
+    val candidates = sequenceOf(0.0) + anchored.asSequence().flatMap { observed ->
+        scheduledSeconds.asSequence().map { scheduled -> observed - scheduled }
+    }
+    data class Candidate(val offset: Double, val alignment: Alignment)
+    val offset = candidates.map { candidate ->
+        Candidate(candidate, align(anchored.map { observed -> observed - candidate }, scheduledSeconds))
+    }.minWithOrNull(
+        compareBy<Candidate>(
+            { -it.alignment.residuals.size },
+            // A periodic train can have equally exact alignments one whole period apart. Its zero
+            // is already anchored above, so retain the smallest correction in that ambiguity.
+            { abs(it.offset) },
+            { it.alignment.residuals.sumOf(::abs) }
+        )
+    )?.offset ?: 0.0
     val shifted = anchored.map { it - offset }
 
-    val errors = residuals(shifted).map { abs(it) }
     val considered = scheduledSeconds.count { it <= shifted.last() + tolerance }
+    val errors = align(shifted, scheduledSeconds.take(considered)).residuals.map { abs(it) }
     return PatOnsetMatch(
         observed = shifted.size,
         scheduled = considered,
