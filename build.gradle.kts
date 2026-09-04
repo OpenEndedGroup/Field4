@@ -420,6 +420,19 @@ fun requiredRunJvmArgs(): List<String> {
     return buildList {
         add("-Xmx8g")
         add("--add-opens=java.base/java.net=ALL-UNNAMED")
+        // Offline MIDI rendering. `MidiSystem.getSynthesizer()` actually returns
+        // `com.sun.media.sound.AudioSynthesizer`, and its `openStream` is the only way to pull
+        // Gervill's output faster than real time — every public alternative writes to an audio line
+        // and so cannot be captured to a file. `java.desktop` does not export that package.
+        //
+        // This arrived test-only when the MIDI surface landed, on the argument that the shipping
+        // application has no reason to render MIDI to a file. That argument was wrong about how the
+        // feature reads from inside Field: `renderWav` is reachable from any box, and without the
+        // flag the honest-but-dead-end answer ("openStream is not accessible … relaunch with") is
+        // what a person gets for calling it. `renderToWav` still consults
+        // `midiRenderUnavailableReason()`, so a JVM launched without this — a bare `java -cp`, or a
+        // future packaging that drops it — degrades with a stated reason rather than throwing.
+        add("--add-exports=java.desktop/com.sun.media.sound=ALL-UNNAMED")
         // Headless AWT is mandatory in any JVM that also passes -XstartOnFirstThread (below).
         // AWT's macOS font manager dispatches to the process's first thread and blocks until it
         // answers, but that thread belongs to GLFW and never pumps a CFRunLoop — so the first
@@ -1154,10 +1167,10 @@ tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     // `java.desktop` does not export that package, so without this flag the call fails at invoke
     // time with IllegalAccessException, and `MidiRoundTripTest` skips its audio assertions.
     //
-    // Test-only on purpose. `requiredRunJvmArgs()` deliberately does not get this: the shipping
-    // application has no reason to render MIDI to a file, and `renderToWav` checks
-    // `midiRenderUnavailableReason()` and degrades with a stated reason rather than throwing, so a
-    // JVM launched without the flag still behaves correctly.
+    // Repeated here rather than inherited: test tasks do not take `requiredRunJvmArgs()`, they take
+    // `vectorizationJvmArgs` above. `requiredRunJvmArgs()` now carries the same flag, so Field's own
+    // JVM can render too — see the longer note there for why the original test-only scoping was
+    // reversed. Both copies are needed and neither is redundant.
     jvmArgs("--add-exports=java.desktop/com.sun.media.sound=ALL-UNNAMED")
 
     // Gradle gives a test worker 512m by default, and that is not enough to hold a ClassGraph scan of
