@@ -134,10 +134,12 @@ all command results have arrived but the backdoor wrapper does not exit, the
 runner reports that exact condition and terminates the whole child process group
 after a short grace period instead of hanging indefinitely.
 
-The catalog defaults to dedicated automation port `9477`, starts a fresh Field for
-the run, and shuts down the process group afterward. Pass another high `--port`
-when you need isolation from an existing automation session. It never defaults to
-the developer-owned `9092` port. Gallery/video smoke artifacts are redirected to
+When `--port` is omitted, the catalog chooses the first free automation port starting
+at `9477`, reports it, records it in `results.json`, starts a fresh Field there, and
+shuts down the process group afterward. It checks both Field's HTTPS port and the
+default loopback HTTP mirror. Passing `--port` makes that choice exact: ownership and
+source-identity checks fail closed rather than silently moving it. The automatic path
+never selects the developer-owned `9092` port. Gallery/video smoke artifacts are redirected to
 `build/field-tests/generated-doc-assets/`; only the docs runner writes the tracked
 captures under `public/docs/assets/`.
 
@@ -267,10 +269,12 @@ Modes:
 - `FIELD_DOCS_RUNNER_MODE=strict`: invalidate captures when runner logic changes
 - `FIELD_DOCS_RUNNER_MODE=always`: regenerate every capture
 
-Use `FIELD_DOCS_RUNNER_PORT=<high-port>` for capture runs. The docs runner owns
-that port for the entire capture run, rejecting a foreign/source-stale Field before the
-first capture and shutting down its own process group at the end. Port `9477` is the
-safe default, but an explicit dedicated port makes ownership clearest in logs.
+When `FIELD_DOCS_RUNNER_PORT` is unset, the docs runner chooses and logs the first
+free automation port starting at `9477`, checking both Field's HTTPS port and its
+loopback HTTP mirror. Set `FIELD_DOCS_RUNNER_PORT=<high-port>` when the port itself is
+part of the contract; an explicit choice remains exact and rejects a foreign or
+source-stale Field rather than moving. The runner shuts down its own process group at
+the end either way.
 
 Treat broken docs captures as real failures. If a screenshot is blank, red,
 tiny, stale, or visually wrong, inspect the backdoor events/logs and fix the

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import signal
+import socket
 import ssl
 import subprocess
 import sys
@@ -15,6 +16,44 @@ import urllib.request
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Callable, Iterator, Mapping, Sequence
+
+
+def automation_port_is_available(port: int) -> bool:
+    """Whether Field can bind both its HTTPS port and default loopback HTTP mirror."""
+    ports = [port]
+    if port + 10_000 <= 65_535:
+        ports.append(port + 10_000)
+    sockets: list[socket.socket] = []
+    try:
+        for candidate in ports:
+            listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sockets.append(listener)
+            listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 0)
+            listener.bind(("127.0.0.1", candidate))
+        return True
+    except OSError:
+        return False
+    finally:
+        for listener in sockets:
+            listener.close()
+
+
+def select_automation_port(preferred: int, *, explicit: bool, attempts: int = 200) -> int:
+    """Keep an explicit port exact; otherwise choose the first free automation port.
+
+    The identity guard remains authoritative after selection. This preflight merely prevents an
+    implicit shared default from colliding with another agent before Field even starts.
+    """
+    if explicit:
+        return preferred
+    for port in range(preferred, min(preferred + attempts, 65_536)):
+        if port == 9092:
+            continue
+        if automation_port_is_available(port):
+            return port
+    raise RuntimeError(
+        f"No free Field automation port found in {preferred}..{preferred + attempts - 1}"
+    )
 
 
 def automation_workspace(repo_root: Path) -> Path:

@@ -26,6 +26,7 @@ from verification_runtime import (
     field_instance_info,
     field_instance_problem,
     run_with_watchdog,
+    select_automation_port,
     terminate_process_tree,
     verification_lock,
 )
@@ -1581,8 +1582,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--port",
         type=int,
-        default=DEFAULT_AUTOMATION_PORT,
-        help=f"Dedicated Field port (default: {DEFAULT_AUTOMATION_PORT}; never the developer port 9092).",
+        default=None,
+        help=(
+            f"Exact Field port. When omitted, choose a free port starting at "
+            f"{DEFAULT_AUTOMATION_PORT}; never uses developer port 9092."
+        ),
     )
     parser.add_argument("--fail-fast", action="store_true")
     parser.add_argument(
@@ -1604,6 +1608,10 @@ def parse_args() -> argparse.Namespace:
 
 
 def run(args: argparse.Namespace) -> int:
+    port_was_explicit = args.port is not None
+    requested_port = args.port if port_was_explicit else DEFAULT_AUTOMATION_PORT
+    args.port = select_automation_port(requested_port, explicit=port_was_explicit)
+
     catalog_path = Path(args.catalog)
     if not catalog_path.is_absolute():
         catalog_path = REPO_ROOT / catalog_path
@@ -1679,6 +1687,16 @@ def run(args: argparse.Namespace) -> int:
     def progress(message: str) -> None:
         stream = sys.stderr if args.json else sys.stdout
         print(message, file=stream, flush=True)
+
+    if port_was_explicit:
+        progress(f"Smoke automation port: {args.port} (explicit)")
+    else:
+        moved = (
+            f", default {DEFAULT_AUTOMATION_PORT} was occupied"
+            if args.port != DEFAULT_AUTOMATION_PORT
+            else ""
+        )
+        progress(f"Smoke automation port: {args.port} (automatically selected{moved})")
 
     # Per-platform opt-outs (e.g. `skipOn: [darwin]` for raytracing on macOS,
     # where the GPU RT pipeline is unreliable). Skips are reported, never silently
@@ -1776,6 +1794,8 @@ def run(args: argparse.Namespace) -> int:
 
     report = {
         "catalog": str(catalog_path),
+        "automationPort": args.port,
+        "automationPortExplicit": port_was_explicit,
         "selectedCount": len(tests),
         "passed": passed,
         "failed": failed,
@@ -1827,7 +1847,8 @@ def main() -> int:
         # "show me what you would kill" diagnostic, and it has to be usable while another
         # run holds the lock.
         print(f"Reaper scope: {_checkout_scope_prefix(REPO_ROOT)}", file=sys.stderr, flush=True)
-        reap_stale_field_jvms(args.port, dry_run=True)
+        port = args.port if args.port is not None else DEFAULT_AUTOMATION_PORT
+        reap_stale_field_jvms(port, dry_run=True)
         return 0
     stream = sys.stderr if args.json else sys.stdout
     with verification_lock(

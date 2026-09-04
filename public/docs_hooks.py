@@ -34,6 +34,7 @@ from verification_runtime import (
     field_instance_info,
     field_instance_problem,
     run_with_watchdog,
+    select_automation_port,
 )
 
 # Shared with tools/discover_field_tests.py; see public/fabricate_docs_scenes.py.
@@ -139,6 +140,16 @@ RUNNER_CONTINUE_ON_ERROR_ENV = "FIELD_DOCS_RUNNER_CONTINUE_ON_ERROR"
 RUNNER_PORT_ENV = "FIELD_DOCS_RUNNER_PORT"
 RUNNER_WORKSPACE_ENV = "FIELD_DOCS_RUNNER_WORKSPACE"
 DEFAULT_RUNNER_PORT = 9477
+
+
+def resolve_runner_port() -> tuple[int, bool]:
+    """Return the docs port and whether the caller explicitly fixed it."""
+    configured = os.environ.get(RUNNER_PORT_ENV)
+    explicit = configured is not None
+    requested = int(configured) if explicit else DEFAULT_RUNNER_PORT
+    return select_automation_port(requested, explicit=explicit), explicit
+
+
 # The code-use semantic sidecar, which is what makes the DEFAULT completion backend exist.
 #
 # `KotlinEngineConfig.activeCompletionBackend` is `AA`, but `AaCompletionClient` engages only when a
@@ -533,7 +544,10 @@ class RunnerState:
             raise RuntimeError(
                 f"Unsupported {RUNNER_MEDIA_ENV}={self.runner_media!r}; expected 'all' or 'video'"
             )
-        self.backdoor_port = int(os.environ.get(RUNNER_PORT_ENV, str(DEFAULT_RUNNER_PORT)))
+        self.backdoor_port, port_was_explicit = resolve_runner_port()
+        # Capture command builders are leaf helpers and intentionally do not depend on STATE.
+        # Publish the once-per-build choice so they all use the same automatically selected port.
+        os.environ[RUNNER_PORT_ENV] = str(self.backdoor_port)
         self.continue_on_error = resolve_continue_on_error(
             os.environ.get(RUNNER_CONTINUE_ON_ERROR_ENV),
             runner_mode=self.runner_mode,
@@ -594,6 +608,11 @@ class RunnerState:
         self.session_captures = 0
         self._captures_since_server_restart = 0
         LOG.info("Field docs runner mode: %s", self.runner_mode)
+        LOG.info(
+            "Field docs runner automation port: %s (%s)",
+            self.backdoor_port,
+            "explicit" if port_was_explicit else "automatically selected",
+        )
         LOG.info(
             "Field docs runner per-fence source coverage: %s (%s symbol(s) over %s file(s))",
             self.source_refs_mode,
