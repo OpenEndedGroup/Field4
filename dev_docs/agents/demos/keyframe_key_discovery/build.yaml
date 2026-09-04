@@ -1,0 +1,235 @@
+name: keyframe_key_discovery
+description: >
+  The keyframe browser, and whether it can show you your own keys.
+
+  Three boxes, no GPU, no window: a KeyframeScope needs neither, and each box writes its key directory
+  into a fresh temp dir so nothing lands in this document.
+
+    1. kf_before_after  — six keys named `a b c d d2 d3`, the shapes a real session actually produced,
+                   browsed twice in one box. The top panel uses `pattern = "??"`, which was the last
+                   pattern that session tried; it shows two of the six and now says so, with a button
+                   that widens it in one click. The bottom panel uses the default. The printed numbers
+                   are the whole story: the old default `**/*.json` found **zero** of these six,
+                   because `saveKey` writes the path it is handed and appends no extension, so
+                   `capture().save("d3".path)` produces a file called `d3`. `?` is exactly one
+                   character and `??` exactly two, so no single-length glob spans `a b c d` and
+                   `d2 d3` — and `{?,??}` always did, with nothing anywhere saying so.
+    2. kf_junk_vs_damage — four good keys, two files that were never keys, and one key Field wrote and
+                   that is now truncated. One red row, two grey ones. What tells the truncated key
+                   apart from the junk is not its bytes — it is unparseable either way — but the
+                   `.versions` directory still beside it, which is both the proof Field wrote it and
+                   the thing you now want.
+    3. kf_orphaned_slots — the disagreement that was silent in one direction only. Three keys saved
+                   back when the pass had a `blur`; the scope today watches `radius` and a `feather`
+                   nothing has ever saved. `glow@feather` gets the amber "never saved" row the browser
+                   already had; `glow@blur` is saved in all three keys, renders with its real range,
+                   and applies to nowhere — so it is now struck through and named in the header. Also
+                   shows why `scopeAttached` is a flag of its own: a read-only browse and a scope
+                   watching nothing both leave `scopeSlots` empty and must not read the same.
+
+  This transcript is what built `dev_docs/agents/demos/keyframe_key_discovery/metadata.edn`;
+  re-running it rebuilds that document. Companion tests: afield.stdlib.KeyframeBrowserTest and
+  afield.server.KeyframeBrowserProtocolTest.
+operations:
+  - create:
+      box: kf_before_after
+      name: 1 - Six keys, and the pattern that showed two
+      frame: { x: 40.0, y: 40.0, w: 760.0, h: 520.0 }
+      properties:
+        code: |
+          // Six saved keys, and whether the browser can show them to you.
+          //
+          // The names are not invented. They are copied from a live session: `a`, `b`, `c`, `d`, `d2`, `d3`,
+          // saved with `kfs.capture().save("d3".path)` — which writes a file called `d3`, with no extension,
+          // because `saveKey` writes the path it is handed and appends nothing.
+          //
+          // Run this box. Two browsers appear. The top one is what you used to get.
+
+          import afield.stdlib.KeyframeCollection
+          import afield.stdlib.KeyframeScope
+          import afield.stdlib.everyKeyGlob
+          import afield.four.buffers.Structure
+          import java.nio.file.Files
+
+          // A temp directory, so this demo writes nothing into your document.
+          val dir = Files.createTempDirectory("keyframe-key-discovery")
+
+          // A live scope, so both browsers get Apply and the "you have never saved this" row.
+          val glow = Structure()
+          glow.bind("radius") { 4.0f }
+          glow.bind("intensity") { 0.35f }
+          val kfs = KeyframeScope()
+          kfs.target("glow@radius", glow)
+          kfs.target("glow@intensity", glow)
+
+          // Six keys, saved the ordinary way — through the real writer, so each gets a real `.versions`
+          // history beside it.
+          listOf(1f, 3f, 6f, 10f, 15f, 21f).forEachIndexed { i, r ->
+              val name = listOf("a", "b", "c", "d", "d2", "d3")[i]
+              glow.bind("radius") { r }
+              glow.bind("intensity") { 0.1f + i * 0.15f }
+              kfs.capture().save(dir.resolve(name), "look $name")
+          }
+
+          // And the file macOS leaves in any folder a Finder window has opened. Nobody asked for it.
+          Files.writeString(dir.resolve(".DS_Store"), "Bud1 (this is not a key)")
+
+          // ---------------------------------------------------------------------------------------------
+          // The numbers, before the pictures.
+          // ---------------------------------------------------------------------------------------------
+
+          val old = KeyframeCollection.load(dir, "**/*.json")
+          val narrow = KeyframeCollection.load(dir, "??")
+          val now = KeyframeCollection.load(dir, everyKeyGlob)
+
+          println("keys on disk: " + dir.toFile().list()!!
+              .filter { !it.endsWith(".versions") && !it.startsWith(".") }.sorted())
+          println("plus, uninvited: " + dir.toFile().list()!!.filter { it.startsWith(".") }.sorted())
+          println()
+          println("the old default, '**/*.json':  ${old.files.size} keys  <- 'No key files matched'")
+          println("the last pattern tried, '??':  ${narrow.files.size} keys  (${narrow.skipSummary()})")
+          println("brace alternation, '{?,??}':   ${KeyframeCollection.load(dir, "{?,??}").files.size} keys" +
+                  "  <- this always worked, and nothing said so")
+          println("the default now, '$everyKeyGlob':          ${now.files.size} keys  (${now.skipSummary()})")
+          println()
+          println("what '??' hid: " + narrow.skipped.filter { it.kind.name == "Hidden" }.map { it.relative })
+          println("problems, either way: ${now.problems.size}  <- .DS_Store is ignored, not an error")
+
+          // ---------------------------------------------------------------------------------------------
+          // The two browsers. Compare the headers.
+          // ---------------------------------------------------------------------------------------------
+
+          // BEFORE: the pattern the session ended on. Two keys of six, and — this is the fix — a line under
+          // the header saying so, with a button that widens it in one click.
+          keyframeBrowser(dir, pattern = "??", channel = "before: pattern = \"??\"", scope = kfs, height = 320)
+
+          // AFTER: the default. Every key at any depth, with the OS turd counted as ignored rather than
+          // reported as a problem.
+          keyframeBrowser(dir, channel = "after: the default", scope = kfs, height = 380)
+  - create:
+      box: kf_junk_vs_damage
+      name: 2 - Junk is not damage
+      frame: { x: 840.0, y: 40.0, w: 760.0, h: 520.0 }
+      properties:
+        code: |
+          // Two files fail to decode. Only one of them is your problem.
+          //
+          // This directory holds four good keys, two files that were never keys, and one key that Field wrote
+          // and that is now truncated. Before, all three failures were one red list, so a `.DS_Store` — a file
+          // the operating system wrote without asking, in a directory where nothing is wrong — looked exactly
+          // like a corrupt key. A permanent false alarm teaches you to stop reading the alarm.
+
+          import afield.stdlib.KeyframeCollection
+          import afield.stdlib.KeyframeScope
+          import afield.stdlib.everyKeyGlob
+          import java.nio.file.Files
+
+          val dir = Files.createTempDirectory("keyframe-junk-vs-damage")
+          val kfs = KeyframeScope()
+
+          // Four keys, saved properly.
+          listOf("a" to 1f, "b" to 2f, "c" to 3f, "d" to 4f).forEach { (n, r) ->
+              kfs.saveKey(dir.resolve(n), kfs.Key(mutableMapOf("glow@radius" to r)), "look $n")
+          }
+
+          // One key, saved properly and then truncated — a write that stopped halfway.
+          kfs.saveKey(dir.resolve("e"), kfs.Key(mutableMapOf("glow@radius" to 5f)), "look e")
+          val e = dir.resolve("e")
+          Files.writeString(e, Files.readString(e).take(14))
+
+          // Two files that were never keys.
+          Files.writeString(dir.resolve(".DS_Store"), "Bud1 (not a key)")
+          Files.writeString(dir.resolve("notes.txt"), "remember to try the wider glow")
+
+          val c = KeyframeCollection.load(dir, everyKeyGlob)
+
+          println("rows:     " + c.files.map { it.relative })
+          println("problems: " + c.problems)
+          println("ignored:  " + c.skipped.filter { it.kind.name == "NotAKey" }.map { it.relative })
+          println("notice:   " + c.skipSummary())
+          println()
+          // The ownership test, spelled out. `e` is not valid JSON any more, so a content-only ladder would
+          // have filed it as "not JSON, not a key" — the important case, backwards. What proves Field wrote it
+          // is the `.versions` directory still sitting beside it, which is also exactly what you now want.
+          println("e is unparseable, and e.versions still holds " +
+                  (dir.resolve("e.versions").toFile().list()?.count { it.endsWith(".json") } ?: 0) +
+                  " file(s) — so the damage is recoverable, and the row says to open the version rail")
+
+          // One red row, two grey ones. Hover the notice to read the per-file reasons.
+          keyframeBrowser(dir, channel = "junk is not damage", scope = kfs, height = 380)
+  - create:
+      box: kf_orphaned_slots
+      name: 3 - A saved slot that applies to nowhere
+      frame: { x: 40.0, y: 600.0, w: 760.0, h: 540.0 }
+      properties:
+        code: |
+          // A saved slot that applies to nowhere.
+          //
+          // The browser has always drawn one half of this: a slot the scope watches that no key holds — the
+          // "you have never saved this" row. The other half was silent. A slot a *key* holds that the scope no
+          // longer watches renders as an ordinary row, with its real saved range across every key, and
+          // `KeyframeScope.loadKey` is explicit about what happens next: "a file whose values have since left
+          // the scope loads fine — the extra names simply have nowhere to go on apply."
+          //
+          // So a rename half-done looks exactly like a working slot, and Apply quietly drops it.
+
+          import afield.stdlib.KeyframeCollection
+          import afield.stdlib.KeyframeScope
+          import afield.stdlib.everyKeyGlob
+          import afield.four.buffers.Structure
+          import java.nio.file.Files
+
+          val dir = Files.createTempDirectory("keyframe-orphaned-slots")
+
+          // Three keys saved back when the pass had a `blur` as well as a `radius`.
+          run {
+              val old = Structure()
+              val past = KeyframeScope()
+              past.target("glow@radius", old)
+              past.target("glow@blur", old)
+              listOf(1f to 4f, 6f to 5f, 11f to 6f).forEachIndexed { i, (r, b) ->
+                  old.bind("radius") { r }
+                  old.bind("blur") { b }
+                  past.capture().save(dir.resolve(listOf("a", "b", "c")[i]), "look ${listOf("a", "b", "c")[i]}")
+              }
+          }
+
+          // The pass as it is today: `blur` is gone, and a `feather` has arrived that nothing has ever saved.
+          val glow = Structure()
+          glow.bind("radius") { 7f }
+          glow.bind("feather") { 0.5f }
+          val kfs = KeyframeScope()
+          kfs.target("glow@radius", glow)
+          kfs.target("glow@feather", glow)
+
+          val c = KeyframeCollection.load(dir, everyKeyGlob, kfs)
+
+          println("slots in view:      " + c.slotNames)
+          println("watched by the scope: " + c.scopeSlots.sorted())
+          println("saved, and wired to nothing: " + c.orphanedSlots + "   <- Apply drops these")
+          println()
+          c.slots().forEach { s ->
+              val tag = when {
+                  s.orphaned -> "ORPHANED  (saved in ${s.presentIn}/${s.total} keys, applies to nowhere)"
+                  s.inScope && s.presentIn == 0 -> "never saved (the scope watches it, no key holds it)"
+                  else -> "live"
+              }
+              println("  ${s.name.padEnd(14)} ${tag}")
+          }
+          println()
+          // The flag is not just "scopeSlots is empty". A read-only browse cannot know which slots are live,
+          // and must not accuse every row; an attached scope watching nothing must accuse every row. Both
+          // leave scopeSlots empty, so `scopeAttached` is what tells them apart.
+          val readOnly = KeyframeCollection.load(dir, everyKeyGlob, scope = null)
+          println("read-only browse: scopeAttached=${readOnly.scopeAttached}, orphaned=${readOnly.orphanedSlots}")
+          println("  (no scope, so no accusation — this is why scopeAttached exists as its own flag)")
+
+          // `glow@blur` is struck through and named in the header; `glow@radius` is plain; `glow@feather` is
+          // the amber "never saved" row this browser already had.
+          keyframeBrowser(dir, channel = "saved, but wired to nothing", scope = kfs, height = 400)
+  - execute:
+      box: kf_before_after
+  - execute:
+      box: kf_junk_vs_damage
+  - execute:
+      box: kf_orphaned_slots

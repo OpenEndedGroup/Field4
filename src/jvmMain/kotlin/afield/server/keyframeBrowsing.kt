@@ -10,11 +10,13 @@ import afield.rawHandlers
 import afield.stdlib.KValue
 import afield.stdlib.KeyframeCollection
 import afield.stdlib.KeyframeScope
+import afield.stdlib.SkippedFile
 import afield.stdlib.SlotSummary
 import afield.stdlib.SourceBackedBlock
 import afield.stdlib.StackSLString
 import afield.four.util.CameraPose
 import afield.stdlib.formatSlotNumber
+import afield.stdlib.everyKeyGlob
 import afield.stdlib.friendlyTime
 import afield.stdlib.linalg.DualQuaternionf
 import afield.thisSession
@@ -66,15 +68,35 @@ private const val KEYFRAME_BROWSER_CHANNEL = "__keyframe_browser__"
  */
 private class KeyframeBrowserHandle(
     val root: Path,
-    val pattern: String,
+    pattern: String,
     val scope: WeakReference<KeyframeScope>?
 ) {
+    /**
+     * Mutable, and only ever widened, by the `showAll` op.
+     *
+     * The pattern used to be fixed at registration, which meant a person who had narrowed themselves
+     * into seeing two of their six keys could only get the other four back by editing the box source
+     * and re-running it. The browser knows how many keys the pattern is hiding — it says so in the
+     * header — so refusing to let a click act on that number was the un-toolish half of a viewer.
+     * The box's own argument is untouched: re-running the box registers a fresh handle at the pattern
+     * the source still says.
+     */
+    @Volatile
+    var pattern: String = pattern
+        private set
+
     @Volatile
     var cached: KeyframeCollection? = null
 
     /** Re-read the directory. Cheap enough to do on every open; the cache is for the click-arounds. */
     fun reload(): KeyframeCollection =
         KeyframeCollection.load(root, pattern, scope?.get()).also { cached = it }
+
+    /** Widen to [everyKeyGlob] and re-read. Idempotent. */
+    fun showAll(): KeyframeCollection {
+        pattern = everyKeyGlob
+        return reload()
+    }
 
     fun collection(): KeyframeCollection = cached ?: reload()
 }
@@ -142,7 +164,19 @@ private data class KBOpen(
     val hasScope: Boolean,
     val files: List<KBFile>,
     val slots: List<SlotSummary>,
-    val problems: List<String>
+    /** Damaged files only, one prose line each. Junk no longer arrives here; see [KBOpen.skipped]. */
+    val problems: List<String>,
+    /** Every file under the root that is not a row, and why. */
+    val skipped: List<SkippedFile> = emptyList(),
+    /** `KeyframeCollection.skipSummary`, or null when nothing was skipped. */
+    val notice: String? = null,
+    /** True when widening the pattern would reveal more keys — enables the "show every key" button. */
+    val canShowAll: Boolean = false,
+    /**
+     * Slots some key holds that the live scope does not watch. Empty with no scope attached, so a
+     * read-only browser never claims a slot is disconnected when it simply cannot tell.
+     */
+    val orphanedSlots: List<String> = emptyList()
 )
 
 @Serializable
@@ -361,8 +395,8 @@ private object KeyframeBrowserProtocol {
 
         return runCatching {
             when (req.op) {
-                "open" -> {
-                    val c = handle.reload()
+                "open", "showAll" -> {
+                    val c = if (req.op == "showAll") handle.showAll() else handle.reload()
                     json.encodeToString(
                         KBOpen.serializer(),
                         KBOpen(
@@ -391,7 +425,11 @@ private object KeyframeBrowserProtocol {
                                 )
                             },
                             slots = c.slots(),
-                            problems = c.problems
+                            problems = c.problems,
+                            skipped = c.skipped,
+                            notice = c.skipSummary(),
+                            canShowAll = c.hiddenCount > 0 || c.pattern != everyKeyGlob,
+                            orphanedSlots = c.orphanedSlots
                         )
                     )
                 }
