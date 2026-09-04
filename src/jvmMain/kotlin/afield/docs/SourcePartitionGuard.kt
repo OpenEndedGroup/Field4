@@ -85,6 +85,15 @@ object SourcePartitionGuard {
      * and `GeometryAgentTools.kt`. It was 36 lines, over half of the 69 this guard was reporting;
      * `KotlinSourcePartition`'s `multiLineAnnotationEnd` steps over it now.
      *
+     * The seventh closed the **comment inside an annotation run** — `@Test`, then three `//` lines
+     * explaining why the function below is not backtick-quoted, then `fun`. A masked comment line is
+     * indistinguishable from a blank one, and a blank line deliberately breaks the run, so the scan
+     * stopped short and left the annotation unattributed. `KotlinSourcePartition`'s
+     * `lineCommentRunEnd` steps over it now, which attributed both of the repository's instances of
+     * the shape (the other is `@Serializable(with = FLineSerializer::class)` in `FLine.kt`) and took
+     * this ratchet from 33 to 32. It is the movement that pushed the guard one line over on
+     * 2026-09-04, when `H2StructuredExplorerTest.kt` arrived carrying the first instance.
+     *
      * What remains is the other flavour, the **annotated accessor** — `@Synchronized` above
      * `get() = values.size`, four times in `stats.kt` — plus a tail of wrapped expression bodies whose
      * continuation line begins with something `CONTINUES_BEFORE` does not list (a bare `value`, a
@@ -93,7 +102,7 @@ object SourcePartitionGuard {
      *
      * Lower it whenever the scanner learns a shape; raise it only with a reason.
      */
-    private const val MAX_FILLER_CODE_LINES = 33
+    private const val MAX_FILLER_CODE_LINES = 32
 
     /**
      * The ratchet on declarations [KotlinSourceIndex] reports from *inside a function body*.

@@ -276,6 +276,66 @@ class KotlinSourcePartitionTest {
         assertTrue("RECONSTRUCT" in rules, "…and the reconstruction: $rules")
     }
 
+    @Test
+    fun `a declaration starts at an annotation a comment separates from the keyword`() {
+        // `@Test`, then three `//` lines explaining why the function below is not backtick-quoted,
+        // then `fun`. The run scan stopped at the comment because a masked comment line is
+        // indistinguishable from a blank one, so the annotation was left as unattributed filler and a
+        // source page would render it as an anonymous fragment above a declaration missing it. Both
+        // of the repository's instances of this shape were stranded that way — the other is
+        // `@Serializable(with = FLineSerializer::class)` in `FLine.kt` — which is the movement that
+        // pushed SourcePartitionGuard one line past its ratchet on 2026-09-04.
+        val source = """
+            @Test
+            // Named without backticks on purpose: a doc page cites this test as a reproducer anchor,
+            // and the gate matches the anchor literally against the file text.
+            fun reflectionCannotTell() {
+                check(true)
+            }
+        """.trimIndent()
+
+        val partition = KotlinSourcePartition.partition(source)
+        assertEquals(emptyList(), KotlinSourcePartition.verify(partition), "invariants")
+        assertEquals(source.split("\n"), KotlinSourcePartition.reconstruct(partition), "reconstruction")
+        val declared = declaration(partition, "reflectionCannotTell")
+        assertEquals(lineOf(source, "@Test"), declared.startLine, "the span starts at the annotation")
+        assertEquals(lineOf(source, "fun reflectionCannotTell"), declared.declarationLine, "the signature does not")
+        assertTrue(
+            partition.allSpans().none { it.kind == KotlinSourcePartition.Kind.FILLER },
+            "nothing should be left over: ${'$'}{partition.spans}"
+        )
+    }
+
+    @Test
+    fun `a blank line still breaks an annotation run, and a lone comment is still a comment`() {
+        // The two refusals that make the case above safe. Stepping over a comment inside the run must
+        // not become stepping over a blank line — a blank line is the author saying these are two
+        // different things — and a comment reached with no annotation above it is a COMMENT span, not
+        // the start of whatever follows it.
+        val source = """
+            @Deprecated("gone")
+
+            // A note about something else entirely.
+            fun later(): Int = 1
+        """.trimIndent()
+
+        val partition = KotlinSourcePartition.partition(source)
+        assertEquals(emptyList(), KotlinSourcePartition.verify(partition), "invariants")
+        assertEquals(source.split("\n"), KotlinSourcePartition.reconstruct(partition), "reconstruction")
+        assertEquals(
+            lineOf(source, "fun later"),
+            declaration(partition, "later").startLine,
+            "the declaration must not reach back past the blank line to the orphaned annotation"
+        )
+        assertTrue(
+            partition.allSpans().any {
+                it.kind == KotlinSourcePartition.Kind.COMMENT &&
+                    it.startLine == lineOf(source, "// A note about")
+            },
+            "the lone comment stays a comment span: ${'$'}{partition.spans}"
+        )
+    }
+
     /** The 1-based line of the first line whose text contains [needle]. */
     private fun lineOf(source: String, needle: String): Int {
         val index = source.split("\n").indexOfFirst { needle in it }
