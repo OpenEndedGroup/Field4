@@ -9,14 +9,14 @@ generator layer that sits beside it.
 This page picks up where [Running code in a box](running_code.md) stops: that page ends when the
 last fragment finishes evaluating, and this one starts with what Field does to the value it produced.
 
-Everything else on this page follows from one property of the loop, so it goes first:
+One property of the loop sets up everything else here:
 
-!!! important "A frame counts work, not seconds."
+!!! important "A frame is one unit of work"
 
     Field's Runloop is a bare `while (true)` that drains a queue, counts one, and idles for about
     fifty microseconds. There is no 60 Hz, no vsync, no fixed timestep. `frameNumber` counts how
-    many times your animation reached a frame boundary — it counts *work*, not *seconds*, and two
-    Field sessions on two machines will not agree on how many of them fit in a second.
+    many times your animation reached a frame boundary, and two Field sessions on two machines will
+    not agree on how many of those fit in a second.
 
     So if you write motion as a function of `frameNumber` it will run at a different speed on a
     different machine, and at a different speed again while a shader is compiling. Write it as a
@@ -24,7 +24,7 @@ Everything else on this page follows from one property of the loop, so it goes f
 
 ## The loop
 
-`Runloop.start()` — `src/jvmMain/kotlin/afield/Runloop.kt` — is the whole scheduler:
+`Runloop.start()`, in `src/jvmMain/kotlin/afield/Runloop.kt`, is the whole scheduler:
 
 ```diffstatic {data-lang=kotlin}
 while (true) {
@@ -41,7 +41,7 @@ It runs on one thread, named `field-runloop-main`. `idle()` is 64 `Thread.onSpin
 a 50 µs `LockSupport.parkNanos` by default, tunable with `AFIELD_RUNLOOP_IDLE` and friends. Nothing
 here waits for a display.
 
-`main` is a **`Framer`**, and a `Framer` is a `kotlinx.coroutines.CoroutineDispatcher` — about thirty
+`main` is a **`Framer`**, and a `Framer` is a `kotlinx.coroutines.CoroutineDispatcher`, about thirty
 lines of it. `dispatch` appends the runnable to a queue. `frame()` atomically swaps in a fresh queue
 and runs everything that was in the old one, inline, to completion:
 
@@ -57,8 +57,8 @@ fun frame(): Int {
 ```
 
 That swap is the frame boundary. A coroutine that suspends during the drain re-dispatches onto the
-*new* queue, so it resumes on the next call and not this one. That is the entire mechanism: **a
-frame is one drain of the dispatcher's queue.** Everything below is a consequence.
+*new* queue, so it resumes on the next call and not this one. **A frame is one drain of the
+dispatcher's queue**, and the rest of this page follows from that.
 
 ## Returning a `Frames` is what launches it
 
@@ -75,7 +75,7 @@ animate { drawFrameOf(n) }    // the box's value — Field launches this
 in `box.jobs`, and starts reporting `is-running` for the box. Code *before* the `animate { }` runs
 once, on the run; the block runs once per frame after that.
 
-The corollary catches people: if `animate { }` is not the returned expression, nothing happens.
+So if `animate { }` is not the returned expression, nothing happens.
 
 ```diffstatic {data-lang=kotlin}
 animate { drawFrameOf(n) }    // not the last expression …
@@ -89,15 +89,15 @@ fun animate(block: suspend Frames.() -> Unit): Frames = eachFrame(block)
 ```
 
 There is a second way in, `Box.launchFrames(frames)`, which launches without going through the
-return value. It exists for fire-and-forget work — `streamProcessFireAndForget` is its only caller
-in the tree — and it differs in one respect worth knowing: it *composes* onto any `shouldend` already
-installed, where the return-value path replaces it.
+return value. It exists for fire-and-forget work (`streamProcessFireAndForget` is its only caller
+in the tree) and it differs in one respect: it *composes* onto any `shouldend` already installed,
+where the return-value path replaces it.
 
 ## The four builders
 
-They differ only in who calls `frame()`. The clearest way to see that is to be the Runloop: a
-`Framer` is an ordinary dispatcher, so we can make a private one, run each builder's body on it, and
-drain it by hand, counting body calls per pump.
+They differ only in who calls `frame()`. A `Framer` is an ordinary dispatcher, so you can stand in
+for the Runloop: make a private one, run each builder's body on it, drain it by hand, and count body
+calls per pump.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/animation_time_model/builders.png" wait="1.5" capture="box" open-outputs="true" w="1100" name="animation-builders"}
 import kotlinx.coroutines.CoroutineScope
@@ -146,8 +146,8 @@ check(figure.deviations.isEmpty()) { "a builder no longer advances one frame per
 
 ![A table of cumulative body calls per pump for the four Frames builders, showing loop and forever one call ahead of frames and eachFrame, and all four ending on frameNumber 7](assets/animation_time_model/builders.png)
 
-Read the offset. All four advance exactly one frame per pump — the last column is `7` in every row.
-What differs is *when the body runs relative to the boundary*:
+All four advance exactly one frame per pump: the last column is `7` in every row. What differs is
+*when the body runs relative to the boundary*:
 
 | builder | contract |
 | --- | --- |
@@ -156,12 +156,12 @@ What differs is *when the body runs relative to the boundary*:
 | `loop { }` | Run the body, *then* advance — but only if the body did not advance already. |
 | `forever { }` | `loop { }`, except the body returns a `Boolean` and returning `false` ends it. |
 
-`eachFrame`'s body runs from pump 2; `loop`'s from pump 1. One pump, and it is the whole difference
-between "advance, then run" and "run, then advance" — *for a body that does not advance itself*.
+`eachFrame`'s body runs from pump 2; `loop`'s from pump 1. That one pump is the difference between
+"advance, then run" and "run, then advance", for a body that does not advance itself.
 
-The conditional advance is the part to watch, because that is where the two stop being one pump
-apart. `eachFrame` spends a frame of its own before every body call, so a body that also calls
-`frame()` or `delay(ms)` costs two frames a pass and runs half as often. `loop` does not bolt a
+A body that *does* advance itself pulls them further apart. `eachFrame` spends a frame of its own
+before every body call, so a body that also calls `frame()` or `delay(ms)` costs two frames a pass
+and runs half as often. `loop` does not bolt a
 second advance onto a pass that already advanced. Over eight pumps:
 
 | | body calls | frames |
@@ -171,20 +171,21 @@ second advance onto a pass that already advanced. Over eight pumps:
 | `animate { …; frame() }` | 4 | 7 |
 | `loop { …; frame() }` | 8 | 7 |
 
-One frame per pump throughout — the frame *rate* is the Runloop's, never the builder's. So reach for
+One frame per pump throughout: the frame *rate* is the Runloop's, never the builder's. So reach for
 `loop` when the body paces itself, and for `animate` when it does not.
 
-!!! note "`frame()`'s `Boolean` is never `false`"
-    Which raises the other apparent difference — `eachFrame` is `while (frame())` and `loop` is
-    `while (true)` — and it is not one. Every route that stops a frame body cancels the job *before*
-    the `yield()` that `frame()` is suspended on, so the yield throws and `frame()` does not return
-    at all. `loop` gives up nothing by ignoring the value, and `forever { }`'s own `Boolean` is the
+!!! note "`frame()` returns `true`, or throws"
+    `eachFrame` is `while (frame())` and `loop` is `while (true)`, which looks like a second
+    difference and is not. Every route that stops a frame body cancels the job *before* the
+    `yield()` that `frame()` is suspended on, so the yield throws and `frame()` does not return at
+    all. `loop` gives up nothing by ignoring the value, and `forever { }`'s own `Boolean` is the
     only return-based way to end a frame program.
 
-    This falls out of `job?.cancel()` preceding `yield()` rather than being designed, so it is pinned
-    by `FramesSemanticsTest.frameNeverReturnsFalse` across all three stop routes. It matters more
-    than it looks: the end phase lives in that `catch`, so a `frame()` that started returning `false`
-    would exit `eachFrame` through its loop condition and stop running `.end { }` altogether.
+    It follows from `job?.cancel()` preceding `yield()`, and
+    `FramesSemanticsTest.frameNeverReturnsFalse` pins it across all three stop routes. That pin
+    earns its keep: the end phase lives in that `catch`, so a `frame()` that started returning
+    `false` would exit `eachFrame` through its loop condition and stop running `.end { }`
+    altogether.
 
 !!! note "`forever { }` needs qualifying"
     A box imports both `afield.*` and `afield.four.util.*`, and each declares a `forever` — one
@@ -194,27 +195,22 @@ One frame per pump throughout — the frame *rate* is the Runloop's, never the b
 
 ??? aside "`forever` and `Frames.plus` have no callers in the tree"
     Nothing in Field's own source calls either the `Frames` `forever` or the parallel-composition
-    operator `Frames.plus`. Both are public, and both carry less exposure to change than the other
-    three builders. `forever` behaves exactly as documented — the figure above drives it.
+    operator `Frames.plus`. Both are public, and both are less exercised than the other three
+    builders. `forever` behaves as documented; the figure above drives it.
 
-    `Frames.plus` did not, until 2026-08-28, and the reason is worth reading if you compose frame
-    programs. A launcher installs its stop fences — `shouldend`, `onAtEndStart`, `onAtEndFinish`,
-    `shouldCancelAtEnd` — on the `Frames` it was handed, which for `a + b` is the *combined* one. The
-    children are reached only through `body()`, so they kept the defaults. The default
-    `onAtEndStart = { }` was the damaging one: a child's end job was never registered with the box,
-    so nothing could cancel it. A child `.end { }` that looped on `frame()` ran on the Runloop
-    forever, through any number of stops. `plus` now forwards all four, lazily, so a child is fenced
+    `Frames.plus` needs one thing said about it if you compose frame programs. A launcher installs
+    its stop fences (`shouldend`, `onAtEndStart`, `onAtEndFinish`, `shouldCancelAtEnd`) on the
+    `Frames` it was handed, which for `a + b` is the *combined* one, and the children are reached
+    only through `body()`. `plus` forwards all four down to them, lazily, so a child is fenced
     exactly as the parent is and a re-run stops each child in its own right rather than only via the
-    parent's `finally`.
-
-    One rough edge is left, and it is cosmetic: all three end phases of `(a.end + b.end).end` route
-    through the same hook pair, so the box can report `"ending"` more than once for one stop.
+    parent's `finally`. One rough edge is left, and it is cosmetic: all three end phases of
+    `(a.end + b.end).end` route through the same hook pair, so the box can report `"ending"` more
+    than once for one stop.
 
 ## What stops one
 
-This is the question a reader actually arrives with, and it has more than one answer. Every one of
-them lands in the same place — `Frames.frame()`, which is the only suspension point a well-behaved
-frame body has:
+There is more than one answer, and all of them land in the same place: `Frames.frame()`, the only
+suspension point a well-behaved frame body has.
 
 ```diffstatic {data-lang=kotlin}
 suspend fun frame(): Boolean {
@@ -236,7 +232,7 @@ suspend fun frame(): Boolean {
 | **The body throws.** | Caught by the launcher, logged, and reported on the box as an error. |
 | **A stale launch epoch.** | If a stop landed between preparing the launch and dispatching it, `registerLaunchJob` refuses and the body never runs at all. |
 
-Two of those differ in a way you can measure, and the difference is one body call:
+Two of those differ by exactly one body call, and you can measure it:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/animation_time_model/stopping.png" wait="1.5" capture="box" open-outputs="true" w="1100" name="animation-stopping"}
 import kotlinx.coroutines.CoroutineScope
@@ -303,14 +299,14 @@ check(results.count { it.endBlockRan } == 3) { ".end { } should run for the thre
 
 ![A table of five ways a Frames stops, showing that flipping shouldend costs one further body call while cancelling the Job costs none, and that the .end block runs for the three cancellation cases and not for the two completion cases](assets/animation_time_model/stopping.png)
 
-Two results there are worth stating in words, because both are easy to assume the other way round.
+Two of those rows are easy to assume the other way round.
 
 **Re-running a box costs one more body call; stopping it costs none.** `shouldend` is read at the
 *top* of `frame()`. A body suspended inside `frame()` is halfway through a call that has already
 decided to return `true`: it resumes, returns `true`, and the loop runs the body one final time
-before the *next* `frame()` looks at the flag. Cancelling the `Job` — what `Box.stop` does — makes
-the pending `yield()` throw instead, so nothing more runs. If your animation holds a resource that
-must not be touched after a re-run, one extra pass is the window you have to survive.
+before the *next* `frame()` looks at the flag. Cancelling the `Job`, which is what `Box.stop` does,
+makes the pending `yield()` throw instead, so nothing more runs. If your animation holds a resource
+that must not be touched after a re-run, one extra pass is the window you have to survive.
 
 **`.end { }` is not a `finally`.** `atEnd` is invoked from exactly one place: `frame()`'s `catch`,
 reached only when the pending `yield()` throws a cancellation. A body that throws its own exception
@@ -318,40 +314,33 @@ does not go through that path, and neither does one that simply returns. So `.en
 *"when this animation is cancelled"*, not *"when this animation finishes"*. For cleanup that must
 happen either way, use a Kotlin `try`/`finally` inside the body.
 
-And when both are present and a cancellation arrives, **`.end { }` runs first** — `frame()` calls it
+And when both are present and a cancellation arrives, **`.end { }` runs first**: `frame()` calls it
 from inside its own `catch`, before rethrowing, so the cancellation has not yet unwound the body's
-`finally`. That is the opposite of the order you would guess from the nesting, and it is asserted rather
-than incidental.
+`finally`. The nesting suggests the other order, so
+`FramesSemanticsTest.theEndBlockRunsBeforeTheBodysOwnFinally` holds this one in place.
 
-When `atEnd` does run, it runs properly: `frame()` re-enters through `withContext(NonCancellable)`
+When `atEnd` does run, it runs properly. `frame()` re-enters through `withContext(NonCancellable)`
 on a fresh `Job` that inherits the dispatcher and the box context, so the end block still gets frames
-and can still draw. Which raises the case the figure above cannot stage, because it needs the box's
-launch epoch and that is internal to Field: the stop button.
+and can still draw. That leaves the one case the figure above cannot stage, because it needs the
+box's launch epoch and that is internal to Field: the stop button.
 
 ### `Box.stop` and the end block { #box-stop-and-the-end-block }
 
 Pressing stop runs your `.end { }`, and gives it frames to do it in.
 
-For twenty days in August 2026 it did not, and the way it broke is worth knowing because the
-mechanism is still there. `stopTrackedJobs()` increments the box's `launchEpoch` before it cancels
-anything. `frame()`'s `catch` did still launch the end phase, but it handed the end job to
-`Box.registerLaunchJob` along with the epoch the *launch* had captured — and a stale epoch makes
-`registerLaunchJob` cancel the job it was given, which is exactly its purpose everywhere else. The
-end block sat in the Framer's queue and was killed before it was ever dispatched. Re-running the box
-kept working throughout, because a re-run bumps the strand generation and leaves the epoch alone,
-and that is what made it read as a subtlety of `.end { }` rather than as a regression.
-
-The fence was right and the epoch was wrong. The end phase is the one piece of work that legitimately
-belongs to a launch stop has already invalidated, because it is stop's own cancellation that creates
-it; asking "did a stop land between preparing this launch and dispatching it?" has only one answer
-here, and it is not the interesting one. `Box.registerEndPhaseJob` registers against the epoch as it
-stands *now*. Nothing else about the barrier changes: the end job still goes into `box.jobs`, so a
-second press of stop cancels it, and `shouldCancelAtEnd` still fences it against the generation as it
-stood when the end phase began. A runaway end block cannot ignore the stop button.
+That takes a small exception to the launch-epoch rule. `stopTrackedJobs()` increments the box's
+`launchEpoch` before it cancels anything, and everywhere else a job arriving with a stale epoch is
+cancelled on sight. The end phase is the one piece of work that legitimately belongs to a launch
+stop has already invalidated, because it is stop's own cancellation that creates it, so
+`Box.registerEndPhaseJob` registers it against the epoch as it stands *now* rather than against the
+one the launch captured. The rest of the barrier is unchanged: the end job still goes into
+`box.jobs`, so a second press of stop cancels it, and `shouldCancelAtEnd` still fences it against
+the generation as it stood when the end phase began. A runaway end block cannot ignore the stop
+button.
 
 What stop gives up is being synchronous. The body is suspended in `yield()` when stop arrives;
-cancelling its job resumes it, and that resumption is dispatched, so the throw — and therefore the end
-phase — happens on a later Runloop tick, after `stop` has returned. So this leaves `x` at `20`, but
+cancelling its job resumes it, and that resumption is dispatched, so the throw, and therefore the
+end phase, happens on a later Runloop tick, after `stop` has returned. This leaves `x` at `20`, but
 not until the frame after you press stop:
 
 ```diffstatic {data-lang=kotlin}
@@ -378,17 +367,17 @@ loop {
 }
 ```
 
-which stops at `x == 39`, eleven frames after the button. Draw from there rather than only assigning:
-the end phase is where the wind-down goes, and the disc animation further down this page uses it for
-exactly that — two frames of it, to repaint the stopped state in red.
+which stops at `x == 39`, eleven frames after the button. Draw from there rather than only
+assigning: the end phase is where the wind-down goes, and the disc animation further down this page
+spends two frames of it repainting the stopped state in red.
 
-!!! warning "It is still not a `finally`, and still not the place for an OS resource"
+!!! warning "Not a `finally`, and not the place for an OS resource"
 
     Everything above is about *cancellation*, which is the only route into `atEnd`. A body that
-    returned, or that threw, never re-enters `frame()` and so never reaches the end phase at all —
-    that is the two `no` rows in the figure above, and no amount of fixing stop changes them.
+    returned, or that threw, never re-enters `frame()` and so never reaches the end phase at all.
+    Those are the two `no` rows in the figure above.
 
-    Which is why a box carries `stopHooks` as well: a short, synchronous teardown list
+    So a box carries `stopHooks` as well: a short, synchronous teardown list
     `stopTrackedJobs` drains before it returns. `Box.streamProcess` — the only place in Field's own
     source that installs an `atEnd`, to `proc.destroy()` an external command — registers its kill
     there, and keeps the `atEnd` too, so the child dies whether the process was still running when
@@ -397,24 +386,24 @@ exactly that — two frames of it, to repaint the stopped state in red.
 
     The rule for your own code: **if something must be released the instant a person presses stop,
     or must be released even when the animation ends by returning, do not rely on `.end { }`.** The
-    epoch mechanism, the caller sweep, and the design choice that was reversed here are in
+    epoch mechanism and the caller sweep are written up in
     `dev_docs/frames_stop_end_phase.md`.
 
 ## Time, if you actually meant seconds
 
-`AnimationClock.nowSeconds()` — `Runloop.kt` — is the time source to write motion against. Ordinarily
-it is monotonic wall time. Its second mode is the reason it exists:
+`AnimationClock.nowSeconds()`, in `Runloop.kt`, is the time source to write motion against.
+Ordinarily it is monotonic wall time. Its second mode is the reason it exists:
 
 > A frame-synchronous video capture installs a token that advances by exactly `1 / fps` only after a
 > Field frame has been painted and copied into the movie. Code using `nowSeconds` therefore becomes
 > frame-indexed during offline capture without changing its live, interactive pacing.
 
-That is what makes an animation reproducible. During an offline capture, real time runs at whatever rate
-the capture takes while `nowSeconds()` advances by exactly `1 / fps` per captured frame — so motion
-written against it comes out identical every time, including in the video below.
+During an offline capture, real time runs at whatever rate the capture takes while `nowSeconds()`
+advances by exactly `1 / fps` per captured frame, so motion written against it comes out identical
+every time, including in the video below.
 
-Live, though, the rate is whatever the machine can manage. This is the page's opening claim,
-measured — a frame body that does nothing but stamp the clock, for two seconds, plotted:
+Live, the rate is whatever the machine can manage. Here is a frame body that does nothing but stamp
+the clock, for two seconds, with the gaps between the stamps plotted:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/animation_time_model/cadence.png" execution="launch" wait="4.0" wait-output="true" capture="box" open-outputs="true" w="1100" timeout="90" name="animation-cadence"}
 // One wall-clock reading per frame for two seconds, then plot the gaps between them. Nothing here
@@ -454,11 +443,11 @@ animate {
 
 ![A per-frame interval plot titled 1,407 frames in 1.95 s. A dense band of gaps filling everything between zero and about 1,700 microseconds, five spikes reaching 2,500 to 3,500, and a 100-frame running mean that wanders between 1,200 and 1,500 rather than holding any constant value](assets/animation_time_model/cadence.png)
 
-Read the title, and then read the spikes. That number is not a property of Field; it is a property of one
-machine, one build, and whatever else the Runloop happened to be carrying — in this case a browser
-attached and other boxes idle in the same process. Run the [demo document](#where-this-lives) and you will
-get a different one, and a different one again on the second run. Nothing in that plot is a frame *rate* you could schedule against, which is
-the entire reason to write motion against seconds.
+The number in the title is not a property of Field. It is a property of one machine, one build, and
+whatever else the Runloop happened to be carrying, which here was a browser attached and other boxes
+idle in the same process. Run the [demo document](#where-this-lives) and you will get a different
+one, and a different one again on the second run. There is no frame *rate* in that plot to schedule
+against, which is why motion goes on the clock.
 
 ## An animation, and the moment it stops
 
@@ -546,15 +535,15 @@ live and under capture whatever rate frames arrive at. An integrator is the oppo
 `cloth.step(dt = 1f / 60f, ...)` hands the solver a **fixed** dt, so one turn of the loop is one tick
 of physics and the frame boundary and the integration step become the same event.
 
-That is the intended arrangement rather than a compromise. This solve is force-based — positions advance by
-`v * damping + a * dt²` — so a dt that jittered with the frame rate would change the sheet's own
-stiffness and damping from frame to frame, and the stability limit lives in
+A fixed dt is what this solve wants. It is force-based, with positions advancing by
+`v * damping + a * dt²`, so a dt that jittered with the frame rate would change the sheet's own
+stiffness and damping from frame to frame. The stability limit lives in
 `stiffness × iterations × dt²`: measured at dt = 1/60, `60 × 16` settles and `150 × 16` diverges to
-NaN, so the same setting with a dt half again as large lands in the band that already blew up. Fixed
-dt buys the solver a constant it can be tuned against. The cost is that it no longer tracks
+NaN, so the same setting with a dt half again as large lands in the band that already blew up. A
+constant dt is something the solver can be tuned against. The cost is that it does not track
 wall-clock: recorded at 20 fps below, this sheet moves slower than it does live while behaving
-*identically* in simulation time. Anything coupled to the simulation therefore has to be on the simulation's clock too, which is
-why the drag is driven by the step count and not by `nowSeconds()`.
+*identically* in simulation time. Anything coupled to the simulation has to be on the simulation's
+clock too, which is why the drag is driven by the step count and not by `nowSeconds()`.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/animation_time_model/cloth_loop.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="960" h="120" embed=true name="animation-cloth-loop" alt="a wireframe cloth of 20 by 10 particles hanging from five red pins along its top edge, drawn as cyan constraint segments with pale dots at the particles and short green velocity whiskers; an invisible hand drags its bottom-right corner in a slow loop, and the sheet stretches, swings and folds after it while the caption counts frames upward"}
 :::static
@@ -617,26 +606,26 @@ loop {
 
 Everything above except the grab and the two lines that drive it is
 [`cloth_simdverlet_start`](agent_transcripts.md), which is an openable document rather than a
-snippet: take it from the welcome screen and the sheet is already hanging. `Cloth` is the builder —
-it puts a grid of particles into a `SimdVerlet` you already have, including the curvature force — and
-`SimdVerlet.debugLines()` is the view of the solver's own state that makes a mis-wired constraint or
-an unpinned pin obvious.
+snippet: take it from the welcome screen and the sheet is already hanging. `Cloth` is the builder
+(it puts a grid of particles into a `SimdVerlet` you already have, including the curvature force),
+and `SimdVerlet.debugLines()` is the view of the solver's own state that makes a mis-wired
+constraint or an unpinned pin obvious.
 
 [Particles, Cloth & Constraints](physics.md) is the page about the solver rather than about the
-loop, and it is where the two numbers above come from. Its headline is one this page only gestures
-at: the constraint solve accumulates all of its `iterations` into the same force accumulator without
-moving anything in between, so `iterations` is not a convergence knob — N iterations at stiffness k
-are one iteration at stiffness N·k, and the sheet can only feel the product. That page runs the
-equivalence four ways and measures the gap.
+loop, and it is where the two numbers above come from. It also carries a result this page only
+gestures at: the constraint solve accumulates all of its `iterations` into the same force
+accumulator without moving anything in between, so N iterations at stiffness k are one iteration at
+stiffness N·k, and the sheet can only feel the product. `iterations` is a stiffness multiplier, not
+a convergence knob. That page runs the equivalence four ways and measures the gap.
 
 ## The generator layer
 
-`Phased.kt` carries a second, quite different mechanism, and it is not a curiosity. A `Generator` is
-a Python-style coroutine you drive by hand: `start()` runs it to its first `yield`, and `next(input)`
-resumes it with a value and runs it to the next one. No dispatcher, no `Job`, no frame boundary — the
-caller decides when a step happens.
+`Phased.kt` carries a second, quite different mechanism. A `Generator` is a Python-style coroutine
+you drive by hand: `start()` runs it to its first `yield`, and `next(input)` resumes it with a value
+and runs it to the next one. No dispatcher, no `Job`, no frame boundary; the caller decides when a
+step happens.
 
-That is exactly what you want in a hot loop. `SimdVerlet` gives every particle a
+That suits a hot loop. `SimdVerlet` gives every particle a
 `MapOfGenerators<ForceContext, Unit>` and steps all of them per physics tick, and
 `addPidPositionController` writes a PID controller as a generator whose integral and derivative
 history are ordinary local variables, kept alive across steps by the suspension itself rather than by
@@ -700,9 +689,9 @@ in the middle of the `while (true)`, so `integral` and `previousError` are simpl
 
 ### Composing them
 
-The rest of the layer is combinators, and they are worth knowing because they are how a generator
-stops being a one-off and starts being a pipeline. Here are three of them building one signal in
-four stages, each stage derived from the one before:
+The rest of the layer is combinators, which is how a generator stops being a one-off and starts
+being a pipeline. Here are three of them building one signal in four stages, each stage derived from
+the one before:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/animation_time_model/generator_pipeline.png" wait="2.0" capture="box" open-outputs="true" wait-output="true" w="1100" name="animation-generator-pipeline"}
 // `generator { }` is the output-only shape: the input type is Unit, so `yield(v)` returns Unit.
@@ -757,14 +746,14 @@ showSignals(
 
 ![Three traces sharing a peak at step 90: a straight-sided attack-then-decay envelope, the same envelope squared so both of its slopes bow downward, and a smoothed version that rounds off the peak and trails the others](assets/animation_time_model/generator_pipeline.png)
 
-The sharp turn at step 90 is `+` handing over from the attack to the decay — the left generator
+The sharp turn at step 90 is `+` handing over from the attack to the decay: the left generator
 completed there, which is what `+` waits for. The bowed slopes are `map`. The rounded peak and the
-lag are the smoother on the right of `pipe`. Every one of those is a value you can pass around and
-re-compose, and none of them declares a state class.
+lag are the smoother on the right of `pipe`. Each of those is a value you can pass around and
+re-compose.
 
 The two remaining shapes are about *consuming*. `%` runs two generators in lockstep on the same
 input and yields their outputs as a `Pair`, stopping when either does. `gather { }` is the
-consume-only form — output type `Boolean`, for a generator you drive for its effect rather than its
+consume-only form: output type `Boolean`, for a generator you drive for its effect rather than its
 value, where the no-argument `yield()` just hands back `true`:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/animation_time_model/generator_lockstep.png" wait="2.0" capture="box" open-outputs="true" wait-output="true" w="1100" name="animation-generator-lockstep"}
@@ -832,9 +821,9 @@ showSignals(
 
 ![A noisy sine with two derived traces: a running mean that settles near zero and a running peak that steps up in a staircase and never comes back down](assets/animation_time_model/generator_lockstep.png)
 
-The peak trace only ever climbs — that is a running maximum, and the staircase is it meeting a new
-high. The mean settles towards the sine's own average. Both came out of one `next(x)` call per step
-on the composed generator, and the crossing count in the title came from a third generator that
+The peak trace only ever climbs, because it is a running maximum, and each step in the staircase is
+a new high. The mean settles towards the sine's own average. Both came out of one `next(x)` call per
+step on the composed generator, and the crossing count in the title came from a third generator that
 never yielded a value anyone read.
 
 !!! warning "A `Generator` is not thread-safe and not re-entrant."
@@ -845,9 +834,9 @@ never yielded a value anyone read.
 
 ## Every name in `Phased.kt`
 
-The whole vocabulary, so there is somewhere to look it up. This table is checked against the source
-by `afield.PhasedPageCoverageTest`: adding a public declaration to `Phased.kt` fails the build until
-it has a row here, and removing one fails the build until the row goes.
+The whole vocabulary, in one place. This table is checked against the source by
+`afield.PhasedPageCoverageTest`: adding a public declaration to `Phased.kt` fails the build until it
+has a row here, and removing one fails the build until the row goes.
 
 <!-- phased-surface -->
 
@@ -929,8 +918,7 @@ it has a row here, and removing one fails the build until the row goes.
 
 `Phased.kt` is not part of the [codebase reference](reference/index.md): that is generated from
 `afield.stdlib`, `afield.visualization` and `afield.four.synth`, and `Phased.kt` sits in `afield`
-itself, one layer below. This page is its reference instead, which is why the table above is
-guarded rather than prose.
+itself, one layer below. This page is its reference instead.
 
 To see it running rather than read about it, replay
 `dev_docs/agents/transcripts/docs_capture/frames_lifecycle.yaml` into a fresh Field — it builds four

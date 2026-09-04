@@ -5,8 +5,8 @@
 Linear algebra is the small vocabulary underneath movement, cameras, lighting,
 meshes, simulation, and spatial data. In Field it is meant to read like GLSL and
 run like live code: reorder a vector's components by name, do arithmetic with the
-usual `+ - * /`, copy a vector with one field changed, rescale it to a length —
-all as *expressions*, without reaching for ceremony.
+usual `+ - * /`, copy a vector with one field changed, rescale it to a length,
+all as *expressions* and without ceremony.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -15,19 +15,18 @@ position.x += 1f          // now (2, 2, 3)
 position { normalize() }  // a unit copy; position itself is untouched
 ```
 
-This whole surface — the vectors, their swizzles and operators, and the matrix
-and quaternion types — is *generated* from one typed algebra model in
+The whole surface (the vectors, their swizzles and operators, and the matrix and
+quaternion types) is *generated* from one typed algebra model in
 `tools/linalg-generator`, so the same names behave identically across `vec2`,
 `vec3`, `vec4` and both precisions. You do not need to understand the storage
 backends to begin.
 
-Every image below is captured straight from Field's real value visualizer —
+The images below come from Field's value visualizer,
 `ValueVisualizer.visualize(...)`, the renderer described in
-[Visualizers & Controls](visualizers.md) — fed the actual result of the code
-above it. Vectors draw as auto-scaled arrows (a 2D arrow for `vec2`, an isometric
-frame for `vec3`); matrices draw as diverging heatmaps. Nothing here is mocked.
-For the exhaustive, machine-generated member list of every type, see the
-[generated vector API reference](linear_algebra_api.md).
+[Visualizers & Controls](visualizers.md), fed the result of the code above each
+one. Vectors draw as auto-scaled arrows (a 2D arrow for `vec2`, an isometric
+frame for `vec3`); matrices draw as diverging heatmaps. For the member list of
+every type, see the [generated vector API reference](linear_algebra_api.md).
 
 ## Constructing vectors
 
@@ -68,8 +67,8 @@ import afield.stdlib.linalg.* // + - * / and the matrix/quaternion types
 The most useful mental picture is an arrow. Its components say how far the arrow
 travels along each axis; its `length()` is the arrow's magnitude. The same three
 numbers can stand for a point or a displacement, and the operation reveals which
-you mean — subtracting two points gives the arrow between them; adding an arrow
-to a point moves it.
+you mean: subtracting two points gives the arrow between them, and adding an
+arrow to a point moves it.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -82,8 +81,8 @@ to - from            // vec3(5, 3, 0) — the displacement between two points
 ## Read swizzles: reorder, narrow, expand, repeat
 
 Every length-2, length-3, and length-4 sequence of a vector's components is a
-read swizzle — an extension `val` on the *read* interface (`Vector3fc`, …), so it
-works on any view, not just a mutable vector. A swizzle returns a same-arity
+read swizzle: an extension `val` on the *read* interface (`Vector3fc`, …), so it
+works on any view and not just a mutable vector. A swizzle returns a same-arity
 vector: `v.xy` is a `vec2`, `v.xyz` a `vec3`. The sequence is free to:
 
 - **reorder** the components — `v.zyx` reverses a `vec3`;
@@ -97,13 +96,13 @@ val v = vec(1, 2, 3)
 v.zyx   // vec3(3, 2, 1)  — reorder
 v.xy    // vec2(1, 2)     — narrow
 v.xxxx  // vec4(1, 1, 1, 1) — expand
-v.yy    // vec2(2, 2)     — repeat (this used to wrongly return (y, z))
+v.yy    // vec2(2, 2)     — repeat
 ```
 
-![Read swizzles: reorder, narrow, expand and the fixed repeat](assets/vector_algebra/read_swizzles.png)
+![Read swizzles: reorder, narrow, expand and repeat](assets/vector_algebra/read_swizzles.png)
 
-Components can be spelled two ways — positional `x`/`y`/`z`/`w` or colour
-`r`/`g`/`b`/`a` — so `v.rgb` and `v.xyz` are the same swizzle. The two
+Components can be spelled two ways, positional `x`/`y`/`z`/`w` or colour
+`r`/`g`/`b`/`a`, so `v.rgb` and `v.xyz` are the same swizzle. The two
 vocabularies are never mixed inside one name.
 
 ## Write swizzles: GLSL-style assignment
@@ -123,7 +122,7 @@ target.xy = source.zw     // target becomes vec4(3, 4, 0, 0)
 
 The right-hand `source.zw` is an ordinary read swizzle producing a `vec2`; the
 left-hand `target.xy` receives it. Repeated-index swizzles like `v.xx` have no
-unambiguous target, so they stay read-only — there is no `var` for them.
+unambiguous target, so they stay read-only: there is no `var` for them.
 
 ## Arithmetic: `+ - * /`
 
@@ -143,15 +142,15 @@ a * b   // vec2(2, 3)   — component-wise (Hadamard) product
 
 ![Component-wise and scalar arithmetic on vec2 values](assets/vector_algebra/algebra.png)
 
-Note that `a * b` is the *component-wise* product, not a dot or cross product —
-those keep their named forms (`a.dot(b)`, and `a x b` for the 3D cross, below).
-Division by a scalar (`a / 2`) and unary minus (`-a`) round out the set.
+`a * b` is the *component-wise* product. The dot and cross products keep their
+named forms (`a.dot(b)`, and `a x b` for the 3D cross, below). Division by a
+scalar (`a / 2`) and unary minus (`-a`) round out the set.
 
 ## Copy operators: `invoke` and `len`
 
 `invoke` gives a vector two live-coding conveniences. Called with named arguments,
-it returns a **copy with those components replaced**, keeping the rest — a tidy
-way to nudge one axis:
+it returns a **copy with those components replaced**, keeping the rest. It is a
+tidy way to nudge one axis:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -160,7 +159,7 @@ v(y = 1f)             // vec2(3, 1) — copy, only y changed
 ```
 
 Called with a block, it returns a **copy after applying the block**, leaving the
-original alone — handy for the mutating vector methods:
+original alone. That is the shape to reach for with the mutating vector methods:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -168,8 +167,8 @@ v { normalize() }     // vec2(0.6, 0.8) — a normalized copy; v is untouched
 ```
 
 Finally, the infix `len` returns a copy **rescaled to a given length**, keeping
-direction. It is a *setter*, not a getter — for the current magnitude use
-`v.length()`:
+direction. It sets a length rather than reading one; for the current magnitude
+use `v.length()`:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -183,8 +182,8 @@ still `vec2(3, 4)`. Nothing above mutated it.
 
 ## In-place assignment: `%=`
 
-When you *do* want to overwrite a vector in place — reusing the same object rather
-than allocating — `%=` copies another vector's components into it:
+When you *do* want to overwrite a vector in place, reusing the same object rather
+than allocating, `%=` copies another vector's components into it:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -197,7 +196,7 @@ a %= b     // a is now vec2(1, 2); same object, new contents
 
 This pairs naturally with the copy operators: reach for `v { … }` and `v(…)` when
 you want a new vector, and for `%=` (or the write swizzles) when you want to
-mutate an existing one — for example a persistent vector held across animation
+mutate an existing one, such as a persistent vector held across animation
 frames.
 
 ## Length, direction, and normalization
@@ -215,7 +214,7 @@ velocity len 4             // vec3(2.4, 3.2, 0) — direction kept, length 4
 ```
 
 The zero vector has no direction, so normalizing it produces non-finite
-components — guard it when zero is possible. Use the squared forms for
+components; guard it when zero is possible. Use the squared forms for
 comparisons; they skip the square root while preserving ordering:
 
 ```diffstatic {data-lang=kotlin}
@@ -227,7 +226,7 @@ if (candidate.distanceSquared(mouse) < 20f * 20f) { /* within 20 units */ }
 ## Dot product: “how much do these agree?”
 
 The dot product multiplies matching components and adds them. For unit vectors it
-is the cosine of the angle between them — `1` same way, `0` perpendicular, `-1`
+is the cosine of the angle between them: `1` same way, `0` perpendicular, `-1`
 opposed:
 
 ```diffstatic {data-lang=kotlin}
@@ -299,9 +298,9 @@ normal.normalize()
 ## Matrices: transforms & precision
 
 Field's matrices come in two precisions that share one shape. The
-**single-precision** family — `Matrix2f`, `Matrix3f`, `Matrix4f` — is what the
-renderer, camera, and quaternion code speak. The **double-precision** family —
-`Matrix2d`, `Matrix3d`, `Matrix4d` — is its f64 sibling, for arithmetic that must
+**single-precision** family (`Matrix2f`, `Matrix3f`, `Matrix4f`) is what the
+renderer, camera, and quaternion code speak. The **double-precision** family
+(`Matrix2d`, `Matrix3d`, `Matrix4d`) is its f64 sibling, for arithmetic that must
 never round to `float` silently. Both are generated from the same model as the
 vectors, so a shared method behaves identically bit-for-bit apart from storage
 width.
@@ -314,7 +313,7 @@ All matrices are **column-major** (the JOML convention).
 ### Constructing a matrix
 
 Each type has a component constructor and defaults to the identity. The 2×2
-constructor takes `(m00, m01, m10, m11)` — column by column, so `m00, m01` is the
+constructor takes `(m00, m01, m10, m11)`, column by column, so `m00, m01` is the
 first column. Read as a conventional maths matrix, that is the two rows
 `(m00, m10)` and `(m01, m11)`.
 
@@ -325,12 +324,12 @@ val m = Matrix2d(1.0, 2.0, 3.0, 4.0)  // columns (1,2) and (3,4) → rows (1,3),
 
 ![A 2×2 double matrix drawn as a labelled heatmap; header reads mat2d [1, 3 / 2, 4]](assets/matrix_algebra/construct_mat2.png)
 
-The header spells the two rows — `[1, 3 / 2, 4]` — while the grid shows the
+The header spells the two rows, `[1, 3 / 2, 4]`, while the grid shows the
 column-major storage. A bare `Matrix4d()` is the 4×4 identity.
 
 ### Multiply, determinant, inverse, transpose
 
-These four are *precision-agnostic* — identical on `Matrix2d` and `Matrix2f`.
+These four are *precision-agnostic*, identical on `Matrix2d` and `Matrix2f`.
 `mul` composes another matrix onto the receiver **in place**, so wrap the left
 operand in a copy constructor when you want to keep it:
 
@@ -356,8 +355,8 @@ Matrix2d(a).mul(Matrix2d(a).invert())  // ≈ identity
 ![A·A⁻¹ collapses to the identity; header reads mat2d [1, 0 / 0, 1]](assets/matrix_algebra/inverse_identity_mat2.png)
 
 `invert()` and `transpose()` also mutate in place (with a `transpose(dest)`
-overload). The same names — `mul`, `determinant`, `invert`, `transpose`,
-`identity`, `set` — exist on the 2×2, 3×3, and 4×4 types alike.
+overload). The same names (`mul`, `determinant`, `invert`, `transpose`,
+`identity`, `set`) exist on the 2×2, 3×3, and 4×4 types alike.
 
 ### A 3×3 linear map
 
@@ -384,8 +383,8 @@ the inverse.
 
 `Matrix4d` adds the affine builders `scale`, `translate`, `scaling`, and
 `translation`. Like `mul`, they compose onto the receiver in place and return it.
-Composition applies each step *in the frame established so far* — the JOML "local"
-convention — which is worth watching:
+Composition applies each step *in the frame established so far*, which is the
+JOML "local" convention and catches people out:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -397,13 +396,13 @@ t.determinant()    // 24.0  (= 2·3·4; translation never changes the determinan
 
 The header reports `t=(10, 18, 28)`, **not** `(5, 6, 7)`. Because the `translate`
 runs *after* the `scale`, it moves in the already-scaled frame, so each component
-is multiplied by its axis scale: `(5·2, 6·3, 7·4)`. The determinant stays `24` — a
-pure translation preserves volume.
+is multiplied by its axis scale: `(5·2, 6·3, 7·4)`. The determinant stays `24`,
+because a pure translation preserves volume.
 
 ### Where precision stops: the f32 bridge
 
-The f64 family covers only the precision-agnostic parts — multiply,
-determinant, invert, transpose, scale, translate. **Rotation, projection/camera
+The f64 family covers only the precision-agnostic parts: multiply, determinant,
+invert, transpose, scale, translate. **Rotation, projection/camera
 helpers (`perspective`, `lookAt`), and transforming a vector live on the
 single-precision `Matrix4f`**, matching Field's f32 quaternion and render
 pipeline. Quaternion angles are in radians.
@@ -416,8 +415,8 @@ r.determinant()                    // 1.0 — a rotation preserves volume
 
 ![A Y-rotation as a heatmap; header reads mat4 [det=1, t=(0, 0, 0)], cells show 0.83 / 0.56 / -0.56](assets/matrix_algebra/rotate_mat4f.png)
 
-The header now reads `mat4` (not `mat4d`) — the visualizer distinguishes the two
-precisions. The `cos 0.6 ≈ 0.83` on the diagonal and `±sin 0.6 ≈ ±0.56`
+The header now reads `mat4` rather than `mat4d`, because the visualizer
+distinguishes the two precisions. The `cos 0.6 ≈ 0.83` on the diagonal and `±sin 0.6 ≈ ±0.56`
 off-diagonal are the classic Y-rotation entries. Transforming a point is likewise
 a `Matrix4f` operation: `*` on a `vec3` calls `transformPosition` (translation
 included) and returns a fresh `Vector3f`:
@@ -487,19 +486,16 @@ if (intersectRayAabb(origin, direction, minimum, maximum, nearFar)) {
 
 ## The shape of it
 
-Read top to bottom, the vocabulary is small and regular. **Vectors:** name
-components in any order to read them, assign through distinct-index names to write
-them, use `+ - * /` for arithmetic, `invoke` and `len` to copy, and `%=` to
-overwrite — the same rules across `vec2`, `vec3`, and `vec4` (swizzles and the
-`invoke`/`len`/`%=` operators are emitted for the *float* heap vectors; arithmetic
-additionally covers the double and half-precision vectors). **Matrices:** pick the
-width by need — the `…f` family for anything that ends up on screen (cameras,
-rotations, per-frame transforms), the `…d` family when accumulated arithmetic must
-stay exact — while rotation, projection, and pushing a vector through a matrix are
-the f32 `Matrix4f`'s job.
+The vocabulary is small and regular. **Vectors:** name components in any order to
+read them, assign through distinct-index names to write them, use `+ - * /` for
+arithmetic, `invoke` and `len` to copy, and `%=` to overwrite. The same rules hold
+across `vec2`, `vec3`, and `vec4` (swizzles and the `invoke`/`len`/`%=` operators
+are emitted for the *float* heap vectors; arithmetic additionally covers the
+double and half-precision vectors). **Matrices:** pick the width by need. The `…f`
+family is for anything that ends up on screen (cameras, rotations, per-frame
+transforms) and the `…d` family for when accumulated arithmetic must stay exact,
+while rotation, projection, and pushing a vector through a matrix are the f32
+`Matrix4f`'s job.
 
-Both sides are emitted from the one generator model in `tools/linalg-generator`,
-which keeps the mathematics, aliasing behavior, and explanation in one reviewable
-place. The public page is handwritten so examples follow the way people learn; for
-the complete, machine-generated member listing of every type, precision, and
-storage form, see the [generated vector API reference](linear_algebra_api.md).
+For the complete member listing of every type, precision, and storage form, see
+the [generated vector API reference](linear_algebra_api.md).

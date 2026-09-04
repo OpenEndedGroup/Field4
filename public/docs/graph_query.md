@@ -1,7 +1,7 @@
 # Querying object graphs
 
 Most of the time you know exactly which field you want, and you write
-`rig.osc.filter.cutoff`. But sometimes you don't — you want *every* cutoff in a
+`rig.osc.filter.cutoff`. But sometimes you don't. You want *every* cutoff in a
 rig, or every string in a scene, or the four gains that happen to be above a
 threshold, and you want to move them all at once. Writing that by hand means
 knowing the shape of the graph in advance, which is precisely what you don't
@@ -9,16 +9,14 @@ have while you're still building it.
 
 `graphPaths` treats any live object as a tree of addressable slots and lets you
 ask for them by pattern, the way XPath asks a document. It is plain reflection
-over whatever you already have — no base class to inherit, no annotations, no
-registration. Everything on this page is real output captured from a running
-box; the tables are the actual `PathSet` and `ParamSet` values rendering
-themselves.
+over whatever you already have: no base class to inherit, no annotations, no
+registration.
 
 ## A graph, addressed
 
 Give `graphPaths` a pattern and it hands back a `PathSet`: an ordered collection
-of *live lenses*. Each one is an address plus a getter and — when the slot is
-mutable — a setter. Nothing is copied, so reading a path twice can legitimately
+of *live lenses*. Each one is an address plus a getter, and a setter too if the
+slot is mutable. Nothing is copied, so reading a path twice can legitimately
 give two answers.
 
 <!--
@@ -43,17 +41,15 @@ val rig = Rig(Osc(220f, 0.8f, "sine"), Osc(440f, 0.2f, "saw"), "rig")
 display("main", rig.graphPaths("**"))
 ```
 
-`**` matched everything. Note that interior edges (`carrier`) are listed
-alongside leaves (`carrier/freq`), and that properties come out in
-primary-constructor order rather than alphabetically — the order you declared
-them is the order you read them.
+`**` matched everything. Interior edges (`carrier`) are listed alongside leaves
+(`carrier/freq`), and properties come out in primary-constructor order rather
+than alphabetically: you read them in the order you declared them.
 
 ## The slash shorthand
 
 A path already separates its segments with `/`, so the operator that starts a
 query may as well be spelled the same way. `rig / "**/freq"` *is*
-`rig.graphPaths("**/freq")` — same walk, same live refs, less ceremony at the
-call site:
+`rig.graphPaths("**/freq")`: same walk, same live refs, less to type.
 
 ```diffstatic {data-lang=kotlin}
 // the same query, twice
@@ -69,28 +65,26 @@ Those parentheses on the first line are not optional: `.` binds tighter than
 `/`, so `rig / "**/freq".whereValueIs<Float> { ... }` would be looking for that
 method on the *string*.
 
-`/` is defined on `Any?`, which is a wide place to put an operator, so it is
-worth being plain about what that costs. A member `div` always beats an
-extension, so ordinary division is untouched — every numeric type, and every
-vector, quaternion or signal type that spells `/` its own way, keeps its own
-arithmetic; and between two extensions the more specific receiver wins, so
-`kotlin.io.path`'s `path / "sub"` still joins a path. What is genuinely new is
-the case that used to be a compile error — a `String` on the right of `/`.
-`"a" / "b"` now type-checks and hands back an empty `PathSet` instead of being
-rejected, so a `/` you got wrong surfaces one step later than it used to. That
-is the whole of the price. The operator also has nowhere to put a
-`GraphWalkOptions` and doesn't try: when you need a depth cap, private
-properties or a custom `descendInto`, call `graphPaths` and say so.
+`/` is defined on `Any?`, which is a wide place to put an operator. Ordinary
+division is untouched: a member `div` always beats an extension, so every
+numeric type, and every vector, quaternion or signal type that spells `/` its
+own way, keeps its own arithmetic. Between two extensions the more specific
+receiver wins, so `kotlin.io.path`'s `path / "sub"` still joins a path. The one
+new case is a `String` on the right of `/`. `"a" / "b"` type-checks and hands
+back an empty `PathSet`, so a `/` you got wrong shows up a step later than a
+compile error would. The operator has nowhere to put a `GraphWalkOptions`
+either: when you need a depth cap, private properties or a custom
+`descendInto`, call `graphPaths` and say so.
 
 ## Patterns and predicates
 
 Two wildcards: `*` matches exactly one segment, `**` matches any number of
 segments including zero. A `*` *inside* a segment globs within that one name, so
-`"*Alpha"` finds `contourAlpha` and `"osc*"` finds `osc1` and `osc2` — but it
-stays inside its segment, because crossing a `/` is `**`'s job and only `**`'s.
-Names are matched ignoring case, so `"cutoff"` reaches `cutOff`. If one object
-really does hold two names differing only in case, one pattern matches both of
-them, and they remain two distinct slots.
+`"*Alpha"` finds `contourAlpha` and `"osc*"` finds `osc1` and `osc2`. It never
+crosses a `/`; that is `**`'s job. Names are matched ignoring case, so
+`"cutoff"` reaches `cutOff`. If one object really does hold two names differing
+only in case, one pattern matches both of them, and they remain two distinct
+slots.
 
 A `|` separates whole patterns and unions what they find:
 
@@ -102,10 +96,9 @@ look / "**/*alpha | **/w"
 One walk answers both branches, so each slot appears once even when two branches
 would have claimed it, and the order is the graph's rather than the pattern's.
 Because `|` separates *whole* patterns, `"**/freq|gain"` means `"**/freq"` or
-`"gain"` — not two leaves under `**`. Repeat the prefix on both sides.
+`"gain"`, not two leaves under `**`. Repeat the prefix on both sides.
 
-That covers *where* a slot lives. To filter on what a slot actually *holds*, add
-a predicate — this is the half that globbing alone can't express.
+Patterns say where a slot lives. To filter on what it holds, add a predicate.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_query/predicates.png" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="graph-query-predicates" w="760" h="300"}
 :::static
@@ -127,7 +120,7 @@ and each returns a new set rather than mutating the receiver.
 ## Typed lenses for any leaf type
 
 Numbers aren't special. `lenses<T>()` narrows a `PathSet` to the slots holding a
-`T` and gives you typed reads and writes — strings, booleans, enums, vectors,
+`T` and gives you typed reads and writes: strings, booleans, enums, vectors,
 whatever your graph is made of.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_query/lenses.png" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="graph-query-lenses" w="760" h="300"}
@@ -153,10 +146,10 @@ so a read-only slot is reported rather than silently skipped.
 
 ## Naming a path is cheap
 
-A pattern with no wildcards doesn't traverse anything — it walks straight down
+A pattern with no wildcards doesn't traverse anything: it walks straight down
 the segments you named, one property read each. A pattern with a literal prefix
-descends that prefix directly and then only searches the subtree below it. The
-difference is not subtle on a graph of any size, and you can measure it:
+descends that prefix directly and then searches only the subtree below it. On a
+graph of any size that is a large difference, and you can measure it:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_query/cost.png" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="graph-query-cost" w="760" h="220"}
 :::static
@@ -192,12 +185,10 @@ display("main", "naming a path: $named edge reads — " +
 
 Three things are *not* part of a literal prefix, and each falls back to the walk.
 A segment holding a within-segment glob (`"osc*"`) has to be compared against the
-names that are actually there. A literal segment you spelled with the wrong case
-can have a sibling differing only in case — which the walk would report and a
-single descent could not — so it defers rather than answer for it. And a pattern
-with more than one `|` branch has no single path to descend at all; it walks once
-and filters by every branch, which is both simpler and cheaper than running a
-query per branch.
+names that are actually there. A literal segment spelled with the wrong case may
+have a sibling differing only in case, which a single descent could not report,
+so it defers to the walk. And a pattern with more than one `|` branch has no
+single path to descend: it walks once and filters by every branch.
 
 That example also shows `LiveGraphInspectable`: implement it and you decide what
 your object's children are, instead of letting reflection guess. Custom edges
@@ -210,12 +201,12 @@ pattern is parsed a single time and the plan is reusable.
 
 ## Driving numbers: `params()`
 
-On top of the generic layer sits a synth-flavoured head. `params()` narrows a
-`PathSet` to the slots that can be *driven* — native `Param`s and any writable
-numeric field — and gives you set-at-once operations over the group.
+`params()` is the synth-flavoured head on the generic layer. It narrows a
+`PathSet` to the slots that can be *driven* (native `Param`s, and any writable
+numeric field) and gives you set-at-once operations over the group.
 
-The useful trick is that second category: a plain `Float` or `Int` property on an
-ordinary object gains base/supplier/modulation semantics, so anything with
+That second category is the interesting one: a plain `Float` or `Int` property
+on an ordinary object gains base/supplier/modulation semantics, so anything with
 numbers in it can be driven like a synth parameter.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_query/paramset.png" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="graph-query-paramset" w="760" h="300"}
@@ -232,10 +223,10 @@ rig.params("**/freq").scale(0.5f)
 display("main", rig.params("**"))
 ```
 
-`ParamSet` carries the obvious group operations — `set`, `offset`, `scale`,
-`clamp`, `random`, `choose` — plus a `rewrite { }` scope for shaping a set
-relative to itself: `ramp`, `normalize`, `jitter`, and the `mean`/`min`/`max` of
-the group.
+`ParamSet` carries the group operations you would expect: `set`, `offset`,
+`scale`, `clamp`, `random`, `choose`. It also has a `rewrite { }` scope for
+shaping a set relative to itself, with `ramp`, `normalize`, `jitter`, and the
+`mean`/`min`/`max` of the group.
 
 Modulation and suppliers work the same way across the whole set:
 
@@ -255,7 +246,7 @@ on their own. `clearModulation()` and `clearSuppliers()` detach them again.
 
 ## Notes on traversal
 
-A few behaviours are worth knowing before you point this at something large:
+Some behaviours to know about before you point this at something large:
 
 - **Descent stops at the obvious leaves** — numbers, strings, booleans, enums,
   primitive arrays, functions, class objects — and at anything in the JDK's own
