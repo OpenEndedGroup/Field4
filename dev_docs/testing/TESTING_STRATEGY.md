@@ -38,6 +38,13 @@ fails, that is not a valid reason to skip `--with-playwright`,
 | Field Audio AudioCraft import | `./gradlew fieldAudioAudioCraftImportTest` | Opt-in pinned PyTorch/AudioCraft environment; checkpoint access is forced offline. |
 | Field Audio model smoke | `FIELD_AUDIO_ALLOW_MODEL_DOWNLOAD=1 ./gradlew fieldAudioModelSmoke` | Explicit heavyweight MusicGen-Style checkpoint download/load. |
 
+Full-recapture runtime is a measured capacity input, not a fixed one-hour promise. On 2026-09-04,
+`docs_capture_audit.py --inventory` counted 531 runner-managed assets. A quiet two-run audit of the
+DataFrame page rewrote three captures in 77.5s and 78.1s (about 26s per rewritten asset); even the
+historical best whole-corpus rate of 7.5s per asset now exceeds an hour at this corpus size. Nightly
+planning therefore uses a four-hour envelope and must remeasure rather than presenting a partial
+run as a completed full recapture.
+
 Use custom high ports for automation. Avoid the default `9092` unless you
 explicitly want to attach to a developer-owned Field.
 

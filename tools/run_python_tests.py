@@ -12,7 +12,7 @@ by existing. A module that cannot even be imported is reported as a failure rath
 an unimportable test is exactly as broken as a failing one, and quietly dropping it is how a
 suite stops covering anything.
 
-Run directly with:  uv run --project . python tools/run_python_tests.py
+Run directly with:  uv run --project . --group backdoor python tools/run_python_tests.py
 """
 
 from __future__ import annotations
@@ -67,7 +67,7 @@ def check_interpreter() -> str | None:
         f"this suite needs Python >= {wanted} (pyproject.toml requires-python) but is running "
         f"{running} from {sys.executable}.\n"
         "Run it the way every other Python entry point in this repo is run:\n"
-        "  uv run --project . python tools/run_python_tests.py"
+        "  uv run --project . --group backdoor python tools/run_python_tests.py"
     )
 
 

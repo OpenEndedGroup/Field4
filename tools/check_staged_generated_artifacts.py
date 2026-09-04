@@ -68,7 +68,45 @@ def _completion_input(path: str) -> bool:
             "src/jvmMain/kotlin/afield/KotlinScriptEngine.kt",
             "src/jvmMain/kotlin/afield/stdlib/shaders.kt",
         }
+        or _macro_producer(path)
     )
+
+
+_MACRO_REGISTRATION = re.compile(
+    r"(?:MacroRegistry\s*\.\s*)?callRewrite(?:WithContext)?\s*\["
+)
+
+
+@functools.lru_cache(maxsize=None)
+def _macro_producer(path: str) -> bool:
+    """Whether ``path`` registers code that changes completion-corpus expansion.
+
+    The corpus runs snippets through Field's real macro expansion. Its producers are therefore
+    the Kotlin sources that register into ``callRewrite`` / ``callRewriteWithContext``; keeping a
+    second hand-written path list is exactly how ``stdlib/shaders.kt`` escaped the guard. Read both
+    the working tree and HEAD so additions, edits, and deletions all select the producer's guard.
+    """
+    if not (_under(path, "src/jvmMain/kotlin") and path.endswith(".kt")):
+        return False
+    repo = Path(__file__).resolve().parents[1]
+    texts: list[str] = []
+    working = repo / path
+    if working.is_file():
+        try:
+            texts.append(working.read_text())
+        except OSError:
+            pass
+    previous = subprocess.run(
+        ["git", "show", f"HEAD:{path}"],
+        cwd=repo,
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+    )
+    if previous.returncode == 0:
+        texts.append(previous.stdout)
+    return any(_MACRO_REGISTRATION.search(text) for text in texts)
 
 
 _CITATION_TEST_SOURCES = {

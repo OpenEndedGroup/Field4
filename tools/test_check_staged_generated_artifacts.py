@@ -35,6 +35,18 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
             ],
         )
 
+    def test_macro_producer_is_discovered_from_its_registration(self) -> None:
+        self.assertEqual(
+            task_names(["src/jvmMain/kotlin/afield/four/modules/simplePLYSupport.kt"]),
+            ["checkKDocAttachment", "checkCompletionCorpusFixtures", "citationGates"],
+        )
+
+    def test_ordinary_kotlin_source_does_not_become_a_corpus_input(self) -> None:
+        self.assertEqual(
+            task_names(["src/jvmMain/kotlin/afield/graphics/FLine.kt"]),
+            ["checkKDocAttachment", "citationGates"],
+        )
+
     def test_source_cited_by_close_node_contract_selects_citation_gate(self) -> None:
         self.assertEqual(
             task_names(["src/jvmMain/kotlin/afield/graphics/someSkiko.kt"]),

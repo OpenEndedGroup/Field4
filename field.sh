@@ -565,6 +565,11 @@ launch_electron_when_ready() {
     APP_URL="$APP_URL" WITH_DEVTOOLS="${WITH_DEVTOOLS:-0}" exec "$ELECTRON_BIN" "$@" .
 }
 
+electron_launcher_available() {
+    ELECTRON_PROBE="$(cat build/field-launch/electron 2>/dev/null || true)"
+    [ -n "$ELECTRON_PROBE" ] && [ -x "$ELECTRON_PROBE" ]
+}
+
 run_field() {
     ensure_lfs_content || exit 1
     ensure_gradle_jvm || exit 1
@@ -596,9 +601,6 @@ run_field() {
     "$JAVA_BIN" "@build/field-launch/args" "$@" &
     BACKEND_PID=$!
 
-    launch_electron_when_ready &
-    ELECTRON_PID=$!
-
     # Ctrl-C / TERM stop both; and if either exits on its own, stop the other. On EXIT, guarantee the
     # terminal is usable again (restore stty, mouse off, drop the scroll region) even if the backend was
     # hard-killed and its JVM shutdown hook never ran. We deliberately do NOT touch the alternate screen
@@ -615,6 +617,19 @@ run_field() {
         printf '\033[?1000l\033[?1006l\033[r' 2>/dev/null       # mouse off, drop scroll region
     }
     trap 'restore_terminal' EXIT
+
+    # A server-only launch is valid (and is what a checkout without the optional Electron bundle
+    # asks for). The old unconditional helper returned immediately when Electron was absent; the
+    # monitor below then killed the backend before it had necessarily executed at all. Wait for the
+    # backend directly in this mode instead of treating "no GUI process" as a GUI crash.
+    if ! electron_launcher_available; then
+        trap 'kill "$BACKEND_PID" 2>/dev/null' INT TERM
+        wait "$BACKEND_PID"
+        return $?
+    fi
+
+    launch_electron_when_ready &
+    ELECTRON_PID=$!
     trap 'kill "$BACKEND_PID" "$ELECTRON_PID" 2>/dev/null' INT TERM
     while kill -0 "$BACKEND_PID" 2>/dev/null && kill -0 "$ELECTRON_PID" 2>/dev/null; do
         sleep 0.5

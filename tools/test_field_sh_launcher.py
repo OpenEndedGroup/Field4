@@ -156,6 +156,7 @@ class FieldShSandbox:
         fake_java = self.root / "fake-java.sh"
         fake_java.write_text(
             "#!/bin/sh\n"
+            'sleep "${AFIELD_TEST_FAKE_JAVA_DELAY:-0}"\n'
             f'for a in "$@"; do printf "%s\\n" "$a"; done > "{self.argv_file}"\n'
         )
         fake_java.chmod(0o755)
@@ -166,7 +167,13 @@ class FieldShSandbox:
     def preference_file(self) -> Path:
         return self.home / ".afield" / "last-workspace.txt"
 
-    def run(self, shell: str, *args: str, no_terminal: bool = True) -> subprocess.CompletedProcess:
+    def run(
+        self,
+        shell: str,
+        *args: str,
+        no_terminal: bool = True,
+        extra_env: dict[str, str] | None = None,
+    ) -> subprocess.CompletedProcess:
         environment = {
             "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
             "HOME": str(self.home),
@@ -176,6 +183,7 @@ class FieldShSandbox:
         }
         if no_terminal:
             environment["AFIELD_FIELD_SH_NO_TERMINAL"] = "1"
+        environment.update(extra_env or {})
         if self.argv_file.exists():
             self.argv_file.unlink()
         return subprocess.run(
@@ -469,6 +477,18 @@ class FieldShLauncherTests(unittest.TestCase):
                     self.assertEqual(sandbox.backend_argv(), ["--document", "docA"])
         finally:
             sandbox.preference_file.unlink()
+
+    def test_server_only_launch_waits_for_backend_instead_of_killing_it(self) -> None:
+        """With no Electron bundle the helper exits immediately. It used to win a scheduler race
+        and kill the backend before the backend had even read its argv."""
+        sandbox = self.sandbox
+        result = sandbox.run(
+            _resolved_shells()["sh"],
+            str(sandbox.workspace),
+            extra_env={"AFIELD_TEST_FAKE_JAVA_DELAY": "0.1"},
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(sandbox.backend_argv(), ["--workspace", str(sandbox.workspace)])
 
     def test_a_document_that_does_not_exist_is_rejected_before_gradle(self) -> None:
         """The document flag's own reason to be parsed out here. A missing workspace is at least an
