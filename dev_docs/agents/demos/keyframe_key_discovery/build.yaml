@@ -2,7 +2,7 @@ name: keyframe_key_discovery
 description: >
   The keyframe browser, and whether it can show you your own keys.
 
-  Two boxes, no GPU, no window: a KeyframeScope needs neither, and each box writes its key directory
+  Three boxes, no GPU, no window: a KeyframeScope needs neither, and each box writes its key directory
   into a fresh temp dir so nothing lands in this document.
 
     1. kf_before_after  — six keys named `a b c d d2 d3`, the shapes a real session actually produced,
