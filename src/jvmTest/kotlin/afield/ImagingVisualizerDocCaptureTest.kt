@@ -37,25 +37,20 @@ import kotlin.test.assertTrue
  * (the per-channel strip, histogram and stats) that a reader would have to click for.
  *
  * **Output location.** By default this writes to a temporary directory and only asserts the PNGs
- * came out non-empty, so an ordinary `jvmTest` run leaves nothing behind in the repository (unlike
- * `ArraySparklineVisualizerTest`, which litters a `sparkline-proof/` directory into whatever tree it
- * runs in). Set `AFIELD_IMAGING_VIZ_DIR` to regenerate the committed docs assets:
+ * came out non-empty, so an ordinary `jvmTest` run leaves nothing behind in the repository. This
+ * harness got that right from the start; the two sibling capture harnesses did not, so the gate now
+ * lives once in [docsAssetDir] rather than a copy per harness. Refresh the committed assets with:
  *
  * ```
- * AFIELD_IMAGING_VIZ_DIR=public/docs/assets/imaging_visualizers \
- *   ./gradlew jvmTest --tests 'afield.ImagingVisualizerDocCaptureTest'
+ * AFIELD_DOCS_ASSETS=1 ./gradlew jvmTest --tests 'afield.ImagingVisualizerDocCaptureTest'
  * ```
+ *
+ * `AFIELD_IMAGING_VIZ_DIR=<dir>` still names an explicit destination, as it always did.
  */
 class ImagingVisualizerDocCaptureTest {
 
     private val assetDir: Path by lazy {
-        val configured = System.getenv("AFIELD_IMAGING_VIZ_DIR")
-            ?: System.getProperty("afield.imagingViz.assetDir")
-        val dir = if (configured != null) Paths.get(configured)
-        else Files.createTempDirectory("imaging-visualizers-capture")
-        Files.createDirectories(dir)
-        println("ImagingVisualizerDocCaptureTest: writing to ${dir.toAbsolutePath()}")
-        dir
+        docsAssetDir("public/docs/assets/imaging_visualizers", explicitDirEnv = "AFIELD_IMAGING_VIZ_DIR")
     }
 
     private val woff2Dir: Path by lazy {
