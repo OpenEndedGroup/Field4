@@ -305,11 +305,11 @@ uv run --project . --group backdoor python tools/run_ui_regressions.py \
 Current testing layers and commands are summarized in `dev_docs/testing/TESTING_STRATEGY.md`. Browser UI coverage details are tracked in `dev_docs/testing/UI_REGRESSION_ROADMAP.md`: command palette, editor sync, insert stack mark, output areas, `/controllers` lines/control widgets, screenshot selection, history panel, macro/transcript panel, inline visualizers, and focus/keyboard contracts.
 
 Deliberately accepted JVM reds live only in
-`dev_docs/testing/expected_test_failures.json`. The `check` graph enforces that
-register in both directions: an unregistered failure is an ordinary `jvmTest`
-failure, while a registered test passing or disappearing fails
-`checkExpectedTestFailures`. Never describe a red as expected only in prose, and
-never use wildcard selectors in the register.
+`dev_docs/testing/expected_test_failures.json`; accepted smoke reds live only in
+`dev_docs/testing/expected_smoke_failures.json`. Both registers are enforced in both
+directions: an unregistered failure is ordinary failure, while a registered test passing or
+disappearing fails its gate. Never describe a red as expected only in prose, and never use wildcard
+selectors or ids in either register.
 
 ## Autonomous Docs/Test Loop
 

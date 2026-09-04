@@ -185,6 +185,12 @@ The register is intentionally empty while `main` has no accepted red. Wildcards
 are forbidden: each entry must name one test, explain why its failure remains
 intentional, and point to a repository document that owns the decision.
 
+Smoke tests have the same two-sided contract in
+`dev_docs/testing/expected_smoke_failures.json`. `tools/run_field_tests.py` reports a registered,
+still-failing smoke as `XFAIL`; a registered smoke that passes, disappears, is platform-skipped, or
+fails before its assertions run makes the smoke gate fail. Targeted runs enforce entries among the
+selected ids, while an unfiltered catalog run checks the whole register.
+
 Documentation-contract tests run through `citationGates`, which is a dependency
 of both `check` and `docsGates`. They are excluded from broad `jvmTest` so they run
 once, with their real Markdown, JavaScript, and build-script inputs declared;

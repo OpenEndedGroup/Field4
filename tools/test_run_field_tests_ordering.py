@@ -2,6 +2,7 @@
 
 import sys
 import subprocess
+import json
 import tempfile
 import unittest
 import unittest.mock
@@ -11,10 +12,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from tools.run_field_tests import (  # noqa: E402
     RunnerError,
+    apply_expected_smoke_failure,
     coverage_snapshot,
     describe_unmatched_ids,
     filtered_out_ids,
     load_coverage_state,
+    load_expected_smoke_failures,
     order_tests_by_coverage,
     record_coverage_result,
     run_one_test,
@@ -109,6 +112,54 @@ class CoverageOrderingTests(unittest.TestCase):
             result = run_one_test({"id": "assertion", "runner": "jvm-main"}, port=9999, workspace=None)
         self.assertFalse(result["ok"])
         self.assertEqual(result["failureKind"], "test")
+
+
+class ExpectedSmokeFailureTests(unittest.TestCase):
+    ENTRY = {
+        "id": "known.red",
+        "reason": "The defect remains deliberately visible.",
+        "documentation": "finding.md#known-red",
+    }
+
+    def test_registered_test_failure_is_accepted(self) -> None:
+        result = {"id": "known.red", "ok": False, "failureKind": "test", "failures": ["boom"]}
+        apply_expected_smoke_failure(result, {"known.red": self.ENTRY})
+        self.assertTrue(result["acceptedFailure"])
+        self.assertFalse(result["ok"])
+
+    def test_registered_pass_is_a_contract_failure(self) -> None:
+        result = {"id": "known.red", "ok": True, "failureKind": None, "failures": []}
+        apply_expected_smoke_failure(result, {"known.red": self.ENTRY})
+        self.assertFalse(result["ok"])
+        self.assertEqual("contract", result["failureKind"])
+        self.assertIn("registered smoke failure passed", result["failures"][0])
+
+    def test_infrastructure_failure_is_never_accepted(self) -> None:
+        result = {
+            "id": "known.red",
+            "ok": False,
+            "failureKind": "infrastructure",
+            "failures": ["no transport"],
+        }
+        apply_expected_smoke_failure(result, {"known.red": self.ENTRY})
+        self.assertFalse(result["acceptedFailure"])
+
+    def test_registry_rejects_missing_ids_and_wildcards(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "finding.md").write_text("# Known red\n", encoding="utf-8")
+            registry = root / "expected.json"
+            registry.write_text(
+                json.dumps({"version": 1, "expectedFailures": [self.ENTRY]}), encoding="utf-8"
+            )
+            with self.assertRaisesRegex(RunnerError, "absent from the catalog"):
+                load_expected_smoke_failures(registry, catalog_ids=set(), root=root)
+            wildcard = {**self.ENTRY, "id": "known.*"}
+            registry.write_text(
+                json.dumps({"version": 1, "expectedFailures": [wildcard]}), encoding="utf-8"
+            )
+            with self.assertRaisesRegex(RunnerError, "must be exact"):
+                load_expected_smoke_failures(registry, catalog_ids={"known.*"}, root=root)
 
 
 if __name__ == "__main__":

@@ -44,6 +44,7 @@ REPO_ROOT = TOOLS_ROOT.parent
 DEFAULT_CATALOG_PATH = REPO_ROOT / "build" / "field-tests" / "catalog.json"
 DEFAULT_RESULTS_PATH = REPO_ROOT / "build" / "field-tests" / "results.json"
 DEFAULT_COVERAGE_STATE_PATH = REPO_ROOT / "build" / "field-tests" / "coverage-state.json"
+DEFAULT_EXPECTED_FAILURES_PATH = REPO_ROOT / "dev_docs" / "testing" / "expected_smoke_failures.json"
 GENERATED_SNIPPETS_ROOT = REPO_ROOT / "build" / "field-tests" / "generated"
 CAPTURES_ROOT = REPO_ROOT / "build" / "field-tests" / "captures"
 GENERATED_DOC_ASSETS_ROOT = REPO_ROOT / "build" / "field-tests" / "generated-doc-assets"
@@ -61,6 +62,62 @@ MIN_NODE_MAJOR = 14
 
 class RunnerError(RuntimeError):
     pass
+
+
+def load_expected_smoke_failures(
+    path: Path, *, catalog_ids: set[str], root: Path = REPO_ROOT
+) -> dict[str, dict[str, str]]:
+    """Load exact smoke ids whose current failure is deliberately accepted."""
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RunnerError(f"Cannot read expected smoke failure registry {path}: {exc}") from exc
+    if payload.get("version") != 1 or not isinstance(payload.get("expectedFailures"), list):
+        raise RunnerError(f"Expected smoke failure registry {path} must have version 1 and expectedFailures")
+
+    entries: dict[str, dict[str, str]] = {}
+    for raw in payload["expectedFailures"]:
+        if not isinstance(raw, dict):
+            raise RunnerError(f"Expected smoke failure entry must be an object: {raw!r}")
+        test_id = str(raw.get("id") or "")
+        reason = str(raw.get("reason") or "")
+        documentation = str(raw.get("documentation") or "")
+        if not test_id or any(token in test_id for token in ("*", "?", "[")):
+            raise RunnerError(f"Expected smoke failure id must be exact: {test_id!r}")
+        if test_id in entries:
+            raise RunnerError(f"Duplicate expected smoke failure id: {test_id}")
+        if test_id not in catalog_ids:
+            raise RunnerError(f"Registered smoke failure is absent from the catalog: {test_id}")
+        if not reason:
+            raise RunnerError(f"Expected smoke failure {test_id} has no reason")
+        doc_path = (root / documentation.partition("#")[0]).resolve()
+        if not documentation or not doc_path.is_relative_to(root.resolve()) or not doc_path.is_file():
+            raise RunnerError(f"Expected smoke failure {test_id} has invalid documentation: {documentation}")
+        entries[test_id] = {
+            "id": test_id,
+            "reason": reason,
+            "documentation": documentation,
+        }
+    return entries
+
+
+def apply_expected_smoke_failure(
+    result: dict[str, Any], entries: dict[str, dict[str, str]]
+) -> None:
+    """Accept only a registered assertion failure; passing or infrastructure remain red."""
+    entry = entries.get(str(result.get("id") or ""))
+    result["expectedFailure"] = entry
+    result["acceptedFailure"] = False
+    if entry is None:
+        return
+    if result.get("ok"):
+        result["ok"] = False
+        result["failureKind"] = "contract"
+        result.setdefault("failures", []).append(
+            f"{result['id']}: registered smoke failure passed; remove or update its registry entry"
+        )
+    elif result.get("failureKind") == "test":
+        result["acceptedFailure"] = True
 
 
 def which_on_path(executable: str) -> str | None:
@@ -1554,7 +1611,7 @@ def run_one_test(
 
 
 def format_result_line(result: dict[str, Any]) -> str:
-    status = "PASS" if result["ok"] else "FAIL"
+    status = "XFAIL" if result.get("acceptedFailure") else ("PASS" if result["ok"] else "FAIL")
     return f"{status} {result['id']} ({result['durationMs']} ms)"
 
 
@@ -1563,6 +1620,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--catalog", default=str(DEFAULT_CATALOG_PATH))
     parser.add_argument("--results", default=str(DEFAULT_RESULTS_PATH))
     parser.add_argument("--coverage-state", default=str(DEFAULT_COVERAGE_STATE_PATH))
+    parser.add_argument("--expected-failures", default=str(DEFAULT_EXPECTED_FAILURES_PATH))
     parser.add_argument("--refresh-catalog", action="store_true")
     parser.add_argument(
         "--no-reap",
@@ -1688,6 +1746,14 @@ def run(args: argparse.Namespace) -> int:
     if not selected:
         raise SystemExit("No tests matched the requested filters.")
 
+    expected_failures_path = Path(args.expected_failures)
+    if not expected_failures_path.is_absolute():
+        expected_failures_path = REPO_ROOT / expected_failures_path
+    expected_failures = load_expected_smoke_failures(
+        expected_failures_path,
+        catalog_ids={str(test.get("id") or "") for test in catalog.get("tests") or []},
+    )
+
     # In --json mode stdout is reserved for the final report blob, so per-test
     # progress goes to stderr (flushed per line) instead of being suppressed.
     # `2>&1 | tee` then streams it live; a bare stdout pipe still parses as JSON.
@@ -1717,6 +1783,14 @@ def run(args: argparse.Namespace) -> int:
             progress(f"SKIP {test.get('id')} (skipOn '{reason}' matches {sys.platform})")
         else:
             tests.append(test)
+    skipped_expected = sorted(
+        str(test.get("id")) for test in skipped if str(test.get("id")) in expected_failures
+    )
+    if skipped_expected:
+        raise SystemExit(
+            "Registered smoke failure did not execute because it was platform-skipped: "
+            + ", ".join(skipped_expected)
+        )
 
     coverage_ordering = not (
         requested_ids
@@ -1746,6 +1820,7 @@ def run(args: argparse.Namespace) -> int:
     results: list[dict[str, Any]] = []
     passed = 0
     failed = 0
+    expected_failed = 0
     total = len(tests)
 
     if tests:
@@ -1767,8 +1842,11 @@ def run(args: argparse.Namespace) -> int:
                 progress=progress,
                 heartbeat_interval=args.heartbeat_interval,
             )
+            apply_expected_smoke_failure(result, expected_failures)
             results.append(result)
-            if result["ok"]:
+            if result.get("acceptedFailure"):
+                expected_failed += 1
+            elif result["ok"]:
                 passed += 1
             else:
                 failed += 1
@@ -1776,7 +1854,7 @@ def run(args: argparse.Namespace) -> int:
                 record_coverage_result(
                     coverage_state,
                     test_id=str(test.get("id") or ""),
-                    ok=bool(result["ok"]),
+                    ok=bool(result["ok"] or result.get("acceptedFailure")),
                     completed_at=time.time(),
                 )
                 write_coverage_state(
@@ -1806,11 +1884,19 @@ def run(args: argparse.Namespace) -> int:
         "selectedCount": len(tests),
         "passed": passed,
         "failed": failed,
+        "expectedFailed": expected_failed,
+        "expectedFailureRegistry": str(expected_failures_path),
         "failureKinds": {
-            "test": sum(1 for result in results if result.get("failureKind") == "test"),
+            "test": sum(
+                1
+                for result in results
+                if result.get("failureKind") == "test" and not result.get("acceptedFailure")
+            ),
+            "expected": expected_failed,
             "infrastructure": sum(
                 1 for result in results if result.get("failureKind") == "infrastructure"
             ),
+            "contract": sum(1 for result in results if result.get("failureKind") == "contract"),
         },
         "skippedCount": len(skipped),
         "skipped": [
@@ -1835,12 +1921,15 @@ def run(args: argparse.Namespace) -> int:
         print(json.dumps(report, indent=2))
     else:
         skip_note = f", {len(skipped)} skipped" if skipped else ""
-        print(f"Summary: {passed} passed, {failed} failed{skip_note}")
+        expected_note = f", {expected_failed} expected failed" if expected_failed else ""
+        print(f"Summary: {passed} passed, {failed} failed{expected_note}{skip_note}")
         if failed:
             kinds = report["failureKinds"]
             print(
                 "Failure kinds: "
-                f"{kinds['test']} test/assertion, {kinds['infrastructure']} infrastructure/transport"
+                f"{kinds['test']} test/assertion, {kinds['expected']} expected, "
+                f"{kinds['infrastructure']} infrastructure/transport, "
+                f"{kinds['contract']} expected-failure contract"
             )
         print(f"Results: {results_path}")
 

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "expectedFailures": [
+    {
+      "id": "kotlin.wither-plugin.smoke",
+      "reason": "The Wither FIR extension leaves its synthesized receiver unresolved in JVM IR codegen.",
+      "documentation": "dev_docs/k2_repl_provide_delegate.md#defect-b--local--class-member-by-providedelegate-fields-wither-wiring-fixable"
+    }
+  ]
+}
