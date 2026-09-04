@@ -71,16 +71,18 @@ object SidecarPathParseSmokeTest {
             }
             require(fitDemo.propertyName == "code") { "expected property 'code', got '${fitDemo.propertyName}'" }
 
-            // 2. Underscore-bearing property name (remote_js) resolves correctly for a not-yet-created box.
-            val remote = parse("some_box_remote_js_.js")
-            require(remote != null && remote.boxId == "some_box" && remote.propertyName == "remote_js") {
-                "expected some_box/remote_js, got $remote"
+            // 2. Underscore-bearing property name resolves correctly for a not-yet-created box.
+            // This used to be spelled with `remote_js`, which was never a real property — see the
+            // comment beside `customization` in Box.ioSeparateProperties. `fragment_s` is a live one.
+            val remote = parse("some_box_fragment_s_.slang")
+            require(remote != null && remote.boxId == "some_box" && remote.propertyName == "fragment_s") {
+                "expected some_box/fragment_s, got $remote"
             }
 
             // 3. Underscores on BOTH sides at once — the hardest case for the old first-underscore split.
-            val both = parse("my_cool_box_remote_js_.js")
-            require(both != null && both.boxId == "my_cool_box" && both.propertyName == "remote_js") {
-                "expected my_cool_box/remote_js, got $both"
+            val both = parse("my_cool_box_fragment_s_.slang")
+            require(both != null && both.boxId == "my_cool_box" && both.propertyName == "fragment_s") {
+                "expected my_cool_box/fragment_s, got $both"
             }
 
             // 4. Longest known property suffix wins (vertex_fragment over fragment) when no box matches.
