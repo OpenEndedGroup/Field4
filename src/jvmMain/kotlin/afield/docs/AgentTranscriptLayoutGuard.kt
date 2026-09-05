@@ -19,6 +19,7 @@ object AgentTranscriptLayoutGuard {
     const val MAX_ORDINARY_HEIGHT = 120.0
 
     private const val CORPUS_REL = "dev_docs/agents/transcripts"
+private const val DEMOS_REL = "dev_docs/agents/demos"
     private const val EXCEPTIONS_REL = "dev_docs/agents/transcript_layout_exceptions.yaml"
     private val CREATE_VERBS = setOf("create", "new-box", "box")
 
@@ -71,7 +72,8 @@ object AgentTranscriptLayoutGuard {
             .filter { it.isFile && it.extension.lowercase() in setOf("yaml", "yml") }
             .sortedBy { it.relativeTo(corpus).invariantSeparatorsPath }
             .toList()
-        val frames = files.flatMap { parseFrames(corpus, it, problems) }
+        val demoFrames = parseDemoFrames(File(repo, DEMOS_REL), problems)
+        val frames = files.flatMap { parseFrames(corpus, it, problems) } + demoFrames
         val byKey = frames.groupBy { it.key }
         byKey.filterValues { it.size > 1 }.forEach { (key, duplicates) ->
             problems.add("$key identifies ${duplicates.size} create frames; box ids must be unique within a transcript")
@@ -193,7 +195,39 @@ object AgentTranscriptLayoutGuard {
         return result
     }
 
-    private fun repoRoot(): File {
+    /**
+ * Frames from the loadable demo documents under `dev_docs/agents/demos`.
+ *
+ * These carry the *same boxes* as a transcript — often literally the same box, since a demo and its
+ * transcript are generated from one set of `*_code_.kt` files — but they were outside this guard's
+ * population until 2026-09-05, and every one of them had drifted over the ceiling as a result: 24 of
+ * 26 boxes, up to 760 x 600. The ceiling was never the missing part; the population was. A `metadata.edn`
+ * is EDN rather than YAML, so the frames are read with a regex over `"id" … #afield/rect [x y w h]`
+ * rather than through a parser.
+ */
+private fun parseDemoFrames(demosDir: File, problems: MutableList<String>): List<Frame> {
+    if (!demosDir.isDirectory) return emptyList()
+    val rectRe = Regex("""\"id\"\s+\"([^\"]+)\"(.*?)#afield/rect\s+\[([^\]]+)\]""", RegexOption.DOT_MATCHES_ALL)
+    val result = mutableListOf<Frame>()
+    demosDir.listFiles()?.sortedBy { it.name }?.forEach { dir ->
+        val edn = File(dir, "metadata.edn")
+        if (!edn.isFile) return@forEach
+        val text = edn.readText()
+        val relative = "${dir.name}/metadata.edn"
+        for (match in rectRe.findAll(text)) {
+            val box = match.groupValues[1]
+            val parts = match.groupValues[3].trim().split(Regex("\\s+")).mapNotNull { it.toDoubleOrNull() }
+            if (parts.size != 4) {
+                problems.add("$relative: box '$box' has an unreadable frame '${match.groupValues[3]}'")
+                continue
+            }
+            result.add(Frame("$relative#$box", "$relative box '$box'", parts[0], parts[1], parts[2], parts[3]))
+        }
+    }
+    return result
+}
+
+private fun repoRoot(): File {
         var candidate: File? = File(System.getProperty("user.dir")).absoluteFile
         while (candidate != null) {
             if (File(candidate, "public/docs").isDirectory && File(candidate, "src/jvmMain/kotlin").isDirectory) {
