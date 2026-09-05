@@ -40,8 +40,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 83 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
-not in the same way, and the difference is worth knowing before you trust one. 56 of them are
+All 84 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+not in the same way, and the difference is worth knowing before you trust one. 57 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
 error-kind output line. (Almost always that is every box in the file. A transcript may
@@ -334,6 +334,29 @@ saddle cell — and draws the sampling grid so you can see what the marcher had 
 k-medoids and k-medians on the same planted clusters. Every box is pure CPU and runs on its own; move
 a site, change a weight, raise an iso level or ask for a different `k` and re-run it.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/spatial_geometry_examples/metadata.edn)
+
+**alife_evolution** — the other half of [spatial artificial life](alife_examples.md): four boxes that
+**search** those rule spaces rather than measuring a rule someone chose. `alife.kt` held 816 lines of
+morphology statistics and until 2026-09-05 not one of them had ever been used as a fitness. Box 1 asks
+for a Lenia soliton — alive, in one piece, travelling — and scores it straight off `leniaRun`'s own
+DEATH/BOUNDED/SATURATION classification and wrapped centroid drift, so the phase is measured rather
+than asserted. Box 2 runs the *same engine* over a genome with nothing in common with the first: 49
+bits of birth and survival counts at radius 2, recombined by real uniform crossover, selected by
+lexicase over two soups because a rule that holds together on one initial condition and collapses on
+the other is exactly what a tournament's average hides. The radius is the lesson — at radius 1 the
+space is 2¹⁷ and a few hundred independent draws land near the optimum on their own, which is how the
+first version of this measured evolution winning by 3 %. Box 3 illuminates the `(density, activity)`
+behaviour space with MAP-Elites and then argues *against* the reading you would reach for: random
+sampling spreads over a descriptor space for free, so coverage is the wrong claim and quality per
+occupied cell is the right one, and the box prints both. Box 4 is the load-bearing one —
+`FunctionEvolve.evolve` no longer contains a search, its body is `PopulationSearch.evolve(mu = 1)`,
+and the FIELD_TEST `functions.evolve.worked-example` reproduces `bestScore = -0.15676727177844857`
+over 961 evaluations bit for bit across that refactor. Every box carries a `PopulationSearch.random`
+control arm at the same budget under the same seed, because a generator good enough to stumble onto a
+decent rule occasionally looks exactly like a successful search. None of the four opens a `Window` or
+a `Renderer`. Change `LifeRuleGenome(radius = 2)` to `LifeRuleGenome()` in box 2 and watch the margin
+collapse.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/alife_evolution/metadata.edn)
 
 **alife_worked_example** — [Spatial artificial life](alife_examples.md) as twenty boxes: ten that
 measure, and a band below them of ten that **move**. The measuring ten are independent and pure CPU —

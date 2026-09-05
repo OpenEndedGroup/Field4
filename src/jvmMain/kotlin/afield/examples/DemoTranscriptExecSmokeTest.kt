@@ -193,6 +193,7 @@ object DemoTranscriptExecSmokeTest {
         // so no AWT, no GPU and nothing to launch.
         "spatial_geometry_examples",
         // Ten independent pure-CPU spatial-ALife boxes; nothing opens a Window or a Renderer.
+        "alife_evolution",
         "alife_worked_example",
         // Five independent pure-CPU statistics boxes; showPlaneGrid is drawToSVG -> display,
         // showSignals is a plotly HTML fragment -> display, histogramToSvg is just a string.

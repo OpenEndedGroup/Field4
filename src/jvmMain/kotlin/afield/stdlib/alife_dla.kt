@@ -1,3 +1,4 @@
+@file:afield.CompletionCategory("ALife")
 @file:Suppress("MemberVisibilityCanBePrivate")
 
 package afield.stdlib

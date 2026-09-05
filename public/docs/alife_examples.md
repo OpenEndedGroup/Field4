@@ -1448,6 +1448,360 @@ animateEvolution(
 )
 ```
 
+## 11. Evolution: searching the rule space instead of choosing one
+
+Every section above picks a rule and measures what it does. This one runs the question backwards: given
+a measurement, find a rule that scores well on it.
+
+That inversion was not available until 2026-09-05, and the reason is worth stating plainly, because it
+is a common shape. `alife.kt` is 816 lines of morphology statistics (`polarization`, `blobShapes`,
+`correlationLength`, `massRadiusDimension`, `stateEntropyBits`, `centroidDrift`) and every one of them
+was a *readout*. `git grep -inE 'fitness|genome|evolve|mutation'` over `alife*.kt` returned nothing at
+all. The statistics were already the hard part; what was missing was the loop that calls them.
+
+**The control arm is the entire argument, so it goes first.**
+[`PopulationSearch.random`](reference/search.md#populationsearch-kt) is not a fourth search driver. It
+draws from exactly the distribution `evolve` mutates within, at the same budget, under the same seed,
+and every claim below is a margin over it. Without it none of these numbers would mean anything: a
+generator good enough to stumble onto a decent rule now and then looks identical, from the outside, to a
+search that works.
+
+### A Lenia rule that travels
+
+A soliton, meaning alive and in one piece and moving, is the thing continuous Lenia is famous for, and it is
+three measurements Field already had. Every term of the score is read off `leniaRun`, which classifies a
+run as DEATH, BOUNDED or SATURATION from the mean field value and reports a wrapped centroid drift. The
+phase is *measured*, not asserted, which matters because the failure mode here is a rule that scores well
+by saturating the grid and sitting still.
+
+Against 220 evaluations of the control at the same seed, evolution finds a rule **17.2 % better** —
+`2.09372` against `1.78636`, a margin of `0.3074`. The evolved rule is measured `BOUNDED` with one blob
+and a centroid drift of 4.82 cells, so it is a single travelling structure rather than a high score. The
+figure below is the honest version of that number: the first panel is the control's best, so the thing
+evolution had to beat is in the same picture at the same budget.
+
+??? aside "What the panels after the first one actually are"
+    They are the successive **record holders** — the leader of each generation that improved on the best
+    so far. It is tempting to call that a lineage and the code originally did, but with `mu = 6` and
+    crossover on, the odds that six record holders are literally descended from one another are close to
+    zero. A record-holder chain is still the right thing to draw; it just is not a family tree.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/evolve-lenia.png" wait="30.0" timeout="240" capture="box" open-outputs="true" padding="20"}
+:::static
+// Ask for a soliton: alive, in ONE piece, and travelling. Every term is read off leniaRun, which
+// already classifies a run DEATH / BOUNDED / SATURATION and already reports a wrapped centroid drift.
+val ops = LeniaGenome(radius = 6, dt = 0.1, shells = 3)
+val objective = leniaSolitonObjective(width = 48, height = 48, steps = 90, initialSeed = 5L, driftScale = 8.0)
+val budget = 220
+
+// The control arm: the same distribution evolve mutates within, same budget, same seed.
+val control = PopulationSearch.random(ops, objective, budget, seed = 13L, label = "random")
+val evolved = PopulationSearch.evolve(
+    ops, objective, budget, seed = 13L,
+    mu = 6, lambda = 12, crossoverRate = 0.3, immigrantRate = 0.08, label = "evolve"
+)
+println(control.summary())
+println(evolved.summary())
+println("margin %.4f  (%.1f%% above the control)".format(
+    evolved.bestFitness - control.bestFitness,
+    100.0 * (evolved.bestFitness / control.bestFitness - 1.0)))
+
+val best = evolved.best!!.genome
+println("evolved rule: mu=%.4f sigma=%.4f".format(best.mu, best.sigma))
+println("  " + leniaRun(leniaSeed(48, 48, best, seed = 5L), best, steps = 90, sampleEvery = 8))
+
+:::fold the control's best, then each successive record holder
+val panels = mutableListOf<Pair<String, Img>>()
+val cRule = control.best!!.genome
+panels += "rnd %.2f".format(control.bestFitness) to
+    leniaRun(leniaSeed(48, 48, cRule, seed = 5L), cRule, steps = 90, sampleEvery = 8).field.upscaleNearest(3)
+val picks = evolved.improvements.indices.toList().let { idx ->
+    if (idx.size <= 5) idx else (1..5).map { (it * idx.size / 5) - 1 }
+}
+for (i in picks) {
+    val imp = evolved.improvements[i]
+    panels += "g%d %.2f".format(imp.generation, imp.fitness) to
+        leniaRun(leniaSeed(48, 48, imp.genome, seed = 5L), imp.genome, steps = 90, sampleEvery = 8)
+            .field.upscaleNearest(3)
+}
+// A FIXED 0..1 range, for the reason section "Evaluating one of these in a box" gives: a saturated
+// Lenia field is constant at 1, and an auto-ranged colour map draws a constant field BLACK.
+showImg(montage(panels, columns = 3, cellSide = 200, displayRange = 0f..1f),
+    caption = "left to right: the random control's best, then each successive record holder")
+:::endfold
+```
+
+![six greyscale Lenia fields in two rows of three on black, labelled rnd 1.79, g2 1.80, g3 1.81, g7 1.84, g8 1.85 and g18 2.09: the random control's best and the first four record holders are small speckled clumps of a few dozen cells, and the final panel is a markedly larger smooth ring with a dark centre and a soft outer edge](assets/alife_examples/evolve-lenia.png)
+
+### The same engine, a genome with nothing in common
+
+A life-like rule is a *table*: which neighbour counts cause a birth, which cause survival. At radius 2
+that is 24 birth bits and 25 survival bits: a fixed-length bit string, and therefore a genome two
+parents can be recombined across. `LifeRuleGenome.crossover` is uniform crossover over the rule table,
+real recombination rather than a graft, and it was Field's second two-parent crossover after
+`afield.morpho.MorphoGenerator`'s.
+
+The radius is the most useful thing in this section, and it is a lesson about controls rather than about
+cellular automata. At radius 1 the rule space is 2¹⁷, and a few hundred *independent* draws land near the
+optimum on their own; the first version of this measured evolution winning by 3 %. At radius 2 the space
+is 2⁴⁹ and the margin is **27.4 %**, `0.54436` against `0.42744`. A control arm that nearly wins is telling you the problem is easy, not
+that the search is good, and the only way to find that out is to run the control.
+
+The figure below reads oddly until you notice what the first panel is. The control is the best of 400
+*independent* draws, so it is a high bar early on: the evolved run's first two record holders score
+`0.336` and `0.398` **below** the control's `0.427`, and only overtake it around generation five. A
+population that started above its own control would mean the control was weak, not that the search was
+strong.
+
+Selection is lexicase rather than tournament, because this objective genuinely has a case structure: one
+case per soup. A rule that holds together on one initial condition and collapses on the other is exactly
+what an average hides, and lexicase never averages.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/evolve-ca.png" wait="40.0" timeout="240" capture="box" open-outputs="true" padding="20"}
+:::static
+// The same engine, a completely different genome.
+//
+// A life-like rule is a TABLE: which neighbour counts cause a birth, which cause survival. At a
+// radius-2 neighbourhood that is 24 birth bits and 25 survival bits, a fixed-length bit string, and
+// therefore a genome two parents can be recombined across. Field had exactly one other two-parent
+// crossover before this (afield.morpho.MorphoGenerator); LifeRuleGenome.crossover is uniform
+// crossover over the rule table and it is real recombination, not a graft.
+//
+// Radius 2 rather than the classic Moore 8 is a deliberate choice and it is the most useful thing
+// in this box. At radius 1 the space is 2^17 rules, and a few hundred INDEPENDENT draws land close
+// to the optimum on their own -- the first version of this demo measured evolution winning by 3%
+// for exactly that reason. A control arm that nearly wins is telling you the problem is easy, not
+// that the search is good. At radius 2 the space is 2^49 and the margin is 27%.
+
+val ops = LifeRuleGenome(radius = 2)
+val soups = listOf(
+    randomSoup(48, 48, density = 0.35, seed = 101L),
+    randomSoup(48, 48, density = 0.12, seed = 202L)
+)
+
+// "Alive but not saturated, and still changing" -- activity times a Gaussian band on density.
+// Each factor alone is trivially gamed. A rule that fills the grid and stays filled scores 1 on
+// density and 0 on activity; a rule that flickers every cell scores ~1 on activity and ~0 on the
+// band; an extinct rule scores the floor. Only the product is large for a rule that keeps a
+// moderate population AND keeps rearranging it, which is what everybody means by an interesting
+// rule and what nobody can state by looking.
+val objective = caEdgeOfChaosObjective(soups, warmup = 20, scored = 30)
+val budget = 400
+
+val control = PopulationSearch.random(ops, objective, budget, seed = 7L, label = "random")
+
+// LEXICASE, because this objective genuinely has a case structure: one case per soup. A rule that
+// holds together on one initial condition and collapses on the other is exactly what a
+// tournament's average hides, and lexicase never averages.
+val evolved = PopulationSearch.evolve(
+    ops, objective, budget, seed = 7L,
+    mu = 8, lambda = 16, selection = Selection.LEXICASE,
+    crossoverRate = 0.3, immigrantRate = 0.1, label = "evolve"
+)
+
+println(control.summary())
+println(evolved.summary())
+println()
+println("margin %.4f  (%.1f%% above the control)".format(
+    evolved.bestFitness - control.bestFitness,
+    100.0 * (evolved.bestFitness / control.bestFitness - 1.0)
+))
+println("recombined ${evolved.recombined} children by uniform crossover over the rule table")
+println()
+println("evolved rule ${lifeRuleSignature(evolved.best!!.genome)}")
+println("control rule ${lifeRuleSignature(control.best!!.genome)}")
+println()
+println("The first record holders score BELOW the control: the control is the best of 400")
+println("independent draws, so a population starts under it and has to climb past it.")
+println()
+println("Try Selection.TOURNAMENT above and compare. Try LifeRuleGenome() with no radius argument")
+println("and watch the margin collapse -- that is the easy problem, and it is worth seeing.")
+
+:::fold the control's best, then each successive record holder, on the same soup
+val panels = mutableListOf<Pair<String, Img>>()
+panels += "rnd %.3f".format(control.bestFitness) to
+    caRun(soups[0], control.best!!.genome, 20, 30).finalGrid.toImg(2).upscaleNearest(3)
+val picks = evolved.improvements.indices.toList().let { idx ->
+    if (idx.size <= 5) idx else (1..5).map { (it * idx.size / 5) - 1 }
+}
+for (i in picks) {
+    val imp = evolved.improvements[i]
+    panels += "g%d %.3f".format(imp.generation, imp.fitness) to
+        caRun(soups[0], imp.genome, 20, 30).finalGrid.toImg(2).upscaleNearest(3)
+}
+showImg(
+    montage(panels, columns = 3, cellSide = 200),
+    caption = "the control's best, then each successive record holder, all on the same soup -- the\n        early ones score BELOW the control, which is what overtaking looks like"
+)
+:::endfold
+```
+
+![six greyscale cellular-automaton boards in two rows of three on black, labelled rnd 0.427, g1 0.336, g3 0.398, g5 0.453, g10 0.499 and g21 0.544: all six are busy mid-density textures, the two lowest-scoring are the most uniformly speckled, and the highest-scoring boards hold larger connected light and dark regions](assets/alife_examples/evolve-ca.png)
+
+### Illuminating the space instead of optimising it
+
+MAP-Elites keeps the best rule found in each cell of a grid over the *behaviour* space: here `(density,
+activity)`, the two numbers `caEdgeOfChaosObjective` already reports. What comes out is not one answer
+but a map of "the best rule that behaves like this".
+
+??? aside "Coverage is the wrong claim here, and the box says so"
+    The obvious headline would be that MAP-Elites covers more of the behaviour space than random
+    sampling. It does not, and it should not be expected to: random sampling spreads over a descriptor
+    space **for free**, because that is what random means, while MAP-Elites reaches a new cell only when a
+    mutation happens to move a descriptor across a bin boundary. What illumination buys is the *quality*
+    held in each cell it does occupy, so that is what the box measures — against a control built the only
+    way that makes sense: the same budget of independent draws, binned identically and reduced to the
+    best genome per cell.
+
+    Measured over 600 evaluations: both archives occupy **20 of 36 cells**, so coverage is a tie, and
+    the QD scores are **3.477 illuminated against 3.361 sampled**, a margin of 3.5 %. Twenty-eight of
+    the 600 candidates landed off-grid and were clamped to an edge cell.
+
+    Two honest limits on that number. It is **n = 1**: one seed, no variance estimate, and a 3.5 %
+    margin is small enough that a handful of seeds could move it. And the archive's diversity is real,
+    twenty occupied cells that genuinely differ, while its *interest* is not uniform: the activity-zero
+    row is near-frozen by construction and several of its cells are hard to tell apart.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/evolve-mapelites.png" wait="60.0" timeout="300" capture="box" open-outputs="true" padding="20"}
+:::static
+// Illuminate the rule space instead of optimising it.
+//
+// MAP-Elites keeps the best rule found in each cell of a grid over the BEHAVIOUR space -- here
+// (density, activity), the same two numbers caEdgeOfChaosObjective already reports as its
+// Evaluation.behaviour. What comes out is not one answer but a map of "the best rule that behaves
+// like THIS", which is the contact sheet below.
+//
+// This is the figure worth looking at. Top left is sparse and nearly dead; bottom right is dense
+// and noisy; and somewhere in the middle band are the rules that hold structure while still moving.
+
+val ops = LifeRuleGenome(radius = 2)
+val soups = listOf(randomSoup(48, 48, density = 0.35, seed = 303L))
+val objective = caEdgeOfChaosObjective(soups, warmup = 20, scored = 25)
+val bins = listOf(6, 6)
+val axes = listOf(0.0..1.0, 0.0..0.6)
+val budget = 600
+
+val archive = PopulationSearch.mapElites(ops, objective, budget, axes, bins, seed = 31L, initial = 40)
+println(archive)
+println("off-grid (clamped to an edge cell): ${archive.offGridCandidates} of $budget")
+println()
+
+// The control arm for a quality-diversity claim is the same budget of independent draws, binned
+// identically and reduced to the best genome per cell. Comparing against a single best random rule
+// would be the wrong control, because MAP-Elites is not trying to find one good rule.
+val controlCells = HashMap<List<Int>, Double>()
+val rng = kotlin.random.Random(31L)
+repeat(budget) {
+    val e = objective.evaluate(ops.random(rng))
+    val cell = axes.indices.map { d ->
+        (((e.behaviour[d] - axes[d].start) / (axes[d].endInclusive - axes[d].start)) * bins[d])
+            .toInt().coerceIn(0, bins[d] - 1)
+    }
+    val incumbent = controlCells[cell]
+    if (incumbent == null || e.fitness > incumbent) controlCells[cell] = e.fitness
+}
+val controlQd = controlCells.values.sum()
+println("random-sampled archive: ${controlCells.size}/${archive.cells} cells, QD %.3f".format(controlQd))
+println("illuminated archive:    ${archive.elites.size}/${archive.cells} cells, QD %.3f".format(archive.qdScore))
+println()
+println("Quality, not coverage, is the claim. Random sampling spreads over a descriptor space for")
+println("free -- that is what random means -- while MAP-Elites reaches a new cell only when a")
+println("mutation moves a descriptor across a bin boundary. What illumination buys is the quality")
+println("held in each cell it does occupy.")
+
+:::fold one panel per occupied cell, labelled (density bin)(activity bin) and score
+val panels = archive.elites.entries
+    .sortedWith(compareBy({ it.key[0] }, { it.key[1] }))
+    .map { (cell, elite) ->
+        "%d%d %.2f".format(cell[0], cell[1], elite.fitness) to
+            caRun(soups[0], elite.genome, 20, 25).finalGrid.toImg(2).upscaleNearest(3)
+    }
+showImg(
+    montage(panels, columns = 6, cellSide = 150),
+    caption = "one panel per occupied cell; the label is (density bin)(activity bin) and the score"
+)
+:::endfold
+```
+
+![a contact sheet of twenty small greyscale automaton boards laid out in a six-column grid, each labelled with its two bin indices and score: the top-left cells are near-empty, the bottom-right cells are dense static, and the middle band holds boards with visible structure](assets/alife_examples/evolve-mapelites.png)
+
+### One core, four genomes
+
+The point of the exercise is that all three of the above run on the same engine, and the proof is that a
+fourth, older client now runs on it too. `FunctionEvolve.evolve` no longer contains a search: its body is
+`PopulationSearch.evolve(mu = 1, crossoverRate = 0, immigrantRate = 0)` over an `FnGenomeOps`. The random
+stream is identical to the hand-rolled version's, because the core skips the parent draw when the
+population holds one individual and skips the crossover and immigrant draws when their rates are exactly
+zero.
+
+That is a claim about bytes, so it is checked as one. The FIELD_TEST `functions.evolve.worked-example`
+has committed numbers captured *before* the refactor, and they reproduce after it:
+
+```diffstatic {data-lang=text}
+initialScore=-0.8420503456220446   bestScore=-0.15676727177844857
+acceptedMutations=12  evaluations=961
+```
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/evolve-shared-core.png" wait="30.0" timeout="180" capture="box" open-outputs="true" padding="20"}
+:::static
+// The engine is SHARED, and that is the point of the whole exercise.
+//
+// Field had two population searches before tonight and they shared no code: afield.morpho's
+// (GraalJS, not stdlib) and FunctionEvolve's, over Fn graphs. Neither was parametric.
+//
+// FunctionEvolve.evolve no longer contains a search. Its body is
+// PopulationSearch.evolve(mu = 1, lambda = lambda, crossoverRate = 0, immigrantRate = 0) over an
+// FnGenomeOps -- the same engine the three ALife boxes run on. The random stream is IDENTICAL to
+// the hand-rolled version's, because the core skips the parent draw when the population holds one
+// individual and skips the crossover and immigrant draws when their rates are exactly zero. Each
+// of those is right on its own terms; together they make mu=1 a plain (1+lambda) climb.
+//
+// The proof is the FIELD_TEST functions.evolve.worked-example, whose committed numbers were
+// captured BEFORE the refactor and reproduce bit for bit after it:
+//
+//     initialScore=-0.8420503456220446   bestScore=-0.15676727177844857
+//     acceptedMutations=12  evaluations=961
+//
+// Below is that same search, running here.
+
+val target = with(Functions) { sin(frequency = 1.0, amplitude = 0.5) }
+val seed = with(Functions) { cos(frequency = 1.0, amplitude = 1.0) }
+
+val run = evolve(
+    seed = seed,
+    iterations = 120,
+    lambda = 8,
+    rngSeed = 3L,
+    fitness = matchFitness(target, samples = 160, complexityWeight = 0.01)
+)
+
+println("initialScore=${run.initialScore}")
+println("bestScore=${run.bestScore}")
+println("acceptedMutations=${run.steps.size}  evaluations=${run.evaluations}")
+println()
+println("the accepted improvements, which are now read off the generic SearchRun.improvements:")
+run.steps.forEach { println("  gen %3d  %-14s %.6f".format(it.iteration, it.mutation, it.score)) }
+println()
+println("evolved: ${run.best}")
+println()
+println("One core, four genomes: an Fn graph here, and a LeniaRule, a life-like rule table and an")
+println("L-system grammar in alife_evolve.kt. A fifth costs a GenomeOps and an Objective.")
+
+:::fold the seed, the target and the evolved graph on one time base
+// The seed, the target and what the search found, on one time base.
+val xs = (0..255).map { -1.0 + 2.0 * it / 255.0 }
+showSignals(
+    "target" to xs.map { target.evalSafe(it, outside = 0.0) },
+    "seed" to xs.map { seed.evalSafe(it, outside = 0.0) },
+    "evolved" to xs.map { run.best.evalSafe(it, outside = 0.0) }
+)
+:::endfold
+```
+
+![a dark line plot with three labelled traces: an orange cosine seed of amplitude 1, and a green evolved curve lying exactly on top of the blue target sine of amplitude 0.5, hiding it almost completely along its whole length](assets/alife_examples/evolve-shared-core.png)
+
+A fifth genome costs a `GenomeOps` and an `Objective`.
+
 ## Evaluating one of these in a box: the inline views
 
 `IntGrid`, `GrayScottState` and `LeniaRun` implement Field's `ToHTML`, so *evaluating* one of them in a
@@ -1508,12 +1862,15 @@ display("f. Lenia, saturation", leniaRun(leniaSeed(64, 64, sat, blobRadii = 1.6,
 
 ## Loading all of this into a live Field
 
-Every box above is one box of a shipped agent transcript,
-[`alife_worked_example`](agent_transcripts.md), so you can open the whole page as a document and edit
-it rather than retyping it:
+Every box above is one box of a shipped agent transcript, so you can open the page as a document and
+edit it rather than retyping it. Sections 1 to 10 are
+[`alife_worked_example`](agent_transcripts.md), and section 11 is
+[`alife_evolution`](agent_transcripts.md), kept separate because the four search boxes take about
+fifty seconds between them and the other twenty do not:
 
 ```diffstatic {data-lang=bash}
 python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife_worked_example.yaml
+python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife_evolution.yaml
 ```
 
 or open the materialized starting point from the welcome screen. Every box runs on its own and prints
