@@ -2,7 +2,7 @@
 
 StackSL is a small stack language that lowers to GLSL. It is meant for shader functions that are quick to write, easy for an LLM to mutate, and robust enough for artificial-life or genetic-programming loops.
 
-The first implementation is vector-first: every stack value is a `vec4`. Numbers become `vec4(n)`, swizzles repack into `vec4`, and most operators work component-wise. The compiler emits one callable function:
+It is vector-first: every stack value is a `vec4`. Numbers become `vec4(n)`, swizzles repack into `vec4`, and most operators work component-wise. The compiler emits one callable function:
 
 ```diffstatic {data-lang=glsl}
 vec4 prefix(vec4 prefix_in) { ... }
@@ -19,17 +19,14 @@ This keeps generated names out of the global shader namespace. The Field propert
 
 ## Rendered gallery
 
-Every image below is a live render, not a mock-up. The whole gallery is produced
-inside a *single* Field document: one renderer, one offscreen target, and one
-`{{ stack.auto.program }}` fragment slot (see [Kotlin and template use](#kotlin-and-template-use)).
-The harness walks the program list, re-binds the slot for each one — so the new
-shader module simply replaces the previous one under the same name — waits a few
-frames, and reads the texture back to a PNG. The entire page comes from one
-graphics context instead of a JVM restart per screenshot. The harness is
-`StackSLGalleryHarness`; each program is fed to a fullscreen fragment shader as
+The whole gallery is rendered inside a single Field document: one renderer, one
+offscreen target, and one `{{ stack.auto.program }}` fragment slot (see [Kotlin
+and template use](#kotlin-and-template-use)). `StackSLGalleryHarness` walks the
+program list, re-binds the slot for each one, waits a few frames, and reads the
+texture back to a PNG. Each program reaches a fullscreen fragment shader as
 `program(vec4(uv, hash, time))`.
 
-The programs are not baked into the harness — each is an editable box in a
+The programs are not baked into the harness. Each is an editable box in a
 canonical_graphics-style workspace at `assets/stacksl_gallery/`
 (`<name>_stackSL_.stacksl` plus a fullscreen `fragment`/`vertex` and the `code`
 that binds `module.program = stackSL`). It is one Field document; you can browse
@@ -336,11 +333,10 @@ uv 5 * fbm palette 1.7 contrast tonemap saturate
 
 ## Animated
 
-Time-driven programs read `input.w`, so the same fullscreen harness animates them
-by sweeping a `time` push constant and encoding the frames to mp4 — again in one
-graphics context, one shader build per clip (see
-`StackSLGalleryHarness.renderAnimations`). Mark a workspace box `animate: true` in
-its `metadata.yaml` to add it here.
+Time-driven programs read `input.w`, so the same fullscreen harness animates them:
+`StackSLGalleryHarness.renderAnimations` sweeps a `time` push constant and encodes
+the frames to mp4, one shader build per clip. Mark a workspace box `animate: true`
+in its `metadata.yaml` to add it here.
 
 <!--
 FIELD_TEST
@@ -391,7 +387,7 @@ expect:
 
 **Feedback trails (ping-pong)** — the loop *is* the animation. This one samples
 the previous frame through `source`, decays it, advects it, and injects a moving
-colored band — so the image feeds back into itself each frame. This is the
+colored band, so the image feeds back into itself each frame. It is the
 artificial-life / reaction pattern StackSL is built for; the harness renders it
 with a `PingPongRenderToTexture` so the previous frame is available while the
 current one is written.
@@ -410,8 +406,8 @@ saturate
 
 **Diffusion (blur feedback)** — a neighborhood word (`blur`) reads the previous
 frame, so each step diffuses the last one while sparse noise is injected and
-decays. This is the reaction/growth direction StackSL's neighborhood fields
-(`blur`, `laplace`, `sobel`, `curl`) are for.
+decays. Reaction and growth are what StackSL's neighborhood fields (`blur`,
+`laplace`, `sobel`, `curl`) exist for.
 
 ```diffstatic {data-lang=stacksl}
 0.004 blur
@@ -446,7 +442,7 @@ hash    # vec4(input.z)
 input   # vec4 input exactly
 ```
 
-Short programs are intentionally valid. If a normal operator needs more values than the stack has, it wraps around and reuses the available values. If the stack is empty, it uses a default value such as `input`, `vec4(0)`, or a neutral color. Creative words such as `palette`, `ema`, `grade`, and `pulse` have short forms that consume one primary value and use defaults for the rest.
+Short programs stay valid. If a normal operator needs more values than the stack has, it wraps around and reuses the available values. If the stack is empty, it uses a default value such as `input`, `vec4(0)`, or a neutral color. Creative words such as `palette`, `ema`, `grade`, and `pulse` have short forms that consume one primary value and default the rest.
 
 ## Tiny programs
 
@@ -787,7 +783,7 @@ sigmoid
 palette
 ```
 
-The scalar shapers are intentionally direct. Use `smooth`, `sigmoid`, `softplus`, `threshold`, `band`, `ramp`, `posterize`, `bias`, and `gain` when the program is really saying "shape this mask" rather than "do generic math".
+The scalar shapers are direct. Reach for `smooth`, `sigmoid`, `softplus`, `threshold`, `band`, `ramp`, `posterize`, `bias`, and `gain` when the program is saying "shape this mask" rather than "do generic math".
 
 ```diffstatic {data-lang=stacksl}
 uv 5 * fbm
@@ -828,7 +824,7 @@ This is equivalent to a red-channel cross sample followed by `vec4(+x - -x, +y -
 
 ## Color grading
 
-The one-value forms are intentionally boring and safe:
+The one-value forms are boring and safe:
 
 ```diffstatic {data-lang=stacksl}
 uv fbm palette
@@ -947,8 +943,8 @@ For shader templates using `stack.auto`, the sampler can be selected inline. `{{
 
 `{{ stack.auto.NAME }}` is the shader-side of live coding. You write a slot in
 GLSL and drive it from Kotlin, the same way a push constant is a slot you write
-from the host — except here the slot is a whole `vec4 NAME(vec4 NAME_in)`
-function whose body is StackSL.
+from the host. The difference is that this slot is a whole
+`vec4 NAME(vec4 NAME_in)` function whose body is StackSL.
 
 Put the slot in a fullscreen fragment shader:
 
@@ -966,14 +962,13 @@ void main() {
 ```
 
 Template expansion emits the `program` function exactly once per stage. Until
-Kotlin binds it, the slot is the stable fallback `vec4 program(vec4 program_in) { return vec4(0.0); }`,
-so an unbound slot still contributes a syntactically valid function (other shader errors can of
-course still fail compilation).
+Kotlin binds it, the slot expands to `vec4 program(vec4 program_in) { return vec4(0.0); }`,
+so an unbound slot still contributes a compilable function.
 
 Every discovered `stack.auto.*` name becomes an assignable property on the
-shader module. Assigning it compiles the StackSL first, and only swaps the
-running shader if that succeeds (a bad program leaves the previous one in
-place), which is exactly what makes it safe to type into live:
+shader module. Assigning it compiles the StackSL first and only swaps the
+running shader if that succeeds, so a bad program leaves the previous one in
+place and you can type into a running window:
 
 ```diffstatic {data-lang=kotlin}
 val module = moduleHere { fragment = fullscreenFragment }
@@ -984,11 +979,11 @@ renderer += module
 module.program = "uv 4.0 * fbm palette saturate"   // binds and hot-reloads
 ```
 
-Before — `uv 4.0 * fbm palette saturate`:
+Before, running `uv 4.0 * fbm palette saturate`:
 
 ![stack.auto before rebinding](assets/stacksl/stacksl-auto-before.png)
 
-Re-assigning the same slot swaps the function in place — no new module, no
+Re-assigning the same slot swaps the function in place, with no new module and no
 window teardown:
 
 ```diffstatic {data-lang=kotlin}
@@ -999,30 +994,30 @@ After:
 
 ![stack.auto after rebinding](assets/stacksl/stacksl-auto-after.png)
 
-The gallery above is built on exactly this: one module, one slot, re-bound once
-per program. Because a module re-registered under the same name replaces the
-previous one, the same trick works if you rebuild the whole module instead of
-just its `stack.auto` body — handy when the surrounding GLSL, not only the
-StackSL, is what you are editing.
+The gallery above is built this way: one module, one slot, re-bound once per
+program. A module re-registered under the same name replaces the previous one, so
+rebuilding the whole module works as well as rebinding its `stack.auto` body, which
+is handy when the surrounding GLSL, not only the StackSL, is what you are editing.
 
 ## Volumetric noise
 
-`noise` and `fbm` are two-dimensional. The word lowers to
-`_noise(input.xy + input.zw * 0.07)`, so a `vec4` carrying a position and a time is
-squashed into a plane, and z arrives at one fourteenth the weight of x — as a shear,
-not as a third dimension. Feed it `vec4(pos.xyz, t)` and you do not get a volume. You
-get one picture, imprinted at every depth.
+`noise` and `fbm` are two-dimensional. `noise` lowers to
+`_noise(input.xy + input.zw * 0.07)` and `fbm` to `_fbm` of the same expression, so a
+`vec4` carrying a position and a time is squashed into a plane, and z arrives at one
+fourteenth the weight of x: a shear, not a third dimension. Feed it
+`vec4(pos.xyz, t)` and you do not get a volume. You get one picture, imprinted at
+every depth.
 
-The top row below is the shipped 2D `fbm` sampled at six values of z. It is the same
-image six times.
+The top row below is the 2D `fbm` sampled at six values of z. It is the same image
+six times.
 
 ![Six z-slices each of the 2D fbm word, fbm3, and curl3](assets/stacksl/stacksl-volumetric-noise-slices.png)
 
 The middle row is `fbm3` over the same six slices: six unrelated fields, which is what
 a volume is supposed to look like. Measured as mean absolute difference from the first
-slice, the 2D word moves 0.017 → 0.065 across the march — a slow, monotonic drift, the
-signature of a pattern sliding sideways — while `fbm3` jumps straight to 0.130 and then
-sits at ≈0.14, which is the signature of slices that are simply independent.
+slice, the 2D word moves 0.017 → 0.065 across the march, a slow monotonic drift that
+is the signature of a pattern sliding sideways, while `fbm3` jumps straight to 0.130
+and then sits at ≈0.14, the signature of slices that are simply independent.
 
 The bottom row is `curl3`, drawn by advecting tracers through it. Closed swirls, no
 bright knots, no holes: that is what divergence-free looks like. It matters for
@@ -1044,28 +1039,27 @@ Three things this family does that the 2D words do not.
 
 **The range really is `0..1`.** `fbm`'s five octaves have amplitudes summing to
 0.96875, not 1, so a raw `fbm` never reaches 1 and the usual `0.5 -` recentre leaves a
-constant bias of about -0.031. As a force that integrates into a drift rather than
-averaging out. `fbm3` accumulates its amplitude sum at run time and divides by it, so
-the range is exact for *any* octave count, lacunarity and gain. The 2D words are
-deliberately unchanged — renormalising them would move every rendered image in these
-pages.
+constant bias of about -0.031. Used as a force, that bias integrates into a drift
+instead of averaging out. `fbm3` accumulates its amplitude sum at run time and divides
+by it, so the range is exact for *any* octave count, lacunarity and gain. `fbm` itself
+is not renormalised, because that would move every image ever rendered from it.
 
-**No `sin()` in the hashes.** The two existing hashes differ, and it is worth being
-precise about which. `hash11`, the one behind `valueNoise`, is
-`fract(sin(p * 127.1) * 43758.5453123)`, and `sin` is not bit-portable between
-implementations. `hash21`, the one behind `noise` and `fbm`, has no `sin` in it at all —
-it is multiply/add/fract already. What `hash21` cannot be is three-dimensional: it takes
-a `vec2`, and *that*, not `sin`, is why the volumetric family needed its own hashes.
-Those are multiply/add/fract over 3 and 4 inputs, which are exact, so a CPU
-transcription of the shader is meaningful — and there is one, in
-`VolumetricNoiseReference`, which is what lets these words be unit-tested with no GPU.
+**No `sin()` in the hashes.** The two 2D hashes differ, and which is which matters.
+`hash11`, behind `valueNoise`, is `fract(sin(p * 127.1) * 43758.5453123)`, and `sin`
+is not bit-portable between implementations. `hash21`, behind `noise` and `fbm`, has
+no `sin` in it at all; it is multiply/add/fract already. What `hash21` cannot be is
+three-dimensional. It takes a `vec2`, and *that*, not `sin`, is why the volumetric
+family needed its own hashes. Those are multiply/add/fract over 3 and 4 inputs, so
+they are exact, and `VolumetricNoiseReference` transcribes them for the CPU, so these
+words can be unit-tested without a GPU.
 
 **`curl3` is solenoidal by construction.** It is the curl of a vector potential taken
 with central differences at one shared epsilon. Discrete shift operators commute, so
-the discrete divergence cancels term for term rather than merely being small: measured
-1.8e-7 against 0.58 for the three-independent-channels field people usually reach for.
+the discrete divergence cancels term for term instead of merely coming out small:
+measured 1.8e-7, against 0.58 for the three-independent-channels field people usually
+reach for.
 
-A particle force, the whole point:
+A particle force:
 
 ```diffstatic {data-lang=stacksl}
 input xyz 2.2 * curl3 xyz 0.4 *
@@ -1126,7 +1120,7 @@ texelSize textureSize
 laplace laplacian blur blur5 blur9 sobel gradient gradient.r gradient.g gradient.b gradient.a divergence curl
 ```
 
-Volumetric noise (genuinely 3D, unlike `noise` and `fbm`, which flatten a vec4 into a plane):
+Volumetric noise:
 
 ```diffstatic {data-lang=stacksl}
 noise3 noise4 fbm3 fbm4 curl3 fbmd3 warp3 worley3 voronoi3
@@ -1165,4 +1159,4 @@ uv fbm palette  # returned
 
 Use `tolerant = true` for mutation runs. Unknown words become no-ops with warnings; strict mode reports them as errors for authoring.
 
-When a program becomes too short, it still returns a valid `vec4`. That is deliberate: mutation should make strange images, not broken shaders.
+When a program becomes too short, it still returns a valid `vec4`, so mutation makes strange images rather than broken shaders.
