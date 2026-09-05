@@ -42,9 +42,13 @@ class DocumentWriteBackLedgerTest {
 
     @AfterTest
     fun cleanUp() {
+        // `documents` is process-global and other tests iterate it. The keys are absolute temp
+        // paths, so match on the last segment rather than the whole key.
+        documents.keys
+            .filter { it.substringAfterLast('/').startsWith(TEMP_PREFIX) }
+            .forEach { documents.remove(it) }
         tempDirs.forEach { it.deleteRecursively() }
         tempDirs.clear()
-        documents.keys.filter { it.startsWith(TEMP_PREFIX) }.forEach { documents.remove(it) }
     }
 
     private fun tempDocument(label: String): File =

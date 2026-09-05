@@ -105,6 +105,26 @@ Thirteen files of this kind are already committed, all under `public/docs/assets
 not untrack them; they need deleting.
 `DocumentWriteBackLedgerTest.noNewDerivedArtefactIsCommitted` pins the set so a fourteenth fails.
 
+## The same disease outside Field: a test that writes into `public/docs/`
+
+`./gradlew jvmTest` rewrites two committed PNGs, every run:
+
+```
+ M public/docs/assets/vector_algebra/read_swizzles.png
+ M public/docs/assets/vector_algebra/write_swizzle.png
+```
+
+`VectorAlgebraDocCaptureTest` regenerates them in place. The bytes differ run to run, so the
+working tree goes dirty whether or not anything changed. Measured 2026-09-05 in a clean worktree:
+run `jvmTest`, get those two.
+
+There is no guard against this. **`checkTestTreeWrites` does not exist** — the convention that tests
+write to temp directories is prose in six files and nothing enforces it
+(`grep -rl checkTestTreeWrites . --exclude-dir=.git --exclude-dir=build` returns zero files).
+`TestProofDir.proofDir` is the pattern that solves it for visual proof artefacts; the doc-capture
+tests do not use it, because their output is meant to be committed. That makes them a different
+problem from the ones above and they are left alone here.
+
 ## Open: a box move does not trigger a save
 
 `set-rect` records into `OperationTranscript` and nothing else — it does not mark a sidecar

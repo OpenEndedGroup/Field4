@@ -1660,7 +1660,7 @@ class SavingContext {
 
     fun ensureDirectory(fn: String): String {
         File(fn).mkdirs()
-        // The seventh producer, and the only one that fires on *load* rather than on save:
+        // The eighth producer, and the only one that fires on *load* rather than on save:
         // `load()` calls this, so merely opening a document seeds `AGENTS.md` and `README.md`
         // beside it. Harmless in a scratch workspace, two untracked files in a repository — 28 of
         // this repository's 117 document directories have no tracked `AGENTS.md`, including the
