@@ -124,13 +124,54 @@ data class FnEvolveRun(
 }
 
 /**
- * A bounded (µ+λ) hill-climb over `Fn` graphs.
+ * The `Fn` graph, presented to the generic search core as a genome.
+ *
+ * The one thing it cannot supply is [GenomeOps.random]: there is no distribution over `Fn` graphs
+ * to draw from, so the control arm [PopulationSearch.random] is unavailable here and [evolve] never
+ * asks for it. `random` throws rather than returning the seed, because a control arm that silently
+ * returns the incumbent would make every comparison against it a foregone conclusion. That absence
+ * is the honest difference between this genome and the ALife ones in `alife_evolve.kt`, which do
+ * have a generator and therefore do get a control.
+ *
+ * [signature] is deliberately `null`, so every candidate costs one unit of budget even when
+ * mutation was neutral. That keeps `evaluations` equal to `1 + iterations * lambda`, which is the
+ * number [FnEvolveRun] has always reported.
+ */
+class FnGenomeOps(
+    mutationList: List<Pair<String, FnMutation>> = FnMutations.defaults()
+) : GenomeOps<Functions.Fn> {
+
+    override val mutations: List<Variation<Functions.Fn>> =
+        mutationList.map { (name, m) -> Variation(name) { fn, rng -> m.mutate(fn, rng) } }
+
+    override fun random(rng: Random): Functions.Fn =
+        throw UnsupportedOperationException(
+            "there is no distribution over Fn graphs to draw from, so FnGenomeOps has no control " +
+                "arm; use PopulationSearch.evolve with an explicit seed"
+        )
+}
+
+/**
+ * A bounded (1+λ) hill-climb over `Fn` graphs.
  *
  * Each iteration draws [lambda] mutated candidates from the current best (mutation
  * chosen by the seeded [Random]), scores them with [fitness] (higher is better),
  * and adopts the best candidate that beats the incumbent. Bounded by [iterations]
  * so it can never disappear into a live animation loop — the same discipline as
  * [Functions.Fn.rewriteUntilStable].
+ *
+ * **(1+λ), not (µ+λ)** — the KDoc here said µ+λ for as long as the function existed, and it was
+ * wrong: there is one incumbent, never a population of µ. The distinction became load-bearing when
+ * this body moved onto [PopulationSearch.evolve], which is a genuine (µ+λ) and is run here at µ=1.
+ *
+ * The search itself is no longer implemented in this file. It is
+ * `PopulationSearch.evolve(mu = 1, lambda = lambda, crossoverRate = 0, immigrantRate = 0)` over an
+ * [FnGenomeOps], and every number [FnEvolveRun] reports is read back off the generic
+ * [SearchRun]. The random stream is **identical** to the hand-rolled version's, because the core
+ * skips the parent draw when the population holds one individual and skips the crossover and
+ * immigrant draws when their rates are exactly zero — three decisions that are right on their own
+ * terms and that together make µ=1 a plain (1+λ) climb. `functions.evolve.worked-example` is the
+ * fence: it reproduces `bestScore = -0.15676727177844857` from before the move.
  */
 fun evolve(
     seed: Functions.Fn,
@@ -145,13 +186,6 @@ fun evolve(
     require(lambda > 0) { "lambda must be positive" }
     require(mutations.isNotEmpty()) { "at least one mutation is required" }
 
-    val rng = Random(rngSeed)
-    var best = seed
-    val initialScore = fitness(seed)
-    var bestScore = initialScore
-    var evaluations = 1
-    val steps = mutableListOf<FnEvolveStep>()
-
     // Politely offer a progress bar (with a tqdm-style ETA) unless the caller reports progress
     // itself. Inert outside a box, globally disableable, and only surfaces if the search runs
     // long enough to be worth mentioning — see afield.ProgressReporter.
@@ -159,35 +193,35 @@ fun evolve(
     val report: (Int, Int) -> Unit =
         onIteration ?: { iteration, total -> reporter?.update(iteration.toLong(), total.toLong()) }
 
-    try {
-        for (iteration in 1..iterations) {
-            var roundBest: Functions.Fn? = null
-            var roundScore = bestScore
-            var roundMutation = ""
-            repeat(lambda) {
-                val (name, mutation) = mutations[rng.nextInt(mutations.size)]
-                val candidate = runCatching { mutation.mutate(best, rng) }.getOrDefault(best)
-                val score = runCatching { fitness(candidate) }.getOrDefault(Double.NEGATIVE_INFINITY)
-                evaluations++
-                if (score > roundScore) {
-                    roundScore = score
-                    roundBest = candidate
-                    roundMutation = name
-                }
-            }
-            val winner = roundBest
-            if (winner != null && roundScore > bestScore) {
-                best = winner
-                bestScore = roundScore
-                steps += FnEvolveStep(iteration, roundMutation, roundScore)
-            }
-            report(iteration, iterations)
-        }
+    val run = try {
+        PopulationSearch.evolve(
+            ops = FnGenomeOps(mutations),
+            objective = objectiveOf(fitness),
+            // One evaluation for the seed plus lambda per iteration: the count this function has
+            // always reported, restated as the core's evaluation budget.
+            budget = 1 + iterations * lambda,
+            seed = rngSeed,
+            mu = 1,
+            lambda = lambda,
+            crossoverRate = 0.0,
+            immigrantRate = 0.0,
+            seeds = listOf(seed),
+            label = "fn evolve",
+            onGeneration = { generation, _ -> report(generation, iterations) }
+        )
     } finally {
         reporter?.finish()
     }
 
-    return FnEvolveRun(best, bestScore, initialScore, steps, iterations, evaluations)
+    val best = run.best ?: return FnEvolveRun(seed, Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY, emptyList(), iterations, 0)
+    return FnEvolveRun(
+        best = best.genome,
+        bestScore = best.fitness,
+        initialScore = run.initialFitness,
+        steps = run.improvements.map { FnEvolveStep(it.generation, it.origin, it.fitness) },
+        iterations = iterations,
+        evaluations = run.evaluations
+    )
 }
 
 /**
