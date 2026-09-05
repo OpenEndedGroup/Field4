@@ -139,15 +139,14 @@ Sand appears exactly where it has to: as a one-cell-wide coastline wherever sea 
 that is the only arrangement the table permits. Nowhere does sea touch grass. The solver was not told
 to draw coastlines — it was told that a sea-grass edge is illegal, and coastlines are what is left.
 
-That is also the first thing worth checking on any WFC result, and it is checkable rather than a
-matter of taste: **every adjacent pair in the output must be a pair the rules allow.** `allows` is
-there so you can assert it. The figure gallery behind this page
-(`afield.examples.stdlib.WfcGallery`) asserts it for every grid on it, along with the invariant the
-solver itself depends on — that adjacency is *symmetric*, i.e.
+That is also the first thing to check on any WFC result: **every adjacent pair in the output must be
+a pair the rules allow.** `allows` is there so you can assert it, and the figure gallery behind this
+page (`afield.examples.stdlib.WfcGallery`) asserts it for every grid on it, along with the invariant
+the solver itself depends on — that adjacency is *symmetric*, i.e.
 `allows(d, a, b) == allows(opposite(d), b, a)`. Propagation only ever pushes constraints outward from
 a cell that changed, one direction per arc, so an asymmetric rule set has arcs the solver
 structurally cannot check and it will emit pairs its own rules forbid. `findAsymmetry()` is that
-check; it found a real bug in this file's own mask-widening while this page was being written.
+check.
 
 ## 2. Learning from an image: the simple-tiled model
 
@@ -258,8 +257,6 @@ showImgGrid(
 
 ![the island source above two WFC outputs: learned weights lose all water, sand boosted x10 restores lakes with deep cores ringed by shallow](assets/wfc_examples/simple-tiled.png)
 
-This is the result most WFC introductions skip, and it is worth reading carefully.
-
 The middle panel is **correct**. Every adjacent pair in it is a pair present in the source, and the
 set of band-to-band edges it contains is a subset of the set the source contains — `WfcGallery`
 asserts both. It is also nothing like the source: a speckle of grass and forest with a little sand,
@@ -272,12 +269,11 @@ few cells commit to land there is no path back. Whichever phase nucleates first 
 
 The bottom panel is the same rules with three weights multiplied — `rules.weights` is a plain
 `DoubleArray` that the solver reads live, so a learned model is editable. Boosting *sand*, the only
-band allowed to touch both sides, is what matters: interface cells are what let the two phases sit
-near each other, so making them cheap lets all five bands coexist. It does not, however, reproduce
-the source's proportions — sand is now far more common than it ever was in the source.
+band allowed to touch both sides, is the move: interface cells are what let the two phases sit near
+each other, so making them cheap lets all five bands coexist. It does not, however, reproduce the
+source's proportions — sand is now far more common than it ever was in the source.
 
-The conclusion is that this model cannot reproduce global proportions, because it does not
-represent them. It is a table of which colours may touch plus a marginal frequency per colour; "water
+This model cannot reproduce global proportions, because it does not represent them. It is a table of which colours may touch plus a marginal frequency per colour; "water
 covers about a quarter of the map in large connected regions" is not expressible in that language, so
 no amount of weight tuning will produce it.
 
@@ -285,11 +281,11 @@ no amount of weight tuning will produce it.
 
 The diagnosis points somewhere specific. A cell that holds one colour can only ever learn which
 colours touch, and the source's structure — a coast is water, then a *one-cell* sand fringe, then
-land — is a statement about a run of three cells, which is not a thing a one-cell alphabet can hold.
-So give each cell more to hold.
+land — is a statement about a run of three cells, which a one-cell alphabet cannot hold. So give each
+cell more to hold.
 
-That is the **overlapping model**, and it is worth meeting here rather than waiting for
-[§4](#4-the-overlapping-model-and-absolute-position), because it is the answer to the figure above.
+That is the **overlapping model**, and it is the answer to the figure above;
+[§4](#4-the-overlapping-model-and-absolute-position) has the rest of it.
 Instead of cutting the source into disjoint tiles, slide an N×N window over every position and keep
 the distinct windows you find; each solver cell now stands for one whole window, and two cells may
 be neighbours only if their windows *agree where they overlap*. Nothing else changes — same solver,
@@ -386,14 +382,13 @@ Twelve for twelve, ten of them on the first attempt, and every adjacent pair in 
 a pair the source contained — `WfcGallery` checks that for all twelve, along with the band-edge
 subset property.
 
-**They are coastlines, and they are not islands.** That distinction is the whole lesson, and it is
-worth being precise rather than apologetic about it. What the model reproduces is the source's local
+**They are coastlines, and they are not islands.** What the model reproduces is the source's local
 *grammar*: the bands appear in chain order, every land-water boundary carries a one-cell sand fringe,
 forest sits inside grass and never touches water. What it does not reproduce is the source's
-*composition* — the fact that all of this was arranged into one closed ring. Composition is global,
-and an adjacency table is definitionally local, so this is not a shortfall to be tuned away. It is
-the model working. A 40 × 26 output is a crop of a much larger world, and a coast running across a
-crop of a world is the correct answer.
+*composition* — the fact that all of this was arranged into one closed ring. Composition is global
+and an adjacency table is definitionally local, so no amount of tuning closes that gap. A 40 × 26
+output is a crop of a much larger world, and a coast running across a crop of a world is the correct
+answer.
 
 Measured against the source, the local statistics land where they should: mean coherence — the
 fraction of adjacent cell pairs holding the same band — is **0.850** across the twelve, against the
@@ -416,18 +411,17 @@ than the window is a trap, and `allowedCount` is how you find one before it cost
 The 2 × 2 model has no such trap (its all-deep window has 2–4 successors per direction) but produces
 visibly shattered, one-cell-speckled coastlines, so 3 × 3 is the pick here.
 
-### Why 3 × 3 *windows* rather than 2 × 2 *tiles*?
+### 3 × 3 windows, not 2 × 2 tiles
 
 Both give a cell more context, and `sliceIntoUniqueTiles(2, 2)` looks like the cheaper way to get it
-— 36 tiles against 184 patterns. Do not, on a source like this one, and the reason is a trap worth
-knowing about in general.
+— 36 tiles against 184 patterns. On a source like this one it is a trap, and the trap generalises.
 
 Bigger disjoint tiles mean most tiles are seen exactly once, at a sample edge, which leaves their
 mask in some direction empty. `fromSampleGrid` then widens each empty mask to "any tile may sit
 there" — and because adjacency has to stay symmetric, filling one mask must *also* tell every other
-tile that this one may sit on its far side. One empty mask therefore injects `2 × tileCount` pairs.
-That is not a flaw in the symmetric closure; it is the closure correctly revealing that "anything may
-sit east of `t`" is an enormous claim.
+tile that this one may sit on its far side. One empty mask therefore injects `2 × tileCount` pairs —
+the symmetric closure working correctly, and revealing that "anything may sit east of `t`" is an
+enormous claim.
 
 On this source, 10 empty masks out of 144 produce a table of **282 observed pairs plus 704 invented
 ones** — 71% of the model is fallback rather than evidence, and outputs then contain band pairs the
@@ -439,8 +433,7 @@ So: ask. `widenedMaskCount` says whether the fallback fired at all, `wasWidened(
 says where, and `observedAllows` is `allows` restricted to what the sample actually showed — the
 predicate to assert a learned model against, since `allows` on a widened table permits a great deal
 it never saw. The inline rules view in [§8](#8-contradictions-seeds-and-reproducibility) paints
-invented pairs amber for the same reason, and `WfcGallery` pins both ends of this so the numbers
-above cannot rot unnoticed.
+invented pairs amber for the same reason.
 
 ## 3. Tiles with structure: the circuit set
 
@@ -526,8 +519,7 @@ reads as sparse circuitry rather than a dense maze.
 ## 4. The overlapping model and absolute position
 
 [§2](#2-learning-from-an-image-the-simple-tiled-model) used the overlapping model to fix a texture
-problem and left the mechanism at one paragraph. Here is the rest of it, and the limit that no amount
-of context removes.
+problem. Here is the rest of the mechanism, and the limit that no amount of context removes.
 
 First the trade, which is combinatorial. A 3×3 window over a 26×18 source can yield hundreds of
 distinct patterns where the simple-tiled model had five tiles, and both the rule-learning cost (it
@@ -633,9 +625,9 @@ bottom panel is what the same rules produce once they have it.
 
 And the bottom panel is genuinely new. The flowers are not the source's flowers: different columns,
 different heights, more of them than the source had. But every blossom sits on a stem, and the soil
-runs unbroken along the bottom, because those are 3×3-local facts and the model enforces them. `WfcGallery` asserts exactly that — zero floating blossoms — which is a much better
-test than looking at it, since a floating blossom is precisely the artefact a broken pattern model
-produces.
+runs unbroken along the bottom, because those are 3×3-local facts and the model enforces them.
+`WfcGallery` asserts the first of those as a count of zero floating blossoms, which is the artefact a
+broken pattern model produces.
 
 One API note visible above: `reset()` clears the whole wave, forced cells included. Boundary
 conditions therefore have to be re-applied on every retry, which is what `solveWithRetries`'
@@ -702,10 +694,9 @@ Moore additionally observes the `(1, -1)` offset, where the colour is *constant*
 relation is enough to pin the stripes exactly. 473 anti-diagonal breaks out of 975 pairs become
 exactly 0. Same tiles, same source, same seed, one argument.
 
-The lesson is that the neighborhood is a real modelling decision rather than a performance knob, and
-it is not "bigger is better": on the five-band terrain of §2 the diagonals are almost implied by the
-cardinals, and moving to Moore changes the mean branching factor from 2.80 to 2.90 and the picture
-barely at all. A wider neighborhood costs `directionCount` bitset intersections per propagation step
+So the neighborhood is a modelling decision and not a performance knob, and bigger is not better: on
+the five-band terrain of §2 the diagonals are almost implied by the cardinals, and moving to Moore
+changes the mean branching factor from 2.80 to 2.90 and the picture barely at all. A wider neighborhood costs `directionCount` bitset intersections per propagation step
 and buys you nothing unless the source has something to say along those offsets.
 
 ## 6. Watching the collapse
@@ -886,13 +877,11 @@ Values with nowhere to sit on a scale are taken off it and marked rather than cl
 paint the one failure you need to see at the *decided* end and read as success. Entropy has a second
 such case — `fromSampleGrid` gives weight 0 to a tile the sample never contained, and a cell whose
 only survivor is such a tile has genuinely undefined entropy — drawn cyan, counted in the caption,
-and excluded from the range. Each caption names its colour scale and both endpoints in units, so a
-panel is never a picture whose meaning you have to guess.
+and excluded from the range. Each caption names its colour scale and both endpoints in units.
 
-The two ramps are not interchangeable, and the reason is worth stating because only looking at the
-picture found it. A marker colour is only a marker if it is *outside* the ramp it sits on. The count
-panel was drawn in `magma` first — whose middle is pink, a shade away from the contradiction magenta —
-and a perfectly healthy collapse frontier read as a field of contradictions. Counts are therefore
+The two ramps are not interchangeable, because a marker colour is only a marker if it is *outside*
+the ramp it sits on. Drawn in `magma`, whose middle is pink and a shade away from the contradiction
+magenta, a perfectly healthy collapse frontier reads as a field of contradictions. So counts are
 viridis (purple → teal → yellow, no pink) with a magenta marker, and entropy is magma (black → pink →
 cream, no cyan) with a cyan one.
 
@@ -1169,9 +1158,9 @@ so the interior is high-frequency noise with a mean of 0.26 against the source's
 
 The `3 × 3` pattern model has context, and it clearly used it — the result is *smooth*, with coherent
 bands and a mean of 0.61. But they are **horizontal** bands, where the source was a concentric island.
-That is not a bug either: over most of a concentric source, a 3 × 3 window says "the level changes
-vertically and is constant horizontally", because the wide top and bottom of the island contribute far
-more windows than its curved left and right edges do. The mean absolute difference between adjacent
+That follows from the source: over most of a concentric island, a 3 × 3 window says "the level changes
+vertically and is constant horizontally", because the wide top and bottom contribute far more windows
+than the curved left and right edges do. The mean absolute difference between adjacent
 values makes it precise — the `1 × 1` result is isotropic (0.100 along rows, 0.112 down them) while the
 `3 × 3` result is anisotropic by a factor of fourteen (0.008 along rows, 0.112 down them). The model
 reproduced the statistically dominant local arrangement and tiled the plane with it.
@@ -1211,11 +1200,10 @@ Two numbers, because they measure different things and only one of them is the h
 asks whether the model has a systematic preferred direction. That is what D4 removes, and it removes
 nearly all of it. *Per-output* anisotropy takes the ratio within each field and then takes the median:
 it asks whether any single field is directionless. That lands at 1.9×, right at the source's own
-2.1× — which is the correct outcome rather than a shortfall. Terrain has ridges, and ridges have
-directions; what was wrong before was not that each field had a grain but that *every* field had the
-*same* grain. Worth separating, because averaging the two roughnesses before dividing
-reports a flattering `1.0×` for a model whose every individual output is still strongly banded, and
-that is a mistake this page made before the gallery caught it.
+2.1×, which is where it should land: terrain has ridges, and ridges have directions. What was wrong
+before was not that each field had a grain but that *every* field had the *same* grain. Keep the two
+numbers apart, because averaging the two roughnesses before dividing reports a flattering `1.0×` for
+a model whose every individual output is still strongly banded.
 
 Reach for `WfcSymmetry.None` — the default — whenever up is real: §4's flowers grow upward, and a
 model free to rotate them would grow them sideways out of the soil. Reach for `All` for heightfields,
@@ -1225,11 +1213,10 @@ left-right symmetry but a genuine up wants `Reflections` alone.
 More context buys coherence, symmetry closure buys isotropy, and neither buys global composition —
 the same limit as §2, two levels up.
 
-The `contours` channel is the payoff, and the reason to end up in a `FloatArray` at all: four
-iso-levels of the blurred seed-23 field, extracted with `isoContourFLines` and drawn as
-[`FLine`s](fline_examples.md). Those are not a picture of geometry, they are geometry — the same
-values `fitInto`, transform, animate and export like anything drawn by hand. A WFC-synthesised
-`FloatArray` is equally a heightfield, a mask, a weight map or a displacement.
+The `contours` channel is four iso-levels of the blurred seed-23 field, extracted with
+`isoContourFLines` and drawn as [`FLine`s](fline_examples.md). Those are not a picture of geometry,
+they are geometry: the same values `fitInto`, transform, animate and export like anything drawn by
+hand.
 
 It is also the clearest argument for the symmetry pass. Contour the banded field and you get a stack
 of near-parallel horizontal lines; contour this one and you get closed loops, saddles and a ridge
@@ -1341,29 +1328,29 @@ contract. The text panel is the more useful half: it shows *why* the strict rule
 may sit east of tile 2, so no row longer than three cells can ever be completed — and that
 `allowMissingAnything()` fixes it while keeping the relation symmetric.
 
-That symmetry line is not decoration. Widening a mask in one direction only is how you get a rule set
-the solver cannot enforce, and it is a bug this file used to have: `fromSampleGrid`'s fallback for
-edge-only tiles widened `allowed[d][t]` without telling the tiles on the other side, so the solver
-could emit adjacent pairs its own rules forbade when read the other way. `findAsymmetry()` is what
-caught it; the fallback now widens both directions at once.
+That symmetry line is not decoration. Widening a mask in one direction only produces a rule set the
+solver cannot enforce: it would let `allowed[d][t]` admit a neighbour that was never told it may sit
+on the other side, and the solver would then emit adjacent pairs its own rules forbid when read the
+other way round. So `allowMissingAnything()` and `fromSampleGrid`'s fallback both widen the two
+directions together, and `findAsymmetry()` is the check that they did.
 
 ### Looking at the rules
 
 `WfcRules` implements `ToHTML` for the same reason `WfcSolver` does, but the failures it exists to
 show are different — and they are four that a `println` cannot show you at all:
 
-- an **empty mask**: a `(direction, tile)` pair with no legal neighbour whatsoever. That is not a
-  strict rule, it is an unsatisfiable one the moment the tile is placed off an edge.
+- an **empty mask**: a `(direction, tile)` pair with no legal neighbour whatsoever. Not a strict rule
+  but an unsatisfiable one, the moment the tile is placed anywhere but off an edge.
 - an **asymmetry**: `allows(d, a, b)` without `allows(opposite(d), b, a)`. Propagation pushes
   constraints one arc at a time and can only check arcs that exist both ways round, so an asymmetric
-  table lets the solver emit a pair its own rules forbid — the bug above.
+  table lets the solver emit a pair its own rules forbid — the hazard above.
 - a **zero weight**: a tile that is in the model and can never be chosen. `fromSampleGrid` hands one
   out, silently, to every tile ID its sample never contained.
 - an **invented pair**: adjacency that exists only because the widening fallback filled an empty
   mask. Legal, enforced, and not evidence of anything — the distinction §2 measured.
 
-Each is marked in the picture and stated in the header, so the before and after of
-`allowMissingAnything()` is visible rather than inferred.
+Each is marked in the picture and stated in the header, which is what makes the before and after of
+`allowMissingAnything()` two things you can look at.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/inline-rules.png" wait="1.5" capture="box" open-outputs="true" w="1200" name="wfc-inline-rules"}
 :::static
@@ -1484,8 +1471,8 @@ filter, and whose first casualty is the pixel-scale structure the whole exercise
 of room, and `possibilityCountImg` shows you which cells were over-constrained from the start.
 Magenta in a wave frame is a cell whose possibility set has been emptied.
 
-**Names and shapes that bite inside a Field box.** Every snippet on this page runs in one, and these
-four cost real time while it was being written — none of them are WFC-specific:
+**Names and shapes that bite inside a Field box.** Every snippet on this page runs in one, and none
+of these four is WFC-specific:
 
 - A **local `fun` nested inside a lambda** trips a K2 codegen assertion
   (`IrFunctionImpl has no callableId`). Declare helpers at the top level of the box.
@@ -1505,19 +1492,16 @@ four cost real time while it was being written — none of them are WFC-specific
 Everything above as a Field document you can open and edit:
 [**wfc_worked_example**](/offline.html?file=/field4/assets/agent_transcripts/wfc_worked_example/metadata.edn)
 — six connected boxes, one per section, each of which runs on its own. The transcript that builds it,
-`dev_docs/agents/transcripts/wfc_worked_example.yaml`, is executed on every build, so the boxes in it
-are known to compile and run rather than merely to have been typed.
+`dev_docs/agents/transcripts/wfc_worked_example.yaml`, is executed on every build.
 
-The figures on this page are rendered and *verified* by
-`afield.examples.stdlib.WfcGallery` (`stdlib.wfc.gallery`), which asserts for every grid that every
-adjacent pair is an allowed pair, that the adjacency relation is symmetric, that the output is not
-degenerate, and — for the terrain figures — that the set of terrain edges in the output is a subset
-of the set in the source.
+`afield.examples.stdlib.WfcGallery` (`stdlib.wfc.gallery`) renders the figures, and asserts for every
+grid that every adjacent pair is an allowed pair, that the adjacency relation is symmetric, that the
+output is not degenerate, and — for the terrain figures — that the set of terrain edges in the output
+is a subset of the set in the source.
 
-Three of its checks exist because of claims made in prose above, and would otherwise be the kind of
-sentence that stops being true without anything noticing. §2's twelve coastlines must all solve, must use only pairs
-the source contained (`observedAllows`, not merely `allows`), and must come out more coherent than
-both the one-colour model and the source itself; the all-deep window must still have exactly one
-southward successor, or the paragraph explaining why that figure is unpinned is wrong; and the
-widening audit pins 1 × 1 at zero invented pairs and 2 × 2 at more invented than observed, which is
-the note in §2 turned into a test.
+Three of its checks are there to hold prose on this page to account. §2's twelve coastlines must all
+solve, must use only pairs the source contained (`observedAllows`, not merely `allows`), and must come
+out more coherent than both the one-colour model and the source itself; the all-deep window must still
+have exactly one southward successor, or the paragraph explaining why that figure is unpinned is
+wrong; and the widening audit pins 1 × 1 at zero invented pairs and 2 × 2 at more invented than
+observed, which is the note in §2 turned into a test.
