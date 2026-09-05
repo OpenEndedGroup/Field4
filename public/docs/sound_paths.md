@@ -1,16 +1,10 @@
 # Making a sound in Field: every path there is
 
-You want to hear something. There is more than one way, and this page is the complete map of them.
+You want to hear something. There is more than one way, and this page maps all of them.
 
 **Six things in Field make samples. Five things carry samples out of the process. Four bring them
-in.** Those numbers are held by a guard rather than by memory: `SoundPathMap.SOURCE_COUNT` is `6` and
-[the build fails](#the-map-is-derived-not-remembered) if `PATHS` disagrees.
-
-??? aside "Why the count is six and not two"
-    [Sound: from a pattern to something you can hear](sound.md) opened by saying Field had "two" things
-    that turn a pattern's events into samples. That was true of *patterns* and was never true of *sound*,
-    and Faust arriving made it visibly false — which is why the number is now derived rather than
-    remembered.
+in.** A guard holds those numbers to the code: `SoundPathMap.SOURCE_COUNT` is `6` and
+[the build fails](#how-the-map-is-checked) if `PATHS` disagrees.
 
 ---
 
@@ -42,14 +36,14 @@ in.** Those numbers are held by a guard rather than by memory: `SoundPathMap.SOU
 | `dough-engine` | the whole dough/Strudel engine as a wasm module, with its own 128-frame block loop. `class DoughEngine` in `src/jvmMain/kotlin/afield/four/synth/Dough.kt` | the dough wasm build | both | no | — |
 | `sonic-pi` | a Ruby program handed to Sonic Pi's own scsynth over OSC. `class SonicPi` in `src/jvmMain/kotlin/afield/four/synth/SonicPi.kt` | a local Sonic Pi v5 | realtime only | no | [Sonic Pi](sonic_pi.md) |
 
-Two of those six are pattern voices, and those two are what [Sound](sound.md) is about — in depth,
-with the fallback behaviour and the provenance audit. It remains the page to read once you have
-picked. This one only helps you pick.
+Two of those six are pattern voices, and those two are what [Sound](sound.md) covers, with the
+fallback behaviour and the provenance audit. Read it once you have picked; this page only helps you
+pick.
 
-`sonic-pi` is the odd one and worth naming as such: it is the only path where **no sample ever
-enters this process**. Field sends text and receives log lines; the audio exists entirely inside
-another program's synthesiser. Everything you can do to samples in the other five — filter them,
-plot them, write them to a file — you cannot do to those. The way back in is `link-audio-in`, below.
+`sonic-pi` is the exception: it is the only path where **no sample ever enters this process**.
+Field sends text and receives log lines; the audio exists entirely inside another program's
+synthesiser. Everything you can do to samples in the other five — filter them, plot them, write
+them to a file — you cannot do to those. The way back in is `link-audio-in`, below.
 
 ## The five that carry samples out
 
@@ -61,9 +55,8 @@ plot them, write them to a file — you cannot do to those. The way back in is `
 | `spatial-openal` | a **second, independent** OpenAL context: 3D positional audio, optional HRTF, EFX reverb. `class SimpleSpatialAudioEngine` in `src/jvmMain/kotlin/afield/four/audio/SimpleSpatialAudio.kt` | an output device | — |
 | `link-audio-out` | the engine's output mirrored into Ableton Link Audio, tempo-locked, so another app on the network hears it. `fun enableAudioOutput` in `src/jvmMain/kotlin/afield/four/synth/AbletonLinkAudio.kt` | Link peers | [Sonic Pi](sonic_pi.md) |
 
-Every audio figure in these docs — all fifteen of them — is the `wav-file` sink. That is the whole
-reason they regenerate on a build machine with no sound card, and it is what makes the corpus
-auditable at all.
+Every audio figure in these docs, all fifteen of them, comes out of the `wav-file` sink, which is
+why they regenerate on a build machine with no sound card.
 
 ## The four that bring samples in
 
@@ -74,14 +67,13 @@ auditable at all.
 | `video-audio` | a file decoded by FFmpeg and played through a **third** OpenAL context, kept in step by its own playback clock. `class AudioDecoder` in `src/jvmMain/kotlin/afield/four/texture/video/AudioDecoder.kt` | the bundled FFmpeg | `dev_docs/AUDIO_OPTIONS.md`, in the repo |
 | `wav-file-in` | a `.wav` off disk as `FloatArray`s — the counterpart of `wav-file`. `WavFloatArrayLoader` in `src/jvmMain/kotlin/afield/four/audio/WavFloatArrayLoader.kt` | nothing | — |
 
-Link Audio is how `sonic-pi` and Field reach each other without a virtual cable — but be precise
-about which direction is *known* to work. **Field → Sonic Pi is measured**: Field publishes a channel
-through `enableAudioOutput` and Sonic Pi v5's `link_audio` subscribes to it; a probe puts a 440 Hz tone in
-one end and looks for it at the other. See
-[Sonic Pi](sonic_pi.md), including the Link visibility toggle that defaults to Off and gives you
-silence with nothing to explain it. **Sonic Pi → Field** is supported by both APIs — Sonic Pi has
-`link_audio_publish_set!` and Field has `linkAudioIn(channelName)` — and nothing in this tree
-exercises it, so it is listed as a path and not as a measurement.
+Link Audio is how `sonic-pi` and Field reach each other without a virtual cable. The two directions
+are not equally well tested. **Field → Sonic Pi** is: Field publishes a channel through
+`enableAudioOutput`, Sonic Pi v5's `link_audio` subscribes to it, and a probe puts a 440 Hz tone in
+one end and looks for it at the other. See [Sonic Pi](sonic_pi.md), including the Link visibility
+toggle that defaults to Off and gives you silence with nothing to explain it. **Sonic Pi → Field**
+has an API on both sides, `link_audio_publish_set!` and `linkAudioIn(channelName)`, but nothing in
+this tree exercises it.
 
 ---
 
@@ -95,16 +87,14 @@ fun render(outL: FloatArray, outR: FloatArray, numFrames: Int, ctx: SynthContext
 
 `AudioPatchSpec.Renderer` declares it. `StereoRenderable` declares it, character for character. So
 does every node in the graph, `DirtSamplePlayer`, and `FaustNode`. Seven of the fifteen paths above
-sit on it, and being on it is the single most useful fact about a path: **a path on the seam
-composes with every other path on the seam for free, and a path off it composes with nothing.**
+sit on it. **A path on the seam composes with every other path on the seam; a path off it composes
+with nothing.**
 
-The clearest evidence is Faust. Embedding a whole third-party compiler was a lot of work, and
-*none* of it was plumbing — `class FaustNode` is 23 lines that fill an input buffer and call
-`dsp.render`. It reached the speakers, the engine's visualisers, the Link output and the box
-lifecycle on the day it landed, because it landed on the seam.
+Faust is the clearest case of what that buys. `class FaustNode` is 23 lines that fill an input
+buffer and call `dsp.render`, and being on the seam is what gets it the speakers, the engine's
+visualisers, the Link output and the box lifecycle, with no adapter written for any of them.
 
-The three paths off it are off it for three different, legible reasons, and the reasons are worth
-more than the fact:
+The three paths off the seam are off it for three different reasons:
 
 * **`pat-stand-in`** is a free function that returns a whole buffer. A pattern has to be *queried*
   over an arc, so there is no "next 128 frames" to ask it for without a scheduler — which is what
@@ -114,19 +104,17 @@ more than the fact:
   queue. It could be wrapped, and has not been.
 * **`sonic-pi`** is a different process.
 
-The seam is also the least-documented thing in Field's audio stack, which is the finding this page
-was written out of rather than a complaint: **no published page mentions `AudioPatchSpec` at all**,
-and it is what every box that makes a noise actually returns. Five of the fifteen paths above have
-no page — `audio-patch-seam`, `dough-engine`, `spatial-openal`, `device-input`, `wav-file-in` — and
-the em-dashes in the tables mean absent, not merely unlisted. `afield.four.synth` is also absent
-from the [generated codebase reference](reference/index.md), whose source roots are `afield/stdlib`
-and `afield/visualization` only, so the audio stack is the least-surfaced major subsystem Field has.
+`AudioPatchSpec` is what every box that makes a noise returns. Five of the fifteen paths above have
+no page of their own — `audio-patch-seam`, `dough-engine`, `spatial-openal`, `device-input`,
+`wav-file-in` — and the em-dash in those table cells means absent, not merely unlisted. For those
+five, this map and [`afield.four.synth` in the generated reference](reference/synthesis.md) are what
+there is.
 
 ---
 
 ## One buffer, three paths
 
-The map claims the paths are different. Here they are being different, on **bit-identical input**.
+Here are three of the paths on **bit-identical input**.
 
 One buffer: `pat("bd ~ sd ~, hh*8")` at 2 cps for four cycles, rendered through `patVoice` with the
 voice's own filter wide open. Then a 900 Hz lowpass, three times, from three different paths.
@@ -152,10 +140,9 @@ voice's own filter wide open. Then a 900 Hz lowpass, three times, from three dif
 
 **Path: `faust`.** The same buffer, through `fi.lowpass(1, 900)`, compiled at runtime.
 
-The hats go and the kick stays, twice, differently — and the *difference* between the two is the
-real part of the figure. `ChamberlinLowpass` is a two-pole state-variable filter, 12 dB per
-octave. `fi.lowpass(1, 900)` is first-order, 6 dB per octave. Ask both for 900 Hz and the steeper one
-takes far more of the hats away, which is exactly what the spectra show and what the numbers say:
+The hats go and the kick stays, twice, differently. `ChamberlinLowpass` is a two-pole state-variable
+filter, 12 dB per octave; `fi.lowpass(1, 900)` is first-order, 6 dB per octave. Ask both for 900 Hz
+and the steeper one takes more of the hats away:
 
 | figure | spectral centroid | vs dry | rolloff |
 | --- | --- | --- | --- |
@@ -164,8 +151,7 @@ takes far more of the hats away, which is exactly what the spectra show and what
 | `same-input-faust` | 3900 Hz | 0.36× | ~6 dB/oct |
 
 Their waveform similarity to each other is **0.9584** — high, because they are lowpasses of one
-buffer; not 1.0, because they are not the same lowpass. A figure in which they matched exactly would
-mean one of them was not running. Every number here is printed by
+buffer; not 1.0, because they are not the same lowpass. Every number here is printed by
 `run_field_tests.py --id synth.sound.path.map`, which is where to re-measure them.
 
 ### What the three clips do not tell you: loudness
@@ -182,39 +168,34 @@ two filtered renders at **0.934** and **1.069**. A 12 dB/octave filter removes m
 
 **The centroids in the table are measured on those pre-normalization buffers**, not on the committed
 `.wav`s: `brightnessHz(audio.mono)` runs on the rendered buffer and `writeStereo16` is called
-afterwards. It happens not to matter — peak normalization is a single scalar multiply, so the
-spectral centroid, the rolloff slopes and the 0.9584 similarity are all invariant under it — but
-"the number and the file were computed at different points" is worth saying out loud rather than
-leaving a reader to assume.
+afterwards. Peak normalization is a single scalar multiply, so the spectral centroid, the rolloff
+slopes and the 0.9584 similarity are the same either way.
 
-One small thing that fell out of decoding the committed bytes, and it is the abstract 0.9584 made
-concrete: the two filtered clips reach their maximum at frames **25778** and **25777** — one sample
-apart — while the dry beat peaks at 22632. Two lowpasses asked for the same 900 Hz, agreeing on
-which kick is loudest and disagreeing by exactly one sample about when.
+The committed bytes make that similarity concrete. The two filtered clips reach their maximum at
+frames **25778** and **25777**, one sample apart, while the dry beat peaks at 22632.
 
 ### The seam claim, as a number
 
-That comparison shows the paths differ. The stronger claim on this page is that they are *driven
-identically*, and a lowpass cannot show it. A gain can. The same buffer, multiplied by 0.5 by the
-graph (`Signal * 0.5f`) and by Faust (`process = _,_ : *(0.5), *(0.5);`), over 44100 samples:
+A lowpass shows the paths differ. It cannot show the stronger claim, that they are driven
+identically; a gain can. The same buffer, multiplied by 0.5 by the graph (`Signal * 0.5f`) and by
+Faust (`process = _,_ : *(0.5), *(0.5);`), over 44100 samples:
 
 **worst per-sample disagreement 0.000e+00** — bit-equal. Two entirely separate implementations, one
 seam, no adapter in between. `SoundPathMap.SEAM_AGREEMENT_CEILING` pins it at `1e-6`.
 
 ---
 
-## The map is derived, not remembered
+## How the map is checked
 
 A hand-maintained list of render paths is exactly the artifact that rots, so this one is checked
 against the code in `check`, in the shape [`DocsAudioProvenance`](sound.md#and-the-same-question-asked-of-every-clip-in-the-docs)
-already established: declare, re-derive from the tree, fail on disagreement.
+uses: declare, re-derive from the tree, fail on disagreement.
 
 `SoundPathMap` declares the paths, and the `synth.sound.path.map` smoke then asserts five things:
 
-1. **The counts.** `SOURCE_COUNT = 6`, `SINK_COUNT = 5`, `INPUT_COUNT = 4`, `SEAM_COUNT = 7`. The
-   last one is the interesting ratchet: if a later change adds a path *beside* the seam rather than
-   *on* it, `PATHS` grows while `SEAM_COUNT` does not, and that is a finding rather than a number to
-   edit.
+1. **The counts.** `SOURCE_COUNT = 6`, `SINK_COUNT = 5`, `INPUT_COUNT = 4`, `SEAM_COUNT = 7`. If a
+   change adds a path beside the seam instead of on it, `PATHS` grows while `SEAM_COUNT` does not.
+   Read that failure before editing the number.
 2. **Undeclared paths, derived from markers.** Four literals in the tree can only mean "a new way in
    or out of this process": `alcOpenDevice(` (three files, three genuinely separate OpenAL
    contexts), `alcCaptureOpenDevice(` (one), `fun renderWav(name: String, outPath: String)` (four —
@@ -228,18 +209,11 @@ already established: declare, re-derive from the tree, fail on disagreement.
 5. **This page names every path.** Both file and symbol, verbatim, for all fifteen. An omitted row
    fails.
 
-The comparison figures are checked too, and not by eye: both filters must take the centroid below
-0.6× the dry buffer's, the two must still correlate above 0.5 with each other, and the gain
+The comparison figures are checked too: both filters must take the centroid below 0.6× the dry
+buffer's, the two must still correlate above 0.5 with each other, and the gain
 agreement must stay under `1e-6`. `DocsAudioProvenance` separately re-renders all three committed
 `.wav`s through the same `renderWav` contract the docs build uses and correlates them against the
 bytes on disk, so a figure the code has stopped producing fails as well.
-
-### A forward note
-
-A Faust path that is polyphonic and pattern-driven is in flight and is not in this map, because it
-did not exist when the map was written. When it lands: add one `SoundPath` to `SoundPathMap.PATHS`
-with `onSeam = true`, bump `SOURCE_COUNT` to `7`, and name its entry point in the first table above.
-The guard's failure message says the same thing, so the merge resolves itself.
 
 ---
 
