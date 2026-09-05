@@ -14,7 +14,7 @@ Before the instruments, the substrate. Most environments answer "what is this
 value?" with a line of `toString()`. Field answers with a *picture*: whenever you
 ask Field to show a value, the **value visualizer** turns it into a compact HTML
 view — a reflective tree for arbitrary objects, and, for the types Field draws
-with, a little inline graphic that reads at a glance. You reach it three ways, all
+with, a little inline graphic. You reach it three ways, all
 of which call the same renderer (`ValueVisualizer.visualize(...)`, in
 `src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt`):
 
@@ -27,21 +27,16 @@ box.viz(value = value)        // convenience: visualize into the box's "viz" cha
 
 `.h` is the lightweight view used throughout Field; its heavier sibling `.h2`
 opens a paged browser for large structures. The built-in and reflective paths are
-forgiving by design: they track recursion by reference, cap depth and preview
-sizes, catch reflective getter failures, and guard optional plots and thumbnails
-(including a throwing `Fn.evalFn`). Objects implementing `ToHTML` and callbacks
-registered with `registerValuePrinter` are extension points whose returned HTML is
-trusted. Every image in this section was captured straight from the real renderer
-— nothing here is a mock-up.
+forgiving: they track recursion by reference, cap depth and preview sizes, catch
+reflective getter failures, and guard optional plots and thumbnails (including a
+throwing `Fn.evalFn`). Objects implementing `ToHTML` and callbacks registered with
+`registerValuePrinter` are extension points whose returned HTML is trusted.
 
 `registerValuePrinter` is how a **third-party** type joins in without knowing Field
 exists, and the worked example is a Kotlin DataFrame: a frame, a column, a row and a
 `GroupBy` all render as ordinary Field tables, and `.h2` pages a million-row frame
 through the same offset machinery this page's `.h2` uses everywhere else. See
-[DataFrames in a Box](dataframe.md#looking-at-a-frame). That page also
-records the dispatch bug the arrangement had — a printer registered for an interface
-the implementation reached *transitively* could never fire — which was found by
-looking at one of its captures, not by a test.
+[DataFrames in a Box](dataframe.md#looking-at-a-frame).
 
 ### The reflective tree
 
@@ -198,10 +193,9 @@ scene.h
 
 ![An RGB Img with its channel strip, histogram and statistics](assets/imaging_visualizers/img_rgb.png)
 
-#### The range policy, which is the whole design
+#### The range policy
 
-This family is **float-channel and unbounded**, which is the point. A Sobel `dx` is
-signed. An unnormalised response exceeds 1. An upstream division produces a NaN. A
+This family is **float-channel and unbounded**. A Sobel `dx` is signed. An unnormalised response exceeds 1. An upstream division produces a NaN. A
 visualizer that just clamps everything to `0…1` answers all three questions with a
 flat white rectangle. So the renderer picks one of three modes and **always names
 the one it picked**:
@@ -326,8 +320,8 @@ parameter sweep already has:
 #### All of it, in a real box
 
 Everything above is a fragment rendered on its own. Here is the same renderer
-inside an actual Field box, in Field's own output areas — a whole pipeline read at
-a glance, with `.h` doing all the work:
+inside an actual Field box, in Field's own output areas: a whole pipeline, with
+`.h` doing all the work.
 
 <!--
 FIELD_TEST

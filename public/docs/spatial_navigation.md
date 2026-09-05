@@ -175,9 +175,9 @@ A slot stores a view rather than a box reference. Restoring one reapplies, in th
 ## Slots inside the overlay
 
 Bring up the navigation overlay and every box on screen that a slot points at wears an `F` chip
-with that slot's number. A box can wear more than one if several slots were saved on it. This is
-where the two halves of the feature meet: the arrows tell you what is next to you, and the chips
-tell you which of the nine keys reaches somewhere that is not.
+with that slot's number. A box can wear more than one if several slots were saved on it. So the
+arrows tell you what is next to you, and the chips tell you which of the nine keys reaches what
+is not.
 
 The number on a chip is a slot, so `F3` means the view saved in slot 3, reached with `Shift+F3`.
 
