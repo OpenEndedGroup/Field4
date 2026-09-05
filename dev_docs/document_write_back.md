@@ -118,9 +118,9 @@ not untrack them; they need deleting.
 working tree goes dirty whether or not anything changed. Measured 2026-09-05 in a clean worktree:
 run `jvmTest`, get those two.
 
-There is no guard against this. **`checkTestTreeWrites` does not exist** — the convention that tests
-write to temp directories is prose in six files and nothing enforces it
-(`grep -rl checkTestTreeWrites . --exclude-dir=.git --exclude-dir=build` returns zero files).
+There is no guard against this. **`checkTestTreeWrites` does not exist** —
+`grep -rl checkTestTreeWrites . --exclude-dir=.git --exclude-dir=build` returns zero files across
+the whole tree, so the convention that tests write to temp directories is convention only.
 `TestProofDir.proofDir` is the pattern that solves it for visual proof artefacts; the doc-capture
 tests do not use it, because their output is meant to be committed. That makes them a different
 problem from the ones above and they are left alone here.
