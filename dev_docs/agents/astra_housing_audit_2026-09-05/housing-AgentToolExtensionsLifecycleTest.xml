@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="AgentToolExtensionsLifecycleTest[jvm]" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-09-05T14:08:35.160Z" hostname="mi2-2.local" time="0.329">
+  <properties/>
+  <testcase name="registrySeesExtensionRegisteredAfterConstruction[jvm]" classname="afield.ai.core.AgentToolExtensionsLifecycleTest" time="0.326"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
