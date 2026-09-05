@@ -280,6 +280,32 @@ class ProseNumeralContractTest {
             },
         ),
         DerivedCountGuard.Derivation(
+            key = "publicImportRoots",
+            page = "dev_docs/private_boundary.md",
+            what = "single-segment package roots a committed file may import",
+            // 28 on 2026-09-05, measured against 28 distinct roots actually used across 15011 import
+            // matches in the corpus, so the allowlist has no dead entries. Pinned because the number
+            // was already wrong once in the place a reader would look for it: `PersonalBoundaryTest`'s
+            // own KDoc says "22 legitimate roots", which is not reproducible from any subset of the
+            // literal, and nothing was checking either statement of it.
+            //
+            // Floored at 15. Below that the page's argument stops holding — it turns on the allowlist
+            // being a real, long-tailed inventory of third-party dependencies rather than a short
+            // list somebody could plausibly have written from memory, which is exactly the failure
+            // the inverted rule exists to avoid.
+            floor = 15,
+            landmarks = setOf("afield", "kotlin"),
+            derive = { r ->
+                // Scraped from the guard's source rather than restated here, so this cannot agree
+                // with a copy of itself. The set literal spans several lines and carries `//`
+                // comments between them, so the entries are matched rather than the whole body split.
+                val src = File(r, "src/jvmTest/kotlin/afield/docs/PersonalBoundaryTest.kt").readText()
+                val body = Regex("""private val PUBLIC_IMPORT_ROOTS = setOf\(([\s\S]*?)\n\s*\)""")
+                    .find(src)?.groupValues?.get(1).orEmpty()
+                Regex(""""([a-z][A-Za-z0-9_]*)"""").findAll(body).map { it.groupValues[1] }.toSortedSet()
+            },
+        ),
+        DerivedCountGuard.Derivation(
             key = "differentiableFnOps",
             page = "dev_docs/autodiff.md",
             what = "`Fn` ops with an exact derivative",

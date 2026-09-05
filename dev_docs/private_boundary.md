@@ -58,17 +58,22 @@ Measured over the corpus on this branch, replicating the guard's own regex and r
 |---|---|
 | single-segment import matches | **15 011** |
 | distinct roots they use | **28** |
-| entries in `PUBLIC_IMPORT_ROOTS` | **28** |
+| entries in `PUBLIC_IMPORT_ROOTS` | **28**<!--count:publicImportRoots--> |
 | entries never used | **0** |
 
 Every permitted root earns its place, and thirteen of the twenty-eight are used fewer than ten times,
 so the allowlist is mostly tail. That thin tail is what makes the inverted form practical: the
 signal a private package produces is not lost in a crowd.
 
-Two corrections to what is written down about that set, both minor and both worth fixing the next
-time somebody edits it. The class KDoc says "22 legitimate roots accounting for 15 000+ import
-statements". The import count is exact. The root count is 28, and I could not reproduce 22 from any
-subset of the literal.
+One correction to what is written down about that set. The class KDoc says "22 legitimate roots
+accounting for 15 000+ import statements". The import count is exact. The root count is 28, and 22 is
+not reproducible from any subset of the literal.
+
+The 28 in the table above is derived rather than typed: `ProseNumeralContractTest` scrapes the set
+out of `PersonalBoundaryTest.kt` on every `citationGates` run and fails if the page and the code
+disagree. Pinned because this number has already been wrong once in the place a reader would look for
+it, and nothing was checking either statement of it. Adding a genuine new public dependency will now
+turn this page red until the sentence moves with the code, which is the point.
 
 The regex is `PersonalBoundaryTest.kt:186#private val IMPORT_RE`, and its alternation
 `(?:^|\\n|")` is the interesting part. In a Kotlin raw string `\\n` is a literal backslash followed
@@ -328,6 +333,91 @@ One footnote on the guard's hit rate. Four `dust_*_check.kt` snippets were remov
 the guard had caught **one** of them. Only `dust_particle_seed_check.kt` imported a private package;
 the other three were found by a human looking at what the first one was for. The guard finds
 references, not relevance.
+
+## What the failures actually look like
+
+Three of the six assertions were made to fire on purpose while this page was being written, and
+reverted afterwards. The commit that introduced the guard demonstrated assertion 1 by planting an
+import; these are the other ones, so the failure paths that had never been executed now have been.
+
+### Assertion 2, planted
+
+An HTML comment appended to this page, naming two things: the source root, which is legal, and one
+file inside it, which is not. The file chosen was the dependency the ledger retired on its last day.
+
+```text
+PersonalBoundaryTest > no committed file cites a path inside the private tree FAILED
+    java.lang.AssertionError at PersonalBoundaryTest.kt:284
+
+java.lang.AssertionError: committed files cite paths inside src/personal/:
+  dev_docs/private_boundary.md → src/personal/kotlin/…
+
+A citation is evidence a reader is meant to be able to open, and nobody else can open
+this one. State the finding in terms of afield.* and cite the afield.* code it applies
+to; if the only evidence is private, the claim belongs in a commit message or the
+nightly journal rather than in a guarded document.
+
+6 tests completed, 1 failed
+BUILD FAILED in 9s
+```
+
+One elision, and it is the guard's doing rather than an editorial choice. The real message ends that
+line with a package name, and reproducing it here would re-plant the violation in the page that
+documents it. **A guarded document cannot quote this guard's failure message verbatim.**
+`PersonalBoundaryTest.kt:276#for (m in DEEP_PERSONAL_RE.findAll(text))` runs over raw file text, so a
+fenced code block is not exempt and neither is an HTML comment. That is a small, permanent
+consequence of enforcing a rule with a literal string match, and it is the reason the block above is
+the only thing on this page that is not exact.
+
+Two things to read off it. The legal reference on the same planted line is **not** reported, so depth
+is genuinely the discriminator and not an approximation of one. And what the elision hides is a
+*package*, not a file: `DEEP_PERSONAL_RE` has exactly two segment groups, so the match stops one
+level above the `.kt` that was planted. The failure tells you which private package you leaned on
+rather than which file, which is the more useful of the two and is not obvious from reading the
+regex.
+
+### Assertions 4 and 5, planted
+
+One entry added to the empty ledger, pointing at a clean file, with an excuse that reads plausibly.
+Both halves of the ledger contract fire, separately:
+
+```text
+PersonalBoundaryTest > the grandfathered ledger does not grow quietly FAILED
+java.lang.AssertionError: GRANDFATHERED has 1 entries against a ceiling of 0. Adding a
+new exemption is a decision; say why in the commit message and raise the ceiling.
+
+PersonalBoundaryTest > grandfathered entries are still real FAILED
+java.lang.AssertionError: GRANDFATHERED excuses violations that no longer exist — delete
+these entries:
+  dev_docs/private_boundary.md
+
+6 tests completed, 2 failed
+```
+
+The second is the one worth having. Raising the ceiling would silence the first and leave the second
+red, because the entry describes a violation that is not there. An excuse cannot be parked; it has to
+correspond to something.
+
+### The derived count, planted
+
+The pin on `PUBLIC_IMPORT_ROOTS` was checked the same way, because a pin nobody has seen fire is a
+pin nobody should trust. One extra root added to the set, page untouched:
+
+```text
+ProseNumeralContractTest > everyMarkedNumeralMatchesItsDerivation FAILED
+java.lang.AssertionError: 1 number(s) stated in prose disagree with the code they describe:
+  dev_docs/private_boundary.md:61 `28` <!--count:publicImportRoots--> — the page says 28,
+  the code has 29 single-segment package roots a committed file may import
+Recount by deriving, not by grepping — every recorded failure of this kind was a grep that
+missed a wrapper.
+
+14 tests completed, 1 failed
+```
+
+### Afterwards
+
+Every plant was reverted and `git status --porcelain` returned empty each time, so the tree is
+byte-identical to the commit each was made against.
 
 ## What to do when you hit it
 

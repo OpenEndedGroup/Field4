@@ -97,13 +97,13 @@ class CitationContractTest {
             // code by name and by task, not by `path:line#anchor`. Raise it the day it cites a site.
             "dev_docs/guard_population_hygiene.md" to 0,
             // The one-way boundary around `src/personal/`, added 2026-09-05 with the page it guards.
-            // 21 anchored citations as written, every anchor verified unique in its file before the
-            // page was committed, so all 21 report unbounded headroom, and no bare citation remains.
+            // 22 anchored citations as written, every anchor verified unique in its file before the
+            // page was committed, so all 22 report unbounded headroom, and no bare citation remains.
             // Floored at 10 on the `DATAFRAME_PLUGIN.md` convention: about half, so a page becoming a
             // little less citation-dense costs a doc edit rather than a red build, while deleting
             // half of them fails.
             //
-            // Seventeen of the 21 point into `PersonalBoundaryTest` itself, which is unusual and
+            // Eighteen of the 22 point into `PersonalBoundaryTest` itself, which is unusual and
             // deliberate: the page's subject *is* that class, and its claims about what each
             // assertion checks are the ones most likely to rot into overstatement. They anchor on a
             // declaration, or on a line inside an assertion, rather than on the assertion's name,
