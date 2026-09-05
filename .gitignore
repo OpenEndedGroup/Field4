@@ -143,12 +143,35 @@ metadata_store/*
 metadata_store/*/.field-shared-types/
 # Runtime artefacts Field writes into a workspace, and the per-workspace agent guides
 # ensureAgentGuides seeds: derived, not part of the demo document.
+# The first three are covered repo-wide below; these entries stay because `document.md`,
+# `AGENTS.md` and `README.md` are only derived *here*, under metadata_store.
 metadata_store/*/backups/
 metadata_store/*/history_metrics.edn
 metadata_store/*/transcript.edn
 metadata_store/*/document.md
 metadata_store/*/AGENTS.md
 metadata_store/*/README.md
+
+### Field document side-artefacts, anywhere in the tree
+# Opening a Field document writes into the directory it came from. `SavingContext.save`
+# fans out to seven producers (saving.kt:444-521), and the five below are all derived from
+# the two files a document actually is (`metadata.edn` and `document.md`). Committed demo
+# documents live inside this repository — `dev_docs/agents/demos/`, `public/docs/assets/` —
+# so opening one used to leave four untracked paths in `git status`.
+#
+# Not scoped to metadata_store/: the rules above cover 5 of the 117 directories holding a
+# tracked metadata.edn (`git ls-files '*metadata.edn' | wc -l`), and the demo the docs tell
+# you to open is not one of them.
+#
+# These names collide with nothing else in the tree. Measured 2026-09-05: every tracked path
+# matching them (13 files) is itself a spill of exactly this kind, all under
+# public/docs/assets/. `.gitignore` does not affect already-tracked files, so those 13 keep
+# showing up in a diff, which is the correct outcome — they need deleting, not hiding.
+**/backups/
+**/history_metrics.edn
+**/transcript.edn
+**/operations.yaml
+**/history_screenshots/
 
 # Telemetry data
 metadata_server_telemetry.json
@@ -233,7 +256,10 @@ two_timescale_bandit_toy*.txt
 /imgui.ini
 
 ### Field template backup snapshots
-templates/*/backup/
+# `backup/` matched nothing: safeSave writes into a directory called `backups`
+# (saving.kt, `File(file.parentFile, "backups")`). Kept only as a redirection —
+# the `**/backups/` rule above is what actually covers this.
+templates/*/backups/
 
 ### Test files
 test_kdoc_*.kt
