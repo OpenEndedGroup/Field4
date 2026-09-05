@@ -8,18 +8,18 @@
 A point cloud with a graph on it is a static object, and every algorithm in
 [`graph_connectivity.kt`](graph_connectivity_examples.md) assumes exactly that: the points sit still,
 the edges are given, and you traverse. This family assumes the opposite. The points move every frame,
-and the edges are not given — they are **continually proposed, reinforced and forgotten**, so the
+and the edges are not given: they are **continually proposed, reinforced and forgotten**, so the
 graph is a slowly-decaying memory of what has been near what rather than a description of where things
 are now. The structure that matters is the one that survives the forgetting.
 
-That is a different mental model, and worth spelling out before any code:
+That inverts three things a static graph lets you take for granted:
 
 - **An edge is a weight with a lifetime.** [`DynamicEdgeList`](reference/data.md#dynamic-graph-systems-kt-dynamicedgelist)
   stores `weight`, `age`, `ttl` and `flags` per edge, and a
   [`DynamicGraphSystem`](reference/data.md#dynamic-graph-systems-kt-dynamicgraphsystem) only ever
-  *adds* — it calls `reinforce`, which saturates at a ceiling. Removal is a separate step:
-  `decayLinear` or `decayExponential`, which bleed weight, count down ttl, and drop whatever reaches
-  zero. A structure therefore persists exactly as long as something keeps proposing it.
+  *adds*. Its `reinforce` saturates at a ceiling, and removal is a separate step: `decayLinear` or
+  `decayExponential`, which bleed weight, count down ttl, and drop whatever reaches zero. A structure
+  therefore persists exactly as long as something keeps proposing it.
 - **The neighbour query is rebuilt every frame**, because the cloud has moved. That is what
   [`Vec3SpatialHash`](reference/data.md#dynamic-graph-systems-kt-vec3spatialhash) is for, and
   `stepDynamicGraph` and `DynamicProcessPipeline` rebuild it for you.
@@ -27,60 +27,16 @@ That is a different mental model, and worth spelling out before any code:
   moves points, spawns them and kills them, so the cloud's *size* is an output. Three of the ten
   shipped processes add points and two remove them.
 
-## Nine defects, and why you want a recent build
-
-Everything below needs a build from August 2026 or later. Until then, growth did not work at all: the
-entire `DynamicPointProcess` half of the family had never successfully **added a point**, which is the one
-thing that half of it exists to do. Nine defects were found and fixed together, and every row of the table
-below is a measurement rather than a description.
-
-To be exact about the growth one, since the blunt version overstates it: the throw happens on the frame of
-a *birth*, not on the first frame. `DynamicEdgeList.pointCount` was a constructor `val` while
-`DirectedTipGrowthProcess` sets `newIndex = state.points.size` *before* appending — so
-`newIndex == pointCount` exactly, and `require(b in 0 until pointCount)` necessarily fails the first time a
-point is born. Only three of the ten `DynamicPointProcess` implementations append points at all
-(`DirectedTipGrowthProcess`, `AddNearLowDensityProcess`, `AddNearHighDensityProcess`), so a pipeline built
-from the other seven ran fine, and a pipeline that included one ran fine right up until its first birth.
-What had never worked is growth, not every frame.
-
-| what was wrong | how it showed up, measured |
-| --- | --- |
-| `DynamicEdgeList.pointCount` was fixed at construction while three processes append points | `exampleDynamicMorphogenesisStep` — the file's own "wires a whole frame together" entry point — threw `IllegalArgumentException: b out of range: 40` on the frame of its **first birth**, frame 109 of a 40-point ring. It had never once produced a point. |
-| `Vec3SpatialHash.kNearest` stopped at the first cell ring that yielded `k` candidates | Wrong answers. Against an O(N²) oracle on a 300-point disc the 9th of 12 neighbours came back 17 % too far. A point one ring out can be nearer than one already in hand from a diagonal corner cell. |
-| …and its only other exit compared the ring against `maxRadius`, which defaults to `+∞` | One `kNearest(0, 8)` on a **four-point** cloud took **2569 ms**: it ground out to the hard `cr > 128` cap, 257³ bucket probes. 200 calls on a 200-point cloud take 1.5 ms. |
-| `radiusNeighbors` and `sample` did not deduplicate, and the bucket key is lossy | A ring of eight points answered `sample(centre, 0.31)` with **ten** entries. Two cells can share a bucket and the scan visits it once per colliding offset — and `sample(...).size` is used as a *density* by two processes. |
-| `toPointGraph()` kept the old point count after a prune | 10 points pruned to 2 produced a `PointGraph` claiming 10 vertices: eight phantoms handed to every traversal downstream. |
-| `MergeClosePointsProcess` flagged the absorbed point's edges and then deleted them | The flag was written to objects discarded three lines later, so a "merge" *severed* the survivor from everything only the absorbed point had reached. |
-| `Vec3AlphaEventHypergraphCollapseSystem.minArea` was compared against the **squared** area | Effective units of area², so the default `1e-5` rejected everything under 3.2e-3. On a 140-point disc with `alphaRadius = 0.1` it left **3** edges standing where it now leaves 333. |
-| `edgeNeighbors` was an O(E) scan, called once per point by five processes | O(V·E) per step — invisible while the population could not grow, and the binding constraint the moment it could. 200 frames of morphogenesis from a 40-point ring: **did not finish in ten minutes** of CPU, against **9.8 s** through an incidence index. |
-| a `max()` in `SpringMotionProcess` whose first branch was unreachable | dead, because the loop `continue`s above it on exactly that condition |
-
-All nine are fixed, and eight of them are held by regression tests.
-
-??? aside "Which of the nine a test actually holds"
-    Eight of the nine are pinned by `DynamicGraphSystemsTest` — 34 tests, 11.6 s, every claim either an exact
-    identity or a control arm. The ninth, the dead `max()` in `SpringMotionProcess`, was a bit-identical
-    cleanup: there is no behaviour for a test to hold, since nothing can distinguish the two versions, which
-    is precisely why it was safe to remove. Separately, the `edgeNeighbors` entry above is pinned for
-    *correctness* — the incidence index is asserted to agree edge-for-edge with the O(E) scan it replaced,
-    including on a self-loop, and to survive cache invalidation on both insertion and removal — but its
-    ">ten minutes → 9.8 s" figure is a measurement, not an assertion; no test fails if that regresses.
-
-??? aside "A family with a good KDoc and no executed evidence"
-    `dynamic_graph_systems.kt` shipped 1298 lines, 27 public declarations and a careful file-level KDoc, and
-    until this page was written it had no tests, no worked example and no way at all to draw its output. That
-    is less a criticism of the file than a demonstration of the thing this documentation set keeps
-    rediscovering: a family nobody has executed is a family whose behaviour nobody knows.
-
-Two further oddities are documented rather than changed,
-because there is no ground truth to change them *to*, and both are things you have to know before you
-configure anything here:
+Three of the parameters here are named for a quantity they are not, and their defaults are wrong by
+enough that the result looks like the system misbehaving rather than like a units error. There is no
+ground truth that would let them be renamed or re-defaulted, so they are documented instead. Read
+them before you configure anything:
 
 !!! warning "Three parameters that do not mean what they read"
     **`SpringMotionProcess.restLengthScale` is not a length.** An edge's rest length is
     `restLengthScale / weight`, so the units are length × weight. The weights these systems produce
     per frame are of order 0.02, so the default `1.0` asks for a rest length of **50 world units** in
-    a cloud one unit across — every spring is then a saturated repulsion. Set it to
+    a cloud one unit across. Every spring is then a saturated repulsion. Set it to
     `desiredRestLength × typicalWeight`; the morphogenesis clip below uses `0.075` for a rest length
     of 0.05 at a typical weight of 1.5.
 
@@ -88,14 +44,15 @@ configure anything here:
     `resource < -Double.MAX_VALUE` cannot hold, so it marks nothing. That is exactly how
     `exampleDynamicMorphogenesisStep` configures it, which is why the pipeline it demonstrates pairs
     an uncapped growth rule with a death rule that cannot fire. Measured on a 40-point ring: 40 points
-    for 109 frames, then ×1.05 **per frame** — 3603 points and 78 360 edges by frame 199.
+    for 109 frames, then ×1.05 **per frame**, reaching 3603 points and 78 360 edges by frame 199.
     `DirectedTipGrowthProcess.maxPointCount` is the ceiling that makes it bounded.
 
     **`Vec3AlphaEventHypergraphCollapseSystem`'s reinforcement is scaled by triangle area.** Its
     increment is multiplied by `min(1, area)`, and a triangle in a cloud one unit across has an area of
-    a few thousandths — so measured on the figure below it reached a maximum weight of **0.0137**,
-    which is 0.3 % of the ceiling the other five systems saturate at. Give it a `reinforce` two orders
-    of magnitude larger than its neighbours, or its edges will be invisible next to theirs.
+    a few thousandths, so measured on the figure below it reached a maximum weight of **0.0137**,
+    which is 0.3 % of the shared ceiling. The other five all reach at least a sixth of that ceiling
+    and two of them sit on it, so give this one a `reinforce` two orders of magnitude larger than its
+    neighbours or its edges will be invisible next to theirs.
 
 ## 1. Six ways to propose an edge
 
@@ -169,13 +126,13 @@ showPlaneGrid(
 
 ![six graphs built over the same 220-point phyllotaxis disc: a bright mutual k-nearest-neighbour mesh, a sparse pinwheel of flowline arcs, a dense fully triangulated tangent fan, a sparse dim proximity mesh, a dim forest of routing chains, and a dim fully triangulated alpha-event graph](assets/dynamic_graph_systems_examples/six_systems.png)
 
-Every panel is real vector geometry — `dynamicGraphFLines` emits one `FLine` per edge and
-`showPlaneGrid` puts them through `drawToSVG`, so the figure scales and each edge carries its own
-weight. That weight is read as `weight / 4.0`, the ceiling all six were given, and it drives **both**
-the colour and the stroke width: a *fixed* scale rather than a per-panel normalisation, so a faint,
-thin panel is a system whose weights genuinely stayed low. Compare the top-left and bottom-right
-panels — cream and heavy against thin and purple, over the same cloud and the same reinforcement
-budget — and the last column of the table is why:
+`dynamicGraphFLines` emits one `FLine` per edge and `showPlaneGrid` puts them through `drawToSVG`, so
+the panels are vector: they scale, and each edge carries its own weight. That weight is read as
+`weight / 4.0`, the ceiling all six were given, and it drives both the colour and the stroke width on
+one **fixed** scale rather than a per-panel normalisation. A faint, thin panel is therefore a system
+whose weights stayed low. The top-left and bottom-right panels (cream and heavy against thin and
+purple, over the same cloud and the same reinforcement budget) differ in nothing but the last column
+of this table:
 
 | system | edges | in a triangle | mean degree | max weight reached |
 | --- | --- | --- | --- | --- |
@@ -186,23 +143,21 @@ budget — and the last column of the table is why:
 | signal routing, 1 arc | 260 | 2.3 % | 2.36 | 1.0991 (27 %) |
 | alpha-event triangles | 351 | **100.0 %** | 3.19 | **0.0137 (0.3 %)** |
 
-The "in a triangle" column splits the six cleanly into two kinds, and it is the one exact structural
-fact separating them. **Two systems reach 100 %**: the local tangent fan, which fits a plane to each
-neighbourhood and joins consecutive neighbours by angle, and alpha-event collapse, which reinforces
-all three sides of every small non-degenerate triple. Both build *faces*. **Flowline advection reaches
-exactly 0 %**: it advects each point one step along a field and joins it to whatever it lands nearest,
-so it is a functional map, one arc out of each point, and the pinwheel in the top-middle panel is the
-phyllotaxis spiral of the cloud made visible. The mutual kNN's 88.4 % is what you would expect of a
-dense proximity mesh and is not a design property of the system at all — which is exactly why the
-figure needs a 0 % arm and a 100 % arm rather than a ranking.
+The "in a triangle" column splits the six cleanly into two kinds. **Two systems reach 100 %**: the
+local tangent fan, which fits a plane to each neighbourhood and joins consecutive neighbours by angle,
+and alpha-event collapse, which reinforces all three sides of every small non-degenerate triple. Both
+build *faces*. **Flowline advection reaches exactly 0 %**: it advects each point one step along a field
+and joins it to whatever it lands nearest, so it is a functional map, one arc out of each point, and
+the pinwheel in the top-middle panel is the phyllotaxis spiral of the cloud made visible. The mutual
+kNN's 88.4 % sits between the two for no reason to do with its design; that is simply what a dense
+proximity mesh gives you at this radius.
 
-## 2. Reinforcement and forgetting, against the closed form
+## 2. Reinforcement and forgetting
 
-The decay laws are the whole reason this family is not just "rebuild a kNN graph every frame", so they
-are worth pinning exactly. `decayExponential(dt, λ)` multiplies by `e^(−λ dt)`, which means the weight
-after a given amount of *time* must not depend on the number of steps it was reached in — and
-`decayLinear` describes a genuinely different curve, which is the control that stops this being a
-statement about the harness.
+The decay laws are the whole reason this family is not just "rebuild a kNN graph every frame".
+`decayExponential(dt, λ)` multiplies by `e^(−λ dt)`, so the weight after a given amount of *time* does
+not depend on how many steps it took to get there. `decayLinear` describes a different curve entirely,
+and the two are stepped side by side below, so that neither shape is a property of the harness.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/dynamic_graph_systems_examples/decay.png" wait="10.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -261,11 +216,11 @@ showSignals(
 
 ![two decay curves over four seconds of simulated time: the exponential one falls smoothly and is still above 0.2 at the end, the linear one reaches zero at about 2.9 seconds and stays there](assets/dynamic_graph_systems_examples/decay.png)
 
-Both laws agree with their closed forms to nine decimal places at one step, four steps and 120 steps —
-`0.496585304` for the exponential and `0.300000000` for the linear — and `ln 2 / λ = 1.9804 s` halves
+Both laws agree with their closed forms to nine decimal places at one step, four steps and 120 steps
+(`0.496585304` for the exponential and `0.300000000` for the linear), and `ln 2 / λ = 1.9804 s` halves
 the weight exactly. The curves are the interesting part. The linear one **terminates**: it reaches zero
 at `1/0.35 ≈ 2.86 s` and the edge is *removed* at that point, not merely faint. That is the practical
-difference between the two — exponential decay gives a graph with a soft memory in which nothing is
+difference between the two: exponential decay gives a graph with a soft memory in which nothing is
 ever quite gone, linear decay gives one with a hard horizon. `ttl` is orthogonal to both, and it is
 what stops an edge that a saturating system keeps proposing from becoming immortal.
 
@@ -277,8 +232,8 @@ come within `rEnter`, but a pair already joined only has to stay within `rExit`.
 while things were close survives a separation that could never have created it, which is exactly what
 you want when a cloud is jittering across a threshold and you do not want the graph to flicker.
 
-The claim needs a control arm, and the control is the same run with `rExit == rEnter` — the identical
-system with the hysteresis removed and nothing else changed.
+The control below is the same run with `rExit == rEnter`: the same system with its memory switched
+off, and nothing else changed.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/dynamic_graph_systems_examples/hysteresis.png" wait="10.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -362,7 +317,7 @@ showPlaneGrid(
 
 On the two-point walk, the difference is categorical: with `rExit = 0.16` the edge forms at `d = 0.05`
 and survives the move out to `d = 0.13`; with `rExit = rEnter` it forms and then dies. On the wobbling
-cloud it is quantitative and larger than the pictures suggest at a glance:
+cloud it is quantitative, and larger than the pictures suggest:
 
 |  | edges created | edges lost | standing at frame 150 |
 | --- | --- | --- | --- |
@@ -446,43 +401,39 @@ animateEvolution(
 
 <video controls muted loop playsinline preload="metadata" width="1000" aria-label="a k-nearest-neighbour graph over a stationary point cloud rewiring itself as the distance metric stretches and rotates, beside the same cloud under a frozen metric whose edge count never changes"><source src="assets/dynamic_graph_systems_examples/breathing.mp4" type="video/mp4"></video>
 
-The control arm does the work here, and it does it in the caption. Sampling the recorded mp4 every
-0.8 s — nine frames, whose right-hand labels read steps 13, 64, 111, 161, 210, 261, 311, 360 and 406 —
-the frozen panel reads **590 edges every single time**. The breathing panel over the same nine frames
-reads 609, 616, 617, 654, 613, 611, 609, 608 and 601, and its triangulated patches visibly rake around
-as the stretch axis turns. When the stretch is high, "near" means "near *along* the current axis", so
-long thin chains form in that direction and the perpendicular links are dropped; as it relaxes toward
-0.25 the graph returns to something isotropic. Same cloud, same `k`, same budget, same code path. The
-clip's own last frame reads **step 420** of the 420 it was given, which is how you know the recording
-covers the whole schedule rather than stopping short of it.
+The captions carry the comparison. Sampling the recorded mp4 every 0.8 s (nine frames, whose
+right-hand labels read steps 13, 64, 111, 161, 210, 261, 311, 360 and 406) the frozen panel reads
+**590 edges every single time**. The breathing panel over the same nine frames reads 609, 616, 617,
+654, 613, 611, 609, 608 and 601, and its triangulated patches visibly rake around as the stretch axis
+turns. When the stretch is high, "near" means "near *along* the current axis", so long thin chains
+form in that direction and the perpendicular links are dropped; as it relaxes toward 0.25 the graph
+returns to something isotropic. Same cloud, same `k`, same budget, same code path.
 
 Both panels use `ttl = 0.25 s` and an aggressive `λ = 2.5`, so the graph remembers about a quarter of a
-second. That is deliberate: with a long ttl the union of every metric the warp passes through
+second, and it has to be that short. With a long ttl the union of every metric the warp passes through
 accumulates, and the picture saturates into a mesh that never changes again. The forgetting is what
 makes the motion visible.
 
-??? aside "This clip and the next are the only two figures here that are pixels"
-    Every still on this page is vector — `dynamicGraphFLines` into `showPlaneGrid`. The two clips are
-    not, and cannot be: `animateEvolution`'s `panels` lambda is typed
-    `List<Pair<String, Img>>`, and the docs runner records a box's PNG output channel, so a clip is a
-    raster by construction. That is what
-    [`dynamicGraphPanel`](reference/data.md#dynamic-graph-field-kt-functions) is for and the
-    only thing it is for. It is also why it cannot be swapped for `rasterizeFLines` from the ALife
-    family, which plots a constant intensity: every edge would come out the same brightness and the
-    weight — the entire subject of this family — would be gone.
+??? aside "Why the clips are rasters and the stills are not"
+    `animateEvolution`'s `panels` lambda is typed `List<Pair<String, Img>>`, and the docs runner
+    records a box's PNG output channel, so an animated figure is a raster by construction. That is
+    what [`dynamicGraphPanel`](reference/data.md#dynamic-graph-field-kt-functions) is for; the stills
+    go through `dynamicGraphFLines` into `showPlaneGrid` and stay vector. `rasterizeFLines` from the
+    ALife family is not a substitute, because it plots a constant intensity: every edge would come out
+    the same brightness and the weight would be gone from the picture.
 
 ## 5. Morphogenesis: when the population is an output
 
-The other half of the family moves the points. Nine `DynamicPointProcess`es compose in a
+The other half of the family moves the points. Ten `DynamicPointProcess`es compose in a
 `DynamicProcessPipeline`, and between them they push points along the graph, spawn new ones at
 coherent tips, merge collided ones, diffuse a resource along the edges and climb its gradient, and
 prune what has come loose. Graph and geometry are then coupled in both directions: the edges decide
 where the points go and the points decide which edges get proposed.
 
-This is the half that had never run. It also needs a population budget — see the warning at the top of
-this page for the growth curve — so the clip below caps at 900 points and uses a **geometric step
-schedule** (`ramp`), because the birth phase is over in the first sixth of the run and a linear
-schedule spends five sixths of the clip on the aftermath.
+Growth needs a population budget (the warning at the top of this page has the curve), so the clip
+below caps at 900 points. It also needs a **geometric step schedule** (`ramp`), because the birth
+phase is over inside the first seventh of the run and a linear schedule would spend the other six
+sevenths on the aftermath.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/dynamic_graph_systems_examples/morphogenesis.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="13" fps="20" timeout="360" w="1060" name="dgs-morphogenesis-video" alt="a ring of points growing into a branching filamentous structure while its graph is continually rebuilt, beside a control arm with tip growth switched off in which the ring stays a ring"}
 :::static
@@ -566,7 +517,7 @@ animateEvolution(
 <video controls muted loop playsinline preload="metadata" width="1060" aria-label="a ring of points growing into a branching filamentous structure while its graph is continually rebuilt, beside a control arm with tip growth switched off in which the ring stays a ring"><source src="assets/dynamic_graph_systems_examples/morphogenesis.mp4" type="video/mp4"></video>
 
 Both panels start as the same 64-point ring, are driven by the same proximity-hysteresis system, and
-run the same stages in the same order — except that the right-hand pipeline is missing
+run the same stages in the same order, except that the right-hand pipeline is missing
 `DirectedTipGrowthProcess`. Stepping both pipelines 560 times, with the counts read off at multiples of
 80 (the clip's own schedule is geometric, so its frames land elsewhere):
 
@@ -578,43 +529,39 @@ run the same stages in the same order — except that the right-hand pipeline is
 | 400 | 899 pts, 2376 edges | 62 pts, 94 edges |
 | 560 | 899 pts, 2950 edges | 56 pts, 86 edges |
 
-Two things in that table are worth naming rather than glossing. The 900-point cap is reached at **step
-79** — under a linear schedule the whole birth phase would be over in the first eighth of a second of
-the clip, which is why `ramp = 25` is there. And the control arm does *not* hold at 64 points: it drops
-to 56, because `MergeClosePointsProcess` is in both pipelines and the springs pull the ring's points
-together until pairs collide. That is the merge working, and it is visible in the right-hand panel as
-the ring becoming a slightly ragged, slightly shorter ring.
+Two rows of that table need reading slowly. The 900-point cap is reached at **step 79** of 560, so a
+linear schedule would be done growing inside the first seventh of the clip; `ramp = 25` is what moves
+the clip's mid-point back to step 93. And the control arm does *not* hold at 64 points: it drops to
+56, because `MergeClosePointsProcess` is in both pipelines and the springs pull the ring's points
+together until pairs collide. In the right-hand panel that shows up as the ring becoming slightly
+ragged and slightly shorter.
 
 The edge count in the growing panel peaks at 9065 and then falls to 1344 before recovering. That is
 the springs winning: the initial birth burst piles 900 points into the ring's footprint, so almost
 every pair is inside `rEnter`; as the springs push the structure apart into filaments, most of those
-proximity edges are lost and what is left is the branching skeleton. The step counter is in the frame
-for the reason the [ALife page](alife_examples.md) gives — a clip whose final label reads
-`s 210 / 560` is a failed clip and says so on its face. This clip's own last frame reads **s560** in
-both panels — `899pts 2950e` beside `56pts 86e`, the table's last row digit for digit — so the
-recording covers the whole schedule *and* agrees with it.
+proximity edges are lost and what is left is the branching skeleton. The clip's last frame reads
+**s560** in both panels, `899pts 2950e` beside `56pts 86e`, which is the table's last row digit for
+digit.
 
-That took three seconds of recording slack (`duration = 13` against `seconds = 10`) rather than the
-one or two [`animateEvolution`](reference/alife.md#alife-animate-kt)'s docs ask for, and the ramp is
-why: `ramp = 25` makes the *last* frames' step batches the largest in the run, so the capture falls
-furthest behind exactly where it has least clock left to recover. Measured on the recorded mp4, the
-picture is still changing at 11.90 s — a full 1.9 s after the schedule's own clock ran out — and the
-remaining 1.1 s is the hold on the settled result. At `duration = 11` the recorder stopped
-mid-catch-up: two takes ended at `s528` and `s513`.
+A geometric ramp needs more recording slack than a linear one, because
+[`animateEvolution`](reference/alife.md#alife-animate-kt) makes the *last* frames' step batches the
+largest in the run, so the capture falls furthest behind exactly where it has least clock left to
+recover. This clip is recorded at `duration = 13` against `seconds = 10` for that reason, and it needs
+all of it: on the finished mp4 the picture is still changing at 11.90 s, leaving 1.1 s of hold on the
+settled result. At `duration = 11` the recorder stops mid-catch-up, around `s520`.
 
-## 6. The threshold is the whole point
+## 6. Snapshots, and the `minWeight` cut
 
 None of this is any use unless the graph can be handed to code that expects a graph. `toPointGraph`
 and `dynamicGraphSnapshot` freeze the live store into the `PointGraph` that
-[`graph_connectivity.kt`](graph_connectivity_examples.md) consumes — with a `minWeight` cut, which is
-the knob this entire family exists to give you and which has no equivalent in a static kNN graph.
+[`graph_connectivity.kt`](graph_connectivity_examples.md) consumes, and they do it through a
+`minWeight` cut. A static kNN graph has no equivalent, because it has no weight to cut on.
 
-Here is what it buys, arranged so the answer is checkable rather than impressionistic. A **static
-background of 240 points** forms a persistent mesh. Three **rigid clusters of 22** translate across it
-on straight lines. Cluster-internal pairs are adjacent for the whole four seconds, so they accumulate
-weight; cluster-to-background pairs are adjacent only in passing, so they earn a little and lose it.
-The right threshold should therefore recover exactly the four co-moving groups — and nothing about the
-geometry tells it which points belong to which.
+The setup below makes the cut's answer checkable. A **static background of 240 points** forms a
+persistent mesh. Three **rigid clusters of 22** translate across it on straight lines.
+Cluster-internal pairs are adjacent for the whole four seconds, so they accumulate weight;
+cluster-to-background pairs are adjacent only in passing, so they earn a little and lose it. The right
+threshold should therefore recover exactly the four co-moving groups.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/dynamic_graph_systems_examples/snapshot.png" wait="14.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -698,7 +645,7 @@ showPlaneGrid(
 
 At `minWeight = 1.2` the snapshot contains **zero** edges between groups, and its components are
 exactly the background mesh and the three clusters, at exactly their true sizes. The `group` array in
-the code above is used only to *check* that — never to build the graph, which sees nothing but
+the code above is used only to *check* that, never to build the graph, which sees nothing but
 positions and a clock. The dim purple streamers in the top two panels are the entire population of
 transient links, and they are what the threshold removes.
 
