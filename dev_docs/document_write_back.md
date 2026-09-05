@@ -114,26 +114,43 @@ not untrack them; they need deleting.
  M public/docs/assets/vector_algebra/write_swizzle.png
 ```
 
-`VectorAlgebraDocCaptureTest` regenerates them in place. The bytes differ run to run, so the
-working tree goes dirty whether or not anything changed. Measured 2026-09-05 in a clean worktree:
-run `jvmTest`, get those two.
+`VectorAlgebraDocCaptureTest` regenerates all **five** of that directory's PNGs in place, on every
+run, unconditionally. Only two of the five come out different, which is why `git status` reports two:
+the other three unconditional writes into the committed tree are invisible to it.
 
-There is no guard against this. **`checkTestTreeWrites` does not exist** —
-`grep -rl checkTestTreeWrites . --exclude-dir=.git --exclude-dir=build` returns zero files across
-the whole tree, so the convention that tests write to temp directories is convention only.
-`TestProofDir.proofDir` is the pattern that solves it for visual proof artefacts; the doc-capture
-tests do not use it, because their output is meant to be committed. That makes them a different
-problem from the ones above and they are left alone here.
+**The harness is deterministic, and the first version of this page said otherwise.** Rerunning it
+leaves three of the five byte-identical, and the two that change are md5-identical to bytes already
+committed on the unmerged branch `claude/determined-vaughan-4048f2`. So this is not run-to-run noise.
+It is a **stale committed figure**: `1c51e6670` (2026-09-02, "`.h` on a vec4 shows all four
+components") regenerated `assets/value_visualizers/vectors.png` and missed these two, so the
+committed `write_swizzle.png` still draws a `vec4` as a 2-D scatter dot where the code now draws an
+x/y/z/w bar chart. The practical consequence is the opposite of what "noise" would imply: those two
+paths want `git add`, not `git checkout --`.
 
-## Open: a box move does not trigger a save
+There is no guard against this **on `main`**. `checkTestTreeWrites` does exist — on
+`claude/determined-vaughan-4048f2` at `5f2af71f3`, which is not an ancestor of `main`; check with
+`git merge-base --is-ancestor 5f2af71f3 main` before relying on it. That branch also moves both
+visualizer harnesses behind `AFIELD_DOCS_ASSETS=1` and commits the fresh bytes, which closes this
+section's subject entirely. Until it lands, the convention that tests write to temp directories is
+convention only. `TestProofDir.proofDir` is the pattern for visual proof artefacts; the doc-capture
+tests do not use it, because their output is meant to be committed.
 
-`set-rect` records into `OperationTranscript` and nothing else — it does not mark a sidecar
-pending, so it does not wake the autosave loop. Before this change, selecting a box happened to
-trigger a save, which flushed any accumulated moves along with it. It no longer does, so "drag some
-boxes, edit nothing, quit" loses the layout. Editing any sidecar-backed property still saves, and
-still flushes the moves: verified on 2026-09-05 by dragging a box twice and then renaming it, after
-which `metadata.edn` carried both drags.
+## A box move does not trigger a save, and did not before this change either
 
-Making `set-rect` mark the document dirty would fix that and is probably right. It would also mean
-that moving a box in a committed demo dirties the repository again — correctly, because you changed
-it, and that is what `--read-only` is for.
+`set-rect` records into `OperationTranscript` and nothing else — it does not mark a sidecar pending,
+so it does not wake the autosave loop. That was true before this change too, and the first version of
+this section got the mechanism wrong by saying selection triggered a save.
+
+It did not. `code_editorState` is **not** in `Box.ioSeparateProperties` (which holds `code`, `name`
+and the shader properties), so an editorState write cannot mark a sidecar pending and cannot start a
+save. What actually happened is the `altered` gate at `saving.kt:490`: a save running for some other
+reason compared `metadata.edn`, found it different *only* because editorState had moved, set
+`altered = true`, and detonated the whole seven-producer fan-out. Selection did not cause saves; it
+caused saves that were already happening to write everything.
+
+So the accumulated-moves behaviour is unchanged by this branch, not broken by it — save *triggering*
+is bit-identical to base for any writable session, because every gate went `!ephemeral` ->
+`writesToDisk` and those are equal whenever `readOnly` is false. "Drag some boxes, edit nothing,
+quit" lost the layout before this change as well. Editing any sidecar-backed property saves and
+flushes the moves: verified 2026-09-05 by dragging a box twice and then renaming it, after which
+`metadata.edn` carried both drags.
