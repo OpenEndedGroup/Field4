@@ -43,7 +43,9 @@ import kotlin.math.roundToLong
 private data class DocumentTarget(
     val sessionKey: String,
     val documentName: String,
-    val scratch: Boolean
+    val scratch: Boolean,
+    /** Open the real document, but with the write-back path switched off. */
+    val readOnly: Boolean = false
 )
 
 private data class CapturedProcessResult(
@@ -100,7 +102,12 @@ private fun registerDocumentSession(session: WebSocketSession, info: SessionInfo
     broadcastWelcomeEvent("session-attached")
 }
 
-private fun resolveDocumentTarget(documentName: String?, scratch: Boolean, sessionKey: String? = null): DocumentTarget {
+private fun resolveDocumentTarget(
+    documentName: String?,
+    scratch: Boolean,
+    sessionKey: String? = null,
+    readOnly: Boolean = false
+): DocumentTarget {
     val trimmed = documentName?.trim().takeIf { !it.isNullOrEmpty() }
     val explicitSessionKey = sessionKey?.trim().takeIf { !it.isNullOrEmpty() }
     if (explicitSessionKey != null) {
@@ -108,7 +115,8 @@ private fun resolveDocumentTarget(documentName: String?, scratch: Boolean, sessi
         return DocumentTarget(
             sessionKey = explicitSessionKey,
             documentName = trimmed ?: existing?.documentName ?: explicitSessionKey.substringAfterLast("/"),
-            scratch = scratch || existing?.ephemeral == true
+            scratch = scratch || existing?.ephemeral == true,
+            readOnly = readOnly || existing?.readOnly == true
         )
     }
     if (scratch || trimmed == null) {
@@ -120,10 +128,15 @@ private fun resolveDocumentTarget(documentName: String?, scratch: Boolean, sessi
             scratch = true
         )
     }
+    // The one route to a real, named, existing document. Before `readOnly` existed there was no
+    // way to reach one without the write-back path: asking for `scratch` above throws the name
+    // away and synthesises a new directory, so "open midi_clip without touching it" was not
+    // expressible.
     return DocumentTarget(
         sessionKey = home + "/" + trimmed,
         documentName = trimmed,
-        scratch = false
+        scratch = false,
+        readOnly = readOnly
     )
 }
 
@@ -139,7 +152,8 @@ private fun createSessionInformation(target: DocumentTarget, agentManaged: Boole
         filename = target.sessionKey,
         documentName = target.documentName,
         root = root,
-        ephemeral = target.scratch
+        ephemeral = target.scratch,
+        readOnly = target.readOnly || ReadOnlyDocuments.global
     )
     // Only genuine agent-backdoor loads are agent-managed: keep the agent's box names
     // (no AI auto-rename). Interactive browser sessions (the `hello` handshake) must NOT set
@@ -156,9 +170,10 @@ internal fun attachDocumentSession(
     username: String = "agent",
     scratch: Boolean = false,
     sessionKey: String? = null,
-    agentManaged: Boolean = false
+    agentManaged: Boolean = false,
+    readOnly: Boolean = false
 ): SessionInformation {
-    val target = resolveDocumentTarget(documentName, scratch, sessionKey)
+    val target = resolveDocumentTarget(documentName, scratch, sessionKey, readOnly)
     File(home).mkdirs()
 
     if (!target.scratch && !isFieldAppRouteDocumentName(target.documentName)) {
@@ -173,6 +188,16 @@ internal fun attachDocumentSession(
         // Once an agent backdoor has touched a live document, keep it agent-managed even if a
         // browser later attaches to the same session — never downgrade agent protection.
         if (agentManaged) found.agentManaged = true
+        // `readOnly` is fixed when the session is built, so attaching to one that is already open
+        // writable cannot make it read-only. Say so rather than accept the request and ignore it;
+        // the snapshot this returns reports the real value, so a caller can check as well as read.
+        if (target.readOnly && !found.readOnly) {
+            lprintln(
+                "warning,agent_backdoor",
+                "read-only ignored for ${target.documentName}: already open and writable in this " +
+                    "Field. Close it, or launch with --read-only."
+            )
+        }
         attachRootToMetaroot(found.root)
         registerDocumentSession(session, found)
         sendExpectedBoxCount(session, found)
@@ -403,7 +428,8 @@ internal fun launchDocumentSessionAttach(
     username: String = "agent",
     scratch: Boolean = false,
     sessionKey: String? = null,
-    agentManaged: Boolean = false
+    agentManaged: Boolean = false,
+    readOnly: Boolean = false
 ) {
     agentBackdoorScope.launch {
         thisSession.set(session)
@@ -414,7 +440,8 @@ internal fun launchDocumentSessionAttach(
                 username = username,
                 scratch = scratch,
                 sessionKey = sessionKey,
-                agentManaged = agentManaged
+                agentManaged = agentManaged,
+                readOnly = readOnly
             )
         } catch (t: Throwable) {
             lprintln("error,agent_backdoor", "document attach failed for ${documentName ?: sessionKey ?: "<scratch>"}: ${t.message}")
@@ -644,7 +671,8 @@ internal fun buildAgentSnapshot(info: SessionInformation): AgentDocumentSnapshot
         documentName = info.documentName,
         scratch = info.ephemeral,
         sessionKey = info.filename,
-        boxes = boxes
+        boxes = boxes,
+        readOnly = info.readOnly
     )
 }
 
@@ -655,7 +683,7 @@ private fun applyAgentProperty(box: Box, property: String, value: JsonElement) {
             value.isString -> {
                 if (property == "name") box.name = value.content
                 else box.setPropertyRaw(property, value.content, doResync = true)
-                if (Box.ioSeparateProperties.containsKey(property) && !box.inside.ephemeral) {
+                if (Box.ioSeparateProperties.containsKey(property) && box.inside.writesToDisk) {
                     box.inside.markSidecarPending(box.id, property)
                 }
             }
@@ -984,7 +1012,8 @@ fun installAgentBackdoorHandlers() {
             documentName = request.documentName,
             username = request.username,
             scratch = request.scratch,
-            agentManaged = true
+            agentManaged = true,
+            readOnly = request.readOnly
         )
         reply(Message("agent-open-document").payload(buildAgentSnapshot(info)))
         Handled.yes

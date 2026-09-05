@@ -2844,6 +2844,16 @@ fun installHistoryHandlers() {
     handlers["store-history-screenshot"] = mutableSetOf({ message, reply ->
         val req = Json.decodeFromJsonElement<HistoryScreenshotStoreRequest>(message.payload!!)
         val info = thisSessionInfo.get()
+        // The second screenshot producer, and the one that actually fires in a desktop Field:
+        // `HistoryScreenshotCapture.captureFourWindowsOnSave` writes channel "four-window" and has
+        // a flag, this one writes "electron-window" from `api.captureHistoryScreenshot()` and has
+        // none. It bypasses `SavingContext.save` entirely — `HistoryMetrics.storeScreenshotDataUrl`
+        // writes straight into `<document>/history_screenshots/` — so the funnel guard cannot see
+        // it and it needs its own.
+        if (!info.writesToDisk) {
+            reply(Message("store-history-screenshot-error").payload(mapOf("error" to "document is read-only")))
+            return@mutableSetOf Handled.yes
+        }
         val versionIndex = if (req.versionIndex >= 0) {
             req.versionIndex
         } else {

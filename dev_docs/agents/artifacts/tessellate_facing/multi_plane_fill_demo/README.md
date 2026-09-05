@@ -11,7 +11,7 @@ Hand this folder to the launcher — it opens the workspace above it, with this 
 listed — or load the file in the offline viewer:
 
 ```
-./field.sh dev_docs/agents/artifacts/tessellate_facing/multi_plane_fill_demo
+./field.sh dev_docs/agents/artifacts/tessellate_facing/multi_plane_fill_demo --read-only
 ```
 
 or, with a Field already running,

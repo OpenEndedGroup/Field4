@@ -610,7 +610,15 @@ data class MacroTranscriptCommandResponse(
 data class AgentOpenDocument(
     val documentName: String? = null,
     val scratch: Boolean = false,
-    val username: String = "agent"
+    val username: String = "agent",
+    /**
+     * Open the named document but never write back to it.
+     *
+     * Not the same as [scratch], which discards the name and synthesises a throwaway document
+     * under `~/.agent-scratch/`. This opens the real thing, read-only, which is what inspecting a
+     * demo committed to a repository needs.
+     */
+    val readOnly: Boolean = false
 )
 
 @Serializable
@@ -618,7 +626,9 @@ data class AgentDocumentSnapshot(
     val documentName: String,
     val scratch: Boolean,
     val sessionKey: String,
-    val boxes: List<AgentBoxSnapshot>
+    val boxes: List<AgentBoxSnapshot>,
+    /** Reported so a caller can check that `open --read-only` was honoured, rather than assume it. */
+    val readOnly: Boolean = false
 )
 
 @Serializable

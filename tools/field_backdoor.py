@@ -442,6 +442,7 @@ class FieldBackdoor:
         self.reply_contexts: dict[str, dict[str, Any]] = {}
         self.document_name: str | None = None
         self.scratch = False
+        self.read_only = False
         self.session_key: str | None = None
         self.boxes: dict[str, dict[str, Any]] = {}
         self._running_state_seen: dict[tuple[str, str], tuple[int, bool]] = {}
@@ -881,6 +882,9 @@ class FieldBackdoor:
         next_document_name = snapshot.get("documentName")
         self.document_name = next_document_name
         self.scratch = bool(snapshot.get("scratch"))
+        # Reported by the server rather than echoed back from the request, so a caller can tell
+        # that read-only was actually honoured.
+        self.read_only = bool(snapshot.get("readOnly"))
         self.session_key = next_session_key
         self.boxes = {}
         self._running_state_seen = {}
@@ -1451,14 +1455,28 @@ class FieldBackdoor:
             self.reply_contexts.pop(reply_name, None)
             self.logger.log("call_for_single_reply_end", name=name, replyName=reply_name)
 
-    async def open_document(self, document: str | None, *, scratch: bool, timeout: float) -> dict[str, Any]:
-        self.logger.log("open_document_start", document=document, scratch=scratch, timeout=timeout)
+    async def open_document(
+        self,
+        document: str | None,
+        *,
+        scratch: bool,
+        timeout: float,
+        read_only: bool = False,
+    ) -> dict[str, Any]:
+        # read_only is not scratch. scratch throws the document name away and synthesises a new
+        # directory under ~/.agent-scratch/; read_only opens the real named document with Field's
+        # write-back path switched off, which is what inspecting a demo committed to a repository
+        # needs. See ReadOnlyDocuments in Server.kt.
+        self.logger.log(
+            "open_document_start", document=document, scratch=scratch, readOnly=read_only, timeout=timeout
+        )
         event = await self.call_for_single_reply(
             "agent-open-document",
             {
                 "documentName": document,
                 "scratch": scratch,
                 "username": "agent",
+                "readOnly": read_only,
             },
             timeout=timeout,
         )
@@ -1467,7 +1485,12 @@ class FieldBackdoor:
             raise BackdoorError("agent-open-document returned an invalid payload")
         self._replace_snapshot(payload)
         self.clear_events()
-        self.logger.log("open_document_complete", documentName=self.document_name, scratch=self.scratch)
+        self.logger.log(
+            "open_document_complete",
+            documentName=self.document_name,
+            scratch=self.scratch,
+            readOnly=self.read_only,
+        )
         result = dict(payload)
         if self.scratch:
             result["scratchLifetime"] = "invocation"
@@ -2716,6 +2739,11 @@ def build_command_parser() -> argparse.ArgumentParser:
     open_parser = subparsers.add_parser("open", add_help=False)
     open_parser.add_argument("document", nargs="?")
     open_parser.add_argument("--scratch", action="store_true")
+    open_parser.add_argument(
+        "--read-only",
+        action="store_true",
+        help="open the named document without writing back to it (not the same as --scratch)",
+    )
 
     subparsers.add_parser("status", add_help=False)
     subparsers.add_parser("snapshot", add_help=False)
@@ -3012,7 +3040,12 @@ async def dispatch_command(
 ) -> dict[str, Any]:
     client.logger.log("command_dispatch_start", commandLine=command_line, command=args.command)
     if args.command == "open":
-        data = await client.open_document(args.document, scratch=args.scratch or not args.document, timeout=client.default_timeout)
+        data = await client.open_document(
+            args.document,
+            scratch=args.scratch or not args.document,
+            timeout=client.default_timeout,
+            read_only=getattr(args, "read_only", False),
+        )
         if client.graphics_context_enabled:
             data = dict(data)
             data["graphicsContext"] = await client.ensure_graphics_context(timeout=client.default_timeout)
@@ -3033,6 +3066,7 @@ async def dispatch_command(
             "managedLog": str(client.managed_log_path) if client.managed_log_path else None,
             "documentName": client.document_name,
             "scratch": client.scratch,
+            "readOnly": client.read_only,
             "scratchLifetime": "invocation" if client.scratch else None,
             "scratchPortReuse": False if client.scratch else None,
             "sessionKey": client.session_key,
@@ -3790,6 +3824,11 @@ async def async_main(argv: list[str], logger: SessionLogger) -> int:
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--document")
     parser.add_argument("--scratch", action="store_true")
+    parser.add_argument(
+        "--read-only",
+        action="store_true",
+        help="open the document without writing back to it (not the same as --scratch)",
+    )
     parser.add_argument("--graphics-context", action="store_true")
     parser.add_argument("--with-playwright", action="store_true")
     parser.add_argument("--command", action="append")
@@ -3847,7 +3886,12 @@ async def async_main(argv: list[str], logger: SessionLogger) -> int:
         logger.log("auto_open_decision", shouldAutoOpen=should_auto_open)
 
         if should_auto_open:
-            await client.open_document(args.document, scratch=args.scratch or not args.document, timeout=args.timeout)
+            await client.open_document(
+                args.document,
+                scratch=args.scratch or not args.document,
+                timeout=args.timeout,
+                read_only=args.read_only,
+            )
             if client.graphics_context_enabled:
                 await client.ensure_graphics_context(timeout=args.timeout)
             if args.with_playwright:

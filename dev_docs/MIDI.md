@@ -264,8 +264,12 @@ Constructing an illegal note is now an error at the point of authorship.
 audition. Open it with:
 
 ```bash
-./field.sh dev_docs/agents/demos/midi_clip
+./field.sh dev_docs/agents/demos/midi_clip --read-only
 ```
+
+`--read-only` because this demo lives in the repository. Without it, changing anything — moving a
+box counts — writes back into `dev_docs/agents/demos/midi_clip/` and leaves the change in your
+`git status`. Drop the flag when you mean to edit the demo. See `dev_docs/document_write_back.md`.
 
 Box 4 reports which audition route it took rather than assuming one, so in Field's own JVM — which
 does not carry the `--add-exports` — it says offline rendering is unavailable and points at
