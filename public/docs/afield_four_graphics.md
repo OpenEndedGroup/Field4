@@ -6,7 +6,7 @@
 - Shader properties such as `vertex`, `fragment`, `compute`, or `vertex_fragment`.
 - Reflected accessors that Field generates by reading the shader interface.
 
-That last part is the trick worth learning. If a vertex shader declares `layout(location = 0) in vec3 pos`, the Kotlin side can write `pos.add(...)` inside `m.set { ... }`. If a shader declares a push constant member named `vertexData`, the Kotlin side can assign `m.vertexData = { vertexData }`. The shader is not just code that runs on the GPU; it is also the contract that shapes the Kotlin API for that box.
+That last part is the one to learn. If a vertex shader declares `layout(location = 0) in vec3 pos`, the Kotlin side can write `pos.add(...)` inside `m.set { ... }`. If a shader declares a push constant member named `vertexData`, the Kotlin side can assign `m.vertexData = { vertexData }`. A shader is both the code that runs on the GPU and the contract that shapes the Kotlin API for its box.
 
 <iframe
   src="/offline.html?file=/field4/assets/canonical_graphics/metadata.edn"
@@ -16,7 +16,7 @@ That last part is the trick worth learning. If a vertex shader declares `layout(
   allowfullscreen>
 </iframe>
 
-## 0. Traditional Triangle
+## A traditional triangle
 
 Start with one shader module and one mesh. `moduleHere { ... }` creates a shader module from the current box's shader properties. `Mesh()` creates draw data. `module += m named "my mesh"` attaches the mesh to the module, and `renderer += module` makes the module part of the window.
 
@@ -76,7 +76,7 @@ void main()
 
 The first example is as small as it can be: vertex data is written directly into the mesh, the shader reads it as vertex attributes, and the fragment shader colors the pixels.
 
-## 1. Buffer-Backed Triangles
+## Buffer-backed triangles
 
 The first triangle put `pos` and `col` directly into the mesh's vertex buffers. Sometimes you want a buffer that is visible as an ordinary named resource in the shader: perhaps the geometry changes every frame, perhaps a compute shader fills it, or perhaps several draws share it. This example uses the simplest version of that pattern: write a few positions into a `defaultBuffer`, bind that buffer to a reflected push-constant member, and draw vertices by index.
 
@@ -165,7 +165,7 @@ void main()
 }
 ```
 
-## 1b. Camera Matrices In A UBO
+## Camera matrices in a UBO
 
 The previous two examples draw in clip-space coordinates. To draw from a camera, the shader needs projection and view matrices. This version stores those matrices in a uniform buffer owned by the module.
 
@@ -222,9 +222,9 @@ void main()
 
 Because the uniform block is named `camera`, the Kotlin side writes `module.camera.p` and `module.camera.m`. The module owns this resource because the block is declared at descriptor set/binding scope, not as a per-mesh push constant.
 
-That same name is also why the Kotlin above says `afield.four.util.Camera()` in full rather than the usual bare `Camera()`. `moduleHere()` generates a Kotlin class per uniform block, capitalising the block's name, so this box's own preamble declares a `Camera` — and a declaration in the box beats any import, including the `afield.four.util.*` that every box already gets. Writing `import afield.four.util.Camera` does *not* help: the generated `Camera` still wins, `camera.at` then fails to resolve, and the example stops compiling. The fully-qualified name is required here, not leftover verbosity. Rename the uniform block and the collision goes away.
+That same name is also why the Kotlin above says `afield.four.util.Camera()` in full rather than the usual bare `Camera()`. `moduleHere()` generates a Kotlin class per uniform block, capitalising the block's name, so this box's own preamble declares a `Camera` — and a declaration in the box beats any import, including the `afield.four.util.*` that every box already gets. Writing `import afield.four.util.Camera` does *not* help: the generated `Camera` still wins, `camera.at` then fails to resolve, and the example stops compiling. Rename the uniform block and the collision goes away.
 
-## 2. Camera As Push Constants
+## Camera as push constants
 
 For quick sketches, it is often simpler for the mesh to carry the camera matrices as push constants. The draw data still lives in `m`, but now `m.p` and `m.m` are assigned directly before the draw.
 
@@ -281,7 +281,7 @@ void main()
 
 That is why the Kotlin changed from `module.camera.p = ...` to `m.p = ...`. `p` and `m` are reflected onto the mesh because the shader reads them from the per-draw push constant block.
 
-## 2b. Keyboard Camera
+## Keyboard camera
 
 `KeyCamera` does not change the shader contract. It wraps a `Camera` and updates it from keyboard input while the renderer runs.
 
@@ -309,9 +309,9 @@ m.set(3, 1) {
 var kc by keyCamera(camera=camera)
 ```
 
-The shader is the same push-constant shape as the previous section, just without the color attribute. The lesson is that camera control is ordinary Kotlin state around the same rendering contract.
+The shader is the same push-constant shape as the previous section, just without the color attribute. Camera control is ordinary Kotlin state around the same rendering contract.
 
-## 3. Compute Shader
+## Compute shader
 
 Compute modules use the same box model, but they dispatch workgroups instead of drawing vertices. This example writes an input buffer, dispatches a `ComputeMesh`, reads the output buffer, and prints a trace. It does not draw to the graphics window, so there is no screenshot for this section.
 
@@ -382,9 +382,9 @@ void main() {
 
 `layout(local_size_x = 16)` matches the Kotlin `localSize`. `m.x`, `m.y`, and `m.z` set the dispatch dimensions. The storage-buffer names become `module.InputBuffer` and `module.OutputBuffer`, which is why Kotlin can map and read/write them directly.
 
-## 3b. Compute Particles, Then Draw Them
+## Compute particles, then draw them
 
-Section 3 dispatched a compute shader and read the result back on the CPU. The more useful pattern keeps the data on the GPU: one box computes into a buffer, a *second* box draws from that same buffer, and the two are wired together through the box graph rather than through a shared global.
+The compute example above dispatched a shader and read the result back on the CPU. The more useful pattern keeps the data on the GPU: one box computes into a buffer, a *second* box draws from that same buffer, and the two are wired together through the box graph rather than through a shared global.
 
 This is the first example that needs two boxes, so it is also the first place the graph topology matters. The compute box publishes its output buffer as a property:
 
@@ -455,7 +455,7 @@ void main() {
 }
 ```
 
-`{% include "fieldProbe" %}` is Field's shader templating pulling in the probe preamble — see [Field probes](field_probes.md). Templating in general is section 5b below.
+`{% include "fieldProbe" %}` is Field's shader templating pulling in the probe preamble — see [Field probes](field_probes.md). Templating in general is [Shader templating](#shader-templating) below.
 
 The draw box is a **child of the compute box**, and that is the only reason `outputPositions` resolves:
 
@@ -516,7 +516,7 @@ void main()
 
 There is no captured image for this section: it is a two-box scene, and the capture harness on this page drives one box per figure. To see it, open the corpus document in the viewer above, or replay it as a transcript — `dev_docs/agents/transcripts/threebox.yaml` is the same renderer/compute/draw shape built as a runnable three-box scene.
 
-## 4. Texturing
+## Texturing
 
 Textures add another reflected resource. The shader declares a sampler named `bbc`; Kotlin creates a `LoadedTexture` property with the same name and transfers it before drawing.
 
@@ -595,7 +595,7 @@ void main()
 
 The name `bbc` is the bridge. Kotlin creates `prop<LoadedTexture>(bbc)`, the shader declares `sampler2D bbc`, and Field binds the texture resource by matching that reflected name.
 
-## 4b. Multi-Texture
+## Multi-texture
 
 A shader can declare an *array* of samplers, and the Kotlin side binds it by publishing an array of image views under the array's name. The reflected-name contract is the same as the single texture above; only the type changes.
 
@@ -647,7 +647,7 @@ m.set(4, 2) {
 }
 ```
 
-`prop<Array<ImageView>>(ta)` is the whole difference. Note that `LoadedTexture` is not itself the bindable resource — `bbc.imageView` is, which is why the array is built from image views rather than from the textures. All three entries here point at the same image file, so the array binding is what the example demonstrates, not the three pictures. The figure above is therefore pixel-identical to section 4's by construction — same quad, same texture. What it proves is that the array *links and draws*, which is exactly what fails when the count is wrong.
+`prop<Array<ImageView>>(ta)` is the whole difference. Note that `LoadedTexture` is not itself the bindable resource — `bbc.imageView` is, which is why the array is built from image views rather than from the textures. All three entries here point at the same image file, so the array binding is what the example demonstrates, not the three pictures. The figure above is therefore pixel-identical to the texturing one by construction — same quad, same texture. What it proves is that the array *links and draws*, which is exactly what fails when the count is wrong.
 
 The fragment shader declares the array and indexes it:
 
@@ -665,9 +665,9 @@ void main()
 }
 ```
 
-The declared array length (`ta[3]`) is the descriptor count, and the count must match **exactly**: publishing two views against `ta[3]` is refused at link time with `can't link texture resource ta of length 2 but the shader expects 3`, and the box draws nothing. That is worth knowing because it is the state the saved lesson is in — the box in the corpus binds two views against a three-slot declaration, so running it as saved reproduces that error. Fixing it is a one-line choice: supply a third view, as above, or narrow the declaration to `ta[2]`.
+The declared array length (`ta[3]`) is the descriptor count, and the count must match **exactly**: publishing two views against `ta[3]` is refused at link time with `can't link texture resource ta of length 2 but the shader expects 3`, and the box draws nothing. That matters here because it is the state the saved lesson is in — the box in the corpus binds two views against a three-slot declaration, so running it as saved reproduces that error. Fixing it is a one-line choice: supply a third view, as above, or narrow the declaration to `ta[2]`.
 
-## 4c. Loading A glTF Model
+## Loading a glTF model
 
 Everything so far built its geometry in Kotlin. `gltfModelHere(path)` instead reads a glTF file and hands back a module *and* the meshes it found, with the shaders already matched to how that data is laid out:
 
@@ -738,7 +738,7 @@ void main()
 
 `vertexOffset`, `indexOffset` and `vertexStride` are what let every primitive in the file share one pair of buffers: the mesh selects its slice by offset instead of owning an allocation. Manual indexing (`indexData[indexOffset + gl_VertexIndex]`) rather than a bound index buffer is the same trade.
 
-The companion lesson swaps one call for the textured variant, `gltfModelWithTextureHere(path)`, which additionally binds the file's images as a sampler array — the array-of-samplers pattern from 4b, populated from the asset rather than by hand:
+The companion lesson swaps one call for the textured variant, `gltfModelWithTextureHere(path)`, which additionally binds the file's images as a sampler array — the array-of-samplers pattern above, populated from the asset rather than by hand:
 
 ```diffstatic {data-lang=glsl}
 layout(location = 2) in vec2 vUV;
@@ -754,7 +754,7 @@ It also shows how to place a primitive using the file's own transform: `camera.m
 
 Neither carries a figure: both need a glTF file on disk, and the repository ships none. The paths above point at the [glTF Sample Models](https://github.com/KhronosGroup/glTF-Sample-Models) collection, which is what the saved lessons were written against — in the corpus they are absolute paths into the author's checkout, so expect to repoint them. If you want geometry from disk with assets that *are* in the tree, see [Geometry from disk](geometry_from_disk.md).
 
-## 5. Render To Texture
+## Render to texture
 
 Everything so far drew into the window. `RenderToTexture` gives a module somewhere else to draw: an offscreen image that a later box can sample. It is the building block for post-processing, feedback, and anything that needs to read what it just drew.
 
@@ -797,7 +797,7 @@ loop {
 
 Three lines carry the idea. `renderer.renderList += "target" to target` schedules the offscreen pass. `target += "boo" to module` puts the drawing inside that pass instead of on screen. And `target.parameters.clearFirst = true` shows that the target's parameters stay live — you can flip them from the editor while the loop is running, which is the point of doing this in Field rather than in a build.
 
-The consuming box is a **child** of the producer, and this is the mechanism worth learning:
+The consuming box is a **child** of the producer, and that is the whole binding mechanism:
 
 ```diffstatic {data-lang=kotlin}
 prop<RenderToTexture>(bbc) = target
@@ -824,7 +824,7 @@ mesh.set(4, 2) {
 }
 ```
 
-`prop<RenderToTexture>(bbc) = target` reads `target` — the parent's property, visible by name because this box is a child — and republishes it as `bbc`, because *this* box's fragment shader declares `sampler2D bbc`. Renaming on republication is the whole trick: the resource is identified by the reflected name the consuming shader uses, so a box can bind any upstream target to whatever its own shader happens to call it.
+`prop<RenderToTexture>(bbc) = target` reads `target` — the parent's property, visible by name because this box is a child — and republishes it as `bbc`, because *this* box's fragment shader declares `sampler2D bbc`. Renaming on republication is what makes it general: the resource is identified by the reflected name the consuming shader uses, so a box can bind any upstream target to whatever its own shader happens to call it.
 
 ```diffstatic {data-lang=glsl}
 #version 450
@@ -840,11 +840,11 @@ void main()
 }
 ```
 
-Compare that with section 4's fragment shader: it is the same shader. From the consumer's side there is no difference between sampling a file loaded from disk and sampling the output of another box — which is why the two boxes in this pair are the smallest complete statement of how `afield.four` composes.
+Compare that with the texturing fragment shader: it is the same shader. From the consumer's side there is no difference between sampling a file loaded from disk and sampling the output of another box — which is why the two boxes in this pair are the smallest complete statement of how `afield.four` composes.
 
 Both boxes together are one scene, so there is no single-box figure for it here; the graphics-scene transcripts `threebox` and `spin_glass` in [agent transcripts](agent_transcripts.md) are runnable versions of the same producer/consumer shape.
 
-## 5. Ping-Pong Render To Texture
+## Ping-pong render to texture
 
 A target you can read *and* write in the same pass is a contradiction, so feedback needs two images with the roles swapped every frame. `PingPongRenderToTexture` does that bookkeeping:
 
@@ -895,9 +895,9 @@ prop<HasImageView>(bbc) = target.thisImageView
 
 Note the property type here is `HasImageView`, not `RenderToTexture`. A ping-pong target is not one image, so the two halves are handed out individually, and `HasImageView` is the interface that any bindable image satisfies. `module { target.apply() }` inside the module builder is what matches the module's pipeline state — format, sample count, attachment layout — to the target it draws into; without it the pipeline and the target disagree.
 
-## 5. A Blur Kernel Across Three Boxes
+## A blur kernel across three boxes
 
-The blur chain is the longest topology in the corpus — `window → 5. Bluring → 5. kernel → 5. draw blur` — and it is worth reading as a whole because each box does exactly one thing.
+The blur chain is the longest topology in the corpus — `window → 5. Bluring → 5. kernel → 5. draw blur` — and it reads best as a whole, because each box does exactly one thing.
 
 `5. Bluring` is a plain `RenderToTexture` producer like the one above, drawing a checkerboard so there is something with hard edges to blur:
 
@@ -1015,7 +1015,7 @@ void main()
 }
 ```
 
-## 5. Shader Includes
+## Shader includes
 
 Shader properties are templated before they reach the compiler, and `{% include "name" %}` pulls in another property by name. `5. included` shares its attribute and push-constant declarations with a sibling box:
 
@@ -1070,7 +1070,7 @@ void main()
 
 Note that `#include` here is the C-style directive handled by the shader compiler's include resolver, while `{% include %}` above is Field's own templating over box properties — two different mechanisms that happen to share a name. This example needs a Lygia checkout on disk, which is why it carries no figure.
 
-## 5b. Shader Templating
+## Shader templating
 
 Beyond includes, a shader property is a template with values supplied from Kotlin. `shaderTemplate["col"]` publishes a map of `Resolver`s, and the shader substitutes them with `{{ … }}`:
 
@@ -1114,7 +1114,7 @@ A `Resolver` is a lambda returning GLSL *source*, not a value: the string is spl
 
 In the corpus this box also carries a `//%-` line, which is Field's execution break: everything above it runs once when the box is first evaluated, and the part below is what re-runs. Declaring the template before the break means the substitution is registered before `moduleHere` reads the shader.
 
-## 5c. Generated Push-Constant Blocks
+## Generated push-constant blocks
 
 Templating gets more interesting when the substituted source is itself generated from a Kotlin type. `PushConstants<T>` reflects a Kotlin class into a GLSL push-constant declaration:
 
@@ -1173,7 +1173,7 @@ void main()
 
 `pc.glsl()` emits the block declaration; `{{ pc.dec }}` splices it in; `m.push.bindAll { pc }` binds the whole Kotlin object to it in one call rather than member by member; and `loadRegs()` plus the accessor `a()` are part of the generated preamble, which is why the shader reads `a()` rather than `pc.a`. `nextFreeOffset(16)` computes where a hand-written extra member can sit without colliding with the generated layout — the escape hatch for the case the generator does not cover.
 
-## 6. Debugging: printf From A Shader
+## Debugging: printf from a shader
 
 Vulkan can print from inside a shader. Enable the extension, guard the call so it does not fire for every invocation, and the message arrives through the validation layer:
 
@@ -1226,7 +1226,7 @@ void main()
 
 Two things are required. `#extension GL_EXT_debug_printf : enable` has to be there, and printing needs validation layers switched on (`Options.validation`) — without them the call compiles and silently does nothing. And the guard matters: `debugPrintfEXT` with no condition in a shader running over a million invocations will flood the log and stall the frame. Note the guard in this example (`gl_VertexIndex == 10`) never fires for a three-vertex draw, which is the state the lesson is saved in: the plumbing is there to be switched on by changing the condition.
 
-## 6. Debugging: Texture Probes
+## Debugging: texture probes
 
 The other debugging tool goes the other way — instead of printing text, it samples a value out of a running shader and draws it. `fieldProbeHere()` creates the probe and `{% include "fieldProbe" %}` brings the shader side in:
 
@@ -1290,9 +1290,9 @@ void main()
 
 A second probe lesson (`6b. debugging / mapping - Texture probe example`) goes further and warps the sampled distribution before display — `AdaptiveQuantileWarp` and `QuantileWarpConfig` — which is what you reach for when the interesting variation is buried in a narrow part of the range.
 
-There is no figure here, and there should not be. The probe's value is the readback, and `.display("probe")` puts that in the *box's* output area, not in the Vulkan window — so a native-window capture of this example shows only the textured quads, pixel-identical to section 4, and would suggest the probe produced nothing. The quads also stack along z, so from the camera they land on top of one another and 100 of them look like one.
+There is no figure here, and there should not be. The probe's value is the readback, and `.display("probe")` puts that in the *box's* output area, not in the Vulkan window — so a native-window capture of this example shows only the textured quads, pixel-identical to the texturing figure, and would suggest the probe produced nothing. The quads also stack along z, so from the camera they land on top of one another and 100 of them look like one.
 
-## 6. Streaming A Target Over The Network
+## Streaming a target over the network
 
 `FieldRTTStreamer` turns a render target into an encoded video stream, which is how a Field sketch drives a display it is not attached to. Its largest consumer is the Vision Pro front end — see **[Apple Vision Pro](vision.md)**, which covers the stereo side-by-side layout, the media wire's pose tail, and `tagPosesFrom` for stamping a frame with the head pose it was rendered from:
 
@@ -1322,9 +1322,9 @@ The shape is exactly the `RenderToTexture` producer from earlier — `renderList
 
 There is no figure: the picture this produces arrives at a receiver on `127.0.0.1:9001`, not in a window.
 
-## 6. A GPU Radix Sort
+## A GPU radix sort
 
-Not every compute job is a shader you write. `GpuRadixSort` is a prepackaged one, and this example is worth reading for how it schedules work rather than for the sort itself:
+Not every compute job is a shader you write. `GpuRadixSort` is a prepackaged one, and this example is about how it schedules work rather than about the sort itself:
 
 ```diffstatic {data-lang=kotlin}
 val sorter = GpuRadixSort()
@@ -1358,7 +1358,7 @@ Note `hosted()` for readback. For a GPU→CPU read that happens every frame, hos
 
 There is no figure: this box sorts and prints, and draws nothing.
 
-## 7. Slang
+## Slang
 
 The same box model accepts [Slang](https://shader-slang.org) instead of GLSL through the `vertex_fragment` property, which holds both stages in one file. The Kotlin side does not change at all — modules, meshes, buffers and reflected accessors work the same way, because reflection reads the compiled shader interface rather than the source language.
 
@@ -1401,13 +1401,13 @@ loop {
 }
 ```
 
-The corpus box for this lesson (`7. slang — hello triangle`) is also the best-commented file in the collection, and is worth opening directly — it is written as a tutorial, and it makes two points in passing that generalise beyond Slang. First, buffer sizes are a guess that Field will correct: `size = 3.vec4s` is set too small there, and the buffer resizes dynamically rather than failing. Second, `perFrame = true` allocates one buffer per frame in flight, so a write never has to wait on the GPU to finish reading.
+The corpus box for this lesson (`7. slang — hello triangle`) is also the best-commented file in the collection, and is written as a tutorial — open it directly and it makes two points in passing that generalise beyond Slang. First, buffer sizes are a guess that Field will correct: `size = 3.vec4s` is set too small there, and the buffer resizes dynamically rather than failing. Second, `perFrame = true` allocates one buffer per frame in flight, so a write never has to wait on the GPU to finish reading.
 
-A second Slang lesson (`7b. slang — Texture`) is the same step again with a texture bound, and it makes the language-independence claim concrete: the Kotlin is section 4's texturing code unchanged, `prop<LoadedTexture>` and all, because the resource is matched by reflected name and the name survives the change of shader language.
+A second Slang lesson (`7b. slang — Texture`) is the same step again with a texture bound, and it makes the language-independence claim concrete: the Kotlin is the texturing code from earlier, unchanged, `prop<LoadedTexture>` and all, because the resource is matched by reflected name and the name survives the change of shader language.
 
 Slang requires `slangc` to be available; without it the `vertex_fragment` property cannot be compiled, which is why neither carries a figure.
 
-## 8. Diffusion-Limited Aggregation
+## Diffusion-limited aggregation
 
 The last lesson is the shortest, because the work is packaged:
 
@@ -1424,7 +1424,7 @@ var dla = ShaderDlaSystem() {
 dla.installInto()
 ```
 
-`installInto()` is the part that matters for the argument this page has been making. It writes the system's shaders into *this box's* shader properties, so a packaged effect arrives as source you can edit rather than as a closed component. The vertex shader it installs is a million-particle random walk that reads the accumulated image as a texture, steps each walker, sticks it when it touches something solid, and writes the particle state back through a buffer reference — simulation and drawing in a single vertex shader, with no compute pass at all:
+`installInto()` is where the page's argument lands. It writes the system's shaders into *this box's* shader properties, so a packaged effect arrives as source you can edit rather than as a closed component. The vertex shader it installs is a million-particle random walk that reads the accumulated image as a texture, steps each walker, sticks it when it touches something solid, and writes the particle state back through a buffer reference — simulation and drawing in a single vertex shader, with no compute pass at all:
 
 ```diffstatic {data-lang=glsl}
 void main() {
@@ -1462,11 +1462,11 @@ void main() {
 }
 ```
 
-`push.walkStepPx`, `push.solidThreshold`, `push.stuckRed` and the rest are reflected push-constant members, so every constant in the simulation is a Kotlin lambda away from being animated. This is the payoff of the reflected-interface contract that section 0 started with: at a million particles the shader is still the thing you edit.
+`push.walkStepPx`, `push.solidThreshold`, `push.stuckRed` and the rest are reflected push-constant members, so every constant in the simulation is a Kotlin lambda away from being animated. This is the payoff of the reflected-interface contract this page opened with: at a million particles the shader is still the thing you edit.
 
-No figure, and the reason is worth recording because it is a property of DLA rather than of Field. Aggregation is a race between walker density and canvas area, and the legible window between the two failure modes is narrow. Captured as written — a million walkers over a 4112×2524 window — eight seconds and 600 frames grow a cluster a few pixels across on a field of near-black walkers: correct, and invisible at page scale. Shrink the canvas to 900×560 to raise density and every walker is adjacent to something solid on the first step, so the whole field sticks at once and the picture is uniform magenta noise. A good still needs a density between those and more frames than a docs build should spend, so it is left to run live.
+No figure, and the reason is a property of DLA rather than of Field. Aggregation is a race between walker density and canvas area, and the legible window between the two failure modes is narrow. Captured as written — a million walkers over a 4112×2524 window — eight seconds and 600 frames grow a cluster a few pixels across on a field of near-black walkers: correct, and invisible at page scale. Shrink the canvas to 900×560 to raise density and every walker is adjacent to something solid on the first step, so the whole field sticks at once and the picture is uniform magenta noise. A good still needs a density between those and more frames than a docs build should spend, so it is left to run live.
 
-## Where These Examples Come From
+## Where these examples come from
 
 Every example on this page is a box in a real Field document, `canonical_graphics`, which is
 committed under `public/docs/assets/canonical_graphics/` and is what the viewer at the top of this
@@ -1477,15 +1477,15 @@ shader files, records the parent chain each one needs in order to run, and carri
 from Field API name (`RenderToTexture`, `LoadedTexture`, `computeModuleHere`, `GpuRadixSort`, …) to
 the lessons that use it.
 
-A caveat worth stating plainly, since these are working notes rather than a polished sample pack:
-the boxes are a real working document, and a few of them are mid-thought. Where running a lesson as
-saved does not do what its name suggests, this page says so — the sampler-array count in 4b and the
-never-firing printf guard in section 6 are both noted above rather than silently corrected.
+These are working notes rather than a polished sample pack: the boxes are a working document, and a
+few of them are mid-thought. Where running a lesson as saved does not do what its name suggests,
+this page says so — the sampler-array count in the multi-texture lesson and the never-firing printf
+guard are both noted above rather than silently corrected.
 
-## Which Sections Have Figures
+## Which sections have figures
 
-The images on this page are real captures: the docs build runs the box against a live Vulkan
-renderer and screenshots the native window. Sections without a figure are the ones a single box
+The images on this page are captures: the docs build runs the box against a live Vulkan renderer
+and screenshots the native window. Sections without a figure are the ones a single box
 cannot produce on its own, and the reason is stated in each:
 
 - **Two-box scenes** — render-to-texture, ping-pong, the blur chain, compute-then-draw particles.
@@ -1499,7 +1499,7 @@ cannot produce on its own, and the reason is stated in each:
 - **Not in the Vulkan window** — the texture probe's answer is a readback shown in the box's output
   area, and the shader `#include` example needs a sibling box to include from.
 - **Wrong timescale** — the DLA aggregate needs longer to become legible than a docs build should
-  spend, in a density band narrower than either default; section 8 explains both failure modes.
+  spend, in a density band narrower than either default; the DLA section explains both failure modes.
 
 ## Fabricate Renderer
 
