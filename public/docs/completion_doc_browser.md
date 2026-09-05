@@ -1,16 +1,14 @@
 # The completion panel is a code browser
 
 When you trigger autocomplete (`ctrl-space`), the panel on the right of the
-popup is not just a static blurb. Every `[Symbol]` cross-reference in a KDoc
-comment — and the `source …:line` footer at the bottom of a card — is a live
-link. Click one and the panel *re-renders as that symbol's own card*: the same
-category header, the same highlighted signature, the same rendered
-documentation. A small back / forward control with a breadcrumb trail appears so
-you can retrace your steps. The documentation panel is a small recursive browser
-over Field's code, without ever leaving the editor.
+popup is clickable. Every `[Symbol]` cross-reference in a KDoc comment, and the
+`source …:line` footer at the bottom of a card, is a live link. Click one and
+the panel *re-renders as that symbol's own card*: the same category header, the
+same highlighted signature, the same rendered documentation. A small back /
+forward control with a breadcrumb trail appears so you can retrace your steps.
 
-Links only appear when they resolve. A `[Symbol]` that Field
-can't find stays plain text — there are no dead links to click.
+Links only appear when they resolve. A `[Symbol]` that Field can't find stays
+plain, bracketed text.
 
 ## A worked example
 
@@ -53,14 +51,12 @@ try {
 } catch (e: Throwable) {}
 ```
 
-The `Vec2` in the documentation is underlined — that is the code-link. Notice
-what sits right next to it: the sentence ends *"…converting each component to
-[Float]."* with `[Float]` left as plain, bracketed text. `Float` is a
-classpath-only type that this build's source index can't resolve, so rather than
-offer a link that would go nowhere, Field leaves it literal. Resolved cross-refs
-become links; unresolved ones never do. (The `source …:line` line at the very
-bottom of the card is a link too, pointing straight at the definition's location
-in the source.)
+The `Vec2` in the documentation is underlined: that is the code-link. The same
+sentence ends *"…converting each component to [Float]."*, and there `[Float]`
+stays literal. `Float` is a classpath-only type that this build's source index
+can't resolve, so Field leaves it unlinked rather than offer a link that would
+go nowhere. The `source …:line` line at the very bottom of the card is a link
+too, pointing at the definition's location in the source.
 
 ## Following a link
 
@@ -77,21 +73,14 @@ From here the browsing is recursive. `Vec2`'s card is itself linkified, so any
 breadcrumb) returns you to the `vec` card you came from; `›` goes forward again.
 Closing the completion popup resets the trail.
 
-## Reading the codebase by following its cross-references
-
-Reading one symbol's documentation raises a question about a neighbouring one —
-the type it returns, the class it extends, the helper it mentions — and that
-question is normally answered somewhere else. Here it is one click away and one
-click back, in the popup you already opened to write the line.
-
-The underlying autocomplete is covered in the
-[Survival Guide](survivalGuide.md#autocomplete). Conversational code search is
-a separate UI and retrieval path; see [Semantic retrieval](semantic_index.md).
+The autocomplete underneath all this is covered in the
+[Survival Guide](survivalGuide.md#autocomplete). Conversational code search is a
+separate UI and retrieval path; see [Semantic retrieval](semantic_index.md).
 
 ## Local completion history
 
-Field keeps a local, append-only history of autocomplete interactions so the completion helper can be
-measured and improved against what actually happened. A record includes the complete unsaved source,
+Field keeps a local, append-only history of autocomplete interactions, so the completion helper can
+be measured against real use. A record includes the complete unsaved source,
 the edited and related code properties, caret position, each distinct completion ordering shown in the
 popup, and whether a row was accepted or the popup was dismissed. Accepted rows retain their visible
 rank and the resulting source.
@@ -101,10 +90,10 @@ uploaded by this feature. Because they contain full source, treat them with the 
 care as the Field documents themselves. `AFIELD_COMPLETION_INTERACTION_LOG_PATH` can redirect the log
 directory.
 
-## Browsing, rather than resolving
+## What the panel doesn't do
 
-The one thing this panel cannot do is answer a question you cannot yet name: it
-resolves symbols, it does not list them. That is what
-[What's already in the box](reference/index.md) is for — the same declarations,
-read out of the source by the same parser this panel uses, laid out as a
-browsable index. Anything listed there resolves here.
+The panel resolves symbols; it doesn't list them, so it can't help with a
+question you can't yet name. [What's already in the box](reference/index.md) is
+the index for that: the same declarations, read out of the source by the same
+parser this panel uses, laid out to browse. Anything listed there resolves
+here.

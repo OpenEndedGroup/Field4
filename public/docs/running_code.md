@@ -32,7 +32,7 @@ When you run a box, Field does **not** hand your text straight to the Kotlin com
 
 Most of the day-to-day magic — `prop`, `once`, inherited `renderer`/`window`, the typed accessors you get from `moduleHere { }`, `@exported` helpers — is built on these five steps. Everything below is that machinery, in the order the steps run.
 
-There are two distinct "code that writes code" mechanisms, and it helps to keep them straight from the start:
+Two distinct "code that writes code" mechanisms are involved, and they run at different times:
 
 - **Macros** run *before* compilation. They are a source→source rewrite of your text (plus a side-effect: they can inject glue into the preamble, and even set box properties).
 - **`@exported`** runs *after* evaluation. It reflects over what you defined and promotes it into the preamble.
@@ -121,7 +121,7 @@ once.renderer {                       // cached after the first non-null result
 
 ## Property inheritance: how children see a parent's values
 
-Box properties are, underneath, an untyped `name → value` bag per box. Two delegates turn that bag into typed Kotlin properties, differing in **where they read from**:
+Box properties are, underneath, an untyped `name → value` bag per box. Three delegates turn that bag into typed Kotlin properties, differing in **where they read from**:
 
 | Delegate | Read | Write |
 |---|---|---|
@@ -150,7 +150,7 @@ Two things have to be true for a child to use a parent's value:
 
 Both the preamble gather and the value walk follow `parents`. Connecting a child under a parent (`parent.connect(child)`, or selecting the parent and pressing `g` in the UI) is what puts the parent into the child's ancestor chain.
 
-This is the classic graphics gotcha: a freshly created box whose only parent is the document root is a **sibling** of the renderer box, not a descendant. It will *not* inherit `renderer` — the accessor never gathers into it, and the value walk never reaches it. Only after you connect it **beneath the renderer box** does the next run gather the accessor and resolve the live `Renderer`. (See the RectSL galleries, where "each example is a child of the renderer, inheriting `renderer`.")
+This is the classic graphics gotcha: a freshly created box whose only parent is the document root is a **sibling** of the renderer box, not a descendant. It will *not* inherit `renderer` — the accessor never gathers into it, and the value walk never reaches it. Only after you connect it **beneath the renderer box** does the next run gather the accessor and resolve the live `Renderer`. (The [RectSL examples](rectsl_examples.md) are built this way: one `window + renderer` box, with every example connected beneath it.)
 
 The preamble is regenerated **on run**: Field recomputes the gathered preamble, diffs it against the cached copy, and executes only the newly-added segments — so adding a `prop` in a parent and re-running a child is enough to make the new accessor appear.
 
@@ -189,7 +189,7 @@ That makes `@rootExported`/`@metarootExported` the tidy way to define a helper o
 
 ## Generated GLSL accessors: `moduleHere { }`
 
-A shader box's GLSL is not just code — it is also the **contract that shapes the box's Kotlin API**. `moduleHere { }` is a macro: at expansion it introspects the box's vertex/fragment (or compute) shaders and generates typed Kotlin accessors into the preamble, then rewrites itself to the real runtime builder. (The [afield.four Graphics](afield_four_graphics.md) page covers using these from a user's point of view; here we show what is actually generated.)
+A shader box's GLSL is also the **contract that shapes the box's Kotlin API**. `moduleHere { }` is a macro: at expansion it introspects the box's vertex/fragment (or compute) shaders and generates typed Kotlin accessors into the preamble, then rewrites itself to the real runtime builder. (The [afield.four Graphics](afield_four_graphics.md) page covers using these from a user's point of view; here we show what is actually generated.)
 
 For a vertex shader with `layout(location = 0) in vec3 pos;` and a push-constant block, expansion generates lines like:
 
@@ -219,18 +219,18 @@ fun HasBuffer.asParams(): Params = asStructure(Params(), ParamsLayoutMembers())
 
 `{{ stack.auto.name }}` slots in GLSL generate assignable StackSL properties on the module pointer (`var ModulePointer.name: String`) — see [`stack.auto` in the StackSL examples](stacksl_examples.md).
 
-**Where the module's shaders actually come from — the important nuance.** `moduleHere { }` builds its module from the box's **shader-source properties** (`vertex`, `fragment`, prepared into `_vertex`/`_fragment`), **not** from assignments inside the lambda. If the box has no shaders yet, it seeds the defaults (a plain `in vec3 pos` vertex shader and a solid-colour fragment). To hand `moduleHere` a *non-default* shader from code, you must set the box's shader-source property **before** `moduleHere` expands — either by editing the box's shader tab, or from code with `once.vertex { … }` / `once.fragment { … }`:
+**Where the module's shaders come from.** `moduleHere { }` builds its module from the box's **shader-source properties** (`vertex`, `fragment`, prepared into `_vertex`/`_fragment`), **not** from assignments inside the lambda. If the box has no shaders yet, it seeds the defaults (a plain `in vec3 pos` vertex shader and a solid-colour fragment). To hand `moduleHere` a *non-default* shader from code, you must set the box's shader-source property **before** `moduleHere` expands — either by editing the box's shader tab, or from code with `once.vertex { … }` / `once.fragment { … }`:
 
 ```diffstatic {data-lang=kotlin}
 once.vertex { RECT_ANIMATION_VERTEX_SHADER }
 once.fragment { myMaterial.exampleFragmentShader }
 ```
 
-But there is a catch — `once.vertex` runs at *runtime*, and `moduleHere` reads the property at *expansion time*. Getting the order right is exactly what the next section is about.
+`once.vertex` runs at *runtime*, though, and `moduleHere` reads the property at *expansion time*. Getting that order right is what the next section is about.
 
 ---
 
-## The `//%-` fragment break, and the problem it solves
+## The `//%-` fragment break
 
 A box's code can be split into **fragments** with a line whose trimmed text starts with `//%-` (or `/*%-*/`):
 
@@ -240,9 +240,9 @@ val a = expensiveSetup()
 useThe(a)
 ```
 
-Fragments are **partially-editable chunks**, and — crucially — they run in order with **expand → compile → evaluate interleaved per fragment**: fragment N+1 is macro-expanded only *after* fragment N has finished running. Between fragments, the preamble/setup blocks are re-run too.
+Fragments are **partially-editable chunks**, and they run in order with **expand → compile → evaluate interleaved per fragment**: fragment N+1 is macro-expanded only *after* fragment N has finished running. Between fragments, the preamble/setup blocks are re-run too.
 
-Why does that matter? Because macro expansion is not pure (see **Macros** above). Sometimes a later fragment's macro needs a value an earlier fragment set at runtime. The canonical case is seeding a shader for `moduleHere`:
+That ordering matters because macro expansion is not pure (see **Macros** above): sometimes a later fragment's macro needs a value an earlier fragment set at runtime. The canonical case is seeding a shader for `moduleHere`:
 
 ```diffstatic {data-lang=kotlin}
 once.vertex   { RECT_ANIMATION_VERTEX_SHADER }
@@ -262,9 +262,9 @@ Walk it through:
 - **Without** the `//%-`, both are one compilation unit. All of its macros expand first, then it runs. So `moduleHere` expands — reading the box's shaders, finding none, seeding the **default `in vec3 pos`** shader and generating accessors for *that* — *before* `once.vertex` has ever run. The result: the module uses the wrong shader (and, for RectSL, the mesh's vertex attributes won't match the shader's inputs).
 - **With** the `//%-`, fragment 1 runs first: `once.vertex`/`once.fragment` set the box's real shader source. Then fragment 2 is expanded, and `moduleHere` now sees the shader you supplied and generates the correct accessors and module.
 
-So `//%-` is not cosmetic here — it is what makes "set some state, then run a macro that reads it" work. Interactive execution expands and evaluates fragments in sequence. A single Kotlin box launched through the transcript/multi-box path is also awaited fragment by fragment; mixed-language launch groups do not promise the same first-frame ordering across boxes.
+So `//%-` is what makes "set some state, then run a macro that reads it" work. Interactive execution expands and evaluates fragments in sequence. A single Kotlin box launched through the transcript/multi-box path is also awaited fragment by fragment; mixed-language launch groups do not promise the same first-frame ordering across boxes.
 
-**A second worked example, for the preamble half rather than the macro half.** "Between fragments, the preamble/setup blocks are re-run too" (above) is easy to read past, and it carries a consequence of its own: `runLaunchSetupBlocks(box)` sits *inside* the fragment loop, not before it (`execution.kt:1400`). So a fragment that *writes* to the box's preamble at runtime has published a real source declaration by the time the next fragment is compiled. That is exactly how `DataFrame.typed("People")` makes typed columns survive into the second half of the same execution — see [DataFrames in a Box](dataframe.md#fragment-marker). Same shape as `once.vertex` before `moduleHere`, one layer down: not "set state a macro reads", but "declare a type the compiler reads".
+**A second worked example, on the preamble half rather than the macro half.** `runLaunchSetupBlocks(box)` is called from *inside* the fragment loop in `execution.kt`, not before it, which is why the preamble and setup blocks are re-run between fragments. A fragment that *writes* to the box's preamble at runtime has therefore published a real source declaration by the time the next fragment is compiled. That is how `DataFrame.typed("People")` makes typed columns survive into the second half of the same execution — see [DataFrames in a Box](dataframe.md#fragment-marker).
 
 ---
 

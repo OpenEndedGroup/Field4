@@ -1,10 +1,10 @@
 # Building the Docs & Running the Tests
 
-Most pages in this site contain *live* examples: the code you see was actually
-run inside Field, and the screenshots and videos were captured from real output.
-Rebuilding the docs therefore means asking Field to re-execute those examples.
-The test suites use the same machinery to exercise Field end-to-end. This page
-is the short version of how to drive both locally.
+Most pages in this site contain *live* examples: the code you see ran inside
+Field, and the screenshots and videos are captures of its output. Rebuilding the
+docs therefore means asking Field to re-execute those examples. The test suites
+use the same machinery to exercise Field end-to-end. This page is the short
+version of how to drive both locally.
 
 For the full reference (every flag, the intent matrix, and the internals) see
 [`AGENTS.md`](https://github.com/OpenEndedGroup/Field) and
@@ -72,23 +72,22 @@ cd public && python3 -m http.server 8000
 
 ## Checking whether a published figure is still true
 
-A green docs build does not answer that question. The capture cache keys each figure on the fence's own code, its
-options, and a digest of the runner machinery, so editing a stdlib function that a
-fence *calls* used to leave every digest identical: the build was a 100% cache hit
-and re-executed nothing. Two mechanisms close that gap.
+A green docs build does not answer that question, because a cache hit and a
+correct figure look the same from outside. Two mechanisms narrow the gap.
 
-**The digest follows the code a fence reaches.** Each fence also hashes the source
-files its code text actually names (`sourceRefsDigest`), mapped through the
-committed [codebase reference](reference/index.md), so an `incremental` build
-re-captures the figures a stdlib edit can actually affect. What it cannot see is an
-*indirect* change — a function called by the function you edited.
-`FIELD_DOCS_SOURCE_REFS=stdlib` hashes the whole indexed stdlib for every fence
-instead (catches that, at the cost of re-capturing everything); `=off` restores the
-old behaviour.
+The capture cache keys each figure on the fence's own code, its options, a digest
+of the runner machinery, and a digest of the source files the fence's code text
+names (`sourceRefsDigest`), mapped through the committed
+[codebase reference](reference/index.md). So an `incremental` build re-captures
+the figures a stdlib edit can reach directly. It cannot see an *indirect* change,
+a function called by the function you edited. `FIELD_DOCS_SOURCE_REFS=stdlib`
+hashes the whole indexed stdlib for every fence instead, which catches that at the
+cost of re-capturing everything; `=off` drops the source digest, leaving a fence
+keyed on its own code and options alone.
 
-**The auditor answers it directly.** `tools/docs_capture_audit.py` re-runs captures
-from the real code and classifies each result against the *measured* run-to-run
-noise floor, so it can say "stale" rather than merely "different":
+For a direct answer, `tools/docs_capture_audit.py` re-runs captures from the
+current code and classifies each result against the *measured* run-to-run noise
+floor, so it can say "stale" rather than merely "different":
 
 ```diffstatic {data-lang=bash}
 :::static
@@ -158,10 +157,8 @@ server instead). Per-test timeouts come from each test's annotation — **don't*
 pass `--timeout` to this runner.
 
 **Committed generated assets** — several things in the repo are generated from
-source and then committed, because a generated artefact is only trustworthy if a
-change to it shows up as a reviewable diff. `./gradlew check` re-derives each one
-and fails if the committed copy has drifted, so none of them can go stale without
-an ordinary build saying so:
+source and then committed, so that a change to one shows up as a reviewable diff.
+`./gradlew check` re-derives each and fails if the committed copy has drifted:
 
 | task | guards | fix a failure with |
 | --- | --- | --- |
@@ -189,7 +186,7 @@ It prints `RUN` / `PASS` / `FAIL` lines; artifacts are retained under
 `build/ui-regressions/artifacts/<test-id>/` (including `latest-pass.png` and
 `latest-failure.png`).
 
-## How it works, briefly
+## What both runners share
 
 Both pipelines talk to Field through `tools/field_backdoor.py`: they start (or
 reuse) a single Field server on your chosen port, create scratch boxes, run the
