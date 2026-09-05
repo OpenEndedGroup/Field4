@@ -37,8 +37,17 @@ Builds Field, then launches the backend and the Electron window together.
   -d, --document <name>    open this document straight away instead of the
                            welcome page, and instead of whatever was open last
   --document=<name>        the same again
+  --read-only              open documents without writing back to them
   --print-workspace        print the workspace this launch would use, then exit
   -h, --help               show this message
+
+Use --read-only for a document that lives inside a repository. Opening one
+normally writes into its folder — Field saves the editor's cursor position, the
+box frames, a backup, history metrics, an operation transcript and a screenshot
+— which turns the folder dirty in git just from looking at the document. With
+--read-only Field loads it, runs it, and never writes back:
+
+  ./field.sh dev_docs/agents/demos/midi_clip --read-only
 
 A single document works too — a folder holding a metadata.edn, or that file
 itself. Either as the workspace argument or after -d, that names the document to
@@ -113,6 +122,7 @@ persisted_workspace() {
 WORKSPACE_REQUESTED=""
 DOCUMENT_REQUESTED=""
 PRINT_WORKSPACE=0
+READ_ONLY_REQUESTED=0
 
 # POSIX sh has no arrays, so "$@" is rebuilt in place: each of the original $argc
 # arguments is shifted off the front, and the ones the backend should see are pushed
@@ -155,6 +165,13 @@ while [ "$consumed" -lt "$argc" ]; do
             ;;
         --document=*)
             DOCUMENT_REQUESTED="${arg#--document=}"
+            ;;
+        --read-only)
+            # Handled here rather than left to the -*) passthrough below, for two reasons: it
+            # has to survive run_in_terminal's re-exec, which rebuilds the command line from
+            # WORKSPACE_RELAUNCH_ARGS and would otherwise drop it; and the launch banner should
+            # say so, because a Field that silently refuses to save is alarming if unannounced.
+            READ_ONLY_REQUESTED=1
             ;;
         -*)
             set -- "$@" "$arg"
@@ -258,6 +275,10 @@ if [ -n "$FIELD_DOCUMENT" ]; then
     echo "field: document $FIELD_DOCUMENT — opening it directly, not the welcome page" >&2
     set -- "$@" --document "$FIELD_DOCUMENT"
 fi
+if [ "$READ_ONLY_REQUESTED" = 1 ]; then
+    echo "field: read-only — nothing this session does will be written back to disk" >&2
+    set -- "$@" --read-only
+fi
 
 # run_in_terminal re-runs this script in a fresh terminal, where the arguments
 # parsed above are gone; put an explicitly requested workspace back on that inner
@@ -270,6 +291,9 @@ if [ -n "$WORKSPACE_REQUESTED" ]; then
 fi
 if [ -n "$FIELD_DOCUMENT" ]; then
     WORKSPACE_RELAUNCH_ARGS="$WORKSPACE_RELAUNCH_ARGS --document '$FIELD_DOCUMENT'"
+fi
+if [ "$READ_ONLY_REQUESTED" = 1 ]; then
+    WORKSPACE_RELAUNCH_ARGS="$WORKSPACE_RELAUNCH_ARGS --read-only"
 fi
 
 python_cmd() {

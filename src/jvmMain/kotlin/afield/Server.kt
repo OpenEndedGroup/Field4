@@ -293,8 +293,28 @@ class SessionInformation(
     var sessions: MutableSet<WebSocketSession> = ConcurrentHashMap.newKeySet<WebSocketSession>(),
     var topologyGeneration: Int = 0,
     var autorunTriggered: Boolean = false,
-    val ephemeral: Boolean = false
+    val ephemeral: Boolean = false,
+    /**
+     * This session may read its document but must never write back to it.
+     *
+     * Distinct from [ephemeral], which also means "not a real document at all": no welcome
+     * listing, a synthesised session key, `scratch=1` in the client URL, dropped from `documents`
+     * on detach. A read-only session is a genuine named document opened with the write path
+     * switched off, so it stays listed, keeps its real path, and looks normal to the client.
+     *
+     * Defaults from [ReadOnlyDocuments.global] so `./field.sh --read-only` covers every session in
+     * the process without each construction site having to know about it.
+     */
+    val readOnly: Boolean = ReadOnlyDocuments.global
 ) {
+    /**
+     * False when nothing in this session may reach the document's directory on disk.
+     *
+     * One predicate for the four write gates: the autosave loop, `set-string`'s sidecar marking,
+     * `Box.setPropertyRaw`'s, and the agent backdoor's.
+     */
+    val writesToDisk: Boolean get() = !ephemeral && !readOnly
+
     @Volatile
     var loading: Boolean = false
 
@@ -473,6 +493,61 @@ fun SessionInformation.autorunBoxes(targetBoxes: Collection<Box>, delayMs: Long 
 
 var sessions = ConcurrentHashMap<WebSocketSession, SessionInformation>()
 var documents = ConcurrentHashMap<String, SessionInformation>()
+
+/**
+ * Open documents without writing back to them.
+ *
+ * Field documents get committed to repositories — this one ships six under
+ * `dev_docs/agents/demos/` and a hundred more under `public/docs/assets/` — and opening one used
+ * to dirty the working tree it came from. `SavingContext.save` fans out to seven producers and
+ * none of them asks whose directory it is writing into.
+ *
+ * Two ways in, because there were two things missing. [global] is the launch-time switch:
+ * `./field.sh --read-only`, or `AFIELD_READ_ONLY=1`, or `-Dafield.readOnly=true`. Per-session is
+ * [SessionInformation.readOnly], which the agent backdoor's `open --read-only` sets so an agent
+ * can inspect a committed demo in an otherwise normal Field.
+ *
+ * [blocksWritesTo] is the funnel guard. The four session-level gates stop the *interactive* save
+ * loop, but `SavingContext.save` has eight call sites and some of them (`Ai4AutoBoxNamer`,
+ * `FileWatchManager`) reach disk without going near the autosave loop. Checking at the funnel too
+ * costs one map lookup per save and means a new call site cannot reopen the hole.
+ */
+object ReadOnlyDocuments {
+    /**
+     * Every session in this process is read-only.
+     *
+     * `by lazy` and not a `val` initialiser: `Server.args` is assigned in `main`, which runs after
+     * class initialisation of anything the server object graph touches on the way there.
+     */
+    val global: Boolean by lazy {
+        val fromArgs = flag("read-only")
+        val fromProperty = System.getProperty("afield.readOnly")?.isAffirmative() == true
+        val fromEnv = System.getenv("AFIELD_READ_ONLY")?.isAffirmative() == true
+        (fromArgs || fromProperty || fromEnv).also {
+            if (it) {
+                lprintln(
+                    "info,server",
+                    "read-only documents: this Field will not write back to any document it opens"
+                )
+            }
+        }
+    }
+
+    private fun String.isAffirmative(): Boolean =
+        trim().lowercase() !in setOf("", "0", "false", "no", "off")
+
+    /**
+     * True when [documentPath] must not be written.
+     *
+     * Falls back to [global] when no session is open on that path, which is what a headless
+     * `SavingContext.save` from a tool looks like.
+     */
+    fun blocksWritesTo(documentPath: String): Boolean {
+        if (global) return true
+        val info = documents[documentPath] ?: documents.values.firstOrNull { it.filename == documentPath }
+        return info?.readOnly == true
+    }
+}
 private val welcomeEventSessions = ConcurrentHashMap.newKeySet<WebSocketSession>()
 
 // Sessions grouped by an arbitrary shared-UI context name (Hello.shaderSelectionContext; the
@@ -1974,7 +2049,7 @@ class Server {
                         }
 
                         documents.forEach { _, info ->
-                            if (info.ephemeral) return@forEach
+                            if (!info.writesToDisk) return@forEach
                             if (info.loading) return@forEach
                             refreshFileProxyBoxes(info, notifyMissing = false)
                             // Only persist when we know sidecar-bearing properties changed.
@@ -2285,7 +2360,7 @@ class Server {
                 }
 
                 // If this is a sidecar-backed property, mark it for persistence.
-                if (Box.ioSeparateProperties.containsKey(set.property) && !thisSessionInfo.get().ephemeral) {
+                if (Box.ioSeparateProperties.containsKey(set.property) && thisSessionInfo.get().writesToDisk) {
                     thisSessionInfo.get().markSidecarPending(set.uid, set.property)
                 }
 

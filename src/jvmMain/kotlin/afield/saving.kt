@@ -299,8 +299,20 @@ class SavingContext {
      * 2. I/O phase (background thread): Write files, create backups, and perform git operations
      *
      * This approach prevents frame hiccups in VR by moving heavy I/O operations off the main thread.
+     *
+     * Returns without writing anything when [ReadOnlyDocuments] blocks [fn]. The gate is here and
+     * not only at the callers because this function has eight of them, and two —
+     * `Ai4AutoBoxNamer` and `FileWatchManager` — reach disk without passing the autosave loop's
+     * `writesToDisk` check. [onComplete] still runs: callers latch on it, and one that never fires
+     * is a hang rather than a refusal.
      */
     fun save(fn: String, boxes: Set<Box>, message: String? = null, onComplete: (() -> Unit)? = null) {
+        if (ReadOnlyDocuments.blocksWritesTo(fn)) {
+            SaveReloadLog.log("save-refused-read-only", "doc=$fn boxes=${boxes.size} message=${message ?: ""}")
+            lprintln("info,saving", "read-only: not saving $fn")
+            onComplete?.invoke()
+            return
+        }
         // Phase 1: Snapshot in main thread - capture all data we need
         val snapshotStartedAt = System.nanoTime()
         val snapshot = snapshotBoxes(boxes, fn)
@@ -1648,7 +1660,14 @@ class SavingContext {
 
     fun ensureDirectory(fn: String): String {
         File(fn).mkdirs()
-        ensureAgentGuides(fn)
+        // The seventh producer, and the only one that fires on *load* rather than on save:
+        // `load()` calls this, so merely opening a document seeds `AGENTS.md` and `README.md`
+        // beside it. Harmless in a scratch workspace, two untracked files in a repository — 28 of
+        // this repository's 117 document directories have no tracked `AGENTS.md`, including the
+        // shipped demo at `dev_docs/agents/demos/python_cells`.
+        if (!ReadOnlyDocuments.blocksWritesTo(fn)) {
+            ensureAgentGuides(fn)
+        }
         return fn
     }
 

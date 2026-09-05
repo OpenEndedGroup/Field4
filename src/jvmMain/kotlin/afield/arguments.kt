@@ -13,6 +13,13 @@ inline fun <reified T> option(name: String, def: () -> T): T {
     return convertTo(T::class.java, Server.args[i + 1])
 }
 
+/**
+ * True when `--name` was given on the command line, with or without a value.
+ *
+ * [option] cannot express this: it demands a following argument and throws when the flag is last.
+ */
+fun flag(name: String): Boolean = Server.args.any { it.equals("--$name", true) }
+
 @Suppress("UNCHECKED_CAST")
 fun <T> convertTo(target: Class<T>, value: String): T {
     if (target == String::class.java) return value as T
