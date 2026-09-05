@@ -3,11 +3,11 @@
 [MorphoHDL](https://paradigms-of-intelligence.github.io/morpho/) (Apache-2) is a hardware description language
 built on recursive cell division. You write a cell that halves its inputs and calls itself; the
 compiler keeps dividing until a `SPLIT` runs out of bits, and the recursion bottoms out into a
-fallback. Bus widths are never declared — a 32-bit adder and an 8-bit adder are the same eleven
+fallback. Bus widths are never declared: a 32-bit adder and an 8-bit adder are the same eleven
 lines of source, and the difference is entirely in how far the division ran.
 
 That is a good language and Field did not write it. This page is about what it takes to run it here
-anyway, and it is as much about the *seam* as about the circuits.
+anyway: as much a question about what an environment owes a language as about circuits.
 
 The short version: **none of MorphoHDL is reimplemented.** Field runs upstream's parser, upstream's
 compiler and upstream's layout kernel, byte-identical to
@@ -20,8 +20,8 @@ simulation, drawing, and somewhere to be typed.
 ## What it looks like
 
 Four designs out of morpho's standard library, compiled through GraalJS, laid out by morpho's WASM
-kernel in 3D, and drawn by Field as vector `FLine`s. Wire colour is **signal arrival time** — dark
-where a value is known early, bright on the critical path — so each panel shows its own logic depth
+kernel in 3D, and drawn by Field as vector `FLine`s. Wire colour is **signal arrival time** (dark
+where a value is known early, bright on the critical path), so each panel shows its own logic depth
 as a gradient. Blue dots are input ports, orange are outputs.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/morpho_examples/family.png" wait="34.0" capture="box" open-outputs="true" padding="20"}
@@ -61,27 +61,26 @@ parallel-prefix adder. But a force-directed layout draws *connectivity*, not a s
 lay the shifter out as five tidy stages just because it shifts by 1, 2, 4, 8 and 16.
 
 What the shifter shows instead is in the colour. Its 160 gates are nearly all bright, because its
-depth is 5 and almost everything settles at once — against the ripple adder, whose gates run the
-whole ramp from dark to bright because a 16-bit carry chain is 16 levels deep. Where the geometry
-stops being informative, the arrival time takes over.
+depth is 5 and almost everything settles at once. The ripple adder's gates run the whole ramp from
+dark to bright instead, because a 16-bit carry chain is 16 levels deep. Where the geometry stops
+being informative, the arrival time takes over.
 
 ---
 
 ## What was already in the box
 
-Two facts about Field made this a weekend's work instead of a port.
+Two things about Field make this a bridge rather than a port.
 
 **Field already runs other people's runtimes.** `afield.runtime.MainLanguageRegistry` is a
-five-field data class and a map. Registering a language is one call, and Field had five
-already — Forth, Clojure, Python, Nano, RemoteJS — so there was a shape to copy rather than a
-design to invent.
+five-field data class and a map. Registering a language is one call, and Forth, Clojure, Python and
+Nano are all in there already, so there was a shape to copy rather than a design to invent.
 
 **Field already ships GraalVM's JS and WASM.** `build.gradle.kts` declares
-`org.graalvm.polyglot:js` and `:wasm`, and `afield.four.synth.Dough` was already using a
-`Context.newBuilder("js", "wasm")` to run a WebAssembly synthesiser. MorphoHDL is implemented in
-JavaScript. So the question was never "how do we port this" but "how much of it can we just run".
+`org.graalvm.polyglot:js` and `:wasm`, and `afield.four.synth.Dough` runs a WebAssembly synthesiser
+through a `Context.newBuilder("js", "wasm")`. MorphoHDL is implemented in JavaScript, so the
+question is never "how do we port this" but "how much of it can we just run".
 
-The answer turned out to be: all of the parts worth having.
+The answer is: all of the parts worth having.
 
 | upstream file | lines | what it is | in Field? |
 | --- | --- | --- | --- |
@@ -92,40 +91,40 @@ The answer turned out to be: all of the parts worth having.
 | `graphs_engine/main.wasm` | 11 KB | Barnes–Hut force layout | **run as-is** |
 | `tiny_morpho.py` | 867 | Python reference + the MorphoHDL standard library | **oracle + stdlib** |
 | `js/grower.js` | 105 | expansion schedule | reimplemented, 40 lines — see below |
-| `viewer.js`, `layout_renderer.js`, `swissgl.js`, `hex_layout.js`, `bloom.js`, `figures.js`, `demo.js` | ~2900 | canvas/WebGL rendering, DOM | **dropped** |
+| `viewer.js`, `layout_renderer.js`, `swissgl.js`, `hex_layout.js`, `bloom.js`, `figures.js`, `demo.js`, `article.js`, `presets.js` | ~2900 | canvas/WebGL rendering, DOM | **dropped** |
 
-Everything Field wrote is in `src/jvmMain/kotlin/afield/morpho/` (five files) plus two driver
-scripts and a Monaco grammar. The vendored tree is under `src/jvmMain/resources/morpho/` with a
-`PROVENANCE.md` recording exactly what it is and what was left out.
+Everything Field wrote for the bridge is in `src/jvmMain/kotlin/afield/morpho/` (seven files) plus
+two driver scripts and a Monaco grammar. The vendored tree is under `src/jvmMain/resources/morpho/`
+with a `PROVENANCE.md` recording exactly what it is and what was left out.
 
-??? aside "The one place a bridge always leaks"
-    `grower.js` is the exception, and it is worth being precise about why, because "we reimplemented
-    a bit of it" is the sentence that turns a bridge into a fork.
+??? aside "Where this bridge is not upstream's code"
+    `grower.js` is the exception, and "we reimplemented a bit of it" is the sentence that turns a
+    bridge into a fork, so here is exactly which bit.
 
-    Its expansion *schedule* — largest-estimated-subtree first, chasing chains of single-child
-    expansions so a recursion that unrolls one cell at a time does not cost a frame per level — is
+    Its expansion *schedule* (largest-estimated-subtree first, chasing chains of single-child
+    expansions so a recursion that unrolls one cell at a time does not cost a frame per level) is
     exactly what Field wants. But its constructor builds a `LayoutEngine`, which is the 2D layout
     Field is replacing, so importing the schedule drags in the thing being dropped. The 40 lines of
     schedule are reproduced in `morpho-field-driver.mjs`.
 
-    That reimplementation is the highest-risk code in the bridge, so it is the code with the most
-    specific test: `expansion order does not change the circuit` compiles a 32-bit Brent–Kung both
-    ways and asserts identical gate counts, identical cell counts, **and** identical outputs over
-    512 random vectors. The schedule decides *when* a cell expands, never *what* it expands into,
-    and if that ever stops being true the test says so.
+    That reimplementation carries the most specific test in the bridge. `expansion order does not
+    change the circuit` compiles a 32-bit Brent–Kung both ways and asserts identical gate counts,
+    identical cell counts, **and** identical outputs over 512 random vectors. The schedule decides
+    *when* a cell expands, never *what* it expands into, and if that ever stops being true the test
+    says so.
 
 ---
 
 ## Does it actually work? Two oracles
 
-A bridge that produces plausible circuits is worse than no bridge, because you find out later. So
-the netlists are checked two independent ways, and neither is "it looks right".
+A bridge that produces plausible circuits is worse than no bridge, because you find out late. So the
+netlists are checked two independent ways, neither of which involves looking at a picture.
 
 ### Arithmetic
 
-An adder that does not add is broken no matter what any reference says. So every design on this page is
-compiled through GraalJS, its netlist extracted into Kotlin, and simulated against integer arithmetic —
-exhaustively where that is possible.
+An adder that does not add is broken no matter what any reference says. So each design is compiled
+through GraalJS, its netlist extracted into Kotlin, and simulated against integer arithmetic
+(exhaustively where that is possible).
 
 | design | check | vectors |
 | --- | --- | --- |
@@ -138,15 +137,15 @@ Exhaustive matters more than it looks: a carry chain is precisely the thing an o
 indexing gets right on almost every input and wrong on the rare vector where a carry propagates the
 full width.
 
-The multiplier and the shifter are in the list for a specific reason. `Xor3` and `Maj3` are
-symmetric in their inputs, so an adder still adds if you feed a LUT's ports in the wrong order — the
-adders cannot catch a transposed truth-table index. `Mux2`, the carry-save tree and a positional
-shift amount can.
+The multiplier and the shifter cover what the adders cannot. `Xor3` and `Maj3` are symmetric in
+their inputs, so an adder still adds if you feed a LUT's ports in the wrong order, and a transposed
+truth-table index is invisible to it. `Mux2`, the carry-save tree and a positional shift amount are
+not symmetric, and they catch it.
 
 ### `tiny_morpho.py`
 
 Arithmetic alone would pass a circuit that is correct and twice the size it should be. So gate
-counts are pinned against morpho's *other* implementation — the Python reference, which shares no
+counts are pinned against morpho's *other* implementation: the Python reference, which shares no
 code at all with the JavaScript. Both were run:
 
 ```diffstatic {data-lang=bash}
@@ -162,8 +161,8 @@ uv run --project . --with numpy python src/jvmMain/resources/morpho/tiny_morpho.
 | `wallace_multiplier(16,16)` | no | 1086 | **1086** |
 | `right_shifter(32,5,1)` | yes | 160 | **160** |
 
-Two implementations of the same language — one Python and numpy, one JavaScript and a
-struct-of-arrays compiler — agreeing to the gate is a far sharper instrument than either agreeing
+Two implementations of the same language (one Python and numpy, one JavaScript and a
+struct-of-arrays compiler) agreeing gate for gate is a far sharper instrument than either agreeing
 with itself.
 
 What is **not** compared is netlist *shape*. Python emits a flat op list, JavaScript a
@@ -172,72 +171,61 @@ amount to reimplementing one in terms of the other.
 
 ---
 
-## The bug this found, and what it says about bridging
+## Where a bridge disagrees by accident
 
-The optimized Wallace multiplier was the one design that failed, and the way it failed is the
-general lesson.
+Two of morpho's netlist conventions are written down nowhere but its own optimizer, and the
+optimized Wallace multiplier is the design that depends on both.
 
-First it crashed: a LUT input pin whose net index was `-1`. The obvious reading is "inactive cell",
-but the cell was live. Morpho's LUT cells are **broadcast** — one truth table applied across many
-independent bit slices — and constant propagation retires slices *individually*. A cell can be
-active while one of its slots has been bypassed, its output net left driverless and its input pins
-disconnected. So the invariant a bridge naturally assumes,
+The first is that liveness is per **slot**, not per cell. Morpho's LUT cells are broadcast: one
+truth table applied across many independent bit slices, and constant propagation retires slices
+*individually*. A cell can be active while one of its slots has been bypassed, its output net left
+driverless and its input pins disconnected, so a live cell can hold a LUT input pin whose net index
+is `-1`. The invariant a bridge naturally assumes,
 
 > an active cell has connected pins
 
-is false, and the unit of liveness is the slot, not the cell.
+is false here.
 
-Guarding per-slot stopped the crash and produced wrong answers instead — `62754 * 62244` came back
-as `29376512` instead of `3906059976`. The fix was not a guess. `optimizeLUT` in
-`primitives.js` — the function that disconnects the pin in the first place — begins its reindexing
-with:
+The second is what a disconnected pin *means*. `optimizeLUT` in `primitives.js`, the function that
+disconnects it, begins its reindexing with:
 
 ```diffstatic {data-lang=javascript}
 if (w < 0) w = 0; // Treat disconnected inputs as constant 0
 ```
 
 A disconnected port reads as constant zero, because constant propagation prunes a port *without*
-rewriting the cell's truth table: the arity and the table stay as they were, and everyone
-downstream reads the pruned port as 0. Adopting upstream's own convention rather than inventing a
-plausible one — a don't-care, which is what it looks like — made all six exhaustive multiplier
+rewriting the cell's truth table: the arity and the table stay as they were, and everyone downstream
+reads the pruned port as 0. Read it as a don't-care instead, which is what it looks like, and the
+multiplier still compiles and still simulates: it just answers `29376512` for `62754 * 62244`
+instead of `3906059976`. Upstream's convention is the one that makes all six exhaustive multiplier
 checks pass.
 
 ??? aside "Read the optimizer, not just the data structure"
-    The netlist's field names are a description of the representation. They are not a description
-    of the *invariants*, and the invariants live in whatever last mutated the graph. Both wrong
-    answers here came from reading the schema and guessing; both fixes came from reading the pass
-    that produced the state.
+    The netlist's field names describe the representation, not the *invariants*, and the invariants
+    live in whatever last mutated the graph. So the pass that produced a piece of state is the thing
+    to read, not the schema it produced it into.
 
-    Note also the direction of the fix. There is a version of this where you "correct" morpho's
-    behaviour to what seems more principled. That would produce a Field that disagrees with morpho
-    about what a MorphoHDL program means — which is the failure mode a bridge exists to avoid.
+    Note also which way a disagreement gets resolved. There is a version of this where you
+    "correct" morpho's behaviour to what seems more principled. That would produce a Field that
+    disagrees with morpho about what a MorphoHDL program means, which is the failure mode a bridge
+    exists to avoid.
 
-A second defect turned up in Field's own code on the way through, and it is worth recording because
-adding the sixth language is what exposed it — it had been latent in all five of the others.
-
-`Box.mainLanguage` is declared `Delegation<String?>`, but `Delegation.setValue` ended in
-`setPropertyRaw(name, _v as Any)`. Assigning null threw. Reverting a language root to Kotlin *is*
-`setMainLanguageFor(roots, null)`, so the shipped **"Set Main Language: Kotlin"** action threw
-`NullPointerException` for **every** registered language — Forth, Clojure, Python, Nano, RemoteJS
-and morpho alike. Nothing caught it because a language that fails to revert looks, from the outside,
-like a language that was never switched.
-
-It is fixed: the delegate now erases a property assigned null rather than casting it, so erased and
-never-set read back identically — which is what every nullable delegate in the tree already assumed.
-`the Set Main Language Kotlin action reverts a morpho root` drives the real action through
-`Action.target`, the way the command palette does, and asserts the property is *absent* afterwards
-rather than present-and-null. Absent is what keeps it out of the saved document.
-
-The general point: a bridge is a second reader of shared infrastructure, and a second reader finds
-the assumptions the first one never had to state.
+The bridge is also a second reader of Field's own shared infrastructure, and that shows up at the
+one point where morpho gives a box back. Reverting a language root to Kotlin *is*
+`setMainLanguageFor(roots, null)`, and `Box.mainLanguage` is a `Delegation<String?>`; assigning null
+to one of those **erases** the property rather than storing a null, so erased and never-set read
+back identically. Absent is what keeps a reverted root out of the saved document, and
+`the Set Main Language Kotlin action reverts a morpho root` drives the shipped
+**"Set Main Language: Kotlin"** action through `Action.target`, the way the command palette does,
+then asserts the property is absent rather than present-and-null.
 
 ---
 
 ## Depth: why there are two adders
 
-The clearest thing the bridge produces is not a picture, it is a table. Morpho's timing pass
-(`updateTimes()`, upstream's own, and what its viewer animates) gives per-cell signal arrival; the
-deepest cell is the critical path.
+The clearest thing the bridge produces is a table. Morpho's timing pass (`updateTimes()`,
+upstream's own, and what its viewer animates) gives per-cell signal arrival, and the deepest cell
+is the critical path.
 
 | width | `ripple_adder` | `brent_kung_adder` |
 | --- | --- | --- |
@@ -247,8 +235,8 @@ deepest cell is the critical path.
 | 32 | 32 | 11 |
 | 64 | 64 | 13 |
 
-Drawn at the same width and in the **same window** — these two are commensurable, so they are framed
-together — the difference stops being a table:
+Drawn at the same width and in the **same window** (these two are commensurable, so they are framed
+together), the difference stops being a table:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/morpho_examples/depth.png" wait="26.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -281,10 +269,10 @@ gates in parallel, which is why it costs three times as many gates (190 against 
 shallower.
 
 A ripple carry is exactly linear in width. Brent–Kung is `2·log₂(N) + 1`. And at four bits the
-parallel-prefix adder is **worse** — 5 against 4 — because its prefix tree costs two levels that a
+parallel-prefix adder is **worse** (5 against 4) because its prefix tree costs two levels that a
 four-stage carry chain never pays for. The crossover is between 4 and 8 bits. That is the real
-shape of the tradeoff, and it is the kind of thing that is one line to measure once the language is
-actually running inside your environment and a research project when it is not.
+shape of the tradeoff, and measuring it is one line of Kotlin once the language runs inside your
+environment.
 
 ### Watching one divide
 
@@ -327,17 +315,17 @@ loop {
 <video controls muted loop playsinline preload="metadata" width="1000" aria-label="two MorphoHDL circuits unfolding from a single cell: a Brent-Kung adder resolving into a symmetrical prefix tree, and a triangle cell growing into a nested recursive shell, both re-laying-out continuously as they expand"><source src="assets/morpho_examples/growth.mp4" type="video/mp4"></video>
 
 Both panels start as a single cell. The adder is given two expansions a frame and the triangle
-twelve, because they have very different budgets — 157 expansions against 993 — and matching them
+twelve, because they have very different budgets (157 expansions against 993), and matching them
 would either finish the adder in three seconds or leave the triangle half-built at the end of the
 clip.
 
-??? aside "This clip is vector, and that is not the usual case"
+??? aside "How this clip stays vector"
     Field's other animated figures are rasters by construction: `animateEvolution`'s `panels` lambda
     is typed `List<Pair<String, Img>>`, so a clip built that way is pixels before it is ever
     recorded. This one is not. The docs runner's `record-box` is a Playwright recording of the box's
     **output element**, so a launched box that calls `showPlaneGrid` every frame is recorded with
     every frame drawn as real SVG. The mp4 is an encoding of vector frames rather than a montage of
-    bitmaps — which is why the wires stay hairline-thin as the circuit fills the panel.
+    bitmaps, which is why the wires stay hairline-thin as the circuit fills the panel.
 
 ---
 
@@ -360,27 +348,28 @@ Regenerate with:
 | `triangle(32)` | 1025 | 992 | 1058 | 62 | 993 | 34 ms | 946 ms | 1.10 |
 | `medusa(36,8)` | 4252 | 4144 | 16726 | 63 | 5491 | 269 ms | 1557 ms | 0.91 |
 
-\* The first row is Graal warming up — it includes JIT-compiling morpho's compiler. Every later row
+\* The first row is Graal warming up: it includes JIT-compiling morpho's compiler. Every later row
 is the steady state, which is the number that matters for live coding: a 4 144-gate `medusa`
 compiles and fully expands in 269 ms.
 
-**Simulation throughput.** All 131 072 vectors of the exhaustive 8-bit adder check in **17.8 ms** —
-2 048 passes of 64 samples. Each net holds a `Long` whose bit *s* is that net's value for sample
-*s*, so the sample axis *is* the machine word and a LUT evaluation is a few `and`/`or`/`inv`. This
-mirrors what `tiny_morpho.py`'s `CircuitRunner` does with numpy, using a register instead of an
+**Simulation throughput.** All 131 072 vectors of the exhaustive 8-bit adder check in **17.8 ms**,
+which is 2 048 passes of 64 samples. Each net holds a `Long` whose bit *s* is that net's value for
+sample *s*, so the sample axis *is* the machine word and a LUT evaluation is a few `and`/`or`/`inv`.
+This mirrors what `tiny_morpho.py`'s `CircuitRunner` does with numpy, using a register instead of an
 array.
 
 ---
 
 ## The WASM engine is 3D, and morpho never uses it that way
 
-The most interesting thing found in the repository is not in the language.
+The layout kernel is the most capable thing in the repository, and it is not part of the language.
 
 `graphs_engine/main.wasm` is 11 KB of zig compiled to `wasm32-freestanding`. It has **no import
-section at all** — it owns its memory and asks the host for nothing — so GraalWasm instantiates it
-with no shim whatsoever. It exports twelve functions and it is 3D throughout: stride-3 positions,
-an octree with a θ opening criterion, SIMD `v128` inner loops, and angular-momentum compensation
-via a full 3×3 inertia tensor.
+section at all** (it owns its memory and asks the host for nothing), so GraalWasm instantiates it
+with no shim whatsoever. Its 68 exports are its own linear memory, eleven entry points, and
+offset/length accessors onto every buffer it owns, and it is 3D throughout: stride-3 positions, an
+octree with a θ opening criterion, SIMD `v128` inner loops, and angular-momentum compensation via a
+full 3×3 inertia tensor.
 
 And then `force_layout.js`, upstream's own driver, does this on every particle on every frame:
 
@@ -390,7 +379,7 @@ this.vel[p * 3 + 2] = 0.0;
 ```
 
 The kernel is a 3D solver and the shipped demo pins it flat. Field's driver simply does not do that,
-and the circuits come out as solids — the `z / xy` column above is z extent over the larger of the x
+and the circuits come out as solids. The `z / xy` column above is z extent over the larger of the x
 and y extents, and it runs from 0.73 to 1.33. A 16×16 Wallace multiplier is *taller than it is
 wide*.
 
@@ -421,7 +410,7 @@ showPlaneGrid(
 
 ![the same 32-bit Brent-Kung adder drawn three ways: from the front, from directly along the axis the front view discards, and isometrically; all three are two-dimensional spreads of wires rather than one of them collapsing to a line](assets/morpho_examples/projections.png)
 
-The middle panel is the whole argument. It is the view along the axis the flat renderer throws away,
+The middle panel does the work here. It is the view along the axis the flat renderer throws away,
 and if the layout were planar it would be a single horizontal line. It is not.
 
 A still can always be accused of a lucky camera, so here is the camera moving. The circuit is fully
@@ -459,14 +448,11 @@ loop {
 
 <video controls muted loop playsinline preload="metadata" width="820" aria-label="a fully grown 32-bit Brent-Kung adder rotating slowly about its vertical axis, never flattening into a line at any angle, showing that the force-directed layout occupies three dimensions"><source src="assets/morpho_examples/orbit.mp4" type="video/mp4"></video>
 
-A projection of a plane collapses to a line twice per turn. This one never does, at any angle — which
-is what "the kernel was always 3D and nobody was using it" looks like.
+A projection of a plane collapses to a line twice per turn. This one never does, at any angle.
 
 This is the part that most repays bridging rather than porting. Nobody would have written a 3D
 Barnes–Hut kernel for this; it already existed, unused, inside a file that was being thrown away
 with the renderer.
-
-`wasm layout uses all three dimensions` asserts it, so it cannot silently regress back to a plane.
 
 ---
 
@@ -506,9 +492,9 @@ That figure is not an illustration of the code above it — it *is* the code abo
 way it already wraps `nano` and `forth` snippets. Sixteen gates, depth 8: the same 8-bit ripple adder
 whose exhaustive arithmetic check appears near the top of this page.
 
-The directive rides in a `#` comment because morpho's tokenizer discards comments wholesale — Field
+The directive rides in a `#` comment because morpho's tokenizer discards comments wholesale: Field
 can annotate a program without the language ever seeing it, and the same file still parses in
-upstream's demo. `the directive is invisible to morphos parser` pins that.
+upstream's demo.
 
 An empty box inherits morpho's standard library, so the shortest useful morpho program in Field is
 one line:
@@ -522,16 +508,16 @@ one line:
 One line in, 190 gates out.
 
 **Execute** grows the circuit to completion. **Launch** grows it `grow` cells per frame and relaxes
-the layout `relax` iterations between expansions — which is the mode worth having, because a
-language built on recursive division should be watched dividing.
+the layout `relax` iterations between expansions, which is how you watch the recursion happen
+rather than only its result.
 
-There is no default signature, and that is deliberate: MorphoHDL cells are size-agnostic by design,
-so there is no width a box could assume that would not be a silent guess at a different circuit.
-A box without a directive says so, and lists the cells it found.
+There is no default signature. MorphoHDL cells are size-agnostic, so there is no width a box could
+assume that would not be a silent guess at a different circuit. A box without a directive says so,
+and lists the cells it found.
 
 ### From Kotlin
 
-The circuit lands on `Box.morphoCircuit`, so a Kotlin box beside a morpho box can draw it — or skip
+The circuit lands on `Box.morphoCircuit`, so a Kotlin box beside a morpho box can draw it, or skip
 the morpho box entirely and compile from Kotlin:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/morpho_examples/from-kotlin.png" wait="26.0" capture="box" open-outputs="true" padding="20"}
@@ -557,17 +543,17 @@ showPlaneGrid("${c.summary()}  |  $check" to c.flines(),
 
 ![a 16 by 16 bit Wallace multiplier drawn as a dense compression tree, titled with its cell and gate counts and a multiplication checked against Kotlin's own arithmetic](assets/morpho_examples/from-kotlin.png)
 
-That title line is the whole bridge in one frame. Morpho's compiler produced the netlist (872 gates,
-3711 nets), morpho's WASM kernel placed it in three dimensions (`z/xy 1.34` — taller than it is
+That title line runs the whole bridge end to end. Morpho's compiler produced the netlist (872 gates,
+3711 nets), morpho's WASM kernel placed it in three dimensions (`z/xy 1.34`, taller than it is
 wide), Field's simulator pushed `48271 × 16807` through the gates, and Kotlin's own `*` agrees.
 
 Box code takes an `import` line like any other Kotlin, so the bridge lives in its own package rather
-than being poured into `afield.stdlib` — nothing here needs to be a global name.
+than being poured into `afield.stdlib`; nothing here needs to be a global name.
 
 `flines()` gives one `FLine` per wire and one point-set each for gates, inputs and outputs, coloured
-by signal arrival time — so the difference between a ripple adder and a Brent–Kung is a gradient you
+by signal arrival time, so the difference between a ripple adder and a Brent–Kung is a gradient you
 can see rather than a number you have to look up. Everything Field can already do to an `FLine`
-applies: SVG export, the plane grid, `animateEvolution`, the docs capture pipeline.
+applies: SVG export, the plane grid, the docs capture pipeline.
 
 To watch it grow instead:
 
@@ -598,8 +584,8 @@ and `MorphoSearch` (random sampling, hill climbing, a (μ+λ) population, and a 
 
 The genome is **MorphoHDL source text**. Every candidate is compiled by upstream's own
 `compileModule()` and run by `MorphoSim`, so a search result is a program you can read and paste
-into a morpho box — and so the search is optimising against MorphoHDL rather than against Field's
-idea of it. That is the same principle the rest of this page is built on, applied to generation.
+into a morpho box, and so the search is optimising against MorphoHDL rather than against Field's
+idea of it.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/morpho_examples/search-control.png" wait="40.0" timeout="360" capture="box" open-outputs="true" padding="20" name="morpho-search-control"}
 :::static
@@ -645,15 +631,15 @@ showPlaneGrid(
 
 ![Three search drivers on a one-bit full adder, best-so-far bit error against compiler invocations on a log x axis: random sampling flattens out well above zero while hill climbing and the population both drop to exact correctness, each marked with a dropped tick; below the plot the found MorphoHDL program, two gates, Xor3 and Maj3](assets/morpho_examples/search-control.png)
 
-One unit of budget is one invocation of morpho's compiler, which on a three-width adder problem —
-parse, compile, expand, extract, simulate, three times over — costs about **1 ms** once Graal is
+One unit of budget is one invocation of morpho's compiler, which on a three-width adder problem
+(parse, compile, expand, extract, simulate, three times over) costs about **1 ms** once Graal is
 warm. Roughly a thousand candidates a second, single-threaded because a Graal `Context` is not safe
 for concurrent access.
 
 ### What it found, with the control arm next to it
 
 Five seeds per cell, three for the last two rows. Regenerate with
-`./gradlew jvmTest --tests "afield.morpho.MorphoSearchMeasurements" --rerun -i`.
+`./gradlew jvmMeasurements --tests "afield.morpho.MorphoSearchMeasurements" --rerun -i`.
 
 | problem | widths | budget | random (control) | hill climb | evolution |
 | --- | --- | --- | --- | --- | --- |
@@ -665,22 +651,22 @@ Five seeds per cell, three for the last two rows. Regenerate with
 | the same, with both `SPLIT`s given | 2/4/8 | 20 000 | 0/3 | 0/3 | 0/3 |
 
 **The full adder is where selection earns its keep.** Random sampling never finds it and plateaus at
-a bit-error rate of 0.125 — that is `sum = Xor3(a, b, c)` with `c_out = And(a, b)`, right on six of
+a bit-error rate of 0.125: that is `sum = Xor3(a, b, c)` with `c_out = And(a, b)`, right on six of
 the eight truth-table rows and one gate swap short. Evolution finds it every time, in 165 to 1152
 invocations. Same generator, same seeds, same budget: the only difference is selection.
 
 **And it is the only row where selection helps.** On the two reductions, random sampling matches
-evolution (3/5 each) and hill climbing finds nothing at all — it converges on a two-gate design
+evolution (3/5 each) and hill climbing finds nothing at all: it converges on a two-gate design
 that is 3% wrong and cannot get off it. Those spaces are small enough that sampling them is a
-perfectly good algorithm, and quoting the full-adder row without this one would be cherry-picking.
+perfectly good algorithm.
 
 **Or-reduce is the interesting positive result** because it cannot be done without recursion.
 Morpho sizes a LUT cell to its widest operand and broadcasts the narrow ones (`compiler.js:964#const w = Math.max(...inputs.map(x => x.length));`), so
-no gate and no combination of gates turns eight wires into one bit — the only route down is to keep
-`SPLIT`ting.
-Every correct answer is genuinely divide-and-conquer. The designs found come out at four gates and
-depth 3 at five bits — `n - 1` two-input gates, arranged as a balanced tree — and the same source
-text is then re-compiled and checked at 16, 32 and 48 bits, widths nothing was ever selected on.
+no gate and no combination of gates turns eight wires into one bit. The only route down is to keep
+`SPLIT`ting, so every correct answer is genuinely divide-and-conquer. The designs found come out at
+four gates and depth 3 at five bits (`n - 1` two-input gates, arranged as a balanced tree) and the
+same source text is then re-compiled and checked at 16, 32 and 48 bits, widths nothing was ever
+selected on.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/morpho_examples/search-recursion.png" wait="90.0" timeout="360" capture="box" open-outputs="true" padding="20" name="morpho-search-recursion"}
 :::static
@@ -754,59 +740,58 @@ showPlaneGrid(
 
 ![The evolved or-reduce cell drawn as a real circuit at 4, 8 and 16 bits from one unchanged source text, above its convergence curves and a depth-against-gates cost plane](assets/morpho_examples/search-recursion.png)
 
-### The result nobody was looking for: a power-of-two width family is not enough
+### Why the width family is 2, 3 and 5
 
 Selecting on widths 2, 4 and 8 produced **400 distinct correct `or-reduce` designs**. Re-compiled at
-twelve other widths, all 400 are correct at 3, 6, 12, 16, 32 and 48 — and **399 of them are wrong at
+twelve other widths, all 400 are correct at 3, 6, 12, 16, 32 and 48; **399 of them are wrong at
 5, 7 and 9**. Exactly one design in four hundred is actually parametric. The dual, `and-reduce`,
 gives **zero of 400**.
 
 The mechanism is a hole in the language, not a quirk of the search. `SPLIT` halves a bus as
 `floor(w/2), w - floor(w/2)` (`primitives.js:42#const half = Math.floor(w.length / 2);`), so the two halves are the same width exactly when
 the width is even; 5, 7 and 9 are the small widths where they differ *and* both are wider than one
-bit. A LUT applied to both halves — `Or(x0, x1)`, which is what these designs do — then has operands
+bit. A LUT applied to both halves (`Or(x0, x1)`, which is what these designs do) then has operands
 of two different widths, and `materializeLut` (`compiler.js:962-973`) takes the maximum and
 broadcasts only operands of width **1**. Unequal wider operands are neither broadcast nor rejected:
 the extra pins simply read past the end of the shorter bus. The circuit is silently wrong, and a search that has never been shown an odd width has
 no way to find out.
 
-Change the family to 2, 3 and 5 — one line — and **400 of 400 designs are correct at every width
-tried**, from 2 to 48. That is now `MorphoProblems.ODD_FAMILY`, the default for the reduction
+Change the family to 2, 3 and 5 (one line) and **400 of 400 designs are correct at every width
+tried**, from 2 to 48. That family is `MorphoProblems.ODD_FAMILY`, the default for the reduction
 problems, and `a power of two width family selects designs that are not parametric` is the test that
 holds the claim in place.
 
-This is the strongest argument on the page for scoring a MorphoHDL design at several widths rather
-than one, and it is not the argument the width family was built for. It was built because a
-parametric design is a claim about all N and one width is one point. What it actually caught was
-undefined behaviour in the compiler, exploited by a search that had no idea it was cheating.
+A parametric design is a claim about all N, and one width is one point: that on its own is the case
+for scoring at several widths. What several widths also catch is undefined behaviour in the
+compiler, exploited by a search that had no idea it was cheating.
 
-### The recursive adder is not found, and that is the finding
+### The recursive adder
 
-Nobody finds a divide-and-conquer adder. Not random sampling, not hill climbing, not a population,
+Nothing finds a divide-and-conquer adder. Not random sampling, not hill climbing, not a population,
 not with lexicase selection over per-bit test cases, not with a width curriculum, and not with both
 `SPLIT`s handed over as an unremovable prologue.
 
-The near miss is worth reporting precisely, because it is not a uniform failure. Random sampling and
-hill climbing stop on **depth-1** circuits — broadcast logic, no recursion at all, bit-error rates
+The near miss is not uniform across the drivers, and the difference is informative. Random sampling
+and hill climbing stop on **depth-1** circuits: broadcast logic, no recursion at all, bit-error rates
 around 0.25 to 0.27. Evolution at 20 000 invocations gets to **16 gates and depth 8**, which is
 `ripple_adder`'s cost profile exactly, and is still **17.9% wrong**. It has found the shape and not
 the wiring: eight levels of something chained across the width, carrying the wrong thing.
 
-Three measurements say why the rest of the way is so far, rather than leaving it as a shrug.
+Three measurements say why the rest of the way is so far.
 
 *The target is in the space.* The ripple skeleton, written by hand in the generator's own grammar,
 is five statements and scores exactly `ripple_adder`: 16 gates and depth 8 at eight bits, 64 gates
 and depth 32 at thirty-two. `the recursive adder is reachable in the genome grammar` asserts it.
 
 *The recursion is being tried and is not paying.* Of 4 000 random programs on the guided problem,
-511 — 12.8% — contain a self-call in the compiled circuit. The best of those scores 0.2880 and the
+511 (12.8%) contain a self-call in the compiled circuit. The best of those scores 0.2880 and the
 best purely combinational candidate scores 0.3017. An eighth of the population is recursing, for
 1.4% of the error. On the unguided problem only 2.8% recurse, and the best of those is *worse* than
-the best combinational one (0.3753 against 0.3017) — the two `SPLIT`s are the difference.
+the best combinational one (0.3753 against 0.3017); the two `SPLIT`s are the difference.
 (`MorphoSearchMeasurements.recursionDensity`.)
 
 *And the reason is arithmetic about the answer.* A correct adder needs both halves recursed, both
-carries chained in the right order, and the two sums `CAT`ed back — four statements worth nothing
+carries chained in the right order, and the two sums `CAT`ed back: four statements worth nothing
 until all four are right and wired to the outputs. Or-reduce needs two, and half of it already pays.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/morpho_examples/search-adder.png" wait="90.0" timeout="360" capture="box" open-outputs="true" padding="20" name="morpho-search-adder"}
@@ -881,44 +866,42 @@ this section.
 
 ---
 
-## What this cost, as a template
+## Bringing in another language
 
 If you want to bring another language into Field, this is the shape of the job:
 
 | piece | file | lines |
 | --- | --- | --- |
-| host the foreign runtime | `MorphoGraal.kt` | 254 |
+| host the foreign runtime | `MorphoGraal.kt` | 273 |
 | the netlist it produces | `MorphoNetlist.kt` | 171 |
 | simulation Field adds | `MorphoSim.kt` | 192 |
 | the 3D layout bridge | `MorphoLayout3D.kt` | 111 |
 | grow-and-draw handle | `MorphoCircuit.kt` | 121 |
-| drawing | `MorphoFLines.kt` | 187 |
+| drawing | `MorphoFLines.kt` | 317 |
 | **the language registration itself** | `MorphoInterface.kt` | 426 |
 | driver scripts | `morpho-field-driver.mjs`, `morpho-field-layout.mjs` | 446 |
-| editor grammar | `morpho.js` | 94 |
+| editor grammar | `morpho.js` | 99 |
 | tests | `MorphoBridgeTest`, `MorphoLanguageTest`, `MorphoRegistrationTest` | 628 |
 | measurement run | `MorphoMeasurements.kt` | 78 |
 
-(The search layer of the previous section is a separate ~1 700 lines on top of this, and needed
+(The search layer of the previous section is a separate ~2 400 lines on top of this, and needed
 nothing from the bridge that was not already there.)
 
 (Line counts include KDoc, which in this codebase is a substantial fraction of every file.)
 
-The registration proper — `MorphoExecution : BoxExecution` plus one
-`registerMainLanguageRuntime(...)` call, a `TopologyWatcher` and a `Box.isMorphoRoot` property — is
+The registration proper (`MorphoExecution : BoxExecution` plus one
+`registerMainLanguageRuntime(...)` call, a `TopologyWatcher` and a `Box.isMorphoRoot` property) is
 about 60 of those lines, and is a near-copy of the same block in `afield/forth/ForthInterface.kt`.
 The other ~360 are the box's behaviour: what execute means, what launch means, what completion
 offers, where an error's line number comes from.
 
-The ratio is the point. Getting a language *registered* in Field is nearly free. What costs is
-deciding what the language should *do* when it is running, and — if you are bridging rather than
-porting — reading the other implementation carefully enough not to disagree with it by accident.
-
-*Every claim on this page is either checked on every build or measured; none of it is a description of
-code nobody ran.*
+Look at the ratio. Getting a language *registered* in Field is nearly free. What costs is deciding
+what the language should *do* when it is running and, if you are bridging rather than porting,
+reading the other implementation carefully enough not to disagree with it by accident.
 
 ??? aside "Which harness holds what"
     The checks are `MorphoBridgeTest`, `MorphoLanguageTest`, `MorphoRegistrationTest` and
-    `MorphoSearchTest` — 38 tests between them. The numbers that are measurements rather than assertions
-    come from `MorphoMeasurements` and `MorphoSearchMeasurements`. The search layer's design notes, and
+    `MorphoSearchTest`, 39 tests between them. The numbers that are measurements rather than
+    assertions come from `MorphoMeasurements` and `MorphoSearchMeasurements`, which are excluded
+    from `jvmTest` and run under `./gradlew jvmMeasurements`. The search layer's design notes, and
     what to try next on the adder, are in `dev_docs/morpho_circuit_search.md`.
