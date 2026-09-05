@@ -716,6 +716,8 @@ initial conditions *is* the question, `caEdgeOfChaosObjective` takes several sou
 
 `src/jvmMain/kotlin/afield/stdlib/alife_evolve.kt` — [read the source](source/jvmMain/afield/stdlib/alife_evolve/)
 
+**Used in:** [Spatial artificial life](../alife_examples.md)
+
 ### Top-level functions { #alife-evolve-kt-functions }
 
 | Declaration | Summary |

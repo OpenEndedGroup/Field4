@@ -39,6 +39,8 @@ throw the property away. It says nothing about thread safety, and it holds only 
 
 `src/jvmMain/kotlin/afield/stdlib/PopulationSearch.kt` — [read the source](source/jvmMain/afield/stdlib/PopulationSearch/)
 
+**Used in:** [Spatial artificial life](../alife_examples.md)
+
 ### Top-level functions { #populationsearch-kt-functions }
 
 | Declaration | Summary |
