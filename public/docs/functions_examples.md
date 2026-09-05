@@ -69,7 +69,7 @@ with(Functions) {
 }
 ```
 
-The ingredients are humble: one base sinusoid, one overtone, a little value noise, then a window and a soft clip to keep the range under control. The important move is the final one: `toFLine(...)` samples the stack into drawing space.
+The ingredients are humble: one base sinusoid, one overtone, a little value noise, then a window and a soft clip to keep the range under control. `toFLine(...)` does the rest, sampling the stack into drawing space.
 
 ![](assets/functions_examples/harmonic_stack_box.png)
 
@@ -136,9 +136,9 @@ The three traces separate cleanly: one jagged, one softened, one quantized into 
 
 ## 1D stack: fit a graph to a target (differentiable)
 
-So far we have *built* stacks by hand. You can also let Field *fit* one for you. A `Functions.Fn` is not only a function but an inspectable graph, and its numeric leaves (frequencies, amplitudes, offsets) are tunable "genes". `fitBest(target, seed, ...)` tunes those numbers by gradient descent (Adam) so the seed's curve slides onto a target signal — the differentiable cousin of the genetic `evolve(...)`.
+So far we have *built* stacks by hand. You can also let Field *fit* one for you. A `Functions.Fn` is not only a function but an inspectable graph, and its numeric leaves (frequencies, amplitudes, offsets) are tunable "genes". `fitBest(target, seed, ...)`, the differentiable cousin of the genetic `evolve(...)`, tunes those numbers by gradient descent (Adam) so the seed's curve slides onto a target signal.
 
-The catch, and the fun of it: amplitude and offset are easy to fit, but **oscillator frequency is not** — the error surface in frequency is bumpy, full of local minima, so a single descent from a wrong frequency gets stuck. `fitBest` handles that by running several jittered restarts and keeping the best, which reliably escapes into the true basin. Here the target is a *product* of two oscillators and the seed starts with badly wrong frequencies:
+Amplitude and offset are easy to fit. **Oscillator frequency is not.** The error surface in frequency is bumpy, full of local minima, so a single descent from a wrong frequency gets stuck. `fitBest` handles that by running several jittered restarts and keeping the best, which reliably escapes into the true basin. Here the target is a *product* of two oscillators and the seed starts with badly wrong frequencies:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/fit_to_target_box.png" wait="1.5" capture="box" w="1200"}
 :::static
@@ -185,19 +185,18 @@ with(Functions) {
 
 ![](assets/functions_examples/fit_to_target_box.png)
 
-The thin orange (fitted) curve lands right on top of the thick cyan (target) — the restarts found the true frequencies, and `run` reports the RMSE collapsing from ~0.72 to ~0.006. Returning `run` in the box prints a compact summary with a loss-trajectory sparkline. Reach for `fitBest` when you have a shape in mind and just need the numbers dialed in; reach for `evolve(...)` / `fitHybrid(...)` when the *structure* itself (which operators) is still unknown.
+The thin orange (fitted) curve lands right on top of the thick cyan (target): the restarts found the true frequencies, and `run` reports the RMSE collapsing from ~0.72 to ~0.006. Returning `run` in the box prints a compact summary with a loss-trajectory sparkline. Reach for `fitBest` when you have a shape in mind and just need the numbers dialed in; reach for `evolve(...)` / `fitHybrid(...)` when the *structure* itself (which operators) is still unknown.
 
 ### Watching the descent
 
-The capture above is the *endpoint*. The plainer case — a single `fitGradient` with no restarts, on a
-target whose amplitude and offset are wrong but whose frequency is right — shows all three curves at
+The capture above is the *endpoint*. The plainer case (a single `fitGradient` with no restarts, on a
+target whose amplitude and offset are wrong but whose frequency is right) shows all three curves at
 once: the target, the seed it started from, and where it ended up.
 
 ![Three curves: a thick orange target, a dashed grey seed at about a fifth of the amplitude and offset the wrong way, and a cyan fitted curve lying exactly on the target](assets/functions_gallery/functions-fit-before-after.png)
 
-And the descent itself, one frame every 8 iterations from 0 to 320. Each frame is a **fresh
-`fitGradient` run truncated at that iteration count**, not a replay of a cached trajectory, so the
-error in the title is the error that run really reached:
+And the descent itself, one frame every 8 iterations from 0 to 320. Each frame is its own
+`fitGradient` run, truncated at that iteration count, so the error in its title belongs to that run:
 
 <video src="assets/functions_gallery/functions-fit-convergence.mp4"
        controls autoplay loop muted playsinline preload="metadata"
@@ -205,15 +204,15 @@ error in the title is the error that run really reached:
        style="width:100%;max-width:640px;border-radius:8px;">
 </video>
 
-The thing worth watching is *which* parameter moves first, because the error number alone hides it.
-Amplitude is essentially found by iteration 8 — the peaks already match — and the error is still
+Watch *which* parameter moves first; the error number alone hides it.
+Amplitude is essentially found by iteration 8 (the peaks already match) and the error is still
 0.1030, because what is left is the vertical offset (the troughs sit shallow) and a small phase lead.
 Those take the remaining three hundred iterations to close: 0.0248 by iteration 48, 0.0044 at 320.
 A single error figure would have read as "nearly converged" three hundred iterations early.
 
 ## 2D stack: separate x(t) and y(t) Functions
 
-Once a function stack is no longer limited to "height over x", it can steer a path. One stack controls horizontal position; another controls vertical position.
+A function stack does not have to mean "height over x". Two of them can steer a path instead: one controls horizontal position, the other vertical.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/parametric_lissajous_box.png" wait="1.0" capture="box" open-outputs="true" w="1200"}
 :::static
@@ -279,7 +278,7 @@ with(Functions) {
 }
 ```
 
-The trick is to keep `xFn` and `yFn` independent until the moment of sampling, then evaluate them together inside `parametric(...)`. The path emerges from their relationship, not from either stack on its own.
+`xFn` and `yFn` stay independent until the moment of sampling, where `parametric(...)` evaluates them together. The path emerges from their relationship, not from either stack on its own.
 
 ![](assets/functions_examples/parametric_lissajous_box.png)
 
@@ -436,11 +435,11 @@ The broad contour survives, while the surface gains character. The expanded refe
 
 ## Domains and timeline composition
 
-`Fn` now has one public interval: `domain`. Earlier sketches split that into domain plus ROI, but composition quickly became ambiguous. Arithmetic intersects domains, replacement and piecewise tools expand domains when they truly need to, and timeline chunks keep their source interval separate from the interval where they are placed.
+`Fn` has one public interval: `domain`. Arithmetic intersects domains, replacement and piecewise tools expand domains when they truly need to, and timeline chunks keep their source interval separate from the interval where they are placed. [Domains](functions_domains.md) works through that model on its own; this section is about the composition helpers built over it.
 
 Unless a constructor says otherwise, a fresh `Fn` starts with `Domain.DEFAULT`, which is `0.0..1.0`. Oscillators are the exception: the periodic constructors (`sin`, `cos`, `saw`, `triangle`, `square`) and the `pulseTrain`/`impulseTrain`/`pulseBurst` family default to `Domain.ALL`, because a periodic signal is genuinely defined on all of R. Use `domain = ...` to change the construction interval, use `over (...)` to relabel or place an existing function, and use `/ all` when any other unbounded function is genuinely meant. Enumerating an unbounded function (`toDoubleArray`, `sampleUniform`, `plot`, `stream`, and the rest of the sampling surface) with no explicit interval is safe: it previews over a finite window (`0.0..1.0`) rather than trying to walk the whole real line.
 
-The declarative timeline layer is intentionally thin Kotlin over those same pieces. `over` sets the resulting function domain, `stretch` remaps the left-hand domain into a new one, `then` concatenates two functions, `overlapping` creates an overlapped pair, and `/` pipes a function through reusable transforms. `through` and `pipe` remain readable aliases, but `/` is the compact style that matches the audio section. The transform `all` is the terse form of "set the domain to `Domain.ALL`", so `sin(0.5) / all` is the compact unbounded signal spelling. Because `over` and `stretch` are infix calls, keep the target range in parentheses; for longer arithmetic stacks, wrap the left side too.
+The declarative timeline layer is thin Kotlin over those same pieces. `over` sets the resulting function domain, `stretch` remaps the left-hand domain into a new one, `then` concatenates two functions, `overlapping` creates an overlapped pair, and `/` pipes a function through reusable transforms. `through` and `pipe` are the readable aliases; `/` is the compact style that matches the audio section. The transform `all` is the terse form of "set the domain to `Domain.ALL`", so `sin(0.5) / all` is the compact unbounded signal spelling. Because `over` and `stretch` are infix calls, keep the target range in parentheses; for longer arithmetic stacks, wrap the left side too.
 
 Numeric parameters on these helpers accept Kotlin `Number`s and can also be `Fn`s. Literals like `overlap = 1`, `overlap = 0.1`, or `slower(2)` are just the constant-function case; an `Fn` parameter is sampled near where it applies, such as the midpoint of a join's overlap, or the current slot/grain for random-repeat style transforms. The terse `0.25` form is a parameter signal, so it does not narrow the domain of the function it configures.
 
@@ -558,11 +557,11 @@ with(Functions) {
 }
 ```
 
-## Shaping signals — the Functions transform pipeline
+## Shaping signals: the Functions transform pipeline
 
 The reference below lists every constructor and combiner in isolation. This section is the
 opposite view: how the small handful of infix operators fit together into a *pipeline*, so
-you can read a stack like `pulseBurst(10) through gain(0.6) over (0.0..4.0)` at a glance and
+a stack like `pulseBurst(10) through gain(0.6) over (0.0..4.0)` reads on sight and you can
 write your own without hunting through the catalogue.
 
 ### The mental model
@@ -575,10 +574,10 @@ A pipeline has two kinds of thing in it:
 
 You *shape* a source by sending it `through` a transform. The result is another `Fn`, so you
 can send that through the next transform, and so on. Nothing here is a second interpreter:
-the declarative layer is thin Kotlin that only rearranges pure, freely-sampleable functions
-(this is the same "recipe, not a decompiler" property the [rewrite section](#rewrite-limitations)
-relies on). A `FnTransform` holds no state and can be reused across as many sources as you
-like — build a shaping chain once, name it, apply it everywhere.
+the declarative layer is thin Kotlin that only rearranges pure, freely-sampleable functions.
+That is the same property that bounds what the [rewrite layer](#rewrite-limitations) can reach
+into. A `FnTransform` holds no state and can be reused across as many sources as you like, so
+build a shaping chain once, name it, and apply it everywhere.
 
 ### The operators
 
@@ -594,19 +593,18 @@ like — build a shaping chain once, name it, apply it everywhere.
 | `a then b` | `Fn then Fn → Fn` | Concatenate two functions end-to-end on a timeline. |
 | `a overlapping n with b` | `Fn overlapping Number with Fn → Fn` | Join `a` and `b` with an `n`-wide crossfade. |
 
-Two overloads are worth pointing at because they share a name: `then` composes *transforms*
-when both sides are `FnTransform` (`gain(0.6) then lowPass(0.08)`), and *concatenates
-functions* when both sides are `Fn` (`intro then verse`). The compiler picks by operand
-type — which is exactly what the editor's completion leans on (below). For the
-`over` / `stretch` distinction — relabelling versus remapping — see
-[`over ... vs stretch ...`](#over-vs-stretch) above; here we only use them to place a
-finished pipeline on a timeline.
+Two overloads share a name. `then` composes *transforms* when both sides are `FnTransform`
+(`gain(0.6) then lowPass(0.08)`), and *concatenates functions* when both sides are `Fn`
+(`intro then verse`). The compiler picks by operand type, which is what the editor's
+completion leans on (below). For the `over` / `stretch` distinction, relabelling versus
+remapping, see [`over ... vs stretch ...`](#over-vs-stretch) above; here we only use them to
+place a finished pipeline on a timeline.
 
 ### What the shapers actually do
 
-The fastest way to know a waveshaper is to look at its **transfer curve** — push a rising ramp
-through it, and the plotted result *is* the shape it imposes on whatever you send it. Four of them,
-over an input sweep of `-1.5..1.5`, against the ramp itself as a dashed reference:
+A waveshaper reads most easily from its **transfer curve**: push a rising ramp through it, and the
+plotted result is the shape it imposes on whatever you send it. Four of them, over an input sweep
+of `-1.5..1.5`, against the ramp itself as a dashed reference:
 
 ```diffstatic {data-lang=kotlin}
 val sweep = ramp(-1.5, 1.5) over Functions.Domain.of(0.0, 1.0)
@@ -623,8 +621,9 @@ sweep.rectify(Functions.RectifyMode.FULL)  // absolute value, folded about zero
 is bounded and smooth everywhere, so it has no corner to alias off; `chebyshev(3)` is a polynomial,
 so it maps a unit cosine to a *pure* third harmonic rather than a smear.
 
-On real signal rather than on a ramp — a 1.2-amplitude sine, so each shaper has something to bite on.
-`clip` is in this one and not the last, because it is the only member of the family with corners in it:
+Now on real signal rather than on a ramp: a 1.2-amplitude sine, so each shaper has something to
+bite on. `clip` appears here and not above, because it is the only member of the family with
+corners in it:
 
 ![The same shapers applied to a sine of amplitude 1.2 over two cycles: softClip rounding the peaks, fold turning each peak inside out into a dip, and clip flattening them to hard plateaux with visible corners](assets/functions_gallery/functions-waveshaper-on-sine.png)
 
@@ -647,23 +646,23 @@ shaped.plot("shaped")
 ```
 
 `through` returns an `Fn`, so pipeline steps and plain arithmetic mix freely. The `/` alias
-keeps long stacks compact — `source / a / b` is `source through a through b`:
+keeps long stacks compact: `source / a / b` is `source through a through b`.
 
 ```diffstatic {data-lang=kotlin}
 val gesture = (pulseBurst(8) / gain(0.8) / delay(0.05) / hold(0.02)) + cos(2.0) * 0.1
 gesture.plot("gesture")
 ```
 
-Once a gesture is shaped, place it in time with `over` (relabel its domain) — useful when the
-pipeline result feeds a longer timeline:
+Once a gesture is shaped, place it in time with `over`, which relabels its domain. That is what
+you want when the pipeline result feeds a longer timeline:
 
 ```diffstatic {data-lang=kotlin}
 val placed = (ramp(0.0, 1.0) through bias(-0.5) through gain(2.0)) over (0.0..4.0)
 placed.plot("placed")
 ```
 
-And a fuller gesture that layers the vocabulary — a tone whose time-base slows across the
-interval, roughened by turbulence and mirrored about its centre:
+A fuller gesture layers the vocabulary. Here a tone's time-base slows across the interval, and
+turbulence roughens it before a mirror about its centre:
 
 ```diffstatic {data-lang=kotlin}
 val tornTape = (cos(5.0)
@@ -686,9 +685,9 @@ envelope, then folded, then soft-clipped:
 
 ### The editor helps you discover operators
 
-You rarely need to memorise which builders exist. After you type an infix operator and a
-space — `pulseBurst(10) through ` — the editor's **type-aware infix completion** boosts the
-operands that actually fit. Because `through` (like `pipe` and `/`) declares its operand as
+You rarely need to memorise which builders exist. Type an infix operator and a space
+(`pulseBurst(10) through `) and the editor's **type-aware infix completion** boosts the
+operands that fit. Because `through` (like `pipe` and `/`) declares its operand as
 `FnTransform`, every `FnTransform`-returning builder (`gain`, `delay`, `lowPass`, `mirror`, …)
 floats to the top of the completion list instead of being buried in the alphabetical tail of
 everything in scope.
@@ -715,7 +714,7 @@ with(Functions) {
 }
 ```
 
-Unless a snippet says otherwise, functions use the default domain `0.0..1.0`.
+Unless a snippet says otherwise, functions carry the default domain `0.0..1.0`. The periodic family is the exception, as above: `sin`, `cos`, `saw`, `triangle`, `square`, `pulseTrain`, `impulseTrain` and `pulseBurst` are built on `Domain.ALL`, and only narrow an expression when you give them a finite interval.
 
 Most numeric parameters accept plain numbers directly; the DSL lifts them into parameter functions where needed.
 
@@ -823,7 +822,7 @@ with(Functions) {
 
 #### ramp
 
-`ramp(start, end)` is a **value line**: its value travels linearly from `start` to `end` as x sweeps the domain, so `ramp(1.0, 6.0) over (0.0..1.0)` is 1 at x=0 and 6 at x=1, and `ramp(0.0, 1.0)` is the identity 0-to-1 over the default domain. It is the linear sibling of `tween`, and the go-to for envelopes, selectors, and swept parameters. (For the inverse — *normalizing* an x-window down to 0..1 — use `remap(from, to)`, which reads out the position of x within `[from, to]`.)
+`ramp(start, end)` is a **value line**: its value travels linearly from `start` to `end` as x sweeps the domain, so `ramp(1.0, 6.0) over (0.0..1.0)` is 1 at x=0 and 6 at x=1, and `ramp(0.0, 1.0)` is the identity 0-to-1 over the default domain. It is the linear sibling of `tween`, and the go-to for envelopes, selectors, and swept parameters. (For the inverse, *normalizing* an x-window down to 0..1, use `remap(from, to)`, which reads out the position of x within `[from, to]`.)
 
 **Simple**
 
@@ -2516,15 +2515,15 @@ with(Functions) {
 
 #### fold / rectify / quantize / crush / chebyshev (waveshaping)
 
-The waveshaping / distortion transforms are the value-domain (west-coast) counterparts to the time-domain `hold` / `crush` pair: they reshape a signal's *amplitude* rather than its clock. They are ordinary `FnTransform` factories, so they compose in `through` / `pipe` / `/` chains and surface in the type-aware infix completion like every other transform.
+The waveshaping / distortion transforms are the value-domain (west-coast) counterparts to the time-domain `hold` / `stepHold` pair: they reshape a signal's *amplitude* rather than its clock. They are ordinary `FnTransform` factories, so they compose in `through` / `pipe` / `/` chains and surface in the type-aware infix completion like every other transform.
 
 - `fold(threshold)` — a west-coast **wavefolder**. Within `[-threshold, threshold]` the signal passes through unchanged; each time it would cross the threshold it is reflected back into the band. The result is continuous, odd-symmetric, and always bounded to `[-threshold, threshold]` — unlike `clipAt`, folding turns overshoot into extra harmonics instead of a flat top.
-- `rectify(mode)` — half- or full-wave **rectifier**. `RectifyMode.FULL` (the default) yields `|x|`; `RectifyMode.HALF` clamps the negative excursion to zero. A first-class rebuildable graph node (the mode rides as a tag on the node, as `withEdge` carries its `EdgeMode`) and an `OpRegistry` transmutation target (`op=rectify`).
-- `quantize(levels)` — an amplitude **staircase** that snaps the value to exactly `levels` evenly-spaced steps across `[-1, 1]` (bitcrush of the *value*, distinct from the time-domain `stepHold`). A first-class rebuildable graph node with `levels` as a param child, and an `OpRegistry` transmutation target (`op=quantize`).
-- `crush(bits)` — a **bit-crusher** (the value-domain sibling of `quantize`): snaps to `2^bits − 1` steps across `[-1, 1]`, so lower bit-depths sound and look coarser. A first-class rebuildable graph node (op `crush`, `bits` as a param child) and an `OpRegistry` transmutation target (`op=crush`, alias `op=bitcrush`).
-- `chebyshev(order)` — the canonical harmonic-generating **waveshaper**. Pushing a unit-amplitude cosine through the order-*n* Chebyshev polynomial Tₙ produces the pure *n*-th harmonic, because Tₙ(cos θ) = cos(nθ). The input is clamped to `[-1, 1]` first (the standard shaper guard, as with `softClip`), and evaluated in that trig form, Tₙ(v) = cos(*n*·arccos *v*), which is exact for integer *n* and **continuous** in *n*. `chebyshev` is fully first-class: `order` is a param child, so it is a rebuildable graph node, an `OpRegistry` transmutation target (`op=chebyshev`), and — because `order` can be an `Fn` and the order is continuous — a smoothly sweepable harmonic control (a ramped order glides between harmonics).
+- `rectify(mode)` — half- or full-wave **rectifier**. `RectifyMode.FULL` (the default) yields `|x|`; `RectifyMode.HALF` clamps the negative excursion to zero. The mode rides as a tag on the graph node, the way `withEdge` carries its `EdgeMode`.
+- `quantize(levels)` — an amplitude **staircase** that snaps the value to exactly `levels` evenly-spaced steps across `[-1, 1]`: a bitcrush of the *value*, distinct from the time-domain `stepHold`. `levels` is a param child.
+- `crush(bits)` — a **bit-crusher**, the value-domain sibling of `quantize`. It snaps to `2^bits − 1` steps across `[-1, 1]`, so lower bit-depths sound and look coarser. `bits` is a param child, and `op=bitcrush` is an accepted alias for `op=crush`.
+- `chebyshev(order)` — the canonical harmonic-generating **waveshaper**. Pushing a unit-amplitude cosine through the order-*n* Chebyshev polynomial Tₙ produces the pure *n*-th harmonic, because Tₙ(cos θ) = cos(nθ). The input is clamped to `[-1, 1]` first (the standard shaper guard, as with `softClip`), and evaluated in that trig form, Tₙ(v) = cos(*n*·arccos *v*), which is exact for integer *n* and **continuous** in *n*. Since `order` is a param child and can itself be an `Fn`, a ramped order glides between harmonics.
 
-The whole family — `fold`, `rectify`, `quantize`, `crush`, `chebyshev`, alongside `clip`/`softClip`/`clamp`/`wrapY` — is now first-class in the [`OpRegistry`](functions_examples.md): each is a rebuildable `node(...)` with an `OpSpec`, so the graph-rewrite / evolve / transmutation system can swap it in by name (`op=rectify`, `op=quantize`, `op=crush`, …). Nothing in the waveshaper family is an opaque `mapY` lambda anymore.
+Every member of the family (`fold`, `rectify`, `quantize`, `crush`, `chebyshev`, alongside `clip`/`softClip`/`clamp`/`wrapY`) is a rebuildable `node(...)` carrying an `OpSpec` in `OpRegistry`, rather than an opaque `mapY` lambda. So the graph-rewrite, evolve, and [transmutation](#actions) machinery can swap any of them in by name: `op=rectify`, `op=quantize`, `op=crush`, and the rest.
 
 **Simple**
 
@@ -2554,7 +2553,7 @@ with(Functions) {
 }
 ```
 
-**The transfer curves.** Sweeping a ramp `-2..2` through each shaper and plotting the result against `x` draws that shaper's *transfer curve* directly — the shape it imposes on its input. The montage below runs the whole waveshaper family (`fold` / `rectify` / `quantize` / `crush` / `chebyshev` / `clip` / `softClip` / `clamp` / `wrapY`) live in a Field box. Each is a pure value shaper, so the curves are deterministic; the CPU-only `WaveshapeWorkedExample` harness (a jvm-main smoke + a JUnit test) asserts the same geometry and bit-for-bit reproducibility without a GPU.
+**The transfer curves.** Sweeping a ramp `-2..2` through each shaper and plotting the result against `x` draws that shaper's *transfer curve* directly: the shape it imposes on its input. The montage below runs the whole waveshaper family (`fold` / `rectify` / `quantize` / `crush` / `chebyshev` / `clip` / `softClip` / `clamp` / `wrapY`) live in a Field box. Each is a pure value shaper, so the curves come out the same on every run.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/waveshape-transfer-curves.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-waveshape-transfer-curves"}
 :::static
@@ -2578,9 +2577,9 @@ with(Functions) {
 }
 ```
 
-**Replay it live.** A loadable operation transcript, [`assets/functions/waveshape-transforms.operations.yaml`](assets/functions/waveshape-transforms.operations.yaml), builds and plots the whole family in a fresh Field document. Replay it with `field_backdoor.py --scratch` (`macro write … && macro run …`) or hand the YAML to the `field_run_transcript` MCP tool. See [Automating Field](automating_field.md) for the transcript path. A companion transcript, [`assets/functions/chebyshev-waveshaper.operations.yaml`](assets/functions/chebyshev-waveshaper.operations.yaml), builds the two boxes captured below. A third, [`assets/functions/waveshaper-family-evolvable.operations.yaml`](assets/functions/waveshaper-family-evolvable.operations.yaml), plots `rectify`/`quantize`/`crush` *and* the payoff of making them first-class: it transmutes a clipped sine into each one by name through the rewrite DSL (`clip => op=rectify`, `op=quantize`, `op=crush`) — the same op vocabulary the evolve loop mutates over.
+**Replay it live.** A loadable operation transcript, [`assets/functions/waveshape-transforms.operations.yaml`](assets/functions/waveshape-transforms.operations.yaml), builds and plots the whole family in a fresh Field document. Replay it with `field_backdoor.py --scratch` (`macro write … && macro run …`) or hand the YAML to the `field_run_transcript` MCP tool. See [Automating Field](automating_field.md) for the transcript path. A companion transcript, [`assets/functions/chebyshev-waveshaper.operations.yaml`](assets/functions/chebyshev-waveshaper.operations.yaml), builds the two boxes captured below. A third, [`assets/functions/waveshaper-family-evolvable.operations.yaml`](assets/functions/waveshaper-family-evolvable.operations.yaml), plots `rectify`/`quantize`/`crush` and then transmutes a clipped sine into each of them by name through the rewrite DSL (`clip => op=rectify`, `op=quantize`, `op=crush`), which is the same op vocabulary the evolve loop mutates over. Without a Field at all, `WaveshapeWorkedExample` runs the same geometry on the CPU as a jvm-main smoke and a JUnit test.
 
-**The harmonic ladder.** A single-cycle sine, then the same sine pushed through `chebyshev(2..5)` — each output is the pure *n*-th harmonic, since Tₙ(cos θ) = cos(nθ) — and finally an `order = ramp(1.0, 6.0)` sweep that glides continuously from the 1st up to the 6th harmonic across the window (order is a real number, not a stepped integer).
+**The harmonic ladder.** A single-cycle sine, then the same sine pushed through `chebyshev(2..5)`, where each output is the pure *n*-th harmonic since Tₙ(cos θ) = cos(nθ). Finally an `order = ramp(1.0, 6.0)` sweep glides continuously from the 1st up to the 6th harmonic across the window, order being a real number rather than a stepped integer.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/chebyshev-harmonic-ladder.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-chebyshev-harmonic-ladder"}
 :::static
@@ -2751,7 +2750,7 @@ with(Functions) {
 
 ### Complete API addendum: utility classes and methods
 
-The tables above cover the primary signal-shaping API. This addendum closes the remaining symbol gaps with plain examples and more developed variants.
+The sections above cover the primary signal-shaping API. This addendum closes the remaining symbol gaps with plain examples and more developed variants.
 
 #### Domain methods
 
@@ -3411,7 +3410,7 @@ The browser always leaves the final curve visible in gray. The selected cyan tra
 
 Shift- or ⌘-click nodes in the sidebar to overlay several occurrences at once for side-by-side comparison.
 
-The distinction between local and effect is the useful part. A sine below `shift`, `warp`, `repeat`, multiplication, or a timeline may look ordinary locally while its effect shows where it actually lands in the finished gesture. Every graph occurrence has its own path, so a shared function used in two places can be inspected twice in context.
+Local and effect diverge in the cases you care about. A sine below `shift`, `warp`, `repeat`, multiplication, or a timeline may look ordinary locally while its effect shows where it actually lands in the finished gesture. Every graph occurrence has its own path, so a shared function used in two places can be inspected twice in context.
 
 ```diffstatic {data-lang=kotlin}
 val trace = gesture.graphTrace(samples = 256)
@@ -3438,7 +3437,7 @@ saw => op=triangle
 """, channel = "rewrite")
 ```
 
-`graphRewriteTrace(...)` is the non-HTML form, and it also accepts a `List<FnGraphRule>` — so the same before/after lanes work for the pattern rules and programmatic rules described below, not just the string DSL. Together, the two browsers close the loop between structural editing and perceptual confirmation: rewrite the graph, then watch exactly which occurrence moved and by how much.
+`graphRewriteTrace(...)` is the non-HTML form, and it also accepts a `List<FnGraphRule>`, so the same before/after lanes work for the pattern rules and programmatic rules described below, not just the string DSL. Together, the two browsers close the loop between structural editing and perceptual confirmation: rewrite the graph, then watch exactly which occurrence moved and by how much.
 
 ## Fn graph inspection and rewrite language
 
@@ -3489,11 +3488,11 @@ sin/**/[tag=number][value>0.2] => = 0.5
 
 The first rule matches a `saw` occurrence whose parent is any node and whose grandparent is `sin`. The second rule finds numeric nodes anywhere under a `sin` and changes values greater than `0.2` to `0.5`. The graph view is a better first read than text here: the operation swap and constant rewrites become visible as topology and labels.
 
-Each non-constant card also carries a **sparkline** — a faint teal waveform drawn behind the labels that samples the sub-expression rooted at that node (the operator together with all of its parameters) across its own domain, falling back to the unit interval when the domain is unbounded. A dashed baseline marks zero whenever the signal crosses it. Constants are left blank because a flat line carries no shape worth plotting. Reading a rewrite becomes doubly concrete: the topology tells you *what* changed, and the sparkline at each node shows *how the shape at that point changed* as a result. Pass `sparklines = false` to `graphSvg(...)` to suppress the waveforms and get bare cards.
+Each non-constant card also carries a **sparkline**: a faint teal waveform drawn behind the labels that samples the sub-expression rooted at that node (the operator together with all of its parameters) across its own domain, falling back to the unit interval when the domain is unbounded. A dashed baseline marks zero whenever the signal crosses it. Constants are left blank because a flat line has no shape to plot. So the topology tells you *what* changed, and the sparkline at each node shows *how the shape at that point changed* as a result. Pass `sparklines = false` to `graphSvg(...)` to suppress the waveforms and get bare cards.
 
 ### The interactive loop: compile, preview, commit
 
-`rewrite(...)` remains intentionally forgiving for sketches and performances. For deliberate editing—especially from an agent—use the three-stage API:
+`rewrite(...)` is forgiving, which is what a sketch or a performance wants. For deliberate editing, especially from an agent, use the three-stage API:
 
 ```diffstatic {data-lang=kotlin}
 val source = (saw(0.2) * 0.5).withName("gesture")
@@ -3513,11 +3512,11 @@ println(preview.summary())
 val committed = source.rewriteChecked(spec)
 ```
 
-`compileFnRewrite(...)` never needs a function graph. It checks the language, retains valid rules, and returns line-addressed errors and warnings. `previewRewrite(...)` applies those rules to an immutable copy and records every matched path, role, before/after operation, no-op, and unmatched rule. `rewriteChecked(...)` refuses a program with errors; ordinary `rewrite(...)` keeps the historical forgiving behavior.
+`compileFnRewrite(...)` never needs a function graph. It checks the language, retains valid rules, and returns line-addressed errors and warnings. `previewRewrite(...)` applies those rules to an immutable copy and records every matched path, role, before/after operation, no-op, and unmatched rule. `rewriteChecked(...)` refuses a program with errors, where ordinary `rewrite(...)` presses on.
 
 When the rules contain Kotlin `@{...}` expressions, use `previewRewriteKotlin(...)` and `rewriteKotlinChecked(...)`. They compile expressions in the current Field box just like `rewriteKotlin(...)`, so preview and commit see the same live variables, imports, and helper functions.
 
-That gives humans a pleasant rhythm—write, inspect, listen or look, commit—and gives agents a bounded evidence loop:
+That gives humans a pleasant rhythm (write, inspect, listen or look, commit) and gives agents a bounded evidence loop:
 
 1. Compile and fix every error.
 2. Preview and read `summary()`.
@@ -3684,11 +3683,11 @@ Actions rebuild or relabel the matched copied node:
 
 Numeric actions apply only to nodes with a `numbers["value"]` metadata entry. That usually means constants and parameter nodes. If a numeric action lands on a non-numeric node, it is ignored rather than failing the whole rewrite.
 
-`op=...` transmutes a node to another operation, reusing role-addressed children and scalar metadata. The vocabulary is the whole graph-aware family, defined once in `OpRegistry` (the single source of truth the DSL validator and the Monaco editor also consult):
+`op=...` transmutes a node to another operation, reusing role-addressed children and scalar metadata. `OpRegistry` holds the whole vocabulary, and holds it once: the DSL validator and the Monaco editor consult the same object. It groups the targets into three families, and the three rebuild differently. Each name below is one `OpSpec`; read the registry itself for the exhaustive set.
 
-- **Generators** — oscillators (`sin`, `cos`, `saw`, `triangle`, `square`), `pulseTrain`, noise (`whiteNoise`, `valueNoise`, `perlinNoise`, `fbm`, `fbmPerlin`, `randomWalk`), windows (`hannWindow`, `hammingWindow`, `blackmanWindow`, `gaussianWindow`), `gaussian`, `ramp`, `step`, `smoothstep`, `tween`, `ease`. These rebuild from whatever roles the source carries and fall back to factory defaults for the rest. Role names bridge across families, so `sin => op=saw` carries `frequency` over as `period` (via reciprocal) rather than resetting it.
+- **Generators** — oscillators (`sin`, `cos`, `saw`, `triangle`, `square`), `pulseTrain`, noise (`whiteNoise`, `valueNoise`, `perlinNoise`, `fbm`, `fbmPerlin`, `randomWalk`), windows (`hannWindow`, `hammingWindow`, `blackmanWindow`, `gaussianWindow`), `gaussian`, `ramp`, `remap`, `step`, `smoothstep`, `tween`, `ease`. These rebuild from whatever roles the source carries and fall back to factory defaults for the rest. Role names bridge across families, so `sin => op=saw` carries `frequency` over as `period` (via reciprocal) rather than resetting it.
 - **Algebra** — `add`, `subtract`, `multiply`, `divide`, rebuilt from the `left`/`right` children.
-- **Value transforms** — `shift`, `scaleX`, `scaleY`, `offsetY`, `pow`, `log`, `clamp`, `clip`, `softClip`, `fold`, `chebyshev`, `rectify`, `quantize`, `crush`, `wrapY`. These need an existing `source` child, so `clamp => op=softClip` works while `sin => op=clamp` is reported as a no-op — nothing to wrap — rather than silently doing something else. The waveshaper trio `rectify`/`quantize`/`crush` joined this list once they became rebuildable graph nodes (previously opaque `mapY` lambdas the DSL could not reach).
+- **Value transforms** — `shift`, `scaleX`, `scaleY`, `offsetY`, `pow`, `exp`, `log`, `abs`, `sign`, `floor`, `flip`, `clamp`, `clip`, `softClip`, `fold`, `chebyshev`, `rectify`, `quantize`, `crush`, `wrapY`, and the trig group (`atan`, `atan2`, `hypot`). These need an existing `source` child, so `clamp => op=softClip` works while `sin => op=clamp` is reported as a no-op (nothing to wrap) rather than silently doing something else.
 
 Transmutation reports impossibility rather than guessing at it: if a target cannot be built from the matched node it is left unchanged and reported as `matched/no-op` in `previewRewrite(...)`. Data-carrying ops such as `piecewise`, `timeline`, and `rbf` are *known* to selectors and validation but are not transmutation targets, because their identity lives in baked point/item data a foreign node cannot supply.
 
@@ -3744,7 +3743,7 @@ sin/**/[tag=number] => *= @{1.1}
 """)
 ```
 
-The lower-level `rewrite(...)` function is useful when the RHS is plain numbers and actions, or when you are supplying your own evaluator through `FnRewriteOptions`. It intentionally does not depend on the live-code compiler.
+The lower-level `rewrite(...)` function is useful when the RHS is plain numbers and actions, or when you are supplying your own evaluator through `FnRewriteOptions`. It does not depend on the live-code compiler at all.
 
 ### Programmatic rules, traces, and fixed points
 
@@ -3775,7 +3774,7 @@ This API is small, but it establishes the pieces needed for a more ambitious opt
 
 Rules default to `FIRST_MATCH` at each node, which makes priority explicit. Use `FnGraphRuleMode.ALL_MATCHES` when several rules should chain on the same copied node. A bounded run is important in live art code: an oscillating rewrite should report a cycle, not disappear into the animation loop.
 
-`graphMetrics` separates shared DAG nodes from path occurrences. That distinction is useful now for understanding repeated motifs, and later for cost-guided search: execution cost might charge each unique node, while visual or semantic complexity might charge each occurrence.
+`graphMetrics` separates shared DAG nodes from path occurrences. That distinction is what makes a repeated motif visible, and it is the hook a cost-guided search wants: execution cost might charge each unique node, while visual or semantic complexity might charge each occurrence.
 
 ### Pattern → template rewriting
 
@@ -3789,7 +3788,7 @@ val simplified = ((sin(2.0) + 0.0) + 0.0).rewritePatterns(
 println(simplified.function.graphNode().op) // sin
 ```
 
-`fnRule("lhs => rhs")` compiles a spec into an ordinary `FnGraphRule`, so pattern rules inherit the same traced, bounded, cycle-detecting runners (`rewriteWithRules`, `rewriteUntilStable`) as everything else. A bare op on the right transmutes the matched node through `OpRegistry` (`sin => cos`); the algebra ops build directly from child templates (`multiply(?a, ?b) => multiply(?b, ?a)`). For an RHS the string form cannot express, use the programmatic builder — the pattern captures structure, and the replacement is ordinary Kotlin over the whole stdlib:
+`fnRule("lhs => rhs")` compiles a spec into an ordinary `FnGraphRule`, so pattern rules inherit the same traced, bounded, cycle-detecting runners (`rewriteWithRules`, `rewriteUntilStable`) as everything else. A bare op on the right transmutes the matched node through `OpRegistry` (`sin => cos`); the algebra ops build directly from child templates (`multiply(?a, ?b) => multiply(?b, ?a)`). For an RHS the string form cannot express, use the programmatic builder: the pattern captures structure, and the replacement is ordinary Kotlin over the whole stdlib.
 
 ```diffstatic {data-lang=kotlin}
 val folded = (sin(1.0) + sin(1.0)).rewriteUntilStable(
@@ -3799,7 +3798,7 @@ val folded = (sin(1.0) + sin(1.0)).rewriteUntilStable(
 
 ### Evolving and optimizing functions
 
-The pieces above — occurrence matching, a cost from `graphMetrics`, and the seeded mutation operators in `FnMutations` (jitter/nudge numbers, substitute an op within its family, prune, duplicate, or graft a subtree) — compose into `evolve(...)`: a bounded, fully deterministic (µ+λ) hill-climb over `Fn` graphs. Given the same seed and inputs it reproduces the same run, which is what makes evolved gestures repeatable in live art.
+The pieces above (occurrence matching, a cost from `graphMetrics`, and the seeded mutation operators in `FnMutations`: jitter/nudge numbers, substitute an op within its family, prune, duplicate, or graft a subtree) compose into `evolve(...)`, a bounded, fully deterministic (µ+λ) hill-climb over `Fn` graphs. Given the same seed and inputs it reproduces the same run, which is what makes evolved gestures repeatable in live art.
 
 ```diffstatic {data-lang=kotlin}
 val target = triangle(0.5).softClip(0.7)
@@ -3817,9 +3816,9 @@ run.best.browseGraph(channel = "evolved")
 
 #### A worked run (CPU-only, reproducible)
 
-Prose is easy to distrust, so here is an actual run — no GPU, no window, just the harness. The worked example lives in `afield.examples.functions.EvolveWorkedExample`; it runs this exact search on the CPU, and every number below is asserted to reproduce exactly under the fixed seed. The figure that follows is a live capture of the same run plotted in a box.
+Here is one run end to end. `afield.examples.functions.EvolveWorkedExample` performs this exact search on the CPU, with no GPU and no window; the figure below it plots the same run in a box.
 
-The setup is adversarial in two independent ways at once. The **target** is a half-amplitude sine, `sin(frequency = 1.0, amplitude = 0.5)`. The **seed** is a full-amplitude *cosine*, `cos(frequency = 1.0, amplitude = 1.0)` — the wrong op *and* the wrong amplitude. To reach the target a run must both transmute the operator (via `substituteOp`, staying inside the oscillator family) and dial in the numeric leaves (via `jitter`/`nudge`), with `prune` trimming structure for parsimony. Everything runs under a fixed `rngSeed = 3`.
+The setup is adversarial in two independent ways at once. The **target** is a half-amplitude sine, `sin(frequency = 1.0, amplitude = 0.5)`. The **seed** is a full-amplitude *cosine*, `cos(frequency = 1.0, amplitude = 1.0)`: the wrong op *and* the wrong amplitude. To reach the target a run must both transmute the operator (via `substituteOp`, staying inside the oscillator family) and dial in the numeric leaves (via `jitter`/`nudge`), with `prune` trimming structure for parsimony. Everything runs under a fixed `rngSeed = 3`.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -3834,7 +3833,7 @@ val run = evolve(
 )
 ```
 
-The same run, plotted live in a box — target, seed, and `run.best` overlaid by converting each `Fn` to an `FLine` and drawing all three with `lines(...)`:
+The same run, plotted live in a box: target, seed, and `run.best` overlaid by converting each `Fn` to an `FLine` and drawing all three with `lines(...)`.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/evolve-overlay.png" wait="2.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-evolve-overlay"}
 :::static
@@ -3885,7 +3884,7 @@ with(Functions) {
 }
 ```
 
-The grey curve is the seed cosine; the red curve is the target; the blue curve is `run.best`. The blue tracks the red almost exactly — the fitness (negative RMSE minus a small complexity penalty) climbs from **−0.8421** at the seed to **−0.1568** at the best, an ~81% reduction in error. The accepted-mutation trace shows *how*:
+The grey curve is the seed cosine; the red curve is the target; the blue curve is `run.best`. The blue tracks the red almost exactly: the fitness (negative RMSE minus a small complexity penalty) climbs from **−0.8421** at the seed to **−0.1568** at the best, an ~81% reduction in error. The accepted-mutation trace shows *how*:
 
 | iteration | accepted mutation | score (−RMSE − penalty) |
 | --- | --- | --- |
@@ -3903,12 +3902,13 @@ The grey curve is the seed cosine; the red curve is the target; the blue curve i
 | 19 | prune | -0.1718 |
 | 23 | prune | -0.1568 |
 
-The story reads top to bottom. Iteration 1 is the structural leap: `substituteOp` turns the cosine into a sine and more than halves the error in a single step. The middle rows are `jitter`/`nudge` walking the amplitude leaf down from 1.0 toward 0.5, interleaved with `prune` steps that shed now-redundant structure without hurting the fit (the small `complexityWeight` rewards the simpler graph). After 12 accepted improvements across 120 iterations (961 total evaluations) the search settles. Because every draw goes through one seeded `Random`, re-running reproduces this trace and a byte-identical SVG exactly — the property that makes an evolved gesture safe to keep in live art.
-#### Variety generation — novelty search for a *set* of gestures
+The story reads top to bottom. Iteration 1 is the structural leap: `substituteOp` turns the cosine into a sine and more than halves the error in a single step. The middle rows are `jitter`/`nudge` walking the amplitude leaf down from 1.0 toward 0.5, interleaved with `prune` steps that shed now-redundant structure without hurting the fit (the small `complexityWeight` rewards the simpler graph). After 12 accepted improvements across 120 iterations (961 total evaluations) the search settles. Every draw goes through one seeded `Random`, so re-running reproduces this trace and a byte-identical SVG, which is what makes an evolved gesture safe to keep in live art.
+
+#### Variety generation: novelty search for a *set* of gestures
 
 `matchFitness` pulls every candidate toward one target. Often you want the opposite: a *diverse family* of gestures rather than one best match. `evolveVariety(...)` grows a behaviourally distinct set by **novelty search**, reusing the same `evolve` machinery and the same seeded-`Random` determinism.
 
-The key idea is a *behavioural* coordinate — what a graph does, not how it is built. `Fn.behaviour(domain, samples)` samples `evalSafe` on an even grid into an `FnBehaviour` descriptor (with a `distanceTo`), the counterpart to the structural view from `graphMetrics`. `noveltyFitness(archive, ...)` then rewards a candidate for being far (mean of its k-nearest neighbours) from an archive of already-seen behaviours — a drop-in `(Fn) -> Double` you can hand to plain `evolve`. `evolveVariety` orchestrates it: each slot evolves against a growing archive, adopts the winner, and drifts the seed onto it so the next slot has rich material to mutate *away* from.
+Novelty is measured on a *behavioural* coordinate: what a graph does, not how it is built. `Fn.behaviour(domain, samples)` samples `evalSafe` on an even grid into an `FnBehaviour` descriptor (with a `distanceTo`), the counterpart to the structural view from `graphMetrics`. `noveltyFitness(archive, ...)` then rewards a candidate for being far (mean of its k-nearest neighbours) from an archive of already-seen behaviours. It is a drop-in `(Fn) -> Double` you can hand to plain `evolve`. `evolveVariety` orchestrates it: each slot evolves against a growing archive, adopts the winner, and drifts the seed onto it so the next slot has rich material to mutate *away* from.
 
 ```diffstatic {data-lang=kotlin}
 val variety = evolveVariety(
@@ -3923,15 +3923,15 @@ println("spread = ${variety.meanPairwiseDistance}")
 variety.results.forEachIndexed { i, fn -> fn.browseGraph(channel = "variety-$i") }
 ```
 
-`FnVarietyRun` exposes the `results`, their `behaviours`, the underlying per-slot `runs`, and `meanPairwiseDistance` — the average behavioural distance across the set, a defensible diversity metric. Because novelty is scored purely from sampled behaviour, the returned graphs are genuinely spread out in *what they do*, not merely distinct in structure. As always the run is fully deterministic: the same `rngSeed` and inputs reproduce the identical family, so an evolved *set* of gestures is as repeatable in live art as a single evolved one.
+`FnVarietyRun` exposes the `results`, their `behaviours`, the underlying per-slot `runs`, and `meanPairwiseDistance`, the average behavioural distance across the set. Because novelty is scored purely from sampled behaviour, the returned graphs are spread out in *what they do*, not merely distinct in structure. The run is deterministic like any other: the same `rngSeed` and inputs reproduce the identical family, so an evolved *set* of gestures is as repeatable in live art as a single evolved one.
 
 ##### Shape vs amplitude: the `normalize` flag
 
-There is a subtlety worth understanding, because it decides whether variety search gives you what you actually want. By default `behaviour(...)` records the raw sampled signal, so `distanceTo` measures distance in *value space*. Under that metric the cheapest way for a candidate to look "novel" is simply to be **louder** — scale an amplitude and you are far from everything in the archive without changing the gesture at all. Left unchecked, a novelty run drifts toward ever-bigger magnitudes: one gesture that blows up, the rest collapsed against it.
+The metric that measures the distance decides whether variety search gives you a family or a single runaway. By default `behaviour(...)` records the raw sampled signal, so `distanceTo` measures distance in *value space*. Under that metric the cheapest way for a candidate to look "novel" is simply to be **louder**: scale an amplitude and you are far from everything in the archive without changing the gesture at all. Left unchecked, a novelty run drifts toward ever-bigger magnitudes, one gesture that blows up and the rest collapsed against it.
 
-Passing `normalize = true` z-scores each descriptor (subtract the mean, divide by the RMS) before measuring distance, so amplitude and offset fall out and novelty is forced to explore *shape* — sine versus saw versus pulse versus something pruned flat. As a bonus the default mutation palette now behaves: `duplicateSubtree` only rescales a copy, which normalization ignores, so it can no longer run away. This is the counterpart of the structural cost from `graphMetrics` — one asks "how big is the graph", the other "how different is what it does".
+Passing `normalize = true` z-scores each descriptor (subtract the mean, divide by the RMS) before measuring distance, so amplitude and offset fall out and novelty has to explore *shape* instead: sine versus saw versus pulse versus something pruned flat. That also tames the default mutation palette, because `duplicateSubtree` only rescales a copy and normalization ignores a rescaling. Read it as the counterpart of the structural cost from `graphMetrics`: one asks "how big is the graph", the other "how different is what it does".
 
-Here is an actual `normalize = true` run, plotted live in a box — each slot's stored z-scored `behaviour` drawn as an `FLine` in its own cell of a 3×2 montage, so the grid shares one scale and reads as pure shape:
+A `normalize = true` run, plotted live in a box, with each slot's stored z-scored `behaviour` drawn as an `FLine` in its own cell of a 3×2 montage, so the grid shares one scale and reads as pure shape:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/evolve-variety.png" wait="2.5" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-evolve-variety"}
 :::static
@@ -3994,9 +3994,9 @@ with(Functions) {
 }
 ```
 
-Six slots grown from a single `sin(2.0) * 0.5` seed, `meanPairwiseDistance = 1.51` across the set — every cell is a genuinely different shape (all six polylines are distinct), not the same wave rescaled. Re-running regenerates a byte-identical montage. Try it without `normalize` and watch the spread balloon into the billions while the montage degenerates to one spike: a compact demonstration of *why the metric matters* in open-ended generation.
+Six slots grown from a single `sin(2.0) * 0.5` seed, `meanPairwiseDistance = 1.51` across the set: every cell is a different shape, not the same wave rescaled. Try it without `normalize` and watch the spread balloon into the billions while the montage degenerates to one spike. That is the whole argument for the metric in two runs.
 
-**Replay it live.** A loadable operation transcript, [`assets/evolve/variety-evolution.operations.yaml`](assets/evolve/variety-evolution.operations.yaml), builds and runs this in a fresh Field document — one box that grows the set and plots each gesture. Replay it with `field_backdoor.py --scratch` (`macro write … && macro run …`) or hand the YAML to the `field_run_transcript` MCP tool. See [Automating Field](automating_field.md) for the transcript path.
+**Replay it live.** A loadable operation transcript, [`assets/evolve/variety-evolution.operations.yaml`](assets/evolve/variety-evolution.operations.yaml), builds and runs this in a fresh Field document, as one box that grows the set and plots each gesture. Replay it with `field_backdoor.py --scratch` (`macro write … && macro run …`) or hand the YAML to the `field_run_transcript` MCP tool. See [Automating Field](automating_field.md) for the transcript path.
 
 ### Rewrite plot example
 
@@ -4021,7 +4021,7 @@ sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}
 }
 ```
 
-The important thing here is that the selectors talk about structure, not sample values. The rules do not ask "where is the waveform high?"; they ask "which function graph nodes sit under this ancestry, role, or metadata condition?" Plotting the source, result, and delta makes the structural edit audible-to-the-eye: the graph rewrite is not just metadata, it changes the sampled signal.
+The selectors talk about structure, not sample values. The rules do not ask "where is the waveform high?"; they ask "which function graph nodes sit under this ancestry, role, or metadata condition?" Plotting the source, result, and delta puts the structural edit on screen: the graph rewrite is not only metadata, it changes the sampled signal.
 
 ### Rewrite limitations
 
@@ -4056,9 +4056,7 @@ FUNCTIONS_PLOT_DIR=/tmp/functions-plots python3 tools/run_field_tests.py --id fu
 Render to a temp directory and copy the files in, rather than writing into the working tree while the
 runner's Field server is watching it.
 
-Every plotted `(x, y)` in those is a real `Fn.evalSafe(…)` of a genuine `Functions` graph, and the fit
-series is the output of a real `fitGradient` run — only "draw a line between real samples" is
-synthetic. As a FIELD_TEST the gallery asserts rather than just draws: painted fraction, finite
-samples, that the fit genuinely converges (`finalError < 0.25 × initialError`) and that the fitted
-curve tracks its target to within 0.15. The mp4 is best-effort and skipped with a printed note if
-`ffmpeg` is not on the machine, so a missing encoder cannot fail the build.
+Being a FIELD_TEST, the gallery asserts as well as draws: painted fraction, finite samples, that the
+fit converges (`finalError < 0.25 × initialError`), and that the fitted curve tracks its target to
+within 0.15. The mp4 is best-effort, skipped with a printed note when `ffmpeg` is not on the machine,
+so a missing encoder cannot fail the build.
