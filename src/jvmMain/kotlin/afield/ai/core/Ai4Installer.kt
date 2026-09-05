@@ -572,6 +572,22 @@ fun installAi4() {
     val chatThreadByKey = ConcurrentHashMap<String, OpenAiIdeCodexBridge.ThreadState>()
     val chatHistoryByKey = ConcurrentHashMap<String, String>()
     val agentMemoryByKey = ConcurrentHashMap<String, AgentMemoryState>()
+    var bridgeRevision = aiProviderConfigRevision()
+
+    fun invalidateBridgesAfterSettingsChange() {
+        val revision = aiProviderConfigRevision()
+        if (revision == bridgeRevision) return
+        bridge = null
+        helpers = null
+        chatBridge = null
+        chatHelpers = null
+        threadByKey.clear()
+        chatThreadByKey.clear()
+        chatHistoryByKey.clear()
+        agentMemoryByKey.clear()
+        bridgeRevision = revision
+        lprintln("info,ai4", "AI provider settings changed; cleared bridges and conversation state")
+    }
 
     fun langSpecForName(name: String): LanguageSpec = when {
         name.equals("Kotlin", ignoreCase = true) -> KOTLIN_SCRIPT
@@ -862,6 +878,7 @@ fun installAi4() {
     })
 
     handlers["ai-assist"] = mutableSetOf({ message, _ ->
+        invalidateBridgesAfterSettingsChange()
         val exec = Json.decodeFromJsonElement<AiAssist>(message.payload!!)
         val box = box(exec.uid)
 
@@ -2063,11 +2080,6 @@ fun installAi4() {
             )
         }
 
-        val vectorStoreIds = buildList {
-            KotlinSourceIndex.currentVectorStoreId()?.let { add(it) }
-            addAll(GlslIncludeLibraryIndex.currentVectorStoreIdsFor(exec.property, expandedExtraPrompt + "\n" + exec.prompt))
-        }.distinct()
-
         fun parsedScreenshotCommand(): String? {
             val text = when (exec.kind) {
                 "general", "chat" -> exec.extraPrompt.trim()
@@ -2328,7 +2340,6 @@ fun installAi4() {
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
-                            vectorStoreIds = vectorStoreIds,
                             onProgress = progressCallback
                         )
                     }
@@ -2394,7 +2405,6 @@ fun installAi4() {
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
-                            vectorStoreIds = vectorStoreIds,
                             onTextDelta = { chunk ->
                                 if (!streamActive.get() || chunk.isEmpty()) return@chatGeneral
                                 synchronized(liveLock) {
@@ -2442,7 +2452,6 @@ fun installAi4() {
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
-                            vectorStoreIds = vectorStoreIds,
                             onProgress = progressCallback
                         )
                     }
@@ -2474,7 +2483,6 @@ fun installAi4() {
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
-                            vectorStoreIds = vectorStoreIds,
                             onProgress = progressCallback
                         )
                     }
@@ -2506,7 +2514,6 @@ fun installAi4() {
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
-                            vectorStoreIds = vectorStoreIds,
                             onProgress = progressCallback
                         )
                     }
@@ -2651,6 +2658,7 @@ fun installAi4() {
     })
     
     handlers["chat_input"] = mutableSetOf({ message, reply ->
+        invalidateBridgesAfterSettingsChange()
         val input = Json.decodeFromJsonElement<Chat_input>(message.payload!!)
         
         if (chatBridge == null) {

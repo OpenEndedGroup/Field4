@@ -411,6 +411,13 @@ data class WorkspaceSwitchRequest(
 )
 
 @Serializable
+data class AiProviderModelSettings(
+    val flagshipModel: String = "",
+    val fastModel: String = "",
+    val fallbackModel: String = ""
+)
+
+@Serializable
 data class AiSettingsStatus(
     val hasOpenAiPlatformKey: Boolean = false,
     val hasOpenRouterApiKey: Boolean = false,
@@ -419,9 +426,11 @@ data class AiSettingsStatus(
     val configPath: String = "",
     val openRouterConfigPath: String = "",
     val baseUrl: String = "",
+    val openRouterBaseUrl: String = "",
     val flagshipModel: String = "",
     val fastModel: String = "",
-    val fallbackModel: String = ""
+    val fallbackModel: String = "",
+    val modelsByProvider: Map<String, AiProviderModelSettings> = emptyMap()
 )
 
 @Serializable

@@ -9,11 +9,6 @@ import afield.logger.lprintln
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
-import com.openai.models.ChatModel
-import com.openai.models.ResponseFormatText
-import com.openai.models.responses.Response
-import com.openai.models.responses.ResponseCreateParams
-import com.openai.models.responses.ResponseTextConfig
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -280,39 +275,16 @@ internal object Ai4AutoBoxNamer {
 
         val modelName = Ai4ModelDefaults.envOrDefault("AFIELD_AI_AUTO_NAME_MODEL", Ai4ModelDefaults.fastModel())
         lprintln("info,ai.boxnames", "AI4 auto box naming sending request to model $modelName")
-        val text = if (configuredAiProvider() == "anthropic") {
-            val msg = anthropicClientFromFieldConfig().messages().create(
-                com.anthropic.models.messages.MessageCreateParams.builder()
-                    .model(modelName)
-                    .maxTokens(1200L)
-                    .addUserMessage(prompt)
-                    .build()
-            )
-            msg.content().mapNotNull { it.text().orElse(null)?.text() }.joinToString("\n").trim()
-        } else {
-            val params = ResponseCreateParams.builder()
-                .model(ChatModel.of(modelName))
-                .maxOutputTokens(1200L)
-                .input(prompt)
-                .text(ResponseTextConfig.builder().format(ResponseFormatText.builder().build()).build())
-                .build()
-            extractOutputText(openAiClientFromFieldConfig().responses().create(params))
-        }
+        val bridge = createLlmBridge(modelName, SilentLog, LlmReasoningEffort.LOW)
+        val state = bridge.startThread(
+            fileKey = "ai4:auto-box-names",
+            fileText = "",
+            instructions = "Return only the requested JSON. Do not call tools."
+        )
+        val text = bridge.send(state, prompt, maxOutputTokens = 1200L, maxToolRounds = 0).text.trim()
         lprintln("info,ai.boxnames", "AI4 auto box naming raw response text (${text.length} chars):\n$text")
         if (text.isBlank()) return emptyList()
         return mapper.readValue(jsonArrayText(text))
-    }
-
-    private fun extractOutputText(response: Response): String {
-        val parts = mutableListOf<String>()
-        response.output().forEach { item ->
-            if (item.isMessage()) {
-                item.message().orElse(null)?.content()?.forEach { content ->
-                    content.outputText().orElse(null)?.let { parts += it.text() }
-                }
-            }
-        }
-        return parts.joinToString("\n").trim()
     }
 
     private fun jsonArrayText(text: String): String {

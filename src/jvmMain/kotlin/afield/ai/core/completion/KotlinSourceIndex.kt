@@ -3,10 +3,6 @@ package afield.ai
 import afield.RunsAt
 import afield.early
 import afield.logger.lprintln
-import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
@@ -51,7 +47,6 @@ object KotlinSourceIndex {
 
     // Resolved per call, not captured: [FilestoreDir] is pinnable, and a path frozen at class-load
     // time is exactly the shape of bug that made this index machine-global in the first place.
-    private val cachePath: Path get() = FilestoreDir.resolve("filestore_cache.json")
     private val indexPath: Path get() = FilestoreDir.resolve("kotlin_source_index.json")
 
     @Volatile
@@ -104,13 +99,7 @@ object KotlinSourceIndex {
             return
         }
 
-        val apiKey = System.getenv("OPENAI_API_KEY")
-        val cache = OpenAiFileStoreCache(cachePath)
-        val uploader = OkHttpOpenAiFileUploader()
-        val keyHash = apiKey?.let { cache.keyHash(it) }
         val previous = loadIndex()
-        val previousByPath = previous?.files?.associateBy { it.path }.orEmpty()
-
         val files = mutableListOf<KotlinSourceFileRecord>()
         val definitions = mutableListOf<KotlinDefinitionRecord>()
 
@@ -120,7 +109,7 @@ object KotlinSourceIndex {
             val bytes = runCatching { Files.readAllBytes(file) }.getOrElse { return@forEach }
             val rawText = runCatching { bytes.toString(StandardCharsets.UTF_8) }.getOrDefault("")
             val isKotlinFile = rel.endsWith(".kt", ignoreCase = true) || rel.endsWith(".kts", ignoreCase = true)
-            val uploadText = if (isKotlinFile) {
+            val indexedText = if (isKotlinFile) {
                 buildString {
                     appendLine("// @language=kotlin")
                     appendLine("// @file $rel")
@@ -130,44 +119,14 @@ object KotlinSourceIndex {
             } else {
                 rawText
             }
-            val uploadBytes = uploadText.toByteArray(StandardCharsets.UTF_8)
-            val contentHash = Sha256.hex(uploadBytes)
-            val prev = previousByPath[rel]
-
-            val uploadName = if (isKotlinFile) {
-                "$rel.txt"
-            } else {
-                rel
-            }
-
-            val fileId = if (apiKey != null) {
-                if (prev != null && prev.contentHash == contentHash && !prev.fileId.isNullOrBlank()) {
-                    prev.fileId
-                } else {
-                    val result = runCatching {
-                        cache.uploadIfNeeded(
-                            openAiApiKey = apiKey,
-                            fileName = uploadName,
-                            contentBytes = uploadBytes,
-                            purpose = "assistants",
-                            uploader = uploader
-                        )
-                    }.getOrElse {
-                        lprintln("error,sourceindex", "upload failed for $rel: ${it.message}")
-                        null
-                    }
-                    result?.record?.fileId
-                }
-            } else {
-                prev?.fileId
-            }
-
+            val indexedBytes = indexedText.toByteArray(StandardCharsets.UTF_8)
+            val contentHash = Sha256.hex(indexedBytes)
             val modified = runCatching { Files.getLastModifiedTime(file).toMillis() }.getOrDefault(0L)
             files += KotlinSourceFileRecord(
                 path = rel,
                 contentHash = contentHash,
-                fileId = fileId,
-                bytes = uploadBytes.size.toLong(),
+                fileId = null,
+                bytes = indexedBytes.size.toLong(),
                 modifiedEpochMs = modified
             )
 
@@ -177,7 +136,7 @@ object KotlinSourceIndex {
                     kind = def.kind,
                     filePath = rel,
                     line = def.line,
-                    fileId = fileId,
+                    fileId = null,
                     contentHash = contentHash,
                     kdoc = def.kdoc,
                     completionCategory = def.completionCategory
@@ -185,30 +144,14 @@ object KotlinSourceIndex {
             }
         }
 
-        val fileIds = files.mapNotNull { it.fileId }.distinct()
-        val desiredVectorHash = if (fileIds.isNotEmpty()) hashFileIds(fileIds) else null
-        var vectorStoreId = previous?.vectorStoreId
-        var vectorStoreFileHash = previous?.vectorStoreFileHash
-
-        if (apiKey != null && fileIds.isNotEmpty()) {
-            val needsVectorStore = vectorStoreId.isNullOrBlank() || vectorStoreFileHash != desiredVectorHash
-            if (needsVectorStore) {
-                val ensured = ensureVectorStore(apiKey, fileIds, vectorStoreId, root)
-                if (!ensured.isNullOrBlank()) {
-                    vectorStoreId = ensured
-                    vectorStoreFileHash = desiredVectorHash
-                }
-            }
-        }
-
         val index = KotlinSourceIndexDb(
             root = ".",
-            apiKeyHash = keyHash,
+            apiKeyHash = null,
             updatedAtEpochMs = System.currentTimeMillis(),
             files = files,
             definitions = definitions,
-            vectorStoreId = vectorStoreId,
-            vectorStoreFileHash = vectorStoreFileHash
+            vectorStoreId = null,
+            vectorStoreFileHash = null
         )
 
         if (previous != null && previous.materiallySameAs(index)) {
@@ -224,12 +167,6 @@ object KotlinSourceIndex {
 
             latestIndex = index
             lprintln("info,sourceindex", "indexed ${files.size} files, ${definitions.size} definitions")
-        }
-
-        runCatching {
-            cache.flush()
-        }.onFailure {
-            lprintln("error,sourceindex", "failed to persist filestore cache: ${it.message}")
         }
     }
 
@@ -351,145 +288,13 @@ object KotlinSourceIndex {
         return matches.mapNotNull { it.categoryOrNull() }.distinct().singleOrNull()
     }
 
-    fun currentVectorStoreId(): String? =
-        latestIndex?.vectorStoreId ?: loadIndex()?.vectorStoreId
-
-    private fun hashFileIds(fileIds: List<String>): String =
-        Sha256.hexUtf8(fileIds.sorted().joinToString("\n"))
-
-    private fun ensureVectorStore(
-        apiKey: String,
-        fileIds: List<String>,
-        existingId: String?,
-        root: Path
-    ): String? {
-        val http = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build()
-        val name = "afield-src"
-        val metadata = mapOf(
-            "source" to "kotlin-src",
-            "root" to root.toString(),
-            "file_count" to fileIds.size.toString()
-        )
-
-        fun createNewStore(): String? {
-            val created = runCatching {
-                createVectorStore(http, apiKey, name, metadata)
-            }.getOrElse {
-                lprintln("error,sourceindex", "vector store create failed: ${it.message}")
-                return null
-            }
-            val vsId = created
-            val batch = runCatching {
-                createVectorStoreFileBatch(http, apiKey, vsId, fileIds)
-            }.getOrElse {
-                lprintln("error,sourceindex", "vector store batch failed: ${it.message}")
-                return null
-            }
-            runCatching { waitForFileBatch(http, apiKey, vsId, batch) }
-                .onFailure { lprintln("error,sourceindex", "vector store batch wait failed: ${it.message}") }
-            return vsId
-        }
-
-        if (existingId.isNullOrBlank()) {
-            return createNewStore()
-        }
-
-        val updateResult = runCatching {
-            val batch = createVectorStoreFileBatch(http, apiKey, existingId, fileIds)
-            waitForFileBatch(http, apiKey, existingId, batch)
-            existingId
-        }.getOrElse {
-            lprintln("error,sourceindex", "vector store update failed: ${it.message}")
-            null
-        }
-
-        return updateResult ?: createNewStore() ?: existingId
-    }
-
-    private fun createVectorStore(
-        http: HttpClient,
-        apiKey: String,
-        name: String,
-        metadata: Map<String, String>
-    ): String {
-        val payload = mapOf("name" to name, "metadata" to metadata)
-        val req = HttpRequest.newBuilder(URI.create("https://api.openai.com/v1/vector_stores"))
-            .header("Authorization", "Bearer $apiKey")
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(payload)))
-            .build()
-
-        val resp = http.send(req, HttpResponse.BodyHandlers.ofString())
-        if (resp.statusCode() !in 200..299) {
-            throw RuntimeException("VectorStores.create failed: HTTP ${resp.statusCode()} ${resp.body()}")
-        }
-        val created = mapper.readValue(resp.body(), VectorStoreCreateResponse::class.java)
-        return created.id
-    }
-
-    private fun createVectorStoreFileBatch(
-        http: HttpClient,
-        apiKey: String,
-        vectorStoreId: String,
-        fileIds: List<String>
-    ): String {
-        val payload = mapOf("file_ids" to fileIds)
-        val req = HttpRequest.newBuilder(URI.create("https://api.openai.com/v1/vector_stores/$vectorStoreId/file_batches"))
-            .header("Authorization", "Bearer $apiKey")
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(payload)))
-            .build()
-
-        val resp = http.send(req, HttpResponse.BodyHandlers.ofString())
-        if (resp.statusCode() !in 200..299) {
-            throw RuntimeException("VectorStores.fileBatches.create failed: HTTP ${resp.statusCode()} ${resp.body()}")
-        }
-        val created = mapper.readValue(resp.body(), VectorStoreFileBatchCreateResponse::class.java)
-        return created.id
-    }
-
-    private fun waitForFileBatch(
-        http: HttpClient,
-        apiKey: String,
-        vectorStoreId: String,
-        batchId: String,
-        maxWaitMs: Long = 60_000
-    ) {
-        val deadline = System.currentTimeMillis() + maxWaitMs
-        var sleepMs = 250L
-
-        while (System.currentTimeMillis() < deadline) {
-            val req = HttpRequest.newBuilder(
-                URI.create("https://api.openai.com/v1/vector_stores/$vectorStoreId/file_batches/$batchId")
-            )
-                .header("Authorization", "Bearer $apiKey")
-                .GET()
-                .build()
-
-            val resp = http.send(req, HttpResponse.BodyHandlers.ofString())
-            if (resp.statusCode() !in 200..299) {
-                throw RuntimeException("VectorStores.fileBatches.get failed: HTTP ${resp.statusCode()} ${resp.body()}")
-            }
-            val got = mapper.readValue(resp.body(), VectorStoreFileBatchGetResponse::class.java)
-            when (got.status?.lowercase()) {
-                "completed" -> return
-                "failed" -> throw RuntimeException("Vector store file batch failed: ${got.lastError?.message ?: "unknown"}")
-            }
-
-            Thread.sleep(sleepMs)
-            sleepMs = (sleepMs * 1.6).toLong().coerceAtMost(2_000L)
-        }
-    }
-
     /**
-     * The definitions [roots] declare — the deterministic half of [runSync], with no network, no
-     * upload and no cache.
+     * The definitions [roots] declare — the deterministic half of [runSync], with no network or cache.
      *
      * A function of the source tree and nothing else, which is exactly what a test needs to seed a
      * fixture index into [FilestoreDir] instead of reading whichever Field last wrote the machine's
-     * one. `fileId` and `contentHash` are left empty, because they are upload bookkeeping for
-     * `WorkspaceSymbolSearchSupport` and `SemanticRetrievalService` and no completion path reads them;
-     * [runSync] still fills them for the real index.
+     * one. `fileId` and `contentHash` are left empty because the local retrieval consumers do not
+     * require hosted IDs.
      *
      * @param relativeTo the path each `filePath` is recorded relative to — `user.dir` in [runSync].
      */

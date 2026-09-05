@@ -360,7 +360,11 @@ with your registration, and what is still not covered — are in
 
 The simplest setup is the AI settings card on `/welcome`, where you can select
 OpenAI or OpenRouter, save the corresponding key, and optionally override model
-names. Saved keys live under `~/.afield/`; they are not stored in a document.
+names. Provider changes take effect on the next AI request; existing AI
+conversations are cleared so state from one provider is never sent to another.
+Model overrides are stored separately for each provider and can be cleared by
+saving an empty model field. Saved keys live under `~/.afield/`; they are not
+stored in a document.
 
 For environment-based setup, Field reads:
 
@@ -371,8 +375,10 @@ For environment-based setup, Field reads:
 Environment variables take precedence over saved provider and credential
 files. `AFIELD_AI_BASE_URL` can override the active provider's base URL.
 
-Some AI features maintain remote conversation or source-search state with the
-configured provider. The documentation/code search path currently indexes
-selected Kotlin source roots, with separate GLSL stores selected by the current
-context; it does not upload `public/docs` or `dev_docs` as a Markdown manual.
+Some AI features maintain conversation state with the configured provider. The
+documentation/code search path indexes selected Kotlin source roots and GLSL
+include libraries locally. Automatic startup indexing never uploads source to
+OpenAI, OpenRouter, or Anthropic; the model receives only the excerpts selected
+for the current request. The explicitly invoked filestore maintenance CLI is a
+separate OpenAI-specific tool and may upload the files it is given.
 See [Semantic retrieval](semantic_index.md) for Field's separate local indexes.

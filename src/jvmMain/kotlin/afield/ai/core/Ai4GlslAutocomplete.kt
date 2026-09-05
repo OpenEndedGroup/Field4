@@ -1,6 +1,5 @@
 package afield.ai.core
 
-import com.openai.models.ReasoningEffort
 import java.util.concurrent.ConcurrentHashMap
 
 private fun shaderCompletionThreadInstructions(langName: String): String = """
@@ -132,17 +131,27 @@ private fun parseCandidateDocs(commentary: String, count: Int): List<String> {
 }
 
 object Ai4GlslAutocomplete {
-    private val bridge: OpenAiIdeCodexBridge by lazy {
+    @Volatile private var bridgeRevision = -1L
+    @Volatile private var activeBridge: LlmBridge? = null
+    private val threadByKey = ConcurrentHashMap<String, LlmThreadState>()
+
+    @Synchronized
+    private fun bridge(): LlmBridge {
+        val revision = aiProviderConfigRevision()
+        activeBridge?.takeIf { bridgeRevision == revision }?.let { return it }
         val fastModel = System.getenv("AFIELD_SHADER_AUTOCOMPLETE_MODEL")
             ?: System.getenv("AFIELD_GLSL_AUTOCOMPLETE_MODEL")
             ?: Ai4ModelDefaults.fastModel()
-        OpenAiIdeCodexBridge(
+        return createLlmBridge(
             model = fastModel,
             log = SilentLog,
-            reasoningEffort = ReasoningEffort.LOW
-        )
+            reasoningEffort = LlmReasoningEffort.LOW
+        ).also {
+            threadByKey.clear()
+            activeBridge = it
+            bridgeRevision = revision
+        }
     }
-    private val threadByKey = ConcurrentHashMap<String, OpenAiIdeCodexBridge.ThreadState>()
 
     fun complete(
         fileKey: String,
@@ -167,6 +176,7 @@ object Ai4GlslAutocomplete {
         }
         val contextBlock = shaderContextBlock(contextWithIncludes)
 
+        val bridge = bridge()
         val state = threadByKey[fileKey] ?: bridge.startThread(
             fileKey,
             lang.wrap(code),

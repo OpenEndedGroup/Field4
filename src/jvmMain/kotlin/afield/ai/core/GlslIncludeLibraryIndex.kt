@@ -1,10 +1,7 @@
 package afield.ai.core
 
 import afield.RunsAt
-import afield.ai.CanonicalBundle
-import afield.ai.CanonicalDoc
 import afield.ai.FilestoreDir
-import afield.ai.OpenAiKnowledgeStore
 import afield.ai.Sha256
 import afield.early
 import afield.logger.lprintln
@@ -77,7 +74,6 @@ private data class GlslIncludeLibrarySpec(
 object GlslIncludeLibraryIndex {
     private const val LYGIA_URL = "https://github.com/patriciogonzalezvivo/lygia.git"
 
-    private val mapper = OpenAiKnowledgeStore(FilestoreDir.resolve("glsl_include_knowledge_store.json"))
     private val vendorDir: Path = Paths.get(System.getProperty("user.home"), ".afield", "vendor")
 
     // Resolved per call, not captured — see [afield.ai.FilestoreDir]. `vendorDir` stays global on
@@ -106,18 +102,6 @@ object GlslIncludeLibraryIndex {
                 runSync()
             }
         }
-    }
-
-    fun currentVectorStoreIdsFor(property: String, prompt: String): List<String> {
-        if (!shouldUseFor(property, prompt)) return emptyList()
-        val index = latestIndex ?: loadIndex() ?: return emptyList()
-        return index.libraries.mapNotNull { it.vectorStoreId }.distinct()
-    }
-
-    fun currentVectorStoreIdsForQuery(query: String): List<String> {
-        if (!mentionsIncludes(query)) return emptyList()
-        val index = latestIndex ?: loadIndex() ?: return emptyList()
-        return index.libraries.mapNotNull { it.vectorStoreId }.distinct()
     }
 
     fun contextAttachmentFor(prompt: String, limit: Int = 24): ContextAttachment? {
@@ -200,11 +184,7 @@ object GlslIncludeLibraryIndex {
             return
         }
 
-        val apiKey = System.getenv("OPENAI_API_KEY")?.takeIf { it.isNotBlank() }
         val previous = loadIndex()
-        val previousByLibraryKey = previous?.libraries
-            ?.associateBy { libraryKey(it.name, it.includePrefix, it.root) }
-            .orEmpty()
         val records = mutableListOf<GlslIncludeLibraryRecord>()
 
         specs.forEach { spec ->
@@ -225,28 +205,6 @@ object GlslIncludeLibraryIndex {
                     files.forEach { appendLine("${it.includePath}:${it.contentHash}") }
                 }
             )
-            val previousLibrary = previousByLibraryKey[libraryKey(spec.name, spec.includePrefix, rootString)]
-
-            val vectorStoreId = if (apiKey != null) {
-                if (previousLibrary?.bundleVersion == bundleVersion && !previousLibrary.vectorStoreId.isNullOrBlank()) {
-                    previousLibrary.vectorStoreId
-                } else runCatching {
-                    mapper.ensureCanonicalBundleReady(
-                        apiKey = apiKey,
-                        bundle = CanonicalBundle(
-                            name = "glsl-includes-${spec.name}",
-                            version = bundleVersion,
-                            docs = canonicalDocsFor(spec, files)
-                        ),
-                        purposeForDocs = "assistants"
-                    )
-                }.onFailure {
-                    lprintln("error,glsl.includes", "vector store sync failed for ${spec.name}: ${it.message}")
-                }.getOrNull()
-            } else {
-                previousLibrary?.vectorStoreId
-            }
-
             records += GlslIncludeLibraryRecord(
                 name = spec.name,
                 includePrefix = spec.includePrefix,
@@ -257,7 +215,7 @@ object GlslIncludeLibraryIndex {
                 revision = revision,
                 updatedAtEpochMs = System.currentTimeMillis(),
                 files = files,
-                vectorStoreId = vectorStoreId,
+                vectorStoreId = null,
                 bundleVersion = bundleVersion
             )
         }
@@ -287,14 +245,8 @@ object GlslIncludeLibraryIndex {
             libraries.map { it.copy(updatedAtEpochMs = 0L) } ==
             other.libraries.map { it.copy(updatedAtEpochMs = 0L) }
 
-    private fun libraryKey(name: String, includePrefix: String, root: String): String =
-        "$name\u0000$includePrefix\u0000$root"
-
     private fun enabled(): Boolean =
         !System.getenv("AFIELD_GLSL_INCLUDE_INDEX").equals("off", ignoreCase = true)
-
-    private fun shouldUseFor(property: String, prompt: String): Boolean =
-        glslSpecForProperty(property) != null || mentionsIncludes(prompt)
 
     private fun mentionsIncludes(text: String): Boolean {
         val lower = text.lowercase()
@@ -477,49 +429,6 @@ object GlslIncludeLibraryIndex {
                 .sorted(Comparator.comparing<GlslIncludeFileRecord, String> { it.includePath })
                 .toList()
         }
-    }
-
-    private fun canonicalDocsFor(
-        spec: GlslIncludeLibrarySpec,
-        files: List<GlslIncludeFileRecord>
-    ): List<CanonicalDoc> {
-        val docs = mutableListOf<CanonicalDoc>()
-        val current = StringBuilder()
-        var chunk = 1
-        val maxChunkChars = 180_000
-
-        fun flush() {
-            if (current.isBlank()) return
-            docs += CanonicalDoc(
-                fileName = "glsl-includes__${spec.name}__chunk-${chunk.toString().padStart(3, '0')}.txt",
-                content = current.toString().trimEnd(),
-                contentType = "text/plain; charset=utf-8"
-            )
-            current.clear()
-            chunk++
-        }
-
-        files.forEach { file ->
-            val path = Paths.get(file.localPath)
-            val content = runCatching { Files.readString(path, StandardCharsets.UTF_8) }.getOrNull() ?: return@forEach
-            val entry = buildString {
-                appendLine("----- BEGIN GLSL INCLUDE -----")
-                appendLine("GLSL include library: ${spec.name}")
-                appendLine("Include path: ${file.includePath}")
-                appendLine("Use in Field shader code as: #include \"${file.includePath}\"")
-                if (file.symbols.isNotEmpty()) {
-                    appendLine("Symbols: ${file.symbols.joinToString(", ") { it.name }}")
-                }
-                appendLine()
-                appendLine(content.trimEnd())
-                appendLine("----- END GLSL INCLUDE -----")
-                appendLine()
-            }
-            if (current.isNotEmpty() && current.length + entry.length > maxChunkChars) flush()
-            current.append(entry)
-        }
-        flush()
-        return docs
     }
 
     private fun extractSymbols(text: String): List<GlslIncludeSymbolRecord> {

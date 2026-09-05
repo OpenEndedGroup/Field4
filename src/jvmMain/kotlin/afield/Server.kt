@@ -7,6 +7,8 @@ import afield.ai.core.AI4_AUTO_NAME_PROPERTY
 import afield.ai.core.AI4_AUTO_NAME_SIGNATURE_PROPERTY
 import afield.ai.core.AiSettingsSaveRequest
 import afield.ai.core.aiProviderStatus
+import afield.ai.core.configuredAiBaseUrl
+import afield.ai.core.configuredAiModelSettings
 import afield.ai.core.saveAiSettings
 import afield.ai.core.completion.Ai4KotlinAutocomplete
 import afield.ai.SemanticRetrievalQueryRequest
@@ -636,6 +638,9 @@ private fun shouldPersistWorkspacePath(): Boolean {
 
 private fun currentAiSettingsStatus(): AiSettingsStatus {
     val status = aiProviderStatus()
+    fun models(provider: String): AiProviderModelSettings = configuredAiModelSettings(provider).let {
+        AiProviderModelSettings(it.flagshipModel, it.fastModel, it.fallbackModel)
+    }
     return AiSettingsStatus(
         hasOpenAiPlatformKey = status.hasOpenAiPlatformKey,
         hasOpenRouterApiKey = status.hasOpenRouterApiKey,
@@ -644,9 +649,15 @@ private fun currentAiSettingsStatus(): AiSettingsStatus {
         configPath = status.configPath,
         openRouterConfigPath = status.openRouterConfigPath,
         baseUrl = status.baseUrl,
+        openRouterBaseUrl = configuredAiBaseUrl("openrouter"),
         flagshipModel = status.modelSettings.flagshipModel,
         fastModel = status.modelSettings.fastModel,
-        fallbackModel = status.modelSettings.fallbackModel
+        fallbackModel = status.modelSettings.fallbackModel,
+        modelsByProvider = mapOf(
+            "openai" to models("openai"),
+            "openrouter" to models("openrouter"),
+            "anthropic" to models("anthropic")
+        )
     )
 }
 
@@ -4016,7 +4027,7 @@ class Server {
                                         flagshipModel = status.modelSettings.flagshipModel,
                                         fastModel = status.modelSettings.fastModel,
                                         fallbackModel = status.modelSettings.fallbackModel,
-                                        message = "AI settings saved."
+                                        message = "AI settings saved; the next AI request will use ${status.provider}."
                                     )
                                 )
                             } catch (e: IllegalArgumentException) {

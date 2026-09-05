@@ -5,6 +5,7 @@ import com.openai.client.okhttp.OpenAIOkHttpClient
 import java.io.File
 import java.util.Locale
 import java.util.Properties
+import java.util.concurrent.atomic.AtomicLong
 
 const val OPENAI_PLATFORM_KEY_ENV = "OPENAI_PLATFORM_KEY"
 const val OPENAI_API_KEY_ENV = "OPENAI_API_KEY"
@@ -15,6 +16,11 @@ const val OPENROUTER_BASE_URL_ENV = "OPENROUTER_BASE_URL"
 
 private const val OPENAI_BASE_URL = "https://api.openai.com/v1"
 private const val OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+
+private val aiProviderConfigurationRevision = AtomicLong(0L)
+
+/** Changes whenever /welcome saves provider, credential, endpoint, or model settings. */
+fun aiProviderConfigRevision(): Long = aiProviderConfigurationRevision.get()
 
 class MissingOpenAiCredentialException(message: String) : IllegalStateException(message)
 
@@ -128,19 +134,25 @@ fun configuredAiProvider(): String {
     }.getOrNull() ?: "openai"
 }
 
-private fun readAiModelSettings(): AiModelSettings {
+private fun modelSettingKey(provider: String, name: String): String = "$provider.$name"
+
+private fun readAiModelSettings(provider: String = configuredAiProvider()): AiModelSettings {
     val props = Properties()
     runCatching {
         aiModelSettingsFile().takeIf { it.exists() }?.inputStream()?.use(props::load)
     }
-    return AiModelSettings(
-        flagshipModel = props.getProperty("flagshipModel", "").trim(),
-        fastModel = props.getProperty("fastModel", "").trim(),
-        fallbackModel = props.getProperty("fallbackModel", "").trim()
-    )
+    fun value(name: String): String {
+        props.getProperty(modelSettingKey(provider, name), "").trim().takeIf { it.isNotBlank() }?.let { return it }
+        // Files written before provider-scoped settings belong to the provider selected in that file.
+        val savedProvider = runCatching {
+            aiProviderFile().takeIf { it.exists() }?.readText(Charsets.UTF_8)?.trim()?.let(::normalizeProvider)
+        }.getOrNull() ?: "openai"
+        return if (savedProvider == provider) props.getProperty(name, "").trim() else ""
+    }
+    return AiModelSettings(value("flagshipModel"), value("fastModel"), value("fallbackModel"))
 }
 
-fun configuredAiModelSettings(): AiModelSettings = readAiModelSettings()
+fun configuredAiModelSettings(provider: String = configuredAiProvider()): AiModelSettings = readAiModelSettings(provider)
 
 fun configuredAiBaseUrl(provider: String = configuredAiProvider()): String {
     System.getenv(AFIELD_AI_BASE_URL_ENV)?.trim()?.takeIf { it.isNotBlank() }?.let { return it.trimEnd('/') }
@@ -149,7 +161,9 @@ fun configuredAiBaseUrl(provider: String = configuredAiProvider()): String {
         runCatching {
             val props = Properties()
             aiModelSettingsFile().takeIf { it.exists() }?.inputStream()?.use(props::load)
-            props.getProperty("openRouterBaseUrl", "").trim().takeIf { it.isNotBlank() }?.trimEnd('/')
+            (props.getProperty(modelSettingKey("openrouter", "baseUrl"), "").ifBlank {
+                props.getProperty("openRouterBaseUrl", "")
+            }).trim().takeIf { it.isNotBlank() }?.trimEnd('/')
         }.getOrNull()?.let { return it }
         return OPENROUTER_BASE_URL
     }
@@ -179,7 +193,7 @@ fun aiProviderStatus(): AiProviderStatus {
         configPath = openAiCredentialFile().absolutePath,
         openRouterConfigPath = openRouterCredentialFile().absolutePath,
         baseUrl = configuredAiBaseUrl(provider),
-        modelSettings = configuredAiModelSettings()
+        modelSettings = configuredAiModelSettings(provider)
     )
 }
 
@@ -194,42 +208,44 @@ fun saveOpenAiPlatformKey(key: String): OpenAiCredentialStatus {
 
 fun saveAiSettings(request: AiSettingsSaveRequest): AiProviderStatus {
     val provider = normalizeProvider(request.provider)
+    val suppliedOpenAiKey = request.openAiPlatformKey?.trim().orEmpty()
+    val suppliedOpenRouterKey = request.openRouterApiKey?.trim().orEmpty()
+    if (provider == "openai" && suppliedOpenAiKey.isBlank() && readOpenAiCredential() == null) {
+        throw IllegalArgumentException("OpenAI selected, but no OpenAI Platform key is configured.")
+    }
+    if (provider == "openrouter" && suppliedOpenRouterKey.isBlank() && readOpenRouterCredential() == null) {
+        throw IllegalArgumentException("OpenRouter selected, but no OpenRouter API key is configured.")
+    }
     aiProviderFile().parentFile?.mkdirs()
     aiProviderFile().writeText("$provider\n", Charsets.UTF_8)
 
-    request.openAiPlatformKey?.trim()?.takeIf { it.isNotBlank() }?.let { saveOpenAiPlatformKey(it) }
+    suppliedOpenAiKey.takeIf { it.isNotBlank() }?.let { saveOpenAiPlatformKey(it) }
 
-    request.openRouterApiKey?.trim()?.takeIf { it.isNotBlank() }?.let { key ->
+    suppliedOpenRouterKey.takeIf { it.isNotBlank() }?.let { key ->
         val file = openRouterCredentialFile()
         file.parentFile?.mkdirs()
         file.writeText("$key\n", Charsets.UTF_8)
     }
 
     val props = Properties()
-    fun putIfPresent(name: String, value: String?) {
-        value?.trim()?.takeIf { it.isNotBlank() }?.let { props.setProperty(name, it) }
-    }
-    putIfPresent("flagshipModel", request.flagshipModel)
-    putIfPresent("fastModel", request.fastModel)
-    putIfPresent("fallbackModel", request.fallbackModel)
-    putIfPresent("openRouterBaseUrl", request.openRouterBaseUrl?.trimEnd('/'))
-    val existing = Properties()
     runCatching {
-        aiModelSettingsFile().takeIf { it.exists() }?.inputStream()?.use(existing::load)
+        aiModelSettingsFile().takeIf { it.exists() }?.inputStream()?.use(props::load)
     }
-    existing.forEach { key, value ->
-        if (!props.containsKey(key)) props[key] = value
+    fun replace(name: String, value: String?) {
+        val key = modelSettingKey(provider, name)
+        val trimmed = value?.trim().orEmpty()
+        if (trimmed.isBlank()) props.remove(key) else props.setProperty(key, trimmed)
     }
+    replace("flagshipModel", request.flagshipModel)
+    replace("fastModel", request.fastModel)
+    replace("fallbackModel", request.fallbackModel)
+    if (provider == "openrouter") replace("baseUrl", request.openRouterBaseUrl?.trimEnd('/'))
+    // Do not let legacy global overrides leak into another provider after this save.
+    listOf("flagshipModel", "fastModel", "fallbackModel", "openRouterBaseUrl").forEach(props::remove)
     aiModelSettingsFile().parentFile?.mkdirs()
     aiModelSettingsFile().outputStream().use { props.store(it, "Field AI settings") }
 
-    if (provider == "openai" && readOpenAiCredential() == null) {
-        throw IllegalArgumentException("OpenAI selected, but no OpenAI Platform key is configured.")
-    }
-    if (provider == "openrouter" && readOpenRouterCredential() == null) {
-        throw IllegalArgumentException("OpenRouter selected, but no OpenRouter API key is configured.")
-    }
-
+    aiProviderConfigurationRevision.incrementAndGet()
     return aiProviderStatus()
 }
 
@@ -252,7 +268,7 @@ fun activeAiProviderRuntimeConfig(): AiProviderRuntimeConfig {
         apiKey = key,
         source = source,
         baseUrl = configuredAiBaseUrl(provider),
-        modelSettings = configuredAiModelSettings()
+        modelSettings = configuredAiModelSettings(provider)
     )
 }
 

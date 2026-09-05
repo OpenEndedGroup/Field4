@@ -25,9 +25,17 @@ private val docsSearchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 fun installDocsSearch() {
     var docsSearchBridge: DocsSearchBridge? = null
     val searchStateBySession = ConcurrentHashMap<String, DocsSearchBridge.SearchState>()
+    var bridgeRevision = aiProviderConfigRevision()
     
     handlers["docs_search_input"] = mutableSetOf({ message, reply ->
         val input = Json.decodeFromJsonElement<DocsSearch_input>(message.payload!!)
+        val revision = aiProviderConfigRevision()
+        if (revision != bridgeRevision) {
+            docsSearchBridge = null
+            searchStateBySession.clear()
+            bridgeRevision = revision
+            lprintln("info,docs.search", "AI provider settings changed; cleared documentation-search conversations")
+        }
         
         if (docsSearchBridge == null) {
             val uiLog = NotifyLog(label = "")

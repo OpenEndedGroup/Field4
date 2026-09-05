@@ -3,14 +3,17 @@ package afield.macros
 import afield.*
 import afield.ai.core.DefinitionInfo
 import afield.ai.core.ListDefinitionsResult
-import afield.ai.core.OpenAiIdeCodexBridge
 import afield.ai.core.Ai4ModelDefaults
+import afield.ai.core.LlmBridge
+import afield.ai.core.LlmReasoningEffort
+import afield.ai.core.LlmThreadState
 import afield.ai.core.StdoutLog
 import afield.ai.core.ToolExecutionContext
+import afield.ai.core.aiProviderConfigRevision
+import afield.ai.core.createLlmBridge
 import afield.logger.lprintln
 import afield.macros.MacroRegistry.MacroExpansionProblem
 import afield.macros.MacroRegistry.callRewriteWithContext
-import com.openai.models.ReasoningEffort
 import kotlin.script.experimental.api.ScriptDiagnostic
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.ConcurrentHashMap
@@ -107,18 +110,31 @@ fun stripAiGenMetadata(attic: String): String {
 // -- Lazy AI bridge singleton --
 
 object AiMacroBridge {
-    val bridge: OpenAiIdeCodexBridge by lazy {
+    @Volatile private var bridgeRevision = -1L
+    @Volatile private var activeBridge: LlmBridge? = null
+    private val threadStates = ConcurrentHashMap<String, LlmThreadState>()
+
+    val bridge: LlmBridge
+        get() = currentBridge()
+
+    @Synchronized
+    private fun currentBridge(): LlmBridge {
+        val revision = aiProviderConfigRevision()
+        activeBridge?.takeIf { bridgeRevision == revision }?.let { return it }
         lprintln("info,ai.macro", "Initializing AI macro bridge")
-        OpenAiIdeCodexBridge(
+        return createLlmBridge(
             model = System.getenv("AFIELD_AI_MACRO_MODEL") ?: Ai4ModelDefaults.flagshipModel(),
             log = StdoutLog,
-            reasoningEffort = ReasoningEffort.MEDIUM
-        )
+            reasoningEffort = LlmReasoningEffort.MEDIUM
+        ).also {
+            threadStates.clear()
+            activeBridge = it
+            bridgeRevision = revision
+        }
     }
 
-    private val threadStates = ConcurrentHashMap<String, OpenAiIdeCodexBridge.ThreadState>()
-
-    fun getOrCreateThread(boxId: String, contextCode: String): OpenAiIdeCodexBridge.ThreadState {
+    fun getOrCreateThread(boxId: String, contextCode: String): LlmThreadState {
+        val bridge = currentBridge()
         return threadStates.getOrPut(boxId) {
             bridge.startThread(
                 fileKey = "attic:$boxId",

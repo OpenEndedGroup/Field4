@@ -2307,9 +2307,11 @@
             configPath: "",
             openRouterConfigPath: "",
             baseUrl: "",
+            openRouterBaseUrl: "",
             flagshipModel: "",
             fastModel: "",
-            fallbackModel: ""
+            fallbackModel: "",
+            modelsByProvider: {}
         },
         pythonSettings: {
             configured: false,
@@ -2948,6 +2950,11 @@
         const button = document.getElementById("save-ai-settings");
         const settings = state.aiSettings || {};
         const provider = (settings.provider === "openrouter" || settings.provider === "anthropic") ? settings.provider : "openai";
+        const providerModels = settings.modelsByProvider?.[provider] || {
+            flagshipModel: settings.flagshipModel || "",
+            fastModel: settings.fastModel || "",
+            fallbackModel: settings.fallbackModel || ""
+        };
         const configured = provider === "anthropic" ? true : provider === "openrouter" ? !!settings.hasOpenRouterApiKey : !!settings.hasOpenAiPlatformKey;
 
         if (summary) summary.textContent = configured ? provider : "missing key";
@@ -2962,14 +2969,14 @@
         if (openRouterInput) openRouterInput.disabled = state.savingAiSettings;
         if (openRouterBaseUrl) {
             openRouterBaseUrl.disabled = state.savingAiSettings;
-            const routerBaseUrl = provider === "openrouter" ? (settings.baseUrl || "") : "";
-            if (!openRouterBaseUrl.value.trim() || openRouterBaseUrl.value.includes("api.openai.com")) {
-                openRouterBaseUrl.value = routerBaseUrl;
-            }
         }
-        if (flagshipModel && !flagshipModel.value.trim()) flagshipModel.value = settings.flagshipModel || "";
-        if (fastModel && !fastModel.value.trim()) fastModel.value = settings.fastModel || "";
-        if (fallbackModel && !fallbackModel.value.trim()) fallbackModel.value = settings.fallbackModel || "";
+        if (state._renderedAiProvider !== provider) {
+            if (openRouterBaseUrl) openRouterBaseUrl.value = provider === "openrouter" ? (settings.openRouterBaseUrl || settings.baseUrl || "") : "";
+            if (flagshipModel) flagshipModel.value = providerModels.flagshipModel || "";
+            if (fastModel) fastModel.value = providerModels.fastModel || "";
+            if (fallbackModel) fallbackModel.value = providerModels.fallbackModel || "";
+            state._renderedAiProvider = provider;
+        }
         [flagshipModel, fastModel, fallbackModel].filter(Boolean).forEach((input) => {
             input.disabled = state.savingAiSettings;
         });
@@ -5399,9 +5406,18 @@
                 configPath: payload.configPath || state.aiSettings.configPath || "",
                 openRouterConfigPath: payload.openRouterConfigPath || state.aiSettings.openRouterConfigPath || "",
                 baseUrl: payload.baseUrl || state.aiSettings.baseUrl || "",
+                openRouterBaseUrl: provider === "openrouter" ? (payload.baseUrl || "") : (state.aiSettings.openRouterBaseUrl || ""),
                 flagshipModel: payload.flagshipModel || "",
                 fastModel: payload.fastModel || "",
-                fallbackModel: payload.fallbackModel || ""
+                fallbackModel: payload.fallbackModel || "",
+                modelsByProvider: {
+                    ...(state.aiSettings.modelsByProvider || {}),
+                    [provider]: {
+                        flagshipModel: payload.flagshipModel || "",
+                        fastModel: payload.fastModel || "",
+                        fallbackModel: payload.fallbackModel || ""
+                    }
+                }
             };
             if (openAiInput) openAiInput.value = "";
             if (openRouterInput) openRouterInput.value = "";

@@ -6,10 +6,13 @@ import afield.ai.KotlinSourceIndex
 import afield.ai.OpenAiFileStoreCache
 import afield.ai.Sha256
 import afield.ai.core.Ai4ModelDefaults
-import afield.ai.core.OpenAiIdeCodexBridge
+import afield.ai.core.LlmBridge
+import afield.ai.core.LlmReasoningEffort
+import afield.ai.core.LlmThreadState
 import afield.ai.core.SilentLog
+import afield.ai.core.aiProviderConfigRevision
+import afield.ai.core.createLlmBridge
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
-import com.openai.models.ReasoningEffort
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
@@ -25,19 +28,29 @@ import kotlin.concurrent.write
 private const val COMPLETION_DOC_PROMPT_VERSION = "completion-doc-param-notes-v2"
 
 object Ai4CompletionDoc {
-    private val model = Ai4ModelDefaults.envOrDefault(
+    private fun model(): String = Ai4ModelDefaults.envOrDefault(
         "AFIELD_COMPLETION_DOC_MODEL",
         Ai4ModelDefaults.FAST_MODEL
     )
-    private val bridge: OpenAiIdeCodexBridge by lazy {
-        OpenAiIdeCodexBridge(
-            model = model,
+    @Volatile private var bridgeRevision = -1L
+    @Volatile private var activeBridge: LlmBridge? = null
+    private val threadByKey = ConcurrentHashMap<String, LlmThreadState>()
+
+    @Synchronized
+    private fun bridge(): LlmBridge {
+        val revision = aiProviderConfigRevision()
+        activeBridge?.takeIf { bridgeRevision == revision }?.let { return it }
+        return createLlmBridge(
+            model = model(),
             log = SilentLog,
-            reasoningEffort = ReasoningEffort.LOW
-        )
+            reasoningEffort = LlmReasoningEffort.LOW
+        ).also {
+            threadByKey.clear()
+            activeBridge = it
+            bridgeRevision = revision
+        }
     }
     private val cache by lazy { GeneratedCompletionDocCache() }
-    private val threadByKey = ConcurrentHashMap<String, OpenAiIdeCodexBridge.ThreadState>()
     private val generationLocks = ConcurrentHashMap<String, Any>()
 
     fun resolveDoc(
@@ -97,7 +110,7 @@ object Ai4CompletionDoc {
                 sourceLine = definition.line,
                 sourceCode = definitionSnippet.source,
                 documentation = generated,
-                model = model
+                model = model()
             )
             return generatedDocumentationMarkdown(generated, cached = false)
         }
@@ -131,6 +144,7 @@ Mention side effects, lifecycle, units, or constraints only when the source supp
         """.trimIndent()
 
         val sourceThreadKey = "$fileKey#${definitionSnippet.sourceHash}"
+        val bridge = bridge()
         val state = threadByKey[sourceThreadKey] ?: bridge.startThread(
             fileKey = sourceThreadKey,
             fileText = definitionSnippet.source,

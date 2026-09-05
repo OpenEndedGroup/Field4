@@ -1,5 +1,7 @@
 package afield.ai.core
 
+import com.openai.models.ReasoningEffort
+
 /**
  * Provider-neutral seam for the IDE agent loop.
  *
@@ -19,6 +21,8 @@ typealias LlmSendResult = OpenAiIdeCodexBridge.SendResult
 typealias LlmProgressUpdate = OpenAiIdeCodexBridge.ProgressUpdate
 typealias LlmToolTranscriptEntry = OpenAiIdeCodexBridge.ToolTranscriptEntry
 
+enum class LlmReasoningEffort { LOW, MEDIUM, HIGH }
+
 /**
  * Provider-aware factory: builds the agent engine matching the /welcome provider
  * setting. Shared by the IDE installer and the docs-search bridge so provider
@@ -26,12 +30,23 @@ typealias LlmToolTranscriptEntry = OpenAiIdeCodexBridge.ToolTranscriptEntry
  */
 fun createLlmBridge(
     model: String = Ai4ModelDefaults.flagshipModel(),
-    log: LogSink = StdoutLog
+    log: LogSink = StdoutLog,
+    reasoningEffort: LlmReasoningEffort = LlmReasoningEffort.MEDIUM
 ): LlmBridge =
     if (configuredAiProvider() == "anthropic")
         AnthropicBridge(model = model, log = log)
     else
-        OpenAiLlmBridge(OpenAiIdeCodexBridge(model = model, log = log))
+        OpenAiLlmBridge(
+            OpenAiIdeCodexBridge(
+                model = model,
+                log = log,
+                reasoningEffort = when (reasoningEffort) {
+                    LlmReasoningEffort.LOW -> ReasoningEffort.LOW
+                    LlmReasoningEffort.MEDIUM -> ReasoningEffort.MEDIUM
+                    LlmReasoningEffort.HIGH -> ReasoningEffort.HIGH
+                }
+            )
+        )
 
 interface LlmBridge {
     fun startThread(
