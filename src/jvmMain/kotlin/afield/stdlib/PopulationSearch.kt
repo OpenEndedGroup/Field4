@@ -470,6 +470,15 @@ object PopulationSearch {
      * discarded. Discarding would silently make the reported [MapElitesRun.coverage] a fraction of a
      * different denominator than the one the caller asked for.
      *
+     * **Coverage depends on mutation step size against bin width, and it is easy to be disappointed
+     * here.** After [initial] the only way to reach a new cell is for a mutation to move a
+     * descriptor across a bin boundary. If a typical mutation moves the descriptor by much less than
+     * one bin, the archive grows barely at all past its seed draws, and plain random sampling at the
+     * same budget will cover *more* cells — measured, twice, in this repository's own tests. That is
+     * not a defect in the search: what illumination buys is the quality held in each occupied cell,
+     * and [MapElitesRun.qdScore] rather than [MapElitesRun.coverage] is the number to compare. If
+     * coverage is what you want, widen the bins or add a coarser mutation.
+     *
      * @param axes the inclusive range of each behaviour dimension
      * @param bins how many cells each axis is divided into; same length as [axes]
      * @param initial random draws before the archive starts driving the search
