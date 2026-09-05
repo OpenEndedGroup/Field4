@@ -10,19 +10,18 @@ whatever size `contentSizeForDisclosure` decides the content wants, re-measured 
 (`src/commonMain/resources/outputareas2.js:17#const AUTO_SIZE_PASSES`) as fonts load and iframes
 boot.
 
-That decision produced three fixes in the first week of September 2026, and all three were the same
-mistake: an author declared a size in a vocabulary the panel cannot read, and the panel sized itself
-from whatever was left. Nothing throws when that happens, nothing is logged, and the panel is not
-even obviously wrong — it is a plausible size, arrived at from no evidence. Every symptom points at
-the content rather than at the measurement, which is why this page is entered from the symptoms.
+Panels come out the wrong size when an author declares a size in a vocabulary the panel cannot
+read, leaving it to size itself from whatever is left. Nothing throws, nothing is logged, and the
+result is not obviously wrong: it is a plausible size arrived at from no evidence. The symptoms
+point at the content rather than at the measurement, so this page starts from the symptoms.
 
 ## If you arrived here from a symptom
 
 | what you are seeing | what it is | where |
 |---|---|---|
 | a panel opens at 200px and never grows, with a small frame in the corner of it | your iframe declares a percentage width, and something suppressed the other measurement source | [no measurement source at all](#a-frame-with-nothing-to-report) |
-| a panel is short by exactly the height of the row above its frame | the frame's own height was taken as the whole content height | [height is measured from the content edge](#height-is-measured-from-the-content-edge) |
-| a docs figure came out ~1958px wide, or its right-hand column is cropped off | the screenshot-prep pass and the auto-sizer are chasing each other | [the screenshot pass is a second sizer](#the-screenshot-pass-is-a-second-sizer) |
+| a panel is short by the height of whatever sits above its frame | a frame's own height is being read as the whole content height | [height is measured from the content edge](#height-is-measured-from-the-content-edge) |
+| a docs figure is far wider than its box, or its right-hand column is cropped off | the screenshot-prep pass and the auto-sizer are chasing each other | [the screenshot pass is a second sizer](#the-screenshot-pass-is-a-second-sizer) |
 | a panel ignores the size the content asked for | somebody dragged that panel once | [a dragged panel stops listening](#a-dragged-panel-stops-listening) |
 
 ## Where a width can come from
@@ -48,23 +47,11 @@ The first two go through `parsePixels`
 (`src/commonMain/resources/outputareas2.js:34#function parsePixels`), which is `parseFloat` and
 nothing else, and this is where a percentage width goes wrong.
 
-It is worth being exact about *how*, because the tree said otherwise in seven places before this
-page: both fix commits, and five in code — the `keyframeBrowser` KDoc at
-`src/jvmMain/kotlin/afield/outputs.kt#[width] is a pixel count and not a percentage`, a comment in
-the test that pins it
-(`src/jvmTest/kotlin/afield/stdlib/KeyframeBrowserTest.kt#meaningless to it`), the `threeLines`
-comment at
-`src/jvmMain/kotlin/afield/graphics/Three.kt#not 0. The `, the embed-style KDoc at
-`src/jvmMain/kotlin/afield/python/PythonInterface.kt#A percentage does`, and a live assertion
-message at
-`src/jvmTest/kotlin/afield/python/PythonOutputContractTest.kt#is meaningless to outputareas2.js`.
-Every one of them said a percentage "parses as zero" and reasoned from there. It does not — and all
-five have since been corrected against this section.
-`parseFloat("100%")` is **100**. A `width:100%` frame reports an intrinsic width of one hundred
+Be exact about *how*, because it is easy to assume a percentage parses as zero. It does not.
+`parseFloat("100%")` is **100**, so a `width:100%` frame reports an intrinsic width of one hundred
 pixels: a number, positive, and meaningless.
 
-The two consequences of that are worth separating, because a repair aimed at the wrong one does
-nothing:
+There are two consequences, and a repair aimed at one does nothing about the other.
 
 The 100 loses the final `Math.max` to the header's floor. `headerWidth`
 (`src/commonMain/resources/outputareas2.js:48#function headerWidth`) never returns less than
@@ -97,13 +84,13 @@ is nothing left. This is the shape behind `keyframeBrowser`'s bug and behind the
 both of which declare `width:100%`: a 192-pixel-wide document rendering inside a 200-pixel panel in
 a box more than a thousand points wide, two thirds of it off the right edge.
 
-The combination is not an oversight, and this is the part that matters if you are about to "fix" it
-by banning it. `autosize="off"` is what you want for a frame that scrolls its own content: the
-frame's document is taller than the frame on purpose, so letting it report its scroll height would
-grow the panel forever. A percentage width is what you want for a frame that should be as wide as
-whatever it is put in. Both are correct in isolation. It is only the pair that is silent.
+Neither half is a mistake, so do not go banning the combination. `autosize="off"` is what you want
+for a frame that scrolls its own content: its document is taller than the frame, and letting it
+report its scroll height would grow the panel forever. A percentage width is what you want for a
+frame that should be as wide as whatever it is put in. Both are correct alone; the pair is what goes
+silent.
 
-So the pair is **named** rather than forbidden.
+The pair therefore has a name.
 `src/commonMain/resources/outputareas2.js:283#function isFillWidthIframe` is the three-part test —
 autosize off, no reported intrinsic width, and no *concrete* inline width, where "concrete" is
 `hasConcreteCssSize` (`src/commonMain/resources/outputareas2.js:96#function hasConcreteCssSize`) and
@@ -114,15 +101,14 @@ vocabulary CSS gives it, that it has no opinion about its own width.
 
 ### Four things in the tree are fill frames
 
-Not, as it happens, the two the fix's commit message named. `Box.three`'s no-width path writes
-`width:100%` but carries no `data-afield-autosize` attribute at all, so its viewer *does* report an
-intrinsic width and it is not a fill frame; and
+Two near misses first, because both look like candidates. `Box.three`'s no-width path writes
+`width:100%` but carries no `data-afield-autosize` attribute, so its viewer does report an intrinsic
+width and it is not a fill frame. And
 `src/jvmMain/kotlin/afield/python/PythonInterface.kt:1462#const val EMBED_IFRAME_STYLE` is
-`width:960px`, pixels, with a KDoc that says the percentage was rejected deliberately. Both are
-evidence for the contract rather than users of it.
+`width:960px` — pixels, with a KDoc explaining why the percentage was rejected.
 
-The frames that actually satisfy `isFillWidthIframe` today are these, and they do not all get there
-the same way:
+The frames that do satisfy `isFillWidthIframe` are these, and they do not all get there the same
+way:
 
 - the lazy-output frame
   (`src/jsMain/kotlin/afield/Outputs.kt:833#iframe.setAttribute("data-afield-autosize", "off")`) sets
@@ -139,8 +125,7 @@ the same way:
   (`src/jvmMain/kotlin/afield/outputs.kt:869#val declaredWidth = if (width > 0)`), which is the one
   documented opt-in. Its KDoc at
   `src/jvmMain/kotlin/afield/outputs.kt:817#[width] is a pixel count and not a percentage` is the
-  in-code account of this section, and is the KDoc whose "parses as zero" is wrong about the
-  mechanism while right about the outcome.
+  in-code account of this section.
 
 ## Why the fallback measures outwards
 
@@ -150,26 +135,23 @@ much room it needs. `fillWidthForDisclosure`
 instead. It walks up to the enclosing `.box` and returns `box.right - wrap.left`: the distance from
 the panel's own left edge to the right edge of the box that owns it.
 
-It has to, and the reason is circularity rather than taste. A fill frame's rendered width is a
-function of the panel's width. Anything inside the panel is downstream of the number being chosen,
-so no inward measurement can be evidence for it — it can only echo the current value back. The
-enclosing box is the nearest thing that is *upstream*: its width was decided by the author, or by a
-drag, before this panel existed.
+It has to, because the alternative is circular. A fill frame's rendered width is a function of the
+panel's width, so anything inside the panel is downstream of the number being chosen and can only
+echo the current value back. The enclosing box is the nearest thing upstream: its width was decided
+by the author, or by a drag, before this panel existed.
 
 It seeds the `Math.max` and it never caps. A non-nested panel is left
-`maxW: Number.POSITIVE_INFINITY` on purpose
+`maxW: Number.POSITIVE_INFINITY`
 (`src/commonMain/resources/outputareas2.js:592#maxW: Number.POSITIVE_INFINITY`), so content with a
-real intrinsic width wider than its box still wins and still overflows, which is the behaviour a
-wide table wants. `fillWidthForDisclosure` is a floor for frames that have no opinion, not a ceiling
-for frames that do.
+real intrinsic width wider than its box still wins and still overflows, which is what a wide table
+wants. `fillWidthForDisclosure` is a floor for frames that have no opinion, not a ceiling for frames
+that do.
 
-And with no enclosing box — a panel on a standalone page — it returns 0 and contributes nothing, so
-the pre-fix behaviour is what stands there.
+With no enclosing box — a panel on a standalone page — it returns 0 and contributes nothing.
 
-A hardcoded pixel width cannot do this job even though it fixed `keyframeBrowser`. `keyframeBrowser`
-is called with an explicit intent and can be given `width = 900`; the value explorer is emitted for
-any value in any box with no per-call knob, and 900px in a narrow box overflows it and crops the
-figure instead.
+A hardcoded pixel width cannot do this job in general. `keyframeBrowser` is called with an explicit
+intent and can be given `width = 900`; the value explorer is emitted for any value in any box with no
+per-call knob, and 900px in a narrow box overflows it and crops the figure.
 
 ### The figure
 
@@ -212,17 +194,17 @@ displayOpen("640 pixels wide")
 The upper panel is the whole width of the box because nothing in it had a width; the lower panel is
 640 pixels plus the content padding because something in it did. Neither panel measured itself.
 
-Both frames in that picture are about two hundred pixels tall, and their markup says 66. That is not
-the auto-sizer disagreeing with itself — it is the screenshot-prep pass, which floors *any* panel
-containing an iframe at 220 pixels
-(`src/jsMain/kotlin/afield/Main.kt:1548#content.querySelector("iframe") != null -> 220.0`) before the
-picture is taken. Worth knowing when you use a docs figure as evidence about height: a captured panel
-is not the panel a person sees, and the reason is on
-`src/jsMain/kotlin/afield/Main.kt:1514#private fun fitOutputDisclosuresForScreenshot`.
+Both frames in that picture are about two hundred pixels tall, and their markup says 66. That is the
+[screenshot-prep pass](#the-screenshot-pass-is-a-second-sizer), which floors *any* panel containing
+an iframe at 220 pixels
+(`src/jsMain/kotlin/afield/Main.kt:1548#content.querySelector("iframe") != null -> 220.0`) on
+`src/jsMain/kotlin/afield/Main.kt:1514#private fun fitOutputDisclosuresForScreenshot`, before the
+picture is taken. A captured panel is not the panel a person sees, so do not read a height off a
+docs figure.
 
-The widths in that picture are pixels in a PNG, so treat them as pixels in a PNG. The measured
-version lives in `tools/run_ui_regressions.py:3447#id="h2-panel-sizing"`, which asserts geometry
-rather than photographing it — see [what is pinned](#what-is-pinned-and-what-is-not).
+Nor a width: those are pixels in a PNG. The measured version lives in
+`tools/run_ui_regressions.py:3447#id="h2-panel-sizing"`, which asserts geometry rather than
+photographing it — see [what is pinned](#what-is-pinned-and-what-is-not).
 
 ## Height is measured from the content edge
 
@@ -235,21 +217,18 @@ the width axis does the mirror of it on
 subtraction is the whole convention. A node's height is never its own height; it is how far down the
 content box it reaches.
 
-The iframe branch (`src/commonMain/resources/outputareas2.js:419#if (node instanceof HTMLIFrameElement) {`)
-was the one place that broke the convention, and it broke it in the direction that is invisible in
-the common case. It took `iframeIntrinsicSize(node).height` — the frame's own declared height — as
-the content height, full stop. When the frame is the only thing in the panel and sits flush against
-the content edge, the frame's own height and its distance from the top are the same number and
-nothing is wrong. When something sits *above* the frame, they differ by exactly the height of that
-something, and the panel comes out short by exactly that much.
+The iframe branch
+(`src/commonMain/resources/outputareas2.js:419#if (node instanceof HTMLIFrameElement) {`) is the one
+place where breaking the convention is invisible in the common case. Read
+`iframeIntrinsicSize(node).height` — the frame's own declared height — as the content height, and a
+frame that is alone in the panel and flush against the content edge still comes out right: its
+height and its distance from the top are the same number. Put a summary row above the frame and the
+two differ by the height of that row, and the panel is short by exactly that much, clipping a frame
+it never resized.
 
-The panel that found it holds a summary row of `outliner` and `columns` links stacked above its
-frame in one flex column. 253 pixels of declared frame rendered as 231. The frame was not resized;
-it was clipped, by a panel that had made room for a frame and not for the row above it.
-
-The branch now adds the frame's offset from the content edge on both axes
+So the branch adds the frame's offset from the content edge on both axes
 (`src/commonMain/resources/outputareas2.js:434#Math.ceil(offsetTop + iframeSize.height)`), which is
-the same arithmetic every non-iframe node was already doing.
+the arithmetic every non-iframe node already does.
 
 ## The screenshot pass is a second sizer
 
@@ -264,8 +243,7 @@ where the 220px floor in the figure above comes from.
 
 Put that next to a panel that takes its width from its box and you have a cycle with no fixed point.
 The panel grows to the box, the prep pass grows the box to the panel, the auto-size passes are still
-running and grow the panel to the new box. A `.h2` figure reached about 1958 pixels this way, bounded
-only by the window-width clamp on
+running and grow the panel to the new box. Nothing bounds it but the window-width clamp on
 `src/jsMain/kotlin/afield/Main.kt:1625#val disclosureWidth`.
 
 Breaking it needs both halves, and Kotlin therefore carries its own copy of the fill-frame test
@@ -277,14 +255,13 @@ Breaking it needs both halves, and Kotlin therefore carries its own copy of the 
   so a panel that is only as wide as its box cannot be evidence that the box should be wider. The box
   stays at its authored `w=`.
 - and they are exempted from the uniform `disclosureWidth` the pass then writes onto every panel.
-  Writing it would *shrink* a fill panel to whatever the other panels needed — and because the
-  auto-size passes keep running after the prep pass and put the width back, the panel ends up wider
-  than the clip that was already measured. That is the cropped-right-hand-column symptom: a table
-  whose `value` column finished up outside the frame of a figure that had been measured while the
-  panel was narrower.
+  Writing it would *shrink* a fill panel to whatever the other panels needed, and because the
+  auto-size passes keep running after the prep pass and put the width back, the panel would end up
+  wider than the clip already measured. That is the cropped-right-hand-column symptom: a table whose
+  `value` column falls outside the frame of a figure measured while the panel was narrower.
 
-The two copies of `isFillWidthIframe` are not the same predicate, and that is worth knowing before
-you trust one to describe the other. The JS version routes the inline width through
+The two copies of `isFillWidthIframe` are not the same predicate, so do not trust one to describe
+the other. The JS version routes the inline width through
 `hasConcreteCssSize`; the Kotlin version at `src/jsMain/kotlin/afield/Main.kt:1566#private fun isFillWidthIframe`
 accepts empty, `auto`, or a `%` suffix and nothing else. They agree on every width any Field output
 actually emits. They would disagree about `width:fit-content` or `width:0`, which nothing emits
@@ -298,31 +275,27 @@ measured size differs from its stored size by more than 2px, and every auto-size
 gated on it. `autosize="fixed"` in the channel spec turns the whole mechanism off up front
 (`src/commonMain/resources/outputareas2.js:665#autoSizeModeForDisclosure(d) !== "fixed"`).
 
-That gate is what made `keyframeBrowser`'s 200px panel look like it only affected fresh boxes: a
-panel you had dragged stayed dragged, so the bug was visible on a panel nobody had touched — a fresh
-box, and every docs capture.
+Because `userSized` is sticky, an auto-size problem is only visible on a panel nobody has touched: a
+fresh box, and every docs capture.
 
-Except that the drag itself did not reliably stick, and for the panels most likely to need one it
-usually did not. Until 2026-09-03 `rememberSize` ran only from `mouseup` and `mouseleave` on the
-panel (`src/commonMain/resources/outputareas2.js:814#d.cw.addEventListener("mouseup"`), and a mouse
-event raised inside an iframe belongs to that iframe's document — it never reaches the one holding
-the panel. Release the grip over the frame and nothing recorded the new size; the next auto-size
-pass read the unchanged `st.width`/`st.height` and put the panel back. Dragging an iframe panel
-bigger and watching it snap shut on release is the same bug as the 200px panel, wearing the fix.
-
-A `ResizeObserver` on the panel box now records it instead
-(`src/commonMain/resources/outputareas2.js:833#d.userResizeObserver = new ResizeObserver`), which
-does not care where the pointer went: the native grip's whole effect is inline width/height on the
-element, so the box changing size outside a self-caused window *is* somebody having dragged it. The
-three entry points that resize the box themselves — `applyOpen`, `primeAutoSizeForOpen` and
-`applyClosed` — all mark `selfResizeUntil` so their own work is not mistaken for a drag, or a panel
-nobody touched would come out `userSized` and never auto-size again.
+What records the drag is a `ResizeObserver` on the panel box
+(`src/commonMain/resources/outputareas2.js:833#d.userResizeObserver = new ResizeObserver`) rather
+than a `mouseup` on the panel
+(`src/commonMain/resources/outputareas2.js:814#d.cw.addEventListener("mouseup"`), and the difference
+shows on exactly the panels this page is about. A mouse event raised inside an iframe belongs to that
+iframe's document and never reaches the one holding the panel, so releasing the grip over a frame
+records nothing and the next auto-size pass reads the unchanged `st.width`/`st.height` and puts the
+panel back. The observer does not care where the pointer went: the native grip's whole effect is
+inline width and height on the element, so the box changing size outside a self-caused window is
+somebody having dragged it. The three entry points that resize the box themselves — `applyOpen`,
+`primeAutoSizeForOpen` and `applyClosed` — mark `selfResizeUntil`, or a panel nobody touched would
+come out `userSized` and never auto-size again.
 
 ## What is pinned, and what is not
 
-`tools/run_ui_regressions.py` has the only executable checks on any of this, and they are the good
-kind: browser-driven, building a real box, running real Kotlin, waiting for the auto-size passes to
-settle, and then reading geometry out of the live DOM.
+`tools/run_ui_regressions.py` has the only executable checks on any of this, and they are
+browser-driven: they build a real box, run real Kotlin, wait for the auto-size passes to settle, and
+read geometry out of the live DOM.
 
 `tools/run_ui_regressions.py:3447#id="h2-panel-sizing"` builds a box at `--w 1040 --h 200`, displays
 40 rows as a `.h2` value explorer, and asserts both axes of the resulting panel:
@@ -330,7 +303,7 @@ settle, and then reading geometry out of the live DOM.
 - `tools/run_ui_regressions.py:1045#result.panelTracksBox =` — the panel is within 24px of the box's
   width **and** does not overhang its right edge by more than 2px. Both halves matter: the first
   fails without `fillWidthForDisclosure`, the second fails if a hardcoded pixel width is used
-  instead. Without the width fix it reports `panel 200px does not track box 1040px`
+  instead. It fails with `panel 200px does not track box 1040px`
   (`tools/run_ui_regressions.py:1058#does not track box`).
 - `tools/run_ui_regressions.py:1049#result.frameKeepsDeclaredHeight =` — the frame still renders at
   the height it declared, which is the height-axis bug, and the case additionally asserts
@@ -340,7 +313,7 @@ settle, and then reading geometry out of the live DOM.
 `display` creating and replacing channel content, embedded scripts executing, output actually being
 visible — rather than geometry.
 
-What neither pins, honestly:
+What neither pins:
 
 - **the fill-frame population.** `h2-panel-sizing` exercises one fill frame; `output-area-basics`
   exercises none. The lazy-output frame and the value-viewer frame are fill frames by the same
@@ -348,9 +321,9 @@ What neither pins, honestly:
   `src/jvmTest/kotlin/afield/stdlib/KeyframeBrowserTest.kt:580#fun aNonPositiveWidthIsStillTheFillMyColumnEscapeHatch`
   pins `keyframeBrowser`'s *markup* — that a non-positive width still spells `100%` — without
   standing up a browser, so it says nothing about what a panel then does with it.
-- **the screenshot-prep loop.** The ~1958px figure was diagnosed by looking at a committed PNG. The
-  regression cases photograph a box but assert nothing about the crop, so a reintroduced feedback
-  loop would show up as a figure someone notices, not as a red build.
+- **the screenshot-prep loop.** The regression cases photograph a box but assert nothing about the
+  crop, so a feedback loop between the prep pass and the auto-sizer would show up as a figure
+  someone notices, not as a red build.
 - **agreement between the two `isFillWidthIframe` implementations.** Nothing compares them. They live
   in different files in different languages, one of them a browser resource and one of them compiled,
   and drifting is a matter of one edit to either.
