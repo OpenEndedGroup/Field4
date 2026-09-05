@@ -6,15 +6,14 @@ Every keyboard shortcut in Field is one line in one file that belongs to you:
 ~/.afield/keybindings.yaml
 ```
 
-Field writes that file itself, from its own list of commands, so it is a complete
-inventory rather than a hand-kept subset — every command Field has is in there, including
-the ones that ship with no shortcut at all. Change a line, save, and the shortcut moves
-immediately: the file is watched, like `~/.afield/theme.css`, and nothing needs restarting.
+Field writes that file itself, from its own list of commands, so every command Field has is
+in there, including the ones that ship with no shortcut at all. Change a line, save, and the
+shortcut moves immediately: the file is watched, like `~/.afield/theme.css`, and nothing
+needs restarting.
 
-Press `?` on the canvas and Field shows you the card below. It is worth knowing that the
-card is not a picture of the defaults — each legend on it is read from the shortcut that is
-*actually bound right now*, so once you have edited the file the card describes your Field,
-not ours.
+Press `?` on the canvas and Field shows you the card below. It is not a picture of the
+defaults: each legend is read from the shortcut that is *actually bound right now*, so once
+you have edited the file the card describes your Field, not ours.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#cheatsheet .centered-container-div" screenshot="assets/keybindings/cheatsheet.png" padding="8" wait="0" timeout="120" embed=true hidden=true name="keybindings-cheatsheet" alt="Field's ? cheatsheet card, with every key legend filled in from the live keybindings"}
 // The card's legends come from the live bindings, so make sure this capture is of the
@@ -43,19 +42,19 @@ if (opacity == "0" || opacity == "missing") error("the ? shortcut did not open t
 Everything Field itself does: the canvas commands (`new-box`, `copy-selection`, …), the
 editor's actions (`execute-fragment`, `ai-assist`, …), the four global ones that work
 wherever you are (`open-command-palette`, `open-anything`, `toggle-docs`, `show-cheatsheet`)
-and all eighteen bookmark slots. Commands that appear only when something is selected —
-`connect`, `-copy`, the box actions a running box declares — are in the file too, and stay
+and all eighteen bookmark slots. Commands that appear only when something is selected
+(`connect`, `-copy`, the box actions a running box declares) are in the file too, and stay
 rebindable even at moments when they are not on offer.
 
-A command that ships without a shortcut is not a second-class citizen. It appears in the
-file as `""`, and giving it a chord is the same edit as changing one:
+A command that ships without a shortcut appears in the file as `""`, and giving it a chord
+is the same edit as changing one:
 
 ```diffstatic {data-lang=yaml}
 bindings:
   macro-transcript-panel: "cmd+shift+r"   # was: no shortcut at all
 ```
 
-Three things are *not* in the file, and it is worth knowing why before you go looking:
+Three things are *not* in the file:
 
 - **Gestures.** Alt-click to launch a box, Alt-drag to "strum" several, Opt+drag, and the
   multi-taps — `Esc Esc` to clear the newest output, `Esc Esc Esc` to clear them all,
@@ -68,16 +67,16 @@ Three things are *not* in the file, and it is worth knowing why before you go lo
 
 ## Getting a file to edit
 
-You already have one — Field writes it on first run. Two ways to get to it:
+You already have one; Field writes it on first run. Two ways to get to it:
 
 - Run **Open Keybindings** from the command palette (`Cmd+Shift+P`, or `F1`). Field opens
   the file as a box on the canvas, so you can edit your shortcuts in Field, with Field.
 - Or open `~/.afield/keybindings.yaml` in any editor you like.
 
 Saving is all it takes. Field notices within a second, re-resolves every binding and
-re-registers them — in the editor and on the canvas at the same time — and tells you it has
-done so. If you would rather not wait, or you changed the file while Field was not running,
-there is a **Reload Keybindings** command that re-reads it on the spot.
+re-registers them in the editor and on the canvas at once, then tells you it has done so. If
+you would rather not wait, or you changed the file while Field was not running, there is a
+**Reload Keybindings** command that re-reads it on the spot.
 
 Deleted the file? Field writes a fresh one from its own defaults the next time it takes
 stock of its commands, which is every run. That is also the way to get a clean copy back if
@@ -96,7 +95,7 @@ bindings:
 ```
 
 **Modifiers** are `cmd`, `alt` and `shift`. `cmd` means Command on macOS and Control
-everywhere else — one spec, both platforms — and `ctrl`, `control`, `command`, `meta`,
+everywhere else, so one spec covers both platforms; `ctrl`, `control`, `command`, `meta`,
 `mod`, `ctrlcmd` and `super` are all accepted spellings of it. `alt` is Option on macOS;
 `option` and `opt` also work. Case does not matter, and `+`, `-`, a space or a comma all
 separate tokens, so `cmd-shift-d`, `CMD + SHIFT + D` and `cmd shift d` are the same
@@ -120,13 +119,13 @@ backslash in a YAML file: `return`, `esc`, `del`, `spacebar`, `arrowup`, `bracke
 `backquote`, `backtick` and `plus` all resolve to the key they name.
 
 A **shifted character stands for Shift plus its key**, which is much nicer to read than
-spelling the modifier out. `?` is exactly `shift+/` — that is how the cheatsheet's own
-shortcut is written — and the same goes for `~ ! @ # $ % ^ & * ( ) _ { } : " < > |`.
+spelling the modifier out. `?` is exactly `shift+/`, and that is how the cheatsheet's own
+shortcut is written. The same goes for `~ ! @ # $ % ^ & * ( ) _ { } : " < > |`.
 
 Two characters that are also separators need a word about them: a lone `,`, `-` or `+` is
 read as a key only when it is the last thing in the spec. So `cmd+,` binds the comma key
-(that really is one of Field's defaults — "Previous Property"), `cmd+-` binds the minus
-key, and `cmd + k` is just `cmd+k` with room to breathe.
+(that really is one of Field's defaults, "Previous Property"), `cmd+-` binds the minus key,
+and `cmd + k` is just `cmd+k` with room to breathe.
 
 ### Where a shortcut is live
 
@@ -140,18 +139,17 @@ Field wrote for you:
 ```
 
 `#scope canvas` means the shortcut only fires when the canvas has focus. That is why
-`new-box` can be a bare `n` — pressing `n` in an editor types an `n`. `#scope editor` means
+`new-box` can be a bare `n`: pressing `n` in an editor types an `n`. `#scope editor` means
 the opposite; no comment at all means both. The scope belongs to the command, not to your
-spec, so it is not something you edit — but it tells you whether a bare letter is a
+spec, so it is not something you edit, but it does tell you whether a bare letter is a
 sensible thing to bind a command to.
 
-There is only one binding to get right. The same spec becomes the keybinding Monaco uses
-when an editor has focus *and* the test the canvas runs when it does not, from one line of
-your file, which is why a rebind can never leave the two halves of Field disagreeing about
-a key. Matching is on the physical key (`KeyboardEvent.code`), not the character produced,
-so an Alt shortcut survives macOS turning `Alt+]` into `’` — with a fallback to the
-character itself for shifted punctuation on layouts where it is not physically Shift plus
-that key.
+One line of your file does both jobs. The same spec becomes the keybinding Monaco uses when
+an editor has focus *and* the test the canvas runs when it does not, so a rebind cannot leave
+the two halves of Field disagreeing about a key. Matching is on the physical key
+(`KeyboardEvent.code`), not the character produced, so an Alt shortcut survives macOS turning
+`Alt+]` into `’`, falling back to the character itself for shifted punctuation on layouts
+where it is not physically Shift plus that key.
 
 ## Finding a command's id
 
@@ -159,7 +157,7 @@ The file is the index: every entry carries the command's own label as a comment,
 searching it for "Bookmark" or "Format" is usually the fastest route from *what you want* to
 *what to write*.
 
-The command palette is the other way round — search for the command by name, and its
+The command palette works the other way round: search for the command by name, and its
 current shortcut is shown on the right of the row. That makes it the real test of a rebind,
 since those labels are drawn from the same binding your keypress would use:
 
@@ -209,11 +207,11 @@ Field would rather tell you than guess.
     ```
 
     **The command keeps its default.** A line Field cannot read is ignored, not obeyed
-    halfway and not taken as an unbind: `open-anything` above is still on `cmd+p`. That
-    distinction matters, because an empty value means something quite different — `""` is a
-    deliberate unbind (below). If a rejected spec also produced "no shortcut", a typo and a
-    decision would look identical, and the error message would be describing a shortcut you
-    had just lost without saying so.
+    halfway and not taken as an unbind: `open-anything` above is still on `cmd+p`. Keep that
+    apart from an empty value, which means something quite different: `""` is an unbind you
+    asked for (below). If a rejected spec also produced "no shortcut", a typo and a decision
+    would look identical, and the error message would be describing a shortcut you had just
+    lost without saying so.
 
 - **A command id it does not recognize** — usually a typo — is logged as a warning naming
   the id, and the binding is kept anyway rather than dropped. It has to be: the
@@ -231,7 +229,7 @@ cause is scope: a canvas-only command bound to a chord you are pressing inside a
 ### Asking Field directly
 
 When the file says one thing and your fingers report another, a box can read the resolved
-bindings — the same ones the keypresses themselves consult — and settle it:
+bindings, the same ones the keypresses themselves consult, and settle it:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keybindings/inspect.png" wait="1.0" wait-output=true wait-output-kind="display" capture="box" open-outputs="true" padding="16" embed=true name="keybindings-inspect" macro-file="../../dev_docs/agents/transcripts/docs_capture/keybindings_inspect.yaml" capture-box="agent_keybindings_inspect" alt="A Field box listing the shortcut currently bound to five commands, read from the live keybinding layer"}
 // Point the watcher at ~/.afield/keybindings.yaml — a no-op unless something moved it,
@@ -258,10 +256,10 @@ markdown("main", """
 ```
 
 `effective` is the answer for every command Field has seen this run, override or default
-already applied; `bindings` is only what your file changed. A command that is neither — one
-of the selection-only ones, with nothing selected — is reported as dormant rather than as
-unbound, which is also why the `?` card leaves such a legend at its written default instead
-of claiming the key is dead.
+already applied; `bindings` is only what your file changed. A command in neither, such as a
+selection-only one with nothing selected, is reported as dormant instead of unbound, which is
+why the `?` card leaves that legend at its written default rather than claiming the key is
+dead.
 
 ## Limits
 
