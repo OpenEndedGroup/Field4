@@ -1,7 +1,7 @@
 package afield.ai.core
 
 internal object Ai4ModelDefaults {
-    const val FLAGSHIP_MODEL = "gpt-5.6-sol"
+    const val FLAGSHIP_MODEL = "gpt-6-astra"
     const val FRONTIER_FALLBACK_MODEL = "gpt-5.4"
     const val FAST_MODEL = "gpt-5.6-luna"
 
@@ -21,8 +21,11 @@ internal object Ai4ModelDefaults {
         System.getenv(name)?.takeIf { it.isNotBlank() }
             ?: configuredModelForDefault(default)
 
-    private fun configuredModelForDefault(default: String): String {
-        val settings = configuredAiModelSettings()
+    internal fun configuredModelForDefault(
+        default: String,
+        settings: AiModelSettings = configuredAiModelSettings(),
+        provider: String = configuredAiProvider()
+    ): String {
         val configured = when (default) {
             FLAGSHIP_MODEL -> settings.flagshipModel
             FAST_MODEL -> settings.fastModel
@@ -31,14 +34,17 @@ internal object Ai4ModelDefaults {
         }
         if (configured.isNotBlank()) return configured
 
-        return when (configuredAiProvider()) {
+        return when (provider) {
             "anthropic" -> when (default) {
                 FLAGSHIP_MODEL -> ANTHROPIC_FLAGSHIP_MODEL
                 FAST_MODEL -> ANTHROPIC_FAST_MODEL
                 FRONTIER_FALLBACK_MODEL -> ANTHROPIC_FALLBACK_MODEL
                 else -> default
             }
-            "openrouter" -> if ("/" !in default) "openai/$default" else default
+            // The Astra migration is for the direct OpenAI path. Router access is
+            // independently configured; retain its established default until evaluated.
+            "openrouter" -> if (default == FLAGSHIP_MODEL) "openai/gpt-5.6-sol"
+                else if ("/" !in default) "openai/$default" else default
             else -> default
         }
     }
