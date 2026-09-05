@@ -537,6 +537,48 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "notes" to "md",
             "metadata" to "yaml"
         )
+
+        /**
+         * Properties that never reach disk, whatever [ioPersistentProperties] says.
+         *
+         * This is a deny-list rather than a deletion from [ioPersistentProperties] for one
+         * concrete reason: `SavingContext.mergePersistentProperties` does
+         * `Box.ioPersistentProperties.addAll(...)` with the list stored in every `metadata.edn`
+         * it loads. Every document written before this change carries `".*_editorState"` in
+         * that list, so removing the entry from the initialiser above would last exactly until
+         * the first document load put it straight back. A deny-list applied at the write filter
+         * cannot be undone that way.
+         *
+         * `<property>_editorState` is Monaco view state — cursor line and column, scroll offset,
+         * folding — produced by `monitorSelection` in `BootstrapMonacoRuntime.kt` the moment a box
+         * is selected. Three other persistence surfaces already treat it as not-document-content:
+         * `OperationTranscript.recordEdit` drops it, `HistoryManager`'s
+         * `hiddenScrubPropertyPatterns` hides it from the history diff, and `set-string` refuses
+         * to rebroadcast it (`doResync = !isEditorStateProperty`). Writing it was the odd one out,
+         * and it was expensive: selecting one box in a committed demo document changed
+         * `metadata.edn`, which made the save "altered", which detonated the whole derived-artifact
+         * fan-out in `saving.kt` — backups, history metrics, operation transcript, screenshots —
+         * inside a git working tree. Measured on 2026-09-05 against
+         * `dev_docs/agents/demos/midi_clip`: open the document, click one box, touch nothing else,
+         * and four paths appear in `git status`, with `code_editorState` the *only* content
+         * difference.
+         *
+         * What is lost: a cursor position no longer survives closing and reopening a document.
+         * Within a session the client restores it from its own JS copy of the box, so selecting
+         * away from a box and back still works. Values already on disk still load; they simply
+         * stop being written back.
+         *
+         * `code_decorationState` is the existing precedent — in `uiResyncProperties`, deliberately
+         * absent from `ioPersistentProperties`.
+         */
+        val ioNeverPersistedProperties: List<Regex> = listOf(
+            Regex(""".*_editorState""")
+        )
+
+        /** True when [name] must not be serialised to disk. See [ioNeverPersistedProperties]. */
+        fun isNeverPersisted(name: String): Boolean =
+            ioNeverPersistedProperties.any { it.matches(name) }
+
         val context = ThreadLocal<Box>()
 
         @Suppress("UNCHECKED_CAST")

@@ -140,6 +140,9 @@ class SavingContext {
     /**
      * Serializes each box's persistent properties for save. Only properties whose name matches
      * one of [Box.ioPersistentProperties] (regex-matched) are written; others are dropped.
+     * [Box.ioNeverPersistedProperties] then vetoes what survived, which is how Monaco view state
+     * stays off disk despite `mergePersistentProperties` re-adding `".*_editorState"` from every
+     * older `metadata.edn` this process loads.
      *
      * Root-box persistence relies on this path: callers that save (see `allBoxes.add(info.root)`
      * in Server.kt before `SavingContext().save(...)`) explicitly add the root box to the save set,
@@ -153,6 +156,7 @@ class SavingContext {
             val properties = LinkedHashMap<String, Any?>()
             box.properties.forEach { (name, rawValue) ->
                 if (!patterns.any { name.matches(it) }) return@forEach
+                if (Box.isNeverPersisted(name)) return@forEach
                 val value = withoutMetarootTopology(name, rawValue)
                 if (value == null) return@forEach
 
@@ -178,6 +182,7 @@ class SavingContext {
             val properties = LinkedHashMap<String, Any?>()
             box.properties.forEach { (name, rawValue) ->
                 if (!patterns.any { name.matches(it) }) return@forEach
+                if (Box.isNeverPersisted(name)) return@forEach
                 val value = withoutMetarootTopology(name, rawValue)
                 if (value == null) return@forEach
 
@@ -328,6 +333,7 @@ class SavingContext {
             val properties = LinkedHashMap<String, Any?>()
             box.properties.forEach { (name, value) ->
                 if (!patterns.any { name.matches(it) }) return@forEach
+                if (Box.isNeverPersisted(name)) return@forEach
                 if (value == null) return@forEach
 
                 // For separate properties, capture the content now
