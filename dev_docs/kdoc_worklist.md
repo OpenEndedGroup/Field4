@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 6407 of 11749 public symbols in `afield.stdlib`, `afield.visualization` and `afield.four.synth`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 6431 of 11796 public symbols in `afield.stdlib`, `afield.visualization` and `afield.four.synth`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
 
-**815 undocumented entry points** (types, top-level functions and values) and 4250 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**815 undocumented entry points** (types, top-level functions and values) and 4268 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -56,10 +56,10 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FaustPattern.kt](../src/jvmMain/kotlin/afield/four/synth/FaustPattern.kt) | Synthesis | faust | 0 | 22 | 56% |
 | [alife_lsystem.kt](../src/jvmMain/kotlin/afield/stdlib/alife_lsystem.kt) | ALife | alife_examples | 0 | 20 | 59% |
 | [smile_mds.kt](../src/jvmMain/kotlin/afield/stdlib/smile_mds.kt) | Data | projection_examples | 0 | 20 | 31% |
+| [FunctionEvolve.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionEvolve.kt) | Function | functions_examples | 0 | 19 | 50% |
 | [alife_ca.kt](../src/jvmMain/kotlin/afield/stdlib/alife_ca.kt) | ALife | alife_examples | 0 | 19 | 71% |
 | [Transforms.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Transforms.kt) | Polytopes | polytope_examples | 0 | 19 | 76% |
 | [DoughDsp.kt](../src/jvmMain/kotlin/afield/four/synth/DoughDsp.kt) | Synthesis | dough_dsp_sound | 0 | 17 | 70% |
-| [FunctionEvolve.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionEvolve.kt) | Function | functions_examples | 0 | 17 | 51% |
 | [Symmetry.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Symmetry.kt) | Polytopes | polytope_examples | 0 | 15 | 53% |
 | [RenderedAudioAnalysis.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/RenderedAudioAnalysis.kt) | Audio AI | audio_render_analysis, visualizers | 0 | 14 | 50% |
 | [MorphoGenome.kt](../src/jvmMain/kotlin/afield/morpho/MorphoGenome.kt) | Languages | morpho_examples | 0 | 13 | 62% |
@@ -170,6 +170,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [MidiDevices.kt](../src/jvmMain/kotlin/afield/four/synth/MidiDevices.kt) | Audio | — | 0 | 17 | 64% |
 | [MorphoGenerator.kt](../src/jvmMain/kotlin/afield/morpho/MorphoGenerator.kt) | Languages | — | 0 | 17 | 39% |
 | [Colormaps.kt](../src/jvmMain/kotlin/afield/visualization/Colormaps.kt) | Visualization | — | 0 | 17 | 19% |
+| [PopulationSearch.kt](../src/jvmMain/kotlin/afield/stdlib/PopulationSearch.kt) | Search | — | 0 | 16 | 52% |
 | [keyframeBrowser.kt](../src/jvmMain/kotlin/afield/stdlib/keyframeBrowser.kt) | Visualization | — | 0 | 16 | 75% |
 | [HostBridge.kt](../src/jvmMain/kotlin/afield/ml/core/HostBridge.kt) | Languages | — | 0 | 15 | 48% |
 | [MorphoNetlist.kt](../src/jvmMain/kotlin/afield/morpho/MorphoNetlist.kt) | Languages | — | 0 | 15 | 48% |

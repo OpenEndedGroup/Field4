@@ -4,7 +4,7 @@
 
 Field's standard library is large and, until now, invisible: the only ways to read it were to open the source or to already know the name you wanted. This section is a browsable map of it — every public declaration in `afield.stdlib`, `afield.visualization` and `afield.four.synth`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**11749 public symbols across 276 source files**, 6407 of them (54%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. The one exception is [Languages](languages.md): no file in the small-language packages carries that annotation, and adding one is not a documentation-only change — the label is read by the completion popup — so those pages are grouped by source path here and the popup is left exactly as it was.
+**11796 public symbols across 277 source files**, 6431 of them (54%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. The one exception is [Languages](languages.md): no file in the small-language packages carries that annotation, and adding one is not a documentation-only change — the label is read by the completion popup — so those pages are grouped by source path here and the popup is left exactly as it was.
 
 The "documented" column is a coverage report on Field's own KDoc, not a claim about this page. Where a summary is blank the declaration has none yet.
 
@@ -17,7 +17,7 @@ The "documented" column is a coverage report on Field's own KDoc, not a claim ab
 | [Solvers](solvers.md) | 4 | 657 | 270 (41%) | Nonlinear least squares, aimed at geometry. |
 | [Imaging](imaging.md) | 6 | 255 | 209 (81%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 8 | 363 | 206 (56%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization) — plus the measurement layer every one of them makes its claims through, because "it produced pixels" is not evidence. |
-| [Function](function.md) | 12 | 423 | 307 (72%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
+| [Function](function.md) | 12 | 426 | 308 (72%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Visualization](visualization.md) | 15 | 483 | 429 (88%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 25 | 1058 | 376 (35%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 17 | 750 | 315 (42%) | Musical time, as a value. |
@@ -25,6 +25,7 @@ The "documented" column is a coverage report on Field's own KDoc, not a claim ab
 | [Audio AI](audio-ai.md) | 18 | 520 | 344 (66%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 73 | 2204 | 649 (29%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 2 | 79 | 76 (96%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Search](search.md) | 1 | 44 | 23 (52%) |  |
 
 ## Every file, at a glance
 
@@ -127,7 +128,7 @@ The "documented" column is a coverage report on Field's own KDoc, not a claim ab
 | [FnMetric.kt](function.md#fnmetric-kt) | Function | 3 | 3 | The objective shared by both halves of the function-search family: `FnMetric`, a `fun interface` scoring a candidate signal against a target on one even sample grid (lower is better), plus a companion of ready-made metrics — `rmse`, `mae`, `lp`, `maxError`, `huber`, `logCosh`, `correlation` — and the `fromResidual` / `window` builders behind them. |  |
 | [ForthInterface.kt](languages.md#forthinterface-kt) | Languages | 13 | 1 |  |  |
 | [ForthInterpreter.kt](languages.md#forthinterpreter-kt) | Languages | 48 | 5 |  |  |
-| [FunctionEvolve.kt](function.md#functionevolve-kt) | Function | 39 | 20 | Search over the *structure* of `Fn` graphs — the genetic counterpart to the gradient fitting of a fixed structure's numbers in FunctionFit.kt. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
+| [FunctionEvolve.kt](function.md#functionevolve-kt) | Function | 42 | 21 | Search over the *structure* of `Fn` graphs — the genetic counterpart to the gradient fitting of a fixed structure's numbers in FunctionFit.kt. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
 | [FunctionFit.kt](function.md#functionfit-kt) | Function | 60 | 32 | Gradient-based fitting of `Fn` graphs — the differentiable counterpart to the genetic `evolve` in FunctionEvolve.kt. | [Differentiating Functions](../autodiff_examples.md), [Functions to FLine examples (Field graphics)](../functions_examples.md), [Patterns: writing rhythm as a function of time](../pattern_language.md) |
 | [FunctionGraph.kt](function.md#functiongraph-kt) | Function | 69 | 31 | The data model and the copy engine underneath Field's graph-rewritable notion of a function: `FnGraphNode` / `FnGraphEdge` (an op name, role-tagged children, scalar metadata and an optional rebuild recipe) plus `Functions.Fn.deepCopy` and `Functions.Fn.rewriteGraph`, a bottom-up copy that offers every occurrence to an `FnGraphEdit`. | [Functions to FLine examples (Field graphics)](../functions_examples.md), [Patterns: writing rhythm as a function of time](../pattern_language.md) |
 | [FunctionGraphBrowser.kt](function.md#functiongraphbrowser-kt) | Function | 42 | 42 | The looking-at-it layer for the `Fn` graph family: sample a graph on one shared time-base, then render it as a self-contained interactive HTML browser. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
@@ -239,6 +240,7 @@ The "documented" column is a coverage report on Field's own KDoc, not a claim ab
 | [pointing_render.kt](graphics.md#pointing-render-kt) | Graphics | 17 | 14 | Seeing what the pointer found: the picked part lit, a crosshair where the pointer was aimed, and a caption that names what it hit. |  |
 | [Polytope4.kt](polytopes.md#polytope4-kt) | Polytopes | 43 | 36 | Rank 4: the seeds, the coordinates and the viewing policy that keep the incidence core general about being rank-general rather than a polyhedron library with a rank field. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [PolytopeVisualizers.kt](polytopes.md#polytopevisualizers-kt) | Polytopes | 1 | 1 | The single place this package knows that Field has a screen — and it is one function long. |  |
+| [PopulationSearch.kt](search.md#populationsearch-kt) | Search | 44 | 23 | Population search over *any* genome type — the search half that `alife*.kt` was missing and that `FunctionEvolve.kt` and `afield.morpho.MorphoSearch` each had privately. |  |
 | [props.kt](workspace.md#props-kt) | Workspace | 4 | 4 | The `prop` / `rootProp` macro pair — the typed, inheritable box-property slot. |  |
 | [Protocol.kt](audio-ai.md#protocol-kt) | Audio AI | 267 | 195 | The wire vocabulary of Field Audio — one Kotlin type per JSON object in the pinned service contract, and nothing else. | [Field Audio service reference](../field_audio_service_reference.md), [Beat and pitch analysis: from source to synchronized views](../audio_ai_analysis.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [PythonInterface.kt](languages.md#pythoninterface-kt) | Languages | 42 | 2 | Python as a Field main language: a box whose source is Python, executed **in this process** by CPython through JEP. | [Python in a box](../python.md) |
