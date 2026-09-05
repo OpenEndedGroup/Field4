@@ -21,6 +21,7 @@ import com.github.jelmerk.knn.DistanceFunctions
 import com.github.jelmerk.knn.Item
 import com.github.jelmerk.knn.hnsw.HnswIndex
 import kotlinx.coroutines.DelicateCoroutinesApi
+import afield.stdlib.linalg.Matrix4f
 import afield.stdlib.linalg.Vector3f
 import afield.stdlib.linalg.Vector4f
 import org.lwjgl.system.MemoryUtil.memAlloc
@@ -178,9 +179,24 @@ object PlySupport {
         val buffers: PlyMeshBuffers,
         val name: String
     ) {
-        fun applyToMesh(m: Mesh, camera: Camera = fromContext(), pointSize: Float = 8.0f) {
+        /**
+         * Upload this model's buffers and set the push constants the bundled shaders expect.
+         *
+         * @param model the model matrix, composed into `modelView` as `view * model`. Defaults to the
+         *   identity, which is what this did unconditionally before the parameter existed — and,
+         *   unlike glTF, is the *right* default: PLY has no scene graph, so a [PlyModel] carries no
+         *   node transform for the loader to have dropped. This exists so the shader's `mat4
+         *   modelView` can actually be the `view * model` it says it is when you want to place a scan
+         *   somewhere, rather than forcing you to bake the placement into the camera.
+         */
+        fun applyToMesh(
+            m: Mesh,
+            camera: Camera = fromContext(),
+            pointSize: Float = 8.0f,
+            model: Matrix4f = Matrix4f(),
+        ) {
             m.initializePushConstantsFromModule(m.inside)
-            m.push["modelView"] = camera.m()
+            m.push["modelView"] = camera.m().mul(model)
             m.push["proj"] = camera.p()
             m.push["vertexOffset"] = 0
             m.push["indexOffset"] = 0
@@ -243,11 +259,20 @@ object PlySupport {
          * @param viewportWidth Viewport width in pixels (required for proper quad sizing)
          * @param viewportHeight Viewport height in pixels (required for proper quad sizing)
          */
-        fun applyToMeshAsQuads(m: Mesh, camera: Camera = fromContext(), pointSize: Float = 8.0f, viewportWidth: Float, viewportHeight: Float) {
+        fun applyToMeshAsQuads(
+            m: Mesh,
+            camera: Camera = fromContext(),
+            pointSize: Float = 8.0f,
+            viewportWidth: Float,
+            viewportHeight: Float,
+            model: Matrix4f = Matrix4f(),
+        ) {
             m.initializePushConstantsFromModule(m.inside)
             if (m.push.offsets.containsKey("modelView")) {
+                // Bound rather than set, so an orbiting camera keeps working; `model` is captured and
+                // read each evaluation, and `camera.m()` returns a fresh matrix so `mul` is safe here.
                 m.push.bind("modelView") {
-                    camera.m()
+                    camera.m().mul(model)
                 }
             }
             m.push["proj"] =  camera.p()

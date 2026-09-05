@@ -1,7 +1,11 @@
 package afield.stdlib
 
+import afield.four.fabricated.FabricateNode
+import afield.four.fabricated.FabricateScene
 import afield.four.modules.GltfSupport
 import afield.four.modules.assimpToTriMesh
+import afield.stdlib.linalg.Matrix4f
+import afield.stdlib.linalg.Vector3f
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -39,8 +43,17 @@ import kotlin.test.assertTrue
  * placed the mirrored instance **un-mirrored** — vertex at `x = -2` instead of `x = -4` — which is the
  * worst kind of wrong, because it is a plausible mesh with no warning attached.
  *
- * The fix was to carry the un-decomposed world matrix (`MeshInstance.bindMatrix`) and use it here. The
- * GPU paths still read `bindPose`, so they still carry the flattening; that is stated, not fixed.
+ * The fix was to carry the un-decomposed world matrix (`MeshInstance.bindMatrix`) and use it here.
+ *
+ * ### And the same defect one layer down, on the GPU path
+ *
+ * `FabricateScene.importGltf` read `bindPose` too, so the Fabricate scene graph carried the same
+ * flattening. Reading `bindMatrix` there was *not sufficient*: `FabricateTransform` is itself a TRS
+ * triple, and `FabricateTransform.set(Matrix4f)` decomposes with the same `sqrt` `getScale`, so
+ * handing it the true matrix re-flattened the mirror immediately. It now measures its own
+ * decomposition and keeps the original matrix when the TRS cannot reproduce it
+ * (`FabricateTransform.matrixOverride`). [mirrorSurvivesTheFabricateSceneGraphNotJustTheTriMeshBridge]
+ * is the test that would have caught the insufficient version.
  */
 class AssimpSceneBridgeTest {
 
@@ -238,6 +251,135 @@ class AssimpSceneBridgeTest {
                     org.lwjgl.system.MemoryUtil.memFree(m.buffers.indexData)
                     m.buffers.tangentData?.let { org.lwjgl.system.MemoryUtil.memFree(it) }
                 }
+            }
+        }
+    }
+
+    // ==========================================================================================
+    // The GPU path: the Fabricate scene graph, which is where this was still broken
+    // ==========================================================================================
+
+    /**
+     * The same mirrored node, through `FabricateScene.importGltf` instead of [assimpToTriMesh].
+     *
+     * `FabricateScene` is deliberately independent of Vulkan resources — nodes own transforms and
+     * nothing here touches a device — so the placement the renderer would use is measurable without
+     * a GPU. What it measures is a *world matrix*, which is what `registerGltf` binds into the
+     * shader's `push.model`, so getting this right is getting the render right.
+     *
+     * Two assertions, and the second is the one with the history: reading `bindMatrix` in
+     * `importGltf` is necessary but not sufficient, because `FabricateTransform` decomposes whatever
+     * it is given back into a TRS. Only the first assertion fails if `importGltf` regresses to
+     * `bindPose`; only the second fails if `FabricateTransform` goes back to decomposing
+     * unconditionally.
+     */
+    @Test
+    fun mirrorSurvivesTheFabricateSceneGraphNotJustTheTriMeshBridge() {
+        withTempDir { dir ->
+            val model = GltfSupport.loadGltfBasic(
+                scene(dir).path, GltfSupport.GltfLoadConfig(loadTextures = false),
+            )
+            try {
+                val scene = FabricateScene("test")
+                val nodes = scene.importGltf(model)
+                val mirrored = model.meshes.zip(nodes).single { (instance, _) -> instance.name == "mirrored" }.second
+
+                // The long leg of the local triangle runs to x = +1. Mirrored then translated by
+                // (-3, 0, 0), it must land at x = -4. x = -2 is the flattened-to-a-translation answer.
+                val far = mirrored.worldPoint(Vector3f(1f, 0f, 0f))
+                assertEquals(
+                    -4f, far.x, 1e-4f,
+                    "the mirrored node's far vertex must be at x = -4, not -2; got $far",
+                )
+                assertTrue(
+                    mirrored.worldMatrix.determinant() < 0f,
+                    "the node's world matrix must still be a reflection; " +
+                        "det = ${mirrored.worldMatrix.determinant()}",
+                )
+                assertTrue(
+                    mirrored.transform.matrixOverride != null,
+                    "a mirror is not a TRS, so the transform must have kept the exact matrix",
+                )
+
+                // Every other node is an ordinary TRS and must be untouched by the escape hatch --
+                // this is what keeps every scene that worked before byte-identical.
+                for ((instance, node) in model.meshes.zip(nodes)) {
+                    if (instance.name == "mirrored") continue
+                    assertTrue(
+                        node.transform.matrixOverride == null,
+                        "node '${instance.name}' decomposes cleanly and must not hold an override",
+                    )
+                }
+                val nested = model.meshes.zip(nodes).single { (i, _) -> i.name == "nested" }.second
+                assertEquals(3f, nested.worldPoint().x, 1e-4f, "parent chain composed: x = 3")
+                assertEquals(2f, nested.worldPoint().y, 1e-4f, "parent chain composed: y = 2")
+            } finally {
+                for (m in model.meshes) {
+                    org.lwjgl.system.MemoryUtil.memFree(m.buffers.vertexData)
+                    org.lwjgl.system.MemoryUtil.memFree(m.buffers.indexData)
+                    m.buffers.tangentData?.let { org.lwjgl.system.MemoryUtil.memFree(it) }
+                }
+            }
+        }
+    }
+
+    /**
+     * The narrow cost of [FabricateTransform.matrixOverride], pinned so it cannot surprise someone
+     * quietly: while an override is held the TRS fields are a lossy summary, so moving the node by
+     * mutating them in place does nothing until the override is cleared.
+     */
+    @Test
+    fun aTransformHoldingAnExactMatrixIgnoresInPlaceTrsMutationUntilCleared() {
+        val node = FabricateNode("mirrored")
+        node.transform.set(Matrix4f().translate(-3f, 0f, 0f).scale(-1f, 1f, 1f))
+        assertTrue(node.transform.matrixOverride != null, "scale(-1,1,1) is not a TRS")
+
+        node.translate(10f, 0f, 0f)
+        node.updateWorld(Matrix4f().identity())
+        assertEquals(-3f, node.worldPosition().x, 1e-4f, "the in-place translate is ignored")
+
+        node.transform.clearMatrix()
+        node.updateWorld(Matrix4f().identity())
+        assertEquals(7f, node.worldPosition().x, 1e-4f, "and honoured once the override is cleared")
+    }
+
+    /**
+     * Why the committed `fabricate-toy-car-gltf` capture did not have to be regenerated when the
+     * Fabricate path started carrying full matrices.
+     *
+     * ToyCar's three nodes are a uniform `1e-4` scale and a translation — a clean TRS. So
+     * `FabricateTransform.set` finds that its decomposition round-trips, keeps no override, and
+     * composes exactly the matrix it composed before. Nothing about that figure moves.
+     *
+     * Worth a test rather than a paragraph, because "the capture is unaffected" is the claim that
+     * lets a renderer change ship without re-verifying its pictures, and it is checkable.
+     */
+    @Test
+    fun toyCarDecomposesCleanlySoTheFabricatePathIsUnchangedForIt() {
+        val car = File("public/docs/assets/fabricate_demo/ToyCar.glb").takeIf { it.isFile } ?: return
+        val model = GltfSupport.loadGltfBasic(car.path, GltfSupport.GltfLoadConfig(loadTextures = false))
+        try {
+            val nodes = FabricateScene("toy-car").importGltf(model)
+            for ((instance, node) in model.meshes.zip(nodes)) {
+                assertTrue(
+                    node.transform.matrixOverride == null,
+                    "ToyCar node '${instance.name}' is a clean TRS and must hold no override, " +
+                        "or this file's committed capture would have moved",
+                )
+                // And the world matrix is what the old bindPose path produced, to float tolerance.
+                val old = instance.bindPose.toMatrix()
+                for (i in 0 until 16) {
+                    assertEquals(
+                        old[i], node.worldMatrix[i], 1e-9f,
+                        "node '${instance.name}' component $i must be unchanged",
+                    )
+                }
+            }
+        } finally {
+            for (m in model.meshes) {
+                org.lwjgl.system.MemoryUtil.memFree(m.buffers.vertexData)
+                org.lwjgl.system.MemoryUtil.memFree(m.buffers.indexData)
+                m.buffers.tangentData?.let { org.lwjgl.system.MemoryUtil.memFree(it) }
             }
         }
     }
