@@ -9,7 +9,7 @@ do when you have.
 
 ## What the rule stops, and why `.gitignore` does not stop it
 
-`.gitignore` line 243 is `src/personal/`, and today `git add -A` cannot reach anything under it. That
+`.gitignore` carries the rule `src/personal/`, and today `git add -A` cannot reach anything under it. That
 is not the same as the directory never having been tracked, and the difference is this page's own
 subject. Twenty-nine files under the private tree **were** tracked, across fifteen commits, until
 `9353c17e4` (2026-08-31) removed them from the index — the commit is the citable evidence here, and
@@ -262,7 +262,9 @@ hours between this page being drafted and being reviewed. Quoting it at all is a
 dated for that reason — the ratio is the durable part, not the digits.
 
 790 of those 794 are gitignored box-code backups under `templates/*/backup/`, excluded by
-`.gitignore` line 236 — seven lines above the `src/personal/` rule the same guard does honour. The
+`.gitignore`'s `templates/*/backup/` rule, which sits a few lines above the `src/personal/` rule the
+same guard does honour. (Both are cited by rule text rather than by line: this page moved those line
+numbers itself when a sibling branch rewrote that region of `.gitignore` on 2026-09-05.) The
 remaining four are the author's uncommitted work under `dev_docs/agents/demos/`.
 
 So on the author's machine this guard is **stricter** than in CI, over a population 30% larger that

@@ -118,7 +118,7 @@ object KDocAttachmentGuard {
     /**
      * Source roots this guard does not scan, as repository-relative path prefixes.
      *
-     * `src/personal/` is gitignored (`.gitignore:243`) and exists only on the machine of whoever
+     * `src/personal/` is gitignored (the `src/personal/` rule in `.gitignore`) and exists only on the machine of whoever
      * created it, so it is not part of the repository, is not read by the reference generator, and
      * cannot be reproduced — or fixed — from another checkout. Scanning it made `./gradlew check` fail
      * on un-committed sketch code: on the machine this guard was merged on it reported four blocks in
