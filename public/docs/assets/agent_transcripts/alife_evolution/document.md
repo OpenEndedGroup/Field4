@@ -194,7 +194,7 @@ for exactly that reason. A control arm that nearly wins is telling you the probl
 that the search is good. At radius 2 the space is 2^49 and the margin is 27%.
 
 ```edn [field-box id="evolve_ca" role="properties"]
-{"id" "evolve_ca" "index" 2 "name" "2 — The same engine, a life-like rule table" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — The same engine, a life-like rule table" "_tombstone" false "frame" #afield/rect [60.0 160.0 320.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "evolve_ca_code_.kt" "lines" 70 "characters" 3691 "sha256" "a0d3420cd14557b8c74c4a45bd9b2e64c8a164a4caa4d8b8bd153dd623832ec4"}]}
+{"id" "evolve_ca" "index" 2 "name" "2 — The same engine, a life-like rule table" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — The same engine, a life-like rule table" "_tombstone" false "frame" #afield/rect [60.0 160.0 320.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "evolve_ca_code_.kt" "lines" 73 "characters" 3962 "sha256" "c0418b3b6d2cd06a8cab5b16ae7ef515d4aabd77bf78b290dfd27390c244afc2"}]}
 ```
 
 ```kotlin [field-property box="evolve_ca" name="code" path="evolve_ca_code_.kt"]
@@ -250,6 +250,9 @@ println()
 println("evolved rule ${lifeRuleSignature(evolved.best!!.genome)}")
 println("control rule ${lifeRuleSignature(control.best!!.genome)}")
 println()
+println("The first record holders score BELOW the control: the control is the best of 400")
+println("independent draws, so a population starts under it and has to climb past it.")
+println()
 println("Try Selection.TOURNAMENT above and compare. Try LifeRuleGenome() with no radius argument")
 println("and watch the margin collapse -- that is the easy problem, and it is worth seeing.")
 
@@ -266,7 +269,7 @@ for (i in picks) {
 }
 showImg(
     montage(panels, columns = 3, cellSide = 200),
-    caption = "the random control's best, then each successive record holder, all on the same soup"
+    caption = "the control's best, then each successive record holder, all on the same soup -- the\n        early ones score BELOW the control, which is what overtaking looks like"
 )
 ```
 
