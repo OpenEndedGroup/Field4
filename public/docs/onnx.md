@@ -1,19 +1,19 @@
 # Depth and CLIP: neural vision in a box
 
-*Every public declaration used below carries its own KDoc — start from `OnnxRuntime`, `OnnxModel`,
+*Every public declaration used below carries its own KDoc: start from `OnnxRuntime`, `OnnxModel`,
 `DepthAnything` and `Clip` in `afield.onnx`. The transcript that ships as an openable starting point
 is [onnx_webcam_live](agent_transcripts.md).*
 
-Field has been able to *look* at a picture since the [imaging family](imaging_examples.md) landed:
-convolutions, edges, corners, Hough lines, optical flow. All of that is arithmetic you could have
-written out by hand. What it could not do is the thing you cannot write out by hand —
+The [imaging family](imaging_examples.md) gives you convolutions, edges, corners, Hough lines and
+optical flow: arithmetic you could write out by hand. `afield.onnx` answers the two questions you
+cannot write out by hand.
 
-> **ask a picture how far away things are, or what it is a picture *of*.**
+> **How far away are things in this picture, and what is it a picture *of*?**
 
-`afield.onnx` is two answers to that, on the ONNX Runtime JNI artifact
-(`com.microsoft.onnxruntime:onnxruntime`, 1.27.0) that was already on the classpath because
-[semantic search](semantic_index.md) embeds text with it. No new native dependency, no build step, no
-toolchain. Two models get downloaded the first time you ask for them, and that is the whole install.
+Both answers run on the ONNX Runtime JNI artifact (`com.microsoft.onnxruntime:onnxruntime`, 1.27.0),
+which is on the classpath already because [semantic search](semantic_index.md) embeds text with it. No
+new native dependency, no build step, no toolchain. Two models get downloaded the first time you ask
+for them, and that is the whole install.
 
 ```diffstatic {data-lang=kotlin}
 import afield.onnx.*
@@ -28,14 +28,13 @@ val prompts = ClipText.encodeAll(listOf("an empty room", "a person at a desk"))
 ClipImage().encode(rgbaBytes, 640, 480).best(prompts)   // the better-matching label, and its share
 ```
 
-!!! info "Orientation only — `rgbaBytes` is not defined, so nothing runs this block"
-    Every call in it is exercised elsewhere, but *this text* is not compiled by anything.
-    [Which code on this page runs](#which-code-on-this-page-runs) says which blocks are copy-and-run and
-    which are illustration.
+!!! info "Orientation only: `rgbaBytes` has no definition here, so this block will not run"
+    [Which code on this page runs](#which-code-on-this-page-runs) sorts every block on the page into
+    copy-and-run and illustration.
 
-## The one idea that makes this live-codeable
+## Sessions are cached, so a box can re-run
 
-Session construction is the *expensive* half of ONNX — the graph is parsed, fused and specialised for
+Session construction is the *expensive* half of ONNX: the graph is parsed, fused and specialised for
 the execution provider, which costs hundreds of milliseconds. Inference is the cheap half. A box that
 says `DepthAnything(...)` and gets re-evaluated on every keystroke must not pay that on every
 keystroke.
@@ -54,14 +53,10 @@ val loaded = OnnxRuntime.session(spec)
 val mine = OnnxRuntime.env.createSession(path, options)
 ```
 
-*Not executed, and half of it must never be: the second line is an anti-example. That two calls return
-the identical `OrtSession` is asserted on every build.*
-
 The cache key is a `SessionSpec`: the model file, the provider, and the two thread counts. Thread
 pools are baked in at construction, so two specs differing only in `intraOpThreads` really are
-different sessions — asserted, rather than assumed. `evict()` and `closeAll()`
-exist for the two legitimate reasons (the file changed; the memory is wanted back). Calling either
-because a box re-ran defeats the entire point.
+different sessions. `evict()` and `closeAll()` exist for the two legitimate reasons (the file changed;
+the memory is wanted back). Calling either because a box re-ran defeats the entire point.
 
 ## Depth: what the model actually gives you
 
@@ -69,17 +64,16 @@ because a box re-ran defeats the entire point.
 model there is: one image in, one single-channel map out, no anchors, no non-maximum suppression, no
 decode step, no state between frames.
 
-!!! warning "It is relative *inverse* depth, in arbitrary units — not metres"
-    This is the single thing to get straight before building anything. `predicted_depth` is **not**
-    metres, **not** normalised, and **larger means nearer**. The numeric range depends on the scene
-    *and* on the input resolution, so a threshold calibrated on one frame at one size means nothing
-    on another.
+!!! warning "It is relative *inverse* depth in arbitrary units, not metres"
+    `predicted_depth` is **not** metres, **not** normalised, and **larger means nearer**. The numeric
+    range depends on the scene *and* on the input resolution, so a threshold calibrated on one frame
+    at one size means nothing on another.
 
-    A reader who assumes metric depth will build something that looks approximately right and is
-    wrong in a way no single frame reveals. If you need metres, this is the wrong model.
+    Assume metric depth and you will build something that looks approximately right and is wrong in a
+    way no single frame reveals. If you need metres, this is the wrong model.
 
-Here is that, on a real photograph, with no webcam and no depth camera anywhere — the image is a
-Vision Pro passthrough frame that already ships in this repository.
+Here it is on a Vision Pro passthrough frame of a room, a photograph that already ships in this
+repository.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/onnx/depth.png" wait="12" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -146,19 +140,18 @@ showImgGrid(
 
 The model has no idea what a sofa is and it gets the room right anyway: the near floor and the left
 arm of the sofa are bright, the wall behind the television is dark, and the bookshelf on the right
-comes forward. Read the two captions together and the warning above stops being abstract — **the same
-photograph, at two sizes, produces two entirely different numeric ranges**. That property is pinned: the
-518² and 266² ranges of a reference frame are required to differ by more than 0.5, precisely so nobody
-can start treating the output as calibrated.
+comes forward. Read the two captions together and the warning above stops being abstract. **The same
+photograph, at two sizes, produces two entirely different numeric ranges**, which is why a window
+calibrated at one size is meaningless at the other.
 
 Resolution is also the only performance dial that really matters, because cost is roughly quadratic in
-it. The `@126` panel has about 4.6× fewer pixels than `@266` — the counts are in the captions — and ran
+it. The `@126` panel has about 4.6× fewer pixels than `@266` (the counts are in the captions) and ran
 in roughly a quarter of the time.
 
 ### The normalisation window, and what `settled` means
 
 A texture needs values in `[0,1]`, so the raw map has to be normalised against *something*. Picking
-each frame's own min and max makes the image flicker — a hand entering shot rescales the entire
+each frame's own min and max makes the image flicker: a hand entering shot rescales the entire
 background. So `DepthAnything` tracks the window with an exponential moving average and normalises
 against the smoothed version. `infer` returns a `DepthStats` reporting both, so a box can watch that
 decision instead of guessing at it:
@@ -169,7 +162,7 @@ decision instead of guessing at it:
 | `windowMin` / `windowMax` | the smoothed window that was mapped to `0.0` and `1.0` |
 | `settled` | true once the smoothed window has *caught up* with the raw range |
 
-`settled` is the **arrived** state, not the chasing one — it is true on the first frame after
+`settled` is the **arrived** state, not the chasing one. It is true on the first frame after
 construction or `resetAdaptation()`, because the window is seeded from that frame's own range, and
 false for the frames after the scene changes while the average walks towards the new one. Wait for
 `settled` if you want a stable picture; watch for `!settled` if you want to know one is still
@@ -180,9 +173,8 @@ right for a single still and wrong for video. The default `0.1f` is the cheap ve
 filter that anything body-tracked eventually needs. `resetAdaptation()` forgets the window entirely,
 which is what you want after a cut.
 
-A constant frame — a lens cap, a solid colour — would give a zero-width window and a texture full of
-NaN. It emits mid-grey instead, and that case is forced directly on every build rather than left to a
-flat input to produce by accident.
+A constant frame (a lens cap, a solid colour) would give a zero-width window and a texture full of
+NaN. It emits mid-grey instead.
 
 ### Nothing here is frame rate, so use the worker
 
@@ -201,30 +193,29 @@ if (depth.consume()) tex.recordUpload(commandBuffer)
 ```
 
 !!! info "This one needs a Vulkan device and a webcam, so it does not run here"
-    The ONNX half of it is nonetheless covered without a GPU: `DepthAnythingWorker` is driven through
-    `submit` and `consume` end to end, and `depthFp16`'s size is asserted to be exactly what `ImageData`
-    computes for `VK_FORMAT_R16_SFLOAT` — the seam this snippet depends on.
+    [Which code on this page runs](#which-code-on-this-page-runs) names the tests that stand behind
+    its ONNX half.
 
-Two design choices worth knowing, because both are the opposite of the obvious:
+Two design choices, both the opposite of the obvious one:
 
 - **Frames are dropped, not queued.** `submit` overwrites anything not yet picked up. A queue would
-  grow without bound whenever inference is slower than capture — which is always — and every frame it
+  grow without bound whenever inference is slower than capture (which is always) and every frame it
   held would be staler than the one behind it. `framesSubmitted`, `framesInferred` and `framesDropped`
-  are all readable, so the drop rate is observable rather than mysterious.
+  are all readable, so you can read the drop rate off the worker.
 - **`consume()` copies, on the calling thread.** `depthFp16` must keep a fixed identity, because
   `StreamingTexture` captures its source buffer once at construction and re-reads it every frame. The
-  worker therefore cannot write into it directly — the renderer could be mid-read and would show a
+  worker therefore cannot write into it directly: the renderer could be mid-read and would show a
   torn map. So the worker publishes into an internal buffer and `consume()` copies under the lock.
   That copy is the only work the render thread does.
 
 Six frames of staleness at 60fps looks fine for displacement, parallax and depth-keyed compositing,
 and looks like lag for anything a hand is steering directly. That is the real constraint, and no
-provider flag fixes it — see [what was measured](#what-was-measured-and-what-it-contradicts).
+provider flag fixes it; see [what was measured](#what-was-measured-and-what-it-contradicts).
 
 ## CLIP: a shared space for pictures and words
 
 [CLIP](https://openai.com/research/clip) embeds images and text into one 512-dimensional space. Field
-binds both towers — `text_model.onnx` and `vision_model.onnx` — each of which emits an
+binds both towers (`text_model.onnx` and `vision_model.onnx`), each of which emits an
 already-projected 512-vector, so no head has to be reimplemented.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/onnx/clip.png" wait="30" capture="box" open-outputs="true" padding="20"}
@@ -304,17 +295,17 @@ showImgGrid(
 ![](assets/onnx/clip.png)
 
 Nothing was trained, and no label was ever written down. The room photograph picks "an empty living
-room" and the car render picks "a car" — and it picks "red cloth" second, which is the correct second
-answer, because the car really is sitting on red drapery.
+room" and the car render picks "a car", with "red cloth" second: the car really is sitting on red
+drapery.
 
-### What a cosine between a prompt and an image is — and is not
+### How to read a cosine between a prompt and an image
 
 This is the most misread property of CLIP, and the reason `classify` exists rather than a bare
 threshold on `cosine`.
 
 Look at the numbers in that figure. Every single image↔text cosine sits between about 0.15 and 0.27,
 including the *correct* ones. Meanwhile two unrelated *text* prompts, `storm` and `calm`, sit at
-0.8813. The two towers occupy offset regions of the sphere — the **modality gap** — so:
+0.8813. The two towers occupy offset regions of the sphere, the **modality gap**, so:
 
 | comparison | where it lands | what you may conclude |
 |---|---|---|
@@ -324,44 +315,39 @@ including the *correct* ones. Meanwhile two unrelated *text* prompts, `storm` an
 | one prompt ↔ the same scene over time | a moving projection | **this is also the signal** |
 
 `0.21` does not mean "unrelated" and `0.88` does not mean "the same". Only **rank** and **difference**
-carry information. An absolute threshold on a raw cosine will not survive contact with a second scene,
-so the gap is asserted explicitly — every image↔text cosine below 0.5, every text↔text cosine above
-0.75 — and cannot stop being true unnoticed.
+carry information, and an absolute threshold on a raw cosine will not survive contact with a second
+scene.
 
 `classify(candidates)` is the better-posed form of the question: it softmaxes the cosines *against each
-other* and returns probabilities that sum to 1, most likely first. `best()` is its first element. The
-`logitScale` only changes how peaked the distribution is — it cannot change the ranking, which is
-asserted by re-running at 500 and comparing the order.
+other* and returns probabilities that sum to 1, most likely first. `best()` is its first element.
+`logitScale` only changes how peaked the distribution is; it cannot change the ranking.
 
 ### A knob whose units are meaning
 
-The third thing CLIP offers is the one nothing else does. The difference of two prompt embeddings is a
-*direction*, and projecting a frame onto it is a continuous parameter that tracks a semantic axis
-rather than a pixel statistic. Two lines — `a axisTo b`, then `.project(axis)` — which is why they are
-not shown here as a snippet: they are executed in the figure above, on the axis from
-`"an empty living room"` towards `"a car"`, and its last three rows are the two projections and the
-check that they order correctly.
+The difference of two prompt embeddings is a *direction*, and projecting a frame onto it is a
+continuous parameter that tracks a semantic axis rather than a pixel statistic. It is two lines,
+`a axisTo b` and then `.project(axis)`, and the figure above runs them on the axis from
+`"an empty living room"` towards `"a car"`.
 
-The two projections come out small and on opposite sides of zero, which is what to expect — the same
-modality gap applies to a projection as to a cosine, so the magnitude is not a score. The signal is
-that the car render sits *further along* the axis than the room photograph, which the figure computes
-and states outright rather than asking you to eyeball it. For a live input the useful thing is not the
-value but how it *moves*. `ClipVector.mean(...)` averages and renormalises several prompts, which is
-the standard prompt-ensemble trick and one CLIP responds well to.
+Both projections come out small and on opposite sides of zero. The same modality gap applies to a
+projection as to a cosine, so the magnitude is not a score; the signal is that the car render sits
+*further along* the axis than the room photograph. For a live input the useful thing is not the value
+but how it *moves*. `ClipVector.mean(...)` averages and renormalises several prompts, which is the
+standard prompt-ensemble trick and one CLIP responds well to.
 
 The rest of `ClipVector` is small and pure: `plus`/`minus`/`times` (not renormalised,
 because the length of a difference is meaningful), `dot`, `cosine`, `normalized`, and
-`toBase64`/`fromBase64` for persisting an embedding — 2732 characters of exact fp32 round trip, for a
+`toBase64`/`fromBase64` for persisting an embedding: 2732 characters of exact fp32 round trip, for a
 stored identity to cosine against later.
 
 ## Getting the models onto a fresh machine
 
-Weights are not in the repository — they are tens to hundreds of megabytes and separately licensed —
-so a model is a URL plus somewhere to put it, and the first call fetches it.
+Weights are not in the repository (tens to hundreds of megabytes, and separately licensed), so a model
+is a URL plus somewhere to put it, and the first call fetches it.
 
 **The cache root is `~/.afield/onnx/models`**, overridable with the `afield.onnx.cacheRoot` system
 property or the `AFIELD_ONNX_CACHE_ROOT` environment variable, matching the convention semantic search
-already established. Sizes are what these files actually occupy, read off disk:
+already established. Sizes are what these files occupy on disk:
 
 | file | on disk | what it is |
 |---|---|---|
@@ -380,7 +366,7 @@ So depth alone costs about 99 MB and CLIP costs about 608 MB more. What happens 
    a bug in the model rather than in the download.
 3. The sha256 is verified before the move, against a digest recorded in the source. A mismatch deletes
    the partial file and throws.
-4. Then the session is built, which is the slow part — see the caching note above.
+4. Then the session is built, which is the slow part; see the caching note above.
 
 `OnnxModel.isPresent` is a cheap boolean if you want to branch on it, and `Clip.TOKENIZER` reuses the
 same fetch machinery even though nothing about a `tokenizer.json` is ONNX, because it is the same
@@ -390,14 +376,13 @@ problem: a large asset that must not live in the repository.
     Unlike [Manifold](manifold.md#installing-it), which needs a native library installed before a box
     can use it, `afield.onnx` needs nothing but network access on first run. The ONNX Runtime native
     library ships inside the JNI jar. `COMPILE_ONLY` box code that mentions `clipEncode("…")` compiles
-    without ever opening a model, because `ClipText`'s session is `by lazy` — which is what lets the
+    without ever opening a model, because `ClipText`'s session is `by lazy`. That is what lets the
     completion corpus guard compile the shipped transcript with no network at all.
 
 ## What was measured, and what it contradicts
 
-The figures below were recorded when the package landed, on Apple Silicon with 10 cores, at 518²
-unless stated. They are quoted from the source's own KDoc rather than re-measured here, and each one
-contradicts a plausible guess — which is exactly why they are worth writing down:
+Measured on Apple Silicon with 10 cores, at 518² unless stated, and quoted from `OnnxRuntime`'s own
+KDoc. Every row contradicts a plausible guess:
 
 | the guess | what was measured | so |
 |---|---|---|
@@ -405,30 +390,26 @@ contradicts a plausible guess — which is exactly why they are worth writing do
 | fp16 weights will run faster | ≈462ms vs ≈388ms — every operator upcasts | fp16's win is download size, **not** speed |
 | pinning threads will help | `setIntraOpNumThreads(4)` gave ≈457ms vs ≈388ms for ORT's default | leave `intraOpThreads` at 0 |
 
-The fp16 one is worth restating because the name misleads: an HF `model_fp16.onnx` still has fp32
-*tensors*, so nothing is saved at the ORT boundary. Pick it to save 50 MB of disk, never to save time.
+The fp16 row is the one the name misleads you about: an HF `model_fp16.onnx` still has fp32 *tensors*,
+so nothing is saved at the ORT boundary. Pick it to save 50 MB of disk, never to save time.
 CoreML remains worth requesting for transformer encoders, where the partition count is small.
 
-Two things that follow from the shape of all this rather than from any single number: nothing on a CPU
+Two things follow from the shape of the whole table rather than from any single row: nothing on a CPU
 execution provider is frame rate, and resolution is a far bigger lever than any provider flag.
 
-There is also **no `IoBinding` in the ONNX Runtime Java API** — verified by inspecting the 1.27.0 jar,
-not inferred from documentation. Outputs are therefore always copies, and zero-copy GPU interop is not
-reachable from Java without dropping to Panama downcalls against the same loaded library. That is fine
-for everything here: a 518² fp32 depth map is 1.07MB and the copy is invisible beside the inference.
+There is also **no `IoBinding` in the ONNX Runtime Java API**, so outputs are always copies and
+zero-copy GPU interop is not reachable from Java without dropping to Panama downcalls against the same
+loaded library. That is fine for everything here: a 518² fp32 depth map is 1.07MB and the copy is
+invisible beside the inference.
 
 !!! note "Treat every millisecond on this page as an observation, not a guarantee"
     Depth at 266×154 has been observed anywhere between about 60 ms and 95 ms across six runs of one
-    machine, and at 126×70 between about 16 ms and 25 ms; the CLIP vision tower, 31–34 ms per image. The
-    spread is the machine, not the model. What *is* asserted, and therefore stable across runs and
-    machines, is the numerics — see below.
+    machine, and at 126×70 between about 16 ms and 25 ms; the CLIP vision tower, 31–34 ms per image.
+    The spread is the machine rather than the model, and those runs had a build going alongside them.
+    The numbers burned into the captures above are whatever that capture run measured. The numerics
+    are the part that holds across runs and machines.
 
-??? aside "Where those observations came from"
-    Recorded 2026-08-15 on Apple Silicon with a concurrent build in progress, which is why the range is
-    as wide as it is. The numbers burned into the captures above are whatever that particular capture run
-    measured rather than anything written down here.
-
-## What the tests actually cover
+## What the tests cover
 
 Two entries in the smoke catalog, both `jvm-main`, both tagged `network` because a cold machine
 downloads weights before they can run:
@@ -443,15 +424,11 @@ The reference values in both were produced independently, under Python's `onnxru
 Kotlin and NumPy construct a byte-identical image. That last detail is what lets the tolerance be
 `1e-3` instead of twenty times looser.
 
-Run them the usual way — see [building and testing](building_and_testing.md):
+Run them the usual way; see [building and testing](building_and_testing.md):
 
 ```diffstatic {data-lang=bash}
 python3 tools/run_field_tests.py --id onnx.depth.smoke --id onnx.clip.smoke
 ```
-
-??? aside "Last recorded pass"
-    Both passed on 2026-08-15 with `cos(storm,calm) = 0.881320` and depth at 518² of `[1.0353, 2.8187]`,
-    matching the Python reference to four decimals.
 
 What is **not** covered: anything involving a camera. `WebcamPerceptionDemo` is not a
 `FIELD_TEST` because it needs hardware and a human to point it at something. It does have a
@@ -465,16 +442,16 @@ run-jvm-main afield.examples.onnx.WebcamPerceptionDemo \
 
 That writes a side-by-side PNG of the source and its depth map, and prints a zero-shot ranking plus
 two semantic-axis projections. On the room photograph above it ranks "an empty room" at 52.0% and "a
-computer screen" at 41.7%, and puts "a person sitting at a desk" at 0.4% — correctly, since there is
-nobody in the picture. It also guards against the failure that matters: if the decode produces an
-all-black buffer, every number below would still be produced and would still look plausible, so it
-checks mean luma and fails instead.
+computer screen" at 41.7%, and puts "a person sitting at a desk" at 0.4%, since there is nobody in the
+picture. It also guards against the failure that matters: if the decode produces an all-black buffer,
+every number below would still be produced and would still look plausible, so it checks mean luma and
+fails instead.
 
 ## Which code on this page runs { #which-code-on-this-page-runs }
 
-Two of the Kotlin blocks on this page — the depth figure and the CLIP figure — are executed by the docs
-build every time, imports and all, and the image under each is that box's own output. The other three are
-illustration, and are marked as such where they appear:
+The depth figure and the CLIP figure are executed by the docs build every time, imports and all, and
+the image under each is that box's own output. The other three Kotlin blocks are illustration, and are
+marked as such where they appear:
 
 | block | why it is not executed | what stands behind it |
 |---|---|---|
@@ -482,62 +459,35 @@ illustration, and are marked as such where they appear:
 | the session-cache do/don't | half of it is an anti-example that *must* not run | `OnnxSmokeTest.testSessionIsCached` |
 | the worker + `StreamingTexture` | needs a Vulkan device and a webcam | the ONNX half, via `testWorkerPublishesAFrame`; the buffer stride, via `testFp16BufferMatchesVulkanStride` |
 
-The gap, stated once: **`StreamingTexture(...)` and `recordUpload(...)` are the only lines on this
-page that nothing in this repository checks.**
+So **`StreamingTexture(...)` and `recordUpload(...)` are the only lines on this page that nothing in
+this repository checks.** The bar in that third column is a narrow one: an assertion somewhere that
+`ClipImage.encode` works says nothing about whether a snippet calling it still compiles. A snippet
+nobody executes drifts from the API it describes and looks exactly like one that works, so only the
+two capture fences count as run, and they are compiled and run *as written*.
 
-??? aside "Why this page keeps a census at all"
-    Documentation rots in a specific way: a snippet nobody executes drifts from the API it describes, and
-    looks exactly like one that works. This page had that bug during drafting — an orientation snippet
-    carried a confident `0.94f` that had never been computed. The census is 2 blocks and 112 non-blank
-    lines executed, 3 blocks and 19 lines not, plus two shell commands run by hand. Blocks are counted
-    whole because an import that does not resolve is exactly the rot being measured; lines exclude the
-    `:::static` / `:::fold` markers.
+## Encode prompts once, into a `val`
 
-    The bar is narrow. If "covered" were allowed to mean "the API this snippet calls is
-    asserted somewhere", all five blocks would count — because that is already true today, and it is
-    precisely the condition under which the invented `0.94f` survived review. Asserting `ClipImage.encode`
-    in a smoke says nothing about whether a page's prose about it is right. Only the two capture fences are
-    compiled and run *as written*.
+That is the whole technique. It keeps the text encoder out of the per-frame path, and unopened in a
+session that never asks it anything. `ClipText.encodeAll` is the batch form, and
+`val prompts = mapOf("…" to clipEncode("…"), …)` is what the shipped transcript does.
 
-## The `clip()` macro that was built, and then removed
+??? aside "There was a `clip()` macro, and why baking a prompt is the wrong answer"
+    A `clip("…")` macro shipped alongside the package and was reverted the next day by commit
+    `9d611b4cb`. It encoded a prompt at *macro-expansion* time and cached the 512 floats in the box's
+    attic as base64, so the text encoder never loaded at run time. Its stated justification was
+    circular: baking is what made compilation reach for the encoder in the first place, because macro
+    expansion *is* part of compilation. With prompts resolved at run time, `clipEncode("storm")` is an
+    ordinary call, `COMPILE_ONLY` compiles it without evaluating it, and the encoder stays shut.
 
-`afield.onnx` shipped in commit `a647ccbef` with a fourth piece: a `clip("…")` macro. A CLIP prompt in
-source is a constant, so the macro encoded it at *macro-expansion* time, wrote the 512 floats into the
-box's attic as base64 keyed by `hash(model, prompt)`, and replaced the call site with a reference. The
-242 MB text encoder would then never load at run time — not in that session, and not in any later one,
-because the attic is saved with the document. It was the same shape as the `ai()` macro's attic cache,
-with a distinct `@clip-gen` marker so the base64 was not fed to a language model as context.
+    What that left was about 5 ms a prompt, hoistable into a `val` and never per-frame anyway, against
+    a macro, an attic block format, and a change to *shared* macro infrastructure.
+    `MacroRegistry.rewrite` runs during preview expansion, which fires as the caret moves over
+    half-typed source, so without a guard a keystroke could bake `clip("s")`, `clip("st")`,
+    `clip("sto")` and trigger a 254 MB download. A feature that needs the macro system to grow a new
+    safety concept in order to be safe is asking an expensive question.
 
-Commit `9d611b4cb`, the next day, **reverted the whole layer**: the macro, `ClipBakeTool`, the
-pre-baked attic in the shipped transcript, the macro half of `ClipSmokeTest`, and
-`MacroRegistry.isPreviewExpansion` along with the wrappers it had required around `applyMacros` in
-*both* REPL engines.
-
-The reasoning, since the idea is an attractive one and worth not re-attempting:
-
-- **Its stated justification was circular.** The claim was that baking is what let CI compile that box
-  without the network. But CI only reached for the text encoder *because* `clip()` ran during macro
-  expansion, and macro expansion is part of compilation. With prompts resolved at run time,
-  `clipEncode("storm")` is an ordinary call: `COMPILE_ONLY` compiles it and never evaluates it, the
-  session is `by lazy`, and the 242 MB is never opened. Baking created the problem that pre-baking
-  then solved.
-- **What was left after that was about 5ms a prompt** — hoistable into a `val`, and never in the
-  per-frame path to begin with — plus a reproducibility property nobody had asked for.
-- **Against which it cost** a macro, an attic block format, an orphaned-block wart, and a change to
-  *shared* macro infrastructure. That last one is the real price: `MacroRegistry.rewrite` runs during
-  preview expansion, which fires as the caret moves over half-typed source, so without a guard a
-  keystroke could bake `clip("s")`, `clip("st")`, `clip("sto")` — and could trigger a 242 MB download.
-  A feature that needs the macro system to grow a new safety concept in order to be safe is a feature
-  asking an expensive question.
-
-Everything that had been *measured* survived the revert: the session cache, the worker thread, the
-modality-gap-aware API, and `WebcamTexture.withLatestFrame`. `ClipVector.toBase64`/`fromBase64` stayed
-too — fifteen lines of pure function with an obvious use beyond the macro. The shipped transcript now
-reads `val prompts = mapOf("…" to clipEncode("…"), …)`, which is one line longer and needs no
-explanation at all.
-
-Encoding prompts once into a `val` is the whole technique. There is nothing cleverer to do, and the
-attempt to be cleverer is recorded here so it does not get made twice.
+    `ClipVector.toBase64`/`fromBase64` outlived the revert, being fifteen lines of pure function with
+    an obvious use of their own.
 
 ## Reference
 
