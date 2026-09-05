@@ -34,8 +34,8 @@ no longer matches; rebuild to incorporate current changes.
 The index is stored below `~/.afield/semantic-search/`. Lucene BM25 and symbol
 fields are always available when the feature is enabled. Dense-vector ranking is
 optional: it is added only when a configured ONNX model and tokenizer load
-successfully. The result reports the actual `embedderBackend`; `disabled` means
-the search is lexical/symbolic rather than meaning-based.
+successfully. The result reports its `embedderBackend`; `disabled` means the
+search is lexical and symbolic, with no meaning-based ranking.
 
 Indexing and querying run in the Field JVM. Downloading a model preset uses the
 network, but workspace/source text is not sent to an external search service by
@@ -53,11 +53,11 @@ background worker and publishes progress/status to the page.
 ## Conversational code search is separate
 
 **Search Documentation & Code** (`Ctrl/Cmd+Shift+D`) opens a generated-answer
-surface in the documentation pane. Despite its historical label, its retrieval
-store currently covers Field's indexed Kotlin roots and query-selected GLSL
-include libraries; it does not use this local workspace/documentation Lucene
-corpus. With no remote vector store it can still answer ungrounded, and therefore
-should not be treated as source-of-truth search.
+surface in the documentation pane. The label mentions documentation, but its
+retrieval store covers Field's indexed Kotlin roots and query-selected GLSL
+include libraries, not the local Lucene corpora above. With no remote vector
+store configured it will still produce an answer, with nothing behind it, so
+don't treat it as source-of-truth search.
 
 Use the `/welcome` field to locate current workspace material. Use the local
 semantic-search API for explicit source/docs corpora. Use conversational search

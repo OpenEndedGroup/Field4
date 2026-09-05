@@ -1,6 +1,6 @@
 # Snapping
 
-Field can snap boxes while you drag or resize them. The snapping system is designed for quick layout cleanup rather than a separate mode or tool palette.
+Field can snap boxes while you drag or resize them. There is no separate mode or tool palette: snapping is a toggle you turn on for a moment of layout cleanup.
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 460px);">
 	<source src="assets/snapping-guide.mp4" type="video/mp4">
@@ -47,7 +47,7 @@ This is useful when you are cleaning up a graph after adding a few boxes quickly
 Snapping also looks for gaps between nearby boxes.
 
 If a dragged box can land between two other boxes with equal spacing, Field offers that as a snap
-target and draws measurement ticks on the guide line — which is how you get an evenly spaced row or
+target and draws measurement ticks on the guide line, which is how you get an evenly spaced row or
 a regular vertical stack without measuring by hand.
 
 ## Resize snapping
@@ -58,19 +58,19 @@ With snapping enabled, a resize gesture can snap the edge you are dragging to ne
 
 ## Thresholds
 
-Field treats snapping as proximity-based rather than exact.
+Snapping is proximity-based. A box jumps when it gets close enough, not when it lands exactly.
 
 - edge and center candidates are considered when they are near the current drag position
 - the applied snap uses a tighter threshold before the box actually jumps into place
 - spacing snaps tolerate a larger search area so they are easier to discover
 
-In practice, the easiest way to use it is simply to drag near the intended relationship and watch for the guide line.
+So the way to use it is to drag near the relationship you want and watch for the guide line.
 
 ## When to use it
 
-Arranging a document for presentation, or tidying a graph after a run of exploratory edits. It is
-the wrong mode for sketching, which is why it is on a modifier you have to hold rather than on by
-default — leave Caps Lock off and boxes go where you put them.
+Arranging a document for presentation, or tidying a graph after a run of exploratory edits. It
+gets in the way while sketching, so it is off unless you turn Caps Lock on. Leave Caps Lock off
+and boxes go where you put them.
 
 ## Related features
 
