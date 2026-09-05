@@ -6,16 +6,15 @@ Verlet. `Cloth` wires a rectangular grid of those constraints for you. `SimdVerl
 draws the solver's own state so you can see when the wiring is wrong.
 
 It is a **CPU** solver with **no renderer of its own**. It hands you `FLine`s, and where those go is
-your business — `showPlane` into a box output, `Box.lines` into the 3D view, an `afield.four`
-renderer. Nothing here needs a GPU, which is why every picture on this page was produced headlessly
-by the documentation build, running the code printed above it.
+your business: `showPlane` into a box output, `Box.lines` into the 3D view, an `afield.four`
+renderer. Nothing here needs a GPU.
 
-This page is about the thing you will get wrong. It is not the API; the API is in the KDoc. It is
+This page is not the API; the API is in the KDoc. It is about the thing you will get wrong, which is
 that **`stiffness` and `iterations` are not two knobs.**
 
 !!! note "If you just want the cloth on screen"
-    Open the **`cloth_simdverlet_start`** starting point from Field's welcome screen (it is also in
-    the [Agent Transcript Gallery](agent_transcripts.md)) — a 20 × 10 sheet, an explicit `loop { }`,
+    Open the **`cloth_simdverlet_start`** starting point from Field's welcome screen, also listed in
+    the [Agent Transcript Gallery](agent_transcripts.md): a 20 × 10 sheet, an explicit `loop { }`,
     and the debug view, already hanging. Come back here when you want to change the numbers.
     [Frames, and What a Frame Is](animation_time_model.md#a-physics-system-in-the-loop) has the same
     scene as a moving picture, and explains why an integrator wants a fixed `dt`.
@@ -29,7 +28,7 @@ the force accumulators `ax`, `ay`, `az`, and an optional `invMass`. A particle i
 of those at once, not an object. `SimdVerlet.State3.empty()` gives you an empty one; the simulation
 grows it as things are added.
 
-Two consequences worth knowing before you are surprised by them:
+Two consequences of that layout will catch you:
 
 - **`invMass == 0` means pinned.** There is no `pinned` flag. Infinite mass is how a particle is
   nailed down, and it is why `Cloth.pin` needs a state that actually has an `invMass` array.
@@ -41,20 +40,20 @@ Two consequences worth knowing before you are surprised by them:
 
   Two more stages run *after* integration, and they are not forces at all: every registered
   `positionProjections` pass (colliders move particles directly), then every `constraintEdits` pass
-  (tearing removes constraint slots). See [the world layer](#also-in-the-box) below — the reason they
+  (tearing removes constraint slots). See [the world layer](#also-in-the-box) below. The reason they
   are projections and edits rather than forces is the equivalence this page is about.
 
 ## Constraints are directed, and there are four of them
 
 `DirectedConstraints4` gives every particle **four outgoing slots**: four neighbour indices, four
 rest lengths, four stiffnesses, in parallel arrays. Four because that is exactly the
-up/down/left/right neighbourhood of an interior particle in a grid — a cloth's whole topology fits
+up/down/left/right neighbourhood of an interior particle in a grid: a cloth's whole topology fits
 with nothing spare.
 
 *Directed* is the word that matters. A constraint `i → j` writes its correction **only to `i`**. It
-never scatters back to `j`. That is not a simplification, it is the reason the solve is fast: with no
-scatter writes, disjoint particle ranges can be solved on separate threads with a scratch buffer
-each, and the whole inner loop vectorises through the JDK Incubator Vector API.
+never scatters back to `j`, and that restriction is what makes the solve fast: with no scatter
+writes, disjoint particle ranges can be solved on separate threads with a scratch buffer each, and
+the whole inner loop vectorises through the JDK Incubator Vector API.
 
 The price is that a symmetric spring is *two* constraints, and it is entirely possible to wire only
 one of them. A one-way constraint is a real, useful thing — and also the classic bug. Keep it in
@@ -78,8 +77,8 @@ between; the integrator runs once, afterwards, on the sum. So
 `iterations` does not buy convergence. It multiplies your spring constant. The only number the sheet
 can feel is the **product**.
 
-That is a claim, so here it is run four ways. Same cloth, same gravity, same `dt`, same 200 frames —
-the only difference is how `stiffness × iterations = 960` is split up.
+So take one product and split it four ways. Same cloth, same gravity, same `dt`, same 200 frames;
+the only difference is where the factors of `stiffness × iterations = 960` sit.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/physics/equivalence.png" wait="4.0" capture="box" open-outputs="true" w="1020" h="820" padding="14" name="physics-equivalence"}
 :::static
@@ -152,7 +151,7 @@ showPlaneGrid(
 ![Four panels of the same hanging cloth, solved as stiffness 60 by 16 iterations, 120 by 8, 240 by 4 and 960 by 1. The four sheets have the same shape, the same festoons between the five pins and the same depth of sag; each caption reports the furthest any particle sits from the corresponding particle of the 960-by-1 sheet.](assets/physics/equivalence.png)
 
 Four different-looking settings, one sheet. The furthest any particle strays from the reference is
-**0.000224 world units** — less than half a thousandth of the 0.5 grid spacing, after two hundred
+**0.000224 world units**: less than half a thousandth of the 0.5 grid spacing, after two hundred
 frames. If you were turning `iterations` up expecting the drape to tighten, you were turning
 `stiffness` up by the same factor and would have got there sixteen times cheaper by typing it.
 
@@ -224,13 +223,13 @@ invisible, permanently.
 
 Read that as a note about *reproducibility*, not about correctness. Two algebraically identical
 settings are the same cloth for as long as anyone is watching, and are not the same array of floats.
-If you need a run to reproduce bit-exactly — recording, regression-testing — pin the split as well as
+If you need a run to reproduce bit-exactly (recording, regression-testing), pin the split as well as
 the product.
 
 ### So tune the product
 
 Because there is only one number, there is only one ladder to climb. Same sheet, same 400 frames, and
-the worst strain any single constraint reaches at any point in the run — `|length − rest| / rest`,
+the worst strain any single constraint reaches at any point in the run: `|length − rest| / rest`,
 where 100 % means a spring stretched to twice its rest length.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/physics/tuning_ladder.png" wait="6.0" capture="box" open-outputs="true" w="1660" h="1000" padding="14" name="physics-tuning-ladder"}
@@ -326,40 +325,35 @@ showPlaneGrid(
 
 ![Four panels of the same cloth at stiffness-times-iterations products of 6, 64, 320 and 960, drawn on one shared window so the rungs are comparable. At product 6 the sheet has stretched into a tall narrow web that fills the frame; at 64 it is a recognisable but slack cloth; at 320 and 960 it is a sheet with shallow festoons between the pins. Each caption gives the product and the worst strain reached during four hundred frames, with and without the curvature force.](assets/physics/tuning_ladder.png)
 
-Everything in those captions was measured by the code above them when this page was built. What the
-run says: **971 %** peak strain at a product of 6 — one spring at more than ten times its rest
-length, which is why that panel is a tall web rather than a cloth — then **196 %** at 64, **52 %**
-at 320, and **19 %** at 960, which is what the starting point ships.
+The captions read **971 %** peak strain at a product of 6 (one spring at more than ten times its
+rest length, which is why that panel is a tall web rather than a cloth), then **196 %** at 64,
+**52 %** at 320, and **19 %** at 960, which is what the starting point ships.
 
 Note that strain falls *more slowly* than the product rises: 160 times the product, between the
 first rung and the last, buys 51 times less strain. These are peaks over the whole run, reached while
-the sheet is still falling, so they are not the equilibrium sag — which is a good reason to measure
+the sheet is still falling, so they are not the equilibrium sag, which is a good reason to measure
 the number in your own scene rather than to interpolate this table.
 
-The second half of each caption tests an obvious guess and refutes it. The curvature force does *not*
-buy strain headroom: turning it up to 100 leaves the floppiest rung a bit tighter (971 % → 738 %) and
-makes every other rung **worse** (196 → 230, 52 → 66, 19 → 25). That is the accumulator again — the
-curvature pass adds into the same `ax/ay/az` the springs do, so at these strengths it is one more
-load on the sheet rather than a stiffener.
+The second half of each caption adds the curvature force, which does *not* buy strain headroom:
+turning it up to 100 leaves the floppiest rung a bit tighter (971 % → 738 %) and makes every other
+rung **worse** (196 → 230, 52 → 66, 19 → 25). That is the accumulator again. The curvature pass adds
+into the same `ax/ay/az` the springs do, so at these strengths it is one more load on the sheet
+rather than a stiffener.
 
-!!! note "These numbers are higher than the ones in the repository"
-    `dev_docs/physics/SIMDVERLET_4_CONSTRAINTS.md` records the same ladder as 1949 % / 116 % / 32 %
-    / 11 %. Same ordering, same conclusion, consistently different absolute values, and the obvious
-    explanation — that its runs had the curvature force on — is the one measured and ruled out
-    above. The two measurements differ in something not recorded in either place, most likely the
-    definition of "peak" or the scene the sheet is in. **This page's numbers are the ones produced
-    by the code printed on this page**; treat the dev note's as a separate measurement rather than
-    a contradiction, and if you need an absolute strain figure, measure it in your own scene.
+!!! note "The repository records a different ladder"
+    `dev_docs/physics/SIMDVERLET_4_CONSTRAINTS.md` runs the same four rungs and reports 1949 % /
+    116 % / 32 % / 11 %. Those are *settled* values read off a box that has stopped moving, where
+    the numbers above are peaks over the fall, and that alone puts this page about 1.7 times higher
+    on every stable rung. Same ordering, same conclusion, two different questions.
 
 ### The other end of the band
 
 At a high enough product the solve does what explicit integration does: the correction overshoots,
 the overshoot is corrected harder, and the run stops being a number. There is no automatic clamp and
-nothing prints a warning — a diverging run simply goes quiet, because a `NaN` coordinate draws
+nothing prints a warning: a diverging run simply goes quiet, because a `NaN` coordinate draws
 nothing.
 
-It is worth knowing what that looks like *before* the `NaN`, because there is a lot of warning in
-the strain trace if you are watching it.
+The strain trace carries plenty of warning before the `NaN` arrives, for anyone who is watching it.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/physics/divergence.png" wait="5.0" capture="box" open-outputs="true" w="1200" h="620" padding="14" name="physics-divergence"}
 :::static
@@ -434,18 +428,16 @@ seconds at 60 fps, between "visibly wrong" and "gone". Once it is past 100 % it 
 climb from 10⁰ to 10²⁰ takes about seventy frames and nothing in the solver arrests it.
 
 Note the middle trace. `100 × 16` is a product of **1600** and it settles, so the ceiling at this
-`dt` is somewhere between 1600 and 2400 — not a round number, and not one you should carry to
+`dt` is somewhere between 1600 and 2400: not a round number, and not one you should carry to
 another scene. Gravity is loading the top row with forty particles' weight here; a smaller sheet or a
 lighter one will take more.
 
-The practical version of all of this: **watch the peak strain, not the picture.** The measurement is
-twenty lines of Kotlin (it is folded into the block above), it is cheap, and it goes wrong long
-before the drawing does.
+So **watch the peak strain, not the picture.** The measurement is twenty lines of Kotlin, folded
+into the block above; it is cheap, and it goes wrong long before the drawing does.
 
-!!! warning "Halving `dt` is not free, and doubling it is expensive"
-    The stability limit lives in `stiffness × iterations × dt²`. All the numbers on this page are at
-    `dt = 1/60`. Run the same settings at `dt = 1/30` and you have multiplied the term that decides
-    stability by four. This is the main reason [the frames
+!!! warning "Stability goes as `stiffness × iterations × dt²`"
+    All the numbers on this page are at `dt = 1/60`. Run the same settings at `dt = 1/30` and you
+    have multiplied the term that decides stability by four. This is the main reason [the frames
     page](animation_time_model.md#a-physics-system-in-the-loop) argues for handing the solver a
     *fixed* `dt` rather than the wall-clock time since the last frame: a `dt` that jitters with the
     frame rate is a stiffness that jitters with the frame rate.
@@ -454,18 +446,18 @@ before the drawing does.
 
 ## Curvature, and why the default looks broken
 
-Distance constraints alone give you a net, not a fabric. Nothing in them resists *bending* — a sheet
+Distance constraints alone give you a net, not a fabric. Nothing in them resists *bending*: a sheet
 can fold to a crease and every spring is still at rest length. `Cloth` adds an optional curvature
 force: each interior particle is pulled toward the mean of its four axis neighbours, which flattens
 the sheet and takes the kink out of the festoons.
 
 It is registered as **one bulk pass over the whole patch**, in `SimdVerlet.bulkForces`, rather than as
-a force generator per particle — the per-particle path would charge `width × height` coroutine
+a force generator per particle: the per-particle path would charge `width × height` coroutine
 resumes every frame for what is a single scalar sweep. `cloth.curvatureStrength = 0f` switches it off
 live without unregistering anything.
 
 The trap is that `curvatureStrength` defaults to **0.05**, and it accumulates into the *same*
-`ax/ay/az` the constraint solve does — so it is competing against `stiffness × iterations`, not
+`ax/ay/az` the constraint solve does, so it is competing against `stiffness × iterations`, not
 against 1.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/physics/curvature.png" wait="5.0" capture="box" open-outputs="true" w="1180" h="720" padding="14" name="physics-curvature"}
@@ -529,15 +521,15 @@ showPlaneGrid(
 
 ![Four panels of the same hanging cloth at stiffness sixty and sixteen iterations, with curvature strength off, at the library default of 0.05, at 20 and at 100; each caption reports how far the furthest particle sits from the corresponding particle of the sheet with no curvature force.](assets/physics/curvature.png)
 
-Measured, at `stiffness × iterations = 960`: the default `0.05` moves the furthest particle by
-**0.000889 world units** away from a sheet with no curvature force at all — under a five-hundredth of
-one grid spacing, after three hundred frames. `20` moves it by **0.357**, and `100` by **0.911**, and
-you can see both of those in the picture as a visibly flatter sheet with shallower festoons.
+At `stiffness × iterations = 960` the default `0.05` moves the furthest particle **0.000889 world
+units** away from a sheet with no curvature force at all: under a five-hundredth of one grid
+spacing, after three hundred frames. `20` moves it by **0.357** and `100` by **0.911**, and you can
+see both of those in the picture as a visibly flatter sheet with shallower festoons.
 
 So the default is not a gentle setting; next to springs this stiff it is a rounding error. If you
-turned curvature on, expected the sheet to flatten, and saw nothing happen, that is the whole story.
-Pick a curvature strength by looking at `stiffness × iterations` first — it wants to be within an
-order of magnitude or two of the product, not of 1.
+turned curvature on, expected the sheet to flatten, and saw nothing happen, that is why. Pick a
+curvature strength by looking at `stiffness × iterations` first. It wants to be within an order of
+magnitude or two of the product, not of 1.
 
 ---
 
@@ -575,9 +567,8 @@ the sheet follows the hand instead of snapping at it.
 ## The debug view draws what the solver holds
 
 `SimdVerlet.debugLines()` returns `FLine`s: one segment per live distance constraint, a dot per
-particle, pinned particles in their own colour, and optional velocity whiskers. It is a debug view and
-not a renderer, and the distinction is the whole point — it draws the *constraint set*, where
-`cloth.lines()` draws the *grid you asked for*.
+particle, pinned particles in their own colour, and optional velocity whiskers. It draws the
+*constraint set*, where `cloth.lines()` draws the *grid you asked for*.
 
 Those are different pictures exactly when something is wrong. Below, one interior particle has had
 one of its four slots re-pointed at a particle most of a sheet away, with the rest length measured
@@ -660,18 +651,17 @@ showPlaneGrid(
 ![Four panels. The top two are wireframe drawings of a hanging cloth, one correctly wired and one with a mis-wired constraint slot, and they look the same. The bottom two are the solver's own debug view of the same two sheets; the right-hand one has an extra long diagonal segment running across the sheet that is absent on the left.](assets/physics/debug_view.png)
 
 The top row is the picture you would naturally draw, and the two sheets in it are **0.611 world
-units** apart at their furthest particle — more than a whole grid spacing. The bug is not subtle in
+units** apart at their furthest particle, more than a whole grid spacing. The bug is not subtle in
 its effect; it is just invisible in that drawing, because `cloth.lines()` walks rows and columns *by
 index* and the grid it draws is still the grid you asked for. The bottom row is the same two sheets
 with the constraint set drawn instead, and the bug is the long diagonal running up across the
 right-hand panel.
 
-The dedup rule is chosen with the same bug in mind. A **symmetric** pair (`i → j` *and* `j → i`, as a
-`Cloth` grid wires it) is drawn once. A **one-way** constraint is drawn by its owner. Deduplicating on
-`j < i` alone would have been simpler and would have hidden exactly the asymmetry the view exists to
-show.
+The dedup rule keeps that bug visible. A **symmetric** pair (`i → j` *and* `j → i`, as a `Cloth`
+grid wires it) is drawn once; a **one-way** constraint is drawn by its owner. Deduplicating on
+`j < i` alone would hide the asymmetry the view exists to show.
 
-Two more things it is worth knowing before you use it:
+Two more things about the drawing:
 
 - **It follows the set the simulation actually solves** — `constraints4` if there is one, otherwise
   the 3-slot `constraints`. An unused slot (neighbour `-1`, or zero stiffness) draws nothing, so a
@@ -681,7 +671,7 @@ Two more things it is worth knowing before you use it:
   they want to be very much smaller. The dot radius convention is `pointSize * 3`.
 
 Pass `particles = cloth.base until cloth.end` to draw one cloth out of a busier simulation, and
-`velocityScale` to get a whisker per particle of one frame's travel — which is the fastest way to see
+`velocityScale` to get a whisker per particle of one frame's travel, which is the fastest way to see
 that a sheet has begun to vibrate before it becomes visible as motion.
 
 ---
@@ -698,11 +688,13 @@ that a sheet has begun to vibrate before it becomes visible as motion.
   or explodes. `dev_docs/physics/SIMDVERLET_5_WORLD.md` has the argument and the measurements.
 - **`OctreeBarnesHut`** — an octree with Barnes–Hut summarisation, for the *n*-body case where every
   particle pulls on every other one.
-- **`PointController`** — the PID machinery `grabNearest` is built on, usable on its own.
+- **`PointDriver`**, in `PointController.kt` — a standalone position controller, position in and
+  force out, which identifies the host integrator as it runs. It is not what `grabNearest` uses;
+  that is the much plainer PID in `SimdVerlet.addPidPositionController`.
 - **`JoltPhysicsWorld`** and **`Dyn4jScene`** — bridges to a full rigid-body engine, in 3D and 2D
   respectively. Different tool, different problem: `SimdVerlet` has no notion of a rigid body. Its
-  colliders are one-way position projections against static shapes, not two-body contacts — nothing
-  the cloth touches is pushed back by it.
+  colliders project particles out of shapes rather than resolving two-body contacts, so you can
+  move a collider between frames but nothing the cloth touches is pushed back by it.
 - **`SimdVerletDyn4jBridge`** — the two of them talking.
 
 ## Where to look next
@@ -718,3 +710,6 @@ that a sheet has begun to vibrate before it becomes visible as motion.
   to send those lines other than `showPlane`.
 - `dev_docs/physics/SIMDVERLET_4_CONSTRAINTS.md`, in the repository, for the four-slot design
   rationale and the list of runnable entry points.
+
+Every code block above runs as printed, in a box, and on the CPU; the figures on this page are what
+the documentation build gets when it runs them.
