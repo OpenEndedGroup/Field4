@@ -10,24 +10,18 @@ author a `rewrite { … }` block right in a box, in Kotlin syntax, and it rewrit
 your source before the compiler ever sees it. It is a small, structural
 term-rewriting system that runs as a preprocessor in front of the Kotlin engine.
 
-Every rule and every expansion on this page is real: the rules are the ones the
-pattern-rewrite smoke test (`src/jvmMain/kotlin/afield/PatternRewriteSmokeTest.kt`)
-actually exercises, and each "→" shows the source that expansion genuinely emits
-(the smoke asserts on exactly those strings). The end of the page points at a demo
-you can replay to watch boxes expand and run.
-
 ## The mental model
 
-Three facts explain almost everything about how rules behave:
+Rule behaviour follows from three facts:
 
 - **It is source-to-source.** A rule matches a piece of your syntax tree and
   splices a replacement in its place. The output is ordinary Kotlin source that
   is then compiled and run exactly as if you had typed it.
 - **It works on parse trees, not types.** Matching runs on the PSI (the parsed
-  syntax tree) with *no name resolution*. That is the trick that makes it
-  cheap and re-runnable on every keystroke — and it is why the pattern body
-  `from { max(x, y) }` is legal even though `max`, `x` and `y` resolve to
-  nothing. A rule body only has to *parse*; it never has to *type-check*.
+  syntax tree) with *no name resolution*. That is what makes it cheap enough to
+  re-run on every keystroke, and why the pattern body `from { max(x, y) }` is
+  legal even though `max`, `x` and `y` resolve to nothing. A rule body only has
+  to *parse*; it never has to *type-check*.
 - **The rules are erased before compilation.** The `rewrite { … }` blocks are
   collected and deleted from your source before the compiler runs, so `rewrite`,
   `from`, `to` and the metavariable kinds never actually execute. They exist
@@ -93,9 +87,7 @@ twice(a + b)     // →  (a + b) * 2    (non-atomic, wrapped — never a + b * 2
 ```
 
 Atomic captures (names, literals, calls, `a.b`, `a[i]`) are left unwrapped;
-anything looser gets parentheses. This is the single most important guarantee of
-the layer, and it is verified by the smoke's `testPrecedenceHazard` and
-`testAtomicCapturesNotOverParenthesized` cases.
+anything looser gets parentheses.
 
 Names the `to {}` side *introduces* (locals it declares, not values carried in
 through a metavariable) are gensym-renamed so they cannot capture or shadow
@@ -153,10 +145,9 @@ f(b + 1)         // →  f(coerce(::f, SomeType::class, (b + 1)))
 
 On the second pass the argument is now `coerce(…)`, so `!isCallTo(x, "coerce")`
 is false and the rule stops. Without that guard the rewriter would wrap the
-wrapper again and again until it hit the iteration cap. This is precisely the
-idiom the live `Coerce Rewrite` box in the authoring workspace uses (with a
-box-scoped `_coerce` helper), and the smoke's `testCoercionIdiomTerminates`
-proves it both wraps once *and* converges.
+wrapper again and again until it hit the iteration cap. The live `Coerce Rewrite`
+box in the authoring workspace uses this idiom, with a box-scoped `_coerce`
+helper.
 
 ## Preamble contributions: `provide { }`
 
@@ -178,11 +169,11 @@ counter(hits)    // →  hits
 
 The metavariable is substituted in the *declaration name* position (`n` →
 `hits`), and the emitted preamble segment is wrapped as a keyed
-`/*start*/ … /*end*/` block — the "stack mark" idempotency mechanism the
-existing preamble machinery already understands. Firing the same rule twice with
-the same capture contributes the segment once; distinct captures get distinct
-keys. (Unlike the `to {}` side, `provide {}` names are *not*
-gensym-renamed — they are meant to define stable, shared box-level names.)
+`/*start*/ … /*end*/` block — the "stack mark" idempotency mechanism the preamble
+machinery understands. Firing the same rule twice with the same capture
+contributes the segment once; distinct captures get distinct keys. (Unlike the `to {}` side,
+`provide {}` names are *not* gensym-renamed — they are meant to define stable, shared
+box-level names.)
 
 ## Running code at rewrite time: `unquote { }`
 
@@ -268,7 +259,7 @@ iterations (64 by default) and reports a `pattern-rewrite did not converge …`
 diagnostic, keeping whatever it expanded so far. When you see that message, look
 for a cycle in your rules or a missing termination guard.
 
-Two more things worth knowing:
+Two smaller rules govern the rest:
 
 - Declaration order decides ties: when two rules match the same spot, the one
   declared first wins, and no other rule fires there that round.
@@ -288,10 +279,9 @@ number of times. That is what **strategies** add: a small
 [Stratego](https://strategoxt.org/)/ELAN-style term-rewriting language layered
 on top of the same matcher.
 
-Strategies are fully backward compatible. **With no `strategy { }` block, nothing
-changes** — the engine keeps its global-fixpoint behaviour. A strategy only takes
-over when you write one, and then only the rules it names fire, in the order and
-at the sites it dictates.
+**With no `strategy { }` block the engine runs the global fixpoint.** A strategy
+takes over only when you write one, and then only the rules it names fire, in the
+order and at the sites it dictates.
 
 ### Name the rules a strategy drives
 
@@ -413,7 +403,7 @@ With real definitions behind those names — `fun f(v: Int) = v * 2` and
 unrewritten source would give. The `nested pattern` box of the
 `rewrite_strategies_demo` transcript below runs exactly that and `check`s the 201.
 
-### The combinators at a glance
+### The combinators
 
 | Strategy | Effect |
 |----------|--------|
@@ -447,16 +437,14 @@ are still inherited and can be named by a strategy, but a strategy itself is not
 inherited — each box drives its own. `provide { }` and `ai()` side-contributions
 still accrue whenever a rule actually fires under a strategy.
 
-> **Every "→" above is real.** These are the exact rules and expansions the
-> pattern-rewrite smoke test asserts on (`testStrategyOnceFiresSingleSite`,
-> `testStrategyTopDownSingleOutermost`, `testStrategyChoiceFirstApplicable`, and
-> the rest of the `strategy sublanguage` group). The developer reference in
-> `dev_docs/pattern_rewrite_strategies.md` documents the `Strat` AST and the
-> `StrategyRunner` that executes it.
+`dev_docs/pattern_rewrite_strategies.md` documents the `Strat` AST and the
+`StrategyRunner` that executes it.
 
 ## Try it
 
-Two runnable demos ship with the engine, both driven through the identical
+Every "→" on this page is a string the pattern-rewrite smoke test
+(`src/jvmMain/kotlin/afield/PatternRewriteSmokeTest.kt`) asserts on. Two runnable
+demos ship with the engine as well, both driven through the identical
 compile-and-run pipeline a live box uses:
 
 - `dev_docs/agents/transcripts/pattern_rewrite_worked_example.yaml` — a box graph

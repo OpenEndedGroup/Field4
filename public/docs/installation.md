@@ -10,7 +10,7 @@ There are no binaries and no installer — the checkout is the installation.
 
 ### Quick Start (Double-Click)
 
-You can now launch Field·4 by simply double-clicking the appropriate file in the repository:
+Launch Field·4 by double-clicking the appropriate file in the repository:
 
 - **Mac**: double-click `field.command` in Finder. It runs the Gradle `runDesktop` task.
 - **Windows**: double-click `field.bat` in File Explorer. It delegates to `field.ps1` when present,
@@ -31,8 +31,8 @@ in a browser. The development certificate is self-signed, so the browser may req
 local-certificate exception. Press `?` for help, or consult the [survival guide](survivalGuide.md).
 
 That URL is a real web server, running inside Field and listening on your machine. If you share a
-network with anyone else, it is worth knowing what it exposes and what does — and does not —
-protect it: see [What Field Exposes, and What Stops It](server_surface.md).
+network with anyone else, read [What Field Exposes, and What Stops It](server_surface.md) for what
+it exposes and what does, and does not, protect it.
 
 ### Troubleshooting
 
@@ -58,9 +58,9 @@ doing. It asks `origin` what it has on your branch — one `git ls-remote`, and 
 fetched if you are already level — and reports how many commits you are behind, along with any
 local commits of your own that `origin` does not have.
 
-It will not pull, merge, rebase or write anything into your working tree — only you know whether
-that checkout has work in it. If the answer is "7 new commits on
-origin/main", the `git pull` is yours to run when you are ready.
+It will not pull, merge, rebase or write anything into your working tree; only you know whether
+that checkout has work in it. If the answer is "7 new commits on origin/main", the `git pull` is
+yours to run when you are ready.
 
 ![](assets/screenshot_17.png)
 
