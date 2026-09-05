@@ -17,8 +17,8 @@ stateless shader never has to face. Where does the state live, given that both t
 write it? What is it before frame one? Which buffer is "current", and how does a second box find out?
 And when the force law itself is the thing you are editing, how do you change it without stopping?
 
-This page answers those, and the answers are mostly not code — they are decisions, each of which has
-exactly one shape that survives contact with a running renderer.
+This page answers those. Most of the answers are decisions rather than code, and most of them only
+have one workable shape.
 
 The running example is `dev_docs/agents/transcripts/gpu_state.yaml`: three boxes, 40,000 particles held
 on a noise field, a force law you can retype while it runs, and a GPU-side histogram of speed. It is
@@ -37,7 +37,7 @@ does no per-particle work at all.
 
 ---
 
-## 1. Where a buffer lives
+## Where a buffer lives
 
 `defaultBuffer` is the first thing every compute example calls, and every existing example calls it
 the same way:
@@ -46,10 +46,10 @@ the same way:
 var inData = defaultBuffer { size = N.vec4s }.buffer
 ```
 
-That is a real default and a good one — `defaultBuffer` gives you a buffer that is host-visible,
-usable as a storage buffer, and addressable by `buffer_reference`
+It is a good default: `defaultBuffer` gives you a buffer that is host-visible, usable as a storage
+buffer, and addressable by `buffer_reference`
 (`src/jvmMain/kotlin/afield/four/buffers/magic.kt:25#fun defaultBuffer`). On a machine with resizable
-BAR, everything can be all three at once, which is why one line has been enough for every example so
+BAR everything can be all three at once, which is why one line has been enough for every example so
 far.
 
 It is enough right up until you have four buffers instead of two, and they are not alike. Inside the
@@ -63,20 +63,20 @@ block you can say what this particular buffer is *for*, and the vocabulary is sm
 | `streamReads()` | host-visible **and** host-cached | the CPU reads this back regularly, so it must not be write-combined |
 | `debugReads()` | device-local with a readback staging path | the CPU reads it occasionally, when you are looking |
 
-All five are one-line members of the buffer block, in the order above:
+All five are members of the buffer block, in the order above:
 `src/jvmMain/kotlin/afield/four/buffers/magic.kt:93#fun hosted`,
 `src/jvmMain/kotlin/afield/four/buffers/magic.kt:106#fun writeOnce`,
 `src/jvmMain/kotlin/afield/four/buffers/magic.kt:143#fun zeroInitialized`,
 `src/jvmMain/kotlin/afield/four/buffers/magic.kt:136#fun streamReads` and
-`src/jvmMain/kotlin/afield/four/buffers/magic.kt:126#fun readOccasionallyForDebugging`. Each sets an
-access pattern and a memory-property mask and does nothing else, which is worth seeing: the whole
-vocabulary is about eight lines of Kotlin.
+`src/jvmMain/kotlin/afield/four/buffers/magic.kt:126#fun readOccasionallyForDebugging`
+(`zeroInit()` and `debugReads()` are aliases for the last two). None is more than half a dozen lines:
+each sets an access pattern and some memory-property bits, and the whole residency vocabulary is
+short enough to read in one sitting.
 
-These are not performance hints to sprinkle on afterwards. Each one is a claim about who writes the
-buffer and how often, and the wrong claim is a real cost paid every frame. `streamReads()` exists
-because a readback out of write-combined memory on an NVIDIA card is slow enough to dominate a frame,
-and `zeroInit()` exists because uploading forty thousand zeroes over PCIe to say "start at nothing" is
-absurd when the device can do it for free.
+Each one is a claim about who writes the buffer and how often, and the wrong claim is a real cost paid
+every frame. `streamReads()` exists because a readback out of write-combined memory on an NVIDIA card
+is slow enough to dominate a frame, and `zeroInit()` exists because uploading forty thousand zeroes
+over PCIe to say "start at nothing" is absurd when the device can do it for free.
 
 The example has one of each of the first three:
 
@@ -94,21 +94,21 @@ var anchors = defaultBuffer { size = N.vec4s; writeOnce() }.buffer
 var heat    = defaultBuffer { size = N.vec4s; zeroInit() }.buffer
 ```
 
-`(N * 2).vec4s` is the sizing idiom, and it is worth reading as a sentence: the state layout is two
-`vec4`s per particle, one for position and age, one for velocity. `vec4s` is a `vec4`-count-to-bytes
-conversion on the buffer block, and `vec3s` is deliberately the same number, because std430 expands a
-`vec3` to sixteen bytes and pretending otherwise is how buffer overruns happen.
+`(N * 2).vec4s` is the sizing idiom, and it reads as the layout it describes: two `vec4`s per
+particle, one for position and age, one for velocity. `vec4s` is a `vec4`-count-to-bytes conversion on
+the buffer block, and `vec3s` returns the same number, because std430 expands a `vec3` to sixteen
+bytes and pretending otherwise is how buffer overruns happen.
 
 ---
 
-## 2. Both halves of the ping-pong
+## Both halves of the ping-pong
 
 A shader cannot read and write the same location across invocations without a barrier, and it
 certainly cannot read a neighbour's *previous* value once someone has overwritten it. So state
 simulations keep two buffers and swap which is which every frame. Read the old one, write the new
 one, swap, repeat.
 
-The trap is not the swap. It is the second buffer's contents before the first frame.
+The trap is the second buffer's contents before the first frame.
 
 ```diffstatic {data-lang=kotlin}
 // BOTH halves of the ping-pong. The shader reads one and writes the other from frame one, so
@@ -128,24 +128,24 @@ not: on frame one the shader reads `prevState`, and on frame one exactly half th
 `stateB`, which nobody has written. Whatever the allocator handed you — commonly zeroes — is what
 frame one integrates from.
 
-Running the example with `listOf(stateA)` in that loop is instructive, and the result is not what you
-might expect. Every particle spends frame one at the origin, and then the restoring force in this
-particular scene pulls each one back to its anchor, after which the picture is indistinguishable from
-the correct one. That is an observation and not an assertion: replaying the one-half-seeded variant
-against a live renderer, the probe reported a mean per-particle speed of 0.0433 after twenty-five
-seconds — the same figure to three places as the correctly seeded scene.
+Run the example with `listOf(stateA)` in that loop and the picture survives it. Every particle spends
+frame one at the origin, the restoring force in this scene pulls each one back to its anchor, and
+after that the two runs are indistinguishable. Replaying the half-seeded variant against a live
+renderer, the probe reported a mean per-particle speed of 0.0433 after twenty-five seconds, which is
+the correctly seeded scene's figure to three places.
 
-That is the reason to be careful rather than a reason to relax. A bug whose only symptom is one bad
-frame at startup is a bug that hides, and it hides only because *this* scene has a spring in it that
-forgets its initial condition. Take the spring out — a pure advected flow, a cloth with no rest
-length, anything accumulating into a history buffer — and there is nothing to forget it, and frame
-one's zeroes stay in the simulation for as long as it runs.
+Which makes it worse, not better. A bug whose only symptom is one bad frame at startup is a bug that
+hides, and it hides here only because this scene has a spring in it that forgets its initial
+condition. Take the spring out — a pure advected flow, a cloth with no rest length, anything
+accumulating into a history buffer — and nothing forgets it: frame one's zeroes stay in the
+simulation for as long as it runs.
 
 ---
 
-## 3. Bindings are lambdas, and where they go
+## Bindings are lambdas, and where they go
 
-A `ComputeMesh` member is not a value you assign, it is a lambda Field evaluates once per dispatch:
+A `ComputeMesh` member holds a lambda, which Field evaluates once per dispatch rather than once at
+assignment:
 
 ```diffstatic {data-lang=kotlin}
 sim.state     = { if (renderer.frameCounter % 2L == 0L) stateA else stateB }
@@ -157,7 +157,7 @@ sim.dt        = { 1f / 60f }
 sim.knobs     = { vec(renderer.frameCounter / 60.0, 1.0, 0.0, 0.0) }
 ```
 
-That is what makes the ping-pong work at all — nothing re-binds the buffers per frame, because the
+That is what makes the ping-pong work at all: nothing re-binds the buffers per frame, because the
 binding *is* the question "which one is it this frame", asked afresh at every dispatch.
 
 It is also why these lines belong exactly where they are: at the top level of the box, run once, and
@@ -168,18 +168,18 @@ diagnostic for the gap is easy to misread: a dispatch in that window throws
 missing buffer and is really an assignment that has not happened yet. Set them once, outside; they
 stay live because they were lambdas from the start.
 
-`sim.dt = { 1f / 60f }` is a fixed timestep on purpose, not a measured one. A spring network's
-stability is a function of `dt`, so feeding it the real frame interval means a hitch in the renderer
-becomes an explosion in the simulation. And once `dt` is fixed, the clock the force field walks
-through has to come from the same place — `renderer.frameCounter / 60.0` and not the wall — or the
-integrator and the field are running on two different timebases in one loop. Sixty steps is one
-second, by definition, and a slow frame then slows the field instead of tearing it. The pleasant side
-effect is that the figure at the top of this page is reproducible: the docs capture waits a fixed
-number of frames, and a fixed number of frames is now a fixed simulated time.
+`sim.dt = { 1f / 60f }` is a fixed timestep rather than a measured one. A spring network's stability
+is a function of `dt`, so feeding it the real frame interval means a hitch in the renderer becomes an
+explosion in the simulation. Once `dt` is fixed, the clock the force field walks through has to come
+from the same place — `renderer.frameCounter / 60.0` and not the wall — or the integrator and the
+field are running on two different timebases in one loop. Sixty steps is one second by definition, and
+a slow frame then slows the field instead of tearing it. It also makes the figure at the top of this
+page reproducible, since the docs capture waits a fixed number of frames and a fixed number of frames
+is a fixed simulated time.
 
 ---
 
-## 4. One parity source, asked twice
+## One parity source, asked twice
 
 The draw box is a *child* of the compute box, and it reads what the compute box publishes:
 
@@ -197,29 +197,28 @@ quads.state = { if (renderer.frameCounter % 2L == 0L) gsStateA else gsStateB }
 quads.heat  = { gsHeat }
 ```
 
-Two boxes computing the same predicate looks like duplication and is not. `renderer.frameCounter`
+Two boxes computing the same predicate is cheaper than sharing one. `renderer.frameCounter`
 (`src/jvmMain/kotlin/afield/four/Renderer.kt:784#var frameCounter`) is constant for the whole of one
 frame's recording, so both boxes get the same answer no matter which one's binding is evaluated
-first. The alternative — a counter one box owns and increments, which the other reads — is the same
-predicate with an ordering dependency bolted to it, and it is wrong exactly when the two boxes are
-launched in different frames, which is to say every time you re-run one of them by hand.
+first. A counter that one box owns and increments and the other reads is the same predicate with an
+ordering dependency bolted to it, and it goes wrong exactly when the two boxes are launched in
+different frames, which is to say every time you re-run one of them by hand.
 
-Get the parity backwards in the draw box and the picture is not broken; it is one frame stale. That is
-the worst kind of wrong, because it looks entirely correct until the simulation is fast enough to
-alias.
+Get the parity backwards in the draw box and the picture is one frame stale rather than broken, which
+looks entirely correct until the simulation is fast enough to alias.
 
 ---
 
-## 5. The force law as an editable string
+## The force law as an editable string
 
 Everything above is scaffolding. The thing you actually iterate on is the force, and recompiling a
 shader to change a coefficient is a bad loop.
 
 `{{ stack.auto.NAME }}` is Field's answer: a slot in the GLSL whose body is a
 [StackSL](stacksl_examples.md) program, assignable as a property from Kotlin. [StackSL
-Examples](stacksl_examples.md) teaches it as a fullscreen image filter, which is where it started.
-It works just as well in a compute shader, and in a simulation it is the difference between editing a
-force law and rebuilding one.
+Examples](stacksl_examples.md) teaches it as a fullscreen image filter. It works the same way in a
+compute shader, and in a simulation it is the difference between editing a force law and rebuilding
+one.
 
 ```diffstatic {data-lang=glsl}
 layout(push_constant) uniform dat {
@@ -236,11 +235,11 @@ layout(push_constant) uniform dat {
 {{ stack.auto.force }}
 ```
 
-That ordering is the first thing to get wrong. The generated function lands exactly where the slot
-line is, and a program is free to read a push member with `?pc.knobs`, so a slot above the block
-produces `'pc' : undeclared identifier` at a line number inside code you did not write. Until Kotlin
-binds it the slot is the stable fallback `vec4 force(vec4 force_in) { return vec4(0.0); }`, so an
-unbound slot still compiles and the field simply sits still.
+The ordering matters. The generated function lands exactly where the slot line is, and a program is
+free to read a push member with `?pc.knobs`, so a slot above the block produces `'pc' : undeclared
+identifier` at a line number inside code you did not write. Until Kotlin binds it the slot is the
+fallback `vec4 force(vec4 force_in) { return vec4(0.0); }`, so an unbound slot still compiles and the
+field simply sits still.
 
 Kotlin then assigns it — **on the module, not the mesh**:
 
@@ -273,16 +272,21 @@ Changing that string and hitting run costs nothing. Field lowers the StackSL to 
 module's pipeline on a background thread, and leaves the old binding in place if the new one does not
 compile. No shader reload, no dropped frame, and a typo cannot take the field down.
 
-Three things in that program are worth more than their length.
+Three things in that program repay a second look.
 
 **`fbm` is two-dimensional.** It lowers to `fbm(vec2)` over `coord.xy + coord.zw * 0.07`, so a single
 call fed a 3D position gives you a field in *(x, y)* with *z* entering at a fourteenth of the weight of
-*x* — a shear, not a third dimension. Summing three slices, *f(x,y) + f(y,z) + f(z,x)*, is the
-standard fix and costs three `fbm`s.
+*x* — a shear, not a third dimension. Summing three slices, *f(x,y) + f(y,z) + f(z,x)*, is the classic
+workaround, and it is what the `fbm3` definition in the program above is doing.
 
-The reason to bother is that the failure does not look like a slightly worse version of the right
-answer. Here is the identical scene with the slot bound to `input xyz 2.0 * fbm x 0.5 - 8.0 *`, one
-2D `fbm` and nothing else, and no other line changed anywhere:
+StackSL has since grown a genuinely volumetric noise family, and in new code you should reach for it
+instead: `fbm3` is a builtin word taking a 3D coordinate, and `noise3`, `warp3`, `curl3`, `fbmd3` and
+`worley3` come with it. See the [StackSL Cheatsheet](stacksl_cheatsheet.md). The three-slice sum is
+still worth understanding, because the failure it works around is the one the next figure shows.
+
+The failure does not look like a slightly worse version of the right answer. Here is the identical
+scene with the slot bound to `input xyz 2.0 * fbm x 0.5 - 8.0 *`, one 2D `fbm` and nothing else, and
+no other line changed anywhere:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/gpu_state/flat-fbm.png" capture="native-window" native-wait-frames="1500" embed=true hidden=true force=true timeout="150" duration="0" name="gpu-state-flat-fbm" alt="the same particle scene with a single 2D fbm force: the disc collapsed into creased sheets along one diagonal and pulled off-centre" macro-file="../../dev_docs/agents/transcripts/docs_capture/gpu_state_flat_fbm.yaml" capture-box="gs_renderer"}
 // dev_docs/agents/transcripts/docs_capture/gpu_state_flat_fbm.yaml — gpu_state.yaml with exactly one line
@@ -292,24 +296,25 @@ answer. Here is the identical scene with the slot bound to `input xyz 2.0 * fbm 
 A scalar `fbm` broadcast to all three components is the same push on every axis, so every particle
 moves along the same diagonal, by an amount that varies in only two of the three. The disc does not
 become a noisier disc; it collapses into folded sheets with hard creases where the shear reverses, and
-the whole thing is dragged bodily off-centre. That last part is the next trap, arriving early.
+the whole thing is dragged bodily off-centre. The drag is the second thing.
 
 **`1.032258` is `1 / 0.96875`.** `fbm`'s five octave amplitudes sum to 0.96875 rather than 1, so a raw
 `fbm` runs 0 to 0.96875 and the usual `0.5 -` leaves a bias of about −0.016 per channel. A *constant*
 force integrates into a drift rather than averaging out, and a drift with nothing to stop it is a
 cloud leaving the window. The figure above is what that looks like with the bias left in and the
-restoring force too weak to hold it.
+restoring force too weak to hold it. The `3` and `4` family divides its accumulated amplitude sum out
+at runtime, so `fbm3` is exactly `0..1` for any octave count and needs no such correction; the
+hand-written constant is only for the 2D words.
 
 **`>c` and not `=c`.** A definition must consume its input and leave its result. `=name` copies
 (`a -- a`), `>name` moves (`a --`); opening `fbm3` with `=c` leaves the input underneath the result,
 so every call pushes two values and everything downstream takes the wrong operand. The compiler emits
-no error — it prunes the surplus and carries on.
+no error; it prunes the surplus and carries on.
 
-That last one used to be silent. It is not any more: every bind builds a report and publishes it to
-the box's `stack.auto` output channel
-(`src/jvmMain/kotlin/afield/stdlib/shaders.kt:532#const val STACK_AUTO_REPORT_CHANNEL`), opening the
-card when there is something to say and closing it again when a later bind comes back clean. Swap
-`>c` for `=c` in the box above and the channel opens with this, verbatim:
+It does say so, though. Every bind builds a report and publishes it to the box's `stack.auto` output
+channel (`src/jvmMain/kotlin/afield/stdlib/shaders.kt:532#const val STACK_AUTO_REPORT_CHANNEL`),
+opening the card when there is something to say and closing it again when a later bind comes back
+clean. Swap `>c` for `=c` in the box above and the channel opens with this, verbatim:
 
 ```diffstatic {data-lang=text}
 problem: definition `fbm3` ends with 2 values on the stack, not 1 — it must consume its input
@@ -324,16 +329,16 @@ worse tool than saying so. You can also ask before you bind — `stackAutoShader
 (`src/jvmMain/kotlin/afield/stdlib/shaders.kt:545#fun stackAutoShaderReport`) is pure, needs no device,
 and returns the same object.
 
-One more small thing that is easy to lose an hour to. `?pc.knobs x` reads a push member into the
-program, and the external read is typed as a `vec4`
-(`src/jvmMain/kotlin/afield/stacksl/StackSL.kt:2572#private fun parseExternalRead`). Pointing it at a
+One more, and it is easy to misdiagnose. `?pc.knobs x` reads a push member into the program, and the
+external read is typed as a `vec4`
+(`src/jvmMain/kotlin/afield/stacksl/StackSL.kt:2735#private fun parseExternalRead`). Pointing it at a
 `float` member is a swizzle error out of glslang rather than a StackSL diagnostic, so a spare `vec4`
 of knobs — clock in `.x`, gain in `.y` — is the shape that works, and it is also the shape that lets
 you add a knob without touching the shader.
 
 ---
 
-## 6. Watching it without reading it back
+## Watching it without reading it back
 
 The state buffers hold 120,000 `vec4`s. Copying that to the CPU to find out whether the simulation is
 alive would cost more than the simulation.
@@ -351,11 +356,11 @@ back per snapshot is a few thousand numbers rather than a few hundred thousand �
 the whole population rather than the first few thousand invocations. [Field
 Probes](field_probes.md) is the full account, including the GPU-only sibling `fieldStats`.
 
-For the scene above, that card reports, as an observation from one run: 40,000 calls, all finite, none
-NaN, mean per-particle speed 0.0433 over a reservoir of 4,096, exact maximum 0.1357. The useful part
-is not any one of those numbers. It is that turning the force gain up and watching the mean move — and watching the maximum
-*not* move, because a clamp is firing — is a thing you can do while typing, and the alternative is a
-readback you would never leave switched on.
+For the scene above, that card reports 40,000 calls, all finite, none NaN, mean per-particle speed
+0.0433 over a reservoir of 4,096, exact maximum 0.1357 — one run's numbers, not a derivation. What
+you do with them is turn the force gain up and watch the mean move, or watch the maximum *not* move
+because a clamp is firing, while you are still typing. A readback would tell you the same thing and
+you would never leave it switched on.
 
 ---
 
@@ -369,8 +374,8 @@ directly:
 
 Three boxes appear and a window opens. The knobs worth turning, in the order they teach something:
 
-- **`simModule.force`** on the *simulate* box is the whole point — a live `stack.auto` StackSL slot.
-  Retype it while it runs and the module rebinds on a background thread without dropping a frame.
+- **`simModule.force`** on the *simulate* box, a live `stack.auto` StackSL slot. Retype it while it
+  runs and the module rebinds on a background thread without dropping a frame.
   Bind `input xyz 0.9 *` for a plain outward push and the disc inflates and stops; the shipped
   program instead holds it on a noise field.
 - **The scale inside that program.** Change `input xyz 7.0 *` to `3.0` or `14.0` — the same field
