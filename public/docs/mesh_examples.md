@@ -130,7 +130,7 @@ halves the *z* extent, from 1.739 to 0.870, which is how you know the cut actual
 `showMeshGrid(...)` is the fastest way to see a whole pipeline: labelled panels side by side, in the
 Three.js viewer, so in a live box you can orbit the whole sheet at once. It is one WebGL context
 tiled into viewports rather than one iframe per panel, which matters more than it sounds —
-see [Field's 3D output](three_output.md#why-a-panel-is-a-viewport-and-not-an-iframe). Pass
+see [Field's 3D output](three_output.md#one-webgl-context-several-panels). Pass
 `renderer = MeshRenderer.CPU` for the static rasterized sheet this used to produce.
 
 One thing to know before you go looking for it: `showMeshGrid` does **not** write the per-panel fact
@@ -293,7 +293,7 @@ The two smoothed balls are the point, and the picture will not settle it for you
 printed volumes, not at the panels.** Each panel of a `showMeshGrid` frames its own bounds and
 zoom-to-fits, so the Laplacian ball's 20% smaller extent is normalised straight back out and the two
 come out the same apparent size. (The rasterized version of this figure carried a fact table under
-each panel; the viewer's grid does not — see [Field's 3D output](three_output.md#showmesh-after-the-change).)
+each panel; the viewer's grid does not — see [Field's 3D output](three_output.md#showmesh-and-the-renderer-parameter).)
 The noisy input encloses **2.1293** across an extent of 1.701. Thirty Laplacian iterations at λ = 0.6
 leave **1.1509** across 1.301: it has thrown away **46% of the volume**. Thirty Taubin iterations of
 the same λ, with μ = −0.63, leave **2.1840** across 1.631 — within about 3% of the clean ball this

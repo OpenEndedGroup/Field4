@@ -362,7 +362,7 @@ Two claims are being *checked* there rather than illustrated. **Genus 1 for `o` 
 faces) — read the two panel labels, which the box composes by calling `genus()` and `isWatertight()`
 on the mesh it is about to draw, so they cannot describe some other mesh. (The fact line under the
 `word` panel is the *renderer's* own, computed by `showMesh` from what it was handed; a
-`showMeshGrid` sheet does not carry one — see [Field's 3D output](three_output.md#showmesh-after-the-change).) And
+`showMeshGrid` sheet does not carry one — see [Field's 3D output](three_output.md#showmesh-and-the-renderer-parameter).) And
 the volume matches the ink area times the depth to `8.7e-16` relative, which is a shoelace sum
 agreeing with the divergence theorem to the last bit of a double. A dropped cap triangle, a wall
 wound the wrong way or an unpunched counter all break one of those.
