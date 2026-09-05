@@ -47,7 +47,9 @@ Two invariants beyond the individual cases:
   * `test_every_launcher_option_is_covered_by_the_ledger` is bidirectional. It parses the option
     patterns out of `field.sh`'s own `case "$arg" in` block and requires that set to *equal* the
     set the ledger names. A new launcher flag with no test fails; a ledger entry for a flag that
-    has been removed fails too. A one-directional check would let either drift through.
+    has been removed fails too. A one-directional check would let either drift through. The same
+    ledger feeds `test_the_powershell_launcher_declares_the_same_options`, so one entry is what
+    holds `field.ps1` level with `field.sh` — a flag cannot land on one launcher alone.
   * `test_field_sh_never_writes_the_machine_wide_preference_file`. The workspace choice is
     remembered in `~/.afield/last-workspace.txt`, which is machine-wide: it decides what the next
     bare `./field.sh` in *any* clone opens. `field.sh` only ever reads it (the backend writes it,
@@ -90,9 +92,30 @@ COVERED_OPTIONS = {
     "--workspace=*",
     "-d|--document",
     "--document=*",
+    "--read-only",
     "-*",
     "*",
 }
+
+
+def _declared_option_spellings() -> set[str]:
+    """The individual option spellings the ledger names, for a launcher that is not `field.sh`.
+
+    Every ledger entry but the two catch-alls is a `case` pattern, which is the shell's spelling
+    of an option rather than the option itself: `-h|--help` is two spellings of one flag, and
+    `--workspace=*` is one whose value is glued on. Unpicking them here, instead of restating them
+    by hand in the PowerShell check below, is what makes a single ledger entry gate *both*
+    launchers. The hand-maintained list this replaced is why `--read-only` diverged: it reached
+    field.sh in 8cabbf40e, field.ps1's parser never grew an arm, and the only test that could have
+    said so did not know the flag existed.
+    """
+    spellings = set()
+    for pattern in COVERED_OPTIONS:
+        if pattern in ("-*", "*"):
+            continue
+        for alternative in pattern.split("|"):
+            spellings.add(alternative.rstrip("*"))
+    return spellings
 
 
 def _resolved_shells() -> dict[str, str]:
@@ -277,23 +300,16 @@ class FieldShLauncherTests(unittest.TestCase):
         """field.ps1 is the Windows equivalent and nothing here can run it — no PowerShell on the
         machines this suite runs on (see the note in dev_docs/launcher_workspace_verification.md).
         What is checkable statically is drift: a flag added to one launcher and not the other. The
-        ledger above is the field.sh side of this pair, so a new flag now fails twice until both
-        launchers and this module agree."""
+        spellings come from the ledger, not from a list kept beside it, so adding a flag to
+        field.sh fails here as well until field.ps1 names it too."""
         ps1 = FIELD_PS1.read_text()
-        for spelling in (
-            '"-h"',
-            '"--help"',
-            '"--print-workspace"',
-            '"-w"',
-            '"--workspace"',
-            '"--workspace="',
-            '"-d"',
-            '"--document"',
-            '"--document="',
-        ):
-            self.assertIn(
-                spelling,
-                ps1,
+        spellings = _declared_option_spellings()
+        self.assertNotEqual(spellings, set(), "the ledger yielded no option spellings")
+        for spelling in sorted(spellings):
+            # Not assertIn: that would print all 20KB of field.ps1 as the haystack, burying the
+            # one sentence a reader of this guard needs.
+            self.assertTrue(
+                f'"{spelling}"' in ps1,
                 f"field.ps1's parser does not mention {spelling}, which field.sh accepts",
             )
 
