@@ -9,6 +9,7 @@ import afield.stdlib.linalg.Quaternionf
 import afield.stdlib.linalg.Vector3f
 import afield.stdlib.linalg.Vector4f
 import org.lwjgl.assimp.Assimp
+import kotlin.math.abs
 import kotlin.math.max
 
 /**
@@ -132,7 +133,10 @@ class FabricateScene(
                 parent = parent,
                 material = material(instance)
             ) {
-                transform.set(instance.bindPose.toMatrix())
+                // The node's true world matrix, NOT bindPose.toMatrix(): a TRS cannot carry a mirror
+                // or a shear, and decomposeToTRS flattens a mirrored node to a pure translation with
+                // no error raised. See GltfSupport.MeshInstance.bindMatrix.
+                transform.set(instance.bindMatrix ?: instance.bindPose.toMatrix())
                 animationSamples = instance.animationSamples
                 source = instance
                 renderable?.boundsRadius = estimateRadius(instance)
@@ -252,14 +256,53 @@ data class FabricateTransform(
     val rotation: Quaternionf = Quaternionf(),
     val scale: Vector3f = Vector3f(1f, 1f, 1f)
 ) {
+    /**
+     * The exact matrix [set] was handed, kept only when the TRS triple above cannot reproduce it.
+     *
+     * A translation/rotation/scale triple is not a general 4x4. `Matrix4f.getScale` is `sqrt(...)`
+     * per basis column and so never negative, which means a **mirror** — a negative-determinant
+     * transform, `scale (-1, 1, 1)` in a glTF node — decomposes to a *positive* scale and recomposes
+     * with determinant `+1`: the reflection is gone and the geometry is placed un-mirrored with no
+     * error raised. A shear does not survive either. See `GltfSupport.MeshInstance.bindMatrix`, which
+     * is the same defect one layer up, and `afield.stdlib.AssimpSceneBridgeTest`.
+     *
+     * So [set] measures its own decomposition: if recomposing the TRS does not return the matrix it
+     * was given, it keeps the original here and [matrix] returns it verbatim. For every transform
+     * that *is* a TRS — the overwhelming majority, and every scene that worked before this existed —
+     * this stays null and nothing changes.
+     *
+     * The cost of that, stated plainly: while this is non-null the TRS fields are a *lossy summary*
+     * and mutating them in place (`transform.position.add(...)`, `FabricateNode.translate`) has no
+     * effect on what is drawn. Call [clearMatrix] first, or go through the TRS [set] overload, which
+     * clears it for you.
+     *
+     * A body property rather than a constructor parameter, so it is not a `data class` component:
+     * [Matrix4f] has no structural equality, and putting it in `equals` / `copy` would change the
+     * identity of every transform in every scene. The consequence is that `copy()` drops it — no
+     * caller does that today, and a node's `transform` is a `val` built with the node.
+     */
+    var matrixOverride: Matrix4f? = null
+        private set
+
+    /** Discard [matrixOverride] and go back to composing the TRS fields. */
+    fun clearMatrix(): FabricateTransform {
+        matrixOverride = null
+        return this
+    }
+
     fun matrix(): Matrix4f =
-        Matrix4f().translate(position).rotate(rotation).scale(scale)
+        matrixOverride?.let { Matrix4f(it) }
+            ?: Matrix4f().translate(position).rotate(rotation).scale(scale)
 
     fun set(matrix: Matrix4f): FabricateTransform {
         matrix.getTranslation(position)
         matrix.getUnnormalizedRotation(rotation)
         rotation.normalize()
         matrix.getScale(scale)
+        // Does the decomposition actually round-trip? A mirror or a shear does not, and silently
+        // placing that geometry somewhere plausible-but-wrong is the failure this guards.
+        val recomposed = Matrix4f().translate(position).rotate(rotation).scale(scale)
+        matrixOverride = if (matrix.approximatelyEquals(recomposed)) null else Matrix4f(matrix)
         return this
     }
 
@@ -267,7 +310,24 @@ data class FabricateTransform(
         this.position.set(position)
         this.rotation.set(rotation).normalize()
         this.scale.set(scale)
+        matrixOverride = null
         return this
+    }
+
+    companion object {
+        /**
+         * Element-wise comparison with a tolerance scaled to the magnitudes involved, because a
+         * ToyCar node's `1e-4` scale and a metre-scale translation cannot share an absolute epsilon.
+         */
+        private fun Matrix4f.approximatelyEquals(other: Matrix4f, relative: Float = 1e-4f): Boolean {
+            for (i in 0 until 16) {
+                val a = this[i]
+                val b = other[i]
+                val tolerance = relative * max(1f, max(abs(a), abs(b)))
+                if (abs(a - b) > tolerance) return false
+            }
+            return true
+        }
     }
 }
 

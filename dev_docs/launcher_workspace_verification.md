@@ -147,8 +147,28 @@ tight for it anyway. What holds it up is therefore reading plus two static gates
 and `test_the_powershell_launcher_stays_readable_by_windows_powershell` (ASCII outside comments and
 CRLF throughout, because a BOM-less `.ps1` is read as ANSI by Windows PowerShell 5.1). Nothing
 checks that it *runs*. Anyone with a Windows box: `.\field.ps1 --print-workspace`,
-`.\field.ps1 -d <a document>`, and `.\field.ps1 -d nosuchthing` (expect exit 2) settle it in a
-minute, and this section should then say so.
+`.\field.ps1 -d <a document>`, `.\field.ps1 -d nosuchthing` (expect exit 2), and
+`.\field.ps1 <a document> --read-only` (expect the read-only note, and nothing written into the
+document's folder) settle it in a minute, and this section should then say so.
+
+The first of those two gates only became what that sentence claims on 2026-09-05, and
+`--read-only` is what showed the difference. It reached `field.sh` in 8cabbf40e and `field.ps1`
+56 commits later. This gate stayed green across all of them, because it checked a hand-written
+list of spellings kept beside the ledger rather than the ledger itself, and so could not fail for
+a flag nobody had told it about. What did go red was the *other* gate,
+`test_every_launcher_option_is_covered_by_the_ledger` — `field.sh` had grown a `case` arm the
+ledger did not name — so `checkPythonTools` was failing that whole time, on the sibling assertion,
+which is how this got found. The spellings are now derived from `COVERED_OPTIONS`, so the pair is
+chained end to end: `field.sh`'s arms must equal the ledger, and `field.ps1` must name every
+spelling in it. A flag cannot land on one launcher alone.
+
+`field.ps1`'s `--read-only` arm is itself unrun, like the rest of that file. Two things about it
+are only argued, not observed: that the banner reaches the user (`Write-FieldNote` writes it, as
+every other launcher note does), and that `--read-only` still leaves a following bare path
+readable as the workspace. The second is a behaviour the old passthrough got *wrong* —
+`StartsWith("-")` set `$passthroughSeen`, so `.\field.ps1 --read-only <path>` sent the path to the
+backend as an argument instead of resolving it as a workspace, where `field.sh` resolves it. The
+explicit arm does not set that flag, matching `field.sh`.
 
 One detail worth knowing while it is unverified: PowerShell keeps the workspace record somewhere
 else. `Server.kt`'s `fieldUserConfigDir` puts it under `%APPDATA%\AField` on Windows and

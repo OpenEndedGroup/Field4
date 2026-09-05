@@ -26,7 +26,8 @@ class OpenAiIdeCodexBridge(
     private val log: LogSink = StdoutLog,
     private val reasoningEffort: ReasoningEffort = ReasoningEffort.MEDIUM
 ) {
-    private val chatModel: ChatModel = ChatModel.of(model)
+    val modelName: String = model
+    private val chatModel: ChatModel = ChatModel.of(modelName)
     private val mapper: ObjectMapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
     private val tools = ToolRegistry()
     private val trace: TraceLogger? = TraceLogger.fromEnv()
@@ -170,6 +171,8 @@ class OpenAiIdeCodexBridge(
             toolIoLog?.begin(
                 mapOf(
                     "model" to chatModel.toString(),
+                    "provider" to runtimeConfig.provider,
+                    "reasoningEffort" to if (runtimeConfig.isOpenRouter) "provider-default" else reasoningEffort.toString(),
                     "conversationId" to state.conversationId,
                     "localThreadId" to state.localThreadId,
                     "previousResponseId" to (state.previousResponseId ?: ""),
@@ -240,6 +243,7 @@ class OpenAiIdeCodexBridge(
             mapOf(
                 "phase" to "initial",
                 "responseId" to response.id(),
+                "responseModel" to response.model().toString(),
                 "outputItems" to response.output().size,
                 "messageCount" to response.output().count { it.isMessage() },
                 "functionCallCount" to response.output().count { it.isFunctionCall() }
@@ -475,6 +479,7 @@ class OpenAiIdeCodexBridge(
                     "phase" to "followup",
                     "round" to (rounds + 1),
                     "responseId" to response.id(),
+                    "responseModel" to response.model().toString(),
                     "outputItems" to response.output().size,
                     "messageCount" to response.output().count { it.isMessage() },
                     "functionCallCount" to response.output().count { it.isFunctionCall() }
@@ -638,7 +643,10 @@ class OpenAiIdeCodexBridge(
 
     private fun createResponse(params: ResponseCreateParams, onTextDelta: ((String) -> Unit)?): Response =
         withRateLimitRetry("response-create") {
-            createResponseOnce(params, onTextDelta)
+            createResponseOnce(params, onTextDelta).also { response ->
+                info("response provider=${runtimeConfig.provider} requestedModel=$modelName " +
+                    "responseModel=${response.model()} responseId=${response.id()} status=${response.status().orElse(null)}")
+            }
         }
 
     private fun createResponseOnce(params: ResponseCreateParams, onTextDelta: ((String) -> Unit)?): Response {

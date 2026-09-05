@@ -1,0 +1,15 @@
+{
+  "savedProject": "/Users/marc/field4",
+  "authoritativeHousingWorktree": "/Users/marc/field4/.claude/worktrees/serene-panini-93b3ca",
+  "coreFilesInBoth": [
+    "src/jvmMain/kotlin/afield/ai/core/Ai4ModelDefaults.kt",
+    "src/jvmMain/kotlin/afield/ai/core/OpenAiIdeCodexBridge.kt",
+    "src/commonMain/resources/welcome.html",
+    "src/jvmTest/kotlin/afield/ai/core/AstraBridgeContractTest.kt"
+  ],
+  "personalFilesInAuthoritativeOnly": [
+    "src/personal/kotlin/house/HouseProjectInteraction.kt"
+  ],
+  "committed": false,
+  "pushed": false
+}

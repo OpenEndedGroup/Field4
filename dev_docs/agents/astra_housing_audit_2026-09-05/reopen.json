@@ -1,0 +1,87 @@
+{
+  "project": {
+    "name": "HouseInspectProject",
+    "ok": true,
+    "result": {
+      "ok": true,
+      "committed": false,
+      "message": "Inspected house project 'astra-design' revision 4.",
+      "project": "astra-design",
+      "revision": 4,
+      "readyForFabrication": false,
+      "canonicalJson": "{\n  \"id\": \"astra-design\",\n  \"name\": \"astra-design\",\n  \"revision\": 4,\n  \"intent\": \"One rectangular roof panel, 10000 by 5000 mm, at elevation 3000 mm, 5 mm thick; no other elements.\",\n  \"interiorReference\": [\n    0.0,\n    0.0,\n    2000.0\n  ],\n  \"interiorReferencesByPanel\": {},\n  \"openings\": [],\n  \"serviceNodes\": [],\n  \"serviceLinks\": [],\n  \"edgeFabricationParameters\": [],\n  \"cornerFabricationParameters\": [],\n  \"stage\": \"DESIGN\",\n  \"envelope\": {\n    \"points\": [\n      {\n        \"id\": \"roof-1-p0\",\n        \"position\": [\n          -5000.0,\n          -2500.0,\n          3000.0\n        ],\n        \"guide\": false\n      },\n      {\n        \"id\": \"roof-1-p1\",\n        \"position\": [\n          5000.0,\n          -2500.0,\n          3000.0\n        ],\n        \"guide\": false\n      },\n      {\n        \"id\": \"roof-1-p2\",\n        \"position\": [\n          5000.0,\n          2500.0,\n          3000.0\n        ],\n        \"guide\": false\n      },\n      {\n        \"id\": \"roof-1-p3\",\n        \"position\": [\n          -5000.0,\n          2500.0,\n          3000.0\n        ],\n        \"guide\": false\n      },\n      {\n        \"id\": \"roof-1-seam-1-a\",\n        \"position\": [\n          -1666.666666666667,\n          -2500.0,\n          3300.0\n        ],\n        \"guide\": false\n      },\n      {\n        \"id\": \"roof-1-seam-1-b\",\n        \"position\": [\n          -1666.666666666667,\n          2500.0,\n          3300.0\n        ],\n        \"guide\": false\n      },\n      {\n        \"id\": \"roof-1-seam-2-a\",\n        \"position\": [\n          1666.6666666666663,\n          -2500.0,\n          3300.0\n        ],\n        \"guide\": false\n      },\n      {\n        \"id\": \"roof-1-seam-2-b\",\n        \"position\": [\n          1666.6666666666663,\n          2500.0,\n          3300.0\n        ],\n        \"guide\": false\n      }\n    ],\n    \"panels\": [\n      {\n        \"id\": \"roof-1-1\",\n        \"corners\": [\n          \"roof-1-p0\",\n          \"roof-1-seam-1-a\",\n          \"roof-1-seam-1-b\",\n          \"roof-1-p3\"\n        ],\n        \"thickness\": 240.0,\n        \"role\": \"ROOF\",\n        \"tags\": [\n          \"design\"\n        ],\n        \"thickenTowards\": \"B\"\n      },\n      {\n        \"id\": \"roof-1-2\",\n        \"corners\": [\n          \"roof-1-seam-1-a\",\n          \"roof-1-seam-2-a\",\n          \"roof-1-seam-2-b\",\n          \"roof-1-seam-1-b\"\n        ],\n        \"thickness\": 240.0,\n        \"role\": \"ROOF\",\n        \"tags\": [\n          \"design\"\n        ],\n        \"thickenTowards\": \"B\"\n      },\n      {\n        \"id\": \"roof-1-3\",\n        \"corners\": [\n          \"roof-1-seam-2-a\",\n          \"roof-1-p1\",\n          \"roof-1-p2\",\n          \"roof-1-seam-2-b\"\n        ],\n        \"thickness\": 240.0,\n        \"role\": \"ROOF\",\n        \"tags\": [\n          \"design\"\n        ],\n        \"thickenTowards\": \"B\"\n      }\n    ],\n    \"constraints\": [\n      {\n        \"type\": \"pointAt\",\n        \"point\": \"roof-1-p0\",\n        \"target\": [\n          -5000.0,\n          -2500.0,\n          3000.0\n        ],\n        \"axes\": \"XYZ\",\n        \"weight\": 1000.0\n      },\n      {\n        \"type\": \"pointAt\",\n        \"point\": \"roof-1-p1\",\n        \"target\": [\n          5000.0,\n          -2500.0,\n          3000.0\n        ],\n        \"axes\": \"XYZ\",\n        \"weight\": 1000.0\n      },\n      {\n        \"type\": \"pointAt\",\n        \"point\": \"roof-1-p2\",\n        \"target\": [\n          5000.0,\n          2500.0,\n          3000.0\n        ],\n        \"axes\": \"XYZ\",\n        \"weight\": 1000.0\n      },\n      {\n        \"type\": \"pointAt\",\n        \"point\": \"roof-1-p3\",\n        \"target\": [\n          -5000.0,\n          2500.0,\n          3000.0\n        ],\n        \"axes\": \"XYZ\",\n        \"weight\": 1000.0\n      },\n      {\n        \"type\": \"pointAt\",\n        \"point\": \"roof-1-seam-1-a\",\n        \"target\": [\n          -1666.666666666667,\n          -2500.0,\n          3300.0\n        ],\n        \"axes\": \"XYZ\",\n        \"weight\": 1000.0\n      },\n      {\n        \"type\": \"pointAt\",\n        \"point\": \"roof-1-seam-1-b\",\n        \"target\": [\n          -1666.666666666667,\n          2500.0,\n          3300.0\n        ],\n        \"axes\": \"XYZ\",\n        \"weight\": 1000.0\n      },\n      {\n        \"type\": \"pointAt\",\n        \"point\": \"roof-1-seam-2-a\",\n        \"target\": [\n          1666.6666666666663,\n          -2500.0,\n          3300.0\n        ],\n        \"axes\": \"XYZ\",\n        \"weight\": 1000.0\n      },\n      {\n        \"type\": \"pointAt\",\n        \"point\": \"roof-1-seam-2-b\",\n        \"target\": [\n          1666.6666666666663,\n          2500.0,\n          3300.0\n        ],\n        \"axes\": \"XYZ\",\n        \"weight\": 1000.0\n      }\n    ]\n  },\n  \"panelPlan\": {\n    \"stockWidthMm\": 2000.0,\n    \"stockLengthMm\": 10000.0,\n    \"minSizeMm\": 900.0,\n    \"preferredGridMm\": 0.0,\n    \"motherboardGapMm\": 20.0,\n    \"motherboardEdgeMarginMm\": 0.0,\n    \"explosionMm\": 700.0,\n    \"coplanarSeparationMm\": 90.0,\n    \"countsBySource\": {}\n  }\n}",
+      "issues": [],
+      "measurements": [
+        "stage design; revision 4; 3 quads, 8 vertices",
+        "0 guide point(s); 8 explicit nonlinear constraint(s)",
+        "2 shared edge(s); 8 open boundary edge(s)",
+        "extent 10000.0 x 5000.0 x 300.0 mm",
+        "thickened solids 3; planar mitres 2; overlap 1.35104e-06 mm3",
+        "minimum shared solid contact 1201209.495 mm2",
+        "maximum resolved-face planarity deviation 6.11e-13 mm",
+        "solve solved; cost 0.00000; 0 issue(s)"
+      ],
+      "hostedPointMeasurements": [],
+      "panelShapeMeasurements": [
+        {
+          "panelId": "roof-1-1",
+          "planarityDeviationMm": 0.0,
+          "signedProjectedAreaMm2": 16666666.666666664,
+          "convex": true,
+          "selfCrossing": false,
+          "validPerimeter": true
+        },
+        {
+          "panelId": "roof-1-2",
+          "planarityDeviationMm": 0.0,
+          "signedProjectedAreaMm2": 16666666.666666666,
+          "convex": true,
+          "selfCrossing": false,
+          "validPerimeter": true
+        },
+        {
+          "panelId": "roof-1-3",
+          "planarityDeviationMm": 5.684341886080802e-14,
+          "signedProjectedAreaMm2": 16666666.66666667,
+          "convex": true,
+          "selfCrossing": false,
+          "validPerimeter": true
+        }
+      ],
+      "undoDepth": 0,
+      "previewToken": null
+    }
+  },
+  "selection": {
+    "name": "HouseInspectProjectSelection",
+    "ok": true,
+    "result": {
+      "project": "astra-design",
+      "revision": 4,
+      "selection": {
+        "pointIds": [],
+        "panelIds": []
+      },
+      "positionsMm": {}
+    }
+  },
+  "ui": {
+    "ok": true,
+    "command": "page-eval --body --file /Users/marc/field4/.claude/worktrees/serene-panini-93b3ca/build/astra-audit/run-2/reopen-ui.js --wait-ms 500",
+    "data": {
+      "ok": true,
+      "action": "pageEval",
+      "documentName": "astra-design-audit",
+      "scratch": false,
+      "sessionKey": "/Users/marc/field4/.claude/worktrees/serene-panini-93b3ca/build/astra-audit/run-2/workspace/astra-design-audit",
+      "result": {
+        "turns": 16,
+        "users": 0,
+        "text": "Work only on canonical project astra-design using the house project tools. Start with one roof panel, 10000 by 5000 mm, at 3000 mm elevation, 5 mm thick. Preview with BOTH views, inspect the returned images, then commit that exact preview. Describe what is visible and the revision. Do only this edit: no walls, services, joints or code edits.\n\nStarting AI conversation\nPlanning tool use\nUsing HouseInspectProject\nHouseInspectProject finished\nPlanning tool use\nUsing HouseStartRectangularPanel\nHouseStartRectangularPanel finished\nPlanning tool use\nUsing HouseCommitProjectPreview\nHouseCommitProjectPreview finished\n\n_after: solved design, southwest inspection_\n\n_after: solved design, opposing inspection_\n\n_after: solved design, southwest inspection_\n\n_after: solved design, opposing inspection_\n\nCommitted the exact reviewed preview to astra-design, revision 1.\n\nOne roof panel, roof-1: 10000 \u00d7 5000 mm\nElevation: 3000 mm\nThickness: 5 mm\n\nInspected both preview and committed views: they show a single flat, brown rectangular face with a gold outline, without seams or additional elements. Elevation and thickness are confirmed by the canonical data, rather than visually measurable in these views.\n\nValidation returned no issues. No walls, services, joints, or code edits were made.\n\nDivide that roof into three equal shared-topology strips along its long dimension. Preview, inspect both images and commit the exact token. Keep the outer dimensions and elevation. Do only this edit.\n\nStarting AI conversation\nPlanning tool use\nUsing HouseInspectProject\nHouseInspectProject finished\nPlanning tool use\nUsing HouseSubdivideProjectPanel\nHouseSubdivideProjectPanel finished\nPlanning tool use\nUsing HouseCommitProjectPreview\nHouseCommitProjectPreview finished\n\n_before: committed design revision 1_\n\n_after: solved design, southwest inspection_\n\n_after: solved design, opposing inspection_\n\n_before: committed design revision 1_\n\n_after: solved design, southwest inspection_\n\n_after: solved design, opposing inspection_\n\nCommitted the exact preview to astra-design, revision 2.\n\nBoth inspected views show three flat, adjoining roof strips with two full-width seams and an unchanged outer rectangle.\n\nEach strip: 3333\u2153 \u00d7 5000 mm\nOverall dimensions: 10000 \u00d7 5000 mm\nElevation: 3000 mm\nThickness: unchanged at 5 mm\nTopology: two shared edges using shared seam vertices\n\nValidation reported no issues. Only the roof subdivision was changed.\n\nRaise the middle strip by 300 mm while keeping all panels connected and every physical face planar. Preserve the four outer corners. Use stable seam point IDs and explicit constraints. Preview, inspect and commit if the independent checks pass. Do only this edit.\n\nStarting AI conversation\nPlanning tool use\nUsing HouseInspectProject\nHouseInspectProject finished\nPlanning tool use\nUsing HousePatchProjectGraph\nHousePatchProjectGraph finished\nPlanning tool use\nUsing HousePatchProjectGraph\nHousePatchProjectGraph finished\n\n_before: committed design revision 2_\n\n_after: solved design, southwest inspection_\n\n_after: solved design, opposing inspection_\n\n_before: committed design revision 2_\n\n_after: solved design, southwest inspection_\n\n_after: solved design, opposing inspection_\n\nCommitted to astra-design, revision 3.\n\nBoth inspected views show a raised horizontal middle strip, with the two end strips sloping down to the preserved outer corners. All three panels remain connected.\n\nMiddle elevation: 3300 mm \u2014 raised exactly 300 mm\nOuter corners: unchanged at 3000 mm\nFootprint / thickness: unchanged at 10000 \u00d7 5000 mm / 5 mm\nConstraints: eight explicit XYZ POINT_AT constraints, retaining the four stable seam point IDs\n\nIndependent checks passed with no issues: both seams retain physical contact, and maximum physical-face planarity deviation is 4.53 \u00d7 10\u207b\u00b9\u00b3 mm\u2014effectively zero.\n\nOnly this roof geometry and its constraints were changed.\n\nMake only those three roof panels 240 mm thick towards side B while preserving the datum geometry and prior constraints. Preview both opposing views and check the physical faces and contact. Commit if valid. Select the middle panel, and tell me the revision and what is still unverified. Do not add anything else.\n\nStarting AI conversation\nPlanning tool use\nUsing HouseInspectProject\nHouseInspectProject finished\nPlanning tool use\nUsing HouseSetProjectPanelThickness\nHouseSetProjectPanelThickness finished\nPlanning tool use\nUsing HouseCommitProjectPreview\nHouseCommitProjectPreview finished\nPlanning tool use\nUsing HouseSelectProjectElements\nHouseSelectProjectElements finished\n\n_before: committed design revision 3_\n\n_after: solved design, southwest inspection_\n\n_after: solved design, opposing inspection_\n\n_before: committed design revision 3_\n\n_after: solved design, southwest inspection_\n\n_after: solved design, opposing inspection_\n\nCommitted the exact preview to astra-design, revision 4 and selected the middle panel, roof-1-2.\n\nAll three roof panels are 240 mm thick toward side B.\nDatum geometry, shared seam IDs, and all eight prior constraints are unchanged.\nBoth opposing views retain the raised-middle shape and continuous seams.\nPhysical checks passed with no issues: face planarity deviation \u2264 6.11 \u00d7 10\u207b\u00b9\u00b3 mm, minimum shared contact 1,201,209.495 mm\u00b2, and negligible numerical overlap.\n\nStill unverified: the images display datum faces, so full-thickness sides and undersides were not visually verified. This remains a DESIGN-stage project, not fabrication-approved; structural capacity and manufacturing readiness have not been established.\n\nNothing else was added or edited.",
+        "images": 22
+      }
+    },
+    "events": [],
+    "timedOut": false
+  }
+}

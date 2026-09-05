@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="AstraBridgeContractTest[jvm]" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-09-05T14:08:35.510Z" hostname="mi2-2.local" time="0.819">
+  <properties/>
+  <testcase name="accessErrorPreservesCompletedTurnAndNeverSubstitutesModel[jvm]" classname="afield.ai.core.AstraBridgeContractTest" time="0.622"/>
+  <testcase name="toolImagesAndCallIdentityReachTheActualSdkRequest[jvm]" classname="afield.ai.core.AstraBridgeContractTest" time="0.196"/>
+  <testcase name="directOpenAiDefaultsKeepOtherProvidersAndExplicitChoices[jvm]" classname="afield.ai.core.AstraBridgeContractTest" time="0.001"/>
+  <system-out><![CDATA[?[90m?[3m[info,ai.bridge]?[0m Initialized OpenAiIdeCodexBridge(model=gpt-6-astra)
+?[90m?[3m[info,ai.bridge]?[0m convId=conv_test fileKey=test inputChars=13 maxOutputTokens=20480 attachments=0 images=0
+?[90m?[3m[info,ai.toolio]?[0m log=/Users/marc/.afield/logs/ai4_tool_io/2026-09-05T140835-669150Z-cb8b1375.jsonl
+?[90m?[3m[info,ai.bridge]?[0m running prompt <<spinner>>
+?[90m?[3m[warning,ai.bridge]?[0m streaming response failed; falling back to non-streaming create. cause=CompletionException: com.openai.errors.NotFoundException: 404: No access to gpt-6-astra <- NotFoundException: 404: No access to gpt-6-astra
+?[90m?[3m[info,ai.bridge]?[0m Initialized OpenAiIdeCodexBridge(model=gpt-6-astra)
+?[90m?[3m[info,ai.bridge]?[0m convId=conv_test fileKey=test inputChars=13 maxOutputTokens=20480 attachments=0 images=0
+?[90m?[3m[info,ai.toolio]?[0m log=/Users/marc/.afield/logs/ai4_tool_io/2026-09-05T140836-135617Z-600dc961.jsonl
+?[90m?[3m[info,ai.bridge]?[0m running prompt <<spinner>>
+?[90m?[3m[info,ai.bridge]?[0m response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_tool status=completed
+?[90m?[3m[info,ai.bridge]?[0m initial response id=resp_tool outputItems=1 <<spinner>>
+?[90m?[3m[info,ai.bridge]?[0m output shape: messages=0 functionCalls=1 other=0
+?[90m?[3m[info,ai.bridge]?[0m output[0] function_call name=InspectPanel
+?[90m?[3m[info,ai.bridge]?[0m toolCalls=1 (round 1/2)
+?[90m?[3m[info,ai.bridge]?[0m tool: name=InspectPanel callId=call_panel {"panelId":"roof"}
+?[90m?[3m[info,ai.bridge]?[0m tool: result name=InspectPanel type=
+?[90m?[3m[info,ai.bridge]?[0m creating response (follow-up) <<spinner>>
+?[90m?[3m[info,ai.bridge]?[0m response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_2 status=completed
+?[90m?[3m[info,ai.bridge]?[0m follow-up response id=resp_2 outputItems=1
+?[90m?[3m[info,ai.bridge]?[0m output shape: messages=1 functionCalls=0 other=0
+?[90m?[3m[info,ai.bridge]?[0m message status(es)=completed
+?[90m?[3m[info,ai.bridge]?[0m no tool calls; finishing
+?[90m?[3m[info,ai.bridge]?[0m done responseId=resp_2 textChars=15 commentaryCount=0 (183ms)
+?[90m?[3m[info,ai.bridge]?[0m convId=conv_test fileKey=test inputChars=9 maxOutputTokens=20480 attachments=0 images=0
+?[90m?[3m[info,ai.toolio]?[0m log=/Users/marc/.afield/logs/ai4_tool_io/2026-09-05T140836-320354Z-93eb049f.jsonl
+?[90m?[3m[info,ai.bridge]?[0m running prompt <<spinner>>
+?[90m?[3m[info,ai.bridge]?[0m response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_3 status=completed
+?[90m?[3m[info,ai.bridge]?[0m initial response id=resp_3 outputItems=1 <<spinner>>
+?[90m?[3m[info,ai.bridge]?[0m output shape: messages=1 functionCalls=0 other=0
+?[90m?[3m[info,ai.bridge]?[0m message status(es)=completed
+?[90m?[3m[info,ai.bridge]?[0m no tool calls; finishing
+?[90m?[3m[info,ai.bridge]?[0m done responseId=resp_3 textChars=15 commentaryCount=0 (9ms)
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

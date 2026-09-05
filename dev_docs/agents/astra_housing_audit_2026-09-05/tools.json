@@ -1,0 +1,1315 @@
+[
+  {
+    "name": "ChecklistReadRequest",
+    "description": "Read the persistent checklist for this chat. Use it to track long-running tasks across turns.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "ChecklistUpdateRequest",
+    "description": "Update the persistent checklist for this chat. Use operation add, update, complete, reopen, remove, replace, or clear. For update/complete/reopen/remove, itemId identifies the item.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string"
+        },
+        "itemId": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": [
+        "operation"
+      ]
+    }
+  },
+  {
+    "name": "CompileKotlinRequest",
+    "description": "Compile Kotlin for the current Field box or an afield://.../code file ref. Call this after editing Kotlin and before finishing the turn; fix errors and rerun until success.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "runSetupBlocks": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  {
+    "name": "EvaluateKotlinExpressionRequest",
+    "description": "Evaluate a Kotlin expression in a Field box's existing KotlinInterface/KotlinInterface2 context. Target may be blank for the current box, a box uid/name, or an afield://... ref. Prefer read-only expressions; this runs against live runtime objects. The current/target Field box is thisBox. Do not use _, _.foo, or bare box as current-box syntax. Use thisBox.getPropertyRaw(\"name\") / thisBox.setPropertyRaw(\"name\", value) for raw box properties, and use box(\"uid\", root = thisBox.inside) when intentionally resolving or creating another box in the same document.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "target": {
+          "type": "string"
+        },
+        "expression": {
+          "type": "string"
+        },
+        "renderHtml": {
+          "type": "boolean"
+        },
+        "maxChars": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "expression"
+      ]
+    }
+  },
+  {
+    "name": "HouseAddProjectFloor",
+    "description": "Add a planar floor across the four anchored wall-bottom corners and divide its longer dimension into equal, topologically connected quad panels. The floor is outward-wound downward and thickens inward/upward. Preview before commit.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string"
+        },
+        "expectedRevision": {
+          "type": "integer"
+        },
+        "divisions": {
+          "type": "integer"
+        },
+        "thicknessMm": {
+          "type": "number"
+        },
+        "floorPrefix": {
+          "type": "string"
+        },
+        "wallPrefix": {
+          "type": "string"
+        },
+        "commit": {
+          "type": "boolean"
+        },
+        "render": {
+          "type": "string",
+          "enum": [
+            "NONE",
+            "ASSEMBLED",
+            "EXPLODED",
+            "BOTH"
+          ]
+        }
+      },
+      "required": [
+        "expectedRevision"
+      ]
+    }
+  },
+  {
+    "name": "HouseAddProjectWalls",
+    "description": "Add four planar rectangular envelope walls under the four outside corners of a rectangular roof network. Long walls must have exactly one panel per roof-boundary segment: their top edges reuse the roof point ids, so continuous contact is topology rather than a point-on-line coincidence. A count incompatible with the roof is rejected with the required count; this deliberately permits the four-panel vertices needed where roof and wall seams meet. Wall bottom corners and seam points are strong floor-plane anchors. Preview before commit.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string"
+        },
+        "expectedRevision": {
+          "type": "integer"
+        },
+        "floorElevationMm": {
+          "type": "number"
+        },
+        "thicknessMm": {
+          "type": "number"
+        },
+        "longSidePanelCount": {
+          "type": "integer",
+          "description": "Must equal the number of roof-boundary segments on each long side; inspect or derive it rather than guessing."
+        },
+        "wallPrefix": {
+          "type": "string"
+        },
+        "commit": {
+          "type": "boolean"
+        },
+        "render": {
+          "type": "string",
+          "enum": [
+            "NONE",
+            "ASSEMBLED",
+            "EXPLODED",
+            "BOTH"
+          ]
+        }
+      },
+      "required": [
+        "expectedRevision",
+        "longSidePanelCount"
+      ]
+    }
+  },
+  {
+    "name": "HouseCommitProjectPreview",
+    "description": "Commit the exact clean canonical house candidate returned by a previous preview, without resending or reconstructing its point/quad graph. Use the previewToken returned by HouseReplaceProjectGraph and the same project/base revision. The token is single-use and the commit is rejected if intervening work changed the project.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string"
+        },
+        "expectedRevision": {
+          "type": "integer"
+        },
+        "previewToken": {
+          "type": "string"
+        },
+        "render": {
+          "type": "string",
+          "enum": [
+            "NONE",
+            "ASSEMBLED",
+            "EXPLODED",
+            "BOTH"
+          ]
+        }
+      },
+      "required": [
+        "expectedRevision",
+        "previewToken"
+      ]
+    }
+  },
+  {
+    "name": "HouseConfigureProjectMonkeyPaws",
+    "description": "Give every exact shared design span one persistent, complementary monkey-paw contract, including FLAT profiles on coplanar panel seams. The operation sets role-based stock thicknesses, reconciles every three- and four-panel endpoint into complete planar-faced panel shells, audits each shell for planarity and two-manifold topology, and renders the whole assembly assembled and exploded before returning a preview token. It rejects incomplete/T-junction topology rather than inventing a plausible-looking joint.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string"
+        },
+        "expectedRevision": {
+          "type": "integer"
+        },
+        "wallThicknessMm": {
+          "type": "number"
+        },
+        "roofThicknessMm": {
+          "type": "number"
+        },
+        "floorThicknessMm": {
+          "type": "number"
+        },
+        "jointWidthMm": {
+          "type": "number"
+        },
+        "clearanceMm": {
+          "type": "number"
+        },
+        "lapWidthMm": {
+          "type": "number"
+        },
+        "gasketDiameterMm": {
+          "type": "number"
+        },
+        "polarityOverrides": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "renderEdgeId": {
+          "type": "string",
+          "description": "Optional persistent edge id to render. Empty chooses a representative roof/wall edge."
+        }
+      },
+      "required": [
+        "expectedRevision"
+      ]
+    }
+  },
+  {
+    "name": "HouseConstrainProjectEdgesToGuide",
+    "description": "Add or move a stable guide point and constrain the infinite lines through named architectural edges to pass through it. This is the nonlinear 3D vanishing-point operation. Existing constraints for other guide points remain active. PointAt constraints on explicitly releasedPointIds are removed so the network can actually respond. Preview before commit.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string"
+        },
+        "expectedRevision": {
+          "type": "integer"
+        },
+        "guidePointId": {
+          "type": "string"
+        },
+        "positionMm": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "World-space x, y, z guide position in millimetres."
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "releasePointIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "weight": {
+          "type": "number"
+        },
+        "commit": {
+          "type": "boolean"
+        },
+        "render": {
+          "type": "string",
+          "enum": [
+            "NONE",
+            "ASSEMBLED",
+            "EXPLODED",
+            "BOTH"
+          ]
+        }
+      },
+      "required": [
+        "expectedRevision",
+        "guidePointId",
+        "positionMm",
+        "edges"
+      ]
+    }
+  },
+  {
+    "name": "HouseCreateVanishingEnvelope",
+    "description": "Create or replace the canonical nonlinear house project from a high-level bulged-hex brief. The result is solved with Ceres, thickened inward, jointed in exact 3D, panelized and independently inspected. Set commit=false to preview without changing the project; commit=true records a revision and persists any bound Field box.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string"
+        },
+        "intent": {
+          "type": "string"
+        },
+        "lengthMm": {
+          "type": "number"
+        },
+        "widthMm": {
+          "type": "number"
+        },
+        "bulgeMm": {
+          "type": "number"
+        },
+        "eaveHeightMm": {
+          "type": "number"
+        },
+        "ridgeHeightMm": {
+          "type": "number"
+        },
+        "vanishingPointHeightMm": {
+          "type": "number"
+        },
+        "floorThicknessMm": {
+          "type": "number"
+        },
+        "wallThicknessMm": {
+          "type": "number"
+        },
+        "roofThicknessMm": {
+          "type": "number"
+        },
+        "wallPanelCounts": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "description": "Exceptional exact count overrides for walls 0 through 5. Leave empty for construction-aware automatic counts."
+        },
+        "westRoofPanelCount": {
+          "type": "integer",
+          "description": "Exceptional exact roof count override; zero selects construction-aware automatic counts."
+        },
+        "eastRoofPanelCount": {
+          "type": "integer",
+          "description": "Exceptional exact roof count override; zero selects construction-aware automatic counts."
+        },
+        "commit": {
+          "type": "boolean"
+        },
+        "render": {
+          "type": "string",
+          "enum": [
+            "NONE",
+            "ASSEMBLED",
+            "EXPLODED",
+            "BOTH"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "name": "HouseEnumerateProjectServiceRouteAlternatives",
+    "description": "Read-only service-route planning. Enumerates several explicit construction-host paths and exposes the resolved material and joint evidence behind each one. It never changes the canonical project and does not pretend that an unimplemented curved joint transition is feasible.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string"
+        },
+        "expectedRevision": {
+          "type": "integer"
+        },
+        "serviceLinkIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Empty means every committed service link."
+        },
+        "maximumHostPathsPerService": {
+          "type": "integer"
+        },
+        "includeRejectedCandidates": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "expectedRevision"
+      ]
+    }
+  },
+  {
+    "name": "HouseImportCanonicalProject",
+    "description": "Preview an exact canonical house-project JSON value previously returned by a house tool. This is for lossless transfer, recovery and collaboration, not for authoring geometry by hand. The JSON project name must match project. No state changes until the returned previewToken is passed to HouseCommitProjectPreview with the same expectedRevision.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string"
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "description": "Use 0 when the project must not already exist; otherwise use the inspected revision."
+        },
+        "canonicalJson": {
+          "type": "string",
+          "description": "The complete canonicalJson string returned by a house-project tool."
+        },
+        "render": {
+          "type": "string",
+          "enum": [
+            "NONE",
+            "ASSEMBLED",
+            "EXPLODED",
+            "BOTH"
+          ]
+        }
+      },
+      "required": [
+        "project",
+        "expectedRevision",
+        "canonicalJson"
+      ]
+    }
+  },
+  {
+    "name": "HouseInspectMotherboardPacking",
+    "description": "Inspect the current construction-aware panelization packed onto raw motherboard stock. Returns a feasible deterministic best-fit layout, utilization and an actual-outline contact sheet. This is conservative bounding-box nesting with 90-degree rotation, not a claim of globally optimal irregular-shape packing.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  {
+    "name": "HouseInspectMotherboardServiceGeometry",
+    "description": "Route and independently accept the canonical electrical/water services, pack the level-2 fabrication panels onto thickness-compatible raw motherboards, and open one combined orbitable 3D machining cutaway. The resolved panel solids and full-diameter conduit tubes use the same stock-placement transform, so conduit depth is physical rather than a surface annotation. This is visual/CAM intent, not executed CNC geometry.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string"
+        },
+        "minimumBendRadiusMm": {
+          "type": "number"
+        },
+        "lengthWeight": {
+          "type": "number",
+          "description": "Weight of developed conduit length."
+        },
+        "totalCurvatureWeight": {
+          "type": "number",
+          "description": "Weight of accumulated 3D curvature against developed length."
+        },
+        "pullFrictionCoefficient": {
+          "type": "number"
+        },
+        "depthPreferenceWeight": {
+          "type": "number"
+        },
+        "selectedHostPaths": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "Optional explicit host sequences chosen from HouseEnumerateProjectServiceRouteAlternatives. Omitted links retain automatic search."
+        },
+        "requireCurvedServiceLinkIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional service link ids that must contain a real finite turn. This is a proof request, not a hint: the inspection fails if the accepted packed fragments do not accumulate minimumTotalTurnDegrees."
+        },
+        "minimumTotalTurnDegrees": {
+          "type": "number"
+        }
+      }
+    }
+  },
+  {
+    "name": "HouseInspectProject",
+    "description": "Inspect the current canonical house project and return solver, panel, joint and inward-material evidence.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string"
+        },
+        "render": {
+          "type": "string",
+          "enum": [
+            "NONE",
+            "ASSEMBLED",
+            "EXPLODED",
+            "BOTH"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "name": "HouseInspectProjectSelection",
+    "description": "Read the semantic point/panel selection shared by the Field Three.js design view and AI4.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  {
+    "name": "HouseMoveProjectPoints",
+    "description": "Move stable architectural vertices and recompute the nonlinear planar-quad constraints. With pointIds empty, this uses the vertex selected in the Field Three.js design view. The edit becomes an explicit strong PointAt constraint, so later solves preserve the person's move while satisfying the rest of the network.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string"
+        },
+        "expectedRevision": {
+          "type": "integer"
+        },
+        "pointIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "deltaMm": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "World-space x, y, z translation in millimetres."
+        },
+        "commit": {
+          "type": "boolean"
+        },
+        "render": {
+          "type": "string",
+          "enum": [
+            "NONE",
+            "ASSEMBLED",
+            "EXPLODED",
+            "BOTH"
+          ]
+        }
+      },
+      "required": [
+        "expectedRevision",
+        "deltaMm"
+      ]
+    }
+  },
+  {
+    "name": "HousePatchProjectElements",
+    "description": "Transactionally add, revise or remove stable-id windows, doors, sockets, electrical manifolds, taps and water manifolds on an existing arbitrary-quad house. Positions are anchored to host quad ids; uFraction survives later geometric solves while sizes and mounting heights remain physical millimetres. Inspect first, preview with commit=false and render=BOTH, and use the returned element-specific issue codes to repair placement.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string"
+        },
+        "expectedRevision": {
+          "type": "integer"
+        },
+        "upsertOpenings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "removeOpeningIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "upsertServiceNodes": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "removeServiceNodeIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "commit": {
+          "type": "boolean"
+        },
+        "render": {
+          "type": "string",
+          "enum": [
+            "NONE",
+            "ASSEMBLED",
+            "EXPLODED",
+            "BOTH"
+          ]
+        }
+      },
+      "required": [
+        "expectedRevision"
+      ]
+    }
+  },
+  {
+    "name": "HousePatchProjectGraph",
+    "description": "Transactionally patch a canonical house graph by stable IDs. Inspect first, then use this for careful incremental revisions: upsert or remove points and quads, update face-local interior witnesses, and optionally replace constraints, panel plan, global interior reference or intent. Omitted sections remain unchanged. Any geometry, constraint, topology or interior-side change invalidates derived edge/corner fabrication parameters and returns the project to DESIGN; recompute joints only after the new graph is clean. Use HouseReplaceProjectGraph for a new topology. Always preview with commit=false and render=BOTH before asking to commit.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string"
+        },
+        "expectedRevision": {
+          "type": "integer"
+        },
+        "intent": {
+          "type": "string"
+        },
+        "upsertPoints": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "removePointIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "upsertQuads": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "removeQuadIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "upsertInteriorWitnesses": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "removeInteriorWitnessPanelIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "replaceConstraints": {
+          "type": "boolean",
+          "description": "When true, constraints replaces the whole constraint list; otherwise constraints is ignored."
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "replacePanelPlan": {
+          "type": "boolean",
+          "description": "When true, panelPlan replaces the complete fabrication panel plan."
+        },
+        "panelPlan": {
+          "type": "object"
+        },
+        "replaceInteriorReference": {
+          "type": "boolean",
+          "description": "When true, interiorReferenceMm replaces the global fallback interior point."
+        },
+        "interiorReferenceMm": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "DESIGN",
+            "FABRICATION"
+          ],
+          "description": "Optionally promote a constraint-clean design to the full fabrication acceptance gate."
+        },
+        "commit": {
+          "type": "boolean"
+        },
+        "render": {
+          "type": "string",
+          "enum": [
+            "NONE",
+            "ASSEMBLED",
+            "EXPLODED",
+            "BOTH"
+          ]
+        }
+      },
+      "required": [
+        "expectedRevision"
+      ]
+    }
+  },
+  {
+    "name": "HousePatchProjectServiceLinks",
+    "description": "Transactionally add, revise or remove stable service links between named ports on project service nodes. Port indices are zero based. Preview performs the same whole-service physical routing and independent resolved-material acceptance used for fabrication. A commit is refused unless both topology and physical routing pass; the numerical centreline remains derived rather than canonical.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string"
+        },
+        "expectedRevision": {
+          "type": "integer"
+        },
+        "upsertLinks": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "removeLinkIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "minimumBendRadiusMm": {
+          "type": "number",
+          "description": "Minimum accepted centreline bend radius used by preview and commit."
+        },
+        "lengthWeight": {
+          "type": "number"
+        },
+        "totalCurvatureWeight": {
+          "type": "number"
+        },
+        "pullFrictionCoefficient": {
+          "type": "number"
+        },
+        "depthPreferenceWeight": {
+          "type": "number"
+        },
+        "commit": {
+          "type": "boolean"
+        },
+        "render": {
+          "type": "string",
+          "enum": [
+            "NONE",
+            "ASSEMBLED",
+            "EXPLODED",
+            "BOTH"
+          ]
+        }
+      },
+      "required": [
+        "expectedRevision"
+      ]
+    }
+  },
+  {
+    "name": "HousePlanFabricationProcess",
+    "description": "Build a side-explicit manufacturing process from the canonical project, using DecoI's useful stage vocabulary and Manifold to execute and volume-check the first real 3D conduit-cut material transition.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string"
+        },
+        "minimumBendRadiusMm": {
+          "type": "number"
+        },
+        "lengthWeight": {
+          "type": "number"
+        },
+        "totalCurvatureWeight": {
+          "type": "number"
+        },
+        "pullFrictionCoefficient": {
+          "type": "number"
+        },
+        "depthPreferenceWeight": {
+          "type": "number"
+        },
+        "innerSubdermalThicknessMm": {
+          "type": "number"
+        },
+        "subdermalPerimeterLapMm": {
+          "type": "number"
+        },
+        "selectedHostPaths": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "renderPanel": {
+          "type": "string",
+          "description": "Panel whose cumulative solids should be shown. Omit for the routed panel with the richest verified sequence."
+        }
+      }
+    }
+  },
+  {
+    "name": "HouseReplaceProjectGraph",
+    "description": "Transactionally replace the complete canonical house point/quad/constraint graph with agent-authored data. This is the general topology tool: it supports concave footprints, arbitrary wall loops and arbitrary quad roofs without writing Kotlin or selecting a canned generator. Use stable ids, millimetres, outward quad winding, face-local interior witnesses for concave shells, and expectedRevision for optimistic concurrency. Always preview with commit=false and render=BOTH, then commit the returned previewToken with HouseCommitProjectPreview rather than resending the graph. Make at most two full-replacement repair attempts in one conversation; if checks still fail, stop and report every issue code and element id. Use HousePatchProjectGraph after a clean graph has been committed.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string"
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "description": "Use 0 when the project must not already exist; otherwise use the inspected revision. Omit to replace regardless of revision."
+        },
+        "intent": {
+          "type": "string"
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "quads": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "openings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "serviceNodes": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "panelPlan": {
+          "type": "object"
+        },
+        "interiorReferenceMm": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Fallback x, y, z interior point in millimetres; face-local witnesses override it."
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "DESIGN",
+            "FABRICATION"
+          ]
+        },
+        "commit": {
+          "type": "boolean"
+        },
+        "render": {
+          "type": "string",
+          "enum": [
+            "NONE",
+            "ASSEMBLED",
+            "EXPLODED",
+            "BOTH"
+          ]
+        }
+      },
+      "required": [
+        "intent",
+        "points",
+        "quads",
+        "interiorReferenceMm"
+      ]
+    }
+  },
+  {
+    "name": "HouseRouteProjectServices",
+    "description": "Route every committed project service link through the solved level-2 panels, including true 3D transitions between walls, floors and roofs, then relax the centrelines in panel depth. Returns independently checked assembled and exploded images; it never changes the canonical project.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string"
+        },
+        "minimumBendRadiusMm": {
+          "type": "number",
+          "description": "Minimum accepted centreline bend radius in millimetres."
+        },
+        "lengthWeight": {
+          "type": "number",
+          "description": "Weight of developed length; larger values prefer shorter routes."
+        },
+        "totalCurvatureWeight": {
+          "type": "number",
+          "description": "Weight of total 3D curvature; larger values spend length/depth on easier pulls."
+        },
+        "pullFrictionCoefficient": {
+          "type": "number"
+        },
+        "depthPreferenceWeight": {
+          "type": "number"
+        },
+        "selectedHostPaths": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "description": "Optional explicit host sequences chosen from HouseEnumerateProjectServiceRouteAlternatives. Omitted links retain automatic search."
+        },
+        "render": {
+          "type": "string",
+          "enum": [
+            "NONE",
+            "ASSEMBLED",
+            "EXPLODED",
+            "BOTH"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "name": "HouseSelectProjectElements",
+    "description": "Set semantic architectural selection explicitly by stable ids; useful for testing or exact references.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string"
+        },
+        "pointIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "panelIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "HouseSetProjectPanelThickness",
+    "description": "Set physical thickness on named or selected design panels while retaining their shared datum-face topology. If panelIds is empty, the panel selected in the Field Three.js design view is used.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string"
+        },
+        "expectedRevision": {
+          "type": "integer"
+        },
+        "panelIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "thicknessMm": {
+          "type": "number"
+        },
+        "thickenTowards": {
+          "type": "string",
+          "enum": [
+            "A",
+            "B"
+          ]
+        },
+        "commit": {
+          "type": "boolean"
+        },
+        "render": {
+          "type": "string",
+          "enum": [
+            "NONE",
+            "ASSEMBLED",
+            "EXPLODED",
+            "BOTH"
+          ]
+        }
+      },
+      "required": [
+        "expectedRevision",
+        "thicknessMm"
+      ]
+    }
+  },
+  {
+    "name": "HouseStartRectangularPanel",
+    "description": "Start a new canonical house conversation with exactly one rectangular quadrilateral panel. This is design intent, not a canned house. Preview first; the result includes two rendered inspections and a token for HouseCommitProjectPreview. All dimensions are millimetres. When role is ROOF and the person has not specified an elevation, keep the realistic 3000 mm default rather than placing the roof on the ground.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string"
+        },
+        "panelId": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "WALL",
+            "FLOOR",
+            "CEILING",
+            "ROOF"
+          ]
+        },
+        "lengthMm": {
+          "type": "number"
+        },
+        "widthMm": {
+          "type": "number"
+        },
+        "elevationMm": {
+          "type": "number"
+        },
+        "thicknessMm": {
+          "type": "number",
+          "description": "Use a visually thin positive value until the user asks to thicken the panel."
+        },
+        "intent": {
+          "type": "string"
+        },
+        "expectedRevision": {
+          "type": "integer"
+        },
+        "commit": {
+          "type": "boolean"
+        },
+        "render": {
+          "type": "string",
+          "enum": [
+            "NONE",
+            "ASSEMBLED",
+            "EXPLODED",
+            "BOTH"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "name": "HouseSubdivideProjectPanel",
+    "description": "Split one existing design quad into equal, topologically connected quad strips. New strips share stable seam vertices; moving a seam later therefore keeps adjacent panels touching. AUTO_LONG divides the panel's longer dimension into equal sections (for a 10 m by 5 m rectangle this makes three 3.33 m by 5 m pieces). Any later wall run on this boundary must reuse the same seam vertices; staggering them would introduce unsupported T-junctions. Preview before commit.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string"
+        },
+        "expectedRevision": {
+          "type": "integer"
+        },
+        "panelId": {
+          "type": "string"
+        },
+        "divisions": {
+          "type": "integer"
+        },
+        "stripDirection": {
+          "type": "string",
+          "enum": [
+            "AUTO_LONG",
+            "ALONG_EDGE_01",
+            "ALONG_EDGE_03"
+          ]
+        },
+        "commit": {
+          "type": "boolean"
+        },
+        "render": {
+          "type": "string",
+          "enum": [
+            "NONE",
+            "ASSEMBLED",
+            "EXPLODED",
+            "BOTH"
+          ]
+        }
+      },
+      "required": [
+        "expectedRevision",
+        "panelId"
+      ]
+    }
+  },
+  {
+    "name": "HouseUndoProject",
+    "description": "Undo the last committed canonical house-project transaction and persist the restored revision.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string"
+        },
+        "render": {
+          "type": "string",
+          "enum": [
+            "NONE",
+            "ASSEMBLED",
+            "EXPLODED",
+            "BOTH"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "name": "MacroListRequest",
+    "description": "List saved operation-transcript macros available to the current Field document. Use this before running a macro when the user names one imprecisely or asks what macros exist.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "MacroReadRequest",
+    "description": "Read a saved operation-transcript macro YAML file by name. Read before editing a macro, and usually read before running when target mapping or expected effects matter.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    }
+  },
+  {
+    "name": "MacroRunRequest",
+    "description": "Run or undo a saved operation-transcript macro. Use direction=do to replay it and direction=undo to run it backwards. targetBoxes may contain box uids or names; when set, the macro's first recorded source box is remapped to each target box, which is the normal way to do a recorded macro to the current/selected box. Empty targetBoxes replays the recorded uids literally. Inspect applied/skipped/errors; if applied=0 or errors are returned, do not repeat the identical request. If a normal run reports operation errors in chat, Field will attempt an automatic undo and return the undo result; inspect that result and ask before retrying.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "direction": {
+          "type": "string"
+        },
+        "targetBoxes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "strict": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    }
+  },
+  {
+    "name": "MacroWriteRequest",
+    "description": "Create or replace a saved operation-transcript macro YAML file in the current Field document. Content should be YAML with an operations list. Use this to save a user-requested new/edited macro; do not rewrite an existing macro just to run it.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "content"
+      ]
+    }
+  },
+  {
+    "name": "ScratchpadReadRequest",
+    "description": "Read the persistent scratchpad for this chat. Use it to recover durable notes, decisions, constraints, and handoff context from earlier turns.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "ScratchpadUpdateRequest",
+    "description": "Update the persistent scratchpad for this chat. Use append to add durable notes, replace to rewrite the whole scratchpad, or clear to erase it.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  {
+    "name": "SemanticRetrievalRebuildRequest",
+    "description": "Rebuild Field's native Lucene semantic retrieval index from current source-index declarations and documentation sections. Use sparingly; normal searches rebuild automatically if the index is missing.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "SemanticRetrievalSearchRequest",
+    "description": "Search Field's native Lucene semantic retrieval index across Field internals, current workspace code, and documentation. This is natural-language to code/docs retrieval, not compiler resolution. Set corpus for one corpus, or corpora for combinations. Available corpora are field-internals, workspace, and documentation. Leave both blank to search all corpora. Use documentName with corpus/workspace to search a specific current workspace document. Results include BM25/symbol/vector ranks when available; vector search is active only when the local ONNX embedder is configured.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "corpus": {
+          "type": "string"
+        },
+        "corpora": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "pathPrefix": {
+          "type": "string"
+        },
+        "kinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "documentName": {
+          "type": "string"
+        },
+        "boxId": {
+          "type": "string"
+        },
+        "property": {
+          "type": "string"
+        },
+        "includeCapsule": {
+          "type": "boolean"
+        },
+        "includeSource": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "query"
+      ]
+    }
+  },
+  {
+    "name": "SemanticRetrievalStatusRequest",
+    "description": "Return status for Field's native Lucene semantic retrieval index, including capsule backend, ONNX/vector availability, and available corpora for SemanticRetrievalSearchRequest.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    }
+  }
+]

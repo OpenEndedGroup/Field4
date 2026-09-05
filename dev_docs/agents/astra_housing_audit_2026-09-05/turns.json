@@ -1,0 +1,26 @@
+[
+  {
+    "turn": 1,
+    "prompt": "Work only on canonical project astra-design using the house project tools. Start with one roof panel, 10000 by 5000 mm, at 3000 mm elevation, 5 mm thick. Preview with BOTH views, inspect the returned images, then commit that exact preview. Describe what is visible and the revision. Do only this edit: no walls, services, joints or code edits.",
+    "elapsedSeconds": 25.138727874989854,
+    "error": null
+  },
+  {
+    "turn": 2,
+    "prompt": "Divide that roof into three equal shared-topology strips along its long dimension. Preview, inspect both images and commit the exact token. Keep the outer dimensions and elevation. Do only this edit.",
+    "elapsedSeconds": 27.325278833974153,
+    "error": null
+  },
+  {
+    "turn": 3,
+    "prompt": "Raise the middle strip by 300 mm while keeping all panels connected and every physical face planar. Preserve the four outer corners. Use stable seam point IDs and explicit constraints. Preview, inspect and commit if the independent checks pass. Do only this edit.",
+    "elapsedSeconds": 46.20517916700919,
+    "error": null
+  },
+  {
+    "turn": 4,
+    "prompt": "Make only those three roof panels 240 mm thick towards side B while preserving the datum geometry and prior constraints. Preview both opposing views and check the physical faces and contact. Commit if valid. Select the middle panel, and tell me the revision and what is still unverified. Do not add anything else.",
+    "elapsedSeconds": 48.66443216599873,
+    "error": null
+  }
+]

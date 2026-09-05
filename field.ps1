@@ -259,8 +259,17 @@ Builds Field, then launches the backend and the Electron window together.
   -d, --document <name>    open this document straight away instead of the
                            welcome page, and instead of whatever was open last
   --document=<name>        the same again
+  --read-only              open documents without writing back to them
   --print-workspace        print the workspace this launch would use, then exit
   -h, --help               show this message
+
+Use --read-only for a document that lives inside a repository. Opening one
+normally writes into its folder - Field saves the editor's cursor position, the
+box frames, a backup, history metrics, an operation transcript and a screenshot
+- which turns the folder dirty in git just from looking at the document. With
+--read-only Field loads it, runs it, and never writes back:
+
+  .\field.ps1 dev_docs\agents\demos\midi_clip --read-only
 
 A single document works too - a folder holding a metadata.edn, or that file
 itself. Either as the workspace argument or after -d, that names the document to
@@ -334,6 +343,7 @@ function Resolve-FieldWorkspaceRequest {
 $workspaceRequested = ""
 $documentRequested = ""
 $printWorkspace = $false
+$readOnlyRequested = $false
 $passthroughSeen = $false
 $backendArgs = @()
 
@@ -364,6 +374,15 @@ while ($argIndex -lt $args.Count) {
         $argIndex += 1
     } elseif ($arg.StartsWith("--document=")) {
         $documentRequested = $arg.Substring("--document=".Length)
+    } elseif ($arg -eq "--read-only") {
+        # The StartsWith("-") passthrough below already carried this to the backend, so the flag
+        # worked before this arm existed. Two reasons it is spelled out anyway. The banner: a
+        # Field that silently refuses to save is alarming if unannounced. And the passthrough sets
+        # $passthroughSeen, which stops a *later* bare path being read as the workspace - so
+        # `--read-only <path>` reached the backend with the path as an argument, where field.sh
+        # resolves it. field.sh's own arm has a third reason with no counterpart here: it has to
+        # survive run_in_terminal's re-exec, and this launcher has no relaunch path.
+        $readOnlyRequested = $true
     } elseif ($arg.StartsWith("-")) {
         $backendArgs += $arg
         $passthroughSeen = $true
@@ -469,6 +488,10 @@ Write-FieldNote "field: workspace $fieldWorkspace ($workspaceOrigin)"
 if ($fieldDocument -ne "") {
     Write-FieldNote "field: document $fieldDocument - opening it directly, not the welcome page"
     $backendArgs += @("--document", $fieldDocument)
+}
+if ($readOnlyRequested) {
+    Write-FieldNote "field: read-only - nothing this session does will be written back to disk"
+    $backendArgs += "--read-only"
 }
 
 Write-Host "===================================" -ForegroundColor Cyan

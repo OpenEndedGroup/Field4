@@ -1,0 +1,17 @@
+{
+  "revision4": true,
+  "threePanelsEightPoints": true,
+  "allThickness240TowardsB": true,
+  "fourOuterCornersUnmoved": true,
+  "fourSeamPointsRaised300": true,
+  "eightPointConstraints": true,
+  "onlyRequestedRoof": true,
+  "designNotFabrication": true,
+  "noDesignIssues": true,
+  "canonicalSurvivesRestart": true,
+  "originalFourUserTurnsVisible": true,
+  "twentyTwoImagesReopened": true,
+  "visibleHistoryUnchanged": true,
+  "selectionSurvivesRestart": true,
+  "staleEditRejectedAtomically": true
+}

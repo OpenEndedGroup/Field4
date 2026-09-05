@@ -1,0 +1,35 @@
+{
+  "stale": {
+    "name": "HouseSetProjectPanelThickness",
+    "ok": true,
+    "result": {
+      "ok": false,
+      "committed": false,
+      "message": "Rejected project edit for 'astra-design'; expected revision 3, found 4.",
+      "project": "astra-design",
+      "revision": 4,
+      "readyForFabrication": false,
+      "canonicalJson": "{\n  \"id\": \"astra-design\",\n  \"name\": \"astra-design\",\n  \"revision\": 4,\n  \"intent\": \"One rectangular roof panel, 10000 by 5000 mm, at elevation 3000 mm, 5 mm thick; no other elements.\",\n  \"interiorReference\": [\n    0.0,\n    0.0,\n    2000.0\n  ],\n  \"interiorReferencesByPanel\": {},\n  \"openings\": [],\n  \"serviceNodes\": [],\n  \"serviceLinks\": [],\n  \"edgeFabricationParameters\": [],\n  \"cornerFabricationParameters\": [],\n  \"stage\": \"DESIGN\",\n  \"envelope\": {\n    \"points\": [\n      {\n        \"id\": \"roof-1-p0\",\n        \"position\": [\n          -5000.0,\n          -2500.0,\n          3000.0\n        ],\n        \"guide\": false\n      },\n      {\n        \"id\": \"roof-1-p1\",\n        \"position\": [\n          5000.0,\n          -2500.0,\n          3000.0\n        ],\n        \"guide\": false\n      },\n      {\n        \"id\": \"roof-1-p2\",\n        \"position\": [\n          5000.0,\n          2500.0,\n          3000.0\n        ],\n        \"guide\": false\n      },\n      {\n        \"id\": \"roof-1-p3\",\n        \"position\": [\n          -5000.0,\n          2500.0,\n          3000.0\n        ],\n        \"guide\": false\n      },\n      {\n        \"id\": \"roof-1-seam-1-a\",\n        \"position\": [\n          -1666.666666666667,\n          -2500.0,\n          3300.0\n        ],\n        \"guide\": false\n      },\n      {\n        \"id\": \"roof-1-seam-1-b\",\n        \"position\": [\n          -1666.666666666667,\n          2500.0,\n          3300.0\n        ],\n        \"guide\": false\n      },\n      {\n        \"id\": \"roof-1-seam-2-a\",\n        \"position\": [\n          1666.6666666666663,\n          -2500.0,\n          3300.0\n        ],\n        \"guide\": false\n      },\n      {\n        \"id\": \"roof-1-seam-2-b\",\n        \"position\": [\n          1666.6666666666663,\n          2500.0,\n          3300.0\n        ],\n        \"guide\": false\n      }\n    ],\n    \"panels\": [\n      {\n        \"id\": \"roof-1-1\",\n        \"corners\": [\n          \"roof-1-p0\",\n          \"roof-1-seam-1-a\",\n          \"roof-1-seam-1-b\",\n          \"roof-1-p3\"\n        ],\n        \"thickness\": 240.0,\n        \"role\": \"ROOF\",\n        \"tags\": [\n          \"design\"\n        ],\n        \"thickenTowards\": \"B\"\n      },\n      {\n        \"id\": \"roof-1-2\",\n        \"corners\": [\n          \"roof-1-seam-1-a\",\n          \"roof-1-seam-2-a\",\n          \"roof-1-seam-2-b\",\n          \"roof-1-seam-1-b\"\n        ],\n        \"thickness\": 240.0,\n        \"role\": \"ROOF\",\n        \"tags\": [\n          \"design\"\n        ],\n        \"thickenTowards\": \"B\"\n      },\n      {\n        \"id\": \"roof-1-3\",\n        \"corners\": [\n          \"roof-1-seam-2-a\",\n          \"roof-1-p1\",\n          \"roof-1-p2\",\n          \"roof-1-seam-2-b\"\n        ],\n        \"thickness\": 240.0,\n        \"role\": \"ROOF\",\n        \"tags\": [\n          \"design\"\n        ],\n        \"thickenTowards\": \"B\"\n      }\n    ],\n    \"constraints\": [\n      {\n        \"type\": \"pointAt\",\n        \"point\": \"roof-1-p0\",\n        \"target\": [\n          -5000.0,\n          -2500.0,\n          3000.0\n        ],\n        \"axes\": \"XYZ\",\n        \"weight\": 1000.0\n      },\n      {\n        \"type\": \"pointAt\",\n        \"point\": \"roof-1-p1\",\n        \"target\": [\n          5000.0,\n          -2500.0,\n          3000.0\n        ],\n        \"axes\": \"XYZ\",\n        \"weight\": 1000.0\n      },\n      {\n        \"type\": \"pointAt\",\n        \"point\": \"roof-1-p2\",\n        \"target\": [\n          5000.0,\n          2500.0,\n          3000.0\n        ],\n        \"axes\": \"XYZ\",\n        \"weight\": 1000.0\n      },\n      {\n        \"type\": \"pointAt\",\n        \"point\": \"roof-1-p3\",\n        \"target\": [\n          -5000.0,\n          2500.0,\n          3000.0\n        ],\n        \"axes\": \"XYZ\",\n        \"weight\": 1000.0\n      },\n      {\n        \"type\": \"pointAt\",\n        \"point\": \"roof-1-seam-1-a\",\n        \"target\": [\n          -1666.666666666667,\n          -2500.0,\n          3300.0\n        ],\n        \"axes\": \"XYZ\",\n        \"weight\": 1000.0\n      },\n      {\n        \"type\": \"pointAt\",\n        \"point\": \"roof-1-seam-1-b\",\n        \"target\": [\n          -1666.666666666667,\n          2500.0,\n          3300.0\n        ],\n        \"axes\": \"XYZ\",\n        \"weight\": 1000.0\n      },\n      {\n        \"type\": \"pointAt\",\n        \"point\": \"roof-1-seam-2-a\",\n        \"target\": [\n          1666.6666666666663,\n          -2500.0,\n          3300.0\n        ],\n        \"axes\": \"XYZ\",\n        \"weight\": 1000.0\n      },\n      {\n        \"type\": \"pointAt\",\n        \"point\": \"roof-1-seam-2-b\",\n        \"target\": [\n          1666.6666666666663,\n          2500.0,\n          3300.0\n        ],\n        \"axes\": \"XYZ\",\n        \"weight\": 1000.0\n      }\n    ]\n  },\n  \"panelPlan\": {\n    \"stockWidthMm\": 2000.0,\n    \"stockLengthMm\": 10000.0,\n    \"minSizeMm\": 900.0,\n    \"preferredGridMm\": 0.0,\n    \"motherboardGapMm\": 20.0,\n    \"motherboardEdgeMarginMm\": 0.0,\n    \"explosionMm\": 700.0,\n    \"coplanarSeparationMm\": 90.0,\n    \"countsBySource\": {}\n  }\n}",
+      "issues": [
+        {
+          "severity": "ERROR",
+          "code": "project-revision-conflict",
+          "message": "Expected revision 3, found 4.",
+          "elementId": null,
+          "measured": null
+        }
+      ],
+      "measurements": [],
+      "hostedPointMeasurements": [],
+      "panelShapeMeasurements": [],
+      "undoDepth": 0,
+      "previewToken": null
+    }
+  },
+  "undoAfterRestart": {
+    "name": "HouseUndoProject",
+    "ok": false,
+    "error": "House project 'astra-design' has no committed revision to undo."
+  },
+  "unchanged": true
+}

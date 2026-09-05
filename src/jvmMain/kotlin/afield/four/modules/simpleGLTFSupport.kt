@@ -175,18 +175,50 @@ object GltfSupport {
          * Set by the loader's node walk; `null` only for an instance built some other way, in which case
          * `bindPose.toMatrix()` is all there is. [afield.four.modules.assimpToTriMesh] prefers this.
          *
-         * The GPU paths are untouched here on purpose — changing a renderer's model matrix needs its
-         * committed captures re-verified — and they are wrong in two different ways. `FabricateScene`
-         * and `StandardRendererDocsHarness` read [bindPose] and so still carry the flattening.
-         * `applyToMesh` does not read either: it pushes only `modelView` and `proj` from the camera, so
-         * it drops every node transform, not just the mirror.
+         * The GPU paths read this too, as of 2026-09-05. `FabricateScene.importGltf` and
+         * `StandardRendererDocsHarness.gltfWorldBounds` prefer it over [bindPose]; [applyToMesh]
+         * defaults its `model` argument to it, having previously pushed only `modelView` and `proj`
+         * from the camera and so dropped *every* node transform rather than only the mirror.
+         *
+         * Two things deliberately *not* done there, both because they would be wrong or dead:
+         *
+         *  - **No winding reversal.** A reflection reverses triangle winding, which is why
+         *    [afield.four.modules.assimpToTriMesh] swaps two corners. On the GPU it does not matter:
+         *    every Field pipeline sets `VK_CULL_MODE_NONE` (`four/modules/MeshModule.kt`,
+         *    `four/modules/Module.kt`), so no face is ever culled for facing. A reflection is
+         *    orthogonal, so it is also its own inverse transpose and the transformed normal still
+         *    points outward. Reversing the winding here would be dead code until something starts
+         *    culling — see `afield.graphics.TessellationFacingRenderTest` for the same observation.
+         *  - **Normals are still `mat3(modelView) * n`, not the inverse transpose**, in both the
+         *    bundled glTF shader and `standardRenderer.kt`'s g-buffer. Exact for a rigid or
+         *    uniformly-scaled node (ToyCar's `1e-4`) and for a mirror; skewed for a *non-uniformly*
+         *    scaled one. That was unreachable while the model matrix was dropped and is reachable
+         *    now, but fixing it needs a new field in a push-constant block that is already 176 bytes.
          */
         var bindMatrix: Matrix4f? = null
 
-        fun applyToMesh(m: Mesh, camera: Camera = fromContext()) {
+        /**
+         * Upload this instance's buffers and set the push constants the bundled shaders expect.
+         *
+         * @param model the model matrix, composed into `modelView` as `view * model`. The default is
+         *   this instance's own node transform — [bindMatrix] when the loader recorded it, falling
+         *   back to `bindPose.toMatrix()` — so a multi-node file assembles where its nodes put it
+         *   instead of heaping every part at the origin. Pass `Matrix4f()` for the model-space draw
+         *   this used to do unconditionally, or your own matrix to place the part yourself.
+         *
+         *   `modelView` is a **push constant**, so a box that writes it again per frame (`loop {
+         *   module.VertexData.modelView = camera.m() }`) overwrites this and gets the origin back.
+         *   Compose the model matrix in there too if you drive the camera that way.
+         */
+        fun applyToMesh(
+            m: Mesh,
+            camera: Camera = fromContext(),
+            model: Matrix4f = bindMatrix ?: bindPose.toMatrix(),
+        ) {
 
             m.initializePushConstantsFromModule(m.inside)
-            m.push["modelView"] = camera.m()
+            // view * model, which is what the shader's `mat4 modelView` has always claimed to be.
+            m.push["modelView"] = camera.m().mul(model)
             m.push["proj"] = camera.p()
             m.push["vertexOffset"] = 0
             m.push["indexOffset"] = 0

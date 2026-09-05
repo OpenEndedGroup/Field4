@@ -142,7 +142,7 @@ triangle instanced by an identity node, a translated node, a *child* of that tra
 | animation | **dropped.** The bind pose is baked; node TRS tracks and skinning are not read. |
 | a Y-up / Z-up disagreement | **nothing.** glTF is Y-up by specification and no axis conversion is applied, so a Z-up PLY or OBJ arrives on its side. `rotated(...)` is yours to apply. |
 
-!!! warning "The bug that scene caught, which is still live on the GPU paths"
+!!! warning "The bug that scene caught, and the second one hiding behind it"
 
     `GltfSupport.MeshInstance.bindPose` is a *translation / rotation / scale* triple, and a mirror does
     not fit in one — `Matrix4f.getScale` is `sqrt(...)` per basis column, so it is never negative.
@@ -155,15 +155,32 @@ triangle instanced by an identity node, a translated node, a *child* of that tra
     (`MeshInstance.bindMatrix`) and read *that*, which `assimpToTriMesh` now does; the test fails if it
     stops.
 
-    **The GPU paths have not been fixed, and they fail in two different ways.**
-    `FabricateScene.importGltf` and `StandardRendererDocsHarness.gltfWorldBounds` call
-    `bindPose.toMatrix()`, so a mirrored node is still *flattened* there — the same defect, one line from
-    a fix (`instance.bindMatrix ?: instance.bindPose.toMatrix()`). `PlyModel.applyToMesh`/the glTF
-    `applyToMesh` are worse and differently wrong: they set `modelView` and `proj` from the camera and
-    apply **no model matrix at all**, so they drop every node transform, not just the mirror — a scene
-    whose parts are positioned by their nodes draws them all at the origin. Stated rather than fixed:
-    changing a renderer's model matrix needs its committed captures re-verified, which is a separate
-    change.
+    The GPU paths read `bindMatrix` too, as of 2026-09-05, and getting there turned up something worth
+    knowing. On `FabricateScene.importGltf` the obvious one-line change —
+    `instance.bindMatrix ?: instance.bindPose.toMatrix()` — **does not work**, and does not fail
+    loudly either: it still puts that vertex at `x = -2`. `FabricateTransform` is *itself* a
+    position/rotation/scale triple, and `FabricateTransform.set(Matrix4f)` decomposes with the same
+    `sqrt` `getScale`, so handing the scene graph the true matrix re-flattened it one line later. The
+    same shape of bug, one layer down, reached by fixing the layer above it. `FabricateTransform` now
+    checks whether its own decomposition reproduces the matrix it was given and keeps the original
+    when it does not, so a mirror or a shear survives and every transform that really is a TRS
+    composes exactly as before. Both halves have their own assertion, and each fails on its own.
+
+    `applyToMesh` on both `PlyModel` and `MeshInstance` was wrong differently: it set `modelView` and
+    `proj` from the camera and applied **no model matrix at all**, so a glTF scene positioned by its
+    nodes drew every part at the origin. The glTF one now defaults to the instance's own node
+    transform. PLY needs no equivalent — it has no scene graph, so there was never a node transform
+    there to drop — but it takes an optional `model` matrix now, so the shader's `mat4 modelView` can
+    be the `view * model` it has always been commented as.
+
+    Two things deliberately left alone. **Winding is not reversed** for a negative-determinant
+    instance on the GPU: every Field pipeline sets `VK_CULL_MODE_NONE`, so nothing is ever culled for
+    facing, and a reflection is orthogonal and therefore its own inverse transpose, so the
+    transformed normal still points outward. `assimpToTriMesh` swaps corners because a `TriMesh` goes
+    on to renderers that *do* cull. And **normals are still `mat3(modelView) * n`** rather than the
+    inverse transpose, which is exact for a rigid, uniformly-scaled or mirrored node and skewed for a
+    non-uniformly scaled one — reachable only now that the model matrix is applied, and a
+    push-constant change rather than a one-liner.
 
 ## Writing a file and reading it back
 
