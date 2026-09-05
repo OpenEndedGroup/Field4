@@ -42,6 +42,17 @@ the seam instead: the `option("document")` the launcher's argv feeds, and `/app-
 launcher curls to decide the Electron window's URL) preferring it over both the welcome page and
 the last-opened document.
 
+`--read-only` (commit 8cabbf40e) is the third rider on that parser, and it is the one with a `case`
+arm it did not need: an unrecognised `-*` would already have been forwarded to the backend. It has
+an arm because two things downstream read the variable it sets — the launch banner, and the inner
+command line `run_in_terminal` rebuilds from `WORKSPACE_RELAUNCH_ARGS` rather than from `"$@"`.
+`test_read_only_reaches_the_backend_in_every_spelling` covers the argv, including the consequence
+of that arm (it does not set `passthrough_seen`, so a bare workspace *after* the flag is still the
+workspace); `test_read_only_survives_the_terminal_relaunch` drives the re-exec, which is the path
+that had already dropped the workspace once. The backend's half —
+`test_premise_the_backend_refuses_to_save_when_launched_read_only` — is the `flag("read-only")` the
+argv feeds and the refusal at the `SavingContext.save` funnel it turns into.
+
 Two invariants beyond the individual cases:
 
   * `test_every_launcher_option_is_covered_by_the_ledger` is bidirectional. It parses the option
@@ -75,6 +86,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 FIELD_SH = REPO_ROOT / "field.sh"
 FIELD_PS1 = REPO_ROOT / "field.ps1"
 SERVER_KT = REPO_ROOT / "src" / "jvmMain" / "kotlin" / "afield" / "Server.kt"
+SAVING_KT = REPO_ROOT / "src" / "jvmMain" / "kotlin" / "afield" / "saving.kt"
 
 # The shells `field.sh` has to satisfy. `#!/bin/sh` names the first; AGENTS.md and README.md hand
 # the command to humans, whose interactive shell is bash or zsh on the machines this ships to; dash
@@ -147,6 +159,13 @@ class FieldShSandbox:
         self.plain_directory = self.workspace / "notADocument"
         self.invoked_from = root / "cwd"
         self.argv_file = root / "argv.txt"
+        # The terminal-relaunch path, off unless a case asks for it. `run_in_terminal` only
+        # reaches WORKSPACE_RELAUNCH_ARGS when one of the four X11 emulators it looks for is on
+        # PATH, and none of them exists on macOS — so the cases that want the direct fallback
+        # get PATH as it is, and the one that wants the re-exec passes terminal_on_path=True.
+        self.terminal_bin = root / "fake-terminal"
+        self.terminal_argv_file = root / "terminal-argv.txt"
+        self.relaunch_output_file = root / "relaunch-output.txt"
 
         for directory in (
             self.checkout,
@@ -186,6 +205,26 @@ class FieldShSandbox:
         (launch / "java").write_text(f"{fake_java}\n")
         (launch / "args").write_text("-Dstub=1\n")
 
+        # gnome-terminal is the first emulator run_in_terminal looks for, so this one wins even
+        # on a machine that has a real emulator installed. It records the argv it was handed and
+        # then runs the inner command, as the real emulator would: WORKSPACE_RELAUNCH_ARGS is a
+        # *string* that a second shell re-splits, so running it is the only way to find out that
+        # a workspace path is single-quoted in it and a bare flag is not.
+        self.terminal_bin.mkdir(parents=True, exist_ok=True)
+        emulator = self.terminal_bin / "gnome-terminal"
+        emulator.write_text(
+            "#!/bin/sh\n"
+            f'for a in "$@"; do printf "%s\\n" "$a"; done > "{self.terminal_argv_file}"\n'
+            # `gnome-terminal -- bash -c <command>`, so the command is $4.
+            'if [ "$3" = "-c" ]; then\n'
+            f'    bash -c "$4" </dev/null > "{self.relaunch_output_file}" 2>&1\n'
+            "fi\n"
+            # The real one returns as soon as the window is up; the trailing `read` in the
+            # command it is handed would otherwise decide this script's exit status.
+            "exit 0\n"
+        )
+        emulator.chmod(0o755)
+
     @property
     def preference_file(self) -> Path:
         return self.home / ".afield" / "last-workspace.txt"
@@ -195,10 +234,14 @@ class FieldShSandbox:
         shell: str,
         *args: str,
         no_terminal: bool = True,
+        terminal_on_path: bool = False,
         extra_env: dict[str, str] | None = None,
     ) -> subprocess.CompletedProcess:
+        path = os.environ.get("PATH", "/usr/bin:/bin")
+        if terminal_on_path:
+            path = f"{self.terminal_bin}{os.pathsep}{path}"
         environment = {
-            "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+            "PATH": path,
             "HOME": str(self.home),
             "AFIELD_SKIP_BUILD": "1",
             "AFIELD_SKIP_TOOLCHAIN_PROVISION": "1",
@@ -207,8 +250,9 @@ class FieldShSandbox:
         if no_terminal:
             environment["AFIELD_FIELD_SH_NO_TERMINAL"] = "1"
         environment.update(extra_env or {})
-        if self.argv_file.exists():
-            self.argv_file.unlink()
+        for stale in (self.argv_file, self.terminal_argv_file, self.relaunch_output_file):
+            if stale.exists():
+                stale.unlink()
         return subprocess.run(
             [shell, str(self.checkout / "field.sh"), *args],
             cwd=self.invoked_from,
@@ -226,6 +270,19 @@ class FieldShSandbox:
         argv = self.argv_file.read_text().splitlines()
         assert argv and argv[0].startswith("@"), f"unexpected first backend argument: {argv[:1]}"
         return argv[1:]
+
+    def relaunch_command(self) -> str:
+        """The command line the fake terminal emulator was handed, or "" if it never ran."""
+        if not self.terminal_argv_file.exists():
+            return ""
+        argv = self.terminal_argv_file.read_text().splitlines()
+        return argv[-1] if argv else ""
+
+    def relaunch_output(self) -> str:
+        """Everything the re-exec inside the fake terminal printed — for diagnosing a failure."""
+        if not self.relaunch_output_file.exists():
+            return ""
+        return self.relaunch_output_file.read_text()
 
 
 class FieldShLauncherTests(unittest.TestCase):
@@ -294,6 +351,30 @@ class FieldShLauncherTests(unittest.TestCase):
             route.group(1),
             "/app-url no longer consults the document named on the command line, so the Electron "
             "window opens the welcome page (or the last document) whatever field.sh forwards",
+        )
+
+    def test_premise_the_backend_refuses_to_save_when_launched_read_only(self) -> None:
+        """Same shape as the premise above, for the other flag whose whole point is downstream of
+        the argv this module can see. `ReadOnlyDocuments.global` is what reads the flag, and the
+        check inside `SavingContext.save` is where reading it stops a write: that function is the
+        funnel all eight save call sites go through, two of which (`Ai4AutoBoxNamer`,
+        `FileWatchManager`) never pass the interactive loop's own gate. Both halves have to stay:
+        the launcher announces on stderr that nothing will be written back, so a backend that
+        accepts the flag and saves anyway is a launch that told the user the opposite of what
+        happened."""
+        server = SERVER_KT.read_text()
+        self.assertIn(
+            'flag("read-only")',
+            server,
+            "Server.kt no longer parses --read-only, so every --read-only field.sh forwards is "
+            "ignored — and the launcher still says nothing will be written back to disk",
+        )
+        saving = SAVING_KT.read_text()
+        self.assertIn(
+            "ReadOnlyDocuments.blocksWritesTo(fn)",
+            saving,
+            "SavingContext.save no longer consults ReadOnlyDocuments, so a read-only launch can "
+            "still write back to the document it opened",
         )
 
     def test_the_powershell_launcher_declares_the_same_options(self) -> None:
@@ -583,6 +664,118 @@ class FieldShLauncherTests(unittest.TestCase):
                 )
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(result.stdout.strip(), str(sandbox.workspace))
+
+    # --- the read-only flag ---------------------------------------------------------------------
+
+    def test_read_only_reaches_the_backend_in_every_spelling(self) -> None:
+        """`--read-only` needs no `case` arm to reach the backend — the `-*` catch-all forwards any
+        unrecognised flag — so the arm it has is there for the banner and the relaunch, and it
+        changes the parse in one visible way: it consumes the argument without setting
+        `passthrough_seen`, so a bare workspace *after* the flag is still read as the workspace.
+        Delete the arm and the flag arrives ahead of everything the launcher appends rather than
+        after it — and, in the case where it is typed first, the workspace stops being appended at
+        all, because the bare path following a forwarded flag is read as that flag's value.
+        """
+        sandbox = self.sandbox
+        workspace = str(sandbox.workspace)
+        opened = ["--workspace", workspace, "--read-only"]
+        document = ["--workspace", workspace, "--document", "docA", "--read-only"]
+        cases = {
+            "after a bare workspace": ([workspace, "--read-only"], opened),
+            # The case the `-*` catch-all would get wrong: forwarded rather than consumed, this
+            # would set passthrough_seen and the workspace would go to the backend as a bare word.
+            "before a bare workspace": (["--read-only", workspace], opened),
+            "-w spelling": (["-w", workspace, "--read-only"], opened),
+            "--workspace spelling": (["--workspace", workspace, "--read-only"], opened),
+            "--workspace= spelling": ([f"--workspace={workspace}", "--read-only"], opened),
+            # No workspace named at all: the backend reads the same preference file this did, so
+            # nothing but the flag is appended.
+            "on its own": (["--read-only"], ["--read-only"]),
+            # The spelling `--help` hands out, for a document that lives inside a repository.
+            "a bare path to a document": ([str(sandbox.document), "--read-only"], document),
+            "alongside -d": ([workspace, "-d", "docA", "--read-only"], document),
+            # Appended last, after the pushed backend arguments and after --workspace.
+            "alongside backend arguments": (
+                ["--port", "1234", "--read-only", "-w", workspace],
+                ["--port", "1234", "--workspace", workspace, "--read-only"],
+            ),
+        }
+        for shell_name, shell in _resolved_shells().items():
+            for label, (arguments, expected) in cases.items():
+                with self.subTest(shell=shell_name, case=label):
+                    result = sandbox.run(shell, *arguments)
+                    self.assertEqual(sandbox.backend_argv(), expected, result.stderr)
+                    # Announced, for the same reason the workspace is: a Field that refuses to
+                    # save is alarming if the refusal is the first news of it.
+                    self.assertIn("field: read-only", result.stderr)
+
+    def test_a_launch_without_the_flag_says_nothing_about_read_only(self) -> None:
+        """The other direction of the case above: nothing else may append `--read-only`, and the
+        banner may not appear on an ordinary launch. A default-on read-only Field looks exactly
+        like one whose saving is broken."""
+        sandbox = self.sandbox
+        for shell_name, shell in _resolved_shells().items():
+            with self.subTest(shell=shell_name):
+                result = sandbox.run(shell, str(sandbox.workspace), "-d", "docA")
+                self.assertNotIn("--read-only", sandbox.backend_argv())
+                self.assertNotIn("read-only", result.stderr)
+
+    def test_read_only_survives_the_terminal_relaunch(self) -> None:
+        """Started with no tty — a Finder double-click — field.sh re-execs itself inside a fresh
+        terminal, and that inner command line is rebuilt from WORKSPACE_RELAUNCH_ARGS rather than
+        from `"$@"`. Anything missing from that string is dropped on this path and no other: the
+        window comes up writable on a document that was asked for read-only, and the only warning
+        went to the stderr of the outer process, which has no terminal to print it to. The other
+        branch of this same function dropped the workspace exactly this way — the regression at
+        the top of this module.
+
+        The fake emulator runs the string as well as recording it, so both halves are checked: that
+        the flag is in the rebuilt command line, and that the command line still parses — the
+        workspace is single-quoted inside it and a bare flag is not.
+        """
+        sandbox = self.sandbox
+        expected = ["--workspace", str(sandbox.workspace), "--document", "docA", "--read-only"]
+        for shell_name, shell in _resolved_shells().items():
+            with self.subTest(shell=shell_name):
+                result = sandbox.run(
+                    shell,
+                    str(sandbox.workspace),
+                    "-d",
+                    "docA",
+                    "--read-only",
+                    no_terminal=False,
+                    terminal_on_path=True,
+                )
+                self.assertIn(
+                    f"./field.sh --workspace '{sandbox.workspace}' --document 'docA' --read-only",
+                    sandbox.relaunch_command(),
+                    "the re-exec command line field.sh built is not the launch that was asked "
+                    f"for. field.sh said: {result.stderr!r}",
+                )
+                self.assertEqual(
+                    sandbox.backend_argv(),
+                    expected,
+                    "the relaunch ran but handed the backend something else. It printed "
+                    f"{sandbox.relaunch_output()!r}",
+                )
+
+    def test_read_only_survives_the_no_terminal_fallback(self) -> None:
+        """The other branch of run_in_terminal, and the one that runs on macOS: none of the four
+        emulators exists there, so a no-tty launch falls through to `run_field "$@"` — an agent's
+        shell tool, a launchd job, anything with stdin closed. That branch carries the rebuilt
+        `"$@"`, not the relaunch string, so it is a separate claim from the one above."""
+        sandbox = self.sandbox
+        for shell_name, shell in _resolved_shells().items():
+            with self.subTest(shell=shell_name):
+                result = sandbox.run(
+                    shell, str(sandbox.workspace), "--read-only", no_terminal=False
+                )
+                self.assertEqual(sandbox.relaunch_command(), "", "a terminal emulator was found")
+                self.assertEqual(
+                    sandbox.backend_argv(),
+                    ["--workspace", str(sandbox.workspace), "--read-only"],
+                    result.stderr,
+                )
 
     # --- what reaches the backend ---------------------------------------------------------------
 
