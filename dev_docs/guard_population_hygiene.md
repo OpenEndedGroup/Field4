@@ -8,9 +8,11 @@ The engineering journal records this being rediscovered from a new angle repeate
 rediscovery finds a genuine instance, fixes it, and does not leave behind the shape, so the next
 pass starts from scratch. What follows is the shape, the checks that find it, and the measured
 results of running those checks over the guard family on 2026-08-27 — including two places the
-checks came back clean, which are worth recording for the same reason.
+checks came back clean, which are worth recording for the same reason. Shape 4 was added on
+2026-09-05 from a different angle again: a guard that is not stale at all, and still has two
+populations.
 
-## The three shapes
+## The shapes
 
 ### 1. A floor far below the population it floors
 
@@ -96,6 +98,40 @@ the declared input set; anything outside `src/**/*.kt` wants a declaration, beca
 classpath is the only thing invalidating that task for free. And when adding a guard that reads a new
 kind of file, declare the input in the same commit — the transcript-yaml corpus needed exactly this
 on the day `DocumentedApiEvaluationTest` landed, because `dev_docs/**/*.md` does not match a `.yaml`.
+
+### 4. A population that differs between two checkouts of the same commit
+
+A guard walks the filesystem instead of the git index. Its population is then whatever happens to be
+on that disk, which is not a property of the commit and not the same for two people.
+
+Measured on 2026-09-05. `PersonalBoundaryTest.scanned()` walks seven source and documentation roots
+and filters `src/personal/` out by path. Every other `.gitignore` rule is invisible to it. Over the
+same commit:
+
+| checkout | files in the population | of which untracked |
+|---|---|---|
+| a nightly worktree | 2 666 | 0 |
+| the primary tree | 3 460 | 794 |
+
+790 of the 794 are gitignored box-code backups under `templates/*/backup/`, excluded seven lines
+above the `src/personal/` rule in the same `.gitignore`. So the guard is 30% stricter on the author's
+machine than in CI, over an extra population nobody chose, and a fixed box whose backup still carries
+the leaking revision would go red for one person and green for everyone else. None does today: a scan
+of `templates/` for an import of any of the nineteen private packages returns 0.
+
+The same asymmetry produced a live disagreement on 2026-09-01, in the other direction. After 29
+force-added files under the private tree were untracked, `git grep`-based guards stopped seeing them
+in the primary tree while filesystem-walking guards still did. One predicate over `src/` counted 16
+there and 11 in a worktree, within the hour.
+
+Two rules follow. **An unqualified `grep ... src/` is not a stable population on this project** —
+state the checkout, or derive the population from `git ls-files`. And when a guard's KDoc records a
+founding measurement, record which tree it was taken in. `PersonalBoundaryTest` records 2712 in its
+floor comment and 3461 in the commit message that introduced it, while the tracked population at that
+commit was 2667. Nothing is broken by that, and nobody can reconcile the three without being told
+what each one counted.
+
+See `dev_docs/private_boundary.md` for what that guard is and why it is shaped this way.
 
 ## The measurement that keeps being got wrong: compiled is not run
 
@@ -188,11 +224,13 @@ When writing or reviewing a guard:
 7. Print the vocabulary a census matched on, beside the count. A census over a naming convention is
    only as good as its list of names, and every scan on this page was wrong on its first draft for
    exactly that reason.
-8. Demonstrate the red. Delete the marker, empty the set, drop the input, run the gate, watch it
+8. Say which checkout a population was measured in, and prefer `git ls-files` to a filesystem walk
+   when the guard's subject is the committed tree.
+9. Demonstrate the red. Delete the marker, empty the set, drop the input, run the gate, watch it
    fail, restore. Record the message. A guard that has only ever been observed green is a guard
    whose failure path has never been executed.
 
-Point 8 is the one that pays. Every defect on this page was found by an A/B, and three of them were
+Point 9 is the one that pays. Every defect on this page was found by an A/B, and three of them were
 found in guards written the same night by someone actively looking for this failure mode.
 
 ## Where the instances are
@@ -205,6 +243,7 @@ found in guards written the same night by someone actively looking for this fail
 | Undeclared input | `citationGates` over `native/**/*.swift` | 2026-08-27, `guardedNativeSources` |
 | Undeclared input | `citationGates` over `.gitmodules`, `tools/code-use-semantic-sidecar` | 2026-08-27, by argument rather than A/B |
 | Compiled, not run | 5 documented APIs with no evaluator anywhere | 2026-08-27, `DocumentedApiEvaluationTest` ledger |
+| Two populations | `PersonalBoundaryTest` walks the filesystem: 3460 files in the primary tree, 2666 in a worktree | 2026-09-05, documented rather than fixed — see below |
 
 One row of that ledger is a real gap rather than a justification.
 `src/jvmMain/kotlin/afield/examples/four/FieldProbeSmokeTest.kt` opens a Window and exercises
