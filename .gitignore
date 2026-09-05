@@ -256,9 +256,12 @@ two_timescale_bandit_toy*.txt
 /imgui.ini
 
 ### Field template backup snapshots
-# `backup/` matched nothing: safeSave writes into a directory called `backups`
-# (saving.kt, `File(file.parentFile, "backups")`). Kept only as a redirection —
-# the `**/backups/` rule above is what actually covers this.
+# Two spellings, both real. safeSave writes into `backups` (saving.kt,
+# `File(file.parentFile, "backups")`), which the tree-wide `**/backups/` rule above
+# already covers. `backup/` is the older spelling and is NOT empty: dropping it
+# uncovered 1 003 files across templates/advanced_remote/backup (783) and
+# templates/remote/backup (220), measured 2026-09-05 when exactly that happened.
+templates/*/backup/
 templates/*/backups/
 
 ### Test files
