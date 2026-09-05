@@ -96,6 +96,21 @@ class CitationContractTest {
             // form. Floor 0 for the reason `public/docs/autodiff_examples.md` has one: it points at
             // code by name and by task, not by `path:line#anchor`. Raise it the day it cites a site.
             "dev_docs/guard_population_hygiene.md" to 0,
+            // The one-way boundary around `src/personal/`, added 2026-09-05 with the page it guards.
+            // 21 anchored citations as written, every anchor verified unique in its file before the
+            // page was committed, so all 21 report unbounded headroom, and no bare citation remains.
+            // Floored at 10 on the `DATAFRAME_PLUGIN.md` convention: about half, so a page becoming a
+            // little less citation-dense costs a doc edit rather than a red build, while deleting
+            // half of them fails.
+            //
+            // Seventeen of the 21 point into `PersonalBoundaryTest` itself, which is unusual and
+            // deliberate: the page's subject *is* that class, and its claims about what each
+            // assertion checks are the ones most likely to rot into overstatement. They anchor on a
+            // declaration, or on a line inside an assertion, rather than on the assertion's name,
+            // because those are backtick-named functions and an anchor containing a backtick cannot
+            // survive a markdown code span. The other four are the `citationGates` registration and
+            // the three sites that name the private root in order to exclude it.
+            "dev_docs/private_boundary.md" to 10,
             // The page that documents this machinery, brought under it 2026-08-23. Two anchored
             // citations, both prose `path:line#anchor`; the page is mostly *about* citations rather
             // than made of them, so the floor is the count. It needs to be guarded for a reason
