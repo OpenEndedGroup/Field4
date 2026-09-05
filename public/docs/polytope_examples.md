@@ -1547,7 +1547,7 @@ polyhedron.solveRealization()
 
 ## A loadable demo
 
-Three operation transcripts build a working document you can open, edit and re-run:
+Four operation transcripts build a working document you can open, edit and re-run:
 
 - **`dev_docs/agents/transcripts/polytope_conway_demo.yaml`** — one compact box that marks two
   opposite cube faces with different heights, applies `kis` only there, and sends the polygon faces
@@ -1564,6 +1564,15 @@ Three operation transcripts build a working document you can open, edit and re-r
   `"sD"` and re-run: the notation re-parses, both solids redraw, and the tangency-radius spread
   drops by six orders of magnitude. Set it to `"kkC"` and watch this box report a clean failure: it
   calls `canonicalize()`, which does not reach that one; `relaxWithCeres` does.
+- **`dev_docs/agents/transcripts/polytope_holes_and_chains.yaml`** — three small boxes for holes and
+  for chaining. The first takes the `cubeWithWindow` seed end to end: the outer cycle and the inner
+  ring, both Euler characteristics, the triangles the window is cut out of, the four operations that
+  refuse a holed face by name, and the faces as polygonal FLines you can orbit and click for a
+  per-face ring and triangle count. The second builds a one-face plate by hand with
+  `PolytopeTopologyBuilder.addFaceHole` and draws it beside the identical outline with the ring
+  dropped, back-face culled, so a rim triangle wound the wrong way would be missing. The third
+  chains every named composite off one `ambo` — `cube().ambo().bevel()` and its seven siblings — and
+  reports what each chain asked for beside what actually ran.
 
 Replay any of them from the repository root:
 
@@ -1573,7 +1582,7 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --port
   --command 'macro run polytope_conway_gallery'
 ```
 
-All three are exercised by the transcript execution smoke, so their box bodies cannot rot
+All four are exercised by the transcript execution smoke, so their box bodies cannot rot
 silently.
 
 ## What this does not do yet
