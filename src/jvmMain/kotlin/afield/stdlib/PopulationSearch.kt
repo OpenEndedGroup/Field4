@@ -116,8 +116,15 @@ class Individual<G>(val genome: G, val evaluation: Evaluation, val origin: Strin
  * @property generation 1-based generation index
  * @property fitness what the new leader scored
  * @property origin the variation operator that produced it, or `"seed"`/`"random"`/`"immigrant"`
+ * @property genome the new leader itself, so the list of improvements *is* a lineage and a figure
+ *   can show what the search looked like as it went rather than only where it ended up
  */
-class Improvement(val generation: Int, val fitness: Double, val origin: String) {
+class Improvement<G>(
+    val generation: Int,
+    val fitness: Double,
+    val origin: String,
+    val genome: G
+) {
     override fun toString(): String = "gen $generation: %.5f via %s".format(fitness, origin)
 }
 
@@ -160,7 +167,7 @@ class SearchRun<G>(
     val survivors: List<Individual<G>>,
     val millis: Double,
     /** Every generation in which the leader improved, in order. Empty for a non-generational driver. */
-    val improvements: List<Improvement> = emptyList()
+    val improvements: List<Improvement<G>> = emptyList()
 ) {
     /** The scalar the run reached, or negative infinity if it never evaluated anything. */
     val bestFitness: Double get() = best?.fitness ?: Double.NEGATIVE_INFINITY
@@ -370,7 +377,7 @@ object PopulationSearch {
             val leader = population.firstOrNull()
             if (leader != null && leader.fitness > leaderFitness) {
                 leaderFitness = leader.fitness
-                s.improvements += Improvement(s.generations, leader.fitness, leader.origin)
+                s.improvements += Improvement(s.generations, leader.fitness, leader.origin, leader.genome)
             }
             onGeneration?.invoke(s.generations, s.evaluations)
         }
@@ -443,6 +450,112 @@ object PopulationSearch {
             }
         )
         return NoveltyRun(run, archived.toList())
+    }
+
+    /**
+     * MAP-Elites: keep the best genome found in each cell of a grid over the behaviour space.
+     *
+     * A quality-*diversity* search rather than an optimisation. The archive is a grid over
+     * [Evaluation.behaviour], one axis per [axes] entry, and a candidate is kept only if its cell is
+     * empty or its occupant is worse. Illumination rather than convergence: what comes out is not one
+     * answer but a map of "the best thing that behaves like *this*", which for these genomes is
+     * exactly the contact sheet a reader wants to look at.
+     *
+     * The loop is the canonical one. [initial] random draws seed the archive, then each remaining
+     * unit of budget picks an occupied cell uniformly, mutates its elite, and offers the child back.
+     * Picking uniformly over *occupied cells* rather than over all evaluated genomes is what keeps
+     * the search from pouring its whole budget into whichever region is easiest to reach.
+     *
+     * A candidate whose descriptor falls outside [axes] is **clamped into the edge cell**, not
+     * discarded. Discarding would silently make the reported [MapElitesRun.coverage] a fraction of a
+     * different denominator than the one the caller asked for.
+     *
+     * @param axes the inclusive range of each behaviour dimension
+     * @param bins how many cells each axis is divided into; same length as [axes]
+     * @param initial random draws before the archive starts driving the search
+     */
+    fun <G> mapElites(
+        ops: GenomeOps<G>,
+        objective: Objective<G>,
+        budget: Int,
+        axes: List<ClosedFloatingPointRange<Double>>,
+        bins: List<Int>,
+        seed: Long = 1L,
+        initial: Int = 32,
+        label: String = "map-elites"
+    ): MapElitesRun<G> {
+        require(axes.isNotEmpty()) { "mapElites needs at least one axis" }
+        require(axes.size == bins.size) { "axes and bins must be the same length, got ${axes.size} and ${bins.size}" }
+        require(bins.all { it >= 1 }) { "every bin count must be >= 1, got $bins" }
+        require(axes.all { it.endInclusive > it.start }) { "every axis must be increasing, got $axes" }
+        require(initial >= 1) { "initial must be >= 1, got $initial" }
+        require(ops.mutations.isNotEmpty()) { "mapElites needs at least one mutation" }
+
+        val elites = LinkedHashMap<List<Int>, Individual<G>>()
+        var offGrid = 0
+        val s = Session(ops, objective, seed, label)
+
+        fun offer(individual: Individual<G>) {
+            val b = individual.evaluation.behaviour
+            require(b.size == axes.size) {
+                "mapElites expects a ${axes.size}-dimensional behaviour descriptor, got ${b.size}"
+            }
+            var clamped = false
+            val cell = ArrayList<Int>(axes.size)
+            for (d in axes.indices) {
+                val axis = axes[d]
+                if (b[d] < axis.start || b[d] > axis.endInclusive) clamped = true
+                val t = ((b[d] - axis.start) / (axis.endInclusive - axis.start)).coerceIn(0.0, 1.0)
+                cell += (t * bins[d]).toInt().coerceIn(0, bins[d] - 1)
+            }
+            if (clamped) offGrid++
+            val incumbent = elites[cell]
+            if (incumbent == null || individual.fitness > incumbent.fitness) elites[cell] = individual
+        }
+
+        repeat(initial) {
+            if (!s.running(budget)) return@repeat
+            offer(s.consider(ops.random(s.rng), "random"))
+        }
+        while (s.running(budget)) {
+            if (elites.isEmpty()) {
+                offer(s.consider(ops.random(s.rng), "random"))
+                continue
+            }
+            val keys = elites.keys.toList()
+            val parent = elites[keys[s.rng.nextInt(keys.size)]]!!
+            val v = ops.mutations[s.rng.nextInt(ops.mutations.size)]
+            offer(s.consider(s.vary(v, parent.genome), v.name))
+        }
+        return MapElitesRun(s.finish(elites.values.toList()), elites.toMap(), bins.toList(), axes.toList(), offGrid)
+    }
+
+    /**
+     * [mapElites]'s result: the archive, and the two numbers a QD result is reported as.
+     *
+     * @property offGridCandidates how many candidates had a descriptor outside [axes] and were
+     *   clamped into an edge cell. A large fraction means the axes are wrong for this genome, and it
+     *   is reported rather than hidden because clamped candidates pile up on the border and make the
+     *   edges of the map look richer than they are.
+     */
+    class MapElitesRun<G>(
+        val run: SearchRun<G>,
+        val elites: Map<List<Int>, Individual<G>>,
+        val bins: List<Int>,
+        val axes: List<ClosedFloatingPointRange<Double>>,
+        val offGridCandidates: Int
+    ) {
+        /** Total cells in the archive grid, occupied or not. */
+        val cells: Int get() = bins.fold(1) { a, b -> a * b }
+
+        /** Fraction of cells that hold an elite. The "diversity" half of quality-diversity. */
+        val coverage: Double get() = elites.size / cells.toDouble()
+
+        /** Sum of elite fitnesses over occupied cells — the standard QD score. */
+        val qdScore: Double get() = elites.values.sumOf { it.fitness }
+
+        override fun toString(): String =
+            "MapElitesRun(${elites.size}/$cells cells, coverage %.3f, QD %.3f)".format(coverage, qdScore)
     }
 
     /** [novelty]'s result: the underlying run plus the behavioural archive it grew. */
@@ -564,7 +677,7 @@ object PopulationSearch {
         var recombined = 0
         var immigrants = 0
         var generations = 0
-        val improvements = ArrayList<Improvement>()
+        val improvements = ArrayList<Improvement<G>>()
         val started = System.nanoTime()
         private val seen = HashMap<String, Evaluation>()
 
