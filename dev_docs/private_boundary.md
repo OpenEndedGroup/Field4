@@ -9,8 +9,14 @@ do when you have.
 
 ## What the rule stops, and why `.gitignore` does not stop it
 
-`.gitignore` line 243 is `src/personal/`. That half has never failed. Nothing under the directory has
-ever been tracked and `git add -A` cannot reach it.
+`.gitignore` line 243 is `src/personal/`, and today `git add -A` cannot reach anything under it. That
+is not the same as the directory never having been tracked, and the difference is this page's own
+subject. Twenty-nine files under the private tree **were** tracked, across fifteen commits, until
+`9353c17e4` (2026-08-31) removed them from the index — the commit is the citable evidence here, and
+naming the subdirectory they lived in is exactly the move assertion 2 forbids. (This paragraph
+reddened `citationGates` on its first draft for doing precisely that.) They are still on the author's
+disk, still gitignored, and now invisible to every `git grep`-based guard while remaining visible to
+every guard that walks the filesystem. Both halves of that sentence matter below.
 
 The failure runs the other way. Somebody studies the private work to generalise a lesson from it, and
 writes the lesson into a **tracked** file that imports a private package, cites a private path, or
@@ -56,7 +62,7 @@ Measured over the corpus on this branch, replicating the guard's own regex and r
 
 | | |
 |---|---|
-| single-segment import matches | **15 011** |
+| single-segment import matches | **15 012** |
 | distinct roots they use | **28** |
 | entries in `PUBLIC_IMPORT_ROOTS` | **28**<!--count:publicImportRoots--> |
 | entries never used | **0** |
@@ -79,11 +85,17 @@ The regex is `PersonalBoundaryTest.kt:186#private val IMPORT_RE`, and its altern
 `(?:^|\\n|")` is the interesting part. In a Kotlin raw string `\\n` is a literal backslash followed
 by `n`, so the middle branch matches an **escaped** newline in the file's *text*. That is what
 catches an import inside an `#afield/file-inline` string in a `metadata.edn`, where the whole box
-program is one EDN string with `\n` between its lines. Verified against a synthetic sample: given the
-EDN text `{:code #afield/file-inline "import org.example.Thing\nval x = 1"}` the regex reports the
-root `org`, from a position that is neither the start of a line nor immediately after the opening
-quote. Substitute a private package for `org` and that is the branch that catches the embedded copy
-of a leaking box.
+program is one EDN string with `\n` between its lines.
+
+Getting a sample to exercise that branch takes one deliberate choice, and the first version of this
+page got it wrong. In `{:code #afield/file-inline "import org.example.Thing\nval x = 1"}` the import
+sits immediately after the opening quote, so it is the `"` branch that fires, at offset 27 — the
+`\n` branch is never reached. Move the import off the first line and the match comes from the
+branch this paragraph is about: given `{:code #afield/file-inline "val x = 1\nimport
+org.example.Thing"}` the regex reports the root `org` at offset 37, matching on the literal
+backslash-n. Substitute a private package for `org` and that is the branch that catches the embedded
+copy of a leaking box — but only from the second line onward, which is worth knowing before trusting
+it.
 
 This paragraph could not be written with a real private package name in it, because the `"` branch
 of the same regex would have matched the example and reddened this page. The guard's own first catch
@@ -94,7 +106,7 @@ rewording rather than by exempting the file.
 
 `PersonalBoundaryTest.kt:273#no committed file cites a path inside the private tree`.
 
-Naming the root is legal. Reaching inside it is not. `git grep -l "src/personal"` returns **39**
+Naming the root is legal. Reaching inside it is not. `git grep -l "src/personal"` returns **40**
 tracked files, **26** of them under `src/`, and they are all mechanism: Field offers
 `src/personal/kotlin` as an optional source root, from `KotlinSourceIndex` to the completion sidecar.
 Two of them name it in order to *exclude* it, both as an `EXCLUDED_ROOTS` list —
@@ -110,14 +122,14 @@ Seven of those eight are dead weight, and two are provably unreachable. The rege
 segments after `src/personal/`, so it can never emit the bare `src/personal` or `src/personal/`, and
 the five one-segment entries are reachable only through a trailing `/.` (the text
 `src/personal/kotlin/.` matches and then trims back). Running the guard's own citation logic over
-both checkouts, exactly one allowlist entry is ever hit:
+either checkout, exactly one allowlist entry is load-bearing: **`src/personal/kotlin/probe`**, and it
+is not one of the author's files. It exists because `dev_docs/HERMETIC_COMPLETION_INPUTS.md:69-70`
+tells you to create `src/personal/kotlin/probe/probe.kt` as a completion fixture, so the deepest
+citation in the tree is a setup instruction.
 
-```text
-worktree (2666 files):     src/personal/kotlin/probe  x3
-primary tree (3460 files): src/personal/kotlin/probe  x3
-```
-
-`src/personal/kotlin/probe` is the one load-bearing entry, and it is not one of the author's files.
+A hit *count* is deliberately not quoted here. This page cites that path three times in the course of
+explaining it, so any number printed above would be a number this page had changed by existing — the
+failure documented at the end of [What the failures actually look like](#what-the-failures-actually-look-like).
 `dev_docs/HERMETIC_COMPLETION_INPUTS.md` tells the *reader* to create a throwaway `probe` package
 under the private root and delete it again. That is a recipe that works on any machine, which is a
 different thing from a dependency on somebody's content. The distinction is written at the
@@ -241,8 +253,13 @@ Second, and measured over the same commit in two checkouts:
 
 | checkout | files in the guard's population | of which untracked |
 |---|---|---|
-| this worktree | **2 666** | 0 |
-| primary tree | **3 460** | **794** |
+| a clean worktree of this commit | **2 667** | 0 |
+| the author's primary tree, measured 2026-09-05 | **3 480** | **794** |
+
+The first number is a property of the commit and reproducible from any checkout. The second is not: it
+counts whatever happens to be on one machine on one day, and it moved from 3 460 to 3 480 in the six
+hours between this page being drafted and being reviewed. Quoting it at all is a compromise, and it is
+dated for that reason — the ratio is the durable part, not the digits.
 
 790 of those 794 are gitignored box-code backups under `templates/*/backup/`, excluded by
 `.gitignore` line 236 — seven lines above the `src/personal/` rule the same guard does honour. The
