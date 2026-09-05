@@ -13,7 +13,7 @@ val soups = listOf(randomSoup(48, 48, density = 0.35, seed = 303L))
 val objective = caEdgeOfChaosObjective(soups, warmup = 20, scored = 25)
 val bins = listOf(6, 6)
 val axes = listOf(0.0..1.0, 0.0..0.6)
-val budget = 500
+val budget = 600
 
 val archive = PopulationSearch.mapElites(ops, objective, budget, axes, bins, seed = 31L, initial = 40)
 println(archive)

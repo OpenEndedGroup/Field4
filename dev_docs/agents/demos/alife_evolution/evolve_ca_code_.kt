@@ -25,7 +25,7 @@ val soups = listOf(
 // moderate population AND keeps rearranging it, which is what everybody means by an interesting
 // rule and what nobody can state by looking.
 val objective = caEdgeOfChaosObjective(soups, warmup = 20, scored = 30)
-val budget = 300
+val budget = 400
 
 val control = PopulationSearch.random(ops, objective, budget, seed = 7L, label = "random")
 

@@ -10,8 +10,8 @@
 // DEATH / BOUNDED / SATURATION and already reports a wrapped centroid drift.
 
 val ops = LeniaGenome(radius = 6, dt = 0.1, shells = 3)
-val objective = leniaSolitonObjective(width = 48, height = 48, steps = 70, initialSeed = 5L, driftScale = 8.0)
-val budget = 120
+val objective = leniaSolitonObjective(width = 48, height = 48, steps = 90, initialSeed = 5L, driftScale = 8.0)
+val budget = 220
 
 // PopulationSearch.random is a CONTROL ARM, not a fourth driver. It draws from exactly the
 // distribution `evolve` mutates within, at the same budget, under the same seed. Without it a
@@ -33,7 +33,7 @@ println("margin %.4f  (%.1f%% above the control)".format(
 println()
 
 val best = evolved.best!!.genome
-val run = leniaRun(leniaSeed(48, 48, best, seed = 5L), best, steps = 70, sampleEvery = 8)
+val run = leniaRun(leniaSeed(48, 48, best, seed = 5L), best, steps = 90, sampleEvery = 8)
 println("evolved rule: mu=%.4f sigma=%.4f".format(best.mu, best.sigma))
 println("  $run")
 println("  phase is MEASURED, not asserted: leniaRun classifies it from the mean field value.")
@@ -46,14 +46,14 @@ println("run IS a lineage and this montage is not a separate bookkeeping exercis
 val panels = mutableListOf<Pair<String, Img>>()
 val cRule = control.best!!.genome
 panels += "rnd %.2f".format(control.bestFitness) to
-    leniaRun(leniaSeed(48, 48, cRule, seed = 5L), cRule, steps = 70, sampleEvery = 8).field.upscaleNearest(3)
+    leniaRun(leniaSeed(48, 48, cRule, seed = 5L), cRule, steps = 90, sampleEvery = 8).field.upscaleNearest(3)
 val picks = evolved.improvements.indices.toList().let { idx ->
     if (idx.size <= 5) idx else (1..5).map { (it * idx.size / 5) - 1 }
 }
 for (i in picks) {
     val imp = evolved.improvements[i]
     panels += "g%d %.2f".format(imp.generation, imp.fitness) to
-        leniaRun(leniaSeed(48, 48, imp.genome, seed = 5L), imp.genome, steps = 70, sampleEvery = 8)
+        leniaRun(leniaSeed(48, 48, imp.genome, seed = 5L), imp.genome, steps = 90, sampleEvery = 8)
             .field.upscaleNearest(3)
 }
 
