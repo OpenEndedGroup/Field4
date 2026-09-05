@@ -4,20 +4,19 @@
 [Math](reference/math.md) and [Data](reference/data.md).*
 
 You have two streams of numbers and one question: **are they related?** Almost every answer Field
-can give you lives in three files that had no page until this one —
-`afield/stdlib/stats.kt`, `afield/stdlib/correlations.kt` and `afield/stdlib/quantilewarp.kt`,
-about 3300 lines between them. This is a worked example of all three, and the argument it makes is
-that *"are they related?"* is six different questions with six different answers, and picking the
-wrong one is how you miss a relationship that is staring at you.
+can give you lives in three files: `afield/stdlib/stats.kt`, `afield/stdlib/correlations.kt` and
+`afield/stdlib/quantilewarp.kt`, about 3800 lines between them. This is a worked example of all
+three, and the argument it makes is that *"are they related?"* is six different questions with six
+different answers, and picking the wrong one is how you miss a relationship that is staring at you.
 
-Some of it is the boring, indispensable half — count, quartiles, IQR, MAD, skew, kurtosis,
-histograms, a streaming window of all of it. Some of it is the interesting half — Pearson,
+Some of it is the boring, indispensable half: count, quartiles, IQR, MAD, skew, kurtosis,
+histograms, a streaming window of all of it. Some of it is the interesting half: Pearson,
 Spearman, Kendall, Chatterjee's xi, distance correlation, a MIC-like grid scan, and rolling
-versions of the last two. And one file is the odd one out: `quantilewarp.kt` reshapes a signal's
+versions of the last two. And one file is the odd one out. `quantilewarp.kt` reshapes a signal's
 *distribution* into one you chose, which is what you reach for when the problem is not "are these
 related" but "this signal is the wrong shape to work with".
 
-## Where the family actually lives
+## Where the family lives
 
 | what you want | where it is | notes |
 |---|---|---|
@@ -30,9 +29,9 @@ related" but "this signal is the wrong shape to work with".
 | reshape a distribution into a target | `quantilewarp.kt` | `AdaptiveQuantileWarp`, `QuantileWarpState`, `TargetDistributions`, `inverseStandardNormalCdf`, and matching GLSL for the GPU |
 
 Two things this family is **not**. It is not a statistics library: there are no p-values, no
-confidence intervals, no hypothesis tests anywhere in it, and the last section of this page shows
-the permutation test you have to write yourself to know whether a number means anything. And
-`micTicNaive` is not MICe/TICe — the file's own header comment
+confidence intervals and no hypothesis tests anywhere in it, so knowing whether a number means
+anything means writing the permutation test yourself, as *Is 0.193 big?* below does. And
+`micTicNaive` is not MICe/TICe. The file's own header comment
 (`correlations.kt:31#IMPORTANT NOTES (honesty about what this is / isn't):`) is emphatic that it is an equipartition-grid approximation that will not
 reproduce published numbers.
 
@@ -43,7 +42,7 @@ If you want the two-fence version of the dependence story next to the interpolan
 
 `buildSummaryStats` takes any `Iterable<Double>` and hands back seventeen numbers.
 `SummaryStatsBuffer` wraps it in a synchronized, capped sliding window you can `add` to sample by
-sample, and `summaryHtml()` renders the whole thing — metrics, histogram and series plot — as one
+sample, and `summaryHtml()` renders the whole thing (metrics, histogram and series plot) as one
 self-contained HTML card.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/statistics_examples/summary_card.png" wait="1.5" capture="box" open-outputs="true" w="760" h="640" padding="16"}
@@ -77,35 +76,37 @@ markdown("read this off the card", "{muted:$note}", width = 620)
 
 ![A cyan-on-black summary-stats card for a right-skewed signal: thirteen metrics, a histogram and a series plot](assets/statistics_examples/summary_card.png)
 
-The card is worth reading closely, because two of its labels are inconsistent and the
-inconsistency is in the source, not the rendering. `stddev` and `variance` are the **sample**
-(divide by n−1) forms, `stats.kt:1610` and `stats.kt:1611`; `skew` and `kurtosis(ex)` are the
-**population** (divide by n) forms, `stats.kt:894`–`stats.kt:903`, with no bias correction. Both
-conventions are defensible; having both on one card is a trap. If you are comparing against
-another tool, `SummaryStats` matches NumPy and SciPy *exactly* — `q1`/`median`/`q3` are
-`numpy.percentile`'s default linear interpolation, `mad` is `median(|y − median(y)|)`,
-`sampleStdDev` is `numpy.std(ddof=1)`, and `skewness`/`kurtosisExcess` are `scipy.stats.skew`
-and `scipy.stats.kurtosis` at their *default* `bias=True`. That is not a claim about intent: it is
-checked to ten decimal places against SciPy 1.15.2 on a tie-heavy ten-point dataset.
+Read the card's labels carefully, because two of them are inconsistent and the inconsistency is in
+the source rather than the rendering. `stddev` and `variance` are the **sample** (divide by n−1)
+forms; `skew` and `kurtosis(ex)` are the **population** (divide by n) forms, with no bias
+correction (`stats.kt:67#[skewness] and [kurtosisExcess] are only ever the **population** forms`).
+Both conventions are defensible; having both on one card is a trap. If you are comparing against
+another tool, the mapping onto NumPy and SciPy is exact: `q1`/`median`/`q3` are
+`numpy.percentile`'s default linear interpolation, `mad` is `median(|y − median(y)|)` unscaled,
+`sampleStdDev` is `numpy.std(ddof=1)`, and `skewness`/`kurtosisExcess` are `scipy.stats.skew` and
+`scipy.stats.kurtosis` at their *default* `bias=True`, pinned to ten decimal places against SciPy
+1.15.2 in `StatsSummaryTest`.
 
-Three more edges, all guarded rather than propagated, so you get a number instead of a NaN:
+Three more edges, guarded rather than propagated inside `buildSummaryStats`
+(`stats.kt:1004#val sampleVariance = if (n > 1) m2 / (n - 1).toDouble() else 0.0`), so you get a
+number instead of a NaN:
 
-- one sample: `sampleVariance` is **0.0**, not NaN (`stats.kt:884`);
-- two samples: `skewness` is **0.0** — it needs `n > 2` (`stats.kt:894`);
-- three samples: `kurtosisExcess` is **0.0** — it needs `n > 3` (`stats.kt:899`).
+- one sample: `sampleVariance` is **0.0**, not NaN;
+- two samples: `skewness` is **0.0**; it needs `n > 2`;
+- three samples: `kurtosisExcess` is **0.0**; it needs `n > 3`.
 
-`SummaryStatsBuffer` keeps two separate drop counters, which is the useful part: `dropped(non-finite)`
-counts values it refused, `window-evicted` counts values that aged out of the window. Feed 200
-finite samples to a `maxSize = 64` buffer and you get `size=64, samplesSeen=200,
+`SummaryStatsBuffer` keeps two separate drop counters
+(`stats.kt:405#Two independent drop counters, and the distinction is the useful part`).
+`dropped(non-finite)` counts values it refused; `window-evicted` counts values that aged out of the
+window. Feed 200 finite samples to a `maxSize = 64` buffer and you get `size=64, samplesSeen=200,
 droppedByCapacity=136`.
 
 ## Histograms, and the rule that picks the bins
 
 `buildHistogram` chooses its own bin width: the **smallest** of the Freedman–Diaconis, Scott and
-Sturges estimates, floored at `range/2000` so the bin count can never exceed 2000
-(`stats.kt:1124`–`stats.kt:1133`). "Smallest" means finest, which is usually what you want — and
-the fence below re-derives the whole decision from the published `SummaryStats` and predicts the
-bin count before asking.
+Sturges estimates, floored at `range/2000` so the bin count can never exceed 2000. "Smallest" means
+finest, which is usually what you want. The fence below re-derives the whole decision from the
+published `SummaryStats` and predicts the bin count before asking.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/statistics_examples/histogram_rule.png" wait="1.5" capture="box" open-outputs="true" w="1020" h="560" padding="16"}
 :::static
@@ -161,22 +162,22 @@ markdown("the rule, re-derived", """
 ![Two histograms: a right-skewed unimodal signal resolved into 28 bins, and a clean two-mode signal resolved into only 10](assets/statistics_examples/histogram_rule.png)
 
 Both predictions land: 28 bins of 0.21431 for the skewed signal, 10 bins of 0.63290 for the bimodal
-one, and in both cases the bin counts sum back to 500. But look at *which rule won* in each case,
-because that is the interesting part. On the skewed signal Freedman–Diaconis is the finest at 0.2162
-and it decides. On the bimodal signal FD comes out at **1.0065** and Scott at **0.9077** — both
-much coarser — because both are driven by global spread, and here the spread is the *distance
-between* the modes (IQR 3.99, sample sd 2.06) rather than the spread within them (0.4). Which leaves
-**Sturges** winning at 0.6329, and Sturges is the one rule of the three that looks at nothing but n:
-`ceil(log₂ n + 1)` is 10 bins for *any* 500-point sample whatever its shape. So a multi-modal signal
-falls back to the crudest of the three estimates and its two obvious modes get about one bin each.
-`buildHistogram` takes no bin-count argument (`stats.kt:1096`), so if you need finer bins for a
-signal like this, bin it yourself.
+one, and in both cases the bin counts sum back to 500. Which rule won is the part to read. On the
+skewed signal Freedman–Diaconis is the finest at 0.2162 and it decides. On the bimodal signal FD
+comes out at **1.0065** and Scott at **0.9077** (both much coarser) because both are driven by
+global spread, and here the spread is the *distance between* the modes (IQR 3.99, sample sd 2.06)
+rather than the spread within them (0.4). Which leaves **Sturges** winning at 0.6329, and Sturges is
+the one rule of the three that looks at nothing but n: `ceil(log₂ n + 1)` is 10 bins for *any*
+500-point sample whatever its shape. So a multi-modal signal falls back to the crudest of the three
+estimates and its two obvious modes get about one bin each. `buildHistogram` takes no bin-count
+argument (`stats.kt:1214#There is no bin-count parameter`), so if you need finer bins for a signal
+like this, bin it yourself.
 
-## The centrepiece: six questions, six answers
+## Six questions, six answers
 
 Now the interesting half. Every coefficient in `StatsDependence` takes two equal-length
 `DoubleArray`s and returns one number, and they are *not* interchangeable. Six shapes, drawn with
-every coefficient underneath, is the whole argument:
+every coefficient underneath, make the case:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/statistics_examples/dependence_grid.png" wait="3.0" capture="box" open-outputs="true" w="1010" h="1100" padding="14"}
 :::static
@@ -232,7 +233,7 @@ showPlaneGrid(*panels.toTypedArray(), columns = 2, cellWidth = 430, cellHeight =
 
 ![Six scatter panels — linear, monotone-curved, parabola, sine, growing-spread and independent — each captioned with six dependence coefficients](assets/statistics_examples/dependence_grid.png)
 
-Read the captions across the grid; that table *is* the page.
+Read the captions across the grid, or the same numbers as a table:
 
 | shape | `pearson` | `spearman` | `kendallTauB` | `xi` | `distanceCorrelation` | `micTicNaive().mic` |
 |---|---|---|---|---|---|---|
@@ -245,36 +246,35 @@ Read the captions across the grid; that table *is* the page.
 
 Five things fall out of that table, and each one is a rule about which measure to reach for.
 
-**Pearson answers "is this a straight line", and nothing else.** `r = −0.000` on the parabola —
-where `y` is a *noiseless, exact* function of `x`. The dependence is total and the coefficient is
-zero. That is not a defect: `pearson` (`correlations.kt:147#each for the means and one for the covariance.`) is the sample covariance over the
+**Pearson answers "is this a straight line", and nothing else.** `r = −0.000` on the parabola,
+where `y` is a *noiseless, exact* function of `x`: the dependence is total and the coefficient is
+zero. `pearson` (`correlations.kt:147#each for the means and one for the covariance.`) is the sample covariance over the
 product of the standard deviations, and a symmetric parabola has zero covariance with its own
 argument by construction.
 
 **Spearman and Kendall answer "is this monotone".** They hit exactly ±1 on `exp(3x)` where Pearson
-reads 0.819, which is the whole reason they exist — any strictly increasing reshape of `y` leaves
+reads 0.819, which is the whole reason they exist: any strictly increasing reshape of `y` leaves
 them alone. But they side with Pearson on the parabola, and for the same reason: a parabola is a
 function and not a monotone one, and monotone is all either of them can see. `spearman` is literally
 `pearson` on `ranksAverageTies` (`correlations.kt:171#is constant, since every rank is then identical and [pearson]`–`correlations.kt:176#val ry = ranksAverageTies(y)`), so it inherits every
 Pearson limitation *after* the ranking.
 
-**Chatterjee's xi answers "is `y` a function of `x`", and the asymmetry is the point.** It reads
-0.985 on the parabola and 0.955 on the sine, the two cases the rank coefficients miss entirely.
-Swap the arguments and it changes its mind: `xi(x, parabola) = 0.985` but `xi(parabola, x) = 0.246`,
-because `x` genuinely is *not* a function of `x²` — each `y` has two possible `x`. That asymmetry is
-the point, not a wart, and it is the only coefficient here that has it. Cheap, too: O(n log n)
-against the O(n²) of `kendallTauB` and `distanceCorrelation`.
+**Chatterjee's xi answers "is `y` a function of `x`", and it is the only asymmetric coefficient
+here.** It reads 0.985 on the parabola and 0.955 on the sine, the two cases the rank coefficients
+miss entirely. Swap the arguments and it changes its mind: `xi(x, parabola) = 0.985` but
+`xi(parabola, x) = 0.246`, because `x` genuinely is *not* a function of `x²`, each `y` having two
+possible `x`. Cheap, too: O(n log n) against the O(n²) of `kendallTauB` and `distanceCorrelation`.
 
 **Distance correlation answers "is there any dependence at all".** It is the only entry in the
-table that is non-zero on *every* dependent row, including the last interesting one — the
+table that is non-zero on *every* dependent row, including the last interesting one: the
 growing-spread panel, where `y` has the same mean everywhere and only its *scale* depends on `x`.
-Pearson, Spearman and Kendall read 0.00 there. So does xi (0.026), and *correctly*: `y` is not a
+Pearson, Spearman and Kendall read 0.00 there. So does xi (0.026), and rightly so: `y` is not a
 function of `x`, it is a random variable whose spread is. Distance correlation reads 0.193, and the
 next section shows that 0.193 is real.
 
 **And the trap in reading distance correlation**: it is *not* a measure of how strong the
 dependence is. dCor is 1 only for an exactly linear relationship (`distanceCorrelation(x, 3x+1)` is
-exactly `1.0`, and so is `distanceCorrelation(x, −2x+5)` — it is unsigned). On the parabola,
+exactly `1.0`, and so is `distanceCorrelation(x, −2x+5)`; it is unsigned). On the parabola,
 where `y` is a perfect function of `x`, it reads 0.491; on the sine, 0.286. Lower dCor does not
 mean weaker dependence, it means less *linear* dependence. Use it to decide whether to keep
 looking, then use something else to describe what you found.
@@ -285,34 +285,33 @@ looking, then use something else to describe what you found.
     values, so on tied `x` it is a random variable rather than a number. Rather than pick a seed,
     `chatterjeeXi` returns that random variable's **exact expectation**, computed in closed form
     from the ranks inside each run of equal `x` (`correlations.kt:321#val denominator = 2.0 * denomTerm.toDouble()`–`correlations.kt:343`). So it
-    is deterministic, reproducible, and — the property that matters — invariant to the order you
-    hand the pairs over in.
+    is deterministic, reproducible, and invariant to the order you hand the pairs over in.
 
-    Two consequences worth knowing. A **constant predictor reads 0**: for a single tie group the
-    numerator's expectation is `(n²−1)/3` against a denominator of `n(n²−1)/3`, so the closed form
-    is exactly zero for every `n`. In `Double` it is zero to within one ulp rather than bit-exact —
-    sweeping `n` = 2..400, 54 values come back non-zero, the largest of them 2.2×10⁻¹⁶ — so compare
-    it against a tolerance, not against `0.0`. And a quantised predictor — a bucketed index, an
-    integer control value, a thresholded signal — is answered correctly:
-    heavy ties with a real relationship still read high (a ten-block staircase reads **0.891**),
-    while heavy ties with no relationship read ~0.
+    Two consequences. A **constant predictor reads 0**: for a single tie group the numerator's
+    expectation is `(n²−1)/3` against a denominator of `n(n²−1)/3`, so the closed form is exactly
+    zero for every `n`. In `Double` it is zero to within one ulp rather than bit-exact (sweeping
+    `n` = 2..400, 54 values come back non-zero, the largest of them 2.2×10⁻¹⁶), so compare it
+    against a tolerance, not against `0.0`. And a quantised predictor (a bucketed index, an integer
+    control value, a thresholded signal) is answered correctly: heavy ties with a real relationship
+    still read high (a ten-block staircase reads **0.891**), while heavy ties with no relationship
+    read ~0.
 
     Inputs whose `x` values are all distinct are unaffected, bit for bit, so every number elsewhere
-    on this page is a tie-free case and reads the same as it always did.
+    on this page is a tie-free case.
 
-    **If you have xi values recorded on tied `x` from before 2026-07-30, they are wrong.** Until
-    then x-ties broke by input index, which silently scored how nearly `y` was a function of *the
-    order the samples arrived in*: a constant predictor read **0.970**, and so did a two-valued
-    predictor of nothing but the arrival index (n=300) — near-perfect scores for predictors carrying
-    no information at all. Every other coefficient here refuses that input outright: `pearson`,
-    `spearman` and `kendallTauB` return NaN on a constant, and `distanceCorrelation` returns 0.0.
+    **Recorded xi values on tied `x` from before 2026-07-30 are wrong.** X-ties then broke by input
+    index, which scored how nearly `y` was a function of the order the samples arrived in, so a
+    constant predictor read **0.970**; the `chatterjeeXi` KDoc has the detail. Every other
+    coefficient here refuses that input outright: `pearson`, `spearman` and `kendallTauB` return
+    NaN on a constant, and `distanceCorrelation` returns 0.0.
 
-## Is 0.193 big? The permutation test nobody wrote for you
+## Is 0.193 big? Measuring the null yourself
 
 There are no p-values in this family. That matters most for distance correlation, because dCor
-under genuine independence is **not** 0 at finite n — the estimator is biased upward, and the bias
+under genuine independence is **not** 0 at finite n: the estimator is biased upward, and the bias
 is large enough to swamp a real effect if you do not know its size. The `independent` row above
-reads 0.068 at n=400. At n=25 the *same* independent data reads about 0.46.
+reads 0.068 at n=400; shrink the sample and the bias grows fast, and by n=25 the null's 95th
+percentile is up at 0.466.
 
 So measure the null yourself. Re-pair `y` against `x` at random a few hundred times, and see where
 the number you actually observed falls:
@@ -400,29 +399,29 @@ markdown("verdict", """
 
 ![The null distribution of distance correlation at n=400 with the observed value far to its right, and the null threshold plotted against one over root n as a straight line through the origin](assets/statistics_examples/null_distribution.png)
 
-The verdict line is the point. The observed 0.1934 is beyond every one of 400 random re-pairings
+Read the verdict line. The observed 0.1934 is beyond every one of 400 random re-pairings
 (**0 / 400**), whose 95th percentile is 0.1262 and whose maximum is 0.1758. The dependence is real
 even though `pearson` reads −0.002. And in the same run xi reads 0.0263 against its own null's 95th
-percentile of 0.0520, with **76 / 400** re-pairings doing at least as well — xi has correctly
+percentile of 0.0520, with **76 / 400** re-pairings doing at least as well: xi has correctly
 declined to call this a functional relationship.
 
-The second figure gives you the shortcut for next time, and it is plotted against `1/√n` rather than `n`:
-the measured 95th percentile falls on a **straight line through the origin**, which is a much
-stronger statement than a hyperbola would be. The line's slope is about 2.5 — read the
-measured-against-predicted pairs off the bottom of the figure: 0.335/0.354 at n = 50 through
-0.123/0.125 at n = 400, with the rule erring safely high at n = 25 (0.466 measured against 0.500
-predicted). So: **a dCor you cannot beat 2.5/√n with is noise.** Note what that means for short
-signals. At n = 50 the threshold is around 0.34, so anything short of a strong relationship is
-invisible; distance correlation needs a few hundred samples before it can see a subtle one.
+The second figure gives you the shortcut for next time. Plotted against `1/√n` rather than `n`, the
+measured 95th percentile falls on a **straight line through the origin**, and the line's slope is
+about 2.5. Read the measured-against-predicted pairs off the bottom of the figure: 0.335/0.354 at
+n = 50 through 0.123/0.125 at n = 400, with the rule erring safely high at n = 25 (0.466 measured
+against 0.500 predicted). So: **a dCor you cannot beat 2.5/√n with is noise.** Note what that means
+for short signals. At n = 50 the threshold is around 0.34, so anything short of a strong
+relationship is invisible; distance correlation needs a few hundred samples before it can see a
+subtle one.
 
 ## Rolling: finding when the relationship starts
 
 A single coefficient over a whole recording answers the wrong question if the relationship comes
 and goes. `RollingDistanceCorrelation` maintains its row sums, grand sums and cross sums
 incrementally, so a `push` costs O(w) rather than the O(w²) a rebuild would
-(`correlations.kt:670#The maintained row sums, grand sums and cross sums are only ever`). `RollingXiCorrelation` makes no such promise — it recomputes
+(`correlations.kt:670#The maintained row sums, grand sums and cross sums are only ever`). `RollingXiCorrelation` makes no such promise. It recomputes
 `chatterjeeXi` over the window every time, at O(w log w) (`correlations.kt:914#have arrived. Copies the window out in arrival order first,`–
-`correlations.kt:925#val slot = (head + i) % windowSize`) — which makes it exactly as trustworthy as the batch call and no faster.
+`correlations.kt:925#val slot = (head + i) % windowSize`), which makes it exactly as trustworthy as the batch call and no faster.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/statistics_examples/rolling_regime.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="620" padding="16"}
 :::static
@@ -509,7 +508,7 @@ The measured numbers, from the run above:
 | rolling &#124;pearson&#124; | 0.133 | 0.230 |
 
 Both dependence measures cross the w=80 null threshold of 0.262 after the change and stay above it;
-neither does before. Rolling `|pearson|` moves too — its mean goes from 0.133 to 0.230 — but look at
+neither does before. Rolling `|pearson|` moves too (its mean goes from 0.133 to 0.230), but look at
 the green trace rather than the average: it was already swinging up to 0.3 *before* the change,
 because `|r|` on an 80-sample window of two independent Gaussians is nowhere near zero, and after the
 change it spends most of its time back down at 0.1–0.2 with occasional excursions. It never
@@ -517,23 +516,24 @@ separates. For a relationship that is *exact*, that is a coin-flip of a detector
 dependence measures do not agree about *when*: dCor first crosses the threshold **23 samples** after
 the change, xi **48**. Distance correlation reacts sooner; xi ends up higher.
 
-The last line of that figure is a real cross-check and not a restatement.
-`RollingDistanceCorrelation` never rebuilds a distance matrix — it only adds to and subtracts from
-maintained sums — while `StatsDependence.distanceCorrelation` materialises two full w×w matrices
-and double-centres them (`correlations.kt:415#matrices, which puts the practical ceiling at a few thousand`–`correlations.kt:495#val dcor = dcov / sqrt(dvarx * dvary)`). Two genuinely different
-algorithms, and on the final window they agree to **5×10⁻¹⁵**. The KDoc at
+The last line of that figure cross-checks two different algorithms.
+`RollingDistanceCorrelation` never rebuilds a distance matrix (it only adds to and subtracts from
+maintained sums) while `StatsDependence.distanceCorrelation` materialises two full w×w matrices
+and double-centres them (`correlations.kt:415#matrices, which puts the practical ceiling at a few thousand`–`correlations.kt:495#val dcor = dcov / sqrt(dvarx * dvary)`). On the final window they agree
+to **5×10⁻¹⁵**. The KDoc at
 `correlations.kt:667#evicts the oldest pair. There is no reset: build a new`–`correlations.kt:669` warns that the incremental sums drift over a long run,
-and they do — but the drift is small: over **200 000** pushes with a window of 64, the largest
-disagreement sampled against the batch call was **8.6×10⁻¹⁴**. Both bounds are pinned.
+and they do, but not far: over **200 000** pushes with a window of 64, the largest
+disagreement sampled against the batch call was **8.6×10⁻¹⁴**. `RollingDependenceTest` pins both
+bounds.
 
 ## Reshaping a distribution: `quantilewarp.kt`
 
-The odd file out. `AdaptiveQuantileWarp` does not measure anything — it fits a monotone 8-knot
+The odd file out. `AdaptiveQuantileWarp` does not measure anything: it fits a monotone 8-knot
 PCHIP curve from the measured quantiles of recent samples onto the quantiles of a target
 distribution, so a signal of the wrong shape becomes one of the right shape. The default target is
-`TargetDistributions.UnitNormal` (`quantilewarp.kt:156`), and the default eight probabilities are
-`0.001, 0.01, 0.05, 0.20, 0.50, 0.80, 0.95, 0.99` — note that they are **not symmetric**
-(`quantilewarp.kt:44`–`quantilewarp.kt:46#private val defaultQuantileWarpProbabilities = doubleArrayOf(`), so the fit spends more knots on the left tail than the
+`TargetDistributions.UnitNormal` (`quantilewarp.kt:94#val UnitNormal = QuantileFunction { p ->`), and the default eight probabilities are
+`0.001, 0.01, 0.05, 0.20, 0.50, 0.80, 0.95, 0.99`, which are **not symmetric**
+(`quantilewarp.kt:46#private val defaultQuantileWarpProbabilities = doubleArrayOf(`), so the fit spends more knots on the left tail than the
 right.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/statistics_examples/quantile_warp.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="820" padding="16"}
@@ -607,42 +607,46 @@ markdown("numbers", """
 
 ![The fitted 8-knot warp lying almost on top of the exact inverse-normal curve, and the held-out distribution going from violently right-skewed to symmetric](assets/statistics_examples/quantile_warp.png)
 
-It works, and it works **out of sample**, which is the only test worth running: the curve is fitted
-on `fit` and every number reported is measured on the disjoint `held`. Skewness goes from **11.68**
-to **0.0074**, excess kurtosis from **254.8** to **−0.170**, mean to −0.0024 and standard deviation
-to 1.0096. Eight knots and a PCHIP is enough to turn a log-normal into something you can treat as
-normal — and the first figure says how much is lost doing it: over the 2nd-to-98th percentile the
-8-knot curve is within **0.047** of the exact `Φ⁻¹(F̂(v))`, which is the answer it is
-approximating. The left histogram in the same figure is the reason you would bother: with a maximum
-of 72.98 against a median of 0.98, the raw distribution is one spike and a tail, and no amount of
-binning makes it readable. That comparison is worth its own paragraph, because `quantilewarp.kt` contains no
-such function; the oracle is built in the fence out of `inverseStandardNormalCdf`
-(`quantilewarp.kt:674#float t3 = t2 * t;`, itself accurate to six decimals: it returns 1.959964 at p=0.975 and
+It works, and it works **out of sample**: the curve is fitted on `fit` and every number reported is
+measured on the disjoint `held`. Skewness goes from **11.68** to **0.0074**, excess kurtosis from
+**254.8** to **−0.170**, mean to −0.0024 and standard deviation to 1.0096. Eight knots and a PCHIP
+is enough to turn a log-normal into something you can treat as normal, and the first figure says how
+much is lost doing it: over the 2nd-to-98th percentile the 8-knot curve is within **0.047** of the
+exact `Φ⁻¹(F̂(v))` it is approximating. The left histogram in the same figure is the reason you
+would bother: with a maximum of 72.98 against a median of 0.98, the raw distribution is one spike
+and a tail, and no amount of binning makes it readable. Nothing in `quantilewarp.kt` computes that
+exact answer, so the oracle is built in the fence out of `inverseStandardNormalCdf`
+(`quantilewarp.kt:908#fun inverseStandardNormalCdf(p: Double): Double {`, itself accurate to six decimals: it returns 1.959964 at p=0.975 and
 −3.090232 at p=0.001) and a binary search over the sorted fitting sample.
 
 Three sharp edges, all measured:
 
 - **Outside the fitted range, `evaluate` extrapolates linearly from the endpoint tangent**
-  (`quantilewarp.kt:584`–`quantilewarp.kt:589#out float ys[FIELD_QUANTILE_WARP_KNOTS]`), and for a compressed tail that slope is steep. On
-  the fit above, whose lowest input knot is 0.038, `evaluate(0.0)` returns −3.75 and
-  `evaluate(-1.0)` returns **−21.1**. Nothing clamps it. If your signal can leave the range you
+  (`quantilewarp.kt:183#tangent, with nothing clamping the result`), and for a compressed tail that
+  slope is steep. On the fit above, whose lowest input knot is 0.038, `evaluate(0.0)` returns −3.75
+  and `evaluate(-1.0)` returns **−21.1**. Nothing clamps it. If your signal can leave the range you
   fitted on, clamp the input yourself.
 - **Successive states are smoothed, not replaced.** `smoothingAlpha` defaults to **0.20**
-  (`quantilewarp.kt:73`) and each `update` lerps the previous knots 20% of the way to the new ones
-  (`quantilewarp.kt:193`–`quantilewarp.kt:197`). Feed a signal whose median jumps from 0 to 10 and
-  the median knot goes 0.009 → 2.016 → 3.608 → 4.879 → … → 9.310 after twelve updates, tracking
-  `10·(1 − 0.20)ᵏ` — 0.690 remaining against a predicted 0.687. Convergence is geometric, so a
-  step change takes a couple of dozen frames to follow.
-- **The knots are forced strictly increasing after smoothing** (`quantilewarp.kt:201#val inputKnots: DoubleArray = inputKnots.copyOf()`–
-  `quantilewarp.kt:205#val packedPushConstants: FloatArray =`), so the curve stays invertible even when the input degenerates; swept from
-  −5 to 60 in steps of 0.01 the fitted curve above is strictly increasing throughout.
+  (`quantilewarp.kt:146#val smoothingAlpha: Double = 0.20,`) and each `update` lerps the previous
+  knots 20% of the way to the new ones
+  (`quantilewarp.kt:357#lerp(previous.inputKnots[index], strictInputKnots[index], config.smoothingAlpha)`).
+  Feed a signal whose median jumps from 0 to 10 and the median knot goes
+  0.009 → 2.016 → 3.608 → 4.879 → … → 9.310 after twelve updates, tracking `10·(1 − 0.20)ᵏ`: 0.690
+  remaining against a predicted 0.687. Convergence is geometric, so a step change takes a couple of
+  dozen frames to follow.
+- **The knots are forced strictly increasing after smoothing**
+  (`quantilewarp.kt:364#values = smoothedInputKnots,`), so the curve stays invertible even when the
+  input degenerates; swept from −5 to 60 in steps of 0.01 the fitted curve above is strictly
+  increasing throughout.
 
 `AdaptiveQuantileWarp` also keeps a history: `update` merges the batch you hand it with the last
-`historyFrames` batches (default **8**, `quantilewarp.kt:72`) before taking quantiles, so the
-knots are fitted on eight frames' worth of samples, not one. And the whole state packs into four
-`vec4`s for push constants — `applyToPushConstants` plus the matching GLSL include named by
-`FIELD_QUANTILE_WARP_INCLUDE_NAME` evaluate the identical curve on the GPU, which is what
-[Field probes](field_probes.md) uses it for.
+`historyFrames` batches (default **8**, `quantilewarp.kt:139#val historyFrames: Int = 8,`) before
+taking quantiles, so the knots are fitted on eight frames' worth of samples, not one. And the whole
+state packs into four `vec4`s for push constants. `applyToPushConstants` plus the matching GLSL
+include named by `FIELD_QUANTILE_WARP_INCLUDE_NAME` evaluate the identical curve on the GPU, and
+`Box.fieldProbeQuantileWarp` (`quantilewarp.kt:553#fun Box.fieldProbeQuantileWarp(`) closes that
+loop for you: it installs a runloop hook that drains a [shader field probe](field_probes.md),
+updates the warp and calls your `apply` callback with the new state.
 
 ---
 
@@ -651,8 +655,8 @@ knots are fitted on eight frames' worth of samples, not one. And the whole state
 Start with `distanceCorrelation`: it is the only one that is zero *only* under independence, so it
 is the right screen. Beat `2.5/√n` or you have found nothing. If it fires, ask what shape: `pearson`
 for a line, `spearman` or `kendallTauB` for monotone-but-curved, `xi` for "is `y` a function of
-`x`" including non-monotone ones — remembering that `xi` is asymmetric and that a heavily tied
-predictor makes it measure arrival order. Reach for `micTicNaive` only for intuition, and never to
+`x`" including non-monotone ones, remembering that `xi` is asymmetric and that a constant predictor
+reads 0 from it where the others return NaN. Reach for `micTicNaive` only for intuition, and never to
 compare against published MIC numbers. Above a few thousand samples, `kendallTauB` and
 `distanceCorrelation` are both O(n²) and `distanceCorrelation` also allocates two n×n matrices, so
 switch to `RollingDistanceCorrelation` or subsample. And if the problem turns out to be that the
