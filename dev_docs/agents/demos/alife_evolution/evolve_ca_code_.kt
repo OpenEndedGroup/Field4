@@ -50,6 +50,9 @@ println()
 println("evolved rule ${lifeRuleSignature(evolved.best!!.genome)}")
 println("control rule ${lifeRuleSignature(control.best!!.genome)}")
 println()
+println("The first record holders score BELOW the control: the control is the best of 400")
+println("independent draws, so a population starts under it and has to climb past it.")
+println()
 println("Try Selection.TOURNAMENT above and compare. Try LifeRuleGenome() with no radius argument")
 println("and watch the margin collapse -- that is the easy problem, and it is worth seeing.")
 
@@ -66,5 +69,5 @@ for (i in picks) {
 }
 showImg(
     montage(panels, columns = 3, cellSide = 200),
-    caption = "the random control's best, then the evolved lineage, all on the same soup"
+    caption = "the control's best, then each successive record holder, all on the same soup -- the\n        early ones score BELOW the control, which is what overtaking looks like"
 )

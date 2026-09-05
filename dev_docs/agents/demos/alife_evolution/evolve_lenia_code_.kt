@@ -38,8 +38,9 @@ println("evolved rule: mu=%.4f sigma=%.4f".format(best.mu, best.sigma))
 println("  $run")
 println("  phase is MEASURED, not asserted: leniaRun classifies it from the mean field value.")
 println()
-println("`improvements` carries the genome of every generation whose leader improved, so a search")
-println("run IS a lineage and this montage is not a separate bookkeeping exercise.")
+println("`improvements` carries the genome of every generation whose leader improved. That is a")
+println("chain of RECORD HOLDERS, not a parent-child lineage -- with mu=6 and crossover on, the")
+println("odds that these six are literally descended from one another are near zero.")
 
 // The lineage, left to right. The control arm's best is the first panel: that is the thing
 // evolution has to beat, in the same picture, at the same budget.
@@ -62,5 +63,5 @@ for (i in picks) {
 // range policy changes the answer rather than tidying it.
 showImg(
     montage(panels, columns = 3, cellSide = 200, displayRange = 0f..1f),
-    caption = "left to right: the random control's best, then the evolved lineage"
+    caption = "left to right: the random control's best, then each successive record holder"
 )
