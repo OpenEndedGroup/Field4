@@ -1244,7 +1244,10 @@ object StandardRendererDocsHarness {
         val maxPoint = Vector3f(Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY)
         val point = Vector3f()
         model.meshes.forEach { instance ->
-            val matrix = instance.bindPose.toMatrix()
+            // bindMatrix, not bindPose.toMatrix(): a TRS cannot carry a mirror, so a bounds computed
+            // from the decomposed pose would frame a mirrored node in the wrong place. See
+            // GltfSupport.MeshInstance.bindMatrix.
+            val matrix = instance.bindMatrix ?: instance.bindPose.toMatrix()
             val floats = instance.buffers.vertexData.asFloatBuffer()
             for (i in 0 until instance.buffers.vertexCount) {
                 val base = i * 12

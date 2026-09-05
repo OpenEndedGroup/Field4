@@ -1,4 +1,8 @@
 [
+  {"doc": "alife_evolution", "box": "evolve_ca", "codeSha256": "b3de791b0d4d16a3", "codeLines": 73, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "alife_evolution", "box": "evolve_lenia", "codeSha256": "c3a6b211d17d8eda", "codeLines": 67, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "alife_evolution", "box": "map_elites", "codeSha256": "3a067fbfbe122196", "codeLines": 55, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "alife_evolution", "box": "shared_core", "codeSha256": "aa1e596ca9ae0a8c", "codeLines": 50, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "alife_worked_example", "box": "alife_boids", "codeSha256": "560c070cb33e6e66", "codeLines": 31, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "alife_worked_example", "box": "alife_boids_moving", "codeSha256": "30a4aa9109a52b44", "codeLines": 27, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "alife_worked_example", "box": "alife_bridges", "codeSha256": "8ec460a1f219e1ca", "codeLines": 41, "receivers": ["afield.Box"], "preamble": ""},
