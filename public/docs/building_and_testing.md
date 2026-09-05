@@ -19,9 +19,9 @@ For the full reference (every flag, the intent matrix, and the internals) see
   runs the Field JVM. `./field.sh` wraps `./gradlew runJvm` if you just want the
   app.
 - Everything runs against a **Field server**. The docs and test runners start
-  one for you (or reuse a healthy one) on a port you choose — pick a dedicated
-  high port like `9477` so you don't collide with a Field you're using
-  interactively.
+  one for you (or reuse a healthy one) on a port you choose. Pick a
+  dedicated high port like `9477` so you don't collide with a Field you're
+  using interactively.
 
 ## Building the docs
 
@@ -62,7 +62,7 @@ cd public && python3 -m http.server 8000
 
 > **A red error marker is a real failure.** If a rebuilt screenshot shows
 > Field's red error marker, or empty/incorrect output, treat it as a genuine
-> failure — not a flaky capture. Fix the snippet (or the runtime), then rebuild
+> failure, not a flaky capture. Fix the snippet (or the runtime), then rebuild
 > that page.
 
 > **Optional warm-session mode.** Set `FIELD_DOCS_RUNNER_SESSION=1` to route
@@ -101,7 +101,7 @@ uv run --group docs python tools/docs_capture_audit.py --inventory
 uv run --group docs python tools/docs_capture_audit.py --plan --touched src/jvmMain/kotlin/afield/stdlib/Functions.kt
 ```
 
-Captures are not byte-reproducible — only a handful are byte-stable run to run — so
+Captures are not byte-reproducible (only a handful are byte-stable run to run), so
 the comparison is per pixel against `git show HEAD:`, with jitter (≤0.02% of pixels
 at max channel delta ≤19) reported separately from a genuine re-render, and
 `--repeat 2` distinguishing a *nondeterministic* capture from a stale one. The
@@ -126,7 +126,7 @@ graphics-context capture starts Field), a heartbeat prints every 8s so you can
 see it is alive. Progress is `INFO`-level and on by default;
 set `FIELD_DOCS_LOG_LEVEL=WARNING` to quiet it or `=DEBUG` for more.
 
-To *watch* the capture browser — e.g. a capture that stalls or renders wrong —
+To *watch* the capture browser, say a capture that stalls or renders wrong,
 run the build with `AFIELD_PLAYWRIGHT_VISIBLE=true`:
 
 ```diffstatic {data-lang=bash}
@@ -142,7 +142,7 @@ capture are under `.field-backdoor/logs/`.
 
 ## Running the tests
 
-**Smoke catalog** — exercises the annotated `FIELD_TEST` examples through the
+**Smoke catalog.** Exercises the annotated `FIELD_TEST` examples through the
 backdoor:
 
 ```diffstatic {data-lang=bash}
@@ -153,10 +153,10 @@ uv run --project . --group backdoor python tools/run_field_tests.py --refresh-ca
 `--refresh-catalog` rebuilds `build/field-tests/catalog.json` first, then runs
 each discovered test one at a time. The runner prewarms one persistent Field on
 `--port` for the whole run (pass `--no-prewarm` to reuse an already-running
-server instead). Per-test timeouts come from each test's annotation — **don't**
+server instead). Per-test timeouts come from each test's annotation, so **don't**
 pass `--timeout` to this runner.
 
-**Committed generated assets** — several things in the repo are generated from
+**Committed generated assets.** Several things in the repo are generated from
 source and then committed, so that a change to one shows up as a reviewable diff.
 `./gradlew check` re-derives each and fails if the committed copy has drifted:
 
@@ -174,7 +174,7 @@ source and then committed, so that a change to one shows up as a reviewable diff
 None of them needs a Field server, a GPU or a network, and none of them writes a
 committed asset while checking: they generate into a temp directory and compare.
 
-**Browser UI regressions** — drives Playwright-backed UI workflows and keeps
+**Browser UI regressions.** Drives Playwright-backed UI workflows and keeps
 screenshots:
 
 ```diffstatic {data-lang=bash}
@@ -190,7 +190,7 @@ It prints `RUN` / `PASS` / `FAIL` lines; artifacts are retained under
 
 Both pipelines talk to Field through `tools/field_backdoor.py`: they start (or
 reuse) a single Field server on your chosen port, create scratch boxes, run the
-example code, and screenshot the resulting output areas — the same output areas
+example code, and screenshot the resulting output areas, the same ones
 you see when you use Field interactively. Because one server is shared across
 many captures, keep runs on a dedicated port and let the runner own it. When
 something misbehaves, the backdoor's logs under `.field-backdoor/logs/` are the

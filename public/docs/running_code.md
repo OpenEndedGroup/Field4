@@ -1,7 +1,7 @@
 # Running code in a box
 
 "Run this" is the gesture you make most often in Field, and it means more than one thing. This page
-is the whole path, from the keystroke to the frame — start at whichever end you need.
+is the whole path, from the keystroke to the frame. Start at whichever end you need.
 
 - **Running versus launching.** `alt-return` runs a line or a block; `alt-0` runs everything in the
   box; `alt-click` and `alt-up` *launch* it. Running evaluates and stops. Launching gives the code a
@@ -30,14 +30,14 @@ When you run a box, Field does **not** hand your text straight to the Kotlin com
 4. compiles and evaluates the fragment,
 5. and folds some of what just ran (`@exported` declarations) back into the preamble.
 
-Most of the day-to-day magic — `prop`, `once`, inherited `renderer`/`window`, the typed accessors you get from `moduleHere { }`, `@exported` helpers — is built on these five steps. Everything below is that machinery, in the order the steps run.
+Most of the day-to-day magic is built on these five steps. That covers `prop`, `once`, inherited `renderer`/`window`, the typed accessors you get from `moduleHere { }`, and `@exported` helpers. Everything below is that machinery, in the order the steps run.
 
 Two distinct "code that writes code" mechanisms are involved, and they run at different times:
 
 - **Macros** run *before* compilation. They are a source→source rewrite of your text (plus a side-effect: they can inject glue into the preamble, and even set box properties).
 - **`@exported`** runs *after* evaluation. It reflects over what you defined and promotes it into the preamble.
 
-Both ultimately write into the same place — the box's **preamble** — which is the shared, auto-regenerated layer of glue between a box, its own future runs, and its children.
+Both write into the same place, the box's **preamble**: the shared, auto-regenerated layer of glue between a box, its own future runs, and its children.
 
 ---
 
@@ -45,7 +45,7 @@ Both ultimately write into the same place — the box's **preamble** — which i
 
 A handful of things that look like ordinary function calls are actually **source macros**, expanded at compile time. The most important are `prop` / `rootProp`, `moduleHere` / `computeModuleHere` / `meshModuleHere` / `shadertoyHere`, `fieldStatsHere`, `print` / `println`, and `sourceBlock`.
 
-They are intercepted before the compiler sees them. If a macro ever reaches the compiler un-expanded it throws — the bare declarations exist only to fail loudly:
+They are intercepted before the compiler sees them. If a macro ever reaches the compiler un-expanded it throws. The bare declarations exist only to fail loudly:
 
 ```diffstatic {data-lang=kotlin}
 fun <T> Box.prop(name: String) {
@@ -115,7 +115,7 @@ once.renderer {                       // cached after the first non-null result
 }
 ```
 
-`window` and `renderer` are now typed properties on this box, filled once, and — because `prop` generated inheriting accessors — visible to every box connected beneath it.
+`window` and `renderer` are now typed properties on this box, filled once, and visible to every box connected beneath it, because `prop` generated inheriting accessors.
 
 ---
 
@@ -140,9 +140,9 @@ Two things have to be true for a child to use a parent's value:
     var Box.savemarker by Inheritance<Int>() /**/
     ```
 
-    That ` /**/` suffix is exactly why `prop` (and `@exported`) tag their generated lines with it — it is the "inherit me into descendants" marker.
+    That ` /**/` suffix is exactly why `prop` (and `@exported`) tag their generated lines with it: it is the "inherit me into descendants" marker.
 
-    The filter applies to every ancestor, including one that has no preamble of its own. So the accessors `moduleHere { }` generates from a box's shaders (below) do *not* come down: they are untagged, and `time` or `worldToClip` is a name two unrelated shaders will both use. A child that wants them regenerates its own, which it gets for free — `vertex`/`fragment` are themselves `Inheritance` properties, so a child with no shaders of its own inherits the parent's *source* and its own `moduleHere { }` generates accessors from it.
+    The filter applies to every ancestor, including one that has no preamble of its own. So the accessors `moduleHere { }` generates from a box's shaders (below) do *not* come down: they are untagged, and `time` or `worldToClip` is a name two unrelated shaders will both use. A child that wants them regenerates its own, which it gets for free: `vertex`/`fragment` are themselves `Inheritance` properties, so a child with no shaders of its own inherits the parent's *source* and its own `moduleHere { }` generates accessors from it.
 
 2. **The value is fetched at read time** by the `Inheritance` delegate's walk up `parents`. The preamble only carries the *accessor*; the *value* stays on whichever box set it.
 
@@ -150,9 +150,9 @@ Two things have to be true for a child to use a parent's value:
 
 Both the preamble gather and the value walk follow `parents`. Connecting a child under a parent (`parent.connect(child)`, or selecting the parent and pressing `g` in the UI) is what puts the parent into the child's ancestor chain.
 
-This is the classic graphics gotcha: a freshly created box whose only parent is the document root is a **sibling** of the renderer box, not a descendant. It will *not* inherit `renderer` — the accessor never gathers into it, and the value walk never reaches it. Only after you connect it **beneath the renderer box** does the next run gather the accessor and resolve the live `Renderer`. (The [RectSL examples](rectsl_examples.md) are built this way: one `window + renderer` box, with every example connected beneath it.)
+This is the classic graphics gotcha: a freshly created box whose only parent is the document root is a **sibling** of the renderer box, not a descendant. It will *not* inherit `renderer`: the accessor never gathers into it, and the value walk never reaches it. Only after you connect it **beneath the renderer box** does the next run gather the accessor and resolve the live `Renderer`. (The [RectSL examples](rectsl_examples.md) are built this way: one `window + renderer` box, with every example connected beneath it.)
 
-The preamble is regenerated **on run**: Field recomputes the gathered preamble, diffs it against the cached copy, and executes only the newly-added segments — so adding a `prop` in a parent and re-running a child is enough to make the new accessor appear.
+The preamble is regenerated **on run**: Field recomputes the gathered preamble, diffs it against the cached copy, and executes only the newly-added segments, so adding a `prop` in a parent and re-running a child is enough to make the new accessor appear.
 
 ---
 
@@ -172,7 +172,7 @@ val Box._add by InheritanceFromContext<(Int, Int) -> Int>() /**/
 val Box._answer by InheritanceFromContext<Int>() /**/
 ```
 
-and the values are bound on the box. **Note the leading underscore**: `@exported` publishes under an *aliased* name — `add` becomes `_add`, `answer` becomes `_answer` (a name already starting with `_` is left as-is). So from a later run or a child box you call `_add(2, 3)` and read `_answer`, **not** `add`/`answer`. (This is the opposite of `prop<T>(name)`, which keeps the exact name — `prop<Int>(savemarker)` is read back as `savemarker`.) The alias exists so the export never collides with the original live declaration in the defining box. The upsert is idempotent (re-running doesn't duplicate lines; a type change replaces the old declaration), and exotic types are simplified so the generated accessor always compiles in the child.
+and the values are bound on the box. **Note the leading underscore**: `@exported` publishes under an *aliased* name. `add` becomes `_add`, `answer` becomes `_answer` (a name already starting with `_` is left as-is). So from a later run or a child box you call `_add(2, 3)` and read `_answer`, **not** `add`/`answer`. (This is the opposite of `prop<T>(name)`, which keeps the exact name; `prop<Int>(savemarker)` is read back as `savemarker`.) The alias exists so the export never collides with the original live declaration in the defining box. The upsert is idempotent (re-running doesn't duplicate lines; a type change replaces the old declaration), and exotic types are simplified so the generated accessor always compiles in the child.
 
 Three variants set **where** the accessor goes:
 
@@ -183,7 +183,7 @@ Three variants set **where** the accessor goes:
 
 That makes `@rootExported`/`@metarootExported` the tidy way to define a helper once and share it across boxes.
 
-`prop` and `@exported` are two front-ends to the same back-end — both write a ` /**/`-tagged `Inheritance…` accessor into the preamble, and both rely on the graph-walking delegate to resolve the value at read time. `prop` is a macro for a *value slot* you assign; `@exported` promotes *declarations you already wrote*.
+`prop` and `@exported` are two front-ends to the same back-end: both write a ` /**/`-tagged `Inheritance…` accessor into the preamble, and both rely on the graph-walking delegate to resolve the value at read time. `prop` is a macro for a *value slot* you assign; `@exported` promotes *declarations you already wrote*.
 
 ---
 
@@ -217,9 +217,9 @@ fun ParamsByteSize(): Long = 464L
 fun HasBuffer.asParams(): Params = asStructure(Params(), ParamsLayoutMembers())
 ```
 
-`{{ stack.auto.name }}` slots in GLSL generate assignable StackSL properties on the module pointer (`var ModulePointer.name: String`) — see [`stack.auto` in the StackSL examples](stacksl_examples.md).
+`{{ stack.auto.name }}` slots in GLSL generate assignable StackSL properties on the module pointer (`var ModulePointer.name: String`); see [`stack.auto` in the StackSL examples](stacksl_examples.md).
 
-**Where the module's shaders come from.** `moduleHere { }` builds its module from the box's **shader-source properties** (`vertex`, `fragment`, prepared into `_vertex`/`_fragment`), **not** from assignments inside the lambda. If the box has no shaders yet, it seeds the defaults (a plain `in vec3 pos` vertex shader and a solid-colour fragment). To hand `moduleHere` a *non-default* shader from code, you must set the box's shader-source property **before** `moduleHere` expands — either by editing the box's shader tab, or from code with `once.vertex { … }` / `once.fragment { … }`:
+**Where the module's shaders come from.** `moduleHere { }` builds its module from the box's **shader-source properties** (`vertex`, `fragment`, prepared into `_vertex`/`_fragment`), **not** from assignments inside the lambda. If the box has no shaders yet, it seeds the defaults (a plain `in vec3 pos` vertex shader and a solid-colour fragment). To hand `moduleHere` a *non-default* shader from code, you must set the box's shader-source property **before** `moduleHere` expands, either by editing the box's shader tab or from code with `once.vertex { … }` / `once.fragment { … }`:
 
 ```diffstatic {data-lang=kotlin}
 once.vertex { RECT_ANIMATION_VERTEX_SHADER }
@@ -264,7 +264,7 @@ Walk it through:
 
 So `//%-` is what makes "set some state, then run a macro that reads it" work. Interactive execution expands and evaluates fragments in sequence. A single Kotlin box launched through the transcript/multi-box path is also awaited fragment by fragment; mixed-language launch groups do not promise the same first-frame ordering across boxes.
 
-**A second worked example, on the preamble half rather than the macro half.** `runLaunchSetupBlocks(box)` is called from *inside* the fragment loop in `execution.kt`, not before it, which is why the preamble and setup blocks are re-run between fragments. A fragment that *writes* to the box's preamble at runtime has therefore published a real source declaration by the time the next fragment is compiled. That is how `DataFrame.typed("People")` makes typed columns survive into the second half of the same execution — see [DataFrames in a Box](dataframe.md#fragment-marker).
+**A second worked example, on the preamble half rather than the macro half.** `runLaunchSetupBlocks(box)` is called from *inside* the fragment loop in `execution.kt`, not before it, which is why the preamble and setup blocks are re-run between fragments. A fragment that *writes* to the box's preamble at runtime has therefore published a real source declaration by the time the next fragment is compiled. That is how `DataFrame.typed("People")` makes typed columns survive into the second half of the same execution; see [DataFrames in a Box](dataframe.md#fragment-marker).
 
 ---
 
