@@ -113,9 +113,8 @@ Nothing here consulted a position, a normal, a face size or a distance. The twel
 that image is a picture of the **incidence structure**, and it survived three operators that each
 threw all the coordinates away and made new ones. The rest of this page is how that works.
 
-Everything on this page was produced by the docs build running the code shown above it, in a live
-Field. No figure is drawn by hand and no number is typed by a human — where a count, a diagnostic or
-an error message appears, it was printed by the library.
+Every figure and every number on this page is the output of the code shown above it, run by the docs
+build in a live Field.
 
 !!! info "Where the pieces live"
 
@@ -242,14 +241,13 @@ The left column is a complete, valid, checkable octahedron. It simply has nowher
 
 ![A two-column table. The abstract dual has realization null, counts 6v 12e 8f, closed manifold true, isomorphic to octahedron true, and both toFaceFLines and triangulate refusing with IllegalArgumentException FLine conversion requires a 3D realization and IllegalStateException triangulation requires a 3D realization. The realized column has the same topology plus a six-vertex Realization3, eight FLines and eight triangles](assets/polytope_examples/abstract_dual.png)
 
-Both refusals are real caught exceptions, not descriptions of them. That is the whole point of the
-column: the combinatorial claims — valid, closed, isomorphic to an octahedron — are all *decidable*
-with no coordinates in the object, and the geometry-shaped calls fail loudly rather than inventing a
-placeholder embedding.
+Both refusals are caught exceptions, printed as they were thrown. The combinatorial claims — valid,
+closed, isomorphic to an octahedron — are all *decidable* with no coordinates in the object, and the
+geometry-shaped calls fail loudly rather than inventing a placeholder embedding.
 
 `isCombinatoriallyIsomorphicTo` claims less than its name: it is a rank-3 helper that tries vertex
 bijections filtered by a degree/face-size signature and then compares edge and face multisets up to
-rotation and reversal. It is not a general incidence-poset graph-isomorphism solver, and it says so.
+rotation and reversal. It is not a general incidence-poset graph-isomorphism solver.
 
 ## The operator vocabulary
 
@@ -290,8 +288,7 @@ orders and reports both: `notationHistory` is what you asked for, `history` is w
 Five Platonic seeds, each a fully realized `PolyhedralObject`. All the pictures below are Field's own
 Three.js viewer (`threeGrid(...)`) fed with `toTriMesh()` — one WebGL context tiled into panels, so
 you can orbit the whole sheet at once. The grey line under each panel's name is read off the
-**topology**, not off the mesh — this page hands `threeGrid` a `ThreeMeshPanel` per cell with that
-sentence already written, rather than letting the renderer compute a generic one.
+**topology**, not off the mesh.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/seeds_gallery.png" wait="2.5" capture="box" open-outputs="true" w="1240" h="820" padding="14"}
 :::static
@@ -331,7 +328,7 @@ gallery("seeds", columns = 3, cell = 380, panels = listOf(
 
 ![Five shaded polyhedra — tetrahedron, cube, octahedron, icosahedron, dodecahedron — each captioned with its vertex, edge and face counts, its face-degree histogram, and Euler characteristic 2](assets/polytope_examples/seeds_gallery.png)
 
-`cube()` is the odd one out and it is worth knowing: the other four place their vertices on the unit
+`cube()` is the odd one out: the other four place their vertices on the unit
 sphere, while `cube()` has side length 2, so its vertices sit at radius √3. That matters later,
 because the realization solver's default targets are derived from the *incoming* mean edge length
 and mean radius.
@@ -386,11 +383,11 @@ Each caption's face-degree histogram tells you what the operator did combinatori
 - **`k` kis** raises an apex over every face and fans it into triangles.
 - **`t` truncate** cuts every vertex off; the old faces grow to twice as many sides (squares →
   octagons) and each cut leaves a new face.
-- **`g` gyro** is the genuinely interesting one — a real topology transform, not a fake-up: every
-  *directed* half-edge becomes a pentagon, so `gC` is 24 pentagons and nothing else.
+- **`g` gyro** is a genuine topology transform: every *directed* half-edge becomes a pentagon, so
+  `gC` is 24 pentagons and nothing else.
 
-The `gC` panel is the one to stop at, because it looks like a bug and is not. Its caption says
-38 vertices, 60 edges and 24 pentagons, and its picture is a cube. Both are true:
+The `gC` panel looks like a bug. Its caption says 38 vertices, 60 edges and 24 pentagons, and its
+picture is a cube. Both are true:
 `GyroSubdivisionRealization` places the new directed-edge points *along* the existing edges and the
 new face centres *at* the existing face centroids, so every one of those 24 pentagons lies flat in
 one of the cube's six original square planes. Flat shading has nothing to shade differently. The
@@ -533,10 +530,10 @@ used one — `bevel` is `ta`.
 
 ![A four-row table with an asked-for column and an actually-ran column. cube().ambo().bevel() gives 96 vertices, 144 edges and 50 faces, asked for as ambo bevel and run as ambo ambo truncate. cube().kis().needle() gives 38v 108e 72f, asked for as kis needle and run as kis dual kis. cube().truncate().ortho() gives 74v 144e 72f, run as truncate ambo dual ambo dual. cube().dual().zip() gives 24v 36e 14f, run as dual kis dual. Every row has Euler characteristic 2](assets/polytope_examples/operator_chaining.png)
 
-The two history columns are worth reading twice. You asked for `bevel` and the object recorded that
-you asked for it *and* that `ambo truncate` is what ran. The notation is a receipt for the
-computation, not an echo of the call — which is what lets a composite sit anywhere in a chain
-without the lineage becoming a lie.
+Read the two history columns together. You asked for `bevel`, and the object recorded both that and
+the `ambo truncate` that ran. The notation is a receipt for the computation rather than an echo of
+the call, which is what lets a composite sit anywhere in a chain without the lineage becoming a
+lie.
 
 ## Prefix notation, and what it refuses
 
@@ -572,8 +569,8 @@ ${cases.joinToString("\n") { row(it) }}
 ![A thirteen-row table. The first eight rows parse successfully, showing that daC runs ambo then dual while adC runs dual then ambo, that bC expands to at, that k4aC and t4kC carry degree selectors, and that sD produces sixty vertices, a hundred and fifty edges and ninety-two faces. The last five rows show the parser's own error messages for an unknown operator q, a degree on ambo, a leading digit, a kis degree below three, and a missing seed](assets/polytope_examples/parser_table.png)
 
 Compare rows two and three: `daC` and `adC` are different objects, 14v/24e/12f against 12v/24e/14f,
-which is the clearest possible demonstration that the notation is read right-to-left. The last five
-rows are the parser's real messages, including the byte offset it failed at.
+which is what right-to-left evaluation means. The last five rows are the parser's own messages,
+including the byte offset it failed at.
 
 ## Provenance: every output element remembers where it came from
 
@@ -675,11 +672,10 @@ The two columns differ exactly where a selector needs lineage.
 
 ![A table of eight selectors evaluated against a kis-ed cube on both a PolyhedralObject and a PolytopeTransformResult. Rank, face-degree and vertex-degree selectors give identical counts in both columns, while the two provenanceRole selectors match nothing on the bare object and match six face apexes and eight original vertices on the transform result. The final composed row differs the other way, matching six on the bare object and none on the transform result](assets/polytope_examples/selectors.png)
 
-That difference is the design, not a wart. A selector runs against a context, and a bare
-`PolyhedralObject` has no transform history to have a role in. Ask a transform result and lineage is
-there.
+That difference follows from what a selector runs against: a bare `PolyhedralObject` has no
+transform history to have a role in, and a transform result does.
 
-The last row is worth a second look, because it is the trap. `vertexDegree(4)` matches exactly the
+The last row is the trap. `vertexDegree(4)` matches exactly the
 six apexes kis raised. Negating a `provenanceRole` selector on the *bare object* negates a predicate
 that matched nothing, so `!provenanceRole(...)` is vacuously true and the composed selector still
 matches all six. Ask the transform result and it correctly matches none. A negated provenance test is
@@ -693,9 +689,8 @@ and record what they resolved in a `TransformDeployment` — so the operation is
 replayable after the fact.
 
 Below, a scalar is written onto each of a dodecahedron's twelve faces as an ordinary attribute, kis
-is deployed with `ElementParameters.attribute("spike")`, and then — the part that matters — the same
-scalar is painted back onto the *rendered triangles* by following `triangulate()`'s
-triangle → source-polygon map.
+is deployed with `ElementParameters.attribute("spike")`, and then the same scalar is painted back
+onto the *rendered triangles* by following `triangulate()`'s triangle → source-polygon map.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/parameter_field.png" wait="3.0" capture="box" open-outputs="true" w="900" h="760" padding="14"}
 :::static
@@ -758,7 +753,7 @@ markdown("field", """
 Three separate facts are visible in that one picture:
 
 1. **The parameter really is non-uniform** — the spikes get longer left to right, and the printed
-   range is the range the deployment record resolved, not a range chosen for the caption.
+   range is the one the deployment record resolved.
 2. **The colour survived the trip through triangulation.** The attribute lives on the *polygon*.
    Triangles are derived. Painting the field onto the render mesh only works because
    `TriangulatedGeometry` kept `sourceFace(triangle)`.
@@ -796,9 +791,9 @@ attributes are untouched — the result is `copy(realization = solved)` and noth
 `solveRealization()` survives as a wrapper that compiles its five weights into
 `RelaxationPlan.regularize()`, and is what the figure below calls.
 
-!!! warning "What relaxation is not"
+!!! warning "The limits of relaxation"
 
-    Quoting the source, which is careful about it:
+    From the source:
 
     > *This is a general constraint relaxation, not a claim of a unique Conway "canonical form". The
     > defaults are useful for the symmetric finite polyhedra produced here. Disable common-radius or
@@ -872,7 +867,7 @@ markdown("solve", """
 Read the table, not the pictures: the pictures only tell you the shape came back, whereas the
 diagnostics say by how much. Note the middle row is `solved.initialDiagnostics` and the last is
 `solved.finalDiagnostics` — the solver measures its own input and output, so a solve that did
-nothing useful would say so rather than being invisible.
+nothing useful is visible in the numbers.
 
 Note also that the recovered edge mean is the *jittered* mean, not the original: with
 `targetEdgeLength = null` the target is whatever the input's mean edge length happened to be. The
@@ -881,11 +876,11 @@ solver regularises the shape it was given; it does not know what shape you wish 
 ### `canonicalize(...)`: the form the combinatorics already determined
 
 The **canonical form** of a polyhedron is the embedding where every edge is tangent to one common
-sphere, the centroid of those tangency points is the origin, and every face is planar. It is not a
-prettier relaxation — it is a specific object, and for the polyhedra this library produces it is
+sphere, the centroid of those tangency points is the origin, and every face is planar. It is a
+specific object rather than a prettier relaxation, and for the polyhedra this library produces it is
 *the* object:
 
-!!! info "The guarantee, stated"
+!!! info "The guarantee"
 
     For a convex polyhedron — by Steinitz's theorem, for any 3-connected planar graph — the canonical
     form **exists and is unique** up to Möbius transformations of the sphere. Pinning the tangency
@@ -964,8 +959,7 @@ added, removed or re-identified; only the coordinates moved. The combinatorics o
 always were the combinatorics of the pentagonal icositetrahedron, and the operator's local
 realization policy was simply not in a position to say so.
 
-Read the table rather than the pictures, and read it carefully, because it is more interesting than
-"all the numbers got smaller":
+Read the table rather than the pictures:
 
 - `maxFacePlanarityError` starts at **exactly zero**. Every face of the flat cube is already planar.
 - `tangencyCentroidOffset` also starts at **exactly zero**. The flat cube is already centred.
@@ -979,11 +973,10 @@ midsphere touches every edge. The dihedral spread collapsing from `1.571` (which
 cube's faces meet either at a right angle or not at all) to `2.8e-07` is the same fact seen from
 another side: in the canonical form all twenty-four pentagons meet at one common angle.
 
-Note `reseeded = true` in the readout: the iteration could not get there from the flat cube, restarted
-from a spectral embedding, and says so rather than hiding it. Which is the subject of the next
-section.
+Note `reseeded = true` in the readout: the iteration could not get there from the flat cube and
+restarted from a spectral embedding, which is the subject of the next section.
 
-!!! warning "Where it gives up, and says so"
+!!! warning "Where it gives up"
 
     Because the canonical form is fixed by the combinatorics, a starting embedding the iteration
     cannot use is not by itself a reason to fail: when an attempt diverges or plateaus, the run
@@ -996,9 +989,9 @@ section.
     rather than a smoothed lie. A test pins that failure as a *reported* one, so it cannot
     start returning garbage instead.
 
-    It is no longer a gap in the library, though. `relaxWithCeres` reaches it in 12 iterations and
-    about 6 ms, at a tangency spread of order `1e-8`, and why it can is worth knowing — because it was
-    never solver horsepower. `canonicalize()` on `kkC` does not merely run out of its iteration budget:
+    `relaxWithCeres` does reach it, in 12 iterations and about 6 ms, at a tangency spread of order
+    `1e-8`, and not by having more solver horsepower. `canonicalize()` on `kkC` does not merely run
+    out of its iteration budget:
     it moves *away* from the answer, ending worse than the embedding it started from and with a minimum
     dihedral angle of 0.003 radians — a collapsed sliver rather than a solid. The next section measures
     all three side by side.
@@ -1006,7 +999,7 @@ section.
     `Realization3` stores Field's single-precision `Vec3`, so the achievable residual floor is about
     `1e-7` relative, however good the iteration is.
 
-#### The counter-example, and what actually fixes it
+#### The counter-example, and what fixes it
 
 Three embeddings of the same combinatorics: `kkC` as `kis kis C` built it, what `canonicalize()`
 converges to, and what `relaxWithCeres` reaches. Nothing about the topology differs between them.
@@ -1079,12 +1072,12 @@ to the answer.
 the mean edge length. `RelaxationPlan.canonicalConditions()` therefore carries a one-sided floor under
 edge length by default — `MinEdgeLengthConstraint`, exactly zero above itself and so bit-identical on a
 healthy solid — which opens that edge by an order of magnitude and makes the reported spread *worse*,
-because the flattering number was measuring a fold. So the
-fix was not a stronger solver: it was three changes to how the problem is *posed* — each face's plane
-carried as a free unit normal plus an offset rather than an origin and a normal (which has an exact
-two-dimensional null space per face, 144 of `kkC`'s 474 parameters), a one-sided floor under edge
-length that is inert on a healthy solid, and a gauge term for the rotation the canonical conditions
-leave free. `dev_docs/CERES.md` works through all three with the parameter counts.
+because the flattering number was measuring a fold. What
+reaches the answer is not a stronger solver but three changes to how the problem is *posed*: each
+face's plane carried as a free unit normal plus an offset rather than an origin and a normal (which
+has an exact two-dimensional null space per face, 144 of `kkC`'s 474 parameters), a one-sided floor
+under edge length that is inert on a healthy solid, and a gauge term for the rotation the canonical
+conditions leave free. `dev_docs/CERES.md` works through all three with the parameter counts.
 
 ### `realize(...)`: coordinates from the combinatorics alone
 
@@ -1093,7 +1086,7 @@ able to reach it *without ever being shown the operator's coordinates*. `Spectra
 an embedding from the three eigenvectors of the vertex graph Laplacian with the smallest non-zero
 eigenvalues, optionally projected to the sphere. For a vertex-transitive graph those three modes span
 one degenerate eigenspace and the embedding already *is* the symmetric solid; otherwise it is a good
-starting point, and the KDoc says that rather than claiming a finished object.
+starting point rather than a finished object.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/spectral.png" wait="4.0" capture="box" open-outputs="true" w="1240" h="840" padding="14"}
 :::static
@@ -1157,11 +1150,11 @@ markdown("spectral", """
 Panels 2 and 3 came from completely different starting coordinates — one from an eigen-decomposition
 of a graph that had never seen a coordinate, one from the operator's own placement on the faces of a
 cube — and landed on the same solid, agreeing on the mean dihedral angle to around `1e-9` radians.
-That agreement is this page's strongest single claim, and it is the argument for the whole
-topology-first design: the shape was a property of the incidence structure the entire time.
+That is the argument for the topology-first design: the shape was a property of the incidence
+structure the entire time.
 
-Panel 1 is worth its own note, because it shows the spectral construction is doing real work rather
-than handing the canonicaliser a random cloud. From the graph alone it reaches a tangency spread of
+Panel 1 shows the spectral construction doing real work rather than handing the canonicaliser a
+random cloud. From the graph alone it reaches a tangency spread of
 `2.0e-02` — about sixteen times better than the `3.3e-01` of the flat cube the operator produced, and
 already within a fraction of a percent of the right mean dihedral angle. That is why it is the
 reseeding fallback in the previous section, and why the reseed rescues the case rather than merely
@@ -1171,8 +1164,8 @@ The symmetry readout underneath is `combinatorialOrbits()`, which refines the ra
 structure by iterated incidence-colour relabelling. Every automorphism preserves colours, so each
 class is a *union* of true orbits and constraining a class is at least as strong as constraining an
 orbit — but refinement is not a complete invariant, so where a class is strictly coarser than its
-orbits the `symmetry-orbit` constraint family simply reports a real residual rather than pretending.
-`fullyTransitive = false` here is correct and not a defect: the pentagonal icositetrahedron is
+orbits the `symmetry-orbit` constraint family reports a nonzero residual.
+`fullyTransitive = false` here is correct: the pentagonal icositetrahedron is
 face-transitive but not vertex-transitive, and the class sizes say exactly that.
 
 ## Rank 4: the same core, one dimension up
@@ -1245,9 +1238,8 @@ Every one of those rows reports `V − E + F − C = 0`, which is the Euler rela
 
 There is no `triangulate()` for rank 4. A projected 4-polytope's polygons do not bound a surface, and
 filling them would imply one that does not exist — so `toEdgeFLines` and `toCellEdgeFLines` give
-Field a wireframe and stop there. `OrthographicProjection4` is available and is clear about being
-unreadable: it collapses the tesseract's two cubes exactly onto each other, which is a test
-assertion, not an accident.
+Field a wireframe and stop there. `OrthographicProjection4` collapses the tesseract's two cubes
+exactly onto each other, which a test asserts.
 
 ## Into Field: one FLine per face
 
@@ -1290,14 +1282,9 @@ displayOpen("faces")
 ![An orbitable Three.js view of a partially truncated cuboctahedron drawn as filled, stroked polygons, with faces tinted purple, green and teal according to the lineage role each one reports](assets/polytope_examples/face_flines.png)
 
 That view is the live `threeLines(...)` viewer, so in a real box you can orbit it, hover a face and —
-if you set `onClick` — pick one and read its provenance back. The
-[loadable demo](#a-loadable-demo) at the foot of this page does exactly that.
-
-??? aside "The one thing on this page that is not captured"
-
-    The figure above is a real capture of the real viewer, but it is a *still*. Hover highlighting
-    and the click-to-inspect provenance card need a mouse, and the docs build does not have one, so
-    they are described here rather than shown. Replay the loadable demo to see them.
+if you set `onClick` — pick one and read its provenance back. The figure is a still: hover
+highlighting and the click-to-inspect provenance card need a mouse, which the docs build does not
+have. The [loadable demo](#a-loadable-demo) at the foot of this page has both.
 
 What each of those lines is carrying, from the same transform:
 
@@ -1341,7 +1328,7 @@ axis, runs Field's existing `FloatEarcut` in 2D, and flips any triangle whose wi
 the face. It **duplicates polygon corners between faces**: `TriMesh` stores normals per
 vertex, and a creased polyhedron needs a different flat normal on each side of an edge.
 
-That duplication has a consequence worth seeing rather than being told about.
+That duplication has a consequence:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/triangulation.png" wait="2.5" capture="box" open-outputs="true" w="1060" h="560" padding="14"}
 :::static
@@ -1379,15 +1366,14 @@ polygons with a boundary. The topology is not a lossy summary of the triangles; 
 lossy projection of the topology, and `sourceFace` / `sourceVertex` are the receipt.
 
 `FanFaceTriangulator` remains available as an explicitly convex-only strategy.
-`EarcutFaceTriangulator` is the default, handles simple concave faces, and — as of the boundary model
-in the next section — cuts holes out of them too.
+`EarcutFaceTriangulator` is the default, handles simple concave faces, and, with the boundary model
+in the next section, cuts holes out of them too.
 
 ## A face can have holes
 
-A rank-2 element used to be one closed cycle of vertices. It is now an **outer cycle plus zero or
-more inner rings**: `faceCycle` still returns the outer one, `faceHoles` returns the inner rings, and
-`faceRings` returns all of them. Nothing about a hole-free face changed — its `faceRings` is a list
-of one, and it takes the identical path through both adapters.
+A rank-2 element is an **outer cycle plus zero or more inner rings**: `faceCycle` returns the outer
+one, `faceHoles` returns the inner rings, and `faceRings` returns all of them. A hole-free face has a
+`faceRings` of one and takes the identical path through both adapters.
 
 The consequence is not only a rendering one. A face with a hole is a **surface with boundary**, so an
 object containing one stops being a closed manifold, and every operation that is only defined for a
@@ -1442,12 +1428,11 @@ ${refusals.joinToString("\n") { (call, message) -> "| `$call` | $message |" }}
 The two characteristics are the crux. Counting *elements* still gives 2, because the incidence poset
 of a cube with a window still has a cube's elements. Counting *cells* gives 1, because a disk with
 one hole contributes `1 - 1`: a sphere with a window punched in it is a disk, and χ of a disk is 1.
-Both numbers are correct and they answer different questions, which is exactly why the API offers
-both instead of picking one and being subtly wrong half the time.
+Both numbers are correct and they answer different questions, which is why the API offers both.
 
-The four refusals come from two chokepoints, not from four hand-written guards — one at the entry to
-the transform machinery and one in `dual()` — so a fourteenth operator inherits the refusal for free
-rather than being remembered about.
+The four refusals come from two chokepoints rather than four hand-written guards, one at the entry
+to the transform machinery and one in `dual()`, so a fourteenth operator inherits the refusal
+without anyone having to remember it.
 
 ### The hole, in pixels, beside the same face without one
 
@@ -1515,16 +1500,13 @@ threeGrid(cells, channel = "plates", name = "plates", columns = 2, height = 260,
 
 ![Two wireframe renders side by side. The left plate, built with addFaceHole, is a square annulus — a square frame with an empty square window at its centre, triangulated into eight triangles around the rim, reported as 8 vertices, 8 edges and 2 rings. The right plate is the identical outline with the ring dropped: a solid filled square of 2 triangles, 4 vertices, 4 edges and 1 ring](assets/polytope_examples/face_hole_counterfactual.png)
 
-Eight triangles against two, from the same outer outline. Neither picture is a description of the
-other: both came out of `triangulate()` on an object built by the code above it, and the window in
-the left one is empty because no triangle was generated there, not because something was drawn over
-it.
+Eight triangles against two, from the same outer outline. The window in the left one is empty
+because no triangle was generated there, not because something was drawn over it.
 
-What is *not* here: a hole ring that touches its outer boundary, a face with two nested
-rings, and star polygons. Those are named as remaining work rather than half-supported without saying so. The
-realization verbs are the other gap — `relax` and `canonicalize` build their problem from
-outer rings only, so hole vertices are unconstrained. No shipped path reaches that today, because the
-Conway operators refuse a holed face before a realizer ever sees one.
+Not here: a hole ring that touches its outer boundary, a face with two nested rings, and star
+polygons. The realization verbs are the other gap — `relax` and `canonicalize` build their problem
+from outer rings only, so hole vertices are unconstrained. No shipped path reaches that today,
+because the Conway operators refuse a holed face before a realizer ever sees one.
 
 ## The registered value printers
 
@@ -1565,7 +1547,7 @@ polyhedron.solveRealization()
 
 ## A loadable demo
 
-Two operation transcripts build a working document you can open, edit and re-run:
+Three operation transcripts build a working document you can open, edit and re-run:
 
 - **`dev_docs/agents/transcripts/polytope_conway_demo.yaml`** — one compact box that marks two
   opposite cube faces with different heights, applies `kis` only there, and sends the polygon faces
@@ -1591,24 +1573,21 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --port
   --command 'macro run polytope_conway_gallery'
 ```
 
-Both are exercised by the transcript execution smoke, so their box bodies cannot rot silently.
+All three are exercised by the transcript execution smoke, so their box bodies cannot rot
+silently.
 
 ## What this does not do yet
 
-Kept here because the architecture note is careful about it, and a documentation page that drops
-the caveats is worse than no page:
-
-- A face is a **single** ordered vertex cycle. No holes, no annuli, and star/self-intersecting
-  polygons are not represented — pretending Earcut handles them would make their winding and filling
-  rules ambiguous.
+- A face carries an outer cycle and any number of disjoint inner rings. A hole ring that touches its
+  outer boundary, nested rings, and star/self-intersecting polygons are not represented; Earcut's
+  winding and filling rules would be ambiguous for them.
 - Transform parameters are maps of `String` to `Double` in the deployment records. There are no typed
   parameter descriptors, domains, units or composition yet.
 - All three realization verbs exist, but there is no **Wythoff construction** to supply a symmetry
   specification and a high-quality initial embedding — the canonicaliser rediscovers symmetry
-  numerically instead of being told it. `kkC` is no longer an algorithmic gap — `relaxWithCeres`
-  reaches it exactly — but the two pure-Kotlin iterations still do not, so a caller who wants a
-  guaranteed canonical form needs the native solver. `kkT`, `kkO` and `kkI` reach spread `1e-4` rather
-  than machine precision even there.
+  numerically instead of being told it. `relaxWithCeres` reaches `kkC` exactly and the two pure-Kotlin
+  iterations do not, so a caller who wants a guaranteed canonical form needs the native solver.
+  `kkT`, `kkO` and `kkI` reach spread `1e-4` rather than machine precision even there.
 - `relax(...)` builds its Jacobian by finite differences over `3·V` parameters. That is a
   tens-of-vertices tool, not a mesh optimiser.
 - Normals are flat only. Smooth and crease-aware generation, and stable face/edge/vertex picking ids
