@@ -188,6 +188,16 @@ internal fun attachDocumentSession(
         // Once an agent backdoor has touched a live document, keep it agent-managed even if a
         // browser later attaches to the same session — never downgrade agent protection.
         if (agentManaged) found.agentManaged = true
+        // `readOnly` is fixed when the session is built, so attaching to one that is already open
+        // writable cannot make it read-only. Say so rather than accept the request and ignore it;
+        // the snapshot this returns reports the real value, so a caller can check as well as read.
+        if (target.readOnly && !found.readOnly) {
+            lprintln(
+                "warning,agent_backdoor",
+                "read-only ignored for ${target.documentName}: already open and writable in this " +
+                    "Field. Close it, or launch with --read-only."
+            )
+        }
         attachRootToMetaroot(found.root)
         registerDocumentSession(session, found)
         sendExpectedBoxCount(session, found)

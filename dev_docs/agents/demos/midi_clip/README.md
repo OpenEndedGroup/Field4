@@ -3,8 +3,11 @@
 Open this folder in Field and run the four boxes:
 
 ```bash
-./field.sh dev_docs/agents/demos/midi_clip
+./field.sh dev_docs/agents/demos/midi_clip --read-only
 ```
+
+`--read-only` keeps the demo out of your `git status`: this folder is committed, and Field writes
+back into the folder a document came from. Drop the flag when you mean to edit the demo itself.
 
 Boxes 1 and 2 pass a file between them through the temp directory, so run 1 before 2. Boxes 3 and 4
 are independent of both.

@@ -9,7 +9,7 @@ that raster is from real area coverage.
 Point Field at this folder as its workspace:
 
 ```
-./field.sh dev_docs/agents/artifacts/rectsl_soft_raster/bias_demo
+./field.sh dev_docs/agents/artifacts/rectsl_soft_raster/bias_demo --read-only
 ```
 
 or, with a Field already running,
