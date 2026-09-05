@@ -9,8 +9,8 @@
 [what's already in the box](reference/index.md).*
 
 Artificial life is the study of systems whose interesting behaviour is not in their rules. You write
-down something local and small — count your neighbours, follow the strongest smell, grow toward the
-nearest unclaimed space — and something global and large happens that the rule never mentions: a
+down something local and small (count your neighbours, follow the strongest smell, grow toward the
+nearest unclaimed space) and something global and large happens that the rule never mentions: a
 spaceship, a coastline, a transport network, a dendrite with a fractional dimension. This page is
 about the *spatial* half of that: grids, continuous fields and populations of agents. The
 graph-rewriting half lives in [`growing.kt`](reference/data.md#growing-kt) and
@@ -34,7 +34,7 @@ against analytic answers), and `stdlib.alife.gallery.slow` is the ~25 s of figur
 PDE or an agent population to a statistical verdict.
 
 !!! note "The measurement layer is the interesting part"
-    `alife.kt` is mostly not automata — it is [`polarization`](reference/alife.md#alife-kt) and its
+    `alife.kt` is mostly not automata. It is [`polarization`](reference/alife.md#alife-kt) and its
     random baseline, [`blobShapes`](reference/alife.md#alife-kt) (the isoperimetric ratio that tells
     spots from stripes), [`correlationLength`](reference/alife.md#alife-kt),
     [`topShare`](reference/alife.md#alife-kt) and
@@ -44,7 +44,7 @@ PDE or an agent population to a statistical verdict.
 ## What this implementation does, and does not do
 
 Six dependency-free files built on the existing [imaging](imaging_examples.md) and
-[mesh](mesh_examples.md) families — nothing here reimplements convolution, connected-component
+[mesh](mesh_examples.md) families. Nothing here reimplements convolution, connected-component
 labelling, colour mapping or marching cubes:
 
 - **`alife.kt`** — [`IntGrid`](reference/alife.md#alife-kt-intgrid), the toroidal-or-bounded integer
@@ -78,15 +78,15 @@ Things it does not do, so you are not surprised:
 
 `B3/S23` is the most-studied dynamical system in computing, which is exactly why it is the right place
 to start: there are *facts* about it to be checked. The glider translates one cell diagonally every
-four generations. The block is a still life. The blinker has period two. And the R-pentomino — five
-cells — runs for 1103 generations, peaks at a population of 319 at generation 821, and settles to 116
+four generations. The block is a still life. The blinker has period two. And the R-pentomino, five
+cells, runs for 1103 generations, peaks at a population of 319 at generation 821, and settles to 116
 cells, six of which are gliders still flying away.
 
 That last one has a subtlety worth the space, because it is the difference between a check and a
 flattering approximation. Those figures are about an *unbounded* board. On a board with walls the
 gliders are destroyed, and the system instead becomes exactly periodic at generation 1164 with 110
 cells. Both answers are correct; they are answers to different questions. So the box below runs on a
-620-wide board — wide enough that no glider can reach an edge in 1103 generations — and asserts
+620-wide board, wide enough that no glider can reach an edge in 1103 generations, and asserts
 [`liveBounds`](reference/alife.md#alife-kt-intgrid) to *confirm* the walls never took part rather than
 assuming it.
 
@@ -144,7 +144,7 @@ the `B34/S23` line above shows by printing `null`.
 
 ### The two objects, moving
 
-Two panels, 400 generations, two generations per displayed frame — slow enough that the glider's
+Two panels, 400 generations, two generations per displayed frame: slow enough that the glider's
 four-generation cycle is legible rather than a strobe.
 
 Left: the glider, on a **16-cell torus**, twenty-four pixels to a cell. It laps that board every 64
@@ -155,7 +155,7 @@ the form where it is obvious.
 Right: the R-pentomino on a **64-cell walled** board, with its live population in the caption. This is
 the walled question, not the unbounded one the numbers above are about: those need 620 cells, and 620
 cells at one pixel each is a video whose interesting part is four pixels wide. Same rule, same seed,
-different board, and what it shows is the shape of the thing — five cells, a violent expansion, then a
+different board, and what it shows is the shape of the thing: five cells, a violent expansion, then a
 long quieting-down toward something stationary.
 
 ??? aside "Why the boards are so small"
@@ -205,7 +205,7 @@ Rule 90 is `left XOR right`, and from a single seed its space-time diagram **is 
 [`sierpinskiReference`](reference/alife.md#alife-ca-kt) computes that from Kummer's theorem
 (`C(n, k)` is odd exactly when `n and k == k`) without running a cellular automaton at all. So the
 equality between them is a cross-check between two unrelated computations, not a stepper agreeing with
-itself — and it holds in all 32 896 cells. A second, independent oracle comes free: row `g` of that
+itself, and it holds in all 32 896 cells. A second, independent oracle comes free: row `g` of that
 diagram holds exactly `2^popcount(g)` live cells (Gould's sequence).
 
 Rule 184 is the traffic rule, and it conserves the number of live cells **exactly**, forever. Rule 90
@@ -265,9 +265,10 @@ the downward growth of the picture, not motion within it. It pays off anyway, be
 grow at the same rate and the differences between the 256 rules become differences you can watch appear.
 
 One generation per displayed frame, 128 generations in six seconds. Rule 90 lays down the Sierpiński gasket
-with the self-similarity arriving in bursts at the powers of two — the row populations are `2^popcount(g)`,
-so the widest rows are the ones where `g` has many bits, and the diagram visibly *breathes*. Rule 30 starts
-identically, from a single cell, and never repeats. Rule 110 — the universal one — separates into a
+with the self-similarity arriving in bursts at the powers of two: the row populations are
+`2^popcount(g)`, so the widest rows are the ones where `g` has many bits, and the diagram visibly
+*breathes*. Rule 30 starts
+identically, from a single cell, and never repeats. Rule 110, the universal one, separates into a
 background of periodic structure with localised gliders travelling through it, which is what a proof of
 universality has to be built out of. Rule 184 just shifts, forever, conserving its 86 live cells exactly.
 
@@ -317,26 +318,26 @@ can skip a state, and there is no way back, so the only durable structures are r
 The measurement that makes "it self-organised" checkable is
 [`cyclicAdvanceFraction`](reference/alife.md#alife-ca-kt). In an **uncorrelated** soup a cell can advance
 exactly when one of its eight Moore neighbours happens to hold its successor state, which is
-`1 - (1 - 1/k)^8` — a closed form, not a threshold. For `k = 14` that is 0.4473, and the measurement is
+`1 - (1 - 1/k)^8`: a closed form, not a threshold. For `k = 14` that is 0.4473, and the measurement is
 0.4483. Four hundred generations later every cell is being driven by a neighbour and the fraction pins
 at **1.0000**, which is something no uncorrelated field does at any `k`.
 
 The second pair of panels is the excitable corner of the parameter space (six states, threshold three,
 radius two), which curls into visible spiral cores. That is a different *phase*, and the difference is
-reported as a length scale rather than left to the eye — though note the direction: the wider
+reported as a length scale rather than left to the eye, though note the direction: the wider
 neighbourhood gives the **smaller** correlation length, because the spiral arms are narrow.
 
 !!! note "This statistic's floor is 0.632, not 0"
     [`correlationLength`](reference/alife.md#alife-kt) is the lag at which the direction-averaged
     autocorrelation first falls to `1/e`, linearly interpolated. For a field with *no* correlation at all
-    the interpolation runs from `ac(0) = 1` straight to `ac(1) ≈ 0`, so the answer is `1 − 1/e = 0.632` —
+    the interpolation runs from `ac(0) = 1` straight to `ac(1) ≈ 0`, so the answer is `1 − 1/e = 0.632`:
     a floor, reached from below by nothing. So the right comparison for a settled field is with its own
     pixels *shuffled*, which lands on that floor to six decimal places, rather than with a chosen
-    constant — and that is the comparison CI makes. Be careful reading the two numbers the box below
+    constant, and that is the comparison CI makes. Be careful reading the two numbers the box below
     prints (**2.77** and **1.96** on its 200×200 fields) against the ones quoted in
     `dev_docs/ALIFE.md` (**2.80** and **2.01**): those are the gallery's 220×220 fields, a different
-    measurement of the same phenomenon, not a discrepancy. A checkerboard — the shortest wavelength a
-    lattice holds — reads exactly `(1 − 1/e)/(4/3) = 0.4741`, which is as low as this statistic can go.
+    measurement of the same phenomenon, not a discrepancy. A checkerboard, the shortest wavelength a
+    lattice holds, reads exactly `(1 − 1/e)/(4/3) = 0.4741`, which is as low as this statistic can go.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/cyclic.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -385,7 +386,7 @@ showImg(
 
 Of everything in this family the cyclic CA is the system whose stills lie hardest, because the whole point
 of it is *rotation* and a still frame has no chirality. Both panels below run 400 generations in six and a
-half seconds — a little over three generations per displayed frame — from the same kind of soup. The
+half seconds (a little over three generations per displayed frame) from the same kind of soup. The
 lattices are 96 cells rather than the figure's 200, drawn **three pixels to a cell**: at one pixel per cell
 a rotating spiral core is about four pixels of video and reads as flicker.
 
@@ -460,7 +461,7 @@ reads as a single blob at 0.78 coverage with a ratio of **90**.
     spots). That bias points toward "round", which makes a *stripe* verdict conservative.
 
 Two controls. `v = 0` is a stable fixed point of the equations, so an unseeded field stays at exactly
-0.0 forever — the pattern comes from the dynamics and not from the renderer. And with `Du == Dv` the
+0.0 forever, so the pattern comes from the dynamics and not from the renderer. And with `Du == Dv` the
 Turing instability's short-scale advantage is gone and the same seed, the same reaction and the same
 6000 steps produce nothing at all: Turing's own argument, restated as an experiment.
 
@@ -509,7 +510,7 @@ showImg(
 
 A montage of finished fields is the *evidence*, and it is also the one view that hides what
 reaction–diffusion is: those numbers are the end of a process, and the process is the phenomenon. So here
-is one preset again, animated — the `maze` field, `F = 0.029`, `k = 0.057`, the same 6000 steps.
+is one preset again, animated: the `maze` field, `F = 0.029`, `k = 0.057`, the same 6000 steps.
 
 What to watch, with the step counter in the caption as your clock:
 
@@ -519,7 +520,7 @@ What to watch, with the step counter in the caption as your clock:
   arriving as an *event*: the flat patch boundary is unstable, and it does not decay into noise, it picks
   a wavelength. The four lobes are that wavelength meeting the square's symmetry.
 - **Step ~1600.** Each patch has filled its own interior with labyrinth and the fronts are advancing into
-  empty substrate — the black regions are unconsumed `u`, and they are shrinking.
+  empty substrate. The black regions are unconsumed `u`, and they are shrinking.
 - **Step ~2900.** The fronts have met. From here the field is *entirely* labyrinth and the dynamics change
   character completely: no more growth, only rearrangement.
 - **Step 6000.** Annealed. Watch the last second and almost nothing moves; the little that does is at the
@@ -536,7 +537,7 @@ paced the way it is.
     finished labyrinth for four.
 
     So [`animateEvolution`](reference/alife.md#alife-animate-kt) takes a `ramp`, and the one visible line
-    of the fence below sets it to 40 — meaning the last displayed frame advances forty times as many steps
+    of the fence below sets it to 40, meaning the last displayed frame advances forty times as many steps
     as the first, on the geometric schedule `done(t) = 6000 · (40^t − 1) / 39`. The mid-point of the
     *schedule* is then step **819** rather than step 3000, and half the clip's change has arrived at 47.8 %
     of its length rather than at 14.5 %.
@@ -586,7 +587,7 @@ A  <-  clamp(A + dt * G(K * A), 0, 1)
 ```
 
 That is the whole system. Its interest is that with a smooth ring kernel and a smooth bell-shaped
-growth mapping it supports localised, self-maintaining, *moving* structures — solitons — which a
+growth mapping it supports localised, self-maintaining, *moving* structures (solitons), which a
 lattice automaton quantises away.
 
 There is a very good cross-check available on an *implementation* of it. With a uniform Moore ring
@@ -602,7 +603,7 @@ diverges completely.
 Be precise about what that proves. These are not two independent implementations of Conway's Life:
 `leniaFromLifeRule` reads the very same `B3/S23` birth and survive sets that the integer stepper reads,
 so a wrong table would produce two wrong steppers in perfect agreement. What the bit-for-bit result
-cross-validates is the two **update mechanisms** — a float convolution, an additive `A + dt·G` step, the
+cross-validates is the two **update mechanisms**: a float convolution, an additive `A + dt·G` step, the
 quantisation back to a neighbour count, the clamp to `0..1`, the toroidal border and the `Img`↔`IntGrid`
 bridges, against integer neighbour counting and a table lookup. The *rule* is pinned separately, and from
 outside this codebase, by the named-object checks above: a glider that translates by exactly `(1, 1)` in
@@ -687,14 +688,14 @@ this clip gives.
 
 What to watch is the **first two seconds**, which is where the two panels stop being the same picture. Both
 start as one smooth blob. Then the growth mapping's window decides everything: one `mu` has the blob break
-into a field of ring-shaped cells that maintain themselves and then keep rearranging without ever growing or
-dying — the mean field settles into a band and stays there — while the other loses more than it gains and
-runs down to nothing. Same code, same seed, one number.
+into a field of ring-shaped cells that maintain themselves and then keep rearranging without ever
+growing or dying, with the mean field settling into a band and staying there, while the other loses more
+than it gains and runs down to nothing. Same code, same seed, one number.
 
 So this clip is ramped like Gray–Scott's, and for the same reason: the blob breaks up inside the first
 forty of the two hundred and forty steps. `ramp = 25` puts the mid-point of the clip at step 40 instead of
 step 120, which gives the whole of the interesting decision half the clip and the long self-maintaining
-phase — the *claim*, but not the event — the other half. Half the change then arrives at 38 % of the clip
+phase (the *claim*, but not the event) the other half. Half the change then arrives at 38 % of the clip
 rather than 10 %. Even so, 45 % of frames show essentially nothing, and that is a floor rather than a
 failure: one of the two panels really does die, and a dead field is *supposed* to sit still.
 
@@ -730,12 +731,13 @@ animateEvolution(
 
 ??? aside "One rendering trap"
     A saturated field is *constant* at 1, so an auto-ranged colour map draws it at the dark end of the
-    ramp — and a `SATURATION` panel renders as black, indistinguishable from `DEATH`. The panels above
+    ramp, so a `SATURATION` panel renders as black, indistinguishable from `DEATH`. The panels above
     use a fixed `0..1` range for exactly that reason.
 
 ## 6. Boids
 
-[Reynolds' three rules](https://www.red3d.com/cwr/boids/) — separate, align, cohere — on a torus. The
+[Reynolds' three rules](https://www.red3d.com/cwr/boids/) — separation, alignment, cohesion — on a
+torus. The
 domain wraps for a reason beyond tidiness: in a bounded box the walls do half the flocking, because
 agents that bounce off the same wall end up parallel, so a polarization measured in a box is not
 evidence about the *rules*.
@@ -745,7 +747,7 @@ A flock is two things at once, and both are measured here:
 - **Aligned.** The order parameter `|Σ v̂| / N` is 0.692 after 900 steps. That needs a scale, so
   [`randomPolarizationBaseline`](reference/alife.md#alife-kt) gives it: `√π / 2√N` is the expected value
   for `N` *independent* headings, which for 400 agents is 0.044. The measured value is 15.6× that. And
-  the same initial state with `alignmentWeight = 0` — nothing else changed — reaches 0.073.
+  the same initial state with `alignmentWeight = 0`, nothing else changed, reaches 0.073.
 - **Spaced.** The 5th-percentile nearest-neighbour distance is 1.37 cells; with `separationWeight = 0`
   it collapses to 0.01. The floor under that distribution is the separation term, and you can see the
   control arm's population has collapsed to points.
@@ -809,16 +811,16 @@ in each caption recomputed every frame.
 
 What to watch: **the left panel's flocks are not there at the start and nobody puts them there.** Within
 about a hundred steps local alignment has produced a handful of coherent groups, and after that the
-interesting event is the rare one — two flocks meeting and either merging or passing through. That is why
+interesting event is the rare one: two flocks meeting and either merging or passing through. That is why
 the order parameter settles near 0.69 rather than climbing to 1: it is the global average over several
 flocks that each individually agree, and the caption's number wobbles as they merge and split. On the
-right, the population stays a gas forever. It is *moving* — the speed floor is still on — it just never
+right, the population stays a gas forever. It is *moving*, since the speed floor is still on; it just never
 agrees about anything.
 
 The tail is drawn longer here (8 units) than in the still (5) and the domain is drawn at one pixel per
 unit rather than 1.4. Both are frame-rate accommodations: at six or seven steps per displayed frame an agent
 covers about nine units between frames, so a short tail leaves visible gaps. Neither changes anything
-measured — `order()` reads the velocity array, not the picture.
+measured, because `order()` reads the velocity array and not the picture.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/boids.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="9" fps="20" timeout="300" w="1000" embed=true name="alife-boids-video" alt="two boid populations from the same seed: the left forms coherent flocks, the right, with alignment switched off, stays a disordered gas"}
 :::static
@@ -852,13 +854,13 @@ animateEvolution(
 ## 7. Physarum
 
 Jones' slime-mould model. Each agent deposits into a trail field, samples that field three ways ahead,
-turns toward the strongest, and moves. The network is not stored anywhere — it is the fixed point of
+turns toward the strongest, and moves. The network is not stored anywhere; it is the fixed point of
 that stigmergic loop.
 
 The measurement is [`topShare(0.05)`](reference/alife.md#alife-kt): the fraction of all deposit held by
 the brightest 5 % of pixels. A flat field gives 0.05 by definition. The sensing population gives
-**0.480**; the identical population with sensing switched off — same count, same seed, same deposit,
-same decay, random turns — gives **0.185**. And the shapes differ as sharply: median isoperimetric ratio
+**0.480**; the identical population with sensing switched off (same count, same seed, same deposit,
+same decay, random turns) gives **0.185**. And the shapes differ as sharply: median isoperimetric ratio
 17.2 against 1.2, filaments against blobs.
 
 ??? aside "Mutual exclusion is the whole model, not an optimisation"
@@ -980,7 +982,7 @@ dendrite.
 
 It is the one system in the family with a quantitative number to hit: the **mass–radius dimension**,
 fitted as `N(r) ∝ r^D` in log–log space by
-[`massRadiusDimension`](reference/alife.md#alife-kt), which also reports `r²` — because a slope through a
+[`massRadiusDimension`](reference/alife.md#alife-kt), which also reports `r²`, because a slope through a
 curve is not a dimension. Planar DLA's asymptotic value is about 1.71; the cluster below measures
 **1.597** with `r² = 0.9965`.
 
@@ -1001,7 +1003,7 @@ it is not simply reading the bounded support.
     `N(r) = n·(r/R)^D` **by construction** for any real `D`, and `massRadiusDimension` recovers
     `1.000, 1.262, 1.711, 2.002` from sets built with `D = 1.00, 1.2619, 1.71, 2.00`. Handed something
     whose exponent *is* 1.71 it returns 1.71. Separately, a straight line of lattice points reads 0.993
-    and a filled lattice disc 1.986 — the same 0.7 % low, because a staircase `N(r)` is not a power law.
+    and a filled lattice disc 1.986, the same 0.7 % low, because a staircase `N(r)` is not a power law.
     So about 0.7 % of the gap is the lattice and the rest is the cluster's finite size.
 
     A related trap, also caught by a control: fitting from where `N(r)` is three points measured a
@@ -1052,7 +1054,7 @@ showImg(
 A DLA cluster's shape is a record of *when*, and this is the one clip on the page where saying exactly what
 is being replayed matters, so: the cluster is grown **once**, by `dlaCluster`, and `Aggregate.points` is the
 order the particles stuck in. The clip reveals that recorded order at a uniform rate. It is not a
-re-simulation and it is not uniform in the original walk's wall-clock either — a late particle takes far
+re-simulation and it is not uniform in the original walk's wall-clock either: a late particle takes far
 longer to arrive than an early one, because it has to random-walk in from a larger circle past a bigger
 target. What is uniform is particle *count*.
 
@@ -1139,15 +1141,15 @@ be checked **exactly and combinatorially**.
   the ratio when the figure is held at constant *diameter*; this turtle holds the step constant, so the
   figure triples in size each generation. Same identity, stated for what is actually drawn.)
 - And its enclosed area matches the closed form `9^n · A₀ · (1 + 3/5(1 − (4/9)^n))` to `3 × 10⁻⁸`
-  relative — a second, independent geometric identity from the same turtle. (`FLine` stores
+  relative, a second independent geometric identity from the same turtle. (`FLine` stores
   single-precision coordinates, which is what sets that floor.)
 
 Perturbing the turn angle by 0.01 radians leaves the path open by 2.7 steps, so the closure test has
 teeth.
 
 The bracket pair `[` `]` is what makes an L-system a *plant* rather than a curve: it pushes and pops the
-turtle state, so a production can grow a side branch and return. And stochastic productions — several
-competing rules for one symbol — vary the **topology** rather than jittering one plant's coordinates,
+turtle state, so a production can grow a side branch and return. And stochastic productions (several
+competing rules for one symbol) vary the **topology** rather than jittering one plant's coordinates,
 which is why the three plants below have 91, 74 and 51 branches rather than three wobbly copies of the
 same tree.
 
@@ -1215,7 +1217,7 @@ Which makes the bracket pair visible in the right-hand panel. `[` pushes the tur
 it, so a plant is drawn **depth-first**: the pen runs all the way out to the tip of one branch, then jumps
 back to a fork it remembered and runs out to the next. You can watch it do exactly that, and the jumps are
 the stack. The Koch snowflake on the left has no brackets at all and is therefore one
-continuous stroke — 768 segments at generation 4, traced without the pen ever leaving the paper, closing
+continuous stroke: 768 segments at generation 4, traced without the pen ever leaving the paper, closing
 back on its start to `2.3 × 10⁻¹⁴` of a step.
 
 !!! note "The framing has to be pinned, or nothing moves"
@@ -1270,20 +1272,20 @@ bridges, all into machinery that was already here:
 
 1. **A reaction–diffusion field → [`FLine`](fline_examples.md)s.** `Img.isoContourFLines` runs the
    marching-squares extractor in `contours.kt` over the `v` field, so a Gray–Scott result becomes
-   drawable, animatable, exportable geometry — 195 contours at `v = 0.25` below. That count is checked
+   drawable, animatable, exportable geometry: 195 contours at `v = 0.25` below. That count is checked
    against a second measurement rather than printed: CI asserts at least one loop per thresholded blob,
    and pins the extractor itself against circle geometry (a disc's contour encloses `πr²` to 0.16 %).
 2. **Space colonization → a tree of `FLine`s.** Grown into an *annulus*, which no
    upward-with-noise heuristic reaches, so the branching really is following the space.
-   `ColonizationTree.isTree()` checks the thing a picture cannot show — one root, `n − 1` edges, no
-   cycles — because a growth algorithm that produces a cycle looks identical.
+   `ColonizationTree.isTree()` checks the thing a picture cannot show (one root, `n − 1` edges, no
+   cycles) because a growth algorithm that produces a cycle looks identical.
 3. **A 3-D life-like automaton → a [`TriMesh`](mesh_examples.md).** `IntVolume.toMesh` smooths the
    occupancy and runs `mesh_sdf.kt`'s marching cubes, so the automaton's surface is a real mesh you can
-   boolean, subdivide and export. The claim asserted is that it is **watertight** — a leaking mesher
+   boolean, subdivide and export. The claim asserted is that it is **watertight**: a leaking mesher
    produces a picture that looks fine and a model that cannot be printed.
 
 !!! warning "Contour loops carry no winding information"
-    An annulus contours to two loops — an outer and an inner — and **both come back wound the same way**.
+    An annulus contours to two loops, an outer and an inner, and **both come back wound the same way**.
     Each is right to better than 0.4 % of its own circle, so the geometry is sound, but
     `loops.sumOf { flineSignedArea(...) }` reads 67 % high for a shape with a hole; the right answer is
     the *difference* of the magnitudes (0.006 % out). Anything that fills, booleans or exports these
@@ -1346,7 +1348,7 @@ showImg(
 ### The bridge, live: a field and its contours at the same time
 
 The first of those three bridges is the one worth animating, because it is the one that produces *geometry*
-rather than a picture — and geometry that tracks a moving field is the thing you would actually want in a
+rather than a picture, and geometry that tracks a moving field is the thing you would actually want in a
 Field document. Left: the `v` field of a `spots` run, 5000 steps in seven seconds. Right: the same field's
 `v = 0.25` iso-contours, re-extracted **every frame** through `contours.kt`'s marching squares, with the
 loop count in the caption.
@@ -1356,8 +1358,8 @@ two, and it is the one number on this page that is a *topological* measurement r
 one: it changes by integers, at the moment a thing happens. And watch the contours' relationship to the
 field: the loops stay locked to the field's level set as it moves.
 
-The step budget carries one extra cost here — 36 marching-squares passes a second as well as the
-reaction — and the caption's step counter is what shows whether the clip kept up.
+The step budget carries one extra cost here, 36 marching-squares passes a second as well as the
+reaction, and the caption's step counter is what shows whether the clip kept up.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/bridges.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="1000" embed=true name="alife-bridges-video" alt="a Gray-Scott spots field evolving beside its iso-contours, re-extracted every frame, with the loop count rising as spots divide"}
 :::static
@@ -1414,7 +1416,7 @@ run as DEATH, BOUNDED or SATURATION from the mean field value and reports a wrap
 phase is measured rather than asserted, which matters because the failure mode here is a rule that scores
 well by saturating the grid and sitting still.
 
-Against 220 evaluations of the control at the same seed, evolution finds a rule **17.2 % better** —
+Against 220 evaluations of the control at the same seed, evolution finds a rule **17.2 % better**:
 `2.09372` against `1.78636`, a margin of `0.3074`. The evolved rule is measured `BOUNDED` with one blob
 and a centroid drift of 4.82 cells, so it is a single travelling structure rather than a high score. The
 first panel of the figure below is the control's best, so the thing evolution had to beat is in the same
@@ -1422,8 +1424,8 @@ picture at the same budget.
 
 ??? aside "What the panels after the first one are"
     The successive **record holders**: the leader of each generation that improved on the best so far.
-    That is not a lineage — with `mu = 6` and crossover on, the odds that six record holders are literally
-    descended from one another are close to zero — but a record-holder chain is still the right thing to
+    That is not a lineage: with `mu = 6` and crossover on, the odds that six record holders are literally
+    descended from one another are close to zero. A record-holder chain is still the right thing to
     draw.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/evolve-lenia.png" wait="30.0" timeout="240" capture="box" open-outputs="true" padding="20"}
@@ -1588,7 +1590,7 @@ but a map of "the best rule that behaves like this".
     sampling. It does not, and it should not be expected to: random sampling spreads over a descriptor
     space **for free**, because that is what random means, while MAP-Elites reaches a new cell only when a
     mutation happens to move a descriptor across a bin boundary. What illumination buys is the *quality*
-    held in each cell it does occupy, so that is what the box measures — against a control built the only
+    held in each cell it does occupy, so that is what the box measures, against a control built the only
     way that makes sense: the same budget of independent draws, binned identically and reduced to the
     best genome per cell.
 
@@ -1743,7 +1745,7 @@ A fifth genome costs a `GenomeOps` and an `Objective`.
 ## Evaluating one of these in a box: the inline views
 
 `IntGrid`, `GrayScottState` and `LeniaRun` implement Field's `ToHTML`, so *evaluating* one of them in a
-box — or `grid.h` — draws it. Nothing to set up, no `montage` call, no colour map to choose.
+box, or `grid.h`, draws it. Nothing to set up, no `montage` call, no colour map to choose.
 
 The interesting part is the range policy, and it is not a matter of taste. **Every scale is fixed by
 meaning and named in the caption**, never derived from the frame:
@@ -1764,7 +1766,7 @@ the base64 PNG back out of the emitted HTML and asserts individual pixels: all f
 cells read `#ffffff` and all 139 dead ones read `#000000` at coordinates taken from the grid (which is
 also how "one pixel per cell" is asserted rather than claimed); a `DEATH` run's centre pixel reads
 `#000004`, the bottom of `inferno`, and a `SATURATION` run's reads `#fcffa4`, the top; and an unseeded
-`GrayScottState` — the `v = 0` control arm — renders as exactly one colour, the bottom of `magma`,
+`GrayScottState`, the `v = 0` control arm, renders as exactly one colour, the bottom of `magma`,
 where `Img`'s own auto-normalising thumbnail would have turned its numerical dust into a texture.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/inline-view.png" wait="12.0" capture="box" open-outputs="true" padding="20"}
