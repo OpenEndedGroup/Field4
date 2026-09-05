@@ -1,22 +1,20 @@
 # A solid, written down: `afield.solidsl`
 
-*Every public declaration used below carries its own KDoc — start from `SolidExpr`, `Profile`,
+*Every public declaration used below carries its own KDoc: start from `SolidExpr`, `Profile`,
 `SolidLowering` and `SolidAgreement` in `afield.solidsl`. There is an openable
 [starting point](#open-this) at the bottom of the page.*
 
-Field has had a signed-distance vocabulary for years. `mesh_sdf.kt` declares
+Field's signed-distance vocabulary lives in `mesh_sdf.kt`, which declares
 
 ```diffstatic {data-lang=kotlin}
 typealias ScalarField3D = (Vec3) -> Float
 ```
 
-and builds twenty-five primitives and combinators on top of it — `sdfSphere`, `sdfBox`, `sdfTorus`,
+and builds twenty-five primitives and combinators on top of it: `sdfSphere`, `sdfBox`, `sdfTorus`,
 `sdfUnion`, `sdfSmoothUnion`, `twisted`, `repeated`. Every one of them returns a Kotlin lambda, and a
-lambda, as the commit that made [RectSL](rectsl_examples.md)'s 2D tracks symbolic put it,
-
-> cannot be printed, compared, serialized, rewritten, or emitted as GLSL.
-
-`afield.solidsl` is the same move for 3D. A shape is a **value**:
+lambda cannot be printed, compared, serialized, rewritten, or emitted as GLSL. That is why
+[RectSL](rectsl_examples.md)'s 2D tracks are symbolic, and `afield.solidsl` is the same move for 3D.
+A shape is a **value**:
 
 ```diffstatic {data-lang=kotlin}
 val part = (cuboid(4, 2.6, 0.7) + cylinder(1.4, 0.8)) -
@@ -30,10 +28,10 @@ part.simplified()      // a smaller expression that means the same thing
 println(part)          // Difference(children=[Union(children=[Cuboid(x=4.0, …
 ```
 
-## Why now, and not three years ago
+## Two lowerings of one source
 
-Because until [`afield.manifold`](manifold.md) landed there was only one thing to lower to. Now there
-are two, and they could hardly be more different:
+A `SolidExpr` lowers two ways, and [`afield.manifold`](manifold.md) supplies the second of them. The
+two could hardly be more different:
 
 | | `toScalarField()` | `exactSolid()` |
 |---|---|---|
@@ -45,13 +43,13 @@ are two, and they could hardly be more different:
 | runs on a GPU | yes, via `toGlsl()` | no |
 | safe to subtract from | not reliably | always |
 
-Neither is a superset of the other. That is what makes running both on one source a *measurement*
-rather than a formality.
+Neither is a superset of the other, so a shape run through both is checked by two routes that share
+nothing.
 
 ### The vocabulary, drawn
 
 Six primitives and a swept profile, each built through `buildSolid` and drawn in its own panel. Five
-of the six lower **exactly** — `exactRefusal()` returns `null` for `sphere`, `cuboid`, `cylinder`,
+of the six lower **exactly**: `exactRefusal()` returns `null` for `sphere`, `cuboid`, `cylinder`,
 `cone` and `torus`, and for `Profile.star(…).extruded(…)` too, twist and all. `gyroid` is the one
 that refuses, which is why it is not in the picture: there is no CSG tree whose surface is a triply
 periodic minimal surface.
@@ -81,11 +79,11 @@ threeGrid(
 ![Six panels in two rows of three: a sphere; a rectangular block drawn with only a few large triangles per face; a cylinder lying at an angle with its flat end visibly faceted into straight segments; a cone seen close to base-on with its apex to the lower left; a torus; and a six-pointed star column seen nearly end-on, its points sweeping round as the extrusion twists. All are flat grey with the triangle wireframe drawn, each framed to its own bounds so the small shapes are not lost beside the large ones](assets/solid_notation/vocabulary.png)
 
 The faceting is the part to be careful about. `cylinder(1.6, 0.7)` with `segments = 64` is a 64-gon prism on the
-exact path, not a true cylinder — the table above says so and the picture shows it. Raise `segments`
+exact path, not a true cylinder; the table above says so and the picture shows it. Raise `segments`
 and the silhouette tightens; the *field* lowering of the same expression has a true circular
 cross-section at every resolution and gets the surface wrong in a different way instead.
 
-## The headline: two evaluations, and how far apart they land
+## Two evaluations, and how far apart they land
 
 `crossCheck` builds a shape both ways and compares volume, surface area, genus and a symmetric
 vertex-sampled Hausdorff distance. The two sides share no line of code and no arithmetic: side A is
@@ -110,16 +108,14 @@ Eleven shapes, at a march cell of `size/90`, every row of it asserted:
 | `hybridPlate` — exact plate + blend | *level set* | 1.48e-03 | 1.75e-02 | 1.03e-02 | 0 ✓ |
 
 **Eight of eleven took the exact CSG path. Three refused.** Those three are counted separately and
-excluded from the exact statistic, because a refused shape gets *two marchers on one field* — which
-catches a broken lowering but says nothing about whether that field is the shape the notation meant.
-"Eleven of eleven agree" where three of them agreed with themselves is not the claim being made.
+excluded from the exact statistic: a refused shape gets *two marchers on one field*, which catches a
+broken lowering but says nothing about whether that field is the shape the notation meant.
 
-### That split is measured, not read off the package's own bookkeeping
+### How the split is decided
 
-Asserting it from `SolidBuild.isExact` would only be this package restating its own records. The
-discriminator used instead is a property the two paths cannot share: **the exact lowering has no
-`edgeLength` input at all.** Refine the march by 2.5× and a genuinely exact solid cannot move; a
-level set must.
+Reading it off `SolidBuild.isExact` would only be this package restating its own records, so the
+discriminator is a property the two paths cannot share: **the exact lowering has no `edgeLength`
+input at all.** Refine the march by 2.5× and a genuinely exact solid cannot move; a level set must.
 
 | case | declared | volume @ h=1/40 | volume @ h=1/100 | tris @40 | tris @100 |
 |---|---|---|---|---|---|
@@ -135,24 +131,22 @@ level set must.
 | `gyroidCore` | *level set* | 1.020684384 | 1.019038201 | 53928 | 333804 |
 | `hybridPlate` | *level set* | 5.863771670 | 5.867193874 | 7904 | 46192 |
 
-Eight bit-identical, three moved. Corroborated by a fact that needs no argument at all:
-`lBracketCut`'s exact solid is **20 triangles** against 71,288 for its marched counterpart. There is
-no march that produces a twenty-triangle surface.
+Eight bit-identical, three moved. And `lBracketCut`'s exact solid is **20 triangles** against 71,288
+for its marched counterpart; there is no march that produces a twenty-triangle surface.
 
-### Point membership: a convention check, and *not* a fidelity one
+### Point membership pins the conventions
 
 Volume, area and genus are all invariant under a mirror or a transposed axis. Membership is not, so
-sampling points and asking both lowerings "is this inside?" is what pins the conventions. It is how
-`Section.revolved`'s KDoc was caught claiming the **Y** axis where Manifold revolves about **Z** —
-100% agreement under the Z reading, about 65% under the documented one.
+sampling points and asking both lowerings "is this inside?" is what settles which axis a lathe turns
+about. `Profile.revolved` agrees on 100% of samples under a **Z** reading and on about 65% under a
+**Y** one, which is how `SolidSLConventionProbe` decided it.
 
-An earlier draft of this page reported **0 disagreements in 29,635 sampled points** as if that were
-evidence of surface fidelity. **It is not, and the claim is withdrawn.** Those points are uniform in
-a box and the sampler skips everything within `0.03·span` of a surface — while the largest distance
-at which the two lowerings can *legitimately* differ is Manifold's faceting sagitta, measured at
-**1.25e-03 of that skip band**. Not one of the 29,635 points was ever in a position to disagree for a
-geometric reason. It is a real check against a gross error, visible from anywhere in the volume, and
-nothing more than that.
+What that census does *not* show is surface fidelity, and **0 disagreements in 29,635 sampled
+points** is easy to read as though it did. Those points are uniform in a box and the sampler skips
+everything within `0.03·span` of a surface, while the largest distance at which the two lowerings can
+*legitimately* differ is Manifold's faceting sagitta, measured at **1.25e-03 of that skip band**. Not
+one of the 29,635 points is ever in a position to disagree for a geometric reason. It is a real check
+against a gross error, visible from anywhere in the volume, and nothing more than that.
 
 The stronger version asks a different question: **how close to the surface do you have to get before
 they stop agreeing, and is that distance the sagitta?** Points are projected onto the field's own
@@ -172,15 +166,15 @@ zero set by Newton iteration, then offset along the gradient by a band `δ` that
 The crossover sits at the sagitta on every curved shape, and `lens` reaches 50% — a coin flip, which
 is exactly what two surfaces genuinely in different places must produce. The three polyhedral shapes
 are the control: no faceting, and **0.00% at every band down to 1e-6 of the span**, so the curved
-numbers are geometry rather than the raycast's own precision. Both directions are asserted, including
-that the deepest band really is inside the sagitta — so a shape whose crossover was never probed
-fails rather than passes.
+numbers are geometry rather than the raycast's own precision. The test asserts both directions,
+including that the deepest band really is inside the sagitta, so a shape whose crossover was never
+probed fails rather than passes.
 
-## Agreement does not converge to zero, and that is the interesting part
+## Agreement does not converge to zero
 
-There are two regimes, and flattening them would be the lie worth avoiding.
+There are two regimes, and only one of them converges.
 
-**Polyhedral shapes** — cuboids, polygon-profile extrusions, booleans of those — converge. The exact
+**Polyhedral shapes** (cuboids, polygon-profile extrusions, booleans of those) converge. The exact
 lowering *is* the truth and the marched one approaches it. Six-point log-log fit over a 7.6×
 refinement of `polyPlate`:
 
@@ -194,14 +188,14 @@ refinement of `polyPlate`:
 | 1/243 | 2.68e-04 | 3.88e-03 |
 
 **Fitted order: 2.47 on volume, 1.08 on surface deviation.** A slope through six points and not a
-ratio between two, because grid alignment moves any single ratio between 1.4× and 9× — whether a box
+ratio between two, because grid alignment moves any single ratio between 1.4× and 9×: whether a box
 face happens to land on a grid plane changes the answer by a factor of two.
 
-And a fact worth stating on its own: `polyPlate`'s closed-form volume is `11.0`, and Manifold returns
-`11.0`. Delta exactly `0.0`, through a symbolic notation, a CSG kernel and an FFM boundary.
+`polyPlate`'s closed-form volume is `11.0`, and Manifold returns `11.0`: delta exactly `0.0`, through
+a symbolic notation, a CSG kernel and an FFM boundary.
 
 **Curved shapes do not converge to zero.** Manifold's circle is an inscribed *n*-gon, whose area
-falls short of the true one by `1 − (n/2π)·sin(2π/n) ≈ 2π²/3n²`. `facetingDeficit(n)` computes it —
+falls short of the true one by `1 − (n/2π)·sin(2π/n) ≈ 2π²/3n²`. `facetingDeficit(n)` computes it,
 and for a cylinder, which is a right prism over exactly that *n*-gon, the prediction is not
 approximately right:
 
@@ -213,16 +207,16 @@ approximately right:
 | 128 | 0.00040155 | 0.00040155 | 1.0000 |
 
 So a 32-segment cylinder's cross-check bottoms out at `6.29e-03` against a predicted floor of
-`6.41e-03`, and refining the march from `size/48` to `size/192` makes it *worse*, not better —
-because the march was accidentally cancelling against the faceting. That is the difference between a
+`6.41e-03`, and refining the march from `size/48` to `size/192` makes it *worse*, not better: the
+coarser march was accidentally cancelling against the faceting. That is the difference between a
 tolerance and an explanation.
 
 ## Refusals are in the type
 
-Stolen wholesale from `RectSLFnLowering`, and for the reason that file gives: a wrong answer is worse
-than no answer, so the lowering never guesses. A `null` invites a caller to substitute something
-plausible; an exception loses the reason at the first `runCatching`. A stated reason survives into a
-test, a diagnostic and this page.
+The discipline is `RectSLFnLowering`'s, wholesale, and for the reason that file gives: a wrong
+answer is worse than no answer, so the lowering never guesses. A `null` invites a caller to
+substitute something plausible; an exception loses the reason at the first `runCatching`. A stated
+reason survives into a test, a diagnostic and this page.
 
 ```diffstatic {data-lang=kotlin}
 when (val l = shape.exactSolid()) {
@@ -231,7 +225,7 @@ when (val l = shape.exactSolid()) {
 }
 ```
 
-There are two flavours, and keeping them apart is the point:
+There are two flavours:
 
 | node | why | flavour |
 |---|---|---|
@@ -244,8 +238,8 @@ The last two are not "we did not get to it". An exact-looking answer is availabl
 *wrong* answer, systematically, in a direction that does not shrink. Filing them beside the smooth
 blends would flatten a real distinction.
 
-All four refuse, and each says something different. They are still perfectly drawable — the field
-lowering takes every one of them — so the refusal costs you the *exact* backend, not the shape.
+Five nodes refuse in all, each with its own stated reason. They are still perfectly drawable: the
+field lowering takes every one of them, so the refusal costs you the *exact* backend, not the shape.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/refusals.png" wait="8.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -277,7 +271,7 @@ threeGrid(
 
 ![Four panels. Top left, a ball with a cylindrical post emerging from it, the two merging into each other without a crease at the join. Top right, a cube whose edges and corners are all rounded, drawn in a dense uniform mesh. Bottom left, a sphere with a rectangular notch cut out of its side, the opening revealing a hollow interior and a wall of visible, even thickness. Bottom right, a triply periodic lattice of smooth interlocking surfaces filling a cube and cut off flat at the cube's six faces](assets/solid_notation/refusals.png)
 
-Note what is **not** on the list. Every `Profile` node lowers exactly — including `Profile.offset`,
+Note what is **not** on the list. Every `Profile` node lowers exactly, including `Profile.offset`,
 because `Section.offset(d, JoinType.ROUND)` is definitionally the Minkowski sum with a disc, which is
 *exactly* what `sdf − d` means. A rounded slot has an exact form and a rounded solid does not, and
 the asymmetry is real: Clipper offsets a 2D region as a region, where the 3D story has to go through
@@ -286,7 +280,7 @@ a polyhedral ball.
 ## The hybrid: march the smallest subtree that needs it
 
 A naive fallback asks "does the whole tree lower exactly?" and marches everything if the answer is
-no — so one smooth blend anywhere costs a hundred-thousand-triangle approximation of a plate that was
+no, so one smooth blend anywhere costs a hundred-thousand-triangle approximation of a plate that was
 perfectly exact. `buildSolid` walks down instead.
 
 ```diffstatic {data-lang=kotlin}
@@ -297,21 +291,20 @@ println(build.report())
 ```
 
 Measured on that part: **39,552 triangles against 110,168** for the naive whole-tree march at the
-same edge length — 2.79×, and the plate's six faces stay six faces. The result is still one
-guaranteed-closed Manifold solid, because the exact operand and the marched one meet in a real batch
-boolean.
+same edge length, a factor of 2.79. The plate's six faces stay six faces, and the result is still
+one guaranteed-closed Manifold solid, because the exact operand and the marched one meet in a real
+batch boolean.
 
-The ratio is a property of the part, not of the method, and it is worth seeing a case where it is
-nearly 1. The plate below is smaller relative to its boss, so the marched subtree's bounds cover most
-of the shape and the hybrid saves almost nothing in triangle count — **29,632 against 31,240**, a
-factor of 1.05.
+The ratio is a property of the part, not of the method, and on some parts it is nearly 1. The plate
+below is smaller relative to its boss, so the marched subtree's bounds cover most of the shape and
+the hybrid saves almost nothing in triangle count: **29,632 against 31,240**, a factor of 1.05.
 
 Which makes it the more useful picture, because the count is not where the difference lives. Look at
 the *tessellation* in the two panels below. On the left the plate is a handful of large triangles
 with long diagonals across each face, and each bore is a clean swept strip: those are exact planes
 and exact cylinders, and they are coarse because a plane needs two triangles and no more. Only the
 blended boss carries a fine mesh, because only the boss was sampled. On the right the same part is
-uniformly dense — the flat faces are diced into thousands of triangles that buy nothing, because
+uniformly dense: the flat faces are diced into thousands of triangles that buy nothing, because
 marching cubes has no way to know a plane is a plane. Nearly the same triangle budget, spent
 completely differently.
 
@@ -350,7 +343,7 @@ build.close()
 
 This needs the expression to know its own extent, which is the first thing a notation buys that a
 closure cannot: `SolidExpr.bounds()` is computed **symbolically**, with nothing sampled and nothing
-built. It is also what lets `gyroid() and cuboid(2, 2, 2)` work at all — the gyroid child has no
+built. It is also what lets `gyroid() and cuboid(2, 2, 2)` work at all: the gyroid child has no
 window of its own and borrows its parent's.
 
 ## A third backend: GLSL
@@ -360,33 +353,33 @@ val emitted = scene.toGlsl()          // GlslSolid(sdSolid, 174 statements, step
 println(scene.toRaymarchFragment())   // sphere tracing, a normal, two lights, ready to paste
 ```
 
-The emitted code is straight-line, single-assignment and **entirely scalar** — no `vec3` locals, no
-swizzles, no loops. That looks like a strange thing to hand a shader compiler and it is a deliberate
-trade: every driver re-vectorises it in the first pass, and what it buys is a grammar small enough to
-write a *reader* for.
+The emitted code is straight-line, single-assignment and **entirely scalar**: no `vec3` locals, no
+swizzles, no loops. That looks like a strange thing to hand a shader compiler, and it is a trade:
+every driver re-vectorises it in the first pass, and what it buys is a grammar small enough to write
+a *reader* for.
 
-Which is the whole point. shaderc proves the text is *valid* — 29 of 29 raymarch shaders produce
-SPIR-V — but a dropped negation, a swapped `min` and `max`, or an argument in the wrong position all
-compile perfectly. So the build parses the emitted characters back with a recursive-descent evaluator
-written from the grammar rather than from the emitter, and runs it:
+A reader is what checks the emitter. shaderc proves the text is *valid* (29 of 29 raymarch shaders
+produce SPIR-V), but a dropped negation, a swapped `min` and `max`, or an argument in the wrong
+position all compile perfectly. So the build parses the emitted characters back with a
+recursive-descent evaluator written from the grammar rather than from the emitter, and runs it:
 
 > **29 shapes, 58,000 point comparisons, worst relative disagreement `6.3e-15`.** Nineteen of the 29
 > are bit-identical.
 
 `GlslSolid.stepScale` travels with the shader rather than being folklore in it. Sphere tracing is
-only safe where the field is a lower bound on the true distance, and several nodes are not —
-`Intersect` and `Difference` are pointwise maxima, a twisted `Extrude` shears space. The emitter
+only safe where the field is a lower bound on the true distance, and several nodes are not:
+`Intersect` and `Difference` are pointwise maxima, and a twisted `Extrude` shears space. The emitter
 reports `1.0`, `0.7` or `0.4` with the offending node attached.
 
 ## The simplifier, and the rule that removes a refusal
 
 Most of `simplified()` is housekeeping any algebra accumulates the moment somebody generates code
 into it: identity transforms drop, adjacent translations fold, nested booleans of one kind flatten
-into a single n-ary node — which matters here, because n-ary is what reaches Manifold's *batch*
+into a single n-ary node, which matters here because n-ary is what reaches Manifold's *batch*
 boolean rather than a fold of *n−1* nested ones.
 
-Two rules are worth more. **Duplicate operands collapse**, because two `SolidExpr.Sphere(1.0)` are
-`==` where two `sdfSphere(1.0)` closures are different objects forever. And **an operand that cannot
+Two rules go further. **Duplicate operands collapse**, because two `SolidExpr.Sphere(1.0)` are `==`
+where two `sdfSphere(1.0)` closures are different objects forever. And **an operand that cannot
 reach the body is dropped**, decided from symbolic bounds. Measured on a plate with fifty bores of
 which three actually meet it:
 
@@ -394,7 +387,7 @@ which three actually meet it:
 > microseconds on the tree.
 
 And one that is simply strange. `SmoothUnion(a, b, k = 0)` *is* a union, and a union has an exact CSG
-form where a smooth blend never will — so simplification can move an expression off the level-set
+form where a smooth blend never will, so simplification can move an expression off the level-set
 fallback and onto the exact path:
 
 ```diffstatic {data-lang=kotlin}
@@ -411,13 +404,13 @@ points with **zero sign flips** permitted.
 ## A third reading: the derivative
 
 The two readings above are both *evaluations*. Neither changes what you can **ask** the notation
-for. `afield.rectsl.RectSLFn` made the argument one step further in 2D and it ports:
+for. `afield.rectsl.RectSLFn` takes the argument one step further in 2D, and it is the model here:
 
 > a track that lowers to an `Fn` is a track you can take the derivative of, and therefore a track you
 > can **solve**: declare where a rect should be at some instant and let a gradient find the numbers
 > that put it there.
 
-`Fn` itself does not port — it is `(Double) -> Double`, and a solid is a function of `(x, y, z)`
+`Fn` itself does not port: it is `(Double) -> Double`, and a solid is a function of `(x, y, z)`
 *and* of however many numbers the author wants to fit. The tool that does is
 `afield.stdlib.AD`: reverse-mode automatic differentiation over `Double`. So `SolidGradient.kt` is
 `SolidField.kt`'s `toField3` transposed line for line into `AD` arithmetic, and the two are meant to
@@ -430,7 +423,7 @@ off the same tape for free.
 
 ### Naming the numbers
 
-A `SolidExpr` has no names in it — it is an anonymous tree of `data class`es — so a parameter is
+A `SolidExpr` has no names in it (it is an anonymous tree of `data class`es), so a parameter is
 bound to a **structural address**:
 
 ```diffstatic {data-lang=kotlin}
@@ -459,20 +452,19 @@ independently-varying radii and a fit over one shared radius are different probl
 should be able to say which is meant.
 
 `segments` is not in that list, and its absence is the first refusal. It is an integer facet count
-that `toScalarField()` ignores entirely — a `Sphere`'s field is a true sphere whatever its
-`segments` says — and that the exact lowering consumes as a number of polygon sides. Neither has a
+that `toScalarField()` ignores entirely (a `Sphere`'s field is a true sphere whatever its `segments`
+says) and that the exact lowering consumes as a number of polygon sides. Neither has a
 derivative with respect to it, for opposite reasons: one because the number has no effect at all, the
 other because its effect is a jump.
 
 ### The reading is total; the *parameterisation* is where the refusals live
 
-`exactSolid()` refuses five nodes. This reading refuses none, and that is a finding rather than an
-omission: every node with a field form has a differentiable form, because `AD` is closed over
-everything `Field3` uses. What is not total is *binding a parameter*, and there are seven refusals
-there — an address that does not resolve (with the ones that do, in the message), a predicate that
-matched nothing, a name declared twice, two names claiming one number, tied slots holding
-inconsistent seeds, and two seed values that would make the lowering singular before the first step
-(a `Scale` factor at zero, a blend radius at zero).
+`exactSolid()` refuses five nodes. This reading refuses none: every node with a field form has a
+differentiable form, because `AD` is closed over everything `Field3` uses. What is not total is
+*binding a parameter*, and there are seven refusals there: an address that does not resolve (with
+the ones that do, in the message), a predicate that matched nothing, a name declared twice, two
+names claiming one number, tied slots holding inconsistent seeds, and two seed values that would
+make the lowering singular before the first step (a `Scale` factor at zero, a blend radius at zero).
 
 The interesting part is that the shape of it **inverts** the exact lowering's:
 
@@ -486,41 +478,40 @@ The interesting part is that the shape of it **inverts** the exact lowering's:
 
 The two nodes the exact kernel refuses hardest are the two this reading is *best* at. If a shape is
 going to be fitted, `smoothUnion` and `smoothDifference` are the operators to write it with, and
-`gradientNotes()` — the third notes function, beside `fieldNotes()` and `allRefusals()` — will say so
+`gradientNotes()` (the third notes function, beside `fieldNotes()` and `allRefusals()`) will say so
 about your own expression.
 
-### The kink convention was already decided, and that is what makes it checkable
+### Kinks, and the 0.5/0.5 convention
 
 A distance field is nothing but kinks: `min` and `max` *are* CSG, `abs` is `Shell` and `Gyroid`,
-`sqrt` at zero is every radial primitive's own centre. `autodiff.kt` had already chosen — `abs`,
-`min` and `max` split the derivative **0.5/0.5 at an exact tie** — and had already said why: that is
+`sqrt` at zero is every radial primitive's own centre. `autodiff.kt` settles them for the whole
+library. `abs`, `min` and `max` split the derivative **0.5/0.5 at an exact tie**, which is
 "precisely what a central difference reports at a kink, so the analytic gradient and the
 finite-difference oracle *agree there too*".
 
-Which means the CSG seam does not have to be carved out of a finite-difference census. Over a census
-of every construct in the algebra:
+So the CSG seam does not have to be carved out of the finite-difference check. Over a census of
+every construct in the algebra:
 
 > **18 of 18 `SolidExpr` nodes and 11 of 11 `Profile` nodes**, 179 bound parameters, one exclusion
 > (a full 360° revolve, where a central difference straddles two different lowerings). Worst floored
 > relative disagreement **1.7e-8** on the parameter gradient and **1.5e-8** on the position gradient.
 
-And the number that keeps that honest: the oracle declines to speak where a central difference
-disagrees with itself between step `h` and `h/2`, which happens at genuine singularities. **100.0% of
-parameter-gradient components (4272 of 4272) and 100.0% of position components (1944 of 1944) were
-usable**, both printed and both floored by the test at 98% — because a differential test where the
-oracle refused everything reads as a pass.
+The census also reports how much of itself the oracle was willing to speak to. It declines where a
+central difference disagrees with itself between step `h` and `h/2`, which happens at genuine
+singularities.
+**100.0% of parameter-gradient components (4272 of 4272) and 100.0% of position components (1944 of
+1944) were usable**, both printed and both floored by the test at 98%, because a differential test
+where the oracle refused everything reads as a pass.
 
-Those two numbers read 95.9% and 93.8% until 2026-08-27, and what closed the gap is worth more than
-the gap. Not one of the "untrustworthy" components was a singularity in the geometry: every one was
-a `NaN` coming out of the *lowering* — `sqrt(0)`'s derivative is `+∞`, reverse mode multiplied it by
-a clamp's zero partial, and the gradient was `NaN` throughout the interior of every cuboid — and the
-check had been filing it under "the oracle has no opinion here", which is the same verdict it gives
-at a real kink. A differential test can report 95.9% coverage of a derivative that does not exist.
-`SolidGradientCheck` now asks the two questions separately: whether the oracle is trustworthy, and
-whether the lowering returned a number at all. The second is asserted to be always yes.
+That floor is only worth something because two questions are asked separately: whether the oracle is
+trustworthy, and whether the lowering returned a number at all. Collapsing them hides a bug. A `NaN`
+out of the *lowering* files under "the oracle has no opinion here", which is the verdict a real kink
+gets too, and a census can then report 95.9% coverage of a derivative that does not exist. So
+`SolidGradientCheck.usableComponents` speaks for the oracle alone, `nonFiniteAnalytic` is the other
+question, and the test asserts that it is always empty.
 
 The `.value` half has a second implementation to check against instead, which is
-[the same argument](#the-headline-two-evaluations-and-how-far-apart-they-land) applied to a third
+[the same argument](#two-evaluations-and-how-far-apart-they-land) applied to a third
 column: **worst relative disagreement 2.9e-7** against `toScalarField()`, which shares no line of
 code with it and reaches a caller through `Float`, whose own resolution is about `1.2e-7`.
 
@@ -545,7 +536,7 @@ Three parameters, seeded 42%, 45% and 112% wrong, recovered to about `1e-10` in 
 `initialLoss` is in the same object as `loss`, measured in the same run, because "the fit improved
 things" is unfalsifiable without the counterfactual beside it.
 
-And that is a claim about a picture, so here is the picture — target, seed and fitted, all three
+And that is a claim about a picture, so here is the picture: target, seed and fitted, all three
 marched in the same run, with each panel's label carrying the loss the run measured for it:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/inverse.png" wait="12.0" capture="box" open-outputs="true" padding="20"}
@@ -584,21 +575,20 @@ threeGrid(
 ![Three panels in a row, flat grey with the triangle wireframe drawn on a dark background. Left, labelled "seed, loss 2.141e-02", a short fat rounded capsule lying at an angle. Middle, labelled "fitted, loss 4.609e-22 (4.6e+19x)", a ball with a rod emerging from it, the rod meeting the ball in a smooth fillet. Right, labelled "target, the shape the samples came from", the same ball-and-rod shape at the same size and orientation as the middle panel and indistinguishable from it](assets/solid_notation/inverse.png)
 
 The middle and right panels are the same shape because the fit found the target's numbers to about
-`1e-10`, and the left one is there so that "the same shape" means something. `SolidSLInverseRenderProofTest`
-makes that comparison an assertion rather than an impression: it pins one camera across all three
-frames — `MeshView.distance` is in bounding-sphere radii, so auto-framing would have rendered a
-shape and a 1.5x copy of it at the same apparent size — and measures the silhouettes.
-
-Measured there: the seed misplaces **32.1% of the target's own silhouette**, and the fitted solid's
-raster is **byte-identical** to the target's. Both directions are asserted, because a "before" that
-already looked like the answer would make the "after" free.
+`1e-10`, and the left one is there so that "the same shape" means something.
+`SolidSLInverseRenderProofTest` measures that comparison instead of eyeballing it. It pins one
+camera across all three frames (`MeshView.distance` is in bounding-sphere radii, so auto-framing
+would have rendered a shape and a 1.5x copy of it at the same apparent size) and compares the
+silhouettes: the seed misplaces **32.1% of the target's own silhouette**, and the fitted solid's
+raster is **byte-identical** to the target's. It checks both ends, because a "before" that already
+looked like the answer would make the "after" free.
 
 ### A second fit, where only half the model can be right
 
-The fit above has a property worth naming, because it is not the normal case: the target was
-generated from the model, so a correct answer *exists* and the loss knows where it is. `4.6e-22`
-means "there was a right answer and the gradient found it". Read on its own it teaches the wrong
-lesson — that a small loss is what success looks like.
+The fit above is not the normal case: the target was generated from the model, so a correct answer
+*exists* and the loss knows where it is. `4.6e-22` means "there was a right answer and the gradient
+found it". Read on its own it teaches the wrong lesson: that a small loss is what success looks
+like.
 
 So here is the same machinery on a problem with no right answer. The target is a **sphere and a
 cylinder**. The model is a **cube and a cylinder**. The cylinder is the same primitive on both
@@ -679,8 +669,8 @@ bodies: a cube and a sphere, and no amount of further descent changes that.
 
 #### The descent, as frames
 
-The two ends are the same picture everyone draws. What is actually interesting is *when* each
-parameter stops moving, and the recorded trajectory has that:
+The two ends are the same picture everyone draws. The recorded trajectory shows something the two
+ends cannot: *when* each parameter stops moving.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/converging.png" wait="14.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -729,29 +719,28 @@ turning in frame five.
 
 One detail the strip shows that the final table cannot: `barRadius` gets **worse before it gets
 better**. It goes `0.420 → 0.464` over the first 150 iterations before coming back down through
-`0.356` and `0.290` to `0.281`, which is the fat stub in frame two. Nothing is wrong — while the cube
+`0.356` and `0.290` to `0.281`, which is the fat stub in frame two. Nothing is wrong: while the cube
 is still far too big the rod is the only thing that can carry the target's volume, and it is
 rewarded for thickening until the cube gets out of the way. A per-parameter trace is the only place
 that shows up; the loss falls at every frame regardless.
 
-That is not a curiosity, it is the two kinds of parameter showing their difference *in time* rather
-than only in the final table. The cube reaches its compromise early because a compromise is a
-shallow, wide minimum — it is already as close to a sphere as a cube gets, and pushing further buys
-nothing. The angle is a genuine recovery with a real minimum at the bottom of a narrow valley, and it
-walks all the way down. If you had stopped this fit at iteration 500 — a perfectly reasonable-looking
-`loss 1.38e-02`, down 5× from the seed — you would have read `barTilt = 16.3°` off the report and
-believed it.
+So the two kinds of parameter show their difference *in time* and not only in the final table. The
+cube reaches its compromise early because a compromise is a shallow, wide minimum: it is already as
+close to a sphere as a cube gets, and pushing further buys nothing. The angle is a genuine recovery
+with a real minimum at the bottom of a narrow valley, and it walks all the way down. If you had
+stopped this fit at iteration 500 (a perfectly reasonable-looking `loss 1.38e-02`, down 5× from the
+seed) you would have read `barTilt = 16.3°` off the report and believed it.
 
 The cylinder recovered on all three of its numbers: `2.197225` against a true `2.20` and
-`0.281335` against a true `0.28` — 0.13% and 0.48% out — and `barTilt`, seeded a full **25° off**,
+`0.281335` against a true `0.28` (0.13% and 0.48% out), and `barTilt`, seeded a full **25° off**,
 came back to `-0.009525°`. The cube settled at `0.855279`, and there is no truth to compare that against,
 because there is no side length that makes a cube a sphere. What there is instead is a bound: a cube
 that fits a sphere of radius `R` at all has a side between the inscribed cube's `2R/√3 = 0.7159` and
-the circumscribed cube's `2R = 1.2400`. `0.855280` sits inside that interval, nearer the inscribed
-end — which is what a least-squares fit on a *field* should do, since the sphere's field is closer to
+the circumscribed cube's `2R = 1.2400`. `0.855279` sits inside that interval, nearer the inscribed
+end, which is what a least-squares fit on a *field* should do, since the sphere's field is closer to
 the inscribed cube's over most of the sampled volume than to the circumscribed one's.
 
-Worth noticing what the tilt costs at the optimum: **nothing**. The four-parameter fit's residual,
+What the tilt costs at the optimum is **nothing**. The four-parameter fit's residual,
 `3.766267e-03`, is the three-parameter fit's `3.766271e-03` to six figures. A parameter that *can* be
 recovered is free once it has been; the residual is paid entirely by the one that cannot.
 
@@ -760,12 +749,12 @@ whole difference between the two problems: the first loss went to zero because z
 this one stopped at 2.79% of the target's longest extent because that is as close as a cube gets to
 a sphere. Both descents converged. Only one of them was right.
 
-Which is the point, and it is uncomfortable: **the report does not tell you which of its four
-numbers to believe.** `cubeSize`, `barHeight`, `barRadius` and `barTilt` are printed identically, and
-three are measurements while the fourth is a negotiation. Nothing in the loss distinguishes them. What
-distinguishes them is knowing that half your model can represent half your target — and if you do
-not know that, a plausible number is what you get. `SolidSLPartialRecoveryTest` asserts both halves
-separately for exactly this reason: the cylinder against its truth, the cube against its interval.
+And **the report does not tell you which of its four numbers to believe.** `cubeSize`, `barHeight`,
+`barRadius` and `barTilt` are printed identically, and three are measurements while the fourth is a
+negotiation. Nothing in the loss distinguishes them. What distinguishes them is knowing that half
+your model can represent half your target; if you do not know that, a plausible number is what you
+get. `SolidSLPartialRecoveryTest` asserts both halves separately for exactly this reason: the
+cylinder against its truth, the cube against its interval.
 
 ??? aside "Why this fit needs 6000 iterations when the recovery fit needed 14"
 
@@ -773,35 +762,34 @@ separately for exactly this reason: the cylinder against its truth, the cube aga
     and `SolidFitOptions` carries one `learningRate` for all of them. ADAM's step is bounded by that
     rate, so a parameter whose natural scale is ~25 moves at the same ~0.015 per iteration as one
     whose natural scale is ~1. At `iterations = 1200` this fit stopped on `max iterations` with
-    `barTilt 25.000000 -> 5.752590`: not stalled, not stuck in a local minimum, simply still walking
-    — 19.25° in 1200 steps is exactly the step cap times the iteration count. At 6000 it converges on
-    the gradient tolerance in 4176.
+    `barTilt 25.000000 -> 5.752590`: not stalled, not stuck in a local minimum, simply still
+    walking, and 19.25° in 1200 steps is exactly the step cap times the iteration count. At 6000 it
+    converges on the gradient tolerance in 4176.
 
     So the cost of the angle is about **10x the iterations** of the same fit without it (4176 against
-    387), and none of that is the rotation being non-convex — which it also is, but that is not what
-    was happening here. If you add an angle to a fit and it seems to stall, check the arithmetic
+    387). None of that is the rotation being non-convex, which it also is, but that is not what is
+    happening here. If you add an angle to a fit and it seems to stall, check the arithmetic
     before you change optimizer: `iterations x learningRate` against the distance the parameter has
     to travel.
 
 !!! note "A cube that never enters the union has no gradient at all"
 
-    The first version of this example seeded `cubeSize` at `0.40` against a bar of radius `0.55`,
-    and the fit reported `cubeSize 0.400000 -> 0.400000` after 387 iterations. Not slow, not stuck:
-    `Union` is `min`, so a child that is never the nearest surface at any sample point receives
-    **exactly** zero gradient, and a cube small enough to sit wholly inside the bar is never the
-    nearest surface anywhere. `fit.deadParameters` is the first-order version of this and reported
-    `none`, because the parameter is not dead at the start in the sense that guard measures — the
-    cube is invisible to the loss, not stationary in it. Read
-    [What makes a parameter refuse to move](#what-makes-a-parameter-refuse-to-move) next; this is
-    that section's failure mode arriving by a different route.
+    Seed `cubeSize` at `0.40` against a bar of radius `0.55` and the fit reports
+    `cubeSize 0.400000 -> 0.400000` after 387 iterations. Not slow, not stuck: `Union` is `min`, so
+    a child that is never the nearest surface at any sample point receives **exactly** zero
+    gradient, and a cube small enough to sit wholly inside the bar is never the nearest surface
+    anywhere. `fit.deadParameters` reports `none` here, because the parameter is not dead at the
+    start in the sense that guard measures: the cube is invisible to the loss rather than
+    stationary in it. [What makes a parameter refuse to move](#what-makes-a-parameter-refuse-to-move)
+    is the same failure mode arriving by a different route.
 
 ### What makes a parameter refuse to move
 
-This is the failure mode of inverse design, and it is worth naming because it presents as a
-*converged* optimisation. A hard `Union` is a pointwise `min`, so it hands the **whole** derivative to
-whichever child is nearest. A child that is nowhere nearest — a small sphere swallowed inside a large
-one — receives exactly `0.0` from every sample, and a descent on its radius stops immediately because
-the gradient really is zero.
+This is the failure mode of inverse design, and it presents as a *converged* optimisation. A hard
+`Union` is a pointwise `min`, so it hands the **whole** derivative to whichever child is nearest. A
+child that is nowhere nearest (a small sphere swallowed inside a large one) receives exactly `0.0`
+from every sample, and a descent on its radius stops immediately because the gradient really is
+zero.
 
 ```diffstatic {data-lang=kotlin}
 unionOf(listOf(sphere(1.0), sphere(0.25))).parameterize { … }
@@ -812,9 +800,9 @@ smoothUnion(sphere(1.0), sphere(0.25), k = 0.9).parameterize { … }
 ```
 
 `SolidFit.deadParameters` reports which parameters had an exactly-zero gradient at the start, so that
-reads as a diagnosis. It is reported rather than thrown on, because a legitimately dead parameter is a
-fine thing to have in a vector — a fit over six holes where one is genuinely irrelevant — and it is
-the *unexpectedly* dead one that looks like a success.
+reads as a diagnosis. It is reported and not thrown, because a legitimately dead parameter is a fine
+thing to have in a vector (a fit over six holes where one is genuinely irrelevant); it is the
+*unexpectedly* dead one that looks like a success.
 
 ## Conventions, all of them upstream's
 
@@ -825,15 +813,15 @@ Primitives are centred on the origin. Beyond that, nothing is tidied up:
 - `Profile.revolved()` turns about **Z**, profile at `x ≥ 0`, counter-clockwise from `+X`.
 - `turned(x, y, z)` is in **degrees**, applied X then Y then Z.
 
-Inventing a nicer convention and translating at the boundary would add exactly one class of bug — a
-silently mirrored or transposed solid — to the one thing this package exists to rule out. And there
+Inventing a nicer convention and translating at the boundary would add exactly one class of bug (a
+silently mirrored or transposed solid) to the one thing this package exists to rule out. And there
 is no `Torus`: `torus(R, r)` is a *function* that builds `Profile.circle(r).translated(R, 0).revolved()`,
 which is what a torus is.
 
 !!! warning "Two lathes, ninety degrees apart"
 
-    Field has two of these and they do not agree, which is worth knowing before you port a profile
-    between them.
+    Field has two of these and they do not agree. Check which one you have before you port a
+    profile between them.
 
     | | axis | profile |
     |---|---|---|
@@ -842,11 +830,10 @@ which is what a torus is.
 
     Measured on one asymmetric profile: Manifold's comes back with bounds
     `(-1.6, -1.6, 0.2)…(1.6, 1.6, 1.0)` and `revolveMesh`'s with `(-1.6, 0.0, -1.6)…(1.6, 0.8, 1.6)`.
+    Porting a profile one way or the other means swapping its `y` and `z`, or rotating the result.
 
-    `Section.revolved`'s own KDoc currently says it revolves about the **Y** axis. That is a
-    documentation error and not an implementation one — `manifold_revolve` takes no axis argument at
-    all, so the binding has nothing to get wrong — but it is the reason this package's `Revolve`
-    carries a paragraph of measurement rather than a citation.
+    `manifold_revolve` takes no axis argument at all, so there is nothing to set here: the axis is
+    Manifold's, and this package follows it.
 
 ## Open this {#open-this}
 
@@ -860,7 +847,7 @@ which is what a torus is.
 - **one shape, two evaluations** — the cross-check above, live, with both meshes side by side. Change
   `boreRadius` or drop `quality` to 24 and watch the agreement degrade to exactly the faceting floor.
 - **the same source as a GLSL raymarcher** — the emitted shader, the step scale, and the simplifier
-  cutting 40 unreachable bores out of a part.
+  dropping 40 extra bores, most of them nowhere near the part.
 - **refusals, and the hybrid build** — the whole refusal catalogue with its reasons, and the
   smallest-subtree level set beside what the naive one would have cost.
 
@@ -868,7 +855,7 @@ All three need nothing but Field; the second needs no Manifold at all. The first
 clear "install Manifold" message and fall back to the field lowering when it is absent.
 
 For the differentiable reading there is a second document, `dev_docs/agents/demos/solidsl_inverse/metadata.edn`,
-and it needs **no Manifold at all** — marching cubes and the mesh rasteriser are both pure Kotlin.
+and it needs **no Manifold at all**: marching cubes and the mesh rasteriser are both pure Kotlin.
 Open it in Field (**File ▸ Open**) and run its three boxes:
 
 - **a solid, and its exact gradient** — the slot census, a template, and `checkGradient` against
