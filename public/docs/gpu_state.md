@@ -3,7 +3,7 @@
 There are two compute-shader examples in these docs already. [afield.four
 Graphics](afield_four_graphics.md) §3 writes an input buffer, dispatches a `ComputeMesh`, and reads
 the answer back; §3b keeps the answer on the card and draws it from a second box. [Field
-Probes](field_probes.md) instruments the same scene and photographs it — a hundred thousand soft
+Probes](field_probes.md) instruments the same scene and photographs it: a hundred thousand soft
 quads turning slowly, and a live histogram of their speeds.
 
 They have something in common that neither of them has to mention. In both, the compute shader reads
@@ -29,8 +29,8 @@ on a noise field, a force law you can retype while it runs, and a GPU-side histo
 // (renderer + compute + draw). The code is in the sections below.
 ```
 
-Warm is fast and cool is slow — the colour is a smoothed per-particle speed the shader keeps in a
-buffer nobody ever uploaded — and the holes are where the noise field pulls particles apart faster
+Warm is fast and cool is slow (the colour is a smoothed per-particle speed the shader keeps in a
+buffer nobody ever uploaded), and the holes are where the noise field pulls particles apart faster
 than the spring can bring them back. Nothing in that picture is computed by the CPU. It holds forty
 thousand positions, forty thousand velocities and forty thousand smoothed speeds, and per frame it
 does no per-particle work at all.
@@ -125,7 +125,7 @@ for (target in listOf(stateA, stateB)) {
 
 It is very natural to write "the initial state" once, into `stateA`, and think the job is done. It is
 not: on frame one the shader reads `prevState`, and on frame one exactly half the time that is
-`stateB`, which nobody has written. Whatever the allocator handed you — commonly zeroes — is what
+`stateB`, which nobody has written. Whatever the allocator handed you (commonly zeroes) is what
 frame one integrates from.
 
 Run the example with `listOf(stateA)` in that loop and the picture survives it. Every particle spends
@@ -136,8 +136,8 @@ the correctly seeded scene's figure to three places.
 
 Which makes it worse, not better. A bug whose only symptom is one bad frame at startup is a bug that
 hides, and it hides here only because this scene has a spring in it that forgets its initial
-condition. Take the spring out — a pure advected flow, a cloth with no rest length, anything
-accumulating into a history buffer — and nothing forgets it: frame one's zeroes stay in the
+condition. Take the spring out (a pure advected flow, a cloth with no rest length, anything
+accumulating into a history buffer) and nothing forgets it: frame one's zeroes stay in the
 simulation for as long as it runs.
 
 ---
@@ -171,7 +171,7 @@ stay live because they were lambdas from the start.
 `sim.dt = { 1f / 60f }` is a fixed timestep rather than a measured one. A spring network's stability
 is a function of `dt`, so feeding it the real frame interval means a hitch in the renderer becomes an
 explosion in the simulation. Once `dt` is fixed, the clock the force field walks through has to come
-from the same place — `renderer.frameCounter / 60.0` and not the wall — or the integrator and the
+from the same place (`renderer.frameCounter / 60.0` and not the wall) or the integrator and the
 field are running on two different timebases in one loop. Sixty steps is one second by definition, and
 a slow frame then slows the field instead of tearing it. It also makes the figure at the top of this
 page reproducible, since the docs capture waits a fixed number of frames and a fixed number of frames
@@ -241,7 +241,7 @@ identifier` at a line number inside code you did not write. Until Kotlin binds i
 fallback `vec4 force(vec4 force_in) { return vec4(0.0); }`, so an unbound slot still compiles and the
 field simply sits still.
 
-Kotlin then assigns it — **on the module, not the mesh**:
+Kotlin then assigns it **on the module, not the mesh**:
 
 ```diffstatic {data-lang=kotlin}
 simModule.force = """
@@ -276,7 +276,7 @@ Three things in that program repay a second look.
 
 **`fbm` is two-dimensional.** It lowers to `fbm(vec2)` over `coord.xy + coord.zw * 0.07`, so a single
 call fed a 3D position gives you a field in *(x, y)* with *z* entering at a fourteenth of the weight of
-*x* — a shear, not a third dimension. Summing three slices, *f(x,y) + f(y,z) + f(z,x)*, is the classic
+*x*: a shear, not a third dimension. Summing three slices, *f(x,y) + f(y,z) + f(z,x)*, is the classic
 workaround, and it is what the `fbm3` definition in the program above is doing.
 
 StackSL has since grown a genuinely volumetric noise family, and in new code you should reach for it
@@ -325,7 +325,7 @@ note:    15 computed value(s) pruned as unused — normal for a mark that is nev
 ```
 
 Reporting only: the slot still binds, because a program is usually mid-edit and refusing would be a
-worse tool than saying so. You can also ask before you bind — `stackAutoShaderReport(program, "force")`
+worse tool than saying so. You can also ask before you bind: `stackAutoShaderReport(program, "force")`
 (`src/jvmMain/kotlin/afield/stdlib/shaders.kt:545#fun stackAutoShaderReport`) is pure, needs no device,
 and returns the same object.
 
@@ -333,7 +333,7 @@ One more, and it is easy to misdiagnose. `?pc.knobs x` reads a push member into 
 external read is typed as a `vec4`
 (`src/jvmMain/kotlin/afield/stacksl/StackSL.kt:2735#private fun parseExternalRead`). Pointing it at a
 `float` member is a swizzle error out of glslang rather than a StackSL diagnostic, so a spare `vec4`
-of knobs — clock in `.x`, gain in `.y` — is the shape that works, and it is also the shape that lets
+of knobs (clock in `.x`, gain in `.y`) is the shape that works, and it is also the shape that lets
 you add a knob without touching the shader.
 
 ---
@@ -352,24 +352,24 @@ displayOpen("probe")
 
 plus one call in the shader, `fieldProbe(speed)`, next to the value while it is in scope. The shader
 keeps exact counts and exact min/max with atomics and reservoir-samples the raw values, so what comes
-back per snapshot is a few thousand numbers rather than a few hundred thousand — an unbiased sample of
+back per snapshot is a few thousand numbers rather than a few hundred thousand, an unbiased sample of
 the whole population rather than the first few thousand invocations. [Field
 Probes](field_probes.md) is the full account, including the GPU-only sibling `fieldStats`.
 
 For the scene above, that card reports 40,000 calls, all finite, none NaN, mean per-particle speed
-0.0433 over a reservoir of 4,096, exact maximum 0.1357 — one run's numbers, not a derivation. What
-you do with them is turn the force gain up and watch the mean move, or watch the maximum *not* move
-because a clamp is firing, while you are still typing. A readback would tell you the same thing and
-you would never leave it switched on.
+0.0433 over a reservoir of 4,096, exact maximum 0.1357. Those are one run's numbers, not a
+derivation. What you do with them is turn the force gain up and watch the mean move, or watch the
+maximum *not* move because a clamp is firing, while you are still typing. A readback would tell you
+the same thing and you would never leave it switched on.
 
 ---
 
 ## Open it
 
-It ships as a starting point, so the shortest route is the welcome screen — or open the document
+It ships as a starting point, so the shortest route is the welcome screen, or open the document
 directly:
 
-[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/gpu_state/metadata.edn) — or open
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/gpu_state/metadata.edn), or open
 `public/docs/assets/agent_transcripts/gpu_state/metadata.edn` from a Field workspace.
 
 Three boxes appear and a window opens. The knobs worth turning, in the order they teach something:
