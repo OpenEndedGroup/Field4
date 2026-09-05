@@ -1,9 +1,9 @@
 # Rewriting your own syntax
 
 Most of the time you write the code you mean. But sometimes the code you mean is
-a *shape* — every `neg(x)` should become `-x`, every `f(x)` should be wrapped in
-a runtime coercion, every `log(tag, …)` should route through your logger — and
-writing each occurrence by hand is exactly the busywork a language should absorb.
+a *shape*: every `neg(x)` should become `-x`, every `f(x)` should be wrapped in
+a runtime coercion, every `log(tag, …)` should route through your logger. Writing
+each occurrence by hand is exactly the busywork a language should absorb.
 
 The pattern-rewrite layer lets a live box declare those shapes as rules. You
 author a `rewrite { … }` block right in a box, in Kotlin syntax, and it rewrites
@@ -51,15 +51,15 @@ neg(a)           // →  -a
 ```
 
 `x: Expr` says "`x` is a hole that binds any expression." Inside `from` and
-`to`, a name is a hole exactly when it is one of those declared parameters —
-there is no `$x` or `unquote` escape to remember, the parameter list *is* the
+`to`, a name is a hole exactly when it is one of those declared parameters.
+There is no `$x` or `unquote` escape to remember; the parameter list *is* the
 set of holes. `neg` is not a parameter, so it must match literally; `pos(a)`
 does not match this rule and is left untouched.
 
 ## Metavariables, kinds, and precedence
 
-A metavariable's declared type names its **kind** — what syntax it is allowed to
-bind:
+A metavariable's declared type names its **kind**, meaning what syntax it is
+allowed to bind:
 
 | Kind      | Binds                                    |
 |-----------|------------------------------------------|
@@ -72,7 +72,7 @@ bind:
 Holes are matched structurally and modulo redundant parentheses, so `x + y`
 matches `(a) + (b)`. A repeated hole must bind structurally equal subtrees:
 `from { f(x, x) }` matches `f(a, a)` but not `f(a, b)`. Arity and leaf tokens
-are part of the shape too — `f(x, y)` matches only two-argument calls, and
+are part of the shape too: `f(x, y)` matches only two-argument calls, and
 `x + y` will not match `a - b`.
 
 When a captured subtree is spliced into a new syntactic context, the rewriter
@@ -91,7 +91,7 @@ anything looser gets parentheses.
 
 Names the `to {}` side *introduces* (locals it declares, not values carried in
 through a metavariable) are gensym-renamed so they cannot capture or shadow
-your spliced code — a rule that emits `run { val acc = x; acc + acc }` becomes
+your spliced code. A rule that emits `run { val acc = x; acc + acc }` becomes
 `run { val acc__hyg0 = a; acc__hyg0 + acc__hyg0 }`, leaving any `acc` of yours
 alone.
 
@@ -121,8 +121,8 @@ The vocabulary:
 - `isCall(x)` — a function or constructor call.
 - `isCallTo(x, "name")` — a call whose callee is exactly `name`.
 
-Guards are evaluated *structurally* at rewrite time — no code runs, no types are
-consulted — so only this fixed vocabulary is understood. An unknown predicate
+Guards are evaluated *structurally* at rewrite time, with no code run and no
+types consulted, so only this fixed vocabulary is understood. An unknown predicate
 makes the rule fail closed (it never fires) with a warning, rather than doing
 something surprising.
 
@@ -169,11 +169,11 @@ counter(hits)    // →  hits
 
 The metavariable is substituted in the *declaration name* position (`n` →
 `hits`), and the emitted preamble segment is wrapped as a keyed
-`/*start*/ … /*end*/` block — the "stack mark" idempotency mechanism the preamble
+`/*start*/ … /*end*/` block, the "stack mark" idempotency mechanism the preamble
 machinery understands. Firing the same rule twice with the same capture
 contributes the segment once; distinct captures get distinct keys. (Unlike the `to {}` side,
-`provide {}` names are *not* gensym-renamed — they are meant to define stable, shared
-box-level names.)
+`provide {}` names are *not* gensym-renamed; they are meant to define stable,
+shared box-level names.)
 
 ## Running code at rewrite time: `unquote { }`
 
@@ -195,13 +195,12 @@ rev(hello)       // →  "olleh"     (a String literal)
 Because the result is spliced as *code*, you must produce valid Kotlin. Here the
 block builds a quoted string literal, so `rev(hello)` becomes the literal
 `"olleh"`. (Emitting `unquote { x.reversed() }` would splice the bare token
-`olleh`, an unresolved reference — a classic gotcha.) The block runs in the
+`olleh`, an unresolved reference.) The block runs in the
 box's own REPL context, so it can call box-scoped helpers.
 
 Evaluation is fail-soft: on the execute path a failing block becomes a compiling
-`error(...)` stand-in with a logged diagnostic, and in editor-preview
-expansions — where your code is not run — the call becomes a well-typed `TODO()`
-placeholder.
+`error(...)` stand-in with a logged diagnostic, and in editor-preview expansions,
+where your code is not run, the call becomes a well-typed `TODO()` placeholder.
 
 ## Variadic holes
 
@@ -223,9 +222,8 @@ log(tag)             // →  logger(tag)          (the run may be empty)
 
 A rule is not confined to the box that declares it. Rules are **inherited by
 descendant boxes**: a `rewrite { … }` written in a parent box applies to the
-parent's own code *and* to every child's code — and the parent never has to run
-for this to take effect, because the layer reads each box's stored source
-directly.
+parent's own code *and* to every child's code. The parent never has to run for
+this to take effect, because the layer reads each box's stored source directly.
 
 ```diffstatic {data-lang=kotlin}
 // in a PARENT box:
@@ -236,8 +234,8 @@ boom(hello)          // →  BANG(hello)
 ```
 
 When a child declares a rule with the same pattern as an inherited one, the
-local rule wins — the same declaration-order, first-match-wins rule that governs
-two rules in a single box. This is how the authoring workspace is laid out: a
+local rule wins, by the same declaration-order, first-match-wins rule that
+governs two rules in a single box. This is how the authoring workspace is laid out: a
 `Coerce Rewrite` parent box holds the coercion rule, and a `Double Increment`
 child inherits it without repeating it.
 
@@ -246,8 +244,8 @@ child inherits it without repeating it.
 Rewriting runs to a fixed point: it keeps finding and replacing outermost
 matches until a pass changes nothing. Most rule sets converge quickly (the
 coercion idiom above is the canonical "converges because a guard stops the
-recursion" case). A non-confluent set does not — the classic example is two
-rules that undo each other:
+recursion" case). A non-confluent set does not. The classic example is two rules
+that undo each other:
 
 ```diffstatic {data-lang=kotlin}
 rewrite { -> from { a }; to { b } }
@@ -272,10 +270,10 @@ Two smaller rules govern the rest:
 
 Everything above uses the **default engine**: every rule fires at every match,
 everywhere, to a fixed point. That is confluent and convenient, and for most
-rule sets it is exactly what you want. But sometimes you need control — rewrite
+rule sets it is exactly what you want. But sometimes you need control: rewrite
 *one* site, not all of them; rewrite the *innermost* form rather than the
 outermost; run rule A only where rule B did not apply; apply a step a bounded
-number of times. That is what **strategies** add: a small
+number of times. That is what **strategies** add, a small
 [Stratego](https://strategoxt.org/)/ELAN-style term-rewriting language layered
 on top of the same matcher.
 
@@ -286,8 +284,8 @@ order and at the sites it dictates.
 ### Name the rules a strategy drives
 
 A strategy refers to rules by name, so use `rule("name") { … }` instead of the
-anonymous `rewrite { … }`. Everything else about the rule — `from`/`to`/`where`/
-`provide`/`ai`, the erase-before-compile treatment — is identical. A named rule
+anonymous `rewrite { … }`. Everything else about the rule is identical:
+`from`/`to`/`where`/`provide`/`ai`, and the erase-before-compile treatment. A named rule
 with *no* strategy still behaves exactly like the anonymous global fixpoint:
 
 ```diffstatic {data-lang=kotlin}
@@ -298,15 +296,15 @@ neg(b)           // →  -b
 ```
 
 Anonymous `rewrite { }` rules carry no name, so a `strategy { }` can never fire
-them — under a strategy they are simply inert.
+them; under a strategy they are simply inert.
 
 ### The `strategy { }` block
 
 One `strategy { }` block per box holds a single strategy expression, built from
 the combinators below. Like a rule, it is erased before compilation, so it only
 has to parse. Each combinator either *succeeds* (yielding possibly-changed
-source) or *fails* (does not apply) — that success/failure is what makes `choice`
-and fail-fast sequencing meaningful.
+source) or *fails* (does not apply), and that success/failure is what makes
+`choice` and fail-fast sequencing meaningful.
 
 **Fire once, or at a chosen depth.** By default the fixpoint hits both `neg`
 sites; `once` stops after the first:
@@ -329,11 +327,11 @@ strategy { topdown("fg") }    //  f(f(a))  →  g(f(a))   (outer call only)
 strategy { bottomup("fg") }   //  f(f(a))  →  f(g(a))   (inner call only)
 ```
 
-Each is a *single* application, not a fixpoint — `topdown` does not go on to
+Each is a *single* application, not a fixpoint: `topdown` does not go on to
 rewrite the inner `f`. To drive it to a fixed point, wrap it in `repeat`.
 
 **Select a subset of rules.** Naming one rule fires only that rule, even when
-others would match — unlike the default, which fires every rule:
+others would match, unlike the default, which fires every rule:
 
 ```diffstatic {data-lang=kotlin}
 rule("p2a") { x: Expr -> from { p(x) }; to { A(x) } }
@@ -389,7 +387,7 @@ strategy { attempt("zzz") then "fg" }   //  f(a)  →  g(a)   (the missing zzz i
 
 **Nested patterns.** Nothing says a pattern has to be one level deep. `from { f(f(x)) }`
 matches a *pair* of nested calls and binds `x` to whatever they wrap, and a strategy
-drives it like any other rule — so each `topdown` step eats two levels at a time:
+drives it like any other rule, so each `topdown` step eats two levels at a time:
 
 ```diffstatic {data-lang=kotlin}
 rule("fg") { x: Expr -> from { f(f(x)) }; to { g(x) } }
@@ -398,8 +396,8 @@ strategy { repeat(topdown("fg"), 2) }
 f(f(f(f(a))))    // →  g(g(a))    (step 1 collapses the outer pair, step 2 the inner)
 ```
 
-With real definitions behind those names — `fun f(v: Int) = v * 2` and
-`fun g(v: Int) = v + 100` — `f(f(f(f(1))))` evaluates to **201**, not the 16 the
+With real definitions behind those names, `fun f(v: Int) = v * 2` and
+`fun g(v: Int) = v + 100`, `f(f(f(f(1))))` evaluates to **201**, not the 16 the
 unrewritten source would give. The `nested pattern` box of the
 `rewrite_strategies_demo` transcript below runs exactly that and `check`s the 201.
 
@@ -434,7 +432,7 @@ strategy { 1 + 2 }          //  f(a)  →  f(a)   + malformed-strategy diagnosti
 
 A strategy is **box-local control**: ambient *rules* declared in an ancestor box
 are still inherited and can be named by a strategy, but a strategy itself is not
-inherited — each box drives its own. `provide { }` and `ai()` side-contributions
+inherited, and each box drives its own. `provide { }` and `ai()` side-contributions
 still accrue whenever a rule actually fires under a strategy.
 
 `dev_docs/pattern_rewrite_strategies.md` documents the `Strat` AST and the
@@ -455,7 +453,7 @@ compile-and-run pipeline a live box uses:
   two-level pattern, each box self-checking that the strategy produced a
   *different* result than the default fixpoint would.
 
-Replay every shipped demo transcript — including both of these — through the real
+Replay every shipped demo transcript, including both of these, through the real
 engine with:
 
 ```diffstatic {data-lang=bash}

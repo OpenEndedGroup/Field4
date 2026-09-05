@@ -2,7 +2,7 @@
 
 Most Field boxes run their Kotlin on the JVM, right next to the renderer. But Field can also take a
 box's Kotlin, compile it to JavaScript *in-process*, and ship it over a WebSocket to run somewhere
-else entirely — a **head**: a browser tab showing a THREE.js/WebXR scene, an Apple Vision Pro
+else entirely, into a **head**: a browser tab showing a THREE.js/WebXR scene, an Apple Vision Pro
 running a native Metal shader, or a Tone.js computer-music engine. We call this "Kotlin in the head".
 
 You keep writing real Kotlin throughout: `data class`es, `operator fun`, the standard library,
@@ -26,9 +26,9 @@ A normal box's main language is JVM-Kotlin. To make a box (and everything nested
 then on:
 
 - The box's editor uses Kotlin syntax highlighting.
-- On **Execute** / **Launch**, the box's Kotlin is compiled K2 → JavaScript in-process — not shelled
-  out to a separate toolchain — as a single self-contained, tree-shaken `plain` module (a trivial
-  program is a few KB, not the ~600 KB an untree-shaken Kotlin/JS stdlib would be).
+- On **Execute** / **Launch**, the box's Kotlin is compiled K2 → JavaScript in-process (not shelled
+  out to a separate toolchain) as a single self-contained, tree-shaken `plain` module. A trivial
+  program is a few KB, not the ~600 KB an untree-shaken Kotlin/JS stdlib would be.
 - That module is shipped over the *same* WebSocket transport Field already uses to drive remote
   JavaScript, and the head runs it with a plain `eval`.
 
@@ -50,8 +50,8 @@ on the **first non-blank line** of the box:
 | `// {{ visionmetal }}` | Apple Vision Pro native Metal | `uniform(...)`, `geometry { … }`, the compositor frame clock |
 
 The marker line is kept (blanked) so your compile-error line numbers still line up with what you
-typed. An *unknown* marker is a hard error rather than silently falling back to the wrong head — a
-head that doesn't install the globals your code references would compile and then fail at runtime, so
+typed. An *unknown* marker is a hard error rather than a silent fallback to the wrong head. A head
+that doesn't install the globals your code references would compile and then fail at runtime, so
 Field refuses to guess.
 
 All three profiles share a small **lifecycle** surface (from `RemoteLifecycleKotlinJs`):
@@ -91,7 +91,7 @@ log("sum = ${a + b}")      // sum = V(x=11.0, y=22.0)
 log("scaled = ${a * 3.0}") // scaled = V(x=3.0, y=6.0)
 ```
 
-`log(...)` is the head's console — its output comes back over the transport to the box. `V(x=11.0,
+`log(...)` is the head's console, and its output comes back over the transport to the box. `V(x=11.0,
 y=22.0)` is the `toString()` that `data class` generated for you, running in the head. None of this is
 special-cased: it is ordinary Kotlin, compiled to JavaScript.
 
@@ -187,7 +187,7 @@ log("$shifted then $doubled")
 ## Worked example 3 — bells (Tone.js computer music)
 
 `// {{ tone }}` routes to a head that has [Tone.js](https://tonejs.github.io/) loaded. The bound
-surface is a genuinely useful synthesis slice — the synth family, core effects, the `Param` value
+surface is a genuinely useful synthesis slice: the synth family, core effects, the `Param` value
 type, and `Transport` scheduling. This box schedules a four-note arpeggio:
 
 ```diffstatic {data-lang=kotlin}
@@ -254,11 +254,11 @@ onStart {
 ```
 
 `geometry { … }` builds an indexed triangle mesh *in the headset* and hands the whole thing to Metal
-in one call — nothing per-vertex crosses the network or the JS bridge at frame rate. `vertex(x, y, z)`
+in one call, so nothing per-vertex crosses the network or the JS bridge at frame rate. `vertex(x, y, z)`
 returns an index and picks up the current `normal()`, `color()`, `uv()` state; `triangle()`/`quad()`
 supply indices. On top of those: `cube`, `plane`, `sphere`, and `tube`, which sweeps a polygon along a
-polyline so a line drawn in Kotlin has real thickness in the headset. Call it again — even from
-`onFrame` — to replace the mesh; the swap happens at a frame boundary, so a rebuild never tears.
+polyline so a line drawn in Kotlin has real thickness in the headset. Call it again, even from
+`onFrame`, to replace the mesh; the swap happens at a frame boundary, so a rebuild never tears.
 [Building geometry in the headset](vision_geometry.md) is the full tour.
 
 `uniform(name, x)` through `uniform(name, x, y, z, w)` write the named slots the marker declares. The
@@ -266,9 +266,9 @@ shader reads them *by name*, because the head generates `#define u_phase frame.u
 ahead of your source. `frame.predictedDisplayTime` is the compositor's predicted present time (it's
 `null` in a browser head, which is why it's a `Double?`).
 
-The third part is the shader itself, which lives in the box's **`msl`** property — Metal Shading
-Language, with both entry points (`field_vertex` and `field_fragment`) in one property, because Metal
-compiles them from one translation unit. It has its own highlighting and completion, and its own
+The third part is the shader itself, which lives in the box's **`msl`** property. That is Metal
+Shading Language, with both entry points (`field_vertex` and `field_fragment`) in one property,
+because Metal compiles them from one translation unit. It has its own highlighting and completion, and its own
 **Reload MSL** command (`alt r`): editing the shader recompiles on the headset while your Kotlin, your
 geometry, and the frame clock all keep running.
 
@@ -285,9 +285,9 @@ Because the compiler runs in the same JVM as the Field REPL, edits recompile wit
 fresh toolchain. Whole-program dead-code elimination (`-Xir-dce`) shrinks the output from the full
 stdlib to just what your box uses. The profile's `external` declarations (the typed view of `THREE`,
 `Tone`, or the Metal bridge) are appended to your source *after* the implicit-`main` wrapping, so your
-diagnostic line numbers stay stable. Each profile's declarations — and the parallel model that powers
-completion — are generated from a single binding description, so what completion offers and what the
-compiler accepts can't drift apart.
+diagnostic line numbers stay stable. Each profile's declarations, and the parallel model that powers
+completion, are generated from a single binding description, so what completion offers and what the
+compiler accepts cannot drift apart.
 
 ## Further reading
 

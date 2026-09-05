@@ -2,24 +2,24 @@
 
 Field has a **web server** inside it, and that server is how Field's own editor talks to
 Field. When you open a document, the window you are looking at is a browser, and everything
-you do in it — typing in a box, dragging a box, running code — travels to Field's JVM over
-HTTP and a WebSocket.
+you do in it, from typing in a box to dragging one to running code, travels to Field's JVM
+over HTTP and a WebSocket.
 
 That also means a *listening socket on your machine*, which raises the question this page
 answers: **what can reach it, and what stops a web page you happen to be visiting from
 driving your editor?**
 
 You do not need to do anything with this page to use Field. It is here because anyone running
-Field on a laptop on a shared network — a studio, a university, a conference wifi — deserves
-to know the shape of what they are running.
+Field on a laptop on a shared network, in a studio or a university or on conference wifi,
+deserves to know the shape of what they are running.
 
 ## The one-paragraph version
 
 Field's server binds `0.0.0.0`, which means **any machine on your network can reach it**, and
 it does not authenticate anything. It also tells every website you have open that they may
 call it, because its CORS policy is `anyHost()`. Each of those has a feature depending on it,
-and there is an opt-in switch —
-`AFIELD_API_REQUIRE_SAME_SITE=1` — that closes the *website* half but not the *network* half.
+and there is an opt-in switch, `AFIELD_API_REQUIRE_SAME_SITE=1`, that closes the *website*
+half but not the *network* half.
 If you are on a network you do not trust, the thing that protects you is the network, not
 Field.
 
@@ -39,7 +39,7 @@ answering one when you meant another:
 
 Note the third row. Field has no login, no token on most routes, no
 per-request credential. Everything below is a defence about *where a request came from*, not
-*who sent it* — and that distinction is why a loopback check, on its own, is much weaker than
+*who sent it*, and that distinction is why a loopback check, on its own, is much weaker than
 it sounds.
 
 ### Why "loopback only" is not the defence it reads as
@@ -52,8 +52,8 @@ fetch('https://localhost:9092/api/docs-annotations', {method: 'POST', body: …}
 ```
 
 the request that arrives at Field comes from your browser, from loopback, and a loopback
-check waves it through. The page cannot *read* the reply without Field's permission — that is
-what CORS is for — but for anything whose effect is the point rather than the answer, not
+check waves it through. The page cannot *read* the reply without Field's permission, which is
+what CORS is for, but for anything whose effect is the point rather than the answer, not
 reading the reply costs the attacker nothing.
 
 A Chromium page served from `http://127.0.0.1:9493` is a genuinely foreign origin, and from
@@ -88,7 +88,7 @@ The offline document viewer needs that: it posts a document back to
 This configuration stops exactly two things:
 
 - **`PUT` is not allow-listed.** A cross-origin `PUT` never reaches a handler. That is
-  configuration rather than a guard — it protects every `PUT` by accident, and a future
+  configuration rather than a guard: it protects every `PUT` by accident, and a future
   developer adding `allowMethod(HttpMethod.Put)` for an unrelated endpoint would silently
   remove it from all of them. A test says so.
 - **`X-Field-Docs-Improvement-Token` is not allow-listed.** The documentation-improvement
@@ -112,7 +112,7 @@ It is **off by default**. Turning a refusal on across three dozen routes at once
 break whichever of them your own tooling was relying on, so the switch is documented rather
 than defaulted. Field prints a loud warning line at startup either way.
 
-What it inspects is **mutating methods only** — `POST`, `PUT`, `DELETE`. A `GET` goes
+What it inspects is **mutating methods only**: `POST`, `PUT`, `DELETE`. A `GET` goes
 through untouched, which is deliberate (a WebSocket upgrade is a `GET`, and so is every
 ordinary page load) and is also why reads need saying separately:
 
@@ -122,7 +122,7 @@ ordinary page load) and is also why reads need saying separately:
 > routes have no guard at all**, and the same-site switch does not cover them.
 
 The split is only as good as knowing which routes are which, and thirteen of Field's routes
-are declared `route("/welcome") { handle { … } }` — a route that names **no** HTTP verb, and
+are declared `route("/welcome") { handle { … } }`, a route that names **no** HTTP verb and
 therefore answers all of them. Twelve serve one HTML page each and are `get { }` written the
 short way; the thirteenth, `/lazy-value-fragment`, takes four query parameters into a value
 renderer. The switch covers them exactly as it covers any other route, since it inspects the
@@ -133,7 +133,7 @@ guards in `dev_docs/server_surface_inventory.md`.
 switch closes the browser half of the problem and does nothing about the network half.
 
 ??? aside "Pinned by"
-    `FieldApiWriteGuardTest` — seven tests, one of which exists purely to assert that limitation — and
+    `FieldApiWriteGuardTest`, seven tests, one of which exists purely to assert that limitation, and
     `ServerSurfaceLedgerTest`, which is where the read routes are counted.
 
 ## Defence 3 — the DNS-rebinding check
@@ -148,7 +148,7 @@ Here is the attack it does not stop.
 2. The page loads, and its script sits waiting.
 3. The DNS record is changed to resolve to `127.0.0.1`.
 4. The script fetches `https://field.attacker.example:9092/api/…`. Your browser re-resolves
-   the name, gets `127.0.0.1`, and **connects to Field on your own machine** — while still
+   the name, gets `127.0.0.1`, and **connects to Field on your own machine**, while still
    believing it is talking to the same origin the page came from.
 
 Every signal now agrees, and every one of them is a lie: `Origin` is
@@ -158,7 +158,7 @@ not prove that the origin was Field.**
 
 The check that stops it comes first, before any of the other signals are consulted: for any
 browser-shaped request, `Host` must name **`localhost` or a literal IP address**. No name is
-resolved — resolution is the attacker's move, so the check refuses to make it. An attacker
+resolved, because resolution is the attacker's move. An attacker
 cannot get a browser to send `Host: localhost` for a page served from their own domain,
 because the browser sets `Host` from the URL that was navigated to.
 
@@ -169,14 +169,14 @@ Only after that does the rest run, and the order matters:
   because a typed URL or a bookmark has no initiator and is not a cross-site request at all.
   `cross-site`, `same-site` and anything unrecognised are refused.
 - **`same-site` being refused is the interesting one.** `http://localhost:9493` is a different
-  *origin* from `https://localhost:9092` but the same *site* — and that is exactly the shape
-  a page served from another port on your own machine has.
+  *origin* from `https://localhost:9092` but the same *site*, which is exactly the shape a
+  page served from another port on your own machine has.
 - For a client too old to send `Sec-Fetch-Site`, `Origin` is compared with the
-  already-validated `Host`. `Origin: null` — a sandboxed iframe — has no authority and cannot
+  already-validated `Host`. `Origin: null`, a sandboxed iframe, has no authority and cannot
   match.
 - **No `Origin` at all is allowed.** That is `curl`, a script, Field's own native clients.
   Nobody's ambient browser credentials are being borrowed, so it is not what this guard is
-  about — and refusing it would break every non-browser client Field has.
+  about, and refusing it would break every non-browser client Field has.
 
 That last point is the limitation, stated plainly: this guard closes the *browser* half. It
 does nothing about a request from another machine, because such a request simply sends no
@@ -217,11 +217,12 @@ Field's three channels, and their roles:
 One detail is visible from the attacking side: the handshake **succeeds**. The guard runs in
 the handler, so the client gets `HTTP/1.1 101 Switching Protocols` and *then* a close frame
 with code `1008` before any message is processed. A foreign page's `onopen` may therefore
-fire, followed immediately by `onclose`. No command ever reaches a handler, which is the property that matters — but
-"the upgrade is refused" would be the wrong mental model to debug from.
+fire, followed immediately by `onclose`. No command ever reaches a handler, which is the
+property that matters, but "the upgrade is refused" would be the wrong mental model to debug
+from.
 
 ??? aside "Pinned by"
-    `FieldWebSocketWriteGuardTest` — four route-level tests: the default still allows a cross-site upgrade,
+    `FieldWebSocketWriteGuardTest`, four route-level tests: the default still allows a cross-site upgrade,
     the switch closes one with a policy violation, Field's own browser still connects, and a native client
     sending no browser-origin headers still connects.
 
@@ -238,10 +239,10 @@ stop it: the feature must be switched on, a random per-run token must match (com
 target directory must exist and be a directory. Its token header is kept off the CORS
 allow-list, so a web page's preflight fails before any of that is reached.
 
-The same file's documentation *mirror* — `GET /field-docs/{...}`, which fetches
+The same file's documentation *mirror* is `GET /field-docs/{...}`, which fetches
 `openendedgroup.com` and serves it back from Field's own origin so an injected annotation
-panel can talk to Field without CORS — is loopback-only for a reason worth spelling out: the
-trick's cost is that **every script in the mirrored page is same-origin with Field**, and
+panel can talk to Field without CORS. It is loopback-only for a reason worth spelling out: the
+cost of that trick is that **every script in the mirrored page is same-origin with Field**, and
 Field has dozens of other unguarded `/api/…` routes. A hostile or compromised documentation
 page would be able to call all of them. Restricting the mirror to loopback takes that whole
 same-origin position off the local network.
@@ -251,7 +252,7 @@ same-origin position off the local network.
 Nothing above closes these. Both are known, and both cost something real to close.
 
 **Another host on your network.** The HTTPS connector binds `0.0.0.0` so that the visionOS
-shell and other devices can reach Field — a real, used workflow. Ktor's CORS plugin does not
+shell and other devices can reach Field, which is a real, used workflow. Ktor's CORS plugin does not
 run at all for a request with no `Origin` header, and the same-site check allows such a
 request. So `curl` from any machine on the same wifi reaches essentially every route,
 today. Closing this needs authentication or a narrower bind address, and a narrower bind
@@ -259,11 +260,11 @@ breaks the headset. **It is your network that is protecting you here.**
 
 **The `/ws` command surface, by default.** This is the part most likely to surprise.
 
-Field's HTTP routes get all the attention — 89 of them, 53 state-changing, all inventoried
+Field's HTTP routes get all the attention: 89 of them, 53 state-changing, all inventoried
 and tested. But the code with the most reach is not behind an HTTP route at all. The file
 proxy, the H2 database explorer, the box-execution commands and the agent backdoor declare
 **no HTTP routes between them**. They are entries in a message-dispatch table reached over
-`/ws`, and there are **105 of them** — about twice the HTTP write surface. A second, smaller
+`/ws`, and there are **105 of them**, about twice the HTTP write surface. A second, smaller
 table on the same socket carries **9 more** "raw" channels, which receive the whole frame and
 parse it themselves: the H2 explorer, the file browser, the log stream, the spreadsheet, the
 three.js and Metal viewers, and the RemoteJS bridge.
@@ -280,7 +281,7 @@ A test can share a misconception with the code it tests, so this table comes fro
 on port 9603, started with `AFIELD_API_REQUIRE_SAME_SITE=1` and probed over its real TLS
 socket. The write probes target a
 path that does not exist, so `403` means the guard refused and `404` means the request got
-past the guard and reached routing — which separates "refused" from "allowed" without changing
+past the guard and reached routing. That separates "refused" from "allowed" without changing
 any state.
 
 | probe | result |
@@ -322,15 +323,15 @@ Six test files. Three start a real Ktor application; three read source.
 | `DocsAnnotationSecurityTest` | the guard predicates as pure functions |
 | `ServerSurfaceLedgerTest` | the read routes, the thirteen all-method routes, the static mounts, all 105 `/ws` commands and the 9 raw `/ws` channels, against the ledger page |
 
-For the full route-by-route inventory — every read route with its guard, every all-method
-route, every static directory mount, every one of the 105 commands with the file it lives in,
-and the 9 raw channels — see `dev_docs/server_surface_inventory.md`. That page is asserted
+For the full route-by-route inventory, see `dev_docs/server_surface_inventory.md`: every read
+route with its guard, every all-method route, every static directory mount, every one of the
+105 commands with the file it lives in, and the 9 raw channels. That page is asserted
 against the source in both directions, so a new door cannot appear without the build saying
 so.
 
 One caveat on how much that promise is worth: a census can only refuse a door it has a *shape*
 for. A census looking for a verb call with a quoted path misses the three other ways Field
-declares routes — verbless, pathless, and nested inside another `route(…)`. Floors and
+declares routes: verbless, pathless, and nested inside another `route(…)`. Floors and
 landmarks catch a census that shrank; they cannot catch a category never counted. Against that
 there are two independently written censuses in the build, and a disagreement between their
 totals is itself a failure.

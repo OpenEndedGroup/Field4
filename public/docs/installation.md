@@ -54,9 +54,9 @@ git pull
 and then start it again, which rebuilds whatever changed.
 
 The `F1` command palette includes **Check for updates**, which tells you whether that is worth
-doing. It asks `origin` what it has on your branch — one `git ls-remote`, and nothing at all is
-fetched if you are already level — and reports how many commits you are behind, along with any
-local commits of your own that `origin` does not have.
+doing. It asks `origin` what it has on your branch with one `git ls-remote`, fetching nothing at
+all if you are already level, and reports how many commits you are behind, along with any local
+commits of your own that `origin` does not have.
 
 It will not pull, merge, rebase or write anything into your working tree; only you know whether
 that checkout has work in it. If the answer is "7 new commits on origin/main", the `git pull` is
