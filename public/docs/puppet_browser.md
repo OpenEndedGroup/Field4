@@ -5,9 +5,9 @@ desktop capture and it is not a special web page: navigation, cookies, cross-ori
 fonts, audio and browser controls continue to work, while Chromium's composited pixels arrive in
 Field as a sampled Vulkan image.
 
-That makes this more than “a web page on a quad.” It is an always-available browser layer for a
-Field scene: controllable from code, usable with a mouse and keyboard, aimable with an OpenXR
-controller, and available to every ordinary mesh, shader and render pass.
+So it is an always-available browser layer for a Field scene: controllable from code, usable with a
+mouse and keyboard, aimable with an OpenXR controller, and available to every ordinary mesh, shader
+and render pass.
 
 The control half of it does not need the texture half. The same tab — navigation, input, JavaScript,
 CDP, the page bridge — is drivable with no renderer and no GPU at all, which is what lets a test,
@@ -16,7 +16,7 @@ render](#a-browser-you-do-not-have-to-render).
 
 ## First, it is simply a browser
 
-The least theatrical use is often the most important. `PuppetBrowserWindowPanel` fits a live tab to
+`PuppetBrowserWindowPanel` fits a live tab to
 a native Field window without changing its aspect ratio. Clicks, wheel motion, physical keys,
 modifiers and text input go back to the original Chromium page.
 
@@ -133,8 +133,8 @@ The normal event stream already includes state changes, navigation, load failure
 console messages, cursor changes, context menus, audio state, pop-up attempts, permission requests,
 JavaScript dialogs and exceptions, responsiveness and renderer exits. Turning on CDP forwarding
 adds protocol events as `cdp` messages for tools that want Network, Runtime, Debugger, Performance
-or any other domain. In other words, Field can build the diagnostics it wants without first
-recreating the visual DevTools shell in VR.
+or any other domain. So Field can build the diagnostics it wants without recreating the visual
+DevTools shell in VR.
 
 ### A sandboxed page can call back into Field
 
@@ -163,16 +163,13 @@ keyboard and CDP paths remain available for every other site.
 
 ## A browser you do not have to render
 
-Everything in the table above is about the *tab*, not about its pixels. Until recently you could not
-reach any of it without a renderer, because `PuppetBrowser` extended the texture interface: naming
-the control plane obliged you to own a Vulkan image view, and therefore a window and a GPU.
-
-It no longer does.
+Everything in the table above is about the *tab*, not about its pixels, and none of it needs a
+Vulkan image view, a window or a GPU.
 [`PuppetBrowserControl`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/four/browser/PuppetBrowser.kt)
 is the control plane on its own, and
 [`HeadlessPuppetBrowser`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/four/browser/HeadlessPuppetBrowser.kt)
 implements it with no renderer, no Vulkan surface, no native handle bridge and no readback socket.
-The Electron producer gains a third frame mode in which the paints are dropped at the source.
+The Electron producer has a third frame mode in which the paints are dropped at the source.
 
 ```diffstatic {data-lang=kotlin}
 val browser = HeadlessPuppetBrowser("https://field.graphics/")
@@ -184,24 +181,18 @@ try {
 }
 ```
 
-`PuppetBrowser` still extends `PuppetBrowserControl` and `ExternalBrowserSurface` together, so every
-example on this page is unchanged and a box that publishes `browserControl` keeps publishing the
-same thing. What is new is that a caller who only wants the tab can say so.
+`PuppetBrowser` extends `PuppetBrowserControl` and `ExternalBrowserSurface` together, so a box that
+publishes `browserControl` publishes the control plane whether or not anything is drawing it, and
+every example on this page reaches the same commands.
 
 The producer, the wire protocol and every command are the ones the textured browser uses; only the
-paint handler differs. That is what makes this more than a convenience: the browser stack now has a
-test that can fail. `HeadlessPuppetBrowserTest` spawns a real Chromium, loads a `file://` fixture
-committed in the repository, and asserts on values read back out of the live DOM — an `evaluate`
-result, a page exception arriving as an exception rather than as `undefined`, an unsettled promise
-being awaited, the isolated world, a `window.fieldPuppet.request` round trip in both directions,
-`insertText` and a dispatched key both changing the page, `flushInput` as a barrier, and a raw CDP
-command. No GPU and no network, so it runs anywhere the repository builds.
+paint handler differs, which is why one test covers both. `HeadlessPuppetBrowserTest` spawns a real
+Chromium, loads a `file://` fixture committed in the repository, and asserts on values read back out
+of the live DOM. No GPU and no network, so it runs anywhere the repository builds.
 
-One thing that test found immediately: constructing a browser with a URL and navigating in the very
-next statement could fail with `ERR_ABORTED`, because Chromium cancelled the in-flight first load
-and Electron reported that cancellation against the *new* navigation. `navigate` now waits for the
-producer's un-awaited first load to settle. The textured browser had the same race and no way to
-notice it.
+Constructing a browser with a URL and navigating in the very next statement is safe: `navigate`
+waits for the producer's un-awaited first load to settle, so Chromium cancelling that load cannot
+surface as an `ERR_ABORTED` against the new navigation.
 
 ### Pages as data
 
@@ -223,14 +214,15 @@ browser.count("#readings tbody tr")   // 3
 browser.waitFor("document.readyState === 'complete'")
 ```
 
-Three deliberate choices. They evaluate in an isolated world, so a page that has shadowed
+Three choices. They evaluate in an isolated world, so a page that has shadowed
 `document.querySelectorAll` or shipped an enthusiastic polyfill cannot change what Field reads out
 of it. `numbers` returns null for a cell that is not a number rather than zero, because a missing
-reading and a reading of zero are different facts and a plot that cannot tell them apart is the
-reason to be careful here. And `waitFor` waits *in the page*, so the whole wait costs one round trip
+reading and a reading of zero are different facts, and a plot that cannot tell them apart is why it
+does not default to zero. And `waitFor` waits *in the page*, so the whole wait costs one round trip,
 and a condition that throws fails at once instead of being retried until the deadline.
 
-`table` gives you two parallel numeric columns, which is exactly what a Plotly or FLine box wants.
+`column` and `numbers` read a table's columns out side by side, which is what a Plotly or FLine box
+wants: labels down one and values down another.
 
 ## How desktop events land on the page
 
@@ -285,9 +277,9 @@ ray, so the preview also shows what Chromium is about to receive.
 
 ## Field can even browse Field
 
-The first end-to-end proof points Chromium back at the current Field document and samples that page
-onto a Vulkan mesh. It performs a page-to-Field-to-JavaScript promise round trip and publishes its
-live `browserControl` property for neighbouring boxes:
+This example points Chromium back at the current Field document and samples that page onto a Vulkan
+mesh. It performs a page-to-Field-to-JavaScript promise round trip and publishes its live
+`browserControl` property for neighbouring boxes:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/browser_texture/field-ui-on-texture.png" wait="12" timeout="90" capture="native-window" native-wait-frames="8" embed=true hidden=true name="field-ui-browser-texture" alt="Field's own live UI, produced by Chromium and sampled back onto a Vulkan surface" macro-file="../../dev_docs/agents/transcripts/field_ui_browser_texture.yaml" capture-box="field_ui_texture_renderer"}
 val browser = FieldUiBrowserTexture(
@@ -300,16 +292,15 @@ val browser = FieldUiBrowserTexture(
 )
 ```
 
-That recursive example is the **field_ui_browser_texture** starting point. It is also a useful
-reminder that this is a usable Field surface, not a screenshot: the capture has selected the live
-browser-texture box and opened its real Monaco editor inside Chromium. Any page Chromium can compose
-can become part of a Field scene.
+That recursive example is the **field_ui_browser_texture** starting point. In the capture, the live
+browser-texture box is selected and its own Monaco editor is open inside Chromium. Any page Chromium
+can compose can become part of a Field scene.
 
 ## And then: the kaleidoscope
 
-Once the browser is an ordinary native texture, a rectangle is only a convention. The punchline
-opens a YouTube watch page, handles the EU consent page, starts its real video element, and fractures
-the complete tab into 224 animated triangles:
+Once the browser is an ordinary native texture, a rectangle is only a convention. This example opens
+a YouTube watch page, handles the EU consent page, starts its real video element, and fractures the
+complete tab into 224 animated triangles:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/puppet_browser/youtube-kaleidoscope.png" wait="12" timeout="90" capture="native-window" native-wait-frames="8" embed=true name="youtube-kaleidoscope" alt="A live YouTube page fractured into 224 animated triangular Vulkan shards" macro-file="../../dev_docs/agents/transcripts/youtube_kaleidoscope.yaml" capture-box="youtube_kaleidoscope_renderer"}
 val shards = PuppetBrowserKaleidoscope(
@@ -351,7 +342,8 @@ Starting points:
   thumbstick/trackpad interaction.
 - **field_ui_browser_texture** — Field's own UI sampled back into Field, including the bidirectional
   page bridge.
-- **youtube_kaleidoscope** — the texture handed to a deliberately excessive native mesh and shader.
+- **youtube_kaleidoscope** — the texture handed to a native mesh and shader that cut it into 224
+  independently moving shards.
 
 Run the renderer box first and then its connected browser box. Every example publishes
 `browserControl`, so another box can immediately navigate it, listen to events, evaluate JavaScript
