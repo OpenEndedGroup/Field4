@@ -1,7 +1,7 @@
 # Building geometry in the headset
 
 !!! warning "Written for the visionOS app"
-    Everything here runs inside Field4Vision's **Live Metal** head on an Apple Vision Pro — that is
+    Everything here runs inside Field4Vision's **Live Metal** head on an Apple Vision Pro, which is
     where the shader, the uniforms and the finished image live. See [Field on Apple Vision
     Pro](vision.md) for the app itself.
 
@@ -48,7 +48,7 @@ onStart {
 Positions are in metres, in the space you launched the immersive scene in: `-z` is in front of you,
 `+y` is up. So `cz = -1.2` is 1.2m ahead, and `0.18` is a cube about the size of a grapefruit.
 
-The matching shader goes in the box's `msl` property. It reads `u_phase` — the head generates
+The matching shader goes in the box's `msl` property. It reads `u_phase`: the head generates
 `#define u_phase frame.user[0]` from the marker's `uniforms=` list, so shaders name their uniforms
 instead of counting slots.
 
@@ -104,7 +104,7 @@ geometry {
 ```
 
 Winding is **counter-clockwise as seen from the front**; the head culls back faces, so a face wound
-the other way is invisible. If a shape appears to have holes in it, that's the first thing to check —
+the other way is invisible. If a shape appears to have holes in it, that's the first thing to check,
 and [the preview](#winding-and-why-a-mesh-can-be-invisible) will check it for you.
 
 Because faces reference vertices by index, you choose your own normals:
@@ -134,8 +134,8 @@ Each vertex carries four `float4`s, and the shader sees them as `FieldVertex`:
 | `extra(first, second)` | `v.uv.zw` | two free channels — anything you like |
 
 `extra()` is the escape hatch. There is no way to add a *new* attribute to the vertex layout from a
-box, so when you need to get one more number per vertex into the shader — a band index, an age, a
-random seed — put it there.
+box, so when you need to get one more number per vertex into the shader (a band index, an age, a
+random seed), put it there.
 
 ## The shape helpers
 
@@ -185,13 +185,13 @@ geometry {
 }
 ```
 
-`p(x, y, z)` builds a point. `sides` is the cross-section's polygon count — 6 to 10 is plenty at arm's
+`p(x, y, z)` builds a point. `sides` is the cross-section's polygon count, and 6 to 10 is plenty at arm's
 length. uv runs *around* the tube in `u` and *along the spine* in `v`, so a shader can put a
 travelling band on it with `in.uv.y`. Fewer than two points draws nothing rather than erroring.
 
 ## Rebuilding
 
-Call `geometry { … }` again whenever you like — including from `onFrame`:
+Call `geometry { … }` again whenever you like, including from `onFrame`:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -227,7 +227,7 @@ side (see [below](#previewing-it-on-your-desk)).
 
 ## A procedural mesh, start to finish
 
-Height fields are the shape most procedural geometry takes, so here it is in full — including normals
+Height fields are the shape most procedural geometry takes, so here it is in full, including normals
 by finite difference, which saves differentiating your surface by hand:
 
 ```diffstatic {data-lang=kotlin}
@@ -346,8 +346,8 @@ itself: for every triangle it compares the winding's implied direction with the 
 declared, and reports the fraction that agree. A clean mesh reads 100%. Anything less will have holes
 in it on the device, and the number is printed on the frame.
 
-Here is the pair. The same lantern built correctly — a sphere on a ring, 952 vertices, **winding 100%
-agrees with normals** — and then with the ring wound backwards, drawn with culling disabled so you can
+Here is the pair. The same lantern built correctly (a sphere on a ring, 952 vertices, **winding 100%
+agrees with normals**), and then with the ring wound backwards, drawn with culling disabled so you can
 see what the head would have thrown away:
 
 ![The lantern built correctly: an orange sphere resting on a blue ring with grey posts, its stats line reading "winding 100% agrees with normals"](assets/vision_geometry/vision-geometry-lantern.png)
@@ -357,8 +357,8 @@ agrees with normals" in amber](assets/vision_geometry/vision-geometry-lantern-in
 
 ### Uniforms that don't line up
 
-The other thing the preview checks needs no picture at all. A uniform is named in three places — the
-marker's `uniforms=` list, the shader's `u_NAME`, and the script's `uniform("name", …)` — and each
+The other thing the preview checks needs no picture at all. A uniform is named in three places (the
+marker's `uniforms=` list, the shader's `u_NAME`, and the script's `uniform("name", …)`), and each
 mismatch fails differently and late:
 
 | Mismatch | What the head does |
@@ -369,8 +369,8 @@ mismatch fails differently and late:
 | shader has no `field_vertex` / `field_fragment` | the head refuses to build a pipeline |
 
 `VisionMetalProgramCheck` decides all of those from the box's own text plus a real run of its script,
-and **Preview Vision Geometry** reports them alongside the mesh. It does not compile MSL — that still
-happens on the device — but the mistakes above never reach the compiler in the first place.
+and **Preview Vision Geometry** reports them alongside the mesh. It does not compile MSL (that still
+happens on the device), but the mistakes above never reach the compiler in the first place.
 
 ### A turntable, and the mesh as FLines
 
@@ -381,7 +381,7 @@ the quickest way to be sure a shape is a solid and not a lucky projection:
 tint](assets/vision_geometry/vision-geometry-cube-turntable.png)
 
 And if you would rather measure the mesh than look at it, `CapturedMesh.toFLines()` hands its unique
-edges — in metres, with vertex colour — to Field's own 3-D viewer, where the rest of Field's drawing
+edges (in metres, with vertex colour) to Field's own 3-D viewer, where the rest of Field's drawing
 and geometry tools apply.
 
 ## Runnable starting points
