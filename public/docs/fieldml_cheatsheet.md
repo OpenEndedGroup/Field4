@@ -50,7 +50,7 @@ Listed loosest to tightest. Everything binds looser than function application, s
 | `-` (prefix) | negate | numbers and vectors |
 | `|>` | pipe the left value into the right function | |
 
-## Conventions worth knowing
+## Conventions
 
 - **Single-subject helpers take the subject last**, so they read at the end of a pipe: `7 |> mod 4` is 3, `3.0 |> pow 2.0` is 9, `[1] |> append [2]` is `[1, 2]`.
 - **`Int` and `Float` never mix silently.** `10 + 1.0` is a type error; use `toFloat`.
@@ -209,7 +209,7 @@ linspace 0.0 tau 24
 
 ## JVM interop
 
-`hostTap` is the one to reach for when a Kotlin function is an effect in the middle of a pipe: it looks the function up in Field's source index, fills in defaults, and puts the piped value in the data argument. `hostCall` is the one for everything else. See [The JVM bridge](fieldml_host_bridge.md) for the whole story and [FieldML Examples](fieldml_examples.md#jvm-interop) for worked versions.
+Use `hostTap` when a Kotlin function is an effect in the middle of a pipe: it looks the function up in Field's source index, fills in defaults, and puts the piped value in the data argument. `hostCall` covers everything else. See [The JVM bridge](fieldml_host_bridge.md) for the mechanism and [FieldML Examples](fieldml_examples.md#jvm-interop) for worked versions.
 
 | Name | Type |
 | --- | --- |
@@ -236,9 +236,9 @@ linspace 0.0 tau 24
 | `hostAsString` | `'a -> String` |
 | `hostAsList` | `'a -> [Host]` |
 
-`hostCall name arguments target` takes as many arguments as the method does: a tuple, or a list written out in place, is spread; a **record** is spread *by name*, and every Kotlin parameter you leave out of it gets the default the source declared; anything else is a single argument. `hostNew` is the same for constructors. The `hostCall0`/`hostCall1`/`hostCall2` forms remain, and `hostCall1` is the way to pass one list — or one record — *as* one argument rather than have it spread. A FieldML function passed where the JVM wants a functional interface — a Kotlin lambda parameter, `Runnable`, `Comparator`, or a `suspend` one such as `eachFrame`'s — is converted on the way in.
+`hostCall name arguments target` takes as many arguments as the method does: a tuple, or a list written out in place, is spread; a **record** is spread *by name*, and every Kotlin parameter you leave out of it gets the default the source declared; anything else is a single argument. `hostNew` is the same for constructors. `hostCall0`, `hostCall1` and `hostCall2` fix the argument count instead; `hostCall1` never spreads, so it is how you pass one list, or one record, *as* a single argument. A FieldML function passed where the JVM wants a functional interface — a Kotlin lambda parameter, `Runnable`, `Comparator`, or a `suspend` one such as `eachFrame`'s — is converted on the way in.
 
-The types in this table are the *static* ones. In a real call the type checker does better than `Host`: it resolves the member by reflection, so `thisBox |> hostGet "width"` is an `Int`, a misspelled member name is a type error rather than a crash, and a result whose class is known keeps that class as its type. `Host` is what is left when reflection genuinely cannot say — a generic erased to `Object`, a nullable Kotlin return, an array — and it is the one type that unifies with everything, which is what the `hostAs…` family is for.
+The types in this table are the *static* ones. In a real call the type checker does better than `Host`: it resolves the member by reflection, so `thisBox |> hostGet "width"` is an `Int`, a misspelled member name is a type error rather than a crash, and a result whose class is known keeps that class as its type. `Host` is what is left when reflection cannot say: a generic erased to `Object`, a nullable Kotlin return, an array. It unifies with every type, which is what the `hostAs…` family is for.
 
 ## Source macros
 
