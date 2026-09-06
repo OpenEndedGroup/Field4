@@ -1,6 +1,6 @@
 # Python in a box
 
-*The implementation is one file — `src/jvmMain/kotlin/afield/python/PythonInterface.kt`. Python is a
+*The implementation is one file: `src/jvmMain/kotlin/afield/python/PythonInterface.kt`. Python is a
 [promoted main language](language_extensions.md), so a Python box is a box like any other: it has
 outputs, it can be stopped, and it sits in the same document as your Kotlin.*
 
@@ -89,7 +89,7 @@ sum(math.sqrt(n) for n in range(1, 11))
 
 Only if it printed nothing. The last-expression value is published under `if (!hasHadOutput)`
 (`PythonInterface.kt`), so a cell that has already printed will not also echo its final
-value — which is why the array cell above showed no trailing `None`.
+value, which is why the array cell above showed no trailing `None`.
 
 **Stop** does not restart the interpreter. It cancels the asyncio tasks that this box started, and
 only those: `cancel_tasks('<box id>', timeout=1.5)` (`PythonInterface.kt`). Tasks are
@@ -114,8 +114,8 @@ in one place for both `print` and the last-expression value.
 | the `<pre>` wrap | multi-line text only, into `<pre class="afield-python-output">` | a 2-D array or a `DataFrame` stays column-aligned instead of being flattened into `<br>`s |
 
 **Carriage returns become a progress bar.** The stdout redirect is a framer that splits on `\n` *and*
-`\r` (`OutputFramer`). A frame ending in `\r` is an in-place update — the signature of
-`tqdm` — and is routed to `deliverProgressText` instead of the output pane. If the frame
+`\r` (`OutputFramer`). A frame ending in `\r` is an in-place update (the signature of
+`tqdm`) and is routed to `deliverProgressText` instead of the output pane. If the frame
 parses as a tqdm bar it becomes a real Field progress bar with that percentage; if it does not, it
 becomes an indeterminate bar carrying the raw frame as its label. This is why a `tqdm` loop surfaces
 live instead of arriving as one enormous string at the end.
@@ -131,7 +131,7 @@ intercepts that. `webbrowser.open`, `open_new`, `open_new_tab` and the controlle
 embedded in the box's output as a self-contained `srcdoc` iframe on a channel called `browser`.
 
 The interesting case is a library that starts a one-shot local HTTP server and then blocks until
-someone fetches the URL — which is what plotly's default renderer does. Field fetches it itself on a
+someone fetches the URL, which is what plotly's default renderer does. Field fetches it itself on a
 daemon thread: the GET satisfies the waiting server so the cell never hangs, and the
 document that comes back is what gets embedded. The cell does not depend on a front end being
 present at all.
@@ -155,7 +155,7 @@ redirection happens underneath it.
 
 ## Python and Kotlin in one document
 
-Because JEP is in-process, the JVM is not somewhere else — it is importable. `java.lang`, and any
+Because JEP is in-process, the JVM is not somewhere else; it is importable. `java.lang`, and any
 class on Field's classpath, resolves as a Python module.
 
 ```diffstatic_runner {data-lang=python screenshot="assets/python/jvm_interop.png" capture="editor" wait="4" padding="10" w="900" h="340" timeout="240" requires="jep" embed=true name="python-jvm-interop" alt="A Python box importing java.lang.System and Field's own PythonInterface, printing the JVM version and the name of the box it is running inside."}
@@ -184,7 +184,7 @@ traffic on this page all runs Python → JVM.
 Completion inside a Python box is served by [jedi](https://jedi.readthedocs.io/), not by Field's
 Kotlin machinery: `complete` builds a `jedi.Interpreter` over the box's source and the live
 `locals()` (`complete`, `PythonInterface.kt`). Because the interpreter is live, completion sees objects
-you actually created rather than only what it can infer statically — and because it is jedi, `pip
+you actually created rather than only what it can infer statically, and because it is jedi, `pip
 install jedi` is what turns it on.
 
 ## A notebook is a column of boxes
@@ -208,7 +208,7 @@ under `worksheets[].cells` and a cell's source is keyed `input` rather than `sou
 
 ## Setting Python up { #setting-python-up }
 
-Field needs an interpreter that has **JEP's native library** in it. Not merely a Python — a Python
+Field needs an interpreter that has **JEP's native library** in it. Not merely a Python, but a Python
 where `pip install jep` has been run, so that a `libjep` file exists in its site-packages.
 
 The candidate list is tried in this order, and the first one with a `libjep` in it wins
@@ -222,7 +222,7 @@ The candidate list is tried in this order, and the first one with a `libjep` in 
 
 The `/welcome` panel has an **Install JEP** button, and what it does
 (`installJep`, `PythonInterface.kt`) is run `python -m ensurepip --upgrade`, then `python
--m pip install --upgrade jep`, with `JAVA_HOME` set to the running JVM's own `java.home` — jep is a
+-m pip install --upgrade jep`, with `JAVA_HOME` set to the running JVM's own `java.home`, because jep is a
 JNI extension and its build needs `jni.h`. It then re-resolves, and only persists your choice if a
 `libjep` really did appear. The pip step is given six minutes, because it compiles C.
 
@@ -256,7 +256,7 @@ CFLAGS="-isysroot $(xcrun --show-sdk-path)" .venv/bin/python3 -m pip install 'je
 export FIELD_PYTHON_VENV="$PWD/.venv"
 ```
 
-Pin `jep` to the version of the jar Field ships — `libs/jep-4.3.1.jar` (`build.gradle.kts`).
+Pin `jep` to the version of the jar Field ships: `libs/jep-4.3.1.jar` (`build.gradle.kts`).
 A native library and a jar from different releases is a mismatch JEP does not check for you.
 
 ## Which code on this page runs { #which-code-on-this-page-runs }
