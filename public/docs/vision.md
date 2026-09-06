@@ -118,7 +118,7 @@ compositor clock) runs on a physical Vision Pro, and a Kotlin edit reaches a cha
 perceptible lag.
 
 Most of the three-part structure can be checked without a headset, because it is orthogonal to what
-a simulator cannot do. A script drives the real app in the **visionOS simulator** and asserts on the
+a simulator can't do. A script drives the real app in the **visionOS simulator** and asserts on the
 status messages the head sends back over the wire: that Apple's Metal compiler accepts the generated
 shader preamble, that Kotlin-built geometry arrives as the mesh the builder's arithmetic predicts,
 that a shader-only reload leaves the script and geometry running, and that a broken shader reports
@@ -170,8 +170,8 @@ clock over it, because presenting each frame the moment it arrives is the wrong 
 ## Head tracking — the pose comes back up
 
 Everything above runs one way: the RTT stream carries pixels down, `__visionmetal__` carries a
-program down. On its own a stream can only ever be a *surface* placed in the room, correct,
-stereoscopic and world-locked, because a renderer that does not know the head pose has nothing else
+program down. On its own a stream can only ever be a *surface* placed in the room (correct,
+stereoscopic, world-locked), because a renderer that does not know the head pose has nothing else
 to draw.
 
 `__visionpose__` (`VisionPose.kt:82#const val VISION_POSE_CHANNEL`) is the one channel in Field that
@@ -187,7 +187,7 @@ nearby. The sender is latest-wins and never queues: a pose is only useful while 
 one, and a queue here would turn network jitter into accumulating pose delay.
 
 **The hazard here is ordering.** Field's `/ws` reader dispatches each raw message in its own
-coroutine, so poses decode concurrently and finish out of order: 9–10% of them,
+coroutine, so poses decode concurrently and finish out of order: 9–10% of them, reproduced
 across three runs against the simulator (123/1382, 181/1962, 230/2400). Publication is therefore
 monotonic under a lock (`VisionPose.kt:418#private fun publish(frame: VisionPoseFrame)`). Without
 that guard `latest` walks backwards several times a second, which a wearer experiences as the world
@@ -235,10 +235,9 @@ For the head to *reproject* a frame it has received, it must know which pose tha
 from. The media header therefore carries a 16-byte **pose tail**: `poseFrameId` and
 `poseDisplayTimeNanos` (`WIRE_FORMAT.md:57#poseDisplayTimeNanos u64`), gated by a `POSE_VALID` flag
 rather than a sentinel, because compositor frame index 0 is perfectly legitimate.
-`FieldRTTStreamer.tagPosesFrom` (`FieldRTTStreamer.kt:106#fun tagPosesFrom`)
-wires a stereo target's latched pose into the stream, on
-the tick that rendered the surface rather than in the deferred submit block where a newer pose could
-silently substitute itself.
+`FieldRTTStreamer.tagPosesFrom` (`FieldRTTStreamer.kt:106#fun tagPosesFrom`) wires a stereo
+target's latched pose into the stream, on the tick that rendered the surface rather than in the
+deferred submit block where a newer pose could silently substitute itself.
 
 `ptsMicros` looks like the obvious home for such a timestamp and is not one: it is stamped on the
 ideal cadence grid (`seq * interval`) precisely so the receiver has something regular to schedule
@@ -278,7 +277,7 @@ subtracts two of its *own* timestamps. The ping/pong clock offset
 and theirs, and it keeps the **minimum**-RTT sample, because averaging round trips on a contended
 link estimates the contention, not the offset.
 
-Read the spans, not the total. Two of them hold time for a reason:
+Read the spans, not the total. Two of them are there by design:
 
 - the receiver's **jitter buffer** holds frames, so that network jitter becomes smoothness
   instead of dropped frames (`RTTStream.swift:77#static let bufferFrames`; set `FIELD4_RTT_BUFFER=0`
@@ -345,7 +344,7 @@ benchmark, so here is which figure is which:
 - The **clock offset is recovered, not written in.** The synthetic head is built at an offset of
   `+1234567.890 ms`; the estimator recovered `+1234567.547 ms` from seven round trips on this
   machine without ever being told the answer. It is the only measured figure in either table, and
-  the first one to check, because a wrong offset does not fail, it produces a *plausible* latency.
+  the first one to check, because a wrong offset does not fail; it produces a *plausible* latency.
   The smoke's own bound is a loose 20 ms: a sign slip would be out by twice the offset and a missing
   halving by the offset itself, and what fits inside that window is host scheduling noise on a
   shared machine.
