@@ -14,12 +14,12 @@ For recovering a hidden value from noisy measurements, see
 ## Interpolants: easing a value to a target
 
 An interpolant is a value that chases a target over a controlled number of
-evaluations rather than jumping. `smoothTo(...)` is the workhorse — opacity,
+evaluations rather than jumping. `smoothTo(...)` is the workhorse: opacity,
 brightness, a filter cutoff, a camera move, a gesture-derived control. The single
 knob that shapes the approach is `steps`: fewer steps arrive sooner and sharper,
 more steps settle later and softer. The way to feel that is to give three
-interpolants a target that keeps *moving* — a set-point that jumps every 60
-evaluations — and re-aim each one from wherever it currently sits (`startAt`) the
+interpolants a target that keeps *moving* (a set-point that jumps every 60
+evaluations) and re-aim each one from wherever it currently sits (`startAt`) the
 moment the target changes. Now `steps` reads as responsiveness: the snappy one
 locks on almost immediately, the glacial one is still leaning into the last jump
 when the next one arrives.
@@ -169,7 +169,7 @@ musical, animated, or otherwise measured in seconds.
 ## Keyframes: morphing a whole parameter state — including code
 
 An interpolant moves one number. A `KeyframeScope` moves a whole named *state*
-between saved snapshots — and its values are typed: numbers and vectors ease
+between saved snapshots, and its values are typed: numbers and vectors ease
 continuously, quaternions slerp, and **code values** (`StackSLString`, source
 blocks) switch *discretely* at the end of the transition. So a patch can
 crossfade its continuous parameters while its actual synthesis code snaps over at
@@ -300,7 +300,7 @@ Both source signals are drawn alongside the metrics computed from them, so you c
 see what each rolling window is actually looking at. In the first third `y` tracks
 `x`; in the second it is independent noise; in the third it is a nonlinear function
 of `x` (`y = 2x² − 1`). Both `RollingDistanceCorrelation` and `RollingXiCorrelation`
-climb on the two *dependent* stretches and collapse across the noise band — the
+climb on the two *dependent* stretches and collapse across the noise band, so the
 dependence visibly comes and goes (the grey guides mark the regime changes), which
 a single summary number would smear into one lukewarm value.
 
@@ -310,8 +310,8 @@ The two metrics rise and fall together without coinciding, and both recover on t
 *nonlinear* third where a straight-line correlation would not. Use this kind of
 sanity check before trusting a rolling metric on sensor streams, musical
 features, or exploratory data. When you instead want a fast comparison of several
-metrics on one *fixed* dataset — which one notices the shape, which punishes you
-for asking a linear question of a nonlinear cloud — plot the cloud they run on,
+metrics on one *fixed* dataset (which one notices the shape, which punishes you
+for asking a linear question of a nonlinear cloud), plot the cloud they run on,
 then the metrics as bars:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/correlations_examples/metric_profile.png" wait="1.0" capture="box" open-outputs="true"}
