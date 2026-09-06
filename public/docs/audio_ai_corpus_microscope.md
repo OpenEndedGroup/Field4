@@ -4,7 +4,7 @@ The corpus microscope makes source recordings navigable before asking a generato
 anything. It cuts immutable recordings into overlapping windows at 1.5, 3, 6 and 12 seconds,
 measures each window, and retrieves related material with an explicit weighted distance.
 
-The descriptor is intentionally inspectable rather than a single opaque similarity number:
+The descriptor is five groups of measurements rather than a single similarity number:
 
 | Group | Measurements |
 | --- | --- |
@@ -21,9 +21,8 @@ window.
 
 ## Submit and monitor the index
 
-Segmentation and descriptor extraction are ordinary cached `analysis.*` jobs. The following is
-the complete Field path for Nancy and Final Out at Candlestick Park—there is no indexing hidden in
-the document setup:
+Segmentation and descriptor extraction are ordinary cached `analysis.*` jobs. The following is the
+complete Field path for Nancy and Final Out at Candlestick Park:
 
 ```diffstatic {data-lang=kotlin}
 import afield.stdlib.noir.audioai.*
@@ -92,10 +91,10 @@ tracked("Nancy neighbours", findCorpusNeighbours(
 Each neighbour card contains its exact source window, grouped distance bars and an automatic
 equal-power query-to-neighbour splice. Query and neighbour players map their own segment beginnings
 to shared time zero; hover, zoom, clicking and playback cursors therefore remain aligned across
-different recordings. Source timestamps and previous/next segment ids remain visible provenance,
-not an implied common timeline.
+different recordings. Source timestamps and previous/next segment ids stay visible as
+provenance rather than as a shared timeline.
 
 The loadable `audio_ai_corpus_microscope` operation transcript contains the guide, durable monitor,
-and complete Nancy/Candlestick indexing and query box. Timeline placement is outside
-this first microscope. Continue with the [EnCodec reconstruction microscope](audio_ai_codec.md) for
-the token representation that the forthcoming surgery editor will manipulate.
+and complete Nancy/Candlestick indexing and query box. Placing a neighbour on a timeline is not part
+of it. Continue with the [EnCodec reconstruction microscope](audio_ai_codec.md) for the token
+representation.

@@ -15,7 +15,7 @@ docs build does not initialize the submodule, install analysis or AudioCraft pac
 weights. See the [generated service reference](field_audio_service_reference.md) for the
 current pinned HTTP objects, states, and error vocabulary.
 
-## What works now
+## What the service does
 
 - immutable content-addressed source assets and 48 kHz project representations;
 - asynchronous, cached and reproducible operations with progress and structured errors;
@@ -58,26 +58,24 @@ does not accept an arbitrary event timeline or density curve.
 
 ## Gestures and how strongly they are enforced
 
-Field's gesture board now accepts timed prompt regions, salience events, and density, register,
+The gesture board accepts timed prompt regions, salience events, and density, register,
 brightness and activity curves. Chord regions, pitch salience, pulse, continuation endpoints,
-corpus attraction, and EnCodec codebook selections remain later vocabulary. The interface always
-reveals how a gesture reaches the sound:
+corpus attraction, and EnCodec codebook selections are not part of its vocabulary. The interface
+always reveals how a gesture reaches the sound:
 
 - **direct** — consumed as a native model condition;
 - **compiled** — translated into chords, drums, pitch salience or several bounded requests;
 - **evaluative** — used to analyse, rank and retry candidate families;
 - **transformative** — applied afterward through tokens, splicing or decoding.
 
-This distinction matters. Today a density curve is an analysis-and-ranking target, not a direct
-MusicGen control. The service measures every candidate, persists per-lane scores, and the Field
-browser presents them alongside listening and human ratings. A future JASCO worker can make timed
-chords, drum gestures and melodic salience model-native without changing the board's data model.
+A density curve is an analysis-and-ranking target rather than a direct MusicGen control. The
+service measures every candidate, persists per-lane scores, and the Field browser presents them
+alongside listening and human ratings.
 
 Start with the executable [gesture board](audio_ai_gesture_board.md), then use source-window motion,
 parameter sweeps and candidate comparison around it. The complete
 [beat and pitch analysis workflow](audio_ai_analysis.md) shows source lookup, submission, live
-progress, cached result retrieval and synchronized librosa/pYIN/Basic Pitch views without hiding
-the job boundary.
+progress, cached result retrieval and synchronized librosa/pYIN/Basic Pitch views.
 
 For speech and field recordings, [speech-reactive learned spaces](audio_ai_speech_embeddings.md)
 adds emotion2vec and WavLM Base+ behind the same durable operation boundary. Its dual phase
