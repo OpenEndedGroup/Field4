@@ -1,20 +1,19 @@
 # Solids that cannot fail: Manifold in Field
 
-*Every public declaration used below carries its own KDoc — start from `Solid`, `Section` and
+*Every public declaration used below carries its own KDoc; start from `Solid`, `Section` and
 `ManifoldLibrary` in `afield.manifold`. The transcript that ships as an openable starting point is
 [manifold_solids](agent_transcripts.md).*
 
-Field could always *make* triangles. [`TriMesh`](mesh_examples.md) generates them, marches them out of
-an SDF, subdivides, smooths, decimates, measures and writes them to disk; the
+Field's mesh family makes triangles. [`TriMesh`](mesh_examples.md) generates them, marches them out
+of an SDF, subdivides, smooths, decimates, measures and writes them to disk; the
 [ray tracer](ray_tracing_examples.md) intersects analytic solids; [`FLine`](fline_examples.md) draws
-outlines. What none of that could do is the one operation that turns a surface into a *part*:
+outlines. None of it does the one thing that turns a surface into a *part*:
 
 > **subtract one mesh from another and be certain the answer is still a closed solid.**
 
-That is a genuinely hard problem — coincident faces, near-degenerate triangles, features below the
-floating-point noise floor — and [Manifold](https://github.com/elalish/manifold) is the library that
-solved it. `afield.manifold` binds it, through Panama/FFM, in about 1500 lines of Kotlin and no C++ at
-all.
+Coincident faces, near-degenerate triangles and features below the floating-point noise floor are
+what make that hard, and [Manifold](https://github.com/elalish/manifold) is the library that solved
+it. `afield.manifold` binds it through Panama/FFM, in about 2400 lines of Kotlin and no C++ at all.
 
 ```diffstatic {data-lang=kotlin}
 val plate = Solid.cube(60.0, 40.0, 8.0, center = true)
@@ -30,10 +29,9 @@ display(part.toTriMesh())
 
 ## What "guaranteed" buys you: the numbers are exact
 
-This is the part that changes how the API feels. Manifold measures the **solid**, not a sum over float
-triangles, so the primitives come back to the last digit — and that means you can do arithmetic with
-the results and assert on them, rather than eyeballing a render. Every figure in this table is asserted
-on every build:
+Manifold measures the **solid** rather than summing over float triangles, so the primitives come back
+to the last digit. That changes how the API feels: the results are arithmetic you can do and assert
+on, instead of a render you eyeball.
 
 | what | Field says | closed form |
 |---|---|---|
@@ -49,14 +47,14 @@ on every build:
 | the same with `ROUND` | `8.78540` | `8 + π(0.5²)` |
 | a square profile revolved off-axis | `4.71192` | Pappus: `2πRA = 4.71239` |
 
-A cube slices to exactly `4.0`; a 2×2×2 cube split at `z = 0.5` gives halves of exactly `2.0` and
-`6.0`. Nothing here is within-a-tolerance-of; it is the answer.
+A cube slices to exactly `4.0`, and a 2×2×2 cube split at `z = 0.5` gives halves of exactly `2.0`
+and `6.0`.
 
 ## Booleans, and a part you could actually machine
 
-The whole point is that a chain of these cannot silently stop being a solid. Note `Solid.union(list)`
-rather than folding `+` — Manifold plans the whole batch instead of nesting *n−1* operations — and
-`Solid.scope { }`, which releases the intermediates rather than leaving them to a `Cleaner`.
+A chain of these cannot stop being a solid without saying so. Note `Solid.union(list)` rather than
+folding `+` (Manifold plans the whole batch instead of nesting *n−1* operations), and
+`Solid.scope { }`, which releases the intermediates instead of leaving them to a `Cleaner`.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/booleans.png" wait="4" capture="box" open-outputs="true" padding="20" requires="manifold" name="booleans" embed=true}
 :::static
@@ -119,12 +117,11 @@ Manifold's Booleans are **lazy**: `a - b` builds a node and the work happens whe
 number. So `volume`, `genus` and `toTriMesh()` are the expensive calls, not the operators, and timing
 an operator measures nothing.
 
-## An invalid input is a status, not a crash
+## Invalid input comes back as a status
 
 Manifold never throws and never returns null. A failed operation gives you a `Solid` whose `status` is
-not `NO_ERROR` and whose volume is `0.0`. That is a deliberate upstream choice — it keeps a
-twenty-step chain from needing twenty checks — but it does mean **an unchecked pipeline can end in
-silence**. Two ways out:
+not `NO_ERROR` and whose volume is `0.0`. Upstream chose that so a twenty-step chain does not need
+twenty checks; the cost is that **an unchecked pipeline can end in silence**. Two ways out:
 
 ```diffstatic {data-lang=kotlin}
 // 1. `checked()` throws, naming the status and the repair, instead of yielding 0 mm³.
@@ -137,10 +134,8 @@ if (part.status.isError) println("could not build it: ${part.status}")
 The commonest failure by far is a mesh that came off disk. An STL has no index buffer at all, so every
 triangle owns its three vertices and the mesh is 36 loose vertices rather than a closed cube.
 
-**Do not guess which repair to try.** `toSolid()` used to refuse with a list of candidates — weld,
-then fix the winding, then try `repaired()` — which is a decision tree the reader has to walk, and for
-the commonest case of all (a hole) none of the entries was the answer. The refusal now carries
-`TriMesh.diagnose()`'s report, so it names the defect:
+**Do not guess which repair to try.** `toSolid()`'s refusal carries `TriMesh.diagnose()`'s report, so
+it names the defect instead of handing you a list of things to try in order:
 
 ```diffstatic {data-lang=text}
 this TriMesh is not a valid manifold: NOT_MANIFOLD.
@@ -161,39 +156,38 @@ Two calls, both in `afield.stdlib`, both documented at length under
 | to see where the trouble is | `showMeshDiagnosis(mesh)`, or `mesh.defectFLines()` |
 
 `repairToSolid()` welds, drops degenerate and duplicated faces, removes dangling fins, fixes the
-winding, **fills the holes**, and fixes the winding again — then hands back a `MeshRepairResult`
+winding, **fills the holes**, and fixes the winding again, then hands back a `MeshRepairResult`
 rather than a mesh, because the interesting part is `unfixed`: the blocking defects still present,
 each with the reason it was left alone. `ToyCar.glb` in this repo goes through it and comes out a
 solid you can boolean.
 
-The older `repaired()` is still there and still right for a mesh whose only problem is an unwelded
-seam. It does not fill holes, which is why it makes 6 of the 21 rejected meshes in the repair test
-table valid where `repairToSolid()` makes 19 valid — of which **15 are also the shape you started
-with**, judged against the undamaged original. See
-[geometry from disk](geometry_from_disk.md) for why those two numbers have to be reported
-separately, and for the pair of cases proving that no local check can tell them apart.
+`repaired()` is the right call for a mesh whose only problem is an unwelded seam. It does not fill
+holes, which is why it makes 6 of the 21 rejected meshes in the repair test table valid where
+`repairToSolid()` makes 19 valid, of which **15 are also the shape you started with**, judged against
+the undamaged original. See [geometry from disk](geometry_from_disk.md) for why those two numbers
+have to be reported separately, and for the pair of cases proving that no local check can tell them
+apart.
 
-One trap worth stating on this page in particular: **Manifold accepts an inside-out mesh.** A closed,
-consistently-but-inwardly wound surface is a legal manifold and reports a *negative* volume, so
+**Manifold accepts an inside-out mesh.** A closed, consistently-but-inwardly wound surface is a
+legal manifold and reports a *negative* volume, so
 `status` is `NO_ERROR` and the next boolean computes the complement of what you meant.
 `isValidSolid()` cannot catch that; `diagnose()` reports it as `INVERTED_ORIENTATION`, and
 `repairToSolid()`'s second winding pass fixes it. Manifold likewise accepts zero-area triangles,
-pinch vertices, and disjoint components — whose volumes it sums.
+pinch vertices, and disjoint components, whose volumes it sums.
 
-`NON_FINITE_VERTEX` remains what it always was: a NaN in the positions, usually a degenerate normal
-upstream. `repairToSolid()` refuses that one outright rather than repairing around it — dropping the
-affected triangles and capping the gap would produce a plausible solid missing an unknown amount of
-the model.
+`NON_FINITE_VERTEX` is a NaN in the positions, usually a degenerate normal upstream.
+`repairToSolid()` refuses that one outright rather than repairing around it: dropping the affected
+triangles and capping the gap would produce a plausible solid missing an unknown amount of the model.
 
 `TriMesh.isValidSolid()` is the cheap pre-flight, and `toSolid()` checks by default.
 
 ## 2D: the offset is the other reason to be here
 
 `Section` is Manifold's `CrossSection`, which is [Clipper2](https://github.com/AngusJohnson/Clipper2)
-underneath. Field can already draw and boolean 2D outlines after a fashion — `FLine`, and the Java2D
-`Area` bridge — but it has never been able to **offset** one: a true parallel curve at distance *d*,
-resolving the self-intersections that a naive normal displacement produces, with a choice of what
-happens at a corner.
+underneath. Field draws and booleans 2D outlines already, through `FLine` and the Java2D `Area`
+bridge, and `FLine.byOffsetting` displaces a curve along its own normals, which self-intersects
+wherever the offset exceeds the local radius of curvature. `Section.offset` computes a true parallel
+curve at distance *d*, resolving those self-intersections, with a choice of what happens at a corner.
 
 That single operation is a fillet, a wall thickness, a tool radius, a clearance, a press fit, and a
 stroke that is a *shape* rather than a rendering hint.
@@ -265,7 +259,7 @@ showPlaneGrid(
 ```
 
 Winding is what decides which contours are holes, under a `FillRule`. Read a region back with
-`toPolygons()` and the outlines are counter-clockwise (positive signed area) and the holes clockwise —
+`toPolygons()` and the outlines are counter-clockwise (positive signed area) and the holes clockwise:
 measured on an annulus, `+3.1413` outer and `−0.7853` inner. Field's default is `FillRule.POSITIVE`
 rather than Clipper's `EVEN_ODD`, because it is the rule under which winding *means* something: two
 overlapping same-wound outlines are one shape, where `EVEN_ODD` would punch their overlap out as a
@@ -273,14 +267,13 @@ hole.
 
 ## A Kotlin lambda, called from a C++ thread pool
 
-This is the part of the binding that FFM makes pleasant and that JNI would make miserable. Manifold's
-`level_set` takes a `double (*)(double, double, double, void*)` and marches it into a solid;
-`Solid.levelSet` turns a Kotlin lambda into exactly that function pointer, for the duration of one
-call.
+Upcalls are where FFM earns its keep. Manifold's `level_set` takes a
+`double (*)(double, double, double, void*)` and marches it into a solid; `Solid.levelSet` turns a
+Kotlin lambda into exactly that function pointer, for the duration of one call.
 
 The difference from Field's own [`marchingCubes`](mesh_examples.md) is not resolution or speed, it is
-the guarantee: whatever the field did — a sheet thinner than the grid, a surface that touches itself, a
-feature below the cell size — **the output is a valid closed manifold**, and therefore something you
+the guarantee: whatever the field did (a sheet thinner than the grid, a surface that touches itself, a
+feature below the cell size), **the output is a valid closed manifold**, and therefore something you
 can immediately subtract from.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/levelset.png" wait="8" capture="box" open-outputs="true" padding="20" requires="manifold" name="levelset" embed=true}
@@ -341,7 +334,7 @@ sequential.close()
 solid.close()
 ```
 
-Measured on this machine, a unit sphere at `edgeLength = 0.04` — 465k samples, 40536 triangles out:
+Measured on this machine, a unit sphere at `edgeLength = 0.04` (465k samples, 40536 triangles out):
 
 | | wall clock | threads that entered the JVM |
 |---|---|---|
@@ -349,23 +342,23 @@ Measured on this machine, a unit sphere at `edgeLength = 0.04` — 465k samples,
 | `parallel = false` | 151 ms | 1 |
 
 1.84×, from a Kotlin closure invoked concurrently by nine threads the JVM never created. Two
-consequences the binding handles rather than hopes about:
+consequences, and the binding covers both:
 
 - **An exception cannot escape.** There are C++ frames between the lambda and the caller; unwinding
   through them is undefined, and FFM's response to an escaping exception is to abort the VM. So the
   bridge catches it, returns a far-outside sentinel, and `levelSet` rethrows once the native call is
-  over — you get an `IllegalStateException` with your own exception as its cause.
+  over: you get an `IllegalStateException` with your own exception as its cause.
 - **Your lambda must be thread-safe.** `Solid.levelSetOf`, which takes one of Field's own
   `ScalarField3D`s, therefore defaults to `parallel = false`: a `ScalarField3D` takes a *mutable*
   `Vec3` and the combinators in that family are free to reuse it.
 
-`Solid.warped { }` is the same mechanism for moving every vertex — a bend, a twist, a taper. It does
+`Solid.warped { }` is the same mechanism for moving every vertex: a bend, a twist, a taper. It does
 **not** re-mesh, so put `refined()` in front of it or a 12-triangle cube's eight corners move and
 nothing looks different.
 
 ## Back down to 2D: slicing
 
-`slice(z)` is a real cross section, not a silhouette — the primitive under every fabrication path.
+`slice(z)` is a real cross section, not a silhouette: the primitive under every fabrication path.
 Each layer is a `Section`, so it offsets, which is how a layer outline becomes a toolpath.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/slices.png" wait="6" capture="box" open-outputs="true" padding="20" requires="manifold" name="slices" embed=true}
@@ -454,7 +447,7 @@ display(swollen.toFLines())
 `TriMesh`'s positions are `Float` and Manifold's `MeshGL` is `float32`, so going **in** is exact and
 coming **out** narrows Manifold's internal doubles to precisely the precision `TriMesh` stores anyway.
 
-### Two meshes, and the trap worth knowing
+### Two meshes, and which one to measure
 
 `toTriMesh(normals = true)` is what you want for a picture and *not* what you want for a measurement,
 because a vertex on a hard edge needs a different normal per face and therefore cannot be shared:
@@ -464,22 +457,20 @@ because a vertex on a hard edge needs a different normal per face and therefore 
 | `cube.toTriMesh()` | 8 | `true` | `8.0` |
 | `cube.toTriMesh(normals = true)` | **24** | **`false`** | `8.0` |
 
-Identical geometry; different *index* topology — and Field's `isWatertight()` and `genus()` read
+Identical geometry, different *index* topology, and Field's `isWatertight()` and `genus()` read
 indices. A crease-split mesh therefore reports the wrong genus and looks exactly like a broken bridge.
 Ask for the plain form when you are measuring, the shaded form when you are drawing, and `weld()` if
 you need to put a shaded one back together.
 
-The figures above are the plain form for a concrete reason worth knowing before you write your own:
-`showMesh` prints its own topology footer, so handing it a crease-split mesh puts *"χ=−4 genus 0 · open
-(42 boundary loop(s))"* on the line immediately above your own caption reading *"genus 5 · guaranteed
-closed"* — the renderer's sentence first, yours under it, as the figures on this page show. Both
-lines are true of different meshes, which is worse than either being wrong. Field's own
-`withVertexNormals()` splits at creases too, so this is a property of crease normals rather than of
-this binding.
+The figures above use the plain form, and the reason applies to your own: `showMesh` prints its own
+topology footer, so handing it a crease-split mesh puts *"χ=−4 genus 0 · open (42 boundary loop(s))"*
+on the line immediately above a caption reading *"genus 5 · guaranteed closed"*. Both lines are true,
+of different meshes. Field's own `withVertexNormals()` splits at creases too, so this is a property
+of crease normals rather than of this binding.
 
 ## Lifetime
 
-A `Solid` owns memory the JVM heap does not account for, so it is `AutoCloseable` — and because a
+A `Solid` owns memory the JVM heap does not account for, so it is `AutoCloseable`, and because a
 live-coding box is the last place anyone wants `try`/`finally`, it is *also* registered with a
 `Cleaner`. Abandon one and it is released when the JVM collects it; `close()` it and the release is
 immediate and the object refuses further use rather than reading freed memory.
@@ -497,7 +488,7 @@ val part = Solid.scope {
 
 ## How the binding is built
 
-Manifold ships a **C** binding library beside its C++ one — `libmanifoldc`, from `manifoldc.h` — and
+Manifold ships a **C** binding library beside its C++ one (`libmanifoldc`, from `manifoldc.h`), and
 Homebrew's bottle contains it. That is what makes this binding small, and it is the whole argument for
 FFM over JNI, because the alternative needs a compiled shim per platform and this needs nothing:
 
@@ -508,7 +499,7 @@ FFM over JNI, because the alternative needs a compiled shim per platform and thi
 | build step | `./gradlew buildCeresRedistributable`, minutes | `brew install manifold`, seconds |
 | ABI drift guarded by | a version string we invented | upstream's own SO version |
 
-Three shapes of call, and what each cost:
+Three shapes of call, and what each one asks for:
 
 1. **Plain downcalls.** `size_t` is `JAVA_LONG`, `int` is `JAVA_INT`, every pointer is `ADDRESS`.
    Handles are looked up eagerly, so a library that is present but too old fails on first touch,
@@ -516,27 +507,28 @@ Three shapes of call, and what each cost:
 2. **Structs returned by value.** `manifold_box_min` returns three doubles, which AArch64 returns in
    `v0..v2`. FFM unpacks that from a `StructLayout` with no help; what it wants in exchange is a
    `SegmentAllocator` as an extra leading argument.
-3. **Upcalls**, described above — the interesting one.
+3. **Upcalls**, described above: a thread-safe Kotlin lambda, and a sentinel to carry an exception
+   back across the C++ frames.
 
 Memory is the library's own `malloc`, via its `manifold_alloc_*` / `manifold_delete_*` pair, rather
 than an FFM `Arena`. A confined `Arena` is thread-confined and a `Solid` built in a box is routinely
 read from the runloop thread; a shared one costs a thread handshake to close. `malloc` has neither
 problem, and the `Cleaner` sits behind it.
 
-!!! note "FFM does not check your descriptors, and that is the whole risk"
+!!! note "FFM does not check your descriptors"
     A `size_t` declared as an `int`, a struct return declared as a pointer, an argument in the wrong
-    position — all of them compile, link, and return *something*. The failure mode is a plausible
+    position: all of them compile, link, and return *something*. The failure mode is a plausible
     wrong number, not an error.
 
-    Two real examples from building this, both found by writing the closed-form expectation down
-    first. `manifold_slice` and `manifold_project` return `ManifoldPolygons*`, **not**
-    `ManifoldCrossSection*`; since every constructor in this API builds into memory the caller
-    allocated, handing `slice` a cross-section-sized buffer constructs the wrong object in it and the
-    first read aborts the process inside libc++ with `mutex lock failed` and no Java stack at all. And
-    `manifold_ray_cast` reports its hit distance as a **fraction of the origin-to-end segment**, so a
-    hit 4 units away on a ray of length `1e4` arrives as `4.0e-4` — a number that looks like "at the
-    origin" and is not wrong enough to notice. That is why almost every assertion behind this page is a
-    closed form rather than a tolerance.
+    Two places in this API where the header is the only warning. `manifold_slice` and
+    `manifold_project` return `ManifoldPolygons*`, **not** `ManifoldCrossSection*`; since every
+    constructor here builds into memory the caller allocated, handing `slice` a cross-section-sized
+    buffer constructs the wrong object in it, and the first read aborts the process inside libc++ with
+    `mutex lock failed` and no Java stack at all. And `manifold_ray_cast` reports its hit distance as a
+    **fraction of the origin-to-end segment**, so a hit 4 units away on a ray of length `1e4` arrives
+    as `4.0e-4`, a number that looks like "at the origin" and is not wrong enough to notice. A
+    closed-form expectation catches that class of mistake and a tolerance does not, which is why
+    almost every assertion behind this page is a closed form.
 
 ## Installing it
 
@@ -548,9 +540,9 @@ brew install manifold
 ```
 
 On Linux, your package manager or a source build with `-DMANIFOLD_CBIND=ON`. The binding then finds
-`libmanifoldc` by itself — `-Dafield.manifold.library=<path>` or `AFIELD_MANIFOLD_LIBRARY` if you built
-your own. `ManifoldLibrary.describe()` reports what was found, and `ManifoldLibrary.isAvailable` is
-cheap enough to branch on in a box.
+`libmanifoldc` by itself, or takes `-Dafield.manifold.library=<path>` or `AFIELD_MANIFOLD_LIBRARY` if
+you built your own. `ManifoldLibrary.describe()` reports what was found, and
+`ManifoldLibrary.isAvailable` is cheap enough to branch on in a box.
 
 Verify it end to end with the smoke, which checks 123 closed-form facts and skips cleanly, exit code 0,
 if the library is absent:
