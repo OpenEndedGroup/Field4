@@ -6,7 +6,7 @@ Some quantities you care about are never observed directly. You see a noisy
 position but want the velocity; you see one coordinate of a chaotic system but
 need its hidden delayed state; you have a measurement but not the model parameter
 that produced it. State estimation is the machinery for recovering the hidden
-value — and its uncertainty — from a stream of noisy, partial measurements.
+value, and its uncertainty, from a stream of noisy, partial measurements.
 
 `pf.kt` in the standard library gives you two tools for this:
 
@@ -19,7 +19,7 @@ value — and its uncertainty — from a stream of noisy, partial measurements.
   several explanations of the data alive at once and lets the measurements decide
   which survive.
 
-These examples use Field's Plotly bridge — a `Plot` goes straight to an output
+These examples use Field's Plotly bridge: a `Plot` goes straight to an output
 with `display(plot)`, so the truth, the measurement, and the estimate all land in
 the same frame.
 
@@ -57,7 +57,7 @@ val estimate = ukf.stateCopy()   // read the mean; covarianceCopy() reads p
 `predict` pushes the state forward through your `transition` lambda and inflates
 the covariance by `processNoise`. `update` corrects the state toward a
 `measurement`, trusting it in proportion to `measurementNoise`. The `observe`
-lambda maps a full state to what your sensor would report — here it exposes only
+lambda maps a full state to what your sensor would report; here it exposes only
 `state[0]`, so the filter estimates the other coordinates purely from the dynamics.
 
 Two constraints come straight from `pf.kt`: the **state dimension must be 1–3** and
@@ -66,7 +66,7 @@ have their own dimension.
 
 ### The `UKFOptions` knobs
 
-`UKFOptions` controls how the filter picks its *sigma points* — the small set of
+`UKFOptions` controls how the filter picks its *sigma points*, the small set of
 sample states it propagates through your nonlinear functions to estimate the new
 mean and covariance:
 
@@ -84,8 +84,8 @@ or `kappa` up.
 ### A tiny helper: `diag`
 
 `Matrix` values are just arrays of arrays, so covariance matrices are easy to
-build inline. Every example defines a one-liner for diagonal matrices — there is
-no library `diag`, it is small enough to keep in the box:
+build inline. Every example defines a one-liner for diagonal matrices; there is
+no library `diag`, and it is small enough to keep in the box:
 
 ```diffstatic {data-lang=kotlin}
 fun diag(vararg values: Double): Matrix =
@@ -100,7 +100,7 @@ The Gaussian noise the examples inject comes from the standard-library
 The smallest useful shape: one hidden point evolves through a nonlinear delayed
 map (the Mackey-Glass system), the only measurement is that point plus Gaussian
 error, and the UKF predicts the motion then corrects from the scalar measurement.
-The state carries three coordinates — the current value and two delayed ones — but
+The state carries three coordinates (the current value and two delayed ones), but
 only the first is ever observed.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/state_estimation_examples/ukf_mackey_glass.png" wait="1.0" capture="box" open-outputs="true" padding="20"}
@@ -313,8 +313,8 @@ is not in the signal.
 
 ## The particle filter: keeping several models alive
 
-The UKF assumes you know the model. When the *system itself* is uncertain — an
-unknown parameter, a regime that can switch — reach for `UKFParticleFilter`. Each
+The UKF assumes you know the model. When the *system itself* is uncertain (an
+unknown parameter, a regime that can switch), reach for `UKFParticleFilter`. Each
 particle is a `UKFParticle` pairing a `UnscentedKalmanFilter` with a *hypothesis*
 of type `H` and a `logWeight`:
 
@@ -345,7 +345,7 @@ the particle so each can carry its own:
 
 Here each particle carries a different Mackey-Glass `beta`, the measurements see
 the current point plus the two previous ones, and the weights gradually favour the
-`beta` whose dynamics explain the data. Partway through, the true `beta` jumps —
+`beta` whose dynamics explain the data. Partway through, the true `beta` jumps;
 watch the particle cloud chase it.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/state_estimation_examples/ukf_particle_filter.png" wait="1.0" capture="box" open-outputs="true" padding="20"}
