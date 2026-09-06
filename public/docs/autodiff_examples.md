@@ -12,7 +12,7 @@ Every figure below is executed when this page is built.
 backward sweep reads off every derivative at once. `grad { }` returns a *function*, so it composes with
 the optimizers rather than needing a wrapper.
 
-`Dual2` is the other direction — a truncated Taylor number `(v, v', v'')` carried along one direction.
+`Dual2` is the other direction: a truncated Taylor number `(v, v', v'')` carried along one direction.
 It is the right tool when there is one input and many outputs, and it is what makes `hessian` exact
 rather than a finite difference of an exact gradient. Because the second derivative comes free with the
 forward pass, all three curves below are one sweep.
@@ -60,7 +60,7 @@ $agreement
 ![Three curves over minus one to one: the small oscillating function, its larger-amplitude slope, and its much larger curvature, all in phase relationships that follow from differentiation](assets/autodiff_examples/derivatives.png)
 
 Check it by hand. `∂f/∂x = -2(1-x) - 400x(y-x²)` and `∂f/∂y = 200(y-x²)`, so at `(-1.2, 1)` the
-gradient is `[-215.6, -88]` — which is what the panel reads, to the last ulp. The Hessian is
+gradient is `[-215.6, -88]`, which is what the panel reads, to the last ulp. The Hessian is
 `[[2 - 400(y-x²) + 800x², -400x], [-400x, 200]]` = `[[1330, 480], [480, 200]]`, and that is what one
 `Dual2` pass per axis plus polarisation produced, exactly. Forward and reverse agree on `f'` to
 1.8·10⁻¹⁵ despite sharing no code, and reverse agrees with the central difference to 3·10⁻¹⁰ — which is
@@ -116,7 +116,7 @@ run that merely ran out of budget cannot be mistaken for one that arrived.
 
 `Functions.Fn` is a closure over `Double`, so it cannot be differentiated by overloading its
 arithmetic. But every `Fn` the stdlib builds also carries an inspectable graph, and that graph is
-re-interpreted in tracked arithmetic — so the gradient of a loss with respect to a graph's numeric
+re-interpreted in tracked arithmetic, so the gradient of a loss with respect to a graph's numeric
 leaves is exact.
 
 The call below is the *same* `fitGradient` twice. Same optimizer, same step size, same landscape; only
@@ -249,8 +249,8 @@ descends a permanently-zero gradient is worse off than one that is told no.
 
 ## Inverse kinematics, because it makes pixels
 
-Forward kinematics on a chain of links is a cumulative sum of joint angles and a running position —
-perfectly differentiable — so the *inverse* problem is just L-BFGS on `|tip - target|²`, and the result
+Forward kinematics on a chain of links is a cumulative sum of joint angles and a running position
+(perfectly differentiable), so the *inverse* problem is just L-BFGS on `|tip - target|²`, and the result
 is an `FLine` you can draw.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/autodiff_examples/inverse_kinematics.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="560" padding="16"}
@@ -300,9 +300,9 @@ base, where reaching at all needs tight folds, it will refuse to fold and settle
 ## A packing that descends instead of relaxing
 
 Circle packing is usually written as a relaxation loop: look for overlaps, nudge them apart, repeat.
-Written as a loss it stops being a loop of nudges and becomes a descent. Overlap is a hinge —
+Written as a loss it stops being a loop of nudges and becomes a descent. Overlap is a hinge:
 `relu(r₁ + r₂ − distance)²`, exactly zero while two discs are disjoint and growing quadratically once
-they interpenetrate — and the walls are the same shape. Every term is differentiable, so L-BFGS can
+they interpenetrate. The walls are the same shape. Every term is differentiable, so L-BFGS can
 take a real step instead of a heuristic one.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/autodiff_examples/packing.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="620" padding="16"}
