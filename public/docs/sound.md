@@ -1,13 +1,13 @@
 # Sound: from a pattern to something you can hear
 
 `pat("bd ~ sd ~")` is a schedule. It says *kick, rest, snare, rest* and it says exactly
-when — but a schedule makes no sound. Something has to turn each event into samples.
+when. But a schedule makes no sound. Something has to turn each event into samples.
 
 Field has **three** things that turn a *pattern's* events into samples, offline, with no audio device
 and no realtime engine, and they sound nothing alike. One is a tiny synthesiser that ships in the
 source tree. The second is the genuine Tidal drum library, if you happen to have it. The third is a
-**Faust program compiled at runtime and played polyphonically** — a pattern's notes become
-`freq`/`gate`/`gain` writes on a bank of voices, scheduled to the sample — and it has its own depth
+**Faust program compiled at runtime and played polyphonically** (a pattern's notes become
+`freq`/`gate`/`gain` writes on a bank of voices, scheduled to the sample), and it has its own depth
 in [Faust: a box that is a signal processor](faust.md#a-pattern-plays-it). This page follows one
 pattern all the way down the **first two**, and every audio figure below says which of them
 produced it.
@@ -41,13 +41,12 @@ The pattern language itself is documented on [its own page](pattern_language.md)
 does not restate it. All this page needs is that a pattern is a *function from a query to
 a list of events*, and that both voices below consume exactly the same list.
 
-The last two rows run the path backwards. `patTranscribe`
-takes a finite buffer and returns pitched note events plus the mini-notation that reproduces them, so
-the output of analysis is the same kind of object as the input to synthesis. On a notated scale it
-recovers 15 of 16 notes with a median pitch error of 0.3 cents *(observed; the asserted floors are 14
-notes and 3.0 cents)*; on three of the corpus cases it
-returns *exactly* the notated integer sequence, and re-rendering that notation and transcribing it
-again returns the same notes. It is monophonic and says so: a triad is reported as `POLYPHONIC` and
+The last two rows run the path backwards. `patTranscribe` takes a finite buffer and returns pitched
+note events plus the mini-notation that reproduces them, so the output of analysis is the same kind
+of object as the input to synthesis. On a notated scale it recovers 15 of 16 notes with a median
+pitch error of 0.3 cents *(observed; the asserted floors are 14 notes and 3.0 cents)*; on three of
+the corpus cases it returns *exactly* the notated integer sequence, and re-rendering that notation
+and transcribing it again returns the same notes. It is monophonic and says so: a triad is reported as `POLYPHONIC` and
 named as nothing rather than reported as its loudest note, while a sawtooth's full harmonic stack is
 not refused, because timbre is not polyphony. One parameter dominates: the register you
 declare. It sets the analysis window and therefore the shortest note that can be resolved, and on
@@ -59,16 +58,16 @@ default in place *(all three observed; what is asserted is that estimating is no
 and at least 0.12 ahead of the wide default)*. It also refuses rather than transcribing when the first
 pass says the material is not one line.
 
-The loop closes all the way round. Feeding the emitted
-notation back through the renderer and listening again — notation → sound → notation → sound, every hop
-a real Field path — **5 of 10 re-renderable corpus cases reproduce their own note sequence**. The other
+The loop closes all the way round. Feeding the emitted notation back through the renderer and
+listening again (notation → sound → notation → sound, every hop a real Field path), **5 of 10
+re-renderable corpus cases reproduce their own note sequence**. The other
 five are exactly the cases whose first hearing was already incomplete, so the fourth hop works as a
 validity check on the third rather than as a separate accuracy number. Every case is also classified by
 what it *did* rather than how it scored: 4 recovered exactly, 4 within tolerance, 5 refused with a
 reason, and **0 confidently wrong**. That last count is a statement about warnings rather than about
 correctness: every wrong output carries a warning naming where it is wrong, and a case with any
-warning classifies as refused. The claim is that nothing is wrong *silently* — a plausible parseable
-wrong answer gets believed where a flagged one does not — and not that nothing is wrong.
+warning classifies as refused. The claim is that nothing is wrong *silently* (a plausible parseable
+wrong answer gets believed where a flagged one does not), and not that nothing is wrong.
 
 The floors behind these figures are asserted; the figures themselves are measurements. The mechanism, the
 full measurement tables and the several things this got wrong before it got them right are in
@@ -79,7 +78,7 @@ version is the
 ### What that looks like
 
 Every panel below plots the notation you wrote as a **hollow outline** and what the detector heard back
-out of the render as a **solid bar**, on one shared MIDI axis — so the exceptions are the only thing you
+out of the render as a **solid bar**, on one shared MIDI axis, so the exceptions are the only thing you
 have to look at. Vertical position and left edge are measurements; bar *length* is not, because a
 recovered note ends where its pitch stopped being stable, and that reaches into the previous note's
 decay.
@@ -96,10 +95,10 @@ twice has the transients but no pitch change at half of them (energy 0.13, pitch
 
 ![Two panels: a legato Dough render where the energy detector finds almost nothing while the pitch steps are clean, and a repeated-pitch line where the reverse holds](assets/pat_transcription/pat-transcription-opposite-failures.svg)
 
-And this is the figure behind the "0 confidently wrong" count — what a **refusal** looks like. Three
+And this is the figure behind the "0 confidently wrong" count: what a **refusal** looks like. Three
 simultaneous pitches gives 0 of 12 notes, a `POLYPHONIC` verdict and `pat("~")`: the outlines have no
 bars in them at all, and that is the correct answer rather than a failure. The same audio at 31 ms per
-note recovers 23 of 32 when it is *told* its register and 0 of 32 when it is not — because the analysis
+note recovers 23 of 32 when it is *told* its register and 0 of 32 when it is not, because the analysis
 window is then longer than the notes, and the output is again `pat("~")` rather than a plausible
 parseable wrong one:
 
@@ -137,7 +136,7 @@ displayOpen("main")
 
 ![Piano roll of a kick-and-snare lane over an eight-hat lane, two cycles](assets/sound_render_path/the-beat-roll.png)
 
-Ten events a cycle — the two `~` are rests and produce nothing at all — at exact rational
+Ten events a cycle (the two `~` are rests and produce nothing at all) at exact rational
 positions. Nothing so far has an opinion about what a kick drum sounds like.
 
 ---
@@ -183,7 +182,7 @@ than a sampled kick.
 ## The real samples
 
 `DirtRender` (`src/jvmMain/kotlin/afield/four/synth/DirtRender.kt`) is the other half.
-`DirtSamples.kt` could already play the genuine Tidal sample set, but only **live** —
+`DirtSamples.kt` could already play the genuine Tidal sample set, but only **live**:
 `playDirt` needs `respondAhead`, a clock and an audio device, none of which exist in a docs
 build or a headless box. `patRenderStereoDirt` mixes the same library straight into a buffer.
 
@@ -228,7 +227,7 @@ setting `FIELD_DIRT_SAMPLES` and rendering in the same session gets you what you
 The two are easy to confuse and they mean very different things.
 
 **No library on this machine — the whole render falls back.** `patRenderStereoDirt` returns
-the `patRenderStereo` render, *exactly* — same samples, not an approximation — and
+the `patRenderStereo` render, *exactly* (same samples, not an approximation), and
 `DirtRenderResult.usedSamples` is `false`. Nothing breaks and no figure fails to generate;
 the caller is simply told, and can say so.
 
@@ -238,7 +237,7 @@ because the library loaded successfully. The unrecognised events are voiced by `
 mixed on top of the sampled ones, and `DirtRenderResult.unmatched` names them.
 
 `pat("bd zzzznotadrum bd hh")` is the second case: `bd` and `hh` are in every
-Dirt install and `zzzznotadrum` is in none. You can hear the seam — three sampled drums and
+Dirt install and `zzzznotadrum` is in none. You can hear the seam: three sampled drums and
 one square-wave blip, in one bar.
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/sound_render_path/per-event-fallback.wav" audio-spec="per-event-fallback" audio-renderer="afield.four.synth.SoundRenderPathDocs" embed=true hidden=true name="sound-doc-per-event-fallback"}
@@ -283,13 +282,13 @@ wrong word for that majority. `DoughDspSoundDocs` runs a plate reverb, a phaser,
 lowpass and a soft clipper on real signals; a plate reverb ringing down is not standing in
 for anything, it *is* the thing that page is about.
 
-Where the stand-in genuinely is the voice — the five clips in the first row — the reason is
+Where the stand-in genuinely is the voice (the five clips in the first row), the reason is
 the one given above: it needs no assets, so the figure regenerates anywhere, and its claims
 can be measured in the audio rather than asserted in a caption.
 
 One more piece of audio ships with the site, and a sweep for "figures" misses it: the
-homepage banner loop carries a 49.5-second soundtrack. No reader ever hears it — the player
-sets `muted` and exposes no controls — so it is published bytes rather than published sound.
+homepage banner loop carries a 49.5-second soundtrack. No reader ever hears it (the player
+sets `muted` and exposes no controls), so it is published bytes rather than published sound.
 It is also the only audio here that no code can regenerate.
 
 ---
