@@ -10,26 +10,22 @@ Wasserstein distance. There is nothing to plot, because the things have no coord
 whole problem, and it is what `afield/stdlib/smile_mds.kt` is for. Give it the distances and it
 invents coordinates that reproduce them as closely as two dimensions allow.
 
-Four functions and five result types in just under 500 lines, and until now they were only ever
-written about as an audio feature. The
-[speech-embedding](audio_ai_speech_embeddings.md) and
-[short-time spectral](audio_ai_spectral_embeddings.md) pages both use them, and both use the two
-entry points that take *vectors*. The other two take a **distance matrix you computed yourself**,
-which is the interesting half — `smileMdsDistances`' own one-line summary says "useful for
-transport, edit, and graph distances" and nothing in the published corpus had ever shown one. Both
-examples below are one of those, and neither has anything to do with sound.
+Four functions and five result types. Two of them take vectors and compute the distances for you,
+which is what the [speech-embedding](audio_ai_speech_embeddings.md) and
+[short-time spectral](audio_ai_spectral_embeddings.md) pages use. The other two take a **distance
+matrix you computed yourself**, and `smileMdsDistances`' own one-line summary says what that is for:
+"useful for transport, edit, and graph distances". Both examples below are one of those, and neither
+has anything to do with sound.
 
-!!! warning "If you tried `smileMds` before 2026-08-28 and it threw, that was real"
+!!! note "On Apple Silicon the eigensolver is LAPACK, not ARPACK"
 
-    On Apple Silicon both MDS entry points failed for *every* input with
-    `NoClassDefFoundError: Could not initialize class smile.linalg.arpack.arpack_h`. Smile takes its
-    top-*d* eigenpairs from ARPACK, and bytedeco's `libarpack.2.dylib` for `macosx-arm64` needs
-    `libgfortran.5`, `libquadmath.0` and `libgcc_s.1.1`, none of which any bytedeco artifact in this
-    build ships on that platform (`build.gradle.kts:119#val arpackVersion = "3.9.1-1.5.12"`).
-    `smileMds` now probes that binding once and falls back to LAPACK's `dsyevd` when it is missing
-    (`smile_mds.kt:349#private val arpackAvailable: Boolean by lazy {`), so the numbers on this page
-    were measured on a Mac. `smileTsne` never touched ARPACK and was never affected, which is why
-    the breakage was invisible from the outside.
+    Smile takes its top-*d* eigenpairs from ARPACK, and bytedeco's `libarpack.2.dylib` for
+    `macosx-arm64` needs `libgfortran.5`, `libquadmath.0` and `libgcc_s.1.1`, none of which any
+    bytedeco artifact in this build ships on that platform
+    (`build.gradle.kts:119#val arpackVersion = "3.9.1-1.5.12"`). So `smileMds` probes the binding
+    once and falls back to LAPACK's `dsyevd` when it is missing
+    (`smile_mds.kt:349#private val arpackAvailable: Boolean by lazy {`), which is the path the
+    numbers on this page were measured on. `smileTsne` does not touch ARPACK either way.
 
 ## Where the family lives
 
@@ -44,10 +40,10 @@ examples below are one of those, and neither has anything to do with sound.
 matrix-taking calls never see your vectors at all, which is exactly why they accept a distance no
 vector could express.
 
-Three things this family is **not**. It is not dimensionality reduction for a model: none of these
-are invertible and none of them can place a new point without refitting everything. It is not
-clustering — nothing here assigns labels, and a picture with visible clumps is a picture, not a
-partition. And it is not cheap at scale: the proximity matrix is `n²` doubles
+Three limits, before you reach for any of it. None of these projections is invertible, and none can
+place a new point without refitting everything, so this is not dimensionality reduction for a model.
+Nothing here assigns labels either: a picture with visible clumps is a picture, not a partition. And
+none of it is cheap at scale, because the proximity matrix is `n²` doubles
 (`smile_mds.kt:111#val proximity = Array(vectors.size) { DoubleArray(vectors.size) }`), 191 MiB at
 5000 rows and 3.0 GiB at 20 000, before Smile allocates its own.
 
@@ -167,13 +163,12 @@ display("plane", Plotly.plot {
 
 ![Twenty words in four colour-coded clumps, one per stem, placed only from their pairwise Levenshtein distances](assets/projection_examples/edit_distance_words.png)
 
-Read the numbers the fence prints rather than the shape, because the shape is the easy part. The
-mean edit distance inside a family is **2.000** and between families **6.720**, so a reader would
-expect four clumps, and four clumps is what appears. The useful question is what the projection
-*destroyed* to get them, and the answer is on the last line: by edit distance, all **20 of 20**
-words have a same-family nearest neighbour; in the plane, **18 of 20** do. The two that lose it are
-`computing` and `sampling`, and the arithmetic behind that is worth following because it is the whole
-cost of a projection in miniature. The `compute` and `sample` families are 4 apart *form for form* —
+Read the numbers the fence prints rather than the shape. The mean edit distance inside a family is
+**2.000** and between families **6.720**, so a reader would expect four clumps, and four clumps is
+what appears. What the projection *destroyed* to get them is on the last line: by edit distance, all
+**20 of 20** words have a same-family nearest neighbour; in the plane, **18 of 20** do. The two that
+lose it are `computing` and `sampling`, and the arithmetic behind that is the cost of a projection in
+miniature. The `compute` and `sample` families are 4 apart *form for form* —
 `compute`/`sample`, `computed`/`sampled`, `computing`/`sampling`, all exactly 4, and 4 is the smallest
 between-family distance anywhere in the set. Meanwhile every `-ing` form is 3 from its own stem, the
 largest within-family distance there is. So `computing` sits 3 from its family and 4 from `sampling`,
@@ -182,12 +177,11 @@ a margin of one, and one is what two dimensions cannot hold: in the plane its ne
 input. Those are the two clumps that touch in the figure above, and they touch for a reason you can
 read off the distance matrix before you draw anything.
 
-The fit itself is unremarkable and worth stating anyway: the plane distances correlate with the edit
-distances at **r = 0.8475**, with a stress-1 of **0.2780**. That is not a good fit by any convention
-— stress-1 above 0.2 is usually called poor — and it is the honest number for squeezing a
-nineteen-dimensional structure into two. Ask for more dimensions and it improves the way you would
-expect: `dimensions = 3` gives r = 0.9258 and stress 0.1547, `dimensions = 4` gives 0.9500 and
-0.1146. Nothing forces you to draw all the dimensions you fit.
+The fit itself: the plane distances correlate with the edit distances at **r = 0.8475**, with a
+stress-1 of **0.2780**. Stress-1 above 0.2 is usually called poor, so that is a poor fit, and it is
+what squeezing a nineteen-dimensional structure into two costs. Ask for more dimensions and it
+improves the way you would expect: `dimensions = 3` gives r = 0.9258 and stress 0.1547,
+`dimensions = 4` gives 0.9500 and 0.1146. Nothing forces you to draw all the dimensions you fit.
 
 And `proportion` sums to **1.0000** here, which is the trap. It is the retained eigenvalues divided
 by *their own* L1 norm (`smile_mds.kt:454#val norm = proportion.sumOf { abs(it) }`), so it sums to 1
@@ -310,7 +304,7 @@ showSignals(
 
 ![A spiral with its 4-nearest-neighbour graph, and below it two recovered coordinates: the graph-hop one rising monotonically with position along the curve while the straight-line one folds back on itself](assets/projection_examples/graph_hops_spiral.png)
 
-The second figure is the whole argument, and the number under it is **1.0000**. MDS on hop counts
+The number under the second figure is **1.0000**. MDS on hop counts
 recovers a coordinate whose rank order along the spiral is *exactly* the true one — Spearman rho of
 1.0000, no exceptions in 160 points — while the same MDS on straight-line distances gets
 **0.2325**, because in two dimensions the straight-line fit can only reproduce the spiral, and the
@@ -321,19 +315,18 @@ Nothing here is a property of MDS; it is a property of the distance you chose. B
 same call with the same options. Change the matrix and the projection answers a different question,
 which is the argument for having the matrix-taking entry point at all.
 
-The one thing to check is the graph, and the fence checks it: **worst `|i − j|` over an edge = 4**,
+What has to be checked is the graph, and the fence checks it: **worst `|i − j|` over an edge = 4**,
 so no edge has jumped between arms. A single shortcut edge would collapse two arms into one and the
-rho above would fall off a cliff. Raise `k` until it happens and you can watch it — that is the
-parameter to move.
+rho above would fall off a cliff. Raise `k` until that happens and you can watch it go.
 
 ## MDS or t-SNE? Measure what each one destroys
 
 The usual advice is that MDS preserves global distances and t-SNE preserves local neighbourhoods.
-It is true, and it is worth turning into two measurements rather than accepting on authority,
-because the *size* of the distortion is the part that decides whether a picture can be believed.
+That is true, and it is also two measurements, because the *size* of the distortion is what decides
+whether a picture can be believed.
 
 Three Gaussian clusters of sixty points each in twelve dimensions, with unit spread and centres
-placed on purpose: cluster 1 is 10 away from cluster 0 and cluster 2 is 40 away. So one true fact
+placed so that one fact is checkable: cluster 1 is 10 away from cluster 0 and cluster 2 is 40 away. So one true fact
 about the data is that clusters 0 and 2 are about four times further apart than clusters 0 and 1,
 and either projection either keeps that or does not.
 
@@ -453,8 +446,8 @@ structure of anything here: of each point's ten nearest neighbours in twelve dim
 t-SNE inverts both. It keeps **4.8** of the ten neighbours, 63% more than MDS, and it reports the
 two clusters that are 3.85 times further apart as **1.24** times further apart. The distance you
 would read off that picture is wrong by a factor of **3.1**, and no amount of squinting recovers it.
-That is the specific reason "do not read distance between t-SNE clusters" is advice and not
-pedantry, and the coordinates in the figure are the receipt.
+That factor is what "do not read distance between t-SNE clusters" is protecting you from, and the
+coordinates in the figure are where it can be measured.
 
 Perplexity is the dial between the two behaviours, and the sweep is monotone in both directions at
 once:
@@ -474,8 +467,7 @@ and the default of 30 sits at the end of that range where global distance means 
 
     Smile's t-SNE initialiser draws from `smile.math.MathEx`'s **process-wide** random source, so
     `smileTsne` installs `seed` and runs the fit inside a lock
-    (`smile_mds.kt:156#private val smileTsneLock = Any()`). The consequence is worth knowing in both
-    directions. Two fits of the same data at the same seed are **bit-identical** — the worst
+    (`smile_mds.kt:156#private val smileTsneLock = Any()`). That cuts both ways. Two fits of the same data at the same seed are **bit-identical** — the worst
     coordinate difference above is exactly `0.0`, which is what makes a live-coded box redraw the
     same picture when you re-run it. Two fits at *different* seeds are not remotely the same picture:
     the worst coordinate moves by **30.59** while the reported `cost` barely moves at all, 0.1709
@@ -590,19 +582,21 @@ That is what the flag buys: **dimensions, not accuracy.** In two dimensions the 
 fractionally the better of the two — r 0.8533 and stress 0.2626, against 0.8475 and 0.2780 with the
 correction on. The additive constant inflates every distance by the same amount, which flattens the
 relative differences the projection is trying to reproduce. So if you only ever want two or three
-components out of a non-Euclidean matrix, `positiveCorrection = false` is worth trying and is
-sometimes slightly better; the default is `true` because "the call throws for reasons about the
+components out of a non-Euclidean matrix, `positiveCorrection = false` is sometimes slightly
+better; the default is `true` because "the call throws for reasons about the
 tenth eigenvalue" is a worse first experience than losing 0.015 of a correlation.
 
-## Sharp edges, all of them measured
+## Sharp edges
 
 - **The proximity matrix is `n²` doubles, and Smile allocates more on top.** 7.6 MiB at n = 1000,
   191 MiB at 5000, 3.0 GiB at 20 000, 19 GiB at 50 000. A long trajectory has to be sampled before
   it is projected. `smileMds` builds the matrix itself
   (`smile_mds.kt:111#val proximity = Array(vectors.size) { DoubleArray(vectors.size) }`), so the cost
   applies even when you never see it.
-- **`dimensions` must be at least 2.** All four entry points said `1` was allowed until
-  2026-08-28 and all four threw Smile's `Invalid dimension of feature space: 1` instead. If you want
+- **`dimensions` must be at least 2**, and all four entry points say so themselves rather than
+  letting Smile's own message through
+  (`smile_mds.kt:97#require(dimensions in 2 until vectors.size)` for the vector pair,
+  `smile_mds.kt:280#require(dimensions in 2 until distances.size)` for the matrix pair). If you want
   one number per thing, fit two and use the first column.
 - **MDS axes have arbitrary sign and arbitrary rotation.** They are eigenvectors; nothing pins the
   direction. The spiral fence flips the sign to agree with the known parameter before comparing, and
