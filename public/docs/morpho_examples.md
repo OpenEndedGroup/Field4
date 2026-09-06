@@ -69,11 +69,12 @@ being informative, the arrival time takes over.
 
 ## What was already in the box
 
-Two things about Field make this a bridge rather than a port.
+Two facts about Field made this a weekend's work instead of a port.
 
 **Field already runs other people's runtimes.** `afield.runtime.MainLanguageRegistry` is a
-five-field data class and a map. Registering a language is one call, and Forth, Clojure, Python and
-Nano are all in there already, so there was a shape to copy rather than a design to invent.
+five-field data class and a map. Registering a language is one call, and Forth, Clojure, Python,
+Nano and RemoteJS were all in there already, so there was a shape to copy rather than a design to
+invent.
 
 **Field already ships GraalVM's JS and WASM.** `build.gradle.kts` declares
 `org.graalvm.polyglot:js` and `:wasm`, and `afield.four.synth.Dough` runs a WebAssembly synthesiser
@@ -448,7 +449,8 @@ loop {
 
 <video controls muted loop playsinline preload="metadata" width="820" aria-label="a fully grown 32-bit Brent-Kung adder rotating slowly about its vertical axis, never flattening into a line at any angle, showing that the force-directed layout occupies three dimensions"><source src="assets/morpho_examples/orbit.mp4" type="video/mp4"></video>
 
-A projection of a plane collapses to a line twice per turn. This one never does, at any angle.
+A projection of a plane collapses to a line twice per turn. This one never does, at any angle, and
+`wasm layout uses all three dimensions` fails if it ever starts to.
 
 This is the part that most repays bridging rather than porting. Nobody would have written a 3D
 Barnes–Hut kernel for this; it already existed, unused, inside a file that was being thrown away
