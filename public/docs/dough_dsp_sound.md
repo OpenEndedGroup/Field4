@@ -1,7 +1,7 @@
 # DoughDSP: hear the primitives
 
 The [`DoughDsp`](https://codeberg.org/uzu/dough) port gives Field a handful of low-level
-DSP building blocks — a plate reverb, an LFO-swept phaser, a resonant lowpass, a click-free
+DSP building blocks: a plate reverb, an LFO-swept phaser, a resonant lowpass, a click-free
 envelope, a soft clipper, and two aliasing oscillators. A picture of a filter
 curve only gets you so far; the way to know what one of these *does* is to run a real
 signal through it and listen.
@@ -113,8 +113,8 @@ showSignals(
 ## CurvedADSR — a gated three-note rhythm
 
 A 220 Hz sine multiplied by the click-free curved envelope, gated on and off three times. Each
-note swells in and fades out with real silence between — no clicks at the retrigger, which is the
-whole point of the curved variant. The envelope plot shows three clean humps.
+note swells in and fades out with real silence between, and no clicks at the retrigger, which
+is the whole point of the curved variant. The envelope plot shows three clean humps.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/dough_dsp_sound/curved-adsr.png" wait="1.5" capture="box" open-outputs="true" name="dough-sound-adsr"}
 :::static
