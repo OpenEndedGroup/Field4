@@ -39,12 +39,12 @@ touch AWT text in-process, which is why `montage` burns its captions in with a 5
 
 ## The winding convention, and the control arm
 
-A counter — the hole in `o`, `e`, `a`, `B` — is only a hole if something says so. `isoContourFLines`
+A counter (the hole in `o`, `e`, `a`, `B`) is only a hole if something says so. `isoContourFLines`
 in `contours.kt` leaves its winding arbitrary and every consumer downstream has to cope. This family
 decides instead:
 
 > A ring's signed area is `½Σ(xᵢyᵢ₊₁ − xᵢ₊₁yᵢ)` in text space. **Outer contours are positive; holes
-> are negative.** Nesting depth — how many other rings of the same glyph contain this one — is
+> are negative.** Nesting depth, how many other rings of the same glyph contain this one, is
 > authoritative: even depth is an outer ring, odd depth is a hole. A ring whose area sign disagrees
 > with its depth is reversed on the way out.
 
@@ -98,7 +98,7 @@ The counters of `o` and `p` close up in the middle cell and the ink fraction ris
 there is nothing for a winding rule to get wrong.
 
 The third cell is the cross-check. `EVEN_ODD` ignores direction entirely, so over correct rings it
-must produce the *identical* raster — and the worst per-pixel difference printed in its caption is
+must produce the *identical* raster, and the worst per-pixel difference printed in its caption is
 `0.00000`. Reverse the hole rings and the two rules diverge, which is why both are in the API rather
 than only the one this code happens to use.
 
@@ -453,7 +453,7 @@ showPlaneGrid(
 
 ![Four panels of the word field: outline sample dots, a Delaunay triangulation over them, a six-way k-medoids partition tinted per cluster, and the outlines themselves](assets/typography_examples/points.png)
 
-**143** points at spacing 18 and **558** at 4.5 — `3.90×` for a 4× finer spacing, which is the
+**143** points at spacing 18 and **558** at 4.5, a `3.90×` rise for a 4× finer spacing, which is the
 check that the resampler is walking arc length and not emitting one point per stored vertex. From
 here `vec2KMedoids` finds the strokes, `vec2DelaunayGraph` triangulates a word, and the agents in
 [Spatial Artificial Life](alife_examples.md) will happily eat a headline.
@@ -480,7 +480,7 @@ rather than a particular curve.
 A JVM that reads glyph outlines and passes `-XstartOnFirstThread` must also pass
 `-Djava.awt.headless=true`, set before any AWT class initialises. On macOS
 `sun.font.CFontManager.loadFonts` dispatches to the process's first thread and waits, and under
-`-XstartOnFirstThread` — which GLFW requires — that thread only services the dispatch if something is
+`-XstartOnFirstThread`, which GLFW requires, that thread only services the dispatch if something is
 pumping its run loop. `Typefaces.warm()` detects this in four seconds and throws with the flag in the
 message rather than hanging. Field's own desktop JVM sets it (`build.gradle.kts`, `requiredRunJvmArgs`),
 so you only meet this in a JVM you launched yourself.
