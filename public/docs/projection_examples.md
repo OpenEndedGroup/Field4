@@ -6,7 +6,7 @@
 Sometimes the data is not a signal and not a table. It is a **set of things** plus one number for
 each pair of them: how far apart those two are. Twenty words and an edit distance. A hundred and
 sixty samples along a curve and the number of hops between them. A thousand mel frames and a
-Wasserstein distance. There is nothing to plot, because the things have no coordinates — that is the
+Wasserstein distance. There is nothing to plot, because the things have no coordinates, which is the
 whole problem, and it is what `afield/stdlib/smile_mds.kt` is for. Give it the distances and it
 invents coordinates that reproduce them as closely as two dimensions allow.
 
@@ -50,7 +50,7 @@ none of it is cheap at scale, because the proximity matrix is `n²` doubles
 ## A distance you wrote yourself
 
 Twenty words, four families of five: `compute`/`computes`/`computed`/`computer`/`computing`, then
-the same five shapes on `render`, `listen` and `sample`. The distance is Levenshtein — the number of
+the same five shapes on `render`, `listen` and `sample`. The distance is Levenshtein: the number of
 single-character insertions, deletions and substitutions between two strings. There is no vector
 anywhere; a word is not a point in any space until this call gives it one.
 
@@ -168,12 +168,12 @@ Read the numbers the fence prints rather than the shape. The mean edit distance 
 what appears. What the projection *destroyed* to get them is on the last line: by edit distance, all
 **20 of 20** words have a same-family nearest neighbour; in the plane, **18 of 20** do. The two that
 lose it are `computing` and `sampling`, and the arithmetic behind that is the cost of a projection in
-miniature. The `compute` and `sample` families are 4 apart *form for form* —
+miniature. The `compute` and `sample` families are 4 apart *form for form*:
 `compute`/`sample`, `computed`/`sampled`, `computing`/`sampling`, all exactly 4, and 4 is the smallest
 between-family distance anywhere in the set. Meanwhile every `-ing` form is 3 from its own stem, the
 largest within-family distance there is. So `computing` sits 3 from its family and 4 from `sampling`,
 a margin of one, and one is what two dimensions cannot hold: in the plane its nearest neighbour is
-`sampling`. `sampling` does worse still — its plane-nearest is `computer`, which is 6 away in the
+`sampling`. `sampling` does worse still: its plane-nearest is `computer`, which is 6 away in the
 input. Those are the two clumps that touch in the figure above, and they touch for a reason you can
 read off the distance matrix before you draw anything.
 
@@ -305,8 +305,8 @@ showSignals(
 ![A spiral with its 4-nearest-neighbour graph, and below it two recovered coordinates: the graph-hop one rising monotonically with position along the curve while the straight-line one folds back on itself](assets/projection_examples/graph_hops_spiral.png)
 
 The number under the second figure is **1.0000**. MDS on hop counts
-recovers a coordinate whose rank order along the spiral is *exactly* the true one — Spearman rho of
-1.0000, no exceptions in 160 points — while the same MDS on straight-line distances gets
+recovers a coordinate whose rank order along the spiral is *exactly* the true one, a Spearman rho of
+1.0000 with no exceptions in 160 points, while the same MDS on straight-line distances gets
 **0.2325**, because in two dimensions the straight-line fit can only reproduce the spiral, and the
 spiral's x-coordinate crosses the same value four times. Against a fitted arc length rather than a
 rank, the graph coordinate is linear at Pearson **0.9852** against **0.3238**.
@@ -437,7 +437,7 @@ The two panels show the same data and disagree about the most obvious thing in i
 | MDS | **3.8489** | 0.2922 |
 | t-SNE, perplexity 30 | **1.2369** | **0.4761** |
 
-MDS gets the global geometry right to four significant figures — 3.8489 against 3.8485 — which is
+MDS gets the global geometry right to four significant figures, 3.8489 against 3.8485, which is
 not a surprise once you see why: the three centres span a two-dimensional subspace of the twelve, so
 two components are genuinely enough to hold them. And it pays for that with the worst local
 structure of anything here: of each point's ten nearest neighbours in twelve dimensions, MDS keeps
@@ -458,8 +458,8 @@ once:
 | 30 | 1.2369 | 0.4761 |
 | 100 | 3.2761 | 0.2894 |
 
-At perplexity 5 the three clusters come out essentially equidistant — ratio 1.02 against a true 3.85
-— with the best local structure on the page. At 100 the ratio is nearly right at 3.28 and the local
+At perplexity 5 the three clusters come out essentially equidistant, a ratio of 1.02 against a true 3.85,
+with the best local structure on the page. At 100 the ratio is nearly right at 3.28 and the local
 recall has fallen below MDS's. So a t-SNE plot cannot be read at all without knowing its perplexity,
 and the default of 30 sits at the end of that range where global distance means least.
 
@@ -467,8 +467,9 @@ and the default of 30 sits at the end of that range where global distance means 
 
     Smile's t-SNE initialiser draws from `smile.math.MathEx`'s **process-wide** random source, so
     `smileTsne` installs `seed` and runs the fit inside a lock
-    (`smile_mds.kt:156#private val smileTsneLock = Any()`). That cuts both ways. Two fits of the same data at the same seed are **bit-identical** — the worst
-    coordinate difference above is exactly `0.0`, which is what makes a live-coded box redraw the
+    (`smile_mds.kt:156#private val smileTsneLock = Any()`). That cuts both ways. Two fits of the same data at the
+    same seed are **bit-identical**, the worst coordinate difference above being exactly `0.0`, which
+    is what makes a live-coded box redraw the
     same picture when you re-run it. Two fits at *different* seeds are not remotely the same picture:
     the worst coordinate moves by **30.59** while the reported `cost` barely moves at all, 0.1709
     against 0.1707. Equally good answer, completely different plot. If a t-SNE figure is going into
@@ -481,12 +482,12 @@ and the default of 30 sits at the end of that range where global distance means 
 
 A cosine distance is not Euclidean. Neither is an edit distance or a hop count. For such a matrix
 the double-centred learning matrix has negative eigenvalues, and classical MDS has nothing to take a
-square root of. `positiveCorrection` — on by default — adds a constant to every off-diagonal
+square root of. `positiveCorrection`, on by default, adds a constant to every off-diagonal
 dissimilarity, chosen as the largest real eigenvalue of a `2n × 2n` system, until the matrix is
 positive semi-definite (`smile_mds.kt:409#val constant = additiveConstant(proximity, learning)`).
 
-The word-distance matrix from the first fence is a clean test, because Levenshtein is a metric — it
-obeys the triangle inequality — and still not Euclidean.
+The word-distance matrix from the first fence is a clean test, because Levenshtein is a metric that
+obeys the triangle inequality and is still not Euclidean.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/projection_examples/positive_correction.png" wait="2.0" capture="box" open-outputs="true" w="980" h="560" padding="16"}
 :::static
@@ -574,12 +575,12 @@ showSignals(
 
 Uncorrected, this matrix gives you **9** dimensions and no more. The spectrum runs 165.81,
 102.20, 72.87, 64.80, 24.78, 17.39, 8.54, 4.70, then a ninth component at machine zero, and the
-tenth is genuinely negative at **−1.03** — at which point the call refuses, because there is no real
+tenth is genuinely negative at **−1.03**, at which point the call refuses, because there is no real
 square root of a negative eigenvalue. Corrected, all **18** requestable dimensions are
 comfortably positive, the smallest of them 17.75.
 
 That is what the flag buys: **dimensions, not accuracy.** In two dimensions the *uncorrected* fit is
-fractionally the better of the two — r 0.8533 and stress 0.2626, against 0.8475 and 0.2780 with the
+fractionally the better of the two, at r 0.8533 and stress 0.2626 against 0.8475 and 0.2780 with the
 correction on. The additive constant inflates every distance by the same amount, which flattens the
 relative differences the projection is trying to reproduce. So if you only ever want two or three
 components out of a non-Euclidean matrix, `positiveCorrection = false` is sometimes slightly
@@ -609,17 +610,17 @@ tenth eigenvalue" is a worse first experience than losing 0.015 of a correlation
 - **t-SNE logs every tenth iteration to slf4j at INFO**, which is ~75 lines per fit. Harmless, and
   loud if you are watching a log.
 - **t-SNE needs at least four rows and a perplexity below the row count**, and its axes carry no
-  meaning at all — not units, not order, not orientation. Only the neighbourhoods do.
+  meaning at all: not units, not order, not orientation. Only the neighbourhoods do.
 
 ## Choosing, in one paragraph
 
-If the quantity you want to read off the picture is a *distance* — this pair is twice as far apart as
-that pair — use MDS, and report a stress figure alongside it so the reader knows what two dimensions
-cost. If the quantity you want is *membership* — these things belong together, that one does not —
-use t-SNE, quote the perplexity and the seed, and do not let anyone measure between the clumps. If
+If the quantity you want to read off the picture is a *distance*, as in this pair being twice as far
+apart as that pair, use MDS, and report a stress figure alongside it so the reader knows what two dimensions
+cost. If the quantity you want is *membership*, as in these things belonging together and that one
+not, use t-SNE, quote the perplexity and the seed, and do not let anyone measure between the clumps. If
 your things are vectors and cosine or Euclidean is the right distance, `smileMds` and `smileTsne`
-build the matrix for you; if the distance is something only you can compute — an edit distance, a
-transport cost, a hop count, a diff size — `smileMdsDistances` and `smileTsneDistances` are the
+build the matrix for you; if the distance is something only you can compute, whether an edit distance, a
+transport cost, a hop count or a diff size, `smileMdsDistances` and `smileTsneDistances` are the
 entry points, and the two worked examples above are both of that kind. Above a few thousand things,
 sample first: everything here is quadratic in memory before it is anything else.
 
