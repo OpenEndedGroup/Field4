@@ -188,7 +188,7 @@ seam, no adapter in between. `SoundPathMap.SEAM_AGREEMENT_CEILING` pins it at `1
 ## How the map is checked
 
 A hand-maintained list of render paths is exactly the artifact that rots, so this one is checked
-against the code in `check`, in the shape [`DocsAudioProvenance`](sound.md#and-the-same-question-asked-of-every-clip-in-the-docs)
+against the code in `check`, in the shape [`DocsAudioProvenance`](sound.md#the-same-check-over-every-clip-in-the-docs)
 uses: declare, re-derive from the tree, fail on disagreement.
 
 `SoundPathMap` declares the paths, and the `synth.sound.path.map` smoke then asserts five things:
