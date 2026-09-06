@@ -4,9 +4,8 @@
 `PetriNotation.kt`. The worked examples are on [Petri nets](petri_nets.md).*
 
 The `#petri` notation is the terse surface. Everything it can express, the Kotlin DSL can also
-express — and the DSL can do more, because it can take a lambda. What the notation buys is that a
-whole net fits on screen and one arc is one line, which is the difference between a net you can
-edit while it plays and one you cannot.
+express, and the DSL can do more, because it can take a lambda. What the notation buys is that a
+whole net fits on screen and one arc is one line, so you can edit it while it plays.
 
 ```diffstatic {data-lang=text}
 #petri
@@ -17,9 +16,8 @@ kick -[ hit  @1/16 : bd ]-> hats
 hats -[ back @1/16 : sd ]-> kick
 ```
 
-Every operator in the tables below has a worked example on the examples page or in the gallery, and
-a build guard fails if one ever does not. `//` starts a comment; a leading `#petri` line is the
-editor's marker and is otherwise ignored.
+Every operator in the tables below has a worked example on the examples page or in the gallery.
+`//` starts a comment; a leading `#petri` line is the editor's marker and is otherwise ignored.
 
 ## Directives
 
@@ -30,7 +28,7 @@ Settings for the whole net. One per line, anywhere in the source.
 | `!timing` | which firing semantics: `step`, `event` or `timed` |
 | `!grid` | the tick, as a rational number of cycles — `!grid 1/16` |
 | `!conflict` | how competitors for one token are resolved |
-| `!seed` | the seed for `!conflict random`; determinism is what makes a net a pattern |
+| `!seed` | the seed for `!conflict random`, so the same net plays the same way twice |
 | `step` | maximal step: everything enabled fires on each grid tick. The default |
 | `event` | one transition per tick, the first in conflict order |
 | `timed` | firing takes time — a transition holds its tokens for its duration |
@@ -54,8 +52,8 @@ marking, a capacity or a colour.
 | `#` | one token coloured with that number — `notes : #60, #64` |
 | `,` | separates several tokens in one declaration |
 
-The double-quote form is the asymmetry worth remembering: a quoted string is a *pattern*, because a
-place holding a rhythm is what makes a net a song structure rather than a drum machine.
+The double-quote form is the asymmetry: a quoted string is a *pattern*, so one token can carry a
+whole rhythm, and a place can hold a section of a song rather than a single hit.
 
 ## Arcs
 
@@ -87,8 +85,8 @@ Written after the name, inside the brackets, in any order.
 ## Combinators
 
 What `=>` can name. Each takes the tokens a firing consumed and returns the colour of the token it
-produces. The vocabulary is fixed — that is what keeps the notation fast to parse and the
-cheatsheet finite. For anything else, use the Kotlin DSL, where an output arc takes a lambda.
+produces. The vocabulary is closed: these words and no others. For anything else, use the Kotlin
+DSL, where an output arc takes a lambda.
 
 | written | means |
 | --- | --- |
