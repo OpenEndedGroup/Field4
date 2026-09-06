@@ -6,8 +6,7 @@
     Pro](vision.md) for the app itself.
 
     The **geometry** is the exception: [Preview Vision Geometry](#previewing-it-on-your-desk) builds
-    your mesh on your Mac and shows it to you, headset or no headset. Every picture on this page was
-    made that way.
+    your mesh on your Mac and shows it to you, headset or no headset.
 
 A Live Metal program has three parts, and you write each one somewhere different:
 
@@ -57,8 +56,7 @@ instead of counting slots.
 
 The whole of it, in one place. `geometry { … }` hands you a `MeshBuilder` with
 twelve<!--count:visionGeometryBuilderMethods--> methods and nothing else, and the rest of this page is
-those twelve in detail. Every row below is checked against source on each `docsGates` run — both that
-the line still says what it claims, and that this table has not fallen behind the builder.
+those twelve in detail.
 
 | What it does | Where | Anchor |
 |---|---|---|
@@ -78,11 +76,10 @@ the line still says what it claims, and that this table has not fallen behind th
 The first four set *state* and return the builder, so they chain and apply to everything appended
 after them. The next three build faces from indices. The last four append whole shapes.
 
-`clear()` is the one you will reach for least and miss most: it drops the appended geometry while
-keeping the current normal, colour and uv, which is what a per-frame rebuild wants when every frame
-starts from the same material. There is no method for adding a new vertex *attribute* —
-the layout is fixed and `extra()` is the escape hatch, as [Per-vertex
-channels](#per-vertex-channels) explains.
+`clear()` drops the appended geometry while keeping the current normal, colour and uv, which is what
+a per-frame rebuild wants when every frame starts from the same material. There is no method for
+adding a new vertex *attribute*: the layout is fixed and `extra()` is the escape hatch, as
+[Per-vertex channels](#per-vertex-channels) explains.
 
 ## Vertices and indices
 
@@ -209,13 +206,11 @@ onFrame { frame ->
 The swap happens at a frame boundary, so a rebuild never tears — you will not catch a half-built
 mesh on screen.
 
-Two things worth knowing about when to do this:
-
-1. **If the motion is a transform, do it in the shader instead.** Rotating, scaling, or displacing
-   along a normal costs one uniform and no rebuild. Reach for a rebuild when the *spine or the
-   topology* changes, which the shader can't do for you.
-2. **Rebuild cost scales with the mesh.** A few hundred to a couple of thousand vertices per frame is
-   comfortable. For tens of thousands, rebuild on demand and let the shader animate.
+Reach for a rebuild when the *spine or the topology* changes, which is the part a shader cannot do
+for you. If the motion is only a transform (rotating, scaling, displacing along a normal) the shader
+does it for one uniform and no rebuild. Cost scales with the mesh: a few hundred to a couple of
+thousand vertices per frame is comfortable, and at tens of thousands you want to rebuild on demand
+and let the shader animate.
 
 An empty builder is a legitimate way to draw nothing:
 
@@ -224,11 +219,11 @@ An empty builder is a legitimate way to draw nothing:
 geometry { }   // clears the mesh
 ```
 
-Note the flip side of geometry being explicit: there is **no** fallback to a built-in cube. A box that
-never calls `geometry { … }` draws nothing. The head says so once rather than leaving you puzzled, and
-the **Vision Geometry: Built-in Cube** command drops in a known-good mesh when you want to work out
-whether the problem is your shader or your geometry. **Preview Vision Geometry** comes at that same
-question from the other side — see [below](#previewing-it-on-your-desk).
+Geometry is explicit all the way: there is **no** fallback to a built-in cube, so a box that never
+calls `geometry { … }` draws nothing, and the head says so once. The **Vision Geometry: Built-in
+Cube** command drops in a known-good mesh when you want to work out whether the problem is your
+shader or your geometry, and **Preview Vision Geometry** comes at the same question from the other
+side (see [below](#previewing-it-on-your-desk)).
 
 ## A procedural mesh, start to finish
 
@@ -299,21 +294,18 @@ imports go at the top of the box, under the marker.
 ![The ripple height field: a central peak, a trough ring and a decaying wave, shaded by
 height](assets/vision_geometry/vision-geometry-heightfield.png)
 
-That picture was made on a Mac, from this exact code. Which brings us to:
-
 ## Previewing it on your desk
 
-`geometry { … }` runs in the headset, and for a while that meant you could only *see* it in the
-headset. The **Preview Vision Geometry** command closes that: it takes the box's Kotlin, compiles it
-to JavaScript with the same compiler a live box uses, runs it against a mirror of the head's
-JavaScriptCore bridge, and rasterizes the mesh that comes out — into the box's own output.
+The **Preview Vision Geometry** command builds the mesh on your Mac rather than in the headset. It
+takes the box's Kotlin, compiles it to JavaScript with the same compiler a live box uses, runs it
+against a mirror of the head's JavaScriptCore bridge, and rasterizes the mesh that comes out, into
+the box's own output.
 
 !!! warning "It previews your geometry, not your shader"
-    The mesh is the real one: the packed vertex array your headset would have received, built by the
-    same builder, byte for byte. The **shading is a stand-in** — a fixed two-light lambert over your
-    vertex colours. Your MSL is not compiled, translated or simulated here, and every preview says so
-    in its caption. This answers *"is my geometry the shape I meant?"*; **Vision Geometry: Built-in
-    Cube** answers the other half on the device.
+    The mesh is the real one, the packed vertex array your headset would have received from the same
+    builder. The **shading is a stand-in**: a fixed two-light lambert over your vertex colours, and
+    your MSL is not compiled, translated or simulated here. This answers *"is my geometry the shape I
+    meant?"*; **Vision Geometry: Built-in Cube** answers the other half on the device.
 
 ![Cube, sphere, plane and swept tube in one mesh, previewed side by side on a
 desktop](assets/vision_geometry/vision-geometry-shapes.png)
@@ -334,8 +326,8 @@ per tick and you can watch the shape move:
 frame](assets/vision_geometry/vision-geometry-animated-filmstrip.png)
 
 Or all ninety of them, at the rate the head would have rebuilt them. The stats line under the mesh is
-recomputed per frame, so the vertex count and the winding agreement are live rather than measured once
-at the start — which is how you notice a rebuild that only goes wrong at one phase of the motion:
+recomputed per frame, so the vertex count and the winding agreement move with the shape. That is how
+you catch a rebuild that only goes wrong at one phase of the motion:
 
 <video src="assets/vision_geometry/vision-geometry-animated.mp4" poster="../assets/vision_geometry/vision-geometry-animated.png"
        autoplay loop muted playsinline
@@ -362,10 +354,6 @@ see what the head would have thrown away:
 
 ![A ring of quads wound backwards, drawn with culling disabled, its stats line reading "winding 0%
 agrees with normals" in amber](assets/vision_geometry/vision-geometry-lantern-inverted.png)
-
-That check is not hypothetical: it is what found `sphere()` and `tube()` wound the opposite way round
-from `cube()` and `plane()`, and the height field above facing downwards. All three are fixed, and the
-gallery fails the build if they come back.
 
 ### Uniforms that don't line up
 
@@ -398,9 +386,8 @@ and geometry tools apply.
 
 ## Runnable starting points
 
-Each of these is a complete document — geometry, shader and uniforms — you can open and edit. They are
-also the examples this page is drawn from, and CI compiles every one of them through the real
-Kotlin→JavaScript pipeline, so none of the code above is aspirational.
+Each of these is a complete document (geometry, shader and uniforms) you can open and edit, and
+between them they are the examples this page is drawn from.
 
 - **visionos_start** — the smallest complete program: a cube, a shader, one animated uniform.
   [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/visionos_start/metadata.edn)
@@ -418,27 +405,25 @@ Kotlin→JavaScript pipeline, so none of the code above is aspirational.
 
 ## Where the pictures come from
 
-Every preview on this page is a **committed capture** from the `vision.geometry-preview` FIELD_TEST,
-and each one took the same route a live box takes: the box's Kotlin compiled by the real
-`KotlinToJsCompiler`, the emitted JavaScript run under `node` against a mirror of
-`LiveMetalJavaScript.swift`, and the resulting packed vertex array rasterized. Nothing here
-reimplements `MeshBuilder`, and four of the entries take their Kotlin verbatim out of the shipped
-[agent transcripts](agent_transcripts.md), so the gallery cannot drift away from what you would load.
+Every preview on this page is a committed capture from the `vision.geometry-preview` FIELD_TEST, by
+the route a live box takes: the box's Kotlin compiled by the real `KotlinToJsCompiler`, the emitted
+JavaScript run under `node` against a mirror of `LiveMetalJavaScript.swift`, and the resulting packed
+vertex array rasterized. Four of the five documents above supply their Kotlin to it verbatim, out of
+the shipped [agent transcripts](agent_transcripts.md).
 
 ```diffstatic {data-lang=bash}
 VISION_GEOMETRY_PREVIEW_DIR=/tmp/vision-preview python3 tools/run_field_tests.py --id vision.geometry-preview
 ```
 
 Render to a temp directory and copy the files in afterwards. Writing them straight into the working
-tree while the runner's Field server is watching it takes the child process down mid-run, for no
-reason the output ever explains.
+tree, while the runner's Field server is watching it, takes the child process down mid-run.
 
-As a FIELD_TEST it asserts rather than just draws: the mesh invariants, the analytic vertex and
-triangle counts of every shape primitive, the packed stride against **both** `VISION_METAL_VERTEX_FLOATS`
-and the Swift `LiveMetalVertex` declaration, and image-level facts about each raster — painted
-fraction, colour spread, and for the sphere the roundness and area of its silhouette. That is what
-makes the winding check above a guard rather than an anecdote: the three shapes it caught wound
-backwards fail the build if they come back.
+The FIELD_TEST asserts as well as draws: the mesh invariants, the analytic vertex and triangle
+counts of every shape primitive, the packed stride against **both** `VISION_METAL_VERTEX_FLOATS` and
+the Swift `LiveMetalVertex` declaration, and image-level facts about each raster (painted fraction,
+colour
+spread, and for the sphere the roundness and area of its silhouette). Every entry's winding fraction
+is asserted too, so a primitive that starts winding the other way fails the build.
 
 ## Further reading
 
