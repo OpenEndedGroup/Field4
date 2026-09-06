@@ -423,7 +423,7 @@ expect:
 
 ## Lights and Skybox
 
-The scene graph carries a Three.js-style light list: one shadow-casting directional key light, plus point and spot lights up to `bundle.maxLights` (64 by default), all evaluated in the deferred lighting pass. It can also draw the loaded environment map as the scene background instead of a flat colour.
+The scene graph carries a Three.js-style light list: one shadow-casting directional key light, plus point and spot lights up to `bundle.maxLights`, which is 64, all evaluated in the deferred lighting pass. It can also draw the loaded environment map as the scene background instead of a flat colour.
 
 Lights are pure scene state; `bundle.syncLights()` uploads them to the lighting pass (call it after changing lights, or once per frame if they move — the same explicit-sync idiom as `sortTransparentMeshes()`). The first shadow-casting directional light becomes the key light that drives the shadow map, or the first directional light of any kind if none of them cast shadows; every other light is shaded without shadows, and `syncLights()` takes only the first `maxLights` of them. `bundle.showEnvironmentBackground()` turns the equirect environment into the backdrop.
 

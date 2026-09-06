@@ -261,8 +261,8 @@ provideCompletionItems(editor, model, position, { monaco }) {
 
 RectSL's incubating extension keeps a word-documentation table beside the
 highlighter and flow lens, so FieldSuggest completion, token colors, and the
-context badge all describe the same language. Field no longer routes user-facing
-completion through Monaco's built-in suggest widget.
+context badge all describe the same language. Field's user-facing completion
+goes through FieldSuggest, not Monaco's built-in suggest widget.
 
 ## When To Promote
 
