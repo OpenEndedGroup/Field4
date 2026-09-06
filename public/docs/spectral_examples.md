@@ -3,17 +3,16 @@
 *Every public declaration used below is listed, with its KDoc, in the codebase reference: [`spectral.kt`](reference/math.md#spectral-kt). Start from [what's already in the box](reference/index.md).*
 
 The [timeseries toolkit](timeseries_examples.md) works in the time domain: it smooths, gates, and
-flags a stream sample by sample. Sometimes the question is not *what is the signal doing now* but
-*what is it made of* — which frequencies carry the energy, how bright the timbre is, where a chirp
-is heading. That is the frequency domain, and `afield.stdlib` now has a self-contained family for
-it: a pure-Kotlin FFT, analysis windows, a `Spectrum`, a `Spectrogram` (STFT), the classic
-spectral features, and a resonator filterbank that analyses frequency without a transform at all.
+flags a stream sample by sample. Sometimes the question is what the signal is *made of* — which
+frequencies carry the energy, how bright the timbre is, where a chirp is heading. That is the
+frequency domain, and `afield.stdlib` has a self-contained family for it: a pure-Kotlin FFT,
+analysis windows, a `Spectrum`, a `Spectrogram` (STFT), the classic spectral features, and a
+resonator filterbank that analyses frequency without a transform at all.
 
 Nothing here needs an external DSP library or a GPU. The FFT is an iterative Cooley–Tukey radix-2
-core with a Bluestein (chirp-z) fallback, so **any** length transforms exactly, not just powers of
-two. Forward and inverse both round-trip. Every example below is a live box: it synthesises its own
-signal, runs the transform, and paints the result into its own output panel — so the code you see is
-exactly the code that drew the picture.
+core with a Bluestein (chirp-z) fallback, so arbitrary non-power-of-two lengths transform exactly.
+Forward and inverse both round-trip. Every example below is a live box: it synthesises its own
+signal, runs the transform, and paints the result into its own output panel.
 
 ## One spectrum
 
@@ -70,8 +69,8 @@ A single spectrum is one slice. An STFT frames the signal, windows each frame, h
 transforms — giving you a spectrogram: a time × frequency heatmap. The rising chirp becomes a
 diagonal ridge, the steady tones stay as horizontal lines, and the per-frame **spectral centroid**
 draws a bright trace climbing with the chirp. `Box.showHeatmap(...)` does the drawing: it maps the
-`[frame][bin]` matrix through a colormap, bilinear-upsamples it, flips the y-axis, and shows the
-image in the box's output — no AWT, no hand-rolled pixel loop.
+`[frame][bin]` matrix through a colormap, bilinear-upsamples it, flips the y-axis, and displays the
+resulting PNG in the box's output.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/spectrogram.png" wait="2.5" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -121,7 +120,8 @@ trace is the centroid climbing with the sweep. The STFT produces the `[frame][bi
 
 ## Mel bands — a perceptual, log-frequency view
 
-Linear frequency bins spend most of their resolution where the ear spends least of its attention.
+An FFT's bins are evenly spaced in Hz, so most of them land in the upper octaves, where a fixed
+number of Hz is a smaller and smaller musical interval.
 The **mel scale** warps frequency logarithmically; `Mel.filterBank(...)` collapses a magnitude
 spectrum into a handful of triangular mel bands. Applied per STFT frame it gives a mel-spectrogram.
 Here the signal is **two crossing chirps** — one rising, one falling — so they trace an X, curved by
@@ -167,12 +167,12 @@ showHeatmap(dB, colormap = "cyanorange", width = 1800, height = 720, vmin = -80.
 
 An FFT frames the signal and asks *all* frequencies at once, on a fixed linear grid set by the
 transform size. A **resonator bank** turns that around: run the signal through a set of complex
-one-pole resonators, each tuned to a frequency *you* pick, and each resonator's running magnitude is
-the energy near its frequency. There is no window and no frame blocking — it is a per-sample IIR
-filterbank, so it streams — and because you choose the frequencies you can space them
+one-pole resonators, each tuned to a frequency you pick, and each resonator's running magnitude is
+the energy near its frequency. There is no window and no frame blocking; it is a per-sample IIR
+filterbank, so it streams. Choosing the frequencies yourself also means you can space them
 logarithmically (like the ear) and give each its own time constant. `resonate(...)` runs a fixed
-bank offline and hands back the per-hop complex output; `resonatorAlphaHeuristics(...)` picks a
-sensible smoothing coefficient per frequency.
+bank offline and hands back the per-hop complex output; `resonatorAlphaHeuristics(...)` computes a
+smoothing coefficient per frequency, so high resonators settle faster than low ones.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/resonator_bank.png" wait="2.5" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -227,9 +227,10 @@ showHeatmap(dB, colormap = "cyanorange", width = 1800, height = 720, vmin = -80.
 
 Same chirp ridge and two tone lines as the STFT view, but now on a **log-frequency** axis (the tones
 sit closer together up top) and with each band carrying its own time constant instead of one shared
-window. Because the bank is recursive and per-sample it also runs live as a streaming analyzer, and
-its cousin `TrackingResonatorBank` lets each resonator *drift* onto the nearest partial and follow it
-— a resynthesis-grade analysis the fixed FFT grid can't do.
+window. Because the bank is recursive and per-sample it also runs live as a streaming analyzer.
+`TrackingResonatorBank` goes further: each resonator estimates the phase drift of its own output and
+retunes towards the instantaneous frequency whenever its local power clears a dynamic threshold,
+falling back to its natural frequency when the partial goes away.
 
 ## Streaming features that compose with the filter chain
 
@@ -301,12 +302,12 @@ other per-sample filter in the toolkit.
 
 ## Replay the demo
 
-The one-spectrum example is also a loadable transcript. Replay it into a fresh Field with the agent
-backdoor and the box computes and draws its own spectrum with no other setup:
+All five examples above are also a loadable transcript. Replay it into a fresh Field with the agent
+backdoor and each box computes and draws its own figure with no other setup:
 
 ```diffstatic {data-lang=bash}
 field_run_transcript dev_docs/agents/transcripts/spectral_examples.yaml
 ```
 
-Then edit the signal, or swap `WindowType.HANN` for `HAMMING` / `BLACKMAN`, and re-run the box to
-watch the spectrum change. For the time-domain companions, see [Timeseries examples](timeseries_examples.md).
+Then edit the signal, or swap `WindowType.HANN` for `HAMMING` / `BLACKMAN`, and re-run a box to
+watch its figure change. For the time-domain companions, see [Timeseries examples](timeseries_examples.md).
