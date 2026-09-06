@@ -1421,6 +1421,14 @@ val citationGuardTestClasses = listOf(
     // for the same reason as the two above — it reads Markdown and transcript yaml, so it must not be
     // able to inherit an UP-TO-DATE result from an unchanged test classpath.
     "afield.docs.DocumentedApiEvaluationTest",
+    // One instance of that blind spot, closed rather than measured: the StackSL programs committed in
+    // transcript yaml as `stack.auto` slot bindings. `gpu_state.yaml`'s stopped compiling for six days
+    // when a builtin word appeared under a name it defines, because the binding is an *assignment* a
+    // COMPILE_ONLY transcript type-checks and never runs. Here rather than in the broad jvmTest for the
+    // usual reason — the whole population is transcript yaml, and citationGates is the only task that
+    // declares `dev_docs/**/*.yaml` as an input, so it is the only one that cannot go UP-TO-DATE after
+    // a transcript-only edit. The compile is pure (`afield.stdlib.stackAutoShaderReport`), so no GPU.
+    "afield.docs.TranscriptStackAutoCompileTest",
     // The guard on the guards' own inputs: every repo path the classes in this list read must be
     // covered by one of the `inputs.` declarations below. It reads build.gradle.kts and the test
     // sources, both of which already invalidate this task, so it needs no declaration of its own —
