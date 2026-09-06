@@ -7,7 +7,7 @@ the `#petri` parser in `PetriNotation.kt`, the pattern bridge in `PetriMusic.kt`
 
 A Petri net is places holding tokens, transitions moving them, arrows saying where. It is one of
 the few computational models with a *standard picture*, and it has about fifty years of theory
-attached — most of which turns out to answer questions a live coder actually has.
+attached, most of which turns out to answer questions a live coder actually has.
 
 Using one as a sequencer is not new. What is new here is that in Field a net does not have to be a
 sequencer at all, because of one fact:
@@ -59,7 +59,7 @@ displayOpen("main")
 :::endfold
 ```
 
-Places are circles, tokens are dots inside them, transitions are bars — bright when they are ready
+Places are circles, tokens are dots inside them, transitions are bars: bright when they are ready
 to fire, dim when they are not. The net is a cycle, so it is drawn as one without being asked.
 
 Note the last line of the report: the net worked out its own period. Nothing in the source says
@@ -70,7 +70,7 @@ how long a bar is.
 ## The net tells you its own bar length
 
 A *T-invariant* is a bag of firings that returns the net to the marking it started from. It is,
-precisely, a loop — so a net's minimal T-invariants are its natural musical periods, and they come
+precisely, a loop, so a net's minimal T-invariants are its natural musical periods, and they come
 out of the incidence matrix with no notion of time or tempo involved.
 
 Here are two token rings sharing one net: five steps against three. Nothing in the source mentions
@@ -138,7 +138,7 @@ after you hear the silence.
 ## The whole pattern language applies
 
 `net.emits()` is a `PatPattern<String>`, so everything already in the language works on it, and a
-Euclidean token ring plays *exactly* what `euclid` plays — which the smoke suite asserts.
+Euclidean token ring plays *exactly* what `euclid` plays, which the smoke suite asserts.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/petri_nets/language.png" wait="2.5" capture="box" open-outputs="true" embed=true name="petri-language" w="1240" padding="12"}
 :::static
@@ -252,8 +252,8 @@ verse  -[ play-verse  @4 ]-> chorus
 chorus -[ play-chorus @4 => rev ]-> verse
 ```
 
-The `=>` word is a colour combinator. There are fourteen of them —
-[the cheatsheet lists them all](petri_cheatsheet.md#combinators) — and they are pattern algebra:
+The `=>` word is a colour combinator. There are fourteen of them
+([the cheatsheet lists them all](petri_cheatsheet.md#combinators)) and they are pattern algebra:
 `stack` layers the rhythms a transition consumed, `cat` plays them one per cycle, `fast2` doubles
 one, `degrade` thins it out. A transition that combines the rhythms flowing into it is a graph
 whose *edges carry music*.
@@ -292,7 +292,7 @@ three times past the top.
 
 ## Playing one live, and poking it
 
-Everything above is the pure half — a function of time, safe for the combinators to re-query. A
+Everything above is the pure half: a function of time, safe for the combinators to re-query. A
 performance is not a function of time, so it lives somewhere else.
 
 ```diffstatic {data-lang=kotlin}
@@ -308,7 +308,7 @@ clock was going to. `play` drives the net from a pure pattern of grid ticks thro
 own `respond`, so a live net starts, stops and re-evaluates in a box with exactly the behaviour of
 any other pattern.
 
-Left alone, a live net fires *precisely* what its pure twin fires — the same engine underneath,
+Left alone, a live net fires *precisely* what its pure twin fires, the same engine underneath,
 asserted in `petri.smoke`. Interfere with it and it diverges from that instant, and only from that
 instant.
 
@@ -317,12 +317,12 @@ instant.
 ## Nets that are not music
 
 Nothing in `PetriNets.kt` knows what a note is. The model borrows exactly one thing from the audio
-side — `PatQ`, the exact rational used for time everywhere in Field — and is otherwise a plain model
+side (`PatQ`, the exact rational used for time everywhere in Field) and is otherwise a plain model
 of concurrency. So the classical concurrency problems are just nets, and the analysis that told a
 drum kit its bar length will tell a dinner party that it is about to hang.
 
 These also show what the **Kotlin DSL** is for. The `#petri` notation is a better way to write a net
-you are editing while it plays; the DSL is the only way to write a net whose shape is *computed* —
+you are editing while it plays; the DSL is the only way to write a net whose shape is *computed*:
 five philosophers is a `for` loop, not five lines of text.
 
 ### Dining philosophers
@@ -394,7 +394,7 @@ for a live coder the deterministic question is usually the right one, because th
 part of the instrument.
 
 It is not the question a dinner party asks. A symmetric table deadlocks under *some* schedules and
-not others, so running it once and finding it still going proves nothing at all — which is why the
+not others, so running it once and finding it still going proves nothing at all, which is why the
 `reverseLast` flag above had to be written by hand. `net.stateSpace()` computes the other answer:
 every marking reachable by **any** interleaving, breadth-first, and the classical properties read
 straight off the graph.
@@ -440,14 +440,14 @@ displayOpen("main")
 
 The picture is the state space itself: breadth-first depth left to right, one dot per reachable
 marking, the shortest route to the deadlock in orange with its transitions written on it, and a red
-ring on the marking it gets stuck in. Every philosopher picking up one fork — five firings, and
+ring on the marking it gets stuck in. Every philosopher picking up one fork: five firings, and
 there is nothing shorter.
 
 Eighty-two markings is about as far as that picture goes. Above `PETRI_STATE_DRAW_LIMIT` (400
 markings) the dot radius has bottomed out at two pixels and the layers overlap, so the drawing
 **declines**: it shows the counterexample alone, laid out one firing per column, over a histogram of
 how many markings sit at each breadth-first depth, and it writes on the figure that it did so. `graph.tooDenseToDraw()` answers the question in advance, and
-`maxNodes` on `toFLines`, `toSvg` and `showPetriStateSpace` moves the line — `Int.MAX_VALUE` insists
+`maxNodes` on `toFLines`, `toSvg` and `showPetriStateSpace` moves the line; `Int.MAX_VALUE` insists
 on the hairball if you have measured that you want it. A grey rectangle with an orange line in it is
 not a denser version of the information; it is the absence of it wearing the same shape.
 
@@ -513,7 +513,7 @@ fork is one event five times over, and a full search dutifully visits all 5! ord
 net.stateSpace(reduction = PetriReduction.STUBBORN)
 ```
 
-At each marking it explores a *stubborn set* rather than every enabled transition — seed with an
+At each marking it explores a *stubborn set* rather than every enabled transition: seed with an
 enabled transition, add everything that could disable an enabled member, add everything that could
 unblock one specific reason a disabled member is stuck, repeat, and take the smallest set any seed
 produces. On the philosophers the exponential becomes a quadratic:
@@ -543,14 +543,14 @@ Three limits bound what it will answer:
   promise it, so do not build on it.
 - **A colour-dependent net is not reduced.** The closure reasons about arcs, and a guard or an
   `enabledIf` is an arbitrary predicate no arc analysis can see, so `stateSpace(reduction = STUBBORN)`
-  on such a net returns an unreduced — and therefore still `exact` — graph, with no complaint and with
+  on such a net returns an unreduced (and therefore still `exact`) graph, with no complaint and with
   `graph.reduction == PetriReduction.NONE` saying so.
 
 #### The corpus the reduction is checked against
 
 The three limits above are what the theorem says; the reduction is about eighty lines of code
 deciding what *not* to explore, and a theorem does not check code. So both searches are run over
-generated nets and made to agree, on something sharper than "does a deadlock exist" — existence is
+generated nets and made to agree, on something sharper than "does a deadlock exist": existence is
 the weakest possible oracle, because a net with three deadlocks agrees on existence while the
 reduction loses two of them. What is compared is the **set** of reachable terminal markings, the
 length of the counterexample, containment of the reduced state set in the full one, and every
@@ -603,8 +603,8 @@ leak.coverability().bound("queue")       // null — which here means ω, not "u
 ```
 
 The two are complements. **The exhaustive search handles
-every feature of the model exactly — read arcs, inhibitor arcs, colour guards, `enabledIf`,
-capacities — and may not terminate. Karp–Miller always terminates and is only valid for a plain
+every feature of the model exactly (read arcs, inhibitor arcs, colour guards, `enabledIf`,
+capacities) and may not terminate. Karp–Miller always terminates and is only valid for a plain
 place/transition net.** Inhibitor arcs, place capacities and colour-dependent behaviour each break
 the monotonicity argument that ω rests on, so each adds a line to `coverability().caveats` and flips
 `sound` to false rather than being ignored.
@@ -614,7 +614,7 @@ runnable boxes.
 
 ### A bounded buffer, and a proof that it cannot leak
 
-A *P-invariant* is a weighted sum of token counts that no transition can change — a conservation
+A *P-invariant* is a weighted sum of token counts that no transition can change: a conservation
 law, read straight off the incidence matrix. For a producer/consumer buffer that is exactly the
 property you want to be sure of.
 
@@ -668,14 +668,15 @@ All three come out of the arcs; nothing declares them.
 Three limits:
 
 - **Invariants are structural.** They read arc weights and nothing else, so read and inhibitor arcs
-  are invisible to them — neither changes the marking, and the incidence matrix is a record of
+  are invisible to them: neither changes the marking, and the incidence matrix is a record of
   change. `net.report()` says so itself when a net uses them, and points at `stateSpace()`, which
   asks the engine instead and therefore does see them.
 - **Recurrence compares colours by name.** Two different patterns both render as `PatPattern(...)`,
   so a section swap looks, to the loop detector, like nothing happening. That is usually the right
   coarseness for a *structural* period and occasionally not what you want. `stateSpace()`
-  does **not** use that key — a coarse key merges markings with different futures
-  and can hide a deadlock — so a net that mints fresh colours exhausts its budget there instead.
+  does **not** use that key (a coarse key merges markings with different
+  futures and can hide a deadlock), so a net that mints fresh colours exhausts its budget there
+  instead.
 - **Editor diagnostics are lexical.** `petri.js` can see that `@1/0` is not a duration and that
-  `=> wobble` is not a combinator. It cannot see that a transition will never fire — that is a
+  `=> wobble` is not a combinator. It cannot see that a transition will never fire: that is a
   property of the graph, and the Kotlin parser reports it with the whole graph in front of it.
