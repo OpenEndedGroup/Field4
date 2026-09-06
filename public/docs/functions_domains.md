@@ -112,7 +112,7 @@ You cannot walk an infinite interval at a fixed sample count, so wherever an imp
 - an **empty** domain passes through unchanged;
 - an **unbounded** domain previews over `plotSafe()`'s finite fallback window.
 
-So a bounded function samples over exactly the interval you would expect, while an `ALL`-domain oscillator handed no explicit window previews over a sensible finite range instead of hanging. This applies at the implicit-domain samplers (`toDoubleArray`, `toVec2List`, `toFLine`, the `sample*` family, the cursor/stream/integral/filter streams, and the `repeat`/`mirrorRepeat`/`tile` anchors) and at the domain→`[0,1]` shapers (`tween`, `spliceWindow`, the `window` family) — so even transmuting an unbounded generator into a windowed shape stays finite.
+So a bounded function samples over exactly the interval you would expect, while an `ALL`-domain oscillator handed no explicit window previews over a sensible finite range instead of hanging. This applies at the implicit-domain samplers (`toDoubleArray`, `toVec2List`, `toFLine`, the `sample*` family, the cursor/stream/integral/filter streams, and the `repeat`/`mirrorRepeat`/`tile` anchors) and at the domain→`[0,1]` shapers (`tween`, `spliceWindow`, the `window` family), so even transmuting an unbounded generator into a windowed shape stays finite.
 
 Give a plot or sampler an explicit window when you have one, and rely on the fallback only for a quick look:
 
@@ -139,7 +139,7 @@ The question a constructor has to answer is whether its function is defined ever
 - A `Fn`'s `domain` is where it is meant to be looked at; arithmetic **intersects** operand domains.
 - Oscillators (`sin`/`cos`/`saw`/`triangle`/`square`, `pulseTrain`/`impulseTrain`/`pulseBurst`) default to `Domain.ALL`, so they do not clamp the expressions they enter.
 - Numeric params carry `Domain.ALL`, so literals never narrow a domain; explicit finite domains and finite-domain operands still do.
-- Unbounded domains are safe to enumerate — `finiteSweep()` previews them over a finite window, while finite/point/empty domains pass through untouched.
+- Unbounded domains are safe to enumerate: `finiteSweep()` previews them over a finite window, while finite/point/empty domains pass through untouched.
 - `gaussian` keeps `Domain.DEFAULT`: it is local, not periodic.
 
 See also the [Functions examples](functions_examples.md) page, whose *Domains and timeline composition* section covers `domain = ...` versus `over`, `stretch`, and the timeline helpers in more depth.
