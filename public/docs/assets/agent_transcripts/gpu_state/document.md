@@ -33,7 +33,7 @@ start(renderer::run)
 <!-- field-box id="gs_sim" index="1" -->
 
 ```edn [field-box id="gs_sim" role="properties"]
-{"id" "gs_sim" "index" 1 "name" "simulate" "parents" ["root" "gs_renderer"] "children" ["gs_draw"] "properties" {"children" #{#afield/box "gs_draw"} "parents" #{#afield/box "root" #afield/box "gs_renderer"} "name" "simulate" "_tombstone" false "frame" #afield/rect [240.0 40.0 200.0 50.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "gs_sim_compute_.glsl" "lines" 53 "characters" 2045 "sha256" "2bb3bf4bc9c01e071f28cc2ef3c884a32f5d331d62a0d0f1b8ce56a803e009fb"} {"name" "code" "language" "kotlin" "path" "gs_sim_code_.kt" "lines" 104 "characters" 4725 "sha256" "e3c157b1d3a543cf32251624729e109c3f5e4b293e161955e410ed90681ad7b9"}]}
+{"id" "gs_sim" "index" 1 "name" "simulate" "parents" ["root" "gs_renderer"] "children" ["gs_draw"] "properties" {"children" #{#afield/box "gs_draw"} "parents" #{#afield/box "root" #afield/box "gs_renderer"} "name" "simulate" "_tombstone" false "frame" #afield/rect [240.0 40.0 200.0 50.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "gs_sim_compute_.glsl" "lines" 53 "characters" 2045 "sha256" "2bb3bf4bc9c01e071f28cc2ef3c884a32f5d331d62a0d0f1b8ce56a803e009fb"} {"name" "code" "language" "kotlin" "path" "gs_sim_code_.kt" "lines" 107 "characters" 5188 "sha256" "596fd834b67573b3c07bc271c293d32f7cacb88990e5d91c4cb968db5f7d64b7"}]}
 ```
 
 ```glsl [field-property box="gs_sim" name="compute" path="gs_sim_compute_.glsl"]
@@ -157,30 +157,33 @@ sim.knobs     = { vec(renderer.frameCounter / 60.0, 1.0, 0.0, 0.0) }
 // which is a confusing way to learn that a stack.auto slot is a property of the compiled
 // shader while the mesh only carries push constants.
 //
-// fbm is 2D — it lowers to fbm(vec2) over coord.xy + coord.zw * 0.07 — so feeding it a 3D
-// position gives a field in (x, y) with z entering at a fourteenth of the weight of x. On a
-// disc of particles seen face on that reads as a fixed stripy pattern. Summing three slices,
-// f(x,y) + f(y,z) + f(z,x), is the standard fix and costs three fbms.
+// StackSL's plain `fbm` is two-dimensional: it lowers to fbm(vec2) over
+// coord.xy + coord.zw * 0.07, so feeding it a 3D position gives a field in (x, y) with z
+// entering at a fourteenth of the weight of x, which is a shear and not a third dimension.
+// fbm4 is the volumetric family's four-dimensional member and reads the whole vec4 as a
+// coordinate. The shader hands this program vec4(anchor, seconds) — StackSL's own input
+// convention — so one componentwise multiply sets the spatial scale and the rate the field
+// evolves at, and time being an axis of the noise rather than an offset into it means the
+// volume changes in place instead of sliding past.
+//
+// Three offsets into one scalar field make a three-channel one. Every fractal word in the
+// 3D/4D family divides its accumulated amplitude sum out at runtime, so each fbm4 is exactly
+// 0..1 and `0.5 -` is unbiased; the 2D words sum to 0.96875 and would need a correction.
 //
 // `>c` and not `=c`: a definition must consume its input and leave its result. `=name` copies
 // (a -- a) and `>name` moves (a --), so opening with `=c` leaves the input under the result
 // and every call pushes two values. Try it and read the box's stack.auto channel.
 simModule.force = """
-    : fbm3
+    : vfield
       >c
-      <c xy  ?pc.knobs x 0.048 * +  fbm x
-      <c yz  ?pc.knobs x 0.036 * +  fbm x
-      <c zx  ?pc.knobs x 0.061 * +  fbm x
-      + + 0.33333 *
-      1.032258 *
+      <c                     fbm4
+      <c [11.3,4.1,7.7,0]  + fbm4
+      <c [2.9,17.7,13.3,0] + fbm4
+      vec3
     ;
 
-    input xyz 7.0 * =q
-    <q                    fbm3
-    <q [11.3,4.1,7.7]  +  fbm3
-    <q [2.9,17.7,13.3] +  fbm3
-    vec3
-    0.5 - 4.6 *
+    input [7.0,7.0,7.0,0.048] * vfield
+    0.5 - 6.0 *
 """
 
 sim.x = N / 64; sim.y = 1; sim.z = 1

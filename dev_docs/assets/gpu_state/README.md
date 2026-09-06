@@ -22,13 +22,21 @@ run costs no shader reload and no dropped frame, and a program that does not com
 previous one in place.
 
 - `input xyz 0.9 *` — a plain outward push. The disc inflates and stops.
-- change `input xyz 7.0 *` to `3.0` or `14.0` — the same field at a coarser or finer scale. This is
-  the knob that decides whether the picture reads as blobs or as filaments.
-- `input xyz 2.0 * fbm x 0.5 - 8.0 *` — the mistake the page describes. StackSL's `fbm` is 2D, so one
-  call over a 3D position gives a field in (x, y) that pushes every particle along the same diagonal,
-  and the result is visibly *striped*.
-- open `fbm3` with `=c` instead of `>c` and the box's `stack.auto` output channel opens with
-  `problem: definition \`fbm3\` ends with 2 values on the stack, not 1`.
+- change the `7.0`s in `input [7.0,7.0,7.0,0.048] *` to `3.0` or `14.0` — the same field at a coarser
+  or finer scale. This is the knob that decides whether the picture reads as blobs or as filaments.
+  The fourth component is the rate the field evolves at, on `fbm4`'s `.w` axis.
+- `input xyz 2.0 * fbm x 0.5 - 8.0 *` — the mistake the page describes. StackSL's plain `fbm` is 2D,
+  so one call over a 3D position gives a field in (x, y) that pushes every particle along the same
+  diagonal, and the result is visibly *striped*. The force uses the builtin volumetric family
+  (`fbm4`) instead; `public/docs/stacksl_cheatsheet.md` has the whole table.
+- open `vfield` with `=c` instead of `>c` and the box's `stack.auto` output channel opens with
+  `problem: definition \`vfield\` ends with 2 values on the stack, not 1`.
+- `: fbm3 … ;` does not shadow the builtin `fbm3`, it refuses: `Definition 'fbm3' shadows a built-in
+  StackSL word`, a hard ERROR out of `StackSLCompiler.compile`, which `simModule.force = …` turns into
+  a thrown `IllegalArgumentException`. That is how the earlier three-slice version of this force
+  stopped compiling on 2026-08-30 when `6607a7edc` added the volumetric family — and, because
+  `gpu_state` is `COMPILE_ONLY` in `DemoTranscriptExecSmokeTest`, nothing noticed until 2026-09-05.
+  If you retype that workaround to see it, give the word a name of your own.
 
 The other knobs are the two numbers inside `sim.knobs`: `.x` is the clock the noise field walks
 through and `.y` is the force gain. Both are lambdas, so they are live too.
