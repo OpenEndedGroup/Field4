@@ -137,9 +137,8 @@ after you hear the silence.
 
 ## The whole pattern language applies
 
-This is the payoff. `net.emits()` is a `PatPattern<String>`, so everything already in the language
-works on it — and a Euclidean token ring plays *exactly* what `euclid` plays, which is asserted in
-the smoke suite rather than hoped for.
+`net.emits()` is a `PatPattern<String>`, so everything already in the language works on it, and a
+Euclidean token ring plays *exactly* what `euclid` plays — which the smoke suite asserts.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/petri_nets/language.png" wait="2.5" capture="box" open-outputs="true" embed=true name="petri-language" w="1240" padding="12"}
 :::static
@@ -202,7 +201,7 @@ Here is the part that a token-counting net cannot do. A token's colour can be **
 including a whole `PatPattern`. So a place is a *section*, a transition is an *edit*, and a slow
 net whose tokens are rhythms is an arrangement of the fast nets it schedules.
 
-One mechanism, both timescales — which is the thing worth having.
+One mechanism, both timescales.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/petri_nets/sections.png" wait="2.5" capture="box" open-outputs="true" embed=true name="petri-sections" w="1240" padding="12"}
 :::static
@@ -377,7 +376,7 @@ displayOpen("main")
 :::endfold
 ```
 
-The middle row is the interesting one, and it is not what the textbook usually stops at. Breaking
+The middle row is the interesting one, and it is past where the textbook usually stops. Breaking
 the symmetry does remove the *deadlock* — but under `PetriConflict.ORDER` the first-declared
 claimant wins the contested fork every single time, so the reversed philosopher never gets it and
 never eats. That is **starvation**, not deadlock: the net never stops, it just permanently excludes
@@ -388,11 +387,11 @@ the other.
 
 ### Every interleaving, exactly — and the sequence that breaks it
 
-Read the last two paragraphs again and notice what they are careful not to claim. `willDeadlock()`
-runs the net forward **under its own conflict policy** and reports whether *that one* interleaving
-wedged; `deadTransitions()` names the transitions that did not fire in *that one* run. Both are the
-deterministic question, and for a live coder the deterministic question is usually the right one,
-because the conflict policy is part of the instrument.
+Both of those answers are narrower than they sound. `willDeadlock()` runs the net forward **under
+its own conflict policy** and reports whether *that one* interleaving wedged; `deadTransitions()`
+names the transitions that did not fire in *that one* run. That is the deterministic question, and
+for a live coder the deterministic question is usually the right one, because the conflict policy is
+part of the instrument.
 
 It is not the question a dinner party asks. A symmetric table deadlocks under *some* schedules and
 not others, so running it once and finding it still going proves nothing at all — which is why the
@@ -444,11 +443,10 @@ marking, the shortest route to the deadlock in orange with its transitions writt
 ring on the marking it gets stuck in. Every philosopher picking up one fork — five firings, and
 there is nothing shorter.
 
-Eighty-two markings is about as far as that picture goes, and it stops going rather than degrading
-without saying so. Above `PETRI_STATE_DRAW_LIMIT` — 400 markings — the dot radius has bottomed out at two
-pixels and the layers overlap, so the drawing **declines**: it shows the counterexample alone, laid
-out one firing per column, over a histogram of how many markings sit at each breadth-first depth, and
-it writes on the figure that it did so. `graph.tooDenseToDraw()` answers the question in advance, and
+Eighty-two markings is about as far as that picture goes. Above `PETRI_STATE_DRAW_LIMIT` (400
+markings) the dot radius has bottomed out at two pixels and the layers overlap, so the drawing
+**declines**: it shows the counterexample alone, laid out one firing per column, over a histogram of
+how many markings sit at each breadth-first depth, and it writes on the figure that it did so. `graph.tooDenseToDraw()` answers the question in advance, and
 `maxNodes` on `toFLines`, `toSvg` and `showPetriStateSpace` moves the line — `Int.MAX_VALUE` insists
 on the hairball if you have measured that you want it. A grey rectangle with an orange line in it is
 not a denser version of the information; it is the absence of it wearing the same shape.
@@ -468,8 +466,7 @@ Three things follow that the deterministic analysis cannot say:
   enabled, and the engine knows. Two nets with identical incidence matrices, one of which enforces
   mutual exclusion with an inhibitor arc, are told apart by `stateSpace()` and by nothing else here.
 
-Applied to the table above, the two analyses disagree in a way that is a diagnosis rather than a
-bug:
+Applied to the table above, the two analyses disagree, and the disagreement is the diagnosis:
 
 ```diffstatic {data-lang=kotlin}
 val net = table(reverseLast = true)      // asymmetric, PetriConflict.ORDER
@@ -499,10 +496,10 @@ So a musical net is nowhere near the wall and a concurrency puzzle can be. Eleve
 16 238 markings in 230 ms and `COMPLETE`; **twelve is past the budget**, and the search says
 `BUDGET` and returns `null` from `canDeadlock` rather than guessing.
 
-The coloured-token row is the one worth pausing on, because the strict state key could have gone
-badly there. A `petriSong` carries a whole `PatPattern` in each token's colour, and a strict key
-distinguishes colours that `signature()` would have merged — but the sections live in separate
-places and exactly one token circulates, so the space stays linear. Colour multiplies the state space
+The coloured-token row is the one to check. A `petriSong` carries a whole `PatPattern` in each
+token's colour, and a strict key distinguishes colours that `signature()` would have merged, so the
+space could have multiplied; but the sections live in separate places and exactly one token
+circulates, so it stays linear. Colour multiplies the state space
 only when the same place can hold different colours; a net that mints a *fresh* colour per firing has
 no finite state space at all, and gets `BUDGET`.
 
@@ -529,11 +526,10 @@ produces. On the philosophers the exponential becomes a quadratic:
 | 12 | *budget exhausted* | 266 | answered, at 12 firings |
 
 `2n² − 2n + 2` reduced markings against `2.41ⁿ` full ones. The groove in box 6 of the live document
-reduces 4×, `polyrhythm` 3×, `structure` 2×; the bounded buffer reduces not at all, which is correct
-— a sequential net has no independence to exploit and the reduction finds none rather than inventing
-some.
+reduces 4×, `polyrhythm` 3×, `structure` 2×; the bounded buffer reduces not at all, because a
+sequential net has no independence to exploit.
 
-Three limits, and they are the whole reason to trust it:
+Three limits bound what it will answer:
 
 - **It answers deadlock and refuses everything else.** The theorem is about terminal markings. A
   reduced graph's state count is not the reachable state count, so a bound read off it would be a
@@ -550,22 +546,20 @@ Three limits, and they are the whole reason to trust it:
   on such a net returns an unreduced — and therefore still `exact` — graph, with no complaint and with
   `graph.reduction == PetriReduction.NONE` saying so.
 
-#### What the reduction is measured to do, rather than claimed to
+#### The corpus the reduction is checked against
 
-The three limits above are what the theorem says. The reduction is about eighty lines of code
-deciding what *not* to explore, and a theorem does not check code, so the question worth asking is what has
-actually been compared.
+The three limits above are what the theorem says; the reduction is about eighty lines of code
+deciding what *not* to explore, and a theorem does not check code. So both searches are run over
+generated nets and made to agree, on something sharper than "does a deadlock exist" — existence is
+the weakest possible oracle, because a net with three deadlocks agrees on existence while the
+reduction loses two of them. What is compared is the **set** of reachable terminal markings, the
+length of the counterexample, containment of the reduced state set in the full one, and every
+accessor gated on `exact` refusing.
 
-Both searches are run over generated nets and made to agree, and the comparison is
-sharper than "does a deadlock exist" — existence is the weakest possible oracle, because a net with
-three deadlocks agrees on existence while the reduction loses two of them. What is compared is the
-**set** of reachable terminal markings, the length of the counterexample, containment of the reduced
-state set in the full one, and every accessor gated on `exact` refusing. The corpus is 1 497 nets
-over six families across a fixed seed list, half of them plain place/transition nets as a control and
-half saturated with the read arcs, inhibitor arcs, capacities and arc weights that are this model's
-additions to the classical one — which is precisely where the classical argument stops being free.
-
-The numbers, so that "measured" means something:
+The corpus is 1 497 nets over six families across a fixed seed list, half of them plain
+place/transition nets as a control and half saturated with the read arcs, inhibitor arcs, capacities
+and arc weights that are this model's additions to the classical one, which is precisely where the
+classical argument stops being free.
 
 | | |
 | --- | ---: |
@@ -578,16 +572,14 @@ The numbers, so that "measured" means something:
 | widest single net | 3 465 markings |
 | disagreements | 0 |
 
-That last row is only worth reading because it was not always zero. The first run of the comparison
-found eight disagreements, and they were **two mechanisms**: a stubborn set has to be closed under
-"this transition may disable that one" as well as the reverse, and only the reverse was implemented.
-That is free in a plain place/transition net — if firing `t` disables `t'` they must share an input
-place, so `t'` was already in the set — and it is *not* free once a transition can starve a **read**
-arc it does not consume from, or arm an **inhibitor** arc by producing into its place. The first cost
-a whole reachable deadlock while `canDeadlock` still agreed; the second made the reduced search call
-a net deadlock-free that the full search wedges in five firings, which is the one direction of error
-this whole layer is built not to make. Both are fixed, both are pinned as three- and
-four-transition nets, and the corpus is what found them.
+The closure has to be symmetric, and that is what the saturated half of the corpus is for. A
+stubborn set must be closed under "this transition may disable that one" as well as under the
+reverse. In a plain place/transition net the two coincide: if firing `t` disables `t'` they share an
+input place, so `t'` is in the set already. They stop coinciding once a transition can starve a
+**read** arc it does not consume from, or arm an **inhibitor** arc by producing into its place, and a
+one-directional closure can then call a net deadlock-free that the full search wedges in five
+firings, which is the one direction of error this layer exists not to make. A three-transition net
+and a four-transition net pin each case.
 
 The pruning ratio is itself asserted at a floor just under its measured value, because a reduction
 that stopped reducing without saying so would agree with the full search perfectly and prove nothing at all.
@@ -610,7 +602,7 @@ leak.coverability().unboundedPlaces      // [queue]
 leak.coverability().bound("queue")       // null — which here means ω, not "unknown"
 ```
 
-The two are complements, and the trade is worth stating plainly. **The exhaustive search handles
+The two are complements. **The exhaustive search handles
 every feature of the model exactly — read arcs, inhibitor arcs, colour guards, `enabledIf`,
 capacities — and may not terminate. Karp–Miller always terminates and is only valid for a plain
 place/transition net.** Inhibitor arcs, place capacities and colour-dependent behaviour each break
@@ -665,15 +657,15 @@ displayOpen("main")
 :::endfold
 ```
 
-`free + items` is the law worth having: a slot can never be lost or invented, so the buffer cannot
-leak and cannot overflow. The other two say the producer and the consumer are each exactly one
-worker. None of it was asserted — all three were computed from the arcs.
+`free + items` is the law you want: a slot can never be lost or invented, so the buffer cannot leak
+and cannot overflow. The other two say the producer and the consumer are each exactly one worker.
+All three come out of the arcs; nothing declares them.
 
 ---
 
 ## What the notation cannot do
 
-Three limits, stated once rather than discovered later:
+Three limits:
 
 - **Invariants are structural.** They read arc weights and nothing else, so read and inhibitor arcs
   are invisible to them — neither changes the marking, and the incidence matrix is a record of
