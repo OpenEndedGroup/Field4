@@ -5,7 +5,7 @@
 [manifold_solids](agent_transcripts.md).*
 
 [Manifold](https://github.com/elalish/manifold) subtracts one mesh from another and guarantees the
-answer is still a closed solid — through coincident faces, near-degenerate triangles, and features
+answer is still a closed solid, through coincident faces, near-degenerate triangles, and features
 below the floating-point noise floor. `afield.manifold` binds it through Panama/FFM, in about 2400
 lines of Kotlin and no C++ at all.
 
@@ -155,14 +155,14 @@ Two calls, both in `afield.stdlib`, both documented at length under
 | to see where the trouble is | `showMeshDiagnosis(mesh)`, or `mesh.defectFLines()` |
 
 `repairToSolid()` welds, drops degenerate and duplicated faces, removes dangling fins, fixes the
-winding, **fills the holes**, and fixes the winding again — then hands back a `MeshRepairResult`
+winding, **fills the holes**, and fixes the winding again, then hands back a `MeshRepairResult`
 rather than a mesh, because the interesting part is `unfixed`: the blocking defects still present,
 each with the reason it was left alone. `ToyCar.glb` in this repo goes through it and comes out a
 solid you can boolean.
 
 The older `repaired()` is the right call for a mesh whose only problem is an unwelded
 seam. It does not fill holes, which is why it makes 6 of the 21 rejected meshes in the repair test
-table valid where `repairToSolid()` makes 19 valid — of which **15 are also the shape you started
+table valid where `repairToSolid()` makes 19 valid, of which **15 are also the shape you started
 with**, judged against the undamaged original. See
 [geometry from disk](geometry_from_disk.md) for why those two numbers have to be reported
 separately, and for the pair of cases proving that no local check can tell them apart.
@@ -172,10 +172,10 @@ manifold and reports a *negative* volume, so `status` is `NO_ERROR` and the next
 complement of what you meant.
 `isValidSolid()` cannot catch that; `diagnose()` reports it as `INVERTED_ORIENTATION`, and
 `repairToSolid()`'s second winding pass fixes it. Manifold likewise accepts zero-area triangles,
-pinch vertices, and disjoint components — whose volumes it sums.
+pinch vertices, and disjoint components, whose volumes it sums.
 
 `NON_FINITE_VERTEX` is a NaN in the positions, usually a degenerate normal upstream.
-`repairToSolid()` refuses that one outright rather than repairing around it — dropping the
+`repairToSolid()` refuses that one outright rather than repairing around it: dropping the
 affected triangles and capping the gap would produce a plausible solid missing an unknown amount of
 the model.
 
@@ -258,8 +258,8 @@ showPlaneGrid(
 ```
 
 Winding is what decides which contours are holes, under a `FillRule`. Read a region back with
-`toPolygons()` and the outlines are counter-clockwise (positive signed area) and the holes clockwise —
-measured on an annulus, `+3.1413` outer and `−0.7853` inner. Field's default is `FillRule.POSITIVE`
+`toPolygons()` and the outlines are counter-clockwise (positive signed area) and the holes clockwise
+(measured on an annulus, `+3.1413` outer and `−0.7853` inner). Field's default is `FillRule.POSITIVE`
 rather than Clipper's `EVEN_ODD`, because it is the rule under which winding *means* something: two
 overlapping same-wound outlines are one shape, where `EVEN_ODD` would punch their overlap out as a
 hole.
@@ -333,7 +333,7 @@ sequential.close()
 solid.close()
 ```
 
-Measured on this machine, a unit sphere at `edgeLength = 0.04` — 465k samples, 40536 triangles out:
+Measured on this machine, a unit sphere at `edgeLength = 0.04` (465k samples, 40536 triangles out):
 
 | | wall clock | threads that entered the JVM |
 |---|---|---|
@@ -346,12 +346,12 @@ consequences:
 - **An exception cannot escape.** There are C++ frames between the lambda and the caller; unwinding
   through them is undefined, and FFM's response to an escaping exception is to abort the VM. So the
   bridge catches it, returns a far-outside sentinel, and `levelSet` rethrows once the native call is
-  over — you get an `IllegalStateException` with your own exception as its cause.
+  over, and you get an `IllegalStateException` with your own exception as its cause.
 - **Your lambda must be thread-safe.** `Solid.levelSetOf`, which takes one of Field's own
   `ScalarField3D`s, therefore defaults to `parallel = false`: a `ScalarField3D` takes a *mutable*
   `Vec3` and the combinators in that family are free to reuse it.
 
-`Solid.warped { }` is the same mechanism for moving every vertex — a bend, a twist, a taper. It does
+`Solid.warped { }` is the same mechanism for moving every vertex: a bend, a twist, a taper. It does
 **not** re-mesh, so put `refined()` in front of it or a 12-triangle cube's eight corners move and
 nothing looks different.
 
@@ -457,7 +457,7 @@ because a vertex on a hard edge needs a different normal per face and therefore 
 | `cube.toTriMesh()` | 8 | `true` | `8.0` |
 | `cube.toTriMesh(normals = true)` | **24** | **`false`** | `8.0` |
 
-Identical geometry; different *index* topology — and Field's `isWatertight()` and `genus()` read
+Identical geometry; different *index* topology, and Field's `isWatertight()` and `genus()` read
 indices. A crease-split mesh therefore reports the wrong genus and looks exactly like a broken bridge.
 Ask for the plain form when you are measuring, the shaded form when you are drawing, and `weld()` if
 you need to put a shaded one back together.
@@ -470,7 +470,7 @@ than of this binding.
 
 ## Lifetime
 
-A `Solid` owns memory the JVM heap does not account for, so it is `AutoCloseable` — and because a
+A `Solid` owns memory the JVM heap does not account for, so it is `AutoCloseable`. And because a
 live-coding box is the last place anyone wants `try`/`finally`, it is *also* registered with a
 `Cleaner`. Abandon one and it is released when the JVM collects it; `close()` it and the release is
 immediate and the object refuses further use rather than reading freed memory.
@@ -488,7 +488,7 @@ val part = Solid.scope {
 
 ## How the binding is built
 
-Manifold ships a **C** binding library beside its C++ one — `libmanifoldc`, from `manifoldc.h` — and
+Manifold ships a **C** binding library beside its C++ one (`libmanifoldc`, from `manifoldc.h`), and
 Homebrew's bottle contains it. That is what makes this binding small, and it is the argument for FFM
 over JNI here: the alternative needs a compiled shim per platform and this needs nothing.
 
@@ -516,7 +516,7 @@ problem, and the `Cleaner` sits behind it.
 
 !!! note "FFM does not check your descriptors"
     A `size_t` declared as an `int`, a struct return declared as a pointer, an argument in the wrong
-    position — all of them compile, link, and return *something*. The failure mode is a plausible
+    position: all of them compile, link, and return *something*. The failure mode is a plausible
     wrong number, not an error.
 
     Two real examples from building this, both found by writing the closed-form expectation down
@@ -525,7 +525,7 @@ problem, and the `Cleaner` sits behind it.
     allocated, handing `slice` a cross-section-sized buffer constructs the wrong object in it and the
     first read aborts the process inside libc++ with `mutex lock failed` and no Java stack at all. And
     `manifold_ray_cast` reports its hit distance as a **fraction of the origin-to-end segment**, so a
-    hit 4 units away on a ray of length `1e4` arrives as `4.0e-4` — a number that looks like "at the
+    hit 4 units away on a ray of length `1e4` arrives as `4.0e-4`, a number that looks like "at the
     origin" and is not wrong enough to notice. Hence the closed forms: an assertion with a known answer
     catches a wrong descriptor where a tolerance does not.
 
@@ -539,8 +539,8 @@ brew install manifold
 ```
 
 On Linux, your package manager or a source build with `-DMANIFOLD_CBIND=ON`. The binding then finds
-`libmanifoldc` by itself — `-Dafield.manifold.library=<path>` or `AFIELD_MANIFOLD_LIBRARY` if you built
-your own. `ManifoldLibrary.describe()` reports what was found, and `ManifoldLibrary.isAvailable` is
+`libmanifoldc` by itself; pass `-Dafield.manifold.library=<path>` or set `AFIELD_MANIFOLD_LIBRARY`
+if you built your own. `ManifoldLibrary.describe()` reports what was found, and `ManifoldLibrary.isAvailable` is
 cheap enough to branch on in a box.
 
 Verify it end to end with the smoke, which checks 123 closed-form facts and skips cleanly, exit code 0,
