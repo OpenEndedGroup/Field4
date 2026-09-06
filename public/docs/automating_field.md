@@ -11,13 +11,9 @@ powers three things you can use:
 - **The backdoor** — a command-line way for scripts and AI agents to drive a running
   Field: build documents, run code, capture output and errors, and take screenshots.
 
-The backdoor reaches Field over the same command channel Field's own editor uses, so anything
-it can do is, mechanically, something the channel can do. What guards that channel — and what
-does not — is [What Field Exposes, and What Stops It](server_surface.md).
-
-The documentation's executable capture fences use this machinery: Field builds and runs the
-example, then captures its real browser or native graphics output. A few reference images and
-component-specific test captures are maintained by their owning test or platform workflow instead.
+The backdoor reaches Field over the same command channel Field's own editor uses, so it can do
+whatever that channel can do. [What Field Exposes, and What Stops It](server_surface.md) covers
+the guards on it.
 
 ## Operations as data
 
@@ -78,8 +74,8 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --scra
 The result tells you what happened: how many operations applied, whether anything failed,
 and an `output` list with the `println` text of every box that ran — tagged by box and
 line. That is how a script *knows* the code ran, and it is where compile errors and
-exceptions appear. Running a box that isn't there, or that has no code, fails loudly with
-a message that names the box rather than doing nothing at all.
+exceptions appear. Running a box that isn't there, or that has no code, fails with a
+message that names the box rather than silently succeeding.
 
 The backdoor also captures pictures — a single box, the editor, the whole window, or the
 native `afield.four` graphics window — and short videos, which is how this site's figures
