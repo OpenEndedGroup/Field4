@@ -196,7 +196,7 @@ needs to predict.
 ## Example: recovering an unmeasured velocity
 
 The Mackey-Glass filter never observes its delayed coordinates, but they only
-matter internally. This example makes the hidden dimension the *point*: the state
+matter internally. Here the hidden dimension is the one you want: the state
 is `[position, velocity]`, the sensor reports **only a noisy position**, and the
 filter has to infer velocity from how the position moves. A constant-velocity
 transition (`position += velocity·dt`) plus a little process noise on the velocity
@@ -306,10 +306,10 @@ display("velocity", velocityPlot)
 
 ![A UKF recovering an unmeasured velocity from noisy position measurements](assets/state_estimation_examples/ukf_velocity_tracker.png)
 
-The top panel is the familiar noisy-measurement / clean-estimate comparison. The
-bottom panel is the payoff: the velocity trace tracks the true sine even though
-velocity is *never measured*. That is the whole reason to run a filter instead of
-smoothing the raw signal — the state you want can be one the sensor never sees.
+The top panel is the noisy-measurement / clean-estimate comparison. In the bottom
+panel the velocity trace tracks the true sine even though velocity is *never
+measured*: no amount of smoothing the raw signal could produce it, because velocity
+is not in the signal.
 
 ## The particle filter: keeping several models alive
 
@@ -578,18 +578,16 @@ display("particles", particlePlot)
 The state panel repeats the hidden/measurement/estimate comparison; the beta
 panel shows the true `beta`, the weighted particle estimate, and a weighted
 one-standard-deviation envelope; the particle panel scatters each hypothesis at
-saved time steps, so darker vertical bands mean particles have clumped. Observing
-the current point plus the two previous measurements pins the delayed state
-coordinates, so a wrong `beta` cannot hide behind a different latent delay. The
-broad-proposal rate is raised only around the known transition window, preserving
-just enough diversity to catch the jump without endlessly repopulating far-away
-hypotheses once the estimate has settled.
+saved time steps, and because the markers are translucent, a bright saturated band
+is where the particles have clumped and loose dots are where they have not.
+Observing the current point plus the two previous measurements pins the delayed
+state coordinates, so a wrong `beta` cannot hide behind a different latent delay.
+The broad-proposal rate is raised only around the known transition window: enough
+diversity to catch the jump, without repopulating far-away hypotheses once the
+estimate has settled.
 
 ---
 
-Estimation earns its keep when the value you want is hidden behind noise, behind a
-nonlinear map, or behind an uncertain model. Draw the truth, the measurement, and
-the estimate together and the filter's job becomes legible. For raw and filtered
-*signals* rather than these derived quantities, continue with
+For raw and filtered *signals* rather than these derived quantities, continue with
 [Timeseries examples](timeseries_examples.md); for interpolation, keyframes, and
 correlation, see [Values over time](interpolants_examples.md).
