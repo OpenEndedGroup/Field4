@@ -10,9 +10,9 @@ showMesh("/path/to/thing.glb")
 ```
 
 That reads the file, assembles it, and pushes a shaded, wireframed, **orbitable** render into the
-box's output area with the mesh's measurements printed underneath — the Three.js viewer, which is
+box's output area with the mesh's measurements printed underneath. That is the Three.js viewer,
 where a mesh goes unless you ask otherwise. Keep the mesh instead of the picture and
-everything in the [mesh family](mesh_examples.md) applies — weld it, measure its volume, decimate it,
+everything in the [mesh family](mesh_examples.md) applies: weld it, measure its volume, decimate it,
 shoot a ray at it, write it back out as something else.
 
 The rest of the page is the detail. Field has **four** separate things that read geometry off disk,
@@ -30,7 +30,7 @@ built for different reasons, and only some of them can show you the result.
 | `.step`, `.iges`, `.brep` | **nothing** | — | — |
 
 `meshFromAnyFile` handles everything `meshFromFile` does and more, so if you are unsure, use it. The
-narrower one exists because it is dependency-free — pure Kotlin, no LWJGL, no native library — which
+narrower one exists because it is dependency-free (pure Kotlin, no LWJGL, no native library), which
 matters if you are reading `afield.stdlib` to learn from it.
 
 ## Four loaders, two renderers
@@ -45,13 +45,13 @@ matters if you are reading `afield.stdlib` to learn from it.
 | Fabricate | `afield/four/fabricated/FabricateGltfBridge.kt` | the Assimp model above | `FabricateScene` for the PBR [`StandardRenderer`](fabricate_renderer.md) |
 
 Against that there are **two** renderers that will put a mesh on screen. `showMesh` sends it to the
-Three.js viewer, where you can orbit it — the same viewer `threeLines(...)` draws FLines in, so a solid
+Three.js viewer, where you can orbit it; the same viewer `threeLines(...)` draws FLines in, so a solid
 and its annotations can share one scene. `VisionGeometryPreview` is the other: a CPU z-buffer behind
 `TriMesh.renderPng` and the inline `toHTML()` card, needing no GPU and, being deterministic, what the
 pixel-exact tests assert on. Pass `renderer = MeshRenderer.CPU` to `showMesh` for that one. Both
 take a `TriMesh` and nothing else.
 
-The PLY and Assimp loaders both produce ordinary host memory — `memAlloc`, not a Vulkan allocation —
+The PLY and Assimp loaders both produce ordinary host memory (`memAlloc`, not a Vulkan allocation),
 so each is one function away from a `TriMesh` even though it was written for a renderer: the
 *buffers* need no GPU, only the *textures* do. Those two functions are
 `PlyModel.toTriMesh()` and `assimpToTriMesh(path)`, and they live with the `meshFromAnyFile`
@@ -62,7 +62,7 @@ box calls these with no import either way.
 
 ## A real GLB, in a real output area
 
-The pressure test is the Khronos ToyCar sample — the same 5.4 MB GLB the [Fabricate
+The pressure test is the Khronos ToyCar sample, the same 5.4 MB GLB the [Fabricate
 renderer](fabricate_renderer.md) uses for its PBR work, so the two pages cannot disagree about the
 file. It is a genuinely awkward model: three mesh/material buckets, a draped cloth with 60k triangles
 of folds, glass, and everything positioned by node transforms rather than baked into the vertices.
@@ -109,7 +109,7 @@ The numbers under the picture:
 
     `GltfSupport.loadGltfBasic(path)` with **default arguments cannot run outside a live renderer**.
     `GltfLoadConfig.loadTextures` defaults to `true`, and that path asks the box context for a
-    `Renderer` so it can build stub textures — so from a plain function, a test, or a headless script
+    `Renderer` so it can build stub textures; from a plain function, a test, or a headless script
     it dies with a bare `NullPointerException` that says nothing about textures. Pass
     `GltfLoadConfig(loadTextures = false)` and geometry-only loading works everywhere.
     `assimpToTriMesh` does exactly that for you.
@@ -119,7 +119,7 @@ The numbers under the picture:
 Flattening one into a single `TriMesh` therefore has a domain, and here are its edges.
 A glTF file is a node hierarchy: each node carries a **full 4×4 transform**, several nodes can
 reference the same mesh, and each mesh carries its own material. Here is what `meshFromAnyFile` does
-with all of that, measured on a four-node scene built from scratch for the purpose — one asymmetric
+with all of that, measured on a four-node scene built from scratch for the purpose: one asymmetric
 triangle instanced by an identity node, a translated node, a *child* of that translated node, and a
 **mirrored** node with `scale (-1, 1, 1)`.
 
@@ -142,7 +142,7 @@ triangle instanced by an identity node, a translated node, a *child* of that tra
     not fit in one: `Matrix4f.getScale` is `sqrt(...)` per basis column, so it is never negative.
     Assimp hands the mirrored node over as row 1 `[-1 0 0 -3]` with 3×3 determinant **−1.0**, and
     `bindPose.toMatrix()` returns `[1 0 0 -3]` with determinant **+1.0**. Read `bindPose` and that
-    instance arrives **un-mirrored** — far vertex at `x = -2` instead of `x = -4` — with no error, no
+    instance arrives **un-mirrored** (far vertex at `x = -2` instead of `x = -4`) with no error, no
     warning, and a perfectly plausible-looking mesh. So the loader also records the un-decomposed
     world matrix as `MeshInstance.bindMatrix`, and `assimpToTriMesh` reads that.
 
@@ -246,12 +246,12 @@ Reading down the columns:
 - **The coordinates always survive.** Area and volume are identical to six decimal places through
   every route. If a mesh's *shape* changed on a round trip, that is a bug, not a format.
 - **OBJ keeps structure, loses colour.** It indexes positions, normals and uvs separately, so
-  Field's reader emits one vertex per distinct `(position, uv, normal)` corner — which is why a hard-
+  Field's reader emits one vertex per distinct `(position, uv, normal)` corner, which is why a hard-
   edged cube from a modeller comes back with 24 vertices and not 8, faithfully. There is no
   standardised per-vertex colour in OBJ, so `withColor` does not make it into the file.
 - **STL keeps nothing but triangles.** It has no vertex sharing at all, so 1280 triangles become
   3840 unshared vertices and every edge reads as a boundary. `weld(1e-5)` gets the topology back
-  exactly — 642 vertices, χ = 2, watertight — but **not** the normals, because STL never stored a
+  exactly (642 vertices, χ = 2, watertight) but **not** the normals, because STL never stored a
   per-vertex normal to recover. Re-shade after welding: `shadedNormals(35.0)` is usually right.
 - **A binary STL is exactly `84 + 50n` bytes** — 64,084 here — against 75,625 for the OBJ and
   324,825 for the ASCII STL, five times the binary for the same 1280 triangles.
@@ -275,7 +275,7 @@ stlToTriMesh(icosphereMesh(3).toStlBinary()).summary()
 ```
 
 Note what is *missing* from the second line: there is no `volume`, because `summary()` only prints
-one for a watertight mesh — and yet `signedVolume()` on that same soup returns 4.152741, exactly
+one for a watertight mesh, and yet `signedVolume()` on that same soup returns 4.152741, exactly
 right. The number was dropped by a rule about topology, not by any loss of geometry. `genus 0` is
 correct too, and not about a sphere: 1280 separate triangles are 1280 discs, each of genus 0.
 
@@ -364,32 +364,32 @@ Three details in that output are the ones that bite:
   back a mesh with no triangles. Check `buffers.isPointCloud` first; for drawing those, the
   `plyPointCloudHere` macro renders them on the GPU as camera-facing quads.
 - **All-white colours are dropped.** Both bridges do this. A glTF with no `COLOR_0`, or a PLY with no
-  `red`/`green`/`blue`, gets white written for every vertex by its loader — that carries no
+  `red`/`green`/`blue`, gets white written for every vertex by its loader; that carries no
   information and would only override the renderer's own shading with a flat white.
 
 ## What does not exist
 
 None of the following is hiding somewhere in the tree; if you need one, you are building it.
 
-**STEP, IGES, BREP — any CAD boundary representation.** There is no CAD kernel on the classpath and no
+**STEP, IGES, BREP: any CAD boundary representation.** There is no CAD kernel on the classpath and no
 STEP parser anywhere, and this is the expensive gap, because STEP is not a mesh format. A
 `.step` file is NURBS surfaces trimmed against each other, and reading it means both an
 ISO-10303-21 parser *and* a tessellator that can evaluate a trimmed rational surface to a triangle
-mesh at a tolerance. Realistically that is an OpenCASCADE binding — a large native dependency with a
-build story on three platforms — not a weekend of Kotlin. A far cheaper 80% is to convert outside
+mesh at a tolerance. Realistically that is an OpenCASCADE binding (a large native dependency with a
+build story on three platforms), not a weekend of Kotlin. A far cheaper 80% is to convert outside
 Field (FreeCAD and every CAD tool export STL) and read the STL. `meshFromAnyFile` on a `.step` throws
 rather than returning an empty mesh, so at least the failure is loud.
 
 **Textures and materials into a `TriMesh`.** A `TriMesh` has positions, normals, uvs and per-vertex
 colours, and no concept of a texture; `assimpToTriMesh` drops the material Assimp read. Textured PBR
-already exists on the other path — `gltfModelHere`, `FabricateGltfBridge`, the
-[`StandardRenderer`](fabricate_renderer.md) — which is where to go for a *rendered* model. Bringing
+already exists on the other path (`gltfModelHere`, `FabricateGltfBridge`, the
+[`StandardRenderer`](fabricate_renderer.md)), which is where to go for a *rendered* model. Bringing
 textures across to the CPU side would mean sampling a `LoadedTexture` per vertex into vertex colours,
 which is easy and lossy, or teaching `VisionGeometryPreview` to sample a texture, which is a real
 change to the rasterizer.
 
 **Point clouds as first-class geometry.** `PlySupport` reads them and `plyPointCloudHere` draws them
-on the GPU, but there is still no CPU point-cloud *type* — no Poisson or ball-pivot surface
+on the GPU, but there is still no CPU point-cloud *type*: no Poisson or ball-pivot surface
 reconstruction, and no downsampling of a plain `PlySupport` cloud. `convexHullMesh` over the
 positions and `voronoi3d` are what the tree has.
 
@@ -398,19 +398,19 @@ rasterizes a splat cloud **on the CPU**, into PNG bytes, with no GPU and no wind
 transcription of `afield/four/fabricated/GaussianSplatRenderer.kt`'s own Vulkan shader, consuming
 the same 16-float layout, so the two agree to 100.000% of pixels on the same cloud.
 `SplatContactSheet` puts a whole 126-frame capture in one image, and `SplatCloud` is an editable
-CPU form — crop, filter, decimate, transform, merge, and write a valid `.compressed.ply` back out.
+CPU form: crop, filter, decimate, transform, merge, and write a valid `.compressed.ply` back out.
 None of that goes through `VisionGeometryPreview`; it is its own rasterizer, because a Gaussian is
 not a triangle and the EWA projection has nothing to share with a scanline fill.
 
 **Animation.** Assimp samples node TRS tracks and `GltfSupport.MeshInstance.animationSamples`
-carries them, but `assimpToTriMesh` bakes the bind pose and throws the tracks away — a `TriMesh` is
+carries them, but `assimpToTriMesh` bakes the bind pose and throws the tracks away, because a `TriMesh` is
 one static surface. Skinned deformation is not read at all: no joints, no weights, no skin matrices.
 
 **A scrub-through-steps mesh viewer.** Nothing lets you step back and forth through the stages of a
 mesh pipeline in a UI. `showMeshGrid` (several meshes side by side) and `showMeshTurntable` (one mesh
 from four angles) are the static approximations, and they are usually enough. The pieces for the real
-thing exist — the [keyframer](keyframer_examples.md) captures live state, the
-[history lens](history_lens.md) scrubs a box's past — but nobody has wired a mesh pipeline to either.
+thing exist (the [keyframer](keyframer_examples.md) captures live state, the
+[history lens](history_lens.md) scrubs a box's past), but nobody has wired a mesh pipeline to either.
 
 **Writing anything but OBJ and STL.** `toObj`, `saveObj`, `toStlAscii`, `toStlBinary` and `saveStl`
 are the whole export surface. Writing a PLY would be short and would let you *keep* per-vertex colours
@@ -505,7 +505,7 @@ next would give a wrong answer without it.
 | `fixWinding` again | inside-out components | — |
 
 The second `fixWinding` is not redundant. Its outward-facing stage only flips a component that is
-*closed*, because "outward" is undefined for an open sheet — so before the caps exist, every holed
+*closed*, because "outward" is undefined for an open sheet, so before the caps exist, every holed
 component is skipped. Running it again afterwards is what stops a repaired mesh coming back inside
 out with a negative volume.
 
@@ -521,7 +521,7 @@ and reported:
   through itself.
 
 A ring that repeats a vertex is neither: it is a figure-eight, two holes pinched together, and
-capping it as one polygon *creates* a non-manifold edge — the repair would make the mesh worse. Those
+capping it as one polygon *creates* a non-manifold edge, and the repair would make the mesh worse. Those
 are split at the repeats first, so each real hole gets its own cap.
 
 #### The failure mode nothing local can detect
@@ -576,21 +576,21 @@ triangles and cap the gap, and two closed tetrahedra sharing a face.
 
 ### ToyCar, repaired
 
-`ToyCar.glb` — 77,429 vertices, 108,936 triangles, 2,197 components, 42,104 boundary edges in 2,782
-traced loops — **repairs to a valid solid you can boolean**. 21,047 vertices welded, 84 holes closed
+`ToyCar.glb` (77,429 vertices, 108,936 triangles, 2,197 components, 42,104 boundary edges in 2,782
+traced loops) **repairs to a valid solid you can boolean**. 21,047 vertices welded, 84 holes closed
 with 3,668 triangles.
 
 That is the weaker of the two claims above. Unlike every row of the test table, ToyCar has **no
 undamaged original to check against**, so "valid solid" is all anyone can say about it.
 
 The volume it then reports is `3.16e-5`, and that number is not an answer. Nine of those 84 caps
-are flagged suspect, one of them a 335-edge centroid fan — a lid the size of a body panel.
+are flagged suspect, one of them a 335-edge centroid fan, a lid the size of a body panel.
 `result.suspectFills` is the list to look at before trusting any measurement of a multi-part export
 this size.
 
 ### Seeing it
 
-`Box.showMeshDiagnosis(mesh)` puts the mesh — painted by defect — beside the ordered list of what is
+`Box.showMeshDiagnosis(mesh)` puts the mesh, painted by defect, beside the ordered list of what is
 wrong. `TriMesh.defectFLines()` gives the same information as drawable lines to lay over your own
 drawing: red for boundary loops, orange for non-manifold edges, magenta for pinched figure-eight
 loops, yellow (opt-in) for winding disagreements. `TriMesh.withDefectColors()` is the per-vertex
@@ -633,7 +633,7 @@ The red halo and the red patch in shot are the two blocking rows in the list bes
 
 ### Open this to see it
 
-`public/docs/assets/mesh_repair_demo/` — two boxes: one damages a sphere and shows the diagnosis
+`public/docs/assets/mesh_repair_demo/` holds two boxes: one damages a sphere and shows the diagnosis
 card, the other repairs it, prints what was done, and cuts the result. Both run with no files and no
 network.
 
@@ -651,7 +651,7 @@ laptop, five reads after two warm-up reads:
 
 Two things follow. **Binary beats text by about 2×** for the same mesh, so prefer STL to OBJ when
 the file is an intermediate nobody reads. And **Assimp's OBJ reader is
-about 1.5× faster than the one in `mesh_io.kt`** — it is native, and the Kotlin one splits strings.
+about 1.5× faster than the one in `mesh_io.kt`**: it is native, and the Kotlin one splits strings.
 `meshFromAnyFile` still routes `.obj` to the Kotlin reader, because its corner-triple handling makes a
 round trip index-for-index and 100 ms on a 9 MB file is not the bottleneck. If you are reading
 hundreds of OBJs in a loop, `assimpToTriMesh` on them directly is the faster call.
@@ -666,7 +666,7 @@ Looking at it costs more than reading it, and not where you would guess:
 
 The raster is 51 ms; the depth-tested wireframe doubles it; and the figure costs **four times the
 render**, because the caption's `χ`, genus, watertightness and boundary-loop count need a full topology
-pass — edge map, vertex stars, boundary walk — over the whole mesh. On a model with 2782 boundary
+pass (edge map, vertex stars, boundary walk) over the whole mesh. On a model with 2782 boundary
 loops that is the expensive part of the call, not the picture. If you are re-rendering in a loop and
 do not need the numbers, call `renderPng` and `display` the base64 yourself.
 
@@ -674,7 +674,7 @@ Those are the **CPU** path's numbers, which is what `showMesh(renderer = MeshRen
 The default `showMesh` uploads the mesh to the Three.js viewer once and then costs nothing per frame,
 so the trade is the other way round: a higher fixed cost to open the viewer, and free re-rendering
 afterwards because the re-rendering is the GPU's. The topology pass behind the caption costs the same
-either way — it is the same `topology()` call.
+either way; it is the same `topology()` call.
 
 ## Writing back out
 
@@ -685,7 +685,7 @@ mesh.saveStl(java.io.File("/tmp/thing.stl"))     // binary; positions only; ever
 java.io.File("/tmp/thing.stl").writeText(mesh.toStlAscii())   // ~5x larger, human-readable
 ```
 
-Two rules that save an afternoon. **Write the un-shaded mesh** — `flatShaded()` triples the vertex
+Two rules that save an afternoon. **Write the un-shaded mesh**: `flatShaded()` triples the vertex
 count and un-welds the surface, and the reader on the other side will not weld it back. And for a
 printer, check `isWatertight()` and that `signedVolume()` is **positive** before writing: a
 consistently-oriented but inside-out solid looks completely normal in a render (the silhouette is
@@ -710,14 +710,14 @@ the image is that box's own output area. The ToyCar figure depends on a committe
     `src/jvmTest/kotlin/afield/stdlib/MeshFromDiskTest.kt`, sixteen tests, asserts every number this
     page quotes as an exact value: the ToyCar counts, the fidelity table row by row, the `84 + 50n`
     STL size, the five shading counts, and that `.step` throws. `MeshIoTest.kt` covers the
-    OBJ/STL readers themselves — quads, negative indices, the `solid`-prefixed-binary sniff trap, uv
+    OBJ/STL readers themselves: quads, negative indices, the `solid`-prefixed-binary sniff trap, uv
     survival.
 
 ## Playing with it instead of reading it
 
 The first three fences above are also a loadable document. Replay
 `dev_docs/agents/transcripts/geometry_from_disk.yaml` into a fresh Field with the agent backdoor
-(`field_run_transcript`) — or open it from the [transcript gallery](agent_transcripts.md) — and you get
+(`field_run_transcript`), or open it from the [transcript gallery](agent_transcripts.md), and you get
 the same three boxes live. Point the first box's `path` at a mesh file of your own and re-run it;
 change the second box's weld tolerance, or the third's corner colours, and watch the numbers and the
 picture move together. Boxes two and three write only into a temp directory they delete themselves.
@@ -746,7 +746,7 @@ GeometryAgentTools.register()
 ```
 
 `ListGeometryFiles` tells the model what you have. `InspectGeometryFile` loads one, returns the same
-measurements this page describes, and — because the CPU rasteriser behind it needs no GPU and no window — hands
+measurements this page describes, and (because the CPU rasteriser behind it needs no GPU and no window) hands
 back a *rendered image*, so a model can look at a scan rather than reason about its bounding box. It
 will only read inside roots you have added.
 
