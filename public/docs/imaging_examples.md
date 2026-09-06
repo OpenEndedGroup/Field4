@@ -1,20 +1,17 @@
 # Imaging and computer vision
 
-Field's stdlib has always been able to *make* pictures. It could not, until now, **look** at one.
-
-`afield.stdlib` now carries a CPU imaging / computer-vision family: one value type, `Img`, and the
+`afield.stdlib` carries a CPU imaging / computer-vision family: one value type, `Img`, and the
 operations that turn a raster into structure — convolution, gradients, edges, corners, lines,
 blobs, pyramids, warps and motion. It is the raster counterpart to the time-domain
 [timeseries toolkit](timeseries_examples.md) and the frequency-domain
 [spectral family](spectral_examples.md), and it is built the same way: pure Kotlin, no external
 dependency, works headless in a box.
 
-What makes it Field's rather than a generic CV library is the last hop. Every detector here reduces
-pixels to *geometry*, and geometry in Field is an [`FLine`](fline_examples.md) — so a Canny result,
-a set of corners, a Hough line or an optical-flow field lands in the same drawing, animation and
-export machinery as anything you drew by hand. Scalar responses colour-map through the same
-[`Colormaps`](rectsl_examples.md) tables RectSL uses. And `Img` implements `ToHTML`, so evaluating
-one in a box shows the picture, not `Img@3f1a2b`.
+Every detector here reduces pixels to *geometry*, and geometry in Field is an
+[`FLine`](fline_examples.md) — so a Canny result, a set of corners, a Hough line or an optical-flow
+field lands in the same drawing, animation and export machinery as anything you drew by hand.
+Scalar responses colour-map through the same [`Colormaps`](rectsl_examples.md) tables RectSL uses.
+And `Img` implements `ToHTML`, so evaluating one in a box shows the picture, not `Img@3f1a2b`.
 
 Everything here is arithmetic you could have written out by hand. For the two questions you cannot —
 how far away is this, and what is it a picture *of* — see [depth and CLIP](onnx.md), which runs
@@ -30,7 +27,7 @@ Img(width, height, channels, data)
 `BufferedImage`, PNG and a GPU upload all want. Channels are 1 (scalar / gray / mask / gradient /
 distance), 3 (RGB) or 4 (RGBA); nothing else.
 
-Three choices worth knowing about, because they change what the numbers mean:
+Three choices change what the numbers mean:
 
 - **Float, not bytes.** Every operation is float math. Nothing quantises mid-pipeline, so a
   twelve-stage chain does not accumulate rounding steps; clamping happens once, on output.
@@ -101,11 +98,10 @@ involved, so it works anywhere.
 
 ## Filters — and choosing the right one
 
-Four smoothers with genuinely different characters. The picture makes the point, but the printed
-residuals against the clean source make it *checkable*: on impulse noise the median is two orders of
-magnitude better than the Gaussian, and the bilateral filter — which is excellent at preserving
-edges — is bad at impulses, because a salt pixel is far away in *range* and so keeps
-its own weight.
+Four smoothers with genuinely different characters, and the box prints each one's residual against
+the clean source. On impulse noise the median is two orders of magnitude better than the Gaussian.
+The bilateral filter, which is excellent at preserving edges, is bad at impulses: a salt pixel is
+far away in *range* and so keeps its own weight.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/imaging_examples/filters.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -203,8 +199,7 @@ around the disc, because that is what the gradient direction does.
 ### When Canny "doesn't work"
 
 A `(low, high)` pair tuned on a bright synthetic card finds almost nothing in a dark, softly-lit
-photograph. That is the single most common way Canny appears to fail, and it is not Canny's fault —
-the thresholds are in gradient-magnitude units and the image simply does not reach them.
+photograph. The thresholds are in gradient-magnitude units, and a dark image does not reach them.
 `cannyAuto(...)` derives them from the image's own distribution: it takes a percentile of the
 non-maximum-suppressed magnitudes as the strong seed threshold and Canny's own recommended ratio for
 the weak one.
@@ -217,8 +212,8 @@ panel is those edges as 57 `FLine`s drawn back over the source.
 
 ## Corners
 
-Three detectors, all on a square whose corners are at exactly known coordinates, so the answer is
-checkable rather than merely plausible.
+Three detectors, all on a square whose corners are at exactly known coordinates, so each detector's
+answer can be measured against the truth.
 
 - `harrisResponse()` — `det(M) - k·trace(M)²` over the structure tensor. Large and positive at a
   corner, **negative along an edge**, near zero on flat ground; that sign structure is what the
@@ -241,12 +236,11 @@ three-tap parabola fit in x and y). `cornersToFLines(...)` turns them into drawa
 ## Hough — global structure from local evidence
 
 Every edge pixel votes for every line through it; a real line becomes a bright peak in `(rho, theta)`
-accumulator space. It is the classic demonstration that global structure can be found from purely
-local evidence with no grouping step.
+accumulator space, with no grouping step in between.
 
 The figure has three planted lines and a decoy ring. All three lines come back at their exact polar
-coordinates — `(rho=150, θ=0.00)`, `(rho=40, θ=1.57)`, `(rho=28, θ=2.36)` — and the ring is
-correctly *not* fitted.
+coordinates — `(rho=1500, θ=0.00)`, `(rho=400, θ=1.57)`, `(rho=283, θ=2.36)` — and the ring is not
+fitted.
 
 ![](assets/imaging_gallery/05-hough.png)
 
@@ -312,9 +306,9 @@ becomes a smooth curve with no glue code.
 
 `gaussianPyramid(levels)` halves each octave (blurring first, so it does not alias);
 `laplacianPyramid(levels)` splits the image into band-pass detail plus a coarse residual, and
-`reconstruct()` inverts it. The round-trip is exact to within float precision — measured at
-**5.96e-08** maximum absolute error on the figure below — which is what makes the decomposition
-usable for multiband blending and detail transfer rather than just for looking at.
+`reconstruct()` inverts it. The round-trip is exact to within float precision — **1.49e-08**
+maximum absolute error on the figure below — which is what makes the decomposition usable for
+multiband blending and detail transfer rather than just for looking at.
 
 ![](assets/imaging_gallery/07-pyramids.png)
 
@@ -329,21 +323,21 @@ the real size and the zoom factor.)
 resample, so there are no holes.
 
 `findHomography(src, dst)` is the Direct Linear Transform: exact through four correspondences,
-least-squares through more. The points are Hartley-normalised first, which is not optional — without
-it the conditioning on pixel-scale coordinates is bad enough to visibly distort the fit.
+least-squares through more. The points are Hartley-normalised first; without that, the conditioning
+on pixel-scale coordinates is bad enough to visibly distort the fit.
 `warpQuadToRect(quad, w, h)` wraps it up as the "flatten the photographed page" operation.
 
 ![](assets/imaging_gallery/08-warps.png)
 
-The rectified checkerboard matches the original to a mean absolute error of 0.035 over the interior.
+The rectified checkerboard matches the original to a mean absolute error of 0.0036 over the interior.
 
 ## Motion
 
 `opticalFlowLK(a, b, points)` is pyramidal Lucas–Kanade. Seed it with `goodFeaturesToTrack(...)` —
 which selects exactly the points where the 2×2 tracking system is well conditioned — and it returns
-a `FlowField` of `FlowVector`s, each of which reports whether it actually converged. A tracker that
-never admits failure is lying; this one marks a track `ok = false` when the system is
-ill-conditioned (a smooth region, or a straight edge) or the point leaves the frame.
+a `FlowField` of `FlowVector`s, each of which reports whether it converged. A track is marked
+`ok = false` when the system is ill-conditioned (a smooth region, or a straight edge) or the point
+leaves the frame.
 
 The pyramid is what makes large motions tractable: solve at the coarsest octave where the
 displacement is small, then propagate the estimate down. A 9-pixel shift that a single level cannot
@@ -395,9 +389,9 @@ println(fit.homography.toString())
 
 ![](assets/imaging_examples/motion.png)
 
-`findHomographyRansac(...)` is why feature matching works in practice: half the correspondences can
-be garbage and the answer is still right, because a wrong model has no reason to be *consistently*
-wrong across many points. It samples four correspondences at a time, scores the consensus, keeps the
+With `findHomographyRansac(...)` half the correspondences can be garbage and the answer is still
+right, because a wrong model has no reason to be *consistently* wrong across many points. It samples
+four correspondences at a time, scores the consensus, keeps the
 best, and refits least-squares on the inliers. The seed is explicit, so a docs capture or a test
 gets the same answer every time.
 
@@ -413,10 +407,10 @@ is visible and not just magnitude:
 
 ## Colour
 
-`luma()`, `rgbToHsv()` / `hsvToRgb()`, and `toLinear()` / `toSrgb()`. That last pair matters more
-than it looks: blurring, downsampling and averaging are only *correct* in linear light, and
-`img.toLinear().gaussianBlur(4.0).toSrgb()` is measurably different from blurring the encoded
-values. The panel below shows both, and the amplified difference between them.
+`luma()`, `rgbToHsv()` / `hsvToRgb()`, and `toLinear()` / `toSrgb()`. Blurring, downsampling and
+averaging are only *correct* in linear light, so `img.toLinear().gaussianBlur(4.0).toSrgb()` is
+measurably different from blurring the encoded values. The panel below shows both, and the
+amplified difference between them.
 
 ![](assets/imaging_gallery/10-colour.png)
 
@@ -446,47 +440,45 @@ planted motion, re-run the box, and watch it update. See [Agent transcripts](age
 
 ## Whether it is fast enough
 
-The family is pure Kotlin with no native dependency, which is the whole point of it — and the
-obvious question that raises is whether you should just use OpenCV instead. So the repository
-carries a benchmark that puts the two side by side, in the same JVM, on the same pixels:
-`tools/imaging-bench`, run with
+Pure Kotlin with no native dependency raises the question of whether you should reach for OpenCV
+instead. The repository carries a benchmark that puts the two side by side, in the same JVM, on the
+same pixels: `tools/imaging-bench`, run with
 
 ```diffstatic {data-lang=bash}
 ./gradlew :tools:imaging-bench:jmh
 ```
 
-The filters are built on a small layer of vectorized span kernels (Java Vector API,
-`imaging_simd.kt`). That was worth doing because of how `Img` stores its samples: interleaved,
-`data[(y * width + x) * channels + c]`. Adding `(t - r) * channels` to a flat index therefore lands
-on the same channel of the pixel `t - r` columns over — so for a fixed tap, the whole interior of a
-row is one contiguous span, and a separable convolution collapses to `dst += w * src` over that
-span. The vertical pass gets a second gift: its border decision is per *row*, not per sample, so the
-row index is resolved once and every row takes the fast path.
+The filters sit on a small layer of vectorized span kernels (Java Vector API, `imaging_simd.kt`),
+and `Img`'s storage is what makes that work: samples are interleaved,
+`data[(y * width + x) * channels + c]`, so adding `(t - r) * channels` to a flat index lands on the
+same channel of the pixel `t - r` columns over. For a fixed tap the whole interior of a row is one
+contiguous span, and a separable convolution collapses to `dst += w * src` over that span. The
+vertical pass takes its border decision per *row* rather than per sample, so the row index is
+resolved once and every row takes the fast path.
 
-Vectorizing turned out to be only half of it. The three biggest gains on this page came from doing
-less work, not from doing it wider:
+Three of the operations get more from doing less work than from doing it wider:
 
-- **`pyrDown`** used to blur at full resolution and then throw three quarters of the result away. It
-  now filters only the rows and columns that survive the 2x decimation. The horizontal half of that
-  is the awkward one — output `x` reads source pixel `2x + s`, so the reads want to be stride-2 —
-  but the parity of `2x + s` is fixed by the parity of `s`, so splitting each row into its even and
-  odd pixels once makes every tap unit-stride again. That is a polyphase decomposition, and it needs
-  no gather, which matters on a machine where a gather is emulated.
-- **`boxBlur`** was already `O(1)` per pixel, so all of its gap was constant factor — and most of
-  that was a vertical pass written as `for (x) for (y)`, walking one column at a time down an 8 MB
-  array, a cache miss per sample. Turned inside out, the accumulator is now a whole *row* of partial
-  sums, one lane per column, advanced together.
-- **`bilateral`** spent its life inside `Math.exp`: the range weight depends on the sample, so the
-  literal definition calls it once per tap per pixel — 169 times per pixel at these settings. It is
-  now a 4096-entry table indexed by squared intensity distance, read with linear interpolation.
+- **`pyrDown`** filters only the rows and columns that survive the 2x decimation, rather than
+  blurring at full resolution and discarding three quarters of the answer. The horizontal half is
+  the awkward one — output `x` reads source pixel `2x + s`, so the reads want to be stride-2 — but
+  the parity of `2x + s` is fixed by the parity of `s`, so splitting each row into its even and odd
+  pixels once makes every tap unit-stride again. That is a polyphase decomposition, and it needs no
+  gather, which matters on a machine where a gather is emulated.
+- **`boxBlur`** is `O(1)` per pixel, so its whole cost is constant factor, and a vertical pass
+  written as `for (x) for (y)` spends that walking one column at a time down an 8 MB array — a cache
+  miss per sample. Turned inside out, the accumulator is a whole *row* of partial sums, one lane per
+  column, advanced together.
+- **`bilateral`**'s range weight depends on the sample, so the literal definition calls `Math.exp`
+  once per tap per pixel — 169 times per pixel at these settings. It reads a 4096-entry table
+  indexed by squared intensity distance instead, with linear interpolation.
 
-One more, if you ever write a kernel here: a register accumulator is a chain of *dependent*
+One thing to know if you ever write a kernel here: a register accumulator is a chain of *dependent*
 multiply-adds, and on Apple silicon an FMA has about four cycles of latency while issuing about four
 per cycle, so a single-accumulator chain runs at latency rather than throughput. Keeping four output
-chunks in flight is what took the dense 11x11 convolution from 2.3x OpenCV to slightly faster than
-it. The same change made the *separable* passes slower, which is measured and explained in
-`imaging_filters.kt` — the read-modify-write it saves never leaves L1 there, and the simple one-tap
-loops it replaces are code the JIT already handles perfectly.
+chunks in flight is what puts the dense 11x11 convolution slightly ahead of OpenCV rather than 2.3x
+behind it. The same change makes the *separable* passes slower, and `imaging_filters.kt` carries the
+measurements and the reason — the read-modify-write it saves never leaves L1 there, and the simple
+one-tap loops it replaces are code the JIT already handles perfectly.
 
 <!-- BEGIN imaging-bench table — generated by tools/imaging_bench_doc.py, do not edit -->
 
@@ -507,18 +499,18 @@ loops it replaces are code the JIT already handles perfectly.
 
 <!-- END imaging-bench table -->
 
-**How to read this.** "Before" is the original scalar implementation, kept in the source as
-`convolveSeparableReference` rather than remembered, so the claim can be re-measured at any time.
-Only the separable-convolution family has one — a dash means that operation has no preserved scalar
-original to compare against, not that the speedup is unknown. Where there is a before, the gain is
-12.9x (Gaussian gray), 13.4x (Gaussian RGB) and 11.8x (Sobel): near-identical, which is what you
-expect when the win is "stopped calling a bounds-checked accessor once per multiply-add" rather than
+"Before" is the original scalar implementation, still in the source as
+`convolveSeparableReference`, so the claim can be re-measured at any time. Only the
+separable-convolution family has one — a dash means that operation has no preserved scalar original
+to compare against, not that the speedup is unknown. Where there is a before, the gain is 12.9x
+(Gaussian gray), 13.4x (Gaussian RGB) and 11.8x (Sobel): near-identical, which is what you expect
+when the win is "stopped calling a bounds-checked accessor once per multiply-add" rather than
 anything kernel-specific.
 
 OpenCV is pinned to one thread, because this code is single-threaded; letting OpenCV use every core
-did not help at this size anyway, which is measured rather than assumed. Bold means we are faster.
+does not help at this size either. Bold means we are faster.
 
-**What the numbers do and do not say.** Three rows — Gaussian blur, box blur and the Laplacian — are
+Three rows — Gaussian blur, box blur and the Laplacian — are
 the same operation with the same parameters on both sides, and the benchmark *fails the run* if the
 outputs stop agreeing (Gaussian to 2.4e-7, box blur to 7.8e-6, Laplacian exactly). The rest are
 matched in work but not in definition, and the difference is real: our `luma` is BT.709 where
@@ -527,29 +519,26 @@ divided by a constant; our `pyrDown` takes a configurable sigma where OpenCV's i
 kernel; and `median`/`bilateral` have matched parameters but different internal algorithms. Our API
 also returns a fresh `Img` each call, so part of our cost is an allocation OpenCV is not paying.
 
-**The summary** is that convolution now wins and most of the rest is within striking distance.
 Gaussian blur, dense convolution and the RGB blur are at or slightly past OpenCV; box blur (1.4x),
 Laplacian (1.7x), Scharr and Sobel (2.0-2.1x), luma (1.7x) and bilateral (~1.2x) are close enough
 that the pure-Kotlin path is the reasonable default. Three rows are still meaningfully behind, and
 you should know which before choosing:
 
-- **`median` at 3.5x** is the one real algorithmic gap left: it still sorts 25 floats per pixel, where
-  OpenCV uses a sorting network. It is the obvious next thing to fix.
+- **`median` at 3.5x** is an algorithmic gap: it sorts 25 floats per pixel where OpenCV uses a
+  sorting network.
 - **`resize` to half at 5.0x** has data-dependent inner loops that do not vectorize.
-- **`pyrDown` at 4.1x**, which is *not* a defect and will not be "fixed": ours applies
+- **`pyrDown` at 4.1x** is doing more arithmetic, not doing it worse: ours applies
   `gaussianKernel1D(sigma)` — 9 taps at the default — where OpenCV's `pyrDown` is a fixed 5-tap
-  `[1,4,6,4,1]/16`. We do close to twice the arithmetic because the filter is better and the sigma is
-  yours to choose. Against its own previous self, which blurred everything and then discarded three
-  quarters of it, it is 3.8x faster (7.79 ms to 2.07 ms).
+  `[1,4,6,4,1]/16`. That is close to twice the work, in exchange for a better filter and a sigma
+  that is yours to choose.
 
 These were measured on a 10-core Apple Silicon laptop, with a load average of 5-6 and the benchmark
-JVM the only busy process — quiet for a laptop, not a dedicated benchmark box. The error bars are
-printed rather than hidden: a wide interval on a short benchmark means scheduler noise, not a real
-difference, so treat any two numbers whose intervals overlap as a tie. `bilateral` is the one arm
-whose interval is genuinely wide (13% relative), so read it as "about 1.2x". The `opencv` columns
-double as a control across runs, since that code does not change; they drifted about 3% between this
-run and the previous one, which is the scale of machine variation you should assume when comparing
-against an older copy of this table.
+JVM the only busy process — quiet for a laptop, not a dedicated benchmark box. A wide interval on a
+short benchmark means scheduler noise rather than a real difference, so treat any two numbers whose
+intervals overlap as a tie. `bilateral` is the one arm whose interval is wide (13% relative), so
+read it as "about 1.2x". The `opencv` columns double as a control across runs, since that code does
+not change; they drifted about 3% between this run and the previous one, which is the scale of
+machine variation to assume when comparing against an older copy of this table.
 
 ## Reference
 
