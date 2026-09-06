@@ -20,24 +20,24 @@ is conferred by a parent, not by the box itself.** You mark a box as a language 
 *children* become Python.
 
 The action is on the right-click menu of a selected box: **Set Main Language: Python**. That sets
-`mainLanguage` to `"python"` on the box you selected (`MainLanguageRegistry.kt:68-82`), and every box
+`mainLanguage` to `"python"` on the box you selected (`setMainLanguageFor`, `MainLanguageRegistry.kt`), and every box
 childed to it from then on runs as Python.
 
 Two consequences that are easy to get backwards:
 
 - **The root itself is not Python.** `applyRuntimeToggle` walks `root.children` and swaps the
-  execution on each child (`LanguageRuntimeSupport.kt:56-69`); it never touches the root. A root box
+  execution on each child (`LanguageRuntimeSupport.kt`); it never touches the root. A root box
   with Python in it is still a Kotlin box, and will fail to compile.
 - **A cell does not have to be disconnected from anything.** A box stays Python while it still has
   *any* language-root parent — `if (child.parents.any { isRoot(it) == true }) return@forEach`
-  (`LanguageRuntimeSupport.kt:79`). A notebook cell childed to both the document root and a Python
+  (`LanguageRuntimeSupport.kt`). A notebook cell childed to both the document root and a Python
   root is Python, and the toggle is order-independent. This changed in `b10a90e8b`; older notes
   describing exclusive parenting as a requirement are describing the previous behaviour.
 
-`mainLanguage` is persisted with the document (`MainLanguageRegistry.kt:46`), so the arrangement
+`mainLanguage` is persisted with the document (`Box.ioPersistentProperties`, `MainLanguageRegistry.kt`), so the arrangement
 survives a reload. There is an older per-language flag, `Box.isPythonRoot`
-(`PythonInterface.kt:37`), also persisted (`:156`); it is still honoured
-(`:179`) and is what `setLegacyRoot` writes (`:163`), but `mainLanguage` is the one to reach for.
+(`PythonInterface.kt`), also persisted; it is still honoured, and is what
+`setLegacyRoot` writes, but `mainLanguage` is the one to reach for.
 
 The first cell, run by the docs build in a real Field. The block below is the box's `code`; the
 picture under it is that same box's editor, with the output the run actually produced. Notice where
@@ -64,14 +64,14 @@ all. See [Output](#output).
 ## One interpreter, one namespace
 
 There is exactly one interpreter for the whole Field process. `globalInterpreter`
-(`PythonInterface.kt:190`) is created once, on the first call to `interpreter()`, and every Python
+(`PythonInterface.kt`) is created once, on the first call to `interpreter()`, and every Python
 box in every open document shares it.
 
 It is worth being blunt about what that implies, because it is the most surprising thing here:
 **Python boxes share one global namespace.** A cell's code is executed with `globals()` as both its
-globals *and* its locals (`PythonInterface.kt:1152`), so a name bound in one box is visible in every
-other box. There is a per-box `_pythonLocals` dictionary (`:38`) and it is handed to the interpreter
-as `_local_storage_` (`:1148`), but the exec call that would have used it is commented out directly
+globals *and* its locals (`PythonInterface.kt`), so a name bound in one box is visible in every
+other box. There is a per-box `_pythonLocals` dictionary and it is handed to the interpreter
+as `_local_storage_`, but the exec call that would have used it is commented out directly
 above the one that runs. Two Python boxes are two cells of one notebook, not two notebooks.
 
 State therefore persists between runs, which is the point: import your libraries and load your data
@@ -95,20 +95,20 @@ sum(math.sqrt(n) for n in range(1, 11))
 ```
 
 Only if it printed nothing. The last-expression value is published under `if (!hasHadOutput)`
-(`PythonInterface.kt:1186-1194`), so a cell that has already printed will not also echo its final
+(`PythonInterface.kt`), so a cell that has already printed will not also echo its final
 value — which is why the array cell above showed no trailing `None`.
 
 **Stop** does not restart the interpreter. It cancels the asyncio tasks that this box started, and
-only those: `cancel_tasks('<box id>', timeout=1.5)` (`PythonInterface.kt:1263-1274`). Tasks are
+only those: `cancel_tasks('<box id>', timeout=1.5)` (`PythonInterface.kt`). Tasks are
 tagged with the id of the box that created them, so stopping one cell leaves another cell's
 coroutines running. `async def` works at all because Field installs a cooperative event loop at
-interpreter startup (`CooperativeEventLoop`, `:285`) whose `execute` pump is driven from the Field
+interpreter startup (`CooperativeEventLoop`) whose `execute` pump is driven from the Field
 runloop rather than blocking it.
 
 ## Output
 
-Everything printed funnels through one Kotlin function, `formatOutput` (`PythonInterface.kt:1367`).
-Python's `print` is *replaced* at interpreter startup with `_field_print` (`:1014-1023`), which sends
+Everything printed funnels through one Kotlin function, `formatOutput` (`PythonInterface.kt`).
+Python's `print` is *replaced* at interpreter startup with `_field_print`, which sends
 text straight to the box's output channel rather than to stdout, so the formatting decision is made
 in one place for both `print` and the last-expression value.
 
@@ -116,13 +116,13 @@ in one place for both `print` and the last-expression value.
 
 | step | what it does | why |
 |---|---|---|
-| `truncateOutput` (`:1379`) | clips to 40,000 characters and 400 lines, keeping head and tail with a marker between | enormous output used to be shipped whole to the browser and lock up the front end |
-| `escapeOutputHtml` (`:1396`) | escapes `&`, `<`, `>` | the output pane is HTML |
-| the `<pre>` wrap (`:1371`) | multi-line text only, into `<pre class="afield-python-output">` | a 2-D array or a `DataFrame` stays column-aligned instead of being flattened into `<br>`s |
+| `truncateOutput` | clips to 40,000 characters and 400 lines, keeping head and tail with a marker between | enormous output used to be shipped whole to the browser and lock up the front end |
+| `escapeOutputHtml` | escapes `&`, `<`, `>` | the output pane is HTML |
+| the `<pre>` wrap | multi-line text only, into `<pre class="afield-python-output">` | a 2-D array or a `DataFrame` stays column-aligned instead of being flattened into `<br>`s |
 
 **Carriage returns become a progress bar.** The stdout redirect is a framer that splits on `\n` *and*
-`\r` (`OutputFramer`, `:52-85`). A frame ending in `\r` is an in-place update — the signature of
-`tqdm` — and is routed to `deliverProgressText` (`:90-105`) instead of the output pane. If the frame
+`\r` (`OutputFramer`). A frame ending in `\r` is an in-place update — the signature of
+`tqdm` — and is routed to `deliverProgressText` instead of the output pane. If the frame
 parses as a tqdm bar it becomes a real Field progress bar with that percentage; if it does not, it
 becomes an indeterminate bar carrying the raw frame as its label. This is why a `tqdm` loop surfaces
 live instead of arriving as one enormous string at the end.
@@ -135,13 +135,12 @@ be a video timed to catch the middle of a loop, which the still-capture path can
 
 Plotting libraries end `fig.show()` by asking the operating system to open a web browser. Field
 intercepts that. `webbrowser.open`, `open_new`, `open_new_tab` and the controller returned by
-`webbrowser.get` are all replaced at startup (`PythonInterface.kt:1100-1104`), and the page is
-embedded in the box's output as a self-contained `srcdoc` iframe on a channel called `browser`
-(`:1037`).
+`webbrowser.get` are all replaced at startup (`PythonInterface.kt`), and the page is
+embedded in the box's output as a self-contained `srcdoc` iframe on a channel called `browser`.
 
 The interesting case is a library that starts a one-shot local HTTP server and then blocks until
 someone fetches the URL — which is what plotly's default renderer does. Field fetches it itself on a
-daemon thread (`:1076-1085`): the GET satisfies the waiting server so the cell never hangs, and the
+daemon thread: the GET satisfies the waiting server so the cell never hangs, and the
 document that comes back is what gets embedded. The cell does not depend on a front end being
 present at all, which is precisely why the capture below can exist.
 
@@ -181,10 +180,10 @@ print("\n".join([
 ]))
 ```
 
-`PythonInterface.thisBox` (`PythonInterface.kt:1412`) is the `Box` currently executing — set before
-each fragment runs (`:1149`) — so a Python cell can reach its own box and, through it, the rest of
+`PythonInterface.thisBox` (`PythonInterface.kt`) is the `Box` currently executing, set before
+each fragment runs, so a Python cell can reach its own box and, through it, the rest of
 the document. Field's own startup code uses exactly this handle to publish output
-(`box.getOutput().getProxy()(...)`, `:1020`) and to open the embed channel (`:1042-1043`).
+(`box.getOutput().getProxy()(...)`) and to open the embed channel.
 
 The reverse direction has no bridge. There is no Kotlin-side helper for evaluating a string of
 Python or reading a Python variable out of a box; Kotlin talks to Python by *being* the host, and the
@@ -194,15 +193,15 @@ conjecture rather than a claim.
 
 Completion inside a Python box is served by [jedi](https://jedi.readthedocs.io/), not by Field's
 Kotlin machinery: `complete` builds a `jedi.Interpreter` over the box's source and the live
-`locals()` (`PythonInterface.kt:1277-1300`). Because the interpreter is live, completion sees objects
+`locals()` (`complete`, `PythonInterface.kt`). Because the interpreter is live, completion sees objects
 you actually created rather than only what it can infer statically — and because it is jedi, `pip
 install jedi` is what turns it on.
 
 ## A notebook is a column of boxes
 
 Dragging a `.ipynb` onto the canvas and choosing *Import as Python cells* builds the topology this
-page opened with, automatically. `importNotebookCells` (`importing.kt:261`) creates one box named
-`python root` with `isPythonRoot = true` (`:275-276`), then walks the notebook: a `code` cell becomes
+page opened with, automatically. `importNotebookCells` (`importing.kt`) creates one box named
+`python root` with `isPythonRoot = true`, then walks the notebook: a `code` cell becomes
 a Python cell connected under that root, and a `markdown` or `raw` cell becomes a `notes` box
 indented beside the column so the prose reads inline.
 
@@ -212,10 +211,9 @@ language-root parent, so there is no need to detach it. This page's [parenting
 rule](#a-python-box-is-a-child-of-a-python-root) and that importer are the same fact seen twice.
 
 Going the other way, *Export notebook (.ipynb)* on a selected python-root box walks its column
-top-to-bottom and writes nbformat 4 (`exportNotebookCells`, `:383`; `nbformat` is set at `:444`).
+top-to-bottom and writes nbformat 4 (`exportNotebookCells`, which is where `nbformat` is set).
 Reading is more forgiving than writing: the importer also accepts nbformat 3, where the cells live
-under `worksheets[].cells` and a cell's source is keyed `input` rather than `source` (`:336`,
-`:348`).
+under `worksheets[].cells` and a cell's source is keyed `input` rather than `source`.
 
 [funFeatures](funFeatures.md#python) has the round-trip in context.
 
@@ -225,7 +223,7 @@ Field needs an interpreter that has **JEP's native library** in it. Not merely a
 where `pip install jep` has been run, so that a `libjep` file exists in its site-packages.
 
 The candidate list is tried in this order, and the first one with a `libjep` in it wins
-(`PythonInterface.kt:1685-1701`):
+(`pythonConfigChoices`, `PythonInterface.kt`):
 
 1. `-Dafield.python.venv=…` / `-Dafield.python.executable=…`
 2. `FIELD_PYTHON_VENV` / `FIELD_PYTHON_EXECUTABLE`
@@ -234,7 +232,7 @@ The candidate list is tried in this order, and the first one with a `libjep` in 
 5. `python3`, then `python`, on `PATH`
 
 The `/welcome` panel has an **Install JEP** button, and it is worth knowing what it actually does
-(`installJep`, `PythonInterface.kt:1552-1607`): it runs `python -m ensurepip --upgrade`, then `python
+(`installJep`, `PythonInterface.kt`): it runs `python -m ensurepip --upgrade`, then `python
 -m pip install --upgrade jep`, with `JAVA_HOME` set to the running JVM's own `java.home` — jep is a
 JNI extension and its build needs `jni.h`. It then re-resolves, and only persists your choice if a
 `libjep` really did appear. The pip step is given six minutes, because it compiles C.
@@ -243,18 +241,18 @@ JNI extension and its build needs `jni.h`. It then re-resolves, and only persist
 
     **`import jep` is the wrong way to check.** A *correctly* installed JEP raises `ImportError: Jep
     is not supported in standalone Python, it must be embedded in Java.` The thing to look for is the
-    `libjep` file, which is also what Field looks for (`:1771`).
+    `libjep` file, which is also what Field looks for.
 
     **Binding happens once, at startup.** Saving new settings returns `restartRequired`
-    (`PythonInterface.kt:1540`) and the status line says so. Until you restart Field, `mainLanguage =
+    (`PythonInterface.kt`) and the status line says so. Until you restart Field, `mainLanguage =
     python` is inert and your cells stay Kotlin, because the runtime is only registered when Python
-    resolved at boot (`installPython`, `:157`).
+    resolved at boot (`installPython`).
 
     **A stale `typing` backport breaks startup.** An Anaconda base environment carrying the PyPI
     `typing` package (a Python 3.4-era backport, obsolete since 3.5) fails interpreter startup with
     `AttributeError: type object 'Callable' has no attribute '_abc_registry'`. A clean `python -m
     venv` avoids it. Field reports this as "found but failed to initialize" and names the interpreter
-    it tried (`markPythonUnavailable`, `:1506`).
+    it tried (`markPythonUnavailable`).
 
 On macOS, if Xcode is selected but Homebrew's Python was built against a Command Line Tools SDK that
 is no longer installed, the jep build fails with `fatal error: 'assert.h' file not found`. Building
@@ -269,7 +267,7 @@ CFLAGS="-isysroot $(xcrun --show-sdk-path)" .venv/bin/python3 -m pip install 'je
 export FIELD_PYTHON_VENV="$PWD/.venv"
 ```
 
-Pin `jep` to the version of the jar Field ships — `libs/jep-4.3.1.jar` (`build.gradle.kts:918`).
+Pin `jep` to the version of the jar Field ships — `libs/jep-4.3.1.jar` (`build.gradle.kts`).
 A native library and a jar from different releases is a mismatch JEP does not check for you.
 
 ## Which code on this page runs { #which-code-on-this-page-runs }
