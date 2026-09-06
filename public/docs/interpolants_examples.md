@@ -5,10 +5,9 @@
 Some values are supposed to *move*: a control that eases to a target instead of
 snapping, a whole parameter state morphing from one saved look to another, a
 relationship between two signals drifting as they play. This page collects the
-tools for those cases and does the one thing that makes them legible — it draws
-the motion: a `showSignals` plot when the value is a signal over time, an `FLine`
-when the shape is spatial. Three families, one idea: a value you can *see* moving
-is a value you can reason about.
+tools for those cases, and draws the motion in each: a `showSignals` plot when
+the value is a signal over time, an `FLine` when the shape is spatial. Three
+families, one habit.
 For recovering a hidden value from noisy measurements, see
 [State estimation](state_estimation_examples.md).
 
@@ -71,8 +70,7 @@ showSignals(
 The cyan step line is the target; the three curves re-aim at each jump. `steps = 20`
 snaps onto every set-point and holds; `steps = 60` arrives just as the next jump
 lands; `steps = 160` rounds every corner and never quite catches up before the
-target moves again. That is the whole design decision in one picture: pick the ramp
-whose settling time matches the gesture.
+target moves again. Pick the ramp whose settling time matches the gesture.
 
 ![Three smoothTo interpolants with different step counts re-aiming at a jumping target](assets/interpolants_examples/smooth_family.png)
 
@@ -81,8 +79,8 @@ whose settling time matches the gesture.
 "Smooth" can mean "over the next 140 evaluations" or "over 1.2 seconds of real
 time." Those are different promises, and the difference matters the moment frame
 rate, scheduling, or sampling cadence drifts. The diff below keeps a step-counted
-line and adds a duration-based one, sampling both under an intentionally uneven
-cadence:
+line and adds a duration-based one, sampling both under a cadence that slows
+partway through:
 
 ```diff_runner {data-lang=kotlin screenshot="assets/interpolants_examples/smooth_duration.png" wait="1.0" capture="box" open-outputs="true"}
 :::before
@@ -162,7 +160,7 @@ markdown("legend", """
 
 The orange trace arrives as soon as 140 calls have happened; the green trace
 arrives at the requested timeline duration regardless of cadence. The example injects a synthetic
-clock so its uneven cadence is exact and the documentation render is reproducible. For a film or
+clock, so its uneven cadence is exact rather than whatever the machine happened to do. For a film or
 offline render, use `clock = frameClock(24.0) { renderer.frameCounter }`: repeated reads in one frame
 see the same time, and each rendered frame advances exactly 1/24 second. Use the
 step form when the world is discrete and counted, the time form when it is
@@ -173,9 +171,9 @@ musical, animated, or otherwise measured in seconds.
 An interpolant moves one number. A `KeyframeScope` moves a whole named *state*
 between saved snapshots — and its values are typed: numbers and vectors ease
 continuously, quaternions slerp, and **code values** (`StackSLString`, source
-blocks) switch *discretely* at the end of the transition. That mix is the point:
-a patch can crossfade its continuous parameters while its actual synthesis code
-snaps over at the moment the crossfade completes. Two `Key`s and `interpolate`
+blocks) switch *discretely* at the end of the transition. So a patch can
+crossfade its continuous parameters while its actual synthesis code snaps over at
+the moment the crossfade completes. Two `Key`s and `interpolate`
 are all it takes; here the numeric `gain` is eased through a smoothstep `remap`,
 the `pos` vector eases linearly, and the `voice` code steps:
 
@@ -347,9 +345,9 @@ display("metrics", Plotly.plot {
 
 ![Five dependence metrics on one nonlinear dataset, drawn as bars](assets/correlations_examples/metric_profile.png)
 
-The metrics visibly disagree about the same sample — `pearson` shrugs at the
-parabola while `xi` and `dcor` notice it. That mismatch is worth seeing before
-choosing a statistic. For neighborhood and graph structure on related point sets,
+The metrics visibly disagree about the same sample: `pearson` and `spearman`
+shrug at the parabola while `xi` and `dcor` notice it. Check that disagreement
+before choosing a statistic. For neighborhood and graph structure on related point sets,
 see [Neighbors & graph connectivity examples](graph_connectivity_examples.md).
 
 ---
