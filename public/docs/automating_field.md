@@ -1,7 +1,7 @@
 # Automating Field: macros, transcripts, and the backdoor
 
-Everything you do to a Field document — creating a box, editing its code, wiring one box
-into another, running it, stopping it — is an *operation*. Field can record those
+Everything you do to a Field document (creating a box, editing its code, wiring one box
+into another, running it, stopping it) is an *operation*. Field can record those
 operations, replay them, and let programs perform them from outside. That single idea
 powers three things you can use:
 
@@ -18,8 +18,8 @@ the guards on it.
 ## Operations as data
 
 A transcript is a list of operations. Each one names a *verb* and the box it acts on.
-Here is a whole small document — create a box, give it code, run it, and save the result
-as a reopenable document:
+Here is a whole small document that creates a box, gives it code, runs it, and saves the
+result as a reopenable document:
 
 ```diffstatic {data-lang=yaml}
 operations:
@@ -49,7 +49,7 @@ does, change a name or a value, and run your version. Field records what you do 
 work, so you can turn a sequence you just performed into a macro and replay it elsewhere.
 
 The **Macro Recorder** panel is where that recording happens: press **Start** and work as
-normal — each operation you perform is appended to the transcript — then **Save** the
+normal (each operation you perform is appended to the transcript), then **Save** the
 sequence as a named macro at document, project, or workspace scope. Saved macros are
 listed along the bottom and **Run** replays them; **Promote** moves one to a wider scope.
 
@@ -62,7 +62,7 @@ ui.pause(1800)
 ## Driving Field from a script or agent
 
 The backdoor (`tools/field_backdoor.py` in the Field repository) attaches to a running
-Field — or starts one — and applies transcripts, then hands back a machine-readable
+Field, or starts one, and applies transcripts, then hands back a machine-readable
 result. Write the transcript above to a macro and run it:
 
 ```diffstatic {data-lang=bash}
@@ -72,13 +72,13 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --scra
 ```
 
 The result tells you what happened: how many operations applied, whether anything failed,
-and an `output` list with the `println` text of every box that ran — tagged by box and
+and an `output` list with the `println` text of every box that ran, tagged by box and
 line. That is how a script *knows* the code ran, and it is where compile errors and
 exceptions appear. Running a box that isn't there, or that has no code, fails with a
 message that names the box rather than silently succeeding.
 
-The backdoor also captures pictures — a single box, the editor, the whole window, or the
-native `afield.four` graphics window — and short videos, which is how this site's figures
+The backdoor also captures pictures (a single box, the editor, the whole window, or the
+native `afield.four` graphics window) and short videos, which is how this site's figures
 are made.
 
 ## Where to go next
@@ -86,7 +86,7 @@ are made.
 - The **[Staging Overview](staging.md)** section "Reproducible docs and transcript
   automation" explains how the docs build itself uses this machinery.
 - **[Building & Testing](building_and_testing.md)** covers the backdoor as a test harness.
-- For the complete reference — every operation, the observable results, and worked
-  examples on the canvas and in `afield.four` Vulkan graphics — see `dev_docs/agents/`
+- For the complete reference (every operation, the observable results, and worked
+  examples on the canvas and in `afield.four` Vulkan graphics), see `dev_docs/agents/`
   in the Field repository (`OPERATION_TRANSCRIPT.md` and `FIELD_BACKDOOR.md`). Field's default
   workspace setup also writes a short `AGENTS.md` for agents working inside that workspace.

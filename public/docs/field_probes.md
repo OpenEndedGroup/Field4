@@ -6,7 +6,7 @@ way to answer the first question you always end up asking: *what do the numbers
 actually look like?* Are the speeds finite? Is anything NaN? What is the spread,
 the median, the tail?
 
-Field answers that with two **probes** — small, drop-in instruments you attach to
+Field answers that with two **probes**: small, drop-in instruments you attach to
 a shader and a buffer to watch a distribution of values as it is computed. They
 share a philosophy (add one line to a shader, read a live summary back in the
 front end) but sit at opposite ends of a trade-off:
@@ -23,7 +23,7 @@ Both are wired the same way. Call one setup function on the box, add
 `{% include "…" %}` to the shader, and call a one-line
 recording function wherever the value you care about is in scope. Field resolves
 the include, allocates the backing buffers, and attaches the read-back lifecycle
-automatically — there is no descriptor-set or SSBO bookkeeping to do by hand.
+automatically; there is no descriptor-set or SSBO bookkeeping to do by hand.
 
 The running example throughout is a compute-shader particle system: a swirl of
 particles advected by a simple force field, drawn as soft quads. The quantity we
@@ -42,11 +42,11 @@ histogram, as in the video below. First, the running example it instruments.
 
 The compute shader reads each particle from one `buffer_reference` buffer,
 rotates and mixes its position by a slowly-advancing angle (`something`, driven
-from Kotlin), and writes the result — plus its carried size in `.w` — into a
+from Kotlin), and writes the result (plus its carried size in `.w`) into a
 second buffer. The vertex shader expands six vertices per particle into a
 camera-facing quad; the fragment shader draws a soft dot. This is the ordinary
 two-module (compute + draw) pattern from
-[afield.four Graphics](afield_four_graphics.md) — the only probe-specific lines
+[afield.four Graphics](afield_four_graphics.md). The only probe-specific lines
 are the include and the single `fieldProbe(length(delta))` call, which records
 how far each particle moved this step (its per-step **speed**).
 
@@ -80,7 +80,7 @@ void main() {
 }
 ```
 
-The Kotlin that drives it lives in two boxes — a **compute** box and a **draw**
+The Kotlin that drives it lives in two boxes: a **compute** box and a **draw**
 box, both children of a renderer box that owns the `Window`. The compute box
 allocates the two GPU buffers, seeds one with random particles, publishes the
 output buffer as `outputPositions`, and turns the probe on. `fieldProbeHere(...)`
@@ -145,8 +145,7 @@ than flooding the output pane at renderer frame rate:
 ### GLSL side
 
 Add the include once, then call `fieldProbe(...)` wherever the value is in scope.
-The include defines overloads for every common type — scalars, vectors, and
-their integer forms:
+The include defines overloads for scalars, vectors, and their integer forms:
 
 ```diffstatic {data-lang=glsl}
 {% include "fieldProbe" %}
@@ -238,7 +237,7 @@ snap.scalarValues(); snap.scalarSummary(); snap.vec3Summary()
 snap.summaryHtml(previous = last) // the card (histogram + chips)
 ```
 
-`summaryHtml(previous)` is what `display(...)` calls internally — passing the
+`summaryHtml(previous)` is what `display(...)` calls internally; passing the
 previous snapshot is what produces the delta colouring (rising values tint one
 way, falling the other), which is why the live card looks alive.
 
@@ -249,7 +248,7 @@ way, falling the other), which is why the live card looks alive.
 `fieldStats` never needs to bring raw samples back to see a distribution. Each
 recording call reduces values across the subgroup, a follow-up compute pass
 reduces those partials to exact per-channel statistics (count, mean, variance,
-min, max, sum) plus a t-digest-style **quantile sketch** — all on the GPU. The
+min, max, sum) plus a t-digest-style **quantile sketch**, all on the GPU. The
 results live in a buffer that *other shaders can read the same frame*, which is
 the feature the CPU probe cannot offer: closing the loop on the GPU.
 
@@ -267,7 +266,7 @@ fun Box.fieldStatsHere(
 ): ShaderFieldStats
 ```
 
-Read results back on the CPU per channel — or don't, if only the shader consumes
+Read results back on the CPU per channel, or don't, if only the shader consumes
 them (set `stats.cpuSnapshotsEnabled = false` to skip the read-back entirely):
 
 ```diffstatic {data-lang=kotlin}
@@ -318,7 +317,7 @@ fieldStatsRecord(0u, length(vel));
 
 The same include (in *any* shader, producer or not) exposes query helpers that
 read the reduced results of the **previous** frame. This is how you feed a
-statistic back into rendering — for example, normalising each particle's speed
+statistic back into rendering: normalising each particle's speed, for example,
 against the live median to drive its colour, entirely without a CPU round-trip:
 
 ```diffstatic {data-lang=glsl}
@@ -344,7 +343,7 @@ consumerBox.useFieldStats(stats)     // include "fieldStats" now resolves as a r
 
 ### Reading it back on the CPU
 
-If you do want the numbers in Kotlin — for logging, tests, or a custom readout —
+If you do want the numbers in Kotlin (for logging, tests, or a custom readout),
 the read-back is a few scalars per channel, not a sample array:
 
 ```diffstatic {data-lang=kotlin}
@@ -419,7 +418,7 @@ control loop and switch on `fieldProbe` only while you are looking.
 - **Read-back memory.** Both probes' read-back buffers are allocated as
   **host-cached** (`streamReads()`), which is the memory type CPU reads want on a
   discrete GPU. A host-visible-but-uncached (write-combined) buffer maps fine but
-  its CPU reads are pathologically slow — the classic slow-read-back trap. If you
+  its CPU reads are pathologically slow, the classic slow-read-back trap. If you
   build your own read-back buffer, ask for the same: `storage(); streamReads()`.
 - **Throttling.** `fieldProbe` reads back off the render thread, and as often as
   `maxDisplayHz` only in the plain `display(...)` case; raising it makes the card
@@ -430,4 +429,4 @@ control loop and switch on `fieldProbe` only while you are looking.
   back per snapshot. A few thousand is plenty for a histogram; there is no benefit
   to sampling the whole population.
 - **Dropped partials.** If `fieldStats` reports `droppedPartials > 0`, its partial
-  buffer overflowed — raise `maxPartials`.
+  buffer overflowed; raise `maxPartials`.
