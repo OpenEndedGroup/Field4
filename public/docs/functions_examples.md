@@ -714,7 +714,7 @@ with(Functions) {
 }
 ```
 
-Unless a snippet says otherwise, functions carry the default domain `0.0..1.0`. The periodic family is the exception, as above: `sin`, `cos`, `saw`, `triangle`, `square`, `pulseTrain`, `impulseTrain` and `pulseBurst` are built on `Domain.ALL`, and only narrow an expression when you give them a finite interval.
+Unless a snippet says otherwise, functions carry the default domain `0.0..1.0`. The periodic family is the exception: `sin`, `cos`, `saw`, `triangle`, `square`, `pulseTrain`, `impulseTrain` and `pulseBurst` are built on `Domain.ALL`, and only narrow an expression when you give them a finite interval.
 
 Most numeric parameters accept plain numbers directly; the DSL lifts them into parameter functions where needed.
 
@@ -3683,7 +3683,7 @@ Actions rebuild or relabel the matched copied node:
 
 Numeric actions apply only to nodes with a `numbers["value"]` metadata entry. That usually means constants and parameter nodes. If a numeric action lands on a non-numeric node, it is ignored rather than failing the whole rewrite.
 
-`op=...` transmutes a node to another operation, reusing role-addressed children and scalar metadata. `OpRegistry` holds the whole vocabulary, and holds it once: the DSL validator and the Monaco editor consult the same object. It groups the targets into three families, and the three rebuild differently. Each name below is one `OpSpec`; read the registry itself for the exhaustive set.
+`op=...` transmutes a node to another operation, reusing role-addressed children and scalar metadata. `OpRegistry` holds the whole vocabulary, and holds it once: the DSL validator and the Monaco editor consult the same object. Every target is one `OpSpec`, and they fall into three groups that rebuild differently:
 
 - **Generators** — oscillators (`sin`, `cos`, `saw`, `triangle`, `square`), `pulseTrain`, noise (`whiteNoise`, `valueNoise`, `perlinNoise`, `fbm`, `fbmPerlin`, `randomWalk`), windows (`hannWindow`, `hammingWindow`, `blackmanWindow`, `gaussianWindow`), `gaussian`, `ramp`, `remap`, `step`, `smoothstep`, `tween`, `ease`. These rebuild from whatever roles the source carries and fall back to factory defaults for the rest. Role names bridge across families, so `sin => op=saw` carries `frequency` over as `period` (via reciprocal) rather than resetting it.
 - **Algebra** — `add`, `subtract`, `multiply`, `divide`, rebuilt from the `left`/`right` children.
