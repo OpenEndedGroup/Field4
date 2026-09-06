@@ -215,11 +215,15 @@ class CitationContractTest {
             // Added 2026-08-29 with the page it guards. `gpu_state.md` is the state half of the GPU
             // model — buffer residency, ping-pong, per-dispatch bindings, frame parity — and its
             // argument is unusually dependent on pointing at code: the whole residency vocabulary is
-            // five one-line members of one buffer block, and the reader's next move after the page is
-            // to go and read them. Ten anchored citations as written, all prose `path:line#anchor`,
-            // every anchor unique-in-file, so [MAX_FRAGILE] is unaffected. Five point at
-            // `four/buffers/magic.kt`, two at `stdlib/shaders.kt`, one each at `four/Renderer.kt` and
-            // `stacksl/StackSL.kt`. Floored at 5, about half, on the DATAFRAME_PLUGIN convention.
+            // five short members of one buffer block, and the reader's next move after the page is
+            // to go and read them. Twelve anchored citations as written, all prose `path:line#anchor`,
+            // every anchor unique-in-file, so [MAX_FRAGILE] is unaffected. Six point at
+            // `four/buffers/magic.kt`, two at `stdlib/shaders.kt`, one each at `four/Renderer.kt`,
+            // `four/modules/ComputeMesh.kt`, `stacksl/StackSL.kt` and `stacksl/VolumetricNoise.kt` —
+            // that last one added 2026-09-05, when the page's force law moved off a hand-rolled
+            // three-slice `fbm` onto the builtin volumetric family and started making a claim about
+            // the family's amplitude normalisation. Floored at 5, about half, on the DATAFRAME_PLUGIN
+            // convention.
             //
             // The numeral census matters here too, and the page is written for it: every measured
             // figure on it — mean per-particle speed, the exact maximum, the sample size — is
