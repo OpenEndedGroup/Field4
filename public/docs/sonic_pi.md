@@ -24,13 +24,12 @@ Do not start the Sonic Pi GUI when using it from Field. Field starts and owns th
 that is how it receives v5's one-time control token, routes errors back to the right box, and stops
 the audio job when you stop the box.
 
-Owned mode is not a preference. Every interesting message in Sonic Pi's control API is authenticated
-with a token the server mints at boot, and v5 prints that token exactly once, to the daemon's stdout.
-The long-standing trick of scraping it out of `daemon.log` no longer works: in v5 the boot-time token
-log is commented out, and the only surviving one runs inside the daemon's *exit* handler, so it lands
-in the log after the daemon has stopped. If you did not start the server, you cannot ask it to run
-anything. (A Sonic Pi you launched yourself is still reachable, but only over the unauthenticated cue
-port — `SonicPi.cue`.)
+The token is why owned mode is the only mode. Every interesting message in Sonic Pi's control API is
+authenticated with a token the server mints at boot, and v5 prints that token exactly once, to the
+daemon's stdout. It is not in `daemon.log`: the boot-time log line there is commented out, and the
+only surviving one runs inside the daemon's *exit* handler, so it lands in the log after the daemon
+has stopped. If you did not start the server, you cannot ask it to run anything. (A Sonic Pi you
+launched yourself is still reachable, but only over the unauthenticated cue port — `SonicPi.cue`.)
 
 ## A box that is a piece of music
 
@@ -58,8 +57,8 @@ Returning the result as the box's last expression is what ties the music to the 
 for as long as the `live_loop` runs, and stopping the box stops the music — Sonic Pi's job is
 cancelled through the same path any other Field launch is.
 
-That mapping matters most for the shape of code above. A `live_loop` never finishes on its own, so
-without it the box would flash green for a few milliseconds, go idle, and leave a loop playing with
+That mapping is what makes the shape of the code above work. A `live_loop` never finishes on its own,
+so without it the box would flash green for a few milliseconds, go idle, and leave a loop playing with
 nothing in the interface admitting responsibility for it.
 
 ## Errors arrive late, and land on the line
@@ -110,7 +109,7 @@ Sonic Pi tells its client which line just triggered a note. `play`, `synth`, `sa
 `play_chord` and the `with_fx` / `live_loop` block boundaries each report the caller's line, so the
 editor can show the music moving through the code.
 
-Two things are worth knowing before trusting it. It arrives at musical rate rather than human rate —
+Two qualifications before you trust it. It arrives at musical rate rather than human rate —
 two loops at a modest tempo produce something like sixteen reports a second — so the display samples
 recency instead of repainting per note, and a line cools off over about half a second rather than
 latching on. And it reports *triggering*, not audibility: a `play` at `amp: 0` still creates a node
@@ -155,9 +154,9 @@ tools/generate_sonic_pi_vocabulary.py
 ```
 
 Several hundred signatures typed out by hand would be wrong somewhere and would rot at the next
-release. Extracted, they are correct by construction: v5's new `link_audio` and `set_drive!` appeared
-in completions the moment Sonic Pi was installed, without anyone noticing they were new.
-`--check` fails when the committed vocabulary no longer matches the installed app.
+release; extracted, they track whatever version is installed, so a function Sonic Pi added is in
+completions as soon as the app is. `--check` fails when the committed vocabulary and the installed
+app disagree.
 
 Here is a region in the editor, with the vocabulary in play:
 
@@ -184,11 +183,11 @@ ui.pause(1500)
 Field already owns a pattern algebra. `pat("bd [hh hh] sd")` parses Tidal-style mini-notation, keeps
 every transform exact in *rational* cycle space, and has `.every(4) { it.rev() }`, `.degradeBy`,
 euclidean rhythms, polymeters and continuous control signals on top of it (`TidalPatterns.md`).
-Sonic Pi has 66 synths, 42 FX, 206 samples and a scheduler that is sample-accurate. Until
-`SonicPiPatterns.kt` these were strangers: the only way to reach Sonic Pi from Field was to type
-Sonic Pi's own language into a string literal, which the pattern algebra cannot see into.
+Sonic Pi has 66 synths, 42 FX, 206 samples and a scheduler that is sample-accurate. `SonicPiPatterns.kt`
+joins the two, so a pattern can reach Sonic Pi's instruments without anyone typing Sonic Pi's own
+language into a string literal the pattern algebra cannot see into.
 
-There are two ways to join them, they are good at different things, and both are here.
+There are two ways to join them, and they are good at different things.
 
 ### compile — the pattern becomes a program
 
@@ -227,8 +226,7 @@ live_loop :groove do
 end
 ```
 
-Two decisions in that output are worth naming, because both are the difference between a lowering
-that works and one that nearly works.
+Two decisions in that output separate a lowering that works from one that nearly works.
 
 **`use_bpm 60 * cps` makes one Sonic Pi beat exactly one Field cycle.** So every `sleep` in the
 emitted program *is* the cycle fraction the pattern computed — the lattice is the pattern's own, and
@@ -250,7 +248,7 @@ then a note (`c4`, `e2`, `60`), then the drum-machine aliases — `bd`, `sd`, `h
 and forty more. "Real" means *present in `sonicpi-vocabulary.json`*, the file extracted from the
 installed app.
 
-That check is not decoration. Sonic Pi answers `sample :bd_hauz` by doing nothing at all — no error,
+The check exists because Sonic Pi answers `sample :bd_hauz` by doing nothing at all — no error,
 no sound — and a `live_loop` playing three of its four voices is very hard to debug from the sound.
 So a mistyped alias is a failing test rather than a silence, and an atom that matches nothing is
 named in a comment at the top of the emitted program instead of being dropped in silence.
@@ -287,9 +285,9 @@ sonicPiProgram(
 ### FX wrap a layer
 
 `with_fx` is where Sonic Pi is furthest ahead of anything Field has, so a layer can carry a chain of
-it. Names and opts are checked when the layer is built, against the same extracted vocabulary — and
-that check earns its keep here more than anywhere else, because Sonic Pi's answer to
-`with_fx :revreb` is a runtime error on the `live_loop`'s own thread, minutes into a performance.
+it. Names and opts are checked when the layer is built, against the same extracted vocabulary, and
+this is where that check pays for itself: Sonic Pi's answer to `with_fx :revreb` is a runtime error
+on the `live_loop`'s own thread, minutes into a performance.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -320,11 +318,10 @@ live_loop :bass do
 end
 ```
 
-The FX wrap the body rather than the `use_bpm`, and each one adds an `end` inside the `live_loop`.
-That second detail is the only reason this is worth a paragraph: a reader that counted the first
-`end` as the loop's would close the loop early and read a period of zero. `synth.sonic-pi.patterns`
-runs the whole differential oracle again through two nested FX and requires the lattice to be
-identical to the dry layer's.
+The FX wrap the body rather than the `use_bpm`, and each one adds an `end` inside the `live_loop`, so
+a reader that counted the first `end` as the loop's would close the loop early and read a period of
+zero. `synth.sonic-pi.patterns` runs the whole differential oracle again through two nested FX and
+requires the lattice to be identical to the dry layer's.
 
 ### drive — Field's clock sequences, Sonic Pi sounds
 
@@ -343,7 +340,7 @@ The trade is timing. Each event is a UDP message plus Sonic Pi's own scheduling 
 carry a roughly constant offset and a few milliseconds of jitter, where a compiled `live_loop` is
 sample-accurate. A constant offset is not a sequencer problem — every event carries the same one.
 
-### Measured, not assumed
+### How the lowering is checked
 
 `synth.sonic-pi.patterns` is a differential oracle, and it reads the emitted *text* rather than the
 emitter's own event list. That distinction is the whole test: comparing the emitter against the
@@ -378,18 +375,17 @@ audio: recall 1.000, worst 0.000 ms                          (bound asserted at 
 ```
 
 Every one of eleven onsets across eight seconds, triplets included, landed on exactly the sample the
-pattern's rational schedule names. That is not luck: SuperCollider schedules bundles
-sample-accurately, and the lowering emits `Rational(1, 3)` rather than `0.333`, so there is nothing
-left to drift.
+pattern's rational schedule names. SuperCollider schedules bundles sample-accurately and the lowering
+emits `Rational(1, 3)` rather than `0.333`, so there is nothing left to drift.
 
 ![The recorded pattern. Blue is what the pattern asked for, green is what the recording contains.](assets/sonic_pi/pattern_onsets.png)
 
-Getting to that number took two corrections, and both first presented as a pass. A flux peak in a
-256-sample window can only say which *frame* something happened in, so the probe read `0.0 ms` at a
-resolution of 2.7 ms — a measurement coarser than the thing it measures reports zero whatever the
-truth is. And `bd_haus` has a secondary energy rise 129 ms into its decay, which a first-past-the-post
-refractory reported in place of the real attack that followed it. Onsets are now refined to the
-sample and deduplicated afterwards, against the pattern's own smallest gap.
+Two details of the detector are what make that a measurement rather than a rounding. A flux peak in
+a 256-sample window can only say which *frame* something happened in, which at a resolution of
+2.7 ms is coarser than the error it is looking for and would report `0.0 ms` whatever the truth was,
+so onsets are refined to the sample. And `bd_haus` has a secondary energy rise 129 ms into its decay,
+which a first-past-the-post refractory would report in place of the real attack that follows it, so
+onsets are deduplicated afterwards against the pattern's own smallest gap.
 
 ### A document to open
 
@@ -526,9 +522,9 @@ Sonic Pi *publishing* its own channels, also off by default.
 puts @link_api.link_get_visibility       #=> 2
 ```
 
-That the two implementations actually interoperate is measured rather than assumed.
-`sonicpi.link-audio.probe` publishes a 440 Hz sine from Field, has Sonic Pi subscribe and record its
-own mixer output, and measures the recording at 440 Hz against a control frequency:
+`sonicpi.link-audio.probe` is what establishes that the two implementations interoperate. It
+publishes a 440 Hz sine from Field, has Sonic Pi subscribe and record its own mixer output, and
+measures the recording at 440 Hz against a control frequency:
 
 ```diffstatic {data-lang=text}
 :::static
@@ -567,8 +563,8 @@ orphaned audio server behind. Do not trust the "more frequently than every 3s" i
 only after five empty 10s windows, so the real grace period is nearer 90s. Field sends every 1.2s and
 asks the daemon to exit outright on close.
 
-One consequence is worth recognising, because it presents as a mystery: a Sonic Pi that was started
-and then abandoned holds the cue port for that whole grace period, which pushes the *next*
+That grace period has a consequence that presents as a mystery: a Sonic Pi that was started
+and then abandoned holds the cue port for the whole of it, which pushes the *next*
 boot onto a random cue port. If `oscCues` is not 4560, suspect a stranded daemon rather than a
 configuration change.
 
