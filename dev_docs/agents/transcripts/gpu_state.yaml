@@ -21,11 +21,16 @@ description: |
   **Edit `simModule.force`** in the compute box. It is a `stack.auto` slot — a StackSL program that
   Field lowers to GLSL and patches into the running pipeline on a background thread. Change the
   string, hit run: no shader reload, no frame drop, and a program that does not compile leaves the
-  previous one in place. Try `input xyz 0.5 *` for a plain outward push, or turn `1.7` up to `4.0` for
-  a much finer field.
+  previous one in place. Try `input xyz 0.5 *` for a plain outward push, or turn the `7.0` in
+  `input [7.0,7.0,7.0,0.048] *` up to `14.0` for a much finer field.
 
-  It also runs with the arithmetic wrong on purpose being easy to reach: open `fbm3` with `=c` instead
-  of `>c` and the box's `stack.auto` output channel will tell you the definition ends two deep.
+  The force is three offsets into StackSL's builtin `fbm4` — the volumetric noise family's 4D member,
+  with the clock on the `.w` axis. `noise3`, `fbm3`, `warp3`, `curl3`, `fbmd3` and `worley3` are its
+  siblings, and `public/docs/stacksl_cheatsheet.md` has the table.
+
+  It also runs with the arithmetic wrong on purpose being easy to reach: open `vfield` with `=c`
+  instead of `>c` and the box's `stack.auto` output channel will tell you the definition ends two
+  deep.
 operations:
   # 1. the renderer: owns the Window and pumps the loop. Run this one first.
   - create:
@@ -170,30 +175,33 @@ operations:
           // which is a confusing way to learn that a stack.auto slot is a property of the compiled
           // shader while the mesh only carries push constants.
           //
-          // fbm is 2D — it lowers to fbm(vec2) over coord.xy + coord.zw * 0.07 — so feeding it a 3D
-          // position gives a field in (x, y) with z entering at a fourteenth of the weight of x. On a
-          // disc of particles seen face on that reads as a fixed stripy pattern. Summing three slices,
-          // f(x,y) + f(y,z) + f(z,x), is the standard fix and costs three fbms.
+          // StackSL's plain `fbm` is two-dimensional: it lowers to fbm(vec2) over
+          // coord.xy + coord.zw * 0.07, so feeding it a 3D position gives a field in (x, y) with z
+          // entering at a fourteenth of the weight of x, which is a shear and not a third dimension.
+          // fbm4 is the volumetric family's four-dimensional member and reads the whole vec4 as a
+          // coordinate. The shader hands this program vec4(anchor, seconds) — StackSL's own input
+          // convention — so one componentwise multiply sets the spatial scale and the rate the field
+          // evolves at, and time being an axis of the noise rather than an offset into it means the
+          // volume changes in place instead of sliding past.
+          //
+          // Three offsets into one scalar field make a three-channel one. Every fractal word in the
+          // 3D/4D family divides its accumulated amplitude sum out at runtime, so each fbm4 is exactly
+          // 0..1 and `0.5 -` is unbiased; the 2D words sum to 0.96875 and would need a correction.
           //
           // `>c` and not `=c`: a definition must consume its input and leave its result. `=name` copies
           // (a -- a) and `>name` moves (a --), so opening with `=c` leaves the input under the result
           // and every call pushes two values. Try it and read the box's stack.auto channel.
           simModule.force = """
-              : fbm3
+              : vfield
                 >c
-                <c xy  ?pc.knobs x 0.048 * +  fbm x
-                <c yz  ?pc.knobs x 0.036 * +  fbm x
-                <c zx  ?pc.knobs x 0.061 * +  fbm x
-                + + 0.33333 *
-                1.032258 *
+                <c                     fbm4
+                <c [11.3,4.1,7.7,0]  + fbm4
+                <c [2.9,17.7,13.3,0] + fbm4
+                vec3
               ;
 
-              input xyz 7.0 * =q
-              <q                    fbm3
-              <q [11.3,4.1,7.7]  +  fbm3
-              <q [2.9,17.7,13.3] +  fbm3
-              vec3
-              0.5 - 4.6 *
+              input [7.0,7.0,7.0,0.048] * vfield
+              0.5 - 6.0 *
           """
 
           sim.x = N / 64; sim.y = 1; sim.z = 1

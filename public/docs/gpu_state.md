@@ -130,9 +130,10 @@ frame one integrates from.
 
 Run the example with `listOf(stateA)` in that loop and the picture survives it. Every particle spends
 frame one at the origin, the restoring force in this scene pulls each one back to its anchor, and
-after that the two runs are indistinguishable. Replaying the half-seeded variant against a live
-renderer, the probe reported a mean per-particle speed of 0.0433 after twenty-five seconds, which is
-the correctly seeded scene's figure to three places.
+after that the two runs are not merely similar, they are on the same trajectory. Replaying both
+against a live renderer and reading the probe at matched renderer frames, the mean per-particle speed
+agreed to a median of 0.0003 over 109 matched frames; the worst gap, 0.005, was at the earliest frame
+either run reported, still inside the startup transient.
 
 Which makes it worse, not better. A bug whose only symptom is one bad frame at startup is a bug that
 hides, and it hides here only because this scene has a spring in it that forgets its initial
@@ -245,21 +246,16 @@ Kotlin then assigns it **on the module, not the mesh**:
 
 ```diffstatic {data-lang=kotlin}
 simModule.force = """
-    : fbm3
+    : vfield
       >c
-      <c xy  ?pc.knobs x 0.048 * +  fbm x
-      <c yz  ?pc.knobs x 0.036 * +  fbm x
-      <c zx  ?pc.knobs x 0.061 * +  fbm x
-      + + 0.33333 *
-      1.032258 *
+      <c                     fbm4
+      <c [11.3,4.1,7.7,0]  + fbm4
+      <c [2.9,17.7,13.3,0] + fbm4
+      vec3
     ;
 
-    input xyz 7.0 * =q
-    <q                    fbm3
-    <q [11.3,4.1,7.7]  +  fbm3
-    <q [2.9,17.7,13.3] +  fbm3
-    vec3
-    0.5 - 4.6 *
+    input [7.0,7.0,7.0,0.048] * vfield
+    0.5 - 6.0 *
 """
 ```
 
@@ -274,19 +270,25 @@ compile. No shader reload, no dropped frame, and a typo cannot take the field do
 
 Three things in that program repay a second look.
 
-**`fbm` is two-dimensional.** It lowers to `fbm(vec2)` over `coord.xy + coord.zw * 0.07`, so a single
-call fed a 3D position gives you a field in *(x, y)* with *z* entering at a fourteenth of the weight of
-*x*: a shear, not a third dimension. Summing three slices, *f(x,y) + f(y,z) + f(z,x)*, is the classic
-workaround, and it is what the `fbm3` definition in the program above is doing.
+**`fbm4`, and not `fbm`.** StackSL's plain `fbm` is two-dimensional. It lowers to `fbm(vec2)` over
+`coord.xy + coord.zw * 0.07`, so a single call fed a 3D position gives you a field in *(x, y)* with
+*z* entering at a fourteenth of the weight of *x*: a shear, not a third dimension. The workaround
+people wrote before there was an alternative was to sum three sheared slices, *f(x,y) + f(y,z) +
+f(z,x)*, which costs three `fbm`s and is still three 2D fields rather than one 3D one. That sum is
+what this page taught until StackSL grew a genuinely volumetric family — `noise3`, `fbm3`, `fbmd3`,
+`warp3`, `curl3`, `worley3`, `noise4` and `fbm4`, which read `input.xyz`, or the whole `vec4`, as a
+real coordinate. The [StackSL Cheatsheet](stacksl_cheatsheet.md) has the table; in new code, reach
+for those.
 
-StackSL has since grown a genuinely volumetric noise family, and in new code you should reach for it
-instead: `fbm3` is a builtin word taking a 3D coordinate, and `noise3`, `warp3`, `curl3`, `fbmd3` and
-`worley3` come with it. See the [StackSL Cheatsheet](stacksl_cheatsheet.md). The three-slice sum is
-still worth understanding, because the failure it works around is the one the next figure shows.
+`fbm4` rather than the three-dimensional `fbm3` because this field has to move. The shader hands the
+program `vec4(anchor, pc.knobs.x)` — position in `.xyz`, the clock in `.w`, which is StackSL's own
+input convention — so `input [7.0,7.0,7.0,0.048] *` sets the spatial scale and the rate the field
+evolves at in one componentwise multiply. Time as a fourth axis of the noise, rather than an offset
+added into a 3D one, is a volume changing in place instead of sliding past.
 
-The failure does not look like a slightly worse version of the right answer. Here is the identical
-scene with the slot bound to `input xyz 2.0 * fbm x 0.5 - 8.0 *`, one 2D `fbm` and nothing else, and
-no other line changed anywhere:
+The failure the two-dimensional version produces does not look like a slightly worse version of the
+right answer. Here is the identical scene with the slot bound to `input xyz 2.0 * fbm x 0.5 - 8.0 *`,
+one 2D `fbm` and nothing else, and no other line changed anywhere:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/gpu_state/flat-fbm.png" capture="native-window" native-wait-frames="1500" embed=true hidden=true force=true timeout="150" duration="0" name="gpu-state-flat-fbm" alt="the same particle scene with a single 2D fbm force: the disc collapsed into creased sheets along one diagonal and pulled off-centre" macro-file="../../dev_docs/agents/transcripts/docs_capture/gpu_state_flat_fbm.yaml" capture-box="gs_renderer"}
 // dev_docs/agents/transcripts/docs_capture/gpu_state_flat_fbm.yaml — gpu_state.yaml with exactly one line
@@ -298,16 +300,19 @@ moves along the same diagonal, by an amount that varies in only two of the three
 become a noisier disc; it collapses into folded sheets with hard creases where the shear reverses, and
 the whole thing is dragged bodily off-centre. The drag is the second thing.
 
-**`1.032258` is `1 / 0.96875`.** `fbm`'s five octave amplitudes sum to 0.96875 rather than 1, so a raw
-`fbm` runs 0 to 0.96875 and the usual `0.5 -` leaves a bias of about −0.016 per channel. A *constant*
-force integrates into a drift rather than averaging out, and a drift with nothing to stop it is a
-cloud leaving the window. The figure above is what that looks like with the bias left in and the
-restoring force too weak to hold it. The `3` and `4` family divides its accumulated amplitude sum out
-at runtime, so `fbm3` is exactly `0..1` for any octave count and needs no such correction; the
-hand-written constant is only for the 2D words.
+**Nothing in the program corrects a bias.** `fbm`'s five octave amplitudes sum to 0.96875 rather than
+1, so a raw 2D `fbm` runs 0 to 0.96875 and the usual `0.5 -` leaves about −0.016 per channel. A
+*constant* force integrates into a drift rather than averaging out, and a drift with nothing to stop
+it is a cloud leaving the window — the figure above is what that looks like with the bias left in and
+the restoring force too weak to hold it. Every fractal word in the `3` and `4` family accumulates
+its amplitude sum in the shader and divides it out
+(`src/jvmMain/kotlin/afield/stacksl/VolumetricNoise.kt:330#fun fbm4`), so `fbm4` is exactly `0..1`
+for any octave count, lacunarity and gain, and `0.5 -` is unbiased. A `1.032258` — that is
+`1 / 0.96875` — belongs only in front of a 2D `fbm`, and the better reason to prefer the family is
+that the constant stops being something you have to know.
 
 **`>c` and not `=c`.** A definition must consume its input and leave its result. `=name` copies
-(`a -- a`), `>name` moves (`a --`); opening `fbm3` with `=c` leaves the input underneath the result,
+(`a -- a`), `>name` moves (`a --`); opening `vfield` with `=c` leaves the input underneath the result,
 so every call pushes two values and everything downstream takes the wrong operand. The compiler emits
 no error; it prunes the surplus and carries on.
 
@@ -317,11 +322,9 @@ opening the card when there is something to say and closing it again when a late
 clean. Swap `>c` for `=c` in the box above and the channel opens with this, verbatim:
 
 ```diffstatic {data-lang=text}
-problem: definition `fbm3` ends with 2 values on the stack, not 1 — it must consume its input
+problem: definition `vfield` ends with 2 values on the stack, not 1 — it must consume its input
          and leave its result. `=mark` copies (`a -- a`), `>mark` moves (`a --`); everything
          after an unbalanced definition takes the wrong operand.
-note:    15 computed value(s) pruned as unused — normal for a mark that is never read,
-         suspicious otherwise
 ```
 
 Reporting only: the slot still binds, because a program is usually mid-edit and refusing would be a
@@ -329,8 +332,9 @@ worse tool than saying so. You can also ask before you bind: `stackAutoShaderRep
 (`src/jvmMain/kotlin/afield/stdlib/shaders.kt:545#fun stackAutoShaderReport`) is pure, needs no device,
 and returns the same object.
 
-One more, and it is easy to misdiagnose. `?pc.knobs x` reads a push member into the program, and the
-external read is typed as a `vec4`
+One more, and it is easy to misdiagnose. The program above never reads the push block, because the
+clock reaches it on `input.w`; the moment you want anything else from it — the force gain, a mouse
+position — the syntax is `?pc.knobs y`, and that external read is typed as a `vec4`
 (`src/jvmMain/kotlin/afield/stacksl/StackSL.kt:2735#private fun parseExternalRead`). Pointing it at a
 `float` member is a swizzle error out of glslang rather than a StackSL diagnostic, so a spare `vec4`
 of knobs (clock in `.x`, gain in `.y`) is the shape that works, and it is also the shape that lets
@@ -356,11 +360,13 @@ back per snapshot is a few thousand numbers rather than a few hundred thousand, 
 the whole population rather than the first few thousand invocations. [Field
 Probes](field_probes.md) is the full account, including the GPU-only sibling `fieldStats`.
 
-For the scene above, that card reports 40,000 calls, all finite, none NaN, mean per-particle speed
-0.0433 over a reservoir of 4,096, exact maximum 0.1357. Those are one run's numbers, not a
-derivation. What you do with them is turn the force gain up and watch the mean move, or watch the
-maximum *not* move because a clamp is firing, while you are still typing. A readback would tell you
-the same thing and you would never leave it switched on.
+For the scene above, that card reports 40,000 calls, all finite, none NaN, over a reservoir of 4,096.
+Those four never move. The mean per-particle speed and the exact maximum do, because the noise field
+does: across one run's 222 snapshots they stayed inside 0.029 to 0.058 and 0.091 to 0.187, reading
+about 0.052 and 0.16 most of the time. Those are one run's numbers, not a derivation. What you do
+with them is turn the force gain up and watch the mean move further than that, or watch the maximum
+*not* move because a clamp is firing, while you are still typing. A readback would tell you the same
+thing and you would never leave it switched on.
 
 ---
 
@@ -378,12 +384,17 @@ Three boxes appear and a window opens. The knobs worth turning, in the order the
   runs and the module rebinds on a background thread without dropping a frame.
   Bind `input xyz 0.9 *` for a plain outward push and the disc inflates and stops; the shipped
   program instead holds it on a noise field.
-- **The scale inside that program.** Change `input xyz 7.0 *` to `3.0` or `14.0` — the same field
-  coarser or finer. This is the knob that decides whether the picture reads as blobs or as filaments.
-- **Break it on purpose.** Open `fbm3` with `=c` instead of `>c` and the box's `stack.auto` channel
-  opens with `problem: definition \`fbm3\` ends with 2 values on the stack, not 1`. Or bind
+- **The scale inside that program.** Change the `7.0`s in `input [7.0,7.0,7.0,0.048] *` to `3.0` or
+  `14.0` — the same field coarser or finer. This is the knob that decides whether the picture reads as
+  blobs or as filaments, and the fourth component is the rate it evolves at.
+- **Break it on purpose.** Open `vfield` with `=c` instead of `>c` and the box's `stack.auto` channel
+  opens with `problem: definition \`vfield\` ends with 2 values on the stack, not 1`. Or bind
   `input xyz 2.0 * fbm x 0.5 - 8.0 *` — one 2D `fbm` over a 3D position — and watch the disc collapse
   into the stripes the figure above shows.
+- **Name a definition after a builtin and it refuses.** `: fbm3 … ;` does not shadow `fbm3`, it is an
+  error: `Definition 'fbm3' shadows a built-in StackSL word`. That is how the three-slice version of
+  this program stopped compiling the day the volumetric family landed, so if you are retyping that
+  workaround to see it, give the word a name of your own.
 - **`sim.knobs`**, whose `.x` is the clock the noise walks through and `.y` the force gain. Both are
   lambdas, so both are live.
 
