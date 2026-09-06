@@ -1,10 +1,10 @@
 # Forth examples
 
-Field's Forth support is intentionally small: one data stack, a mutable dictionary, a few control-flow words, vector helpers, a reflection bridge into JVM objects, and enough `FLine` vocabulary to sketch geometry quickly.
+Field's Forth is small: one data stack, a return stack, a mutable dictionary, a few control-flow words, vector helpers, a reflection bridge into JVM objects, and enough `FLine` vocabulary to sketch geometry quickly.
 
 The original examples live in `src/jvmMain/kotlin/afield/forth/ForthInterpreter.kt`; the ones here expand on a few of them.
 
-In a live Field document, Forth boxes usually sit under a parent box whose `isForthRoot` property is `true`. The examples below are written as raw Forth, and every one of them was run through the same `ForthInterpreter` your boxes use.
+In a live Field document, Forth boxes sit under a parent box that is a language root: run **Set Main Language: Forth** on the parent and its children become Forth boxes. The older `isForthRoot` property is still honoured for documents that carry it, but new ones should use the action. The examples below are written as raw Forth, and every one of them was run through the same `ForthInterpreter` your boxes use.
 
 ## A tiny stack language
 
@@ -33,8 +33,6 @@ s"hypot^2 = " 3 4 hypot2 str str+ println
 ```
 
 `: sqr ... ;` defines a new word. `dup` copies the top stack item, `*` multiplies the top two numbers, and `swap` flips the top pair so `hypot2` can reuse `sqr` on both inputs.
-
-There is very little ceremony here. The language is meant to stay close to the movement of data.
 
 ## Variables, strings, and output channels
 
@@ -145,7 +143,7 @@ zig
 
 ## Reflection can build geometry too
 
-The `fline` helper is convenient. The reflection bridge is what makes the language porous: resolve a class by name, construct it, and call methods without leaving Forth.
+The reflection bridge resolves a class by name, constructs it, and calls methods without leaving Forth, which is how Forth reaches anything the `fline-*` words do not already cover.
 
 <!--
 FIELD_TEST
@@ -177,7 +175,7 @@ f @ @? properties s"color" 0.95 0.95 1.0 1.0 vec4 2 @?! put
 f @
 ```
 
-`@?` is the heuristic form: it tries field access, zero-argument methods, and other obvious cases. `@?!` is the explicit-arity form: you tell it how many arguments to consume before the next method name. That is the escape hatch when overloads get ambiguous.
+`@?` is the heuristic form. It looks for a public field of that name first, then for methods of that name sorted by parameter count, preferring a zero-argument one and otherwise taking the first whose arity fits what is currently on the stack — which is why it can pick differently depending on how deep the stack happens to be. A field holding `null` pushes nothing at all, so the stack silently comes back one shorter than you expected; and on a `Class`, the member names `new` and `newInstance` mean "construct". `@?!` is the explicit-arity form, taking the object first and the argument count off the top of the stack, and it is the escape hatch when `@?` picks the wrong overload.
 
 For styling, numeric and vector values are a good fit for reflected `properties.put(...)`. Boolean style toggles are better expressed with the dedicated `fline-*` words.
 
@@ -189,7 +187,7 @@ s"Vec3" class-for @? getName println
 s"Fli" class-matches println
 ```
 
-That is how host APIs stay discoverable enough to live-code against.
+`class-for` tries the name as a fully-qualified one first and only then looks it up as a simple name. If a simple name matches more than one class it refuses rather than guessing, and the error lists up to eight candidates for you to pick from. `class-matches` takes a *prefix* instead and returns up to 64 fully-qualified names, which is how you find out what a class is actually called before trying to resolve it; `class-help` prints the same list, capped at 24.
 
 ## Dictionary tools, recursion, and temporary stack storage
 
@@ -311,7 +309,7 @@ forth.defineWord("append-vec4", "( buf x y z w -- buf )") {
 }
 ```
 
-Once the host has pushed a real buffer object onto the Forth stack, the call site stays tiny:
+With a real buffer object on the Forth stack, the call site stays tiny:
 
 ```diffstatic {data-lang=forth}
 0.0 1.0 0.0 1.0 append-vec4
@@ -319,7 +317,7 @@ Once the host has pushed a real buffer object onto the Forth stack, the call sit
 0.0 0.0 1.0 1.0 append-vec4
 ```
 
-That is the useful split: Forth orchestrates, the host owns the resource.
+The host keeps hold of the resource; Forth only names it.
 
 ## Launch mode and `frame`
 
@@ -355,8 +353,8 @@ spinner
 
 `frame` yields immediately and the word starts again on the next tick, so persistent state belongs in variables rather than transient stack structure.
 
-## What to pay attention to
+## When a definition misbehaves
 
-Forth in Field works best as a sketchpad for live objects. The stack words are small. The geometry words are small. The bridge into JVM objects is small. The composition of those pieces is where it gets interesting.
+`words` shows the dictionary and `see name` prints a definition, which together answer most of "is the word I think I redefined actually the one running". A Forth error already carries the token that failed, a snapshot of the data stack and the path of word calls that led there, so the usual next step is to read the error rather than to add prints.
 
-That makes it a good fit for procedural drawing, little control systems, and situations where you want to stay very close to the data flow instead of hiding it behind layers of structure.
+Naming a word has one trap in it. Builtins and user definitions share a single flat dictionary, and `:` overwrites without complaint, so `: dup ... ;` replaces the real `dup` for the rest of the run. `forget` refuses to remove anything host-defined — but it will happily remove your replacement, and that leaves no entry at all rather than restoring the builtin underneath.
