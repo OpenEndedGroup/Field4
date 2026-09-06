@@ -1,20 +1,20 @@
 # Imaging and computer vision
 
 `afield.stdlib` carries a CPU imaging / computer-vision family: one value type, `Img`, and the
-operations that turn a raster into structure — convolution, gradients, edges, corners, lines,
+operations that turn a raster into structure: convolution, gradients, edges, corners, lines,
 blobs, pyramids, warps and motion. It is the raster counterpart to the time-domain
 [timeseries toolkit](timeseries_examples.md) and the frequency-domain
 [spectral family](spectral_examples.md), and it is built the same way: pure Kotlin, no external
 dependency, works headless in a box.
 
 Every detector here reduces pixels to *geometry*, and geometry in Field is an
-[`FLine`](fline_examples.md) — so a Canny result, a set of corners, a Hough line or an optical-flow
+[`FLine`](fline_examples.md), so a Canny result, a set of corners, a Hough line or an optical-flow
 field lands in the same drawing, animation and export machinery as anything you drew by hand.
 Scalar responses colour-map through the same [`Colormaps`](rectsl_examples.md) tables RectSL uses.
 And `Img` implements `ToHTML`, so evaluating one in a box shows the picture, not `Img@3f1a2b`.
 
-Everything here is arithmetic you could have written out by hand. For the two questions you cannot —
-how far away is this, and what is it a picture *of* — see [depth and CLIP](onnx.md), which runs
+Everything here is arithmetic you could have written out by hand. For the two questions you cannot
+(how far away is this, and what is it a picture *of*), see [depth and CLIP](onnx.md), which runs
 neural models over the same RGBA bytes an `Img` converts to in a dozen lines.
 
 ## The value type
@@ -23,7 +23,7 @@ neural models over the same RGBA bytes an `Img` converts to in a dozen lines.
 Img(width, height, channels, data)
 ```
 
-`width * height * channels` floats, interleaved, row-major, origin **top-left** — the same layout
+`width * height * channels` floats, interleaved, row-major, origin **top-left**, the same layout
 `BufferedImage`, PNG and a GPU upload all want. Channels are 1 (scalar / gray / mask / gradient /
 distance), 3 (RGB) or 4 (RGBA); nothing else.
 
@@ -149,7 +149,7 @@ more about speed than about the exact kernel shape.
 
 ## Gradients, edges, and the FLines they become
 
-`sobel()` returns a `Gradient` — `dx`, `dy`, and derived `magnitude()`, `orientation()` and a
+`sobel()` returns a `Gradient`: `dx`, `dy`, and derived `magnitude()`, `orientation()` and a
 hue-encoded `toColorImg()`. `canny()` runs the four classic stages (smooth, gradient, non-maximum
 suppression, hysteresis) and returns a thin binary mask. `toContourFLines(...)` traces that mask and
 hands back drawable `FLine`s, simplified with Ramer–Douglas–Peucker so a staircase pixel boundary
@@ -205,7 +205,7 @@ non-maximum-suppressed magnitudes as the strong seed threshold and Canny's own r
 the weak one.
 
 The figure below is a real repo PNG run through the whole pipeline. The fixed pair finds 252 edge
-pixels — barely the car at all. `cannyAuto()` finds 1952, and traces the whole silhouette; the last
+pixels, barely the car at all. `cannyAuto()` finds 1952, and traces the whole silhouette; the last
 panel is those edges as 57 `FLine`s drawn back over the source.
 
 ![](assets/imaging_gallery/00-real-image.png)
@@ -239,7 +239,7 @@ Every edge pixel votes for every line through it; a real line becomes a bright p
 accumulator space, with no grouping step in between.
 
 The figure has three planted lines and a decoy ring. All three lines come back at their exact polar
-coordinates — `(rho=1500, θ=0.00)`, `(rho=400, θ=1.57)`, `(rho=283, θ=2.36)` — and the ring is not
+coordinates: `(rho=1500, θ=0.00)`, `(rho=400, θ=1.57)`, `(rho=283, θ=2.36)`. The ring is not
 fitted.
 
 ![](assets/imaging_gallery/05-hough.png)
@@ -299,15 +299,15 @@ Three discs in, three components out, with areas of 2419, 1226 and 584 against t
 
 For sub-pixel-smooth contours rather than a pixel-staircase boundary, `isoContourFLines(iso)` adapts
 the image to the `ScalarField2D` that Field's existing marching-squares extractor
-([contours](fline_examples.md)) already marches — so a distance transform or a blurred response
+([contours](fline_examples.md)) already marches, so a distance transform or a blurred response
 becomes a smooth curve with no glue code.
 
 ## Multiscale
 
 `gaussianPyramid(levels)` halves each octave (blurring first, so it does not alias);
 `laplacianPyramid(levels)` splits the image into band-pass detail plus a coarse residual, and
-`reconstruct()` inverts it. The round-trip is exact to within float precision — **1.49e-08**
-maximum absolute error on the figure below — which is what makes the decomposition usable for
+`reconstruct()` inverts it. The round-trip is exact to within float precision (**1.49e-08**
+maximum absolute error on the figure below), which is what makes the decomposition usable for
 multiband blending and detail transfer rather than just for looking at.
 
 ![](assets/imaging_gallery/07-pyramids.png)
@@ -333,8 +333,8 @@ The rectified checkerboard matches the original to a mean absolute error of 0.00
 
 ## Motion
 
-`opticalFlowLK(a, b, points)` is pyramidal Lucas–Kanade. Seed it with `goodFeaturesToTrack(...)` —
-which selects exactly the points where the 2×2 tracking system is well conditioned — and it returns
+`opticalFlowLK(a, b, points)` is pyramidal Lucas–Kanade. Seed it with `goodFeaturesToTrack(...)`,
+which selects exactly the points where the 2×2 tracking system is well conditioned, and it returns
 a `FlowField` of `FlowVector`s, each of which reports whether it converged. A track is marked
 `ok = false` when the system is ill-conditioned (a smooth region, or a straight edge) or the point
 leaves the frame.
@@ -397,7 +397,7 @@ gets the same answer every time.
 
 `opticalFlowBlockMatch(...)` is the brute-force alternative for displacements large enough to break
 Lucas–Kanade's linearisation, and `frameDifference(...)` / `updateBackground(...)` are the crude,
-reliable motion cues — pair them with `open(...)` to drop sensor noise and `connectedComponents(...)`
+reliable motion cues; pair them with `open(...)` to drop sensor noise and `connectedComponents(...)`
 to count what moved.
 
 `FlowField.toFLines(scale, ...)` draws the whole field as arrows, shaft plus arrowhead, so direction
@@ -429,7 +429,7 @@ Everything on this page is real output, and there are three routes to reproducin
 | the whole family, live | replay `dev_docs/agents/transcripts/imaging_cv_examples.yaml` |
 
 The gallery is a FIELD_TEST: it builds every figure from real `Img` pipelines and **fails** if the
-invariants break — if Canny stops being thinner than a raw threshold, if the four corner marks drift
+invariants break: if Canny stops being thinner than a raw threshold, if the four corner marks drift
 more than four pixels off the four corners, if Hough stops recovering the planted lines, if the
 Laplacian pyramid stops round-tripping, or if a flow arrow disagrees with the planted motion by more
 than three pixels.
@@ -460,16 +460,16 @@ Three of the operations get more from doing less work than from doing it wider:
 
 - **`pyrDown`** filters only the rows and columns that survive the 2x decimation, rather than
   blurring at full resolution and discarding three quarters of the answer. The horizontal half is
-  the awkward one — output `x` reads source pixel `2x + s`, so the reads want to be stride-2 — but
+  the awkward one (output `x` reads source pixel `2x + s`, so the reads want to be stride-2), but
   the parity of `2x + s` is fixed by the parity of `s`, so splitting each row into its even and odd
   pixels once makes every tap unit-stride again. That is a polyphase decomposition, and it needs no
   gather, which matters on a machine where a gather is emulated.
 - **`boxBlur`** is `O(1)` per pixel, so its whole cost is constant factor, and a vertical pass
-  written as `for (x) for (y)` spends that walking one column at a time down an 8 MB array — a cache
+  written as `for (x) for (y)` spends that walking one column at a time down an 8 MB array, a cache
   miss per sample. Turned inside out, the accumulator is a whole *row* of partial sums, one lane per
   column, advanced together.
 - **`bilateral`**'s range weight depends on the sample, so the literal definition calls `Math.exp`
-  once per tap per pixel — 169 times per pixel at these settings. It reads a 4096-entry table
+  once per tap per pixel, 169 times per pixel at these settings. It reads a 4096-entry table
   indexed by squared intensity distance instead, with linear interpolation.
 
 One thing to know if you ever write a kernel here: a register accumulator is a chain of *dependent*
@@ -477,7 +477,7 @@ multiply-adds, and on Apple silicon an FMA has about four cycles of latency whil
 per cycle, so a single-accumulator chain runs at latency rather than throughput. Keeping four output
 chunks in flight is what puts the dense 11x11 convolution slightly ahead of OpenCV rather than 2.3x
 behind it. The same change makes the *separable* passes slower, and `imaging_filters.kt` carries the
-measurements and the reason — the read-modify-write it saves never leaves L1 there, and the simple
+measurements and the reason: the read-modify-write it saves never leaves L1 there, and the simple
 one-tap loops it replaces are code the JIT already handles perfectly.
 
 <!-- BEGIN imaging-bench table — generated by tools/imaging_bench_doc.py, do not edit -->
@@ -501,7 +501,7 @@ one-tap loops it replaces are code the JIT already handles perfectly.
 
 "Before" is the original scalar implementation, still in the source as
 `convolveSeparableReference`, so the claim can be re-measured at any time. Only the
-separable-convolution family has one — a dash means that operation has no preserved scalar original
+separable-convolution family has one; a dash means that operation has no preserved scalar original
 to compare against, not that the speedup is unknown. Where there is a before, the gain is 12.9x
 (Gaussian gray), 13.4x (Gaussian RGB) and 11.8x (Sobel): near-identical, which is what you expect
 when the win is "stopped calling a bounds-checked accessor once per multiply-add" rather than
@@ -510,7 +510,7 @@ anything kernel-specific.
 OpenCV is pinned to one thread, because this code is single-threaded; letting OpenCV use every core
 does not help at this size either. Bold means we are faster.
 
-Three rows — Gaussian blur, box blur and the Laplacian — are
+Three rows (Gaussian blur, box blur and the Laplacian) are
 the same operation with the same parameters on both sides, and the benchmark *fails the run* if the
 outputs stop agreeing (Gaussian to 2.4e-7, box blur to 7.8e-6, Laplacian exactly). The rest are
 matched in work but not in definition, and the difference is real: our `luma` is BT.709 where
@@ -528,12 +528,12 @@ you should know which before choosing:
   sorting network.
 - **`resize` to half at 5.0x** has data-dependent inner loops that do not vectorize.
 - **`pyrDown` at 4.1x** is doing more arithmetic, not doing it worse: ours applies
-  `gaussianKernel1D(sigma)` — 9 taps at the default — where OpenCV's `pyrDown` is a fixed 5-tap
+  `gaussianKernel1D(sigma)`, 9 taps at the default, where OpenCV's `pyrDown` is a fixed 5-tap
   `[1,4,6,4,1]/16`. That is close to twice the work, in exchange for a better filter and a sigma
   that is yours to choose.
 
 These were measured on a 10-core Apple Silicon laptop, with a load average of 5-6 and the benchmark
-JVM the only busy process — quiet for a laptop, not a dedicated benchmark box. A wide interval on a
+JVM the only busy process: quiet for a laptop, not a dedicated benchmark box. A wide interval on a
 short benchmark means scheduler noise rather than a real difference, so treat any two numbers whose
 intervals overlap as a tie. `bilateral` is the one arm whose interval is wide (13% relative), so
 read it as "about 1.2x". The `opencv` columns double as a control across runs, since that code does
