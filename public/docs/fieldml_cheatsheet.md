@@ -1,6 +1,6 @@
 # FieldML cheatsheet
 
-FieldML is Field's small ML-flavoured expression language: statically typed, strict, and expression-oriented, with a prelude aimed at generating geometry. This page is the lookup surface — every name the language ships with, with its type. [FieldML Examples](fieldml_examples.md) is the guided tour.
+FieldML is Field's small ML-flavoured expression language: statically typed, strict, and expression-oriented, with a prelude aimed at generating geometry. This page is the lookup surface: every name the language ships with, with its type. [FieldML Examples](fieldml_examples.md) is the guided tour.
 
 Types are written the way they read: `->` is right associative, so `Float -> Float -> Vec2` is a function of two arguments. A type in argument position keeps its parentheses, as in `('a -> 'b) -> ['a] -> ['b]`.
 
@@ -50,7 +50,7 @@ Listed loosest to tightest. Everything binds looser than function application, s
 | `-` (prefix) | negate | numbers and vectors |
 | `|>` | pipe the left value into the right function | |
 
-## Conventions worth knowing
+## Conventions
 
 - **Single-subject helpers take the subject last**, so they read at the end of a pipe: `7 |> mod 4` is 3, `3.0 |> pow 2.0` is 9, `[1] |> append [2]` is `[1, 2]`.
 - **`Int` and `Float` never mix silently.** `10 + 1.0` is a type error; use `toFloat`.
@@ -132,7 +132,7 @@ range 0 6
 
 ## Vectors
 
-`Vec2`, `Vec3` and `Vec4` add and subtract component by component, multiply either component-wise or by a `Float`, divide by a `Float`, and read out through `.x`, `.y`, `.z` and `.w`. In `dot`, `vlength`, `distance`, `normalize` and `mix` the variable `'a` stands for any one of the three widths — both sides have to agree, and mixing widths is a type error.
+`Vec2`, `Vec3` and `Vec4` add and subtract component by component, multiply either component-wise or by a `Float`, divide by a `Float`, and read out through `.x`, `.y`, `.z` and `.w`. In `dot`, `vlength`, `distance`, `normalize` and `mix` the variable `'a` stands for any one of the three widths; both sides have to agree, and mixing widths is a type error.
 
 | Name | Type |
 | --- | --- |
@@ -209,7 +209,7 @@ linspace 0.0 tau 24
 
 ## JVM interop
 
-`hostTap` is the one to reach for when a Kotlin function is an effect in the middle of a pipe: it looks the function up in Field's source index, fills in defaults, and puts the piped value in the data argument. `hostCall` is the one for everything else. See [The JVM bridge](fieldml_host_bridge.md) for the whole story and [FieldML Examples](fieldml_examples.md#jvm-interop) for worked versions.
+Use `hostTap` when a Kotlin function is an effect in the middle of a pipe: it looks the function up in Field's source index, fills in defaults, and puts the piped value in the data argument. `hostCall` covers everything else. See [The JVM bridge](fieldml_host_bridge.md) for the mechanism and [FieldML Examples](fieldml_examples.md#jvm-interop) for worked versions.
 
 | Name | Type |
 | --- | --- |
@@ -236,15 +236,15 @@ linspace 0.0 tau 24
 | `hostAsString` | `'a -> String` |
 | `hostAsList` | `'a -> [Host]` |
 
-`hostCall name arguments target` takes as many arguments as the method does: a tuple, or a list written out in place, is spread; a **record** is spread *by name*, and every Kotlin parameter you leave out of it gets the default the source declared; anything else is a single argument. `hostNew` is the same for constructors. The `hostCall0`/`hostCall1`/`hostCall2` forms remain, and `hostCall1` is the way to pass one list — or one record — *as* one argument rather than have it spread. A FieldML function passed where the JVM wants a functional interface — a Kotlin lambda parameter, `Runnable`, `Comparator`, or a `suspend` one such as `eachFrame`'s — is converted on the way in.
+`hostCall name arguments target` takes as many arguments as the method does: a tuple, or a list written out in place, is spread; a **record** is spread *by name*, and every Kotlin parameter you leave out of it gets the default the source declared; anything else is a single argument. `hostNew` is the same for constructors. `hostCall0`, `hostCall1` and `hostCall2` fix the argument count instead; `hostCall1` never spreads, so it is how you pass one list, or one record, *as* a single argument. A FieldML function passed where the JVM wants a functional interface (a Kotlin lambda parameter, `Runnable`, `Comparator`, or a `suspend` one such as `eachFrame`'s) is converted on the way in.
 
-The types in this table are the *static* ones. In a real call the type checker does better than `Host`: it resolves the member by reflection, so `thisBox |> hostGet "width"` is an `Int`, a misspelled member name is a type error rather than a crash, and a result whose class is known keeps that class as its type. `Host` is what is left when reflection genuinely cannot say — a generic erased to `Object`, a nullable Kotlin return, an array — and it is the one type that unifies with everything, which is what the `hostAs…` family is for.
+The types in this table are the *static* ones. In a real call the type checker does better than `Host`: it resolves the member by reflection, so `thisBox |> hostGet "width"` is an `Int`, a misspelled member name is a type error rather than a crash, and a result whose class is known keeps that class as its type. `Host` is what is left when reflection cannot say: a generic erased to `Object`, a nullable Kotlin return, an array. It unifies with every type, which is what the `hostAs…` family is for.
 
 ## Source macros
 
-Field's box-code macros — `moduleHere`, `prop`, `println` and the rest — are rewrites over Kotlin *source*, applied before the Kotlin compiler runs. FieldML has no Kotlin compiler, so it reaches them a different way: `hostMacroExpand` runs a macro's **expansion** against this box (which is where most of a macro's work happens — shaders compiled, properties seeded, actions installed) and hands the rewrite back; `hostMacro` does that and then **calls** the function the macro rewrote the call site to. See [The JVM bridge](fieldml_host_bridge.md#source-macros) for which macros this reaches and which it cannot.
+Field's box-code macros (`moduleHere`, `prop`, `println` and the rest) are rewrites over Kotlin *source*, applied before the Kotlin compiler runs. FieldML has no Kotlin compiler, so it reaches them a different way: `hostMacroExpand` runs a macro's **expansion** against this box (which is where most of a macro's work happens: shaders compiled, properties seeded, actions installed) and hands the rewrite back; `hostMacro` does that and then **calls** the function the macro rewrote the call site to. See [The JVM bridge](fieldml_host_bridge.md#source-macros) for which macros this reaches and which it cannot.
 
-The `prop` family is native rather than expanded: `prop<T>(name)` generates a delegate *declaration*, so there is no call to make — but the delegate is a named, inheritable slot on a box, and FieldML reads and writes the same one. A Kotlin box's `speed` and a FieldML box's `prop "speed"` are one property.
+The `prop` family is native rather than expanded: `prop<T>(name)` generates a delegate *declaration*, so there is no call to make, but the delegate is a named, inheritable slot on a box, and FieldML reads and writes the same one. A Kotlin box's `speed` and a FieldML box's `prop "speed"` are one property.
 
 | Name | Type |
 | --- | --- |
@@ -259,4 +259,4 @@ The `prop` family is native rather than expanded: `prop<T>(name)` generates a de
 
 A macro's arguments are **source text**, because that is what a macro consumes: `hostMacroExpand "prop" ("<Double>", "(speed)")` is the `prop<Double>(speed)` call site, one string per piece. `hostMacro` takes those *and* the argument values for the rewritten call, since only the first can be text in an interpreter: `hostMacro "println" "(x)" (7, "hello")` expands `println`, then calls `Box._printlnHere` with line 7 and one payload.
 
-Reading a `prop` that nothing up the graph has is an error — nearly always a box that has not run yet rather than a typo. `propOr` is the form that takes a fallback instead. Writing with `setProp` is always **local**: it shadows an ancestor's value for this box and everything below it rather than changing theirs. `setRootProp` puts the slot on the document root, so every box shares the one value. `once` computes on the first read and stores the result, so the second read does not recompute.
+Reading a `prop` that nothing up the graph has is an error, nearly always a box that has not run yet rather than a typo. `propOr` is the form that takes a fallback instead. Writing with `setProp` is always **local**: it shadows an ancestor's value for this box and everything below it rather than changing theirs. `setRootProp` puts the slot on the document root, so every box shares the one value. `once` computes on the first read and stores the result, so the second read does not recompute.

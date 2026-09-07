@@ -1,24 +1,21 @@
 # Patterns: writing rhythm as a function of time
 
-`pat("bd sd hh hh")` is a **pattern** — not a list of notes, but a function you can ask
-"what is sounding between *here* and *there*?". Ask it about one cycle and you get four
-events. Ask about the second half and you get two. Ask about a hundred cycles and it will
-tell you, because nothing was ever stored; the events are computed from the query.
+`pat("bd sd hh hh")` is a **pattern**: a function you can ask "what is sounding between
+*here* and *there*?". Ask it about one cycle and you get four events. Ask about the second
+half and you get two. Ask about a hundred cycles and it will tell you, because nothing was
+ever stored; the events are computed from the query.
 
 That one decision is what makes the rest composable. A pattern can be reversed, slowed,
 sliced, stacked against another, or handed a continuous curve to read its volume from, and
 none of those operations has to know how long the music is or where it will be sampled.
 The design comes from [TidalCycles](https://tidalcycles.org), and where Field's operators
-share a name with Tidal's they mean the same thing — the places they do not are called out
+share a name with Tidal's they mean the same thing; the places they do not are called out
 below.
 
-Everything on this page is produced by running the real code at docs-build time. The piano
-rolls are drawn from live `PatPattern.events(...)` queries, and the audio is rendered
-offline — no hand-drawn figures, no pre-baked recordings.
-
-All three audio clips below are the **stand-in synth** (`patVoice`): a sine for `bd`,
+The piano rolls below are drawn from live `PatPattern.events(...)` queries and the audio is
+rendered offline. All three clips use the **stand-in synth** (`patVoice`): a sine for `bd`,
 filtered noise for `sd` and `hh`. It needs no assets, so these figures regenerate on a clean
-checkout — but it is not a drum machine and does not sound like one. Field can render the
+checkout, and it does not sound like a drum machine. Field can render the
 same patterns through the real Tidal sample library instead;
 [Sound: the Pattern → Audio Path](sound.md) puts the two voices side by side and says which
 clip in these docs is which.
@@ -84,7 +81,7 @@ displayOpen("main")
 
 ![Piano roll of the mini-notation step markers, each drawn above its bracketed equivalent](assets/pattern_language/mini-notation.png)
 
-Read the two polymeter lanes across the bar line: `{bd hh 808:4}%8` *phases* — cycle 1 is
+Read the two polymeter lanes across the bar line: `{bd hh 808:4}%8` *phases*, and cycle 1 is
 offset from cycle 0. That is the whole reason to write a polymeter instead of a fast
 sequence.
 
@@ -92,7 +89,7 @@ sequence.
 
 ## Continuous signals
 
-`sine()`, `saw()`, `tri()`, `square()`, `perlin()` and `rand()` are patterns too — they
+`sine()`, `saw()`, `tri()`, `square()`, `perlin()` and `rand()` are patterns too. They
 just answer *every* query with exactly one event, sampled at the query's exact midpoint.
 They have no rhythm of their own, so you either give them one with `segment(n)` or hand
 them to something that already has one.
@@ -130,7 +127,7 @@ displayOpen("main")
 
 ![Piano roll comparing a hand-typed cutoff staircase, appBoth fragmentation, and a continuous parameter read at three note densities](assets/pattern_language/continuous-parameter.png)
 
-Hear it — sixteen hats a cycle, two cycles flat and then two with the gain following a
+Hear it: sixteen hats a cycle, two cycles flat and then two with the gain following a
 sine. Same notes, same count, one parameter now a function of time:
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/gain-lfo.wav" audio-spec="gain-lfo-before-after" audio-renderer="afield.four.synth.PatSoundDocs" embed=true hidden=true name="pat-doc-gain-audio"}
@@ -142,7 +139,7 @@ sine. Same notes, same count, one parameter now a function of time:
 ## Whose rhythm survives
 
 When two patterns meet, the rhythm has to come from somewhere. There are exactly three
-answers, and Field spells them the way Tidal does — the bar marks the side the structure
+answers, and Field spells them the way Tidal does; the bar marks the side the structure
 comes from.
 
 | operator | structure | `pat("0 1")` against `pat("10 20 30")` |
@@ -191,7 +188,7 @@ time, so `pat("a b c d").slow(2)` really does take two cycles: `a b` in the firs
 the second.
 
 The consequence is that an event can straddle a bar line. `pat("a b c").slow(2)` is three
-steps over two cycles, so `b` runs from `2/3` to `4/3` — through it. A player asks for one
+steps over two cycles, so `b` runs from `2/3` to `4/3`, straight through it. A player asks for one
 cycle at a time, so it sees `b` twice, clipped both times, and would strike it twice if the
 events did not know better.
 
@@ -218,7 +215,7 @@ println(lines)
 display("<pre>" + lines + "</pre>")
 ```
 
-`hasOnset` is the difference, and `eventSequence` — which every scheduling path uses —
+`hasOnset` is the difference, and `eventSequence`, which every scheduling path uses,
 yields only the fragment that has one, widened back to the note's real length. A signal
 event has no `whole` at all (`null`), because a continuous curve has no note to begin;
 `segment(n)` is what gives it one.
@@ -247,15 +244,14 @@ Eight hats a cycle: two cycles dead straight, then two swung.
 ```
 
 `chunk(n, f)` applies a transform to a different `1/n` of the bar each cycle, walking
-through all of them before it repeats. `inside(n, f)` is its cycle-invariant cousin —
-it slows down, transforms, and speeds back up, doing the same thing every cycle. They are
-easy to confuse, and were in fact once the same function here.
+through all of them before it repeats. `inside(n, f)` is its cycle-invariant cousin:
+it slows down, transforms, and speeds back up, doing the same thing every cycle.
 
 ---
 
 ## Harmony and voice leading
 
-Chords are written `root'name` — `c'maj7`, `a'min7` — and everything that applies to a
+Chords are written `root'name` (`c'maj7`, `a'min7`), and everything that applies to a
 pattern applies to a pattern of chords.
 
 `voiceLead()` chooses each chord's inversion and octave to minimise how far the voices have
@@ -284,7 +280,7 @@ movement becomes 9, and the pitch-class sets are identical.
 ## A rhythm as a curve — and as a graph you can fit
 
 A pattern schedules *events*. Sometimes what you want from those events is not a note but a
-**continuous curve** — an envelope to drive a parameter, a gesture to animate something with.
+**continuous curve**: an envelope to drive a parameter, a gesture to animate something with.
 `patFn` does that: each event becomes a little kernel, and the value at any time is the
 blend of the kernels around it. The kernel is chosen per atom, and its numbers are written
 in the atom itself:
@@ -298,12 +294,11 @@ in the atom itself:
 | `env:(value,attack,release)` | an attack/release envelope |
 | `adsr:(value,attack,decay,sustain,release)` | a full ADSR |
 
-So `patFn("g:(0.9,0.18) g:(0.1,0.18)")` is a two-bump gesture that repeats every cycle — a
+So `patFn("g:(0.9,0.18) g:(0.1,0.18)")` is a two-bump gesture that repeats every cycle, and a
 `Functions.Fn` like any other, which means the whole `Functions` library applies to it.
 
-The interesting part is what it looks like from the *inside*. It is not an opaque closure
-that happens to produce numbers: it is a graph node, `op = "pat"`, and every number in the
-pattern text is one of its leaves.
+From the inside it is a graph node, `op = "pat"`, and every number in the pattern text is
+one of its leaves.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/fn-graph.png" wait="2" capture="box" open-outputs="true" name="pat-doc-fn-graph"}
 import afield.stdlib.extractParameters
@@ -328,13 +323,13 @@ display("<pre>" + report + "</pre>")
 
 ![The pat node: its op, its spliced source text, its role-tagged knobs and their values](assets/pattern_language/fn-graph.png)
 
-Each atom's numbers are addressed by the role they play — `atom0.sigma`, `atom1.attack` —
-not by position, and `cps` is a knob too. That matters because Field's numeric leaves are
+Each atom's numbers are addressed by the role they play (`atom0.sigma`, `atom1.attack`)
+rather than by position, and `cps` is a knob too. That matters because Field's numeric leaves are
 exactly what the differentiable fitter tunes. **You can hand a rhythm to `fitGradient` and
 have it recover the gesture's own numbers.**
 
 Below, the target is a two-bump gesture and the seed has the right *structure* with the
-wrong numbers — wrong heights, wrong widths. Adam moves the leaves until the curves
+wrong numbers: wrong heights, wrong widths. Adam moves the leaves until the curves
 coincide, and the fitted result comes back out as **pattern text you can paste into a box**:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/fn-fit.png" wait="5" capture="box" open-outputs="true" name="pat-doc-fn-fit"}
@@ -370,8 +365,8 @@ half the initial error, because getting to the answer needs a permutation and th
 downhill path through one. Tuning numbers is `fitGradient`'s job; choosing which atom holds
 which number is `evolve`'s.
 
-Two smaller things worth knowing. A number can be a `%binding` instead of a literal
-(`g:(%loudness,0.2)`), resolved from the box's variables each cycle — live, but for that
+Two smaller things. A number can be a `%binding` instead of a literal
+(`g:(%loudness,0.2)`), resolved from the box's variables each cycle: live, but for that
 reason not fittable, so such a pattern stays an ordinary opaque function. And because the
 knobs are graph children, you can graft a *signal* into one instead of a constant, which
 gives you a kernel width that drifts across the piece.
@@ -412,9 +407,8 @@ crosses bar lines plays correctly without the consumer knowing anything about cy
 ## Where to go next
 
 - **The full operator surface, and the design decisions behind it** —
-  [`dev_docs/PATTERN_LANGUAGE.md`](https://github.com/) in the repository, including the
-  whole/part model, the contract sweep, and the three behaviours that were measured rather
-  than assumed.
+  `dev_docs/PATTERN_LANGUAGE.md` in the repository, including the whole/part model and the
+  contract sweep.
 - **Every roll and clip on this page, regenerated** — the nine piano rolls and eight `.wav` scenes
   are built headlessly; `dev_docs/PAT_GALLERY.md` documents the harness.
 - **A loadable document** — the *Pattern language* starting point in the welcome screen
