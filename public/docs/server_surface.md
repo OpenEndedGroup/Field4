@@ -307,12 +307,16 @@ fully on, a foreign origin still read the absolute path of the checkout.
 
 ## What to actually do
 
+<div class="field-data-table" markdown>
+
 | if you are… | do this |
 | --- | --- |
 | on a network you do not fully trust | treat Field as an open door and rely on the network: a firewall on Field's port, or don't run it there |
 | worried about websites you visit | set `AFIELD_API_REQUIRE_SAME_SITE=1`. It closes cross-site HTTP writes **and** cross-site WebSocket upgrades |
 | running automation or the agent backdoor | those send no browser `Origin`, so the switch does not affect them. That is the intended behaviour, and also the limitation |
 | adding a route or a `/ws` command to Field | `dev_docs/server_surface_inventory.md` is the ledger, and the build will make you edit it |
+
+</div>
 
 ## Where the guarantees actually live
 
