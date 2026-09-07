@@ -1,13 +1,10 @@
 # Differentiating Functions
 
-Field's gradients used to be numerical, all of them. `fitGradient` central-differenced its loss and
-`leastSquares` central-differenced its Jacobian — `2n` extra evaluations per step and an `fdStep` you
-had to guess. This page is the layer that replaced that: reverse-mode automatic differentiation over
-`Double`, second-order forward mode beside it, three optimizers on top, and — the part that makes it a
-*Field* capability rather than a library — the ability to differentiate an `Fn` graph itself.
+Field's gradients are exact: reverse-mode automatic differentiation over `Double`, second-order
+forward mode beside it, three optimizers on top, and the ability to differentiate an `Fn` graph
+itself.
 
-Every figure below is executed when this page is built, so the numbers under each one are what the code
-actually produced.
+Every figure below is executed when this page is built.
 
 ## One expression, three ways of differentiating it
 
@@ -15,7 +12,7 @@ actually produced.
 backward sweep reads off every derivative at once. `grad { }` returns a *function*, so it composes with
 the optimizers rather than needing a wrapper.
 
-`Dual2` is the other direction — a truncated Taylor number `(v, v', v'')` carried along one direction.
+`Dual2` is the other direction: a truncated Taylor number `(v, v', v'')` carried along one direction.
 It is the right tool when there is one input and many outputs, and it is what makes `hessian` exact
 rather than a finite difference of an exact gradient. Because the second derivative comes free with the
 forward pass, all three curves below are one sweep.
@@ -63,7 +60,7 @@ $agreement
 ![Three curves over minus one to one: the small oscillating function, its larger-amplitude slope, and its much larger curvature, all in phase relationships that follow from differentiation](assets/autodiff_examples/derivatives.png)
 
 Check it by hand. `∂f/∂x = -2(1-x) - 400x(y-x²)` and `∂f/∂y = 200(y-x²)`, so at `(-1.2, 1)` the
-gradient is `[-215.6, -88]` — which is what the panel reads, to the last ulp. The Hessian is
+gradient is `[-215.6, -88]`, which is what the panel reads, to the last ulp. The Hessian is
 `[[2 - 400(y-x²) + 800x², -400x], [-400x, 200]]` = `[[1330, 480], [480, 200]]`, and that is what one
 `Dual2` pass per axis plus polarisation produced, exactly. Forward and reverse agree on `f'` to
 1.8·10⁻¹⁵ despite sharing no code, and reverse agrees with the central difference to 3·10⁻¹⁰ — which is
@@ -119,7 +116,7 @@ run that merely ran out of budget cannot be mistaken for one that arrived.
 
 `Functions.Fn` is a closure over `Double`, so it cannot be differentiated by overloading its
 arithmetic. But every `Fn` the stdlib builds also carries an inspectable graph, and that graph is
-re-interpreted in tracked arithmetic — so the gradient of a loss with respect to a graph's numeric
+re-interpreted in tracked arithmetic, so the gradient of a loss with respect to a graph's numeric
 leaves is exact.
 
 The call below is the *same* `fitGradient` twice. Same optimizer, same step size, same landscape; only
@@ -178,35 +175,32 @@ $numbers
 
 ![The target signal, a visually indistinguishable fitted signal, and two overlapping RMSE-versus-step curves that both fall from 0.36 to under 0.015](assets/autodiff_examples/exact_fit.png)
 
-Two things worth reading off that figure. The exact run reaches a *lower* RMSE for an eighth of the
-loss evaluations — but do not read that as an eighth of the time. Measured separately, the same
-400-step fit takes 31.2 ms on finite differences and 22.2 ms exactly: **1.4×, not 8×**, because
-building the tape costs about what the extra graph evaluations did. The exact path's real advantages
-are that it is exact, has no `fdStep` to tune, and costs one sweep per step whatever the parameter
-count, where finite differences costs `2n`.
+The exact run reaches a *lower* RMSE for an eighth of the loss evaluations, which is not an eighth of
+the time. Measured separately, the same 400-step fit takes 31.2 ms on finite differences and 22.2 ms
+exactly: **1.4×, not 8×**, because building the tape costs about what the extra graph evaluations
+did. What the exact path buys is exactness, no `fdStep` to tune, and one sweep per step whatever the
+parameter count, where finite differences costs `2n`.
 
-And the refusal line matters as much as the fit. Only 35<!--count:differentiableFnOpsOnExamplesPage-->
+The refusal line is the other half of the figure. Only 35<!--count:differentiableFnOpsOnExamplesPage-->
 of `OpRegistry`'s 127<!--count:canonicalFnOpsOnExamplesPage--> canonical ops have a derivative; the
 piecewise oscillators, the seeded noise generators, the table-backed interpolants and the windowed
 numeric operators do not. `FnGradientMode.EXACT` throws with the reason, `FnGradientMode.AUTO` falls
-back to finite differences and `FnFitRun.usedExactGradient` tells you which happened. Nothing here
-returns the gradient of a function you did not ask about.
+back to finite differences, and `FnFitRun.usedExactGradient` tells you which happened.
 
-Which ops those are is a question about *representation* rather than about calculus. `abs`, `flip` and
-`exp` were refused until 2026-07-31 — not because absolute value is hard to differentiate, but because
-they were built out of `Fn.mapY { … }`, which stores an opaque Kotlin lambda in the graph node. There
-was nothing to read a formula out of, so `log` was differentiable and `exp` was not, and `clamp` was
-and `abs` was not. All three are now first-class graph ops with derivatives, and a genuine
-`mapY { … }` of your own is still refused — which is the right answer, not a gap.
+Which ops those are is a question about *representation* rather than about calculus. An op whose
+formula is stored in the graph can be differentiated; one built out of `Fn.mapY { … }` cannot, because
+`mapY` keeps an opaque Kotlin lambda in the node and leaves nothing to read a formula out of. So
+`abs` is differentiable, being a graph node with a formula (`FnExpr.Abs`), while a `mapY { … }` of
+your own is refused however simple the lambda inside it.
 
 `abs` has a corner at zero, and the subgradient reported there is `0`: the even split, which is also
 exactly what a central difference reports at a kink, so the exact gradient and the finite-difference
 oracle agree *at* the corner rather than only either side of it.
 
-Removing the refusal is not the same as making the fit easy, and the numbers say so. Swap the seed
-above for `cos(1.9).abs() * sin(1.3, amplitude = 1.0)` and the exact path runs — but it plateaus at
-RMSE ≈ 0.139 where the smooth seed reaches ≈ 0.0096, and sixteen times the iteration budget only takes
-it to 0.135. On that seed the exact and finite-difference arms finish within 0.1% of each other, so
+Accepting a seed is not the same as fitting it well. Swap the seed above for
+`cos(1.9).abs() * sin(1.3, amplitude = 1.0)` and the exact path runs, but it plateaus at RMSE ≈ 0.139
+where the smooth seed reaches ≈ 0.0096, and sixteen times the iteration budget only takes it to
+0.135. On that seed the exact and finite-difference arms finish within 0.1% of each other, so
 what the exact path buys is the evaluation count (801 against 6801) rather than the accuracy it also
 buys on the smooth one. Rectifying the envelope creates a local minimum, and no gradient argues a
 descent out of a local minimum.
@@ -248,15 +242,15 @@ with(Functions) {
 ![The rectified seed drawn as a wave whose troughs are folded up into cusps, the fitted result beneath it, and a loss chart on which the finite-difference and exact-gradient curves lie almost on top of each other and both flatten early](assets/autodiff_examples/abs_seed.png)
 
 Read the two loss curves against the ones in the previous figure. There, exact gradients reached a
-lower error. Here the two arms are indistinguishable and both stop early, and the printed line says
-why it is still worth doing: the same descent for **801 loss evaluations instead of 6801**. The last
-line is the boundary — `sign` is refused, because its derivative is zero wherever it
-exists, and a fit that descends a permanently-zero gradient is worse off than one that is told no.
+lower error. Here the two arms are indistinguishable and both stop early, and what is left is the
+cost: the same descent for **801 loss evaluations instead of 6801**. The last line of the panel is
+the boundary. `sign` is refused, because its derivative is zero wherever it exists, and a fit that
+descends a permanently-zero gradient is worse off than one that is told no.
 
 ## Inverse kinematics, because it makes pixels
 
-Forward kinematics on a chain of links is a cumulative sum of joint angles and a running position —
-perfectly differentiable — so the *inverse* problem is just L-BFGS on `|tip - target|²`, and the result
+Forward kinematics on a chain of links is a cumulative sum of joint angles and a running position
+(perfectly differentiable), so the *inverse* problem is just L-BFGS on `|tip - target|²`, and the result
 is an `FLine` you can draw.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/autodiff_examples/inverse_kinematics.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="560" padding="16"}
@@ -298,17 +292,17 @@ showPlaneGrid(
 ![Three panels of a four-link arm sharing one frame: straight and pointing right with the target reticle far above it, then reaching with its tip dead centre in the reticle, then reaching again in a visibly straighter curve](assets/autodiff_examples/inverse_kinematics.png)
 
 The tip lands *inside* the reticle in eighteen iterations. The third panel is `IkOptions.smoothness`,
-and it is shown as the trade it is rather than as a free improvement: the pose straightens and the
-reach error goes *up*. That default is `0.0` for exactly this reason — a curvature penalty competes
-with the reach term, and near the base, where reaching at all needs tight folds, it will refuse to
-fold and settle short. `IkSolution.reachError` always reports the truth.
+and it is a trade rather than a free improvement: the pose straightens and the reach error goes *up*.
+The default is `0.0` for that reason. A curvature penalty competes with the reach term, and near the
+base, where reaching at all needs tight folds, it will refuse to fold and settle short;
+`IkSolution.reachError` is where you read what it cost.
 
 ## A packing that descends instead of relaxing
 
 Circle packing is usually written as a relaxation loop: look for overlaps, nudge them apart, repeat.
-Written as a loss it stops being a loop of nudges and becomes a descent. Overlap is a hinge —
+Written as a loss it stops being a loop of nudges and becomes a descent. Overlap is a hinge:
 `relu(r₁ + r₂ − distance)²`, exactly zero while two discs are disjoint and growing quadratically once
-they interpenetrate — and the walls are the same shape. Every term is differentiable, so L-BFGS can
+they interpenetrate. The walls are the same shape. Every term is differentiable, so L-BFGS can
 take a real step instead of a heuristic one.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/autodiff_examples/packing.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="620" padding="16"}
@@ -358,9 +352,9 @@ showPlaneGrid(
 
 ![Two panels sharing a frame: on the left a dozen circles of mixed sizes scattered and heavily overlapping inside a rectangle, on the right the same circles nested tightly against each other and the walls with no visible interpenetration](assets/autodiff_examples/packing.png)
 
-The residual overlap does not go to zero, and that is the interesting part rather than a failure. A
-gentle pull toward the centre is a *competing* term, and the number you see is where the two balance;
-set `pullWeight` to `0.0` and it vanishes, taking the compactness with it. This is also the example
+The residual overlap does not go to zero. A gentle pull toward the centre is a *competing* term, and
+the number you see is where the two balance; set `pullWeight` to `0.0` and it vanishes, taking the
+compactness with it. This is also the example
 that pays for the even-split kink convention: at the instant two discs touch, the hinge's derivative
 is half what a one-sided rule would report, so the packing settles into contact instead of chattering
 across it.
