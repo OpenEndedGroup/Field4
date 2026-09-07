@@ -2,7 +2,7 @@
 
 *Every public declaration used below is listed, with its KDoc, in the codebase reference: [`Functions.kt`](reference/math.md#functions-kt). Start from [what's already in the box](reference/index.md).*
 
-The examples here turn `Functions` stacks into drawable FLines: ordinary one-dimensional graphs first, then two-dimensional parametric curves.
+The examples here turn `Functions` stacks into drawable FLines. One-dimensional graphs come first, since a single stack sampled along x is the plainest case; the two-dimensional parametric curves are then a pair of those graphs read as x and y.
 
 A function stack is often easier to design by eye than by algebra alone. In creative coding it gives you a quick route from signal to ornament. In data work it makes transforms and envelopes visible. In music it turns oscillation, modulation, and shaping into something you can draw.
 
@@ -595,8 +595,8 @@ build a shaping chain once, name it, and apply it everywhere.
 
 Two overloads share a name. `then` composes *transforms* when both sides are `FnTransform`
 (`gain(0.6) then lowPass(0.08)`), and *concatenates functions* when both sides are `Fn`
-(`intro then verse`). The compiler picks by operand type, which is what the editor's
-completion leans on (below). For the `over` / `stretch` distinction (relabelling versus
+(`intro then verse`). The compiler picks by operand type; the editor's completion leans on the
+same distinction (below). For the `over` / `stretch` distinction (relabelling versus
 remapping), see [`over ... vs stretch ...`](#over-vs-stretch) above; here we only use them to
 place a finished pipeline on a timeline.
 
@@ -3492,7 +3492,7 @@ Each non-constant card also carries a **sparkline**: a faint teal waveform drawn
 
 ### The interactive loop: compile, preview, commit
 
-`rewrite(...)` is forgiving, which is what a sketch or a performance wants. For deliberate editing, especially from an agent, use the three-stage API:
+`rewrite(...)` is forgiving; a sketch or a performance needs it to be. For deliberate editing, especially from an agent, use the three-stage API:
 
 ```diffstatic {data-lang=kotlin}
 val source = (saw(0.2) * 0.5).withName("gesture")
@@ -3774,7 +3774,7 @@ This API is small, but it establishes the pieces needed for a more ambitious opt
 
 Rules default to `FIRST_MATCH` at each node, which makes priority explicit. Use `FnGraphRuleMode.ALL_MATCHES` when several rules should chain on the same copied node. A bounded run is important in live art code: an oscillating rewrite should report a cycle, not disappear into the animation loop.
 
-`graphMetrics` separates shared DAG nodes from path occurrences. That distinction is what makes a repeated motif visible, and it is the hook a cost-guided search wants: execution cost might charge each unique node, while visual or semantic complexity might charge each occurrence.
+`graphMetrics` separates shared DAG nodes from path occurrences. Count unique nodes and a repeated motif disappears into one entry; count occurrences and it shows up as many. That is also the hook a cost-guided search needs: execution cost might charge each unique node, while visual or semantic complexity might charge each occurrence.
 
 ### Pattern → template rewriting
 
@@ -3902,7 +3902,7 @@ The grey curve is the seed cosine; the red curve is the target; the blue curve i
 | 19 | prune | -0.1718 |
 | 23 | prune | -0.1568 |
 
-The story reads top to bottom. Iteration 1 is the structural leap: `substituteOp` turns the cosine into a sine and more than halves the error in a single step. The middle rows are `jitter`/`nudge` walking the amplitude leaf down from 1.0 toward 0.5, interleaved with `prune` steps that shed now-redundant structure without hurting the fit (the small `complexityWeight` rewards the simpler graph). After 12 accepted improvements across 120 iterations (961 total evaluations) the search settles. Every draw goes through one seeded `Random`, so re-running reproduces this trace and a byte-identical SVG, which is what makes an evolved gesture safe to keep in live art.
+The story reads top to bottom. Iteration 1 is the structural leap: `substituteOp` turns the cosine into a sine and more than halves the error in a single step. The middle rows are `jitter`/`nudge` walking the amplitude leaf down from 1.0 toward 0.5, interleaved with `prune` steps that shed now-redundant structure without hurting the fit (the small `complexityWeight` rewards the simpler graph). After 12 accepted improvements across 120 iterations (961 total evaluations) the search settles. Every draw goes through one seeded `Random`, so re-running reproduces this trace and a byte-identical SVG.
 
 #### Variety generation: novelty search for a *set* of gestures
 
