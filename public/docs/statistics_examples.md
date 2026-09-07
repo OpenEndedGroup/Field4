@@ -19,6 +19,8 @@ related" but "this signal is the wrong shape to work with".
 
 ## Where the family lives
 
+<div class="field-data-table" markdown>
+
 | what you want | where it is | notes |
 |---|---|---|
 | count, quartiles, IQR, MAD, variance, skew, excess kurtosis | `stats.kt` | `buildSummaryStats` → `SummaryStats`. Non-finite input is dropped *and counted* |
@@ -28,6 +30,8 @@ related" but "this signal is the wrong shape to work with".
 | **the dependence coefficients** | `correlations.kt` | `StatsDependence.pearson` / `spearman` / `kendallTauB` / `chatterjeeXi` (aliased `xi`) / `distanceCorrelation` / `micTicNaive` |
 | dependence over a sliding window | `correlations.kt` | `RollingDistanceCorrelation` (incremental, O(w) per sample), `RollingXiCorrelation` (recomputes, O(w log w) per sample) |
 | reshape a distribution into a target | `quantilewarp.kt` | `AdaptiveQuantileWarp`, `QuantileWarpState`, `TargetDistributions`, `inverseStandardNormalCdf`, and matching GLSL for the GPU |
+
+</div>
 
 Two things this family is **not**. It is not a statistics library: there are no p-values, no
 confidence intervals and no hypothesis tests anywhere in it. Whether a number means anything is

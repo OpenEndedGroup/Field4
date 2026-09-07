@@ -168,6 +168,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
 
 
     lateinit var inside: SessionInformation
+
+    internal fun profilingDocument(): String = if (::inside.isInitialized) inside.filename else ""
     fun isInsideInitialized() = ::inside.isInitialized
 
     // A [PropertyBag], not a `mutableMapOf()`: this map is read, written and *iterated* by the main
@@ -584,10 +586,13 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
         @Suppress("UNCHECKED_CAST")
         private fun nullableContext(): ThreadLocal<Box?> = context as ThreadLocal<Box?>
 
-        fun boxContextElement(box: Box?) = nullableContext().asContextElement(box)
+        fun boxContextElement(box: Box?): kotlin.coroutines.CoroutineContext =
+            nullableContext().asContextElement(box) + (box?.let { ProfileOrigin(it) } ?: kotlin.coroutines.EmptyCoroutineContext)
 
         suspend fun <T> withBoxContext(box: Box?, block: suspend () -> T): T {
-            return withContext(boxContextElement(box)) {
+            val origin = kotlin.coroutines.coroutineContext[ProfileOrigin]?.takeIf { it.box === box }
+            return withContext(nullableContext().asContextElement(box) +
+                (origin ?: box?.let { ProfileOrigin(it) } ?: kotlin.coroutines.EmptyCoroutineContext)) {
                 block()
             }
         }

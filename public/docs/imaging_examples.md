@@ -422,11 +422,15 @@ symmetric range around zero, which is the correct default for anything signed.
 
 Everything on this page is real output, and there are three routes to reproducing it:
 
+<div class="field-data-table" markdown>
+
 | what | how |
 |---|---|
 | the code fences above | executed by the docs build; the image under each is that box's own output |
 | the analytic figures | `python3 tools/run_field_tests.py --id imaging.gallery --port 9520` |
 | the whole family, live | replay `dev_docs/agents/transcripts/imaging_cv_examples.yaml` |
+
+</div>
 
 The gallery is a FIELD_TEST: it builds every figure from real `Img` pipelines and **fails** if the
 invariants break: if Canny stops being thinner than a raw threshold, if the four corner marks drift

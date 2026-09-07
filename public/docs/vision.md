@@ -77,11 +77,15 @@ Compositor Services scene with its own Metal render thread, and you live-code ag
 
 A program has three explicit parts, in three places:
 
+<div class="field-data-table" markdown>
+
 | Part | Where you write it |
 |---|---|
 | **shader** | the box's `msl` property — Metal Shading Language, both entry points |
 | **geometry** | `geometry { … }` in the box's Kotlin, which runs *in the headset* |
 | **uniforms** | the `uniforms=` list on the box's `// {{ visionmetal }}` marker |
+
+</div>
 
 ```diffstatic {data-lang=kotlin}
 // {{ visionmetal uniforms=phase,amount,tint }}
@@ -386,6 +390,8 @@ assumes.
 
 Read the third column first: it is the one that decays.
 
+<div class="field-data-table" markdown>
+
 | Capability | State | How that is known |
 |---|---|---|
 | Native 3D FLine viewer — render, orbit/scale, auto-frame, bounding cage | **Working** | On device |
@@ -405,6 +411,8 @@ Read the third column first: it is the one that decays.
 | Latency attribution — `visionPoseLatencyReport()` | **Built, arithmetic verified** | `visionpose.latency` recovers a known offset from a synthetic head. **No span has ever been measured against real hardware** |
 | Tracked accessories (PSVR2 Sense) over the pose channel | **Written, never read** | `AccessoryTrackingProvider.isSupported` is false on the simulator; the button/axis mapping is a guess that degrades to "not pressed" |
 | Hand tracking (26 joints, `pinchStrength`) | **OpenXR only; read by the pointer layer** | WiVRn + Quest 3. `pinchPointer` consumes `handState`, tested against constructed hand states only and never a device. Nothing on visionOS |
+
+</div>
 
 Three<!--count:visionPoseSmokeTests--> of those rows lean on smoke tests that run without a headset,
 and they are named in the reference below so you can run them yourself.
@@ -432,6 +440,8 @@ and `SideBySideStereoTarget` reach this table only through the import closure. T
 outside every census here: `SimpleSpatialAudio.setListenerFromSideBySide` drives spatial audio off
 the stereo target and nothing classifies it as XR, and `src/jsVision/` is two tracked files in no
 Gradle compilation — not a client, and with no rows below.
+
+<div class="field-data-table" markdown>
 
 | What | Where | Anchor |
 |---|---|---|
@@ -469,6 +479,8 @@ Gradle compilation — not a client, and with no rows below.
 | Where ARKit and GameController are joined | `ControllerTracker.swift:21` | `class ControllerTracker` |
 | The header parser, both versions | `RTTWireFormat.swift:14` | `enum RTTWire` |
 | The parser's only execution coverage | `RTTWireSelfCheck.swift:21` | `enum RTTWireSelfCheck` |
+
+</div>
 
 Runnable without a headset, through the canonical runner
 (`python3 tools/run_field_tests.py --id <id>`):

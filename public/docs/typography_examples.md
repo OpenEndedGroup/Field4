@@ -7,12 +7,16 @@ A string in Field is geometry. `GlyphVector.getOutline()` hands back the font's 
 and everything after that is arithmetic, so a word can be extruded, marched, sampled, clustered or
 animated like any other value. Two files do it and they add no dependency.
 
+<div class="field-data-table" markdown>
+
 | what you want | where it is |
 |---|---|
 | a font at a size; a glyph's rings; a laid-out string with per-glyph handles | `typography.kt` — `Typeface`, `Glyph`, `GlyphContour`, `TextLayout`, `PlacedGlyph` |
 | text on a curve, word wrap, measuring | `typography.kt` — `TextLayout.onCurve`, `textCircle`, `wrapText`, `textWidth` |
 | letters → `FLine`, `TriMesh`, `ScalarField3D`, `Img`, point clouds | `typography_field.kt` |
 | a figure in a box output | `typography_field.kt` — `Box.showText`, `Box.showTextGrid`, `TextLayout.metricsFLines` |
+
+</div>
 
 ## Hello, legibility
 
@@ -487,9 +491,13 @@ so you only meet this in a JVM you launched yourself.
 
 ## Run it yourself
 
+<div class="field-data-table" markdown>
+
 | what | how |
 |---|---|
 | every figure on this page | it *is* the docs build: `uv run --group docs python tools/build_zensical_docs.py --page typography_examples.md`. Each fence's code runs in a live Field and the image is what came out |
 | the eight boxes as a document you can edit | replay `dev_docs/agents/transcripts/typography_worked_example.yaml` with the agent backdoor (`field_run_transcript`), or open the materialised document at `public/docs/assets/agent_transcripts/typography_worked_example/` |
 | the structural assertions | `./gradlew jvmTest --tests afield.stdlib.TypographyTest` (38 tests) |
 | the demo, replayed through the real engine | `python3 tools/run_field_tests.py --id examples.demo-transcript.exec --port 9700` |
+
+</div>

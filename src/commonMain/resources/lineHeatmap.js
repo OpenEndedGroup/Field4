@@ -1,4 +1,5 @@
 import { sendWithReply } from "./afield.mjs";
+import { profileHeatLines } from "./profileTimelineModel.js";
 
 const LineHeatmap = (() => {
     const STATE = new WeakMap();
@@ -118,6 +119,11 @@ const LineHeatmap = (() => {
     background: var(--afield-exec-bar-color, transparent);
     pointer-events: none;
 }
+.monaco-editor .afield-profile-heat {
+    width: 6px !important;
+    margin-left: 3px;
+    pointer-events: none;
+}
 `);
         for (let i = 1; i <= LEVELS; i += 1) {
             const color = rybHeatColor(i, 0.58);
@@ -130,6 +136,12 @@ const LineHeatmap = (() => {
 .monaco-editor .line-numbers.afield-line-heat-exec-${i} {
     --afield-exec-bar-width: ${execWidth}%;
     --afield-exec-bar-color: ${execColor};
+}
+.monaco-editor .afield-profile-heat-cpu-${i} {
+    background: rgba(72, 201, 255, ${0.14 + 0.86 * i / LEVELS});
+}
+.monaco-editor .afield-profile-heat-allocation-${i} {
+    background: rgba(215, 173, 121, ${0.14 + 0.86 * i / LEVELS});
 }`);
         }
         style.textContent = rules.join("\n");
@@ -142,6 +154,8 @@ const LineHeatmap = (() => {
             state = {
                 churnDecorations: editor.createDecorationsCollection([]),
                 execDecorations: editor.createDecorationsCollection([]),
+                profileDecorations: editor.createDecorationsCollection([]),
+                profile: null,
                 churnLines: [],
                 requestId: 0,
                 execRequestId: 0,
@@ -283,12 +297,14 @@ const LineHeatmap = (() => {
 
     function refresh(editor) {
         if (!editor) return;
+        refreshProfile(editor);
         refreshExecution(editor);
         refreshChurn(editor);
     }
 
     function scheduleRefresh(editor, includeChurn = false) {
         if (!editor) return;
+        refreshProfile(editor);
         const state = stateFor(editor);
         if (state.refreshTimer != null) clearTimeout(state.refreshTimer);
         state.refreshTimer = setTimeout(() => {
@@ -304,11 +320,40 @@ const LineHeatmap = (() => {
         ensureStyles();
         stateFor(editor);
         installActions(editor);
-        const model = editor.getModel && editor.getModel();
-        if (model && model.onDidChangeContent) {
-            model.onDidChangeContent(() => scheduleRefresh(editor, true));
-        }
+        // The editor can change models or rewrite the current one when navigating between boxes.
+        editor.onDidChangeModelContent(() => {
+            stateFor(editor).profileDecorations.clear();
+            scheduleRefresh(editor, true);
+        });
+        editor.onDidChangeModel(() => scheduleRefresh(editor, true));
         setTimeout(() => refresh(editor), 0);
+    }
+
+    function refreshProfile(editor) {
+        if (!editor) return;
+        const state = stateFor(editor), profile = state.profile;
+        const lines = profileHeatLines(profile?.sources || [], selectedContext(editor));
+        state.profileDecorations.set(lines.map(({line, weight, fraction, level}) => ({
+            range: new monaco.Range(line, 1, line, 1),
+            options: {
+                isWholeLine: true, stickiness: 1,
+                linesDecorationsClassName: `afield-profile-heat afield-profile-heat-${profile.kind}-${level}`,
+                hoverMessage: {value: [
+                    profile.kind === "cpu" ? `${weight} CPU samples` : `${(weight/1048576).toFixed(2)} MiB estimated allocation`,
+                    `${(fraction*100).toFixed(1)}% of this box's hottest mapped line`,
+                    `${profile.range[0].toFixed(2)}–${profile.range[1].toFixed(2)} ms · ${profile.self ? "top frame only" : "including callees"}`,
+                    "Sampled evidence, not an exact line timer."
+                ].join(" · ")}
+            }
+        })));
+    }
+
+    // Ephemeral capture data, independent of the persisted churn / execution-density toggles.
+    function setProfile(editor, profile) {
+        if (!editor) return;
+        install(editor);
+        stateFor(editor).profile = profile;
+        refreshProfile(editor);
     }
 
     function setVisible(editor, kind, value) {
@@ -364,7 +409,7 @@ const LineHeatmap = (() => {
         scheduleExecutionRefreshFor(uid, property);
     }
 
-    return { install, refresh, scheduleRefresh, refreshExecution, refreshChurn, setVisible, toggleVisible, recordExecution, recordExecutionRange };
+    return { install, refresh, scheduleRefresh, refreshExecution, refreshChurn, setVisible, toggleVisible, recordExecution, recordExecutionRange, setProfile };
 })();
 
 window.LineHeatmap = LineHeatmap;

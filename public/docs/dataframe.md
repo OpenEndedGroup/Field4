@@ -103,11 +103,15 @@ From then on `People` is an ordinary **source** declaration in that box, and a s
 
 Three choices in that design are what let it survive a live-coding loop:
 
+<div class="field-data-table" markdown>
+
 | choice | why | where |
 |---|---|---|
 | **The preamble, not an inline eval.** | `typed()` runs *inside* the box's engine, and the compile dispatcher is a single thread, so evaluating another snippet from there risks deadlock. The preamble is the existing channel for "source this box should have compiled first". | `DataFrameSchemas.kt:31#- **The preamble, not an inline eval.** We are executing inside` |
 | **Unchanged schemas are free.** | `checkPreambleAndExecute` only evaluates preamble lines that *changed*, so re-running a box whose columns are the same costs nothing. | `DataFrameSchemas.kt:34#only evaluates lines that *changed* — so re-running a box with` |
 | **Replace by name, not append.** | Matching is on the `interface <name> {` prefix rather than the whole line, so a re-run with a *changed* set of columns rewrites the declaration instead of accumulating a second one. | `DataFrameSchemas.kt:100#val marker = "interface $name {"` |
+
+</div>
 
 Redeclaring is safe here in a way it is not for `sharedTypes`: nothing is loaded into a classloader, so a shape change is ordinary REPL shadowing rather than an unrepeatable event.
 
@@ -226,11 +230,15 @@ Reusing the general machinery pays off again for nesting: a frame *inside* anoth
 
 ## Switches, and the version pin
 
+<div class="field-data-table" markdown>
+
 | what | how |
 |---|---|
 | Turn the plugin off for this JVM | `-Dafield.dataframePlugin=false` (`KotlinInterface2.kt:2959#DataFramePluginSpike`) |
 | Point at a different plugin jar | `-Dafield.dataframePlugin.jar=<path>` (`KotlinInterface2.kt:2963#lprintln("kotlin", "dataframe: plugin disabled by`) |
 | Default jar location | `libs/dataframe-plugin.jar`, git-lfs tracked |
+
+</div>
 
 The plugin jar is **not** on the app classpath. It vendors ~1000 classes of the DataFrame runtime of its own, so putting it beside the real `dataframe-core` dependency would put **two copies of `DataFrame`** in front of box code (`KotlinInterface2.kt:2940#The two plugins are located differently on purpose. Wither's jar`). `-Xplugin` loads it in the compiler's own plugin classloader, so only the compiler ever sees it — while the *runtime* goes on the classpath normally (`build.gradle.kts:952#the reproducer afield.examples.ProvideDelegateReplSmokeTest.`).
 

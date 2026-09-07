@@ -37,8 +37,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 85 transcripts on every build, at three
-depths. 57 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 86 transcripts on every build, at three
+depths. 58 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -65,6 +65,14 @@ its box to see the output (a plot, an inline value thumbnail, a printed line).
 
 **hello_display** — Minimal blank-canvas macro that creates one runnable output box.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/hello_display/metadata.edn)
+
+**profiling_timeline** — Three real coroutine workloads: steady arithmetic, periodic CPU bursts,
+and vector allocation. The fourth box records three seconds with JVM stacks and opens the timeline;
+**Hot code** explores sampled classes, methods, and box lines within the same time brush.
+Replay waits for launch startup, verifies the measured lanes and allocation, then stops the workers
+so you can brush and explore a quiet, latched capture. Change the vector box's `reuse` flag to
+compare construction with in-place `set` on Field's vectors. See [Profiling Timeline](profiling_timeline.md).
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/profiling_timeline/metadata.edn)
 
 **hello_display_capture** — The same single display box, paired with the backdoor capture commands
 (`wait-output` / `output` / `screenshot-box`) that collect its output events and a cropped
