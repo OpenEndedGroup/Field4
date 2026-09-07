@@ -276,6 +276,8 @@ There are six Field documents for this page. **If you only open one, open the ma
 
 ![two captures of the same FieldML box side by side on black: on the left a wide four-turn cyan spiral filling the frame, on the right a tight nine-turn spiral about half the diameter](assets/fieldml_macro_demo/spiral-pair.png)
 
+<div class="field-data-table" markdown>
+
 | In | Change | What happens |
 | --- | --- | --- |
 | the parameter box | `setProp "turns" 4` → `setProp "turns" 9` | re-run both boxes: nine turns instead of four. The drawing box is unchanged — it inherits the value |
@@ -288,11 +290,15 @@ There are six Field documents for this page. **If you only open one, open the ma
 | the expansion box | `"sourceBlock"` → `"jsonParser"` | ...and an error: `jsonParser` wants a type argument and a schema string |
 | the drawing box | disconnect it from the FieldML root | it silently becomes a **Kotlin** box, and reports Kotlin errors. Only the *direct* children of a FieldML root are FieldML, which is why it has two parents |
 
+</div>
+
 The next has five boxes: the raster above, a line warped by a FieldML lambda through `FLine.transform`, a box whose host member types are all inferred, one that exercises overload resolution, varargs and `hostNull`, and one that calls Kotlin by name and leaves its defaults alone.
 
 [Open ↗](/offline.html?file=/field4/assets/fieldml_host_bridge_demo/metadata.edn), or open `public/docs/assets/fieldml_host_bridge_demo/metadata.edn` from a Field workspace.
 
 Things to change, in the order they are most likely to teach you something:
+
+<div class="field-data-table" markdown>
 
 | In | Change | What happens |
 | --- | --- | --- |
@@ -305,7 +311,9 @@ Things to change, in the order they are most likely to teach you something:
 | the named box | `{x = 1, y = 0}` → `{x = 1, yy = 0}` | a type error listing the names you gave, before the box runs |
 | the named box | `{name = "magma"}` → `{name = "magma", lo = 0.0, hi = 0.5}` | the two defaults stop being computed from the image |
 
-And a third, for a machine with a GPU: **a whole `afield.four` scene described from FieldML**, with no `hostAs` in it. One box walks up to a live `Renderer`, builds a shader module out of two GLSL strings through `parameters(renderer) { vertex = …; fragment = … }` — a receiver lambda whose `p` is a typed `Parameters` — then attaches a three-vertex mesh and registers it with the render target. It needs a running Vulkan device, so it does nothing in an ordinary box; connect it to whichever box owns your renderer.
+</div>
+
+And a third, for a machine with a GPU: **a whole `afield.four` scene described from FieldML**, with no `hostAs` in it. One box walks up to a live `Renderer`, builds a shader module out of two GLSL strings through `parameters(renderer) { vertex = …; fragment = … }` (the receiver lambda whose `p` is now a typed `Parameters`), attaches a three-vertex mesh, and registers it with the render target. It needs a running Vulkan device, so it does nothing in an ordinary box; connect it to whichever box owns your renderer.
 
 [Open ↗](/offline.html?file=/field4/assets/fieldml_afield_four_demo/metadata.edn), or open `public/docs/assets/fieldml_afield_four_demo/metadata.edn` from a Field workspace.
 
@@ -327,6 +335,8 @@ Then run the fourth box while it is spinning. It writes `spinRate` with `setRoot
 
 [Open ↗](/offline.html?file=/field4/assets/fieldml_macro_module_demo/metadata.edn), or open `public/docs/assets/fieldml_macro_module_demo/metadata.edn` from a Field workspace.
 
+<div class="field-data-table" markdown>
+
 | In | Change | What happens |
 | --- | --- | --- |
 | the live box | `setRootProp "spinRate" 0.30` → `0.02` | the triangle slows, immediately, without the scene box being run |
@@ -334,6 +344,8 @@ Then run the fourth box while it is spinning. It writes `spinRate` with `setRoot
 | the scene box | `propOr "spinRate" 0.04` inside `eachFrame` → move it above the lambda | it becomes a constant: changing the live box does nothing |
 | the scene box | edit the `fragment` string's `vec3(0.0, 2.1, 4.2)` | different hues, because `moduleHere` recompiles from the box's properties |
 | the scene box | break the GLSL | the shader error is reported onto *this box*, which is the thing `moduleHere` gives you over hand-built parameters |
+
+</div>
 
 There is no picture of this one. What it reports instead is `builtBy = "_moduleHere"`, a 16-byte push-constant block, and 2550 frames drawn between two reads of the shared slot.
 
@@ -347,6 +359,8 @@ One more is about the lambda parameters specifically: a warp with no `hostAs` in
 
 [Open ↗](/offline.html?file=/field4/assets/fieldml_lambda_demo/metadata.edn), or open `public/docs/assets/fieldml_lambda_demo/metadata.edn` from a Field workspace.
 
+<div class="field-data-table" markdown>
+
 | In | Change | What happens |
 | --- | --- | --- |
 | the warp box | `p.x` → `p.xx` | a type error naming `Vec3`'s components, before the box runs |
@@ -355,6 +369,8 @@ One more is about the lambda parameters specifically: a warp with no `hostAs` in
 | the raster box | `13.0` → `5.0` | fewer, wider rings |
 | the raster box | `"magma"` → `"viridis"` | the palette |
 | the limits box | delete `hostAs "Vec3"` from `scale` | a type error — that is the one case still on its own |
+
+</div>
 
 ## Where to look
 

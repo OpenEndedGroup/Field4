@@ -19,6 +19,8 @@ Replace `FIELD-HOST` with the machine's LAN name or address and `YOUR-DOCUMENT` 
 
 ## The six tabs
 
+<div class="field-data-table" markdown>
+
 | Tab | What it controls |
 | --- | --- |
 | **Pad** | A large touch surface, sending Y, X or XY in absolute, delta or both modes, with shortcuts for save, restore, lock, unlock, launch, and stop. |
@@ -27,6 +29,8 @@ Replace `FIELD-HOST` with the machine's LAN name or address and `YOUR-DOCUMENT` 
 | **Chat** | The real AI4 conversation for the selected box and property, including attachments, code, and expandable tool-use summaries. File edits are called out by filename. |
 | **Select** | Field's **Open Anything** panel, adapted for touch. Search boxes, properties, commands, and document text. Choosing a result updates every other phone tab. |
 | **Edit** | A full embedded Monaco editor on the box and property chosen in **Select**. The same editor instance moves between Select and Edit, preserving its model and undo history. |
+
+</div>
 
 ## Chat without the desktop
 

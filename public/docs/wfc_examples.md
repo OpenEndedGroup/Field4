@@ -866,11 +866,15 @@ So `WfcSolver` implements `ToHTML`. Evaluating a solver (as a box's last express
 anywhere) draws its state instead of a reflective property tree. No tile set is needed, because none
 of these panels claims to show the tileset's colours:
 
+<div class="field-data-table" markdown>
+
 | panel | colour means | scale |
 | --- | --- | --- |
 | possibilities left | how many tiles are still possible in that cell | `viridis`, fixed `1` (decided) … `tileCount` (untouched) |
 | entropy | weighted Shannon entropy, in nats — the quantity the solver actually minimises | `magma`, fixed `0` … `rules.fullSetEntropy()` |
 | decided tiles | which tile a cell settled on, as a stable hue per id | dark grey where still undecided |
+
+</div>
 
 The two heatmaps' domains are fixed by *meaning* rather than per frame, so successive looks at a
 running solver are comparable; auto-ranging is what makes an animated collapse appear to stand still.

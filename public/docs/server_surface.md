@@ -31,11 +31,15 @@ actually stops.
 Three different questions are easy to confuse, and most mistakes in this area come from
 answering one when you meant another:
 
+<div class="field-data-table" markdown>
+
 | question | what answers it in Field | what it stops |
 | --- | --- | --- |
 | which **machine** is this from? | `isLoopbackDocsClient`, on the socket's remote address | stops: another device on the wifi |
 | which **website** is this from? | `isSameSiteRequest`, on `Host`, `Sec-Fetch-Site` and `Origin` | stops: a page open in *your* browser |
 | **who** is this? | nothing — there is no `install(Authentication)` in the tree | stops: nothing |
+
+</div>
 
 Note the third row. Field has no login, no token on most routes, no
 per-request credential. Everything below is a defence about *where a request came from*, not
@@ -264,7 +268,7 @@ Field's HTTP routes get all the attention: 89 of them, 53 state-changing, all in
 and tested. But the code with the most reach is not behind an HTTP route at all. The file
 proxy, the H2 database explorer, the box-execution commands and the agent backdoor declare
 **no HTTP routes between them**. They are entries in a message-dispatch table reached over
-`/ws`, and there are **105 of them**, about twice the HTTP write surface. A second, smaller
+`/ws`, and there are **107 of them**, about twice the HTTP write surface. A second, smaller
 table on the same socket carries **9 more** "raw" channels, which receive the whole frame and
 parse it themselves: the H2 explorer, the file browser, the log stream, the spreadsheet, the
 three.js and Metal viewers, and the RemoteJS bridge.
@@ -303,12 +307,16 @@ fully on, a foreign origin still read the absolute path of the checkout.
 
 ## What to actually do
 
+<div class="field-data-table" markdown>
+
 | if you are… | do this |
 | --- | --- |
 | on a network you do not fully trust | treat Field as an open door and rely on the network: a firewall on Field's port, or don't run it there |
 | worried about websites you visit | set `AFIELD_API_REQUIRE_SAME_SITE=1`. It closes cross-site HTTP writes **and** cross-site WebSocket upgrades |
 | running automation or the agent backdoor | those send no browser `Origin`, so the switch does not affect them. That is the intended behaviour, and also the limitation |
 | adding a route or a `/ws` command to Field | `dev_docs/server_surface_inventory.md` is the ledger, and the build will make you edit it |
+
+</div>
 
 ## Where the guarantees actually live
 
@@ -321,11 +329,11 @@ Six test files. Three start a real Ktor application; three read source.
 | `FieldWebSocketWriteGuardTest` | the upgrade guard, on the default and on the switch |
 | `DocsAnnotationRouteSecurityTest` | the four guarded routes, through the real CORS configuration |
 | `DocsAnnotationSecurityTest` | the guard predicates as pure functions |
-| `ServerSurfaceLedgerTest` | the read routes, the thirteen all-method routes, the static mounts, all 105 `/ws` commands and the 9 raw `/ws` channels, against the ledger page |
+| `ServerSurfaceLedgerTest` | the read routes, the thirteen all-method routes, the static mounts, all 107 `/ws` commands and the 9 raw `/ws` channels, against the ledger page |
 
 For the full route-by-route inventory, see `dev_docs/server_surface_inventory.md`: every read
 route with its guard, every all-method route, every static directory mount, every one of the
-105 commands with the file it lives in, and the 9 raw channels. That page is asserted
+107 commands with the file it lives in, and the 9 raw channels. That page is asserted
 against the source in both directions, so a new door cannot appear without the build saying
 so.
 

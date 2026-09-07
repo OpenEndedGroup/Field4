@@ -2708,6 +2708,13 @@ fun registerBuiltinCommands() {
                 showDocumentHistory()
             }
         },{
+            id:'show-profiling-timeline',
+            label:"Show Profiling Timeline",
+            detail:"Profile box coroutines, CPU and allocations; inspect sampled classes, methods and lines",
+            run: () => {
+                window.showProfilingTimeline();
+            }
+        },{
             id:'switch-to-monaco-editor',
             label:"Switch to Monaco Editor",
             detail:"Switch back to editing code",

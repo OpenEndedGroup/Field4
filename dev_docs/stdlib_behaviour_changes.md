@@ -334,3 +334,36 @@ the harness, not a gap in anyone's diligence.
 
 Not a change: this box's properties, every ancestor's properties, every ancestor's top-level
 variables, and `fromContextWithNameOrNull`'s name and type filtering.
+
+---
+
+## 2026-09-07 — `saved {}` stops writing in a read-only session (`nightly/2026-09-07/2-readonly-write-surface`)
+
+| Symbol | Change | Magnitude | Old behaviour reachable from |
+| --- | --- | --- | --- |
+| `saved {}` / `SavedJsonValue` | does not touch disk when the session is read-only. Both halves: `setValue` no longer writes the assignment, and `getValue` no longer writes the computed default on a first read. | **no change whatsoever for any writable or `ephemeral` session** — the gate is `ReadOnlyDocuments.blocksWritesFrom(box)`, which asks `readOnly` only and deliberately not `!writesToDisk` | a session opened `--read-only` (or under `AFIELD_READ_ONLY=1`, `-Dafield.readOnly=true`, or the backdoor's `open --read-only`) |
+
+`saved {}` writes `<document dir>/<box id>/<property>.json`, so it was writing **inside the
+document directory** of a document the user had explicitly asked not to be written to. The
+surprising half is `getValue`: its KDoc has always said that with no file yet the default is
+"computed *and immediately written*", so a read-only session that merely **ran** a box declaring
+`var n by saved { 0 }` left a file behind without the user touching anything. Measured before the
+fix — `expected:<[]> but was:<[counter.json, sketch]>`, `ReadOnlyWriteSurfaceTest`.
+
+**Reading still works.** The refusal is a `return` inside the one private `save`, not a throw: this
+is stdlib a user's sketch calls, and throwing would stop the box *running* rather than stop it
+saving. `getValue` still returns the default and `setValue` still caches in memory, so a read-only
+run behaves normally for its whole duration and simply forgets on exit — which is exactly what the
+client's new read-only banner promises. Pinned by
+`ReadOnlyWriteSurfaceTest.readingASavedPropertyForTheFirstTimeInAReadOnlySessionWritesNothing`,
+which asserts the returned value *and* the absence of the file, so "refused to write" cannot drift
+into "refused to run".
+
+Each refusal logs `write-refused-read-only` to `~/.afield/logs/save_reload.log`, so a user asking
+why their `saved` value did not persist has an answer rather than silence.
+
+Not covered, and unchanged: `toJSONFile(file, value)`, the no-delegate half of the same file. It
+takes an explicit path from the caller rather than deriving one from the session, so it is an export
+rather than document persistence. Same for a box that calls `File.writeText` itself. See
+`dev_docs/document_write_back.md` for the boundary, and for what else was found writing into a
+document directory.

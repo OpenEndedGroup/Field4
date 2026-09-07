@@ -122,6 +122,8 @@ with all of that, measured on a four-node scene built from scratch for the purpo
 triangle instanced by an identity node, a translated node, a *child* of that translated node, and a
 **mirrored** node with `scale (-1, 1, 1)`.
 
+<div class="field-data-table" markdown>
+
 | the scene has | the bridge does |
 |---|---|
 | several nodes referencing meshes | **merges all of them.** Four instances arrive as 4 triangles in 4 components, not "the first one". |
@@ -134,6 +136,8 @@ triangle instanced by an identity node, a translated node, a *child* of that tra
 | materials and textures | **dropped.** A `TriMesh` has no concept of a texture. Use the [Fabricate renderer](fabricate_renderer.md) for those. |
 | animation | **dropped.** The bind pose is baked; node TRS tracks and skinning are not read. |
 | a Y-up / Z-up disagreement | **nothing.** glTF is Y-up by specification and no axis conversion is applied, so a Z-up PLY or OBJ arrives on its side. `rotated(...)` is yours to apply. |
+
+</div>
 
 !!! warning "Mirrors, and where a TRS triple loses one"
 
@@ -425,6 +429,8 @@ and building an `AIScene` by hand from a `TriMesh` is more work than emitting th
 Six symptoms, in the order they actually happen, each with the one-line diagnosis. `summary()` answers
 five of the six, so print it before you draw anything.
 
+<div class="field-data-table" markdown>
+
 | symptom | cause | what to do |
 |---|---|---|
 | a blank black panel | an empty mesh | A file whose *contents* are not what its extension says parses to `TriMesh.empty` with **no exception at all**. `println(mesh.summary())` — an empty one prints exactly `TriMesh(empty)`. |
@@ -433,6 +439,8 @@ five of the six, so print it before you draw anything.
 | flat, faceted or oddly uniform shading | no normals, or invented ones | A mesh with *none* is crease-shaded for you; one with wrong ones is not. Recompute with `shadedNormals(35.0)`. To drop them, `withoutAttributes()` — note that `copy(normals = null)` **keeps** them, because `null` there means "unchanged". |
 | `isWatertight()` false on a closed solid | it came through STL | Or it was `flatShaded()` before it was written. `weld(1e-5)` recovers the topology, and `meanEdgeLength()` is the scale that tells you 1e-5 is safe rather than a guess. |
 | the vertex count is exactly 3× | STL, or `flatShaded()` | Both un-weld every triangle, and the reader on the other side will not weld it back. `weld`, then `shadedNormals` if you want the hard edges again. |
+
+</div>
 
 The first row is the one that costs an hour, so here it is concretely: a file called `thing.obj` that
 is actually a ZIP, a glTF, or an HTML error page parses to zero vertices and zero triangles and
@@ -554,6 +562,8 @@ would inflate everything below. Each row is a damaged copy of a known-good mesh,
 answer is known, and "repaired" is judged against **the undamaged original** rather than against
 `isValidSolid()`:
 
+<div class="field-data-table" markdown>
+
 | of the 21 Manifold rejects | |
 |---|---|
 | the pre-existing `repaired()` makes valid | **6** — every unwelded-seam and every inconsistent-winding case, all of them faithful |
@@ -561,6 +571,8 @@ answer is known, and "repaired" is judged against **the undamaged original** rat
 | ...of which **faithful** — volume, area *and* genus match the original | **15** |
 | ...of which **valid but the wrong shape** | **4** |
 | cannot be fixed, and say so | **2** |
+
+</div>
 
 That split between 15 faithful and 4 merely valid is the point, and it is why the table's holes are
 not all flat. A fan fill is trivially correct on a planar rim, so a table of flat holes measures

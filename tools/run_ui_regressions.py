@@ -3495,6 +3495,12 @@ def write_generated_file(relative: str, text: str) -> Path:
 
 def prepare_generated_files() -> dict[str, Path]:
     return {
+        "profile_vector_reuse": write_generated_file(
+            "profile-vector-reuse.kt",
+            (REPO_ROOT / "public/docs/assets/agent_transcripts/profiling_timeline/profile_vectors_code_.kt")
+            .read_text(encoding="utf-8").replace("val reuse = false", "val reuse = true")
+            .replace("loop {", 'loop {\n    if (frameNumber == 0) println("PROFILE_REUSE_READY")'),
+        ),
         "completion_own_import_snippet": write_generated_file("completion-own-import.kt", COMPLETION_OWN_IMPORT_SNIPPET),
         "completion_unresolved_snippet": write_generated_file("completion-unresolved.kt", COMPLETION_UNRESOLVED_SNIPPET),
         "completion_own_import_js": write_generated_file("completion-own-import.js", COMPLETION_OWN_IMPORT_JS),
@@ -3826,6 +3832,62 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 shell_join(["page-eval", "--body", "--file", str(files["language_selection_box_js"]), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "24", "--no-open-outputs", "--preserve-selection", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="profiling-demo",
+            description="Replay the public profiling transcript twice, then verify its vector reuse edit reduces measured allocation.",
+            document=f"ui-regression-profile-demo-{int(time.time())}",
+            commands=[
+                shell_join(["macro", "write", "profiling_timeline", "--file", str(REPO_ROOT / "dev_docs/agents/transcripts/profiling_timeline.yaml")]),
+                "macro run profiling_timeline",
+                "wait-output profile_capture --contains PROFILE_DEMO_READY",
+                "macro run profiling_timeline",
+                shell_join(["run", "profile_capture", "--file", str(TOOLS_ROOT / "ui_regressions/profile-vector-comparison.kt"), "--timeout", timeout_text]),
+                shell_join(["launch", "profile_vectors", "--file", str(files["profile_vector_reuse"]), "--timeout", timeout_text]),
+                "wait-output profile_vectors --contains PROFILE_REUSE_READY",
+                shell_join(["run", "profile_capture", "--file", str(REPO_ROOT / "public/docs/assets/agent_transcripts/profiling_timeline/profile_capture_code_.kt"), "--timeout", timeout_text]),
+                "sleep 3.4",
+                "stop profile_vectors",
+                shell_join(["run", "profile_capture", "--file", str(TOOLS_ROOT / "ui_regressions/profile-vector-comparison.kt"), "--timeout", timeout_text]),
+                "wait-output profile_capture --contains PROFILE_REUSE_BYTES_PER_RESUME",
+                shell_join(["page-eval", "--body", "window.showProfilingTimeline(); return {ok: typeof window.showProfilingTimeline === 'function'};", "--timeout", pw_timeout]),
+                "sleep 0.6",
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="profiling-stacks",
+            description="Real JFR CPU/allocation stacks and box gutter heatmaps that follow brushing and navigation, clear on edit/close, and coexist with history heatmaps.",
+            document=f"ui-regression-profile-stacks-{int(time.time())}",
+            commands=[
+                "new-box --name ProfileStacks --alias profile_work --x 40 --y 40",
+                shell_join(["launch", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/profile-stacks.kt"), "--timeout", timeout_text]),
+                "wait-output @last --contains PROFILE_STACKS_READY",
+                "new-box --name ProfileStacksTwin --x 300 --y 40",
+                shell_join(["set", "@last", "code", "--file", str(TOOLS_ROOT / "ui_regressions/profile-stacks.kt")]),
+                "editor-open @last --property code",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/profiling-stacks.js"), "--timeout", pw_timeout]),
+                shell_join(["screenshot-editor", "@profile_work", str(BUILD_ROOT / "artifacts/profiling-stacks/gutter.png"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "@profile_work", "--with-editor", "--no-pan", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="profiling-timeline",
+            description="Record real box coroutines, brush CPU/allocation samples, navigate to code, and retain or replace a latched capture.",
+            document=f"ui-regression-profile-{int(time.time())}",
+            commands=[
+                "new-box --name ProfileWork --x 40 --y 40",
+                shell_join(["launch", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/profile-work.kt"), "--timeout", timeout_text]),
+                "wait-output @last --contains PROFILE_WORK_READY",
+                "new-box --name ProfileNeighbour --x 340 --y 40",
+                shell_join(["launch", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/profile-neighbour.kt"), "--timeout", timeout_text]),
+                "wait-output @last --contains PROFILE_NEIGHBOUR_READY",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/profiling-timeline.js"), "--timeout", pw_timeout]),
+                "new-box --name ProfilePanelChecks --x 40 --y 180",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/profile-panel-resize.kt"), "--timeout", timeout_text]),
+                "wait-output @last --contains PROFILE_CORNERS_READY",
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
         ),
         UiRegression(
             id="history-panel",

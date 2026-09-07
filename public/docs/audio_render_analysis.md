@@ -69,6 +69,8 @@ share the same time window.
 
 ## Renderers
 
+<div class="field-data-table" markdown>
+
 | Source in Field | Finite-file entry point | Execution |
 | --- | --- | --- |
 | Pat's deterministic voice | `renderPatWav(path, pattern, cycles, cps)` | offline, synchronous |
@@ -79,6 +81,8 @@ share the same time window.
 | Faust source text | `renderFaustWavAsync(path, name, source, seconds)` | background future; avoids blocking on compiler warm-up |
 | Sonic Pi source text | `recordSonicPiWav(sonicPi(), path, source, seconds)` | background future; real-time recording |
 | any existing Field WAV | `RenderedAudioFile.existing(path, generator, provenance)` | no rendering assumption |
+
+</div>
 
 All writers accept explicit paths and never silently choose a project location. The transcript uses
 the system temporary directory because the uploaded asset is durable and content-addressed; use a

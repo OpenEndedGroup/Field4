@@ -523,6 +523,8 @@ fails to close. `dev_docs/MESH_GEOMETRY.md` has the measurements.
 
 ## Recipes
 
+<div class="field-data-table" markdown>
+
 | you want | the call |
 |---|---|
 | a shape from an equation | `marchingCubes(field, boundsAround(radius = r), resolution)` |
@@ -544,6 +546,8 @@ fails to close. `dev_docs/MESH_GEOMETRY.md` has the measurements.
 | point-in-solid, many times | `val tree = mesh.bvh()` then `tree.contains(p)` |
 | the mesh's own distance field | `mesh.bvh().asSdf()` |
 | a normalised mesh for a thumbnail | `mesh.normalized(1.0)` |
+
+</div>
 
 ## Where the pictures come from
 

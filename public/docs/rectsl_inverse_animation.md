@@ -420,6 +420,8 @@ The differentiable backend is checked against an oracle that shares **no code** 
 double-precision capture of every sampled rect of the gallery's 38 programs, at 41 times each. The
 backend recomputes each rect's nine numeric channels and is held to that capture:
 
+<div class="field-data-table" markdown>
+
 | measurement | value |
 | --- | --- |
 | gallery tracks that lower | **4993 of 5020**, with all 27 refusals pattern tracks |
@@ -433,6 +435,8 @@ backend recomputes each rect's nine numeric channels and is held to that capture
 | a heading round a winding circle | **bit-identical at 4001 of 4001 samples**, across two branch-cut crossings |
 | a heading whose velocity vanishes | **bit-identical at 801 of 801**, with 400 of them needing a wider probe than the first |
 | the guarded `/` and `smoothstep` | **bit-identical at 2001 of 2001 each**, including the sample where the guard fires |
+
+</div>
 
 The first row is asserted rather than reported, and what it asserts is a classification rather than a
 count. A pattern track is the only thing that may refuse; refused and pattern-built have to be the

@@ -268,6 +268,8 @@ The stand-in is not the voice you are hearing on most of the site. The audit des
 bottom of this page sweeps every published clip and measures each one; the corpus is fifteen
 clips across four pages, and it breaks down like this:
 
+<div class="field-data-table" markdown>
+
 | how many | family | where |
 | --- | --- | --- |
 | 5 | the stand-in synth (`patVoice`) | 3 on [Patterns & Rhythm](pattern_language.md), 1 here, 1 on [Sound paths](sound_paths.md) |
@@ -275,6 +277,8 @@ clips across four pages, and it breaks down like this:
 | 1 | real samples + the stand-in per unmatched event | here |
 | 7 | a **DoughDSP primitive** on a real signal | 6 on [DoughDSP Sound Examples](dough_dsp_sound.md), 1 on [Sound paths](sound_paths.md) |
 | 1 | a **Faust** program compiled at runtime | [Sound paths](sound_paths.md) |
+
+</div>
 
 Nine of the fifteen never touch `patVoice` at all, and the largest family among them is standing
 in for nothing. `DoughDspSoundDocs` runs a plate reverb, a phaser, a resonant lowpass and a soft

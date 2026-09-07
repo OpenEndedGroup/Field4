@@ -10,12 +10,16 @@ Stack signatures use `a b -- c`, where the top of stack is on the right. If a wo
 
 ## Mental model
 
+<div class="field-data-table" markdown>
+
 | Stage | Meaning |
 | --- | --- |
 | Push | Numbers, colors, `uv`, `p`, `prev`, external reads, vector literals, and store reads put values on the stack. |
 | Transform | Math, swizzles, noise, color grading, and suffix modifiers consume values and push results. |
 | Sample | `sample`, `sample-abs`, and `gather` read configured textures, usually the previous frame; coordinates are raw by default and `.w` variants wrap. |
 | Return | The top value becomes the color unless explicit `->0` through `->3` writes override channels. |
+
+</div>
 
 ## Inputs and constants
 
@@ -65,6 +69,8 @@ All values are `vec4`. Swizzles turn selected channels back into a `vec4`: one c
 
 Suffixes let you write modulation where you are already thinking about a number. The same modifiers work as numeric literals, top-of-stack amplitude operators, and top-of-stack driver operators.
 
+<div class="field-data-table" markdown>
+
 | Form | Example | Means |
 | --- | --- | --- |
 | Channel suffix | `0.7r`, `0.2g`, `0.1b`, `1a` | push a channel-weighted vector. |
@@ -78,9 +84,13 @@ Suffixes let you write modulation where you are already thinking about a number.
 | Top amplitude | <code>expr &#124;c1.8p0.2</code> | consume `expr` as amount and multiply by a time/spatial/noise factor. |
 | Top driver | `expr ]wr18` | consume `expr` as the oscillator/noise driver; amplitude is one. |
 
+</div>
+
 ## Modifier alphabet
 
 `|` keeps the default driver, usually time or input coordinates. `]` changes the driver to the consumed top value.
+
+<div class="field-data-table" markdown>
 
 | Group | Modifiers | What they do |
 | --- | --- | --- |
@@ -91,6 +101,8 @@ Suffixes let you write modulation where you are already thinking about a number.
 | Spatial noise | `fbm`, `grain`, `noise` | noise/fbm/hash over coordinates for offsets, masks, and material texture. |
 | Spatial waves | `wa`, `wr`, `wx`, `wy` | sine waves across angle, radius, x, or y. |
 | Time and channels | `a`, `b`, `g`, `r`, `t` | time scalar from `.w`, or put the amount into one RGBA channel. |
+
+</div>
 
 Examples: `0.4c2`, `0.4s3q8`, `p length |pulse8d0.15q4`, `p ]fbm5q8`, `prev xy ]c3p0.1`.
 

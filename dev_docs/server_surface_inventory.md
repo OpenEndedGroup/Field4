@@ -33,7 +33,7 @@ What was uncovered before this page existed, and is what it adds:
 | HTTP **read** routes | 36 | nothing — the mutating census skips `get` outright |
 | **all-method** routes (`route(…) { handle { … } }`) | 13 | nothing — they name no verb, so no verb regex saw them |
 | `staticFiles` directory mounts | 5 | nothing — invisible to every route regex in the tree |
-| `/ws` **command** names (`handlers`) | 106 | nothing |
+| `/ws` **command** names (`handlers`) | 107 | nothing |
 | `/ws` **raw channels** (`rawHandlers`) | 10 | nothing — a second dispatch table nothing had counted |
 
 The second and fifth rows arrived on 2026-08-22, and the first row moved from 34 to 36 the
@@ -236,7 +236,7 @@ than a second `/local`.
 
 ## The `/ws` command surface
 
-105 command names, in the `handlers` table. This is the real command API, it is roughly twice
+107 command names, in the `handlers` table. This is the real command API, it is roughly twice
 the size of the HTTP write surface, and until this page nothing enumerated it. It is not the
 only `/ws` dispatch table: ten more channels live in `rawHandlers` and are counted in
 [their own section](#the-other-ws-dispatch-table-rawhandlers) below.
@@ -262,6 +262,7 @@ the file, and the reach is described per file below in prose that a human checke
 | `UserKeybindingsManager.kt` | 2 |
 | `chat.kt` | 2 |
 | `ButtonControlHandler.kt` | 1 |
+| `CoroutineProfiling.kt` | 1 |
 | `DocsSearchInstaller.kt` | 1 |
 | `fileproxy.kt` | 1 |
 
@@ -279,6 +280,7 @@ What each of those reaches, checked against the code rather than inferred from t
 | `chat.kt` | proxies to the configured chat server |
 | `UserKeybindingsManager.kt` | reload the user keybindings file; report the command inventory |
 | `ButtonControlHandler.kt` | one control-widget callback |
+| `CoroutineProfiling.kt` | starts, latches, and reads bounded in-memory coroutine captures for the attached document; at most one recording process-wide, with a 30-second maximum |
 | `DocsSearchInstaller.kt` | documentation search |
 | `fileproxy.kt` | **creates a file-proxy box**, which writes a new file into the workspace |
 
@@ -321,6 +323,7 @@ no sandbox between a `/ws` frame and that.
 | `continue-all` | `executing.kt` |
 | `controller-selection` | `Server.kt` |
 | `copy-boxes` | `Server.kt` |
+| `coroutine-profile` | `CoroutineProfiling.kt` |
 | `create-file-proxy-box` | `fileproxy.kt` |
 | `custom-marking-fire` | `Server.kt` |
 | `custom-marking-request` | `Server.kt` |
@@ -440,7 +443,7 @@ publishes head and per-eye viewing geometry up it, so the Mac can render the fra
 about to display. Everything else on `/ws` is the browser or a native client asking this process for
 something.
 
-These sit behind the same `/ws` upgrade as the 105 commands, so the same sentence applies: the
+These sit behind the same `/ws` upgrade as the 107 commands, so the same sentence applies: the
 guard arrived 2026-08-19 in `3aa64af4d` and is off by default.
 
 ## What the guard does and does not prove

@@ -21,6 +21,8 @@ worked example of all four:
 
 The filenames are misleading, and one of them is actively so:
 
+<div class="field-data-table" markdown>
+
 | what you want | where it is | notes |
 |---|---|---|
 | 2D Delaunay, 2D Voronoi, 2D convex hull | `graph_connectivity.kt` | `vec2DelaunayGraph`, `vec2DelaunayTriangles`, `vec2VoronoiDiagram`, `vec2VoronoiDualGraph`, `vec2ConvexHull`. JTS-backed and exact. See also [Neighbors & Graphs](graph_connectivity_examples.md) |
@@ -29,6 +31,8 @@ The filenames are misleading, and one of them is actively so:
 | marching squares → polylines and `FLine`s | `contours.kt` | `generateIsoContours`, `generateSmoothIsoContours`, `pointEdgeScalarField2D` |
 | clustering | `clustering.kt` | agglomerative (7 linkages), k-medoids, k-medians. **There is no k-means in Field** — see below for why |
 | any of the above → `FLine` | `spatial_field.kt` | `toFLine`/`toFLines` per result type, plus `showPlane` / `showPlaneGrid` |
+
+</div>
 
 That last row is the one that makes the rest drawable. Every partitioner above answers with
 *structure* — vertex rings, circular arcs, triangle index triples, integer labels — rather than with
@@ -1203,6 +1207,8 @@ bridge does its own repair.
 
 ## Recipes
 
+<div class="field-data-table" markdown>
+
 | you want | the call |
 |---|---|
 | the Voronoi cells of some points | `vec2VoronoiDiagram(points).toFLines()` |
@@ -1226,6 +1232,8 @@ bridge does its own repair.
 | a cluster assignment drawn flat | `layer.toFLines(points, centers)` |
 | 3D Voronoi cells | `voronoi3d(sites)`, then `toTriMesh` from [mesh_examples](mesh_examples.md) |
 | any of it, side by side with captions | `showPlaneGrid("title\ncaption" to lines, …)` |
+
+</div>
 
 ## Where the pictures come from
 

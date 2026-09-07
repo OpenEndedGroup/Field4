@@ -235,7 +235,7 @@ fun Box.launchFrames(
         box.jobs.remove(endJob)
     }
 
-    val launchJob = inMain {
+    val launchJob = inMain(Box.boxContextElement(box) + ProfileOrigin(box, strand)) {
         Box.withBoxContext(box) {
             if (!box.isLaunchEpochCurrent(launchEpoch)) return@withBoxContext
             box.currentRunningStates[strand] = RunningState(generation, mode)
@@ -357,7 +357,7 @@ class Framer : CoroutineDispatcher() {
             c++
             try {
                 isMain.store(true)
-                n.second.run()
+                CoroutineProfiles.resume(n.first, n.second)
             } catch (ex: Throwable) {
                 ex.printStackTrace()
             } finally {

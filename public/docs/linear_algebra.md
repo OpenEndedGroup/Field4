@@ -456,6 +456,8 @@ surface over externally-owned memory. Development builds detect stale handles,
 wrong types, and cross-thread access; a distribution build can compile those
 checks out with `-PlinalgArenaChecks=false`.
 
+<div class="field-data-table" markdown>
+
 | Situation | Use |
 | --- | --- |
 | Persistent box state or a handful of values | `Vector3f`, `Matrix4f`, `Quaternionf` |
@@ -463,6 +465,8 @@ checks out with `-PlinalgArenaChecks=false`.
 | A subsystem with explicit scratch ownership | `FrameArena` |
 | Packed vertex/point data, or aligned mapped records | `SegmentVec2/3/4Buffer` |
 | Passing a scratch result into persistent state | Explicit `copyTo` or `set` |
+
+</div>
 
 ## Geometry recipes
 

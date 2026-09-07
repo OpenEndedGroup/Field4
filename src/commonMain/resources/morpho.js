@@ -11,13 +11,19 @@
 // so the directive is invisible to the language — which is exactly why it needs to be visible to
 // the reader. It is tokenised as a keyword rather than a comment.
 //
-// Loaded via "bithero/morpho" in bootstrapMonaco.js. The box's code_language is "MorphoHDL"
-// (see afield.morpho.morphoTopologyNeedsUpdating), matched here as an alias.
+// Loaded via "bithero/morpho" in bootstrapMonaco.js. The language id has to be the box's
+// code_language — "MorphoHDL", set by afield.morpho.morphoTopologyNeedsUpdating — lower-cased,
+// because that is the string the editor hands to monaco.editor.setModelLanguage (Main.kt and
+// BootstrapMonacoRuntime.kt both call it as `code_language.lowercase()`). An alias will not do:
+// setModelLanguage resolves mime types and then ids, never aliases, and silently falls back to
+// "plaintext" for an id nobody registered. Registering as "morpho" therefore left every morpho box
+// as plaintext — no highlighting, and no fieldSuggest either, since it gates on
+// model.getLanguageId(). See dev_docs/small_language_anatomy.md step 5.
 define("bithero/morpho", ["require", "vs/editor/editor.api"], function (require, monacoModule) {
     "use strict";
 
     var monaco = monacoModule && monacoModule.default ? monacoModule.default : monacoModule;
-    var languageId = "morpho";
+    var languageId = "morphohdl";
 
     monaco.languages.register({
         id: languageId,
