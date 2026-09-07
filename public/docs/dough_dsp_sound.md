@@ -1,27 +1,22 @@
 # DoughDSP: hear the primitives
 
 The [`DoughDsp`](https://codeberg.org/uzu/dough) port gives Field a handful of low-level
-DSP building blocks — a plate reverb, an LFO-swept phaser, a resonant lowpass, a click-free
+DSP building blocks: a plate reverb, an LFO-swept phaser, a resonant lowpass, a click-free
 envelope, a soft clipper, and two aliasing oscillators. A picture of a filter
 curve only gets you so far; the way to know what one of these *does* is to run a real
 signal through it and listen.
 
-Every plot and every audio clip on this page is produced by actually running the primitive on
-the CPU — no hand-drawn curves, no pre-baked recordings. The waveforms are block-rendered
-offline (exactly like the audio engine renders them, minus the sound card) and written to a
-16-bit PCM WAV at docs-build time by
-`DoughDspSoundDocs` (`src/jvmMain/kotlin/afield/four/synth/DoughDspSoundDocs.kt`); the plots
-are `showSignals` Plotly figures of the same run. Rebuild the page and the sound regenerates
-from the code.
+The six clips below are the primitives themselves, driven by real signals rather than the
+`patVoice` drum stand-in the pattern pages use. Each is block-rendered offline (exactly as the
+audio engine renders it, minus the sound card) and written to a 16-bit PCM WAV at docs-build
+time by `DoughDspSoundDocs` (`src/jvmMain/kotlin/afield/four/synth/DoughDspSoundDocs.kt`); the
+plots are `showSignals` Plotly figures of the same run.
+[Sound: the Pattern → Audio Path](sound.md) audits every audio clip in these docs and names the
+family that produced each one.
 
-These six clips are the primitives themselves, driven by real signals — they are *not* the
-`patVoice` drum stand-in used by the pattern pages, and `DoughDspSoundDocs` never calls it.
-[Sound: the Pattern → Audio Path](sound.md) audits every audio clip in these docs and states
-which of the three production paths made each one.
-
-Each runner block below shows the *real* code that produces its plot: the interesting part —
-constructing and driving the primitive — is in focus, and the render-and-plot boilerplate is
-folded behind a `+ …` pill you can click to reveal. The offline `dough*` helpers it calls
+In each runner block the interesting part, constructing and driving the primitive, is in focus,
+and the render-and-plot boilerplate is folded behind a `+ …` pill you can click to reveal. The
+offline `dough*` helpers it calls
 (`doughRenderMono`, `doughRenderStereoMono`, `doughRenderGated`, `doughPluckEnv`, and the
 plot-shaping `doughAbsEnvelope` / `doughShortTimeRms` / `doughShortTimeBrightness` /
 `doughWaveWindow`) live in the same file and are auto-imported into every box.
@@ -118,8 +113,8 @@ showSignals(
 ## CurvedADSR — a gated three-note rhythm
 
 A 220 Hz sine multiplied by the click-free curved envelope, gated on and off three times. Each
-note swells in and fades out with real silence between — no clicks at the retrigger, which is the
-whole point of the curved variant. The envelope plot shows three clean humps.
+note swells in and fades out with real silence between, and no clicks at the retrigger, which
+is the whole point of the curved variant. The envelope plot shows three clean humps.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/dough_dsp_sound/curved-adsr.png" wait="1.5" capture="box" open-outputs="true" name="dough-sound-adsr"}
 :::static
@@ -179,8 +174,8 @@ showSignals(
 
 The two naive oscillators, un-bandlimited: one second of a 200 Hz sawtooth
 (`ZawOsc`) then one second of a 200 Hz narrow pulse (`PulzeOsc`, duty 0.3). The raw ramps buzz
-with aliasing — that grit is the character, not a bug. The plot shows two periods of each: a clean
-rising ramp and a narrow rectangular pulse.
+with aliasing, which is the character these two oscillators are for. The plot shows two periods
+of each: a clean rising ramp and a narrow rectangular pulse.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/dough_dsp_sound/zaw-pulze.png" wait="1.5" capture="box" open-outputs="true" name="dough-sound-oscillators"}
 :::static
