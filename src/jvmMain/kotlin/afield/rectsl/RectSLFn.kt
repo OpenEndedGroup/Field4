@@ -9,22 +9,20 @@ import kotlin.math.abs
  *
  * # Why there is a third backend at all
  *
- * `ddf732260` made the track IR symbolic and said why: a closure "cannot be printed, compared,
- * serialized, rewritten, or emitted as GLSL". It then delivered GLSL. [TrackOp1], [TrackOp2],
- * [TrackOp3] and [TimeWarpKind] have carried an `eval:` and a `glsl:` ever since — a two-backend
- * enum asking for a third.
+ * The track IR is symbolic rather than a closure, because a closure cannot be printed, compared,
+ * serialized, rewritten, or emitted as GLSL. [TrackOp1], [TrackOp2], [TrackOp3] and [TimeWarpKind]
+ * each carry an `eval:` and a `glsl:`; this file is the third column, `fn:`, and it is the one that
+ * changes what RectSL can *do* rather than where it can run.
  *
- * This is that third column, `fn:`, and it is the one that changes what RectSL can *do* rather
- * than where it can run. [afield.stdlib.Functions.Fn] is Field's own expression type, and
- * `autodiff_fn.kt` differentiates an `Fn` graph exactly with respect to its numeric leaves. So a
- * track that lowers to an `Fn` is a track you can take the derivative of, and therefore a track
- * you can **solve**: declare where a rect should be at some instant and let a gradient find the
- * numbers that put it there. That is [Track.fitParameters], and it is the point of this file.
+ * [afield.stdlib.Functions.Fn] is Field's own expression type, and `autodiff_fn.kt` differentiates
+ * an `Fn` graph exactly with respect to its numeric leaves. So a track that lowers to an `Fn` is a
+ * track you can take the derivative of, and therefore a track you can **solve**: declare where a
+ * rect should be at some instant and let a gradient find the numbers that put it there. That is
+ * [Track.fitParameters], and it is the point of this file.
  *
  * # The two identities that make it possible
  *
- * `Fn` was not designed as a general expression language, and two gaps look fatal until they are
- * not.
+ * `Fn` was not designed as a general expression language, and two gaps look fatal and are not.
  *
  * **There is no "apply a unary function to another `Fn`'s value" op.** The differentiable value
  * transforms are `flip`, `abs`, `exp`, `log`, `pow`, `clamp`, `scaleY`, `offsetY` and pointwise
@@ -60,86 +58,66 @@ import kotlin.math.abs
  * the first refusal it meets. This is the same discipline `FnNonDifferentiable` already applies
  * inside the stdlib, and for the same reason: the gap has to be readable, or it grows in silence.
  *
- * What is refused, and why. **This list has shrunk twice**, first when `Fn` gained a first-class
- * differentiable `floor` and `clamp01(floor(x) + 1)` turned out to be an *exact* step — 1 at and
- * above 0, 0 below, at every double including `-0.0` — and then when it gained `atan2`. Every hard
- * edge in an animation language is a step, so the first pass took most of the original refusals;
- * [HeadingTrack] took the rest. What is left:
+ * What is refused:
  *
- * - `TrackOp2.MOD` — and the reason on this line was **wrong until 2026-08-19**, which is the
- *   argument for measuring a refusal rather than reasoning one out. It said `%` needed a sign
- *   primitive; it does not, since `trunc(z) = s·floor(z) - (1-s)·floor(-z)` with `s = fnStepFrom(z)`
- *   is exact at every double. What actually defeats it is that Kotlin's `%` on doubles is the
- *   *exact* remainder, and `a - b·trunc(a/b)` in double arithmetic is a different function once the
- *   quotient outgrows 53 bits: `1e17 % 3` is `1.0` and the reconstruction says `0.0`. Silently, and
- *   as a zero, which is indistinguishable from the guard having fired. A constant pair still folds.
+ * - `TrackOp2.MOD`. Kotlin's `%` on doubles is the *exact* remainder, and `a - b·trunc(a/b)` in
+ *   double arithmetic is a different function once the quotient outgrows 53 bits: `1e17 % 3` is
+ *   `1.0` and the reconstruction says `0.0`. Silently, and as a zero, which is indistinguishable
+ *   from the guard having fired. A constant pair still folds.
  * - The pattern tracks ([PatTrack] and friends) — an interpreter over a mini-notation tree, not an
- *   expression of fixed shape. The same reason `FnNonDifferentiable` files `pat` itself, and the
- *   only refusal here that is not closable. `PatPattern` is a `(PatArc) -> List<PatEvent>` lambda:
- *   there is nothing to inspect and no closed form to find, so this is not a lowering nobody has
- *   got round to. Since 2026-08-22 it is also a refusal the gallery actually exercises, so it has
- *   a name — [RECTSL_PATTERN_REFUSAL] — and a predicate that decides it from the track rather than
- *   from the sentence: [dependsOnPatternTrack]. It costs far less than four rhythm scenes in the
- *   gallery would suggest — 27 of 5020 tracks — and the reason is worth knowing: `pat` used as
- *   *scene structure* is unrolled at compile time into one gated rect per event, so no interpreter
+ *   expression of fixed shape. `PatPattern` is a `(PatArc) -> List<PatEvent>` lambda: there is
+ *   nothing to inspect and no closed form to find, which is the same reason `FnNonDifferentiable`
+ *   files `pat` itself, and makes this the one refusal here that cannot be closed. It has a name,
+ *   [RECTSL_PATTERN_REFUSAL], and a predicate that decides it from the track rather than from the
+ *   sentence: [dependsOnPatternTrack]. It costs far less than four rhythm scenes in the gallery
+ *   would suggest — 27 of 5020 tracks — because `pat` used as *scene structure* is unrolled at
+ *   compile time into one gated rect per event, so no interpreter
  *   survives into the sampled IR, and `musicality-variation` lowers all 1096 of its tracks despite
  *   spending six `pat` verbs. What survives is a pattern still being asked a value of at sample
  *   time: a signal word read as a channel — `sine`, `cosine`, `saw`, `isaw`, `tri`, `square`,
  *   `perlin`, `rand` all push a `VSig`, and `VSig.asTrack` is a [PatTrack] — or one of the two
  *   gates the pattern layer installs on a rect's alpha, `->every` on the cycle count and
  *   `->degrade` on a per-event coin flip. Those are the same tracks the GLSL/SDF emitter has to
- *   bake rather than lower, which is not a coincidence: it is the one place both backends meet the
- *   same wall.
+ *   bake rather than lower: the one place both backends meet the same wall.
  * - Degenerate keyed tracks: no keys at all (nothing to sample), or two keys sharing a time (a step
  *   between two named values, which the clamped-ramp identity cannot express).
  *
- * What used to be on this list and now lowers exactly, because reading a stale refusal catalogue as
- * authoritative is worse than having none:
+ * Everything else lowers exactly, hard edges included. `Fn` has a first-class differentiable
+ * `floor`, from which `ceil` is `-floor(-x)` and `fract` is `x - floor(x)`, both exact in IEEE, and
+ * the `loop` and `pingpong` time warps follow for any window. `clamp01(floor(x) + 1)` is an *exact*
+ * step — 1 at and above 0, 0 below, at every double including `-0.0` — which gives
+ * [HoldScalarTrack] as `v₀ + Σ (vᵢ - vᵢ₋₁)·[t ≥ tᵢ]` and [GateTrack] straddling an edge as
+ * `[t ≥ lo]·(1 - [t ≥ hi])`, the sampler's half-open boundary included. Zero-almost-everywhere is
+ * the *truth* about a staircase rather than an approximation of one, so [Track.fitParameters]
+ * refuses a parameter reachable only through a step instead of descending a gradient that cannot
+ * move.
  *
- * - `FLOOR`, `CEIL` (`-floor(-x)`, exact in IEEE) and `FRACT` (`x - floor(x)`) — `RectSL.kt:375-391`.
- *   Zero-almost-everywhere is the *truth* about a staircase, not an approximation of one, and
- *   `fitParameters` refuses a parameter reachable only through one rather than pretending otherwise.
- * - `LOOP` (`x - p·floor(x/p)`) and `PINGPONG` (`a - |mod(x, 2a) - a|`) time warps, for **any**
- *   window — `RectSL.kt:560-607`. The window check remains as a fold, not as the condition.
- * - [HoldScalarTrack] with any number of keys, as `v₀ + Σ (vᵢ - vᵢ₋₁)·[t ≥ tᵢ]`, and [GateTrack]
- *   straddling an edge, as `[t ≥ lo]·(1 - [t ≥ hi])` — both exactly the sampler, half-open boundary
- *   included.
- * - The expo and elastic easings, whose closed forms do not reach their own endpoints; see
- *   `withExactEndpoints` below.
- * - [HeadingTrack] — the entry this file used to describe as "the whole of the residual refusal rate
- *   on the gallery", and it was: 116 of the corpus's 2754 tracks, and every non-pattern refusal in
- *   it. The refusal text predicted `FnExpr.Atan` plus a quadrant fix-up; the fix-up turned out to be
- *   half a turn wrong at a negative zero, so what landed is a first-class `FnExpr.Atan2` (with
- *   `Atan` and `Hypot` beside it). See [lowerHeading], which also records the one signed-zero corner
- *   where it still parts company with the sampler.
- * - The near-zero guards on `TrackOp2.DIV` and `TrackOp3.SMOOTHSTEP`, whose stated obstacle was that
- *   masking the result still evaluates `a/b`, so `0·inf` is NaN rather than 0. True, and the answer
- *   was to stop masking the result: guard the *divisor* instead, as `b·live + (1 - live)`, which is
- *   `b` where the guard passes and exactly `1.0` where it does not, so no infinity is ever created.
- *   The sign of the zero is then repaired by adding [fnZeroSelector]'s `-0.0`/`+0.0`, since `x + -0.0`
- *   is the true additive identity and `x + +0.0` is not. See [fnGuardedQuotient].
+ * `withExactEndpoints` below covers the expo and elastic easings, whose closed forms do not reach
+ * their own endpoints. [lowerHeading] covers [HeadingTrack] through `atan2`, and records the one
+ * signed-zero corner where it parts
+ * company with the sampler. [fnGuardedQuotient] guards the *divisor* of a near-zero division, as
+ * `b·live + (1 - live)`, so nothing ever divides by a near-zero and no infinity is created to
+ * mask; the sign of the suppressed zero is repaired by adding [fnZeroSelector]'s `-0.0`/`+0.0`,
+ * since `x + -0.0` is the true additive identity on doubles and `x + +0.0` is not.
+ *
+ * `dev_docs/stdlib_behaviour_changes.md` carries the dates on which each of those stopped being a
+ * refusal, and what it means for a scene written before then.
  *
  * # How the fidelity is checked
  *
- * `RectSLFnBackendTest` is the reason to believe any of this. `ddf732260` also shipped
- * `src/jvmTest/resources/rectsl/track_characterization.txt`: every sampled rect of all 34 gallery
- * programs at 41 times, to full double precision, **generated from pre-refactor code**. The test
- * reads it as data and recomputes each rect's channels through Fn-lowered tracks, so the oracle
- * shares no code path with the thing under test. It reports the worst disagreement, and it
- * reports coverage — how much of the corpus lowered at all — because a differential test that
- * quietly refused everything would otherwise read as a pass.
+ * `RectSLFnBackendTest` is the reason to believe any of this. It reads
+ * `src/jvmTest/resources/rectsl/track_characterization.txt` — every sampled rect of the gallery's
+ * programs at 41 times, to full double precision — as data, and recomputes each rect's channels
+ * through Fn-lowered tracks, so the oracle shares no code path with the thing under test. It
+ * reports the worst disagreement, and it reports coverage, how much of the corpus lowered at all,
+ * because a differential test that refused everything would otherwise read as a pass.
  *
- * That golden was regenerated on 2026-08-30, and it is worth being exact about what the new file
- * is, because "pre-refactor ground truth" is the whole reason to trust it. `0d875cc63` (2026-08-22)
- * added the four `musicality-*` programs and the golden had not been regenerated since, so the
- * characterization test had been failing for eight days. Regenerating added 27,433 lines and
- * **changed none**: every row of the original 34 programs is byte-identical to what `ddf732260`
- * dumped, so for those rows the oracle is still code that no longer exists. The 27,433 new rows are
- * not that. They were produced by today's [SceneProgram.sample], so against a `musicality-*` row
- * this file's lowering is being differentiated against the *current* sampler — still a real
- * differential, since the symbolic IR shares no code path with it, but not independent of a
- * sampler bug introduced after `ddf732260`. The 34 older programs carry that second guarantee;
- * the four newer ones do not, and nothing should be re-derived from them as if they did.
+ * The corpus is not uniform in what it proves, and the difference is the reason to trust it. The
+ * rows for the programs that predate this backend were dumped from code that knew nothing about
+ * it, so a disagreement on one of those can only be this file's. The rows for the four
+ * `musicality-*` programs were produced by the current [SceneProgram.sample]: still a real
+ * differential, since the symbolic IR shares no code path with the sampler, but not independent of
+ * a sampler bug introduced since. Nothing should be re-derived from those four as if it were.
  */
 
 /** A track lowered to an `Fn`, or an explanation of why it was not. */

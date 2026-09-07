@@ -126,9 +126,9 @@ data class Vec4f(
 }
 
 /**
- * Bridge a [Color4] to RectSL's local [Vec4f]. [Color4] and [Colormaps] moved to `package afield`
- * (2026-07-22) so general colormap/visualization code no longer depends on this microlanguage; this
- * extension keeps the RGBA→Vec4f conversion where its only caller (the renderer path) lives.
+ * Bridge a [Color4] to RectSL's local [Vec4f]. [Color4] and [Colormaps] live in `package afield`, so
+ * general colormap and visualization code does not depend on this microlanguage; this extension
+ * keeps the RGBA→Vec4f conversion where its only caller, the renderer path, lives.
  */
 fun Color4.toVec4f(): Vec4f = Vec4f(r.toFloat(), g.toFloat(), b.toFloat(), a.toFloat())
 

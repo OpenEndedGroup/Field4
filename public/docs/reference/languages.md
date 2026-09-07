@@ -3121,7 +3121,7 @@ rasterizer, `RectSLFn.kt` lowers scenes into the `Functions` algebra, `RectSLSdf
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Color4</span><span class="p">.</span><span class="nf">toVec4f</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec4f</span></code>](source/jvmMain/afield/rectsl/RectSL/#L133) | Bridge a [`Color4`](visualization.md#colormaps-kt-color4) to RectSL's local [`Vec4f`](languages.md#rectsl-kt-vec4f). [`Color4`](visualization.md#colormaps-kt-color4) and [`Colormaps`](visualization.md#colormaps-kt-colormaps) moved to `package afield` (2026-07-22) so general colormap/visualization code no longer depends on this microlanguage; this extension keeps the RGBA→Vec4f conversion where its only caller (the renderer path) lives. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Color4</span><span class="p">.</span><span class="nf">toVec4f</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec4f</span></code>](source/jvmMain/afield/rectsl/RectSL/#L133) | Bridge a [`Color4`](visualization.md#colormaps-kt-color4) to RectSL's local [`Vec4f`](languages.md#rectsl-kt-vec4f). [`Color4`](visualization.md#colormaps-kt-color4) and [`Colormaps`](visualization.md#colormaps-kt-colormaps) live in `package afield`, so general colormap and visualization code does not depend on this microlanguage; this extension keeps the RGBA→Vec4f conversion where its only caller, the renderer path, lives. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">constantTrack</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/rectsl/RectSL/#L1118) |  |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">constantPaintTrack</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">PaintSpec</span><span class="p">)</span><span class="p">:</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">PaintSpec</span><span class="p">&gt;</span></code>](source/jvmMain/afield/rectsl/RectSL/#L1119) |  |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">compileRectSL</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">curves</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">engine</span><span class="p">:</span> <span class="nc">KotlinScriptEngine</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">precompiledEscapes</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="p">(</span><span class="nc">RectEscapeContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompileResult</span></code>](source/jvmMain/afield/rectsl/RectSL/#L1560) | Compile a RectSL program with host-supplied distribution curves bound by name. Each entry becomes a bare word that pushes its `Functions.Fn` (like a named track), so a program can `sample` a curve the host built — including one that `fitBest`/`evolve` optimised toward a target. This is the Functions→RectSL half of the bridge: the host searches curve-space, RectSL lays out the array from the winner. |
@@ -4426,22 +4426,20 @@ RectSL tracks as differentiable `Fn` graphs — the third backend.
 
 ### Why there is a third backend at all
 
-`ddf732260` made the track IR symbolic and said why: a closure "cannot be printed, compared,
-serialized, rewritten, or emitted as GLSL". It then delivered GLSL. [`TrackOp1`](languages.md#rectsl-kt-trackop1), [`TrackOp2`](languages.md#rectsl-kt-trackop2),
-[`TrackOp3`](languages.md#rectsl-kt-trackop3) and [`TimeWarpKind`](languages.md#rectsl-kt-timewarpkind) have carried an `eval:` and a `glsl:` ever since — a two-backend
-enum asking for a third.
+The track IR is symbolic rather than a closure, because a closure cannot be printed, compared,
+serialized, rewritten, or emitted as GLSL. [`TrackOp1`](languages.md#rectsl-kt-trackop1), [`TrackOp2`](languages.md#rectsl-kt-trackop2), [`TrackOp3`](languages.md#rectsl-kt-trackop3) and [`TimeWarpKind`](languages.md#rectsl-kt-timewarpkind)
+each carry an `eval:` and a `glsl:`; this file is the third column, `fn:`, and it is the one that
+changes what RectSL can *do* rather than where it can run.
 
-This is that third column, `fn:`, and it is the one that changes what RectSL can *do* rather
-than where it can run. `afield.stdlib.Functions.Fn` is Field's own expression type, and
-`autodiff_fn.kt` differentiates an `Fn` graph exactly with respect to its numeric leaves. So a
-track that lowers to an `Fn` is a track you can take the derivative of, and therefore a track
-you can **solve**: declare where a rect should be at some instant and let a gradient find the
-numbers that put it there. That is `Track.fitParameters`, and it is the point of this file.
+`afield.stdlib.Functions.Fn` is Field's own expression type, and `autodiff_fn.kt` differentiates
+an `Fn` graph exactly with respect to its numeric leaves. So a track that lowers to an `Fn` is a
+track you can take the derivative of, and therefore a track you can **solve**: declare where a
+rect should be at some instant and let a gradient find the numbers that put it there. That is
+`Track.fitParameters`, and it is the point of this file.
 
 ### The two identities that make it possible
 
-`Fn` was not designed as a general expression language, and two gaps look fatal until they are
-not.
+`Fn` was not designed as a general expression language, and two gaps look fatal and are not.
 
 **There is no "apply a unary function to another `Fn`'s value" op.** The differentiable value
 transforms are `flip`, `abs`, `exp`, `log`, `pow`, `clamp`, `scaleY`, `offsetY` and pointwise
@@ -4477,86 +4475,66 @@ either a lowering or a refusal *with a reason* — [`RectSLFnLowering`](language
 the first refusal it meets. This is the same discipline `FnNonDifferentiable` already applies
 inside the stdlib, and for the same reason: the gap has to be readable, or it grows in silence.
 
-What is refused, and why. **This list has shrunk twice**, first when `Fn` gained a first-class
-differentiable `floor` and `clamp01(floor(x) + 1)` turned out to be an *exact* step — 1 at and
-above 0, 0 below, at every double including `-0.0` — and then when it gained `atan2`. Every hard
-edge in an animation language is a step, so the first pass took most of the original refusals;
-[`HeadingTrack`](languages.md#rectsl-kt-headingtrack) took the rest. What is left:
+What is refused:
 
-- `TrackOp2.MOD` — and the reason on this line was **wrong until 2026-08-19**, which is the
-  argument for measuring a refusal rather than reasoning one out. It said `%` needed a sign
-  primitive; it does not, since `trunc(z) = s·floor(z) - (1-s)·floor(-z)` with `s = fnStepFrom(z)`
-  is exact at every double. What actually defeats it is that Kotlin's `%` on doubles is the
-  *exact* remainder, and `a - b·trunc(a/b)` in double arithmetic is a different function once the
-  quotient outgrows 53 bits: `1e17 % 3` is `1.0` and the reconstruction says `0.0`. Silently, and
-  as a zero, which is indistinguishable from the guard having fired. A constant pair still folds.
+- `TrackOp2.MOD`. Kotlin's `%` on doubles is the *exact* remainder, and `a - b·trunc(a/b)` in
+  double arithmetic is a different function once the quotient outgrows 53 bits: `1e17 % 3` is
+  `1.0` and the reconstruction says `0.0`. Silently, and as a zero, which is indistinguishable
+  from the guard having fired. A constant pair still folds.
 - The pattern tracks ([`PatTrack`](languages.md#rectslpattern-kt-pattrack) and friends) — an interpreter over a mini-notation tree, not an
-  expression of fixed shape. The same reason `FnNonDifferentiable` files `pat` itself, and the
-  only refusal here that is not closable. `PatPattern` is a `(PatArc) -> List<PatEvent>` lambda:
-  there is nothing to inspect and no closed form to find, so this is not a lowering nobody has
-  got round to. Since 2026-08-22 it is also a refusal the gallery actually exercises, so it has
-  a name — `RECTSL_PATTERN_REFUSAL` — and a predicate that decides it from the track rather than
-  from the sentence: `dependsOnPatternTrack`. It costs far less than four rhythm scenes in the
-  gallery would suggest — 27 of 5020 tracks — and the reason is worth knowing: `pat` used as
-  *scene structure* is unrolled at compile time into one gated rect per event, so no interpreter
+  expression of fixed shape. `PatPattern` is a `(PatArc) -> List<PatEvent>` lambda: there is
+  nothing to inspect and no closed form to find, which is the same reason `FnNonDifferentiable`
+  files `pat` itself, and makes this the one refusal here that cannot be closed. It has a name,
+  `RECTSL_PATTERN_REFUSAL`, and a predicate that decides it from the track rather than from the
+  sentence: `dependsOnPatternTrack`. It costs far less than four rhythm scenes in the gallery
+  would suggest — 27 of 5020 tracks — because `pat` used as *scene structure* is unrolled at
+  compile time into one gated rect per event, so no interpreter
   survives into the sampled IR, and `musicality-variation` lowers all 1096 of its tracks despite
   spending six `pat` verbs. What survives is a pattern still being asked a value of at sample
   time: a signal word read as a channel — `sine`, `cosine`, `saw`, `isaw`, `tri`, `square`,
   `perlin`, `rand` all push a `VSig`, and `VSig.asTrack` is a [`PatTrack`](languages.md#rectslpattern-kt-pattrack) — or one of the two
   gates the pattern layer installs on a rect's alpha, `->every` on the cycle count and
   `->degrade` on a per-event coin flip. Those are the same tracks the GLSL/SDF emitter has to
-  bake rather than lower, which is not a coincidence: it is the one place both backends meet the
-  same wall.
+  bake rather than lower: the one place both backends meet the same wall.
 - Degenerate keyed tracks: no keys at all (nothing to sample), or two keys sharing a time (a step
   between two named values, which the clamped-ramp identity cannot express).
 
-What used to be on this list and now lowers exactly, because reading a stale refusal catalogue as
-authoritative is worse than having none:
+Everything else lowers exactly, hard edges included. `Fn` has a first-class differentiable
+`floor`, from which `ceil` is `-floor(-x)` and `fract` is `x - floor(x)`, both exact in IEEE, and
+the `loop` and `pingpong` time warps follow for any window. `clamp01(floor(x) + 1)` is an *exact*
+step — 1 at and above 0, 0 below, at every double including `-0.0` — which gives
+[`HoldScalarTrack`](languages.md#rectsl-kt-holdscalartrack) as `v₀ + Σ (vᵢ - vᵢ₋₁)·[t ≥ tᵢ]` and [`GateTrack`](languages.md#rectsl-kt-gatetrack) straddling an edge as
+`[t ≥ lo]·(1 - [t ≥ hi])`, the sampler's half-open boundary included. Zero-almost-everywhere is
+the *truth* about a staircase rather than an approximation of one, so `Track.fitParameters`
+refuses a parameter reachable only through a step instead of descending a gradient that cannot
+move.
 
-- `FLOOR`, `CEIL` (`-floor(-x)`, exact in IEEE) and `FRACT` (`x - floor(x)`) — `RectSL.kt:375-391`.
-  Zero-almost-everywhere is the *truth* about a staircase, not an approximation of one, and
-  `fitParameters` refuses a parameter reachable only through one rather than pretending otherwise.
-- `LOOP` (`x - p·floor(x/p)`) and `PINGPONG` (`a - |mod(x, 2a) - a|`) time warps, for **any**
-  window — `RectSL.kt:560-607`. The window check remains as a fold, not as the condition.
-- [`HoldScalarTrack`](languages.md#rectsl-kt-holdscalartrack) with any number of keys, as `v₀ + Σ (vᵢ - vᵢ₋₁)·[t ≥ tᵢ]`, and [`GateTrack`](languages.md#rectsl-kt-gatetrack)
-  straddling an edge, as `[t ≥ lo]·(1 - [t ≥ hi])` — both exactly the sampler, half-open boundary
-  included.
-- The expo and elastic easings, whose closed forms do not reach their own endpoints; see
-  `withExactEndpoints` below.
-- [`HeadingTrack`](languages.md#rectsl-kt-headingtrack) — the entry this file used to describe as "the whole of the residual refusal rate
-  on the gallery", and it was: 116 of the corpus's 2754 tracks, and every non-pattern refusal in
-  it. The refusal text predicted `FnExpr.Atan` plus a quadrant fix-up; the fix-up turned out to be
-  half a turn wrong at a negative zero, so what landed is a first-class `FnExpr.Atan2` (with
-  `Atan` and `Hypot` beside it). See `lowerHeading`, which also records the one signed-zero corner
-  where it still parts company with the sampler.
-- The near-zero guards on `TrackOp2.DIV` and `TrackOp3.SMOOTHSTEP`, whose stated obstacle was that
-  masking the result still evaluates `a/b`, so `0·inf` is NaN rather than 0. True, and the answer
-  was to stop masking the result: guard the *divisor* instead, as `b·live + (1 - live)`, which is
-  `b` where the guard passes and exactly `1.0` where it does not, so no infinity is ever created.
-  The sign of the zero is then repaired by adding `fnZeroSelector`'s `-0.0`/`+0.0`, since `x + -0.0`
-  is the true additive identity and `x + +0.0` is not. See `fnGuardedQuotient`.
+`withExactEndpoints` below covers the expo and elastic easings, whose closed forms do not reach
+their own endpoints. `lowerHeading` covers [`HeadingTrack`](languages.md#rectsl-kt-headingtrack) through `atan2`, and records the one
+signed-zero corner where it parts
+company with the sampler. `fnGuardedQuotient` guards the *divisor* of a near-zero division, as
+`b·live + (1 - live)`, so nothing ever divides by a near-zero and no infinity is created to
+mask; the sign of the suppressed zero is repaired by adding `fnZeroSelector`'s `-0.0`/`+0.0`,
+since `x + -0.0` is the true additive identity on doubles and `x + +0.0` is not.
+
+`dev_docs/stdlib_behaviour_changes.md` carries the dates on which each of those stopped being a
+refusal, and what it means for a scene written before then.
 
 ### How the fidelity is checked
 
-`RectSLFnBackendTest` is the reason to believe any of this. `ddf732260` also shipped
-`src/jvmTest/resources/rectsl/track_characterization.txt`: every sampled rect of all 34 gallery
-programs at 41 times, to full double precision, **generated from pre-refactor code**. The test
-reads it as data and recomputes each rect's channels through Fn-lowered tracks, so the oracle
-shares no code path with the thing under test. It reports the worst disagreement, and it
-reports coverage — how much of the corpus lowered at all — because a differential test that
-quietly refused everything would otherwise read as a pass.
+`RectSLFnBackendTest` is the reason to believe any of this. It reads
+`src/jvmTest/resources/rectsl/track_characterization.txt` — every sampled rect of the gallery's
+programs at 41 times, to full double precision — as data, and recomputes each rect's channels
+through Fn-lowered tracks, so the oracle shares no code path with the thing under test. It
+reports the worst disagreement, and it reports coverage, how much of the corpus lowered at all,
+because a differential test that refused everything would otherwise read as a pass.
 
-That golden was regenerated on 2026-08-30, and it is worth being exact about what the new file
-is, because "pre-refactor ground truth" is the whole reason to trust it. `0d875cc63` (2026-08-22)
-added the four `musicality-*` programs and the golden had not been regenerated since, so the
-characterization test had been failing for eight days. Regenerating added 27,433 lines and
-**changed none**: every row of the original 34 programs is byte-identical to what `ddf732260`
-dumped, so for those rows the oracle is still code that no longer exists. The 27,433 new rows are
-not that. They were produced by today's `SceneProgram.sample`, so against a `musicality-*` row
-this file's lowering is being differentiated against the *current* sampler — still a real
-differential, since the symbolic IR shares no code path with it, but not independent of a
-sampler bug introduced after `ddf732260`. The 34 older programs carry that second guarantee;
-the four newer ones do not, and nothing should be re-derived from them as if they did.
+The corpus is not uniform in what it proves, and the difference is the reason to trust it. The
+rows for the programs that predate this backend were dumped from code that knew nothing about
+it, so a disagreement on one of those can only be this file's. The rows for the four
+`musicality-*` programs were produced by the current `SceneProgram.sample`: still a real
+differential, since the symbolic IR shares no code path with the sampler, but not independent of
+a sampler bug introduced since. Nothing should be re-derived from those four as if it were.
 
 `src/jvmMain/kotlin/afield/rectsl/RectSLFn.kt` — [read the source](source/jvmMain/afield/rectsl/RectSLFn/)
 
@@ -4566,57 +4544,57 @@ the four newer ones do not, and nothing should be re-derived from them as if the
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">RectSLFnLowering</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">valueOrNull</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">T</span><span class="o">?</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L188) | The lowered value, or null for a refusal. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">RectSLFnLowering</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">refusalOrNull</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L191) | The refusal reason, or null when this did lower. |
-| [<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">RectSLFnLowering</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">orThrow</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">T</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L194) | The lowered value, or a thrown [`RectLangException`](languages.md#rectsl-kt-rectlangexception) carrying the refusal. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">toFn</span><span class="p">(</span><span class="n">over</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span> <span class="o">=</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="p">.</span><span class="nc">ALL</span><span class="p">)</span><span class="p">:</span> <span class="nc">RectSLFnLowering</span><span class="p">&lt;</span><span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">&gt;</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L601) | This track as a differentiable function of time, or a refusal saying why not. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">dependsOnPatternTrack</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L640) | True when this track is, or is built over, one of the mini-notation tracks — the one class `toFn` refuses **permanently**. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">freeParameterIndices</span><span class="p">(</span><span class="n">fn</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L1251) | Which θ index each named free parameter ended up at, for the graph `fn`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">freeParameterSlots</span><span class="p">(</span><span class="n">fn</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L1271) | **Every** θ index each named free parameter occupies, in graph order — the honest form of `freeParameterIndices`, which can only report one. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">freeParameters</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L1295) | Every named free parameter in this track tree, with its current value, in first-seen order. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">substituteParameters</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L1309) | This track with each named free parameter set to the value `values` gives for it, leaving anything the map does not mention alone. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L1404) | The track tree as one line of prose — the *printing* half of what `ddf732260` promised. |
+| [<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">RectSLFnLowering</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">valueOrNull</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">T</span><span class="o">?</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L166) | The lowered value, or null for a refusal. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">RectSLFnLowering</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">refusalOrNull</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L169) | The refusal reason, or null when this did lower. |
+| [<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">RectSLFnLowering</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">orThrow</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">T</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L172) | The lowered value, or a thrown [`RectLangException`](languages.md#rectsl-kt-rectlangexception) carrying the refusal. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">toFn</span><span class="p">(</span><span class="n">over</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span> <span class="o">=</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="p">.</span><span class="nc">ALL</span><span class="p">)</span><span class="p">:</span> <span class="nc">RectSLFnLowering</span><span class="p">&lt;</span><span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">&gt;</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L579) | This track as a differentiable function of time, or a refusal saying why not. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">dependsOnPatternTrack</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L618) | True when this track is, or is built over, one of the mini-notation tracks — the one class `toFn` refuses **permanently**. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">freeParameterIndices</span><span class="p">(</span><span class="n">fn</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L1229) | Which θ index each named free parameter ended up at, for the graph `fn`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">freeParameterSlots</span><span class="p">(</span><span class="n">fn</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L1249) | **Every** θ index each named free parameter occupies, in graph order — the honest form of `freeParameterIndices`, which can only report one. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">freeParameters</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L1273) | Every named free parameter in this track tree, with its current value, in first-seen order. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">substituteParameters</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L1287) | This track with each named free parameter set to the value `values` gives for it, leaving anything the map does not mention alone. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">describe</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L1382) | The track tree as one line of prose — the *printing* half of what `ddf732260` promised. |
 
 ### Top-level values { #rectslfn-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">RECTSL&#95;PATTERN&#95;REFUSAL</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L618) | Why a pattern track has no differentiable form. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">RECTSL&#95;PATTERN&#95;REFUSAL</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L596) | Why a pattern track has no differentiable form. |
 
 ### TrackFnUnary { #rectslfn-kt-trackfnunary }
 
-[<code class="highlight"><span class="k">typealias</span> <span class="nc">TrackFnUnary</span> <span class="o">=</span> <span class="p">(</span><span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L146)
+[<code class="highlight"><span class="k">typealias</span> <span class="nc">TrackFnUnary</span> <span class="o">=</span> <span class="p">(</span><span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L124)
 
 A track lowered to an `Fn`, or an explanation of why it was not.
 
 ### TrackFnBinary { #rectslfn-kt-trackfnbinary }
 
-[<code class="highlight"><span class="k">typealias</span> <span class="nc">TrackFnBinary</span> <span class="o">=</span> <span class="p">(</span><span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L149)
+[<code class="highlight"><span class="k">typealias</span> <span class="nc">TrackFnBinary</span> <span class="o">=</span> <span class="p">(</span><span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L127)
 
 Two `Fn` operands to one — the shape of [`TrackOp2`](languages.md#rectsl-kt-trackop2)'s lowering.
 
 ### TrackFnTernary { #rectslfn-kt-trackfnternary }
 
-[<code class="highlight"><span class="k">typealias</span> <span class="nc">TrackFnTernary</span> <span class="o">=</span> <span class="p">(</span><span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L152)
+[<code class="highlight"><span class="k">typealias</span> <span class="nc">TrackFnTernary</span> <span class="o">=</span> <span class="p">(</span><span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L130)
 
 Three `Fn` operands to one — the shape of [`TrackOp3`](languages.md#rectsl-kt-trackop3)'s lowering.
 
 ### TrackFnWarp { #rectslfn-kt-trackfnwarp }
 
-[<code class="highlight"><span class="k">typealias</span> <span class="nc">TrackFnWarp</span> <span class="o">=</span> <span class="p">(</span><span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="nc">Double</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L155)
+[<code class="highlight"><span class="k">typealias</span> <span class="nc">TrackFnWarp</span> <span class="o">=</span> <span class="p">(</span><span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="nc">Double</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L133)
 
 A source `Fn` and a fixed scalar amount to one — the shape of [`TimeWarpKind`](languages.md#rectsl-kt-timewarpkind)'s lowering.
 
 ### RectSLFnLowering { #rectslfn-kt-rectslfnlowering }
 
-[<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">RectSLFnLowering</span><span class="p">&lt;</span><span class="k">out</span> <span class="nc">T</span><span class="p">&gt;</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L165)
+[<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">RectSLFnLowering</span><span class="p">&lt;</span><span class="k">out</span> <span class="nc">T</span><span class="p">&gt;</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L143)
 
 Either a lowering into the `Fn` world, or a refusal that says why.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nc">Lowered</span><span class="p">&lt;</span><span class="k">out</span> <span class="nc">T</span><span class="p">&gt;</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">T</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RectSLFnLowering</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L168) | The lowering exists: `value` is the builder (or, at track level, the `Fn` itself). |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Refused</span><span class="p">(</span><span class="k">val</span> <span class="n">why</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">closable</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">missing</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RectSLFnLowering</span><span class="p">&lt;</span><span class="nc">Nothing</span><span class="p">&gt;</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L180) | There is no faithful differentiable form, `why` is the reason in one sentence, and `closable` says whether that is permanent. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nc">Lowered</span><span class="p">&lt;</span><span class="k">out</span> <span class="nc">T</span><span class="p">&gt;</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">T</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RectSLFnLowering</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L146) | The lowering exists: `value` is the builder (or, at track level, the `Fn` itself). |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Refused</span><span class="p">(</span><span class="k">val</span> <span class="n">why</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">closable</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">missing</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RectSLFnLowering</span><span class="p">&lt;</span><span class="nc">Nothing</span><span class="p">&gt;</span></code>](source/jvmMain/afield/rectsl/RectSLFn/#L158) | There is no faithful differentiable form, `why` is the reason in one sentence, and `closable` says whether that is permanent. |
 
 ## RectSLGlsl.kt { #rectslglsl-kt }
 
@@ -4947,9 +4925,9 @@ every node on a tape. A fit runs that thousands of times.
 ### The contract: every rule is bit-exact, and that is a real constraint
 
 A simplified track must sample **bit-identically** to the original, not merely equal-to-tolerance,
-and it turns out that rules out several rewrites everyone writes by reflex. The gallery corpus
-found the first one within a minute: `0 - x` rewritten to `-x` disagrees at `x = 0`, because
-`0.0 - 0.0` is `+0.0` and `-(0.0)` is `-0.0`.
+which rules out several rewrites everyone writes by reflex. The gallery corpus caught the first
+one: `0 - x` rewritten to `-x` disagrees at `x = 0`, because `0.0 - 0.0` is `+0.0` and `-(0.0)`
+is `-0.0`.
 
 A signed zero is not a curiosity in this IR. [`HeadingTrack`](languages.md#rectsl-kt-headingtrack) takes `atan2` of a velocity, and
 `atan2(+0.0, -1.0)` is `+pi` while `atan2(-0.0, -1.0)` is `-pi` — half a turn apart. A rewrite that
@@ -4976,20 +4954,19 @@ Losing the additive identity costs less than it looks like it should: RectSL's a
 per-copy channels by *offsetting a constant*, and the constant fold takes those whole.
 
 Free parameters are never folded, for the same reason `trackConstantValue` takes a flag: a
-[`FreeParamTrack`](languages.md#rectsl-kt-freeparamtrack) is currently a number and is not *a* number, and folding it away would delete the
+[`FreeParamTrack`](languages.md#rectsl-kt-freeparamtrack) holds a number but is not *a* number, and folding it away would delete the
 thing a fit is meant to solve for.
 
 ### How it is checked
 
-`RectSLSimplifyTest` runs it over all 34 gallery programs and requires every rewritten channel to
-sample **bit-identically** to the original at 41 times each, and to be a fixed point of a second
-pass. Measured: 2754 channels, 10,621 nodes down to 8865 (16.5% smaller), 112,914 samples
-compared. (The node count rose from a previously reported 8197 when [`TcbKey`](languages.md#rectsl-kt-tcbkey) began holding a
-track: a key value is a node now, and one the rewriter reaches.)
+`RectSLSimplifyTest` runs it over the gallery and requires every rewritten channel to sample
+**bit-identically** to the original at 41 times each, and to be a fixed point of a second pass.
+The node-count reduction it prints is reported rather than asserted at any figure, because that
+figure moves with the gallery and with the IR — a key value became a node when [`TcbKey`](languages.md#rectsl-kt-tcbkey) began
+holding a track, for instance. Run the test to read the current one.
 
-A simplifier is exactly the kind of code where a plausible-looking rule is wrong in one corner, and
-the corpus already assembled for the differentiable backend was the cheapest possible way to find
-that out — which it did, immediately, on the first run.
+A plausible-looking rule that is wrong in one corner is this file's characteristic failure, and
+bit-identity over the corpus already assembled for the differentiable backend is what catches it.
 
 `src/jvmMain/kotlin/afield/rectsl/RectSLSimplify.kt` — [read the source](source/jvmMain/afield/rectsl/RectSLSimplify/)
 
@@ -4997,8 +4974,8 @@ that out — which it did, immediately, on the first run.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">nodeCount</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/rectsl/RectSLSimplify/#L79) | Total nodes in this track's tree, counting a shared subtree once per path — the size a backend pays. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">simplify</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/rectsl/RectSLSimplify/#L88) | This track with constants folded and the algebraic identities applied, bottom-up. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">nodeCount</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/rectsl/RectSLSimplify/#L78) | Total nodes in this track's tree, counting a shared subtree once per path — the size a backend pays. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">simplify</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Track</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/rectsl/RectSLSimplify/#L87) | This track with constants folded and the algebraic identities applied, bottom-up. |
 
 ## RectSLSoftRaster.kt { #rectslsoftraster-kt }
 
@@ -5676,7 +5653,7 @@ The CPU twin of the GLSL emitted by `volumetricNoiseHelperSource`. Every functio
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">potential3</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">NoiseVec3</span><span class="p">,</span> <span class="n">octaves</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">lacunarity</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/VolumetricNoise/#L365) | The vector potential `curl3` differentiates: one scalar fbm read at three widely separated offsets. Using one field three times rather than three fields is deliberate — it is cheaper, and the offsets are far enough apart that the components are uncorrelated. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">curl3</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">NoiseVec3</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="nc">K</span><span class="p">.</span><span class="nc">DEFAULT&#95;CURL&#95;EPSILON</span><span class="p">,</span> <span class="n">octaves</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="nc">K</span><span class="p">.</span><span class="nc">DEFAULT&#95;CURL&#95;OCTAVES</span><span class="p">,</span> <span class="n">lacunarity</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="nc">K</span><span class="p">.</span><span class="nc">DEFAULT&#95;LACUNARITY</span><span class="p">,</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="nc">K</span><span class="p">.</span><span class="nc">DEFAULT&#95;GAIN</span><span class="p">)</span><span class="p">:</span> <span class="nc">NoiseVec3</span></code>](source/jvmMain/afield/stacksl/VolumetricNoise/#L381) | Curl of `potential3`, central differences at one shared epsilon. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">worley3</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">NoiseVec3</span><span class="p">)</span><span class="p">:</span> <span class="nc">NoiseVec4</span></code>](source/jvmMain/afield/stacksl/VolumetricNoise/#L408) | Cellular noise over a jittered lattice, packed so that the useful channels are all present at once: `.x` is F1, the distance to the nearest feature point; `.y` is F2, the second nearest; `.z` is `F2 - F1`, which is near zero exactly on the cell walls and is the crack or Voronoi-edge field; `.w` is a per-cell random constant, for flat-shading the cells. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">fbmd3</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">NoiseVec3</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="nc">K</span><span class="p">.</span><span class="nc">DEFAULT&#95;GRADIENT&#95;EPSILON</span><span class="p">,</span> <span class="n">octaves</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="nc">K</span><span class="p">.</span><span class="nc">DEFAULT&#95;OCTAVES</span><span class="p">,</span> <span class="n">lacunarity</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="nc">K</span><span class="p">.</span><span class="nc">DEFAULT&#95;LACUNARITY</span><span class="p">,</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="nc">K</span><span class="p">.</span><span class="nc">DEFAULT&#95;GAIN</span><span class="p">)</span><span class="p">:</span> <span class="nc">NoiseVec4</span></code>](source/jvmMain/afield/stacksl/VolumetricNoise/#L444) | `fbm3` and its gradient in one word: `.x` is the value, `.yzw` the gradient. The gradient of a scalar field is a normal — of an isosurface, of a cloud edge — and getting it out of StackSL previously meant six calls and a lot of stack juggling. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">fbmd3</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">NoiseVec3</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="nc">K</span><span class="p">.</span><span class="nc">DEFAULT&#95;GRADIENT&#95;EPSILON</span><span class="p">,</span> <span class="n">octaves</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="nc">K</span><span class="p">.</span><span class="nc">DEFAULT&#95;OCTAVES</span><span class="p">,</span> <span class="n">lacunarity</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="nc">K</span><span class="p">.</span><span class="nc">DEFAULT&#95;LACUNARITY</span><span class="p">,</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="nc">K</span><span class="p">.</span><span class="nc">DEFAULT&#95;GAIN</span><span class="p">)</span><span class="p">:</span> <span class="nc">NoiseVec4</span></code>](source/jvmMain/afield/stacksl/VolumetricNoise/#L444) | `fbm3` and its gradient in one word: `.x` is the value, `.yzw` the gradient. The gradient of a scalar field is a normal — of an isosurface, of a cloud edge — so this is the word to reach for when shading one, rather than differencing `fbm3` by hand. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">warp3</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">NoiseVec3</span><span class="p">,</span> <span class="n">strength</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="nc">K</span><span class="p">.</span><span class="nc">DEFAULT&#95;WARP&#95;STRENGTH</span><span class="p">,</span> <span class="n">octaves</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="nc">K</span><span class="p">.</span><span class="nc">DEFAULT&#95;OCTAVES</span><span class="p">,</span> <span class="n">lacunarity</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="nc">K</span><span class="p">.</span><span class="nc">DEFAULT&#95;LACUNARITY</span><span class="p">,</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="nc">K</span><span class="p">.</span><span class="nc">DEFAULT&#95;GAIN</span><span class="p">)</span><span class="p">:</span> <span class="nc">Float</span></code>](source/jvmMain/afield/stacksl/VolumetricNoise/#L468) | Domain warping: `fbm3` evaluated at a position that has itself been displaced by an fbm3 vector field. One line of arithmetic that turns the characteristic cloudy fbm into something with filaments and folds. Still in [0,1), because the outer call is still fbm3. |
 
 ## GlslInterpreter.kt { #glslinterpreter-kt }

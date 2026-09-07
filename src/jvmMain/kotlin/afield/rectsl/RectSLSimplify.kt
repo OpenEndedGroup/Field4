@@ -30,9 +30,9 @@ import kotlin.math.abs
  * # The contract: every rule is bit-exact, and that is a real constraint
  *
  * A simplified track must sample **bit-identically** to the original, not merely equal-to-tolerance,
- * and it turns out that rules out several rewrites everyone writes by reflex. The gallery corpus
- * found the first one within a minute: `0 - x` rewritten to `-x` disagrees at `x = 0`, because
- * `0.0 - 0.0` is `+0.0` and `-(0.0)` is `-0.0`.
+ * which rules out several rewrites everyone writes by reflex. The gallery corpus caught the first
+ * one: `0 - x` rewritten to `-x` disagrees at `x = 0`, because `0.0 - 0.0` is `+0.0` and `-(0.0)`
+ * is `-0.0`.
  *
  * A signed zero is not a curiosity in this IR. [HeadingTrack] takes `atan2` of a velocity, and
  * `atan2(+0.0, -1.0)` is `+pi` while `atan2(-0.0, -1.0)` is `-pi` — half a turn apart. A rewrite that
@@ -59,20 +59,19 @@ import kotlin.math.abs
  * per-copy channels by *offsetting a constant*, and the constant fold takes those whole.
  *
  * Free parameters are never folded, for the same reason [trackConstantValue] takes a flag: a
- * [FreeParamTrack] is currently a number and is not *a* number, and folding it away would delete the
+ * [FreeParamTrack] holds a number but is not *a* number, and folding it away would delete the
  * thing a fit is meant to solve for.
  *
  * # How it is checked
  *
- * `RectSLSimplifyTest` runs it over all 34 gallery programs and requires every rewritten channel to
- * sample **bit-identically** to the original at 41 times each, and to be a fixed point of a second
- * pass. Measured: 2754 channels, 10,621 nodes down to 8865 (16.5% smaller), 112,914 samples
- * compared. (The node count rose from a previously reported 8197 when [TcbKey] began holding a
- * track: a key value is a node now, and one the rewriter reaches.)
+ * `RectSLSimplifyTest` runs it over the gallery and requires every rewritten channel to sample
+ * **bit-identically** to the original at 41 times each, and to be a fixed point of a second pass.
+ * The node-count reduction it prints is reported rather than asserted at any figure, because that
+ * figure moves with the gallery and with the IR — a key value became a node when [TcbKey] began
+ * holding a track, for instance. Run the test to read the current one.
  *
- * A simplifier is exactly the kind of code where a plausible-looking rule is wrong in one corner, and
- * the corpus already assembled for the differentiable backend was the cheapest possible way to find
- * that out — which it did, immediately, on the first run.
+ * A plausible-looking rule that is wrong in one corner is this file's characteristic failure, and
+ * bit-identity over the corpus already assembled for the differentiable backend is what catches it.
  */
 
 /** Total nodes in this track's tree, counting a shared subtree once per path — the size a backend pays. */
