@@ -37,13 +37,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 84 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 85 transcripts on every build, at three
 depths. 57 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-20 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+21 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -1022,6 +1022,23 @@ draw box reading the same allocation. The companion page is [GPU State](gpu_stat
 the `Window`/`Renderer` and pumps the loop, a compute box that simulates 100k particles into a
 `buffer_reference` buffer it publishes as a prop, and a draw box that reads that buffer and renders.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/threebox/metadata.edn)
+
+**four_pass_chain** — A **heterogeneous, multi-resolution** post-process chain in three boxes: a
+renderer, a grid of lit spheres, and one `addPassChain(...)` call that reduces the scene to a half and
+then a quarter, blurs the cheap small image with two aperture discs, and composites back at full
+resolution. Six passes, each with *its own* resolution — which is the thing the post stack could not
+express before, because `Bundle.addShaderEffect` sized every pass target to its source. Run the third
+box and it prints the plan first: every pass with its resolved size, which sampler reads which earlier
+pass, which passes share a target, and the memory cost against one full-resolution target per pass.
+Then edit the three `setPush` numbers under it and run again — the discs widen or narrow and the
+composite crossfades with no pipeline rebuild and no target reallocated. Widening `aperture-far`
+*lowers* the frame's high-frequency energy rather than raising it, because a wider disc spreads a
+fixed amount of light and dims the whole image; that direction surprises people, and watching it is
+the point of declaring the chain rather than assembling it. `dev_docs/FOUR_PASS_CHAIN.md` is the
+write-up, and `tools/run_field_tests.py --id four.pass-chain.smoke` is the same layer driven headlessly
+with assertions on the pixels.
+
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/four_pass_chain/metadata.edn)
 
 **spin_glass** — A 2D Edwards–Anderson spin glass, Vulkan-compute accelerated. A renderer box, a
 "metropolis update" compute box (checkerboard / red-black Monte Carlo over Ising spins with

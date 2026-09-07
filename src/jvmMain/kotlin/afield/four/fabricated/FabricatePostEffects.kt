@@ -4,8 +4,6 @@ import afield.four.Renderer
 import afield.four.modules.Mesh
 import afield.four.modules.fromContext
 import afield.four.targets.RenderToTexture
-import afield.four.texture.TextureSampler
-import afield.stdlib.fromViews
 import afield.stdlib.linalg.Vector2f
 import java.util.WeakHashMap
 
@@ -101,27 +99,26 @@ fun StandardRenderer.Bundle.addBloom(
         it.setIfPresent("radius", radius)
     }
 
-    val composite = addShaderEffect("bloom-composite", BLOOM_COMPOSITE_FRAGMENT, renderer) {
-        // Additively combine the blurred highlights (sourceTex) with the pre-bloom scene (sceneTex).
-        val previousResolver = textureResolver
-        val sceneSampler = TextureSampler(renderer, sceneTex.parameters.mipLevels, false)
-        textureResolver = { tex ->
-            if (tex.name == "sceneTex") {
-                fromViews(listOf(sceneTex.imageViewArray[0]), tex.name, sceneSampler)
-            } else {
-                previousResolver(tex)
-            }
-        }
-    }
+    // Additively combine the blurred highlights (sourceTex) with the pre-bloom scene (sceneTex).
+    // `sceneTex` used to be bound by hand here: capture `textureResolver`, build a `TextureSampler`
+    // against `sceneTex.parameters.mipLevels`, string-match the name, delegate everything else. Four
+    // lines of resolver surgery, per extra input, per pass. `extraInputs` on `addShaderEffect` does
+    // all of it, and gets the per-texture sampler right by construction.
+    val composite = addShaderEffect(
+        "bloom-composite",
+        BLOOM_COMPOSITE_FRAGMENT,
+        renderer,
+        extraInputs = mapOf("sceneTex" to sceneTex)
+    )
     composite.quad("bloom-composite")?.push?.setIfPresent("intensity", intensity)
 
     if (hadTone && tone != null) setToneMapping(tone.mode, tone.exposure, renderer)
     return listOf(bright, blurH, blurV, composite)
 }
 
-private fun FabricatePostEffect.quad(name: String): Mesh? = module.current.meshes["${name}Quad"]
+internal fun FabricatePostEffect.quad(name: String): Mesh? = module.current.meshes["${name}Quad"]
 
-private fun afield.four.buffers.Structure.setIfPresent(name: String, value: Any) {
+internal fun afield.four.buffers.Structure.setIfPresent(name: String, value: Any) {
     if (offsets.containsKey(name)) set(name, value)
 }
 

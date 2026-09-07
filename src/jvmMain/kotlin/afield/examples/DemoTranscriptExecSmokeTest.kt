@@ -298,6 +298,11 @@ object DemoTranscriptExecSmokeTest {
         // Streams a splat sequence into a native window, and wants a directory of .compressed.ply
         // frames that is deliberately not committed -- so compiled here and no further.
         "splat_sequence_streaming",
+        // Builds its own Window + Renderer and a six-pass chain across three resolutions, so it
+        // wants a GLFW window and a Vulkan device the lightweight build does not own. The plan
+        // arithmetic it prints is covered without a device by FabricatePassChainTest, and the
+        // pixels by the four.pass-chain.smoke jvm-main.
+        "four_pass_chain",
         "recstl_playground",
         "gpu_state",
         "threebox",

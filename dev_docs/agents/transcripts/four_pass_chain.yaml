@@ -1,0 +1,167 @@
+name: four_pass_chain
+description: |
+  A **heterogeneous, multi-resolution** GPU pass chain in three boxes: a renderer, a lit scene, and
+  one declaration that reduces the scene to a quarter, blurs the cheap small image with two aperture
+  discs, and composites back at full resolution.
+
+  Six passes as one `addPassChain(…)` call, where each pass has *its own resolution*. That is the
+  thing `FabricatePostStack` could not express before: `Bundle.addShaderEffect` built every pass
+  target as `width = source.width; height = source.height`, and the only hook it gave a caller was
+  the module pipeline `Parameters` rather than `RTTParameters` — so a pass could not be smaller than
+  its input. Not awkward to make smaller. Impossible. Which is why an effect like this normally gets
+  hand-wired as one box per pass: to get a half-resolution target you have to own the
+  `RenderToTexture` yourself, and once you own that you own the module and the sampler and the
+  schedule too, and you are no longer using the post stack at all.
+
+  **The third box is the point.** Run it once and it declares the chain and prints its plan — every
+  pass with its resolved size, which sampler reads which earlier pass, which passes share a target,
+  and what the whole thing costs against one full-resolution target per pass (3.64x, for this
+  chain). Then **edit the three numbers under the `once` block and hit run again**: the discs widen
+  or narrow and the composite crossfades, with no pipeline rebuild and no target reallocated, because
+  `setPush` writes the push constant on the pass's existing quad. Turning an aperture radius while
+  watching is the whole reason the chain is declared rather than assembled.
+
+  Things worth trying:
+
+    - `farRadius` from `14f` up to `28f`. The discs get wider and *dimmer* — they are spreading a
+      fixed amount of light — and they stay flat-topped with a hard rim, because a uniform-weighted
+      disc is what a camera aperture is and not what a Gaussian is.
+    - `blend` down to `0.4f`. The sharp scene comes back through, which is depth-of-field mixing
+      rather than the additive glow `addBloom` does.
+    - Swap the whole chain: replace `FabricatePassLibrary.apertureChain(...)` with
+      `FabricatePassLibrary.bloomPyramid(levels = 4, threshold = 0.9f, intensity = 0.8f)`. That one
+      runs its rungs in half-float under an 8-bit chain, which is the *format* half of the same
+      feature, and accumulates a glow hundreds of texels wide for a fraction of one full-resolution
+      blur.
+    - Print `chain.plan.report()` after any edit. The arithmetic is planned on the CPU before a
+      single Vulkan object exists, which is deliberate: a chain planned at the wrong resolution
+      renders a picture that looks *fine*.
+
+  `dev_docs/FOUR_PASS_CHAIN.md` is the write-up, and
+  `tools/run_field_tests.py --id four.pass-chain.smoke` is the same layer driven headlessly with
+  assertions on the pixels it produces.
+operations:
+  # 1. the renderer: owns the Window and pumps the loop. Run this one first.
+  - create:
+      box: pc_renderer
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 200.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.four.util.Options
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          Options.profiling = false
+          once.renderer {
+              window = Window("Pass chain")
+              Renderer(window)
+          }
+          println("renderer ready")
+          start(renderer::run)
+  # 2. the scene: a grid of lit spheres, so the blur below has silhouette edges to remove.
+  - create:
+      box: pc_scene
+      name: scene
+      frame: { x: 240.0, y: 40.0, w: 200.0, h: 50.0 }
+      properties:
+        code: |
+          // `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`
+          // itself, so these are needed. The `prop<>` type argument is written out in full on
+          // purpose: `prop<>` rewrites the box's code and the rewrite does not carry the snippet's
+          // own imports, so `prop<StandardRenderer.Bundle>(bundle)` under an
+          // `import afield.four.fabricated.StandardRenderer` fails with
+          // `Unresolved reference 'StandardRenderer'` reported against the *import* line. Every
+          // other reference in the box resolves through the import normally.
+          import afield.four.fabricated.StandardRenderer
+          import afield.four.fabricated.applyScenePlan
+          import afield.stdlib.linalg.Matrix4f
+          import afield.stdlib.linalg.Vector3f
+
+          prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)
+
+          val r: Renderer = fromContext()
+
+          once.bundle {
+              val b = StandardRenderer.build(
+                  r,
+                  StandardRenderer.Config(
+                      renderWidth = 1024,
+                      renderHeight = 1024,
+                      backgroundColor = Vector3f(0.09f, 0.10f, 0.13f)
+                  )
+              )
+              b.scene.camera.at.set(0f, 1.5f, -4.2f)
+              b.scene.camera.target.set(0f, 0f, 0f)
+              b.scene.lightDirection.set(Vector3f(-0.5f, -1f, -0.3f).normalize())
+              b.scene.lightIntensity = 3.4f
+              b.scene.shadowStrength = 1f
+              b.scene.aoStrength = 0.8f
+
+              for (ix in -2..2) {
+                  for (iz in -2..2) {
+                      b.registerSphere(name = "ball-$ix-$iz", radius = 0.3f, slices = 24, stacks = 24, renderer = r)
+                          .setModel(Matrix4f().translate(ix * 0.85f, 0f, iz * 0.85f))
+                  }
+              }
+              b.applyScenePlan()
+              b.present(renderer = r)
+              b.attachTo(r)
+              b
+          }
+          println("scene ready: ${bundle.postStack.names()}")
+  # 3. the chain: one declaration, and three live knobs under it.
+  - create:
+      box: pc_chain
+      name: pass chain
+      frame: { x: 440.0, y: 40.0, w: 220.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.four.fabricated.FabricatePassLibrary
+          import afield.four.fabricated.StandardRenderer
+          import afield.four.fabricated.addPassChain
+
+          // Fully qualified for the same reason as the scene box: `prop<>`'s rewrite loses the
+          // snippet's imports.
+          prop<afield.four.fabricated.FabricateBuiltChain>(chain)
+
+          val r: Renderer = fromContext()
+          val b: StandardRenderer.Bundle = fromContext()
+
+          // Declared once. Six passes, each with its own resolution: reduce to a half, reduce to a
+          // quarter, two aperture discs on the cheap quarter-resolution image, and a composite that
+          // rejoins at full resolution while sampling the small blur. `printReport` prints the plan
+          // — sizes, sampler wiring, shared targets, and the memory cost against one full-resolution
+          // target per pass. Read it before believing the picture: a chain planned at the wrong
+          // resolution renders something that looks perfectly plausible.
+          once.chain {
+              val c = b.addPassChain(
+                  FabricatePassLibrary.apertureChain(
+                      nearRadius = 4f,
+                      farRadius = 12f,
+                      taps = 40,
+                      blend = 0.92f
+                  ),
+                  renderer = r,
+                  printReport = true
+              )
+              b.attachTo(r)
+              b.present(renderer = r)
+              c
+          }
+
+          // ── live knobs. Edit a number, hit run. No rebuild, no reallocation. ──
+          chain.setPush("aperture-near", "radius", 4f)
+          chain.setPush("aperture-far", "radius", 14f)
+          chain.setPush("composite", "blend", 0.92f)
+
+          println(chain.plan.report())
+  - connect: { parent: pc_renderer, child: pc_scene }
+  - connect: { parent: pc_scene, child: pc_chain }
+  - launch: { box: pc_renderer, property: code, strand: renderer }
+  - await: {}
+  - execute: { box: pc_scene, property: code }
+  - await: {}
+  - execute: { box: pc_chain, property: code }
+  - await: {}
+  - wait: { frames: 12 }
