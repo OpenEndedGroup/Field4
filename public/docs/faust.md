@@ -1,8 +1,8 @@
 # Faust
 
 [Faust](https://faust.grame.fr) is a functional language for signal processing: you write what the
-signal *is*, and the compiler turns it into efficient code. Field embeds the Faust compiler itself, so
-a `#faust` region inside an ordinary Kotlin string is compiled, instantiated and playing through
+signal *is*, and the compiler turns it into efficient code. Field embeds that compiler itself. A
+`#faust` region inside an ordinary Kotlin string is compiled, instantiated and playing through
 Field's audio engine, with the sliders it declares showing up as real Field controls.
 
 Nothing is installed to make this work. Not `faust`, not LLVM, not a C++ toolchain. See
@@ -32,10 +32,10 @@ Move one and the value is written straight into the running DSP.
 
 ### The marker is not part of the program
 
-`#faust` marks the region, and unlike Sonic Pi (where `#` is a Ruby comment, so `#sonicpi` can stay
-in the program that Sonic Pi is handed), **`#` is not a comment in Faust**. A `#faust` line would
-be a syntax error, so Field removes it before compiling and shifts every line number the compiler
-reports back onto the box's own lines. That is why an error lands on the line you wrote it on.
+`#faust` marks the region. In Sonic Pi the marker is harmless: `#` starts a Ruby comment, and
+`#sonicpi` rides along into the program Sonic Pi is handed. **`#` is not a comment in Faust**, and a
+`#faust` line is a syntax error. Field strips it before compiling and shifts every line number the
+compiler reports back onto the box's own lines. That is why an error lands on the line you wrote it on.
 
 ## Errors land on the line
 
@@ -82,7 +82,7 @@ compiler: bump the vendored version and re-run the script.
 
 A Faust program declares its interface in the source, and Field turns that declaration into an ordinary
 Field control group: `Box.controlGroup`, the same call any other box would make. Nothing about it is
-Faust-specific, so whatever a control group can do, a Faust program's declared interface does too,
+Faust-specific. Whatever a control group can do, a Faust program's declared interface does too,
 including being served to a phone or an iPad by the controller websocket.
 
 !!! note "Remote controllers are untested here"
@@ -110,9 +110,9 @@ Three of those are compromises rather than finished work:
 * **`button` is momentary in Faust and Field's checkbox latches.** Holding the checkbox holds the
   gate, which is usable, but it is not the same thing. From code, `launch.press("gate")` is the real
   momentary trigger: press and release are queued in order, so both land even inside one audio block.
-* **`hbargraph`/`vbargraph` are outputs, not controls**, so they are not in the control group at all.
-  `launch.meter("level")` reads the most recent value, sampled once per audio block.
-* **`[scale:log]` is not honoured by the slider's travel.** The declared range is kept, so the numbers
+* **`hbargraph`/`vbargraph` are outputs rather than controls.** They are not in the control group at
+  all; `launch.meter("level")` reads the most recent value, sampled once per audio block.
+* **`[scale:log]` is not honoured by the slider's travel.** The declared range is kept and the numbers
   are right, but a log frequency slider moves linearly. Field's slider has no law parameter yet; the
   metadata is parsed and available on `FaustControl.scale` for when it does.
 
@@ -165,7 +165,7 @@ Nothing is recompiled to make eight voices. A Faust wasm factory is built with i
 `WebAssembly.Instance`s of one module are eight independent voices, and they all live in one GraalVM
 context.
 
-Note the second pattern. `Pat` is a rhythm of *anything*, so the filter is patterned exactly as the notes
+Note the second pattern. `Pat` is a rhythm of *anything*: the filter is patterned exactly as the notes
 are, and both go through the same event timeline.
 
 ### The notes land on the sample, not on the block
@@ -189,9 +189,9 @@ block (`48000/7 = 6857`, and `6857 % 128 = 105`):
 | **what a per-block parameter write would give** | **up to 110** | **2.3** |
 
 None of that spread is the scheduler. During a gap this program's output is **exactly `0f`** (the envelope
-reaches zero and multiplies the oscillator away), so the first non-zero sample of a note is an exact fact
-about the render with no threshold in it, and it **is** the notated frame for 13 of 13 checkable notes,
-worst 0 frames.
+reaches zero and multiplies the oscillator away). That makes the first non-zero sample of a note an exact
+fact about the render, with no threshold in it, and it **is** the notated frame for 13 of 13 checkable
+notes, worst 0 frames.
 
 The 0–8 spread in the table is the *onset detector* waiting for the attack ramp to clear its amplitude
 threshold, which depends on where the free-running phasor happened to be when the envelope opened. The two
@@ -204,7 +204,7 @@ at frame **20571, error 0**.
 
 ### `freq`, `gate`, `gain`: found by label, refused when absent
 
-Faust's own polyphonic convention is `freq`/`gate`/`gain`, the three names `-nvoices` looks for, so a
+Faust's own polyphonic convention is `freq`/`gate`/`gain`, the three names `-nvoices` looks for; a
 program written for `faust2jaqt -nvoices 8` plays here unchanged. They are discovered out of the program's
 declared UI **by label and never by index**, because Faust lists controls *alphabetically within each
 group*: in the program above, control index 0 is `cutoff`. An allocator that wrote pitch to index 0 would
@@ -238,8 +238,8 @@ A note claims a voice in this order:
 3. else **steal the oldest sounding voice**, counted as `steals`. A note is never dropped; an instrument
    that silently ignores a note is worse than one that audibly runs out.
 
-`peakConcurrency` reports the most voices that ever sounded together, so how much polyphony a pattern
-actually asked for is readable off a render.
+`peakConcurrency` is how much polyphony a pattern actually asked for: the most voices that ever
+sounded together over a render.
 
 #### A steal clicks, and by how much
 
@@ -258,14 +258,14 @@ not a slope: it is the outgoing note's amplitude vanishing in one sample. The ca
 gate dip that gives the new note its rising edge drops the envelope to 0 before the attack starts.
 
 And the gate dip is not optional. Writing `freq` to a voice whose gate is already up does *not* restart the
-envelope (Faust triggers on a rising edge), so without the dip a steal writes the new pitch into a voice
+envelope, because Faust triggers on a rising edge. Without the dip a steal writes the new pitch into a voice
 that never re-attacks: the stolen voice glides in at the old envelope level and no note is heard. With the
 dip, the envelope's local peak rises 1.36–1.39× across a steal; without it, 1.00×.
 
 `synth.faust.poly` asserts both ends of the knob, and the default prefers the note being on time.
 Stealing is an overload condition either way.
 
-#### What a block allocates on the audio thread
+#### `render` is not allocation-free
 
 An allocation in an audio callback is a GC pause in the audio path (a dropout), and it is invisible to a
 µs-per-block average. Measured with `getCurrentThreadAllocatedBytes` over 4000 blocks:
@@ -279,8 +279,8 @@ An allocation in an audio callback is a GC pause in the audio path (a dropout), 
 So one voice of the bank costs **0.92×** what one `FaustDsp` costs, doing the same DSP and paying the same
 once-per-block context enter and queue drain. Fitting the two bank measurements as a line gives **915 bytes
 per voice** and a fixed **69 bytes per block**, which places the source: it is `Value.readBuffer`, the one
-bulk copy per channel per block that gets the samples out of WebAssembly, and it is in both paths. The
-smoke asserts floors near both bank measurements, so a regression fails.
+bulk copy per channel per block that gets the samples out of WebAssembly, and it is in both paths.
+Both bank measurements are held to a bound by `synth.faust.poly`.
 
 The `voices = 1` row is here because the obvious comparison is wrong in a way that flatters this code.
 Dividing an 8-voice block by 8 spreads the bank's fixed cost across eight voices while `FaustDsp` pays its
@@ -297,9 +297,9 @@ fixed cost per block.
 ### Rendering a pattern offline
 
 `faustPatternRender` renders a pattern through a bank with no audio device and no window, in 128-frame
-blocks, through the *same* `render` the audio thread calls, so what is measured is what would be heard.
-The polyphony numbers above are measured through it, by `synth.faust.poly`. `Box.showFaustPattern` is the
-one-liner that puts a player and a waveform in a box's output.
+blocks, and through the *same* `render` the audio thread calls. What is measured is what would be heard.
+The onset table above and the spectral proof below are measured through it, by `synth.faust.poly`.
+`Box.showFaustPattern` is the one-liner that puts a player and a waveform in a box's output.
 
 Three measurement helpers come with it:
 
@@ -312,9 +312,10 @@ Three measurement helpers come with it:
   cannot: a single voice stealing itself produces the same number of them.
 
 ??? aside "The assertion that proves polyphony"
-    `pat("[c4,e4,g4]")` is one chord (three events on the same arc, so three notes on the same frame)
-    whose fundamentals are 130.81, 164.81 and 196.00 Hz. The band 100–230 Hz can hold nothing else, since
-    the lowest second harmonic in the chord is 261.6 Hz, so every peak in it is somebody's fundamental.
+    `pat("[c4,e4,g4]")` is one chord (three events on the same arc, three notes on the same frame)
+    whose fundamentals are 130.81, 164.81 and 196.00 Hz. Nothing else can reach the band 100–230 Hz,
+    because the lowest second harmonic in the chord is 261.6 Hz; every peak there is somebody's
+    fundamental.
     Rendered at four voices it contains **three** (130.0, 166.2, 196.5 Hz; worst error 0.86 %, all within
     a factor of 1.14 in level). The identical render at `voices = 1` contains **one**, at 196.5 Hz, and
     reports `steals == 2`. A monophonic path cannot produce the first result however it is driven.
@@ -335,7 +336,7 @@ a bank in **one** context. Measured on an M-series Mac, GraalVM CE 25.0.2, every
 | 16 | 32.7 µs | 29.7 µs | 0.91× | 82× realtime |
 
 Each figure is the **median of five timed windows** rather than the mean of one. `render` allocates ~7.4 KB
-per block at eight voices, so a 2000-block window churns ~15 MB, and an ordinary young collection inside it
+per block at eight voices — ~15 MB over a 2000-block window — and an ordinary young collection inside that
 moves the whole average with nothing in the number to say so: a single-window mean reports **238 µs** for
 eight voices in the same output that measures 13.4 µs for the same configuration a few lines later. The
 median leaves the shape legible, and 2.1, 4.2, 8.2, 16.9, 32.7 is **linear in voices**, which is what a bank
@@ -429,7 +430,7 @@ opposite performance profiles. Measured on an M-series Mac, GraalVM CE 25.0.2:
 The two render figures say different things. Faust's generated code is very fast (7.6µs), and almost
 everything else in the 60.4µs is the cost of crossing between the JVM and WebAssembly once per block:
 entering the context, and copying the output out. How often that crossing happens is the whole cost, and
-`synth.faust.smoke` measures three arrangements of it:
+`FaustDsp`'s KDoc records three measured arrangements of it:
 
 * a call per *sample* to copy the output: **148µs** a block (18× realtime),
 * one bulk buffer read per *channel* instead: **94µs** (28×),
@@ -511,4 +512,4 @@ version bump that changes anything cannot pass unnoticed:
 | `synth.faust.poly` | the polyphonic path, 99 deterministic checks: control discovery and its refusal, the onset detector's own sanity, onset timing in samples, pitch in cents, the polyphony-against-monophony spectral proof, a patterned parameter, voice allocation, whether a steal clicks (it does, measurably, and the knob that stops it), how many bytes a block allocates on the audio thread, and absolute real-time budget checks; relative wall-clock ratios remain diagnostic output |
 
 What none of them covers is the launch itself: a box staying lit while sound comes out of a speaker.
-That is the generic audio return-value path and it needs an audio device, so no test here touches it.
+That is the generic audio return-value path, and it needs an audio device.
