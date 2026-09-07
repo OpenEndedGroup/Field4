@@ -11,8 +11,7 @@ timbre, prosody, and phonetic motion matter more than beat or harmony.
 
 Neither backend is a transcript or a sentence-meaning model. WavLM's middle and later layers can
 organize phonetic structure, but spoken meaning needs a separate ASR or language embedding lane.
-The two models here answer a more immediate reactive question: *where is the sound moving in a
-learned speech space right now?*
+What these two report is where the sound is moving in a learned speech space, frame by frame.
 
 ## What one job records
 

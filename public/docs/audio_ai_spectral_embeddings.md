@@ -1,7 +1,7 @@
 # Short-time spectral spaces
 
 `analysis.embed_spectral` turns a selected sound into several synchronized 25 Hz descriptions of
-its spectral shape. It is deliberately model-free and fast: one cached librosa job retains enough
+its spectral shape. It is model-free and fast: one cached librosa job retains enough
 information for Field to try different temporal pooling, distance metrics, MDS fits, and t-SNE fits
 without analysing the audio again.
 
@@ -24,9 +24,9 @@ more inspectable questions about where acoustic energy is and how the spectral e
 | `MFCC_COSINE` | 20 cepstral coefficients | similar compact envelope/timbre direction |
 | `MFCC_EUCLIDEAN` | 20 cepstral coefficients | similar compact envelope/timbre and coefficient magnitude |
 
-These are alternative readings, not a competition with one winner. Mel Wasserstein is especially
-useful when a formant, resonant background sound, or spectral emphasis slides in frequency: it
-charges in proportion to how far mass moves. MFCCs suppress fine spectral detail and make broad
+These are alternative readings. Mel Wasserstein is especially useful when a formant, resonant
+background sound, or spectral emphasis slides in frequency: it charges in proportion to how far
+mass moves. MFCCs suppress fine spectral detail and make broad
 envelope changes easier to see. Log-mel retains the most directly inspectable band structure.
 
 ## What the durable job stores
@@ -140,8 +140,8 @@ client.assetsByFilename("near_drowning.wav").thenCompose { matches ->
 }
 ```
 
-The verified whole-file job for this 273.82-second recording produced 6,846 frames. A ten-second
-projection at a 40 ms hop has about 250 points and is comfortable for exact pairwise distances.
+The whole-file job for this 273.82-second recording produces 6,846 frames. A ten-second projection
+at a 40 ms hop has about 250 points and is comfortable for exact pairwise distances.
 Longer t-SNE fits are quadratic in memory and expensive; use `maxFrames`, a longer hop, or a selected
 range. Changing those Field-side choices does not invalidate or rerun the cached analysis.
 

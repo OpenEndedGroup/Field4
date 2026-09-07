@@ -234,14 +234,16 @@ carrying a position and a time is flattened into a plane, with z entering at a f
 weight of x. That is a shear, not a third dimension: on a volume seen down z it reads as one fixed
 pattern imprinted at every depth. These words read `input.xyz` (and `.xyzw`) properly.
 
-Three differences worth knowing:
+Three differences from the 2D words:
 
 - **The range really is `0..1`.** The 2D `fbm` sums five octaves at amplitudes totalling `0.96875`,
-  so `fbm 0.5 -` is biased low by about `0.018` and a force built from it drifts instead of
-  averaging out. These words divide by the amplitude sum they actually accumulated, so the range
-  holds for any octave count, lacunarity and gain.
-- **They cost more.** `curl3` is eighteen `fbm3` evaluations. Turn the octave count down for
-  per-particle work: `input 2 curl3.3` is three octaves and looks nearly the same in motion.
+  so `fbm 0.5 -` sits about `0.016` low and a force built from it drifts instead of averaging out.
+  These words divide by the amplitude sum they actually accumulated, so the range holds for any
+  octave count, lacunarity and gain.
+- **They cost more.** `curl3` is eighteen `fbm3` evaluations: a central difference along each of
+  three axes, each arm a three-offset vector potential. Its short form already runs three octaves
+  where the rest of the family runs five, because a curl is a derivative and at gain `0.5` and
+  lacunarity `2` every octave contributes equally to one — more octaves add confetti, not richness.
 - **They use their own hashes,** with no `sin()` in them, so the CPU reference in
   `VolumetricNoise.kt` computes the same field the shader does and the family can be unit-tested
   without a GPU.
@@ -255,7 +257,7 @@ octave count, so `input 0.03 3 curl3.3` is "epsilon 0.03, three octaves".
 | `noise4` | `coord -- s` | 4D value noise over the whole `vec4`; use `.w` as time for a volume that animates without sliding. |
 | `fbm3` | `coord octaves lacunarity gain -- s` | fractal 3D noise, exactly `0..1`. Short form is five octaves, lacunarity `2`, gain `0.5`; `fbm3.2` takes an octave count, `fbm3.4` takes all four. |
 | `fbm4` | `coord octaves lacunarity gain -- s` | the same in four dimensions. |
-| `curl3` | `coord epsilon octaves -- vec` | divergence-free curl noise, as `vec4(v.xyz, 0)`. The curl of a three-offset `fbm3` vector potential, so an advected particle swirls instead of piling into a sink. Short form uses epsilon `0.05` and five octaves. |
+| `curl3` | `coord epsilon octaves -- vec` | divergence-free curl noise, as `vec4(v.xyz, 0)`. The curl of a three-offset `fbm3` vector potential, so an advected particle swirls instead of piling into a sink. Short form uses epsilon `0.05` and three octaves. |
 | `fbmd3` | `coord epsilon octaves -- vec` | `fbm3` and its gradient at once: `.x` is the value, `.yzw` the gradient, which is the normal of the isosurface through that point. |
 | `warp3` | `coord strength octaves -- s` | domain-warped `fbm3` — `fbm3` sampled at a position displaced by another `fbm3` vector field. Filaments and folds rather than clouds. Still `0..1`. |
 | `worley3`, `voronoi3` | `coord -- vec` | cellular noise, packed: `.x` is F1 (distance to the nearest feature point), `.y` is F2, `.z` is `F2 - F1` (near zero exactly on the cell walls, so it is the crack field), `.w` is a constant per cell for flat shading. `worley3 x` reads like `fbm x`; `worley3 z` is the interesting one. |
@@ -284,7 +286,7 @@ Good trick: do math in `rgb2oklab`, especially channel offsets and contrast, the
 
 Define reusable words with `: name ... ;`. A call consumes one input value, runs the definition with that value as its local stack/input, then pushes the result.
 
-**A definition must therefore be net zero on the stack: consume its input, leave its result.** This is the one mistake the language invites, and it is not an error — an unbalanced definition compiles, the surplus is pruned, and everything downstream silently takes the wrong operand. Open a definition with `>name`, which *moves* the top, and not `=name`, which *copies* it:
+**A definition must therefore be net zero on the stack: consume its input, leave its result.** It is not an error: an unbalanced definition compiles, the surplus is pruned, and everything downstream silently takes the wrong operand. Open a definition with `>name`, which *moves* the top, and not `=name`, which *copies* it:
 
 ```diffstatic {data-lang=stacksl}
 : half  >x  <x 0.5 *  ;      # right: consumes one, leaves one

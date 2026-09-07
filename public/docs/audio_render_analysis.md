@@ -1,12 +1,12 @@
 # Render Field music, then analyse it
 
-Field's sound-producing systems and Field Audio now meet at one intentionally plain boundary: a
-finite WAV file. Pat, Dirt, Dough and Faust can render faster than real time; Sonic Pi can record a
-real-time performance. Each returns a `RenderedAudioFile`, and the same
+Field's sound-producing systems and Field Audio meet at one plain boundary: a finite WAV file.
+Pat, Dirt, Dough and Faust can render faster than real time; Sonic Pi can record a real-time
+performance. Each returns a `RenderedAudioFile`, and the same
 `FieldAudioClient.analyzeRenderedAudio(...)` call then imports its immutable bytes, submits cached
 analysis jobs, follows progress and returns durable results.
 
-This closes a useful feedback loop:
+The loop:
 
 ```diffstatic {data-lang=text}
 Field code (Pat / Dirt / Dough / Faust / Sonic Pi)
@@ -17,14 +17,14 @@ Field code (Pat / Dirt / Dough / Faust / Sonic Pi)
     → revise the generating code
 ```
 
-The server does not become the project model. `RenderedAudioFile.provenance` stays with the Field
-operation and the source code stays in its box. The server asset id names only the WAV bytes, which
+The project model stays in Field. `RenderedAudioFile.provenance` stays with the Field operation
+and the source code stays in its box. The server asset id names only the WAV bytes, which
 means two programs that genuinely render identical audio share the asset and its cached analyses.
 
 ## The complete live-coding path
 
-This Pat example shows every boundary. `renderPatWav` may be replaced by any renderer in the table
-below; the import, job and visualization half remains unchanged.
+This Pat example shows every boundary. `renderDirtWav` may be replaced by any renderer in the
+table below; the import, job and visualization half is unchanged.
 
 ```diffstatic {data-lang=kotlin}
 import afield.four.synth.*
@@ -63,9 +63,9 @@ client.analyzeRenderedAudio(
 }
 ```
 
-The final view is one instrument, not a stack of unrelated pictures: audio playback moves every
-analysis cursor; hovering a pitch or beat lane moves the waveform cursor; clicking any lane seeks
-the player; zoom and pan share the same time window.
+The final view behaves as one instrument: audio playback moves every analysis cursor; hovering a
+pitch or beat lane moves the waveform cursor; clicking any lane seeks the player; zoom and pan
+share the same time window.
 
 ## Renderers
 

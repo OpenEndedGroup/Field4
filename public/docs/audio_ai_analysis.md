@@ -5,7 +5,7 @@ recording remains immutable; a request names an exact `AssetRegion`; progress is
 WebSocket events and in the embedded job monitor; the completed result points to a compressed NPZ
 asset rather than placing a large tensor in Field's output JSON.
 
-The current isolated worker contains three operations:
+The analysis worker exposes three operations:
 
 | Field operation | Implementation | What comes back |
 | --- | --- | --- |
@@ -13,15 +13,10 @@ The current isolated worker contains three operations:
 | `analysis.pitch_mono` | librosa pYIN | monophonic F0, MIDI pitch, voiced flag and voiced probability |
 | `analysis.pitch_poly` | Spotify Basic Pitch | note events, activation tensors, pitch bends and a MIDI artifact |
 
-Essentia is not yet imported into this worker. Field4 and Field Audio AI are AGPL-3.0-or-later, so
-Essentia's AGPL license is compatible; a separate worker remains useful for dependency and runtime
-isolation rather than licensing avoidance. The model-neutral operation and result types below do
-not need to change when it is added.
-
 ## The views
 
-Every panel uses a bounded preview of at most 4096 points. Full-resolution arrays stay in NPZ. The
-beat view separates onset, tempo and confidence lanes; pYIN shows pitch against a note grid with its
+Every panel draws a server-downsampled preview: 1,200 points per series by default, 4,096 at most.
+Full-resolution arrays stay in NPZ. The beat view separates onset, tempo and confidence lanes; pYIN shows pitch against a note grid with its
 voicing track; Basic Pitch combines a piano roll with maximum activation and active-pitch count.
 Hover, zoom and pan one panel and the others follow. A live board can join the source player on the
 same shared timeline: playback drives every analysis cursor, hovering either surface highlights the
@@ -77,10 +72,9 @@ display("main", analysisPreviewDashboardHtml(
 
 ## Submit, monitor, await, visualize
 
-This is the complete live-coding path. It shows each boundary rather than hiding job
-submission in setup code. The source waveform appears immediately; the persistent monitor and
-three replace-in-place status cards remain useful while the worker runs; only terminal successful
-jobs are turned into an analysis board.
+This is the complete live-coding path. The source waveform appears immediately; the persistent
+monitor and three replace-in-place status cards remain useful while the worker runs; only terminal
+successful jobs are turned into an analysis board.
 
 ```diffstatic {data-lang=kotlin}
 import afield.stdlib.AudioVisualizerOptions

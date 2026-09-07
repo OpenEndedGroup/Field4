@@ -1,18 +1,17 @@
 # Gesture board: drawing toward a sound
 
 The gesture board turns a temporal sketch into a reproducible family of source-conditioned
-candidates. It is explicit about what the current MusicGen-Style worker can and
-cannot obey:
+candidates. The current MusicGen-Style worker obeys each kind of mark differently:
 
 - the base prompt is a **direct** global text condition;
 - prompt regions are **compiled** into time-worded global text;
 - activity, density, register and brightness curves are **evaluative** targets;
 - events reward an onset near the marked time.
 
-Evaluative gestures do not secretly become model controls. After each candidate is generated, the
-service measures its waveform, compares the measured trajectories with the board, and stores an
-overall score plus every lane score in the candidate's provenance. The candidate browser exposes
-those scores without removing manual listening, rating or selection.
+After each candidate is generated, the service measures its waveform, compares the measured
+trajectories with the board, and stores an overall score plus every lane score in the candidate's
+provenance. The candidate browser exposes those scores without removing manual listening, rating
+or selection.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_gesture_board/gesture_board.png" wait="3" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -47,8 +46,8 @@ display("main", gestureBoardHtml(sketch, width = 1100))
 ![](assets/audio_ai_gesture_board/gesture_board.png)
 
 The shared vertical cursor reports time across every lane. Hover event needles and curve points to
-inspect their values. The delivery pills above the timeline are part of the contract rather than
-decoration: they show whether a mark is direct, compiled, evaluative or transformative.
+inspect their values. The delivery pills above the timeline show whether a mark is direct,
+compiled, evaluative or transformative.
 
 ## Generate from the sketch
 
@@ -76,8 +75,7 @@ client.submit(operation)
 
 `client.compileGesture(sketch)` asks the server for its authoritative compilation before spending
 GPU time. Re-evaluating an unchanged operation reuses the same content-addressed candidate family
-and its stored gesture measurements. A future JASCO worker can advertise true timed structural
-conditioning while preserving this board and its provenance vocabulary.
+and its stored gesture measurements.
 
 The loadable starting document is recorded as the `audio_ai_gesture_board` operation transcript.
 Continue with the [EnCodec reconstruction microscope](audio_ai_codec.md) for token-level material.
