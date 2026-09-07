@@ -575,7 +575,7 @@ The visual target is Don McCurdy's glTF Viewer with the same ToyCar model and Ve
 
 ![ToyCar in Don McCurdy's glTF Viewer, close comparison framing](assets/fabricate-toy-car-donmccurdy-reference-close.png)
 
-The grime and surface variation are in the GLB's own texture maps; neither viewer adds procedural dirt. `StandardRendererDocsHarness` renders the ToyCar capture at the reference's 50-degree field of view, which is what makes the two images comparable side by side.
+The grime and surface variation are in the GLB's own texture maps; neither viewer adds procedural dirt. `StandardRendererDocsHarness` renders the ToyCar capture at the reference's 50-degree field of view, from the same flatter near-roofline vantage. Framing is therefore not one of the differences left to read between the captures.
 
 ![ToyCar comparison between the throwaway Three.js probe and Field StandardRenderer](assets/fabricate-toy-car-three-throwaway-comparison.png)
 
