@@ -1,10 +1,10 @@
 # Python in a box
 
-*The implementation is one file: `src/jvmMain/kotlin/afield/python/PythonInterface.kt`. Python is a
-[promoted main language](language_extensions.md), so a Python box is a box like any other: it has
-outputs, it can be stopped, and it sits in the same document as your Kotlin.*
+*The implementation is one file — `src/jvmMain/kotlin/afield/python/PythonInterface.kt`. Python is a
+[promoted main language](language_extensions.md), which means a Python box has outputs, can be
+stopped, and sits in the same document as your Kotlin, exactly like the Kotlin boxes around it.*
 
-Field embeds CPython through [JEP](https://github.com/ninia/jep), in-process: a Python cell and a
+Field embeds CPython through [JEP](https://github.com/ninia/jep), in-process. A Python cell and a
 Kotlin box are two objects in one JVM, which is why a cell can hold a reference to the `Box` it is
 running in, and why `import numpy` costs what it costs in any other CPython. The cost of that is
 paid at startup, where Field has to find an interpreter with JEP's native library already installed
@@ -110,11 +110,11 @@ the last-expression value.
 | the `<pre>` wrap | multi-line text only, into `<pre class="afield-python-output afield-appendable-output">` | a 2-D array or a `DataFrame` stays column-aligned instead of being flattened into `<br>`s |
 
 **Carriage returns become a progress bar.** The stdout redirect is a framer (`OutputFramer`) that
-splits on `\n` *and* `\r`. A frame ending in `\r` is an in-place update, the signature of `tqdm`, and
-is routed to `deliverProgressText` instead of the output pane. If the frame parses as a tqdm bar it
-becomes a real Field progress bar with that percentage; if it does not, it becomes an indeterminate
-bar carrying the raw frame as its label. This is why a `tqdm` loop surfaces live instead of arriving
-as one enormous string at the end.
+splits on `\n` *and* `\r`. A frame ending in `\r` is an in-place update — the signature of
+`tqdm` — and is routed to `deliverProgressText` instead of the output pane. If the frame parses as
+a tqdm bar it becomes a real Field progress bar with that percentage; if it does not, it becomes an
+indeterminate bar carrying the raw frame as its label. This is why a `tqdm` loop surfaces live
+instead of arriving as one enormous string at the end.
 
 ### A figure that opens a browser gets embedded instead
 
@@ -124,7 +124,7 @@ intercepts that. `webbrowser.open`, `open_new`, `open_new_tab` and the controlle
 output as a self-contained `srcdoc` iframe on a channel called `browser` (`_FIELD_EMBED_CHANNEL`).
 
 The interesting case is a library that starts a one-shot local HTTP server and then blocks until
-someone fetches the URL, which is what plotly's default renderer does. `_field_open_url` fetches it
+someone fetches the URL — which is what plotly's default renderer does. `_field_open_url` fetches it
 itself on a daemon thread: the GET satisfies the waiting server so the cell never hangs, and the
 document that comes back is what gets embedded. No front end has to be present for any of that to
 happen.
@@ -200,7 +200,7 @@ source is keyed `input` rather than `source`.
 
 ## Setting Python up { #setting-python-up }
 
-Field needs an interpreter that has **JEP's native library** in it. Not merely a Python: a Python
+Field needs an interpreter that has **JEP's native library** in it. Not merely a Python — a Python
 where `pip install jep` has been run, so that a `libjep` file exists in its site-packages.
 
 `pythonConfigChoices` tries the candidates in this order, and the first one with a `libjep` in it
@@ -247,7 +247,7 @@ CFLAGS="-isysroot $(xcrun --show-sdk-path)" .venv/bin/python3 -m pip install 'je
 export FIELD_PYTHON_VENV="$PWD/.venv"
 ```
 
-Pin `jep` to the version of the jar Field ships: `libs/jep-4.3.1.jar`, named in `build.gradle.kts`.
+Pin `jep` to the version of the jar Field ships — `libs/jep-4.3.1.jar`, named in `build.gradle.kts`.
 A native library and a jar from different releases is a mismatch JEP does not check for you.
 
 ## Which code on this page runs { #which-code-on-this-page-runs }
@@ -256,12 +256,12 @@ The four Python blocks are executed by the docs build, in a real Field, as real 
 box with `mainLanguage = python`, and the block's text set as a child box's `code`.
 
 Three of the pictures are the box's *editor*, because that is where `print` output and a last
-expression land, beside the line that produced them. The plotly one is the box's output pane,
+expression land — beside the line that produced them. The plotly one is the box's output pane,
 because an embedded page is a display channel rather than an inline annotation.
 
 All four need JEP, so each carries `requires="jep"`, and a full recapture without a resolvable JEP
-stops in a second rather than failing at the capture. The one shell block is illustration: it is the
-install recipe, and running it during a docs build would compile a C extension.
+stops in a second rather than failing at the capture. The one shell block is the install recipe and
+is illustration only — running it during a docs build would compile a C extension.
 
 Two claims here have no picture under them. A still taken after a `tqdm` loop finishes shows an
 empty bar, and the shared global namespace needs two co-operating boxes where a runner fence builds
