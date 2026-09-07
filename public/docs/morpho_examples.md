@@ -882,7 +882,7 @@ If you want to bring another language into Field, this is the shape of the job:
 | drawing | `MorphoFLines.kt` | 317 |
 | **the language registration itself** | `MorphoInterface.kt` | 426 |
 | driver scripts | `morpho-field-driver.mjs`, `morpho-field-layout.mjs` | 446 |
-| editor grammar | `morpho.js` | 99 |
+| editor grammar | `morpho.js` | 105 |
 | tests | `MorphoBridgeTest`, `MorphoLanguageTest`, `MorphoRegistrationTest` | 628 |
 | measurement run | `MorphoMeasurements.kt` | 78 |
 
