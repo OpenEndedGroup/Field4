@@ -3,14 +3,9 @@
 *Every public declaration used below is listed, with its KDoc, in the codebase reference:
 [Graphics](reference/graphics.md).*
 
-Field could draw, mesh, filter, cluster, contour and evolve geometry, and it could not turn *a
-string* into any of it. Every `java.awt.Font` in the tree painted a label into a raster; none of them
-produced a value you could extrude, march, sample or animate. For a live-coding tool for new-media
-art that is a strange hole — kinetic typography is a headline capability, not a footnote.
-
-Two files fill it, and they add no dependency. `GlyphVector.getOutline()` hands back the font's real
-Bézier outlines, and everything after that is arithmetic. **Every figure on this page was rendered by
-the docs build from the code shown above it**, in a live Field, at build time.
+A string in Field is geometry. `GlyphVector.getOutline()` hands back the font's real Bézier outlines,
+and everything after that is arithmetic, so a word can be extruded, marched, sampled, clustered or
+animated like any other value. Two files do it and they add no dependency.
 
 | what you want | where it is |
 |---|---|
@@ -37,27 +32,25 @@ showImgGrid(
 
 ![The word Handgloves in white sans-serif on black, every counter open](assets/typography_examples/word.png)
 
-That raster is the whole argument for the page, so be precise about it: it was **not drawn by AWT**.
-`rasterizeText` is a scanline fill over the contours *this family* extracted, so a legible picture is
-evidence about the extraction, the winding and the layout — and not about `Graphics2D.drawString`.
-(A second reason it has to be: `imaging_field.kt` forbids in-process AWT text rendering outright,
-which is why `montage` captions with a 5×7 bitmap table.)
+AWT did not draw that raster. `rasterizeText` is a scanline fill over the contours *this family*
+extracted, so a legible picture is evidence about the extraction, the winding and the layout rather
+than about `Graphics2D.drawString`. It has to work that way in any case: `imaging_field.kt` will not
+touch AWT text in-process, which is why `montage` burns its captions in with a 5×7 bitmap table.
 
 ## The winding convention, and the control arm
 
-A counter — the hole in `o`, `e`, `a`, `B` — is only a hole if something says so. `isoContourFLines`
+A counter (the hole in `o`, `e`, `a`, `B`) is only a hole if something says so. `isoContourFLines`
 in `contours.kt` leaves its winding arbitrary and every consumer downstream has to cope. This family
 decides instead:
 
 > A ring's signed area is `½Σ(xᵢyᵢ₊₁ − xᵢ₊₁yᵢ)` in text space. **Outer contours are positive; holes
-> are negative.** Nesting depth — how many other rings of the same glyph contain this one — is
+> are negative.** Nesting depth, how many other rings of the same glyph contain this one, is
 > authoritative: even depth is an outer ring, odd depth is a hole. A ring whose area sign disagrees
 > with its depth is reversed on the way out.
 
-That is not housekeeping. Skia and Java2D both fill **non-zero**, so a counter survives exactly
-because its ring runs the other way and cancels its bowl. Take the convention away and the letters
-fill in. Below: identical filler, identical fill rule, identical rings — the only difference is
-whether the hole rings run the opposite way.
+Skia and Java2D both fill **non-zero**, so a counter survives exactly because its ring runs the
+other way and cancels its bowl. Take the convention away and the letters fill in. Below: identical
+filler, identical fill rule, identical rings, with the hole rings reversed in the middle cell.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/typography_examples/winding.png" wait="3.0" capture="box" open-outputs="true" w="1180" h="620" padding="14"}
 :::static
@@ -101,11 +94,11 @@ showImgGrid(
 ![The word open three times: counters open, counters filled solid, and counters open again under the even-odd rule](assets/typography_examples/winding.png)
 
 The counters of `o` and `p` close up in the middle cell and the ink fraction rises to prove it. The
-`e` survives in **both**, and that is the detail worth keeping: its aperture is open to the outside,
-so it was never a closed ring at all and there is nothing for a winding rule to get wrong.
+`e` survives in **both**, because its aperture is open to the outside: it was never a closed ring, so
+there is nothing for a winding rule to get wrong.
 
 The third cell is the cross-check. `EVEN_ODD` ignores direction entirely, so over correct rings it
-must produce the *identical* raster — and the worst per-pixel difference printed in its caption is
+must produce the *identical* raster, and the worst per-pixel difference printed in its caption is
 `0.00000`. Reverse the hole rings and the two rules diverge, which is why both are in the API rather
 than only the one this code happens to use.
 
@@ -141,15 +134,14 @@ showPlaneGrid(
 
 ![Four panels of the letters a e g: three outer rings, four hole rings floating where the counters are, both together, and the filled result](assets/typography_examples/rings.png)
 
-Seven rings for `aeg` — three outer and four holes, because the double-storey `g` contributes two.
-The hole panel is the interesting one: those four little loops are floating in space exactly where
-the counters are, which is what "a letter is a ring *system*" means in practice.
+Seven rings for `aeg`: three outer and four holes, because the double-storey `g` contributes two. In
+the hole panel those four little loops float in space exactly where the counters are, which is what
+"a letter is a ring *system*" means in practice.
 
 ## What layout decided
 
 `layoutText` takes AWT's advances and kerning pairs and adds the things AWT does not do: `\n`,
-letter-spacing, alignment, and a mutable transform handle per glyph. Two identities are worth
-drawing, because they are how you find out that something silently rounded.
+letter-spacing, alignment, and a mutable transform handle per glyph.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/typography_examples/layout.png" wait="3.5" capture="box" open-outputs="true" w="1000" h="1160" padding="14"}
 :::static
@@ -195,10 +187,10 @@ showImgGrid(
 
 ![Two baselines of TYPE with ascent and descent guides and one advance box per glyph, the second visibly looser, above the same four-line paragraph set left, centred and right](assets/typography_examples/layout.png)
 
-The first two panels are the diagram of the *decisions* rather than of the letters:
-`metricsFLines()` draws baseline, ascent and descent; `advanceBoxFLines()` draws one box per glyph —
-including for a space, which has no glyph to draw and is exactly why the boxes are useful. Compare
-the two rows and the extra space is visibly *between* the letters and not after the last one.
+The first two panels diagram the *decisions* rather than the letters: `metricsFLines()` draws
+baseline, ascent and descent, and `advanceBoxFLines()` draws one box per glyph, including for a
+space, which has no glyph to draw and is why the boxes are useful. Compare the two rows and the
+extra space is visibly *between* the letters and not after the last one.
 
 Word wrap measures with the real layout, so it is correct for the tracking and kerning you are
 actually going to use, and all three alignments come off the same wrapped string.
@@ -206,8 +198,8 @@ actually going to use, and all three alignments come off the same wrapped string
 ## Text on a curve
 
 `onCurve` does not distort a glyph. It looks the glyph's advance-box centre up at that **distance**
-along the path — `FLine.cursor()`'s arc-length table, the same machinery `sampleByDistance` and
-`byDashing` use — and then sets that glyph's `rotation` and `pivot`. So the letters stay letters, the
+along the path, using `FLine.cursor()`'s arc-length table (the same machinery `sampleByDistance` and
+`byDashing` use), and then sets that glyph's `rotation` and `pivot`. So the letters stay letters, the
 spacing is even in distance rather than in curve parameter, and a multi-line layout follows the curve
 in bands instead of collapsing onto it.
 
@@ -249,17 +241,16 @@ showPlaneGrid(
 
 ![AROUND AND AROUND set clockwise around a circle beside a rolling line of type following an S-curve, and below them the circle and the cubic drawn as thin paths with the same letters as outlines sitting on them](assets/typography_examples/on_a_curve.png)
 
-Read the first caption: **998.7** of circumference against **998.9** of layout width, which is what
-"closes exactly" means and is the reason to size the circle from the text rather than the other way
-round. The lower row is the paths themselves with the letters as outlines on them — and its caption
+The first caption gives **998.7** of circumference against **998.9** of layout width, which is what
+"closes exactly" means and the reason to size the circle from the text rather than the other way
+round. The lower row is the paths themselves with the letters as outlines on them, and its caption
 records that `onCurve` returned a **copy**, so the straight layout is still straight and can be bent
 along something else.
 
 ## Kinetic typography
 
-The handles are the point of the whole design, not a convenience bolted on afterwards. Every
-`PlacedGlyph` carries `offset`, `rotation`, `scale` and `pivot`, and the pivot defaults to the
-glyph's own visual centre — so a bare `rotation = 0.3` spins each letter about itself and looks like
+Every `PlacedGlyph` carries `offset`, `rotation`, `scale` and `pivot`, and the pivot defaults to the
+glyph's own visual centre, so a bare `rotation = 0.3` spins each letter about itself and looks like
 what you meant. One layout, computed once, and a function of elapsed seconds written into it.
 
 (`animate { }` and the `AnimationClock` it reads are Field's frame model; if you want to know what a
@@ -303,15 +294,16 @@ animate {
 ```
 
 Three handles per letter and one wave function is the whole animation. Note the fixed `window`:
-without it the frame rescales to whatever the letters are doing and no motion is legible — the same
-lesson `rasterizeFLinesFramed` in `alife_animate.kt` records.
+without it the frame rescales to whatever the letters are doing and no motion is legible.
+`rasterizeFLinesFramed` in `alife_animate.kt` records the same constraint.
 
 ## Extrusion, counters and all
 
-`extrudeMesh` and `triangulatePolygon` in `mesh_generate.kt` say outright that they cannot do holes,
-and a letter is a ring *system*. So `toMesh` triangulates the caps with `FloatEarcut` and hole
-indices, and builds the walls from the **same flattened vertices the caps used** — which is what
-makes the result watertight, and what makes `genus()` a meaningful question about a letter.
+`triangulatePolygon` in `mesh_generate.kt` says outright that holes are not supported, and
+`extrudeMesh` caps with it, so neither can build a letter: a letter is a ring *system*. `toMesh`
+triangulates the caps with `FloatEarcut` and hole indices instead, and builds the walls from the
+**same flattened vertices the caps used**, which is what makes the result watertight and `genus()` a
+meaningful question about a letter.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/typography_examples/mesh.png" wait="4.0" capture="box" open-outputs="true" w="960" h="1140" padding="14"}
 :::static
@@ -357,25 +349,25 @@ showMesh(
 
 ![An extruded lowercase o as a ring you can see through beside an extruded l as a solid slab, and the word mesh extruded in 3D](assets/typography_examples/mesh.png)
 
-Two claims are being *checked* there rather than illustrated. **Genus 1 for `o` and 0 for `l`** is a
-2D count (rings nested at odd depth) agreeing with a 3D one (χ over the mesh's vertices, edges and
-faces) — read the two panel labels, which the box composes by calling `genus()` and `isWatertight()`
-on the mesh it is about to draw, so they cannot describe some other mesh. (The fact line under the
-`word` panel is the *renderer's* own, computed by `showMesh` from what it was handed; a
-`showMeshGrid` sheet does not carry one — see [Field's 3D output](three_output.md#showmesh-and-the-renderer-parameter).) And
-the volume matches the ink area times the depth to `8.7e-16` relative, which is a shoelace sum
+The two panel labels are composed by the box, calling `genus()` and `isWatertight()` on the mesh it
+is about to draw, so they cannot describe some other mesh. **Genus 1 for `o` and 0 for `l`** is a 2D
+count (rings nested at odd depth) agreeing with a 3D one (χ over the mesh's vertices, edges and
+faces), and the volume matches the ink area times the depth to `8.7e-16` relative, a shoelace sum
 agreeing with the divergence theorem to the last bit of a double. A dropped cap triangle, a wall
-wound the wrong way or an unpunched counter all break one of those.
+wound the wrong way or an unpunched counter breaks one of the two. (The fact line under the `word`
+panel is the *renderer's* own, computed by `showMesh` from what it was handed; a `showMeshGrid` sheet
+does not carry one, and [Field's 3D output](three_output.md#showmesh-and-the-renderer-parameter) says
+why.)
 
 Back-face culling is on in `MeshView`, so an inside-out wall would be a *missing* wall in that render
-rather than merely odd shading — the same failure a GPU would show you.
+rather than merely odd shading, which is the same failure a GPU would show you.
 
 !!! warning "Don't reach for `flatShaded()` here"
 
     It un-welds every triangle into its own three vertices, so the copy is no longer topologically
-    anything — and the single-mesh `showMesh` computes `topology()` on whatever you hand it and
+    anything, and the single-mesh `showMesh` computes `topology()` on whatever you hand it and
     prints the answer *as fact* in the figure's fact line (`TriMesh.threeFacts()` on the viewer path,
-    `TriMesh.toFigureHtml` on the CPU one — one shared sentence). Pass it a flat-shaded `o` and that
+    `TriMesh.toFigureHtml` on the CPU one, one shared sentence). Pass it a flat-shaded `o` and that
     line reads `open (N boundary loop(s))` right beside a title stating the mesh is closed.
     You don't need it either way: both renderers prepare the mesh through the same step, which
     already applies `shadedNormals` to one that arrives without normals, and an extrusion is
@@ -384,7 +376,7 @@ rather than merely odd shading — the same failure a GPU would show you.
 ## Letters in the SDF family
 
 `toSdf` builds a 2D signed-distance grid over the layout, samples it bilinearly and extrudes it in z.
-From there a word is just another `ScalarField3D`, which is the entire point.
+From there a word is just another `ScalarField3D`.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/typography_examples/sdf.png" wait="5.0" capture="box" open-outputs="true" w="980" h="1420" padding="14"}
 :::static
@@ -421,15 +413,15 @@ showMeshGrid(
 
 ![The 2D distance field of SDF as a grey gradient above four 3D panels: the marched letters, a sphere smooth-unioned into them, a shelled version and a twisted one](assets/typography_examples/sdf.png)
 
-The **grid** is what limits how crisp a serif can be, not the marching resolution. The sign
-convention is `mesh_sdf.kt`'s — **negative inside** — which is the opposite of
-`GlyphContour.signedArea`'s, and the difference is meaningful: an area's sign says which way a ring runs, a
-distance's sign says which side of the ink you are on.
+The **grid** is what limits how crisp a serif can be, rather than the marching resolution. The sign
+convention is `mesh_sdf.kt`'s, **negative inside**, which is the opposite of
+`GlyphContour.signedArea`'s: an area's sign says which way a ring runs, a distance's sign says which
+side of the ink you are on.
 
 ## Letters as point clouds
 
-The plainest bridge, and the one that opens the most doors: even-by-arc-length samples along the
-outlines. Once a word is points, every point-consuming family in the stdlib works on letters.
+The plainest bridge is even-by-arc-length samples along the outlines. Once a word is points, every
+point-consuming family in the stdlib works on letters.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/typography_examples/points.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="700" padding="14"}
 :::static
@@ -461,7 +453,7 @@ showPlaneGrid(
 
 ![Four panels of the word field: outline sample dots, a Delaunay triangulation over them, a six-way k-medoids partition tinted per cluster, and the outlines themselves](assets/typography_examples/points.png)
 
-**143** points at spacing 18 and **558** at 4.5 — `3.90×` for a 4× finer spacing, which is the
+**143** points at spacing 18 and **558** at 4.5, a `3.90×` rise for a 4× finer spacing, which is the
 check that the resampler is walking arc length and not emitting one point per stored vertex. From
 here `vec2KMedoids` finds the strokes, `vec2DelaunayGraph` triangulates a word, and the agents in
 [Spatial Artificial Life](alife_examples.md) will happily eat a headline.
@@ -479,16 +471,16 @@ Typefaces.fromFile("/path/to/Whatever.ttf", 64.0)        // Font.createFont, not
 enumerating families needs a `GraphicsEnvironment` and loading a face **by name** does not.
 
 Because the figures above are rendered on whatever machine builds these docs, they are set in that
-machine's logical `SansSerif` and `Serif`. Build them somewhere else and you get different-looking
-but equally correct pictures — which is the actual situation, and why every claim on this page is
-about a *structural* property rather than about a particular curve.
+machine's logical `SansSerif` and `Serif`. Build them somewhere else and the pictures look different
+and are equally correct, which is why every claim on this page is about a *structural* property
+rather than a particular curve.
 
 ### One platform caveat, and its symptom
 
 A JVM that reads glyph outlines and passes `-XstartOnFirstThread` must also pass
 `-Djava.awt.headless=true`, set before any AWT class initialises. On macOS
 `sun.font.CFontManager.loadFonts` dispatches to the process's first thread and waits, and under
-`-XstartOnFirstThread` — which GLFW requires — that thread only services the dispatch if something is
+`-XstartOnFirstThread`, which GLFW requires, that thread only services the dispatch if something is
 pumping its run loop. `Typefaces.warm()` detects this in four seconds and throws with the flag in the
 message rather than hanging. Field's own desktop JVM sets it (`build.gradle.kts`, `requiredRunJvmArgs`),
 so you only meet this in a JVM you launched yourself.

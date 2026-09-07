@@ -128,7 +128,7 @@ of `OpRegistry`'s 127<!--count:canonicalFnOps--> canonical ops, which `FnOpCover
 on every open interval and undefined on the integers, so it is not *smooth* — but zero really is the
 derivative of a staircase, and having it as a first-class differentiable node is what lets RectSL's
 visibility gates, hold tracks and looped clocks lower exactly instead of being refused. See
-"One step, and most of the refusals go away" in `public/docs/rectsl_inverse_animation.md`.
+"How the hard edges lower" in `public/docs/rectsl_inverse_animation.md`.
 
 (This said "twenty-five ops" until 2026-07-31 while the table below it already listed twenty-eight,
 and "thirty-one of 123 / 25.2%" until 2026-08-07 while the table was missing `floor` — the hand-kept
