@@ -16,8 +16,8 @@ and sweeping each program's timeline to an mp4.
 The programs are not baked into the harness. Each is an editable file in a
 workspace at `assets/rectsl_gallery/` (`<name>_rectsl_.rectsl` plus a
 `<name>_metadata_.yaml` carrying `docOrder`/`stillTime`/`animate`). That workspace
-is also an openable Field document, so you can browse, live-edit, run, and
-download every example below in the offline viewer. A `window + renderer` box sets
+is also an openable Field document. In the offline viewer below you can browse,
+live-edit, run, and download every example on this page. A `window + renderer` box sets
 up the graphics context, and each example is a child of it, inheriting `renderer`
 and drawing its scene live:
 
@@ -81,7 +81,7 @@ modification*, making copies spaced across a row, a grid, a ring, or a beat, eac
 one shifted a little in position, size, timing, or colour. RectSL's **array
 primitives** make that a first-class move. They reproduce a subexpression (a
 built rect or group, or a quote that builds one) and hand every copy a small
-**array context**, so a variation costs a few words:
+**array context**. A variation costs a few words:
 
 - `array` — reproduce the active object `count` times; element 0 is the template,
   the rest are fresh clones (deep for groups). The modifier quote runs on each.
@@ -229,7 +229,7 @@ simulation. `->face-travel` sets rotation to that heading; because the darts are
 elongated along their local +x axis, they read as arrowheads that always point where
 they are going. The single dart carves a curved path and its orientation curves with
 it; the ring pulses in and out and uses `->face-travel-at` to bank each pip a quarter
-turn off its radial travel, so the swarm reads as a spinning pinwheel.
+turn off its radial travel. The swarm reads as a spinning pinwheel.
 
 ```diffstatic {data-lang=rectsl}
 #rectsl
@@ -449,7 +449,7 @@ tooling can even optimise an array's distribution toward a target.
 #### Gaussian comb
 
 Thirty-three bars, each a looping oscillator whose amplitude is a `gaussian`
-sampled at `f`, so the row breathes in a bell curve instead of a flat block. A
+sampled at `f`: the row breathes in a bell curve instead of a flat block. A
 seeded `noise` curve nudges each bar sideways, and `->stagger-time` sweeps the
 motion into a wave.
 
@@ -544,10 +544,11 @@ array fraction `f` inline, then multiplied by a looping oscillator:
 
 The escape compiles once (K2) and is invoked per copy. A headless render is a
 long-running graphics loop on the box's own Kotlin engine, and an escape cannot
-compile lazily on an engine that is mid-render, so the harness pre-warms every
+compile lazily on an engine that is mid-render. The harness therefore pre-warms every
 escape on a separate idle engine before drawing and then only invokes the cached
-lambdas. The CPU gallery smoke compiles escape-bearing files on a dedicated
-engine for the same reason.
+lambdas. The CPU gallery smoke compiles escape-bearing files on an engine of its
+own too, for a milder reason: `jvm-main` is not a render loop, and the lazy
+synchronous compile path would have been safe there.
 
 ### Evolving a distribution toward a target
 
@@ -723,7 +724,7 @@ where the copies meet under <code>min</code>.</figcaption>
 <img src="../assets/rectsl/rectsl-sdf-blend.png" alt="smin fusing the copies of an array"
      style="width:100%;border-radius:6px;">
 <figcaption><code>blend</code> — the same scene with <code>min</code> replaced by
-<code>smin(·,·,0.55)</code>, so the six copies fuse into one body. Compare the
+<code>smin(·,·,0.55)</code>: the six copies fuse into one body. Compare the
 creases in <code>relief</code>: RectSL itself has no vocabulary for this.</figcaption>
 </figure>
 <figure style="margin:0;">
@@ -781,8 +782,8 @@ Visibility is *not* dropped. A rect gated to zero by `->appear`, `->vanish` or
 
 ### Checking the field against the CPU sampler
 
-Alongside each look, the harness renders a *probe* shader: the same field,
-reporting `scene(p, t)` as a 24-bit fixed-point number instead of drawing it. It
+Before it draws any of the looks, the harness renders a *probe* shader: the same
+field, reporting `scene(p, t)` as a 24-bit fixed-point number instead of drawing it. It
 reads the framebuffer back and compares it against `program.sample(t)`, the CPU
 sampler the raster path draws from, and refuses to write a single image if the two
 disagree.
@@ -813,9 +814,8 @@ gallery/selection-logic:    4728 points, max 1.87e-06
 
 So the claim, across eleven passes and 61,000 sample points, is that `double` on
 the CPU against `float` in a shader agrees to about 1e-6 of a wall unit, not to
-the ulp.
-The far pass cannot resolve better than its own encoding step and is checked
-against that rather than against 1e-6.
+the ulp. The far pass cannot resolve better than its own encoding step and is
+checked against that rather than against 1e-6.
 
 The full report is committed alongside the images as
 `assets/rectsl/rectsl-sdf-agreement.txt`, and is regenerated every time the page
@@ -854,9 +854,9 @@ Pattern  class PatPattern<A>    { fun events(arc: PatArc): List<PatEvent<A>> }
 Neither simulates, and both answer any time in any order with the same value. Two consequences do
 all the work:
 
-- **A pattern is a track.** `sine ->alpha` needs no conversion word, because the coercion happens
-  at RectSL's single `Value → Track` site, so *every* track-taking mutator (`->x`, `->rot`,
-  `->w`, `->layer`, …) and every scalar operator accepts a pattern for free.
+- **A pattern is a track.** `sine ->alpha` needs no conversion word: the coercion happens at
+  RectSL's single `Value → Track` site, upstream of *every* track-taking mutator (`->x`, `->rot`,
+  `->w`, `->layer`, …) and every scalar operator. All of them take a pattern for free.
 - **An event is a life window.** A pattern event carries an onset and a real duration; `->live`
   wants exactly an onset and a duration. So `pat` is `array` indexed by rhythm instead of by
   ordinal, and the mapping is exact rather than approximate.
@@ -873,7 +873,7 @@ Every element below is driven by the same clock, and no time in the program is w
 bars long.
 
 The kick is `pat` at its plainest: `"bd*4"` makes four copies a bar, each one `->live` for exactly
-its own quarter, each dropping in from above on a curve authored in *local* time, so one template
+its own quarter, each dropping in from above on a curve authored in *local* time. One template
 becomes sixteen strikes rather than a synchronised chorus. `step` places each strike across the
 wall, restarting at every bar line.
 
@@ -1234,8 +1234,8 @@ then max, `dmin`/`dmax`/`data-len`/`data-at` pull one number out:
 
 ### A plotted figure: shared domain, axes, overlaid series, legends
 
-The chart words above each fill the wall and normalize by their own extent, which is fine
-for a quick figure but leaves two series unable to share a coordinate system. The
+The chart words above each fill the wall and normalize by their own extent, which is great
+for a quick figure, but two series can't share a coordinate system that way. The
 **plotting layer** adds that. Set an explicit `->domain` (or let the first series adopt its
 own extent), reserve a `->frame` of margins, then draw `axes`: x/y rules, "nice-number"
 ticks, numeric tick labels, and faint gridlines. Because there is no text primitive in
@@ -1351,7 +1351,7 @@ hold-track "pulse" '( 0 0.2   2 1.0   4 0.45 )
 
 ### Orbit petals
 
-A `group` holds a `range`-cloned row of spinning squares, each painted with a StackSL `material`, so shader behaviour stays in the same language as the rest of Field.
+A `group` holds a `range`-cloned row of spinning squares, every copy painted with the same `bands` material, which reads each rect's own `uv`.
 
 ```diffstatic {data-lang=rectsl}
 #rectsl
@@ -1646,7 +1646,7 @@ val mesh = lowerSampledScene(mid)     // lowered to a CPU triangle mesh — no G
 
 `sample` returns the concrete `SampledRect`s (centre, size, rotation, alpha,
 fill, material) at any time, and `lowerSampledScene` turns them into the same
-mesh the renderer draws, so analysis, testing, and rendering all share one
+mesh the renderer draws. Analysis, testing, and rendering all share one
 source of truth.
 
 ## Named tracks and draw layers
@@ -1742,7 +1742,7 @@ gallery workspace, so it runs as the `rectsl.examples.smoke` field test rather t
 
 ### Easing ladder
 
-Four markers ride the same up-and-down key track, but each shapes it with a different Penner curve (a linear reference, then `ease-in`, `ease-out`, and `ease-in-out`), so acceleration, deceleration, and the symmetric case visibly pull apart. `->fit contain` keeps the wall's aspect ratio inside the frame.
+Four markers ride the same up-and-down key track, but each shapes it with a different Penner curve: a linear reference, then `ease-in`, `ease-out`, and `ease-in-out`. Acceleration, deceleration, and the symmetric case visibly pull apart. `->fit contain` keeps the wall's aspect ratio inside the frame.
 
 ```diffstatic {data-lang=rectsl}
 #rectsl
