@@ -99,8 +99,8 @@ there is nothing for a winding rule to get wrong.
 
 The third cell is the cross-check. `EVEN_ODD` ignores direction entirely, so over correct rings it
 must produce the *identical* raster, and the worst per-pixel difference printed in its caption is
-`0.00000`. Reverse the hole rings and the two rules diverge, which is why both are in the API rather
-than only the one this code happens to use.
+`0.00000`. Reverse the hole rings and the two rules diverge. Both fill rules are in the API for that
+reason, not only the one this code happens to use.
 
 ## The rings themselves
 
@@ -135,8 +135,8 @@ showPlaneGrid(
 ![Four panels of the letters a e g: three outer rings, four hole rings floating where the counters are, both together, and the filled result](assets/typography_examples/rings.png)
 
 Seven rings for `aeg`: three outer and four holes, because the double-storey `g` contributes two. In
-the hole panel those four little loops float in space exactly where the counters are, which is what
-"a letter is a ring *system*" means in practice.
+the hole panel those four little loops float in space exactly where the counters are. A letter is a
+ring *system*, and that panel is the system with its outer rings taken away.
 
 ## What layout decided
 
@@ -241,11 +241,11 @@ showPlaneGrid(
 
 ![AROUND AND AROUND set clockwise around a circle beside a rolling line of type following an S-curve, and below them the circle and the cubic drawn as thin paths with the same letters as outlines sitting on them](assets/typography_examples/on_a_curve.png)
 
-The first caption gives **998.7** of circumference against **998.9** of layout width, which is what
-"closes exactly" means and the reason to size the circle from the text rather than the other way
-round. The lower row is the paths themselves with the letters as outlines on them, and its caption
-records that `onCurve` returned a **copy**, so the straight layout is still straight and can be bent
-along something else.
+The first caption gives **998.7** of circumference against **998.9** of layout width. Two tenths of a
+unit over a thousand is what "closes exactly" costs, and it is the reason to size the circle from the
+text rather than the other way round. The lower row is the paths themselves with the letters as
+outlines on them, and its caption records that `onCurve` returned a **copy**, so the straight layout
+is still straight and can be bent along something else.
 
 ## Kinetic typography
 
@@ -302,8 +302,8 @@ without it the frame rescales to whatever the letters are doing and no motion is
 `triangulatePolygon` in `mesh_generate.kt` says outright that holes are not supported, and
 `extrudeMesh` caps with it, so neither can build a letter: a letter is a ring *system*. `toMesh`
 triangulates the caps with `FloatEarcut` and hole indices instead, and builds the walls from the
-**same flattened vertices the caps used**, which is what makes the result watertight and `genus()` a
-meaningful question about a letter.
+**same flattened vertices the caps used**, so every wall meets a cap on a shared edge and the
+surface closes. `genus()` is then a meaningful question to ask about a letter.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/typography_examples/mesh.png" wait="4.0" capture="box" open-outputs="true" w="960" h="1140" padding="14"}
 :::static
@@ -360,7 +360,7 @@ does not carry one, and [Field's 3D output](three_output.md#showmesh-and-the-ren
 why.)
 
 Back-face culling is on in `MeshView`, so an inside-out wall would be a *missing* wall in that render
-rather than merely odd shading, which is the same failure a GPU would show you.
+rather than merely odd shading. A GPU fails it the same way.
 
 !!! warning "Don't reach for `flatShaded()` here"
 
@@ -414,9 +414,8 @@ showMeshGrid(
 ![The 2D distance field of SDF as a grey gradient above four 3D panels: the marched letters, a sphere smooth-unioned into them, a shelled version and a twisted one](assets/typography_examples/sdf.png)
 
 The **grid** is what limits how crisp a serif can be, rather than the marching resolution. The sign
-convention is `mesh_sdf.kt`'s, **negative inside**, which is the opposite of
-`GlyphContour.signedArea`'s: an area's sign says which way a ring runs, a distance's sign says which
-side of the ink you are on.
+convention is `mesh_sdf.kt`'s, **negative inside**, the opposite of `GlyphContour.signedArea`'s: an
+area's sign says which way a ring runs, a distance's sign says which side of the ink you are on.
 
 ## Letters as point clouds
 
@@ -453,8 +452,8 @@ showPlaneGrid(
 
 ![Four panels of the word field: outline sample dots, a Delaunay triangulation over them, a six-way k-medoids partition tinted per cluster, and the outlines themselves](assets/typography_examples/points.png)
 
-**143** points at spacing 18 and **558** at 4.5, a `3.90×` rise for a 4× finer spacing, which is the
-check that the resampler is walking arc length and not emitting one point per stored vertex. From
+**143** points at spacing 18 and **558** at 4.5: a `3.90×` rise for a 4× finer spacing, near enough
+to linear that the resampler is walking arc length and not emitting one point per stored vertex. From
 here `vec2KMedoids` finds the strokes, `vec2DelaunayGraph` triangulates a word, and the agents in
 [Spatial Artificial Life](alife_examples.md) will happily eat a headline.
 
@@ -472,8 +471,8 @@ enumerating families needs a `GraphicsEnvironment` and loading a face **by name*
 
 Because the figures above are rendered on whatever machine builds these docs, they are set in that
 machine's logical `SansSerif` and `Serif`. Build them somewhere else and the pictures look different
-and are equally correct, which is why every claim on this page is about a *structural* property
-rather than a particular curve.
+and are equally correct. Every claim on this page is therefore about a *structural* property rather
+than a particular curve.
 
 ### One platform caveat, and its symptom
 
