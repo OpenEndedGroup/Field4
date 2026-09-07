@@ -4,9 +4,9 @@
 
 Sorting networks make an algorithm hold still. The compare-and-swap plan is fixed ahead of time; the data is what moves. That makes them good material for pictures: topology first, then disorder collapse, then search over the topology itself.
 
-## Topology: bubble drag versus odd-even-merge economy
+## Topology: bubble against odd-even merge
 
-Start with the fabric of the network. Same wire count, different cost profile: bubble spends comparators and depth generously; odd-even merge is much more disciplined.
+Ten wires each, drawn at the same layer spacing, so the two panels are directly comparable. Bubble is `n * (n - 1) / 2` comparators, 45 at ten wires, arranged in as many columns as ASAP scheduling needs; Batcher's odd-even merge is O(n log²n) comparators in O(log²n) columns.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sorting_networks_examples/topology_compare.png" wait="1.0" capture="box"}
 :::static
@@ -45,13 +45,13 @@ lines(
 )
 ```
 
-Bubble is not wrong; it is extravagant. It spends more columns, more waiting, and more opportunities for values to shuffle. Odd-even merge is more architectural. You can read the reduction in cost before running a single input through it.
+The top panel runs to almost twice the width of the bottom one, and that is the comparison: the difference in cost is readable off the two diagrams before a single input goes through either.
 
 ![](assets/sorting_networks_examples/topology_compare.png)
 
 ## Disorder collapse across layers
 
-Structure is only half the story. The behavioral question is how quickly a fixed network destroys inversions once a random permutation enters it. `layerTrace(...)` makes that visible by exposing the intermediate states.
+A diagram says nothing about how fast a network actually clears disorder. `layerTrace(...)` answers that: it returns the wire array after every parallel layer, so a random permutation can be watched collapsing. Each curve below is one such trace's inversion count divided by 66, the inversions in a fully reversed twelve-wire input.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sorting_networks_examples/disorder_decay.png" wait="1.0" capture="box"}
 :::static
@@ -161,13 +161,15 @@ lines(
 )
 ```
 
-The plot answers the dynamic question at two scales. The faint lines are individual random permutations; the brighter lines are means. Both networks converge, but not with the same rhythm. Bubble has more depth to spend, so the descent stretches out. Odd-even merge does more decisive work per layer and reaches zero with fewer synchronized rounds. Comparator count alone hides that difference.
+Faint lines are single permutations, bright lines the mean over 180 of them, and there is one square marker per layer. Both networks have to arrive at zero on the right-hand edge, since that is what being a sorting network means, and the horizontal axis is each network's own depth stretched to the full width, so this compares shape, not duration. Bubble's greater depth shows up as its markers being packed closer together, never as a longer curve.
+
+Odd-even merge front-loads. Its first layer is the steepest segment of either mean, where bubble's first layer barely moves its own; bubble then sags through a long middle and clears the last inversions only in its final layers.
 
 ![](assets/sorting_networks_examples/disorder_decay.png)
 
-## Annealing search leaves a visible trail
+## One annealing run
 
-This picture is about synthesis rather than execution. `SortingNetwork.anneal(...)` emits a trajectory of improving candidates, not only a final network.
+`SortingNetwork.anneal(...)` reports its best-so-far network through a callback, not just its final answer, so the whole trajectory can be plotted.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sorting_networks_examples/anneal_search.png" wait="1.0" capture="box" timeout="70"}
 :::static
@@ -244,13 +246,13 @@ lines(
 )
 ```
 
-The search is no longer abstract. You can see the starting network, the final network, and the staircase of best-so-far improvements between them. Optimization becomes a path with plateaus, drops, and eventual structure.
+Left is the `bubble(8)` seed, right is the network the run came back with, and the two panels below are the best-so-far comparator count and depth. On this seed both step down twice inside the first third of the run and are flat for the rest of it: the search finds what it is going to find early and spends most of its 8000 iterations confirming it.
 
 ![](assets/sorting_networks_examples/anneal_search.png)
 
-## Annealing as a family of regimes
+## Twenty-seven annealing runs
 
-One annealing run is anecdote. A more useful picture broadens the configuration space: different seed topologies, starting temperatures, and random seeds. The search becomes a landscape of possible descents rather than one lucky staircase.
+Three seed topologies, three temperature schedules and three random seeds, all at eight wires and 2000 iterations.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sorting_networks_examples/anneal_regimes.png" wait="1.0" capture="box" timeout="90"}
 :::static
@@ -413,8 +415,10 @@ lines(
 )
 ```
 
-Here the quantity of traces matters. Bubble-seeded runs and merge-seeded runs end in different places and descend differently. Some cool quickly and freeze, some stay mobile longer, some improve depth without improving comparator count, and some stall. The bottom scatter collapses those histories into a small cloud of trade-offs between size and depth.
+Two thirds of the traces in the top two panels are flat lines, and the reason is in the KDoc rather than in the search: `oddEvenMerge(8)` is 19 comparators, which `anneal` lists as the known optimum for eight wires. All nine merge-seeded runs therefore start where the search would like to finish, never move, and land on one another as the single green square at the left of the scatter. `merge+` is that same network with four of its first-layer comparators appended a second time — 23 comparators of which exactly four are provably dead — and its runs spread out across the middle, because they recover different numbers of the four. The bubble-seeded runs start from 28 and sit up and to the right, having spent 2000 iterations without reaching either merge family's depth.
+
+The scatter puts comparator count across the page and depth up it. Across the whole grid the seed topology separates the results almost perfectly by colour, and the temperature schedule barely registers.
 
 ![](assets/sorting_networks_examples/anneal_regimes.png)
 
-Sorting networks are one of the rare algorithmic objects whose static form and dynamic behavior are equally drawable. For adjacent topics where fixed structure meets plotted behavior, continue with [Graph connectivity examples](graph_connectivity_examples.md) and [Boolean networks examples](boolean_networks_examples.md).
+For more fixed structure with plotted behaviour, continue with [Graph connectivity examples](graph_connectivity_examples.md) and [Boolean networks examples](boolean_networks_examples.md).

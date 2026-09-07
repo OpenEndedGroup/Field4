@@ -49,17 +49,17 @@ println("does app need log? " + d.ask("needs(app, log)"))
 println("modules that need log: " + d.query("needs(A, log)").size)
 ```
 
-Answers land beside the line that asked, which is the shortest loop there is: edit a rule, run, read.
-Two rules for `needs`, read as alternatives: `app` needs whatever it imports, and it needs whatever
-*that* needs. Nothing says how far to follow the chain, and nothing has to.
+Answers land beside the line that asked: edit a rule, run, read. Two rules for `needs`, read as
+alternatives: `app` needs whatever it imports, and it needs whatever *that* needs. Nothing says how
+far to follow the chain, and nothing has to.
 
 The `#datalog` on the first line is a marker the editor looks for; the parser ignores it. Leave it
 out and the program still runs. Put it in and the region lights up, which the last section covers.
 
 ## The answer is a fixpoint
 
-`query` runs one goal. `solve` hands back the whole model: every relation, saturated. It is worth
-looking at once, because it shows what the engine actually did.
+`query` runs one goal. `solve` hands back the whole model: every relation, saturated. Looking at it
+once shows what the engine actually did.
 
 <!--
 FIELD_TEST
@@ -91,7 +91,7 @@ reachable, including each from itself, and the rules terminate anyway: a rule ca
 rows that are already in the (finite) product of what it reads, so there is nothing left to add
 after a few rounds.
 
-## Why is that true?
+## Why a fact is there
 
 A query engine that answers `yes` and stops is hard to trust on a graph you cannot see. Ask for the
 derivation instead.
@@ -126,9 +126,9 @@ terminates on cyclic input because the engine records which round each fact firs
 a proof may only descend to strictly earlier rounds. `path(a, a)` in the graph above gets a proof
 too, rather than an infinite regress.
 
-A proof runs through an aggregate as well, and that is the case worth having: `count` and `sum` are
-exactly the numbers you cannot check by reading. A fact derived through one is justified by the
-tuples that contributed to it, plus the arithmetic that combined them.
+A proof runs through an aggregate as well. `count` and `sum` are exactly the numbers you cannot
+check by reading, and a fact derived through one is justified by the tuples that contributed to it,
+plus the arithmetic that combined them.
 
 ```diffstatic {data-lang=text}
 payroll(sales, 300)   [payroll(D, S) :- dept(D), S = sum P : { emp(_1, D, P) }]
@@ -141,13 +141,13 @@ payroll(sales, 300)   [payroll(D, S) :- dept(D), S = sum P : { emp(_1, D, P) }]
 `min` and `max` label the tuple that was the extreme, and keep the rest of the group in the proof
 too, because "nothing bigger exists" is half of what the answer means. A group is capped at 24 lines
 of display; the value is always computed over the whole of it. A negated body literal appears as its
-own step, since "no such fact" is often the more surprising half of why a rule fired.
+own step, since "no such fact" is often the reason a rule fired.
 
 The number in the proof is recomputed from the group and checked against the model. If the two ever
 disagreed you would get the old answer — a note saying no proof was reconstructed — rather than a
 plausible wrong tree.
 
-## Why *not*
+## Why one is not
 
 The question a query asks more often. An empty result gives no reason, so `whyNot` walks the
 conjunction and names the literal that took the answer set to zero.
@@ -177,9 +177,10 @@ The counts come from the real engine — each prefix of the conjunction is run a
 cannot disagree with the query they are explaining. Three answers are kept distinct, because in an
 empty result they look identical: a literal with no matching rows, a predicate nothing defines at
 all, and a test written before the atom that binds its variable. The last of those is reported as
-"not evaluable this early" rather than as zero, which is usually the whole answer.
+"not evaluable this early" rather than as zero, because the fix is to reorder the rule and not to
+go looking for missing data.
 
-## Your own data, not Datalog's
+## Facts from Kotlin objects
 
 `facts` takes Kotlin objects and a projection, so the rules can run over whatever you already have
 in the box. Negation and aggregation are both available, with the usual condition: they need the
@@ -302,7 +303,7 @@ display("leaves", d.query("leaf(X), name(X, N)"))
 The graph is read once, as a snapshot, so an answer describes the document as it was when you
 asked. Build a new `Datalog` to refresh it.
 
-## Any object graph, not just the document
+## Any object graph
 
 The document bridge is a schema someone wrote by hand. The general one comes from
 [`graphPaths`](graph_query.md): walk any live object, and turn every slot it addressed into facts.
@@ -311,7 +312,7 @@ The two layers cover each other's gaps. A glob addresses slots but cannot follow
 follow it again, and it has nothing to say about two addresses that turn out to be the same object.
 Datalog has the recursion and no idea what an object is. `addObjectGraph` costs one walk and gives
 `slot`, `link`, `segment`, `depth`, `at`, `value`, `type` and `writable`; `dlObjectGraphRules` adds
-the four rules worth having on top.
+`alias`, `reaches`, `unreached` and `leaf` on top.
 
 `at(Path, ObjectId)` is the one that pays for the trip. Every non-scalar value gets a number *by
 identity*, so aliasing needs no special relation — it is `at` joined with itself:
@@ -355,9 +356,8 @@ transitive step a glob has no way to write.
 Scope the walk with the same pattern `graphPaths` takes — `addObjectGraph(rig, "carrier/*")` loads
 one level, and a literal prefix costs O(depth) where `**` walks everything.
 
-`addBoxGraph` stays its own implementation rather than becoming a call to this. A document's useful
-schema is `child`, `nested`, `frame` and `prop`, not the several hundred reflected fields a `Box`
-actually has.
+Use `addBoxGraph` for a document even so. Its schema is `child`, `nested`, `frame` and `prop`,
+where a reflective walk of a `Box` hands you every field one actually has.
 
 ## Drawing what it derived
 

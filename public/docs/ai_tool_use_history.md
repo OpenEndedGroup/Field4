@@ -1,12 +1,15 @@
 # AI tool-use history
 
-Field records structured traces of its AI bridge so recent tool failures and
-unproductive call patterns can be reviewed.
+Field records structured traces of its OpenAI-side AI bridge so recent tool
+failures and unproductive call patterns can be reviewed.
 
 ## What is logged
 
 Each `OpenAiIdeCodexBridge.send(...)` call normally creates one JSONL file under
-`~/.afield/logs/ai4_tool_io/`. Records include session metadata and the prompt,
+`~/.afield/logs/ai4_tool_io/`. That bridge serves the OpenAI and OpenRouter
+providers only. `AnthropicBridge` builds no logger, so a session run under
+`AFIELD_AI_PROVIDER=anthropic` leaves nothing in this directory and nothing for
+the review runs below to read. Records include session metadata and the prompt,
 response shape, tool calls, tool results, tool exceptions, and tool-round
 limits. Large string fields are clipped rather than written without bound.
 

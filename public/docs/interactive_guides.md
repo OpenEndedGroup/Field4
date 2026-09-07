@@ -13,13 +13,7 @@ The core API lives in `slideShow { ... }`. Each `step("...")` defines one stage 
 
 ## Start with a single-step guide
 
-The smallest useful guide has five parts:
-
-- a host box,
-- a `slideShow { ... }` block,
-- at least one `step("...")`,
-- a note body,
-- a coroutine that starts the guide.
+The smallest useful guide is a host box, a `slideShow { ... }` block with at least one `step("...")` in it, a note body, and a coroutine to start the guide running.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -56,12 +50,7 @@ That is already a working guide. It opens a note, selects a box, and leaves the 
 
 ## Focus the reader on the right box and property
 
-Most useful steps do two things together:
-
-- explain the current stage with a note,
-- call `selectBox(...)` or `selectBoxByName(...)` to move the UI to the relevant place.
-
-Use `selectBox(box, property = "code")` when you already have the target box in scope. Use `selectBoxByName(...)` when the guide is driving another named box in the document.
+A step usually explains the current stage with a note and moves the UI to the place it is talking about in the same breath. Use `selectBox(box, property = "code")` when you already have the target box in scope, and `selectBoxByName(...)` when the guide is driving another named box in the document.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/basic_slideshow.png" wait="1.5" capture="box" open-outputs="false" embed=true name="basic-slideshow" w="560" h="140" padding="28"}
 :::static
@@ -102,13 +91,7 @@ Pair notes with view changes. A note that talks about code should leave that cod
 
 ## Add callbacks and live template values
 
-Three pieces make a guide interactive:
-
-- `#custom:name` links in the note body,
-- `linkCallback("name") { ... }` handlers in the step,
-- `{{propertyName}}` template expansion for live values.
-
-Use this pattern for choices, branching, and notes that update while the guide stays on the same step.
+An interactive step wants a `#custom:name` link in the note body, a `linkCallback("name") { ... }` handler in the step to receive it, and `{{propertyName}}` template expansion for the live values. Together they cover choices, branching, and notes that update while the guide stays on the same step.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/callbacks_and_templates.png" wait="1.5" capture="box" open-outputs="false" embed=true name="callbacks-and-templates" w="560" h="140" padding="28"}
 :::static
@@ -171,11 +154,7 @@ runBlocking {
 }
 ```
 
-Template values can come from:
-
-- values you store in `this.properties[...]`,
-- Kotlin variables that are still in scope,
-- shared template helpers that the slideshow runtime exposes.
+A template value can come from `this.properties[...]`, from a Kotlin variable that is still in scope, or from the shared template helpers the slideshow runtime exposes.
 
 When a callback changes state, call `show.goToStep(show.currentStepIndex)` to rerender the current step immediately. That updates `{{clickCount}}` and `{{userChoice}}` without leaving the slide.
 
@@ -224,8 +203,8 @@ runBlocking {
 Use per-slide chat when comments should stay attached to a specific step instead of floating beside the whole guide.
 
 If the guide chat server is not running, the slideshow still renders and
-`withChat()` still produces the UI shell — only message load and post requests
-fail. Chat is optional; the slideshow system does not depend on it.
+`withChat()` still produces the UI shell; only message load and post requests
+fail.
 
 ### Setting up the chat server
 
@@ -315,19 +294,9 @@ runBlocking {
 
 For line-level teaching, combine `selectBox(...)`, `line = ...`, `highlight = ...`, and `annotateToLine(...)`. The reader gets the note, the selected editor, the highlighted line, and the line drawn between them.
 
-## How the features fit together
+## Growing a guide
 
-A full guide usually grows in this order:
-
-1. Start with `slideShow { ... }` and one or more `step(...)` blocks.
-2. Use `markdownNote(...)` or `note(...)` to explain the current stage.
-3. Use `selectBox(...)` to move the reader to the right box, property, and line.
-4. Add `linkCallback(...)` plus `#custom:name` links when the guide should branch or mutate state.
-5. Add `{{templateValues}}` when the note should reflect the current guide state.
-6. Add `withChat()` when the step needs discussion.
-7. Add `annotate(...)` or `annotateToLine(...)` when the text should point to exact visual targets.
-
-That sequence is a good default for multi-step guides. Add branching, chat, or annotation only when the step earns it.
+Guides tend to get written in one direction. `slideShow { ... }` with its `step(...)` blocks comes first, then a `markdownNote(...)` in each, then `selectBox(...)` so the reader is looking at what the note describes; that much is already a working guide. Callbacks with `{{templateValues}}`, `withChat()` and `annotate(...)` come afterwards, and only on the steps that need them.
 
 ## Example source map
 
@@ -350,5 +319,3 @@ The calls you will use most often:
 - `withChat()` or `withChat(id = "shared")` for discussion threads.
 - `slideshowId("...")` when the slideshow needs a stable identity across sessions.
 - `annotate(...)` and `annotateToLine(...)` for visual callouts.
-
-Together these calls define the guide, move Field to the right place, render the note, respond to reader input, and point at the target.

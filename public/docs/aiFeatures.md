@@ -2,8 +2,9 @@
 
 Field's AI features share the current box and editor context, but they serve
 different jobs: conversation, targeted edits, completion, and generated helper
-functions. They require an OpenAI or OpenRouter API key configured from
-[`/welcome`](history_overview.md) or the environment.
+functions. All of them need one of three providers configured from
+[`/welcome`](history_overview.md) or the environment: OpenAI, OpenRouter, or
+Anthropic.
 
 ## Chat about one box
 
@@ -88,16 +89,19 @@ fun randomWiggle(radius: Double, center: Vec3): FLine {
 ```
 
 On the first expansion, Field asks the configured model for a function with the
-derived name and exact signature. It retries compilation up to three times.
-The generated block is stored in the box's `attic` property. Later expansions
-reuse it only while the function signature and prompt still match; changing
-either causes Field to generate a replacement.
+derived name and exact signature, then compile-checks the answer. It makes three
+attempts, handing the compiler's errors back to the model between them; if the
+third still does not compile, Field keeps that code and says so in a
+notification rather than failing the expansion. The generated block is stored in
+the box's `attic` property. Later expansions reuse it only while the function
+signature and prompt still match; changing either causes Field to generate a
+replacement.
 
 ![](assets/screenshot_56.png)
 
 ## Give the AI a tool of your own
 
-Everything above is Field's AI working on Field's own material — boxes, code,
+Everything above is Field's AI working on Field's own material: boxes, code,
 errors. A tool lets it work on *yours*. You write an ordinary Kotlin class and an
 ordinary Kotlin lambda, register the pair, and from the next turn onward the
 model can call it by name, with arguments it chose, and read what you return.
@@ -173,9 +177,9 @@ are `required` because they have no default, `minimumArea` is not because it has
 one, and every `@JsonPropertyDescription` is there. Enums become a string with an
 enumerated list. That is the whole schema language.
 
-The second is `13.02`, which arrived by way of a JSON string — the same Jackson
-call the bridge makes, so a request class whose defaults or enums do not survive
-the trip fails here rather than in the middle of a conversation.
+The second is `13.02`, and it arrived by way of a JSON string, through the same
+Jackson call the bridge makes, so a request class whose defaults or enums do not
+survive the trip fails here rather than in the middle of a conversation.
 
 Now select any box, press `command/ctrl-4`, and ask *"is a 4.2 by 3.1 metre room
 big enough?"*
@@ -256,9 +260,8 @@ GeometryAgentTools.addSearchRoot(File(System.getProperty("user.home"), "scans"))
 GeometryAgentTools.register()
 ```
 
-Two tools appear. This is the schema the model is shown for the second one —
-not a paraphrase, but the literal output of `AgentToolExtensions.describe(...)`,
-regenerated and checked by Field's tests:
+Two tools appear. This is the schema the model is shown for the second one,
+verbatim from `AgentToolExtensions.describe(...)`:
 
 ```diffstatic {data-lang=json}
 {
@@ -335,9 +338,8 @@ val image = (report as CarriesToolImages).toolImages.single()
 display("<img src='" + image.dataUrl + "' style='width:100%'/>")
 ```
 
-`execute` is the same entry point a model's tool call goes through — a name and
-a JSON string — so this is not a simulation of the tool path, it *is* the tool
-path, minus the model.
+`execute` takes a name and a JSON string, which is exactly the shape a model's
+tool call arrives in, so this runs the real tool path with the model left out.
 
 There is a loadable document with both examples side by side:
 `public/docs/assets/ai_tool_demo/metadata.edn`.
@@ -359,9 +361,11 @@ with your registration, and what is still not covered — are in
 ## Provider and key settings
 
 The simplest setup is the AI settings card on `/welcome`, where you can select
-OpenAI or OpenRouter, save the corresponding key, and optionally override model
-names. Provider changes take effect on the next AI request; existing AI
-conversations are cleared so state from one provider is never sent to another.
+OpenAI, OpenRouter or Anthropic (Claude), save the corresponding key, and
+optionally override model names. Anthropic is the one that takes no key: it
+authenticates from an `ant auth login` profile, minting a short-lived bearer
+token per request. Provider changes take effect on the next AI request; existing
+AI conversations are cleared so state from one provider is never sent to another.
 Model overrides are stored separately for each provider and can be cleared by
 saving an empty model field. Saved keys live under `~/.afield/`; they are not
 stored in a document.
@@ -370,10 +374,14 @@ For environment-based setup, Field reads:
 
 - `OPENAI_PLATFORM_KEY` or `OPENAI_API_KEY` for OpenAI
 - `OPENROUTER_API_KEY` for OpenRouter
-- `AFIELD_AI_PROVIDER` to choose the provider
+- `ANTHROPIC_API_KEY` for Anthropic, or `ANTHROPIC_AUTH_TOKEN` for a bearer
+  token you already hold; either is used ahead of the `ant` profile
+- `AFIELD_AI_PROVIDER`, one of `openai`, `openrouter` or `anthropic`, to choose
+  between them
 
 Environment variables take precedence over saved provider and credential
-files. `AFIELD_AI_BASE_URL` can override the active provider's base URL.
+files. `AFIELD_AI_BASE_URL` overrides the base URL for OpenAI and OpenRouter;
+Anthropic's own is `ANTHROPIC_BASE_URL`.
 
 Some AI features maintain conversation state with the configured provider. The
 documentation/code search path indexes selected Kotlin source roots and GLSL
