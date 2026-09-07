@@ -627,8 +627,8 @@ bottom panel is what the same rules produce once they have it.
 And the bottom panel is genuinely new. The flowers are not the source's flowers: different columns,
 different heights, more of them than the source had. But every blossom sits on a stem, and the soil
 runs unbroken along the bottom, because those are 3×3-local facts and the model enforces them.
-`WfcGallery` asserts the first of those as a count of zero floating blossoms, which is the artefact a
-broken pattern model produces.
+`WfcGallery` asserts the first of those as a count of zero floating blossoms. A stemless blossom is
+what a broken pattern model produces.
 
 One API note visible above: `reset()` clears the whole wave, forced cells included. Boundary
 conditions therefore have to be re-applied on every retry, which is what `solveWithRetries`'
@@ -1188,7 +1188,7 @@ coincide are deduplicated, and an already-symmetric window contributes nothing n
 
 Three seeds are shown rather than one, and the per-seed numbers in the box are the reason. The banded
 model sits at 14.6× on every seed; the D4 model comes out at 2.8×, 1.5× and 1.3×, and the direction
-of what grain is left is different each time, which is the part a single panel cannot show.
+of what grain is left changes from seed to seed. One panel cannot show that.
 
 Two numbers, because they measure different things and only one of them is the headline:
 
@@ -1351,8 +1351,7 @@ show are different, and they are four that a `println` cannot show you at all:
 - an **invented pair**: adjacency that exists only because the widening fallback filled an empty
   mask. Legal, enforced, and not evidence of anything: the distinction §2 measured.
 
-Each is marked in the picture and stated in the header, which is what makes the before and after of
-`allowMissingAnything()` two things you can look at.
+Each of the four is marked in the picture and stated in the header.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/inline-rules.png" wait="1.5" capture="box" open-outputs="true" w="1200" name="wfc-inline-rules"}
 :::static
