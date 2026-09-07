@@ -33,7 +33,7 @@ Two things this family is **not**. It is not a statistics library: there are no 
 confidence intervals and no hypothesis tests anywhere in it. Whether a number means anything is
 yours to establish, and *Is 0.193 big?* below writes the permutation test that settles it. And
 `micTicNaive` is not MICe/TICe. The file's own header comment
-(`correlations.kt:31#IMPORTANT NOTES (honesty about what this is / isn't):`) is emphatic that it is an equipartition-grid approximation that will not
+(`correlations.kt:36#WHAT THE MIC/TIC SCAN HERE IS AND IS NOT:`) says it is an equipartition-grid approximation that will not
 reproduce published numbers.
 
 If you want the two-fence version of the dependence story next to the interpolants it grew out of,
