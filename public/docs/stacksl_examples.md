@@ -1,8 +1,8 @@
 # StackSL examples
 
-StackSL is a small stack language that lowers to GLSL. It is meant for shader functions that are quick to write, easy for an LLM to mutate, and robust enough for artificial-life or genetic-programming loops.
+The words, their stack signatures and the arity conventions are in the [StackSL cheatsheet](stacksl_cheatsheet.md). Each section here puts a short program next to the image or clip it renders. Driving the language from Kotlin and [mutating it under a search loop](#notes-for-llms-and-genetic-search) come at the end.
 
-It is vector-first: every stack value is a `vec4`. Numbers become `vec4(n)`, swizzles repack into `vec4`, and most operators work component-wise. The compiler emits one callable function:
+StackSL is vector-first: every stack value is a `vec4`. Numbers become `vec4(n)`, swizzles repack into `vec4`, and most operators work component-wise. The compiler emits one callable function:
 
 ```diffstatic {data-lang=glsl}
 vec4 prefix(vec4 prefix_in) { ... }
