@@ -9,16 +9,13 @@ import afield.logger.lprintln
 val all = mutableListOf<LogEvent>()
 val probe = LogSink { e -> all += e }
 
-LogDispatcher.addSink(probe)
-try {
+LogDispatcher.withSink(probe) {
     lblock("info,logdemo", "«logdemo» outer") {
         lprintln("info,logdemo", "«logdemo» inside outer")
         lblock("info,logdemo", "«logdemo» inner") {
             lprintln("info,logdemo", "«logdemo» inside inner")
         }
     }
-} finally {
-    LogDispatcher.removeSink(probe)
 }
 
 // An END event's message is only its own id, so it is picked up by blockId rather

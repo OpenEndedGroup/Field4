@@ -33,15 +33,10 @@ operations:
           val seen = mutableListOf<LogEvent>()
           val probe = LogSink { e -> if ("mypage" in e.channel) seen += e }
 
-          LogDispatcher.addSink(probe)
-          try {
+          LogDispatcher.withSink(probe) {
               lprintln("info,mypage", "a plain line")
               lprintln("warning,mypage", "something to look at")
               lprintln("error,mypage,disk", "three tags, and no hierarchy among them")
-          } finally {
-              // Always. The sink list outlives your box, and LogDispatcher.log wraps every sink
-              // in runCatching — so a leaked sink that throws fails silently, forever.
-              LogDispatcher.removeSink(probe)
           }
 
           display("main", Table(listOf("channel", "tags", "message"), title = "what one sink saw")
@@ -140,11 +135,8 @@ operations:
           val probe = LogSink { e -> if ("«logdemo»" in e.message) arrived += e.channel }
 
           val channels = listOf("info,boxes", "info,mypage") // the first is muted by default
-          LogDispatcher.addSink(probe)
-          try {
+          LogDispatcher.withSink(probe) {
               channels.forEach { lprintln(it, "«logdemo» a line on $it") }
-          } finally {
-              LogDispatcher.removeSink(probe)
           }
 
           display("main", Table(
@@ -174,16 +166,13 @@ operations:
           val all = mutableListOf<LogEvent>()
           val probe = LogSink { e -> all += e }
 
-          LogDispatcher.addSink(probe)
-          try {
+          LogDispatcher.withSink(probe) {
               lblock("info,logdemo", "«logdemo» outer") {
                   lprintln("info,logdemo", "«logdemo» inside outer")
                   lblock("info,logdemo", "«logdemo» inner") {
                       lprintln("info,logdemo", "«logdemo» inside inner")
                   }
               }
-          } finally {
-              LogDispatcher.removeSink(probe)
           }
 
           // An END event's message is only its own id, so it is picked up by blockId rather

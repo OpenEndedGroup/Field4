@@ -31,7 +31,8 @@ three flat tags rather than a path.
 registered `LogSink` (`logger.kt:18#fun lprintln(channel: String, message: Any?) {`). The
 sink list starts with just the terminal
 (`Logging.kt:38#private val sinks = CopyOnWriteArrayList<LogSink>().apply { add(StdoutLog) }`)
-and is open at runtime: `addSink`, `removeSink`, `setSinks`. A sink is a `fun interface`
+and is open at runtime: `addSink`, `removeSink`, `setSinks`, and `withSink`, which brackets an
+add/remove pair so an early return cannot leak one. A sink is a `fun interface`
 with one method, so a lambda is a sink.
 
 Eight<!--count:logSinkImplementations--> of them exist in the tree — `StdoutLog`,
@@ -62,13 +63,13 @@ import afield.logger.lprintln
 val seen = mutableListOf<LogEvent>()
 val probe = LogSink { e -> if ("mypage" in e.channel) seen += e }
 
-LogDispatcher.addSink(probe)
-try {
+// withSink brackets the pair for you. Doing it by hand is a leak waiting for the first
+// early return: the sink list outlives your box, and LogDispatcher.log wraps every sink
+// in runCatching, so a leaked sink that throws fails silently and forever.
+LogDispatcher.withSink(probe) {
     lprintln("info,mypage", "a plain line")
     lprintln("warning,mypage", "something to look at")
     lprintln("error,mypage,disk", "three tags, and no hierarchy among them")
-} finally {
-    LogDispatcher.removeSink(probe) // always. The sink list outlives your box.
 }
 
 display("main", Table(listOf("channel", "tags", "message"), title = "what one sink saw")
@@ -238,11 +239,8 @@ val arrived = mutableSetOf<String>()
 val probe = LogSink { e -> if ("«logdoc»" in e.message) arrived += e.channel }
 
 val channels = listOf("info,boxes", "info,mypage") // the first is muted by default
-LogDispatcher.addSink(probe)
-try {
+LogDispatcher.withSink(probe) {
     channels.forEach { lprintln(it, "«logdoc» a line on $it") }
-} finally {
-    LogDispatcher.removeSink(probe)
 }
 
 display("main", Table(
@@ -290,16 +288,13 @@ import afield.logger.lprintln
 val all = mutableListOf<LogEvent>()
 val probe = LogSink { e -> all += e }
 
-LogDispatcher.addSink(probe)
-try {
+LogDispatcher.withSink(probe) {
     lblock("info,logdoc", "«logdoc» outer") {
         lprintln("info,logdoc", "«logdoc» inside outer")
         lblock("info,logdoc", "«logdoc» inner") {
             lprintln("info,logdoc", "«logdoc» inside inner")
         }
     }
-} finally {
-    LogDispatcher.removeSink(probe)
 }
 
 // An END event's message is just its own id, so it is picked up by blockId rather than by text.

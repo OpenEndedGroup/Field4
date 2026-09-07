@@ -12,15 +12,13 @@ import afield.logger.lprintln
 val seen = mutableListOf<LogEvent>()
 val probe = LogSink { e -> if ("mypage" in e.channel) seen += e }
 
-LogDispatcher.addSink(probe)
-try {
+// withSink attaches and detaches around the block, on any exit. That is not a
+// convenience: the sink list outlives your box, and LogDispatcher.log wraps every sink
+// in runCatching — so a sink leaked by an early return throws silently, forever.
+LogDispatcher.withSink(probe) {
     lprintln("info,mypage", "a plain line")
     lprintln("warning,mypage", "something to look at")
     lprintln("error,mypage,disk", "three tags, and no hierarchy among them")
-} finally {
-    // Always. The sink list outlives your box, and LogDispatcher.log wraps every sink
-    // in runCatching — so a leaked sink that throws fails silently, forever.
-    LogDispatcher.removeSink(probe)
 }
 
 display("main", Table(listOf("channel", "tags", "message"), title = "what one sink saw")

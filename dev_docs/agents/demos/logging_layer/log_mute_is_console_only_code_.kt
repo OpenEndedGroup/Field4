@@ -10,11 +10,8 @@ val arrived = mutableSetOf<String>()
 val probe = LogSink { e -> if ("«logdemo»" in e.message) arrived += e.channel }
 
 val channels = listOf("info,boxes", "info,mypage") // the first is muted by default
-LogDispatcher.addSink(probe)
-try {
+LogDispatcher.withSink(probe) {
     channels.forEach { lprintln(it, "«logdemo» a line on $it") }
-} finally {
-    LogDispatcher.removeSink(probe)
 }
 
 display("main", Table(
