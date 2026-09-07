@@ -43,8 +43,8 @@ two could hardly be more different:
 | runs on a GPU | yes, via `toGlsl()` | no |
 | safe to subtract from | not reliably | always |
 
-Neither is a superset of the other, so a shape run through both is checked by two routes that share
-nothing.
+Neither is a superset of the other. A shape put through both has been measured twice by routes with
+nothing in common.
 
 ### The vocabulary, drawn
 
@@ -113,9 +113,10 @@ broken lowering but says nothing about whether that field is the shape the notat
 
 ### How the split is decided
 
-Reading it off `SolidBuild.isExact` would only be this package restating its own records, so the
-discriminator is a property the two paths cannot share: **the exact lowering has no `edgeLength`
-input at all.** Refine the march by 2.5× and a genuinely exact solid cannot move; a level set must.
+Reading it off `SolidBuild.isExact` would only be this package restating its own records. The
+discriminator is instead a property the two paths cannot share: **the exact lowering has no
+`edgeLength` input at all.** Refine the march by 2.5× and a genuinely exact solid cannot move; a
+level set must.
 
 | case | declared | volume @ h=1/40 | volume @ h=1/100 | tris @40 | tris @100 |
 |---|---|---|---|---|---|
@@ -167,7 +168,7 @@ The crossover sits at the sagitta on every curved shape, and `lens` reaches 50% 
 is exactly what two surfaces genuinely in different places must produce. The three polyhedral shapes
 are the control: no faceting, and **0.00% at every band down to 1e-6 of the span**, so the curved
 numbers are geometry rather than the raycast's own precision. The test asserts both directions,
-including that the deepest band really is inside the sagitta, so a shape whose crossover was never
+including that the deepest band really is inside the sagitta. A shape whose crossover was never
 probed fails rather than passes.
 
 ## Agreement does not converge to zero
@@ -213,10 +214,10 @@ tolerance and an explanation.
 
 ## Refusals are in the type
 
-The discipline is `RectSLFnLowering`'s, wholesale, and for the reason that file gives: a wrong
-answer is worse than no answer, so the lowering never guesses. A `null` invites a caller to
-substitute something plausible; an exception loses the reason at the first `runCatching`. A stated
-reason survives into a test, a diagnostic and this page.
+Stolen wholesale from `RectSLFnLowering`, and for the reason that file gives: a wrong answer is
+worse than no answer, so the lowering never guesses. A `null` invites a caller to substitute
+something plausible; an exception loses the reason at the first `runCatching`. A stated reason
+survives into a test, a diagnostic and this page.
 
 ```diffstatic {data-lang=kotlin}
 when (val l = shape.exactSolid()) {
@@ -238,8 +239,9 @@ The last two are not "we did not get to it". An exact-looking answer is availabl
 *wrong* answer, systematically, in a direction that does not shrink. Filing them beside the smooth
 blends would flatten a real distinction.
 
-Five nodes refuse in all, each with its own stated reason. They are still perfectly drawable: the
-field lowering takes every one of them, so the refusal costs you the *exact* backend, not the shape.
+Five nodes refuse in all, each with its own stated reason. All five are still perfectly drawable —
+the field lowering takes every one of them — and what a refusal costs you is the *exact* backend,
+not the shape.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/refusals.png" wait="8.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -280,8 +282,8 @@ a polyhedral ball.
 ## The hybrid: march the smallest subtree that needs it
 
 A naive fallback asks "does the whole tree lower exactly?" and marches everything if the answer is
-no, so one smooth blend anywhere costs a hundred-thousand-triangle approximation of a plate that was
-perfectly exact. `buildSolid` walks down instead.
+no. One smooth blend anywhere then buys a hundred-thousand-triangle approximation of a plate that
+was perfectly exact. `buildSolid` walks down instead.
 
 ```diffstatic {data-lang=kotlin}
 val build = (plate + smoothUnion(ball, post, k = 0.28)).buildSolid()
@@ -387,7 +389,7 @@ which three actually meet it:
 > microseconds on the tree.
 
 And one that is simply strange. `SmoothUnion(a, b, k = 0)` *is* a union, and a union has an exact CSG
-form where a smooth blend never will, so simplification can move an expression off the level-set
+form where a smooth blend never will. That lets simplification move an expression off the level-set
 fallback and onto the exact path:
 
 ```diffstatic {data-lang=kotlin}
@@ -423,8 +425,8 @@ off the same tape for free.
 
 ### Naming the numbers
 
-A `SolidExpr` has no names in it (it is an anonymous tree of `data class`es), so a parameter is
-bound to a **structural address**:
+A `SolidExpr` is an anonymous tree of `data class`es with no names anywhere in it. A parameter is
+bound instead to a **structural address**:
 
 ```diffstatic {data-lang=kotlin}
 val part = smoothUnion(sphere(0.45), cylinder(1.90, 0.16), k = 0.18)
@@ -775,7 +777,7 @@ cylinder against its truth, the cube against its interval.
 !!! note "A cube that never enters the union has no gradient at all"
 
     Seed `cubeSize` at `0.40` against a bar of radius `0.55` and the fit reports
-    `cubeSize 0.400000 -> 0.400000` after 387 iterations. Not slow, not stuck: `Union` is `min`, so
+    `cubeSize 0.400000 -> 0.400000` after 372 iterations. Not slow, not stuck: `Union` is `min`, so
     a child that is never the nearest surface at any sample point receives **exactly** zero
     gradient, and a cube small enough to sit wholly inside the bar is never the nearest surface
     anywhere. `fit.deadParameters` reports `none` here, because the parameter is not dead at the
@@ -799,9 +801,9 @@ smoothUnion(sphere(1.0), sphere(0.25), k = 0.9).parameterize { … }
     .fitParameters(target, …).deadParameters      // []
 ```
 
-`SolidFit.deadParameters` reports which parameters had an exactly-zero gradient at the start, so that
-reads as a diagnosis. It is reported and not thrown, because a legitimately dead parameter is a fine
-thing to have in a vector (a fit over six holes where one is genuinely irrelevant); it is the
+`SolidFit.deadParameters` names the parameters whose gradient was exactly zero at the start, and
+that list is the diagnosis. It is reported and not thrown, because a legitimately dead parameter is
+a fine thing to have in a vector (a fit over six holes where one is genuinely irrelevant); it is the
 *unexpectedly* dead one that looks like a success.
 
 ## Conventions, all of them upstream's
@@ -832,7 +834,7 @@ which is what a torus is.
     `(-1.6, -1.6, 0.2)…(1.6, 1.6, 1.0)` and `revolveMesh`'s with `(-1.6, 0.0, -1.6)…(1.6, 0.8, 1.6)`.
     Porting a profile one way or the other means swapping its `y` and `z`, or rotating the result.
 
-    `manifold_revolve` takes no axis argument at all, so there is nothing to set here: the axis is
+    `manifold_revolve` takes no axis argument at all. There is nothing to set here: the axis is
     Manifold's, and this package follows it.
 
 ## Open this {#open-this}
