@@ -47,6 +47,9 @@ object FabricatePassChain {
     /** Reference name for the texture entering the chain — the stack input, not a pass. */
     const val CHAIN_INPUT = "@input"
 
+    /** The sampler name a pass's primary input is always bound to. */
+    const val PRIMARY_SAMPLER = "sourceTex"
+
     /**
      * Plan [passes] against a chain input of [inputWidth] x [inputHeight] in [inputFormat].
      *
@@ -117,7 +120,7 @@ object FabricatePassChain {
             shapes += FabricatePassShape(width, height, spec.format ?: sourceShape.format, spec.mipLevels)
 
             val inputs = ArrayList<FabricateResolvedInput>(spec.extraInputs.size + 1)
-            inputs += FabricateResolvedInput(spec.primarySamplerName, primary)
+            inputs += FabricateResolvedInput(PRIMARY_SAMPLER, primary)
             spec.extraInputs.forEach { extra ->
                 require(inputs.none { it.samplerName == extra.samplerName }) {
                     "pass '${spec.name}' binds sampler '${extra.samplerName}' twice"
@@ -310,7 +313,6 @@ data class FabricateResolvedInput(val samplerName: String, val from: FabricatePa
  * @param push push-constant values to seed on the pass's fullscreen quad, by name. Names the shader
  *   does not declare are ignored, so one spec can drive several shader variants.
  * @param mipLevels mip levels on the pass target; >1 also turns on automatic mip generation.
- * @param primarySamplerName the sampler name the primary input is bound to.
  */
 data class FabricatePassSpec(
     val name: String,
@@ -320,8 +322,7 @@ data class FabricatePassSpec(
     val source: String? = null,
     val extraInputs: List<FabricatePassInput> = emptyList(),
     val push: Map<String, Any> = emptyMap(),
-    val mipLevels: Int = 1,
-    val primarySamplerName: String = "sourceTex"
+    val mipLevels: Int = 1
 )
 
 /** A pass target after planning: its shape, its bound inputs, its lifetime and the slot it shares. */

@@ -36,4 +36,41 @@ class FabricateShaderCompileTest {
         compiles("fabricate-bloom-blur.frag", BLOOM_BLUR_FRAGMENT)
         compiles("fabricate-bloom-composite.frag", BLOOM_COMPOSITE_FRAGMENT)
     }
+
+    /**
+     * The [FabricatePassLibrary] shaders, which need this more than the ones above do.
+     *
+     * Two of them are only reachable through a multi-resolution chain, so the first machine to find a
+     * syntax error in them would otherwise be one with a GPU running a specific chain shape — and the
+     * aperture fragment interpolates `MAX_APERTURE_TAPS` into its own loop bound from Kotlin, which is
+     * a string-template seam no Kotlin compiler checks and no reader would think to.
+     */
+    @Test
+    fun passLibraryFragmentsCompile() {
+        compiles("fabricate-downsample-13tap.frag", FabricatePassLibrary.DOWNSAMPLE_13TAP_FRAGMENT)
+        compiles("fabricate-aperture.frag", FabricatePassLibrary.APERTURE_FRAGMENT)
+        compiles("fabricate-upsample-add.frag", FabricatePassLibrary.UPSAMPLE_ADD_FRAGMENT)
+        compiles("fabricate-composite.frag", FabricatePassLibrary.COMPOSITE_FRAGMENT)
+    }
+
+    /**
+     * Every distinct fragment any [FabricatePassLibrary] chain builder can put in a plan compiles.
+     *
+     * The test above names four strings; this one asks the *builders* what they actually emit, so a
+     * new library function that forgets to add its shader here still cannot ship a chain whose
+     * shaders have never been through shaderc.
+     */
+    @Test
+    fun everyShaderTheLibraryCanPlanCompiles() {
+        val chains = listOf(
+            FabricatePassLibrary.apertureChain(),
+            FabricatePassLibrary.bloomPyramid(levels = 4),
+            FabricatePassLibrary.downsamplePyramid(levels = 3),
+            FabricatePassLibrary.separableBlur(),
+            listOf(FabricatePassLibrary.brightPass(), FabricatePassLibrary.aperture())
+        )
+        val distinct = chains.flatten().map { it.fragment }.distinct()
+        assertTrue(distinct.size >= 5, "expected at least five distinct library shaders, got ${distinct.size}")
+        distinct.forEachIndexed { index, source -> compiles("fabricate-pass-library-$index.frag", source) }
+    }
 }
