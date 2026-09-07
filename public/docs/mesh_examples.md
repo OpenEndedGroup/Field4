@@ -3,27 +3,27 @@
 *Every public declaration used below is listed, with its KDoc, in the codebase reference:
 [`mesh.kt`](reference/index.md). Start from [what's already in the box](reference/index.md).*
 
-Field could always *draw* in three dimensions — an [`FLine`](fline_examples.md) has a `z`, the
-renderer takes triangles, the [ray tracer](ray_tracing_examples.md) intersects analytic solids. What
-it could not do was **compute with a surface**: ask a mesh whether it is closed, subdivide it, smooth
-it without deflating it, decimate it to a budget, measure its volume, shoot a ray at it, or write it
-to a file another program will read.
+Drawing in three dimensions is one thing: an [`FLine`](fline_examples.md) has a `z`, the renderer
+takes triangles, the [ray tracer](ray_tracing_examples.md) intersects analytic solids. **Computing
+with a surface** is another: asking a mesh whether it is closed, subdividing it, smoothing it without
+deflating it, decimating it to a budget, measuring its volume, shooting a ray at it, writing it to a
+file another program will read.
 
-`afield.stdlib` now carries a CPU triangle-mesh family for exactly that. One value type, `TriMesh`,
-and the operations that turn a surface into structure — topology, generators, marching cubes over an
-SDF, Loop subdivision, Laplacian and Taubin smoothing, QEM decimation, curvature, a BVH, OBJ and STL
-I/O, a convex hull. It is the 3D counterpart to the raster [imaging family](imaging_examples.md), and
-it is built the same way: pure Kotlin, no external dependency, no GPU, works headless in a box.
+`afield.stdlib` carries a CPU triangle-mesh family for that. One value type, `TriMesh`, and the
+operations that turn a surface into structure: topology, generators, marching cubes over an SDF, Loop
+subdivision, Laplacian and Taubin smoothing, QEM decimation, curvature, a BVH, OBJ and STL I/O, a
+convex hull. It is the 3D counterpart to the raster [imaging family](imaging_examples.md), and it is
+built the same way: pure Kotlin, no external dependency, no GPU, works headless in a box.
 
-Two things make it Field's rather than a generic geometry library. The first is that a `TriMesh` is a
-**value you can look at** — it implements `ToHTML`, so ending a box on one draws it, with the numbers
-that decide whether it is usable printed beside the picture:
+Two things about it shape the rest of this page. A `TriMesh` is a **value you can look at**. It
+implements `ToHTML`, so ending a box on one draws it, with the numbers that decide whether it is
+usable printed beside the picture:
 
 ![The inline TriMesh card: a shaded render beside counts, watertightness, Euler characteristic, genus, area, signed volume and bounds](assets/mesh_gallery/11-inline-visualizer.png)
 
-The second is the last hop back out: `toFLines(...)` turns a mesh into `FLine`s, so a wireframe, a
-crease set or a normal field lands in the same drawing, animation and export machinery as anything
-you drew by hand.
+And there is a hop back out: `toFLines(...)` turns a mesh into `FLine`s, so a wireframe, a crease set
+or a normal field lands in the same drawing, animation and export machinery as anything you drew by
+hand.
 
 ## The value type
 
@@ -31,12 +31,12 @@ you drew by hand.
 TriMesh(positions, indices, normals = null, uvs = null, colors = null)
 ```
 
-Flat `FloatArray`s — `positions` is `3 * vertexCount` floats, `indices` is `3 * triangleCount` ints —
-with optional per-vertex `normals`, `uvs` and `colors`. Three choices worth knowing about, because
-they change what the type feels like to use:
+Flat `FloatArray`s (`positions` is `3 * vertexCount` floats, `indices` is `3 * triangleCount` ints),
+with optional per-vertex `normals`, `uvs` and `colors`. Three choices in that shape change how the
+type behaves:
 
 - **Flat arrays, not a list of vertex objects.** `Vec3` in `afield.stdlib.linalg` is *mutable*, and a
-  mesh built out of mutable vectors is an aliasing bug waiting to happen — transform one vertex twice
+  mesh built out of mutable vectors is an aliasing bug waiting to happen: transform one vertex twice
   because two triangles share it and the surface tears. So `TriMesh` stores floats and every accessor
   (`position(i)`, `faceNormal(t)`, `triangle(t)`) hands back a **fresh** `Vec3` that cannot write
   back into the mesh. `positionInto(i, dest)` is there for the inner loop that cares.
@@ -54,7 +54,7 @@ than "it renders": a cube is 8 vertices and 12 triangles, not 24 and 12.
 
 Four more generators build a mesh out of something you already have rather than out of parameters:
 `extrudeMesh` (real ear clipping, so a *concave* polygon works and does not fan), `revolveMesh` (a
-lathe), `tubeMesh` (a rotation-minimising sweep along a 3D path) and `heightfieldMesh` — which has a
+lathe), `tubeMesh` (a rotation-minimising sweep along a 3D path) and `heightfieldMesh`, which has a
 lambda form and an `Img.toHeightfieldMesh()` form, and that second one is the bridge from the
 [imaging family](imaging_examples.md) into this one. The two heightfields are the only panels here
 that are open surfaces (χ=1) rather than closed solids, which is the correct reading of what a
@@ -66,7 +66,7 @@ heightfield is.
 
 The centrepiece of the family is the SDF path, because it is the one that makes a shape feel like an
 **expression you can edit** rather than a thing you assembled. A `ScalarField3D` is a type alias for
-`(Vec3) -> Float` — negative inside, positive outside — and every combinator is one line.
+`(Vec3) -> Float` (negative inside, positive outside), and every combinator is one line.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/mesh_examples/modelling.png" wait="2.5" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -118,26 +118,27 @@ showMeshGrid(
 ![Six marched solids in a 2x3 grid — a sharp union, the same union filleted, that solid drilled, a twisted box, a closed shell and the shell cut open — each panel headed with the expression that made it, and each drawn as a shaded surface with a depth-tested wireframe over it](assets/mesh_examples/modelling.png)
 
 Read the numbers rather than the shapes and the whole story is there. They are what the box
-`println`s when you run it, and they are quoted below because — unlike the rasterized sheet this
-figure replaced — a `showMeshGrid` panel no longer carries its own fact line. The sharp union encloses
-**2.2135**; the filleted one **2.2690**, because a fillet only ever *adds* material — that is a
-property you can assert rather than eyeball. Drilling through drops it to **1.8805** and takes χ from
+`println`s when you run it, quoted here because a `showMeshGrid` panel is labelled rather than
+captioned. The sharp union encloses **2.2135**; the filleted one **2.2690**, because a fillet only
+ever *adds* material, which is a property you can assert rather than eyeball. Drilling through drops
+it to **1.8805** and takes χ from
 2 to **0**, genus 0 to **1**: the drill added a handle. The closed shell reports **χ = 4**, which is
-exactly right and initially surprising — a shell is *two* nested closed surfaces, an outer and an
+exactly right, if odd at first: a shell is *two* nested closed surfaces, an outer and an
 inner, and 2 + 2 = 4. Cutting it with a half-space glues them into one surface again (χ = 2) and
 halves the *z* extent, from 1.739 to 0.870, which is how you know the cut actually happened.
 
 `showMeshGrid(...)` is the fastest way to see a whole pipeline: labelled panels side by side, in the
 Three.js viewer, so in a live box you can orbit the whole sheet at once. It is one WebGL context
-tiled into viewports rather than one iframe per panel, which matters more than it sounds —
-see [Field's 3D output](three_output.md#one-webgl-context-several-panels). Pass
-`renderer = MeshRenderer.CPU` for the static rasterized sheet this used to produce.
+tiled into viewports rather than one iframe per panel. See [Field's 3D
+output](three_output.md#one-webgl-context-several-panels). Pass `renderer = MeshRenderer.CPU` for a
+static rasterized sheet instead.
 
-One thing to know before you go looking for it: `showMeshGrid` does **not** write the per-panel fact
-line — counts, extent, χ, genus, volume — that the single-mesh `showMesh` and the inline card both
-do. It calls `threeGrid` with `facts` left off. If you want the numbers under every panel, call
-`threeGrid(..., facts = true)` directly, or hand it `ThreeMeshPanel(label, mesh, facts = "…")` cells
-with a sentence of your own; [polytope_examples.md](polytope_examples.md) does the latter throughout.
+Its panels carry a label and no fact line. The counts, extent, χ, genus and volume that the
+single-mesh `showMesh` and the inline card print are not there, because `showMeshGrid` calls
+`threeGrid` with `facts` left off. To get them under every panel, call `threeGrid(..., facts = true)`
+directly, or hand it `ThreeMeshPanel(label, mesh, facts = "…")` cells with a sentence of your own;
+[polytope_examples.md](polytope_examples.md) does the latter throughout. Every figure on this page
+prints its numbers instead, which is why the paragraphs quote them.
 
 The primitives are `sdfSphere`, `sdfBox`, `sdfRoundBox`, `sdfTorus`, `sdfPlane`, `sdfCylinder`,
 `sdfCapsule`, `sdfGyroid` and `sdfMetaballs`. The combinators are `sdfUnion`, `sdfIntersect`,
@@ -152,9 +153,9 @@ seam, a missing cap, an unwelded weld and a leaked marching-cubes surface all st
 plausibly. One integer catches all four: the **Euler characteristic** `V - E + F`, which is exactly 2
 for any closed genus-0 solid and `2 - 2g` for genus *g*.
 
-`summary()` prints the whole verdict in one line. The rest of the pieces are separately available —
+`summary()` prints the whole verdict in one line. The rest of the pieces are separately available:
 `isWatertight()`, `isManifold()`, `eulerCharacteristic()`, `genus()`, `boundaryLoops()`,
-`surfaceArea()`, `signedVolume()` — and `topology()` gives you the object they all delegate to.
+`surfaceArea()`, `signedVolume()`, and `topology()` gives you the object they all delegate to.
 
 The other half of "looking at what you got" is checking the geometry against an answer you already
 know. A marched sphere is the best test case there is, because the volume it should converge to is
@@ -208,20 +209,20 @@ showMeshGrid(
 
 The two spheres are the same field at two grid resolutions: **1544 triangles and a volume of
 4.1124** at 16, **24920 and 4.1840** at 64, against an analytic 4/3 π = 4.18879. Both are watertight
-with χ = 2, and the error falls from **1.82% to 0.11%** — roughly the O(*h*²) you should demand of a
-marcher, and the printed table in the box carries all four resolutions. The drilled solid is the
-topology point: it looks like a sphere from most angles and reports **χ = 0, genus 1**. The gyroid is
-the awkward edge case — **χ = −20, genus 4, and *open*, with 20 boundary loops**, because the surface
-runs out of the sampling box rather than closing inside it. `summary()` says so rather than
-pretending, and [Field's 3D output](three_output.md#one-scene-two-kinds-of-thing) draws those twenty
-loops over the surface so you can see where they are.
+with χ = 2, and the error falls from **1.82% to 0.11%**, roughly the O(*h*²) you should demand of a
+marcher, and the printed table in the box carries all four resolutions. The drilled solid carries the
+topology: it looks like a sphere from most angles and reports **χ = 0, genus 1**. The gyroid is the
+awkward edge case (**χ = −20, genus 4, and *open*, with 20 boundary loops**) because the surface
+runs out of the sampling box rather than closing inside it. `summary()` reports it as open, and
+[Field's 3D output](three_output.md#one-scene-two-kinds-of-thing) draws those twenty loops over the
+surface so you can see where they are.
 
-**Why the surface is closed at all** is worth one paragraph, because plain marching cubes leaks and
-the leak is invisible until you count. Two cubes sharing a face can each pick a different
+**Why the surface is closed at all** takes a paragraph, because plain marching cubes leaks and the
+leak is invisible until you count. Two cubes sharing a face can each pick a different
 triangulation for the four crossings on that face; the two disagree and the surface tears there.
 `marchingCubes` resolves that face with the **asymptotic decider**, which is a pure function of the
 face's own four corner values, so the two cubes always agree. It also nudges a crossing off a grid
-corner whose sample sits *exactly* on the iso level — a case that is not exotic at all (a unit sphere
+corner whose sample sits *exactly* on the iso level, a case that is not exotic at all (a unit sphere
 on a 0.2 grid has corners at `(1,0,0)` and `(0.6,0.8,0)` precisely on it) and that otherwise
 collapses every crossing out of that corner onto the corner itself.
 
@@ -289,18 +290,17 @@ showMeshGrid(
 
 ![An icosahedron and its first and third Loop subdivisions, then a lumpy noisy ball and the same ball smoothed by 30 Laplacian and 30 Taubin iterations; the last two panels are both smooth round balls at the same apparent size, headed "laplacianSmooth(30) — deflated" and "taubinSmooth(30) — volume held"](assets/mesh_examples/process.png)
 
-The two smoothed balls are the point, and the picture will not settle it for you — **look at the
-printed volumes, not at the panels.** Each panel of a `showMeshGrid` frames its own bounds and
-zoom-to-fits, so the Laplacian ball's 20% smaller extent is normalised straight back out and the two
-come out the same apparent size. (The rasterized version of this figure carried a fact table under
-each panel; the viewer's grid does not — see [Field's 3D output](three_output.md#showmesh-and-the-renderer-parameter).)
+The picture will not settle the two smoothed balls for you: **look at the printed volumes, not at the
+panels.** Each panel of a `showMeshGrid` frames its own bounds and zoom-to-fits, so the Laplacian
+ball's 20% smaller extent is normalised straight back out and the two come out the same apparent
+size.
 The noisy input encloses **2.1293** across an extent of 1.701. Thirty Laplacian iterations at λ = 0.6
 leave **1.1509** across 1.301: it has thrown away **46% of the volume**. Thirty Taubin iterations of
-the same λ, with μ = −0.63, leave **2.1840** across 1.631 — within about 3% of the clean ball this
-noise was added to, and, at 1280 triangles and χ = 2 throughout, just as smooth. That is the whole
-argument for Taubin in two numbers.
+the same λ, with μ = −0.63, leave **2.1840** across 1.631, within about 3% of the clean ball this
+noise was added to, and, at 1280 triangles and χ = 2 throughout, just as smooth. Two numbers, and
+they are the argument for Taubin.
 
-Subdivision has its own quiet lesson in the top row. The volume falls 1.2985 → 0.8518 → … → 0.7490
+The top row has a second lesson in it. The volume falls 1.2985 → 0.8518 → … → 0.7490
 and does *not* stop at the sphere the icosahedron's vertices sit on, because Loop subdivision
 converges on the **Loop limit surface**, not on whatever you imagined the control mesh approximated.
 The steps shrink geometrically and χ never moves off 2.
@@ -317,10 +317,9 @@ position, and the cheapest is taken until the budget is met. Collapses are vetoe
 condition** (so the mesh cannot go non-manifold), by a normal-flip test, and by a shape test that
 defers a collapse which would produce a sliver.
 
-The number that matters is not the triangle count you asked for — you get that — it is the
-*deviation*: how far either mesh's vertices sit from the other's surface. `maxDeviation(a, b)`
-reports it symmetrically, so a decimation cannot look good by having simply shrunk inside the
-original.
+You get the triangle count you asked for, so the number to judge a decimation by is the *deviation*:
+how far either mesh's vertices sit from the other's surface. `maxDeviation(a, b)` reports it
+symmetrically, so a decimation cannot look good by having simply shrunk inside the original.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/mesh_examples/decimate.png" wait="3.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -353,13 +352,13 @@ showMeshGrid(
 
 ![A 5120-triangle icosphere beside its 2000-, 600- and 150-triangle decimations; all four are still recognisably round, the wireframe visibly coarsens from panel to panel, and each panel heading carries its budget and its symmetric deviation from the original](assets/mesh_examples/decimate.png)
 
-Every budget is hit **exactly** — 2000, 600 and 150 triangles — and all three stay watertight at
+Every budget is hit **exactly** (2000, 600 and 150 triangles) and all three stay watertight at
 χ = 2, which is the link condition doing its job. The volume drifts from 2.1400 down to 2.1252,
 2.0860 and 2.0724 (the collapses cut corners off a convex solid, so it can only lose). The number to
-budget against is the deviation in each panel heading: **0.0047** at 2000 triangles, **0.0166** at 600 and
-**0.0326** at 150, on a ball of radius 0.8 — so a 34× reduction costs you about 4% of the radius. It
-is worth noticing that the deviation grows *slower* than the triangle count falls, which is the
-entire reason decimation is worth doing.
+budget against is the deviation in each panel heading: **0.0047** at 2000 triangles, **0.0166** at 600
+and **0.0326** at 150, on a ball of radius 0.8, so a 34× reduction costs you about 4% of the radius.
+The deviation grows *slower* than the triangle count falls, which is what makes the trade worth
+making at all.
 
 `quality()` is the other half of that judgement: minimum and mean triangle angle, aspect ratio,
 degenerate count. A decimator that hits its budget by producing slivers has not helped you, and the
@@ -387,25 +386,25 @@ lines(mesh.toFLines(MeshLines.CREASES, creaseAngleDegrees = 30.0))
 
 Going the other way, `tubeMesh(fline, radius, sides, samples, caps)` sweeps a tube along an `FLine`
 using rotation-minimising frames, so it does not twist where the path's curvature swings through
-vertical — the failure mode of the obvious Frenet-frame implementation.
+vertical, which is the failure mode of the obvious Frenet-frame implementation.
 
 For files: `toObj(name)` / `objToTriMesh(text)` and `toStlAscii` / `toStlBinary` /
 `stlToTriMesh(bytes)`, plus `saveObj(file)`, `saveStl(file)` and `triMeshFromObj(file)`. The
-difference between the two formats is worth stating, because it changes what you get back. OBJ keeps
-the index structure, so a watertight mesh round-trips watertight. **STL is triangle soup by design** —
-three unshared vertices per triangle, no indices at all — so it comes back with 3× the vertices and
-`isWatertight()` false until you `weld(1e-5)` it. Both recover the volume exactly.
+two formats differ in what you get back. OBJ keeps the index structure, so a watertight mesh
+round-trips watertight. **STL is triangle soup** (three unshared vertices per triangle, no indices at
+all), so it comes back with 3× the vertices and `isWatertight()` false until you `weld(1e-5)` it. Both
+recover the volume exactly.
 
-Shading normals are a **choice rather than a property**, and the choice changes the vertex count,
-which is the part that surprises people. A generator ships without normals when its vertices sit on a
-crease, and then `flatShaded()` splits every one, `shadedNormals(creaseAngleDegrees = 35.0)` splits
-only across creases, and `withVertexNormals()` shares them all — 144, 50 and 26 vertices for the same
-12-sided cylinder, from a hard-faceted tube to one with a rounded-off rim:
+Shading normals are a **choice rather than a property**, and the choice changes the vertex count. A
+generator ships without normals when its vertices sit on a crease, and then `flatShaded()` splits
+every one, `shadedNormals(creaseAngleDegrees = 35.0)` splits only across creases, and
+`withVertexNormals()` shares them all: 144, 50 and 26 vertices for the same 12-sided cylinder, from a
+hard-faceted tube to one with a rounded-off rim:
 
 ![Top row: the same 12-sided cylinder flat shaded at 144 vertices, crease-shaded at 50 and smooth at 26, going from hard facets to a rounded rim. Bottom row: an icosphere after an OBJ round trip, after a binary STL round trip and weld, and the source — all three at 642 vertices and the same volume](assets/mesh_gallery/10-shading-and-io.png)
 
-Those two are the whole *dependency-free* story, and they are not the whole story: PLY, glTF and GLB
-read as well. [Geometry from disk](geometry_from_disk.md) is the route from any format to pixels — one
+OBJ and STL are the two formats this family reads and writes without a dependency; PLY, glTF and GLB
+read as well. [Geometry from disk](geometry_from_disk.md) is the route from any format to pixels: one
 call per format, a measured table of what each one loses in each direction, and a list of what
 cannot be read at all (STEP and every other CAD boundary representation).
 
@@ -457,28 +456,26 @@ showMeshGrid(
 
 ![A helical tube swept along an FLine with an even, untwisted ring of quads all the way round, a coarse 14x8 torus with its facets clearly visible, and an icosphere that has been through a binary STL round trip and been welded back](assets/mesh_examples/bridges.png)
 
-The watertightness is in the printed lines above rather than under each panel — a `showMeshGrid`
-sheet is labelled, not captioned.
 The coil is the frame test: 4320 triangles, watertight, χ = 2, and no twist anywhere along the helix
 even though the path's curvature swings through vertical twice. The round-tripped sphere comes back
-at **642 vertices, watertight, χ = 2, volume 1.4244** — the same 642 vertices it started with, after
+at **642 vertices, watertight, χ = 2, volume 1.4244**, the same 642 vertices it started with, after
 having been flattened to 3840 unshared ones by the STL writer and welded back.
 
 ## Measuring and querying
 
-`surfaceArea()`, `signedVolume()` (the divergence-theorem sum, so it is *signed* — an inside-out
+`surfaceArea()`, `signedVolume()` (the divergence-theorem sum, so it is *signed*: an inside-out
 closed mesh reports a negative volume, which is the only thing that will tell you), `centroid()` for
 the area-weighted surface centroid and `solidCentroid()` for the enclosed solid's.
 
 Discrete curvature: `gaussianCurvature()` is the angle deficit and `meanCurvature()` the cotangent
 Laplacian's magnitude, both divided by the mixed Voronoi area from `mixedVertexAreas()`. On a sphere
 of radius *r* they are 1/*r*² and 1/*r*. A torus is the shape to look at, because its Gaussian
-curvature has both signs — positive on the outside, negative in the hole:
+curvature has both signs, positive on the outside and negative in the hole:
 
 ![Gaussian curvature on a torus (red outside, blue in the hole), mean curvature as a smooth gradient, and a convex hull of 200 points](assets/mesh_gallery/09-measure-and-query.png)
 
 The global check is **Gauss–Bonnet**: the integral of Gaussian curvature over a closed surface is
-exactly 2πχ. No local sign error or area-weighting bug survives it, which makes it the single best
+exactly 2πχ. No local sign error or area-weighting bug survives it, which is what makes it the
 assertion to put in a test.
 
 ```diffstatic {data-lang=kotlin}
@@ -490,21 +487,20 @@ val total = (0 until mesh.vertexCount).sumOf { k[it] * areas[it] }   // == 2 * P
 `bvh()` builds a bounding-volume hierarchy and turns every useful query from O(*n*) into O(log *n*):
 `raycast(origin, direction)`, `raycastAll(...)`, `closestPoint(query)`, `contains(query)` (a parity
 test, so it needs a watertight mesh) and `signedDistance(query)`. `asSdf()` hands the whole thing
-back as a `ScalarField3D`, which closes the loop — you can march a mesh's own signed distance field
+back as a `ScalarField3D`, which closes the loop: you can march a mesh's own signed distance field
 and get a remeshed version of it. There are `TriMesh.raycast` / `closestPoint` / `contains`
 shorthands that build a throwaway BVH, fine for one query and wrong for a loop.
 
 `convexHullMesh(points)` is an incremental hull with no dependencies, and
 `deviationFrom` / `maxDeviation` / `isContainedIn` / `samplePoints` are the comparison tools.
 
-## Now do something you couldn't before
+## A Voronoi diagram as solids
 
-Field has computed a real 3D Voronoi diagram for a while — `voronoi3d(...)` clips half-spaces and
-hands back `VoronoiCell3`s with polygonal faces. What it could not do was turn one into geometry you
-could measure, cut, export or hold in your hand. `VoronoiCell3.toTriMesh(shrink)` and
-`VoronoiLattice.toTriMesh(shrink, boundedOnly)` do that, and because a Voronoi tessellation
-partitions its clip box *exactly*, there is a one-line total check on the result: the cell volumes
-must sum to the box's own volume.
+`voronoi3d(...)` clips half-spaces and hands back `VoronoiCell3`s with polygonal faces.
+`VoronoiCell3.toTriMesh(shrink)` and `VoronoiLattice.toTriMesh(shrink, boundedOnly)` turn those into
+geometry you can measure, cut, export or print. Because a Voronoi tessellation partitions its clip box
+*exactly*, there is a one-line total check on the result: the cell volumes must sum to the box's own
+volume.
 
 ![48 Voronoi cells as solids, the interior cells shrunk to 0.6 and exploded into separate crystals](assets/mesh_gallery/08-voronoi-bridge.png)
 
@@ -519,13 +515,11 @@ showMeshGrid(
 )
 ```
 
-Writing that bridge is what turned up a real defect in `voronoi.kt` itself: for cells near a
-near-cospherical site cluster, face membership was decided by a *distance* test against a tolerance
-larger than the spacing of the genuine corners there, so faces claimed corners that were not theirs
-and the cell's faces did not close — one edge on one side of a seam, two on the other. Membership is
-now combinatorial (a corner records which three planes produced it, and a face's polygon is exactly
-the corners recording that plane), which is the incidence information the distance test was trying
-to recover from geometry. `dev_docs/MESH_GEOMETRY.md` has the measurements.
+Face membership in `voronoi.kt` is combinatorial rather than metric: a corner records which three
+planes produced it, and a face's polygon is exactly the corners recording that plane. That matters
+around a near-cospherical site cluster, where the genuine corners sit closer together than any
+usable distance tolerance, and a face decided by proximity claims corners that are not its own and
+fails to close. `dev_docs/MESH_GEOMETRY.md` has the measurements.
 
 ## Recipes
 
@@ -553,24 +547,22 @@ to recover from geometry. `dev_docs/MESH_GEOMETRY.md` has the measurements.
 
 ## Where the pictures come from
 
-Everything on this page is real output, and there are two routes on it, because they cost different
-amounts to produce:
+The figures come by two routes, which cost different amounts to produce:
 
 | figure | how |
 |---|---|
-| the five `diffstatic_runner` fences above | **executed by the docs build**; the image under each is that box's own output, drawn by the Three.js viewer — which is what `showMeshGrid` now uses |
-| `assets/mesh_gallery/*.png` (six figures) | **committed captures** from the `mesh.gallery` FIELD_TEST: `MESH_GALLERY_DIR=public/docs/assets/mesh_gallery python3 tools/run_field_tests.py --id mesh.gallery --port 9700`. These are composited from `renderPixels`, so they are the **CPU rasterizer** and always will be — that is the point of them. The gallery renders eleven figures; the five not shown here are the ones the `diffstatic_runner` fences above already cover live, and they stay in `dev_docs/assets/mesh_gallery/` |
+| the five `diffstatic_runner` fences above | **executed by the docs build**; the image under each is that box's own output, drawn by the Three.js viewer that `showMeshGrid` uses |
+| `assets/mesh_gallery/*.png` (six figures) | **committed captures** from the `mesh.gallery` FIELD_TEST: `MESH_GALLERY_DIR=public/docs/assets/mesh_gallery python3 tools/run_field_tests.py --id mesh.gallery --port 9700`. These are composited from `renderPixels`, so they show the **CPU rasterizer** rather than the viewer. The gallery renders eleven figures; the five not shown here are the ones the `diffstatic_runner` fences above already cover live, and they stay in `dev_docs/assets/mesh_gallery/` |
 
-Read both routes as "real output, as of when it was taken", and regenerate them after changing the
-family. What guards the family continuously is the gallery itself: it is a FIELD_TEST
-rather than a script, so
-it **fails** if the invariants break — if a generator stops being watertight, if a marched sphere's
+Both routes show the output as of when it was taken, so regenerate them after changing the family.
+The gallery is also what guards the family continuously: it is a FIELD_TEST rather than a script, so
+it **fails** if the invariants break: if a generator stops being watertight, if a marched sphere's
 volume error stops falling with resolution, if a decimation misses its budget, if Gauss–Bonnet stops
 matching 2πχ, or if the Voronoi cells stop tiling their clip box.
 
 ??? aside "Neither route notices on its own when the code moves underneath it"
     A `diffstatic_runner` fence is re-executed only when the build decides its capture is out of date, and
-    that decision comes from a fixed digest list — `RUNNER_DIGEST_SOURCE_FILES` in `public/docs_hooks.py` —
+    that decision comes from a fixed digest list (`RUNNER_DIGEST_SOURCE_FILES` in `public/docs_hooks.py`)
     which covers the runner's own machinery and no stdlib source at all. So editing `mesh_*.kt` leaves every
     digest unchanged, an incremental build is a cache hit, and the fences are not re-run;
     `FIELD_DOCS_RUNNER_MODE=always` forces them. The six gallery figures are committed PNGs with the same
