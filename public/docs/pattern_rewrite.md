@@ -1,14 +1,15 @@
 # Rewriting your own syntax
 
-Most of the time you write the code you mean. But sometimes the code you mean is
-a *shape*: every `neg(x)` should become `-x`, every `f(x)` should be wrapped in
-a runtime coercion, every `log(tag, …)` should route through your logger. Writing
-each occurrence by hand is exactly the busywork a language should absorb.
+Every `neg(x)` becomes `-x`. Every `f(x)` gets wrapped in a runtime coercion.
+Every `log(tag, …)` routes through your logger. Each of those three is a claim
+about the *shape* of your source rather than about any value in it, which is why
+none of them can be written as a function — a function sees the values, not the
+syntax that produced them.
 
-The pattern-rewrite layer lets a live box declare those shapes as rules. You
-author a `rewrite { … }` block right in a box, in Kotlin syntax, and it rewrites
-your source before the compiler ever sees it. It is a small, structural
-term-rewriting system that runs as a preprocessor in front of the Kotlin engine.
+The pattern-rewrite layer lets a live box state them anyway. You author a
+`rewrite { … }` block right in a box, in Kotlin syntax, and it rewrites your
+source before the compiler ever sees it. It is a small, structural term-rewriting
+system that runs as a preprocessor in front of the Kotlin engine.
 
 ## The mental model
 
@@ -58,8 +59,8 @@ does not match this rule and is left untouched.
 
 ## Metavariables, kinds, and precedence
 
-A metavariable's declared type names its **kind**, meaning what syntax it is
-allowed to bind:
+A metavariable's declared type names its **kind** — what syntax it is allowed to
+bind:
 
 | Kind      | Binds                                    |
 |-----------|------------------------------------------|
@@ -121,8 +122,8 @@ The vocabulary:
 - `isCall(x)` — a function or constructor call.
 - `isCallTo(x, "name")` — a call whose callee is exactly `name`.
 
-Guards are evaluated *structurally* at rewrite time, with no code run and no
-types consulted, so only this fixed vocabulary is understood. An unknown predicate
+Guards are evaluated *structurally* at rewrite time — no code runs, no types are
+consulted — so only this fixed vocabulary is understood. An unknown predicate
 makes the rule fail closed (it never fires) with a warning, rather than doing
 something surprising.
 
@@ -171,9 +172,9 @@ The metavariable is substituted in the *declaration name* position (`n` →
 `hits`), and the emitted preamble segment is wrapped as a keyed
 `/*start*/ … /*end*/` block, the "stack mark" idempotency mechanism the preamble
 machinery understands. Firing the same rule twice with the same capture
-contributes the segment once; distinct captures get distinct keys. (Unlike the `to {}` side,
-`provide {}` names are *not* gensym-renamed; they are meant to define stable,
-shared box-level names.)
+contributes the segment once; distinct captures get distinct keys. (Unlike the
+`to {}` side, `provide {}` names are *not* gensym-renamed; they are meant to
+define stable, shared box-level names.)
 
 ## Running code at rewrite time: `unquote { }`
 
@@ -195,12 +196,13 @@ rev(hello)       // →  "olleh"     (a String literal)
 Because the result is spliced as *code*, you must produce valid Kotlin. Here the
 block builds a quoted string literal, so `rev(hello)` becomes the literal
 `"olleh"`. (Emitting `unquote { x.reversed() }` would splice the bare token
-`olleh`, an unresolved reference.) The block runs in the
-box's own REPL context, so it can call box-scoped helpers.
+`olleh`, an unresolved reference.) The block runs in the box's own REPL context,
+so it can call box-scoped helpers.
 
 Evaluation is fail-soft: on the execute path a failing block becomes a compiling
-`error(...)` stand-in with a logged diagnostic, and in editor-preview expansions,
-where your code is not run, the call becomes a well-typed `TODO()` placeholder.
+`error(...)` stand-in with a logged diagnostic, and in editor-preview
+expansions — where your code is not run — the call becomes a well-typed `TODO()`
+placeholder.
 
 ## Variadic holes
 
@@ -234,10 +236,10 @@ boom(hello)          // →  BANG(hello)
 ```
 
 When a child declares a rule with the same pattern as an inherited one, the
-local rule wins, by the same declaration-order, first-match-wins rule that
-governs two rules in a single box. This is how the authoring workspace is laid out: a
-`Coerce Rewrite` parent box holds the coercion rule, and a `Double Increment`
-child inherits it without repeating it.
+local rule wins, by the same declaration-order, first-match-wins tie-break that
+governs two rules in a single box. This is how the authoring workspace is laid
+out: a `Coerce Rewrite` parent box holds the coercion rule, and a
+`Double Increment` child inherits it without repeating it.
 
 ## Convergence and the termination cap
 
@@ -270,10 +272,10 @@ Two smaller rules govern the rest:
 
 Everything above uses the **default engine**: every rule fires at every match,
 everywhere, to a fixed point. That is confluent and convenient, and for most
-rule sets it is exactly what you want. But sometimes you need control: rewrite
+rule sets it is exactly what you want. Other rule sets want control — rewrite
 *one* site, not all of them; rewrite the *innermost* form rather than the
 outermost; run rule A only where rule B did not apply; apply a step a bounded
-number of times. That is what **strategies** add, a small
+number of times. That is what **strategies** add: a small
 [Stratego](https://strategoxt.org/)/ELAN-style term-rewriting language layered
 on top of the same matcher.
 
@@ -284,8 +286,8 @@ order and at the sites it dictates.
 ### Name the rules a strategy drives
 
 A strategy refers to rules by name, so use `rule("name") { … }` instead of the
-anonymous `rewrite { … }`. Everything else about the rule is identical:
-`from`/`to`/`where`/`provide`/`ai`, and the erase-before-compile treatment. A named rule
+anonymous `rewrite { … }`. Everything else about the rule — `from`/`to`/`where`/
+`provide`/`ai`, the erase-before-compile treatment — is identical. A named rule
 with *no* strategy still behaves exactly like the anonymous global fixpoint:
 
 ```diffstatic {data-lang=kotlin}
@@ -330,8 +332,8 @@ strategy { bottomup("fg") }   //  f(f(a))  →  f(g(a))   (inner call only)
 Each is a *single* application, not a fixpoint: `topdown` does not go on to
 rewrite the inner `f`. To drive it to a fixed point, wrap it in `repeat`.
 
-**Select a subset of rules.** Naming one rule fires only that rule, even when
-others would match, unlike the default, which fires every rule:
+**Select a subset of rules.** The default fires every rule that matches. Naming
+one rule fires only that rule, even where another would have matched too:
 
 ```diffstatic {data-lang=kotlin}
 rule("p2a") { x: Expr -> from { p(x) }; to { A(x) } }
@@ -396,8 +398,8 @@ strategy { repeat(topdown("fg"), 2) }
 f(f(f(f(a))))    // →  g(g(a))    (step 1 collapses the outer pair, step 2 the inner)
 ```
 
-With real definitions behind those names, `fun f(v: Int) = v * 2` and
-`fun g(v: Int) = v + 100`, `f(f(f(f(1))))` evaluates to **201**, not the 16 the
+With real definitions behind those names — `fun f(v: Int) = v * 2` and
+`fun g(v: Int) = v + 100` — `f(f(f(f(1))))` evaluates to **201**, not the 16 the
 unrewritten source would give. The `nested pattern` box of the
 `rewrite_strategies_demo` transcript below runs exactly that and `check`s the 201.
 
@@ -453,7 +455,7 @@ compile-and-run pipeline a live box uses:
   two-level pattern, each box self-checking that the strategy produced a
   *different* result than the default fixpoint would.
 
-Replay every shipped demo transcript, including both of these, through the real
+Replay every shipped demo transcript — including both of these — through the real
 engine with:
 
 ```diffstatic {data-lang=bash}
