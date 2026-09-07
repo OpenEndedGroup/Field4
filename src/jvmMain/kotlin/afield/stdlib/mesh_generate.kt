@@ -17,20 +17,19 @@ import kotlin.math.sqrt
  * generators that build one out of something you already have ([extrudeMesh], [revolveMesh],
  * [tubeMesh], [heightfieldMesh], [polygonMesh]).
  *
- * # Two conventions worth knowing before you use any of them
+ * # Welding, and where the normals come from
  *
  * **Everything here is welded and watertight where it can be.** A generator returns the minimal
  * vertex set, so [MeshTopology.eulerCharacteristic] of a box, a sphere, a cone or a capped cylinder
- * is exactly `2`, of a torus exactly `0`, and [TriMesh.isWatertight] is true. That is a much stronger
- * guarantee than "it renders", it is what the volume / curvature / decimation code needs, and it is
- * checked in the tests.
+ * is exactly `2`, of a torus exactly `0`, and [TriMesh.isWatertight] is true. The volume, curvature
+ * and decimation code all need that; a mesh that merely renders is not enough for any of them.
  *
  * **Normals are only attached where they are unambiguous.** A sphere, icosphere, torus and capsule
  * are smooth everywhere, so they carry per-vertex normals. A box, cylinder, cone, extrusion or
  * platonic solid has *creases*: the two faces meeting at an edge want different normals at the same
- * vertex, and you cannot have both a shared vertex and two normals. Rather than silently duplicate
- * the seam (breaking watertightness) or silently average across the crease (rounding it off), these
- * ship with **no** normals, and you pick:
+ * vertex, and you cannot have both a shared vertex and two normals. Duplicating the vertex would
+ * break watertightness and averaging across the crease would round it off, so these ship with
+ * **no** normals and you pick:
  *
  * ```kotlin
  * boxMesh().flatShaded()          // one normal per triangle: hard edges, 3 verts per tri
@@ -46,7 +45,7 @@ import kotlin.math.sqrt
  * `+y` is up, matching the preview camera. Radial generators sweep `x = r cos u, z = -r sin u`, which
  * is the handedness that makes counter-clockwise-from-outside windings come out right. [planeMesh]
  * and [polygonMesh] live in the `xy` plane facing `+z`; [heightfieldMesh] lives in the `xz` plane
- * facing `+y` — the difference is deliberate, a plane is a wall and a heightfield is a landscape.
+ * facing `+y`: a plane is a wall and a heightfield is a landscape.
  */
 
 // ==============================================================================================

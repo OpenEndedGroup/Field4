@@ -28,13 +28,11 @@ import kotlin.math.sqrt
  * Text as geometry: a string becomes contours, and from there everything Field already does to
  * geometry applies to letters.
  *
- * Field can draw, mesh, filter, cluster, contour and evolve geometry, and before this file it could
- * not turn *a string* into any of it. Every `java.awt.Font` in the tree paints a label into a
- * raster — `MeshGallery`, `ImagingGallery`, `montage`'s 5x7 bitmap font — and none of them produces a
- * value you can extrude, march, sample or animate. This file and its bridge companion
- * `typography_field.kt` are that missing layer, and they need no new dependency:
+ * A layout here is a value you can extrude, march, sample or animate, not a label painted into a
+ * raster — which is what every other use of `java.awt.Font` in the tree does (`MeshGallery`,
+ * `ImagingGallery`, `montage`'s 5x7 bitmap font). It needs no dependency beyond AWT:
  * `Font.createGlyphVector(...).getOutline()` hands back real quadratic/cubic glyph outlines, and it
- * works headless.
+ * works headless. `typography_field.kt` is the bridge to Field's own 2D and 3D outputs.
  *
  * # The three values
  *
@@ -47,9 +45,9 @@ import kotlin.math.sqrt
  *    [Glyph.outline] is the same rings as an [FLine] of *real cubics* for drawing.
  *  - [TextLayout] — glyphs placed on baselines by AWT's own advances and kerning, plus tracking,
  *    multi-line and alignment. Every glyph in it is a [PlacedGlyph] carrying **mutable transform
- *    handles** (offset, rotation, scale, pivot). Those handles are the API, not an afterthought:
- *    they are what makes kinetic typography a two-line box body, and [TextLayout.onCurve] is
- *    nothing but a routine that sets them from an [FLine]'s arc length.
+ *    handles** (offset, rotation, scale, pivot). Those handles are how you animate letters
+ *    individually, and [TextLayout.onCurve] is nothing but a routine that sets them from an
+ *    [FLine]'s arc length.
  *
  * # Text space
  *
@@ -61,9 +59,9 @@ import kotlin.math.sqrt
  *
  * # The winding convention
  *
- * A glyph's counter — the hole in `o`, `e`, `a`, `B` — is only a hole if something says so, and
- * "whatever the font shipped" is not good enough: `isoContourFLines` in `contours.kt` leaves winding
- * arbitrary and every consumer downstream has to cope. So this file *decides*:
+ * A glyph's counter — the hole in `o`, `e`, `a`, `B` — is only a hole if something says so, and what
+ * the font shipped is not enough to go on. (`isoContourFLines` in `contours.kt` leaves winding
+ * arbitrary, and every consumer downstream has to cope.) So this file *decides*:
  *
  * > For a ring `p0..pn`, signed area is `½Σ(xᵢyᵢ₊₁ − xᵢ₊₁yᵢ)` in text space. **Outer contours are
  * > positive; holes are negative.** A ring's [GlyphContour.depth] — how many other rings of the same
@@ -72,9 +70,7 @@ import kotlin.math.sqrt
  *
  * Both representations obey it, so `contours.filter { it.isHole }` and the subpaths of
  * [Glyph.outline] agree, and `TypographyTest` asserts it on glyphs whose answer is known by eye
- * (`o` has one hole, `l` has none, `%` has two). Depth comes from point-in-polygon containment and
- * the sign comes from the area formula, so the assertion compares two independent computations
- * rather than restating one of them.
+ * (`o` has one hole, `l` has none, `%` has two).
  *
  * # AWT and the main run loop
  *

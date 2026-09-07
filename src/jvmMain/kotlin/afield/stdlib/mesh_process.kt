@@ -774,7 +774,7 @@ data class MeshQuality(
     val meanAspectRatio: Double,
     /** The worst single triangle's aspect ratio. */
     val worstAspectRatio: Double,
-    /** Triangles with no area at all. Legal (a UV sphere has none, a marched surface can) but worth knowing. */
+    /** Triangles with no area at all. Legal — a UV sphere has none, a marched surface can. */
     val degenerateCount: Int,
 ) {
     /** All five numbers on one line, for `println`. */

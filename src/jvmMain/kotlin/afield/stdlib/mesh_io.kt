@@ -12,18 +12,17 @@ import java.nio.ByteOrder
  * **OBJ** (text, indexed, carries normals and uvs) and **STL** (ASCII or binary, triangle soup, the
  * lingua franca of 3D printing).
  *
- * Both directions, no dependencies, and explicit about what each format can carry:
+ * Both directions, in pure Kotlin, and what each format carries is different:
  *
  *  - [TriMesh.toObj] / [objToTriMesh] keep the index structure, so a watertight mesh round-trips as a
  *    watertight mesh. Normals and uvs survive; per-vertex colours do not (OBJ has no standard for
  *    them). Faces with more than three corners are fan-triangulated on read, so a quad-mesh OBJ from
  *    a modeller loads fine.
- *  - [TriMesh.toStlAscii] / [TriMesh.toStlBinary] / [stlToTriMesh] are *triangle soup* by design:
- *    STL has no vertex sharing at all, so a mesh written to STL and read back has `3 *
- *    triangleCount` vertices and reports every edge as a boundary. `stlToTriMesh(bytes).weld()` gives
- *    you the mesh back. That is a property of the format, not of this code, and the read path says
- *    so in its KDoc rather than silently welding for you — welding needs a tolerance, and choosing
- *    one for you is exactly the kind of guess that loses a hairline feature.
+ *  - [TriMesh.toStlAscii] / [TriMesh.toStlBinary] / [stlToTriMesh] are *triangle soup*, because STL
+ *    has no vertex sharing at all: a mesh written to STL and read back has `3 * triangleCount`
+ *    vertices and reports every edge as a boundary. `stlToTriMesh(bytes).weld()` gives you the mesh
+ *    back. The read path does not weld for you, because welding needs a tolerance, and a tolerance
+ *    guessed on your behalf is what loses a hairline feature.
  *
  * ```kotlin
  * val mesh = icosphereMesh(3)

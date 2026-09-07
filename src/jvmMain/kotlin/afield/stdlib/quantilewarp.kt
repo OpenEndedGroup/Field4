@@ -38,9 +38,9 @@ import afield.FieldMarkdown
  * `ShaderFieldProbe`, updates the warp, calls your `apply` callback and renders a knot table into a
  * box display channel.
  *
- * Constraints worth knowing: exactly eight strictly increasing probabilities inside `(0, 1)`, and
- * the [Box.fieldProbeQuantileWarp] entry point needs a live `Box` plus a probe configured for
- * continuous snapshot reads.
+ * Two constraints: exactly eight strictly increasing probabilities inside `(0, 1)`, and
+ * [Box.fieldProbeQuantileWarp] needs a live `Box` plus a probe configured for continuous snapshot
+ * reads.
  */
 
 private val defaultQuantileWarpProbabilities = doubleArrayOf(

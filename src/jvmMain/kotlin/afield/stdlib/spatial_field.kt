@@ -460,7 +460,7 @@ fun Box.showPlane(
 
 /**
  * Several plane figures side by side, each titled — the 2D twin of `Box.showMeshGrid`, and the
- * fastest way to see a whole pipeline (sites → triangulation → dual → clipped) at a glance.
+ * fastest way to see a whole pipeline (sites → triangulation → dual → clipped) side by side.
  *
  * A title may contain newlines; everything after the first becomes the figure's caption, which is
  * how you get the numbers that carry the argument under the picture they are about.

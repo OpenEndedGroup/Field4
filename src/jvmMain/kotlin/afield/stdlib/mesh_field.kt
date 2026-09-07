@@ -578,7 +578,7 @@ fun Box.showMesh(
 
 /**
  * Several meshes side by side, each rendered and captioned — the fastest way to see a whole pipeline
- * (generated / subdivided / smoothed / decimated) at a glance.
+ * (generated / subdivided / smoothed / decimated) side by side.
  *
  * @param columns meshes per row.
  */

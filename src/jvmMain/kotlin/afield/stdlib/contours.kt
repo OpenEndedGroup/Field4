@@ -41,12 +41,9 @@ import kotlin.math.sqrt
  * per-node colour. [FLine.isoWeights] is the stock implementation: it reads a per-node property and
  * interpolates between the nodes that set it.
  *
- * These used to be two `List<Double>?` parameters, `pointWeights` and `edgeWeights`, sized against
- * the points and edges. On the `FLine` overloads that was unusable and not just awkward: the counts
- * belonged to the *internal* flattening, and the edge count is not even a function of the node
- * counts, because [pointEdgeGraph2D] drops an edge between near-coincident samples. A caller could
- * only guess and read the `IllegalArgumentException`. A callback removes the question — and it
- * survives a change to `samplesPerCubic`, which a list of weights could not.
+ * It is a callback rather than a list of weights because on the `FLine` overloads there is no count
+ * a caller could size a list against: the points and edges belong to [pointEdgeGraph2D]'s internal
+ * flattening, and its edge count depends on the line's geometry as well as its instructions.
  *
  * An edge's weight is always the **minimum** of its two endpoints'. A capsule has one radius for its
  * whole length and so cannot taper: the taper comes from the union of densely sampled discs, and the
@@ -54,46 +51,35 @@ import kotlin.math.sqrt
  * disc envelope exactly where the weight changes fastest; the minimum fills the gap without ever
  * fattening it.
  *
- * # The sign convention, and why it is asymmetric
+ * # The sign convention
  *
  * A grid corner is *inside* iff its sample is **strictly below** `iso`; a sample exactly *at* `iso`
- * counts as outside. That asymmetry is deliberate and it matters: with a symmetric test (`below`
- * on one end and `above` on the other, so "equal" is neither) a sample landing exactly on the iso
- * level suppresses the crossing on *every* edge out of that corner, and the contour silently
- * vanishes or shatters. It is not an exotic case — `f(x, y) = x` at `iso = 0.0` on any grid with an
- * odd number of columns of samples used to return **no contour at all**, and the unit circle
- * sampled over `[-2, 2]` at `nx = ny = 16` came back as four disconnected arcs, severed at the four
- * points where the circle passes through a grid corner. See [ISO_CROSSING_EPSILON] for the second
- * half of the same fix, and `marchingCubes` in `mesh_sdf.kt` for the 3D marcher, which uses the
- * same convention for the same reason.
+ * counts as outside. The test is two-valued rather than three-way, because under a three-way test —
+ * `below` at one end of an edge, `above` at the other, so "equal" is neither — a sample sitting
+ * exactly on `iso` suppresses the crossing on every edge out of its corner, and the contour
+ * vanishes or shatters into arcs. Samples land exactly on `iso` for ordinary input: any grid that
+ * samples a linear field at its own zero level puts a whole column there, and a unit circle
+ * contoured at `iso = 0` passes through a grid corner at plenty of resolutions, `nx = ny = 16` over
+ * `[-2, 2]` among them.
  *
- * # What the change to the marcher does and does not touch
- *
- * Three things changed here at once, and they have very different reach. Measured old-against-new
- * over 392 (field, resolution, iso) combinations across eight fields:
- *
- * | change | when it can alter the output | how much |
- * | --- | --- | --- |
- * | the two-valued `inside` test | **only** when some grid sample is exactly equal to `iso` | unbounded — a whole contour appears where there was none, or four arcs become one loop. 96 of the 392 cases; **0** cases with no exactly-on-`iso` sample changed |
- * | [ISO_CROSSING_EPSILON] | when a crossing lands within a thousandth of a cell of a grid corner | at most `1e-3` of a cell edge, an *analytic* bound; the sweep attained `9.93e-4` of a cell |
- * | the saddle decider | any cell with four crossings whose bilinear saddle disagrees with the old fixed pairing — including on perfectly smooth fields | two segments are re-routed within that one cell, so up to about a cell |
- *
- * So only the third one reaches ordinary, non-degenerate input, and it reaches it rarely: 4 of the
- * 392 cases, all of them the one saddle cell of `f = x*y`.
+ * A crossing that lands on a corner is pushed off it by [ISO_CROSSING_EPSILON], which moves it by
+ * at most a thousandth of the cell edge it lies on — an analytic bound, since it is a `coerceIn` on
+ * the interpolation parameter. `marchingCubes` in `mesh_sdf.kt` is the 3D marcher and uses the same
+ * convention for the same reason.
  *
  * # The saddle cell
  *
- * The four-crossing cell is resolved by the *asymptotic decider*: the sign of the cell's bilinear
- * saddle value decides which diagonal pair of corners the centre of the cell belongs to. It is a pure
- * function of the cell's own four corner values, so two cells sharing an edge cannot disagree about
- * the crossing on it — which is the property the stitcher needs and the old fixed pairing did not
- * have. It is *not* a claim that the ambiguity has gone away: when the saddle value is exactly `iso`
- * the two pairings are equally correct and the decider genuinely has nothing to go on. That case is
- * settled deterministically rather than by round-off — see [SADDLE_TIE_RELATIVE_EPSILON], which is
- * where the interesting failure was.
+ * A cell with four crossings is resolved by the *asymptotic decider*: the sign of the cell's
+ * bilinear saddle value decides which diagonal pair of corners the centre of the cell belongs to.
+ * It is a pure function of the cell's own four corner values, so two cells sharing an edge cannot
+ * disagree about the crossing on it, which is what the stitcher needs. The ambiguity itself does
+ * not go away: when the saddle value is exactly `iso` the two pairings are equally correct and the
+ * decider has nothing to go on. [SADDLE_TIE_RELATIVE_EPSILON] settles that case in the code rather
+ * than leaving it to the direction a multiplication rounded — which matters because every bilinear
+ * field lands there exactly.
  *
- * The one remaining roughness: the segment stitcher is O(m^2) in the number of segments, so very
- * high grid resolutions get expensive.
+ * The segment stitcher is O(m^2) in the number of segments, so very high grid resolutions get
+ * expensive.
  */
 
 private data class Vec2Segment(val a: Vec2, val b: Vec2)
