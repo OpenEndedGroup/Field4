@@ -136,7 +136,7 @@ The three traces separate cleanly: one jagged, one softened, one quantized into 
 
 ## 1D stack: fit a graph to a target (differentiable)
 
-So far we have *built* stacks by hand. You can also let Field *fit* one for you. A `Functions.Fn` is not only a function but an inspectable graph, and its numeric leaves (frequencies, amplitudes, offsets) are tunable "genes". `fitBest(target, seed, ...)`, the differentiable cousin of the genetic `evolve(...)`, tunes those numbers by gradient descent (Adam) so the seed's curve slides onto a target signal.
+So far we have *built* stacks by hand. You can also let Field *fit* one for you. A `Functions.Fn` is not only a function but an inspectable graph, and its numeric leaves (frequencies, amplitudes, offsets) are tunable "genes". `fitBest(target, seed, ...)` — the differentiable cousin of the genetic `evolve(...)` — tunes those numbers by gradient descent (Adam) so the seed's curve slides onto a target signal.
 
 Amplitude and offset are easy to fit. **Oscillator frequency is not.** The error surface in frequency is bumpy, full of local minima, so a single descent from a wrong frequency gets stuck. `fitBest` handles that by running several jittered restarts and keeping the best, which reliably escapes into the true basin. Here the target is a *product* of two oscillators and the seed starts with badly wrong frequencies:
 
@@ -596,8 +596,8 @@ build a shaping chain once, name it, and apply it everywhere.
 Two overloads share a name. `then` composes *transforms* when both sides are `FnTransform`
 (`gain(0.6) then lowPass(0.08)`), and *concatenates functions* when both sides are `Fn`
 (`intro then verse`). The compiler picks by operand type, which is what the editor's
-completion leans on (below). For the `over` / `stretch` distinction, relabelling versus
-remapping, see [`over ... vs stretch ...`](#over-vs-stretch) above; here we only use them to
+completion leans on (below). For the `over` / `stretch` distinction (relabelling versus
+remapping), see [`over ... vs stretch ...`](#over-vs-stretch) above; here we only use them to
 place a finished pipeline on a timeline.
 
 ### What the shapers actually do
@@ -822,7 +822,7 @@ with(Functions) {
 
 #### ramp
 
-`ramp(start, end)` is a **value line**: its value travels linearly from `start` to `end` as x sweeps the domain, so `ramp(1.0, 6.0) over (0.0..1.0)` is 1 at x=0 and 6 at x=1, and `ramp(0.0, 1.0)` is the identity 0-to-1 over the default domain. It is the linear sibling of `tween`, and the go-to for envelopes, selectors, and swept parameters. (For the inverse, *normalizing* an x-window down to 0..1, use `remap(from, to)`, which reads out the position of x within `[from, to]`.)
+`ramp(start, end)` is a **value line**: its value travels linearly from `start` to `end` as x sweeps the domain, so `ramp(1.0, 6.0) over (0.0..1.0)` is 1 at x=0 and 6 at x=1, and `ramp(0.0, 1.0)` is the identity 0-to-1 over the default domain. It is the linear sibling of `tween`, and the go-to for envelopes, selectors, and swept parameters. (To go the other way and *normalize* an x-window down to 0..1, use `remap(from, to)`, which reads out the position of x within `[from, to]`.)
 
 **Simple**
 
@@ -3798,7 +3798,7 @@ val folded = (sin(1.0) + sin(1.0)).rewriteUntilStable(
 
 ### Evolving and optimizing functions
 
-The pieces above (occurrence matching, a cost from `graphMetrics`, and the seeded mutation operators in `FnMutations`: jitter/nudge numbers, substitute an op within its family, prune, duplicate, or graft a subtree) compose into `evolve(...)`, a bounded, fully deterministic (µ+λ) hill-climb over `Fn` graphs. Given the same seed and inputs it reproduces the same run, which is what makes evolved gestures repeatable in live art.
+Occurrence matching, a cost from `graphMetrics`, and the seeded mutation operators in `FnMutations` (jitter/nudge numbers, substitute an op within its family, prune, duplicate, or graft a subtree) compose into `evolve(...)`: a bounded, fully deterministic (µ+λ) hill-climb over `Fn` graphs. Given the same seed and inputs it reproduces the same run, which is what makes evolved gestures repeatable in live art.
 
 ```diffstatic {data-lang=kotlin}
 val target = triangle(0.5).softClip(0.7)
@@ -3923,7 +3923,7 @@ println("spread = ${variety.meanPairwiseDistance}")
 variety.results.forEachIndexed { i, fn -> fn.browseGraph(channel = "variety-$i") }
 ```
 
-`FnVarietyRun` exposes the `results`, their `behaviours`, the underlying per-slot `runs`, and `meanPairwiseDistance`, the average behavioural distance across the set. Because novelty is scored purely from sampled behaviour, the returned graphs are spread out in *what they do*, not merely distinct in structure. The run is deterministic like any other: the same `rngSeed` and inputs reproduce the identical family, so an evolved *set* of gestures is as repeatable in live art as a single evolved one.
+`FnVarietyRun` exposes the `results`, their `behaviours`, the underlying per-slot `runs`, and `meanPairwiseDistance` (the average behavioural distance across the set). Because novelty is scored purely from sampled behaviour, the returned graphs are spread out in *what they do*, not merely distinct in structure. The run is deterministic like any other: the same `rngSeed` and inputs reproduce the identical family, so an evolved *set* of gestures is as repeatable in live art as a single evolved one.
 
 ##### Shape vs amplitude: the `normalize` flag
 
@@ -3931,7 +3931,7 @@ The metric that measures the distance decides whether variety search gives you a
 
 Passing `normalize = true` z-scores each descriptor (subtract the mean, divide by the RMS) before measuring distance, so amplitude and offset fall out and novelty has to explore *shape* instead: sine versus saw versus pulse versus something pruned flat. That also tames the default mutation palette, because `duplicateSubtree` only rescales a copy and normalization ignores a rescaling. Read it as the counterpart of the structural cost from `graphMetrics`: one asks "how big is the graph", the other "how different is what it does".
 
-A `normalize = true` run, plotted live in a box, with each slot's stored z-scored `behaviour` drawn as an `FLine` in its own cell of a 3×2 montage, so the grid shares one scale and reads as pure shape:
+`evolveVariety` with `normalize = true`, run live in a box. Each slot's stored z-scored `behaviour` is drawn as an `FLine` in its own cell of a 3×2 montage, so all six cells share one scale and read as pure shape:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/evolve-variety.png" wait="2.5" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-evolve-variety"}
 :::static
@@ -3996,7 +3996,7 @@ with(Functions) {
 
 Six slots grown from a single `sin(2.0) * 0.5` seed, `meanPairwiseDistance = 1.51` across the set: every cell is a different shape, not the same wave rescaled. Try it without `normalize` and watch the spread balloon into the billions while the montage degenerates to one spike. That is the whole argument for the metric in two runs.
 
-**Replay it live.** A loadable operation transcript, [`assets/evolve/variety-evolution.operations.yaml`](assets/evolve/variety-evolution.operations.yaml), builds and runs this in a fresh Field document, as one box that grows the set and plots each gesture. Replay it with `field_backdoor.py --scratch` (`macro write … && macro run …`) or hand the YAML to the `field_run_transcript` MCP tool. See [Automating Field](automating_field.md) for the transcript path.
+**Replay it live.** A loadable operation transcript, [`assets/evolve/variety-evolution.operations.yaml`](assets/evolve/variety-evolution.operations.yaml), builds and runs this in a fresh Field document: one box that grows the set and plots each gesture. Replay it with `field_backdoor.py --scratch` (`macro write … && macro run …`) or hand the YAML to the `field_run_transcript` MCP tool. See [Automating Field](automating_field.md) for the transcript path.
 
 ### Rewrite plot example
 
