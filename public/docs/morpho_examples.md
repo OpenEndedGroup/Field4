@@ -20,9 +20,9 @@ simulation, drawing, and somewhere to be typed.
 ## What it looks like
 
 Four designs out of morpho's standard library, compiled through GraalJS, laid out by morpho's WASM
-kernel in 3D, and drawn by Field as vector `FLine`s. Wire colour is **signal arrival time** (dark
-where a value is known early, bright on the critical path), so each panel shows its own logic depth
-as a gradient. Blue dots are input ports, orange are outputs.
+kernel in 3D, and drawn by Field as vector `FLine`s. Wire colour is **signal arrival time**: dark
+where a value is known early, bright on the critical path. The gradient in each panel is that
+circuit's own logic depth. Blue dots are input ports, orange are outputs.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/morpho_examples/family.png" wait="34.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -100,12 +100,12 @@ with a `PROVENANCE.md` recording exactly what it is and what was left out.
 
 ??? aside "Where this bridge is not upstream's code"
     `grower.js` is the exception, and "we reimplemented a bit of it" is the sentence that turns a
-    bridge into a fork, so here is exactly which bit.
+    bridge into a fork. Here is exactly which bit.
 
     Its expansion *schedule* (largest-estimated-subtree first, chasing chains of single-child
     expansions so a recursion that unrolls one cell at a time does not cost a frame per level) is
-    exactly what Field wants. But its constructor builds a `LayoutEngine`, which is the 2D layout
-    Field is replacing, so importing the schedule drags in the thing being dropped. The 40 lines of
+    exactly what Field wants. But its constructor builds a `LayoutEngine` — the 2D layout Field is
+    replacing — and importing the schedule drags in the thing being dropped. The 40 lines of
     schedule are reproduced in `morpho-field-driver.mjs`.
 
     That reimplementation carries the most specific test in the bridge. `expansion order does not
@@ -139,7 +139,7 @@ indexing gets right on almost every input and wrong on the rare vector where a c
 full width.
 
 The multiplier and the shifter cover what the adders cannot. `Xor3` and `Maj3` are symmetric in
-their inputs, so an adder still adds if you feed a LUT's ports in the wrong order, and a transposed
+their inputs: an adder still adds if you feed a LUT's ports in the wrong order, and a transposed
 truth-table index is invisible to it. `Mux2`, the carry-save tree and a positional shift amount are
 not symmetric, and they catch it.
 
@@ -236,7 +236,7 @@ is the critical path.
 | 32 | 32 | 11 |
 | 64 | 64 | 13 |
 
-Drawn at the same width and in the **same window** (these two are commensurable, so they are framed
+Drawn at the same width and in the **same window** (these two are commensurable and are framed
 together), the difference stops being a table:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/morpho_examples/depth.png" wait="26.0" capture="box" open-outputs="true" padding="20"}
@@ -322,9 +322,9 @@ clip.
 
 ??? aside "How this clip stays vector"
     Field's other animated figures are rasters by construction: `animateEvolution`'s `panels` lambda
-    is typed `List<Pair<String, Img>>`, so a clip built that way is pixels before it is ever
+    is typed `List<Pair<String, Img>>`, and a clip built that way is pixels before it is ever
     recorded. This one is not. The docs runner's `record-box` is a Playwright recording of the box's
-    **output element**, so a launched box that calls `showPlaneGrid` every frame is recorded with
+    **output element** — a launched box that calls `showPlaneGrid` every frame is recorded with
     every frame drawn as real SVG. The mp4 is an encoding of vector frames rather than a montage of
     bitmaps, which is why the wires stay hairline-thin as the circuit fills the panel.
 
@@ -365,9 +365,9 @@ array.
 
 The layout kernel is the most capable thing in the repository, and it is not part of the language.
 
-`graphs_engine/main.wasm` is 11 KB of zig compiled to `wasm32-freestanding`. It has **no import
-section at all** (it owns its memory and asks the host for nothing), so GraalWasm instantiates it
-with no shim whatsoever. Its 68 exports are its own linear memory, eleven entry points, and
+`graphs_engine/main.wasm` is 11 KB of zig compiled to `wasm32-freestanding`. GraalWasm instantiates
+it with no shim whatsoever, because the module has **no import section at all**: it owns its memory
+and asks the host for nothing. Its 68 exports are its own linear memory, eleven entry points, and
 offset/length accessors onto every buffer it owns, and it is 3D throughout: stride-3 positions, an
 octree with a θ opening criterion, SIMD `v128` inner loops, and angular-momentum compensation via a
 full 3×3 inertia tensor.
@@ -384,7 +384,7 @@ and the circuits come out as solids. The `z / xy` column above is z extent over 
 and y extents, and it runs from 0.73 to 1.33. A 16×16 Wallace multiplier is *taller than it is
 wide*.
 
-Three views of one circuit, sharing a window, so the only thing that differs between panels is
+Three views of one circuit, sharing a window. The only thing that differs between the panels is
 where the camera is:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/morpho_examples/projections.png" wait="24.0" capture="box" open-outputs="true" padding="20"}
@@ -490,7 +490,7 @@ def ripple_adder(a, b, c):
 ![an 8-bit ripple adder drawn as a chain of gates, the output of the MorphoHDL source above having been compiled, grown and laid out](assets/morpho_examples/as-a-language.png)
 
 That figure is not an illustration of the code above it — it *is* the code above it. The fence is
-`data-lang=morpho`, so what the page runs is that MorphoHDL text, wrapped by `docs_hooks.py` the same
+`data-lang=morpho`: what the page runs is that MorphoHDL text, wrapped by `docs_hooks.py` the same
 way it already wraps `nano` and `forth` snippets. Sixteen gates, depth 8: the same 8-bit ripple adder
 whose exhaustive arithmetic check appears near the top of this page.
 
@@ -498,7 +498,7 @@ The directive rides in a `#` comment because morpho's tokenizer discards comment
 can annotate a program without the language ever seeing it, and the same file still parses in
 upstream's demo.
 
-An empty box inherits morpho's standard library, so the shortest useful morpho program in Field is
+An empty box inherits morpho's standard library. The shortest useful morpho program in Field is
 one line:
 
 ```diffstatic_runner {data-lang=morpho screenshot="assets/morpho_examples/one-liner.png" wait="26.0" capture="box" open-outputs="true" padding="20"}
@@ -513,14 +513,14 @@ One line in, 190 gates out.
 the layout `relax` iterations between expansions, which is how you watch the recursion happen
 rather than only its result.
 
-There is no default signature. MorphoHDL cells are size-agnostic, so there is no width a box could
-assume that would not be a silent guess at a different circuit. A box without a directive says so,
-and lists the cells it found.
+There is no default signature. MorphoHDL cells are size-agnostic; any width a box assumed would be
+a silent guess at a different circuit. A box without a directive says so, and lists the cells it
+found.
 
 ### From Kotlin
 
-The circuit lands on `Box.morphoCircuit`, so a Kotlin box beside a morpho box can draw it, or skip
-the morpho box entirely and compile from Kotlin:
+The circuit lands on `Box.morphoCircuit`. A Kotlin box beside a morpho box can draw it, or skip the
+morpho box entirely and compile from Kotlin:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/morpho_examples/from-kotlin.png" wait="26.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -549,8 +549,8 @@ That title line runs the whole bridge end to end. Morpho's compiler produced the
 3711 nets), morpho's WASM kernel placed it in three dimensions (`z/xy 1.34`, taller than it is
 wide), Field's simulator pushed `48271 × 16807` through the gates, and Kotlin's own `*` agrees.
 
-Box code takes an `import` line like any other Kotlin, so the bridge lives in its own package rather
-than being poured into `afield.stdlib`; nothing here needs to be a global name.
+Because box code takes an `import` line like any other Kotlin, the bridge lives in its own package
+rather than being poured into `afield.stdlib`; nothing here needs to be a global name.
 
 `flines()` gives one `FLine` per wire and one point-set each for gates, inputs and outputs, coloured
 by signal arrival time, so the difference between a ripple adder and a Brent–Kung is a gradient you
@@ -585,9 +585,9 @@ costs), `MorphoGenome` / `MorphoProgramGenerator` (candidate programs, and small
 and `MorphoSearch` (random sampling, hill climbing, a (μ+λ) population, and a width curriculum).
 
 The genome is **MorphoHDL source text**. Every candidate is compiled by upstream's own
-`compileModule()` and run by `MorphoSim`, so a search result is a program you can read and paste
-into a morpho box, and so the search is optimising against MorphoHDL rather than against Field's
-idea of it.
+`compileModule()` and run by `MorphoSim`. A search result is a program you can read and paste into a
+morpho box, and the search is optimising against MorphoHDL itself rather than against Field's idea
+of it.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/morpho_examples/search-control.png" wait="40.0" timeout="360" capture="box" open-outputs="true" padding="20" name="morpho-search-control"}
 :::static
@@ -663,12 +663,12 @@ that is 3% wrong and cannot get off it. Those spaces are small enough that sampl
 perfectly good algorithm.
 
 **Or-reduce is the interesting positive result** because it cannot be done without recursion.
-Morpho sizes a LUT cell to its widest operand and broadcasts the narrow ones (`compiler.js:964#const w = Math.max(...inputs.map(x => x.length));`), so
+Morpho sizes a LUT cell to its widest operand and broadcasts the narrow ones (`compiler.js:964#const w = Math.max(...inputs.map(x => x.length));`):
 no gate and no combination of gates turns eight wires into one bit. The only route down is to keep
-`SPLIT`ting, so every correct answer is genuinely divide-and-conquer. The designs found come out at
-four gates and depth 3 at five bits (`n - 1` two-input gates, arranged as a balanced tree) and the
-same source text is then re-compiled and checked at 16, 32 and 48 bits, widths nothing was ever
-selected on.
+`SPLIT`ting, and any design that gets the answer right has recursed to reach it.
+The designs found come out at four gates and depth 3 at five bits (`n - 1` two-input gates,
+arranged as a balanced tree) and the same source text is then re-compiled and checked at 16, 32 and
+48 bits, widths nothing was ever selected on.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/morpho_examples/search-recursion.png" wait="90.0" timeout="360" capture="box" open-outputs="true" padding="20" name="morpho-search-recursion"}
 :::static
