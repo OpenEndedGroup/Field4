@@ -14,6 +14,7 @@ import java.util.concurrent.locks.LockSupport
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.math.ceil
 import kotlin.math.max
+import kotlin.coroutines.CoroutineContext
 
 
 //@OptIn(DelicateCoroutinesApi::class, ExperimentalAtomicApi::class)
@@ -25,6 +26,11 @@ fun inMain(block: suspend CoroutineScope.() -> Unit) = GlobalScope.launch(
     start = if (isMain.load()) CoroutineStart.DEFAULT else CoroutineStart.DEFAULT,
     block = block
 )
+
+/** Explicit inherited metadata for box-owned work, including its first dispatch. */
+@OptIn(DelicateCoroutinesApi::class)
+fun inMain(context: CoroutineContext, block: suspend CoroutineScope.() -> Unit) =
+    GlobalScope.launch(Runloop.runLoop.main + context, block = block)
 
 /**
  * Time source for frame-based programs that also need a duration.

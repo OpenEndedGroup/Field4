@@ -119,6 +119,21 @@ uv run --project . --group backdoor python tools/run_ui_regressions.py \
   - Verifies selected non-Kotlin language boxes keep the normal selection border while showing the language label.
 - `history-panel`
   - Opens the document history iframe, waits for version data, interacts with controls, and closes it.
+- `profiling-timeline`
+  - Records real box coroutines (including two jobs owned by one box), checks allocation counters,
+    brushes and zooms a capture, opens owning source, and checks retained and replacement captures.
+    Opens through the canvas command palette and checks panel resizing, text selection, and close icon.
+  - Backend resume boundaries, suspension gaps, job/source identity, bounded storage, document
+    isolation, and in-flight latch completion are covered by `CoroutineProfilingTest`.
+    Selection arithmetic is also checked by `node --test tools/test_profile_timeline.mjs`.
+- `profiling-stacks`
+  - Records real JFR CPU/allocation samples, brushes hot code, opens a sampled box line in Monaco,
+    and checks the painted CPU/allocation gutter heatmap. Brushing, toggling, navigation to an
+    identical but unexecuted box, edits/restoration, and closing/reopening all exercise its lifetime.
+    Execution-density and history-churn overlays remain independent.
+- `profiling-demo`
+  - Replays the shipped transcript twice, then relaunches its vector workload with `reuse = true`
+    and requires its measured mean allocation per resume to fall below 10% of the original.
 - `visionos-shared-history-panel`
   - Starts paired editor-only and no-editor clients with one shared UI context, requests History
     from the editor, and verifies that only the canvas renders the full-width panel.

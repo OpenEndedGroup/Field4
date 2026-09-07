@@ -268,7 +268,7 @@ Field's HTTP routes get all the attention: 89 of them, 53 state-changing, all in
 and tested. But the code with the most reach is not behind an HTTP route at all. The file
 proxy, the H2 database explorer, the box-execution commands and the agent backdoor declare
 **no HTTP routes between them**. They are entries in a message-dispatch table reached over
-`/ws`, and there are **105 of them**, about twice the HTTP write surface. A second, smaller
+`/ws`, and there are **107 of them**, about twice the HTTP write surface. A second, smaller
 table on the same socket carries **9 more** "raw" channels, which receive the whole frame and
 parse it themselves: the H2 explorer, the file browser, the log stream, the spreadsheet, the
 three.js and Metal viewers, and the RemoteJS bridge.
@@ -325,11 +325,11 @@ Six test files. Three start a real Ktor application; three read source.
 | `FieldWebSocketWriteGuardTest` | the upgrade guard, on the default and on the switch |
 | `DocsAnnotationRouteSecurityTest` | the four guarded routes, through the real CORS configuration |
 | `DocsAnnotationSecurityTest` | the guard predicates as pure functions |
-| `ServerSurfaceLedgerTest` | the read routes, the thirteen all-method routes, the static mounts, all 105 `/ws` commands and the 9 raw `/ws` channels, against the ledger page |
+| `ServerSurfaceLedgerTest` | the read routes, the thirteen all-method routes, the static mounts, all 107 `/ws` commands and the 9 raw `/ws` channels, against the ledger page |
 
 For the full route-by-route inventory, see `dev_docs/server_surface_inventory.md`: every read
 route with its guard, every all-method route, every static directory mount, every one of the
-105 commands with the file it lives in, and the 9 raw channels. That page is asserted
+107 commands with the file it lives in, and the 9 raw channels. That page is asserted
 against the source in both directions, so a new door cannot appear without the build saying
 so.
 

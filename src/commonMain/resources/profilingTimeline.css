@@ -1,0 +1,61 @@
+.profile-timeline { position:fixed; z-index:12020; left:12px; right:12px; bottom:12px; height:min(650px,80vh); display:flex; flex-direction:column; gap:8px; padding:14px; background:#000; color:#ddd; border:5px solid var(--field-border,#333); border-radius:5px; box-shadow:0 8px 36px #0009; font:12px var(--field-font,"Iosevka Web"),Iosevka,monospace; overflow:hidden; user-select:none; -webkit-user-select:none; box-sizing:border-box; }
+.profile-timeline[hidden] { display:none; }
+.profile-timeline * { box-sizing:border-box; user-select:none; -webkit-user-select:none; }
+.profile-timeline [hidden] { display:none !important; }
+.profile-timeline header,.profile-toolbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.profile-timeline header strong { font-size:14px; margin-right:10px; }
+.profile-timeline button,.profile-timeline select,.profile-timeline input { background:#090909; color:#ddd; font:inherit; border:1px solid #3c3c3c; border-radius:4px; padding:5px 8px; min-height:28px; }
+.profile-timeline button { cursor:pointer; }
+.profile-timeline button:hover:not(:disabled) { background:#222; border-color:#aaa; }
+.profile-timeline button:focus-visible,.profile-timeline select:focus-visible,.profile-timeline input:focus-visible,.profile-timeline canvas:focus-visible { outline:1px solid #48c9ff; outline-offset:2px; }
+.profile-timeline button:disabled { opacity:.35; cursor:default; }
+.profile-status { flex:1; color:#aaa; }
+.profile-toolbar input { flex:1; min-width:150px; }
+#profile-overview { width:100%; height:64px; border-radius:8px; cursor:crosshair; touch-action:none; flex:none; }
+.profile-axis { color:#888; white-space:pre; text-align:center; font-size:11px; }
+.profile-summary { padding:8px 10px; background:#232323; border-radius:6px; font-variant-numeric:tabular-nums; }
+.profile-body { display:flex; flex:1; min-height:0; gap:12px; }
+.profile-lanes { flex:1; overflow:auto; min-width:0; scrollbar-color:#555 #232323; background:#232323; border-radius:6px; }
+.profile-track { display:flex; min-height:100%; }
+.profile-labels { flex:0 0 195px; width:195px; }
+.profile-labels button { display:block; width:100%; height:32px; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border:0; background:#232323; border-bottom:1px solid #333; border-radius:0; padding:6px; }
+.profile-labels button.profile-lane-selected { background:#17303b; color:#48c9ff; }
+#profile-spans { width:calc(100% - 195px); flex:1; min-width:100px; cursor:crosshair; position:sticky; top:0; align-self:flex-start; }
+.profile-detail { flex:0 0 240px; width:240px; overflow:auto; border-left:1px solid #333; padding:12px; background:#181818; border-radius:6px; }
+.profile-detail h3 { margin:0 0 8px; font-size:14px; overflow-wrap:anywhere; }
+.profile-detail h4 { margin:20px 0 8px; font-size:12px; }
+.profile-detail p { color:#aaa; line-height:1.4; }
+.profile-detail button { display:block; margin-bottom:6px; }
+.profile-timeline footer { color:#888; font-size:11px; line-height:1.4; }
+@media(max-width:850px) { .profile-detail { flex-basis:190px; width:190px; } .profile-labels { flex-basis:140px; width:140px; } #profile-spans { width:calc(100% - 140px); } .profile-timeline.profile-compact { right:12px; min-width:0; } }
+
+.profile-timeline #profile-close { font-size:20px; width:28px; height:28px; min-height:28px; padding:0; line-height:1; }
+.profile-stack-toggle { display:flex; align-items:center; gap:5px; color:#aaa; cursor:pointer; }
+.profile-stack-toggle input { accent-color:#48c9ff; min-height:0; min-width:0; flex:none; }
+.profile-tabs { display:flex; gap:14px; flex:none; }
+.profile-tabs button { border:0; border-bottom:2px solid transparent; background:transparent; border-radius:0; padding:4px 0; color:#999; }
+.profile-tabs button.profile-tab-active { color:#48c9ff; border-color:#48c9ff; }
+.profile-resize { position:absolute; width:14px; height:14px; touch-action:none; z-index:2; }
+.profile-resize-nw { top:0; left:0; cursor:nwse-resize; }
+.profile-resize-ne { top:0; right:0; cursor:nesw-resize; }
+.profile-resize-sw { bottom:0; left:0; cursor:nesw-resize; }
+.profile-resize-se { bottom:0; right:0; cursor:nwse-resize; }
+.profile-resize-se::after { content:""; position:absolute; width:8px; height:4px; border-block:1px solid #888; transform:rotate(-45deg); right:1px; bottom:4px; }
+.profile-stacks { display:flex; flex-direction:column; flex:1; min-height:0; gap:8px; }
+#profile-stack-status { color:#aaa; margin:0; font-size:11px; }
+.profile-hot-body { display:flex; flex:1; min-height:0; gap:10px; }
+.profile-hot-list { flex:1; min-width:240px; overflow:auto; background:#232323; border-radius:6px; padding:5px; }
+.profile-hot-list p,.profile-hot-source p { color:#aaa; line-height:1.4; }
+.profile-hot-list button { position:relative; display:flex; align-items:center; gap:8px; width:100%; border:0; border-bottom:1px solid #333; border-radius:0; background:transparent; text-align:left; min-height:32px; }
+.profile-hot-row strong { color:#48c9ff; flex:0 0 44px; font-weight:400; position:relative; }
+.profile-hot-row>span:not(.profile-hot-bar) { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; position:relative; }
+.profile-hot-row small { margin-left:auto; white-space:nowrap; color:#aaa; position:relative; }
+.profile-hot-row .profile-hot-bar { position:absolute; left:0; bottom:0; top:0; background:#2b3b42; pointer-events:none; }
+.profile-hot-source { display:flex; flex-direction:column; flex:1; min-width:220px; overflow:auto; background:#181818; border-radius:6px; padding:12px; }
+.profile-hot-source h3 { font-size:12px; overflow-wrap:anywhere; margin:0; }
+.profile-source-lines { flex:1; min-height:60px; overflow:auto; font:11px var(--field-font-code,"Iosevka Web"),monospace; margin-top:12px; }
+.profile-source-line { display:flex; gap:8px; padding:3px; min-width:max-content; }
+.profile-source-line>span:first-child { color:#888; width:30px; text-align:right; }
+.profile-source-line>span:nth-child(2) { color:#48c9ff; width:100px; text-align:right; }
+.profile-source-line code { font:inherit; white-space:pre; }
+.profile-source-focus { background:#203943; }

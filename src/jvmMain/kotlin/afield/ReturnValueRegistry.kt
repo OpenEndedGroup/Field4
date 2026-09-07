@@ -177,7 +177,7 @@ fun registerSequenceReturnValue() {
     ReturnValueRegistry.handlers += handler@{ inside, returnValue, strand, generation, launchEpoch, notify ->
         if (returnValue !is Sequence<*>) return@handler false
         val a = returnValue.iterator()
-        inMain {
+        inMain(Box.boxContextElement(inside) + ProfileOrigin(inside, strand)) {
             if (!inside.isLaunchEpochCurrent(launchEpoch)) {
                 notify(false, strand, generation)
                 return@inMain
@@ -227,7 +227,7 @@ fun registerFramesReturnValue() {
             returnValue.shouldCancelAtEnd = { false }
             inside.jobs.remove(endJob)
         }
-        inMain {
+        inMain(Box.boxContextElement(inside) + ProfileOrigin(inside, strand)) {
             Box.withBoxContext(inside) {
                 val job = kotlin.coroutines.coroutineContext[Job]!!
                 returnValue.job = job
