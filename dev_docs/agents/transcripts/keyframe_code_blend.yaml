@@ -40,11 +40,12 @@ description: >
                     The first invocation is a real K2 compile of generated source, and the later ones
                     reuse the lambda, which is what "compiles once" means here.
                     It is a separate box on purpose. A SourceBackedBlock hydrates by compiling and
-                    evaluating its source in its own box, and doing that from *inside* that box's own
-                    running code re-enters: the nested evaluation replays the box's earlier snippet,
-                    which hydrates again. Measured at 327 levels deep and 355 seconds before it
-                    unwound. Invoke a rehydrating block from a frame loop, a control callback or
-                    another box — anywhere except the body that created it.
+                    evaluating its source on its own box's engine, and asking that engine to evaluate
+                    while it is already mid-evaluation re-runs the body that is running — which
+                    hydrates again. Measured at 327 nested runs of one body and 355 seconds before it
+                    unwound. Hydrating into an *idle* box is fine, which is what this split relies
+                    on: kfb_kotlin's body runs exactly once while this box invokes a block that
+                    compiles there.
   Replay this file into a fresh Field with the agent backdoor (field_run_transcript) to see all five
   on screen, then change a number in one of the two looks, change a *word* in one of them, or add a
   fourth literal to the Kotlin pair and re-run the box to watch the breakdown change. Each `execute`

@@ -632,9 +632,10 @@ both want literals in those positions, so a RUNTIME request comes back as STATIC
 `t`. The last two do the same thing to a pair of `sourceBlock { }` expressions, and they are where
 the generated text stops being text: the blended expression is compiled through K2 and invoked at
 five values of `t`, each result printed beside an expectation computed independently in Kotlin. They
-are two boxes rather than one because a `SourceBackedBlock` hydrates by evaluating its source in its
-own box, and asking for that from inside that box's own running code re-enters — 327 levels deep and
-355 seconds, measured.
+are two boxes rather than one because a `SourceBackedBlock` hydrates by evaluating its source on its
+own box's engine, and asking that engine to evaluate while it is already mid-evaluation re-runs the
+body that is running — 327 nested runs and 355 seconds, measured. Hydrating into an idle box, which
+is what the split does, runs it once.
 
 Walkthrough: [Blending two programs](keyframer_examples.md#blending-two-programs-not-just-two-numbers).
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/keyframe_code_blend/metadata.edn)
