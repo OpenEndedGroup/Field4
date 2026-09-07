@@ -4,7 +4,7 @@
 
 Boolean networks become musically useful once their states acquire time. Give each network step a duration and the state stream can be read as notes, labels, triggers, and sample hits. The bridge lives inside `afield.four.synth`.
 
-The bridge now lives in four pieces:
+The bridge is a handful of extension functions on `BooleanNetwork`, all in `BooleanNetworkSequencing.kt`:
 
 - `scheduledSteps(...)` for timed Boolean states.
 - `scheduledNotes(...)` for direct `Iterator<ScheduledNote>` mapping.
@@ -14,7 +14,7 @@ The bridge now lives in four pieces:
 
 ## From attractor cycle to `NoteProcess`
 
-The first useful test is simple: take a small attractor, map rising edges to pitches, and render the result as a piano roll. The network becomes a timed note source, not only a graph.
+Take a small attractor, map rising edges to pitches, and render the result as a piano roll. `step.lanes(...)` takes one of four trigger modes and the choice does most of the musical work: a node that stays on for six steps gives six notes under `ACTIVE`, which is the default, and one under `RISING_EDGE`, which is what this fence asks for. `FALLING_EDGE` and `CHANGE` are the other two. Note also that the first step of a run has no previous state to compare against, so every lane already on at step zero counts as a rising edge.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_network_music_examples/noteprocess_roll.png" wait="1.0" capture="box"}
 :::static
@@ -65,13 +65,13 @@ $preview
 :::endfold
 ```
 
-The network is still the source of structure, but the resulting object is a standard `NoteProcess`. It can be visualized, sliced, cached, and combined with the rest of the synth tooling.
+The seed in the heading is found rather than chosen: the fence sweeps seeds 0 to 80 looking for a `kauffmanNetwork(n = 5, k = 2)` with an attractor of period 6 or more and takes the first that qualifies. What comes back is an ordinary `NoteProcess`, so `notesBetween` and `pianoRollSvg` work on it exactly as they do on a hand-written one.
 
 ![](assets/boolean_network_music_examples/noteprocess_roll.png)
 
 ## Previewing Dirt tokens before playback
 
-Pitched notes are only one interpretation. The same timing layer can carry Dirt sample labels instead of note names. That lets you inspect the Boolean rhythm as a sample rack before playback.
+The same timing layer can carry Dirt sample labels instead of note names, which is how you inspect the Boolean rhythm as a sample rack before anything is played.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_network_music_examples/dirt_token_roll.png" wait="1.0" capture="box"}
 :::static
@@ -108,13 +108,13 @@ markdown("main", """
 :::endfold
 ```
 
-The preview shows timing behavior and the exact sample symbols a live Dirt player would receive. You can decide whether the network is musically interesting before it touches the audio engine.
+The symbols in the preview are the exact ones a live Dirt player would receive, so a typo in a sample name shows up here rather than as silence later.
 
 ![](assets/boolean_network_music_examples/dirt_token_roll.png)
 
 ## Braiding several Boolean rhythms together
 
-Once the network can produce timed notes, the next step is layering. This example braids three Boolean attractors at different temporal resolutions: a kick-like layer on eighths, a change-trigger layer on dotted eighths, and a high-density active-state shimmer on sixteenths.
+This example braids three Boolean attractors at different temporal resolutions: a kick-like layer on eighths, a change-trigger layer on dotted eighths, and a high-density active-state shimmer on sixteenths. The three grids are 2, 3 and 1 sixteenths wide, so they all coincide every six sixteenths — 0.375 s — and the braid relocks rather than drifting.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_network_music_examples/braided_rhythm.png" wait="1.0" capture="box"}
 :::static
@@ -206,13 +206,13 @@ $summary
 :::endfold
 ```
 
-Each layer is still a state machine, but the combined piano roll behaves like a small rhythmic ensemble.
+Read the picture and only one of the three layers behaves like an ensemble member. The kick runs the full eight seconds; the shimmer's 64 sixteenth-steps are four seconds long, so it stops dead at the halfway mark; and the snare fires twice, both at time zero, and then not again. That last one is not a bug in the figure but a consequence of how the layers are picked — `maxByOrNull { it.period }` with no minimum, unlike the fence above, which insists on period 6. Two `CHANGE` triggers at step zero and silence after is the signature of a network started on a fixed point: with nothing changing, `active != previous` can only be true on the first step, where there is no previous state to compare against. If you want three live layers, filter the seeds by period the way the first example does.
 
 ![](assets/boolean_network_music_examples/braided_rhythm.png)
 
 ## Driving the network with an oscillatory input
 
-Not every useful rhythm has to come from a free-running attractor. Sometimes the interesting case is a Boolean network pushed by an external clock lane. The driven scheduling helpers make that explicit: an oscillator forces one node each step, while the rest of the network reacts.
+The driven scheduling helpers let something outside the network write into its state before each step: an oscillator forces one node, and the rest of the network updates from that forced value as if it had produced it.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_network_music_examples/oscillator_driven.png" wait="1.0" capture="box"}
 :::static
@@ -286,13 +286,13 @@ markdown("main", """
 :::endfold
 ```
 
-The upper grid shows raw Boolean state evolution. The piano roll underneath shows the same run interpreted as musical events. External periodic structure can push a Boolean network, and the network can still be read back out through standard synth objects.
+The upper grid is the raw Boolean state and the piano roll underneath is the same run read as events, so the forced node shows up twice: as a regular stripe in the grid, and as whatever the rest of the network made of it in the roll.
 
 ![](assets/boolean_network_music_examples/oscillator_driven.png)
 
 ## Driving a live Dirt player
 
-The live bridge is the launchable responder. `respondAhead(...)` clocks the Boolean network in real time and calls back with `BooleanNetworkStep` values. That is enough to drive a `DirtSamplePlayer` directly.
+`respondAhead(...)` clocks the network in real time and calls back with `BooleanNetworkStep` values, which is enough to drive a `DirtSamplePlayer` directly. It does not start anything itself: it builds a `BooleanNetworkResponseSpec`, and a registered return-value handler launches that spec when it turns up as the box's last expression. So the responder runs because the fence *ends* with it, and the job it starts is registered against the box, which is what makes stopping the box stop the sound.
 
 ```diffstatic {data-lang=kotlin}
 import afield.four.synth.*
@@ -321,7 +321,5 @@ audio { kit } +
         }
     }.onBeat(every = 1.0, clock = clock)
 ```
-
-The bridge is direct: network state becomes timed steps, timed steps become rising-edge decisions, and those decisions become Dirt sample triggers. The Boolean network owns structure; the synth layer owns sound.
 
 For the underlying state-space pictures, continue with [Boolean networks examples](boolean_networks_examples.md). For piano-roll and synth display tooling, see [Visualizers & Controls](visualizers.md).

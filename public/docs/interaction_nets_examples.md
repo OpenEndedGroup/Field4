@@ -2,11 +2,13 @@
 
 *Every public declaration used below is listed, with its KDoc, in the codebase reference: [`interactionnets.kt`](reference/visualization.md#interactionnets-kt). Start from [what's already in the box](reference/index.md).*
 
-These are the four scenarios covered by the interaction-net smoke suite. The examples show reducer steps as ordinary Field output: before geometry, rewrite summary, and after geometry.
+These four are the reduction rules `InteractionNetsSmokeTest` checks; its other two checks cover the drawing helpers rather than the reducer. Each example runs a single `stepDetailed` and shows the result as ordinary Field output: three summary cards across the top, and below them the net before the step and the net after it, both relaxed.
+
+The energies are art direction rather than semantics, which is how `Lambda.rules()` describes them in its own KDoc: every rule splits or attenuates node energy so that a reduction visibly decays instead of merely rewiring. The same KDoc states the scope. There is no fan/fan commuting rule and no lambda frontend, so this is enough to watch beta reduction happen and to build your own vocabulary beside, and not a complete optimal reducer.
 
 ## Beta bridge with swapped pair orientation
 
-The first check is the subtle one: `APP ⟂ LAM` should reduce correctly even when the active pair was connected in the opposite insertion order. The left frame is the net before the step, the center card describes the rewrite, and the right frame is the relaxed net after that single reduction.
+`APP ⟂ LAM` has to reduce the same way whichever order the active pair was connected in, so this net wires it backwards, `LAM -> APP`, and the rewrite card reports `swapped: yes`. What `beta-linear` then does is pure rewiring: the lambda's body is connected to the application's context and its binder to the application's argument, `created` is `none`, and APP and LAM are dropped. It is the one rule of the four that attenuates nothing: total energy falls from 5.90 to 3.70, which is exactly the 2.20 the two removed nodes were carrying.
 
 <!--
 FIELD_TEST
@@ -84,7 +86,7 @@ println("interaction beta bridge ready")
 
 ## Energy-biased scheduling
 
-The reducer has a pair selector, so evaluation order can be visible behavior. The left frame shows two candidate pairs; the center card identifies the hotter pair that fired; the right frame shows the net after one reduction, with the colder pair still present.
+This net offers the reducer two structurally identical `DUP ⟂ CONST` pairs, one at energies 0.6 and 0.5 and one at 1.2 and 1.8, and asks for a single step. Under `ActivationOrder.HIGHEST_PAIR_ENERGY` the hotter pair fires and the colder one is left standing, so which rewrite happens next is a property of the state the nodes are carrying rather than of the order they were built in.
 
 <!--
 FIELD_TEST
@@ -167,7 +169,7 @@ println("interaction scheduler ready")
 
 ## DUP splits state into two descendants
 
-The duplication rule also carries state. The left frame shows the pre-step net, the middle card records the duplication event, and the right frame shows the two descendants after state split and relaxation.
+`dup-const` replaces the constant with one copy per `DUP` auxiliary, and the copies are not identical to it or to each other. Each inherits half the original's energy attenuated by 0.9, which is 0.81 from the constant's 1.8, and the two are pushed 0.05 apart in hue, so the branches are the same shape in different colours, which is what makes a second duplication further down visible as a gradient rather than as a repeat.
 
 <!--
 FIELD_TEST
@@ -232,7 +234,7 @@ println("interaction duplication ready")
 
 ## ERASE starts a visible decay cascade
 
-`ERASE` works better here as a slow sink than as an invisible delete key. The left frame is the net before the prune step, the middle card explains the interaction, and the right frame shows the first visible decay cascade after the step.
+`erase-app` does not delete a subtree. It removes the `ERASE ⟂ APP` pair and puts a fresh `ERASE` agent on each of the application's two auxiliaries, each carrying half the application's energy attenuated to 0.55 with a small bias added back, or 0.39 from the application's 1.25. So one active pair becomes two, and the cascade in the "after" card is queued rather than finished: total energy is down from 4.00 to 2.64, and the next two steps are what actually consume the constant and the variable.
 
 <!--
 FIELD_TEST

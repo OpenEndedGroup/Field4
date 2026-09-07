@@ -1,8 +1,8 @@
 # Nano examples
 
-Nano is tiny: 4 registers (`r0`-`r3`), 32 bytes of RAM, a handful of arithmetic and branch instructions, and no room to hide. That is why it is interesting. You can usually *see* the whole machine at once.
+Nano is tiny: 4 registers (`r0`-`r3`), 32 bytes of RAM, and a handful of arithmetic and branch instructions. `load` copies the program into those same 32 bytes starting at address 0, so code and data share one address space, reads wrap at 32, and a single screenshot holds the whole machine. The eight-deep call stack is the one piece kept outside it.
 
-The screenshots keep that machine state visible. Blue RAM cells are the initial program bytes; amber cells are bytes that changed during execution; the green ring is the final program counter.
+A RAM cell's border says what happened to that byte, and the cases are checked in this order: brightest orange with a fill for the cell the last step wrote, cyan with a fill for the program counter, plain orange for a byte that changed earlier, cyan for a program byte still holding the value it was loaded with, and dim for a byte no program ever occupied. So the run of dim cells at the end is where RAM stops being code.
 
 The embedded viewer's "Open in Field4" button opens a prepared Nano document with a Nano root already set up.
 
@@ -14,7 +14,7 @@ The embedded viewer's "Open in Field4" button opens a prepared Nano document wit
     allowfullscreen>
 </iframe>
 
-In a fresh document, Nano boxes live under a parent box whose `isNanoRoot` property is `true`. The examples below are written as Nano assembly, and each was assembled and executed by Field; the state you see under it is what came out.
+In a fresh document, Nano boxes live under a parent box that is a language root: run **Set Main Language: Nano** on the parent and its children become Nano boxes. The older `isNanoRoot` property is still honoured, so historical documents keep working, but new ones should use the action. The examples below are written as Nano assembly, and each was assembled and executed by Field; the state you see under it is what came out.
 
 ## Registers, output, and the first RAM write
 
@@ -30,11 +30,11 @@ out r0
 hlt
 ```
 
-`r0` starts as `7`, `r1` starts as `9`, and `add r0, r1` leaves `16` in `r0`. The important visual detail is the amber cell at address `0x18`: the first place this program leaves a footprint in RAM beyond its own code bytes.
+`r0` starts as `7`, `r1` starts as `9`, and `add r0, r1` leaves `16` in `r0`. The program assembles to nine bytes, `0x00` through `0x08`, so the orange cell at `0x18` is the first byte this sketch writes outside its own code.
 
 ## A loop that paints a strip of RAM
 
-Nano gets interesting the moment it repeats itself. Here the loop uses `r0` as an address cursor, `r1` as the value being written, and `r2` as the countdown. The result is a visible run of consecutive values written into memory.
+`str rD, rS` writes `rS` into `RAM[rD]`, which is the only indirect store Nano has. So the loop below uses `r0` as an address cursor, `r1` as the value, and `r2` as the countdown, and walks a run of consecutive values into memory.
 
 ```diffstatic_runner {data-lang=nano screenshot="assets/nano_examples/fill_a_strip_of_ram.png" wait="1.0" capture="box" embed=true name="nano-fill-a-strip-of-ram"}
 :::static
@@ -53,11 +53,11 @@ out r1
 hlt
 ```
 
-This is the Nano version of a for-loop writing into an array. There is no array abstraction, only an address register walking forward. The amber run from `0x14` onward makes the write pattern concrete.
+There is no array abstraction here, only an address register walking forward, and `ldi r2, 8` sets how far: the orange run is exactly eight cells, `0x14` to `0x1b`.
 
 ## Summation by counting down to zero
 
-`dec` is useful because it sets the zero flag. That gives countdown loops a natural terminator and makes them one of Nano's cleanest idioms.
+Every instruction that computes a value into a register sets the zero flag, `ldr` and `and` included; `mov` and the two stores are the ones that leave it alone. `jnz` reads whatever the last of them left behind, so the countdown idiom is a matter of *ordering* rather than of `dec` being special: put `dec` immediately before the branch and the loop tests the counter.
 
 ```diffstatic_runner {data-lang=nano screenshot="assets/nano_examples/summation_with_loop.png" wait="1.0" capture="box" embed=true name="nano-summation-with-loop"}
 :::static
@@ -74,7 +74,7 @@ out r1
 hlt
 ```
 
-This sums `10 + 9 + ... + 1` into `r1`, leaving `55` in both the output stream and RAM address `0x1c`. The pattern matters: one register is the shrinking counter, one register is the accumulator, and the branch rides the flag left behind by the decrement.
+This sums `10 + 9 + ... + 1` into `r1`, leaving `55` in both the output stream and RAM address `0x1c`. Note that `add r1, r0` sets the flag too — it is only because `dec r0` runs after it that `jnz` sees the counter rather than the accumulator.
 
 ## `.data` turns the tail of the program into a lookup table
 
@@ -94,11 +94,11 @@ hlt
 .data 5 8 13
 ```
 
-Those three `ldrr` offsets force you to remember that Nano is loading bytes relative to the current program counter, not from a named symbol table. Once the machine state is rendered, the offsets become legible: code bytes, table bytes, and final sum all sit in one view.
+`ldrr rX, rel` reads `RAM[PC + rel]`, and the program is already sitting in RAM, so the `.data` bytes are reachable by counting forward from the instruction that loads them. There is no symbol table to look them up in: the three offsets `12`, `11` and `10` are hand-computed distances, and moving any instruction above them changes all three.
 
 ## `call` and `ret` let you factor repeated work
 
-Even on a machine this small, repetition wants a name. `call` and `ret` give you enough structure to package a tiny operation and reuse it.
+`call` and `ret` package a tiny operation for reuse. Return addresses go on a separate eight-deep stack, not into RAM, and a ninth nested `call` halts the machine with `Call stack overflow`.
 
 ```diffstatic_runner {data-lang=nano screenshot="assets/nano_examples/call_and_ret.png" wait="1.0" capture="box" embed=true name="nano-call-and-ret"}
 :::static
@@ -114,10 +114,8 @@ dbl:
     ret
 ```
 
-Starting from `6`, one call to `dbl` gives `12`, and the second gives `24`. The example is small enough that the subroutine call, return, output, and final RAM write stay visible at once.
+Starting from `6`, one call to `dbl` gives `12`, and the second gives `24`.
 
-## What to pay attention to
+## When a sketch misbehaves
 
-Nano is useful here because its computations stay small enough to inspect. When a sketch behaves strangely, the RAM view, register cards, and disassembly are often enough to explain why.
-
-That makes Nano a good medium for artificial-life sketches, tiny interpreters, and systems where local state matters. The machine is not hidden under abstraction. It is the thing you are composing with.
+The panels under each run answer different questions. The register cards and RAM grid say what the machine ended up holding. The disassembly says what the assembler thought you wrote, which is where a mis-counted `ldrr` offset or a branch that landed one byte off shows up. And the `state` chip reads either `halted` or `running`, where `running` means the step budget ran out before any `hlt` did — a VM error such as `Call stack overflow` gets its own orange banner above the registers instead.
