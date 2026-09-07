@@ -10,6 +10,9 @@ import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.UUID
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
 
 data class LogEvent(
     val channel: String,
@@ -63,6 +66,46 @@ object LogDispatcher {
         blockId: String? = null,
         boundary: BlockBoundary? = null
     ) = log(LogEvent(channel = channel, message = message, indent = indent, blockId = blockId, boundary = boundary))
+}
+
+/**
+ * Runs [block] with [sink] attached, and detaches it again however [block] ends — normally, by an
+ * early `return`, or on a throw.
+ *
+ * Prefer this to a bare [LogDispatcher.addSink]/[LogDispatcher.removeSink] pair. The sink list is
+ * process-wide and outlives any one box, so a sink leaked by a path that skipped its own cleanup
+ * does not go quiet: it keeps receiving every event on every channel for the life of the JVM, and
+ * the box that installed it is long gone. Worse, [LogDispatcher.log] wraps every sink in
+ * `runCatching`, so a leaked sink that throws fails silently and forever. Making the removal part
+ * of the call is the difference between a rule the caller has to remember and one they cannot get
+ * wrong.
+ *
+ * The same bracketing shape, and the same reason for it, as `afield.logger.lblock`.
+ *
+ * Top-level rather than a member of [LogDispatcher] because Kotlin permits `contract` only on
+ * top-level functions, and the `callsInPlace` contract is what lets a caller assign a `val` inside
+ * the block. The call reads identically either way.
+ *
+ * The example writes the channel as a variable on purpose: a literal here would be counted as a
+ * production `lprintln` call site by `ProseNumeralContractTest`'s channel census, which reads source
+ * and does not exclude KDoc — so a doc snippet would silently move a statistic about real logging.
+ *
+ * ```
+ * val seen = LogDispatcher.withSink(probe) {
+ *     lprintln(channel, "a plain line")
+ *     probe.count
+ * }
+ * ```
+ */
+@OptIn(ExperimentalContracts::class)
+inline fun <R> LogDispatcher.withSink(sink: LogSink, block: () -> R): R {
+    contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
+    addSink(sink)
+    try {
+        return block()
+    } finally {
+        removeSink(sink)
+    }
 }
 
 /**
