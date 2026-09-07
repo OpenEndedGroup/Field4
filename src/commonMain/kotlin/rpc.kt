@@ -538,6 +538,27 @@ data class Hello(
     val shaderSelectionContext: String? = null
 )
 
+/**
+ * Server → client, once per attach: whether anything this session does will be kept.
+ *
+ * The client used to have no way of knowing. `Hello.scratch` tells it about `ephemeral`, but
+ * read-only is a different flag and `SessionInformation.readOnly`'s own KDoc says a read-only
+ * session "looks normal to the client" — which is the bug, because Field has no explicit save and
+ * an hour of work can be discarded with nothing ever having said so.
+ *
+ * Sent unconditionally rather than only when read-only, so the client can also *clear* the state:
+ * a socket that reconnects onto a writable session must not keep a stale banner up.
+ *
+ * @param readOnly nothing this session writes will reach disk
+ * @param reason short, user-facing, already in plain language — the client displays it as-is
+ */
+@Serializable
+data class SessionWriteStatus(
+    val readOnly: Boolean,
+    val documentName: String = "",
+    val reason: String = ""
+)
+
 @Serializable
 data class MacroTranscriptCommandRequest(
     val command: String,

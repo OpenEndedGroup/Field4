@@ -21,6 +21,7 @@ import afield.four.stream.FieldRTTStreamer
 import afield.four.util.FramePresentationLog
 import afield.four.util.Options
 import afield.graphics.getFLineEditSession
+import afield.logger.SaveReloadLog
 import afield.logger.lblock
 import afield.logger.lprint
 import afield.logger.lprintln
@@ -36,6 +37,7 @@ import afield.server.installControllerRoutes
 import afield.server.broadcastControllerControlUpdates
 import afield.server.recordControllerOutputMessage
 import afield.server.recordControllerSelection
+import afield.server.FileProxyWriteResult
 import afield.server.writeFileProxyContents
 import afield.stdlib.begin
 import afield.stdlib.Action
@@ -549,7 +551,58 @@ object ReadOnlyDocuments {
         val info = documents[documentPath] ?: documents.values.firstOrNull { it.filename == documentPath }
         return info?.readOnly == true
     }
+
+    /**
+     * True when nothing [box] does may reach the filesystem.
+     *
+     * The box-shaped entry point, for producers that have a box rather than a path: the `saved {}`
+     * delegate and the file-proxy writers. Those are not on `SavingContext.save`'s fan-out, so
+     * neither [blocksWritesTo] at the funnel nor the session-level `writesToDisk` gates could see
+     * them, and until 2026-09-07 all three wrote in a read-only session
+     * (`ReadOnlyWriteSurfaceTest` records what each one did).
+     *
+     * A box with no initialised session falls back to [global] rather than to "writable". That is
+     * the direction a new escape comes in from — a producer reached through a detached box — and
+     * defaulting the other way would make the fallback the hole.
+     *
+     * Deliberately **not** `!info.writesToDisk`: that would also block `ephemeral` sessions, whose
+     * whole point is a scratch document in a temp directory that nobody minds being written to.
+     * Read-only is the surprising flag, and the only one this needs to honour.
+     */
+    fun blocksWritesFrom(box: Box): Boolean =
+        global || (box.isInsideInitialized() && box.inside.readOnly)
+
+    /**
+     * True when the *ambient* session must not write, for producers that take no box either.
+     *
+     * `createProxyTarget` is the case: it reads `thisSessionInfo` rather than being handed a
+     * session, because the drop handler runs inside a socket's coroutine context.
+     */
+    fun blocksWritesFromCurrentSession(): Boolean =
+        global || runCatching { thisSessionInfo.get()?.readOnly == true }.getOrDefault(false)
+
+    /**
+     * Record that a write was refused, so a refusal is never a silent no-op.
+     *
+     * Two channels because they answer different questions. `SaveReloadLog` is where the save/reload
+     * story already lives and is what you read after the fact to find out why a file did not change;
+     * `lprintln` puts it in front of whoever is watching the console now. `save-refused-read-only`
+     * is the neighbouring event name used by `SavingContext.save`.
+     */
+    fun refuseWrite(producer: String, target: String) {
+        SaveReloadLog.log("write-refused-read-only", "producer=$producer target=$target")
+        lprintln("info,saving", "read-only: $producer refused to write $target")
+    }
 }
+/**
+ * File-proxy boxes whose read-only write refusal has already been shown to the user.
+ *
+ * Box uids, so the notification is once per proxy box rather than once per keystroke — `set-string`
+ * arrives per edit. Process-wide and never pruned: it holds one string per proxy box a user has
+ * tried to edit in a read-only session, which is not a leak worth a listener.
+ */
+private val refusedFileProxyWritesReported = ConcurrentHashMap.newKeySet<String>()
+
 private val welcomeEventSessions = ConcurrentHashMap.newKeySet<WebSocketSession>()
 
 // Sessions grouped by an arbitrary shared-UI context name (Hello.shaderSelectionContext; the
@@ -2348,7 +2401,17 @@ class Server {
                 } else {
                     if (set.property == "contents") {
                         try {
-                            writeFileProxyContents(targetBox, set.value)
+                            // The return value used to be dropped. A read-only refusal now reaches
+                            // the user, once per proxy box per process: `set-string` arrives per
+                            // edit, and a notification per keystroke would be its own bug.
+                            if (writeFileProxyContents(targetBox, set.value) == FileProxyWriteResult.Refused &&
+                                refusedFileProxyWritesReported.add(set.uid)
+                            ) {
+                                notify(
+                                    "Read-only: \"${targetBox.name}\" was not written to disk",
+                                    "error"
+                                )
+                            }
                         } catch (e: Exception) {
                             notify(e.message ?: "Could not write file proxy contents", "error")
                         }

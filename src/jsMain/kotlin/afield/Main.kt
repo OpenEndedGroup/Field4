@@ -4776,6 +4776,10 @@ suspend fun main() {
     // Before anything registers an action or a global key listener, so they all resolve their
     // shortcuts through ~/.afield/keybindings.yaml from the very first registration.
     Keybindings.install()
+    // Before the socket opens, so the server's per-attach `set-session-write-status` has a handler
+    // waiting for it. A read-only session must be announced by the time the document appears, not
+    // at some point after the user has started working in it.
+    ReadOnlyMode.install()
     val searchParams = URLSearchParams(document.location?.search)
     val filename = searchParams.get("file") ?: "default"
     val username = searchParams.get("user") ?: "everybody"

@@ -4,6 +4,7 @@ package afield.stdlib
 
 import afield.Box
 import afield.FieldJson
+import afield.ReadOnlyDocuments
 import afield.safeSave
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
@@ -109,7 +110,8 @@ class SavedJsonValue<T>(
      * The stored value, loading it from disk on the first read of this box's run.
      *
      * If there is no file yet, the default is computed **and immediately written**, so the file exists from then
-     * on. A file that cannot be decoded throws rather than falling back to the default.
+     * on — except in a read-only session, where it is computed and returned but not written. A file that cannot
+     * be decoded throws rather than falling back to the default.
      *
      * @throws kotlinx.serialization.SerializationException if the existing file cannot be decoded
      * @throws IllegalStateException when there is no active [Box] context at all
@@ -118,7 +120,8 @@ class SavedJsonValue<T>(
      */
     override fun getValue(thisRef: Any?, property: KProperty<*>): T {
         if (!loaded) {
-            val file = fileFor(thisRef, property)
+            val box = resolveBox(thisRef)
+            val file = fileFor(box, property)
             value = if (file.exists()) {
                 try {
                     FieldJson.decodeFromString(serializer, file.readText())
@@ -129,7 +132,7 @@ class SavedJsonValue<T>(
                     )
                 }
             } else {
-                defaultValue().also { save(file, it, property) }
+                defaultValue().also { save(box, file, it, property) }
             }
             loaded = true
         }
@@ -141,16 +144,34 @@ class SavedJsonValue<T>(
      * Stores the value and writes it to disk immediately — there is no batching and no dirty flag, so an
      * assignment in a tight loop is a file write per iteration.
      *
+     * In a read-only session the value is still stored in memory, so the rest of the run sees the assignment;
+     * only the file write is skipped.
+     *
      * @throws kotlinx.serialization.SerializationException if encoding or writing fails
      */
     override fun setValue(thisRef: Any?, property: KProperty<*>, value: T) {
-        val file = fileFor(thisRef, property)
-        save(file, value, property)
+        val box = resolveBox(thisRef)
+        val file = fileFor(box, property)
+        save(box, file, value, property)
         this.value = value
         loaded = true
     }
 
-    private fun save(file: File, value: T, property: KProperty<*>) {
+    /**
+     * The write, and the only place this class touches disk.
+     *
+     * Read-only sessions are refused here rather than at the two call sites so that neither
+     * `getValue`'s write-the-default path nor `setValue` can reopen the hole. Refusing is a return
+     * and not a throw: `saved {}` is stdlib a user's sketch calls, and a read-only session that
+     * threw on `var n by saved { 0 }` would stop the box running rather than stop it saving. The
+     * caller still caches the value in memory, so the run behaves normally and simply forgets on
+     * exit — which is what the client's read-only banner now promises.
+     */
+    private fun save(box: Box, file: File, value: T, property: KProperty<*>) {
+        if (ReadOnlyDocuments.blocksWritesFrom(box)) {
+            ReadOnlyDocuments.refuseWrite("saved{}:${property.name}", file.path)
+            return
+        }
         try {
             file.parentFile?.mkdirs()
             file.safeSave(FieldJson.encodeToString(serializer, value), atomic = true)
@@ -162,8 +183,7 @@ class SavedJsonValue<T>(
         }
     }
 
-    private fun fileFor(thisRef: Any?, property: KProperty<*>): File {
-        val box = resolveBox(thisRef)
+    private fun fileFor(box: Box, property: KProperty<*>): File {
         require(box.isInsideInitialized()) {
             "saved { ... } requires an initialized box/session for '${property.name}'"
         }

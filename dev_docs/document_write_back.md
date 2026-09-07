@@ -82,8 +82,127 @@ read-only session is a real named document with the write path switched off.
 
 Two limits. `readOnly` is fixed when the session is built, so `open --read-only` against a document
 another session already has open writable logs a warning and returns a writable session; the
-snapshot reports the real value, so check it rather than assume it. And read-only says nothing
-about what a *box* does: a box that writes a file writes it.
+snapshot reports the real value, so check it rather than assume it. And read-only still says
+little about what a *box* does: a box that calls `File.writeText` writes the file. The one
+exception is `saved {}`, which is gated — see below.
+
+### Three writers that ignored all of that until 2026-09-07
+
+The gates above are on `SavingContext.save`'s fan-out and on the interactive autosave loop. Three
+producers were on neither path, and each was **observed writing in a read-only session** by running
+`ReadOnlyWriteSurfaceTest` against the tree before the gate was added:
+
+| writer | wrote | red-run evidence |
+|---|---|---|
+| `writeFileProxyContents` (`server/fileproxy.kt`) | the user's file, through a file-proxy box | `expected:<[as committed]> but was:<[edited in a read-only session]>` |
+| `createProxyTarget` (`server/fileproxy.kt`) | dropped-file bytes **inside the document directory** | `expected:<[]> but was:<[dropped.txt]>` |
+| `SavedJsonValue` (`stdlib/saved.kt`) | `<doc>/<box id>/<property>.json` | `expected:<[]> but was:<[counter.json, sketch]>` |
+
+The third is the one nobody had listed, and it is the worst of the three, because it fires on a
+**read**. `saved {}`'s `getValue` computes the default and writes it when there is no file yet, so a
+read-only session that merely *ran* a box declaring `var n by saved { 0 }` left a file in the
+document directory without the user touching anything.
+
+They now ask `ReadOnlyDocuments.blocksWritesFrom(box)`, or
+`blocksWritesFromCurrentSession()` where there is no box to hand (`createProxyTarget` reads
+`thisSessionInfo`). Both fall back to `global` for a box with no session rather than to "writable":
+a producer reached through a detached box is the direction the next escape comes in from. Neither is
+`!writesToDisk`, because that also covers `ephemeral`, whose whole point is a scratch directory
+nobody minds being written to.
+
+Every refusal goes through `ReadOnlyDocuments.refuseWrite`, which logs
+`write-refused-read-only` to `~/.afield/logs/save_reload.log` beside the existing
+`save-refused-read-only`. **A refusal is never a silent no-op** — that was the second half of the
+bug. `writeFileProxyContents` used to return a `Boolean` that its one caller ignored, and a refusal
+could not have been reported as `false` anyway: the `set-string` handler calls it for every box
+whose edited property happens to be named `contents`, so `false` already means the ordinary "not a
+file proxy". It now returns `FileProxyWriteResult{NotAFileProxy, Refused, Written}` and the caller
+tells the user, once per proxy box per process.
+
+The three refusals deliberately have three different shapes:
+
+- **Return a result** (`writeFileProxyContents`) — the caller has something useful to do with it.
+- **Throw** (`createProxyTarget`) — its contract is to return a proxy that *exists*, and handing
+  back a plausible one would put a box on the canvas pointing at a file that was never written.
+  That is a worse lie than an error.
+- **Return quietly, having logged** (`SavedJsonValue.save`) — this is stdlib that a user's sketch
+  calls. Throwing would stop the box *running* rather than stop it saving. The value is still cached
+  in memory, so the run behaves normally and forgets on exit.
+
+## The client is told, because Field has no explicit save
+
+Until 2026-09-07 the browser client had no idea. Measured:
+
+```
+git grep -c 'readOnly' -- 'src/jsMain/**/*.kt'    # nothing, across all 21 files
+```
+
+Case-insensitively there were exactly two hits, both in `Main.kt`'s
+`copyDroppedPathToClipboard`, setting the HTML `readonly` attribute on a hidden `<textarea>` — the
+`execCommand("copy")` fallback, unrelated. `SessionInformation.readOnly`'s own KDoc said a read-only
+session "looks normal to the client", which was true and was the bug.
+
+It matters more here than it would in most editors **because Field has no explicit save**. The only
+write path is the ~5s autosave loop, so there is no save button to fail, no dirty marker and no
+error dialog. A user could work for an hour in a read-only session, close the window, and lose all
+of it without anything having said a word.
+
+`SessionWriteStatus` (`commonMain/rpc.kt`) now goes server → client as
+`set-session-write-status` from `registerDocumentSession` (`agent_backdoor.kt`) — the one function
+every attach path funnels through, interactive `hello` included, and already where
+`UserThemeManager` and `UserKeybindingsManager` push per-session config. The `hello` handler would
+have been both narrower and wrong: `launchDocumentSessionAttach` is a coroutine launch, so the
+handler returns before the session exists. It is sent for writable sessions too, so that a
+reconnect onto a writable session *clears* a stale banner.
+
+`ReadOnlyMode` (`src/jsMain/kotlin/afield/readOnlyMode.kt`) has three surfaces, because a badge
+alone is the weak version of this:
+
+1. A **banner** from the moment the session attaches, saying in plain words that nothing will be
+   saved. `pointer-events: none`, so it can never eat a click meant for the canvas.
+2. A **live count of what is being discarded** — "12 changes so far will be discarded". A number the
+   user watches climb is much harder to keep ignoring than a label that never changes.
+3. A **`beforeunload` confirmation**, armed only once at least one change has been made. This is the
+   only hook that fires before a close or a reload, and it is the moment the work is actually lost.
+   Armed lazily on purpose: a page that always argues about being closed teaches the user to click
+   through the dialog, which would make it useless on the one occasion it matters. Browsers replaced
+   custom `beforeunload` text with a generic "Leave site?" years ago, so the banner and the
+   notification carry the explanation and this is only the last-moment stop.
+
+Plus a one-shot `notify` on the first edit, so the news arrives when it becomes relevant.
+
+`window.currentDocumentReadOnly` mirrors the existing `window.currentDocumentScratch`, which is how
+the client already publishes `ephemeral`. It is the hook a headless check or a Playwright assertion
+reads, and it lets non-Kotlin client code see the state without a message of its own.
+
+Counting edits uses a curated allowlist of unambiguously-mutating outgoing message names
+(`set-string`, `set-rect`, …) hooked into `_send`, the single choke point for everything the client
+sends. Deliberately an allowlist and not a denylist: a missing name means the counter under-reports
+and the dialog might not arm, whereas treating everything except a denylist as an edit would arm it
+after a pan or a zoom and turn the dialog into noise. The banner is visible regardless, so the floor
+is never "no warning at all".
+
+### Verified against a live Field, not just compiled
+
+Read-only session on port 19320 from this checkout (listener PID cwd-verified), a copy of
+`dev_docs/agents/demos/chart_primitive` as the document, driven through the agent backdoor's real
+Playwright page:
+
+```json
+{"currentDocumentReadOnly": true, "currentDocumentScratch": false,
+ "bannerExists": true, "bannerDisplay": "flex", "bannerVisibility": "visible",
+ "bannerPointerEvents": "none", "bannerBackground": "rgba(235, 150, 70, 0.95)",
+ "bannerRect": {"width": 314.8, "height": 26.0, "top": 0},
+ "bannerText": "Read-onlyNothing you change here will be saved.", "boxCount": 5}
+```
+
+and the websocket frame that put it there, straight out of the backdoor log:
+
+```json
+{"name":"set-session-write-status","payload":{"readOnly":true,
+ "documentName":"readonly_probe",
+ "reason":"This document is open read-only. Nothing you change here will be saved."}}
+```
 
 ## What is left dirty, and what is not
 
