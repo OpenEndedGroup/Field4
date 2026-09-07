@@ -2,8 +2,14 @@
 
 Field can generate short documentation for Kotlin completion entries that lack
 useful source KDoc. Those generated records are cached at
-`~/.afield/filestore/generated_completion_docs.json` and reused only when the
-declaration identity, source location, and source hash still match.
+`<checkout>/.field/filestore/generated_completion_docs.json`: one cache per
+checkout, seeded on first use from the machine-global `~/.afield/filestore`, and
+relocated by `AFIELD_FILESTORE_DIR` or `-Dafield.filestore.dir`.
+
+A record's key hashes the prompt version together with the declaration name,
+source path, line, and source hash, so a record survives only while all five
+still match. Editing the declaration retires its record; bumping
+`COMPLETION_DOC_PROMPT_VERSION` retires every record at once.
 
 Each record stores the source name, path, line, hash, generated documentation,
 model, and creation time.
@@ -48,8 +54,8 @@ Set `AFIELD_COMPLETION_DOC_POLISH_LOG_DIR` or the JVM property
 
 ## Dry runs
 
-The dashboard button starts an in-place run. For a preview that writes no
-source or cache files, run:
+The dashboard button starts an in-place run. To let the model propose edits
+without writing them, run:
 
 ```diffstatic {data-lang=bash}
 :::static
@@ -57,8 +63,15 @@ source or cache files, run:
 ```
 
 The dry run applies requested edits to an in-memory overlay and writes the
-resulting unified patch to `build/completion-doc-polish-dry-run.patch`. A normal
-run edits the current checkout directly; it does not create a git worktree.
+resulting unified patch to `build/completion-doc-polish-dry-run.patch`. It costs
+the same model calls as a real run: `--dry-run` withholds the edits, not the
+requests. The Gradle task passes the CLI's flag for you, and Gradle's own
+identically-named `--dry-run` would skip the task rather than run it in this
+mode. Nothing reaches source, so there is no `generateCodebaseReference` step
+afterwards either.
+
+A normal run edits the current checkout directly; it does not create a git
+worktree.
 
 Use `AFIELD_COMPLETION_DOC_POLISH_MODEL` to override the configured flagship
 model for this task.

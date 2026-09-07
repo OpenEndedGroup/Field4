@@ -118,39 +118,14 @@ greet("Field4")
 - The component lazy-loads highlight.js if it is not already present on the page.
 - Source `<pre>` blocks are hidden after upgrade, so the page remains readable when JavaScript is disabled.
 
-## Superfence shorthand
-You can now author with fenced blocks and let the site JS convert them:
-
-- Animated diff:
-
-```diff {data-lang=kotlin}
-:::before
-fun hello() = println("hi")
-:::after
-fun hello(name: String) = println("hi $name")
-```
-
-- Static block:
-
-```diffstatic {data-lang=kotlin}
-fun greet() {
-    println("hello")
-}
-```
-
-These render into the same player automatically (via `fence-upgrade.js`), so you don’t have to write the HTML wrapper yourself.
-
 ## Screenshot runner
 `diffstatic_runner` uses the same rendered code block, but during the docs build it also runs the snippet through `tools/field_backdoor.py` and saves a screenshot.
 
 `diff_runner` does the same thing for animated `diff` fences, except it executes only the `:::after` section for the screenshot while leaving the rendered block as a normal before/after diff.
 
-Use `screenshot="..."` to choose where the image lands, relative to the current markdown file. The build keeps execution in a scratch session, waits briefly, and then captures either the box or the whole window.
+Use `screenshot="..."` to choose where the image lands, relative to the current markdown file. The build runs the snippet in a scratch session, waits, and then captures whichever of the box, the editor, the browser window or the renderer window the fence asked for.
 
-The docs runner also has an execution mode:
-
-- `FIELD_DOCS_RUNNER_MODE=incremental` is the default and is the right choice while writing docs. It reuses an existing screenshot when the source page has not changed since that screenshot was written, and it skips rerunning a fence when the runnable code and capture options still match the cache.
-- `FIELD_DOCS_RUNNER_MODE=strict` is the testing mode. It invalidates screenshots when the runner itself changes and forces a fresh end-to-end render.
+`FIELD_DOCS_RUNNER_MODE` decides how much of that actually happens, from `never` through `incremental` and `strict` to `always`. [Building the Docs & Running the Tests](building_and_testing.md) lists the four with a column for when each is the right one.
 
 For both `diff` and `diff_runner`, if `:::before` is omitted, Field will inherit it from the previous block's effective result: the previous `:::after` for a diff, or the full contents of the previous `diffstatic`.
 
@@ -161,23 +136,17 @@ display("main", "<div style=\"padding:24px\">hello from Field</div>")
 ```
 ````
 
-Supported runner attributes:
+Runner attributes, by what they decide. Hyphenated names also answer to an underscored spelling, and `public/docs_hooks.py` is the list that settles an argument.
 
-- `screenshot="assets/example.png"` sets the screenshot output path. At least one of `screenshot` or `video` is required.
-- `video="assets/example.mp4"` records a short H.264/MP4 video clip instead of (or alongside) a screenshot.
-- `duration="5"` sets the video recording length in seconds (default 5).
-- `fps="30"` sets the video frame rate (default 30).
-- `capture="box" | "window" | "window-editor" | "editor"` defaults to `box`.
-- `execution="run" | "launch"` defaults to `run`. `launch` waits for the box to start, sleeps for `wait="..."`, captures, and then sends `stop`.
-- `wait="0.75"` adds a post-run delay before capture.
-- `padding="16"` applies to `capture="box"` and `capture="editor"`.
-- `timeout="45"` sets the backdoor timeout.
-- `embed="true"` appends the generated image below the code block in the rendered page.
-- `macro-file="../../dev_docs/agents/transcripts/hello_display.yaml"` writes and runs an `OperationTranscript` YAML macro before capture.
-- `capture-box="agent_hello_display"` selects the box to crop after macro replay.
-- `name`, `x`, `y`, `w`, `h`, `document`, `property`, `open-outputs`, and `with-editor` map to the corresponding backdoor/session behavior.
+**What comes out.** At least one of `screenshot="assets/example.png"`, `video="assets/example.mp4"` or `audio="assets/example.wav"` is required; `audio` additionally needs `audio-spec="<scene>"` to name the scene to render. A video runs for `duration="5"` seconds at `fps="30"`. `embed=true` puts the result below the code block, and without it the capture still runs and the reader sees nothing at all. `alt="..."` is the image's alt text; `hidden=true` renders the figure without the fence above it.
 
-Use `capture="editor"` when you want the Monaco pane itself rather than the whole browser window. This is useful for inline visualizers such as histogram and piano-roll decorations.
+**What is photographed.** `capture=` is `box` (the default), `window`, `window-editor`, `editor`, `native-window` for an `afield.four` renderer window, or `ui`, which runs the fence body as a `drive` transcript scripting the live editor through Playwright. A `ui` capture is clipped to `region=` — `box`, `window`, `window-editor` or `editor`, default `window-editor` — or to a CSS selector with `clip-selector="#some-id"`, for an overlay that no box owns. `padding="16"` insets a `box` or `editor` crop. `trim=true` crops the uniform background off any finished capture; `trim-native=true` is the older, narrower form and applies only to a `native-window` graphics capture.
+
+**When the shutter opens.** `execution=` is `run` (the default) or `launch`, which waits for the box to start, sleeps for `wait="0.75"` seconds, captures, then sends `stop`. `wait-output=true` waits for real output instead of a delay: `wait-output-kind=` is `display` (the default), `inline` or `all`, and `wait-output-channel=` and `wait-output-contains=` narrow which output counts. `native-wait-frames="30"` waits on rendered frames rather than seconds. `timeout="45"` bounds the whole backdoor call, and `force=true` re-captures whatever the cache thinks.
+
+**Where the code runs.** `name`, `x`, `y`, `w`, `h`, `document` and `property` place the scratch box. `graphics-context=true` asks for a Field with a live Vulkan renderer, which is what any `native-window` capture needs. `macro-file="../../dev_docs/agents/transcripts/hello_display.yaml"` replays an `OperationTranscript` before the fence runs, `macro-name` and `macro-selection` select inside it, and `capture-box="agent_hello_display"` names the box to crop afterwards. `source-box=` with `source-box-properties="vertex,fragment"` takes the code from a committed box under `assets/` instead of from the fence. `open-outputs` defaults to true; `with-editor` is implied by `capture="window-editor"`.
+
+Reach for `capture="editor"` when the subject is the Monaco pane itself: inline visualizers such as the histogram and piano-roll decorations.
 
 ````text
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/editor-inline-histogram.png" wait="1.0" capture="editor"}

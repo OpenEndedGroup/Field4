@@ -25,7 +25,7 @@ The result is a record:
 {area = 84, perimeter = 38, square = false} : {area: Int, perimeter: Int, square: Bool}
 ```
 
-Records are useful as light structured values. Field access uses dot notation:
+A record holds a handful of named values without declaring a type for them. Field access uses dot notation:
 
 ```diffstatic {data-lang=fieldml}
 let point = {
@@ -52,7 +52,7 @@ let scale amount value = value * amount
 
 The pipe operator sends the value on the left into the function on the right. The previous example is the same as `scale 3 (add 5 10)`.
 
-Anonymous functions are useful for one-off transforms:
+For a one-off transform, write the function inline:
 
 ```diffstatic {data-lang=fieldml}
 [1, 2, 3]
@@ -88,7 +88,7 @@ Prefix `-` negates numbers and vectors. As in other ML languages it binds looser
 
 ## Booleans
 
-`&&`, `||` and `not` combine conditions, and both operators short circuit.
+`&&` and `||` combine conditions and both short circuit; `not` negates one.
 
 ```diffstatic {data-lang=fieldml}
 let inside x y =
@@ -116,7 +116,7 @@ let points = linspace 0.0 1.0 3 |> map (fun t -> (t, t * t))
 (length points, points |> nth 1)
 ```
 
-`::` prepends to a list and also matches one, so a pattern can split a list into its head and the rest — the shape recursion over lists needs.
+`::` prepends to a list and also matches one, so a pattern can split a list into its head and the rest. That is how recursion over a list is written.
 
 ```diffstatic {data-lang=fieldml}
 let firstTwo values =
@@ -145,7 +145,7 @@ FieldML evaluates by walking the tree and does not optimise tail calls, so deep 
 
 ## Output taps
 
-`print` and `println` write text output and return the value they were given. That makes them useful as taps in a pipe.
+`print` and `println` write text output and return the value they were given, so they sit in the middle of a pipe without changing what flows through it.
 
 ```diffstatic {data-lang=fieldml}
 let add a b = a + b
@@ -155,7 +155,7 @@ let add a b = a + b
   |> println
 ```
 
-Plain function application binds tighter than arithmetic, like in ML-family languages. This matters when reading output code:
+Plain function application binds tighter than arithmetic, as in other ML-family languages:
 
 ```diffstatic {data-lang=fieldml}
 let x = 100
@@ -268,7 +268,7 @@ fline
   |> lines "main"
 ```
 
-Vector helpers create host values. `vec4` is the one most often used directly in current examples because it sets FLine color:
+Vector helpers create host values. `vec4` is the one that comes up most often, because it is what `color` takes:
 
 ```diffstatic {data-lang=fieldml}
 fline
@@ -296,7 +296,7 @@ let b = vec2 3.0 4.0
 }
 ```
 
-`dot`, `cross`, `vlength`, `distance`, `normalize` and `mix` work at any width the operation makes sense for, and mixing widths is a type error rather than a surprise. `polar angle radius` builds a `Vec2` from an angle in radians, which is where most generated geometry starts.
+`dot`, `vlength`, `distance`, `normalize` and `mix` work at any width, on two vectors of the same width; mixing widths is a type error. `cross` is `Vec3` only. `polar angle radius` builds a `Vec2` from an angle in radians and a length, which is where most generated geometry starts.
 
 ```diffstatic {data-lang=fieldml}
 let ring count radius =
@@ -327,7 +327,7 @@ spiral 3.0 200
   |> draw "main"
 ```
 
-`fold` over `fline` is the idiom worth remembering: the accumulator is the line, each step adds one instruction, and the result is a single FLine built from a list of points.
+In that `fold` the accumulator is the line itself. Each step adds one instruction to it, and a list of points comes out as one FLine.
 
 ## Animation
 
@@ -351,7 +351,7 @@ let rose t =
 animate rose
 ```
 
-`animateFor seconds f` is the same thing with a stopping time. Because the whole frame is recomputed from `t`, there is no mutable state to keep in sync — the same property that makes a FieldML box cheap to re-run makes it straightforward to animate.
+`animateFor seconds f` is the same thing with a stopping time. Each frame is recomputed from `t` alone, so there is no state to carry from one to the next.
 
 ## JVM interop
 

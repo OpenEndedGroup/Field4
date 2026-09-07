@@ -1,5 +1,5 @@
 # Sketch 1: RemoteJS
 
-This old course URL now points at the maintained Field·4 RemoteJS path. Variant Launch and submitted A-Frame pages are no longer part of the setup.
-
-Use [RemoteJS and WebXR](ar_reference.md) to make a Javascript language root, connect example boxes, open the vendored head on a browser or Endrun, and run the first FLine sketch.
+This is an old course URL. [RemoteJS and WebXR](ar_reference.md) is the maintained page: making a
+Javascript language root, connecting example boxes, opening the vendored head in a browser or in
+Endrun, and running the first FLine sketch.

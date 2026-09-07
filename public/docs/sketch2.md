@@ -1,5 +1,5 @@
 # Sketch 2: WebXR interaction
 
-The historical port-9091 and Variant Launch instructions have been retired. Field now serves one RemoteJS head from its normal HTTPS server and uses native WebXR on Android or the Endrun WebXR bridge on iOS.
-
-Continue with [RemoteJS and WebXR](ar_reference.md), especially the animation, hit-testing, and XR callback sections. The checked-in `remote` and `advanced_remote` templates remain the example documents.
+This is an old course URL. Continue with [RemoteJS and WebXR](ar_reference.md), and its animation,
+hit-testing and XR-callback sections in particular. The checked-in `remote` and `advanced_remote`
+templates are the example documents.
