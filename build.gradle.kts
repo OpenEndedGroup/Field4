@@ -2070,18 +2070,6 @@ tasks.register<JavaExec>("runImGuiVrPanelDemo") {
     jvmArgs(requiredRunJvmArgs())
 }
 
-tasks.register<JavaExec>("runFabricatePassChainDemo") {
-    group = "application"
-    description = "Heterogeneous multi-resolution pass chain: reduce 1/2, reduce 1/4, an aperture disc on the cheap rung, composite at full res. Renders offscreen, writes build/pass-chain/*.png and asserts on the pixels. Pass --args=--keep to leave the window open."
-    javaLauncher.set(javaToolchains.fieldLauncher())
-    classpath = sourceSets["jvmMain"].runtimeClasspath
-    mainClass.set("afield.examples.four.FabricatePassChainDemo")
-    // -XX:+EnableJVMCI (from vectorizationJvmArgs, inside requiredRunJvmArgs) is experimental on the
-    // default Adoptium toolchain, so it must be unlocked first.
-    jvmArgs("-XX:+UnlockExperimentalVMOptions")
-    jvmArgs(requiredRunJvmArgs())
-}
-
 tasks.register<JavaExec>("runDocsSearchRetrievalHarness") {
     group = "verification"
     description = "Eyeball the local docs-search retrieval (Lucene hybrid + GLSL includes) for a fixed or --args query set; no LLM call."

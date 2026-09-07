@@ -173,7 +173,7 @@ asks the *builders* what they emit — so a future library function cannot ship 
 been compiled. The aperture fragment interpolates `MAX_APERTURE_TAPS` into its own loop bound from
 Kotlin, a string-template seam no Kotlin compiler checks.
 
-### On the GPU — `./gradlew runFabricatePassChainDemo` (`FIELD_TEST four.pass-chain.smoke`)
+### On the GPU — `tools/run_field_tests.py --id four.pass-chain.smoke`
 
 Builds a real `StandardRenderer` bundle, renders a 5×5 grid of lit spheres, appends two chains with
 `addPassChain`, and reads ten targets back to PNGs in `build/pass-chain/`. Everything measured goes
@@ -197,15 +197,54 @@ rung — so "an aperture is not a Gaussian" is a comparison and not a number som
 
 The PNGs were opened and looked at: `01-scene-source.png` is a sharp lit grid, `02-scene-composite`
 is the same grid heavily and correctly blurred, and `09-pattern-composite` has the 16px checkerboard
-gone and two flat-topped hard-rimmed octagonal bokeh discs where the dots were, against
-`08-pattern-gaussian`'s visibly softer rounded-square halos. (The spheres are aspect-stretched; that
+*collapsed* — dramatically attenuated against the source's hard black-and-white, though a
+low-contrast residual is still visible across the frame, which is what a 14.07x reduction looks like
+rather than removal — and two flat-topped hard-rimmed octagonal bokeh discs where the dots were,
+against the visibly softer rounded-square halos of the same rung blurred by `addBloom`'s nine-tap
+separable Gaussian. (Note `08-pattern-gaussian.png` is the quarter-resolution rung and
+`09-pattern-composite.png` the full-resolution composite, so those two committed files are *not* the
+matched pair the 3px/6px rim figure was measured on; that comparison is made in-test, on one rung.) (The spheres are aspect-stretched; that
 is the known `SuperProjection` window-aspect behaviour, not this layer.)
 
 ### In a live Field
 
-`dev_docs/agents/demos/four_pass_chain/four_pass_chain.yaml` replays into a fresh document —
-`applied=12 skipped=0 errors=0`, all three boxes printing normally, verified with a
-`native-screenshot` of the resulting window. Its `README.md` has the one-line replay command.
+`dev_docs/agents/transcripts/four_pass_chain.yaml` is in the guarded corpus, classified
+`COMPILE_ONLY` in `DemoTranscriptExecSmokeTest` because it wants a GLFW window and a Vulkan device,
+and offered as a starting point on the welcome screen. Open it from
+`public/docs/agent_transcripts.md`, or replay it yourself:
+
+```bash
+uv run --project . --group backdoor python tools/field_backdoor.py --scratch \
+  --command 'macro write four_pass_chain --file dev_docs/agents/transcripts/four_pass_chain.yaml' \
+  --command 'macro run four_pass_chain'
+```
+
+It builds a fresh three-box document, opens a Vulkan window titled **Pass chain**, and shows the
+sphere grid under a two-disc aperture blur; the chain box prints its whole plan as it runs. Replayed
+end to end into a fresh `--scratch` document on 2026-09-07: `applied=12 skipped=0 errors=0`, all
+three boxes printing normally, with a `native-screenshot` of the resulting window.
+
+Then open the **pass chain** box, edit the three `setPush` numbers under the `once` block, and hit
+run. The blur changes on the next frame with no pipeline rebuild and no target reallocated, because
+`setPush` writes the push constant on the pass's existing fullscreen quad. That is the difference
+between a chain you *declare* and a chain you *assemble*.
+
+#### Two import traps this transcript already pays for
+
+Both cost real time when the demo was first written, and neither is specific to this layer.
+
+- **`afield.four.fabricated` is not among a box's automatic imports.** `afield.four`,
+  `afield.four.modules`, `afield.four.targets`, `afield.four.buffers` and `afield.four.texture` all
+  are (see `intro` in `src/jvmMain/kotlin/afield/Boxes.kt`), but the fabricated renderer is not — so
+  `StandardRenderer.build(renderer)`, which several published pages show being typed straight into a
+  box, needs an explicit import first.
+- **`prop<T>()`'s code rewrite does not carry the snippet's own `import` statements.** With
+  `import afield.four.fabricated.StandardRenderer` at the top,
+  `prop<StandardRenderer.Bundle>(bundle)` fails — and the error, `Unresolved reference
+  'StandardRenderer'`, is reported against the *import* line, which reads like a missing class
+  rather than a rewrite dropping it. Every other reference in the same box resolves normally
+  through that same line. The workaround in the transcript is to write the `prop<>` type argument
+  fully qualified: `prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)`.
 
 ## Six measurement traps, all paid for
 
@@ -215,12 +254,14 @@ just this one.
 
 1. **Peak brightness cannot measure a half-float target.** The readback is an 8-bit sRGB PNG, so any
    value over white returns as exactly 1.0. Total energy in a region survives the conversion; the
-   peak does not.
+   peak does not — which is why the format A/B is asserted on region energy
+   (`FabricatePassChainDemo.kt:587#meanLumaRightHalf`) rather than on a peak.
 2. **"Brightest pixel" cannot centre a radial profile on a saturated blob.** The scan settles on
    whichever edge pixel it reaches first, and every ring it then averages is half background. That
-   read 0.543 of peak and looked exactly like a broken shader.
+   read 0.543 of peak and looked exactly like a broken shader. The profile is therefore centred on a
+   declared coordinate rather than a searched one (`FabricatePassChainDemo.kt:631#radialProfileAt`).
 3. **Flatness cannot distinguish a saturated disc from a saturated Gaussian at all.** Both are flat
-   across the top. Only the rim can, and does.
+   across the top. Only the rim can, and does (`FabricatePassChainDemo.kt:549#rimWidth`).
 4. **A radial profile is capped by the nearest neighbouring feature.** A 0.25-UV dot cell capped
    every measurement at 32px of the quarter-resolution rung — under the width of the Gaussian being
    compared to — so the disc and the Gaussian both came back at the *frame's* width, identical.

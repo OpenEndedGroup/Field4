@@ -72,8 +72,8 @@ expect:
  * ### Running it
  *
  * ```
- * ./gradlew runFabricatePassChainDemo                        # writes PNGs to build/pass-chain/
- * ./gradlew runFabricatePassChainDemo --args=--keep          # ...and leaves the window open
+ * tools/run_field_tests.py --id four.pass-chain.smoke        # writes PNGs to build/pass-chain/
+ * tools/run_field_tests.py --id four.pass-chain.smoke --args=--keep   # ...and leaves the window open
  * tools/run_field_tests.py --id four.pass-chain.smoke
  * ```
  *

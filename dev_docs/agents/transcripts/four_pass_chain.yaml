@@ -38,8 +38,8 @@ description: |
       renders a picture that looks *fine*.
 
   `dev_docs/FOUR_PASS_CHAIN.md` is the write-up, and
-  `./gradlew runFabricatePassChainDemo` is the same layer driven headlessly with assertions on the
-  pixels it produces.
+  `tools/run_field_tests.py --id four.pass-chain.smoke` is the same layer driven headlessly with
+  assertions on the pixels it produces.
 operations:
   # 1. the renderer: owns the Window and pumps the loop. Run this one first.
   - create:
