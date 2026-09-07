@@ -1,7 +1,7 @@
 # Sound: from a pattern to something you can hear
 
 `pat("bd ~ sd ~")` is a schedule. It says *kick, rest, snare, rest* and it says exactly
-when, but a schedule makes no sound. Something has to turn each event into samples.
+when — but a schedule makes no sound. Something has to turn each event into samples.
 
 Field has **three** things that turn a *pattern's* events into samples, offline, with no audio device
 and no realtime engine, and they sound nothing alike. One is a tiny synthesiser that ships in the
@@ -48,26 +48,27 @@ pitch error of 0.3 cents *(observed; the asserted floors are 14 notes and 3.0 ce
 the corpus cases it returns *exactly* the notated integer sequence, and re-rendering that notation
 and transcribing it again returns the same notes. It is monophonic and says so: a triad is reported
 as `POLYPHONIC` and named as nothing rather than reported as its loudest note, while a sawtooth's
-full harmonic stack is not refused, because timbre is not polyphony. One parameter dominates all the thresholds: the
-register you declare. It sets the analysis window and therefore the shortest note that can be
-resolved, and on identical audio the difference between declaring it and not is onset recall 0.91
-against 0.03. If you cannot declare one, call `patTranscribeAuto`, which estimates it from a cheap
-wide first pass. Over the twelve cases where a register *can* be declared, estimating it is about as
-good as being told (mean onset recall 0.716 estimated against 0.690 declared) and far better than
-leaving the wide default in place, which scores 0.538 *(all three observed, not asserted; only their
-ordering is)*. It also refuses rather than transcribing when the first pass says the material is not
-one line.
+full harmonic stack is not refused, because timbre is not polyphony. One parameter dominates all
+the thresholds: the register you declare. It sets the analysis window and therefore the shortest
+note that can be resolved, and on identical audio the difference between declaring it and not is
+onset recall 0.91 against 0.03. If you cannot declare one, call `patTranscribeAuto`, which
+estimates it from a cheap wide first pass. Over the twelve cases where a register *can* be
+declared, estimating it is about as good as being told (mean onset recall 0.716 estimated against
+0.690 declared) and far better than leaving the wide default in place, which scores 0.538 *(all
+three observed, not asserted; only their ordering is)*. It also refuses rather than transcribing
+when the first pass says the material is not one line.
 
 The loop closes all the way round. Feed the emitted notation back through the renderer and listen
-again (notation → sound → notation → sound, every hop a real Field path) and **5 of 10 re-renderable
-corpus cases reproduce their own note sequence**. The other five are the cases whose first hearing was
-already incomplete, so the fourth hop works as a validity check on the third rather than as a separate
-accuracy number. Every case is also classified by what it *did* rather than how it scored: 4 recovered
-exactly, 4 within tolerance, 5 refused with a reason, and **0 confidently wrong**. That last count is
-a statement about warnings rather than about correctness: a wrong output carries a warning naming
-where it is wrong, and any case carrying a warning classifies as refused. Nothing is wrong
-*silently*, which is weaker than nothing being wrong and is the claim you can act on: a plausible
-parseable wrong answer gets believed where a flagged one does not.
+again — notation → sound → notation → sound, every hop a real Field path — and **5 of 10
+re-renderable corpus cases reproduce their own note sequence**. The other five are the cases whose
+first hearing was already incomplete, so the fourth hop works as a validity check on the third
+rather than as a separate accuracy number. Every case is also classified by what it *did* rather
+than how it scored: 4 recovered exactly, 4 within tolerance, 5 refused with a reason, and **0
+confidently wrong**. That last count is a statement about warnings rather than about correctness:
+a wrong output carries a warning naming where it is wrong, and any case carrying a warning
+classifies as refused. So the claim is narrower than nothing being wrong: nothing is wrong
+*silently*. Act on that one, because a plausible parseable wrong answer gets believed where a
+flagged one does not.
 
 The floors behind these figures are asserted; the figures themselves are measurements. The mechanism
 and the full measurement tables are in `dev_docs/pitch_transcription_roundtrip.md`, which also says
@@ -135,7 +136,7 @@ displayOpen("main")
 
 ![Piano roll of a kick-and-snare lane over an eight-hat lane, two cycles](assets/sound_render_path/the-beat-roll.png)
 
-Ten events a cycle (the two `~` are rests and produce nothing at all) at exact rational
+Ten events a cycle — the two `~` are rests and produce nothing at all — at exact rational
 positions. Nothing so far has an opinion about what a kick drum sounds like.
 
 ---
@@ -213,8 +214,8 @@ being triggered:
 4. `~/Dirt-Samples`.
 
 Dirt-Samples ships as a SuperCollider *quark*, so anybody who has ever run Tidal already has
-it at one of those, which is the whole reason to auto-discover rather than ask you for a
-path. It is **not vendored**: roughly 400MB of third-party audio with mixed
+it at one of those. That is why `dirtSampleRoot()` goes looking instead of asking you for a
+path. The library is **not vendored**: roughly 400MB of third-party audio with mixed
 per-folder licensing has no business inside this repository. The probe is not cached, so
 setting `FIELD_DIRT_SAMPLES` and rendering in the same session gets you what you asked for.
 
@@ -284,9 +285,9 @@ one given above: it needs no assets, so the figure regenerates anywhere, and its
 measured in the audio rather than asserted in a caption.
 
 One more piece of audio ships with the site, and a sweep for "figures" misses it: the homepage
-banner loop carries a 49.5-second soundtrack. No reader ever hears it, because the player sets
-`muted` and exposes no controls, so it is published bytes rather than published sound. It is also
-the only audio here that no code can regenerate.
+banner loop carries a 49.5-second soundtrack. No reader ever hears it — the player sets `muted` and
+exposes no controls — so it is published bytes rather than published sound. It is also the only
+audio here that no code can regenerate.
 
 ---
 
@@ -338,9 +339,9 @@ audio fence with its figure, and requires:
   samples must not (measured 0.0565 and 0.1588 for the sample-backed events of the two above);
   and a mixed figure's fallback events must be audibly present in it (measured 0.8074).
 
-The correlation needs no sample library, which is what makes it usable anywhere: a build machine
-with no 400MB third-party download can still catch the day a "real drums" figure becomes bursts
-of white noise, and nobody reading the page would notice that.
+The correlation needs no sample library. A build machine with no 400MB third-party download still
+catches the day a "real drums" figure becomes bursts of white noise; a reader would not, because the
+caption underneath it would go on saying samples.
 
 ### And the same question, asked of every clip in the docs
 
@@ -353,8 +354,8 @@ assertions:
   until somebody states which family it belongs to;
 * **every committed clip still matches what its producer renders today** — all fifteen
   currently score 1.0000, bit-stable through peak normalisation and 16-bit quantisation. This is
-  the assertion that catches a published figure whose producing code has changed underneath it,
-  which is the failure `56b124131` had to repair by hand;
+  the assertion that catches a published figure whose producing code has changed underneath it.
+  `56b124131` is the last time two of them had to be repaired by hand;
 * **the list of audio that cannot be re-derived is pinned by key and by reason**, so it
   cannot become a place to put problems unnoticed. It has one entry, the banner loop.
 
