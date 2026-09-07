@@ -87,6 +87,10 @@ class KeyframerCoverageTest {
             // ---- KeyframeScope: snapshot + blend ---------------------------------------------
             "KeyframeScope::capture()" to covered(),
             "KeyframeScope::interpolate(Key, Key, Double)" to covered(),
+            // The code-blend surface itself lives in keyframeCodeBlend.kt and is covered by
+            // KeyframeCodeBlendTest; these two are what keyframer.kt grew to reach it.
+            "KeyframeScope::codeBlend" to covered(),
+            "KeyframeScope::codeBlendPlans(Key, Key)" to covered(),
 
             // ---- KeyframeScope: persistence --------------------------------------------------
             "KeyframeScope::saveKey(Path, Key, String?)" to covered(),
@@ -351,8 +355,8 @@ class KeyframerCoverageTest {
 
         // The exact numbers published on public/docs/keyframer_examples.md. If this test has to
         // change, that page has to change in the same commit.
-        assertEquals(118, total, "total public behavioural declarations")
-        assertEquals(110, covered, "declarations covered by KeyframerTest")
+        assertEquals(120, total, "total public behavioural declarations")
+        assertEquals(112, covered, "declarations covered by KeyframerTest")
         assertEquals(8, unreachable, "declarations unreachable in a headless unit test")
 
         // Every uncovered declaration must carry a reason — no silent gaps.

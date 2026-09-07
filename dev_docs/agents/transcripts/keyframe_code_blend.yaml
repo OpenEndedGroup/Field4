@@ -1,0 +1,295 @@
+name: keyframe_code_blend
+description: >
+  Loadable demo of afield.stdlib/keyframeCodeBlend.kt — blending two *code* keyframes by aligning
+  them and interpolating the numbers they differ in. Five pure-compute boxes, no Window and no
+  Renderer: the StackSL programs are compiled by the same StackSLCompiler the live `stack.auto`
+  setter uses and then run through afield.stacksl.cpu, which interprets the emitted GLSL on the CPU
+  — including its push constants, which is what lets the convention be demonstrated rather than
+  described.
+    1. kfb_breakdown — the alignment, and what it refuses. Two looks for one patch, same words and
+                    different numbers: three moving sites (a warp scale, an offset, a tint vector)
+                    and no divergence, so a blend exists. Prints the plan, then the single program a
+                    runtime blend runs — each moving literal replaced by `a b ?pc.keyframeBlend .x
+                    mix`, which pushes one value exactly as the literal did. Then the same pair with
+                    one word changed (`fbm` for `noise`): one divergence, and the blend drops to
+                    stepping, because a program built from the left structure with the right numbers
+                    would be neither keyframe at either end.
+    2. kfb_runtime  — the same blend, rendered. One program, expanded once, drawn five times with
+                    only the push constant changing, as a contact strip from t=0 to t=1. The two
+                    endpoint programs are rendered separately and compared pixel for pixel: the
+                    largest channel difference at either end is 0.0000, which is the claim the
+                    rewrite actually makes. The shader declares `vec4 keyframeBlend` in a
+                    `layout(push_constant)` block called `pc`, which is the whole of the convention.
+    3. kfb_static   — where a runtime blend cannot reach, and what happens then. `0.35s3` is an
+                    amount modulated by a sine, and `0.2_0.5` is a random range; both grammars want
+                    literals in those positions, so no mix expression can be written there. The plan
+                    reports runtimeCapable=false and a RUNTIME request comes back as STATIC — a new
+                    program per t, printed at three values of t so the numbers can be read moving.
+                    Note that the modifier's *frequency* is unchanged and comes back as `3` rather
+                    than `3.0`: a site is atomic, and an untouched number keeps its spelling.
+    4. kfb_kotlin   — the other language. Two `sourceBlock { }` expressions differing in two of
+                    their three literals; the blend rewrites each moving literal as
+                    `afield.stdlib.kfMix(left, right, afield.stdlib.keyframeBlendAmount(id, 0))`,
+                    fully qualified so it resolves in a box that imported nothing. Prints the plan
+                    and the one expression a runtime blend evaluates, and stops there — see box 5
+                    for why the invocation is not here.
+    5. kfb_kotlin_run — the generated Kotlin, actually evaluated. Builds a SourceBackedBlock whose
+                    box is kfb_kotlin and whose source is the blended expression, then drives the
+                    blend parameter and invokes it at five values of t, printing each result beside
+                    an expectation computed independently in Kotlin; they agree to four decimals.
+                    The first invocation is a real K2 compile of generated source, and the later ones
+                    reuse the lambda, which is what "compiles once" means here.
+                    It is a separate box on purpose. A SourceBackedBlock hydrates by compiling and
+                    evaluating its source in its own box, and doing that from *inside* that box's own
+                    running code re-enters: the nested evaluation replays the box's earlier snippet,
+                    which hydrates again. Measured at 327 levels deep and 355 seconds before it
+                    unwound. Invoke a rehydrating block from a frame loop, a control callback or
+                    another box — anywhere except the body that created it.
+  Replay this file into a fresh Field with the agent backdoor (field_run_transcript) to see all five
+  on screen, then change a number in one of the two looks, change a *word* in one of them, or add a
+  fourth literal to the Kotlin pair and re-run the box to watch the breakdown change. Each `execute`
+  op omits inline code, so it runs the box's stored `code` property. Companion page:
+  public/docs/keyframer_examples.md. Companion tests: afield.stdlib.KeyframeCodeBlendTest,
+  afield.server.KeyframeBrowserProtocolTest.
+operations:
+  - create:
+      box: kfb_breakdown
+      name: What the alignment finds, and what it refuses
+      frame: { x: 80.0, y: 80.0, w: 320.0, h: 52.0 }
+      properties:
+        code: |
+          // A code keyframe is a program. Two of them have no midpoint in general — half a program
+          // is not a program — so a keyframe blend steps them. Unless they differ only in numbers,
+          // which is the case worth finding, because that is the case a person authoring two looks
+          // for one patch keeps producing.
+          import afield.stdlib.CodeBlendMode
+          import afield.stdlib.CodeBlendOptions
+          import afield.stdlib.planStackSLCodeBlend
+
+          val warm = "uv 3.0 * fbm 0.15 + [1.0,0.55,0.2] *"
+          val cool = "uv 8.0 * fbm 0.45 + [0.2,0.5,1.0] *"
+
+          val plan = planStackSLCodeBlend(warm, cool, CodeBlendOptions(mode = CodeBlendMode.RUNTIME))
+          println(plan.describe())
+          println("blendable=" + plan.blendable + "  runtimeCapable=" + plan.runtimeCapable)
+          println()
+
+          // One program, for every t. Each moving literal became a push of both endpoints, a read of
+          // the blend push constant, and `mix` — which leaves one value on the stack, exactly as the
+          // literal it replaced did, so the surrounding stack arithmetic is untouched.
+          println("the one program a runtime blend runs:")
+          println(plan.runtimeSource)
+          println()
+
+          // And the refusal. One word different is a structural difference, and there is no honest
+          // program between the two, so the blend steps whatever was asked for.
+          val elsewhere = "uv 3.0 * noise 0.15 + [1.0,0.55,0.2] *"
+          val stepped = planStackSLCodeBlend(warm, elsewhere, CodeBlendOptions(mode = CodeBlendMode.RUNTIME))
+          println(stepped.describe())
+
+          display(plan)
+  - create:
+      box: kfb_runtime
+      name: The push-constant convention, rendered
+      frame: { x: 80.0, y: 200.0, w: 320.0, h: 52.0 }
+      properties:
+        code: |
+          // The claim a runtime blend makes is not that it produces a plausible picture in the
+          // middle. It is that at 0 it *is* the left keyframe and at 1 it *is* the right one. That
+          // is checkable, and this box checks it: one program, five draws, and the two ends
+          // compared pixel for pixel against the programs they are supposed to be.
+          import afield.stacksl.cpu.GlslValue
+          import afield.stacksl.cpu.StackSLCpu
+          import afield.stdlib.CodeBlendMode
+          import afield.stdlib.CodeBlendOptions
+          import afield.stdlib.keyframeBlendVector
+          import afield.stdlib.planStackSLCodeBlend
+
+          // The convention, in a shader: a vec4 called keyframeBlend in the push-constant block.
+          // Nothing declares it for you — a `stack.auto` slot cannot declare a uniform of its own,
+          // which is why the parameter arrives by agreement rather than by machinery.
+          val template = """
+              #version 450
+              layout(location = 0) in vec2 fragUV;
+              layout(location = 0) out vec4 outColor;
+
+              layout(push_constant) uniform Controls {
+                  vec4 keyframeBlend;
+              } pc;
+
+              {{ stack.auto.program }}
+
+              void main() {
+                  vec4 stackInput = vec4(fragUV, 0.0, 0.0);
+                  outColor = vec4(clamp(program(stackInput).rgb, 0.0, 1.0), 1.0);
+              }
+          """.trimIndent()
+
+          val warm = "uv 3.0 * fbm 0.15 + [1.0,0.55,0.2] *"
+          val cool = "uv 8.0 * fbm 0.45 + [0.2,0.5,1.0] *"
+          val blended = planStackSLCodeBlend(warm, cool, CodeBlendOptions(mode = CodeBlendMode.RUNTIME)).runtimeSource
+
+          val dim = 56
+          // Expanded once. A runtime program does not depend on t, so this is the only compile.
+          val expanded = StackSLCpu.expandStackAuto(template, blended)
+
+          val strip = StringBuilder("<div style='display:flex;gap:8px;align-items:flex-start'>")
+          val rasters = mutableMapOf<Double, FloatArray>()
+          for (t in listOf(0.0, 0.25, 0.5, 0.75, 1.0)) {
+              val v = keyframeBlendVector(t)
+              val raster = StackSLCpu.renderFragment(
+                  expanded, dim, dim,
+                  uniforms = mapOf("pc.keyframeBlend" to GlslValue.vec4(v.x, v.y, v.z, v.w))
+              )
+              rasters[t] = raster.rgba
+              val b64 = java.util.Base64.getEncoder().encodeToString(raster.toPngBytes())
+              strip.append("<div style='font:10px ui-monospace,monospace;color:#999;text-align:center'>")
+              strip.append("<img src='data:image/png;base64,")
+              strip.append(b64)
+              strip.append("' width='")
+              strip.append(dim * 2)
+              strip.append("' height='")
+              strip.append(dim * 2)
+              strip.append("' style='image-rendering:pixelated;border-radius:4px;display:block'/>")
+              strip.append("blend ")
+              strip.append(t)
+              strip.append("</div>")
+          }
+          strip.append("</div>")
+          display("blend-strip", strip.toString())
+
+          // The endpoints, drawn from the endpoint programs themselves.
+          val ends = listOf(0.0 to warm, 1.0 to cool).map { (t, program) ->
+              val v = keyframeBlendVector(t)
+              val raster = StackSLCpu.renderFragment(
+                  StackSLCpu.expandStackAuto(template, program), dim, dim,
+                  uniforms = mapOf("pc.keyframeBlend" to GlslValue.vec4(v.x, v.y, v.z, v.w))
+              )
+              t to raster.rgba
+          }
+          ends.forEach { (t, want) ->
+              val got = rasters.getValue(t)
+              var worst = 0.0f
+              for (i in want.indices) worst = maxOf(worst, kotlin.math.abs(want[i] - got[i]))
+              println("at blend %.1f the one program differs from the keyframe it should be by %.4f".format(t, worst))
+          }
+          println()
+          println("one program, five draws, only the push constant changing:")
+          println(blended)
+  - create:
+      box: kfb_static
+      name: Where a runtime blend cannot reach
+      frame: { x: 80.0, y: 320.0, w: 320.0, h: 52.0 }
+      properties:
+        code: |
+          // Two StackSL token forms carry their numbers inside a grammar that wants literals: a
+          // modifier chain (`0.35s3` — an amount modulated by a sine at frequency 3) and a random
+          // range (`0.2_0.5`). No mix expression can be written at either position, so a runtime
+          // blend cannot reach them and says so rather than pretending.
+          import afield.stdlib.CodeBlendMode
+          import afield.stdlib.CodeBlendOptions
+          import afield.stdlib.planStackSLCodeBlend
+
+          val quiet = "uv 0.35s3 * fbm 0.2_0.5 +"
+          val loud = "uv 0.80s3 * fbm 0.6_0.9 +"
+
+          val plan = planStackSLCodeBlend(quiet, loud, CodeBlendOptions(mode = CodeBlendMode.RUNTIME))
+          println(plan.describe())
+          println("asked for RUNTIME, will run " + plan.effectiveMode)
+          println("because " + plan.downgradeReason)
+          println()
+
+          // A different program per t, and therefore a compile per t: fine for a scrub, not for a
+          // frame loop. Note the modifier's frequency: unchanged between the two, so it comes back
+          // as `3` rather than `3.0`. A site is atomic — one moving component rewrites the whole
+          // token — and keeping an untouched number's spelling is what stops that showing.
+          listOf(0.0, 0.5, 1.0).forEach { t ->
+              println("t=" + t + "   " + plan.bake(t))
+          }
+
+          display(plan)
+  - create:
+      box: kfb_kotlin
+      name: The same blend, in Kotlin
+      frame: { x: 80.0, y: 440.0, w: 320.0, h: 52.0 }
+      properties:
+        code: |
+          // A Kotlin keyframe is a `sourceBlock { }`: a callable that remembers its own source. Two
+          // of them blend the same way, and for the same reason — the interesting pair is the one
+          // that differs only in numbers. The transport differs: a shader reads a push constant,
+          // and a generated Kotlin expression reads a registry slot addressed by an integer written
+          // into its text, because generated text cannot close over a value.
+          import afield.stdlib.CodeBlendMode
+          import afield.stdlib.CodeBlendOptions
+          import afield.stdlib.KeyframeScope
+          import afield.stdlib.sourceBlock
+
+          val quiet = sourceBlock { 2.0f * 3.0f + 1.0f }
+          val loud = sourceBlock { 8.0f * 3.0f + 5.0f }
+          println("left  source: " + quiet.source)
+          println("right source: " + loud.source)
+          println()
+
+          var amount: Any? = quiet
+          val scope = KeyframeScope()
+          scope.target("amount", get = { amount }, set = { v -> amount = v })
+          scope.codeBlend = CodeBlendOptions(mode = CodeBlendMode.RUNTIME)
+
+          val a = scope.Key(mutableMapOf<String, Any?>("amount" to quiet))
+          val b = scope.Key(mutableMapOf<String, Any?>("amount" to loud))
+
+          val plan = scope.codeBlendPlans(a, b).getValue("amount")
+          println(plan.describe())
+          println("the one expression a runtime blend evaluates:")
+          println(plan.runtimeSource)
+          println()
+          println("the middle literal is unchanged between the two, so it is left alone.")
+
+          // The invocation is in kfb_kotlin_run, not here. A SourceBackedBlock hydrates by
+          // compiling and evaluating its source in its own box, and asking for that from inside
+          // this box's own running code re-enters: the nested evaluation replays this snippet,
+          // which hydrates again. Invoke one from a frame loop, a control callback, or another box.
+          display(plan)
+  - create:
+      box: kfb_kotlin_run
+      name: The generated Kotlin, evaluated
+      frame: { x: 80.0, y: 560.0, w: 320.0, h: 52.0 }
+      properties:
+        code: |
+          // The same plan, rebuilt here — building one is pure, so it costs an alignment and
+          // nothing else. Then the blended expression is handed to a SourceBackedBlock whose box is
+          // kfb_kotlin, so it compiles and runs *there* while this box is the one evaluating.
+          import afield.stdlib.CodeBlendMode
+          import afield.stdlib.CodeBlendOptions
+          import afield.stdlib.SourceBackedBlock
+          import afield.stdlib.planKotlinCodeBlend
+
+          val plan = planKotlinCodeBlend(
+              "2.0f * 3.0f + 1.0f",
+              "8.0f * 3.0f + 5.0f",
+              CodeBlendOptions(mode = CodeBlendMode.RUNTIME)
+          )
+          val block = SourceBackedBlock<Any?>("kfb_kotlin", plan.runtimeSource)
+          println(plan.runtimeSource)
+          println()
+
+          // One block, five values of t. The first invocation compiles the generated text through
+          // K2; the rest reuse the lambda, and only the registry slot changes.
+          listOf(0.0, 0.25, 0.5, 0.75, 1.0).forEach { t ->
+              plan.drive(t)
+              val got = block() as Float
+              val want = (2.0f + 6.0f * t.toFloat()) * 3.0f + (1.0f + 4.0f * t.toFloat())
+              println("t=%.2f   block() = %8.4f   independently %8.4f".format(t, got, want))
+          }
+
+          display(plan)
+  - execute:
+      box: kfb_breakdown
+  - execute:
+      box: kfb_runtime
+  - execute:
+      box: kfb_static
+  - execute:
+      box: kfb_kotlin
+  - execute:
+      box: kfb_kotlin_run

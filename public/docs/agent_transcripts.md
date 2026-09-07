@@ -37,8 +37,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 85 transcripts on every build, at three
-depths. 57 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 86 transcripts on every build, at three
+depths. 58 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -619,6 +619,25 @@ dead centre of frame for the whole move, while lerping the two positions cuts th
 
 Walkthrough: [Capturing & replaying live state](keyframer_examples.md).
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/keyframer_worked_example/metadata.edn)
+
+**keyframe_code_blend** — What to do when the two keyframes are *programs*. Two looks for one
+StackSL patch differ in a warp scale, an offset and a tint vector and in nothing else, so the two
+token streams align and those three numbers can be interpolated; change one word instead — `fbm` for
+`noise` — and the alignment reports a divergence and the blend goes back to stepping, because a
+program built from the left structure with the right numbers is neither keyframe at either end. The
+second box is the claim worth checking: one program, expanded once, drawn five times with only a
+push constant changing, with both ends compared pixel for pixel against the programs they are
+supposed to be. The third is where a runtime blend cannot reach — a modifier chain and a random range
+both want literals in those positions, so a RUNTIME request comes back as STATIC, one compile per
+`t`. The last two do the same thing to a pair of `sourceBlock { }` expressions, and they are where
+the generated text stops being text: the blended expression is compiled through K2 and invoked at
+five values of `t`, each result printed beside an expectation computed independently in Kotlin. They
+are two boxes rather than one because a `SourceBackedBlock` hydrates by evaluating its source in its
+own box, and asking for that from inside that box's own running code re-enters — 327 levels deep and
+355 seconds, measured.
+
+Walkthrough: [Blending two programs](keyframer_examples.md#blending-two-programs-not-just-two-numbers).
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/keyframe_code_blend/metadata.edn)
 
 **pattern_rewrite_worked_example** — Six runnable boxes that each hold one
 [user-authored rewrite rule](pattern_rewrite.md) and one `println` that could not compile without it.

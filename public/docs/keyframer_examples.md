@@ -860,6 +860,112 @@ instead, which `updateCodeEscapesDollarInASourceBlock` holds in place.
 `copyUpdateCodeToClipboard()` is the same string, put on the system clipboard. That one goes
 through AWT: it throws on a headless JVM, and it replaces whatever the user had copied.
 
+## Blending two programs, not just two numbers
+
+A key can hold code — a `stack.auto` StackSL program registered with `stackAuto`, or a Kotlin
+expression captured by the `sourceBlock { }` macro. By default `interpolate` **steps** those: the
+left source until `t` reaches 1, then the right one. There is no midpoint between two arbitrary
+programs, and a program assembled out of halves of two others is not one either.
+
+Two programs that differ only in *numbers* are the exception, and they are the common case when the
+two keys are two looks for one patch. `codeBlend` turns that case on:
+
+```diffstatic {data-lang=kotlin}
+import afield.stdlib.CodeBlendMode
+import afield.stdlib.CodeBlendOptions
+import afield.stdlib.KeyframeScope
+import afield.stdlib.planStackSLCodeBlend
+
+val warm = "uv 3.0 * fbm 0.15 + [1.0,0.55,0.2] *"
+val cool = "uv 8.0 * fbm 0.45 + [0.2,0.5,1.0] *"
+
+val plan = planStackSLCodeBlend(warm, cool, CodeBlendOptions(mode = CodeBlendMode.RUNTIME))
+println(plan.describe())
+// stacksl blend: 3 moving site(s) of 3, 0 divergence(s) — RUNTIME -> RUNTIME
+//   number: 3.0 -> 8.0
+//   number: 0.15 -> 0.45
+//   vector: [1.0,0.55,0.2] -> [0.2,0.5,1.0]
+```
+
+Both sources are lexed with the language's own tokeniser, the two token streams are aligned on a
+longest common subsequence, and a position where the alignment pairs a number with a number becomes
+a **site**. A position it cannot pair is a **divergence**, and one divergence puts the whole slot
+back on the stepping path. `fbm` against `noise` is a divergence; `3.0` against `8.0` is a site.
+
+Everything outside a site is copied through byte for byte, so a blended program keeps the left one's
+comments and layout.
+
+### Two ways to spend it
+
+`CodeBlendMode.STATIC` writes the interpolated numbers into the source: `uv 3.0 * fbm` and
+`uv 8.0 * fbm` become `uv 5.5 * fbm` at `t = 0.5`. It reaches every numeric position, and it costs a
+compile for every value of `t`. Use it to scrub or to step between looks.
+
+`CodeBlendMode.RUNTIME` emits one program that reads the blend from outside, so it compiles once and
+animates for nothing. Each moving literal becomes a push of both endpoints and the builtin `mix`:
+
+```diffstatic {data-lang=text}
+uv 3.0 8.0 ?pc.keyframeBlend .x mix * fbm 0.15 0.45 ?pc.keyframeBlend .x mix + …
+```
+
+`mix` leaves one value on the stack exactly as the literal it replaced did, so the surrounding stack
+arithmetic is untouched. Two StackSL forms cannot be rewritten this way, because their grammar wants
+a literal in that position: a modifier chain (`0.35s3`) and a random range (`0.2_0.5`). A plan
+containing one reports `runtimeCapable = false`, and a RUNTIME request comes back as
+`effectiveMode == STATIC` with `downgradeReason` saying why.
+
+### The push-constant convention
+
+A `stack.auto` slot cannot declare a uniform of its own, so the blend parameter arrives by
+agreement: a `vec4` called `keyframeBlend` in the shader's push-constant block, and a keyframe lane
+of the same name for the scope to write.
+
+```diffstatic {data-lang=glsl}
+layout(push_constant) uniform Controls {
+    vec4 keyframeBlend;
+} pc;
+```
+
+```diffstatic {data-lang=kotlin}
+scope.target("keyframeBlend") { module.current.liveUniformStructures["pc"] }
+scope.codeBlend = CodeBlendOptions(mode = CodeBlendMode.RUNTIME)
+```
+
+`interpolate` fills that lane with `keyframeBlendVector(t)` on every blend, and only when a target of
+that name is registered. The four components are the same `t` in four shapes — `x` raw and
+unclamped, `y` clamped, `z` smoothstepped, `w` the complement of `y` — so a program can read a
+different one per number by setting `CodeBlendOptions.lane`. A block instance called something other
+than `pc` is handled by `stackSLRead`.
+
+Kotlin has the same two modes and a different transport. Generated source cannot close over a Kotlin
+value, so a moving literal becomes a call that reads the parameter out of a registry slot addressed
+by an integer written into the text:
+
+```diffstatic {data-lang=text}
+gain * afield.stdlib.kfMix(0.5f, 1.5f, afield.stdlib.keyframeBlendAmount(7, 0))
+```
+
+Fully qualified, so it resolves inside a `sourceBlock` body in a box that imported nothing. One
+thing to know before you call the result: a blended block compiles its generated source in the box
+the two keyframes came from, so invoke it from a frame loop, a control callback or another box — not
+from inside that box's own running code, which re-enters. The whole call is handed the endpoints
+rather than their components, which is what lets a `Quaternionf`
+site slerp and a `DualQuaternionf` site sclerp instead of drifting through the inside of the sphere
+component by component. A literal keeps its type: `0.5f` and `1.5f` blend to a `Float`, `1` and `3`
+to an `Int`, and a hexadecimal or unsigned literal is left alone.
+
+### Seeing what it decided
+
+A blend that stepped looks exactly like a blend that is not working, so the plan is the thing to
+read. `plan.describe()` is the text above; `display(plan)` renders the same breakdown as a table of
+sites with each one's midpoint. `scope.codeBlendPlans(a, b)` returns a plan per code slot for a pair
+of keys, and the keyframe collection browser's **Code blend** button does that for the two keys you
+have selected there.
+
+The whole feature is a runnable scene: `keyframe_code_blend` in the
+[agent transcript corpus](agent_transcripts.md) blends two looks, renders the runtime program at five
+values of the push constant, and compares both ends against the keyframe they are supposed to be.
+
 ## Where to go next
 
 - [Values over time](interpolants_examples.md#keyframes-morphing-a-whole-parameter-state-including-code)
@@ -878,7 +984,7 @@ the listed classes is measured. A new **top-level** declaration is invisible to 
 regardless. The tests exercise it; it simply is not counted, which pushes the figure below down
 rather than up.
 
-**110 of 118 public behavioural declarations are exercised (93.2%).** Data-class members the Kotlin
+**112 of 120 public behavioural declarations are exercised (93.3%).** Data-class members the Kotlin
 compiler generates are excluded, on the same grounds the
 [codebase reference](reference/index.md) excludes them.
 

@@ -621,6 +621,13 @@
 
         .kb-out-body { margin-top: 6px; }
 
+        /* One slot's code-blend breakdown, stacked when a key has several code slots. */
+        .kb-blend-slot { margin-top: 8px; }
+        .kb-blend-slot + .kb-blend-slot {
+            border-top: 1px solid #2b2b2b;
+            padding-top: 8px;
+        }
+
         .kb-code {
             margin: 0;
             padding: 7px;
@@ -1053,6 +1060,7 @@ keyframeBrowser("looks", scope = myScope)</pre>
         parts.push(`<div class="kb-actions">`);
         parts.push(`<button class="kb-btn" id="kb-apply" ${n === 1 && c.hasScope ? "" : "disabled"}>Apply</button>`);
         parts.push(`<button class="kb-btn" id="kb-code" ${n === 1 ? "" : "disabled"}>Copy updateCode</button>`);
+        parts.push(`<button class="kb-btn" id="kb-blend" ${n === 2 ? "" : "disabled"}>Code blend</button>`);
         parts.push(`<button class="kb-btn" id="kb-clear" ${n ? "" : "disabled"}>Clear</button>`);
         parts.push(`<button class="kb-btn" id="kb-reload">Reload</button>`);
         parts.push(`<span class="kb-hint">${selectionHint(n)}</span>`);
@@ -1121,7 +1129,7 @@ keyframeBrowser("looks", scope = myScope)</pre>
     function selectionHint(n) {
         if (n === 0) return "click a key for its contents · shift-click a second for a diff · drag across a range to brush";
         if (n === 1) return "1 selected — shift-click another for a diff";
-        if (n === 2) return "2 selected — diff below";
+        if (n === 2) return "2 selected — diff below · \"Code blend\" for what a code slot would do between them";
         return `${n} selected`;
     }
 
@@ -1196,6 +1204,20 @@ keyframeBrowser("looks", scope = myScope)</pre>
                 outPanel = { title: res.title, text: res.text };
             } catch (e) {
                 outPanel = { title: "apply failed", text: String(e.message || e) };
+            }
+            render();
+        });
+
+        // Two keys, and the question is why their StackSL or their source blocks did not morph.
+        // The diff panel says the two programs differ; only the breakdown says whether that
+        // difference is a set of numbers a blend can interpolate or a structural change it cannot.
+        on("kb-blend", async () => {
+            const [a, b] = [...selected];
+            try {
+                const res = await sendReq("blend", { fileId: a, otherId: b });
+                outPanel = { title: res.title, html: res.html };
+            } catch (e) {
+                outPanel = { title: "code blend failed", text: String(e.message || e) };
             }
             render();
         });

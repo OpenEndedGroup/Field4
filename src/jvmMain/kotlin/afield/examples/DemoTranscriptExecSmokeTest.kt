@@ -108,6 +108,11 @@ object DemoTranscriptExecSmokeTest {
         // cloth — CPU physics plus showPlane, Skia SVG -> display.
         "simdverlet_world",
         "fn_differentiable_fit_demo",
+        // Blending two code keyframes. Pure CPU: the StackSL goes through the real compiler and then
+        // through afield.stacksl.cpu's GLSL interpreter, and the fourth box compiles generated Kotlin
+        // through K2 inside its own box — which is the one part of the feature a unit test cannot
+        // reach, and the reason this is EXECUTE rather than COMPILE_ONLY.
+        "keyframe_code_blend",
         "linalg_thumbnails_demo",
         "hello_display",
         "hello_display_capture",
