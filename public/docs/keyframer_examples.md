@@ -24,7 +24,7 @@ This page is the rest of it: **what a scope can watch**, **why a camera move is 
 
 Almost everything below runs on the CPU. `Structure` is constructible bare
 (`Structure.kt:112#open class Structure(`) and its `bind`/`bindings` are plain map operations
-(`Structure.kt:176#fun bind(property: String, value: Function0<*>) {`, `Structure.kt:136#val bindings: MutableMap<String, Function0<*>> = root?.bindings`), so a keyframe scope can be exercised, and tested,
+(`Structure.kt:176#fun bind(property: String, value: Function0<*>) {`, `Structure.kt:136#val bindings: MutableMap<String, Function0<*>> = root?.bindings`). A keyframe scope can be exercised, and tested,
 without a GPU anywhere in sight. The exception is
 [the GPU still](#the-same-thing-driving-a-live-gpu-uniform), which is a real Vulkan render, and the
 targets that need a renderer, which are listed at the [foot of the page](#what-is-actually-tested).
@@ -112,14 +112,14 @@ create it, because the write goes through the target's bind function, which was 
 use the same uniform name.
 
 Panel 4 is the round trip closing: re-applying the original snapshot and re-capturing gives
-`No key differences.`, so a `Key` really is a complete description of what the scope watches.
+`No key differences.` A `Key` really is a complete description of what the scope watches.
 
 Objects that are not shader `Structure`s can join the same system through an explicit getter and
 setter. The low-level form remains `target(name, get, set)`, but ordinary locals should use the typed
 forms: `floatTarget`, `doubleTarget`, `booleanTarget`, `intTarget`, `vector2Target`,
 `vector3Target`, `vector4Target`, or `stringTarget`. Their setters validate the loaded value at the
-scope boundary, and the vector forms copy mutable vectors in both directions, so a saved key cannot
-end up aliasing a live local.
+scope boundary, and the vector forms copy mutable vectors in both directions. A saved key never ends
+up aliasing a live local.
 
 Boolean and integer locals become float lanes, which is what gives them meaningful interpolation:
 a Boolean crosses at `0.5`, while an integer rounds and optionally clamps on apply. That suits
@@ -169,7 +169,7 @@ thisBox.controlGroup("projected light") {
 There are matching helpers for a `Double` slider, vec2 control, colour picker and text input. The
 underlying grouped controls also hand back a `ControlValueHandle<T>`; `handle.set(value)` is the
 UI-only half of that, for a custom integration that needs it. It never invokes the control callback,
-so there is no feedback loop to break.
+so it cannot start a feedback loop.
 
 ### A custom class contributes lanes instead of inventing a file format
 
@@ -200,7 +200,7 @@ typed boundaries, interpolation and persistence.
 
     Besides a `Structure`, a scope can target a live module's uniform structures:
     `target(module: ModulePointer, name)` and its `ComputeModulePointer` / `MeshModulePointer`
-    siblings (`keyframer.kt:727#fun target(module: ModulePointer, name: String) =`, `:731`, `:735`). All three need a live renderer, so every
+    siblings (`keyframer.kt:727#fun target(module: ModulePointer, name: String) =`, `:731`, `:735`). All three need a live renderer. Every
     fence on this page uses the plain `Structure` form instead.
 
     Each is a one-line wrapper over the lazily-resolved `target(name) { … }`
@@ -222,12 +222,12 @@ typed boundaries, interpolation and persistence.
     A `Structure` can hold a property two ways: `structure.bind("radius") { 4f }` installs a
     binding, and `structure["radius"] = 4f` stores a value (and removes any binding). `capture()`
     reads binding-first-then-value (`keyframer.kt:572#private fun readProperty(structure: Structure?, property: String): Any? {`), the same precedence `Structure.get`
-    (`Structure.kt:188#operator fun <T> get(property: String) =`) and the buffer writer (`Structure.kt:360`) use, so either kind snapshots. That
-    includes a child `Structure`, whose bindings live in the *root's* map under a dotted path.
+    (`Structure.kt:188#operator fun <T> get(property: String) =`) and the buffer writer (`Structure.kt:360`) use. Either kind snapshots,
+    including a child `Structure`, whose bindings live in the *root's* map under a dotted path.
 
-    The write side is not symmetric: applying a key always goes through `Structure.bind`, so a
+    The write side is not symmetric. Applying a key always goes through `Structure.bind`, so a
     value-held property comes back as a constant binding with the old `values` entry shadowed
-    underneath. Every reader in the engine agrees on the binding, so that shows up only if you
+    underneath. Every reader in the engine agrees on the binding; the shadowing shows up only if you
     inspect `structure.values` yourself.
 
 ## The same thing, driving a live GPU uniform
@@ -293,9 +293,9 @@ scope.interpolate(cool, warm, 0.25)()
 
 ![A radial fan of forty-eight wedges on black, every wedge the same light blue, rendered in a native Vulkan window](assets/keyframer_examples/gpu_tint.png)
 
-The fan is blue, and that is the whole argument: the mesh colours are all `(1, 1, 1, 1)`, so a fan
-that is *any* colour other than white can only have got it from the uniform, and an unwritten
-uniform would have left it black.
+The fan is blue, and that is the whole argument. The mesh colours are all `(1, 1, 1, 1)`; a fan that
+is *any* colour other than white can only have got it from the uniform, and an unwritten uniform
+would have left it black.
 
 The capture contains precisely two colours: black background, and `rgb(170, 205, 229)` across all
 497,142 fan pixels. The keyframed value is the linear `(0.40, 0.6125, 0.78)`, and sRGB-encoding that
@@ -311,8 +311,8 @@ A single still shows the uniform moving, but not the *interpolation*. Below is t
 values of `t`, with **two** things keyframed at once: the `vec4 tint`, and the camera as a
 `CameraPose`, sclerped, which is the subject of the next section.
 
-Each frame is a separate native Vulkan window capture, so `t` is the only difference between the
-four runs and everything that moves is a uniform a keyframe wrote.
+Each frame is a separate native Vulkan window capture. `t` is the only difference between the four
+runs, and everything that moves is a uniform a keyframe wrote.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/strip_t00.png" wait="0.25" timeout="25" capture="native-window" native-wait-frames="4" graphics-context=true name="keyframer-strip-t00" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 import afield.four.Renderer
@@ -501,7 +501,7 @@ module.look.m = camera.m()
 
 ![The end pose, the fan compressed into a narrow ellipse and tinted warm orange](assets/keyframer_examples/strip_t10.png)
 
-`t = 0` and `t = 1` are the endpoints, so they double as a check on the whole mechanism: if either
+Being the endpoints, `t = 0` and `t = 1` double as a check on the whole mechanism: if either
 differed from the pose and colour the two keys hold, the interpolation would be wrong at its own
 boundary.
 
@@ -620,10 +620,10 @@ markdown("aim", """
 ![Two panels. Left, a plan view: a blue quarter-circle arc from one camera position to the other with faint equal-length sight lines to a circle at the origin, and an orange straight chord cutting across it whose sight lines are visibly shorter in the middle. Right, distance against time: a flat blue line at 8.2462 and an orange curve dipping to 6.0 at the midpoint](assets/keyframer_examples/camera_screw.png)
 
 The blue path is a circle, and not approximately: the distance from the camera to the subject is
-constant at **8.2462** for the entire move, and the height stays at exactly 2.0, so the screw
-degenerates to a pure rotation about the vertical axis through the subject. The orange path is what
-you get by lerping the two positions. It cuts the corner, and at the midpoint the camera is
-**6.0000** away instead of 8.2462, **27.2% nearer**. On screen that reads as the subject lunging
+constant at **8.2462** for the entire move, and the height stays at exactly 2.0. Between two poses
+like that the screw degenerates to a pure rotation about the vertical axis through the subject. The
+orange path is what you get by lerping the two positions. It cuts the corner, and at the midpoint the
+camera is **6.0000** away instead of 8.2462, **27.2% nearer**. On screen that reads as the subject lunging
 toward the viewer and retreating again, which is not a move anyone asked for.
 
 The right panel is the same fact plotted. The aiming error printed underneath is what makes this a
@@ -645,7 +645,7 @@ straight line) once each, where they are defined.
     (the full list is at the [foot of the page](#what-is-actually-tested)); the pose arithmetic
     above, which is all of the behaviour, is tested. Note also that the target accepts a
     `CameraPose` or a bare `DualQuaternionf` and **silently ignores any other type**
-    (`keyframer.kt:790#fun camera(camera: Camera, keyName: String = "camera") {` dispatches on a `when` with no `else`), so a `Vector3f` "camera
+    (`keyframer.kt:790#fun camera(camera: Camera, keyName: String = "camera") {` dispatches on a `when` with no `else`). A `Vector3f` "camera
     position" key will appear to apply and do nothing.
 
 ## Saving: every save is history
@@ -753,7 +753,7 @@ it again.
 **`missingKey` is how a scope outgrows its own files.** Version 0 was written before `wet` existed;
 loading it into a scope that declares `missingKey("wet", 0.5f)` fills the gap. The schema-qualified
 form, `missingKey(1, "mode", …)`, applies only to files stamped with that `schemaVersion`, and it
-is applied *after* the version-agnostic defaults, so for a matching file it wins. Nothing ever
+is applied *after* the version-agnostic defaults — for a matching file it wins. Nothing ever
 *rejects* a file for having a different schema version; the stamp only selects defaults.
 
 **A name present in the file always beats a default**, even when its value is null.
@@ -767,17 +767,17 @@ on-disk string.
 The `Double` wire format does lose information in two cases, though. A `Long` past 2^53 has more
 mantissa than a `Double` can hold and comes back changed. And any `Number` that is *not* one of the
 six `NumKind`s, such as a `BigDecimal` or a `BigInteger`, is stored as a plain `DOUBLE` and comes
-back a `Double`, so even where the value survives the **type** does not.
+back a `Double`: even where the value survives, the **type** does not.
 
 ### The files are the history; the manifest is a cache
 
 `<file>.versions` holds one numbered JSON file per save, plus a `manifest.json` carrying the two
 things a file name cannot: each version's note and its timestamp. The two can disagree. A manifest
 can be truncated by a crash mid-write, hand-edited, cut short by a full disk, or half-synced, and
-`saveKey` writes the numbered file *before* the manifest row, so there is a window where a file
+`saveKey` writes the numbered file *before* the manifest row, leaving a window in which a file
 exists that no row mentions.
 
-The numbered files win. `keyVersions` returns the union of the two, so neither alone can lose a
+The numbered files win. Because `keyVersions` returns the union of the two, neither alone can lose a
 version:
 
 - A **file no row mentions** is listed anyway, with the file's own modification time and a note
@@ -791,12 +791,16 @@ version:
   side file.
 
 An unreadable manifest is reported on the `error,keyframer` log channel rather than swallowed, and
-the next `saveKey` moves it aside to `manifest.json.corrupt` instead of overwriting it, so the notes
-in a half-written file are still there for you to read. One test covers each way the manifest can go
+the next `saveKey` moves it aside to `manifest.json.corrupt` instead of overwriting it. The notes in
+a half-written file are still there for you to read. One test covers each way the manifest can go
 wrong: `aCorruptManifestNeitherLosesHistoryNorReusesAVersionIndex`,
 `aCorruptManifestIsRecoveredFromTheFilesAndQuarantinedRatherThanOverwritten`,
 `aVersionFileTheManifestNeverRecordedIsNotOverwritten` and
 `aDeletedManifestStillLeavesTheFilesAsTheHistory`.
+
+One caveat for old files: a `.versions` directory written before 2026-08 can have gaps. An
+unparseable manifest read as no history at all back then, so the next save called itself version 0
+and wrote over `000000.json`. Whatever is on disk is still readable; what was overwritten is gone.
 
 ## A captured look becomes source
 
@@ -848,13 +852,13 @@ comment: the emitted code still compiles, and nulls that one value.
 
 The escaped `\$` in the source block is `kotlinRawStringLiteral` declining a raw string.
 It reaches for one unless the body contains `"""`, ends in a quote, or contains a `$`. That last
-case matters because a raw string still interpolates `$name` and `${…}`, so a block mentioning
-either would paste as code that failed to compile or that silently substituted something else,
+case matters: a raw string still interpolates `$name` and `${…}`, and a block mentioning either
+would paste as code that failed to compile or that silently substituted something else,
 defeating the exact round trip `updateCode` exists for. Those bodies get the escaped literal
 instead, which `updateCodeEscapesDollarInASourceBlock` holds in place.
 
 `copyUpdateCodeToClipboard()` is the same string, put on the system clipboard. That one goes
-through AWT, so it throws on a headless JVM and it replaces whatever the user had copied.
+through AWT: it throws on a headless JVM, and it replaces whatever the user had copied.
 
 ## Where to go next
 
@@ -868,7 +872,7 @@ ledger reflects over the **members of a hand-listed set of `keyframer.kt`'s clas
 public one to be classified as either covered or unreachable-with-a-stated-reason. Add a method or a
 property to one of those classes and the build fails until it is accounted for.
 
-The class list itself, and the total below, are maintained by hand, so only the enumeration *within*
+The class list itself, and the total below, are maintained by hand. Only the enumeration *within*
 the listed classes is measured. A new **top-level** declaration is invisible to the ledger:
 `enum class KeyDiffKind` (`keyframer.kt:1312#enum class KeyDiffKind { ADDED, REMOVED, CHANGED }`) is public, absent from it, and the suite is green
 regardless. The tests exercise it; it simply is not counted, which pushes the figure below down
@@ -887,5 +891,5 @@ The remaining **8** are the ones a unit test cannot reach, for one of two reason
 | `camera(Camera, keyName)` | `Camera(val renderer: Renderer = fromContext())` (`Camera.kt:16#class Camera(val renderer: Renderer = fromContext()) {`) |
 | `Key.copyUpdateCodeToClipboard(…)` | the AWT system clipboard throws on a headless JVM |
 
-That is the whole gap, and the asides above describe most of it. Closing it needs a renderer in the
-loop, not more unit tests.
+That is the whole gap, and the two asides above describe half of it. Closing it needs a renderer in
+the loop, not more unit tests.
