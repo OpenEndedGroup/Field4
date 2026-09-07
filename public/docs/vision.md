@@ -46,8 +46,8 @@ What it does today:
 - **Manipulation.** Drag to orbit, pinch to scale, one tap to reset the framing. The model
   auto-frames itself into its window when it arrives or changes.
 - **A bounding cage.** A light wireframe cuboid tracks the model as you rotate and scale it, then
-  crossfades to sit upright and window-aligned when you let go, so there is always a stable spatial
-  reference frame to read the model against.
+  crossfades to sit upright and window-aligned when you let go — a stable spatial reference frame to
+  read the model against, however far you have tumbled it.
 - **Interactivity.** Tapping an interactive FLine fires its server-side `onClick` callback with the
   nearest vertex, exactly as the browser viewer does.
 
@@ -154,9 +154,9 @@ per-eye separation, the thing that makes stereo *stereo*, is invisible there. It
 hardware.
 
 Getting it smooth is a separate problem from getting it correct. The first thing to rule out is
-**Wi-Fi contention from screen-sharing the Mac into the headset**, because contention delays
-datagrams rather than losing them, so every in-app counter stays clean while the image does not.
-Check what else is on the link before you distrust the code.
+**Wi-Fi contention from screen-sharing the Mac into the headset**. Contention delays datagrams
+rather than losing them: every in-app counter stays clean while the image does not. Check what else
+is on the link before you distrust the code.
 
 Three things inside the pipeline decide whether frames land evenly. The frame pacer carries the
 remainder forward on a late tick; discarding it yields 29.56fps against a 30fps target, which is
@@ -277,13 +277,13 @@ subtracts two of its *own* timestamps. The ping/pong clock offset
 and theirs, and it keeps the **minimum**-RTT sample, because averaging round trips on a contended
 link estimates the contention, not the offset.
 
-Read the spans, not the total. Two of them are there by design:
+Read the spans, not the total. Two of them are costs Field chooses to pay:
 
 - the receiver's **jitter buffer** holds frames, so that network jitter becomes smoothness
   instead of dropped frames (`RTTStream.swift:77#static let bufferFrames`; set `FIELD4_RTT_BUFFER=0`
   for the unbuffered comparison);
 - **`submit to encoded` includes the render fence**
-  (`VisionPoseLatency.kt:60#const val SUBMIT_TO_ENCODED`), so scene complexity lands there rather
+  (`VisionPoseLatency.kt:60#const val SUBMIT_TO_ENCODED`), which puts scene complexity there rather
   than somewhere misleading.
 
 And the limit. The last moment observable on the device is the decoded frame reaching the
@@ -311,8 +311,9 @@ vision pose/stream latency
 ```
 
 The four<!--count:visionPoseHostSpans--> spans this machine can time on its own clock are named in
-that table whether or not they hold samples, so "no pong yet" stays distinguishable from "the offset
-is zero", and the lower-bound caveat is printed by the code rather than remembered by a reader.
+that table whether or not they hold samples. "No pong yet" therefore stays distinguishable from "the
+offset is zero", and the lower-bound caveat is printed by the code rather than remembered by a
+reader.
 
 An empty table only teaches you the shape of the table, though. Here is the same readout with the
 stages populated, printed by the `visionpose.latency` smoke test, which drives a **synthetic head**
@@ -333,7 +334,7 @@ vision pose/stream latency
 ```
 
 **Read that for its structure, not its magnitudes.** A table like this invites being quoted as a
-benchmark, so here is which figure is which:
+benchmark. Which figure is which:
 
 - The **span values are fixtures.** `33.40`, `72.50`, `n=900`, the `4`/`8`/`11` ms host samples: the
   test writes those in, so they say nothing about how fast anything is. What they demonstrate is that
@@ -360,10 +361,10 @@ regardless, because there is no video stream there to time.
 
 ## Hand tracking — on OpenXR, and read by the pointer layer
 
-Hands are absent from the rest of this page, so here is where they do exist.
+Hands are absent from the rest of this page. This is where they do exist.
 `XR_EXT_hand_tracking` on the **OpenXR** path gives 26 per-joint poses per hand and a
 geometric `pinchStrength` interpolated from thumb-tip to index-tip distance, 50 mm to 10 mm
-(`OpenXRHmdTarget.kt:292#fun handState(hand: Hand)`). Confirmed against WiVRn on a Quest 3.
+(`OpenXRHmdTarget.kt:349#fun handState(hand: Hand)`). Confirmed against WiVRn on a Quest 3.
 
 It is **not part of the visionOS story at all**: on visionOS hands remain a separate concept and are
 not implemented, and `StereoPoseSource` carries controllers, not hands.
@@ -374,9 +375,10 @@ The pointer layer reads it. `pinchPointer` (`pointing_pointer.kt:228#fun pinchPo
 `handState(hand)` directly, so a pinched hand drives the same picking layer as a mouse or a
 controller. Two cautions. The ray's **default** convention (wrist through pinch point) has no
 in-tree precedent; pass `eye` for gaze-through-pinch instead, which is the better convention
-wherever a head pose is available. And every test constructs the `HandTrackingState` the function
-expects, so **the binding to a real device is untested**: the arithmetic and the tracking-loss
-branches are pinned, not that a Quest or an Index fills those fields the way the code assumes.
+wherever a head pose is available. And because every test constructs the `HandTrackingState` the
+function expects, **the binding to a real device is untested**: the arithmetic and the
+tracking-loss branches are pinned, not that a Quest or an Index fills those fields the way the code
+assumes.
 
 ---
 
@@ -429,7 +431,7 @@ the only `FIELD_TEST` in the tree that constructs a `SideBySideStereoTarget`, an
 and `SideBySideStereoTarget` reach this table only through the import closure. Two things sit
 outside every census here: `SimpleSpatialAudio.setListenerFromSideBySide` drives spatial audio off
 the stereo target and nothing classifies it as XR, and `src/jsVision/` is two tracked files in no
-Gradle compilation, so it is not a client and has no rows below.
+Gradle compilation — not a client, and with no rows below.
 
 | What | Where | Anchor |
 |---|---|---|
@@ -449,14 +451,14 @@ Gradle compilation, so it is not a client and has no rows below.
 | Where a remote pose overrides OpenXR and the mock | `SideBySideStereoTarget.kt:96` | `var poseSource` |
 | What the target recorded it drew from | `SideBySideStereoTarget.kt:105` | `var renderedPoseFrameId` |
 | …and that pose's display time | `SideBySideStereoTarget.kt:109` | `var renderedPoseDisplayTime` |
-| The multiview sibling, with no pose source | `SideBySideStereoTarget.kt:498` | `class MultiviewSideBySideStereoTarget` |
-| The desktop mock a remote pose replaces | `SideBySideStereoTarget.kt:880` | `class StereoCamera` |
-| …and the eye separation it invents | `SideBySideStereoTarget.kt:881` | `var ipd` |
+| The multiview sibling, with no pose source | `SideBySideStereoTarget.kt:501` | `class MultiviewSideBySideStereoTarget` |
+| The desktop mock a remote pose replaces | `SideBySideStereoTarget.kt:883` | `class StereoCamera` |
+| …and the eye separation it invents | `SideBySideStereoTarget.kt:884` | `var ipd` |
 | Tagging a stream's frames with the latched pose | `FieldRTTStreamer.kt:106` | `fun tagPosesFrom` |
 | The pair a frame carries, or neither | `FieldRTTStreamer.kt:341` | `class StreamPose` |
-| Hand tracking on the OpenXR path | `OpenXRHmdTarget.kt:292` | `fun handState(hand: Hand)` |
-| …the per-hand state it returns | `OpenXRHmdTarget.kt:208` | `class HandTrackingState` |
-| …and the 26 joints it is keyed by | `OpenXRHmdTarget.kt:198` | `class HandJoint` |
+| Hand tracking on the OpenXR path | `OpenXRHmdTarget.kt:349` | `fun handState(hand: Hand)` |
+| …the per-hand state it returns | `OpenXRHmdTarget.kt:218` | `class HandTrackingState` |
+| …and the 26 joints it is keyed by | `OpenXRHmdTarget.kt:208` | `class HandJoint` |
 | Spatial audio driven off the stereo target | `SimpleSpatialAudio.kt:638` | `fun setListenerFromSideBySide` |
 | The pose tail in the media header | `WIRE_FORMAT.md:57` | `poseDisplayTimeNanos u64` |
 | Where the pose is captured on the head | `PoseUplink.swift:164` | `func record(drawable: LayerRenderer.Drawable` |
@@ -515,5 +517,5 @@ server. In short:
 
 The screenshots above are from the visionOS simulator, which can't drive spatial gestures and
 throttles the immersive scene. Spatial-input feel and video smoothness are best judged on real
-hardware, so they remain the active on-device verification items, alongside real head motion, true
+hardware. They remain the active on-device verification items, alongside real head motion, true
 per-eye separation, controller input, and every latency span on this page.
