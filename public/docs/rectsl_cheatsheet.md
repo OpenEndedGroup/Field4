@@ -260,7 +260,7 @@ Array primitives *reproduce a subexpression with modification*: the Fischinger i
 
 ## Data visualization
 
-Dense data is an explicit target for RectSL. A **colormap** turns a value in `[0, 1]` into a perceptually-uniform colour; a **`Data`** value is a plain numeric list you can normalize and bind to size/colour; the **chart words** fold both into ready-made bar charts, heatmaps, and scatter plots that emit ordinary rects, so everything you already know (`each`, `->stagger-time`, `group`, tracks) still applies to the result.
+Dense data is an explicit target for RectSL. A **colormap** turns a value in `[0, 1]` into a perceptually-uniform colour; a **`Data`** value is a plain numeric list you can normalize and bind to size/colour; the **chart words** fold both into ready-made bar charts, heatmaps, and scatter plots. All three emit ordinary rects: `each`, `->stagger-time`, `group` and tracks all still apply to the result.
 
 ### Colormaps
 
@@ -313,7 +313,7 @@ Dense data is an explicit target for RectSL. A **colormap** turns a value in `[0
 
 ### Plotting layer
 
-The chart idioms above each normalize by their own extent and fill the wall. The **plotting layer** adds a *shared* coordinate frame so several series overlay in one domain, with axes, ticks, numeric labels, and legends. Set a `->domain` (or let the first series adopt its own extent) and optional `->frame`/`->margins`; then `axes`, the domain-aware series (`line`/`plot`, `area`, `points`), and `colorbar`/`legend` all map through it. `bars`, `heat` and `scatter` do not read that frame; they keep normalizing by their own extent, so the two sets of words coexist. RectSL has no text primitive, so tick and colorbar labels are numerals drawn as a 3×5 grid of rects: numbers only, no titles or series names.
+The chart idioms above each normalize by their own extent and fill the wall. The **plotting layer** adds a *shared* coordinate frame so several series overlay in one domain, with axes, ticks, numeric labels, and legends. Set a `->domain` (or let the first series adopt its own extent) and optional `->frame`/`->margins`; then `axes`, the domain-aware series (`line`/`plot`, `area`, `points`), and `colorbar`/`legend` all map through it. `bars`, `heat` and `scatter` do not read that frame; they keep normalizing by their own extent, and the two sets of words sit side by side in one scene. RectSL has no text primitive, so tick and colorbar labels are numerals drawn as a 3×5 grid of rects: numbers only, no titles or series names.
 
 | Word | Stack | Notes |
 | --- | --- | --- |
@@ -389,7 +389,7 @@ it as a musician would. The two spellings of tempo commute: `->tempo` remembers 
 ### Patterns as values
 
 `mini` turns text into a rhythm; the signal words build continuous patterns. Both coerce to a
-track wherever RectSL wants one, so `sine ->alpha` and `"0 0.25 0.5" ->rot` need no conversion
+track wherever RectSL wants one: `sine ->alpha` and `"0 0.25 0.5" ->rot` need no conversion
 word. A bare string is read as mini-notation **only when it contains numbers**, so a misplaced
 name still errors rather than silently becoming zero.
 
@@ -488,7 +488,7 @@ Note: `gaussian`/`noise`/`fbm` here build CPU `Fn` curves on the RectSL stack; t
 
 ### Kotlin escape (experimental)
 
-For anything the built-in words don't cover, `{{ … }}` drops into Kotlin (in a `with(Functions){ … }` scope) anywhere a value is expected. The result (a Number, an `Fn`, or a `Track<Double>`) is pushed onto the stack, so the whole `Functions` API is available inline. The escape also sees the array context (`i`, `n`, `f`, `f0`, `fc`, `ic`), so it can vary per copy:
+For anything the built-in words don't cover, `{{ … }}` drops into Kotlin (in a `with(Functions){ … }` scope) anywhere a value is expected. Whatever the Kotlin returns — a Number, an `Fn`, or a `Track<Double>` — is pushed onto the stack: the whole `Functions` API is available inline. The escape also sees the array context (`i`, `n`, `f`, `f0`, `fc`, `ic`) and can vary per copy:
 
 ```diffstatic {data-lang=text}
 # a curve sampled at f, and a per-copy value computed straight in Kotlin
@@ -497,7 +497,7 @@ For anything the built-in words don't cover, `{{ … }}` drops into Kotlin (in a
 ;
 ```
 
-Cost: each unique escape is compiled to a lambda **once** (~76 ms of K2 compile, plus ~5 ms), then **invoked per use** as a plain JVM call, so an escape inside an `array` body pays the compile once rather than per copy. It needs a live Kotlin engine. A Field box has one (or pass it via `compileRectSL(source, engine = …)`), so escapes work while live-editing. Inside a long-running graphics render you can't compile on the box's *own* engine, which is busy running the render behind a single-threaded REPL, so the render harness pre-warms every escape on a separate idle engine before the render starts (`prewarmRectSLEscapes` → `compileRectSL(…, precompiledEscapes = …)`) and then only invokes cached lambdas. Gallery `.rectsl` programs get a dedicated engine of their own, so they can carry escapes too: see the `inline-functions` example.
+Cost: each unique escape is compiled to a lambda **once** (~76 ms of K2 compile, plus ~5 ms), then **invoked per use** as a plain JVM call. An escape inside an `array` body pays that compile once rather than per copy. It needs a live Kotlin engine. A Field box has one (or pass it via `compileRectSL(source, engine = …)`), so escapes work while live-editing. Inside a long-running graphics render the box's *own* engine is unusable: it is busy running the render behind a single-threaded REPL. The render harness therefore pre-warms every escape on a separate idle engine before the render starts (`prewarmRectSLEscapes` → `compileRectSL(…, precompiledEscapes = …)`) and then only invokes cached lambdas. Gallery `.rectsl` programs get a dedicated engine of their own and can carry escapes too: see the `inline-functions` example.
 
 ## Stack and scalar operators
 
@@ -570,8 +570,8 @@ This scene —
 ;
 ```
 
-— lowers to three curve functions, one shape, and a union. The other two curves,
-same shape and different constants, are elided:
+— lowers to three curve functions, one shape, and a union. The `->y` curve is
+shown; the `->x` and `->rot` curves are elided:
 
 ```diffstatic {data-lang=glsl}
 float rectslTrack1(float t) {
@@ -674,9 +674,9 @@ from it, and `RectSLSdfLook.PRESETS` carries one worked example per capability:
 
 All eight are rendered on
 [the examples page](rectsl_examples.md#the-scene-as-a-distance-field-on-the-gpu),
-next to the raster-versus-SDF pair and the resolution pair. Two of them sit
-together here, because a description does not convey the difference: the same
-scene under `min` and under `smin`:
+next to the raster-versus-SDF counterfactual and the resolution pair. Two of
+them sit together here, because a description does not convey the difference:
+the same scene under `min` and under `smin`:
 
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;">
 <figure style="margin:0;">
@@ -708,29 +708,28 @@ wraps it in a look, and draws it with a fullscreen triangle and a clock.
 
 The emitted **geometry** is checked against the CPU sampler to `1e-9` across the
 whole gallery, and every gallery scene is **compiled through shaderc** as part of
-the build, so a shader that will not compile fails the build rather than the
+the build: a shader that will not compile fails the build rather than the
 pipeline.
 
 The **pixels** are checked too. `RectSLGalleryHarness.measureSdfAgreement` renders
 a probe shader that reports `scene(p, t)` as a 24-bit fixed-point number instead
 of drawing it, reads the framebuffer back, and compares it against
-`program.sample(t)`. The pixel→wall mapping is recovered from the shader's own
-answers, since the probe reports `p.x` and `p.y` as well, so the comparison
-assumes nothing about how pixels map to the wall.
-`measureGallerySdfAgreement` then repeats it across a spread of the real gallery,
-one scene per distinct feature signature, so groups, named easings and every rect
-count get covered rather than one hand-picked shape. Measured over 51,000 points
-and eleven programs: **max 2.47e-06** wall units, mean under 1e-06. That is the one
-unavoidable difference, and it is exactly what it should be: the sampler works in
-`double` and a shader in `float`, so expect about `1e-6` of a wall unit, not the
-ulp.
+`program.sample(t)`. The probe also reports `p.x` and `p.y`, on channels of their
+own, so the pixel→wall mapping is recovered from the shader's own answers rather
+than assumed. `measureGallerySdfAgreement` then repeats it across a spread of the
+real gallery, one scene per distinct feature signature: groups, named easings and
+every rect count get covered rather than one hand-picked shape. Measured over 51,000
+points and eleven programs: **max 2.47e-06** wall units, mean under 1e-06. That is
+the one unavoidable difference, and it is exactly what it should be. The sampler
+works in `double` and a shader in `float`; expect about `1e-6` of a wall unit, not
+the ulp.
 
 **What is approximated: two kinds of track.** `->degrade`'s dropout gate is neither
 of them, despite being a 64-bit integer hash. It lowers **exactly**: a 64-bit value
 is a `uvec2` lane pair, `umulExtended` gives the exact 32×32→64 product the
 multiplies need, and the final `k / 2^53 < probability` test is an integer
-comparison in disguise, so the threshold is folded to an exact 53-bit integer on
-the CPU and compared with an unsigned 64-bit `<`, with no float anywhere in the
+comparison in disguise. The threshold folds to an exact 53-bit integer on the CPU
+and is compared with an unsigned 64-bit `<`, with no float anywhere in the
 decision. `ordinal` and the salt are known at emit time, so two of the three hash
 inputs fold to a single literal. The only residual difference is which cycle `t`
 belongs to, since `floor(t · cps)` runs in `float` here and `double` there: a
@@ -738,7 +737,7 @@ disagreement possible only within about an ulp of a cycle boundary, where the ga
 is discontinuous anyway.
 
 The two that remain baked are the pattern queries: rational arithmetic over a
-mini-notation tree, an interpreter rather than a formula and a different kind of
+mini-notation tree, an interpreter rather than a formula, and a different kind of
 problem. Nothing here can be lowered even in principle. A `PatPattern` is a
 `(PatArc) -> List<PatEvent>` lambda, so the emitter cannot tell a `"bd*4"` from a
 `sine` from the outside, let alone find a closed form for it. It samples them, and
@@ -750,11 +749,11 @@ report read aloud.
 A **rhythm** is piecewise constant, so the only question is *where its edges are*,
 and each edge is found by bisection rather than snapped to the sample grid. It
 lands within a microsecond, which is the resolution `PatTrack` works at anyway: it
-quantises its query to a millionth of a cycle, so `"1 ~ 3"` steps at 0.666667s
-rather than at two thirds, and the emitted step has to land on the same side of
-that or every frame instant sitting on the exact rational shows the next value
-early. The five stepped bakes in the gallery disagree with their own sampler at no
-instant the emitter probes, and the two focused cases in `RectSLSdfBakeTest` agree
+quantises its query to a millionth of a cycle. `"1 ~ 3"` therefore steps at
+0.666667s rather than at two thirds, and the emitted step has to land on the same
+side of that, or every frame instant sitting on the exact rational shows the next
+value early. The five stepped bakes in the gallery disagree with their own sampler
+at no instant the emitter probes, and the two focused cases in `RectSLSdfBakeTest` agree
 across a grid 40× finer than the bake.
 
 A **signal** (`sine`, `tri`, `perlin`) has no plateaus and so no exactness to
@@ -766,12 +765,12 @@ The gallery's seven sampled tracks are worst-case **0.31%** of what the track do
 at all, and the ramps among them are under 0.005%.
 
 `rand` is neither a rhythm nor a signal. It hashes the reduced rational instant it
-is handed, so it has no value *between* samples: bake it eight
-times finer and the deviation does not fall (0.96 → 0.97 of a 0-to-1 range). That
-is what an `ALIASED` bake reports: the deviation matters *and* halving the rate does
-not make it worse, so raising the rate would not make it better. One gallery track
-is in that state, `3 rand 0.2 quantize` in the musicality-surface example, and it is
-reported rather than fixed because no rate fixes it.
+is handed, so it has no value *between* samples: bake it eight times finer and the
+deviation does not fall (0.96 → 0.97 of a 0-to-1 range). That is what an `ALIASED`
+bake reports: the deviation matters, *and* halving the rate does not make it worse.
+Raising it would not make it better either. One gallery track is in that state,
+`3 rand 0.2 quantize` in the musicality-surface example, and it is reported rather
+than fixed because no rate fixes it.
 
 The gate's lowering is held to a stronger standard than that, because it can be:
 6720 (ordinal, cycle, probability, salt) points agree **bit for bit** with the CPU
