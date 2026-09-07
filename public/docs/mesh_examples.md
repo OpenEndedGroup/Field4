@@ -3,17 +3,18 @@
 *Every public declaration used below is listed, with its KDoc, in the codebase reference:
 [`mesh.kt`](reference/index.md). Start from [what's already in the box](reference/index.md).*
 
-Drawing in three dimensions is one thing: an [`FLine`](fline_examples.md) has a `z`, the renderer
+Drawing in three dimensions is one thing. An [`FLine`](fline_examples.md) has a `z`, the renderer
 takes triangles, the [ray tracer](ray_tracing_examples.md) intersects analytic solids. **Computing
-with a surface** is another: asking a mesh whether it is closed, subdividing it, smoothing it without
-deflating it, decimating it to a budget, measuring its volume, shooting a ray at it, writing it to a
-file another program will read.
+with a surface** is another. Ask a mesh whether it is closed, subdivide it, smooth it without
+deflating it, decimate it to a budget, measure its volume, shoot a ray at it, write it out for
+another program to read.
 
-`afield.stdlib` carries a CPU triangle-mesh family for that. One value type, `TriMesh`, and the
-operations that turn a surface into structure: topology, generators, marching cubes over an SDF, Loop
-subdivision, Laplacian and Taubin smoothing, QEM decimation, curvature, a BVH, OBJ and STL I/O, a
-convex hull. It is the 3D counterpart to the raster [imaging family](imaging_examples.md), and it is
-built the same way: pure Kotlin, no external dependency, no GPU, works headless in a box.
+`afield.stdlib` carries a CPU triangle-mesh family for that. There is one value type, `TriMesh`, and
+around it the operations that turn a surface into structure: topology, generators, marching cubes
+over an SDF, Loop subdivision, Laplacian and Taubin smoothing, QEM decimation, curvature, a BVH, OBJ
+and STL I/O, a convex hull. It is the 3D counterpart to the raster
+[imaging family](imaging_examples.md), and it is built the same way: pure Kotlin, no external
+dependency, no GPU, works headless in a box.
 
 Two things about it shape the rest of this page. A `TriMesh` is a **value you can look at**. It
 implements `ToHTML`, so ending a box on one draws it, with the numbers that decide whether it is
@@ -357,8 +358,7 @@ Every budget is hit **exactly** (2000, 600 and 150 triangles) and all three stay
 2.0860 and 2.0724 (the collapses cut corners off a convex solid, so it can only lose). The number to
 budget against is the deviation in each panel heading: **0.0047** at 2000 triangles, **0.0166** at 600
 and **0.0326** at 150, on a ball of radius 0.8, so a 34× reduction costs you about 4% of the radius.
-The deviation grows *slower* than the triangle count falls, which is what makes the trade worth
-making at all.
+The deviation grows *slower* than the triangle count falls. Decimation trades on that asymmetry.
 
 `quality()` is the other half of that judgement: minimum and mean triangle angle, aspect ratio,
 degenerate count. A decimator that hits its budget by producing slivers has not helped you, and the
@@ -475,8 +475,8 @@ curvature has both signs, positive on the outside and negative in the hole:
 ![Gaussian curvature on a torus (red outside, blue in the hole), mean curvature as a smooth gradient, and a convex hull of 200 points](assets/mesh_gallery/09-measure-and-query.png)
 
 The global check is **Gauss–Bonnet**: the integral of Gaussian curvature over a closed surface is
-exactly 2πχ. No local sign error or area-weighting bug survives it, which is what makes it the
-assertion to put in a test.
+exactly 2πχ. No local sign error or area-weighting bug survives it, so it is the assertion to put in
+a test.
 
 ```diffstatic {data-lang=kotlin}
 val k = mesh.gaussianCurvature()
