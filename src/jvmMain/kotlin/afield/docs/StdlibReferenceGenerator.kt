@@ -366,8 +366,7 @@ object StdlibReferenceGenerator {
             "realization verbs that hand the result coordinates: `realize` for a first embedding, " +
             "`relax` for one that satisfies constraints you declare, and `canonicalize` for the " +
             "classical edge-tangent form you would recognise as a solid. Everything is immutable " +
-            "and CPU-only, so a Conway expression evaluates in a box, a test or a headless docs " +
-            "capture equally well; `FieldAdapters.kt` is where a polytope becomes `FLine`s or a " +
+            "and CPU-only; `FieldAdapters.kt` is where a polytope becomes `FLine`s or a " +
             "`TriMesh`. 4-polytopes, their Schlegel and slice projections, and an OFF importer " +
             "live here too. Files are listed alphabetically below; a reader new to the package " +
             "wants `Topology.kt`, then `Transforms.kt`, then `Conway.kt`, then `Canonical.kt`, " +
@@ -383,7 +382,7 @@ object StdlibReferenceGenerator {
             "expression VM. These entry points need the native Ceres library present, and nothing " +
             "here draws — a solve returns points, and drawing them is your business. Start from " +
             "`CeresGeometry.kt`, which is the vocabulary everything else is written in; " +
-            "`ArchitecturalGeometry.kt` is the layer you will actually call.",
+            "`ArchitecturalGeometry.kt` is the layer most calls go through.",
         "Imaging" to "Rasters and computer vision: convolution and the filter family, gradients " +
             "and edges, corners, blobs and morphology, multiscale pyramids, warps and optical " +
             "flow. Dependency-free CPU float math built on one value type, `Img`, with the " +
@@ -392,8 +391,8 @@ object StdlibReferenceGenerator {
         "ALife" to "Spatial artificial life: grid cellular automata (life-like, cyclic and " +
             "Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, " +
             "Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and " +
-            "structural growth (L-systems, space colonization) — plus the measurement layer every " +
-            "one of them makes its claims through, because \"it produced pixels\" is not evidence.",
+            "structural growth (L-systems, space colonization), plus the measurement layer every " +
+            "one of them makes its claims through.",
         "Function" to "The function algebra — Field's first-class, evolvable, graph-rewritable " +
             "notion of a function. Build them, compose them, fit them, mutate them, and rewrite " +
             "their graphs with user-authored patterns.",
@@ -411,7 +410,7 @@ object StdlibReferenceGenerator {
             "envelope families sit three larger things that are not Field's own DSP: **Faust**, " +
             "whose compiler is embedded as WebAssembly and turns a `#faust` box into a running " +
             "node in the same graph; the **dough** ports, hand-rolled float math whose " +
-            "inaccuracy is the character rather than a defect; and the **spectral** " +
+            "inaccuracy is part of the sound; and the **spectral** " +
             "and **granular** layers, which are Field's own. `Visualizers.kt` is how you look at " +
             "any of it — every function there is an extension on a type declared in this " +
             "category. Start from `synth.kt`, which is the terse surface a box actually imports; " +
@@ -419,7 +418,7 @@ object StdlibReferenceGenerator {
             "[Faust](../faust.md) is the embedded compiler with worked examples, and " +
             "[DoughDSP: hear the primitives](../dough_dsp_sound.md) plays the ports.",
         "Patterns" to "Musical time, as a value. A `PatPattern<A>` is a function from a span of " +
-            "cycles to the events inside it — so it is not a list, it is queried, and a pattern " +
+            "cycles to the events inside it, so it is queried rather than stored, and a pattern " +
             "that never repeats costs no more to hold than one that does. Time is kept as an exact " +
             "rational (`PatQ`, `BigInteger` over `BigInteger`) all the way through the transforms " +
             "and is only converted to seconds at the boundary where something has to be " +
@@ -437,12 +436,10 @@ object StdlibReferenceGenerator {
             "signal graph: analysis products written by an offline tool, the network protocols " +
             "that carry control data, the Dirt sample library on disk, an Ableton Live set read " +
             "off the filesystem, and Sonic Pi driven as an owned child process with no window of " +
-            "its own. `SoundPathMap.kt` is the one to read first — it is the declared, " +
+            "its own. `SoundPathMap.kt` is the one to read first: the declared, " +
             "re-derived-from-the-code map of every route Field has from a box to something " +
-            "audible, and it exists because a prose sentence about how many of those routes there " +
-            "are had already been wrong once — " +
-            "[Making a sound in Field: every path there is](../sound_paths.md) is that map " +
-            "rendered as a page. [Sonic Pi](../sonic_pi.md) is the owned-mode story in full.",
+            "audible, which [Making a sound in Field: every path there is](../sound_paths.md) " +
+            "renders as a page. [Sonic Pi](../sonic_pi.md) covers owned mode in full.",
         "Audio AI" to "The client half of Field Audio: a separate HTTP/WebSocket service that runs " +
             "generative and analysis models over audio, and the typed vocabulary a box talks to it " +
             "in. Nothing here loads a model or does inference in the JVM — a box builds a " +
@@ -473,9 +470,8 @@ object StdlibReferenceGenerator {
             "`ForthInterpreter.kt` and `NanoVM.kt` for the two implementations you can read end to " +
             "end in a sitting, and `HostBridge.kt` for FieldML's reflective JVM bridge — the file " +
             "to read before wiring any language to Kotlin values. `dev_docs/` carries the map of " +
-            "what a new language has to touch on the way in, in `small_language_anatomy.md`, and " +
-            "that page is guarded, so it rather than this one is where a claim about which " +
-            "languages exist is checked. The prose, with pictures: " +
+            "what a new language has to touch on the way in, in `small_language_anatomy.md`, " +
+            "which is also the guarded list of which languages exist. The prose, with pictures: " +
             "[Language extensions](../language_extensions.md) for the route decision, then " +
             "[Datalog](../datalog.md), [RectSL](../rectsl_cheatsheet.md), " +
             "[StackSL](../stacksl_cheatsheet.md), [FieldML](../fieldml_cheatsheet.md), " +
@@ -1577,10 +1573,8 @@ object StdlibReferenceGenerator {
         appendLine("# What's already in the box")
         appendLine()
         appendLine(
-            "Field's standard library is large and, until now, invisible: the only ways to read it " +
-                "were to open the source or to already know the name you wanted. This section is a " +
-                "browsable map of it — every public declaration in ${documentedPackages()}, with " +
-                "the KDoc that sits next to it in the source."
+            "A browsable map of Field's standard library: every public declaration in " +
+                "${documentedPackages()}, with the KDoc that sits next to it in the source."
         )
         appendLine()
         val total = documents.sumOf { it.symbolCount() }
@@ -1589,15 +1583,14 @@ object StdlibReferenceGenerator {
             "**$total public symbols across ${documents.size} source files**, $documented of them " +
                 "(${documented * 100 / total}%) carrying a KDoc summary. Pages are grouped by the " +
                 "`@file:CompletionCategory` label the source itself carries, which is the same grouping " +
-                "the editor's autocomplete uses. The one exception is [$LANGUAGES](${slug(LANGUAGES)}.md): " +
-                "no file in the small-language packages carries that annotation, and adding one is not a " +
-                "documentation-only change — the label is read by the completion popup — so those pages " +
-                "are grouped by source path here and the popup is left exactly as it was."
+                "the editor's autocomplete uses. [$LANGUAGES](${slug(LANGUAGES)}.md) is the exception: " +
+                "no file in the small-language packages carries that annotation, so those files are " +
+                "grouped by source path instead."
         )
         appendLine()
         appendLine(
-            "The \"documented\" column is a coverage report on Field's own KDoc, " +
-                "not a claim about this page. Where a summary is blank the declaration has none yet."
+            "The \"documented\" column counts declarations carrying a KDoc summary. Where a summary " +
+                "column below is blank, the declaration has none yet."
         )
         appendLine()
         appendLine("| Category | Files | Symbols | Documented | Covers |")
@@ -1614,7 +1607,7 @@ object StdlibReferenceGenerator {
             )
         }
         appendLine()
-        appendLine("## Every file, at a glance")
+        appendLine("## Every file")
         appendLine()
         appendLine("<div class=\"codebase-reference\" markdown>")
         appendLine()
@@ -1642,7 +1635,7 @@ object StdlibReferenceGenerator {
         appendLine("## What is not here")
         appendLine()
         appendLine(
-            "- **The generated vector algebra** (`afield.stdlib.linalg`) has its own, better page: " +
+            "- **The generated vector algebra** (`afield.stdlib.linalg`) has its own page: " +
                 "[Generated vector API reference](../linear_algebra_api.md), with " +
                 "[Linear algebra in Field](../linear_algebra.md) for the intuition."
         )
@@ -1652,18 +1645,17 @@ object StdlibReferenceGenerator {
         )
         appendLine(
             "- **The harnesses** — smoke tests, docs figure galleries, the audio-provenance audit " +
-                "and the compile-only synth cookbook — are build machinery rather than API, and are " +
-                "excluded by path. They are still real, still run in `check`, and still worth " +
-                "reading; they are just not the answer to \"what can I call?\"."
+                "and the compile-only synth cookbook — are excluded by path. They run in `check` " +
+                "and are worth reading, but they are build machinery rather than API."
         )
         appendLine(
             "- **Graphics, rendering and the small languages beyond their host side** live in " +
                 "`afield.four`, `afield.rectsl` and `afield.stacksl`; start from " +
                 "[afield.four Graphics](../afield_four_graphics.md), the " +
                 "[RectSL cheatsheet](../rectsl_cheatsheet.md) and the " +
-                "[StackSL cheatsheet](../stacksl_cheatsheet.md). `afield.four.synth` **is** here — " +
-                "it is the audio half of `afield.four`, and [Sound: from a pattern to something " +
-                "you can hear](../sound.md) is the prose it belongs to."
+                "[StackSL cheatsheet](../stacksl_cheatsheet.md). `afield.four.synth`, the audio " +
+                "half of `afield.four`, **is** here; read it alongside [Sound: from a pattern to " +
+                "something you can hear](../sound.md)."
         )
         appendLine()
         appendLine("## How to read a symbol you find here")
