@@ -9,20 +9,20 @@ import kotlin.math.absoluteValue
  * Reverse-mode automatic differentiation over `Double` scalars — exact gradients for ordinary
  * Kotlin arithmetic, in one pass, whatever the expression's size.
  *
- * Every gradient in Field before this file was a *numerical* one: [fitGradient] central-differences
- * its loss ([FunctionFit.kt]), [leastSquares] central-differences its Jacobian. That costs
- * `2·n` extra evaluations per step and buys a truncation/round-off compromise you have to tune with
- * an `fdStep`. Reverse mode costs one forward pass plus one backward sweep for *all* `n`
- * derivatives, and the answer is exact to the last few ulps.
+ * The alternative is a numerical gradient, which is the default in [fitGradient] and
+ * [leastSquares]: central differences over the loss or the residuals, `2·n` extra evaluations per
+ * step, and a truncation-against-round-off compromise you tune with an `fdStep`. Reverse mode
+ * costs one forward pass plus one backward sweep for *all* `n` derivatives, and the answer is
+ * exact to the last few ulps.
  *
- * ## The shape of it
+ * ## AD and the tape
  *
  * [AD] is a scalar that remembers how it was made. Arithmetic on [AD] values appends to an [ADTape]
  * — a flat array of (value, up-to-two parents, up-to-two local partials) — so
  * `(a * b + sin(c)) / 2.0` reads exactly like `Double` arithmetic and records a graph as it goes. The
  * backward sweep walks that array once in reverse accumulating adjoints. Because every node has at
- * most two parents, the tape is three arrays of primitives and no object churn beyond the [AD]
- * handles themselves.
+ * most two parents, the tape is five parallel arrays of primitives — value, two parent indices,
+ * two partials — and there is no object churn beyond the [AD] handles themselves.
  *
  * ```kotlin
  * val g = grad { p -> (p[0] - 3.0).sq() + 2.0 * (p[1] + 1.0).sq() }
@@ -48,15 +48,15 @@ import kotlin.math.absoluteValue
  * `abs`, `min`, `max` and `relu` are not differentiable at their kink, so a convention has to be
  * chosen. This library **splits the derivative evenly at an exact tie**: `min(a, b)` with `a == b`
  * sends 0.5 to each argument, and `relu` (which is `max(x, 0)`) has derivative 0.5 at zero. That is
- * not an arbitrary pick — it is precisely what a central difference reports at a kink, so the
- * analytic gradient and the finite-difference oracle *agree there too*, and `abs(x) = max(x, -x)`
- * comes out with derivative 0 at zero, which is the minimum-norm subgradient. (PyTorch instead
- * defines `relu'(0) = 0`; the choice here is the internally consistent one.)
+ * what a central difference reports at a kink, so the analytic gradient and the finite-difference
+ * oracle agree there too, and it makes `abs(x)` and `max(x, -x)` agree on derivative 0 at zero,
+ * which is the minimum-norm subgradient. PyTorch instead defines `relu'(0) = 0`.
  *
  * ## What is not covered
  *
- * - **Mutation.** [AD] is immutable; there is no in-place `+=` on a tracked value beyond rebinding
- *   a `var`, which is fine and does the right thing.
+ * - **Mutation.** [AD] is immutable. `x += y` on a `var` rebinds it to a fresh handle and appends
+ *   a node; the handle it replaced stays valid, and an accumulation loop therefore grows the tape
+ *   by one node per iteration.
  * - **Control flow** is differentiated *as taken*: an `if (x > 0.0)` records only the branch that
  *   ran, which is the correct derivative of the piecewise function everywhere except at the
  *   switch-over. Comparisons on [AD] therefore return plain `Boolean` and carry no derivative.
@@ -79,7 +79,7 @@ import kotlin.math.absoluteValue
  * A tape is cheap and short-lived: one is created per gradient evaluation and thrown away. Each
  * entry stores the node's value plus at most two `(parent, ∂self/∂parent)` pairs, which is enough
  * for every operation in this file — n-ary reductions like [sum] decompose into a chain of
- * additions. Storage is four parallel primitive arrays that double when full, so building a tape
+ * additions. Storage is five parallel primitive arrays that double when full, so building a tape
  * allocates nothing per node.
  *
  * You rarely name one. [grad], [gradAt], [valueAndGrad], [jacobian] and [hessian] make and discard

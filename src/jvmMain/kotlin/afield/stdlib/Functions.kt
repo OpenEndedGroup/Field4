@@ -19,7 +19,9 @@ import kotlin.math.*
  * combine through arithmetic operators, through chainable `Fn` extensions (`stretch`, `repeat`,
  * `fold`, `quantize`, `echo`, `convolve`, `blur`, ...), and through reusable `FnTransform`
  * pipelines applied with `/`. Arrangement in time is `timeline { }` and the `List<Fn>`
- * combinators (`sequence`, `randomPermute`, `morph`, `stack`, `average`).
+ * combinators (`sequence`, `randomPermute`, `morph`, `stack`, `average`); those rearrange `Fn`s
+ * and timeline chunks and hand the result back to the same evaluator rather than introducing a
+ * second one.
  *
  * Every combinator also records an `FnGraphNode` recipe alongside the closure (see
  * `FunctionGraph.kt`), which is what makes graphs inspectable and rewritable rather than opaque
@@ -1120,9 +1122,7 @@ object Functions {
      * `(x - from) / (to - from)`. `remap(0.0, 10.0)` turns an x in 0..10 into a 0..1
      * alpha; `remap(0.0, 1.0)` is the identity. This is the position-of-x reading —
      * distinct from [ramp], which produces a value that *travels* from one number to
-     * another across the domain. (Until 2026-07-14 this behaviour was misleadingly
-     * named `ramp`; it was renamed once it became clear every caller reached for `ramp`
-     * expecting the value-line semantics that [ramp] now has.)
+     * another across the domain.
      */
     fun remap(
         from: Fn = param(0.0),
@@ -5849,11 +5849,7 @@ canvas {
         operator fun div(next: FnTransform): FnTransform = then(next)
     }
 
-    /**
-     * The declarative layer is intentionally thin: it only rearranges existing
-     * functions and timeline chunks. That keeps this file exploratory without
-     * creating a second evaluator.
-     */
+    /** Relabels the function's domain to `domain` without touching its values, exactly `withDomain`. To *rescale* the function into a new interval use `stretch`. */
     infix fun Fn.over(domain: Domain): Fn = withDomain(domain)
 
     /** `f over (0.0..2.0)` — relabels the function's domain without touching its values, exactly `withDomain`. To *rescale* the function into a new interval use `stretch`. */

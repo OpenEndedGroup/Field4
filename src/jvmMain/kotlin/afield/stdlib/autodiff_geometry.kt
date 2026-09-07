@@ -7,20 +7,20 @@ import afield.graphics.FLine
 
 /**
  * Differentiable geometry: tracked vectors, planar inverse kinematics on an [FLine] chain, and a
- * differentiable circle packing — the "things that produce pixels" end of the AD layer.
+ * differentiable circle packing — the part of the AD layer whose results are drawable.
  *
- * [ADVec2] and [ADVec3] are pairs and triples of [AD], not a parallel numeric tower: they convert to
- * and from Field's own [Vec2] / [Vec3] (which are the generated, *mutable*, float-backed
- * `Vector2f` / `Vector3f`), and everything they do is expressed in the same scalar ops as the rest of
- * `autodiff.kt`. They exist because writing `(joint - target).length()` reads better in a loss than
- * unrolling the components by hand, not because vectors need special derivative rules.
+ * [ADVec2] and [ADVec3] are pairs and triples of [AD]. They convert to and from Field's own
+ * [Vec2] / [Vec3] (the generated, *mutable*, float-backed `Vector2f` / `Vector3f`), and every
+ * operation on them is expressed in the same scalar ops as the rest of `autodiff.kt`. There are no
+ * vector-specific derivative rules here; the point is that `(joint - target).length()` reads as
+ * itself inside a loss instead of as unrolled components.
  *
  * ## Inverse kinematics
  *
- * [solveIk] is the demonstration that earns the layer: a planar chain of fixed-length links whose
- * joint angles are found by minimising `|endEffector - target|²` with exact gradients. Forward
- * kinematics is a cumulative sum of angles and a running position — perfectly differentiable — so
- * L-BFGS reaches a sub-micron reach in tens of iterations, and the result is an [FLine] you can draw.
+ * [solveIk] finds the joint angles of a planar chain of fixed-length links by minimising
+ * `|endEffector - target|²` with exact gradients. Forward kinematics is a cumulative sum of angles
+ * and a running position — differentiable throughout — so L-BFGS reaches a sub-micron reach in tens
+ * of iterations, and the result is an [FLine] you can draw.
  *
  * ```kotlin
  * val chain = IkChain(vec(120f, 300f), doubleArrayOf(90.0, 80.0, 70.0, 55.0))
@@ -29,13 +29,15 @@ import afield.graphics.FLine
  * ```
  *
  * A pure reach objective is under-determined for more than two links, so [IkOptions.smoothness]
- * offers a curvature penalty between consecutive links. It is off by default and it is **not** free:
- * the two terms genuinely compete, so a positive smoothness buys an elegant pose at the price of a
- * little reach error, and near the base — where reaching at all needs tight folds — that price is
- * visible. Measured on the four-link chain below with `smoothness = 0.02`: a target 216 units out
- * still reaches to under a thousandth of a unit, but a target 5 units from the anchor settles 2.6
- * units short. [IkSolution.reachError] always reports the truth; nothing here pretends to have
- * converged when it has traded away accuracy.
+ * offers a curvature penalty between consecutive links. It is off by default, and it is a trade
+ * rather than a free regulariser: the two terms compete, so a positive smoothness buys a straighter
+ * pose and charges reach accuracy for it. The charge is small out in the open and large near the
+ * base, where reaching at all needs tight folds. On the four-link chain in the example above,
+ * `AutoDiffGeometryTest` pins a target 216 units away as exact to under a thousandth of a unit
+ * with no penalty and inside 12 units under a heavy one; a target close to the anchor is exact
+ * without the penalty and more than a unit short at `smoothness = 0.02`.
+ * [IkSolution.reachError] reports the shortfall either way, so a solve that traded accuracy away
+ * can be told from one that converged.
  *
  * ## Packing
  *

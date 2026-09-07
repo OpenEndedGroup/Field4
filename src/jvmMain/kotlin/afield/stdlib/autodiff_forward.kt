@@ -11,20 +11,20 @@ import kotlin.math.absoluteValue
  * A [Dual2] is a truncated Taylor series `(v, v', v'')` carried along a single direction. Every
  * operation propagates all three components, so one evaluation of an expression in [Dual2]
  * arithmetic returns the value, the directional first derivative and the directional *curvature* at
- * once — no tape, no backward sweep, no allocation beyond three boxed doubles per node.
+ * once — no tape, no backward sweep, and no allocation beyond one three-`Double` object per node.
  *
  * ```kotlin
  * val t = taylor2(0.6) { x -> exp(-x * x) * sin(6.0 * x) }
  * t.value; t.first; t.second      // f, f', f'' at 0.6, all exact
  * ```
  *
- * ## When to reach for this rather than the tape
+ * ## Forward or reverse
  *
  * Reverse mode ([grad]) wins when there are many inputs and one output — a loss over a parameter
  * vector. Forward mode wins in the opposite shape (one input, many outputs: a parametric curve and
- * every quantity derived from it) and, crucially, it is the only one of the two here that reaches
- * second order. [hessian] in `autodiff.kt` is built on this file: `vᵀHv` is exactly [Dual2.second]
- * after a pass seeded along `v`.
+ * every quantity derived from it), and it is the only one of the two that reaches second order.
+ * [hessian] in `autodiff.kt` is built on this file: `vᵀHv` is exactly [Dual2.second] after a pass
+ * seeded along `v`.
  *
  * The op vocabulary mirrors `autodiff.kt` name for name — [sin], [exp], [tanh], [max],
  * [pow] and friends are overloaded on both [AD] and [Dual2], so the *same* expression body can be

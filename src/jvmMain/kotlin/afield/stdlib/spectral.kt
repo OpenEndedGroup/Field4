@@ -7,11 +7,11 @@ import kotlin.math.*
 /**
  * Frequency-domain / spectral analysis family for the stdlib DSP toolkit.
  *
- * This is the frequency-domain companion to [timeseries.kt] (which is entirely time-domain).
- * It is self-contained and additive: a pure-Kotlin FFT, analysis windows, a [Spectrum] and a
- * [Spectrogram] (STFT), classic spectral features (centroid / spread / rolloff / flux / flatness /
- * RMS / energy), and streaming [FloatFilter] wrappers so the spectral features drop straight into
- * the existing time-domain filter chain in `timeseries.kt` (compose with `then`).
+ * This is the frequency-domain companion to [timeseries.kt] (which is entirely time-domain): a
+ * pure-Kotlin FFT, analysis windows, a [Spectrum] and a [Spectrogram] (STFT), classic spectral
+ * features (centroid / spread / rolloff / flux / flatness / RMS / energy), and streaming
+ * [FloatFilter] wrappers so those features drop straight into the time-domain filter chain in
+ * `timeseries.kt` (compose with `then`).
  *
  * Everything is plain `Double`/`Float` math — no external DSP dependency — so it works headless in
  * a box, a test, or a docs capture. The FFT is an iterative Cooley–Tukey radix-2 core with a

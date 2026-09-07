@@ -27,7 +27,8 @@ import kotlin.math.min
  * `vec(...)` is the usual way to make one — from numbers, by copying, or by concatenating a
  * scalar with a smaller vector — and `quat` / `dualquat` do the same for rotations. Collections
  * of vectors gain `center`, `median` / `medianVec` and `aabbBounds` in 2D, 3D and 4D; 3D also
- * gets `obbBounds` (PCA by power iteration, an explicit approximation — the code says so),
+ * gets `obbBounds` (a box aligned to the covariance matrix's principal axes, found by power
+ * iteration, so a PCA fit rather than a minimal-volume one),
  * `convexHull`, which goes through the QuickHull3D library and returns the input unchanged if the
  * hull cannot be built, and `convexHullPeelingMedian`, which peels hulls away and returns the
  * centre of what is left — a single point, not a cloud. [Cuboid] is a separate plain 3D

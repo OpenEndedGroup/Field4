@@ -16,9 +16,9 @@ import smile.regression.GaussianProcessRegression
  * returned [SmileCubicSpline1D] / [SmileGaussianProcess1D] are callable via `invoke` and also
  * expose `predict` for a single `x` or for a whole array.
  *
- * One caveat worth knowing: if Smile throws while fitting the GP, [smileGaussianProcess] prints
- * a warning to stderr and substitutes plain linear interpolation between the training points, so
- * holding a [SmileGaussianProcess1D] is not proof that a GP was actually fitted.
+ * If Smile throws while fitting the GP, [smileGaussianProcess] prints a warning to stderr and
+ * substitutes plain linear interpolation between the training points, so holding a
+ * [SmileGaussianProcess1D] is not proof that a GP was fitted.
  */
 
 data class SmileGpOptions(

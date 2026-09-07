@@ -5,8 +5,8 @@ package afield.stdlib
 import kotlin.random.Random
 
 /**
- * Population search over *any* genome type — the search half that `alife*.kt` was missing and that
- * `FunctionEvolve.kt` and `afield.morpho.MorphoSearch` each had privately.
+ * Population search over *any* genome type — the generic drivers that `alife_evolve.kt` and
+ * `FunctionEvolve.kt` both run on. (`afield.morpho.MorphoSearch` keeps its own.)
  *
  * A caller supplies two things and nothing else. [GenomeOps] says how to make a genome, how to vary
  * one, and (optionally) how to recombine two; [Objective] says what a genome scored. The four
@@ -16,12 +16,11 @@ import kotlin.random.Random
  * lexicase selection, and [PopulationSearch.novelty] replaces the objective's own fitness with
  * distance from an archive of behaviours.
  *
- * [PopulationSearch.random] is a **control arm**, not a fourth option. It draws from exactly the
- * distribution the other three mutate within, so a difference between their results is a difference
- * in *selection* rather than in the generator. Reporting an evolutionary result without it says
- * nothing: a generator good enough to stumble onto a decent genome occasionally looks like a
- * successful search. This convention is taken directly from `MorphoSearch`, which is where it was
- * already right.
+ * [PopulationSearch.random] is the **control arm**. It draws from exactly the distribution the
+ * other three mutate within, so a difference between their results is a difference in *selection*
+ * rather than in the generator. Reporting an evolutionary result without it says nothing: a
+ * generator good enough to stumble onto a decent genome occasionally looks like a successful
+ * search. `MorphoSearch` reports the same pair for the same reason.
  *
  * **Budget is evaluations, not generations.** A population of 24 and a hill climb of 1 do very
  * different amounts of work per generation, so a per-generation budget would compare budgets rather
@@ -30,8 +29,8 @@ import kotlin.random.Random
  * **What determinism means here.** Given the same [GenomeOps], the same [Objective] and the same
  * `seed`, a driver returns the same [SearchRun]: the same best genome, the same trace, the same
  * evaluation count, every time. It is one seeded [Random] threaded through every draw, and
- * evaluation is deliberately **sequential** — parallel evaluation would reorder those draws and
- * throw the property away. It says nothing about thread safety, and it holds only if the caller's
+ * evaluation is **sequential**, because parallel evaluation would reorder those draws and throw
+ * the property away. It says nothing about thread safety, and it holds only if the caller's
  * `mutate` and `evaluate` are themselves deterministic functions of their arguments.
  */
 
@@ -43,9 +42,9 @@ class Variation<G>(val name: String, val apply: (G, Random) -> G) {
 /**
  * Everything a population search needs to know about a genome type.
  *
- * The three optional members are optional on purpose, and their defaults are the honest ones:
- * a genome with no recombination says so by leaving [crossover] alone rather than by returning one
- * parent unchanged and letting [evolve] believe it recombined.
+ * The three optional members default to declining rather than to faking: a genome with no
+ * recombination says so by leaving [crossover] alone, instead of returning one parent unchanged
+ * and letting [evolve] believe it recombined.
  */
 interface GenomeOps<G> {
 
@@ -60,8 +59,8 @@ interface GenomeOps<G> {
      * recombination.
      *
      * `null` rather than "return a parent" because [evolve] then never spends its `crossoverRate`
-     * budget, and [SearchRun.recombined] reports honestly that no crossover happened. A default
-     * that quietly returned one parent would make a mutation-only search look like a GA.
+     * budget, and [SearchRun.recombined] reports zero. A default that returned one parent would
+     * make a mutation-only search look like a GA.
      */
     fun crossover(a: G, b: G, rng: Random): G? = null
 
@@ -83,7 +82,7 @@ interface GenomeOps<G> {
  * @property fitness the scalar, **higher is better**. Drives tournament selection and the trace.
  * @property cases per-test-case scores, higher better, for [Selection.LEXICASE]. Empty means the
  *   objective has no case structure, and lexicase then degenerates to a uniform random draw — which
- *   is why [evolve] rejects that combination rather than quietly selecting at random.
+ *   is why [evolve] rejects that combination instead of selecting at random.
  * @property behaviour a fixed-length behavioural descriptor for [PopulationSearch.novelty]. Empty
  *   means the objective offers none.
  */

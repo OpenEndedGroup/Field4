@@ -24,7 +24,7 @@ import kotlin.script.experimental.api.ResultValue
  * Hydration requires the originating box to still be loaded and the compiled lambda to return a
  * `Number?`; anything else throws, naming the box or the offending source. When
  * there is no box in scope no evaluator is installed at all, so Kotlin right-hand sides are left
- * unapplied and the compiler-free `rewrite(...)` path is unaffected.
+ * unapplied; the compiler-free `rewrite(...)` path never needs one.
  */
 
 /**

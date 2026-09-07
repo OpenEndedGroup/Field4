@@ -6,8 +6,8 @@ package afield.stdlib
 import kotlin.math.absoluteValue
 
 /**
- * Differentiating the `Fn` graph itself — the bridge that makes `autodiff.kt` a *Field* capability
- * rather than a generic AD library.
+ * Differentiating the `Fn` graph itself — the bridge from `autodiff.kt`'s scalar tape to the
+ * graphs `Functions` builds.
  *
  * [Functions.Fn] is a closure over `Double`, so it cannot be differentiated by overloading its
  * arithmetic. But every `Fn` the stdlib builds also carries an inspectable [FnGraphNode]: the op
@@ -23,15 +23,15 @@ import kotlin.math.absoluteValue
  * }
  * ```
  *
- * ## Which ops, and how the honesty is enforced
+ * ## Which ops, and the agreement check
  *
  * The interpreter covers the smooth algebraic core — see [FnAutoDiff.differentiableOps]. That is
  * a *subset*: the piecewise oscillators (`saw`, `square`), the table-backed
  * interpolants, the noise generators and everything with baked point data are not here, and
  * [FnAutoDiff.supports] answers correctly for any graph.
  *
- * The danger with a second interpreter is that it silently computes the derivative of a *different
- * function* from the one `eval` computes. So the exact path never trusts itself: [FnAutoDiff.agrees]
+ * A second interpreter can silently compute the derivative of a *different function* from the one
+ * `eval` computes, so the two are compared instead of assumed to match: [FnAutoDiff.agrees]
  * re-evaluates the interpreter against [Functions.Fn.eval] on the caller's own sample grid and
  * reports the worst disagreement, and the fitters run that check before switching over. A mismatch
  * demotes the run to finite differences rather than returning a confident wrong gradient.
@@ -47,9 +47,8 @@ import kotlin.math.absoluteValue
 /** How a fit obtains the gradient of its loss with respect to a graph's numeric leaves. */
 enum class FnGradientMode {
     /**
-     * Central finite differences — the historic path, and the default. Works on **any** graph,
-     * costs `2n` extra loss evaluations per step, and is bit-for-bit what the fitters did before
-     * this file existed.
+     * Central finite differences, and the default. Works on **any** graph and costs `2n` extra
+     * loss evaluations per step.
      */
     FINITE_DIFFERENCE,
 
@@ -65,7 +64,7 @@ enum class FnGradientMode {
 }
 
 /**
- * The op vocabulary the [AD] interpreter understands, plus the honesty checks around it.
+ * The op vocabulary the [AD] interpreter understands, plus the agreement checks around it.
  *
  * Everything that reasons about *which* ops can be differentiated consults this rather than keeping
  * a private list — the same discipline [OpRegistry] enforces for the op vocabulary as a whole. Every
