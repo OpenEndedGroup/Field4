@@ -29,8 +29,8 @@ related" but "this signal is the wrong shape to work with".
 | reshape a distribution into a target | `quantilewarp.kt` | `AdaptiveQuantileWarp`, `QuantileWarpState`, `TargetDistributions`, `inverseStandardNormalCdf`, and matching GLSL for the GPU |
 
 Two things this family is **not**. It is not a statistics library: there are no p-values, no
-confidence intervals and no hypothesis tests anywhere in it, so knowing whether a number means
-anything means writing the permutation test yourself, as *Is 0.193 big?* below does. And
+confidence intervals and no hypothesis tests anywhere in it, so whether a number means anything is
+yours to establish, and *Is 0.193 big?* below writes the permutation test that settles it. And
 `micTicNaive` is not MICe/TICe. The file's own header comment
 (`correlations.kt:31#IMPORTANT NOTES (honesty about what this is / isn't):`) is emphatic that it is an equipartition-grid approximation that will not
 reproduce published numbers.
@@ -85,7 +85,7 @@ another tool, the mapping onto NumPy and SciPy is exact: `q1`/`median`/`q3` are
 `numpy.percentile`'s default linear interpolation, `mad` is `median(|y − median(y)|)` unscaled,
 `sampleStdDev` is `numpy.std(ddof=1)`, and `skewness`/`kurtosisExcess` are `scipy.stats.skew` and
 `scipy.stats.kurtosis` at their *default* `bias=True`, pinned to ten decimal places against SciPy
-1.15.2 in `StatsSummaryTest`.
+1.15.2 on a tie-heavy ten-point sample in `StatsSummaryTest`.
 
 Three more edges, guarded rather than propagated inside `buildSummaryStats`
 (`stats.kt:1004#val sampleVariance = if (n > 1) m2 / (n - 1).toDouble() else 0.0`), so you get a
@@ -518,7 +518,7 @@ the change, xi **48**. Distance correlation reacts sooner; xi ends up higher.
 
 The last line of that figure cross-checks two different algorithms.
 `RollingDistanceCorrelation` never rebuilds a distance matrix (it only adds to and subtracts from
-maintained sums) while `StatsDependence.distanceCorrelation` materialises two full w×w matrices
+maintained sums), while `StatsDependence.distanceCorrelation` materialises two full w×w matrices
 and double-centres them (`correlations.kt:415#matrices, which puts the practical ceiling at a few thousand`–`correlations.kt:495#val dcor = dcov / sqrt(dvarx * dvary)`). On the final window they agree
 to **5×10⁻¹⁵**. The KDoc at
 `correlations.kt:667#evicts the oldest pair. There is no reset: build a new`–`correlations.kt:669` warns that the incremental sums drift over a long run,
