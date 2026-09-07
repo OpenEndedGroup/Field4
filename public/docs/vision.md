@@ -99,8 +99,8 @@ The Kotlin compiles to JavaScript and runs in a small JavaScriptCore context *on
 not in a web view, and not in the animation path over the network. `geometry { … }` builds an indexed
 triangle mesh in the headset and hands the whole thing to Metal in one call, so nothing per-vertex
 crosses the wire at frame rate. Alongside a raw `vertex`/`triangle`/`quad` builder there are `cube`,
-`plane`, `sphere`, and `tube`, which sweeps a polygon along a polyline, the same real-thickness
-treatment the FLine viewer gives a stroke. **[Building geometry in the headset](vision_geometry.md)**
+`plane`, `sphere`, and `tube`, which sweeps a polygon along a polyline. The FLine viewer gives a
+stroke real thickness the same way. **[Building geometry in the headset](vision_geometry.md)**
 covers the builder in full, with runnable starting points.
 
 Each part reloads on its own. Editing the shader and pressing **Reload MSL** recompiles the pipeline
