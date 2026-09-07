@@ -4,7 +4,11 @@
 `SolidLowering` and `SolidAgreement` in `afield.solidsl`. There is an openable
 [starting point](#open-this) at the bottom of the page.*
 
-Field's signed-distance vocabulary lives in `mesh_sdf.kt`, which declares
+In `afield.solidsl` a shape is a **value**. Subtracting a cylinder from a cuboid builds an expression
+tree, and marching that tree, putting it through exact CSG, emitting GLSL from it and simplifying it
+are four separate questions you can ask of the one source afterwards.
+
+The signed-distance vocabulary in `mesh_sdf.kt` works the other way round. It declares
 
 ```diffstatic {data-lang=kotlin}
 typealias ScalarField3D = (Vec3) -> Float
@@ -12,9 +16,9 @@ typealias ScalarField3D = (Vec3) -> Float
 
 and builds twenty-five primitives and combinators on top of it: `sdfSphere`, `sdfBox`, `sdfTorus`,
 `sdfUnion`, `sdfSmoothUnion`, `twisted`, `repeated`. Every one of them returns a Kotlin lambda, and a
-lambda cannot be printed, compared, serialized, rewritten, or emitted as GLSL. That is why
-[RectSL](rectsl_examples.md)'s 2D tracks are symbolic, and `afield.solidsl` is the same move for 3D.
-A shape is a **value**:
+lambda cannot be printed, compared, serialized, rewritten, or emitted as GLSL.
+[RectSL](rectsl_examples.md)'s 2D tracks went symbolic for that reason; this is the same move for
+three dimensions:
 
 ```diffstatic {data-lang=kotlin}
 val part = (cuboid(4, 2.6, 0.7) + cylinder(1.4, 0.8)) -
