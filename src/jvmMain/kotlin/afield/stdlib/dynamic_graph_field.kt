@@ -14,28 +14,23 @@ import kotlin.math.roundToInt
  * The two useful ways to *look at* `dynamic_graph_systems.kt` — the point cloud and the weighted edges
  * joining it, so a time-varying graph can be watched rather than described.
  *
- * It sits in its own file for the same reason `alife_field.kt` and `wfc_field.kt` do:
- * `dynamic_graph_systems.kt` names nothing from Field's visualizer or from the imaging family, and a
- * reader of it sees points, edges and clocks and nothing about pixels.
+ * `dynamic_graph_systems.kt` imports nothing but `kotlin.math`: every mention of [Img], `FLine` or
+ * Field's visualizer in this family is here.
  *
- * # Which of the two to use, because they are not interchangeable
+ * # Which of the two to use
  *
  * | you want | call | why |
  * | --- | --- | --- |
  * | a **figure** — one state, on a page, in a box | [dynamicGraphFLines] → [Box.showPlaneGrid] | vector: real `FLine`s through `drawToSVG`, so it scales, and edge weight drives colour *and* thickness |
  * | a **frame of an animation** | [dynamicGraphPanel] → [Box.animateEvolution] | raster: [Box.animateEvolution] encodes a `montage` of [Img]s per frame, and there is no vector path into an mp4 |
  *
- * [dynamicGraphFLines] is the default and [dynamicGraphImg]/[dynamicGraphPanel] are the animation
- * path. That split is deliberate and it is the whole reason this header exists: a hand-rolled
- * scan-converted pixel buffer is not how this codebase draws a figure — `FLine` →
- * [planeFigureHtml]/[drawToSVG] is — and the raster only survives here because
- * [Box.animateEvolution]'s `panels` lambda is typed `List<Pair<String, Img>>`
- * (`alife_animate.kt`), so a clip genuinely needs pixels. If you are reaching for
- * [dynamicGraphPanel] and you are not inside an `animateEvolution`, you want [dynamicGraphFLines].
+ * [dynamicGraphFLines] is the default, because a figure here is `FLine` →
+ * [planeFigureHtml]/[drawToSVG] rather than a scan-converted pixel buffer. The raster path is for
+ * clips: [Box.animateEvolution]'s `panels` lambda is typed `List<Pair<String, Img>>`
+ * (`alife_animate.kt`), so pixels are what it will take. Outside an `animateEvolution`,
+ * [dynamicGraphPanel] is the wrong call.
  *
- * **The range policy, which is the whole difference between a picture and a lie.** Copied from
- * `alife_field.kt` because these are exactly the traps a graph animation walks into, and it applies
- * to both paths:
+ * **The range policy, which applies to both paths:**
  *
  *  - **The world window is the caller's, and it is fixed.** [dynamicGraphImg] takes an explicit
  *    `window`, and [Box.showPlaneGrid] takes one too, rather than fitting to the cloud: a cloud that
@@ -44,14 +39,13 @@ import kotlin.math.roundToInt
  *    [dynamicGraphPlaneWindow] converts it for the vector path.
  *  - **Edge weight is read against a `maxWeight` named by the caller**, not normalised per frame or
  *    per panel. Per-frame normalisation makes a graph that is uniformly saturating look identical to
- *    one that is uniformly dying, which is the single most misleading thing this family could draw.
+ *    one that is uniformly dying.
  *  - **Points are drawn at the top of the ramp and edges below it**, so the population is legible even
  *    where the graph has decayed to nothing — an empty frame and a frame of isolated points are
  *    different states and must look different.
  *  - **A figure that clips says so.** [dynamicGraphImg] reports how many points fell outside the
- *    window in [DynamicGraphRaster.clipped] and [dynamicGraphOutsideWindow] answers the same question
- *    for the vector path, because a figure cropping half its subject unannounced is the other way this
- *    goes wrong.
+ *    window in [DynamicGraphRaster.clipped], and [dynamicGraphOutsideWindow] answers the same
+ *    question for the vector path.
  */
 
 /** What [dynamicGraphImg] drew into one animation frame, and what it had to leave out. */
@@ -386,12 +380,11 @@ fun dynamicGraphPanel(
 ).img.colormap(colormap, 0f, 1f)
 
 /**
- * The two numbers a dynamic-graph figure needs in its caption, measured rather than assumed: how many
- * points and edges there are, and what the weight distribution looks like.
+ * What a dynamic-graph figure needs in its caption: point and edge counts, the weight range and
+ * mean, mean degree, how many points are isolated, and the state's clock.
  *
- * Reported as a one-line string so a `montage` panel label or a `println` can carry the state of the
- * system it is drawing. "It produced a picture" is not evidence; this is the least that has to go with
- * one.
+ * One line, so a `montage` panel label or a `println` can carry the state of the system it is
+ * drawing.
  */
 fun dynamicGraphSummary(state: DynamicPointState, edges: DynamicEdgeList): String {
     val weights = edges.values().map { it.weight }

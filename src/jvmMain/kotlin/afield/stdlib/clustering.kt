@@ -15,10 +15,9 @@ import kotlin.random.Random
 /**
  * Clustering for lists of `Float`, `Vec2`, `Vec3` and `Vec4`.
  *
- * **There is no k-means here.** Every algorithm in this file returns either a *hierarchy*
- * or a centre that is meaningful for the data it summarises: a medoid is one of your own samples, and
- * a median is coordinate-wise robust. A k-means centroid is neither, and on a point cloud with an
- * outlier it is the one that moves.
+ * Every algorithm here returns either a *hierarchy* or a centre drawn from the data it summarises: a
+ * medoid is one of your own samples, and a median is coordinate-wise robust against an outlier.
+ * **There is no k-means**, whose centroid is neither.
  *
  * Hierarchical clustering — [floatAgglomerative], [vec2Agglomerative], [vec3Agglomerative],
  * [vec4Agglomerative], which wrap Smile's `HierarchicalClustering` over the seven

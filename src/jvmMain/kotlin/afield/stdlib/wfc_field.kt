@@ -12,11 +12,9 @@ import kotlin.math.roundToInt
 /**
  * The bridge from Wave Function Collapse into the things Field already displays.
  *
- * `wfc.kt` is dependency-free — it knows about integer tile IDs, `BufferedImage` and
- * `FloatArray`, and nothing else. That keeps the solver portable, but it means a box running WFC has
- * no direct way to *look* at what it is doing. These extensions supply the missing hop into
- * [Img], and therefore into `Box.showImg`, `showImgGrid`, `montage`, `Img.colormap` and the
- * `ToHTML` thumbnail a box shows when you evaluate a value.
+ * `wfc.kt` knows about integer tile IDs, `BufferedImage` and `FloatArray`, and nothing else. The
+ * hop into [Img] is here, and with it `Box.showImg`, `showImgGrid`, `montage`, `Img.colormap` and
+ * the `ToHTML` thumbnail a box shows when you evaluate a value.
  *
  * Three kinds of view:
  *
@@ -28,17 +26,15 @@ import kotlin.math.roundToInt
  *     each cell's still-possible tiles, and [WfcSolver.possibilityCountImg] exposes the
  *     possibility count per cell as a scalar field to colour-map. Sample either one inside a
  *     `while (solver.step() == WfcStatus.Running)` loop and you have the collapse itself as a
- *     sequence of frames — which is by far the most informative thing you can look at when rules
- *     are not behaving.
+ *     sequence of frames, which is what to watch when rules are not behaving.
  *  3. **The solver, inline.** [wfcSolverHtml] is the body of [WfcSolver]'s own `ToHTML`, so simply
  *     *evaluating* a solver in a box — or `solver.h` — draws its current state: uncertainty,
  *     entropy, what has been decided, where it broke. Nothing to set up, no tile set needed. See
  *     [WfcSolver.possibilityCountHeatmapImg], [WfcSolver.entropyHeatmapImg] and
  *     [WfcSolver.resolvedTileImg] for the three panels on their own.
  *
- * Because a solved cell has exactly one possibility, `waveToImg` on a [WfcStatus.Solved] solver is
- * the finished output: the animation's last frame and the result are the same picture, by
- * construction rather than by coincidence.
+ * A solved cell has exactly one possibility, so `waveToImg` on a [WfcStatus.Solved] solver is the
+ * finished output: the animation's last frame and the result are the same picture.
  */
 
 /** Magenta. Cells whose possibility set is *empty* are drawn in it, so a contradiction is visible. */

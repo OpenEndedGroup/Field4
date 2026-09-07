@@ -19,12 +19,11 @@ import kotlin.math.ln
  * - Avoids per-neighbor/per-tile garbage in propagation by using reusable LongArray bitsets.
  *
  * Notes:
- * - The WFC solver operates only on integer tile IDs and constraints.
- * - PNG/FloatArray simple-tiled and overlapping helpers are intentionally separate from the core.
- * - The one concession to the rest of Field: [WfcSolver] implements [afield.ToHTML], so evaluating a
- *   solver in a box draws the collapse instead of a reflective property tree. Every pixel of that
- *   view lives in `wfc_field.kt` ([afield.stdlib.wfcSolverHtml]); this file names it once, in
- *   [WfcSolver.toHTML], and depends on nothing else outside itself.
+ * - The WFC solver operates only on integer tile IDs and constraints. The PNG/FloatArray
+ *   simple-tiled and overlapping helpers sit outside it.
+ * - [WfcSolver] implements [afield.ToHTML], so evaluating a solver in a box draws the collapse
+ *   instead of a reflective property tree. Every pixel of that view lives in `wfc_field.kt`
+ *   ([afield.stdlib.wfcSolverHtml]), which this file names once, in [WfcSolver.toHTML].
  */
 
 const val WFC_NORTH: Int = 0

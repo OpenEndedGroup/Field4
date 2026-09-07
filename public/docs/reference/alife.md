@@ -830,32 +830,26 @@ What one L-system grammar drew: the branching structure and the two numbers it i
 Inline `ToHTML` views for the `alife*.kt` family — what a box draws when you *evaluate* an [`IntGrid`](alife.md#alife-kt-intgrid)
 or a [`GrayScottState`](alife.md#alife-continuous-kt-grayscottstate), with nothing to set up.
 
-This file exists for the same reason `wfc_field.kt` does. The family's own files stay free of any
-dependency on Field's visualizer: `alife.kt` and `alife_continuous.kt` each name exactly one symbol
-from here (`alifeGridHtml`, `alifeGrayScottHtml`) and inherit every pixel of their view from it. So a
-reader of `alife.kt` sees integer lattices and nothing about HTML, and the two files can be understood
-separately.
+`alife.kt` and `alife_continuous.kt` name only the three entry points here (`alifeGridHtml`,
+`alifeGrayScottHtml`, `alifeLeniaRunHtml`), each from a one-line `toHTML` override, and inherit
+every pixel of their view from them.
 
-**Range-policy discipline, which is the whole difference between a heatmap and a lie.** Copied
-separately from `wfc_field.kt`, because these are the rules that stop an inline view being
-decoration:
+**The range policy:**
 
- - **Every scale is named in the caption, with both endpoints spelled out in the units of the thing
-   being shown.** A picture whose scale is a mystery says nothing.
+ - **Every scale is named in the caption**, with both endpoints spelled out in the units of the
+   thing being shown.
  - **Domains are fixed by meaning, not by the frame.** An [`IntGrid`](alife.md#alife-kt-intgrid)'s states run `0 .. maxState`; a
    Gray–Scott `v` runs `0 .. 1`, the range the reaction is defined on, *not* `min .. max` of this
-   particular field. Auto-ranging per frame is how a saturated Lenia field — constant at 1 — rendered
-   as solid black and looked exactly like death; that trap cost this family a figure, and it is a trap
-   an inline view walks into on every evaluation rather than once.
+   particular field. Auto-range a saturated Lenia field — constant at 1 — and it maps to the bottom
+   of the ramp: solid black, identical to a field that has died.
  - **One pixel per cell, never resampled.** The `<img>` is scaled by an integer factor with
    `image-rendering:pixelated`, so cell coordinates and pixel coordinates stay the same thing and a
    reader can count. A filtered upscale destroys exactly the local structure a CA is about.
  - **A flat field says so.** If every cell holds the same value the caption reports it, because a
    uniform panel is otherwise indistinguishable from a broken one.
 
-These views are checked, not eyeballed: `AlifeGallery`'s `inline-view` figure decodes the base64 PNG
-back out of the emitted HTML and asserts the colour of individual pixels against the value the caption
-claims for them — the same thing `WfcSmokeTest` does for the solver's view.
+`AlifeGallery`'s `inline-view` figure decodes the base64 PNG back out of the emitted HTML and
+asserts the colour of individual pixels against the value the caption claims for them.
 
 `src/jvmMain/kotlin/afield/stdlib/alife_field.kt` — [read the source](source/jvmMain/afield/stdlib/alife_field/)
 
@@ -863,9 +857,9 @@ claims for them — the same thing `WfcSmokeTest` does for the solver's view.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">alifeGridHtml</span><span class="p">(</span><span class="n">grid</span><span class="p">:</span> <span class="nc">IntGrid</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/alife_field/#L125) | The body of `IntGrid.toHTML`: the lattice itself, one pixel per cell, plus the two readings that say whether it is doing anything — population and state entropy. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">alifeGrayScottHtml</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="nc">GrayScottState</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/alife_field/#L174) | The body of `GrayScottState.toHTML`: both reagent fields side by side on **fixed `0 .. 1` scales**, plus the morphology reading that the docs page's regime claims are actually made through. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">alifeLeniaRunHtml</span><span class="p">(</span><span class="n">run</span><span class="p">:</span> <span class="nc">LeniaRun</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/alife_field/#L230) | The body of `LeniaRun.toHTML`: the final field on a **fixed `0 .. 1` scale**, the measured phase, and the mass history as a sparkline. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">alifeGridHtml</span><span class="p">(</span><span class="n">grid</span><span class="p">:</span> <span class="nc">IntGrid</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/alife_field/#L119) | The body of `IntGrid.toHTML`: the lattice itself, one pixel per cell, plus the two readings that say whether it is doing anything — population and state entropy. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">alifeGrayScottHtml</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="nc">GrayScottState</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/alife_field/#L168) | The body of `GrayScottState.toHTML`: both reagent fields side by side on **fixed `0 .. 1` scales**, plus the morphology reading that the docs page's regime claims are actually made through. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">alifeLeniaRunHtml</span><span class="p">(</span><span class="n">run</span><span class="p">:</span> <span class="nc">LeniaRun</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/alife_field/#L224) | The body of `LeniaRun.toHTML`: the final field on a **fixed `0 .. 1` scale**, the measured phase, and the mass history as a sparkline. |
 
 ## alife_lsystem.kt { #alife-lsystem-kt }
 
