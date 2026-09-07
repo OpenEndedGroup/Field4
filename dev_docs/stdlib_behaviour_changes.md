@@ -5,10 +5,28 @@ Some fixes in `afield.stdlib` change what already-written box code *computes*, n
 capture may be sitting on the old numbers. This file is the durable record — the nightly worklog is
 routinely stripped at merge time, so release notes do not belong there.
 
-Entries are newest first. Each one says what changed, in which direction, and what was swept for
+Entries are oldest first. Each one says what changed, in which direction, and what was swept for
 callers.
 
 ---
+
+## 2026-07-14 — `ramp` became a value line, and the normalizer is now `remap` (`3883d558e`)
+
+`Functions.ramp(start, end)` was a **domain normalizer**: `(x - from) / (to - from)`, mapping an
+x-window onto `0..1`. It is now a **value line** — it blends `start` to `end` as x sweeps the
+domain, the linear sibling of `tween`. The old normalizer survives unchanged under the name
+`remap(from, to)`.
+
+| Symbol | Change | Magnitude | Old behaviour reachable from |
+| --- | --- | --- | --- |
+| `Functions.ramp` | a value line from `start` to `end` instead of `(x - from) / (to - from)` | bit-identical for `ramp(0.0, 1.0)` on the default `0.0..1.0` domain, which is why the mismatch stayed hidden for so long; unrelated otherwise — `ramp(1.0, 6.0)` over `0..1` used to give `-0.2..0` and now gives `1..6` | `remap(from, to)`, which is the old function under a new name |
+
+What was swept: the chebyshev demo sweep and about twenty doc examples, every one of which had been
+written expecting the value-line reading. `OpRegistry` gained a `remap` `OpSpec` and `fnrewrite.js`
+gained the word to `opWords`, which is what keeps the editor-to-registry sync test green.
+
+A saved workspace calling `ramp` over any domain other than `0.0..1.0` computes something different
+after this change, and `remap` is the like-for-like replacement.
 
 ## 2026-07-28 — the KDoc-truth pass (`nightly/2026-07-28/2-kdoc-truth-and-guard`)
 
@@ -61,6 +79,27 @@ Whole-repository sweep for call sites of every symbol above (`src/`, `dev_docs/`
   hits at all** for any changed symbol.
 - **`templates/field.sketch2_examples.edn`** — one hit, `pointsOut`, inside a commented-out line; the
   box hand-rolls the same loop below it.
+
+## 2026-07-30 — `chatterjeeXi` stopped scoring arrival order through an x-tie (`70413eba3`, `fcfa970c6`)
+
+`StatsDependence.chatterjeeXi` broke ties among the `x` values by input index, so wherever `x` had
+ties part of what it measured was how nearly `y` was a function of *the order the samples arrived
+in*. It now returns the exact expectation of xi over all random tie-breakings, which is what
+Chatterjee (2021) leaves free, and stays O(n log n).
+
+| Symbol | Change | Magnitude | Old behaviour reachable from |
+| --- | --- | --- | --- |
+| `StatsDependence.chatterjeeXi` (and `xi`) | ties among `x` are resolved by expectation instead of by input index | **bit-identical when every `x` is distinct** (every tie run has m = 1 and the arithmetic reduces term for term). On tied `x`, measured against the pre-fix code: a constant `x` with `y` in arrival order read `0.9702970297029703` and now reads exactly `0.0`; `x = i % 2` with `y` the arrival index at n = 300 read `0.9702330025889176`; `x = i % 3` read `0.950566`; ten blocks of thirty with a real relationship read `0.990033`, inflated from `0.891` | nowhere — the old numbers were scoring arrival order, and there is no reason to want them back |
+
+What was swept: every published xi on `statistics_examples.md` and `interpolants_examples.md` was
+checked and none moved, because every `x` in both pages is tie-free and continuous.
+
+**A recorded xi over tied `x` from before 2026-07-30 is wrong**, not merely differently
+conventioned. Quantised sensors, binned covariates and categorical predictors are all tied `x`.
+
+The companion commit `fcfa970c6` corrects the claim that went with it: the constant-predictor case
+is exactly zero in the closed form, and in `Double` it lands within one ulp — over n = 2..400, 54
+values of n come back non-zero, the largest being `2.2e-16`.
 
 ## 2026-08-06 — `Fn.floor()` joins the transform family
 

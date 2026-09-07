@@ -14,9 +14,14 @@ import kotlin.math.*
  *
  * [RollingDistanceCorrelation] holds a fixed window and updates its maintained row and grand sums
  * in O(n) per `push`; [RollingXiCorrelation] only keeps the window and recomputes xi from
- * scratch. All of it is pure Kotlin with no external dependency. Note the block comment below,
- * which is explicit that `micTicNaive` is an equipartition-grid approximation and not MICe/TICe —
- * do not expect matching values.
+ * scratch. All of it is pure Kotlin with no external dependency.
+ *
+ * `micTicNaive` is an equipartition-grid approximation rather than either published algorithm: it
+ * bins x and y by rank into equal counts, scans every `(xBins, yBins)` whose product stays inside a
+ * budget that defaults to `n^0.6`, and takes the largest normalised mutual information it finds
+ * (the sum over the same grids is its TIC). That is MIC- and TIC-shaped without being either
+ * MICe/TICe or the MINE dynamic program, so its values will not match a reference
+ * implementation's. Use it for intuition and prototyping.
  */
 
 // StatsDependence.kt
@@ -28,7 +33,7 @@ import kotlin.math.*
 // - Distance correlation (Székely–Rizzo; O(n^2))
 // - A *naive* MIC/TIC-style grid mutual-information scan using equipartition bins
 //
-// IMPORTANT NOTES (honesty about what this is / isn't):
+// WHAT THE MIC/TIC SCAN HERE IS AND IS NOT:
 // - The "MIC" here is NOT the published MICe (e.g., Reshef et al. AoAS 2018) and not the original
 //   dynamic-programming MINE approximation either. It’s a simple, self-contained approximation:
 //     * uses equipartition bins for x and y
@@ -261,7 +266,7 @@ object StatsDependence {
     // and a two-valued one read 0.9702330025889176 at n=300, for predictors carrying no information.
     // -------------------------
     /**
-     * Chatterjee's xi, which is **asymmetric, and that is the point**: it measures how nearly `y` is a *function* of
+     * Chatterjee's xi, which is **asymmetric**: it measures how nearly `y` is a *function* of
      * `x`, so swapping the arguments asks a different question and returns a different number. Near 0 for
      * independence, near 1 when y is a noiseless function of x — including a non-monotone one such as a
      * parabola, where [pearson] reads 0 and [kendallTauB] not much more.
@@ -278,9 +283,8 @@ object StatsDependence {
      * largest being 2.2e-16) — and quantised or categorical `x` is answered correctly rather than being
      * scored on arrival order. Inputs with all-distinct `x` are unaffected, bit for bit.
      *
-     * Until 2026-07-30 x-ties broke by input index instead, so a constant predictor read **0.970** and a
-     * two-valued predictor of nothing but the arrival index read **0.970** — high scores for carrying no
-     * information at all. If you have recorded xi values on tied `x` from before that, they are wrong.
+     * Recorded xi values over tied `x` from before 2026-07-30 are wrong; see
+     * `dev_docs/stdlib_behaviour_changes.md`.
      */
     fun chatterjeeXi(x: DoubleArray, y: DoubleArray): Double {
         requireSameSize(x, y)
@@ -528,12 +532,11 @@ object StatsDependence {
     /**
      * A MIC/TIC-style scan: bin x and y onto every grid whose cell count fits a budget, score normalized
      * mutual information on each, and report the maximum and the sum. Unlike the correlation
-     * coefficients above it is blind to the *shape* of the relationship, so a parabola or a sine scores
-     * about as high as a straight line — which is the point of reaching for it.
+     * coefficients above it is blind to the *shape* of the relationship: a parabola or a sine scores
+     * about as high as a straight line.
      *
-     * It is not MICe/TICe, and the header comment in this file is emphatic about it: this is an
-     * equipartition-by-order grid approximation, good for intuition, and it will not reproduce published
-     * numbers. Small samples read high because the mutual-information estimate is biased upward on a
+     * It is not MICe/TICe. This is an equipartition-by-order grid approximation, good for intuition,
+     * and it will not reproduce published numbers. Small samples read high because the mutual-information estimate is biased upward on a
      * sparse grid, so compare scores at one n rather than across sizes. `bMax` caps the product of the
      * two bin counts, defaulting to floor(n^0.6) and never less than 4.
      */
@@ -911,7 +914,7 @@ class RollingXiCorrelation(private val windowSize: Int) {
 
     /**
      * Xi over the window's current contents without pushing anything, or null while fewer than two samples
-     * have arrived. Copies the window out in arrival order first, which no longer matters to the answer:
+     * have arrived. Copies the window out in arrival order first, though that order does not reach the answer:
      * [StatsDependence.chatterjeeXi] sorts by x itself and resolves x-ties by expectation rather than by
      * position, so the result depends only on *which* pairs are in the window and not on where in the ring
      * buffer they happen to sit.

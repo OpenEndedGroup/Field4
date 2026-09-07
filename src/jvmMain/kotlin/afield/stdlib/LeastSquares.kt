@@ -21,7 +21,7 @@ import kotlin.math.sqrt
  * explicit [jacobian] — or, easier, write the residuals in [AD] arithmetic and call
  * [leastSquaresAD], which derives an exact Jacobian by reverse-mode automatic differentiation — to
  * trade those `2n` evaluations for one backward sweep and get derivatives that are exact rather
- * than truncated. Omitting [jacobian] leaves the historic path bit-for-bit unchanged.
+ * than truncated.
  *
  * The damped normal equations are solved by Gaussian elimination with partial pivoting; a singular
  * system or a non-finite candidate raises the damping and retries (up to 12 times per iteration)
@@ -66,10 +66,10 @@ data class LeastSquaresResult(
  *
  * @param initial the starting parameter vector; must be non-empty and give finite residuals.
  * @param options the iteration cap, damping schedule and convergence tolerances.
- * @param jacobian an exact `∂rᵢ/∂xⱼ` (rows = residuals, columns = parameters). When null — the
- *        default, and bit-for-bit the historic behaviour — the Jacobian is central finite
- *        differences at `2n` extra residual evaluations per iteration. [leastSquaresAD] fills this
- *        in for you from residuals written in [AD] arithmetic.
+ * @param jacobian an exact `∂rᵢ/∂xⱼ` (rows = residuals, columns = parameters). Null is the default,
+ *        and then the Jacobian is central finite differences at `2n` extra residual evaluations per
+ *        iteration. [leastSquaresAD] fills this in for you from residuals written in [AD]
+ *        arithmetic.
  * @param residuals the residual vector at a parameter vector.
  */
 fun leastSquares(

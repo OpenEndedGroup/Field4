@@ -11,10 +11,10 @@ import kotlin.random.Random
  * Gradient-descent optimizers that consume the exact gradients from `autodiff.kt` — [sgd], [adam]
  * and [lbfgs], behind one [minimize] front door.
  *
- * All three are **deterministic given their seed** and all three record a full [OptimizeRun.losses] trajectory
- * which you can hand straight to `showSignals("loss" to run.losses)` and look at. That discipline is the
- * same one [FnEvolveRun] and [FnFitRun] keep, and for the same reason: a fitted gesture in live art
- * is only usable if it comes back identical tomorrow.
+ * All three are **deterministic given their seed** and all three record a full [OptimizeRun.losses]
+ * trajectory which you can hand straight to `showSignals("loss" to run.losses)` and look at.
+ * [FnEvolveRun] and [FnFitRun] carry a `losses` list of the same shape, so a fit, an evolve and an
+ * optimisation all replay and plot the same way.
  *
  * ```kotlin
  * val run = minimize(doubleArrayOf(-1.2, 1.0), OptimizeOptions(method = OptimizeMethod.LBFGS)) { p ->
@@ -42,7 +42,7 @@ import kotlin.random.Random
  * non-positive curvature rather than letting an indefinite model through.
  */
 
-/** Which descent to run. See the file KDoc for when each earns its place. */
+/** Which descent to run. See the file KDoc for when to use each. */
 enum class OptimizeMethod {
     /** Plain gradient descent with (optionally Nesterov) momentum. */
     SGD,
@@ -167,11 +167,11 @@ data class OptimizeRun(
     val gradientInfNorm: Double get() = if (gradient.isEmpty()) 0.0 else gradient.maxOf { it.absoluteValue }
 
     /**
-     * [trajectory] is deliberately **not** compared here. It is a `List<DoubleArray>`, and
-     * `DoubleArray.equals` is identity, so including it would make every comparison of two
-     * separately-computed runs false for a reason that has nothing to do with their contents. It is
-     * fully determined by [initialX], [options] and the objective anyway, and [x] and [losses] —
-     * its two endpoints and its whole value trace — are compared.
+     * Two runs are equal when [x], [value], [losses], [iterations], [evaluations], [converged],
+     * [reason] and [options] all match. [trajectory] is left out: it is a `List<DoubleArray>` and
+     * `DoubleArray.equals` is identity, so including it would make any two separately-computed runs
+     * unequal whatever their contents. It is fully determined by [initialX], [options] and the
+     * objective, and [x] and [losses] compare its endpoint and its whole value trace.
      */
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -193,7 +193,7 @@ data class OptimizeRun(
 /**
  * Minimises an objective written in [AD] arithmetic, using exact gradients.
  *
- * The overload every live-coder wants: pass the loss, get the answer and its whole trajectory.
+ * Pass the loss; get the answer and its whole trajectory.
  *
  * ```kotlin
  * val run = minimize(doubleArrayOf(0.0, 0.0)) { p -> (p[0] - 3.0).sq() + 2.0 * (p[1] + 1.0).sq() }
@@ -206,8 +206,8 @@ fun minimize(
 ): OptimizeRun = minimizeWithGradient(initial, options, valueAndGradOf(objective))
 
 /**
- * Minimises an objective you already have a value-and-gradient function for — the seam for a
- * gradient that does not come from this file's [AD] (a hand-derived one, or the exact `Fn`-graph
+ * Minimises an objective you already have a value-and-gradient function for: the entry point for
+ * a gradient that does not come from this file's [AD] (a hand-derived one, or the exact `Fn`-graph
  * gradient in `autodiff_fn.kt`).
  */
 fun minimizeWithGradient(
