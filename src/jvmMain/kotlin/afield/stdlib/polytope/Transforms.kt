@@ -36,8 +36,7 @@ import afield.stdlib.Vec3
  * All thirteen are declared on [PolyhedralObject] *and* on [PolytopeTransformResult], so a chain
  * reads the same wherever a step sits: `cube().ambo().bevel().kis()`. The composites take no
  * realization policy in either position, which is the runtime rule from [transform] expressed in the
- * signature instead. Until 2026-08-05 the eight composites were on [PolyhedralObject] only and
- * `needle`, `zip` and `ortho` had no named function at all.
+ * signature instead.
  *
  * ## What this will not do
  *

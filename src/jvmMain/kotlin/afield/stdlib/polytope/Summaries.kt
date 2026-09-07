@@ -5,10 +5,10 @@ package afield.stdlib.polytope
 import afield.stdlib.Vec3
 
 /**
- * Small, plain data classes that reduce the library's big values to something worth reading.
+ * Small, plain data classes that reduce the library's big values to something printable.
  *
- * These exist because of the architectural boundary: the mathematical types contain no HTML and know
- * nothing about presentation. `PolytopeVisualizers.kt` registers a value printer for each big type
+ * The mathematical types in this package contain no HTML and know nothing about presentation.
+ * `PolytopeVisualizers.kt` registers a value printer for each big type
  * that reduces it to one of these summaries and hands *that* to Field's ordinary reflective
  * visualizer. So a bare `polyhedron` or `result` as a box's last expression is informative, and the
  * same facts are available programmatically — `println(result.summary())` reports exactly what the
@@ -16,7 +16,7 @@ import afield.stdlib.Vec3
  *
  * ## What to trust in them
  *
- * They are lossy by design and a few of the losses matter:
+ * They are lossy, and a few of the losses matter:
  *
  * - **A summary is a *snapshot*, not a view.** Every one of these is computed eagerly from the value
  *   at the moment you ask, and several are not cheap: [PolytopeTopology.summary] runs the validator,

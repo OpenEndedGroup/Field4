@@ -27,7 +27,7 @@ import kotlin.math.sqrt
  * are comparing seeds, or mixing them in one scene, normalise or apply a gauge first rather than
  * assuming a common radius.
  *
- * ## Face winding is derived, not trusted
+ * ## Seed faces are wound outward
  *
  * Seed faces are declared as unoriented index cycles and then reversed where needed so that every
  * normal points away from the vertex centroid. Which means the literal lists below need only be

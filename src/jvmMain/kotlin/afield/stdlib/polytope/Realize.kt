@@ -26,7 +26,7 @@ import kotlin.math.sqrt
  * it. The rotation gauge is anchored to a reference rather than to the inertia tensor, because the
  * principal axes of a symmetric solid are degenerate, so an inertia gauge would spin.
  *
- * Nothing here claims a shape is *good*. A construction can return a self-intersecting embedding with
+ * A construction can return a self-intersecting embedding with
  * non-planar faces and this file will not notice; that is what [PolyhedralObject.canonicalDiagnostics]
  * and [PolyhedralObject.geometryDiagnostics] are for.
  */

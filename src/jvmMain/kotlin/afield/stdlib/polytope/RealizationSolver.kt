@@ -25,7 +25,7 @@ import kotlin.math.sqrt
  * result.finalConstraints.forEach { println("${it.name}  rms ${it.rms}  max ${it.max}") }
  * ```
  *
- * ## What is minimised, and what that does not promise
+ * ## What is minimised
  *
  * [afield.stdlib.leastSquares] runs Levenberg-Marquardt on half the squared norm of every active
  * family's residuals concatenated. A weight is a plain multiplier on its family's residuals, so it
@@ -40,7 +40,7 @@ import kotlin.math.sqrt
  * a collapsed edge satisfies [EdgeTangencyConstraint] for free — a converged run can be nonsense, and
  * only the diagnostics will say so.
  *
- * ## Cost, and when to use something else
+ * ## Cost per iteration
  *
  * The Jacobian is central finite differences, so an iteration costs `2 * 3 * vertexCount` residual
  * evaluations and builds a dense `3V x 3V` normal matrix. That is the right tool for exact control

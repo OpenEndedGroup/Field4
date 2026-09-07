@@ -10,14 +10,12 @@ import afield.registerValuePrinter
 /**
  * The single place this package knows that Field has a screen — and it is one function long.
  *
- * The mathematical types contain no HTML and no presentation logic. Instead each printer registered
- * here reduces its value to one of the plain public summary data classes (`PolytopeTopologySummary`,
- * `Polytope4Summary`, and so on) and hands *that* to Field's ordinary reflective value visualizer. So
- * leaving a topology, a transform result or a canonicalization plan as the last expression in a box
- * prints something useful, while nothing in the topology depends on `FLine`, meshes or a renderer.
- *
- * The consequence worth knowing: `println(x.summary())` and the visualizer show the same facts,
- * because they are the same value. Nothing is computed only for display.
+ * Each printer registered here reduces its value to one of the plain summary data classes in
+ * `Summaries.kt` — `PolytopeTopologySummary`, `Polytope4Summary`, and so on — and hands *that* to
+ * Field's ordinary reflective value visualizer. So a topology, a transform result or a
+ * canonicalization plan left as a box's last expression prints something useful, while nothing in
+ * the topology depends on `FLine`, meshes or a renderer, and `println(x.summary())` shows the same
+ * facts because it is the same value.
  */
 
 /**

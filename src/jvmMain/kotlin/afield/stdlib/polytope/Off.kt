@@ -8,9 +8,8 @@ package afield.stdlib.polytope
  *
  * One function and no reader. Export exists so that a solid can be opened in something
  * that was not written here — an independent second opinion when a test disagrees with a picture — and
- * so that a bug report can carry the actual object. It is a diagnostic, not an architectural
- * dependency: nothing else in this package goes through it, and no part of the topology is shaped by
- * what OFF can express.
+ * so that a bug report can carry the actual object. Nothing else in this package goes through it,
+ * and no part of the topology is shaped by what OFF can express.
  *
  * The format itself is lossy for this library's purposes. Element identity, rank structure above 2,
  * attributes and provenance all disappear; what survives is coordinates and polygons.

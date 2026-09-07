@@ -25,7 +25,7 @@ import kotlin.math.sqrt
  * val result = cube().ambo().polyhedron.canonicalize() // or repair an embedding you already have
  * ```
  *
- * ## Two iterations, and why there are two
+ * ## The two iterations
  *
  * [CanonicalMethod.RECIPROCAL] alternates polar reciprocation between primal and dual and reaches the
  * fixed point in tens of steps, but requires every face plane to stay away from the origin.
@@ -36,8 +36,8 @@ import kotlin.math.sqrt
  *
  * ## Read the diagnostics
  *
- * Nothing here claims success. [CanonicalizeResult.converged] only means the iteration stopped
- * moving; [CanonicalDiagnostics] is the evidence, reported before and after, and a run that ends with
+ * [CanonicalizeResult.converged] means the iteration stopped moving, and no more than that.
+ * [CanonicalDiagnostics] is the evidence, reported before and after, and a run that ends with
  * a large `tangencyRadiusSpread` has failed and says so. The floor on all of it is about `1e-7`
  * relative, because [Realization3] stores single-precision coordinates.
  */

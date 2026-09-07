@@ -12,7 +12,7 @@ package afield.stdlib.polytope
  * default — [PreserveCommonAttributes] — keeps only the entries every source element agreed on.
  *
  * Values are typed `Any?`: these are Field's ordinary property values, so a box can put an
- * `Int`, a `Vec3` or a lambda in one. The consequences are the reader's to hold: equality is
+ * `Int`, a `Vec3` or a lambda in one. Two consequences follow: equality is
  * structural `==` on `Any?`, so `1` and `1.0` are different attributes, and nothing here validates a
  * value against a schema. The two extension functions [PolyhedralObject.withAttribute] and
  * [PolyhedralObject.withAttributes] are the intended entry points, because unlike

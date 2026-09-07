@@ -47,14 +47,12 @@ package afield.stdlib.polytope
  *
  * ## Faces with holes
  *
- * A face's boundary is an outer cycle plus zero or more *inner* cycles — see [FaceBoundary]. With no
- * inner cycles nothing about a face is different from what it was before holes existed:
- * [faceCycle] still returns the outer ring, and every stored byte and every code path is the one
- * that was there. The alternatives were a flat list of cycles with index 0 privileged, and a "hole"
- * relation between two rank-2 elements; both were rejected, and `dev_docs/POLYTOPE_ALGEBRA.md` says
- * why at length. The short version: the twenty-odd callers of [faceCycle] in this package all mean
- * *the outline* when they say it, and a hole that is its own rank-2 element acquires attributes, a
- * picking id and a vote in [eulerCharacteristic] that it has no business having.
+ * A face's boundary is an outer cycle plus zero or more *inner* cycles — see [FaceBoundary].
+ * [faceCycle] returns the outer ring, which is what the twenty-odd callers of it in this package
+ * mean. A hole belongs to its face rather than being a rank-2 element in its own right, so it
+ * carries no attributes and no picking id, and casts no vote in [eulerCharacteristic];
+ * [cellularEulerCharacteristic] is the reading that subtracts one per hole.
+ * `dev_docs/POLYTOPE_ALGEBRA.md` weighs that shape against the alternatives.
  *
  * **Winding is a convention here, not a check.** Outer rings run counter-clockwise about the face
  * normal and inner rings run clockwise. There are no coordinates at this layer, so that cannot be
@@ -366,8 +364,8 @@ class PolytopeTopology internal constructor(
     }
 
     /**
-     * The elements at one rank, or an empty list for a rank outside `0..rank`. Total by design, so a
-     * sweep over ranks or a speculative query about a rank this object may not have needs no bounds
+     * The elements at one rank, or an empty list for a rank outside `0..rank`. Total, so a sweep
+     * over ranks or a speculative query about a rank this object may not have needs no bounds
      * check — and an empty result never distinguishes "no such rank" from "nothing there".
      */
     fun elements(rank: Int): List<Element> = elementsByRank.getOrElse(rank) { emptyList() }
@@ -721,8 +719,8 @@ class PolytopeTopologyBuilder(
     }
 
     /**
-     * Record an incidence. Reference and rank errors are intentionally reported by [validate]
-     * after [build], allowing tools and tests to inspect all malformed input at once.
+     * Record an incidence. Reference and rank errors are reported by [validate] after [build],
+     * so a tool or a test can inspect all malformed input at once.
      */
     fun addIncidence(lower: ElementId, higher: ElementId): PolytopeTopologyBuilder = apply {
         incidences += lower to higher
@@ -786,8 +784,8 @@ class PolytopeTopologyBuilder(
 
 /**
  * Small rank-3 combinatorial isomorphism helper. It tries vertex bijections, then compares edge
- * endpoint pairs and face cycles up to rotation/reversal. This is intentionally not a general
- * unrestricted incidence-poset graph-isomorphism solver.
+ * endpoint pairs and face cycles up to rotation/reversal. Its scope is rank 3, and it is not a
+ * general incidence-poset isomorphism solver.
  *
  * Because cycles are compared up to *reversal* the test is blind to orientation: a solid and its
  * mirror image compare equal. It is not blind to holes — a face's inner rings are part of what is

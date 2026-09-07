@@ -44,9 +44,9 @@ import kotlin.math.sqrt
  * [PlanarTessellation] already understand, so a filled holed face fills with a hole in it and a
  * stroked one is drawn with its inner outline.
  *
- * A face with no holes takes the identical path it took before holes existed — same calls, same
- * order, same buffers. `PolytopeFaceHolesTest` asserts that mesh-for-mesh rather than asserting it
- * in a comment.
+ * Holes change nothing about a face that has none: positions, indices, normals and both provenance
+ * arrays match the hole-unaware triangulation exactly, over the five Platonic seeds, `bC` and a
+ * windowed cube with its ring dropped (`PolytopeFaceHolesTest`).
  *
  * [PolyhedralObject.faceNormal] reads the outer ring only: a hole does not contribute area, and its
  * opposite winding would cancel some of the outline's if it did.
