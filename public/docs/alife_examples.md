@@ -139,8 +139,8 @@ showImg(
 
 [`translationBetween`](reference/alife.md#alife-kt) is not a centroid comparison. It aligns the two
 patterns' bounding boxes, shifts one by that offset, and then demands **exact cell-by-cell equality**, so
-a pattern that moved *and* changed shape returns `null`. A wrong rule cannot fluke that, which is what
-the `B34/S23` line above shows by printing `null`.
+a pattern that moved *and* changed shape returns `null`. A wrong rule cannot fluke that: the
+`B34/S23` line above prints `null`.
 
 ### The two objects, moving
 
@@ -440,7 +440,8 @@ animateEvolution(
 
 Two coupled fields, `u` (substrate) and `v` (autocatalyst), the reaction `U + 2V → 3V` with `V → P`,
 and two numbers: a feed rate `F` and a kill rate `k`. The entire zoo of morphologies is a function of
-those two numbers, which is what makes the system a canonical morphogenesis model.
+those two numbers. Two knobs producing that much variety is why Gray–Scott is the canonical
+morphogenesis model.
 
 Spots and a labyrinth can have *identical* coverage, identical mean and identical variance. Nothing in a
 histogram separates them. What does separate them is the **shape** of their features, and
@@ -1142,7 +1143,7 @@ be checked **exactly and combinatorially**.
   figure triples in size each generation. Same identity, stated for what is actually drawn.)
 - And its enclosed area matches the closed form `9^n · A₀ · (1 + 3/5(1 − (4/9)^n))` to `3 × 10⁻⁸`
   relative, a second independent geometric identity from the same turtle. (`FLine` stores
-  single-precision coordinates, which is what sets that floor.)
+  single-precision coordinates; that residual is the float, not the identity.)
 
 Perturbing the turn angle by 0.01 radians leaves the path open by 2.7 steps, so the closure test has
 teeth.
