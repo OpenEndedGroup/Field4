@@ -149,11 +149,15 @@ mesh: 8 vertices, 10 triangles, chi=1, 1 component(s)
 Two calls, both in `afield.stdlib`, both documented at length under
 [geometry from disk](geometry_from_disk.md):
 
+<div class="field-data-table" markdown>
+
 | you want | call |
 |---|---|
 | to know *why* this mesh is not a solid | `println(mesh.diagnose().report())` |
 | to fix it, and be told what could not be fixed | `mesh.repairToSolid()` |
 | to see where the trouble is | `showMeshDiagnosis(mesh)`, or `mesh.defectFLines()` |
+
+</div>
 
 `repairToSolid()` welds, drops degenerate and duplicated faces, removes dangling fins, fixes the
 winding, **fills the holes**, and fixes the winding again, then hands back a `MeshRepairResult`

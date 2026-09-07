@@ -404,6 +404,8 @@ In rough order of how often each turns out to be the answer:
 
 ## Where this lives
 
+<div class="field-data-table" markdown>
+
 | what | where |
 |---|---|
 | the annotation | `CommonMembers` in `src/jvmMain/kotlin/afield/util.kt` |
@@ -417,6 +419,8 @@ In rough order of how often each turns out to be the answer:
 | the guard on the prior surviving a K1 result | `CompletionPriorReceiverTest` |
 | the guard on which backend a figure captured | `tools/test_docs_runner_completion_backend.py` |
 | the internals, at length | `dev_docs/completion_aa_sidecar.md` |
+
+</div>
 
 Symbol names rather than line numbers: a line number in a page like this one is the first thing to
 rot, and a name survives every edit that does not rename it.

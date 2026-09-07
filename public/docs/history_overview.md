@@ -42,6 +42,8 @@ subject of the rest of this section.
 
 ## Picking a tool
 
+<div class="field-data-table" markdown>
+
 | I want to… | Use |
 | --- | --- |
 | Roll a document back to an earlier save | [Document history](document_history.md) |
@@ -50,3 +52,5 @@ subject of the rest of this section.
 | Understand what the agents are doing and make them do it better | [AI tool-use history](ai_tool_use_history.md) |
 | Turn scattered AI-written docs into real source comments | [AI documentation polish](ai_doc_polish.md) |
 | Find indexed workspace code by describing it | [The semantic index](semantic_index.md) |
+
+</div>

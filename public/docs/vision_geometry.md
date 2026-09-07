@@ -10,11 +10,15 @@
 
 A Live Metal program has three parts, and you write each one somewhere different:
 
+<div class="field-data-table" markdown>
+
 | Part | Where |
 |---|---|
 | **shader** | the box's `msl` property — Metal Shading Language, both entry points |
 | **geometry** | `geometry { … }` in the box's Kotlin, which runs *in the headset* |
 | **uniforms** | the `uniforms=` list on the box's `// {{ visionmetal }}` marker |
+
+</div>
 
 This page is about the middle one.
 

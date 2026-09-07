@@ -1207,6 +1207,8 @@ bridge does its own repair.
 
 ## Recipes
 
+<div class="field-data-table" markdown>
+
 | you want | the call |
 |---|---|
 | the Voronoi cells of some points | `vec2VoronoiDiagram(points).toFLines()` |
@@ -1230,6 +1232,8 @@ bridge does its own repair.
 | a cluster assignment drawn flat | `layer.toFLines(points, centers)` |
 | 3D Voronoi cells | `voronoi3d(sites)`, then `toTriMesh` from [mesh_examples](mesh_examples.md) |
 | any of it, side by side with captions | `showPlaneGrid("title\ncaption" to lines, …)` |
+
+</div>
 
 ## Where the pictures come from
 

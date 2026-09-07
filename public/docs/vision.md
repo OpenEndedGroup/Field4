@@ -77,11 +77,15 @@ Compositor Services scene with its own Metal render thread, and you live-code ag
 
 A program has three explicit parts, in three places:
 
+<div class="field-data-table" markdown>
+
 | Part | Where you write it |
 |---|---|
 | **shader** | the box's `msl` property — Metal Shading Language, both entry points |
 | **geometry** | `geometry { … }` in the box's Kotlin, which runs *in the headset* |
 | **uniforms** | the `uniforms=` list on the box's `// {{ visionmetal }}` marker |
+
+</div>
 
 ```diffstatic {data-lang=kotlin}
 // {{ visionmetal uniforms=phase,amount,tint }}

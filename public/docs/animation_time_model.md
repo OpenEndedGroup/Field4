@@ -222,6 +222,8 @@ suspend fun frame(): Boolean {
 }
 ```
 
+<div class="field-data-table" markdown>
+
 | how it stops | what actually happens |
 | --- | --- |
 | **You re-run the box.** | The launch bumps `runGeneration[strand]`. The old `Frames`'s `shouldend` closes over the *old* generation, sees the mismatch at the top of its next `frame()`, and cancels. This is the everyday one. |
@@ -231,6 +233,8 @@ suspend fun frame(): Boolean {
 | **`forever { }` returns `false`.** | Normal completion, same as above. |
 | **The body throws.** | Caught by the launcher, logged, and reported on the box as an error. |
 | **A stale launch epoch.** | If a stop landed between preparing the launch and dispatching it, `registerLaunchJob` refuses and the body never runs at all. |
+
+</div>
 
 Two of those differ by exactly one body call, and you can measure it:
 

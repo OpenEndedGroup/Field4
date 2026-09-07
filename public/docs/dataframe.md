@@ -230,11 +230,15 @@ Reusing the general machinery pays off again for nesting: a frame *inside* anoth
 
 ## Switches, and the version pin
 
+<div class="field-data-table" markdown>
+
 | what | how |
 |---|---|
 | Turn the plugin off for this JVM | `-Dafield.dataframePlugin=false` (`KotlinInterface2.kt:2959#DataFramePluginSpike`) |
 | Point at a different plugin jar | `-Dafield.dataframePlugin.jar=<path>` (`KotlinInterface2.kt:2963#lprintln("kotlin", "dataframe: plugin disabled by`) |
 | Default jar location | `libs/dataframe-plugin.jar`, git-lfs tracked |
+
+</div>
 
 The plugin jar is **not** on the app classpath. It vendors ~1000 classes of the DataFrame runtime of its own, so putting it beside the real `dataframe-core` dependency would put **two copies of `DataFrame`** in front of box code (`KotlinInterface2.kt:2940#The two plugins are located differently on purpose. Wither's jar`). `-Xplugin` loads it in the compiler's own plugin classloader, so only the compiler ever sees it — while the *runtime* goes on the classpath normally (`build.gradle.kts:952#the reproducer afield.examples.ProvideDelegateReplSmokeTest.`).
 
