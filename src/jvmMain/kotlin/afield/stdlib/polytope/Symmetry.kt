@@ -27,8 +27,8 @@ import kotlin.math.sqrt
  * Colour refinement is not a complete isomorphism invariant, so a class is a *union* of true
  * automorphism orbits and may be strictly coarser than them. Constraining a class is therefore at
  * least as strong as constraining an orbit — and on a topology where it is strictly stronger, the
- * constraint asks for an equality no embedding can deliver. Nothing here detects that case; the
- * `symmetry-orbit` family simply reports a real residual and the reader is expected to look. The
+ * constraint asks for an equality no embedding can deliver. That case is not detected: the
+ * `symmetry-orbit` family reports a real residual and the reader is expected to look. The
  * long-term fix named in `dev_docs/POLYTOPE_ALGEBRA.md` is Wythoff construction, which would supply
  * actual group orbits.
  *

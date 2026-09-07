@@ -11,17 +11,16 @@ import java.util.Locale
  * The recorded-audio waveform player: a zoomable, seekable view of a recording, as one
  * self-contained HTML fragment for a box output.
  *
- * It is *not* a spectrum analyser or a live meter — it shows audio that already exists, with the
- * interaction an editor expects (wheel to zoom, drag to pan, click to seek, a playhead that tracks
- * playback) and the browser's own transport underneath.
+ * It shows audio that already exists, rather than a spectrum or a live meter, with the interaction
+ * an editor expects (wheel to zoom, drag to pan, click to seek, a playhead that tracks playback)
+ * and the browser's own transport underneath.
  *
- * The one design decision worth knowing: what it draws is a min/max envelope of the *visible*
- * window, not the whole file decimated. Where a server can summarise a window
- * ([AudioVisualizerSource.waveformUrl] — Field Audio's waveform endpoint, for instance) the
- * component asks for one envelope per view, so an hour-long recording costs the same as a bar of
- * it; where there is no server it decodes the clip in the browser and does the same arithmetic
- * locally. Either way a single-sample click survives being drawn at 1000 points, which is the whole
- * point of a min/max envelope over an average.
+ * What it draws is a min/max envelope of the *visible* window, not the whole file decimated. Where
+ * a server can summarise a window ([AudioVisualizerSource.waveformUrl] — Field Audio's waveform
+ * endpoint, for instance) the component asks for one envelope per view, so an hour-long recording
+ * costs the same as a bar of it; where there is no server it decodes the clip in the browser and
+ * does the same arithmetic locally. Min/max rather than an average is what keeps a single-sample
+ * click visible in a window drawn at 1000 points.
  *
  * Start from `Box.displayAudio` for a URL, `Box.displayAudioSamples` for a `FloatArray` you
  * generated, or `Box.displayAudioBytes` for an encoded clip you have in memory.

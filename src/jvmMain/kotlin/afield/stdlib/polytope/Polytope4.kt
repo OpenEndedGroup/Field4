@@ -9,8 +9,8 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * Rank 4: the seeds, the coordinates and the viewing policy that keep the incidence core general
- * about being rank-general rather than a polyhedron library with a rank field.
+ * Rank 4: the seeds, the coordinates and the viewing policy that exercise the incidence core at a
+ * rank a polyhedron library never reaches.
  *
  * Four regular seeds — [fiveCell], [tesseract], [sixteenCell] and the self-dual [twentyFourCell] —
  * plus [Realization4] for coordinates, an abstract [Polytope4.dual], and [Projection4] for getting a
@@ -20,7 +20,7 @@ import kotlin.math.sqrt
  * `triangulate()`, because a projected 4-polytope's polygons do not bound a surface and filling them
  * would claim they did.
  *
- * ## The face lattice is derived, not declared
+ * ## Deriving the face lattice
  *
  * [convexPolytope4] is the one call the seeds are built from. You give it vertex coordinates and
  * outward facet normals; it works out cells, polygons, boundary orders and edges itself. So a wrong
@@ -28,7 +28,7 @@ import kotlin.math.sqrt
  * checked. The trade is in the name: the criteria it uses are true of convex polytopes and only of
  * convex polytopes.
  *
- * ## Coordinates, and why they are not `Vec3`
+ * ## Coordinates are `DoubleArray`
  *
  * Field's graphics vocabulary has no `Vec4` and should not grow one for this, so [Realization4]
  * stores plain `DoubleArray`s and every public read hands back a copy. That also means rank 4 is the

@@ -12,7 +12,7 @@ package afield.stdlib.polytope
  * what they resolved in a [TransformDeployment] — so a non-uniform operation stays inspectable and
  * replayable after the fact rather than being a number you typed once.
  *
- * ## How a selector is evaluated, and against which rank
+ * ## Evaluating a selector
  *
  * Both interfaces are single-method predicates over an [ElementSelectionContext]: the object, one
  * element, and that element's lineage when there is one. They are called once per candidate element,

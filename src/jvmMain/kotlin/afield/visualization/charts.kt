@@ -33,18 +33,9 @@ import kotlin.math.round
 import kotlin.math.sin
 
 //
-// REACH FOR PLOTLY FIRST. `plotly.kt` — `showSignals`, `linePlot`, `scatter`, `violin` — is the
-// default for a chart, and it is better at being one: real text rather than glyph geometry, a plot
-// that reflows to its panel instead of being fitted and centred, and axis types (log, subplots, box)
-// this file deliberately does not carry.
-//
-// What is here is the FLine tier, for the three things Plotly cannot do:
-// 1. compose a chart with other FLine geometry in one drawing under a shared transform;
-// 2. pick — `FLine.onClick`/`hoverColor` giving a hit record with the element and local `(u, v)`;
-// 3. [Chart.expect] — an expectation band with its out-of-band points marked and counted.
-//
-// If a figure needs none of those three, it should be a Plotly plot. See
-// `dev_docs/chart_primitive.md` for the comparison capture that settled this.
+// REACH FOR PLOTLY FIRST — see the file KDoc below. `pick` here means
+// `FLine.onClick`/`hoverColor` giving a hit record with the element and local `(u, v)`. If a figure
+// needs none of the three, it should be a Plotly plot.
 //
 /**
  * Plots — the structure, the scales, and the one renderer for them.
@@ -54,44 +45,32 @@ import kotlin.math.sin
  * and a box whose last expression is a `Chart` all render through [Chart.toHTML]; [Box.showChart]
  * is the terse form.
  *
- * ### Why this exists
+ * ### This file or `plotly.kt`
  *
- * The same argument [Table] was written for, one step further along. Measured on `d7d8dccc2`,
- * sixteen files under `src/` draw their own axes and ticks across six unrelated media — AWT
- * `Graphics2D` (`FunctionsPlotGallery`, `DoughDspPlotGallery`), SVG strings (`stats.kt`,
- * `ValueVisualizer`, the `Pat*` galleries), raster pixels (`AlifeGallery`, `SonicPiPatternProbe`),
- * JS inside an iframe (`Functions.kt`, `FunctionGraphBrowser`), RectSL rectangles (`RectSL.kt`), and
- * FLines (`MorphoSearchFLines`, `AbletonSetDebugDrawing`) — and share no code at all.
+ * `plotly.kt` — `showSignals`, `linePlot`, `scatter`, `violin` — is the default, and better at being
+ * a chart: real text rather than glyph geometry, a plot that reflows to its panel instead of being
+ * fitted and centred, and log, subplot and box axes this file does not carry. Reach for a [Chart]
+ * for the three things Plotly cannot do: composing a plot with other FLine geometry in one drawing
+ * under a shared transform, picking, and [Chart.expect].
  *
- * Worse than the drawing is the *arithmetic*. Heckbert's nice-number tick algorithm had been written
- * **five** times over — `RectSL.kt:3138`, `FunctionsPlotGallery.kt:369`, `DoughDspPlotGallery.kt:575`,
- * and twice more as JavaScript in `Functions.kt:3383` and `FunctionGraphBrowser.kt:487` — every copy
- * `private` or embedded in a string literal, so no caller could reach one and two of them could
- * silently disagree about where a gridline goes. [niceTicks] is that algorithm, once, in public.
- *
- * ### What is actually new here
- *
- * Field already had most of the pieces: `List<FLine>.fitInto`, `planeFigureHtml`'s window→frame
- * mapping, and `MorphoSearchFLines.plotFrame`'s FLine gridlines. What it did not have — and says so
- * in a comment at `MorphoSearchFLines.kt:51` — is **an axis with text on it**, because
- * `showPlaneGrid` has nowhere to put a label. So the labels here are real glyph geometry
- * ([labelLines]) -- filled, with their counters intact -- which is what makes this a chart rather
- * than a grid.
+ * Axis labels here are real glyph geometry ([labelLines]), filled and with their counters intact,
+ * because `showPlaneGrid` has nowhere to put text. [niceTicks] is Heckbert's nice-number tick
+ * algorithm in public. `dev_docs/chart_primitive.md` holds the Plotly comparison capture and the
+ * survey of what each medium in the repo was drawing for itself.
  *
  * ### Marks pick themselves up
  *
  * `Box.lines` switches to the interactive SVG renderer the moment any line carries
- * [FLine.onClick] or [FLine.hoverColor] (`someSkiko.kt:37`). Point and bar marks set both, so
- * hovering a bar and clicking a datum work *by construction* rather than by configuration — see
- * [Chart.pickable] for the escape hatch and the cost.
+ * [FLine.onClick] or [FLine.hoverColor] (`someSkiko.kt`). Point and bar marks set both, so hovering
+ * a bar and clicking a datum need no configuration — see [Chart.pickable] for the escape hatch and
+ * the cost.
  *
- * ### The part that is not formatting
+ * ### Chart.expect
  *
- * [Chart.expect], exactly as in [Table]. A plot in a doc or a live box usually carries a claim —
- * "no residual exceeds 1e-6", "every voice stayed inside the guard band" — and a reader is
- * otherwise asked to verify it by eye. State the claim and it is *drawn* as a band, the data outside
- * it recolours, the footnote says how many points broke it, and [Chart.deviations] hands the same
- * list to a test.
+ * Exactly as in [Table]. A plot in a doc or a live box usually carries a claim — "no residual
+ * exceeds 1e-6", "every voice stayed inside the guard band". State the claim and it is *drawn* as a
+ * band, the data outside it recolours, the footnote says how many points broke it, and
+ * [Chart.deviations] hands the same list to a test.
  */
 
 // ==============================================================================================

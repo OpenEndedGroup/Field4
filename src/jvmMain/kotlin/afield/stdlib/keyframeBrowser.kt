@@ -44,12 +44,12 @@ import kotlin.streams.asSequence
  * they were written. So this pivots to slots, and every summary here is computed across files
  * rather than within one.
  *
- * ## What is read, and what is not
+ * ## What `load` reads
  *
  * [load] decodes each matched file straight to [KeyDTO] rather than going through
- * [KeyframeScope.loadKey]. That is deliberate: `loadKey` fills [KeyframeScope.missingKey] defaults
- * for names a file lacks, which is exactly right when you are about to apply a key and exactly wrong
- * when you are trying to *see* which names a file lacks. The browser wants the file as written.
+ * [KeyframeScope.loadKey], which fills [KeyframeScope.missingKey] defaults for names a file lacks —
+ * exactly right when you are about to apply a key and exactly wrong when you are trying to *see*
+ * which names a file lacks. The browser wants the file as written.
  *
  * Version history is read lazily. [load] calls [KeyframeScope.keyVersions] for each file, which
  * lists a directory and parses one manifest, but it does not open the numbered snapshots. Those are
@@ -59,8 +59,8 @@ import kotlin.streams.asSequence
  * ## Failure is per-file
  *
  * A collection with one unparseable file still browses. [load] records the failure in
- * [KeyframeCollection.problems] and carries on, because the alternative — one bad file making the
- * other nine invisible — is how you lose an afternoon.
+ * [KeyframeCollection.problems] and carries on, so one bad file does not make the other nine
+ * invisible.
  */
 
 // ---------------------------------------------------------------------------------------------
@@ -345,9 +345,8 @@ class KeyframeCollection(
      */
     val scopeSlots: Set<String> = emptySet(),
     /**
-     * Whether a live scope was passed to [load] at all — which is **not** the same question as
-     * whether [scopeSlots] is empty, and conflating the two is what made the orphan marker below
-     * impossible to draw safely.
+     * Whether a live scope was passed to [load] at all, which is **not** the same question as
+     * whether [scopeSlots] is empty. The orphan marker below needs both answers.
      *
      * A read-only browser (no scope) has no opinion about which slots are live, so every saved slot
      * would look orphaned. A scope that is attached and watches nothing has a very strong opinion:
@@ -366,12 +365,11 @@ class KeyframeCollection(
     val skipped: List<SkippedFile> = emptyList(),
     /**
      * True when the hidden-key survey stopped at [HIDDEN_SCAN_BUDGET] rather than finishing. The
-     * counts below are then floors, not totals, and [skipSummary] says so — a truncated survey that
-     * reports a total is how an absence gets claimed from a population that was silently redefined.
+     * counts below are then floors, not totals, and [skipSummary] says so.
      */
     val skipSurveyTruncated: Boolean = false
 ) {
-    /** Readable keys that the pattern excluded — the count that would have caught the `?`/`??` trap. */
+    /** Readable keys that the pattern excluded: keys on disk the glob did not reach. */
     val hiddenCount: Int get() = skipped.count { it.kind == SkipKind.Hidden }
 
     /** Files that were never keys. A notice, not an alarm. */

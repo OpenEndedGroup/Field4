@@ -17,7 +17,7 @@ import kotlin.math.sqrt
  * cycles and the initial coordinates once per solve, and hands a constraint nothing but flat
  * `DoubleArray` coordinates and integer indices — no [ElementId] bookkeeping, no FLines, no renderer.
  *
- * ## Units, and what a weight of 1 means
+ * ## Units, and what a weight multiplies
  *
  * Every residual in this file is a **length in the units of the coordinates**, and every one is
  * written as `weight * (measured - goal)`. So the families are directly comparable to each other, and
@@ -64,7 +64,7 @@ import kotlin.math.sqrt
  * `topology.elements(0)` and therefore as [Realization3].
  */
 class RealizationProblem private constructor(
-    /** The object the indices were derived from; its own coordinates are no longer authoritative. */
+    /** The object the indices were derived from. Its own coordinates are a starting point, not the ones being solved. */
     val polyhedron: PolyhedralObject,
     internal val edgeEndpoints: IntArray,
     internal val faceCycles: List<IntArray>,
@@ -372,8 +372,8 @@ data class ProximityConstraint(
  * points, and mixing the two centres is the classic way to make this constraint fight itself. Pair
  * it with [TangencyCentroidConstraint].
  *
- * One residual per edge, in coordinate units. Known defect, worth knowing before trusting a converged
- * run: the measurement is to the nearest point of the infinite *line* through the two endpoints, and
+ * One residual per edge, in coordinate units. It carries a defect that bites a converged run: the
+ * measurement is to the nearest point of the infinite *line* through the two endpoints, and
  * as an edge collapses that line's direction becomes arbitrary, so a collapsed edge can place its
  * tangency point anywhere on the sphere and satisfies this constraint for free. Collapsing an edge
  * therefore *removes* a constraint, and the canonical objective has exact zero-cost minima in which

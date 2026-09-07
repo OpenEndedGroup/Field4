@@ -34,29 +34,22 @@ import kotlin.reflect.jvm.isAccessible
  *
  * `.h2` renders a value three separate times — the `Browsable` tree behind `/tree` and `/browse`,
  * the row/column stream behind the embedded `/h2-explorer` iframe, and the summary line in the
- * widget itself. Before this file, only collections had all three; anything else fell through
- * [LazyValueVisualizer.visualize]'s opening guard to `ValueVisualizer` and `.h2` was byte-for-byte
- * `.h`. Registering a per-type [H2ValueSnapshot] adapter was the only escape, and the registry
- * shipped on 2026-06-14 carrying one adapter written in the same commit (`FrameBufferGroup`) and had
- * gained exactly one more before this file existed — `DataFrame`, on 2026-08-21, thirteen days
- * earlier. Two, against **54** `registerValuePrinter<` call sites on the older `.h` seam, 50 of them
- * production (`git grep -c 'registerValuePrinter<' -- '*.kt'` over 7 files, with 3 occurrences in a
- * test and 1 in a `dev_docs` sample). So the registration strategy was never going to lift the
- * population.
+ * widget itself. This file computes the children all three read, reflectively and for any type. A
+ * per-type [H2ValueSnapshot] adapter is the alternative, and stays the route for a type whose
+ * getters this cannot walk safely; without either, a non-collection falls through
+ * [LazyValueVisualizer.visualize]'s opening guard to `ValueVisualizer` and `.h2` renders as `.h`.
  *
- * [properties] is deliberately the *single* enumerator. `/tree` reading one set of children and the
- * iframe reading another is the kind of divergence you only notice when a person says "it says four
- * fields over here and six over there", so both go through here.
+ * [properties] is the *single* enumerator, so `/tree` and the iframe cannot disagree about how many
+ * fields a value has.
  *
  * ## What this does not know
  *
  * A `KProperty1` getter is opaque: there is no way to tell a field read from a computed property
- * that opens a file, allocates a GPU buffer or — the case that actually bit — builds a K2 REPL
- * engine. `Box.ki` is a `lazyVar` that compiles on read, which is exactly why [Box] is served by a
- * hand-written adapter in `H2DomainAdapters.kt` rather than by this file. The two narrowings in
- * [readsWellInline] (platform packages, and types whose `.h` rendering *is* the value) are the
- * general mitigation; they are not a proof. If a type's getters are expensive or effectful, give it
- * an adapter.
+ * that opens a file, allocates a GPU buffer or builds a K2 REPL engine. `Box.ki` is a `lazyVar`
+ * that compiles on read, which is why [Box] is served by a hand-written adapter in
+ * `H2DomainAdapters.kt` rather than by this file. The two narrowings in [readsWellInline] (platform
+ * packages, and types whose `.h` rendering *is* the value) mitigate the general case rather than
+ * settling it. If a type's getters are expensive or effectful, give it an adapter.
  */
 
 /** One reflectively-read property of a domain object. [failure] is non-null when its getter threw. */

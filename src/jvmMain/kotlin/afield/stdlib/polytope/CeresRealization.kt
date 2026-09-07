@@ -26,8 +26,8 @@ import afield.stdlib.ceres.Vec3 as CeresVec3
  * pure-Kotlin path here, and nothing is committed. Build it once with
  * `./gradlew buildCeresRedistributable`; see `dev_docs/CERES.md`.
  * [ceresRealizationAvailable] answers whether this JVM has one, and [PolyhedralObject.relaxWithCeres]
- * throws a description of what is missing rather than falling back to [PolyhedralObject.relax], because
- * a silent fallback would make every comparison between the two a lie.
+ * throws a description of what is missing rather than falling back to [PolyhedralObject.relax], so a
+ * result reported as Ceres's was solved by Ceres.
  *
  * ## What it buys
  *
@@ -35,11 +35,11 @@ import afield.stdlib.ceres.Vec3 as CeresVec3
  * Jacobian and forms a dense `3V x 3V` normal matrix every iteration; Ceres differentiates each
  * residual analytically over only the parameters it touches and can factor the sparse normal equations,
  * so the per-iteration cost tracks the number of *incidences* rather than the square of the vertex
- * count. On the objective that matters that is the difference between an answer and no answer: `kkC` and
- * `kkD` reach a tangency spread of `1e-8` in 12 iterations and about 6 ms, where `relax` takes 1507 ms
- * and does not converge at all. Plus a real termination report in [CeresSolveSummary].
+ * count. On `kkC` and `kkD` that decides whether there is an answer at all: both reach a tangency
+ * spread of `1e-8` in 12 iterations and about 6 ms, where `relax` takes 1507 ms and does not converge.
+ * Plus a real termination report in [CeresSolveSummary].
  *
- * It is a *second implementation of the same declared objective*, not a replacement:
+ * A second implementation of the same declared objective, running alongside the built-in one:
  * same plan in, the same [RealizationSolveResult] out, the same [RigidGauge] applied afterwards, so the
  * two can be run on one plan and diffed. Three places where they genuinely differ — the plane
  * parameterisation, the weight convention and the robust loss — are set out on [CeresRealization], and
