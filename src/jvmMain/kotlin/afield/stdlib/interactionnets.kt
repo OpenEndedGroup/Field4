@@ -2325,7 +2325,8 @@ object Lambda {
      * structure.
      *
      * A fresh book each call, so it is cheap to keep one in a `val` and cheap to build a variant from. Every rule also
-     * emits an event (`"beta"`, `"erase"`, `"dup"`, …) and splits or attenuates node energy as it goes, which is what
+     * emits an event — the whole vocabulary is `"beta"`, `"erase"`, `"prune"`, `"duplicate"`, `"branch"` and
+     * `"annihilate"` — and splits or attenuates node energy as it goes, which is what
      * makes a reduction visibly decay rather than merely rewire — so the energies here are art direction, not semantics.
      *
      * Not a complete optimal reducer: there is no fan/fan commuting rule and no lambda frontend. Enough to watch beta
