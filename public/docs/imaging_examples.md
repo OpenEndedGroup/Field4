@@ -1,8 +1,9 @@
 # Imaging and computer vision
 
-`afield.stdlib` carries a CPU imaging / computer-vision family: one value type, `Img`, and the
-operations that turn a raster into structure: convolution, gradients, edges, corners, lines,
-blobs, pyramids, warps and motion. It is the raster counterpart to the time-domain
+`afield.stdlib` can look at a picture as well as make one. Its CPU imaging and computer-vision
+family has a single value type, `Img`, and around it a set of operations that turn a raster into
+structure, from convolution and gradients up through edges, corners, lines, blobs, pyramids, warps
+and motion. It is the raster counterpart to the time-domain
 [timeseries toolkit](timeseries_examples.md) and the frequency-domain
 [spectral family](spectral_examples.md), and it is built the same way: pure Kotlin, no external
 dependency, works headless in a box.
@@ -306,9 +307,9 @@ becomes a smooth curve with no glue code.
 
 `gaussianPyramid(levels)` halves each octave (blurring first, so it does not alias);
 `laplacianPyramid(levels)` splits the image into band-pass detail plus a coarse residual, and
-`reconstruct()` inverts it. The round-trip is exact to within float precision (**1.49e-08**
-maximum absolute error on the figure below), which is what makes the decomposition usable for
-multiband blending and detail transfer rather than just for looking at.
+`reconstruct()` inverts it. The round-trip is exact to within float precision, at a maximum
+absolute error of **1.49e-08** on the figure below. That is small enough to build multiband
+blending and detail transfer on, rather than only to look at.
 
 ![](assets/imaging_gallery/07-pyramids.png)
 
@@ -448,8 +449,8 @@ same pixels: `tools/imaging-bench`, run with
 ./gradlew :tools:imaging-bench:jmh
 ```
 
-The filters sit on a small layer of vectorized span kernels (Java Vector API, `imaging_simd.kt`),
-and `Img`'s storage is what makes that work: samples are interleaved,
+The filters sit on a small layer of vectorized span kernels (Java Vector API, `imaging_simd.kt`).
+Spans are available at all because of how `Img` stores samples. They are interleaved, at
 `data[(y * width + x) * channels + c]`, so adding `(t - r) * channels` to a flat index lands on the
 same channel of the pixel `t - r` columns over. For a fixed tap the whole interior of a row is one
 contiguous span, and a separable convolution collapses to `dst += w * src` over that span. The
