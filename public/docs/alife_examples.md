@@ -78,15 +78,15 @@ Things it does not do, so you are not surprised:
 
 `B3/S23` is the most-studied dynamical system in computing, which is exactly why it is the right place
 to start: there are *facts* about it to be checked. The glider translates one cell diagonally every
-four generations. The block is a still life. The blinker has period two. And the R-pentomino, five
-cells, runs for 1103 generations, peaks at a population of 319 at generation 821, and settles to 116
+four generations. The block is a still life. The blinker has period two. And the R-pentomino (five
+cells) runs for 1103 generations, peaks at a population of 319 at generation 821, and settles to 116
 cells, six of which are gliders still flying away.
 
 That last one has a subtlety worth the space, because it is the difference between a check and a
 flattering approximation. Those figures are about an *unbounded* board. On a board with walls the
 gliders are destroyed, and the system instead becomes exactly periodic at generation 1164 with 110
 cells. Both answers are correct; they are answers to different questions. So the box below runs on a
-620-wide board, wide enough that no glider can reach an edge in 1103 generations, and asserts
+620-wide board (wide enough that no glider can reach an edge in 1103 generations) and asserts
 [`liveBounds`](reference/alife.md#alife-kt-intgrid) to *confirm* the walls never took part rather than
 assuming it.
 

@@ -356,9 +356,10 @@ displayOpen("probe")
 
 plus one call in the shader, `fieldProbe(speed)`, next to the value while it is in scope. The shader
 keeps exact counts and exact min/max with atomics and reservoir-samples the raw values, so what comes
-back per snapshot is a few thousand numbers rather than a few hundred thousand, an unbiased sample of
-the whole population rather than the first few thousand invocations. [Field
-Probes](field_probes.md) is the full account, including the GPU-only sibling `fieldStats`.
+back per snapshot is a few thousand numbers rather than a few hundred thousand. The reservoir is
+what makes those few thousand an unbiased sample of the whole population, rather than whichever few
+thousand invocations happened to run first. [Field Probes](field_probes.md) is the full account,
+including the GPU-only sibling `fieldStats`.
 
 For the scene above, that card reports 40,000 calls, all finite, none NaN, over a reservoir of 4,096.
 Those four never move. The mean per-particle speed and the exact maximum do, because the noise field

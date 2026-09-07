@@ -259,8 +259,8 @@ showImgGrid(
 
 The middle panel is **correct**. Every adjacent pair in it is a pair present in the source, and the
 set of band-to-band edges it contains is a subset of the set the source contains, and `WfcGallery`
-asserts both. It is also nothing like the source: a speckle of grass and forest with a little sand,
-and, look at the histogram, **no water at all**, where the source was 29% water.
+asserts both. It is also nothing like the source: a speckle of grass and forest with a little sand
+and — look at the histogram — **no water at all**, where the source was 29% water.
 
 That is not bad luck with the seed. Every seed does this; the model is *bistable*. Grass and forest
 are the source's majority bands and they may touch each other, so they form a mutually reinforcing
@@ -386,13 +386,13 @@ subset property.
 **They are coastlines, and they are not islands.** What the model reproduces is the source's local
 *grammar*: the bands appear in chain order, every land-water boundary carries a one-cell sand fringe,
 forest sits inside grass and never touches water. What it does not reproduce is the source's
-*composition*, the fact that all of this was arranged into one closed ring. Composition is global
+*composition* — the fact that all of this was arranged into one closed ring. Composition is global
 and an adjacency table is definitionally local, so no amount of tuning closes that gap. A 40 × 26
 output is a crop of a much larger world, and a coast running across a crop of a world is the correct
 answer.
 
-Measured against the source, the local statistics land where they should. Mean coherence, the
-fraction of adjacent cell pairs holding the same band, is **0.850** across the twelve, against the
+Measured against the source, the local statistics land where they should. Mean coherence (the
+fraction of adjacent cell pairs holding the same band) is **0.850** across the twelve, against the
 source's 0.713 and the one-colour model's 0.468. It is *more* coherent than its own source, which is
 what you would expect from a model that has learned the interiors are large and the boundaries are
 thin, and is under no obligation to also put a shoreline in any particular place.
@@ -618,8 +618,8 @@ showImgGrid(
 Three things in one picture.
 
 The middle panel is what translation invariance costs. It is a correct answer (every 3×3 window in
-it appears in the source and every neighbouring pair agrees on its overlap) and it has **no ground at
-all**: a sky full of flowers whose stems run off the bottom edge with nothing to grow out of. Nothing
+it appears in the source and every neighbouring pair agrees on its overlap), and it has **no ground
+at all**: a sky full of flowers whose stems run off the bottom edge with nothing to grow out of. Nothing
 in an adjacency table can say where anything belongs, so "the soil goes at the bottom" is not a fact
 this model has access to. Pinning the top and bottom rows with `forceTile` supplies it, and the
 bottom panel is what the same rules produce once they have it.
@@ -789,8 +789,8 @@ with an explicit `lo = 0f, hi = tileCount` so the colours mean the same thing in
 to the default, the range would rescale per frame and an animation of the collapse would appear to go
 nowhere.)
 
-Read either row and the algorithm is legible. It nucleates, the first collapse creating an island of
-certainty, and then decisions spread outward from what has already been decided, because
+Read either row and the algorithm is legible. It nucleates. The first collapse creates an island of
+certainty, and every decision after it spreads outward from what is already decided, because
 lowest-entropy always means "next to something known". The bright rim in the entropy row is the
 frontier: cells that have been constrained but not yet decided. Interior cells stay at the full
 option count, untouched, until the front reaches them. That is also why WFC is fast in practice
@@ -862,8 +862,8 @@ Everything above had to be *arranged*: pick a view, colour-map it, choose a rang
 it to a channel. That is the right amount of work for a figure on a page and far too much for the
 thing you actually do a hundred times an hour while live coding, which is: look at the object.
 
-So `WfcSolver` implements `ToHTML`. Evaluating a solver, as a box's last expression or via `.h`
-anywhere, draws its state instead of a reflective property tree. No tile set is needed, because none
+So `WfcSolver` implements `ToHTML`. Evaluating a solver (as a box's last expression, or via `.h`
+anywhere) draws its state instead of a reflective property tree. No tile set is needed, because none
 of these panels claims to show the tileset's colours:
 
 | panel | colour means | scale |
@@ -966,7 +966,7 @@ the same count and very different entropy, and it is entropy the solver sorts on
 the one that predicts where it will work next. The decided-tiles panel is the answer to "on what?".
 
 The contradicted row is the case this view exists for. One cell is magenta in the count panel and
-cyan in the entropy panel (no possibilities left, and therefore no entropy) which localises the
+cyan in the entropy panel (no possibilities left, and therefore no entropy), which localises the
 failure to a coordinate immediately. Reading `WfcStatus.Contradiction` off a `println` tells you only
 that something went wrong somewhere.
 
@@ -1207,7 +1207,7 @@ before was not that each field had a grain but that *every* field had the *same*
 numbers apart, because averaging the two roughnesses before dividing reports a flattering `1.0×` for
 a model whose every individual output is still strongly banded.
 
-Reach for `WfcSymmetry.None`, the default, whenever up is real: §4's flowers grow upward, and a
+Reach for `WfcSymmetry.None` (the default) whenever up is real: §4's flowers grow upward, and a
 model free to rotate them would grow them sideways out of the soil. Reach for `All` for heightfields,
 masks, noise and terrain. `Rotations` and `Reflections` are the in-between cases; a source with a
 left-right symmetry but a genuine up wants `Reflections` alone.
@@ -1227,8 +1227,8 @@ what a hill is.
 
 Four practical notes. Quantising is not optional, because `sliceIntoUniqueTiles2D` dedupes on exact
 float equality; the number of levels is your tile alphabet and therefore your cost knob. Pinning the
-whole border of the *pattern* model over-constrains it into a contradiction (a corner would have to
-satisfy the ring in both directions at once) which is why only the tiled model is pinned here.
+whole border of the *pattern* model over-constrains it into a contradiction — a corner would have to
+satisfy the ring in both directions at once — which is why only the tiled model is pinned here.
 `sliceIntoOverlappingPatterns2D` grows fast: six levels over a 26 × 18 source already gives 180
 distinct 3 × 3 windows, and rule learning compares every pattern against every other. And
 `expandSymmetry` multiplies exactly that number, so it is the one knob here that can turn a
@@ -1237,7 +1237,7 @@ comfortable model into a slow one, so measure before reaching for `All` on a lar
 This is the section to steal from if you want WFC to produce something other than pictures. The
 output is a `FloatArray`, and nothing downstream cares that a constraint solver made it: it is
 equally a heightfield to displace geometry with, a mask to composite through, a weight map to drive a
-particle system, or, as here, a thing to contour into `FLine`s and then draw, animate and export
+particle system, or (as here) a thing to contour into `FLine`s and then draw, animate and export
 like anything you laid out by hand.
 
 ## 8. Contradictions, seeds and reproducibility
@@ -1452,7 +1452,7 @@ region" is not, at any window size or neighborhood radius. Supply it with `force
 you are generating a crop of a larger world.
 
 **Before pinning a cell in an overlapping model, check what that pattern can be followed by.** A
-uniform window, all one colour, is a trap when the band it came from is thinner than the window:
+uniform window (all one colour) is a trap when the band it came from is thinner than the window:
 `allowedCount` will show it has itself as its only successor in some direction, so pinning one cell
 to it floods the whole grid and any second pin contradicts. Pin a window that contains a boundary
 instead, or use a smaller window.
@@ -1485,8 +1485,8 @@ of these four is WFC-specific:
   ahead of a script-local `val` of the same name once you are inside a lambda with its own receiver.
   `outW`/`outH`/`skyPattern` are not paranoia, and `throw` beats `error(...)`.
 - **`display(channel, x)` replaces that channel's contents; it does not append.** Text and a picture
-  need two channels, or one payload that contains both. `showImg(img, caption = …)` is the latter,
-  a single `<figure>`, but in an *animation* prefer drawing the label into the raster with `montage`
+  need two channels, or one payload that contains both. `showImg(img, caption = …)` is the latter
+  (a single `<figure>`), but in an *animation* prefer drawing the label into the raster with `montage`
   and pushing the bytes: one `display` per frame, and nothing for the browser to re-parse.
 
 ## The loadable demo
@@ -1497,9 +1497,9 @@ Everything above as a Field document you can open and edit:
 `dev_docs/agents/transcripts/wfc_worked_example.yaml`, is executed on every build.
 
 `afield.examples.stdlib.WfcGallery` (`stdlib.wfc.gallery`) renders the figures, and asserts for every
-grid that every adjacent pair is an allowed pair, that the adjacency relation is symmetric, that the
-output is not degenerate, and, for the terrain figures, that the set of terrain edges in the output
-is a subset of the set in the source.
+grid that every adjacent pair is an allowed pair, that the adjacency relation is symmetric, and that
+the output is not degenerate. On the terrain figures it also asserts that the set of terrain edges in
+the output is a subset of the set in the source.
 
 Three of its checks are there to hold prose on this page to account. §2's twelve coastlines must all
 solve, must use only pairs the source contained (`observedAllows`, not merely `allows`), and must come
