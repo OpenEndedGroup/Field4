@@ -421,12 +421,16 @@ A program with inputs and no `input` argument hears silence, which looks like a 
 Both halves of Faust run inside the GraalVM runtime Field already uses for `dough.wasm`, and they have
 opposite performance profiles. Measured on an M-series Mac, GraalVM CE 25.0.2:
 
+<div class="field-data-table" markdown>
+
 | | Measured | |
 |---|---|---|
 | **A playing voice, end to end** | 60.4µs per 128-frame block against a 2667µs budget | **44× realtime** |
 | **The `compute` call alone** | 7.6µs per block | 353× realtime |
 | **The compiler, warm** | ~600ms per compile | ~20× slower than V8 |
 | **The compiler, cold** | 13–22s for the first compile in a process | Truffle warm-up |
+
+</div>
 
 The two render figures say different things. Faust's generated code is very fast (7.6µs), and almost
 everything else in the 60.4µs is the cost of crossing between the JVM and WebAssembly once per block:

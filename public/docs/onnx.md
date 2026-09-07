@@ -383,11 +383,15 @@ problem: a large asset that must not live in the repository.
 Measured on Apple Silicon with 10 cores, at 518² unless stated, and quoted from `OnnxRuntime`'s own
 KDoc. Every row contradicts a plausible guess:
 
+<div class="field-data-table" markdown>
+
 | the guess | what was measured | so |
 |---|---|---|
 | CoreML will accelerate this | 43 of 848 nodes claimed, across 19 partitions; ≈470ms vs ≈388ms for CPU | CoreML is **slower**; `AUTO` resolves to CPU |
 | fp16 weights will run faster | ≈462ms vs ≈388ms — every operator upcasts | fp16's win is download size, **not** speed |
 | pinning threads will help | `setIntraOpNumThreads(4)` gave ≈457ms vs ≈388ms for ORT's default | leave `intraOpThreads` at 0 |
+
+</div>
 
 The fp16 row is the one the name misleads you about: an HF `model_fp16.onnx` still has fp32 *tensors*,
 so nothing is saved at the ORT boundary. Pick it to save 50 MB of disk, never to save time.
@@ -453,11 +457,15 @@ The depth figure and the CLIP figure are executed by the docs build every time, 
 the image under each is that box's own output. The other three Kotlin blocks are illustration, and are
 marked as such where they appear:
 
+<div class="field-data-table" markdown>
+
 | block | why it is not executed | what stands behind it |
 |---|---|---|
 | the orientation snippet | `rgbaBytes` is left undefined | every call in it, via both smokes |
 | the session-cache do/don't | half of it is an anti-example that *must* not run | `OnnxSmokeTest.testSessionIsCached` |
 | the worker + `StreamingTexture` | needs a Vulkan device and a webcam | the ONNX half, via `testWorkerPublishesAFrame`; the buffer stride, via `testFp16BufferMatchesVulkanStride` |
+
+</div>
 
 So **`StreamingTexture(...)` and `recordUpload(...)` are the only lines on this page that nothing in
 this repository checks.** The bar in that third column is a narrow one: an assertion somewhere that

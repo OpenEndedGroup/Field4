@@ -31,11 +31,15 @@ actually stops.
 Three different questions are easy to confuse, and most mistakes in this area come from
 answering one when you meant another:
 
+<div class="field-data-table" markdown>
+
 | question | what answers it in Field | what it stops |
 | --- | --- | --- |
 | which **machine** is this from? | `isLoopbackDocsClient`, on the socket's remote address | stops: another device on the wifi |
 | which **website** is this from? | `isSameSiteRequest`, on `Host`, `Sec-Fetch-Site` and `Origin` | stops: a page open in *your* browser |
 | **who** is this? | nothing — there is no `install(Authentication)` in the tree | stops: nothing |
+
+</div>
 
 Note the third row. Field has no login, no token on most routes, no
 per-request credential. Everything below is a defence about *where a request came from*, not

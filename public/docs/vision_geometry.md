@@ -58,6 +58,8 @@ The whole of it, in one place. `geometry { … }` hands you a `MeshBuilder` with
 twelve<!--count:visionGeometryBuilderMethods--> methods and nothing else, and the rest of this page is
 those twelve in detail.
 
+<div class="field-data-table" markdown>
+
 | What it does | Where | Anchor |
 |---|---|---|
 | current normal for following vertices | `VisionMetalKotlinJs.kt:67` | `fun normal(` |
@@ -72,6 +74,8 @@ those twelve in detail.
 | quad lattice on XY facing `+z` | `VisionMetalKotlinJs.kt:192` | `fun plane(` |
 | UV sphere with shared normals | `VisionMetalKotlinJs.kt:220` | `fun sphere(` |
 | sweep a polygon along a polyline | `VisionMetalKotlinJs.kt:260` | `fun tube(` |
+
+</div>
 
 The first four set *state* and return the builder, so they chain and apply to everything appended
 after them. The next three build faces from indices. The last four append whole shapes.

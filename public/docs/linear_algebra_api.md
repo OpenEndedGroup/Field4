@@ -6,11 +6,15 @@ This page is generated from the typed algebra model that emits Field's heap, fra
 
 ## One algebra, three storage forms
 
+<div class="field-data-table" markdown>
+
 | Storage | Types | Lifetime and use |
 | --- | --- | --- |
 | Heap | `Vector2f`, `Vector3f`, `Vector4f` | Ordinary mutable values; persistent state and the normal case |
 | Frame arena | `ArenaVec2f`, `ArenaVec3f`, `ArenaVec4f` | Temporary values inside `frameScratch` or an explicit `FrameArena` scope |
 | Segment view | `SegmentVec2f`, `SegmentVec3f`, `SegmentVec4f` | Non-owning views into packed, aligned, direct, foreign, or mapped memory |
+
+</div>
 
 All destination overloads write into `dest`, return it, permit input/destination aliasing, and allocate no result.
 

@@ -492,12 +492,16 @@ Manifold ships a **C** binding library beside its C++ one (`libmanifoldc`, from 
 Homebrew's bottle contains it. That is what makes this binding small, and it is the whole argument for
 FFM over JNI, because the alternative needs a compiled shim per platform and this needs nothing:
 
+<div class="field-data-table" markdown>
+
 | | Ceres, the other native solver here | Manifold |
 |---|---|---|
 | upstream API | C++ templates only | C++ **and** a C ABI |
 | so Field needs | a hand-written C++ wrapper (`native/ken-ceres`) | nothing |
 | build step | `./gradlew buildCeresRedistributable`, minutes | `brew install manifold`, seconds |
 | ABI drift guarded by | a version string we invented | upstream's own SO version |
+
+</div>
 
 Three shapes of call, and what each one asks for:
 

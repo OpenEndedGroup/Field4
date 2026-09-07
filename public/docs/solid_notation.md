@@ -37,6 +37,8 @@ println(part)          // Difference(children=[Union(children=[Cuboid(x=4.0, …
 A `SolidExpr` lowers two ways, and [`afield.manifold`](manifold.md) supplies the second of them. The
 two could hardly be more different:
 
+<div class="field-data-table" markdown>
+
 | | `toScalarField()` | `exactSolid()` |
 |---|---|---|
 | what the shape becomes | a distance field, sampled on a grid | a CSG tree, evaluated exactly |
@@ -46,6 +48,8 @@ two could hardly be more different:
 | a gyroid is | native | **refused** |
 | runs on a GPU | yes, via `toGlsl()` | no |
 | safe to subtract from | not reliably | always |
+
+</div>
 
 Neither is a superset of the other. A shape put through both has been measured twice by routes with
 nothing in common.

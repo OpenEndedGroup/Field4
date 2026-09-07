@@ -29,12 +29,16 @@ has anything to do with sound.
 
 ## Where the family lives
 
+<div class="field-data-table" markdown>
+
 | what you have | what to call | what comes back |
 |---|---|---|
 | equal-length vectors, and you want cosine or Euclidean distance computed for you | `smileMds` (`smile_mds.kt:88#fun smileMds(`) | `SmileMdsProjection` — `coordinates`, `scores`, `proportion` |
 | **a symmetric distance matrix you built yourself** | `smileMdsDistances` (`smile_mds.kt:159#fun smileMdsDistances(`) | `SmileMdsProximityProjection` — the same three, plus the `label` you passed |
 | vectors, but you care about local neighbourhoods rather than global geometry | `smileTsne` (`smile_mds.kt:180#fun smileTsne(`) | `SmileTsneProjection` — `coordinates`, `cost`, `seed` |
 | **your own matrix, t-SNE** | `smileTsneDistances` (`smile_mds.kt:240#fun smileTsneDistances(`) | `SmileTsneProximityProjection` |
+
+</div>
 
 `SmileMdsDistance` is `COSINE` or `EUCLIDEAN` and only matters to the two vector-taking calls; the
 matrix-taking calls never see your vectors at all, which is exactly why they accept a distance no

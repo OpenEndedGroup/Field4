@@ -425,6 +425,8 @@ and building an `AIScene` by hand from a `TriMesh` is more work than emitting th
 Six symptoms, in the order they actually happen, each with the one-line diagnosis. `summary()` answers
 five of the six, so print it before you draw anything.
 
+<div class="field-data-table" markdown>
+
 | symptom | cause | what to do |
 |---|---|---|
 | a blank black panel | an empty mesh | A file whose *contents* are not what its extension says parses to `TriMesh.empty` with **no exception at all**. `println(mesh.summary())` — an empty one prints exactly `TriMesh(empty)`. |
@@ -433,6 +435,8 @@ five of the six, so print it before you draw anything.
 | flat, faceted or oddly uniform shading | no normals, or invented ones | A mesh with *none* is crease-shaded for you; one with wrong ones is not. Recompute with `shadedNormals(35.0)`. To drop them, `withoutAttributes()` — note that `copy(normals = null)` **keeps** them, because `null` there means "unchanged". |
 | `isWatertight()` false on a closed solid | it came through STL | Or it was `flatShaded()` before it was written. `weld(1e-5)` recovers the topology, and `meanEdgeLength()` is the scale that tells you 1e-5 is safe rather than a guess. |
 | the vertex count is exactly 3× | STL, or `flatShaded()` | Both un-weld every triangle, and the reader on the other side will not weld it back. `weld`, then `shadedNormals` if you want the hard edges again. |
+
+</div>
 
 The first row is the one that costs an hour, so here it is concretely: a file called `thing.obj` that
 is actually a ZIP, a glTF, or an HTML error page parses to zero vertices and zero triangles and

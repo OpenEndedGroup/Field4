@@ -42,11 +42,15 @@ It has to be `declaredIn` rather than the member's bare name, because bare names
 Field's source tree `scale` is declared in 42 categorised files, `close` in 21, `copy` in 16. The
 categoriser, `KotlinSourceIndex.getCompletionCategoryForSymbol`, asks in three steps:
 
+<div class="field-data-table" markdown>
+
 | step | question asked | answer if it hits |
 |---|---|---|
 | 1 | is `Owner.member` in the index? | that declaration's category — including *no category*, which does not fall through |
 | 2 | does `declaredIn`'s package contain a match? | the vote, scoped to one package instead of 42 files |
 | 3 | `declaredIn` names something outside this tree | **decline** — a namesake here says nothing about `java.lang.Math` |
+
+</div>
 
 The third row has a consequence worth spelling out. A receiver you did not write and cannot
 annotate — `java.lang.Math`, `kotlin.collections.List` — gets a uniform "no category" for every one
