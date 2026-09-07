@@ -62,6 +62,33 @@ Whole-repository sweep for call sites of every symbol above (`src/`, `dev_docs/`
 - **`templates/field.sketch2_examples.edn`** — one hit, `pointsOut`, inside a commented-out line; the
   box hand-rolls the same loop below it.
 
+## 2026-07-29 / 2026-08-03 — marching squares: the `inside` test, the crossing clamp, the saddle tie
+
+Recorded here on 2026-09-07, lifted out of `contours.kt`'s file KDoc, which was publishing the whole
+comparison onto `public/docs/reference/graphics.md`. Three changes to `generateIsoContours` landed
+across `df75721c5`, `102c2f77e` and `c1580d70b`; the first two move geometry a caller may have
+captured.
+
+| change | when it can alter the output | how much |
+| --- | --- | --- |
+| the two-valued `inside` test (`df75721c5`) | **only** when some grid sample is exactly equal to `iso` | unbounded — a whole contour appears where there was none, or four arcs become one loop |
+| `ISO_CROSSING_EPSILON` (`df75721c5`) | when a crossing lands within a thousandth of a cell of a grid corner | at most `1e-3` of a cell edge, an analytic bound |
+| the saddle decider (`102c2f77e`) | any cell with four crossings whose bilinear saddle disagrees with the old fixed pairing, including on perfectly smooth fields | two segments re-routed within that one cell, so up to about a cell |
+
+Only the third reaches ordinary, non-degenerate input. A one-off sweep of 392 (field, resolution,
+iso) combinations across eight fields put 96 cases in the first row, **0** cases with no
+exactly-on-`iso` sample, a worst attained crossing drift of `9.93e-4` of a cell, and 4 cases in the
+third row — all four the single saddle cell of `f = x*y`. **That sweep is not in the tree.** What is
+pinned lives in `SpatialGeometryTest`:
+`theCrossingClampMovesNothingByMoreThanAThousandthOfACell` asserts the `1e-3` bound and that the
+worst case attains it, and `theSaddleTieIsBrokenTheSameWayAtEveryResolution` asserts pairing `P` at
+eight resolutions. The other figures above have no guard and should be re-measured, not cited.
+
+`c1580d70b` is source-compatibility only: the `pointWeights`/`edgeWeights` `List<Double>?`
+parameters became the `PointEdgeWeight` / `FLinePointWeight` callbacks. No in-repo caller passed
+them, and a caller who did got an `IllegalArgumentException` on the `FLine` overloads more often
+than a contour, because the list had to be sized against an internal flattening.
+
 ## 2026-08-06 — `Fn.floor()` joins the transform family
 
 One op added, and one declared reproducibility consequence.

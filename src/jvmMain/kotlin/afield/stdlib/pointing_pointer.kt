@@ -16,22 +16,20 @@ import kotlin.math.sqrt
  * # A pointer is three things
  *
  * A ray, a select value in `0..1`, and whether it exists at all ([PointerState]). That is enough to
- * unify every pointing device Field can see, which is the whole reason the interface is this thin:
+ * unify every pointing device Field can see:
  *
  *  - **A mouse** has a ray only because a camera can be inverted ([mousePointer]), a select value
  *    that is `0` or `1`, and is always active while the window has a cursor.
  *  - **An XR controller** has a pose and a trigger, and reports `active` when the runtime is tracking
  *    it ([controllerPointer]).
- *  - **A pinched hand** has 26 joints and a geometric pinch strength, and is the interesting case,
- *    because its select value is genuinely continuous and genuinely noisy ([pinchPointer]).
+ *  - **A pinched hand** has 26 joints and a geometric pinch strength, read off
+ *    [afield.four.targets.OpenXRHmdTarget]'s `handState`. Its select value is continuous and noisy,
+ *    which is what the second half of this file is about ([pinchPointer]).
  *
- * The `handState` that landed in [afield.four.targets.OpenXRHmdTarget] had **no consumer** — every
- * mention of it in the tree was inside the file that writes it. [pinchPointer] is the first.
+ * # Hysteresis, in two places
  *
- * # Why the machine has hysteresis, in two places
- *
- * Feed raw nearest-hit results to a UI and it flickers. Two specific, different flickers, and
- * [PointerInteraction] treats them differently because they *are* different:
+ * Feed raw nearest-hit results to a UI and it flickers. There are two flickers here and
+ * [PointerInteraction] treats them separately:
  *
  *  1. **The part flickers** when the ray lands near an edge two parts share, or grazes a silhouette.
  *    A pixel's worth of hand tremor alternates the answer every frame, and a label that alternates

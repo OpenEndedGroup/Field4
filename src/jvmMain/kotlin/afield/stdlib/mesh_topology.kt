@@ -17,12 +17,11 @@ import kotlin.math.roundToLong
  * properties on [TriMesh] ([TriMesh.isWatertight] and friends) build a throwaway one each time,
  * which is fine interactively and wasteful in a loop.
  *
- * The interesting invariant, and the one the tests lean on: for a closed orientable surface,
- * `V - E + F = 2 - 2g`. So a cube, a sphere and an icosphere all report
- * [MeshTopology.eulerCharacteristic] `2` and [MeshTopology.genus] `0`, a torus reports `0` and `1`,
- * and a two-holed shape reports `-2` and `2`. That single number catches a startling range of
- * generator bugs — a duplicated seam, a missing cap, an unwelded march — because all of them change
- * it.
+ * The invariant the tests lean on: for a closed orientable surface, `V - E + F = 2 - 2g`. So a cube,
+ * a sphere and an icosphere all report [MeshTopology.eulerCharacteristic] `2` and
+ * [MeshTopology.genus] `0`, a torus reports `0` and `1`, and a two-holed shape reports `-2` and `2`.
+ * A duplicated seam, a missing cap and an unwelded march all change that number, so it is the
+ * cheapest single check on a generator.
  *
  * ```kotlin
  * val t = torusMesh(48, 24)
@@ -112,8 +111,8 @@ class MeshTopology(val mesh: TriMesh) {
 
     /**
      * Vertices whose incident triangles do **not** form a single fan — two cones meeting at a point,
-     * or a bowtie. Legal geometry, illegal for most mesh algorithms (subdivision, decimation and
-     * curvature all assume a disc-like neighbourhood), so it is worth knowing about.
+     * or a bowtie. Legal geometry, illegal for most mesh algorithms: subdivision, decimation and
+     * curvature all assume a disc-like neighbourhood.
      *
      * Detected by walking triangle-to-triangle through shared edges within each vertex's own star
      * and checking that one walk reaches all of them.

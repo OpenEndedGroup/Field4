@@ -474,7 +474,7 @@ data class StackAutoReport(
     val compiled: Boolean,
     /** Almost certainly bugs. A definition whose net stack effect is not "consume one, leave one". */
     val problems: List<String> = emptyList(),
-    /** The compiler's own non-ERROR diagnostics, which the success path used to throw away. */
+    /** The compiler's own non-ERROR diagnostics: warnings and notes from a compile that succeeded. */
     val warnings: List<String> = emptyList(),
     /** Worth seeing, not worth failing on — chiefly how much computed work nothing consumes. */
     val notes: List<String> = emptyList()

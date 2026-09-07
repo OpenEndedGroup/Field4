@@ -8,21 +8,14 @@ import kotlin.math.abs
 import kotlin.math.sqrt
 
 /**
- * Turning a place a person is looking at back into a place in the world — the half of picking that
- * Field did not have.
+ * Turning a place a person is looking at back into a place in the world.
  *
- * # Why this exists
+ * This file does one step of that: **pixel → ray**, the unprojection that gets you from a mouse
+ * position, a controller pose or a headset's aim to a line in the scene. [PickScene] is the next
+ * step, ray → named part, and [Pointer] the step before, person → pixel-or-pose. Once you have the
+ * ray, [MeshBvh.raycast], `intersectRayTriangle` and `intersectRayPlane` answer what it hits.
  *
- * Field could already answer *"what does this ray hit"* — [MeshBvh.raycast], `intersectRayTriangle`,
- * `intersectRayPlane`. What it could not do was **produce the ray**. There was no unprojection
- * anywhere in `afield`: no way to get from a mouse position, a controller pose or a headset's aim to
- * a line in the scene. Every picker Field owned ran in JavaScript, and the JVM's rich hit record
- * ([FLineIntersection]) had exactly one constructor, decoding a browser payload.
- *
- * So this file is the missing middle: pixel → ray. [PickScene] is the next step, ray → named part,
- * and [Pointer] the step after, person → pixel-or-pose.
- *
- * # The two camera models, and why there are two
+ * # The two camera models
  *
  * Field has two unrelated camera models, and confusing them is the main hazard here:
  *
@@ -31,15 +24,15 @@ import kotlin.math.sqrt
  *    This is the one that makes pixels with no GPU, no window and no AWT, so it is the one a headless
  *    test or a docs capture can prove things with. [MeshView.rayCamera] inverts it, and does so by
  *    calling straight into [VisionGeometryPreview.ViewFrame] — *the same object the rasterizer
- *    projects with*. The unprojection is the renderer's inverse by construction, not by
- *    transcription, which is the only version of that claim worth making.
+ *    projects with*, so the unprojection is the renderer's inverse by construction rather than by
+ *    transcription.
  *  - **[afield.four.util.Camera]** — the live Vulkan scene's camera: a `lookAt` model-view and a
  *    [afield.four.util.SuperProjection], which can be a perspective frustum, an off-centre one, an
  *    orthographic prism, or a Lie-group interpolation *between* perspective and ortho. There is no
- *    closed-form frustum to re-derive for that last case, so [rayCameraFor] does the only thing that
- *    is right for all of them: it inverts the clip matrix numerically, in double precision.
+ *    closed-form frustum to re-derive for that last case, so [rayCameraFor] handles all of them the
+ *    same way: it inverts the clip matrix numerically, in double precision.
  *
- * # Conventions, stated because getting one wrong is silent
+ * # Conventions
  *
  *  - **Pixel coordinates run from the top-left of the frame, y downward**, which is what GLFW's
  *    cursor reports (`Window.cursor` is `glfwGetCursorPos`) and what an image's rows are indexed by.

@@ -22,20 +22,19 @@ import afield.stdlib.linalg.Vector3f as Vec3
  * The weighted contourer is renderer-oriented: it prefers stable, wound
  * boundary loops over exact symbolic patch topology.
  *
- * # What the unweighted clipper guarantees, and what it does not
+ * # How the unweighted clipper assigns a corner to a face
  *
- * Which face each corner belongs to is decided **combinatorially** — a corner records the planes that
- * produced it, and a face's polygon is exactly the corners recording that plane — rather than by a
- * distance test against a tolerance. See the `collectCorners` KDoc in [Voronoi3d] for why that matters: with a
- * tolerance scaled off the point cloud, faces near a near-cospherical site cluster claimed corners
- * that were not on them, and the cells did not close (a T-junction, and a hairline crack in any mesh
- * built from the faces).
+ * **Combinatorially**: a corner records the planes that produced it, and a face's polygon is exactly
+ * the corners recording that plane. Not by a distance test against a tolerance — a tolerance scaled
+ * off the point cloud lets faces near a near-cospherical site cluster claim corners that are not on
+ * them, and then the cells do not close, which is a T-junction and a hairline crack in any mesh
+ * built from the faces. The `collectCorners` KDoc in [Voronoi3d] has the detail.
  *
- * It is still a `Float` clipper and the repair is not total. On the sweep that ratcheted it, **4 of
- * 465 bounded cells** and **12 of 447 clipped cells** still fail the strict closure check — every
- * edge walked by exactly two faces, in opposite directions. Those counts are pinned with `<=` in
- * `VoronoiFaceTopologyTest`, so they can improve but cannot regress silently. Cell volumes tile the
- * clip box to 1e-4 relative and a cubic lattice of sites gives exact unit cubes.
+ * Closure is not total, because the clipper works in `Float`: **4 of 465 bounded cells** and **12 of
+ * 447 clipped cells** fail the strict check that every edge is walked by exactly two faces in
+ * opposite directions. `VoronoiFaceTopologyTest` pins both counts with `<=`, so they can improve but
+ * cannot regress silently. Cell volumes tile the clip box to 1e-4 relative, and a cubic lattice of
+ * sites gives exact unit cubes.
  */
 
 // -----------------------------------------------------------------------------

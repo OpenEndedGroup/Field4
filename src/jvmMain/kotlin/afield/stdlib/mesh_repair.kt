@@ -24,11 +24,11 @@ import kotlin.math.sqrt
  * if (fixed.isSolid) display(fixed.mesh.toSolid() - drill)
  * ```
  *
- * # What actually blocks `toSolid`, measured rather than assumed
+ * # What actually blocks `toSolid`
  *
  * Every severity below was established by feeding Manifold a mesh damaged in exactly one named way
- * (see `MeshDamage` in the tests) and asking whether it accepted the result. The answers are not the
- * ones folklore predicts, and three of them matter:
+ * (see `MeshDamage` in the tests) and asking whether it accepted the result. Three of the answers
+ * change how a diagnosis should be read:
  *
  *  - **A mesh with several disjoint components is fine.** Manifold accepts it and reports the sum of
  *    the volumes. "Split into parts" is not a defect; it is [MeshDefectKind.MULTIPLE_COMPONENTS], and
@@ -44,20 +44,19 @@ import kotlin.math.sqrt
  * incident faces (which a duplicated face also produces, on all three of its edges), an open boundary,
  * and inconsistent winding.
  *
- * # What the existing repairs already do, and where they stop
+ * # Which repair handles which defect
  *
- * [TriMesh.repaired] — `weld → removeDegenerateTriangles → removeUnusedVertices → fixWinding` — is
- * not a straw man. Measured over twelve meshes that Manifold rejected, it already fixes **six**: every
- * unwelded-seam case (welding is what turns an STL's pile of triangles into a surface) and every
- * inconsistent-winding case. The six it cannot fix are exactly two families, and they are what this
- * file adds:
+ * [TriMesh.repairToSolid] runs [TriMesh.repaired] first —
+ * `weld → removeDegenerateTriangles → removeUnusedVertices → fixWinding` — which handles an
+ * unwelded seam (welding is what turns an STL's pile of triangles into a surface) and inconsistent
+ * winding. Of the twelve damaged meshes in `MeshRepairTest`'s table that Manifold rejects, that
+ * alone fixes six.
  *
- *  1. **Open boundaries** — nothing in the old pipeline fills a hole. [fillHoles] is the new code.
- *  2. **Non-manifold edges** — nothing removes a duplicated face or a dangling fin.
- *     [removeDuplicateFaces] and [removeNonManifoldFins] are the new code.
+ * Two families of damage need the repairs in this file:
  *
- * So the accurate framing is that this file is the *last third* of a mesh repair pipeline, not the whole
- * of one, and [TriMesh.repairToSolid] calls the existing repairs for the first two thirds.
+ *  1. **Open boundaries** — [fillHoles].
+ *  2. **Non-manifold edges** — [removeDuplicateFaces] for a duplicated face,
+ *     [removeNonManifoldFins] for a dangling fin.
  */
 
 // ==============================================================================================
