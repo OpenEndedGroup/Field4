@@ -166,8 +166,16 @@ object FabricatePassLibrary {
      * samples a much smaller texture, which is the point — the expensive filtering happened on the
      * small image and only the cheap interpolation happens here.
      *
-     * @param blend 0 keeps [sharp] untouched, 1 replaces it with [blurred].
-     * @param gain multiplies [blurred] before blending, for a bloom-like additive look at blend 1.
+     * The two knobs are deliberately separate, because the two effects that want this pass want
+     * opposite things. Depth of field **replaces** the sharp image with the blurred one where it
+     * applies, so its high-frequency content has to actually go away; bloom **adds** a glow and must
+     * leave the sharp image intact. One `blend` knob doing both would mean an additive bloom that
+     * softens the picture, or a depth of field that stays sharp underneath — and the second is not
+     * visible in a still.
+     *
+     * @param blend crossfade: 0 keeps [sharp] untouched, 1 replaces it with [blurred].
+     * @param gain multiplies [blurred] before either knob sees it.
+     * @param add additively laid over the crossfade result — the bloom/glow term.
      */
     fun composite(
         name: String = "composite",
@@ -175,6 +183,7 @@ object FabricatePassLibrary {
         sharp: String,
         blend: Float = 0.5f,
         gain: Float = 1f,
+        add: Float = 0f,
         format: Int? = null
     ): FabricatePassSpec = FabricatePassSpec(
         name = name,
@@ -183,7 +192,7 @@ object FabricatePassLibrary {
         format = format,
         source = sharp,
         extraInputs = listOf(FabricatePassInput("blurTex", blurred)),
-        push = mapOf("blend" to blend, "gain" to gain)
+        push = mapOf("blend" to blend, "gain" to gain, "add" to add)
     )
 
     /** A soft-knee bright pass, reusing the kernel [addBloom] already ships. */
@@ -278,8 +287,9 @@ object FabricatePassLibrary {
             name = "bloom-composite",
             blurred = glow,
             sharp = FabricatePassChain.CHAIN_INPUT,
-            blend = 1f,
+            blend = 0f,
             gain = intensity,
+            add = 1f,
             format = null
         )
         return listOf(bright) + pyramid + up + join
@@ -389,9 +399,9 @@ object FabricatePassLibrary {
     """
 
     /**
-     * Blend `blurTex` over `sourceTex` at `sourceTex`'s resolution. `blend` 0 is the sharp image
-     * untouched, 1 is the blurred one; `gain` scales the blurred contribution first, so `blend = 1`
-     * with a `gain` under one is the additive-glow case and `blend` between is depth-of-field mixing.
+     * Join `blurTex` onto `sourceTex` at `sourceTex`'s resolution: crossfade by `blend`, then lay
+     * `add` of the blurred image over the top. Depth of field is `blend` near one; bloom is `blend`
+     * zero and `add` positive.
      */
     const val COMPOSITE_FRAGMENT = """
         #version 450
@@ -401,14 +411,15 @@ object FabricatePassLibrary {
         layout(push_constant) uniform CompositePush {
             float blend;
             float gain;
+            float add;
         } push;
         layout(location = 0) out vec4 outColor;
 
         void main() {
             vec4 sharp = texture(sourceTex, vUv);
             vec3 blurred = texture(blurTex, vUv).rgb * max(push.gain, 0.0);
-            float amount = clamp(push.blend, 0.0, 1.0);
-            outColor = vec4(mix(sharp.rgb, sharp.rgb + blurred, amount), sharp.a);
+            vec3 crossfaded = mix(sharp.rgb, blurred, clamp(push.blend, 0.0, 1.0));
+            outColor = vec4(crossfaded + blurred * max(push.add, 0.0), sharp.a);
         }
     """
 }
