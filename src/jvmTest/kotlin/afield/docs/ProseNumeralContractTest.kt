@@ -122,9 +122,12 @@ class ProseNumeralContractTest {
 
         /**
          * Floor on the derivations that pin member *identities* at all, in either direction —
-         * `membersNamedOnPage` or `membersQuotedVerbatim`. Measured 2026-08-27: **4** of 13.
+         * `membersNamedOnPage` or `membersQuotedVerbatim`. Measured 2026-08-27: **4** of 13, and
+         * **5** of 20 on 2026-09-07 once `public/docs/logging.md` added six (of which one,
+         * `consoleMuteDefaults`, pins identities). Both figures are read off this class's own
+         * printed coverage line rather than counted by hand — the hand count said 18.
          *
-         * The other nine are count-only, which the KDoc on
+         * The other fifteen are count-only, which the KDoc on
          * [DerivedCountGuard.Derivation.membersQuotedVerbatim] is explicit about being the weakest
          * form: a count is evadable by substitution. This exists so the strong end of the set cannot
          * be traded for the weak end, which is a one-word edit per derivation and leaves every other
@@ -180,6 +183,44 @@ class ProseNumeralContractTest {
          * any population a running Field has. The page names it in prose, with its own citation.
          */
         val REGISTRATION_ROOTS = arrayOf("src/jvmMain")
+
+        /**
+         * An `lprintln` call whose channel is a string literal, as `public/docs/logging.md` counts
+         * them.
+         *
+         * Literal-only, and the page says so in the sentence that states the number — a call whose
+         * channel is a variable contributes no channel *string*, and counting it would make the two
+         * numbers on that page (call sites, and distinct channel strings) come from different
+         * populations while reading as though they came from one.
+         */
+        val CHANNEL_CALL = Regex("\\blprintln\\(\"([^\"\\n]+)\"")
+
+        /**
+         * The same rule as [CHANNEL_CALL] for `lblock`, which brackets a scope rather than
+         * emitting a line. Literal-only for the same reason, and the correction it forced is
+         * recorded on the `lblockCallSites` derivation: a bare `lblock(` count is 12 and includes
+         * the declaration and its deprecated overload, so it counts the function among its own
+         * callers.
+         */
+        val LBLOCK_CALL = Regex("\\blblock\\(\"")
+
+        /**
+         * The single method [afield.ai.core.LogSink] declares, which every implementation must
+         * override. Counted instead of a `: LogSink` supertype list because `NotifyLog`'s supertype
+         * sits on its own line after a multi-line constructor, where a line-oriented regex misses
+         * it — measured: the supertype spelling finds 7 of the 8.
+         */
+        val SINK_OVERRIDE = Regex("""override\s+fun\s+log\(\s*event\s*:\s*LogEvent\s*\)""")
+
+        /**
+         * Where the log layer's populations are scraped from.
+         *
+         * `src/jvmMain` and nothing else, for the reason [REGISTRATION_ROOTS] gives at greater
+         * length: `src/jvmTest` holds *this file*, whose [CHANNEL_CALL] regex and the KDoc above it
+         * both spell the call shape being looked for, so a guard pointed at the test tree would
+         * scrape its own documentation and count it.
+         */
+        val LOG_SCRAPE_ROOTS = arrayOf("src/jvmMain")
     }
 
     private val root = CitationGuard.repoRoot()
@@ -563,6 +604,174 @@ class ProseNumeralContractTest {
                     .map { it.groupValues[1] }
                     .toSortedSet()
             },
+        ),
+        // ------------------------------------------------------------------------------------
+        // public/docs/logging.md — the log layer's own vocabulary.
+        //
+        // Five keys on one page, which is more than any other page here has, and for a reason
+        // specific to this subject: every number on that page is the size of a population the
+        // page is *arguing about*, not a decoration. Its thesis is that one word — a channel
+        // tag — is matched by three different rules, and the evidence for "this bites you
+        // today rather than in principle" is a count of real collisions. A stale count there
+        // would not be untidy, it would be the argument.
+        // ------------------------------------------------------------------------------------
+        DerivedCountGuard.Derivation(
+            key = "lprintlnChannelCallSites",
+            page = "public/docs/logging.md",
+            what = "calls to `lprintln` with the channel written as a literal",
+            // 889 on 2026-09-07, across 121 files. Floored at 400 — less than half, because
+            // deleting logging is an ordinary thing to do and should cost a doc edit rather than
+            // a red build, but far enough above zero that a scrape which stopped matching would
+            // be caught here even if both landmarks below were somehow deleted too.
+            //
+            // Identified by file and *occurrence index within that file*, deliberately not by
+            // line: this class refuses line-derived numerals (see the KDoc) because an unrelated
+            // insertion moves every line below it. An occurrence index only moves when a call is
+            // added or removed, which is the thing the count is measuring.
+            floor = 400,
+            landmarks = setOf(
+                "src/jvmMain/kotlin/afield/Server.kt#0",
+                "src/jvmMain/kotlin/afield/KotlinInterface2.kt#0",
+            ),
+            derive = { r -> logCallSites(r).mapTo(sortedSetOf()) { it.id } },
+        ),
+        DerivedCountGuard.Derivation(
+            key = "logChannelStrings",
+            page = "public/docs/logging.md",
+            what = "distinct channel strings spelled at an `lprintln` call site",
+            // 216 on 2026-09-07. Floored at 100: the page's claim is that the channel vocabulary
+            // is "already large and already load-bearing", and somewhere under a hundred that
+            // sentence stops being the right thing to tell a reader.
+            floor = 100,
+            landmarks = setOf("error,kotlin", "error,server", "warning,graphics", "info,kotlinjs"),
+            derive = { r -> logCallSites(r).mapTo(sortedSetOf()) { it.channel } },
+        ),
+        DerivedCountGuard.Derivation(
+            key = "logChannelSubstringCollisions",
+            page = "public/docs/logging.md",
+            what = "tag-and-channel pairs a `LogStream` filter matches and the pinned console does not",
+            // 101 on 2026-09-07, and the number the page's headline section turns on: it is the
+            // difference between "three matchers disagree in principle" and "three matchers
+            // disagree about a hundred real pairs in this tree".
+            //
+            // Floored at 20 rather than at 101. The honest direction of travel here is *down* —
+            // every pair is a latent surprise, and renaming `kotlinjs` to something that is not
+            // a superstring of `kotlin` would remove three of them, which is an improvement and
+            // must not be a build failure. But it must not silently reach zero either, because
+            // at zero the page should be saying something different: that the hazard is latent.
+            // If this floor ever fails, the fix is prose, not a smaller floor.
+            floor = 20,
+            landmarks = setOf("kotlin -> info,kotlinjs", "docs -> info,docs.search"),
+            derive = { r ->
+                val channels = logCallSites(r).map { it.channel }.toSet()
+                val tags = channels.flatMap { c -> c.split(',').map { it.trim() } }
+                    .filter { it.isNotEmpty() }
+                    .toSet()
+                // The two rules, side by side, as the two source lines the page cites spell
+                // them: LogStream asks `channel.contains(tag, ignoreCase = true)`, the pinned
+                // console asks whether the tag is one of the `,`-split tokens. A pair is a
+                // collision exactly when the first says yes and the second says no.
+                tags.flatMapTo(sortedSetOf()) { tag ->
+                    channels.filter { c ->
+                        c.contains(tag, ignoreCase = true) &&
+                            tag !in c.split(',').map { it.trim() }
+                    }.map { c -> "$tag -> $c" }
+                }
+            },
+        ),
+        DerivedCountGuard.Derivation(
+            key = "lblockCallSites",
+            page = "public/docs/logging.md",
+            what = "calls to `lblock` with the channel written as a literal",
+            // 6 on 2026-09-07, and the page uses the number to explain why a real wart has
+            // survived: a line logged inside an `lblock` is prefixed by a raw 36-character UUID
+            // on a plain terminal, and six call sites is not enough friction for anyone to have
+            // minded. That argument is load-bearing on the count being *small*, which is the
+            // unusual case here — every other floor on this page guards a number against
+            // shrinking, and this one is really an implicit ceiling.
+            //
+            // Literal-channel, the same rule as [CHANNEL_CALL], and the reason is the same
+            // correction: a bare `\blblock\(` count is 12, of which 2 are the declaration and
+            // its deprecated overload in `logger.kt`. The page said "twelve" until this
+            // derivation was written and the two numbers had to be reconciled — the definition
+            // won, because "twelve" was counting the function as one of its own callers.
+            //
+            // Floored at 2 rather than near 6 for the reason above. If `lblock` grew to a
+            // hundred call sites this floor would not notice, but the sentence would be wrong;
+            // that is a limit of the mechanism, and the honest thing is to say so here rather
+            // than to imply a ceiling exists. What the floor does catch is the scrape silently
+            // stopping, which is the failure this class was built against.
+            floor = 2,
+            landmarks = setOf("src/jvmMain/kotlin/afield/KotlinInterface2.kt#0"),
+            derive = { r ->
+                DerivedCountGuard.kotlinSourcesUnder(r, *LOG_SCRAPE_ROOTS)
+                    .flatMapTo(sortedSetOf()) { f ->
+                        val rel = f.relativeTo(r).path
+                        val n = LBLOCK_CALL.findAll(f.readText()).count()
+                        (0 until n).map { "$rel#$it" }
+                    }
+            },
+        ),
+        DerivedCountGuard.Derivation(
+            key = "logSinkImplementations",
+            page = "public/docs/logging.md",
+            what = "`LogSink` implementations in the tree",
+            // 8 on 2026-09-07, and the whole population, so the floor and the count coincide —
+            // the DATAFRAME_PLUGIN precedent. The page names all eight in a sentence and then
+            // says "adding a ninth from a box takes one line", so a ninth in *source* means that
+            // sentence needs rereading rather than renumbering.
+            //
+            // Counted by the one method the interface has rather than by a supertype list,
+            // because `NotifyLog`'s `: LogSink` sits on its own line after a multi-line
+            // constructor and a line-oriented supertype regex misses it. Every implementation
+            // must override this exact signature, so the override is the reliable witness.
+            floor = 8,
+            landmarks = setOf(
+                "src/jvmMain/kotlin/afield/ai/core/Logging.kt#0",
+                "src/jvmMain/kotlin/afield/server/logstream.kt#0",
+                "src/jvmMain/kotlin/afield/logger/PinnedConsole.kt#0",
+            ),
+            derive = { r ->
+                DerivedCountGuard.kotlinSourcesUnder(r, *LOG_SCRAPE_ROOTS)
+                    .flatMapTo(sortedSetOf()) { f ->
+                        val rel = f.relativeTo(r).path
+                        val n = SINK_OVERRIDE.findAll(f.readText()).count()
+                        (0 until n).map { "$rel#$it" }
+                    }
+            },
+        ),
+        DerivedCountGuard.Derivation(
+            key = "consoleMuteDefaults",
+            page = "public/docs/logging.md",
+            what = "channels muted from the console by default",
+            // 4 on 2026-09-07, the whole population, and the page names each one. Floored at 4
+            // for the same reason as logSinkImplementations: the sentence enumerates the set, so
+            // a fifth default mute is a fact about Field a reader of that paragraph needs, not a
+            // digit to bump.
+            //
+            // Scraped from the source literal rather than read off `ConsoleMute.channels`, which
+            // is a `val` initialised from a system property at class-init time: reading the
+            // object would make this guard agree with whatever `-Dafield.log.mute` the test JVM
+            // happened to be started with, and pass vacuously under any override.
+            floor = 4,
+            landmarks = setOf("info,boxes", "debug,boxes"),
+            derive = { r ->
+                val src = File(r, "src/jvmMain/kotlin/afield/ai/core/Logging.kt").readText()
+                val body = Regex("""setOf\((\s*"info,boxes"[\s\S]*?)\)""")
+                    .find(src)?.groupValues?.get(1).orEmpty()
+                Regex(""""([^"]+)"""").findAll(body).map { it.groupValues[1] }.toSortedSet()
+            },
+            // The page prints the four names in the same sentence as the count, which is exactly
+            // the drift `differentiableFnOps` was built against: a count and an enumeration that
+            // are each internally consistent and disagree with one another.
+            //
+            // Verbatim rather than tokenised, because a channel *contains a comma*: this was
+            // written as `membersNamedOnPage` first and failed, reporting all four members
+            // absent from a section that names all four. `codeSpanWords` tokenises `info,boxes`
+            // into `info` and `boxes`, so no single token can ever equal the member — the
+            // unsatisfiable case its KDoc describes, met here for the first time by punctuation
+            // rather than by a space.
+            membersQuotedVerbatim = true,
         ),
     )
 
@@ -956,6 +1165,30 @@ class ProseNumeralContractTest {
         val isInterface: Boolean,
     ) {
         val id: String get() = "${file.name}:$typeName"
+    }
+
+    /**
+     * One `lprintln` call site with a literal channel: where it is, and what channel it names.
+     *
+     * [id] is the file plus the call's *occurrence index within that file*, never its line. Three
+     * of `public/docs/logging.md`'s five derivations share this scrape, and pinning a line number
+     * would make all three turn red on any commit that inserted a line above a logging call — the
+     * refusal this class's KDoc states in general, applied here.
+     */
+    private data class LogCallSite(val relativePath: String, val index: Int, val channel: String) {
+        val id: String get() = "$relativePath#$index"
+    }
+
+    private val logCallSiteCache = HashMap<String, List<LogCallSite>>()
+
+    /** Every literal-channel `lprintln` call under [LOG_SCRAPE_ROOTS], in file then source order. */
+    private fun logCallSites(r: File): List<LogCallSite> = logCallSiteCache.getOrPut(r.path) {
+        DerivedCountGuard.kotlinSourcesUnder(r, *LOG_SCRAPE_ROOTS).flatMap { f ->
+            val rel = f.relativeTo(r).path
+            CHANNEL_CALL.findAll(f.readText())
+                .mapIndexed { i, m -> LogCallSite(rel, i, m.groupValues[1]) }
+                .toList()
+        }
     }
 
     private val registrationCache = HashMap<String, List<Registration>>()

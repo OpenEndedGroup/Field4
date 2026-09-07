@@ -82,6 +82,14 @@ nav:
     # `public/docs` with a producer that survives here: its figure is emitted by
     # `examples.document-on-disk.smoke`, which asserts the page still carries it verbatim.
     - What a Document Is on Disk: document_on_disk.md
+    # Internals rather than the staging area, on this section's own test: mechanism, hand-written,
+    # and read when you are working out why Field did something rather than when you are writing a
+    # box. It is a sibling of server_surface.md — that page says what Field exposes to a client,
+    # this one says where the process's own output goes — and like its neighbours here it is
+    # guarded, which the staging pages are not. Last of the runtime-surface three and before the
+    # build page, because the terminal it describes is the one `building_and_testing.md` tells you
+    # to read.
+    - Where Field's Output Goes: logging.md
     - Building & Testing: building_and_testing.md
   - Staging area:
     - Staging Overview: staging.md
