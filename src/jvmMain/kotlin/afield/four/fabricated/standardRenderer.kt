@@ -7,6 +7,7 @@ import afield.four.buffers.FrameBufferGroup
 import afield.four.buffers.Structure
 import afield.four.buffers.defaultBuffer
 import afield.four.modules.*
+import afield.four.targets.RTTParameters
 import afield.four.targets.RenderTarget
 import afield.four.targets.RenderToTexture
 import afield.four.texture.LoadedTexture
@@ -517,29 +518,82 @@ object StandardRenderer {
 		}
 
 		/**
-		 * Append a fullscreen shader pass to the post stack. The shader receives the previous stack
-		 * output as `sourceTex`; additional textures can be supplied by [configure].
+		 * Append a fullscreen shader pass to the post stack.
+		 *
+		 * The shader receives its primary input as `sourceTex`. By default that is the previous stack
+		 * output at the previous output's resolution and format, which is what every caller before
+		 * [FabricatePassChain] wanted — so the four-argument form of this function behaves exactly as
+		 * it always did.
+		 *
+		 * The remaining arguments are what a *heterogeneous* chain needs, and what this function had
+		 * no way to say until it grew them:
+		 *
+		 * - [size] gives the pass its own resolution, absolutely or as a fraction of its source. This
+		 *   is the one that matters: without it a pass could not be smaller than its input, so a
+		 *   reduce, a downsample pyramid or a cheap wide blur on a small image was unreachable through
+		 *   the post stack and had to be hand-wired against a `RenderToTexture` the caller owned.
+		 * - [format] gives the pass its own format — a half-float intermediate under an 8-bit chain,
+		 *   or the reverse.
+		 * - [source] overrides which texture is the primary input, so a chain can fork and rejoin
+		 *   rather than only run in a line.
+		 * - [extraInputs] binds additional *named* samplers to other targets, with a correctly-sized
+		 *   [TextureSampler] each. Before this, a second input meant hand-writing `textureResolver`
+		 *   surgery at the call site — capture the previous resolver, build a sampler, string-match
+		 *   the name — once per pass. [addBloom] is the worked example, and now uses this instead.
+		 * - [rtt] is an escape hatch onto the pass target's own `RTTParameters`, applied after the
+		 *   defaults, for the cases the arguments above do not cover.
+		 *
+		 * @param mipLevels mip levels on the pass target; above one, mips are generated automatically.
 		 */
 		fun addShaderEffect(
 			name: String,
 			fragment: String,
 			renderer: Renderer = fromContext(),
+			size: FabricatePassSize = FabricatePassSize.MatchSource,
+			format: Int? = null,
+			source: RenderToTexture? = null,
+			extraInputs: Map<String, RenderToTexture> = emptyMap(),
+			mipLevels: Int = 1,
+			rtt: RTTParameters.() -> Unit = {},
 			configure: Parameters.(source: RenderToTexture) -> Unit = {}
 		): FabricatePostEffect {
 			require(name.isNotBlank()) { "effect name must not be blank" }
 			require(postStack[name] == null) { "post effect '$name' already exists" }
-			val source = postStack.output()
+			require(mipLevels >= 1) { "post effect '$name' asked for $mipLevels mip levels" }
+			val primary = source ?: postStack.output()
+			val sourceFormat = primary.colorFormats.firstOrNull() ?: primary.parameters.format
+			val sourceShape = FabricatePassShape(primary.width, primary.height, sourceFormat)
+			val chainShape = FabricatePassShape(
+				postStack.input.width,
+				postStack.input.height,
+				postStack.input.colorFormats.firstOrNull() ?: postStack.input.parameters.format
+			)
+			val (passWidth, passHeight) = size.resolve(sourceShape, chainShape)
+			require(passWidth > 0 && passHeight > 0) {
+				"post effect '$name' resolved to ${passWidth}x$passHeight from $size"
+			}
+			val passFormat = format ?: sourceFormat
 			val target = RenderToTexture(renderer) {
-				width = source.width
-				height = source.height
+				width = passWidth
+				height = passHeight
 				colorAttachments = 1
-				format = source.colorFormats.firstOrNull() ?: source.parameters.format
+				this.format = passFormat
+				this.mipLevels = mipLevels
+				generateColorMipmaps = mipLevels > 1
 				colorSampled = true
 				colorTransferSrc = true
 				useDepth = false
 				clearColor = vec(0f, 0f, 0f, 1f)
+				debugName = "prefab-post-$name"
+				rtt()
 			}
-			val sampler = TextureSampler(renderer, source.parameters.mipLevels, false)
+			val sampler = TextureSampler(renderer, primary.parameters.mipLevels, false)
+			// One sampler per extra input, sized to *that* texture's mip chain. A sampler built for
+			// the wrong mip count is not a compile error and not a validation error either; it is a
+			// silently unfiltered or over-filtered read.
+			val extraSamplers = extraInputs.mapValues { (_, texture) ->
+				TextureSampler(renderer, texture.parameters.mipLevels, false)
+			}
 			val module = Module(parameters(renderer) {
 				this.name = "prefab-post-$name"
 				target.apply()
@@ -550,12 +604,16 @@ object StandardRenderer {
 				color = target.parameters.colorAttachments
 				val userResolver = textureResolver
 				textureResolver = { tex ->
-					when (tex.name) {
-						"sourceTex" -> fromViews(listOf(source.imageViewArray[0]), tex.name, sampler)
+					val extra = extraInputs[tex.name]
+					when {
+						tex.name == "sourceTex" ->
+							fromViews(listOf(primary.imageViewArray[0]), tex.name, sampler)
+						extra != null ->
+							fromViews(listOf(extra.imageViewArray[0]), tex.name, extraSamplers.getValue(tex.name))
 						else -> userResolver(tex)
 					}
 				}
-				configure(source)
+				configure(primary)
 			}).pointer()
 			target += name to module
 			module.ensureFullscreenTriangle("${name}Quad")
