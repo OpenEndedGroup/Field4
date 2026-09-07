@@ -298,6 +298,50 @@ class CitationContractTest {
             // the floor sum from 359 to 383 and past [MIN_UNIQUE_ANCHORS], so that constant was
             // ratcheted in the same commit, as its KDoc had been asking for.
             "public/docs/document_on_disk.md" to 24,
+            // Added 2026-09-07 with the page it guards. The log layer: what a channel is, the
+            // dispatcher's sink fan-out, and the three different rules that select on a channel.
+            //
+            // Nothing published stated any of it. Over the same 540-page corpus these guards read
+            // (387 `public/docs` + 153 `dev_docs`), no page names `Logging.kt`, `logger.kt`,
+            // `PinnedConsole.kt`, `StatsHeatmap.kt`, `SessionErrorLog.kt` or `SaveReloadLog.kt`,
+            // and the phrase "log channel" occurs four times, every one of them assuming the
+            // reader already knows what one is. `lprintln` appears in five places and is used,
+            // never explained.
+            //
+            // Guarded from its first day because the page's headline claim is *three* lines of
+            // code that have to be read together, and no one of them is surprising alone:
+            // `ConsoleMute.isMuted` is `channel in channels` (exact whole string), `matchedPin`
+            // splits on `,` and matches a token, and `LogStream`'s filter is
+            // `contains(token, ignoreCase = true)` (substring, case-insensitive). The page's
+            // argument is the *disagreement* between them. Any one of the three drifting toward
+            // either of the others would make the page wrong while leaving each cited line
+            // resolvable, which is why the numeral half of it is pinned too — five derivations in
+            // `ProseNumeralContractTest`, including the count of real collisions the argument
+            // rests on.
+            //
+            // 15 anchored citations as written, all prose `path:line#anchor`, across six files:
+            // 5 in `Logging.kt`, 4 in `PinnedConsole.kt`, 2 each in `logger.kt` and
+            // `logstream.kt`, and one each in `StatsHeatmap.kt` and `SessionErrorLog.kt`. Every
+            // anchor was checked unique-in-file by counting containments across the whole file
+            // rather than by trusting the choice, and two were changed for that reason: the
+            // `lprintln` body's `LogDispatcher.log(channel = channel, …)` is character-identical
+            // in `lprint` one function below, so the citation points at the `fun lprintln`
+            // signature instead, and `StatsHeatmap.kt`'s `TOKEN` regex was cited a line late.
+            // Note that `if (ConsoleMute.isMuted(event.channel)) return` is deliberately cited
+            // twice, in `Logging.kt` and in `PinnedConsole.kt` — uniqueness is per file, and the
+            // point of that pair of citations is that both console sinks check and nothing else
+            // does.
+            //
+            // Floored at 7, about half, on the DATAFRAME_PLUGIN convention. Takes the floor sum
+            // from 407 to **414**, still under [MIN_UNIQUE_ANCHORS], so no ratchet is needed.
+            //
+            // Measured by summing the literal, not carried forward: the entry above says its own
+            // addition took the sum "from 359 to 383", which does not reconcile with the 33
+            // floors now in this map (407 before this line). One of the two hand-arithmetic
+            // steps in that chain is off by 24. Left alone rather than corrected, because it is
+            // a comment on someone else's entry and nothing asserts it — but recomputed here
+            // rather than incremented, for exactly that reason.
+            "public/docs/logging.md" to 7,
         )
 
         /**
