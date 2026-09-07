@@ -27,7 +27,7 @@ import kotlin.math.sqrt
  * A pluggable distance metric between a target signal and a candidate, evaluated on a shared
  * even sample grid. **Lower is better**; `0.0` means the candidate matches the target at every
  * sampled point. This is the objective the differentiable fitters ([fitGradient], [fitBest],
- * [fitHybrid]) descend, and it generalises the RMSE they used to hard-code.
+ * [fitHybrid]) descend; [rmse] is the default and one metric among the family.
  *
  * The three arrays are aligned by index: `xs[i]` is the abscissa, `target[i]` the target's value
  * there, `candidate[i]` the candidate's. Either value may be non-finite (`NaN`/`±∞`) where the

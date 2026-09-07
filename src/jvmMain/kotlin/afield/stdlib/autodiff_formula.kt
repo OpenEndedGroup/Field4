@@ -7,63 +7,46 @@ package afield.stdlib
  * One declaration of each `Fn` op's pointwise semantics, walked by two evaluators — so `Fn.eval` and
  * the reverse-mode gradient cannot compute different functions.
  *
- * ## The problem this solves
+ * ## One declaration, two walkers
  *
- * `autodiff_fn.kt`'s first draft re-implemented each op's formula in [AD] arithmetic beside the
- * hand-written `Double` closure in `Functions.kt`. That is two transcriptions of one truth, and the
- * only thing holding them together was a runtime value-agreement check that *fell back* on
- * disagreement. A guard is a safety net, not a structure: the two would drift the first time an op's
- * formula changed, and the fallback would hide it.
- *
- * So the per-op formula now lives in exactly one place — [FnFormulas] — as a tiny expression tree
+ * The per-op formula lives in exactly one place — [FnFormulas] — as a tiny expression tree
  * ([FnExpr]) over the op's role-addressed children and the sample position `x`. Two walkers consume
  * it:
  *
- * - [evalFormula] in `Double`, transcribed to be **bit-identical** to the hand-written closure
- *   (same operations, same order, same `Math.pow` / `coerceIn` calls);
+ * - [evalFormula] in `Double`, transcribed to be **bit-identical** to the hand-written closure in
+ *   `Functions.kt` (same operations, same order, same `Math.pow` / `coerceIn` calls);
  * - [evalFormulaAD] in tracked [AD] arithmetic.
  *
- * The AD side therefore has **no per-op code at all**. Adding an op means adding one [FnExpr]; the
- * gradient follows for free, and the number of places a transcription error can hide drops from
- * "once per op" to "once per [FnExpr] kind" — and each kind is oracle-checked once.
+ * The AD side therefore has **no per-op code at all**. Adding an op means adding one [FnExpr] and
+ * the gradient follows, so a transcription error has one place to hide per [FnExpr] kind rather
+ * than one per op.
  *
- * `AutoDiffFnBridgeTest.theFormulaTableIsABitIdenticalTranscriptionOfFnEval` closes the loop: for
- * every op with a formula it asserts the `Double` walker's output is bit-identical (`toRawBits`) to
- * `Functions`' own `eval` across a grid **and** at perturbed parameters. A formula that is not a
- * faithful transcription cannot reach `main`.
+ * `AutoDiffFnBridgeTest.theFormulaTableIsABitIdenticalTranscriptionOfFnEval` is what holds the two
+ * walkers together: for every op with a formula it compares the `Double` walker's output to
+ * `Functions`' own `eval` as raw bits (`toRawBits`), over a 129-point grid at three parameter
+ * vectors. A formula that is not a faithful transcription fails in CI.
  *
- * ## Why `Fn.eval` is not simply replaced by the walker
+ * `FnAutoDiff.agrees` — the runtime value-agreement check the fitters run before switching to
+ * exact gradients — stays as well, because it catches what the table cannot express at all: an
+ * unbounded shape domain, an inverted `clamp` range.
  *
- * It could be, and the seam is a single one: every op in `Functions` builds its `Fn` through one
- * private factory, `graphFn(domain, name, op, …, eval: (Double) -> Double)` at `Functions.kt:886`, so
- * a formula-derived evaluator could be substituted there without touching the individual factories.
+ * ## The cost of the walk
  *
- * It is not, and the reason is measured rather than assumed. `FnFormulaBenchmarkTest` times the walk
- * against the closure on the same graphs, warmed, best of five rounds of 400k evaluations:
+ * Making the walk the only traversal would take one edit: every op in `Functions` builds its `Fn`
+ * through one private factory, `graphFn(domain, name, op, …, eval: (Double) -> Double)`, so a
+ * formula-derived evaluator could go in there without touching the individual factories.
  *
- * | graph | hand-written closure | formula walk | ratio |
- * | --- | --- | --- | --- |
- * | `sin(1.5, …)` | 14.4 ns | 67.5 ns | **4.67×** |
- * | `cos(2) * sin(1.5, …)` | 47.3 ns | 161.9 ns | **3.42×** |
- * | `gaussian(…) * sin(…)` | 56.8 ns | 193.3 ns | **3.40×** |
+ * It is not done because the walk costs several times a closure call, and `Fn.eval` is where that
+ * lands hardest: it is the hottest call in the library, and one `fitGradient` at the defaults is
+ * `200 × (2·leaves + 1) × 128` whole-graph evaluations, with plotting, `FnMetric`, `evolve` and
+ * every sampler on the same path. The cost is the per-node `when` dispatch and the `Child` role
+ * lookup — a linear scan of `node.children` — against a closure the JIT inlines wholesale.
+ * `FnFormulaBenchmarkTest` prints the ratio for three graphs; it asserts only that the two paths
+ * accumulate bit-identical sums, so those timings are a report and not a contract.
  *
- * A 3.4–4.7× tax on `Fn.eval` is not payable: it is the hottest call in the library, and one
- * `fitGradient` at the defaults is ~8.7·10⁵ whole-graph evaluations, with plotting, `FnMetric`,
- * `evolve` and every sampler on the same path. The cost is the per-node `when` dispatch and the
- * `Child` role lookup (a linear scan of `node.children`) against a closure the JIT inlines wholesale.
- *
- * So the shape landed on is: **one declaration, two walkers, and a test-time proof they agree.** The
- * formula table is the only place an op's semantics are written for differentiation purposes, the AD
- * side has no per-op code, and `theFormulaTableIsABitIdenticalTranscriptionOfFnEval` compares the
- * `Double` walk against `Fn.eval` as **raw bits** across a 129-point grid at three parameter vectors
- * for every op. That is strictly stronger than the runtime value-agreement guard for preventing
- * *drift* — it fails in CI rather than silently demoting a run — and it costs nothing at sample time.
- * The runtime guard stays, because it also catches the cases the table cannot express at all (an
- * unbounded shape domain, an inverted `clamp` range).
- *
- * If the walk ever needs to be the only traversal, the two costs to attack first are the role lookup
- * (pre-resolve `Child(role)` to a child index when the formula is built) and the recursive `when`
- * (flatten to a post-order array of opcodes with a value stack). Neither is done here.
+ * The two costs to attack first would be that role lookup (pre-resolve `Child(role)` to a child
+ * index when the formula is built) and the recursive `when` (flatten to a post-order array of
+ * opcodes with a value stack).
  */
 
 /**

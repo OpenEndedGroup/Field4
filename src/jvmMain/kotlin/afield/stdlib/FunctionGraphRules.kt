@@ -164,7 +164,7 @@ fun Functions.Fn.graphMetrics(
 
 /**
  * A deterministic structural signature for convergence checks and regression tests.
- * Evaluator closures and rebuild lambdas are intentionally excluded.
+ * Evaluator closures and rebuild lambdas are excluded, so two copies of one graph sign alike.
  */
 fun Functions.Fn.graphSignature(maxDepth: Int = 64): String {
     require(maxDepth >= 0) { "maxDepth must be non-negative" }
@@ -229,8 +229,8 @@ fun Functions.Fn.rewriteWithRules(
 
 /**
  * Repeats bottom-up rule passes until structure is stable, cycles, or reaches [maxPasses].
- * This is intentionally bounded: experimental rewrite systems should fail visibly,
- * not hide a non-terminating rule set inside an animation loop.
+ * The bound is what makes a non-terminating rule set fail visibly instead of spinning inside an
+ * animation loop.
  */
 fun Functions.Fn.rewriteUntilStable(
     rules: List<FnGraphRule>,

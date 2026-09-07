@@ -17,16 +17,15 @@ import kotlin.random.Random
  *
  * A lone [fitGradient] is *local* and will stall in a frequency local-minimum when the seed's
  * oscillator frequencies are far from the target's (RMSE-vs-frequency is periodic, not convex);
- * [fitBest] wraps it in deterministic jittered restarts and is the recommended entry when the
- * starting numbers may be wrong. See [fitBest]'s KDoc for the why.
+ * [fitBest] wraps it in deterministic jittered restarts and is the entry to reach for when the
+ * starting numbers may be wrong; its own KDoc has the shape of that landscape.
  *
  * The θ extract/apply primitives ride on [Functions.Fn.mapGraphNumbers], whose post-order
  * DFS is stable and deterministic with `preserveSharing = false`: the *i*-th numeric leaf
  * seen while reading is the *i*-th leaf written while applying, so a plain index counter is
- * a sound θ↔graph bijection. Everything is deterministic given a seed (Adam itself has no
- * randomness; only an optional [FnFitConfig] init-jitter draws from a single [Random]),
- * which is what makes a fitted gesture reproducible in live art — the same discipline as
- * [FnEvolveRun].
+ * a sound θ↔graph bijection. Everything is deterministic given a seed: Adam itself has no
+ * randomness, and only an optional [FnFitConfig] init-jitter draws from a single [Random], so a
+ * fit re-run with the same seed comes back identical. [FnEvolveRun] holds to the same rule.
  */
 
 /**
@@ -74,8 +73,8 @@ fun Functions.Fn.applyParameters(theta: DoubleArray): Functions.Fn {
 
 /**
  * An RMSE loss (lower is better) of a candidate against [target] over an even grid across
- * [domain]. Kept as a named convenience; equivalent to `FnMetric.rmse.lossAgainst(...)`, which
- * is the general seam the fitters now use for any [FnMetric].
+ * [domain]. A named convenience, equivalent to `FnMetric.rmse.lossAgainst(...)` — which is the
+ * general form the fitters take for any [FnMetric].
  *
  * Returns `+∞` when no grid point is jointly finite, so a degenerate candidate is maximally
  * penalised rather than silently scoring zero.
