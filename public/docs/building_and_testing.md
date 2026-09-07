@@ -1,10 +1,10 @@
 # Building the Docs & Running the Tests
 
-Most pages in this site contain *live* examples: the code you see ran inside
-Field, and the screenshots and videos are captures of its output. Rebuilding the
-docs therefore means asking Field to re-execute those examples. The test suites
-use the same machinery to exercise Field end-to-end. This page is the short
-version of how to drive both locally.
+Most pages in this site contain *live* examples. The code you see ran inside
+Field, the screenshots and videos are captures of its output, and rebuilding the
+docs means asking Field to re-execute all of it. The test suites exercise Field
+end-to-end through the same machinery, so this page is the short version of how
+to drive both locally.
 
 For the full reference (every flag, the intent matrix, and the internals) see
 [`AGENTS.md`](https://github.com/OpenEndedGroup/Field) and
@@ -14,14 +14,15 @@ For the full reference (every flag, the intent matrix, and the internals) see
 
 - **[uv](https://docs.astral.sh/uv/)** — runs the Python tooling. The commands
   below use `uv run --project . --group <name>` so the right dependencies are
-  fetched automatically; no manual virtualenv needed.
+  fetched automatically; no manual virtualenv needed. If a docs build cannot
+  find Zensical, install `uv` rather than installing Zensical by hand; the
+  `docs` group in `pyproject.toml` already pins it.
 - **A JDK + the Gradle wrapper** (`./gradlew`, already in the repo) — builds and
   runs the Field JVM. `./field.sh` wraps `./gradlew runJvm` if you just want the
   app.
 - Everything runs against a **Field server**. The docs and test runners start
-  one for you (or reuse a healthy one) on a port you choose. Pick a
-  dedicated high port like `9477` so you don't collide with a Field you're
-  using interactively.
+  one for you on a port you choose. Pick a dedicated high port like `9477`,
+  not the one your interactive Field is on.
 
 ## Building the docs
 
@@ -42,6 +43,12 @@ The mode controls how much Field work happens:
 | `strict` | Invalidate captures when the runner code or a transcript changes (via a digest), then re-run those. | You changed capture/runner logic and want stale captures caught. |
 | `always` | Regenerate every screenshot and video, ignoring the cache. | A full recapture, or when you don't trust the cache. |
 
+The runner owns `FIELD_DOCS_RUNNER_PORT` outright. In every mode except
+`never` it insists on a server it started itself, so if something is already
+answering on that port it posts a shutdown request to it, waits, and gives up
+with "Stop the stale Field process" if it is still there. Aim a build at the
+Field you are working in and you lose that session.
+
 Handy flags for `tools/build_zensical_docs.py`:
 
 - `--page <name>` — only run captures for matching page(s) (stem, filename, or
@@ -60,9 +67,17 @@ cd public && python3 -m http.server 8000
 # then open http://localhost:8000/field4/
 ```
 
+Monaco, Iosevka and the offline viewer are vendored under `src/` rather than
+fetched, and `tools/sync_offline_assets.py` copies them into the built site so
+that the read-only viewer iframe resolves without a running Field.
+`uv run python tools/check_offline_assets.py` checks that every canonical source
+is still there and that no synced copy has been committed back into `public/` or
+`dev_docs/`. Run it after moving any of those assets around; it needs no Field
+and no network.
+
 > **A red error marker is a real failure.** If a rebuilt screenshot shows
 > Field's red error marker, or empty/incorrect output, treat it as a genuine
-> failure, not a flaky capture. Fix the snippet (or the runtime), then rebuild
+> failure — not a flaky capture. Fix the snippet (or the runtime), then rebuild
 > that page.
 
 > **Optional warm-session mode.** Set `FIELD_DOCS_RUNNER_SESSION=1` to route
@@ -79,11 +94,11 @@ The capture cache keys each figure on the fence's own code, its options, a diges
 of the runner machinery, and a digest of the source files the fence's code text
 names (`sourceRefsDigest`), mapped through the committed
 [codebase reference](reference/index.md). So an `incremental` build re-captures
-the figures a stdlib edit can reach directly. It cannot see an *indirect* change,
-a function called by the function you edited. `FIELD_DOCS_SOURCE_REFS=stdlib`
-hashes the whole indexed stdlib for every fence instead, which catches that at the
-cost of re-capturing everything; `=off` drops the source digest, leaving a fence
-keyed on its own code and options alone.
+the figures a stdlib edit can reach directly. What it cannot see is an
+*indirect* change — a function called by the function you edited.
+`FIELD_DOCS_SOURCE_REFS=stdlib` hashes the whole indexed stdlib for every fence
+instead, which catches that at the cost of re-capturing everything; `=off` drops
+the source digest, leaving a fence keyed on its own code and options alone.
 
 For a direct answer, `tools/docs_capture_audit.py` re-runs captures from the
 current code and classifies each result against the *measured* run-to-run noise
@@ -101,7 +116,7 @@ uv run --group docs python tools/docs_capture_audit.py --inventory
 uv run --group docs python tools/docs_capture_audit.py --plan --touched src/jvmMain/kotlin/afield/stdlib/Functions.kt
 ```
 
-Captures are not byte-reproducible (only a handful are byte-stable run to run), so
+Captures are not byte-reproducible — only a handful are byte-stable run to run — so
 the comparison is per pixel against `git show HEAD:`, with jitter (≤0.02% of pixels
 at max channel delta ≤19) reported separately from a genuine re-render, and
 `--repeat 2` distinguishing a *nondeterministic* capture from a stale one. The
@@ -126,8 +141,16 @@ graphics-context capture starts Field), a heartbeat prints every 8s so you can
 see it is alive. Progress is `INFO`-level and on by default;
 set `FIELD_DOCS_LOG_LEVEL=WARNING` to quiet it or `=DEBUG` for more.
 
-To *watch* the capture browser, say a capture that stalls or renders wrong,
-run the build with `AFIELD_PLAYWRIGHT_VISIBLE=true`:
+The same `INFO` channel carries one summary line at the end of a build. It
+counts `regenerated=` against `skipped=` and breaks both down (`screenshots=`
+and `videos=`; `cache_hits=`, `reused_existing=` and `missing=`), then reports
+`failures=`, `warm_session_captures=`, `server_starts=`, `server_restarts=` and
+`elapsed=`. Read that line first when a build felt suspiciously fast or quiet,
+because a run that regenerated nothing and skipped everything looks like a
+successful one until you count the captures.
+
+To *watch* the capture browser — a capture that stalls, or one that renders
+wrong — run the build with `AFIELD_PLAYWRIGHT_VISIBLE=true`:
 
 ```diffstatic {data-lang=bash}
 :::static
@@ -190,8 +213,8 @@ It prints `RUN` / `PASS` / `FAIL` lines; artifacts are retained under
 
 Both pipelines talk to Field through `tools/field_backdoor.py`: they start (or
 reuse) a single Field server on your chosen port, create scratch boxes, run the
-example code, and screenshot the resulting output areas, the same ones
-you see when you use Field interactively. Because one server is shared across
+example code, and screenshot the resulting output areas — the same ones you see
+when you use Field interactively. Because one server is shared across
 many captures, keep runs on a dedicated port and let the runner own it. When
 something misbehaves, the backdoor's logs under `.field-backdoor/logs/` are the
 first place to look.
