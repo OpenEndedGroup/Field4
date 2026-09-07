@@ -2,11 +2,11 @@
 
 *Every public declaration used below is listed, with its KDoc, in the codebase reference: [`colors.kt`](reference/graphics.md#colors-kt). Start from [what's already in the box](reference/index.md).*
 
-Color trouble usually appears once several related colors have to survive on the same page. In creative coding the failure mode is muddy geometry. In data visualization it is two series that can no longer be distinguished. In music tools it is a control surface that stops reading at a glance. These examples keep color attached to shapes.
+Color trouble usually appears once several related colors have to survive on the same page: geometry goes muddy, two plotted series stop being distinguishable, a control surface stops reading. These examples keep color attached to shapes.
 
 ## HSL vs OKHSL hue sets
 
-Stepping hue changes the colors, but perceived weight can drift: one swatch shouts, the next disappears, and the set stops behaving as a family. That matters for legends, note lanes, overlays, and drawings where related colors need to coexist.
+Stepping hue changes the colors, but perceived weight can drift: one swatch shouts, the next disappears, and the set stops behaving as the family a legend or a row of note lanes needs.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/colors_examples/hsl_okhsl_sets.png" wait="1.0" capture="box"}
 :::static
@@ -40,15 +40,15 @@ lines(
 )
 ```
 
-Here two hue systems answer the same question. A small `swatchRow(...)` helper removes everything except the palette itself: same number of colors, same geometry, same spacing, same background.
+The `swatchRow(...)` helper removes everything except the palette itself: same count, same geometry, same spacing, same background, one row per hue system.
 
 ![](assets/colors_examples/hsl_okhsl_sets.png)
 
-Once the rows are on screen, the difference is easy to see. The HSL set drifts more in perceived brightness; the OKHSL set holds together more evenly. If you are coloring repeated geometry, multiple voices, or several plotted series, steadier lightness often decides whether the result reads immediately. For more shape-oriented examples, continue with [FLine examples](fline_examples.md) and [Functions examples](functions_examples.md).
+In the HSL row on top, the third and sixth swatches (a yellow-green and a cyan) come forward off the black; the OKHSL row below holds one weight across all ten. `okhsl`'s `l` is perceived lightness rather than an HSL number, so no entry ends up conspicuously brighter than its neighbours the way an HSL yellow does.
 
 ## paletteForBackground on layered paths
 
-A palette can look fine in isolation and fail against a real background. This comes up on dark canvases, projections, score-like overlays, dashboards, and control panels. The colors need to read against the ground and against each other.
+A palette can look fine in isolation and fail against a real background. The colors have to read against the ground and against each other, and on a dark canvas the ones that fail are the dark ones.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/colors_examples/palette_background_paths.png" wait="1.0" capture="box" open-outputs="true"}
 :::static
@@ -76,8 +76,8 @@ val rings = palette.mapIndexed { i, c -> ring(80.0 + i * 38.0, i * 0.21, c) }
 lines(rings, channel = "colors-rings", w = 1120.0, h = 740.0, fitToSize = true)
 ```
 
-This example gives `paletteForBackground(...)` a dark field, asks for several usable colors, and spends all of them on overlapping rings. The repeated geometry makes a weak palette easy to spot.
+`paletteForBackground(...)` starts from the same evenly spaced okhsl ring as `hueSetOkhsl`, then for any entry whose WCAG contrast against the background falls short of `minContrast` it walks that entry's lightness until it clears the bar; a dark background is searched lighter first. Here it gets `minContrast = 3.5`, a little above the WCAG large-text threshold of 3, and all seven colors go on nested rings where a weak one would be easy to spot.
 
 ![](assets/colors_examples/palette_background_paths.png)
 
-The useful test is several close curves, all still readable, none collapsing into the background. That matters in annotations, multichannel plots, layered motion studies, and generative drawings with families of related paths. For more on constructing the underlying paths, see [FLine examples](fline_examples.md); for functional signal stacks that can drive color or geometry, see [Functions examples](functions_examples.md).
+The test is seven close curves, all still readable, none collapsing into the background. If nothing reaches `minContrast` the best candidate found is returned rather than an exception, so the call always hands back the count you asked for and it is the picture that tells you whether it managed. For more on constructing the underlying paths, see [FLine examples](fline_examples.md); for functional signal stacks that can drive color or geometry, see [Functions examples](functions_examples.md).

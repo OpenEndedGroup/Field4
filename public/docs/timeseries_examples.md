@@ -6,7 +6,7 @@ Signal processing needs pictures. A filter can reveal structure or erase the det
 
 ## Filter chains as layered curves
 
-The question is not whether three filters can be stacked. The question is whether the stack helped. This comes up with motion capture, sensor cleanup, musical control signals, and exploratory analysis: less junk, same gesture.
+Stacking three filters is easy; seeing whether the stack helped is the part that needs a picture. What you want from a smoothing chain is less junk and the same gesture, and those two are traded against each other.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/timeseries_examples/filter_chains.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -42,15 +42,15 @@ showSignals(
 )
 ```
 
-The drawing stays consistent and the signal chain makes the difference. `showSignals` puts all three streams on one axis, while `EMAFilter`, `OneEuroFilter`, and `BandPassFilter` each get their own trace.
+One `showSignals` call puts all three streams on one axis. Watch the chain order: `band` is applied to `s`, the output of `ema` and `oneEuro`, not to `signal`, so the band-pass sees a stream the two smoothers have already been through.
 
 ![](assets/timeseries_examples/filter_chains.png)
 
-Now the tradeoffs are visible. The raw line still contains everything, the smoothed line becomes legible, and the band-passed trace isolates a narrower component that might matter musically or physically.
+That order is why the band-pass trace sits nearly flat: most of the 4.7 Hz content it is tuned for was taken out upstream. The smoothed trace has a catch of its own. `OneEuroFilter` derives its `dt` from `System.currentTimeMillis()` between calls, so a `for` loop over a stored array hands it about a millisecond per sample and it smooths far harder than its 1 Hz `minCutoff` implies; the attenuation and the lag visible here are that, not a missing fundamental. Its cutoffs are in Hz and mean what they say when the samples really do arrive at 120 Hz.
 
 ## Distribution-aware event flags
 
-Cleaning is only one job. Event detectors answer a different question: did something noteworthy happen? They matter for onsets, anomalies, attacks, impacts, threshold crossings, and rare deviations in a stream that mostly behaves itself.
+Event detectors answer a different question from the filters above: did something noteworthy happen? Both of these fit a distribution to the last `windowSize` samples and fire when the newest one lands in a tail, so nothing fires at all until the window has filled: 64 samples of the 360 here.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/timeseries_examples/distribution_events.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -82,10 +82,10 @@ showSignals(
 )
 ```
 
-The stream gets a handful of deliberate disturbances, and both detectors report their verdict as traces rather than log messages.
+The stream gets a `+0.95` spike at every 83rd sample and a `-0.8` dip at every 127th, and both detectors report their verdict on the same axis as the signal: `1f` from the gamma detector on the sample that fired, and from the beta detector `+1f` for an upper-tail event and `-1f` for a lower-tail one.
 
 ![](assets/timeseries_examples/distribution_events.png)
 
-The raw motion remains visible, and each detector shows which departures became events. That is useful for onset detection, anomaly marking, interaction thresholds, and any signal that needs a little memory before it speaks. For inline diagnostics of similar live values, continue with [Visualizers](visualizers.md). When the value you care about is *hidden* behind the noise rather than merely buried in it — a state you can only measure indirectly — reach for [State estimation](state_estimation_examples.md).
+The gamma detector, fed `abs(x)`, marks single samples. The beta detector holds `+1` and `-1` across whole stretches instead, and that is a setting rather than a discovery: its 64-sample window is shorter than the 109 samples the 1.1 Hz sine takes to come round at 120 samples a second, so every fit is a fit over a trend and the trend's own continuation keeps landing in a tail. Give a distribution fit at least one full cycle of any periodic component, or detrend before the detector sees it. For inline diagnostics of similar live values, continue with [Visualizers](visualizers.md). When the value you care about is *hidden* behind the noise rather than merely buried in it, a state you can only measure indirectly, reach for [State estimation](state_estimation_examples.md).
 
-These filters all work in the time domain. When the question is which *frequencies* a signal is made of — brightness, timbre, a chirp's trajectory — cross over to the frequency-domain companion: [Spectral examples](spectral_examples.md) (FFT, STFT / spectrograms, and streaming spectral features that compose with the same `then` chain).
+These filters all work in the time domain. When the question is which *frequencies* a signal is made of (brightness, timbre, a chirp's trajectory), cross over to the frequency-domain companion: [Spectral examples](spectral_examples.md) (FFT, STFT / spectrograms, and streaming spectral features that compose with the same `then` chain).

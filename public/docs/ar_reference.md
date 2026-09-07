@@ -12,7 +12,7 @@ It connects back to the Field server over WebSocket and executes Javascript boxe
 - The Endrun iOS app injects its ARKit-backed WebXR compatibility layer before this page loads.
 - A browser without an immersive XR session still runs the Three.js scene, RemoteJS execution, completion, and tests in flat mode.
 
-Variant Launch is no longer involved. There is no external key, hosted scene, or platform-specific page.
+There is no external key, hosted scene, or platform-specific page to set up.
 
 This is the *browser* head. Field's other head is native and does not go through WebXR at all — see
 **[Apple Vision Pro](vision.md)** for the visionOS front end, its RealityKit and Live Metal surfaces,
@@ -96,7 +96,7 @@ delete stage.triangle
 
 Useful scene helpers include `vec`, `rotate`, `rotate3`, `scale`, `translate`, `findByName`, `findBySearchingFor`, `getCurrentCamera`, `addPlane`, `addBox`, `addImagePlane`, `addVideoPlane`, `loadGLTF`, `loadPointCloudPLY`, and `mapDirectory`.
 
-glTF is the preferred animated asset format. `loadFBX` now fails with an explicit conversion suggestion because an FBX loader is not part of the vendored runtime.
+glTF is the preferred animated asset format. `loadFBX` throws with an explicit conversion suggestion: an FBX loader is not part of the vendored runtime.
 
 ## Animation
 

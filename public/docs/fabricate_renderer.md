@@ -4,7 +4,7 @@
 
 Every example below is also a `FIELD_TEST` smoke test, so the page doubles as a renderer checklist: if a picture here is wrong, the build says so.
 
-The most demanding scene on the page is `assets/fabricate_demo/ToyCar.glb`, paired with the `venice_sunset_1k.exr` environment. ToyCar carries transmission, clearcoat, sheen, tangent-space normal maps, texture transforms, and multiple texture semantics — considerably more than a hand-built torus asks for. Venice Sunset drives the image-based-lighting path through `LoadedTexture.fromExrFile(...)`, which decodes EXR channels into RGBA32F, can build GGX-prefiltered radiance mips, and samples that mip chain by roughness. A cubemap target and a BRDF LUT are the next quality jumps.
+The most demanding scene on the page is `assets/fabricate_demo/ToyCar.glb`, paired with the `venice_sunset_1k.exr` environment. ToyCar carries transmission, clearcoat, sheen, tangent-space normal maps, texture transforms, and multiple texture semantics — considerably more than a hand-built torus asks for. Venice Sunset drives the image-based-lighting path through `LoadedTexture.fromExrFile(...)`, which decodes EXR channels into RGBA32F, can build GGX-prefiltered radiance mips, and samples that mip chain by roughness.
 
 ??? aside "How the captures on this page are made"
     The docs runner drives `StandardRendererDocsHarness`: it builds `FabricateNode` and `FabricateMaterial`
@@ -97,7 +97,7 @@ Reloads reuse the pass's existing `Parameters`, so the renderer's texture bindin
 
 ## Scene Graph and Transforms
 
-Fabricate now has a small scene layer on top of `afield.four`: nodes, local transforms, world transforms, render intent, animation samples, and draw-list ordering. The scene graph is pure Kotlin; renderer modules consume it through bound model matrices.
+Fabricate has a small scene layer on top of `afield.four`: nodes, local transforms, world transforms, render intent, animation samples, and draw-list ordering. The scene graph is pure Kotlin; renderer modules consume it through bound model matrices.
 
 ```diffstatic {data-lang=kotlin}
 val bundle = StandardRenderer.build(renderer)
@@ -158,7 +158,7 @@ Style rule: keep user intent on `FabricateMaterial` and `FabricateRenderable`; l
 
 The default scene is a plain one: three colored torii, the standard camera, and the stock lighting setup. If this image is wrong, the higher-level Fabricate examples are not worth trusting yet.
 
-The scene is intentionally just node/material creation plus mesh binding:
+The scene is node/material creation plus mesh binding, and nothing else:
 
 ```diffstatic {data-lang=kotlin}
 fun torusNode(name: String, x: Float, color: Vector4f) {
@@ -423,9 +423,9 @@ expect:
 
 ## Lights and Skybox
 
-The historical scene had exactly one hard-coded directional light. Fabricate now carries a Three.js-style light list on the scene graph: one shadow-casting directional key light plus any number of point and spot lights, evaluated in the deferred lighting pass. It can also draw the loaded environment map as the scene background instead of a flat colour.
+The scene graph carries a Three.js-style light list: one shadow-casting directional key light, plus point and spot lights up to `bundle.maxLights`, which is 64, all evaluated in the deferred lighting pass. It can also draw the loaded environment map as the scene background instead of a flat colour.
 
-Lights are pure scene state; `bundle.syncLights()` uploads them to the lighting pass (call it after changing lights, or once per frame if they move — the same explicit-sync idiom as `sortTransparentMeshes()`). The first shadow-casting directional light becomes the key light that drives the shadow map; every other light is shaded without shadows. `bundle.showEnvironmentBackground()` turns the equirect environment into the backdrop.
+Lights are pure scene state; `bundle.syncLights()` uploads them to the lighting pass (call it after changing lights, or once per frame if they move — the same explicit-sync idiom as `sortTransparentMeshes()`). The first shadow-casting directional light becomes the key light that drives the shadow map, or the first directional light of any kind if none of them cast shadows; every other light is shaded without shadows, and `syncLights()` takes only the first `maxLights` of them. `bundle.showEnvironmentBackground()` turns the equirect environment into the backdrop.
 
 ```diffstatic {data-lang=kotlin}
 val bundle = StandardRenderer.build(
@@ -575,7 +575,7 @@ The visual target is Don McCurdy's glTF Viewer with the same ToyCar model and Ve
 
 ![ToyCar in Don McCurdy's glTF Viewer, close comparison framing](assets/fabricate-toy-car-donmccurdy-reference-close.png)
 
-For local debugging, the throwaway Three.js probe loads the same `ToyCar.glb` and Venice EXR with `PMREMGenerator`. It confirms that the visible grime and surface variation come from the GLB texture maps, not from procedural dirt in the viewer. The Field docs harness pins the ToyCar capture to the same 50-degree comparison FOV, represented as a signed radian value to preserve the current Vulkan-oriented projection convention.
+The grime and surface variation are in the GLB's own texture maps; neither viewer adds procedural dirt. `StandardRendererDocsHarness` renders the ToyCar capture at the reference's 50-degree field of view, which is what makes the two images comparable side by side.
 
 ![ToyCar comparison between the throwaway Three.js probe and Field StandardRenderer](assets/fabricate-toy-car-three-throwaway-comparison.png)
 
@@ -626,7 +626,7 @@ expect:
 // Camera lowered to a flatter, near-roofline vantage to match the three.js reference.
 ```
 
-You can still override material classification on import:
+You can override material classification on import:
 
 ```diffstatic {data-lang=kotlin}
 val model = GltfSupport.loadGltfBasic(toyCarPath)
@@ -637,7 +637,7 @@ bundle.sceneGraph.importGltf(model, namePrefix = "ghost") { mesh ->
 
 For tooling that wants only the pure scene representation, `FabricateGltfBridge.fromModel(model)` returns a `FabricateScene` without registering renderer meshes. Use `bundle.registerGltf(...)` when you want GPU draw resources and `FabricateGltfBridge` when you want to inspect or plan imported nodes first.
 
-The environment asset is already local. Load the EXR directly when the environment should participate in roughness-aware IBL. Ask the texture loader for prefiltered radiance mips so glossy materials can sample lower LODs as roughness rises. The PNG companion is just a debug/preview fallback now.
+The environment asset is already local. Load the EXR directly when the environment should participate in roughness-aware IBL. Ask the texture loader for prefiltered radiance mips so glossy materials can sample lower LODs as roughness rises. The PNG companion is a debug/preview fallback.
 
 ```diffstatic {data-lang=kotlin}
 // Again a docs-repository path. In a document of your own, drop the EXR into the document folder
