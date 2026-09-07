@@ -254,6 +254,9 @@ fun registerOnOpen(message: Message) {
 
 
 actual fun _send(message: Message) {
+    // The single choke point for everything this client sends, which is why the read-only edit
+    // counter is hooked here rather than at the dozens of call sites that build a mutating message.
+    ReadOnlyMode.noteOutgoing(message)
     val s = Json.encodeToString(message)
     if (clientOpen) {
         client.send(s)

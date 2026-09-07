@@ -99,7 +99,37 @@ private fun registerDocumentSession(session: WebSocketSession, info: SessionInfo
     info.sessions.add(session)
     UserThemeManager.sendTo(session)
     UserKeybindingsManager.sendTo(session)
+    sendSessionWriteStatus(session, info)
     broadcastWelcomeEvent("session-attached")
+}
+
+/**
+ * Tell the client whether this session's work will be kept.
+ *
+ * Here rather than in the `hello` handler because this is the one function every attach path funnels
+ * through — interactive `hello`, the agent backdoor's `open`, the Playwright page the docs capture
+ * drives — and it is already where per-session config is pushed (`UserThemeManager`,
+ * `UserKeybindingsManager`). The `hello` handler would have been wrong as well as narrower:
+ * `launchDocumentSessionAttach` is a coroutine launch, so the handler returns before the session
+ * exists and would have had nothing to report on.
+ *
+ * Sent for writable sessions too — see [SessionWriteStatus].
+ */
+private fun sendSessionWriteStatus(session: WebSocketSession, info: SessionInformation) {
+    _send(
+        session,
+        Message("set-session-write-status").payload(
+            SessionWriteStatus(
+                readOnly = info.readOnly,
+                documentName = info.documentName,
+                reason = if (info.readOnly) {
+                    "This document is open read-only. Nothing you change here will be saved."
+                } else {
+                    ""
+                }
+            )
+        )
+    )
 }
 
 private fun resolveDocumentTarget(
