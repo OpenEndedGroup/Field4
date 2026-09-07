@@ -58,7 +58,7 @@ data class SortingComparator(val lo: Int, val hi: Int) {
  * val net = SortingNetwork.bubble(6)
  * println(net.isSorting())        // true
  * println(net.comparators.size)   // 15
- * println(net.depth())            // 5
+ * println(net.depth())            // 9
  *
  * // Round-trip through the notation format
  * val copy = SortingNetwork.fromNotation(6, net.notation())
@@ -387,7 +387,7 @@ class SortingNetwork(val n: Int, val comparators: List<SortingComparator>) {
         /**
          * Build a bubble-sort network for [n] wires.
          *
-         * Uses n*(n-1)/2 comparators with n-1 parallel layers.  Always produces a
+         * Uses n*(n-1)/2 comparators in 2n-3 parallel layers.  Always produces a
          * valid sorting network.
          */
         fun bubble(n: Int): SortingNetwork {

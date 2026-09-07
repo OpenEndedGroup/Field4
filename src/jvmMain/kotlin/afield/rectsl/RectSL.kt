@@ -126,9 +126,9 @@ data class Vec4f(
 }
 
 /**
- * Bridge a [Color4] to RectSL's local [Vec4f]. [Color4] and [Colormaps] moved to `package afield`
- * (2026-07-22) so general colormap/visualization code no longer depends on this microlanguage; this
- * extension keeps the RGBA→Vec4f conversion where its only caller (the renderer path) lives.
+ * Bridge a [Color4] to RectSL's local [Vec4f]. [Color4] and [Colormaps] live in `package afield`, so
+ * general colormap and visualization code does not depend on this microlanguage; this extension
+ * keeps the RGBA→Vec4f conversion where its only caller, the renderer path, lives.
  */
 fun Color4.toVec4f(): Vec4f = Vec4f(r.toFloat(), g.toFloat(), b.toFloat(), a.toFloat())
 
@@ -3712,10 +3712,9 @@ class SceneBuilder {
 
     /**
      * Cycles per second — the scene's musical clock, and the one number that converts
-     * between the pattern language's cycles and RectSL's seconds. `1.0` (one cycle per
-     * second) is Tidal's own default and is deliberately chosen so that a scene which
-     * never says `->tempo` behaves as if a cycle were a second: every existing scene is
-     * unaffected because nothing outside the musical words reads it.
+     * between the pattern language's cycles and RectSL's seconds. The default `1.0` is
+     * Tidal's own, and makes a scene that never says `->tempo` behave as if a cycle were
+     * a second. Nothing outside the musical words reads it.
      */
     var cps: Double = 1.0
 

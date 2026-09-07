@@ -1208,8 +1208,7 @@ data class RectSLSdfOptions(
 }
 
 /**
- * What a bake can honestly claim, which is a property of the *track* rather than of
- * the bake — the distinction the emitter blurred until 2026-08-30.
+ * What a bake can claim, which is a property of the *track* rather than of the bake.
  *
  * @see RectSLGlsl.bakeTrack for how each is decided, and what each costs
  */
@@ -1259,7 +1258,7 @@ enum class RectSLSdfBakeShape {
 data class RectSLSdfBake(
     /** Which query was baked: `"pattern"` or `"pattern (sample-and-hold)"`. */
     val what: String,
-    /** What this bake can honestly claim — and therefore which bound below applies. */
+    /** What this bake can claim, and therefore which bound below applies. */
     val fidelity: RectSLSdfBakeFidelity,
     /** How it was written into GLSL, which follows from whichever measured closer. */
     val shape: RectSLSdfBakeShape,

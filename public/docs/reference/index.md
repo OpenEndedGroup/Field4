@@ -2,11 +2,11 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # What's already in the box
 
-Field's standard library is large and, until now, invisible: the only ways to read it were to open the source or to already know the name you wanted. This section is a browsable map of it — every public declaration in `afield.stdlib`, `afield.visualization` and `afield.four.synth`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
+A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization` and `afield.four.synth`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**11859 public symbols across 278 source files**, 6456 of them (54%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. The one exception is [Languages](languages.md): no file in the small-language packages carries that annotation, and adding one is not a documentation-only change — the label is read by the completion popup — so those pages are grouped by source path here and the popup is left exactly as it was.
+**11859 public symbols across 278 source files**, 6456 of them (54%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
-The "documented" column is a coverage report on Field's own KDoc, not a claim about this page. Where a summary is blank the declaration has none yet.
+The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
@@ -16,7 +16,7 @@ The "documented" column is a coverage report on Field's own KDoc, not a claim ab
 | [Polytopes](polytopes.md) | 17 | 581 | 426 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 4 | 657 | 270 (41%) | Nonlinear least squares, aimed at geometry. |
 | [Imaging](imaging.md) | 6 | 255 | 209 (81%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
-| [ALife](alife.md) | 9 | 420 | 229 (54%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization) — plus the measurement layer every one of them makes its claims through, because "it produced pixels" is not evidence. |
+| [ALife](alife.md) | 9 | 420 | 229 (54%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 12 | 426 | 308 (72%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Visualization](visualization.md) | 15 | 483 | 429 (88%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 25 | 1058 | 376 (35%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
@@ -27,7 +27,7 @@ The "documented" column is a coverage report on Field's own KDoc, not a claim ab
 | [Workspace](workspace.md) | 2 | 79 | 76 (96%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Search](search.md) | 1 | 50 | 25 (50%) |  |
 
-## Every file, at a glance
+## Every file
 
 <div class="codebase-reference" markdown>
 
@@ -316,10 +316,10 @@ The "documented" column is a coverage report on Field's own KDoc, not a claim ab
 
 ## What is not here
 
-- **The generated vector algebra** (`afield.stdlib.linalg`) has its own, better page: [Generated vector API reference](../linear_algebra_api.md), with [Linear algebra in Field](../linear_algebra.md) for the intuition.
+- **The generated vector algebra** (`afield.stdlib.linalg`) has its own page: [Generated vector API reference](../linear_algebra_api.md), with [Linear algebra in Field](../linear_algebra.md) for the intuition.
 - **Declarations marked `Internal`** by their own `@file:CompletionCategory` are plumbing, and are excluded.
-- **The harnesses** — smoke tests, docs figure galleries, the audio-provenance audit and the compile-only synth cookbook — are build machinery rather than API, and are excluded by path. They are still real, still run in `check`, and still worth reading; they are just not the answer to "what can I call?".
-- **Graphics, rendering and the small languages beyond their host side** live in `afield.four`, `afield.rectsl` and `afield.stacksl`; start from [afield.four Graphics](../afield_four_graphics.md), the [RectSL cheatsheet](../rectsl_cheatsheet.md) and the [StackSL cheatsheet](../stacksl_cheatsheet.md). `afield.four.synth` **is** here — it is the audio half of `afield.four`, and [Sound: from a pattern to something you can hear](../sound.md) is the prose it belongs to.
+- **The harnesses** — smoke tests, docs figure galleries, the audio-provenance audit and the compile-only synth cookbook — are excluded by path. They run in `check` and are worth reading, but they are build machinery rather than API.
+- **Graphics, rendering and the small languages beyond their host side** live in `afield.four`, `afield.rectsl` and `afield.stacksl`; start from [afield.four Graphics](../afield_four_graphics.md), the [RectSL cheatsheet](../rectsl_cheatsheet.md) and the [StackSL cheatsheet](../stacksl_cheatsheet.md). `afield.four.synth`, the audio half of `afield.four`, **is** here; read it alongside [Sound: from a pattern to something you can hear](../sound.md).
 
 ## How to read a symbol you find here
 

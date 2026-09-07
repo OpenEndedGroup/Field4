@@ -21,9 +21,9 @@ import kotlin.test.assertTrue
  * explored. Read it as a floor.
  *
  * **What is excluded, and why.** For a `data class` Kotlin generates `componentN`, `copy`, `equals`,
- * `hashCode` and `toString`; those are the compiler's code, not this file's, and the codebase
- * reference does not count them either (`public/docs/reference/index.md`: "the members Kotlin
- * generates for a `data class` are not counted at all"). They are dropped here for the same reason.
+ * `hashCode` and `toString`; those are the compiler's code, not this file's, and the KDoc worklist
+ * does not count them either (`dev_docs/kdoc_worklist.md`: "the members Kotlin generates for a
+ * `data class` are not counted at all"). They are dropped here for the same reason.
  * A `toString` that is genuinely hand-written is kept, via [HANDWRITTEN_TO_STRING].
  */
 class KeyframerCoverageTest {

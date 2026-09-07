@@ -438,8 +438,8 @@ object VolumetricNoiseReference {
 
     /**
      * `fbm3` and its gradient in one word: `.x` is the value, `.yzw` the gradient. The gradient
-     * of a scalar field is a normal — of an isosurface, of a cloud edge — and getting it out of
-     * StackSL previously meant six calls and a lot of stack juggling.
+     * of a scalar field is a normal — of an isosurface, of a cloud edge — so this is the word to
+     * reach for when shading one, rather than differencing `fbm3` by hand.
      */
     fun fbmd3(
         p: NoiseVec3,

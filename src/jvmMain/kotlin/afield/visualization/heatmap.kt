@@ -145,7 +145,8 @@ fun heatmapImage(
  *
  * @param matrix          the data, `[row][col]`; must be non-empty and rectangular.
  * @param colormap        a [Colormaps] name — viridis / magma / inferno / plasma / turbo /
- *                        coolwarm / grayscale (default viridis).
+ *                        coolwarm / grayscale / cyanorange (default viridis). [Colormaps.names]
+ *                        is the list.
  * @param width           output width in pixels; [height] defaults to an aspect-preserving value.
  * @param height          output height in pixels; `<= 0` derives it from the grid aspect ratio.
  * @param normalize       min-max the (optionally log-scaled) values into `[0,1]` before colouring.
