@@ -4,10 +4,11 @@
 [Math](reference/math.md) and [Data](reference/data.md).*
 
 You have two streams of numbers and one question: **are they related?** Almost every answer Field
-can give you lives in three files: `afield/stdlib/stats.kt`, `afield/stdlib/correlations.kt` and
-`afield/stdlib/quantilewarp.kt`, about 3800 lines between them. This is a worked example of all
-three, and the argument it makes is that *"are they related?"* is six different questions with six
-different answers, and picking the wrong one is how you miss a relationship that is staring at you.
+can give you lives in three files, about 3800 lines between them: `afield/stdlib/stats.kt`,
+`afield/stdlib/correlations.kt` and `afield/stdlib/quantilewarp.kt`. This is a worked example of
+all three, and the argument it makes is that *"are they related?"* is six different questions with
+six different answers, and picking the wrong one is how you miss a relationship that is staring at
+you.
 
 Some of it is the boring, indispensable half: count, quartiles, IQR, MAD, skew, kurtosis,
 histograms, a streaming window of all of it. Some of it is the interesting half: Pearson,
@@ -29,7 +30,7 @@ related" but "this signal is the wrong shape to work with".
 | reshape a distribution into a target | `quantilewarp.kt` | `AdaptiveQuantileWarp`, `QuantileWarpState`, `TargetDistributions`, `inverseStandardNormalCdf`, and matching GLSL for the GPU |
 
 Two things this family is **not**. It is not a statistics library: there are no p-values, no
-confidence intervals and no hypothesis tests anywhere in it, so whether a number means anything is
+confidence intervals and no hypothesis tests anywhere in it. Whether a number means anything is
 yours to establish, and *Is 0.193 big?* below writes the permutation test that settles it. And
 `micTicNaive` is not MICe/TICe. The file's own header comment
 (`correlations.kt:31#IMPORTANT NOTES (honesty about what this is / isn't):`) is emphatic that it is an equipartition-grid approximation that will not
@@ -84,8 +85,8 @@ Both conventions are defensible; having both on one card is a trap. If you are c
 another tool, the mapping onto NumPy and SciPy is exact: `q1`/`median`/`q3` are
 `numpy.percentile`'s default linear interpolation, `mad` is `median(|y − median(y)|)` unscaled,
 `sampleStdDev` is `numpy.std(ddof=1)`, and `skewness`/`kurtosisExcess` are `scipy.stats.skew` and
-`scipy.stats.kurtosis` at their *default* `bias=True`, pinned to ten decimal places against SciPy
-1.15.2 on a tie-heavy ten-point sample in `StatsSummaryTest`.
+`scipy.stats.kurtosis` at their *default* `bias=True`. `StatsSummaryTest` pins that mapping to ten
+decimal places against SciPy 1.15.2 on a tie-heavy ten-point sample.
 
 Three more edges, guarded rather than propagated inside `buildSummaryStats`
 (`stats.kt:1004#val sampleVariance = if (n > 1) m2 / (n - 1).toDouble() else 0.0`), so you get a
@@ -262,7 +263,7 @@ Pearson limitation *after* the ranking.
 **Chatterjee's xi answers "is `y` a function of `x`", and it is the only asymmetric coefficient
 here.** It reads 0.985 on the parabola and 0.955 on the sine, the two cases the rank coefficients
 miss entirely. Swap the arguments and it changes its mind: `xi(x, parabola) = 0.985` but
-`xi(parabola, x) = 0.246`, because `x` genuinely is *not* a function of `x²`, each `y` having two
+`xi(parabola, x) = 0.246`, because `x` genuinely is *not* a function of `x²` — each `y` has two
 possible `x`. Cheap, too: O(n log n) against the O(n²) of `kendallTauB` and `distanceCorrelation`.
 
 **Distance correlation answers "is there any dependence at all".** It is the only entry in the
@@ -421,7 +422,7 @@ and goes. `RollingDistanceCorrelation` maintains its row sums, grand sums and cr
 incrementally, so a `push` costs O(w) rather than the O(w²) a rebuild would
 (`correlations.kt:670#The maintained row sums, grand sums and cross sums are only ever`). `RollingXiCorrelation` makes no such promise. It recomputes
 `chatterjeeXi` over the window every time, at O(w log w) (`correlations.kt:914#have arrived. Copies the window out in arrival order first,`–
-`correlations.kt:925#val slot = (head + i) % windowSize`), which makes it exactly as trustworthy as the batch call and no faster.
+`correlations.kt:925#val slot = (head + i) % windowSize`). That makes it exactly as trustworthy as the batch call and no faster.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/statistics_examples/rolling_regime.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="620" padding="16"}
 :::static
@@ -522,7 +523,7 @@ maintained sums), while `StatsDependence.distanceCorrelation` materialises two f
 and double-centres them (`correlations.kt:415#matrices, which puts the practical ceiling at a few thousand`–`correlations.kt:495#val dcor = dcov / sqrt(dvarx * dvary)`). On the final window they agree
 to **5×10⁻¹⁵**. The KDoc at
 `correlations.kt:667#evicts the oldest pair. There is no reset: build a new`–`correlations.kt:669` warns that the incremental sums drift over a long run,
-and they do, but not far: over **200 000** pushes with a window of 64, the largest
+and they do — but not far: over **200 000** pushes with a window of 64, the largest
 disagreement sampled against the batch call was **8.6×10⁻¹⁴**. `RollingDependenceTest` pins both
 bounds.
 
@@ -655,12 +656,13 @@ updates the warp and calls your `apply` callback with the new state.
 Start with `distanceCorrelation`: it is the only one that is zero *only* under independence, so it
 is the right screen. Beat `2.5/√n` or you have found nothing. If it fires, ask what shape: `pearson`
 for a line, `spearman` or `kendallTauB` for monotone-but-curved, `xi` for "is `y` a function of
-`x`" including non-monotone ones, remembering that `xi` is asymmetric and that a constant predictor
-reads 0 from it where the others return NaN. Reach for `micTicNaive` only for intuition, and never to
-compare against published MIC numbers. Above a few thousand samples, `kendallTauB` and
-`distanceCorrelation` are both O(n²) and `distanceCorrelation` also allocates two n×n matrices, so
-switch to `RollingDistanceCorrelation` or subsample. And if the problem turns out to be that the
-signal is the wrong shape rather than unrelated to anything, that is `quantilewarp.kt`.
+`x`" including non-monotone ones. Hand `xi` its two arrays in the order you mean them, since it is
+the one coefficient here that answers a different question when you swap them. Reach for
+`micTicNaive` only for intuition, and never to compare against published MIC numbers. Above a few
+thousand samples, `kendallTauB` and `distanceCorrelation` are both O(n²) and `distanceCorrelation`
+also allocates two n×n matrices, so switch to `RollingDistanceCorrelation` or subsample. And if the
+problem turns out to be that the signal is the wrong shape rather than unrelated to anything, that
+is `quantilewarp.kt`.
 
 Everything on this page is also **five live, editable boxes**: the `statistics_examples` starting
 point listed under *Pure-compute scenes* in
