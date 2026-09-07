@@ -1230,8 +1230,9 @@ fun freeParameterIndices(fn: Functions.Fn): Map<String, Int> =
     freeParameterSlots(fn).mapValues { (_, indices) -> indices.first() }
 
 /**
- * **Every** θ index each named free parameter occupies, in graph order — the honest form of
- * [freeParameterIndices], which can only report one.
+ * **Every** θ index each named free parameter occupies, in graph order. [freeParameterIndices]
+ * returns the first of them and no more, so this is the one to read when a parameter can occupy
+ * several.
  *
  * One IR parameter can become several θ leaves, because a lowering is free to use the same sub-`Fn`
  * more than once and `FnAutoDiff.leafIndices` keys by *path*: two occurrences of one node are two

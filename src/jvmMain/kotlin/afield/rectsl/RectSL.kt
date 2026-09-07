@@ -3712,10 +3712,9 @@ class SceneBuilder {
 
     /**
      * Cycles per second — the scene's musical clock, and the one number that converts
-     * between the pattern language's cycles and RectSL's seconds. `1.0` (one cycle per
-     * second) is Tidal's own default and is deliberately chosen so that a scene which
-     * never says `->tempo` behaves as if a cycle were a second: every existing scene is
-     * unaffected because nothing outside the musical words reads it.
+     * between the pattern language's cycles and RectSL's seconds. The default `1.0` is
+     * Tidal's own, and makes a scene that never says `->tempo` behave as if a cycle were
+     * a second. Nothing outside the musical words reads it.
      */
     var cps: Double = 1.0
 

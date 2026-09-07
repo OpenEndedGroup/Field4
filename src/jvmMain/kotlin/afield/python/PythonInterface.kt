@@ -51,7 +51,7 @@ import java.util.concurrent.TimeUnit
  *
  *  - **Configuration.** JEP needs a real CPython to bind against, chosen once and persisted:
  *    [PythonSettingsRequest], [PythonSettingsStatus] and [PythonInstallResult] are that
- *    negotiation, and `restartRequired` is honest — a new interpreter binding cannot be swapped
+ *    negotiation, and `restartRequired` means it: a new interpreter binding cannot be swapped
  *    into a live JVM. [makeInterpreter] runs early and returns silently when nothing is
  *    configured, which is why a checkout with no Python simply has no Python boxes rather than a
  *    broken startup.
