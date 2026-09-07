@@ -4,16 +4,13 @@
 `DepthAnything` and `Clip` in `afield.onnx`. The transcript that ships as an openable starting point
 is [onnx_webcam_live](agent_transcripts.md).*
 
-The [imaging family](imaging_examples.md) gives you convolutions, edges, corners, Hough lines and
-optical flow: arithmetic you could write out by hand. `afield.onnx` answers the two questions you
-cannot write out by hand.
+`afield.onnx` binds two pretrained vision models. Depth Anything V2 Small reads one photograph and
+predicts how far away everything in it is; CLIP embeds images and text into a shared 512-dimensional
+space, so a picture can be scored against a written prompt with no training and no label set.
 
-> **How far away are things in this picture, and what is it a picture *of*?**
-
-Both answers run on the ONNX Runtime JNI artifact (`com.microsoft.onnxruntime:onnxruntime`, 1.27.0),
-which is on the classpath already because [semantic search](semantic_index.md) embeds text with it. No
-new native dependency, no build step, no toolchain. Two models get downloaded the first time you ask
-for them, and that is the whole install.
+Both run on the ONNX Runtime JNI artifact (`com.microsoft.onnxruntime:onnxruntime`, 1.27.0), which is
+on the classpath already because [semantic search](semantic_index.md) embeds text with it. The weights
+are not: each model is fetched the first time you ask for it, and that is the whole install.
 
 ```diffstatic {data-lang=kotlin}
 import afield.onnx.*
@@ -52,6 +49,8 @@ val loaded = OnnxRuntime.session(spec)
 // NOT cached — this rebuilds on every keystroke, and it is the one mistake to avoid.
 val mine = OnnxRuntime.env.createSession(path, options)
 ```
+
+*Not executed, and half of it must never be: the second line is an anti-example.*
 
 The cache key is a `SessionSpec`: the model file, the provider, and the two thread counts. Thread
 pools are baked in at construction, so two specs differing only in `intraOpThreads` really are
@@ -214,9 +213,9 @@ provider flag fixes it; see [what was measured](#what-was-measured-and-what-it-c
 
 ## CLIP: a shared space for pictures and words
 
-[CLIP](https://openai.com/research/clip) embeds images and text into one 512-dimensional space. Field
-binds both towers (`text_model.onnx` and `vision_model.onnx`), each of which emits an
-already-projected 512-vector, so no head has to be reimplemented.
+Field binds both of [CLIP](https://openai.com/research/clip)'s towers, `text_model.onnx` and
+`vision_model.onnx`. Each one emits an already-projected 512-vector into the shared space, so no
+projection head has to be reimplemented here.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/onnx/clip.png" wait="30" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -405,7 +404,8 @@ invisible beside the inference.
 !!! note "Treat every millisecond on this page as an observation, not a guarantee"
     Depth at 266×154 has been observed anywhere between about 60 ms and 95 ms across six runs of one
     machine, and at 126×70 between about 16 ms and 25 ms; the CLIP vision tower, 31–34 ms per image.
-    The spread is the machine rather than the model, and those runs had a build going alongside them.
+    The spread is the machine rather than the model: those runs were recorded on 2026-08-15 with a
+    build going alongside them.
     The numbers burned into the captures above are whatever that capture run measured. The numerics
     are the part that holds across runs and machines.
 
