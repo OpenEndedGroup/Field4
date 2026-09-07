@@ -2247,7 +2247,8 @@ private fun interactionSummaryCard(title: String, body: String): String = """
 // =========================
 
 /**
- * This bundle is intentionally pragmatic rather than dogmatic.
+ * Lambda calculus as an interaction net: the agent types, and rules for beta-reduction with
+ * explicit copying and discarding.
  *
  * Conventions used here:
  * - APP(principal, fun, arg)
@@ -2261,8 +2262,8 @@ private fun interactionSummaryCard(title: String, body: String): String = """
  * - DUP meeting a structured node recursively spawns more DUPs and reconstructs two copies.
  * - DUP meeting a nullary atom materializes two fresh copies of that atom.
  *
- * This is already enough to demonstrate explicit resource handling and to support experimentation
- * with linear vs nonlinear lambda fragments, although it is not yet the full Lafont/Lamping story.
+ * Enough for explicit resource handling and for experimenting with linear against nonlinear lambda
+ * fragments; not the full Lafont/Lamping story.
  */
 object Lambda {
     /**
