@@ -5,8 +5,9 @@ signal *is*, and the compiler turns it into efficient code. Field embeds that co
 `#faust` region inside an ordinary Kotlin string is compiled, instantiated and playing through
 Field's audio engine, with the sliders it declares showing up as real Field controls.
 
-Nothing is installed to make this work. Not `faust`, not LLVM, not a C++ toolchain. See
-[Nothing to install](#nothing-to-install) for why, and what it costs.
+Nothing is installed to make this work. Not `faust`, not LLVM, not a C++ toolchain: Field vendors
+the compiler itself, 5.3MB of platform-independent WebAssembly. The bill arrives as compile speed,
+which [Nothing to install](#nothing-to-install) sets out at the end of the page.
 
 ## A box that is a signal processor
 
