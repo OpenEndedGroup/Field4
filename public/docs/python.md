@@ -4,14 +4,12 @@
 [promoted main language](language_extensions.md), so a Python box is a box like any other: it has
 outputs, it can be stopped, and it sits in the same document as your Kotlin.*
 
-Field embeds CPython through [JEP](https://github.com/ninia/jep), in-process. That is the whole
-design, and everything else on this page follows from it. There is no subprocess, no socket, no
-kernel protocol. A Python cell and a Kotlin box are two objects in one JVM, which is why a Python
-cell can hold a reference to the `Box` it is running in, and why `import numpy` costs what it costs
-in any other CPython.
-
-The price is that Python has to be *found* before Field starts. [Setting it
-up](#setting-python-up) is the last section, and it is the part most likely to bite you first.
+Field embeds CPython through [JEP](https://github.com/ninia/jep), in-process: a Python cell and a
+Kotlin box are two objects in one JVM, which is why a cell can hold a reference to the `Box` it is
+running in, and why `import numpy` costs what it costs in any other CPython. The cost of that is
+paid at startup, where Field has to find an interpreter with JEP's native library already installed
+in it. If your cells stay stubbornly Kotlin, [Setting Python up](#setting-python-up) at the end of
+the page is where to go.
 
 ## A Python box is a child of a Python root
 
