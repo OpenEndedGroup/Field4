@@ -342,9 +342,10 @@ rather than a stiffener.
 
 !!! note "The repository records a different ladder"
     `dev_docs/physics/SIMDVERLET_4_CONSTRAINTS.md` runs the same four rungs and reports 1949 % /
-    116 % / 32 % / 11 %. Those are *settled* values read off a box that has stopped moving, where
-    the numbers above are peaks over the fall, and that alone puts this page about 1.7 times higher
-    on every stable rung. Same ordering, same conclusion, two different questions.
+    116 % / 32 % / 11 %. Those are *settled* values read off a box that has stopped moving, on a
+    scene that ships the curvature force; the numbers above are peaks over the fall with curvature
+    off. The note itself puts the two about 1.7 times apart on every stable rung. Same ordering,
+    same conclusion, two different questions.
 
 ### The other end of the band
 
