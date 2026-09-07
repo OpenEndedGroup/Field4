@@ -120,11 +120,29 @@ class PatPitchTranscriptionTest {
         // "legato" Pat render still has one amplitude rise per note and the energy detector handles it
         // fine (measured: recall 0.87 with the lag forgiven). This probe is one oscillator whose
         // frequency steps with continuous phase, so the RMS envelope really is flat.
-        // Measured: energy 0.13, pitch 0.86, both with the constant lag forgiven.
+        //
+        // Measured: energy 0.13 strict (1 of 8, from 9 onsets found), energy 0.38 with the constant
+        // lag forgiven, pitch 0.86 with the lag forgiven.
+        //
+        // The forgiven energy figure read 0.13 too until 052f26bf5 replaced patMatchOnsets' median
+        // residual with a search over every candidate shift. Nothing in the detector, the probe or
+        // the renderer changed with it: the same 9 onsets come out, exactly one of them still lands
+        // inside the strict window, and the estimator that commit deleted still returns 0.13 when it
+        // is run over today's train. What moved is how far a train may be slid before it is scored.
+        // These onsets are the RMS ripple of the sine rather than the notes, so they sit about 224 ms
+        // apart against a 250 ms grid; one shift can phase-lock the last three of them and nothing
+        // earlier. A drifting train is not a lagged one, which is why the strict tally is asserted
+        // first here and is the number to read if this test ever fails again.
         val energy = legato.energyMatch.recall
         val pitch = legato.pitchMatch.recall
+        // Eight scheduled onsets, so recall moves in eighths: 0.25 fires on the second strict match.
         assertTrue(
-            energy <= 0.30,
+            legato.energyTally.recall <= 0.25,
+            "with a flat envelope the energy detector should strictly match almost nothing, got " +
+                "recall ${legato.energyTally.recall} from ${legato.energyOnsets.size} onsets"
+        )
+        assertTrue(
+            energy <= 0.45,
             "with a flat envelope the energy detector should find almost nothing, got recall $energy"
         )
         assertTrue(
