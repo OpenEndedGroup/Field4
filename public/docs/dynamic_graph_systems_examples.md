@@ -5,12 +5,10 @@
 [`dynamic_graph_field.kt`](reference/data.md#dynamic-graph-field-kt). Start from
 [what's already in the box](reference/index.md).*
 
-A point cloud with a graph on it is a static object, and every algorithm in
-[`graph_connectivity.kt`](graph_connectivity_examples.md) assumes exactly that: the points sit still,
-the edges are given, and you traverse. This family assumes the opposite. The points move every frame,
-and the edges are not given: they are **continually proposed, reinforced and forgotten**, so the
-graph is a slowly-decaying memory of what has been near what rather than a description of where things
-are now. The structure that matters is the one that survives the forgetting.
+The graph in this family is a slowly-decaying memory of what has been near what, not a description of
+where things are now. Points move every frame, and no edge arrives ready-made: edges are
+**continually proposed, reinforced and forgotten**, so the structure that matters is whichever one
+survives the forgetting.
 
 That inverts three things a static graph lets you take for granted:
 
@@ -27,10 +25,10 @@ That inverts three things a static graph lets you take for granted:
   moves points, spawns them and kills them, so the cloud's *size* is an output. Three of the ten
   shipped processes add points and two remove them.
 
-Three of the parameters here are named for a quantity they are not, and their defaults are wrong by
-enough that the result looks like the system misbehaving rather than like a units error. There is no
-ground truth that would let them be renamed or re-defaulted, so they are documented instead. Read
-them before you configure anything:
+Three of the parameters here are named for a quantity they are not, and the gap is wide enough that a
+badly-set one looks like the system misbehaving rather than like a units error. There is no ground
+truth that would let them be renamed or re-scaled, so they are documented instead. Read them before
+you configure anything:
 
 !!! warning "Three parameters that do not mean what they read"
     **`SpringMotionProcess.restLengthScale` is not a length.** An edge's rest length is
@@ -130,9 +128,9 @@ showPlaneGrid(
 the panels are vector: they scale, and each edge carries its own weight. That weight is read as
 `weight / 4.0`, the ceiling all six were given, and it drives both the colour and the stroke width on
 one **fixed** scale rather than a per-panel normalisation. A faint, thin panel is therefore a system
-whose weights stayed low. The top-left and bottom-right panels (cream and heavy against thin and
-purple, over the same cloud and the same reinforcement budget) differ in nothing but the last column
-of this table:
+whose weights stayed low. The top-left and bottom-right panels are cream and heavy against thin and
+purple over the same cloud and the same reinforcement budget, and the last column of this table is
+why:
 
 | system | edges | in a triangle | mean degree | max weight reached |
 | --- | --- | --- | --- | --- |
@@ -150,7 +148,7 @@ build *faces*. **Flowline advection reaches exactly 0 %**: it advects each point
 and joins it to whatever it lands nearest, so it is a functional map, one arc out of each point, and
 the pinwheel in the top-middle panel is the phyllotaxis spiral of the cloud made visible. The mutual
 kNN's 88.4 % sits between the two for no reason to do with its design; that is simply what a dense
-proximity mesh gives you at this radius.
+mesh gives you at `k = 5`.
 
 ## 2. Reinforcement and forgetting
 
@@ -529,7 +527,7 @@ run the same stages in the same order, except that the right-hand pipeline is mi
 | 400 | 899 pts, 2376 edges | 62 pts, 94 edges |
 | 560 | 899 pts, 2950 edges | 56 pts, 86 edges |
 
-Two rows of that table need reading slowly. The 900-point cap is reached at **step 79** of 560, so a
+Two things in that table need reading slowly. The 900-point cap is reached at **step 79** of 560, so a
 linear schedule would be done growing inside the first seventh of the clip; `ramp = 25` is what moves
 the clip's mid-point back to step 93. And the control arm does *not* hold at 64 points: it drops to
 56, because `MergeClosePointsProcess` is in both pipelines and the springs pull the ring's points
@@ -548,7 +546,8 @@ A geometric ramp needs more recording slack than a linear one, because
 largest in the run, so the capture falls furthest behind exactly where it has least clock left to
 recover. This clip is recorded at `duration = 13` against `seconds = 10` for that reason, and it needs
 all of it: on the finished mp4 the picture is still changing at 11.90 s, leaving 1.1 s of hold on the
-settled result. At `duration = 11` the recorder stops mid-catch-up, around `s520`.
+settled result. At `duration = 11` the recorder stopped mid-catch-up: two takes ended at `s528` and
+`s513`.
 
 ## 6. Snapshots, and the `minWeight` cut
 
