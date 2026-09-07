@@ -1,6 +1,6 @@
 # RectSL examples
 
-RectSL is meant to be small enough to mutate live, but concrete enough that the CPU can sample exact rectangle state. These examples use `afield.rectsl.*` from normal Field Kotlin.
+Every operator in the [cheatsheet](rectsl_cheatsheet.md) turns up somewhere on this page. The tour runs from array primitives that multiply one shape across a wall, through emitters that split and cascade, the pattern language borrowed whole so a scene can be laid out by rhythm, and charts and plotted figures, to the same scenes lowered into a single GLSL distance function. The host side is normal Field Kotlin calling `afield.rectsl.*`.
 
 ## Rendered gallery
 
@@ -8,7 +8,7 @@ Unlike StackSL (a fullscreen fragment), a RectSL program is a whole *scene*: a
 wall, a duration, rectangles, animation tracks, groups, and StackSL materials. It
 compiles to a `SceneProgram`; each frame is sampled, lowered to a triangle mesh,
 and drawn through the shared `RECT_ANIMATION_VERTEX_SHADER` plus a
-StackSL-compiled material fragment, the same path as `RectSLRenderRunner`.
+StackSL-compiled material fragment (the same path as `RectSLRenderRunner`).
 `RectSLGalleryHarness` produces the whole gallery inside one Field document (one
 renderer, one graphics context), reading back a still per program at `stillTime`
 and sweeping each program's timeline to an mp4.
@@ -625,7 +625,7 @@ expect:
 
 The top (blue) row is the target silhouette; the middle (brown) row is the seed,
 whose two lobes start merged in the wrong place; the bottom (gold) row is the
-fitted curve, the same two-lobe shape as the target, recovered by the optimiser.
+fitted curve, which the optimiser has brought back to the target's two-lobe shape.
 `fitBest` tuned the seed's lobe positions, widths, and heights by gradient descent;
 RectSL only sampled the result. Reach for `fitBest` when you have a shape in mind
 and just need the numbers dialed in, and for `evolve(...)` when the *structure*
@@ -743,7 +743,7 @@ answers for them.</figcaption>
 </figure>
 </div>
 
-The motion blur repays watching in motion: the streak is not a fixed smear, it
+The motion blur repays watching in motion. The streak is not a fixed smear; it
 tracks the velocity, which comes from a TCB spline the CPU solved once.
 
 <video src="../assets/rectsl/rectsl-sdf-motion-blur.mp4" poster="../assets/rectsl/rectsl-sdf-motion-blur.png"
@@ -756,8 +756,8 @@ tracks the velocity, which comes from a TCB spline the CPU solved once.
 Both halves show the same region of the same wall at the same output size. The left
 is rendered at the gallery's ordinary resolution and then magnified 4× with
 nearest-neighbour; the right is rendered at 4× and cropped. Nothing about the
-scene, the shader or the look changed between them, only how many fragments asked
-the question:
+scene, the shader or the look changed between them — only how many fragments are
+asking the question:
 
 <img src="../assets/rectsl/rectsl-sdf-zoom.png" alt="a 1x render magnified beside a 4x render"
      style="width:100%;max-width:820px;border-radius:8px;">
@@ -793,10 +793,10 @@ check usually ends up agreeing with itself. The probe reports `p.x` and `p.y` as
 well, so the mapping is fitted from the shader's own answers and its residual is
 held to the encoding's own step. The comparison runs on the scene above, on a
 second scene built from `->degrade` and a mini-notation pattern (the two tracks
-whose fidelity is not free), and then on a spread of the real gallery: every scene
-that brings a new feature signature (groups, named easings, a forced bake, a
-different order of magnitude of rect count), each of which is a different branch
-of `emitRect`:
+whose fidelity is not free), and then on a spread of the real gallery. A gallery
+scene earns its place in that spread by bringing a new feature signature (groups,
+named easings, a forced bake, an order of magnitude more rects), since each of
+those is a different branch of `emitRect`:
 
 ```diffstatic {data-lang=console}
 near (±1 wall unit):        5246 points, max |GPU-CPU| = 1.08e-06, mean 3.23e-07
@@ -878,8 +878,8 @@ becomes sixteen strikes rather than a synchronised chorus. `step` places each st
 wall, restarting at every bar line.
 
 The hats do the same across space: sixteen copies laid out by `array`, then thinned to a
-five-against-sixteen figure by `->euclid`, with the whole ring turned by `saw`, a pattern read as a
-rotation track. The accent is `->every 4`: one white flash that only fires on the fourth bar,
+five-against-sixteen figure by `->euclid`, with the whole ring turned by `saw` — a pattern read as
+a rotation track. The accent is `->every 4`: one white flash that only fires on the fourth bar,
 which is the thing a loop cannot do and a groove must.
 
 ```diffstatic {data-lang=rectsl}
