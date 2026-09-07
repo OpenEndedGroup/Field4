@@ -699,7 +699,7 @@ loop {
 
 Three things to notice. `meshes[0].meshes[0].applyToMesh(m, camera)` copies one primitive of one model into your mesh; the outer index is the model, the inner one the primitive, so a multi-part file is addressed rather than flattened. `module.VertexData` is the reflected *uniform block*, assigned whole (`module.VertexData.proj = camera.p()`) instead of through per-member lambdas. And `camera.p.orthoness` / `camera.p.matchDepth` are Field's blend between perspective and orthographic rather than a choice between them.
 
-There is one thing to watch in that loop. `applyToMesh` composes `modelView` as `view * model`, defaulting `model` to the primitive's own node transform, which is what makes a multi-node file assemble where its nodes put it rather than heaping every part at the origin. Assigning `module.VertexData.modelView = camera.m()` each frame overwrites that with the view alone, which is fine for `Box.gltf` (one node, no transform) and wrong for anything positioned by its nodes. If you drive the camera from a loop like this, compose the model matrix in there too, or pass `model = Matrix4f()` to `applyToMesh` and own the placement yourself. [Geometry from disk](geometry_from_disk.md) has the measurement behind that.
+There is one thing to watch in that loop. `applyToMesh` composes `modelView` as `view * model`, defaulting `model` to the primitive's own node transform. That default assembles a multi-node file where its nodes put it, instead of heaping every part at the origin. Assigning `module.VertexData.modelView = camera.m()` each frame overwrites that with the view alone, which is fine for `Box.gltf` (one node, no transform) and wrong for anything positioned by its nodes. If you drive the camera from a loop like this, compose the model matrix in there too, or pass `model = Matrix4f()` to `applyToMesh` and own the placement yourself. [Geometry from disk](geometry_from_disk.md) has the measurement behind that.
 
 The vertex shader shows what "already matched to the data" means. Rather than declaring vertex attributes, it reads a flat float array through a buffer reference and unpacks by stride:
 
@@ -752,7 +752,7 @@ void main()
 }
 ```
 
-It also shows how to place a primitive using the file's own transform: `camera.m() * meshes[0].meshes[2].bindPose.m` composes the view matrix with the primitive's bind pose, which is what you want as soon as a model has more than one part.
+It also shows how to place a primitive using the file's own transform: `camera.m() * meshes[0].meshes[2].bindPose.m` composes the view matrix with the primitive's bind pose. That is the hand-written form of the `model` default `applyToMesh` supplies, and the fix for any loop that assigns `modelView` itself.
 
 Neither carries a figure: both need a glTF file on disk, and the repository ships none. The paths above point at the [glTF Sample Models](https://github.com/KhronosGroup/glTF-Sample-Models) collection, which is what the saved lessons were written against; in the corpus they are absolute paths into the author's checkout, so expect to repoint them. If you want geometry from disk with assets that *are* in the tree, see [Geometry from disk](geometry_from_disk.md).
 
@@ -1004,7 +1004,7 @@ val other = b1.imageViewArray[1]
 prop<HasImageView>(back) = other
 ```
 
-and samples it as a `sampler2DArray`, which is what a layered target reflects as:
+and samples it as a `sampler2DArray`, the type a layered target reflects as:
 
 ```diffstatic {data-lang=glsl}
 layout(set=0, binding = 0) uniform sampler2DArray bbc;
@@ -1290,7 +1290,7 @@ void main()
 
 `fieldProbe(…)` writes the sampled value into a buffer the probe owns, and `.display("probe")` puts the readback in the box's output area. Probing the post-projection position, as here, is how you check a transform is doing what you think without reasoning backwards from the picture. `n = 100` stacked quads make it worth probing: 400 vertices where a wrong `p` or `m` is otherwise just a blank window. See [Field probes](field_probes.md) for the readback side.
 
-A second probe lesson (`6b. debugging / mapping - Texture probe example`) goes further and warps the sampled distribution before display (`AdaptiveQuantileWarp` and `QuantileWarpConfig`), which is what you reach for when the interesting variation is buried in a narrow part of the range.
+A second probe lesson (`6b. debugging / mapping - Texture probe example`) goes further and warps the sampled distribution before display (`AdaptiveQuantileWarp` and `QuantileWarpConfig`). Reach for that when the interesting variation is buried in a narrow part of the range and a linear readout flattens it.
 
 There is no figure here, and there should not be. The probe's value is the readback, and `.display("probe")` puts that in the *box's* output area, not in the Vulkan window, so a native-window capture of this example shows only the textured quads, pixel-identical to the texturing figure, and would suggest the probe produced nothing. The quads also stack along z, so from the camera they land on top of one another and 100 of them look like one.
 
