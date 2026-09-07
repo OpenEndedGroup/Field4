@@ -785,11 +785,10 @@ fun leniaMuSweep(
 }
 
 /**
- * **Largest** absolute per-cell difference between two same-shape fields — an L-infinity norm, not a
- * sum, as the name says. The residual a claim of "these two implementations agree exactly" is asserted
- * to be zero, and a per-cell tolerance can be compared against it directly. (The first line of this
- * KDoc used to say "Total", which describes a quantity larger by up to the pixel count and would lead a
- * caller to pick a tolerance wrong by that factor.)
+ * **Largest** absolute per-cell difference between two same-shape fields: an L-infinity norm, and
+ * not a sum. This is the residual a claim of "these two implementations agree exactly" asserts to
+ * be zero, and a per-cell tolerance compares against it directly. A total would be larger by up to
+ * the pixel count, so read the name carefully before choosing a tolerance.
  */
 fun fieldMaxAbsDiff(a: Img, b: Img): Double {
     require(a.sameShapeAs(b)) { "fieldMaxAbsDiff needs matching shapes" }
