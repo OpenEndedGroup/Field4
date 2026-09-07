@@ -1,10 +1,10 @@
 # Forth examples
 
-Field's Forth is small: one data stack, a return stack, a mutable dictionary, a few control-flow words, vector helpers, a reflection bridge into JVM objects, and enough `FLine` vocabulary to sketch geometry quickly.
+Forth in Field is a data stack and a dictionary of words that push and pop it. A definition is usually one line long (`: sqr dup * ;` is a complete one), and the dictionary can be rewritten while the box is still running. Around that core sit the control-flow words, vec2 helpers, enough `FLine` vocabulary to sketch geometry, and a reflection bridge that lets Forth call methods on any JVM object it can reach.
 
-The original examples live in `src/jvmMain/kotlin/afield/forth/ForthInterpreter.kt`; the ones here expand on a few of them.
+To get a Forth box, run **Set Main Language: Forth** on a parent box; its children then run Forth rather than Kotlin. Documents carrying the older `isForthRoot` property still work, but the action is the way to do it now.
 
-In a live Field document, Forth boxes sit under a parent box that is a language root: run **Set Main Language: Forth** on the parent and its children become Forth boxes. The older `isForthRoot` property is still honoured for documents that carry it, but new ones should use the action. The examples below are written as raw Forth, and every one of them was run through the same `ForthInterpreter` your boxes use.
+Every example below is raw Forth, run through the same `ForthInterpreter` your boxes use. The interpreter's KDoc in `src/jvmMain/kotlin/afield/forth/ForthInterpreter.kt` carries a few examples of its own; the ones here expand on them.
 
 ## A tiny stack language
 
