@@ -68,6 +68,22 @@ class SmallLanguageAnatomyTest {
 
         /** Rows in the "coverage-guard pattern" table. */
         const val EXPECTED_GUARD_ROWS = 9
+
+        /**
+         * Registered main languages that deliberately do **not** appear in `DEFAULT_LANGUAGES`, and
+         * so cannot open Field's own suggest widget. Asserted as an exact set by
+         * [everyMainLanguageReachesFieldsOwnSuggestWidget]; every member needs its reason here.
+         *
+         * - `remotejs` stamps `code_language = "Javascript"`, whose Monaco id `javascript` is stock
+         *   Monaco's, shared with every other JavaScript buffer in the app rather than owned by
+         *   RemoteJS boxes. Adding `javascript` to `DEFAULT_LANGUAGES` would therefore route the
+         *   caret in *any* JS buffer to Field's widget and, through it, to whatever `BoxExecution`
+         *   that box happens to hold — Kotlin completions in a `.js` file. So this one is not the
+         *   one-word list edit the other gaps were; `RemoteJSExectution.complete` is unreachable
+         *   today and closing it needs a decision about scoping the gate to the box's runtime, not
+         *   just to its language id.
+         */
+        val SUGGEST_EXEMPT_MAIN_LANGUAGES = sortedSetOf("remotejs")
     }
 
     private fun repoRoot(): File {
@@ -172,27 +188,63 @@ class SmallLanguageAnatomyTest {
     }
 
     /**
-     * The registered main languages, derived from the source rather than listed here: every
-     * `registerMainLanguageRuntime(` call and the `id = "…"` that follows it.
+     * A registered main language, paired with the `code_language` its topology function stamps on
+     * every box it claims.
+     *
+     * The pair is the point. The registry id is what the *action* is called; `code_language`
+     * lower-cased is the string the editor hands to `monaco.editor.setModelLanguage`
+     * (`Main.kt:1838`, `BootstrapMonacoRuntime.kt:341`, both `code_language.lowercase()`), and so it
+     * — not the registry id — is the Monaco language id a box in that language actually reports
+     * from `model.getLanguageId()`. Everything downstream keys off that id: the Monarch grammar, and
+     * [suggestServedLanguages].
      */
-    private fun registeredMainLanguageIds(): Set<String> {
-        val ids = sortedSetOf<String>()
+    private data class MainLanguage(val id: String, val codeLanguage: String) {
+        /** What `model.getLanguageId()` will report for a box in this language. */
+        val monacoId: String get() = codeLanguage.lowercase()
+
+        override fun toString(): String = "$id (code_language=\"$codeLanguage\" → \"$monacoId\")"
+    }
+
+    /**
+     * The registered main languages, derived from the source rather than listed here: every
+     * `registerMainLanguageRuntime(` call, the `id = "…"` that follows it, and the
+     * `language = "…"` in the `applyRuntimeToggle` call inside the `applyTopology` function it
+     * names.
+     */
+    private fun registeredMainLanguages(): List<MainLanguage> {
+        val found = sortedMapOf<String, MainLanguage>()
         File(root, "src/jvmMain/kotlin").walkTopDown()
             .filter { it.isFile && it.extension == "kt" }
             .forEach { f ->
-                val lines = f.readText().lines()
+                val text = f.readText()
+                val lines = text.lines()
                 lines.forEachIndexed { i, line ->
                     if ("registerMainLanguageRuntime(" !in line) return@forEachIndexed
                     // The descriptor's `id = "…"` is the next few lines; the registry's own
                     // declaration in MainLanguageRegistry.kt has no such id and is skipped.
-                    val window = lines.subList(i, (i + 6).coerceAtMost(lines.size))
-                    window.firstNotNullOfOrNull {
+                    val window = lines.subList(i, (i + 10).coerceAtMost(lines.size))
+                    val id = window.firstNotNullOfOrNull {
                         Regex("""id\s*=\s*"([^"]+)"""").find(it)?.groupValues?.get(1)
-                    }?.let { ids += it }
+                    } ?: return@forEachIndexed
+                    val topology = window.firstNotNullOfOrNull {
+                        Regex("""applyTopology\s*=\s*::(\w+)""").find(it)?.groupValues?.get(1)
+                    } ?: error("main language '$id' in ${f.name} has no applyTopology = ::…")
+                    // Every applyTopology target is a top-level function in the same file, so its
+                    // body runs to the first closing brace in column zero.
+                    val body = Regex("""fun\s+${Regex.escape(topology)}\s*\([\s\S]*?\n}""")
+                        .find(text)?.value
+                        ?: error("no top-level 'fun $topology(' in ${f.name}")
+                    val codeLanguage = Regex("""language\s*=\s*"([^"]+)"""")
+                        .find(body)?.groupValues?.get(1)
+                        ?: error("$topology in ${f.name} passes no language = \"…\" to applyRuntimeToggle")
+                    found[id] = MainLanguage(id, codeLanguage)
                 }
             }
-        return ids
+        return found.values.toList()
     }
+
+    private fun registeredMainLanguageIds(): Set<String> =
+        registeredMainLanguages().map { it.id }.toSortedSet()
 
     @Test
     fun everyRegisteredMainLanguageIsOnThePage() {
@@ -260,6 +312,96 @@ class SmallLanguageAnatomyTest {
         assertTrue(
             undocumented.isEmpty(),
             "fieldSuggest.js serves these languages but the page does not name them: $undocumented"
+        )
+    }
+
+    /**
+     * Every Monaco language id the editor has a grammar for.
+     *
+     * Two sources, because the editor has two: the `languageId` each `bithero/x` module registers,
+     * and the ids stock Monaco's `basic-languages` bundle brings with it (which is why Clojure and
+     * Python need no module of their own). A module that registers nothing —
+     * `bithero/languageExtensions` — simply contributes no ids.
+     */
+    private fun monacoGrammarLanguageIds(): Set<String> {
+        val ids = sortedSetOf<String>()
+        editorLanguageModules().forEach { module ->
+            val name = module.removePrefix("bithero/")
+            val file = File(root, "src/commonMain/resources/$name.js")
+            assertTrue(file.isFile, "$module is loaded at boot but $name.js does not exist")
+            Regex("""(?:var|const|let)\s+languageId\s*=\s*"([^"]+)"""")
+                .findAll(file.readText())
+                .forEach { ids += it.groupValues[1] }
+        }
+        val builtins = File(root, "src/jsMain/resources/monaco/min/vs/basic-languages")
+        assertTrue(builtins.isDirectory, "no stock Monaco basic-languages bundle at ${builtins.path}")
+        builtins.listFiles { f: File -> f.isDirectory }?.forEach { ids += it.name }
+        return ids
+    }
+
+    /**
+     * A box in a registered main language must get a Monaco grammar for the id it actually reports.
+     *
+     * This is the half of the 2026-09-07 morpho bug that no list would have caught. `morpho.js`
+     * registered its language as `"morpho"`, but a morpho box's `code_language` is `"MorphoHDL"`, so
+     * the editor called `setModelLanguage(model, "morphohdl")` — an id nobody had registered.
+     * `setModelLanguage` resolves mime types and then ids, never aliases, and falls back to
+     * `"plaintext"` without a word in the console. So the box was plaintext: the Monarch grammar the
+     * module exists to supply never ran, and neither did anything keyed on the language id.
+     *
+     * Being in `FIELD_LANGUAGE_MODULES` proves only that the *module* loads. This is what proves the
+     * id inside it is the id the box will ask for.
+     */
+    @Test
+    fun everyMainLanguagesCodeLanguageHasAMonacoGrammar() {
+        val languages = registeredMainLanguages()
+        assertTrue(languages.size >= 5, "the registerMainLanguageRuntime scrape looks broken — $languages")
+        val grammars = monacoGrammarLanguageIds()
+        assertTrue(grammars.size >= 40, "the grammar-id scrape looks broken — found ${grammars.size} ids")
+
+        val ungrammared = languages.filterNot { it.monacoId in grammars }
+        assertTrue(
+            ungrammared.isEmpty(),
+            "these main languages stamp a code_language whose lower-cased form is not a registered " +
+                "Monaco language id, so monaco.editor.setModelLanguage falls back to \"plaintext\" and " +
+                "the box gets no highlighting at all:\n" +
+                ungrammared.joinToString("\n") { "  $it" } +
+                "\nEither rename the module's languageId to match, or change the code_language. Do not " +
+                "add an alias: setModelLanguage does not consult them."
+        )
+    }
+
+    /**
+     * A registered main language must reach Field's own suggest widget, or its `complete` override
+     * is dead code.
+     *
+     * `FieldSuggestController.isSupported` tests `model.getLanguageId()` against
+     * `DEFAULT_LANGUAGES`, and nothing else opens the widget — so a language absent from that set
+     * never sends the `complete` RPC, and a `BoxExecution.complete` written for it is unreachable.
+     * That is how `MorphoExecution.complete` and `DatalogExecution.complete` both sat unreachable
+     * until 2026-09-07. Step 5 of the page is the instruction; this is the enforcement.
+     *
+     * Asserted as an **exact set** rather than a subset, in both directions: a new language that
+     * forgets `DEFAULT_LANGUAGES` fails here, and so does closing [SUGGEST_EXEMPT_MAIN_LANGUAGES]
+     * without deleting the exemption. Name a new exception only with the reason written down; an
+     * exemption that says nothing is the same as deleting this test.
+     */
+    @Test
+    fun everyMainLanguageReachesFieldsOwnSuggestWidget() {
+        val languages = registeredMainLanguages()
+        assertTrue(languages.size >= 5, "the registerMainLanguageRuntime scrape looks broken — $languages")
+        val served = suggestServedLanguages()
+
+        val unreachable = languages.filterNot { it.monacoId in served }
+        assertEquals(
+            SUGGEST_EXEMPT_MAIN_LANGUAGES, unreachable.map { it.id }.toSortedSet(),
+            "the set of main languages that cannot open Field's suggest widget has changed.\n" +
+                "  now unreachable: ${if (unreachable.isEmpty()) "(none)" else "$unreachable"}\n" +
+                "  documented exemptions: $SUGGEST_EXEMPT_MAIN_LANGUAGES\n" +
+                "A newly-unreachable language means its BoxExecution.complete can never run: add its " +
+                "code_language, lower-cased, to DEFAULT_LANGUAGES in fieldSuggest.js. If instead you " +
+                "have just made an exempt language reachable, delete it from " +
+                "SUGGEST_EXEMPT_MAIN_LANGUAGES and from the page's prose."
         )
     }
 

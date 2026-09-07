@@ -269,18 +269,34 @@ rank; it returns everything and `rankItems` scores by fuzzy match, category weig
 server-supplied `contextScore` (`fieldSuggest.js:734-783`). So a server-side engine's leverage is in
 what it *knows*, not in what order it answers.
 
-Field's suggest widget serves **14** languages: `bend`, `brief`, `clojure`, `fieldml`, `forth`, `glsl`,
-`kotlin`, `kotlinjs`, `nano`, `python`, `rectsl`, `slang`, `stacksl`, `yaml`
-(`fieldSuggest.js:7-21`). Note `rectsl`, `stacksl` and `brief` are in that set despite being Route A —
-being in `DEFAULT_LANGUAGES` is about *which widget* handles the caret, not about where the items come
-from.
+Field's suggest widget serves **16** languages: `bend`, `brief`, `clojure`, `datalog`, `fieldml`,
+`forth`, `glsl`, `kotlin`, `kotlinjs`, `morphohdl`, `nano`, `python`, `rectsl`, `slang`, `stacksl`,
+`yaml` (`fieldSuggest.js:8-25`). Note `rectsl`, `stacksl` and `brief` are in that set despite being
+Route A — being in `DEFAULT_LANGUAGES` is about *which widget* handles the caret, not about where the
+items come from.
 
-And note the two exceptions, because "everything goes through FieldSuggest" is *almost* true: `msl` and
-`morpho` have editor modules but are **not** in `DEFAULT_LANGUAGES`, so the gate at
-`fieldSuggest.js:1143` returns false for them. MSL supplies its own Monaco provider (`msl.js:280`);
-morpho has no completion at all. `dev_docs/COMPLETION_ENGINE.md:3-9` states the policy — that path is
-retired, and a second completion path through Monaco's provider API is not to be added. Read it before
-you copy MSL.
+Note also `morphohdl` and not `morpho`. The key is the **Monaco language id**, which is the box's
+`code_language` lower-cased — morpho's is `MorphoHDL` — and not the id the language registers itself
+under in `MainLanguageRegistry`. Getting that wrong is worse than it sounds, and is what happened to
+morpho until 2026-09-07: `morpho.js` registered `"morpho"`, the editor asked
+`setModelLanguage(model, "morphohdl")`, and `setModelLanguage` resolves mime types and then ids but
+never aliases, so it fell back to `"plaintext"` silently. A morpho box had no highlighting and could
+not open the suggest widget, and `MorphoExecution.complete` had never run. `DatalogExecution.complete`
+was unreachable the same way, for the simpler reason that `datalog` was missing from this list — its
+documented completion only ever worked in a `#datalog` region inside a *Kotlin* string, where the model
+is `kotlin`. Both halves are now guarded — see "What the guard checks" below.
+
+And note the remaining exception, because "everything goes through FieldSuggest" is *almost* true:
+`msl` has an editor module but is **not** in `DEFAULT_LANGUAGES`, so `isSupported`
+(`fieldSuggest.js:1176`) returns false for it, and MSL supplies its own Monaco provider
+(`msl.js:280`). `dev_docs/COMPLETION_ENGINE.md:3-9` states the policy — that path is retired, and a
+second completion path through Monaco's provider API is not to be added. Read it before you copy MSL.
+
+One main language is exempt for a harder reason: `remotejs` stamps `code_language = "Javascript"`,
+whose id `javascript` is stock Monaco's and shared with every other JavaScript buffer in the app, so
+opting it in would point the caret in *any* JS buffer at whatever `BoxExecution` its box holds.
+`RemoteJSExectution.complete` is unreachable today, and closing that needs the gate scoped to the
+box's runtime rather than to a language id.
 
 Conversely, `python`, `clojure`, `kotlin`, `yaml` and `bend` are in `DEFAULT_LANGUAGES` and have no
 `bithero/*` module at all: Clojure's highlighting comes from stock Monaco's basic-languages bundle
@@ -495,7 +511,11 @@ Traced against FieldML, which is the only one that went the whole way.
 5. **Ship the Monaco module and add it to two lists.** One `.js` under
    `src/commonMain/resources/` (`fieldml.js`, 91 lines), then `FIELD_LANGUAGE_MODULES`
    (`bootstrapMonaco.js:46`) and `DEFAULT_LANGUAGES` (`fieldSuggest.js:17`). Make your Monaco language
-   id equal your `code_language` string, lower-cased.
+   id equal your `code_language` string, lower-cased. Both halves of that sentence are now enforced
+   for main languages by `SmallLanguageAnatomyTest`, because morpho got both wrong and neither list
+   noticed: the id has to be one Monaco actually has a grammar for, or `setModelLanguage` quietly
+   serves plaintext, and the id has to be in `DEFAULT_LANGUAGES`, or your step-6 `complete` can never
+   be called. Neither failure produces a console message.
 6. **Route completion into the compiler's own knowledge.** Override `complete` to call an engine that
    reads the same prelude (`FieldMLInterface.kt:153` → `FieldMLCompletionEngine.kt:41`). This is the
    payoff and the reason for steps 1 and 2.
@@ -608,8 +628,9 @@ headless check disagrees with an interactive one about your `.js`, suspect this 
 
 ## What the guard checks
 
-`SmallLanguageAnatomyTest` holds this page to the code in six ways. Two of them are worth knowing
-precisely, because they bound what "this page is checked" means.
+`SmallLanguageAnatomyTest` holds this page to the code, and — since 2026-09-07 — the code's own
+registries to each other. Five kinds of check. Two of them are worth knowing precisely, because they
+bound what "this page is checked" means.
 
 1. **Citations.** Every table row whose last two cells are `` `path:line` `` and `` `anchor` `` is
    re-checked: the anchor must still exist **somewhere in the cited file**, found by searching it.
@@ -620,8 +641,8 @@ precisely, because they bound what "this page is checked" means.
    concurrent branch touched and could not be made path-disjoint from anybody
    (see `dev_docs/citation_contracts.md`). A `|` in an anchor is written `\|` and unescaped by the test.
 2. **Derived counts.** Four numbers on this page are computed from the code and compared to the prose:
-   the **8** main languages (scraped from `registerMainLanguageRuntime` call sites), the **15** editor
-   language modules (from `FIELD_LANGUAGE_MODULES`), the **14** languages the suggest widget serves
+   the **9** main languages (scraped from `registerMainLanguageRuntime` call sites), the **17** editor
+   language modules (from `FIELD_LANGUAGE_MODULES`), the **16** languages the suggest widget serves
    (from `DEFAULT_LANGUAGES`), and the **8** optional hooks (from `callExtension` calls). Each also
    asserts the individual names appear on the page, so adding a language fails the build until it is
    documented here.
@@ -629,6 +650,16 @@ precisely, because they bound what "this page is checked" means.
    completion provider.
 4. **Table sizes.** **137** checked citations and **9** coverage guards, both asserted, so deleting a
    ledger row is as loud as breaking one.
+5. **Cross-registry consistency.** The only checks here that compare code to *code* rather than to
+   prose, and the only ones that can fail with this page perfectly accurate. For every registered main
+   language, `everyMainLanguagesCodeLanguageHasAMonacoGrammar` requires the lower-cased `code_language`
+   to be an id some grammar registers — a `bithero/*` module's `languageId`, or one of stock Monaco's
+   `basic-languages` — and `everyMainLanguageReachesFieldsOwnSuggestWidget` requires it to be in
+   `DEFAULT_LANGUAGES`, as an **exact** set against `SUGGEST_EXEMPT_MAIN_LANGUAGES`. Being in
+   `FIELD_LANGUAGE_MODULES` proves only that a module loads; these prove the id inside it is the id a
+   box will ask for. Both existed only after morpho shipped a language nothing could reach, and both
+   failure modes are silent at runtime — plaintext highlighting, and a `complete` override that is
+   never called.
 
 What it does **not** check, stated so nobody assumes otherwise:
 
