@@ -5,19 +5,40 @@ site_name: OpenEndedGroup | Field·4
 
 nav:
   - Home: index.md
-  - Getting Started:
+  - Start Here:
     - Installation: installation.md
     - Survival Guide: survivalGuide.md
-    - A Tour: funFeatures.md
     - Kotlin Syntax Overview: kotlin_overview.md
     - Keyboard Shortcuts: keybindings.md
-  - Writing Code in a Box:
+  # A read-in-order arc, not a category: six pages, one faculty each, ending with the thing that
+  # drives all of them. Every entry here is a page that also stands alone, but the order is the
+  # point — running_code is the mechanic the next four rest on, and automating_field is what hands
+  # the whole sequence to an agent. A page appears once in this nav (Zensical resolves prev/next
+  # from position), so these are moved here rather than aliased, and their former sections were
+  # rebalanced to suit.
+  - Tour:
+    - What Field Is: funFeatures.md
     - Running Code in a Box: running_code.md
+    - Drawing with FLines: fline_examples.md
     - Frames, and What a Frame Is: animation_time_model.md
+    # Quoted: the title has its own colon, and an unquoted one breaks the YAML scanner.
+    - "Sound: the Pattern → Audio Path": sound.md
+    - Letting an Agent Drive: automating_field.md
+    # The exit ramp rather than a seventh step: a themed map of everything below, which is what
+    # this page already was. Its framing paragraph still describes a staging area and needs a
+    # rewrite; the filename stays put so its inbound link and its generated-artifact references
+    # do not have to move.
+    - Where to Go Next: staging.md
+  - Writing Code in a Box:
     - Kotlin in the Head: kotlin_in_the_head.md
     - Autocomplete:
       - The Documentation Browser: completion_doc_browser.md
       - How Completions Are Ranked: completion_ranking.md
+    # Both are about making the editor understand a syntax that is not stock Kotlin, which is a
+    # writing-code concern rather than a language-gallery one; the gallery of small languages that
+    # use this machinery is its own section below.
+    - Rewriting Your Own Syntax: pattern_rewrite.md
+    - Language Extensions: language_extensions.md
   - Working in a Document:
     - Spatial Navigation: spatial_navigation.md
     - Snapping: snapping.md
@@ -27,8 +48,119 @@ nav:
     - Profiling Timeline: profiling_timeline.md
     - Inline History (History Lens): history_lens.md
     - The Semantic Index: semantic_index.md
-  # Generated from source rather than written: extracted KDoc and codegen output. Not
-  # staged, because it is exactly as finished as the source it is read out of.
+  # "What happens when a box ends on a value" is a faculty of its own, and these five were spread
+  # across Libraries & APIs and the staging area. Note that output_panel_sizing.md is deliberately
+  # NOT here: see the comment on it under Internals, which places it beside server_surface.md as a
+  # measurement contract rather than beside three_output.md as a knob.
+  - Seeing Values:
+    - Visualizers & Controls: visualizers.md
+    - Field's 3D Output: three_output.md
+    - Charts as FLines: chart.md
+    - DataFrames in a Box: dataframe.md
+    - Interactive Guides: interactive_guides.md
+  - Drawing From Data:
+    - Functions & Derivatives:
+      - Functions Examples: functions_examples.md
+      - Functions Domains: functions_domains.md
+      - Differentiating Functions: autodiff_examples.md
+    - Time & Signals:
+      - Values Over Time (Interpolants & Keyframes): interpolants_examples.md
+      - Capturing & Replaying Live State (Keyframes): keyframer_examples.md
+      - Timeseries Examples: timeseries_examples.md
+      - State Estimation Examples: state_estimation_examples.md
+      - Statistics & Dependence: statistics_examples.md
+      - Spectral Examples: spectral_examples.md
+    # Its own group rather than a sixth entry under "Time & Signals": the input to a projection is
+    # a set of things and one distance per pair, which is neither a time series nor a signal. The
+    # worked examples are words under an edit distance and curve samples under a graph distance.
+    - Distances & Projections:
+      - Placing Things by Distance (MDS, t-SNE): projection_examples.md
+    - Colour & Images:
+      - Colors Examples: colors_examples.md
+      - Imaging & Computer Vision: imaging_examples.md
+      - Depth & CLIP (ONNX): onnx.md
+    - Geometry & Solids:
+      - Meshes & 3D Geometry: mesh_examples.md
+      - Solids & Booleans (Manifold): manifold.md
+      - A Solid, Written Down (solidsl): solid_notation.md
+      - Geometry From Disk (OBJ, STL, PLY, glTF): geometry_from_disk.md
+      - Polytopes & the Conway Algebra: polytope_examples.md
+      - Typography as Geometry: typography_examples.md
+      - Voronoi, Contours & Clusters: spatial_geometry_examples.md
+    # sound.md opens the Tour's fifth step, so this group starts at the pattern language that
+    # feeds it and continues into the paths that page only introduces.
+    - Sound & Music:
+      - Patterns & Rhythm: pattern_language.md
+      - Making a Sound, Every Path There Is: sound_paths.md
+      - DoughDSP Sound Examples: dough_dsp_sound.md
+      - Sonic Pi: sonic_pi.md
+      - Faust: faust.md
+    - Audio AI:
+      - Field Audio AI: field_audio_ai.md
+      - Field Audio Service Reference: field_audio_service_reference.md
+      - Audio AI Gesture Board: audio_ai_gesture_board.md
+      - Beat and Pitch Analysis: audio_ai_analysis.md
+      - Speech-Reactive Learned Spaces: audio_ai_speech_embeddings.md
+      - Short-Time Spectral Spaces: audio_ai_spectral_embeddings.md
+      - Corpus Microscope: audio_ai_corpus_microscope.md
+      - Render Field Music, Then Analyse It: audio_render_analysis.md
+      - EnCodec Reconstruction Microscope: audio_ai_codec.md
+  - Networks & Dynamics:
+    - Sorting Networks Examples: sorting_networks_examples.md
+    - Interaction Nets Examples: interaction_nets_examples.md
+    - Petri Nets: petri_nets.md
+    - Petri Cheatsheet: petri_cheatsheet.md
+    - Boolean Networks Examples: boolean_networks_examples.md
+    - Boolean Network Music Examples: boolean_network_music_examples.md
+    - Wave Function Collapse Examples: wfc_examples.md
+    - Spatial Artificial Life: alife_examples.md
+    - Neighbors & Graphs Examples: graph_connectivity_examples.md
+    - Graphs That Change While You Watch: dynamic_graph_systems_examples.md
+  - Small Languages:
+    - Datalog in a Box: datalog.md
+    - FieldML Cheatsheet: fieldml_cheatsheet.md
+    - FieldML Examples: fieldml_examples.md
+    - FieldML JVM Bridge: fieldml_host_bridge.md
+    - StackSL Cheatsheet: stacksl_cheatsheet.md
+    - StackSL Examples: stacksl_examples.md
+    - RectSL Cheatsheet: rectsl_cheatsheet.md
+    - RectSL Examples: rectsl_examples.md
+    - RectSL Inverse Animation: rectsl_inverse_animation.md
+    - Forth Examples: forth_examples.md
+    - Python in a Box: python.md
+    - Nano Examples: nano_examples.md
+    - Bridging Another Language (MorphoHDL): morpho_examples.md
+  # Two pages here carry an in-page warning rather than a section-level one: vision.md opens
+  # "work in progress", and ray_tracing_examples.md says its four figures are placeholder cards
+  # because macOS exposes no ray-tracing extension. A warning a reader meets on the page is more
+  # honest than a nav heading nobody reads as a disclaimer, which is the whole argument for
+  # retiring the staging area.
+  - Graphics, GPU & Headsets:
+    - Rendering & GPU:
+      - afield.four Graphics: afield_four_graphics.md
+      # Directly after the graphics contract and before the probes page, because it is the sequel
+      # to one and the setup for the other: afield_four_graphics teaches the stateless compute
+      # dispatch, this teaches what changes when the shader's input is its own last output, and
+      # field_probes instruments exactly that kind of scene.
+      - GPU State: gpu_state.md
+      - Puppet Browser: puppet_browser.md
+      - Fabricate Renderer: fabricate_renderer.md
+      - Ray Tracing Examples: ray_tracing_examples.md
+      - Particles, Cloth & Constraints: physics.md
+      - Field Probes: field_probes.md
+    - Heads & Headsets:
+      - RemoteJS & WebXR: ar_reference.md
+      - Apple Vision Pro (WiP): vision.md
+      - Geometry in the Headset: vision_geometry.md
+      - ImGui as a VR Panel: imgui_vr_panel.md
+  - AI & Agents:
+    - AI Overview: aiFeatures.md
+    - AI Tool-Use History: ai_tool_use_history.md
+    - AI Documentation Polish: ai_doc_polish.md
+    - Agent Transcript Gallery: agent_transcripts.md
+    - Mobile Controllers: mobile_controllers.md
+  # Generated from source rather than written: extracted KDoc and codegen output. As finished as
+  # the source it is read out of, which is why it never needed a maturity tier of its own.
   - Reference:
     - What's Already in the Box: reference/index.md
     - Codebase Reference:
@@ -51,21 +183,14 @@ nav:
     - Libraries & APIs:
       - Linear Algebra: linear_algebra.md
       - Generated Vector API: linear_algebra_api.md
-      - FLine Examples: fline_examples.md
-      - Field's 3D Output: three_output.md
-      - Visualizers & Controls: visualizers.md
-      - Charts as FLines: chart.md
-      - DataFrames in a Box: dataframe.md
       - Querying Object Graphs: graph_query.md
-      - Rewriting Your Own Syntax: pattern_rewrite.md
   # Internals: hand-written, and about mechanism rather than task. Read these when you are
   # extending Field or working out why it did something, not when you are writing a box.
   #
-  # A top-level section rather than a subsection of Reference, which these three sat under until
-  # now. Reference is generated from source — "exactly as finished as the source it is read out
-  # of", as the comment above it says — and none of these is: they are prose about contracts that
-  # no KDoc states. Filing them under a generated tree implied they were extracted, and buried the
-  # one audience they have.
+  # A top-level section rather than a subsection of Reference. Reference is generated from source —
+  # "as finished as the source it is read out of", as the comment above it says — and none of these
+  # is: they are prose about contracts that no KDoc states. Filing them under a generated tree
+  # implied they were extracted, and buried the one audience they have.
   #
   # They stay in `public/docs` rather than moving to `dev_docs` for a mechanical reason as well as
   # an editorial one: `dev_docs/docs_capture_owners.json` covers 64 `public/docs/` captures and
@@ -75,7 +200,8 @@ nav:
     - What Field Exposes: server_surface.md
     # Beside server_surface.md rather than three_output.md, the only other page that touches panel
     # sizing: that page tells a `three` caller which knob to turn, this one is the measurement
-    # contract itself, read by whoever is about to emit a new kind of output.
+    # contract itself, read by whoever is about to emit a new kind of output. This is also why it
+    # did not move into "Seeing Values" when that section was formed.
     - Output Panel Sizing: output_panel_sizing.md
     # After the two runtime-contract pages and before the build one, because it is the artifact
     # boundary between them: the format `SavingContext.save` writes and the loader reads back. Not
@@ -83,121 +209,14 @@ nav:
     # `public/docs` with a producer that survives here: its figure is emitted by
     # `examples.document-on-disk.smoke`, which asserts the page still carries it verbatim.
     - What a Document Is on Disk: document_on_disk.md
-    # Internals rather than the staging area, on this section's own test: mechanism, hand-written,
-    # and read when you are working out why Field did something rather than when you are writing a
-    # box. It is a sibling of server_surface.md — that page says what Field exposes to a client,
-    # this one says where the process's own output goes — and like its neighbours here it is
-    # guarded, which the staging pages are not. Last of the runtime-surface three and before the
-    # build page, because the terminal it describes is the one `building_and_testing.md` tells you
-    # to read.
+    # Internals on this section's own test: mechanism, hand-written, and read when you are working
+    # out why Field did something rather than when you are writing a box. It is a sibling of
+    # server_surface.md — that page says what Field exposes to a client, this one says where the
+    # process's own output goes. Last of the runtime-surface three and before the build page,
+    # because the terminal it describes is the one `building_and_testing.md` tells you to read.
     - Where Field's Output Goes: logging.md
     - Building & Testing: building_and_testing.md
-  - Staging area:
-    - Staging Overview: staging.md
-    - Working with AI:
-      - AI Overview: aiFeatures.md
-      - AI Tool-Use History: ai_tool_use_history.md
-      - AI Documentation Polish: ai_doc_polish.md
-    - Automation & Agents:
-      - Automating Field: automating_field.md
-      - Agent Transcript Gallery: agent_transcripts.md
-      - Mobile Controllers: mobile_controllers.md
-      - Interactive Guides: interactive_guides.md
-    - Field Systems:
-      - Rendering & GPU:
-        - afield.four Graphics: afield_four_graphics.md
-        # Directly after the graphics contract and before the probes page, because it is the sequel
-        # to one and the setup for the other: afield_four_graphics teaches the stateless compute
-        # dispatch, this teaches what changes when the shader's input is its own last output, and
-        # field_probes instruments exactly that kind of scene.
-        - GPU State: gpu_state.md
-        - Puppet Browser: puppet_browser.md
-        - Fabricate Renderer: fabricate_renderer.md
-        - Ray Tracing Examples: ray_tracing_examples.md
-        - Particles, Cloth & Constraints: physics.md
-        - Field Probes: field_probes.md
-      - Heads & Headsets:
-        - RemoteJS & WebXR: ar_reference.md
-        - Apple Vision Pro (WiP): vision.md
-        - Geometry in the Headset: vision_geometry.md
-        - ImGui as a VR Panel: imgui_vr_panel.md
-    - Small Languages:
-      - Language Extensions: language_extensions.md
-      - Datalog in a Box: datalog.md
-      - FieldML Cheatsheet: fieldml_cheatsheet.md
-      - FieldML Examples: fieldml_examples.md
-      - FieldML JVM Bridge: fieldml_host_bridge.md
-      - StackSL Cheatsheet: stacksl_cheatsheet.md
-      - StackSL Examples: stacksl_examples.md
-      - RectSL Cheatsheet: rectsl_cheatsheet.md
-      - RectSL Examples: rectsl_examples.md
-      - RectSL Inverse Animation: rectsl_inverse_animation.md
-      - Petri Cheatsheet: petri_cheatsheet.md
-      - Forth Examples: forth_examples.md
-      - Python in a Box: python.md
-      - Nano Examples: nano_examples.md
-      - Bridging Another Language (MorphoHDL): morpho_examples.md
-    - Drawing From Data:
-      - Functions & Derivatives:
-        - Functions Examples: functions_examples.md
-        - Functions Domains: functions_domains.md
-        - Differentiating Functions: autodiff_examples.md
-      - Time & Signals:
-        - Values Over Time (Interpolants & Keyframes): interpolants_examples.md
-        - Capturing & Replaying Live State (Keyframes): keyframer_examples.md
-        - Timeseries Examples: timeseries_examples.md
-        - State Estimation Examples: state_estimation_examples.md
-        - Statistics & Dependence: statistics_examples.md
-        - Spectral Examples: spectral_examples.md
-      # Its own group rather than a sixth entry under "Time & Signals": the input to a projection is
-      # a set of things and one distance per pair, which is neither a time series nor a signal. The
-      # worked examples are words under an edit distance and curve samples under a graph distance.
-      - Distances & Projections:
-        - Placing Things by Distance (MDS, t-SNE): projection_examples.md
-      - Colour & Images:
-        - Colors Examples: colors_examples.md
-        - Imaging & Computer Vision: imaging_examples.md
-        - Depth & CLIP (ONNX): onnx.md
-      - Geometry & Solids:
-        - Meshes & 3D Geometry: mesh_examples.md
-        - Solids & Booleans (Manifold): manifold.md
-        - A Solid, Written Down (solidsl): solid_notation.md
-        - Geometry From Disk (OBJ, STL, PLY, glTF): geometry_from_disk.md
-        - Polytopes & the Conway Algebra: polytope_examples.md
-        - Typography as Geometry: typography_examples.md
-        - Voronoi, Contours & Clusters: spatial_geometry_examples.md
-      - Sound & Music:
-        - Patterns & Rhythm: pattern_language.md
-        # Quoted: the title has its own colon, and an unquoted one breaks the YAML scanner.
-        - "Sound: the Pattern → Audio Path": sound.md
-        - Making a Sound, Every Path There Is: sound_paths.md
-        - DoughDSP Sound Examples: dough_dsp_sound.md
-        - Sonic Pi: sonic_pi.md
-        - Faust: faust.md
-      - Audio AI:
-        - Field Audio AI: field_audio_ai.md
-        - Field Audio Service Reference: field_audio_service_reference.md
-        - Audio AI Gesture Board: audio_ai_gesture_board.md
-        - Beat and Pitch Analysis: audio_ai_analysis.md
-        - Speech-Reactive Learned Spaces: audio_ai_speech_embeddings.md
-        - Short-Time Spectral Spaces: audio_ai_spectral_embeddings.md
-        - Corpus Microscope: audio_ai_corpus_microscope.md
-        - Render Field Music, Then Analyse It: audio_render_analysis.md
-        - EnCodec Reconstruction Microscope: audio_ai_codec.md
-    - Networks and Dynamics:
-      - Sorting Networks Examples: sorting_networks_examples.md
-      - Interaction Nets Examples: interaction_nets_examples.md
-      - Petri Nets: petri_nets.md
-      - Boolean Networks Examples: boolean_networks_examples.md
-      - Boolean Network Music Examples: boolean_network_music_examples.md
-      - Wave Function Collapse Examples: wfc_examples.md
-      - Spatial Artificial Life: alife_examples.md
-      - Neighbors & Graphs Examples: graph_connectivity_examples.md
-      - Graphs That Change While You Watch: dynamic_graph_systems_examples.md
 
-# Note: declaring this key at all replaces Zensical's DEFAULT_MARKDOWN_EXTENSIONS
-# wholesale (it is only a `config.get(..., DEFAULT)` fallback) — only `toc` and
-# `tables` are force-added. So anything we rely on has to be listed here.
 markdown_extensions:
   - admonition                    # `!!! note` / `!!! warning` callouts
   - pymdownx.details              # `??? aside` — collapsed, margin-dwelling asides

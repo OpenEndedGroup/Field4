@@ -1,0 +1,10 @@
+[project]
+name = "field4-kratos-worker"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "KratosMultiphysics==10.4.0",
+  "KratosConvectionDiffusionApplication==10.4.0",
+  "numpy==2.2.6",
+  "msgpack==1.1.1",
+]

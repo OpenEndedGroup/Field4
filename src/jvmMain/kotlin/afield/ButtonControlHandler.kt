@@ -8,6 +8,7 @@ package afield
 import afield.logger.lprintln
 import afield.server.broadcastControllerControlUpdates
 import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -47,7 +48,8 @@ internal fun registerButtonUpdateHandler() {
 
         val callback = getButtonCallback(update.controlId)
         if (callback != null) {
-            GlobalScope.launch {
+            // /ws feeds buttons through its ordered control consumer; do not reorder callbacks again.
+            GlobalScope.launch(start = CoroutineStart.UNDISPATCHED) {
                 try {
                     callback(update.pressed)
                 } catch (e: Exception) {

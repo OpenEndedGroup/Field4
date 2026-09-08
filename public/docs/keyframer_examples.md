@@ -200,11 +200,11 @@ typed boundaries, interpolation and persistence.
 
     Besides a `Structure`, a scope can target a live module's uniform structures:
     `target(module: ModulePointer, name)` and its `ComputeModulePointer` / `MeshModulePointer`
-    siblings (`keyframer.kt:727#fun target(module: ModulePointer, name: String) =`, `:731`, `:735`). All three need a live renderer. Every
+    siblings (`stdlib/keyframer.kt:820#fun target(module: ModulePointer, name: String) =`, `:824`, `:828`). All three need a live renderer. Every
     fence on this page uses the plain `Structure` form instead.
 
     Each is a one-line wrapper over the lazily-resolved `target(name) { … }`
-    (`keyframer.kt:609#fun target(name: String, structure: () -> Structure?) {`), and they pass the *same*
+    (`stdlib/keyframer.kt:702#fun target(name: String, structure: () -> Structure?) {`), and they pass the *same*
     `@`-suffixed string to two different lookups: it selects the structure, via
     `module.current.liveUniformStructures[…]`, **and** it is the member name bound inside that
     structure. That map is keyed by the **uniform block's name**
@@ -980,7 +980,7 @@ property to one of those classes and the build fails until it is accounted for.
 
 The class list itself, and the total below, are maintained by hand. Only the enumeration *within*
 the listed classes is measured. A new **top-level** declaration is invisible to the ledger:
-`enum class KeyDiffKind` (`keyframer.kt:1312#enum class KeyDiffKind { ADDED, REMOVED, CHANGED }`) is public, absent from it, and the suite is green
+`enum class KeyDiffKind` (`stdlib/keyframer.kt:1458#enum class KeyDiffKind { ADDED, REMOVED, CHANGED }`) is public, absent from it, and the suite is green
 regardless. The tests exercise it; it simply is not counted, which pushes the figure below down
 rather than up.
 
