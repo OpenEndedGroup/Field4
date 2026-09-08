@@ -10,6 +10,7 @@ import afield.four.synth.PatQ
 import afield.graphics.FLine
 import afield.graphics.drawToSVG
 import afield.graphics.lines
+import afield.layout.D2Layout
 import afield.stdlib.FLineIntersection
 import afield.stdlib.Vec2
 import afield.stdlib.arrow
@@ -69,6 +70,8 @@ import kotlin.math.sin
 
  [PetriLayout.RING] draws a cycle as a cycle, which is what most drum nets are, and is chosen
  automatically when the net is one. Otherwise [PetriLayout.FORCE] relaxes a spring model.
+ [PetriLayout.TALA] hands the net to d2's diagram layout engine instead, if you have built the
+ optional helper for it; it falls back to [PetriLayout.FORCE] if you have not.
  [PetriDrawing.at] pins anything you would rather place yourself.
 */
 
@@ -86,6 +89,19 @@ enum class PetriLayout {
 
     /** Left to right by distance from the initially marked places. */
     LAYERED,
+
+    /**
+     * TALA, d2's layout engine for diagrams of labelled boxes, through the optional
+     * `native/field-d2-layout` helper.
+     *
+     * Never chosen by [AUTO] and never a default: it needs a binary Field does not build, so it
+     * has to be asked for. When the helper is missing this quietly becomes [FORCE], which is why
+     * asking for it is safe in a document you might open on another machine.
+     *
+     * Worth asking for when [FORCE] gives you a hairball. TALA places boxes with their real sizes
+     * and routes the arcs, where the spring model treats every node as a point.
+     */
+    TALA,
 }
 
 // ── a frame ────────────────────────────────────────────────────────────────────────────────
@@ -172,9 +188,28 @@ private val petriLayoutCache = object : LinkedHashMap<String, Map<String, Vec2>>
     override fun removeEldestEntry(eldest: Map.Entry<String, Map<String, Vec2>>): Boolean = size > 64
 }
 
+/**
+ * Drops every cached layout, so the next [frame] re-solves.
+ *
+ * Layouts are memoised on the net's structure, so redrawing the same net is free. Two reasons to
+ * throw that away: you have just built `native/field-d2-layout` under a running Field and want
+ * [PetriLayout.TALA] to start using it, or you are timing a layout and need each run to be real
+ * work rather than a map lookup.
+ */
+fun clearPetriLayoutCache() {
+    synchronized(petriLayoutCache) { petriLayoutCache.clear() }
+}
+
 /** Everything about a net that can move a node, and nothing that cannot. */
 private fun petriLayoutKey(net: PetriNet, layout: PetriLayout, radius: Double): String = buildString {
     append(layout).append('|').append(radius).append('|')
+    // [PetriLayout.TALA] is the one layout whose answer depends on something outside the net:
+    // whether the optional helper is installed, and which d2 it links. Leaving that out of the key
+    // means a drawing produced by the FORCE fallback goes on being served under the TALA key after
+    // you build the helper, with no way back short of restarting Field — and, less visibly, a
+    // helper rebuilt against a newer d2 keeps handing you the old engine's drawing. Consulted only
+    // for TALA, so a net that never asks for it never goes looking for the binary.
+    if (layout == PetriLayout.TALA) append(D2Layout.version ?: "no-helper").append('|')
     append(net.placeNames.joinToString(","))
     for (transition in net.transitions) {
         append('|').append(transition.name).append('<')
@@ -280,6 +315,8 @@ private fun layoutComponent(
     return when (resolved) {
         PetriLayout.RING -> petriRingLayout(cycle ?: names, radius)
         PetriLayout.LAYERED -> petriLayeredLayout(net, names, radius)
+        // A missing helper is the normal case, not an error: fall through to the spring model.
+        PetriLayout.TALA -> petriTalaLayout(net, names) ?: petriForceLayout(net, names, radius)
         else -> petriForceLayout(net, names, radius)
     }
 }
@@ -408,6 +445,140 @@ private fun petriForceLayout(
     return names.withIndex().associate { (i, name) ->
         name to vec(solution.x[i].toDouble(), solution.y[i].toDouble())
     }
+}
+
+/**
+ * The layout behind [PetriLayout.TALA]: the net handed to d2's diagram engine through the
+ * optional `native/field-d2-layout` helper.
+ *
+ * Returns null — not an exception, not a bad drawing — whenever the helper cannot answer: not
+ * built, wrong protocol, timed out, or a net it refused. [layoutComponent] turns that into
+ * [petriForceLayout], so a document asking for TALA still opens on a machine without the binary.
+ *
+ * No `radius` parameter, unlike its siblings. Those need one because they place dimensionless
+ * points and have to be told how far apart; TALA is given the real size of every place and
+ * transition and derives its own extent. The result goes through `fitToSize` regardless.
+ *
+ * Arcs are passed directed, place to transition and transition to place. [petriForceLayout]
+ * deliberately collapses them to undirected unique pairs, because a spring does not care which
+ * way it points and a doubled arc would pull twice; TALA reads direction as flow and lays out
+ * along it, so here the distinction is worth keeping.
+ */
+private fun petriTalaLayout(net: PetriNet, names: List<String>): Map<String, Vec2>? {
+    if (names.isEmpty()) return emptyMap()
+    if (names.size == 1) return mapOf(names.single() to vec(0.0, 0.0))
+    if (!D2Layout.available) return null
+
+    val here = names.toSet()
+    // A place is a circle of PLACE_RADIUS. A transition is a bar that rotates to face its arcs,
+    // so the only size that holds at every angle is a square at the bar's full length.
+    val nodes = names.map { name ->
+        val size = if (net.place(name) != null) PLACE_RADIUS * 2.0 else BAR_HALF_LENGTH * 2.0
+        D2Layout.Node(id = name, w = size, h = size)
+    }
+    val edges = ArrayList<D2Layout.Edge>()
+    for (transition in net.transitions) {
+        if (transition.name !in here) continue
+        for (arc in transition.inputs) if (arc.place in here) {
+            edges += D2Layout.Edge(src = arc.place, dst = transition.name)
+        }
+        for (arc in transition.outputs) if (arc.place in here) {
+            edges += D2Layout.Edge(src = transition.name, dst = arc.place)
+        }
+    }
+
+    // TALA takes a direction bias, and which one reads best is a property of the net rather than
+    // something to guess: on the dining table below, `up` draws it with no crossings at all while
+    // the unbiased layout has five. Each attempt costs about what one layout costs, and the whole
+    // sweep is cheaper than raising the seed budget for a worse result, so run them and score.
+    val attempts = listOf(
+        D2Layout.Direction.NONE, D2Layout.Direction.UP,
+        D2Layout.Direction.DOWN, D2Layout.Direction.RIGHT,
+    ).mapNotNull { direction ->
+        D2Layout.layout(nodes, edges, engine = D2Layout.Engine.TALA, direction = direction)
+    }
+    // First-wins on a tie, over a fixed list, so the chosen drawing is reproducible.
+    val result = attempts.minByOrNull { drawnCrossings(it, edges) } ?: return null
+    val placed = result.nodes.associateBy { it.id }
+    // A partial answer would draw some of the net in the right place and pile the rest on the
+    // origin, which reads as a bug in the net rather than in the layout. Refuse the whole thing.
+    if (names.any { it !in placed }) return null
+
+    // The helper reports top-left corners; every other layout here reports centres about the
+    // origin, and the component packer in `petriLayout` assumes that.
+    val centres = names.associateWith { name ->
+        val n = placed.getValue(name)
+        n.centreX to n.centreY
+    }
+    val midX = (centres.values.minOf { it.first } + centres.values.maxOf { it.first }) / 2.0
+    val midY = (centres.values.minOf { it.second } + centres.values.maxOf { it.second }) / 2.0
+    return centres.mapValues { (_, c) -> vec(c.first - midX, c.second - midY) }
+}
+
+/**
+ * How many pairs of arcs cross, given where the nodes are.
+ *
+ * [at] resolves a node name to the point the arc is drawn from or to. Arcs sharing an endpoint are
+ * skipped: every net has those, and counting them would score the net rather than the drawing.
+ */
+private fun crossingCount(
+    arcs: List<Pair<String, String>>,
+    at: (String) -> Pair<Double, Double>?,
+): Int {
+    fun turns(o: Pair<Double, Double>, a: Pair<Double, Double>, b: Pair<Double, Double>): Double =
+        (a.first - o.first) * (b.second - o.second) - (a.second - o.second) * (b.first - o.first)
+
+    val drawn = arcs.mapNotNull { (from, to) ->
+        val a = at(from) ?: return@mapNotNull null
+        val b = at(to) ?: return@mapNotNull null
+        Triple(from, to, a to b)
+    }
+    var count = 0
+    for (i in drawn.indices) {
+        for (j in i + 1 until drawn.size) {
+            val (aFrom, aTo, a) = drawn[i]
+            val (bFrom, bTo, b) = drawn[j]
+            if (aFrom == bFrom || aFrom == bTo || aTo == bFrom || aTo == bTo) continue
+            val (p, q) = a
+            val (r, t) = b
+            if ((turns(r, t, p) > 0) != (turns(r, t, q) > 0) &&
+                (turns(p, q, r) > 0) != (turns(p, q, t) > 0)
+            ) count++
+        }
+    }
+    return count
+}
+
+/** Every arc in the net as a `from to to` pair, in declaration order. */
+private fun PetriNet.arcPairs(): List<Pair<String, String>> = buildList {
+    for (transition in transitions) {
+        for (arc in transition.inputs) add(arc.place to transition.name)
+        for (arc in transition.outputs) add(transition.name to arc.place)
+    }
+}
+
+/**
+ * How many of this drawing's arcs cross each other.
+ *
+ * Counted on straight centre-to-centre segments, which is what [toFLines] lays down. Comparing two
+ * layouts of one net is what this is for -- [PetriLayout.TALA] uses it to choose between direction
+ * biases, and a figure can print it so the reader is not taking anyone's word for the improvement.
+ */
+fun PetriDrawing.arcCrossings(): Int =
+    crossingCount(net.arcPairs()) { name ->
+        positions[name]?.let { it.x.toDouble() to it.y.toDouble() }
+    }
+
+/**
+ * The same count for a layout that has not been turned into a [PetriDrawing] yet.
+ *
+ * TALA also returns routed polylines and they are the obvious thing to measure, but this drawing
+ * never uses them: only the node positions are taken. Scoring the routes instead chose a layout
+ * with no route crossings and three visible ones.
+ */
+private fun drawnCrossings(result: D2Layout.Response, edges: List<D2Layout.Edge>): Int {
+    val centres = result.nodes.associate { it.id to (it.centreX to it.centreY) }
+    return crossingCount(edges.map { it.src to it.dst }) { centres[it] }
 }
 
 // ── drawing ────────────────────────────────────────────────────────────────────────────────

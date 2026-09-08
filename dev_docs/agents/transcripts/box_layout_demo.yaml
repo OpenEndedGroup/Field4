@@ -1,0 +1,84 @@
+name: box_layout_demo
+description: >
+  A scratch document for the "Lay out whole document" and "Lay out selection" commands: nine
+  connected boxes, placed badly on purpose, so there is something for the layout to fix.
+
+  The commands are in the palette. Both send a `perform-action` to the server, which reads each
+  box's frame for its size and the box graph for its edges, asks `native/field-d2-layout` where
+  everything should go, and animates the boxes into place. Every move is recorded with
+  `OperationTranscript.recordMove`, so one undo puts the document back the way it was.
+
+  Two things the layout preserves that a diagram tool would not. Box sizes are the user's, so the
+  sizes that go in come back out even where the engine would rather resize a container. And the
+  arrangement is translated back onto the selection's own top-left corner, so tidying a cluster in
+  the corner of a large document leaves it in that corner instead of moving it to the origin.
+
+  There is no fallback here, unlike `PetriLayout.TALA`: Field has no second box-layout engine, so
+  without the helper the command says so and moves nothing.
+
+  Replay into a fresh Field with the agent backdoor, then run "Lay out whole document" from the
+  palette. See native/field-d2-layout/README.md.
+operations:
+  - create:
+      box: bl_ingest
+      name: ingest
+      frame: { x: 980.0, y: 520.0, w: 220.0, h: 50.0 }
+      properties:
+        code: "// reads the raw files"
+  - create:
+      box: bl_clean
+      name: clean
+      frame: { x: 240.0, y: 300.0, w: 200.0, h: 50.0 }
+      properties:
+        code: "// drops the malformed rows"
+  - create:
+      box: bl_features
+      name: features
+      frame: { x: 300.0, y: 660.0, w: 240.0, h: 50.0 }
+      properties:
+        code: "// windows, deltas, rolling means"
+  - create:
+      box: bl_model
+      name: model
+      frame: { x: 900.0, y: 120.0, w: 190.0, h: 50.0 }
+      properties:
+        code: "// fits the thing"
+  - create:
+      box: bl_eval
+      name: eval
+      frame: { x: 150.0, y: 120.0, w: 200.0, h: 50.0 }
+      properties:
+        code: "// holdout scores"
+  - create:
+      box: bl_report
+      name: report
+      frame: { x: 620.0, y: 700.0, w: 210.0, h: 50.0 }
+      properties:
+        code: "// the page someone actually reads"
+  - create:
+      box: bl_plot
+      name: plot
+      frame: { x: 660.0, y: 300.0, w: 180.0, h: 50.0 }
+      properties:
+        code: "// showSignals(...)"
+  - create:
+      box: bl_cache
+      name: cache
+      frame: { x: 420.0, y: 430.0, w: 180.0, h: 50.0 }
+      properties:
+        code: "// parquet on disk"
+  - create:
+      box: bl_alert
+      name: alert
+      frame: { x: 840.0, y: 400.0, w: 170.0, h: 50.0 }
+      properties:
+        code: "// pings when a score drops"
+  - connect: { parent: bl_ingest, child: bl_clean }
+  - connect: { parent: bl_clean, child: bl_features }
+  - connect: { parent: bl_clean, child: bl_cache }
+  - connect: { parent: bl_features, child: bl_model }
+  - connect: { parent: bl_features, child: bl_plot }
+  - connect: { parent: bl_model, child: bl_eval }
+  - connect: { parent: bl_eval, child: bl_report }
+  - connect: { parent: bl_eval, child: bl_alert }
+  - connect: { parent: bl_plot, child: bl_report }
