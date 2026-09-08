@@ -826,7 +826,7 @@ mesh.set(4, 2) {
 }
 ```
 
-`prop<RenderToTexture>(bbc) = target` reads `target` (the parent's property, visible by name because this box is a child) and republishes it as `bbc`, because *this* box's fragment shader declares `sampler2D bbc`. Renaming on republication is what makes it general: the resource is identified by the reflected name the consuming shader uses, so a box can bind any upstream target to whatever its own shader happens to call it.
+`prop<RenderToTexture>(bbc) = target` reads `target` (the parent's property, visible by name because this box is a child) and republishes it as `bbc`, because *this* box's fragment shader declares `sampler2D bbc`. Republication can rename freely: the resource is identified by the reflected name the consuming shader asks for, not by the name it was published under upstream, so a box can bind any upstream target to whatever its own shader happens to call it.
 
 ```diffstatic {data-lang=glsl}
 #version 450
@@ -842,7 +842,7 @@ void main()
 }
 ```
 
-Compare that with the texturing fragment shader: it is the same shader. From the consumer's side there is no difference between sampling a file loaded from disk and sampling the output of another box, which is why the two boxes in this pair are the smallest complete statement of how `afield.four` composes.
+Compare that with the texturing fragment shader: it is the same shader. From the consumer's side there is no difference between sampling a file loaded from disk and sampling the output of another box. Two boxes and one renamed property are the smallest complete statement of how `afield.four` composes.
 
 Both boxes together are one scene, so there is no single-box figure for it here; the graphics-scene transcripts `threebox` and `spin_glass` in [agent transcripts](agent_transcripts.md) are runnable versions of the same producer/consumer shape.
 
