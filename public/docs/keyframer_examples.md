@@ -202,11 +202,11 @@ typed boundaries, interpolation and persistence.
 
     Besides a `Structure`, a scope can target a live module's uniform structures —
     `target(module: ModulePointer, name)` and its `ComputeModulePointer` / `MeshModulePointer`
-    siblings (`keyframer.kt:605#fun target(module: ModulePointer, name: String) =`, `:609`, `:613`). Those need a real renderer, so every fence here
+    siblings (`stdlib/keyframer.kt:605#fun target(module: ModulePointer, name: String) =`, `:609`, `:613`). Those need a real renderer, so every fence here
     uses the plain `Structure` form instead, and no figure on this page demonstrates them.
 
     Worth knowing what the source says before you reach for one. All three are one-line wrappers
-    over the lazily-resolved `target(name) { … }` (`keyframer.kt:587#fun target(name: String, structure: () -> Structure?) {`), and they pass the *same*
+    over the lazily-resolved `target(name) { … }` (`stdlib/keyframer.kt:587#fun target(name: String, structure: () -> Structure?) {`), and they pass the *same*
     `@`-suffixed string to two different lookups: it selects the structure, via
     `module.current.liveUniformStructures[…]`, **and** it is the member name bound inside that
     structure (`keyframer.kt:591-592`). That map is keyed by the **uniform block's name**
@@ -894,7 +894,7 @@ for.
 It is worth being exact about what that does *not* guarantee, because the mechanism reads as
 stronger than it is. The enumeration *within* the listed classes is measured; the class list itself,
 and the total below, are maintained by hand. A new **top-level** declaration is invisible to it —
-and `enum class KeyDiffKind` (`keyframer.kt:1052#enum class KeyDiffKind { ADDED, REMOVED, CHANGED }`) is exactly that: public, absent from the ledger,
+and `enum class KeyDiffKind` (`stdlib/keyframer.kt:1052#enum class KeyDiffKind { ADDED, REMOVED, CHANGED }`) is exactly that: public, absent from the ledger,
 and the suite is green. It is exercised by the tests; it simply is not counted, which pushes the
 figure below down rather than up.
 

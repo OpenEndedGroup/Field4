@@ -2955,7 +2955,7 @@ class Server {
                 // Get the callback for this slider and invoke it
                 val callback = getSliderCallback(update.sliderId)
                 if (callback != null) {
-                    GlobalScope.launch {
+                    GlobalScope.launch(start = CoroutineStart.UNDISPATCHED) {
                         try {
                             callback(update.value)
                         } catch (e: Exception) {
@@ -4727,6 +4727,10 @@ class Server {
                             if (refuseCrossSiteFieldWebSocket("/ws")) return@webSocket
                             val ts = this
                             thisSession.set(ts)
+                            // Preserve slider/button arrival order without blocking socket reception.
+                            val orderedControls = kotlinx.coroutines.channels.Channel<suspend CoroutineScope.() -> Unit>(
+                                kotlinx.coroutines.channels.Channel.UNLIMITED)
+                            val controlConsumer = launch { for (dispatch in orderedControls) dispatch() }
                             try {
                                 for (frame in incoming) {
                                     if (frame is Frame.Text) {
@@ -4760,7 +4764,7 @@ class Server {
                                                 }
                                             }
                                         } else {
-                                            launch { // should this block or not?...
+                                            val dispatch: suspend CoroutineScope.() -> Unit = {
                                                 thisSession.set(ts)
                                                 thisSessionInfo.set(sessions.get(ts))
                                                 val savedScope = this.coroutineContext
@@ -4777,10 +4781,15 @@ class Server {
                                                     t.printStackTrace()
                                                 }
                                             }
+                                            if (message.name == "slider-update" || message.name == "button-update")
+                                                orderedControls.send(dispatch)
+                                            else launch(block = dispatch)
                                         }
                                     }
                                 }
                             } finally {
+                                orderedControls.cancel()
+                                controlConsumer.cancel()
                                 detachDocumentSession(ts)
                                 leaveSelectionContexts(ts)
                                 afield.graphics.detachThreeGlobalListener(ts)

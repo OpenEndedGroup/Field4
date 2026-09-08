@@ -37,13 +37,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 84 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 85 transcripts on every build, at three
 depths. 57 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-20 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+21 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -895,6 +895,15 @@ Walkthrough: [Corpus microscope: from recordings to related windows](audio_ai_co
 These boxes are all compiled through Field's real Kotlin/preamble path, but not evaluated by CI:
 their purpose is to cross a process, audio-device or capture-device boundary that the lightweight
 build does not own.
+
+**kratos_thermal_playground** — Launch one box and drag the cuboid arm, conductivity, heat source
+and skin temperature controls. A persistent optional Kratos worker solves embedded conduction on
+one fixed background grid. The original and current temperature slices, grid identity, changed
+classifications, revisions and timings remain visible. Stop releases the worker; launch restarts it.
+Install the worker first with `uv sync --project optional/kratos --frozen` from the Field checkout.
+Requires Manifold. Each slice uses its own colour range; numerical temperature differences are
+reported alongside it. The controls also appear on `/controllers`.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/kratos_thermal_playground/metadata.edn)
 
 **audio_render_analysis** — Start with music written in Field rather than an imported recording.
 Four explicit live-coding boxes render Pat/Dirt, Dough and Faust or record Sonic Pi, write a finite
