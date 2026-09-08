@@ -96,6 +96,8 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        // Three bounded CPU/allocation workloads, one real recording, then stop and assert samples.
+        "profiling_timeline",
         // The one EXECUTE demo that *launches* rather than executes: its box is a `loop { }`, so the
         // transcript launches it, runs 90 real runloop frames (startRunloopDaemon above is what
         // advances them) and stops it. Safe here because the whole scene is CPU physics plus
@@ -108,6 +110,11 @@ object DemoTranscriptExecSmokeTest {
         // cloth — CPU physics plus showPlane, Skia SVG -> display.
         "simdverlet_world",
         "fn_differentiable_fit_demo",
+        // Blending two code keyframes. Pure CPU: the StackSL goes through the real compiler and then
+        // through afield.stacksl.cpu's GLSL interpreter, and the fourth box compiles generated Kotlin
+        // through K2 inside its own box — which is the one part of the feature a unit test cannot
+        // reach, and the reason this is EXECUTE rather than COMPILE_ONLY.
+        "keyframe_code_blend",
         "linalg_thumbnails_demo",
         "hello_display",
         "hello_display_capture",

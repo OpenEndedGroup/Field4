@@ -24,6 +24,7 @@ nav:
     - Files, and Where They Live: files_and_paths.md
     - Your History with Field: history_overview.md
     - Document History: document_history.md
+    - Profiling Timeline: profiling_timeline.md
     - Inline History (History Lens): history_lens.md
     - The Semantic Index: semantic_index.md
   # Generated from source rather than written: extracted KDoc and codegen output. Not

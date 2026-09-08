@@ -1,6 +1,6 @@
 # Mobile Controllers
 
-Field's `/controllers` page is a pocket-sized remote surface for a running Field document. Open it on a phone to adjust live controls, inspect outputs, talk to AI4, choose a box, and edit that box in Monaco without carrying the full canvas UI onto a small screen.
+Open Field's `/controllers` page in a phone browser and the phone becomes a remote for a running Field document: adjust live controls, read outputs, talk to AI4, pick a box, and edit that box in Monaco, none of which asks you to squeeze the canvas UI onto a phone.
 
 The phone follows Field's current box selection, and a selection made on the phone becomes the document's. There is one selection behind all six tabs: **Select** sets it, and **Pad**, **Group**, **Outputs**, **Chat** and **Edit** act on whatever it currently is.
 
@@ -19,6 +19,8 @@ Replace `FIELD-HOST` with the machine's LAN name or address and `YOUR-DOCUMENT` 
 
 ## The six tabs
 
+<div class="field-data-table" markdown>
+
 | Tab | What it controls |
 | --- | --- |
 | **Pad** | A large touch surface, sending Y, X or XY in absolute, delta or both modes, with shortcuts for save, restore, lock, unlock, launch, and stop. |
@@ -27,6 +29,8 @@ Replace `FIELD-HOST` with the machine's LAN name or address and `YOUR-DOCUMENT` 
 | **Chat** | The real AI4 conversation for the selected box and property, including attachments, code, and expandable tool-use summaries. File edits are called out by filename. |
 | **Select** | Field's **Open Anything** panel, adapted for touch. Search boxes, properties, commands, and document text. Choosing a result updates every other phone tab. |
 | **Edit** | A full embedded Monaco editor on the box and property chosen in **Select**. The same editor instance moves between Select and Edit, preserving its model and undo history. |
+
+</div>
 
 ## Chat without the desktop
 

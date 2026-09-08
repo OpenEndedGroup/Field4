@@ -8,6 +8,16 @@ reclaim: the branch carries the work, while a multi-GiB build directory need not
 
 Dry-run is always the default. There is intentionally no dirty tier: generated assets and worklogs
 still deserve a human decision.
+
+Two things here exist because of a measured leak. ``git worktree remove`` unregisters a worktree
+*before* it finishes deleting the directory, so a single leftover file makes git delete most of the
+content, drop the entry from ``git worktree list``, and exit non-zero with ``Directory not empty`` --
+which this tool used to print as an ordinary decline. The checkout survived on disk and, being
+unregistered, was invisible to every later run. 640 MiB was lost that way on 2026-08-27. So:
+[sweep_finder_metadata] removes the usual culprit before the attempt, and a declined removal is now
+diagnosed rather than shrugged at -- if the directory outlived its registration it is reported as an
+ORPHAN. [find_orphans] additionally sweeps for leaks that already happened, which is the only way
+they become visible again.
 """
 
 from __future__ import annotations
@@ -114,6 +124,53 @@ def pids_inside(path: Path, cwds: dict[Path, set[int]]) -> set[int]:
         if cwd == root or root in cwd.parents
         for pid in pids
     }
+
+
+def sweep_finder_metadata(path: Path) -> int:
+    """Delete ``.DS_Store`` files under [path], returning how many went.
+
+    Narrow on purpose. ``git worktree remove`` refuses a directory that is not empty after it has
+    already unregistered it, and on macOS the file that most often makes it non-empty is Finder
+    metadata nobody wants. Anything else that is untracked is potentially somebody's work, so it is
+    reported by the caller rather than deleted here -- widening this sweep would turn a reclaimer
+    into a shredder.
+    """
+    removed = 0
+    for junk in path.rglob(".DS_Store"):
+        try:
+            junk.unlink()
+            removed += 1
+        except OSError:
+            pass
+    return removed
+
+
+def worktree_leftovers(path: Path) -> list[Path]:
+    """Whatever is still inside [path], shallowly, so a decline can name its cause."""
+    try:
+        return sorted(path.iterdir())
+    except OSError:
+        return []
+
+
+def find_orphans(roots: list[Path], registered: set[Path]) -> list[Path]:
+    """Worktree-shaped directories that no longer appear in ``git worktree list``.
+
+    The ``.git`` *file* is the marker: a real worktree has one pointing at the repository, so
+    requiring it keeps unrelated directories the human happens to keep alongside their checkouts out
+    of the result. These are the residue of the unregister-then-fail sequence described above, and
+    nothing else in the tree looks for them.
+    """
+    orphans: list[Path] = []
+    for root in roots:
+        if not root.is_dir():
+            continue
+        for entry in sorted(root.iterdir()):
+            if not entry.is_dir() or entry.resolve() in registered:
+                continue
+            if (entry / ".git").is_file():
+                orphans.append(entry)
+    return orphans
 
 
 def disk_rows(
@@ -235,6 +292,22 @@ def main() -> int:
     for tree, size in candidates:
         print(f"  {tree.path}  {size / 1048576:.2f} GiB  {tree.branch}")
 
+    # Leaks that already happened. Reported every run, in both modes, because an orphan is by
+    # definition something no future candidate scan can reach.
+    orphan_roots = list(dict.fromkeys(
+        path.resolve() for path in [base, repo / ".claude/worktrees", *args.report_root]
+    ))
+    orphans = find_orphans(orphan_roots, registered)
+    if orphans:
+        orphan_kib = sum(tree_size_kib(path) for path in orphans)
+        print(
+            f"ORPHANED — {len(orphans)} worktree-shaped director(ies) not in `git worktree list`, "
+            f"{orphan_kib / 1048576:.2f} GiB. Left by an unregister-then-fail removal; nothing "
+            f"reclaims these automatically."
+        )
+        for path in orphans:
+            print(f"  {path}  {tree_size_kib(path) / 1048576:.2f} GiB  — inspect, then `rm -rf` it")
+
     budget_ok = True
     if args.disk_floor_gib is not None:
         if args.disk_floor_gib < 0 or args.reserve_gib < 0 or args.planned_gib < 0:
@@ -257,6 +330,9 @@ def main() -> int:
 
     for tree, _ in candidates:
         print(f"removing {tree.path}")
+        swept = sweep_finder_metadata(tree.path)
+        if swept:
+            print(f"  swept {swept} .DS_Store file(s) first, so git is not left half-done")
         remove_args = ["worktree", "remove"]
         # Git requires --force for a clean worktree with an initialized submodule. Dirt was already
         # rejected above, so this does not broaden the selected population.
@@ -264,7 +340,26 @@ def main() -> int:
             remove_args.append("--force")
         removed = run_git(repo, *remove_args, str(tree.path), check=False)
         if removed.returncode != 0:
-            print(f"  git declined: {removed.stderr.strip() or removed.stdout.strip()}")
+            reason = removed.stderr.strip() or removed.stdout.strip()
+            # A decline is not automatically harmless: git unregisters before it finishes deleting,
+            # so the interesting question is whether the directory outlived its registration.
+            still_registered = any(
+                Path(t.path).resolve() == tree.path.resolve()
+                for t in parse_worktrees(run_git(repo, "worktree", "list", "--porcelain").stdout)
+            )
+            if tree.path.exists() and not still_registered:
+                leftovers = worktree_leftovers(tree.path)
+                print(f"  *** ORPHANED: {tree.path}")
+                print(f"      git declined ({reason}) AFTER unregistering it, so this checkout is")
+                print(f"      now on disk and invisible to `git worktree list`. It holds")
+                print(f"      {tree_size_kib(tree.path) / 1048576:.2f} GiB and no later run of this tool will see it.")
+                if leftovers:
+                    shown = ", ".join(item.name for item in leftovers[:8])
+                    more = "" if len(leftovers) <= 8 else f", +{len(leftovers) - 8} more"
+                    print(f"      what blocked it: {shown}{more}")
+                print(f"      reclaim by hand once you have looked: rm -rf {tree.path}")
+            else:
+                print(f"  git declined: {reason}")
             continue
         if not completed:
             assert tree.branch is not None

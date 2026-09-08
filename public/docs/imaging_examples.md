@@ -1,8 +1,9 @@
 # Imaging and computer vision
 
-`afield.stdlib` carries a CPU imaging / computer-vision family: one value type, `Img`, and the
-operations that turn a raster into structure: convolution, gradients, edges, corners, lines,
-blobs, pyramids, warps and motion. It is the raster counterpart to the time-domain
+`afield.stdlib` can look at a picture as well as make one. Its CPU imaging and computer-vision
+family has a single value type, `Img`, and around it a set of operations that turn a raster into
+structure, from convolution and gradients up through edges, corners, lines, blobs, pyramids, warps
+and motion. It is the raster counterpart to the time-domain
 [timeseries toolkit](timeseries_examples.md) and the frequency-domain
 [spectral family](spectral_examples.md), and it is built the same way: pure Kotlin, no external
 dependency, works headless in a box.
@@ -216,8 +217,8 @@ Three detectors, all on a square whose corners are at exactly known coordinates,
 answer can be measured against the truth.
 
 - `harrisResponse()` — `det(M) - k·trace(M)²` over the structure tensor. Large and positive at a
-  corner, **negative along an edge**, near zero on flat ground; that sign structure is what the
-  diverging colour map in the figure is showing.
+  corner, **negative along an edge**, near zero on flat ground; the diverging colour map in the
+  figure is showing exactly that sign structure.
 - `shiTomasiResponse()` — the smaller eigenvalue of the same tensor. No magic `k`, and directly
   interpretable: it is the weakest intensity variation over any direction, so a large value means
   the point is localisable in *both* axes. A straight edge scores ~0, which is the aperture problem
@@ -306,9 +307,9 @@ becomes a smooth curve with no glue code.
 
 `gaussianPyramid(levels)` halves each octave (blurring first, so it does not alias);
 `laplacianPyramid(levels)` splits the image into band-pass detail plus a coarse residual, and
-`reconstruct()` inverts it. The round-trip is exact to within float precision (**1.49e-08**
-maximum absolute error on the figure below), which is what makes the decomposition usable for
-multiband blending and detail transfer rather than just for looking at.
+`reconstruct()` inverts it. The round-trip is exact to within float precision, at a maximum
+absolute error of **1.49e-08** on the figure below. That is small enough to build multiband
+blending and detail transfer on, rather than only to look at.
 
 ![](assets/imaging_gallery/07-pyramids.png)
 
@@ -339,9 +340,9 @@ a `FlowField` of `FlowVector`s, each of which reports whether it converged. A tr
 `ok = false` when the system is ill-conditioned (a smooth region, or a straight edge) or the point
 leaves the frame.
 
-The pyramid is what makes large motions tractable: solve at the coarsest octave where the
-displacement is small, then propagate the estimate down. A 9-pixel shift that a single level cannot
-recover comes back to within half a pixel with four.
+The pyramid is there for large motions. Solve at the coarsest octave, where the displacement is
+small enough for the linearisation to hold, then propagate the estimate down. A 9-pixel shift that
+a single level cannot recover comes back to within half a pixel with four.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/imaging_examples/motion.png" wait="2.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -416,17 +417,21 @@ amplified difference between them.
 
 `colormap(name, lo, hi)` runs a 1-channel image through any of the `Colormaps` ramps (`viridis`,
 `magma`, `inferno`, `plasma`, `turbo`, `coolwarm`, `grayscale`); `colormapDiverging(name)` picks a
-symmetric range around zero, which is the correct default for anything signed.
+symmetric range around zero, the right default for anything signed.
 
 ## Where the pictures come from
 
 Everything on this page is real output, and there are three routes to reproducing it:
+
+<div class="field-data-table" markdown>
 
 | what | how |
 |---|---|
 | the code fences above | executed by the docs build; the image under each is that box's own output |
 | the analytic figures | `python3 tools/run_field_tests.py --id imaging.gallery --port 9520` |
 | the whole family, live | replay `dev_docs/agents/transcripts/imaging_cv_examples.yaml` |
+
+</div>
 
 The gallery is a FIELD_TEST: it builds every figure from real `Img` pipelines and **fails** if the
 invariants break: if Canny stops being thinner than a raw threshold, if the four corner marks drift
@@ -448,8 +453,8 @@ same pixels: `tools/imaging-bench`, run with
 ./gradlew :tools:imaging-bench:jmh
 ```
 
-The filters sit on a small layer of vectorized span kernels (Java Vector API, `imaging_simd.kt`),
-and `Img`'s storage is what makes that work: samples are interleaved,
+The filters sit on a small layer of vectorized span kernels (Java Vector API, `imaging_simd.kt`).
+Spans are available at all because of how `Img` stores samples. They are interleaved, at
 `data[(y * width + x) * channels + c]`, so adding `(t - r) * channels` to a flat index lands on the
 same channel of the pixel `t - r` columns over. For a fixed tap the whole interior of a row is one
 contiguous span, and a separable convolution collapses to `dst += w * src` over that span. The
@@ -503,9 +508,9 @@ one-tap loops it replaces are code the JIT already handles perfectly.
 `convolveSeparableReference`, so the claim can be re-measured at any time. Only the
 separable-convolution family has one; a dash means that operation has no preserved scalar original
 to compare against, not that the speedup is unknown. Where there is a before, the gain is 12.9x
-(Gaussian gray), 13.4x (Gaussian RGB) and 11.8x (Sobel): near-identical, which is what you expect
-when the win is "stopped calling a bounds-checked accessor once per multiply-add" rather than
-anything kernel-specific.
+(Gaussian gray), 13.4x (Gaussian RGB) and 11.8x (Sobel). Those are near enough identical, and they
+should be: the win came from dropping a bounds-checked accessor call out of every multiply-add, and
+that saving does not depend on which kernel is running.
 
 OpenCV is pinned to one thread, because this code is single-threaded; letting OpenCV use every core
 does not help at this size either. Bold means we are faster.
@@ -537,8 +542,8 @@ JVM the only busy process: quiet for a laptop, not a dedicated benchmark box. A 
 short benchmark means scheduler noise rather than a real difference, so treat any two numbers whose
 intervals overlap as a tie. `bilateral` is the one arm whose interval is wide (13% relative), so
 read it as "about 1.2x". The `opencv` columns double as a control across runs, since that code does
-not change; they drifted about 3% between this run and the previous one, which is the scale of
-machine variation to assume when comparing against an older copy of this table.
+not change; they drifted about 3% between this run and the previous one. Assume that much machine
+variation when comparing against an older copy of this table.
 
 ## Reference
 

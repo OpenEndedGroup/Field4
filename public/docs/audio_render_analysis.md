@@ -1,10 +1,11 @@
 # Render Field music, then analyse it
 
-Field's sound-producing systems and Field Audio meet at one plain boundary: a finite WAV file.
-Pat, Dirt, Dough and Faust can render faster than real time; Sonic Pi can record a real-time
-performance. Each returns a `RenderedAudioFile`, and the same
-`FieldAudioClient.analyzeRenderedAudio(...)` call then imports its immutable bytes, submits cached
-analysis jobs, follows progress and returns durable results.
+Write a Pat pattern in a box, render twelve cycles of it, and there is a finite WAV file on disk
+before you have heard it play. That file is all Field Audio ever sees of the music. Pat, Dirt,
+Dough and Faust render faster than real time and Sonic Pi records a real-time performance, but
+every one of them hands back the same `RenderedAudioFile`, and
+`FieldAudioClient.analyzeRenderedAudio(...)` takes it from there. It imports the immutable bytes,
+submits cached analysis jobs, follows progress and returns durable results.
 
 The loop:
 
@@ -69,6 +70,8 @@ share the same time window.
 
 ## Renderers
 
+<div class="field-data-table" markdown>
+
 | Source in Field | Finite-file entry point | Execution |
 | --- | --- | --- |
 | Pat's deterministic voice | `renderPatWav(path, pattern, cycles, cps)` | offline, synchronous |
@@ -79,6 +82,8 @@ share the same time window.
 | Faust source text | `renderFaustWavAsync(path, name, source, seconds)` | background future; avoids blocking on compiler warm-up |
 | Sonic Pi source text | `recordSonicPiWav(sonicPi(), path, source, seconds)` | background future; real-time recording |
 | any existing Field WAV | `RenderedAudioFile.existing(path, generator, provenance)` | no rendering assumption |
+
+</div>
 
 All writers accept explicit paths and never silently choose a project location. The transcript uses
 the system temporary directory because the uploaded asset is durable and content-addressed; use a

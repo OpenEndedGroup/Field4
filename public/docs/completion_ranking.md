@@ -1,8 +1,8 @@
 # How completions are ranked
 
 Press `ctrl-space` in a Field editor and something has to choose which of a few hundred candidates
-you see first. This page is about that choice: where it is made, what it is made from, and how you —
-writing a class in a Field box or in Field's own source — get a say in it.
+you see first. This page is about that choice: where it is made, what it is made from, and how a
+class you write, in a Field box or in Field's own source, gets a say in it.
 
 !!! important "The server sends everything. The browser does the ranking."
 
@@ -12,7 +12,7 @@ writing a class in a Field box or in Field's own source — get a say in it.
     `rankItems`.
 
     So if you are reading Kotlin looking for the code that decides what comes first, you will not
-    find it. What Kotlin decides is what each row *carries* — its category, where it was declared,
+    find it. What Kotlin decides is what each row *carries*: its category, where it was declared,
     and its receiver type's own prior. The browser turns those into an order.
 
 The split buys two things. The popup can re-rank on every keystroke without another round trip,
@@ -27,8 +27,8 @@ there is no prefix, no letters to match against. Six steps, in order.
 ### The server answers with everything
 
 For `f.` on an `FLine` that is on the order of 250 rows: the class's own members, extension functions
-written for `FLine`, and the extensions that apply to literally every value in Kotlin — `also`,
-`apply`, `let`, `takeIf`. Nothing is dropped. In `rankItems` the filter step is
+written for `FLine`, and the extensions that apply to literally every value in Kotlin (`also`,
+`apply`, `let`, `takeIf`). Nothing is dropped. In `rankItems` the filter step is
 `!query || Number.isFinite(entry.fuzzy)`, and with an empty query the left half short-circuits, so at
 a bare dot *no row is filtered out at all*.
 
@@ -42,14 +42,18 @@ It has to be `declaredIn` rather than the member's bare name, because bare names
 Field's source tree `scale` is declared in 42 categorised files, `close` in 21, `copy` in 16. The
 categoriser, `KotlinSourceIndex.getCompletionCategoryForSymbol`, asks in three steps:
 
+<div class="field-data-table" markdown>
+
 | step | question asked | answer if it hits |
 |---|---|---|
 | 1 | is `Owner.member` in the index? | that declaration's category — including *no category*, which does not fall through |
 | 2 | does `declaredIn`'s package contain a match? | the vote, scoped to one package instead of 42 files |
 | 3 | `declaredIn` names something outside this tree | **decline** — a namesake here says nothing about `java.lang.Math` |
 
+</div>
+
 The third row has a consequence worth spelling out. A receiver you did not write and cannot
-annotate — `java.lang.Math`, `kotlin.collections.List` — gets a uniform "no category" for every one
+annotate (`java.lang.Math`, `kotlin.collections.List`) gets a uniform "no category" for every one
 of its members rather than a scatter of borrowed ones. Uniform means they all tie, and when
 everything ties the popup falls back to the order the server sent, which for a foreign type is
 alphabetical. So a bare dot on a foreign receiver is alphabetical, which is about as much as Field
@@ -79,8 +83,8 @@ into a **1-based position**, or `0` for "this type said nothing". Resolution:
 The qualified name comes from the candidate itself when the Analysis API served the completion. When the
 K1 fallback did, no candidate carries one, and the server resolves the caret's receiver itself instead:
 the live value's own class, else the declared type, else the constructor called to make it. Otherwise
-the prior would be absent for the first `ctrl-space` after launch — see
-[the K1 fallback](#the-k1-fallback).
+the prior would be absent for the first `ctrl-space` after launch (see
+[the K1 fallback](#the-k1-fallback)).
 
 The position rides across the wire as `Metadata.commonMemberRank`.
 
@@ -109,7 +113,7 @@ orderItemsForGroupedDisplay(rankItems(...).slice(0, MAX_VISIBLE_ITEMS))
 
 Read it right to left. Ranking picks the 80 rows. *Then* `orderItemsForGroupedDisplay` walks that
 ranked list and buckets each row under its category's section title, stably, in first-appearance
-order — and returns the buckets concatenated.
+order, then returns the buckets concatenated.
 
 So ranking decides three things: **which** rows survive the cut, the **order of the sections** (a
 section appears where its best-ranked member ranked), and the **order within** a section. It does not
@@ -160,8 +164,8 @@ ui.waitForSelector(".afield-suggest-row", 20000.0)
 ui.pause(1400)
 ```
 
-All eight of `FLine`'s `@CommonMembers` are there, in the order the annotation lists them —
-`moveTo`, `lineTo`, `cubicTo`, `close`, `here`, `rot`, `scale`, `copy` — and the first member the
+All eight of `FLine`'s `@CommonMembers` are there, in the order the annotation lists them
+(`moveTo`, `lineTo`, `cubicTo`, `close`, `here`, `rot`, `scale`, `copy`), and the first member the
 class says nothing about, `arcLength()`, comes ninth. One `GRAPHICS` header, which is the sectioning
 claim confirmed in the same picture: every `FLine` member is categorised from where it is declared,
 so they all land in one section, and inside one section the prior is free to decide.
@@ -187,7 +191,7 @@ order, out of the fallback backend.
 
 A figure shows nine rows and the panel has rather more. Asking a live sidecar's `/complete` for `val
 f = FLine()` then `f.`, with the running JVM's own classpath, returns **254 candidates, 248 of them
-carrying `receiverQualifiedName = afield.graphics.FLine`** — the exact key
+carrying `receiverQualifiedName = afield.graphics.FLine`**, the exact key
 `CommonMemberPrior.rankOf` looks up. All eight common members are among them, across every overload:
 
 | member | rows returned | all carry the receiver | prior position |
@@ -254,8 +258,8 @@ val ranks = afield.CommonMemberPrior.ranksFor("afield.graphics.FLine")  // name 
 val score = afield.CommonMemberPrior.scoreOf(ranks["moveTo"] ?: 0)      // position -> points
 ```
 
-The same box ships as a replayable transcript — `popup_prior_inspect` on the
-[agent transcripts](agent_transcripts.md) page — so you can open it, change the one string, and ask
+The same box ships as a replayable transcript (`popup_prior_inspect` on the
+[agent transcripts](agent_transcripts.md) page), so you can open it, change the one string, and ask
 about a type of your own.
 
 ## The authority order
@@ -277,8 +281,8 @@ called-out member clears a page of uncategorised rows, and **below** what recenc
 you use still wins over what the author guessed. The numbers are `COMMON_MEMBER_BASE = 40` decaying
 `2` per position, against a category ceiling of `28` and a recency ceiling near `62`.
 
-The magnitude lives on **both** sides of the wire — `CommonMemberPrior.BASE`/`STEP` in Kotlin and
-`COMMON_MEMBER_BASE`/`COMMON_MEMBER_STEP` in JavaScript — and the build asserts the two agree, since a
+The magnitude lives on **both** sides of the wire (`CommonMemberPrior.BASE`/`STEP` in Kotlin and
+`COMMON_MEMBER_BASE`/`COMMON_MEMBER_STEP` in JavaScript), and the build asserts the two agree, since a
 server that ranks members the client scores differently would be worse than no prior. The weights are
 under revision, so treat the four literals above as a snapshot and the *ordering* as the contract.
 
@@ -308,7 +312,7 @@ class Ramp {
 Four things to know about it:
 
 **Names, not callable references.** `"moveTo"` rather than `FLine::moveTo`, so that one
-entry covers every overload of a name — `FLine.moveTo` has four — and a property reads exactly the
+entry covers every overload of a name (`FLine.moveTo` has four), and a property reads exactly the
 same as a function. Only the bare name is matched, so a display string like `moveTo(v: Vec3)` still
 resolves.
 
@@ -342,12 +346,12 @@ FIELD_RANK_DUMP=14 FIELD_RANK_DUMP_CASE='FLine bare dot' \
 
 `FIELD_RANK_DUMP=<n>` prints the first *n* visible rows; `FIELD_RANK_DUMP_CASE` narrows it to one
 recorded case (omit it for all of them). Each line gives the visible rank, the label, and the row's
-`category` and `commonMemberRank` — which is to say, the section it will land in and the prior that
+`category` and `commonMemberRank`, which is to say the section it will land in and the prior that
 placed it inside that section. Those are the two fields that explain essentially every "why is that
 so far down" question.
 
-On the `FLine` case above, that command says this — 249 candidates sent, 80 rendered, and the first
-eight of them are `FLine`'s eight `@CommonMembers` in declared order:
+On the `FLine` case above, that command reports 249 candidates sent and 80 rendered, with the first
+eight of them `FLine`'s eight `@CommonMembers` in declared order:
 
 ```diffstatic {data-lang=text}
   case                    sent  visible      rank       was     ms
@@ -400,6 +404,8 @@ In rough order of how often each turns out to be the answer:
 
 ## Where this lives
 
+<div class="field-data-table" markdown>
+
 | what | where |
 |---|---|
 | the annotation | `CommonMembers` in `src/jvmMain/kotlin/afield/util.kt` |
@@ -413,6 +419,8 @@ In rough order of how often each turns out to be the answer:
 | the guard on the prior surviving a K1 result | `CompletionPriorReceiverTest` |
 | the guard on which backend a figure captured | `tools/test_docs_runner_completion_backend.py` |
 | the internals, at length | `dev_docs/completion_aa_sidecar.md` |
+
+</div>
 
 Symbol names rather than line numbers: a line number in a page like this one is the first thing to
 rot, and a name survives every edit that does not rename it.

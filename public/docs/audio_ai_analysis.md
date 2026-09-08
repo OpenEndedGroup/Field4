@@ -1,17 +1,24 @@
 # Beat and pitch analysis: from source to synchronized views
 
-Field Audio's analysis path uses the same durable, cached job system as generation. The source
-recording remains immutable; a request names an exact `AssetRegion`; progress is available both as
-WebSocket events and in the embedded job monitor; the completed result points to a compressed NPZ
-asset rather than placing a large tensor in Field's output JSON.
-
-The analysis worker exposes three operations:
+Where the beats are and what note is sounding are separate questions here, and they arrive as
+separate jobs. `analysis.beats` takes the first at several window lengths at once, since a tempo
+figure means little apart from the window it was measured over. For the second, how much is
+sounding at once decides: `analysis.pitch_mono` tracks one voice as a continuous F0 with a voicing
+probability, and `analysis.pitch_poly` returns discrete note events and a MIDI file where there are
+chords.
 
 | Field operation | Implementation | What comes back |
 | --- | --- | --- |
 | `analysis.beats` | librosa beat tracking and multi-window tempograms | onset envelope, beat markers, local BPM and confidence at every requested scale |
 | `analysis.pitch_mono` | librosa pYIN | monophonic F0, MIDI pitch, voiced flag and voiced probability |
 | `analysis.pitch_poly` | Spotify Basic Pitch | note events, activation tensors, pitch bends and a MIDI artifact |
+
+All three are durable, cached jobs on the same machinery as generation, and each asks for one
+result rather than a family of candidates: a fixed window with fixed parameters has a single
+answer, so there is nothing here to browse by seed. A request names an exact `AssetRegion` and the
+recording on disk is never modified. Progress arrives on the WebSocket and in the embedded job
+monitor, and the finished job points at a compressed NPZ asset instead of putting a large tensor
+into Field's output JSON.
 
 ## The views
 

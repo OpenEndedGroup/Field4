@@ -88,11 +88,11 @@ display(
 ```
 
 Three bands, one image. The top band is where the rect was *asked* to go: three waypoints, three
-instants. The middle band is what the seed parameters actually do, a small badly-phased circle near
+instants. The middle band is what the seed parameters actually do — a small, badly-phased circle near
 the origin that misses every waypoint, worst miss 7.72 wall metres. The bottom band is the same
 animation with the six numbers solved, threading all three waypoints to within 5·10⁻¹⁵ metres. The
-faint rectangle is the wall. A solved arc may leave it, so the figure shows a fifth more than the
-wall rather than cropping the answer.
+faint rectangle is the wall, and the solved arc leaves it, which is allowed: the figure shows a
+fifth more than the wall rather than cropping the answer.
 
 ## The three backends
 
@@ -167,8 +167,8 @@ is *identically* the clamped piecewise interpolant. Inside span *j* every earlie
 `vᵢ₊₁ - vᵢ` and every later one is zero, so the sum telescopes to `vⱼ + (vⱼ₊₁ - vⱼ)·Sⱼ(u)`; before
 the first key everything is 0 and after the last everything is 1, which is exactly what the sampler's
 clamping does. It needs only clamp / divide / multiply / add, so linear, eased and TCB tracks all
-lower. So do the `*-in-out` easings: they are piecewise, but continuous at the halfway point, so the
-same sum covers them.
+lower. So do the `*-in-out` easings, which are piecewise but continuous at the halfway point, and
+continuity is all the sum asks of them.
 
 ## Declaring an unknown
 
@@ -185,7 +185,7 @@ fitter can find which θ slot it landed in.
 The box below runs the same fit twice, once on the defaults and once with room to converge.
 `fitParameters` defaults to `iterations = 300` at `lr = 0.05`, and Adam moves a parameter by roughly
 `lr` per step, so a `bias` that has to travel from 0 to −8 cannot arrive in 300 steps. The default
-call stops short at a residual near 0.1: a 97% reduction, enough to pass a "did it improve?" check
+call stops short at a residual near 0.1 — a 97% reduction, enough to pass a "did it improve?" check
 and nowhere near solved. Given 2000 iterations the same call lands on the closed-form answer. **Read
 the residual, not the fact that a fit returned.**
 
@@ -232,11 +232,11 @@ display(
 
 The next box runs the whole loop from RectSL source: a scene with two `free-param` numbers in it, the
 IR printed as its own algebra before and after, and the scene drawn **as authored and as solved** by
-the same renderer as the figure at the top of this page, two bands instead of three. The authored
-band is the animation you get if you never fit anything, `gain=1.0, bias=0.0`, with the marker
-sweeping the wrong span and missing both waypoints. The solved band is the same scene after the
-gradient has chosen for you, and `gain=4.0, bias=-8.0` is the analytic answer to `t·gain + bias`
-through both waypoints.
+the same renderer as the figure at the top of this page — two bands there instead of three. The
+authored band is the animation you get if you never fit anything (`gain=1.0, bias=0.0`), with the
+marker sweeping the wrong span and missing both waypoints. The solved band is the same scene after
+the gradient has chosen for you, and it lands on `gain=4.0, bias=-8.0`, which is the analytic answer
+to `t·gain + bias` through both waypoints.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-free-param.png" wait="7.0" capture="box" open-outputs="true" w="1020" h="1240" padding="14" name="inverse-animation-free-param" embed=true}
 import afield.rectsl.*
@@ -370,8 +370,8 @@ track they spend most of their time exactly at those endpoints, so the branch ha
 too: `closed(u)·(1−floor(u))·(1−floor(1−u)) + floor(u)`.
 
 That is what takes the easings that lower from 29 of 38 to 35 of 38. The fifth obstruction is a
-single construction: `->face-travel` builds a `HeadingTrack`, which is `atan2` of a central finite
-difference, and it accounts for every non-pattern track in the gallery corpus that `floor` alone
+single construction: `->face-travel` builds a `HeadingTrack` — `atan2` of a central finite
+difference — and it accounts for every non-pattern track in the gallery corpus that `floor` alone
 cannot reach. `Fn` therefore carries `atan`, `atan2` and `hypot`, with the near-zero guards on `/`
 and `smoothstep` alongside them.
 
@@ -409,16 +409,18 @@ A row leaves that table by being tried, not by being argued with: `missing` name
 would take, and the way to close it is to write the lowering and compare it against the sampler.
 
 The fitter has a matching refusal. A staircase's derivative really is zero, so a parameter reachable
-*only* through a `floor`, a gate or a hold has no path to the value at all: present in the graph and
-unsolvable. `fitParameters` refuses that by name instead of printing a
-residual that never moved and calling it convergence. A parameter *beside* a staircase is still fine:
-under a floor it is refused, beside a gate it solves from residual 3.0 to 6.2·10⁻¹⁵.
+*only* through a `floor`, a gate or a hold has no path to the value at all — present in the graph and
+unsolvable. `fitParameters` refuses that by name instead of printing a residual that never moved and
+calling it convergence. A parameter *beside* a staircase is still fine: under a floor it is refused,
+beside a gate it solves from residual 3.0 to 6.2·10⁻¹⁵.
 
 ## How much of it is checked
 
 The differentiable backend is checked against an oracle that shares **no code** with it: a full
 double-precision capture of every sampled rect of the gallery's 38 programs, at 41 times each. The
 backend recomputes each rect's nine numeric channels and is held to that capture:
+
+<div class="field-data-table" markdown>
 
 | measurement | value |
 | --- | --- |
@@ -434,6 +436,8 @@ backend recomputes each rect's nine numeric channels and is held to that capture
 | a heading whose velocity vanishes | **bit-identical at 801 of 801**, with 400 of them needing a wider probe than the first |
 | the guarded `/` and `smoothstep` | **bit-identical at 2001 of 2001 each**, including the sample where the guard fires |
 
+</div>
+
 The first row is asserted rather than reported, and what it asserts is a classification rather than a
 count. A pattern track is the only thing that may refuse; refused and pattern-built have to be the
 same set, checked in both directions from the track's own structure; and that set has to be
@@ -442,9 +446,9 @@ other reason fails the build, and so does a `pat` the backend claims to have low
 
 The last few rows are the ones that matter for a fit. Agreeing on values proves nothing about a
 derivative, because a second interpreter can reproduce `eval` everywhere and still differentiate the
-wrong function. So the gradient is checked against a central finite difference: its only oracle that
-does not involve trusting the gradient. 7.1·10⁻¹¹ is the finite difference's own truncation error at
-a 1e-6 relative step, not the gradient's.
+wrong function. So the gradient is checked against a central finite difference — its only oracle
+that does not involve trusting the gradient. 7.1·10⁻¹¹ is the finite difference's own truncation
+error at a 1e-6 relative step, not the gradient's.
 
 The figure at the top of this page is a CPU raster rather than a GPU capture. Its rectangles are
 sampled from the tracks at the instants shown, but they are not the shader's own answer.
@@ -467,8 +471,8 @@ Of the five things a closure cannot be (printed, compared, serialized, rewritten
 GLSL and this page's differentiable backend are the two big ones. The remaining three come almost free
 once the IR is data.
 
-- `Track.describe()` prints a tree as its algebra,
-  `ADD(MUL(linear[0.0=0.0 4.0=4.0], ?gain=1.0), ?bias=0.0)`, rather than as nested constructors.
+- `Track.describe()` prints a tree as its algebra —
+  `ADD(MUL(linear[0.0=0.0 4.0=4.0], ?gain=1.0), ?bias=0.0)` — rather than as nested constructors.
 - Comparison is free. The IR is data classes, so two tracks built by the same `array` body are
   already `==`, which is what the GLSL emitter's function deduplication runs on.
 - `Track.simplify()` is the general rewriter, and `substituteParameters` the targeted one a fit uses.
@@ -479,9 +483,9 @@ because `0.0 - 0.0` is `+0.0` while `-(0.0)` is `-0.0`, and a signed zero is obs
 `atan2` in a `HeadingTrack`, so a rewrite that "only" changes the sign of a zero can spin a rectangle
 through 180°. Five reflexive rewrites are therefore refused, and asserted as refused: `x + 0`,
 `0 - x`, and all three `mix` degeneracies (`mix(a, b, 1)` is `a + (b - a)`, which is simply not `b`
-in floating point). What survives still shrinks the tree: `RectSLSimplify` records 10,621 nodes down
-to 8865, 16.5% smaller, over a 2754-channel snapshot of the gallery, because the constant fold does
-the heavy lifting.
+in floating point). What survives still shrinks the tree: over a 2754-channel snapshot of the
+gallery, `RectSLSimplify` records 10,621 nodes down to 8865 — 16.5% smaller — because the constant
+fold does the heavy lifting.
 
 ## Keys are tracks too
 
@@ -505,21 +509,21 @@ For linear, eased and hold tracks that is exact by construction: the lowering is
 `v₀ + Σ shape(u)·(vᵢ₊₁ - vᵢ)`, which is linear in the key values, so the clamped-ramp sum above
 carries them unchanged.
 
-TCB takes more care. A TCB tangent is *derived* from the neighbouring key values, so **baking** it,
-which is what the constant-key lowering and the shader both do, stops being faithful the moment a
+TCB takes more care. A TCB tangent is *derived* from the neighbouring key values, so **baking** it —
+which is what the constant-key lowering and the shader both do — stops being faithful the moment a
 key can move: a fit would solve for the key, `fitted` would recompute its tangents from the solved
 value, `fittedFn` would still carry the seed ones, and one fit would have two answers. A fitter that
 returns two animations for one solve is worse than one that refuses, so a TCB track with a
 parameterised key lowers its **tangents symbolically too**, and a moved key moves its tangents the
-way the sampler says it should. That is a second transcription of
-the TCB formula, which is exactly the kind of thing that drifts, so the two paths are pinned against
-each other on constant keys where both are defined. On a four-key spline with per-key tension,
-continuity and bias they agree to the last bit across 401 instants, and the fitted graph and the
-fitted track differ by 2·10⁻¹⁶ rather than by a spline.
+way the sampler says it should. That is a second transcription of the TCB formula, which is exactly
+the kind of thing that drifts, so the two paths are pinned against each other on constant keys where
+both are defined. On a four-key spline with per-key tension, continuity and bias they agree to the
+last bit across 401 instants, and the fitted graph and the fitted track differ by 2·10⁻¹⁶ rather
+than by a spline.
 
 What is still a plain `Double` is a key's *time*. A keyed track sorts by time and selects a span from
 it, so a parameterised time would have to move the *structure* of the track rather than only its
-numbers. That is a different kind of change from this one, and it has not been made.
+numbers — a different kind of change from this one, and one nobody has made.
 
 ## See it moving
 

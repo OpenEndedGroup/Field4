@@ -56,7 +56,8 @@ import afield.CellRole
  * [KeyframeScope.interpolate] blends two keys per value type: numbers and vectors lerp, quaternions
  * slerp, dual quaternions and `CameraPose` sclerp, and strings / [StackSLString] /
  * `SourceBackedBlock` step to the right-hand value at `t >= 1`. `remap` can re-time an individual
- * key's `t`.
+ * key's `t`. The two code types can do better than stepping when the two sources differ only in
+ * numbers — see [KeyframeScope.codeBlend] and `keyframeCodeBlend.kt`.
  *
  * Persistence goes through the [KValue] serial union, so only the types [KValue.fromAny] recognises
  * survive a save — numbers, vec2/3/4, quaternion, dual quaternion, camera pose, string, StackSL
@@ -79,6 +80,15 @@ import afield.CellRole
  */
 @Serializable
 enum class NumKind { BYTE, SHORT, INT, LONG, FLOAT, DOUBLE }
+
+/**
+ * How many code-blend plans one [KeyframeScope] keeps before dropping the lot.
+ *
+ * A scrub between two fixed keys needs one entry per code slot and never grows. The limit is there
+ * for the other case — code that is being edited while it is being blended — where every frame is a
+ * new pair of sources and caching them would be a leak rather than a saving.
+ */
+private const val CODE_BLEND_CACHE_LIMIT = 64
 
 /**
  * The closed set of value types a [KeyframeScope.Key] can *persist*: numbers, vec2/3/4, quaternion,
@@ -378,6 +388,89 @@ class KeyframeScope(val schemaVersion: Int = 0) {
      * `>= 1` early is precisely how you make a code value switch before the end of a transition.
      */
     val remap = mutableMapOf<String, (Double) -> (Double)>()
+
+    /**
+     * What [interpolate] should do with a slot whose two sides are *code* — a [StackSLString] or a
+     * `SourceBackedBlock`.
+     *
+     * The default is [CodeBlendMode.STEP], which is the behaviour this class has always had: the
+     * right-hand source once `t >= 1`, the left one before that. Setting it to
+     * [CodeBlendMode.STATIC] or [CodeBlendMode.RUNTIME] turns on the structural blend described in
+     * `keyframeCodeBlend.kt` — the two sources are aligned, and where they differ only in numbers
+     * those numbers are interpolated. Two sources that differ structurally still step, whatever this
+     * says; [codeBlendPlans] is how to see which of the two happened.
+     *
+     * Assigning a different [CodeBlendOptions] drops the cached plans, so a program built under the
+     * old options is not left running.
+     */
+    var codeBlend: CodeBlendOptions = CodeBlendOptions()
+        set(value) {
+            if (field != value) clearCodeBlendCache()
+            field = value
+        }
+
+    /**
+     * Plans by the pair of sources they align, so that a [CodeBlendMode.RUNTIME] blend hands the slot
+     * the *same* program — and, for Kotlin, the same `SourceBackedBlock` — on every frame.
+     *
+     * This is what makes the runtime path cheap rather than merely different: `stackAutoShaderSource`
+     * returns early when the source it is given equals the source already bound, and a
+     * `SourceBackedBlock` compiles its text once per instance. A fresh plan per call would defeat
+     * both. The cache is cleared when it passes [CODE_BLEND_CACHE_LIMIT], which only happens when
+     * something is generating new code every frame — a case the runtime path cannot help anyway.
+     */
+    private val codeBlendCache = mutableMapOf<Triple<CodeBlendLanguage, String, String>, CodeBlendPlan>()
+
+    /**
+     * The one `SourceBackedBlock` per runtime-blended Kotlin plan.
+     *
+     * A `SourceBackedBlock` compiles its source on first invocation and remembers the lambda, so
+     * handing a target a fresh instance every frame would compile the same text through K2 every
+     * frame. The source is invariant in `t` by construction — that is what
+     * [CodeBlendPlan.runtimeSource] is for — so one instance per plan is all a blend ever needs.
+     */
+    private val codeBlendBlocks = mutableMapOf<CodeBlendPlan, SourceBackedBlock<Any?>>()
+
+    private fun clearCodeBlendCache() {
+        codeBlendCache.clear()
+        codeBlendBlocks.clear()
+    }
+
+    private fun codeBlendPlan(language: CodeBlendLanguage, left: String, right: String): CodeBlendPlan {
+        val key = Triple(language, left, right)
+        codeBlendCache[key]?.let { return it }
+        if (codeBlendCache.size >= CODE_BLEND_CACHE_LIMIT) clearCodeBlendCache()
+        val plan = when (language) {
+            CodeBlendLanguage.STACKSL -> planStackSLCodeBlend(left, right, codeBlend)
+            CodeBlendLanguage.KOTLIN -> planKotlinCodeBlend(left, right, codeBlend)
+        }
+        codeBlendCache[key] = plan
+        return plan
+    }
+
+    /**
+     * The blend plan [interpolate] would use for every slot of [a] and [b] that holds code on both
+     * sides — the debugging view of a code blend, and what the keyframe browser shows.
+     *
+     * Reading only: the plans are the cached ones, so asking costs one alignment per pair and
+     * nothing thereafter. Slots that are not code, or are code on one side only, are absent. A
+     * `SourceBackedBlock` pair from two different boxes is also absent, because there is no box to
+     * compile the blend in.
+     */
+    fun codeBlendPlans(a: Key, b: Key): Map<String, CodeBlendPlan> {
+        val out = linkedMapOf<String, CodeBlendPlan>()
+        (a.values.keys + b.values.keys).sorted().forEach { name ->
+            val va = a.values[name]
+            val vb = b.values[name]
+            when {
+                va is StackSLString && vb is StackSLString ->
+                    out[name] = codeBlendPlan(CodeBlendLanguage.STACKSL, va.value, vb.value)
+                va is SourceBackedBlock<*> && vb is SourceBackedBlock<*> && va.boxId == vb.boxId ->
+                    out[name] = codeBlendPlan(CodeBlendLanguage.KOTLIN, va.source, vb.source)
+            }
+        }
+        return out
+    }
 
     /**
      * One snapshot: names to values, and the ability to put them all back. Get one from [capture],
@@ -874,8 +967,14 @@ class KeyframeScope(val schemaVersion: Int = 0) {
 
     /**
      * Blend two snapshots into a new [Key] at position [t], per value type: numbers and vectors lerp,
-     * quaternions slerp, dual quaternions and camera poses sclerp, and strings, [StackSLString]s and
-     * source blocks **step** to [b]'s value once `t >= 1` — code never gets a half-parsed intermediate.
+     * quaternions slerp, dual quaternions and camera poses sclerp, and strings **step** to [b]'s
+     * value once `t >= 1`.
+     *
+     * [StackSLString]s and source blocks step too, unless [codeBlend] says otherwise: with a
+     * [CodeBlendMode] set they are aligned against each other and blended where they differ only in
+     * numbers, and they still step when they differ in anything else. With a target registered under
+     * [CodeBlendOptions.blendKey], that lane is also filled with [keyframeBlendVector] so a
+     * runtime-blended shader can read `t` as a push constant.
      *
      * `t` runs 0 at [a] to 1 at [b] but is not clamped, so it extrapolates cheerfully past either end;
      * [remap] can re-time any single key first. Returns a fresh key and touches nothing live — invoke the
@@ -916,9 +1015,9 @@ class KeyframeScope(val schemaVersion: Int = 0) {
                 va is afield.stdlib.linalg.Quaternionf && vb is afield.stdlib.linalg.Quaternionf -> afield.stdlib.linalg.Quaternionf(va).slerp(vb, tf)
                 va is afield.stdlib.linalg.DualQuaternionf && vb is afield.stdlib.linalg.DualQuaternionf -> afield.stdlib.linalg.DualQuaternionf(va).sclerp(vb, tf)
                 va is CameraPose && vb is CameraPose -> va.sclerp(vb, tf)
-                va is StackSLString && vb is StackSLString -> if (tEffective >= 1.0) vb else va
+                va is StackSLString && vb is StackSLString -> blendStackSLValue(va, vb, tEffective)
                 va is String && vb is String -> if (tEffective >= 1.0) vb else va
-                va is SourceBackedBlock<*> && vb is SourceBackedBlock<*> -> if (tEffective >= 1.0) vb else va
+                va is SourceBackedBlock<*> && vb is SourceBackedBlock<*> -> blendBlockValue(va, vb, tEffective)
 
                 else -> continue
             }
@@ -926,7 +1025,54 @@ class KeyframeScope(val schemaVersion: Int = 0) {
             out[key] = interpolated
         }
 
+        // The blend parameter itself, for the push-constant convention: written last so it wins over
+        // whatever lerping the loop above did to the vec4 the two keys captured.
+        val blendLane = codeBlend.blendKey
+        if (codeBlend.mode != CodeBlendMode.STEP && targetFor(blendLane) != null) {
+            out[blendLane] = keyframeBlendVector(remap[blendLane]?.invoke(t) ?: t)
+        }
+
         return Key(out)
+    }
+
+    /**
+     * One StackSL slot's blended value: the plan's program under [CodeBlendMode.STATIC] or
+     * [CodeBlendMode.RUNTIME], and the stepped endpoint otherwise.
+     *
+     * The runtime program is wrapped in a fresh [StackSLString] each call and that costs nothing:
+     * `stackAutoShaderSource` compares the *text* it is handed against the text already bound and
+     * returns without recompiling when they match, and a runtime program's text does not depend on
+     * `t`.
+     */
+    private fun blendStackSLValue(a: StackSLString, b: StackSLString, t: Double): Any {
+        if (codeBlend.mode == CodeBlendMode.STEP) return if (t >= 1.0) b else a
+        val plan = codeBlendPlan(CodeBlendLanguage.STACKSL, a.value, b.value)
+        return when (plan.effectiveMode) {
+            CodeBlendMode.STEP -> if (t >= 1.0) b else a
+            CodeBlendMode.STATIC -> StackSLString(plan.bake(t))
+            CodeBlendMode.RUNTIME -> StackSLString(plan.runtimeSource)
+        }
+    }
+
+    /**
+     * One `SourceBackedBlock` slot's blended value.
+     *
+     * Two blocks from different boxes step rather than blend: the blended source has to be compiled
+     * somewhere, and neither box is more right than the other. A [CodeBlendMode.RUNTIME] blend
+     * publishes `t` through [CodeBlendPlan.drive] and hands back the plan's one block, so the
+     * generated source is compiled once and reads the new `t` on its next invocation.
+     */
+    private fun blendBlockValue(a: SourceBackedBlock<*>, b: SourceBackedBlock<*>, t: Double): Any {
+        if (codeBlend.mode == CodeBlendMode.STEP || a.boxId != b.boxId) return if (t >= 1.0) b else a
+        val plan = codeBlendPlan(CodeBlendLanguage.KOTLIN, a.source, b.source)
+        return when (plan.effectiveMode) {
+            CodeBlendMode.STEP -> if (t >= 1.0) b else a
+            CodeBlendMode.STATIC -> SourceBackedBlock<Any?>(a.boxId, plan.bake(t))
+            CodeBlendMode.RUNTIME -> {
+                plan.drive(t)
+                codeBlendBlocks.getOrPut(plan) { SourceBackedBlock(a.boxId, plan.runtimeSource) }
+            }
+        }
     }
 
     // ---- persistence ----

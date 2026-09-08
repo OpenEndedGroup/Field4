@@ -10,12 +10,13 @@ They have something in common that neither of them has to mention. In both, the 
 `inData` and writes `outData`, and `inData` is the same buffer, holding the same numbers, on frame
 one and on frame ten thousand. The animation comes entirely from a scalar pushed in from Kotlin. That
 is a *stateless* shader: a pure function of a fixed input and a clock, evaluated fresh every frame.
+Almost nothing you actually want to simulate is like that.
 
-Almost nothing you actually want to simulate is like that. The moment a particle has a velocity, this
-frame's answer depends on last frame's answer, and a set of questions arrives all at once that a
-stateless shader never has to face. Where does the state live, given that both the CPU and the GPU
-write it? What is it before frame one? Which buffer is "current", and how does a second box find out?
-And when the force law itself is the thing you are editing, how do you change it without stopping?
+The moment a particle has a velocity, this frame's answer depends on last frame's answer, and a set
+of questions arrives all at once that a stateless shader never has to face. Where does the state
+live, given that both the CPU and the GPU write it? What is it before frame one? Which buffer is
+"current", and how does a second box find out? And when the force law itself is the thing you are
+editing, how do you change it without stopping?
 
 This page answers those. Most of the answers are decisions rather than code, and most of them only
 have one workable shape.

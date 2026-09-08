@@ -1,6 +1,6 @@
 # Solids that cannot fail: Manifold in Field
 
-*Every public declaration used below carries its own KDoc; start from `Solid`, `Section` and
+*Every public declaration used below carries its own KDoc — start from `Solid`, `Section` and
 `ManifoldLibrary` in `afield.manifold`. The transcript that ships as an openable starting point is
 [manifold_solids](agent_transcripts.md).*
 
@@ -149,11 +149,15 @@ mesh: 8 vertices, 10 triangles, chi=1, 1 component(s)
 Two calls, both in `afield.stdlib`, both documented at length under
 [geometry from disk](geometry_from_disk.md):
 
+<div class="field-data-table" markdown>
+
 | you want | call |
 |---|---|
 | to know *why* this mesh is not a solid | `println(mesh.diagnose().report())` |
 | to fix it, and be told what could not be fixed | `mesh.repairToSolid()` |
 | to see where the trouble is | `showMeshDiagnosis(mesh)`, or `mesh.defectFLines()` |
+
+</div>
 
 `repairToSolid()` welds, drops degenerate and duplicated faces, removes dangling fins, fixes the
 winding, **fills the holes**, and fixes the winding again, then hands back a `MeshRepairResult`
@@ -169,14 +173,13 @@ have to be reported separately, and for the pair of cases proving that no local 
 apart.
 
 **Manifold accepts an inside-out mesh.** A closed, consistently-but-inwardly wound surface is a
-legal manifold and reports a *negative* volume, so
-`status` is `NO_ERROR` and the next boolean computes the complement of what you meant.
-`isValidSolid()` cannot catch that; `diagnose()` reports it as `INVERTED_ORIENTATION`, and
-`repairToSolid()`'s second winding pass fixes it. Manifold likewise accepts zero-area triangles,
-pinch vertices, and disjoint components, whose volumes it sums.
+legal manifold that reports a *negative* volume — so `status` is `NO_ERROR`, and the next boolean
+computes the complement of what you meant. `isValidSolid()` cannot catch that; `diagnose()` reports
+it as `INVERTED_ORIENTATION`, and `repairToSolid()`'s second winding pass fixes it. Manifold likewise
+accepts zero-area triangles, pinch vertices, and disjoint components — whose volumes it sums.
 
 `NON_FINITE_VERTEX` is a NaN in the positions, usually a degenerate normal upstream.
-`repairToSolid()` refuses that one outright rather than repairing around it: dropping the affected
+`repairToSolid()` refuses that one outright rather than repairing around it — dropping the affected
 triangles and capping the gap would produce a plausible solid missing an unknown amount of the model.
 
 `TriMesh.isValidSolid()` is the cheap pre-flight, and `toSolid()` checks by default.
@@ -185,9 +188,10 @@ triangles and capping the gap would produce a plausible solid missing an unknown
 
 `Section` is Manifold's `CrossSection`, which is [Clipper2](https://github.com/AngusJohnson/Clipper2)
 underneath. Field draws and booleans 2D outlines already, through `FLine` and the Java2D `Area`
-bridge, and `FLine.byOffsetting` displaces a curve along its own normals, which self-intersects
+bridge, and `FLine.byOffsetting` displaces a curve along its own normals — which self-intersects
 wherever the offset exceeds the local radius of curvature. `Section.offset` computes a true parallel
-curve at distance *d*, resolving those self-intersections, with a choice of what happens at a corner.
+curve at distance *d*, resolves those self-intersections, and gives you a choice of what happens at a
+corner.
 
 That single operation is a fillet, a wall thickness, a tool radius, a clearance, a press fit, and a
 stroke that is a *shape* rather than a rendering hint.
@@ -259,7 +263,7 @@ showPlaneGrid(
 ```
 
 Winding is what decides which contours are holes, under a `FillRule`. Read a region back with
-`toPolygons()` and the outlines are counter-clockwise (positive signed area) and the holes clockwise:
+`toPolygons()` and the outlines are counter-clockwise (positive signed area) and the holes clockwise —
 measured on an annulus, `+3.1413` outer and `−0.7853` inner. Field's default is `FillRule.POSITIVE`
 rather than Clipper's `EVEN_ODD`, because it is the rule under which winding *means* something: two
 overlapping same-wound outlines are one shape, where `EVEN_ODD` would punch their overlap out as a
@@ -342,7 +346,7 @@ Measured on this machine, a unit sphere at `edgeLength = 0.04` (465k samples, 40
 | `parallel = false` | 151 ms | 1 |
 
 1.84×, from a Kotlin closure invoked concurrently by nine threads the JVM never created. Two
-consequences, and the binding covers both:
+consequences follow, and the binding covers both:
 
 - **An exception cannot escape.** There are C++ frames between the lambda and the caller; unwinding
   through them is undefined, and FFM's response to an escaping exception is to abort the VM. So the
@@ -358,7 +362,7 @@ nothing looks different.
 
 ## Back down to 2D: slicing
 
-`slice(z)` is a real cross section, not a silhouette: the primitive under every fabrication path.
+`slice(z)` is a real cross section, not a silhouette — the primitive under every fabrication path.
 Each layer is a `Section`, so it offsets, which is how a layer outline becomes a toolpath.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/slices.png" wait="6" capture="box" open-outputs="true" padding="20" requires="manifold" name="slices" embed=true}
@@ -457,20 +461,20 @@ because a vertex on a hard edge needs a different normal per face and therefore 
 | `cube.toTriMesh()` | 8 | `true` | `8.0` |
 | `cube.toTriMesh(normals = true)` | **24** | **`false`** | `8.0` |
 
-Identical geometry, different *index* topology, and Field's `isWatertight()` and `genus()` read
+Identical geometry, different *index* topology — and Field's `isWatertight()` and `genus()` read
 indices. A crease-split mesh therefore reports the wrong genus and looks exactly like a broken bridge.
 Ask for the plain form when you are measuring, the shaded form when you are drawing, and `weld()` if
 you need to put a shaded one back together.
 
 The figures above use the plain form, and the reason applies to your own: `showMesh` prints its own
 topology footer, so handing it a crease-split mesh puts *"χ=−4 genus 0 · open (42 boundary loop(s))"*
-on the line immediately above a caption reading *"genus 5 · guaranteed closed"*. Both lines are true,
+on the line immediately above a caption reading *"genus 5 · guaranteed closed"*. Both lines are true —
 of different meshes. Field's own `withVertexNormals()` splits at creases too, so this is a property
 of crease normals rather than of this binding.
 
 ## Lifetime
 
-A `Solid` owns memory the JVM heap does not account for, so it is `AutoCloseable`, and because a
+A `Solid` owns memory the JVM heap does not account for, so it is `AutoCloseable` — and because a
 live-coding box is the last place anyone wants `try`/`finally`, it is *also* registered with a
 `Cleaner`. Abandon one and it is released when the JVM collects it; `close()` it and the release is
 immediate and the object refuses further use rather than reading freed memory.
@@ -492,12 +496,16 @@ Manifold ships a **C** binding library beside its C++ one (`libmanifoldc`, from 
 Homebrew's bottle contains it. That is what makes this binding small, and it is the whole argument for
 FFM over JNI, because the alternative needs a compiled shim per platform and this needs nothing:
 
+<div class="field-data-table" markdown>
+
 | | Ceres, the other native solver here | Manifold |
 |---|---|---|
 | upstream API | C++ templates only | C++ **and** a C ABI |
 | so Field needs | a hand-written C++ wrapper (`native/ken-ceres`) | nothing |
 | build step | `./gradlew buildCeresRedistributable`, minutes | `brew install manifold`, seconds |
 | ABI drift guarded by | a version string we invented | upstream's own SO version |
+
+</div>
 
 Three shapes of call, and what each one asks for:
 
@@ -507,7 +515,7 @@ Three shapes of call, and what each one asks for:
 2. **Structs returned by value.** `manifold_box_min` returns three doubles, which AArch64 returns in
    `v0..v2`. FFM unpacks that from a `StructLayout` with no help; what it wants in exchange is a
    `SegmentAllocator` as an extra leading argument.
-3. **Upcalls**, described above: a thread-safe Kotlin lambda, and a sentinel to carry an exception
+3. **Upcalls**, described above — a thread-safe Kotlin lambda, and a sentinel to carry an exception
    back across the C++ frames.
 
 Memory is the library's own `malloc`, via its `manifold_alloc_*` / `manifold_delete_*` pair, rather
@@ -517,7 +525,7 @@ problem, and the `Cleaner` sits behind it.
 
 !!! note "FFM does not check your descriptors"
     A `size_t` declared as an `int`, a struct return declared as a pointer, an argument in the wrong
-    position: all of them compile, link, and return *something*. The failure mode is a plausible
+    position — all of them compile, link, and return *something*. The failure mode is a plausible
     wrong number, not an error.
 
     Two places in this API where the header is the only warning. `manifold_slice` and

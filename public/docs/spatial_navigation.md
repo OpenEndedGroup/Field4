@@ -1,8 +1,9 @@
 # Spatial Navigation
 
-Field can move the selection from box to box without the mouse. There are two ways to do it: hop to a
-neighbouring box with the arrow keys, or jump to one of nine saved views with a function key. Both
-end with a box selected and its code in the editor.
+With a box selected, tap `Cmd` twice and hold it down on the second tap: Field outlines the box you
+are on and every box an arrow key can reach from it. That is one of the two ways to move the
+selection around a document without touching the mouse. The other is a function key, which jumps to
+one of nine views you have saved. Both leave you with a box selected and its code in the editor.
 
 ## Cmd Cmd and hold
 

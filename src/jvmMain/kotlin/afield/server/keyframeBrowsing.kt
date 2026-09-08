@@ -377,6 +377,62 @@ private fun keyFragment(file: afield.stdlib.KeyframeFile, key: KeyframeScope.Key
 private fun liveValues(values: Map<String, KValue>): MutableMap<String, Any?> =
     values.mapValues { (_, v) -> v.toAny() as Any? }.toMutableMap()
 
+/**
+ * The code-blend breakdown for a pair of keys: one [afield.stdlib.CodeBlendPlan] per slot that holds
+ * a StackSL program or a source block on both sides.
+ *
+ * This is the panel that answers "why did my two looks not morph". A code blend either finds the two
+ * programs structurally identical and interpolates their numbers, or finds a divergence and steps —
+ * and from the outside those are indistinguishable, because a stepped blend looks exactly like a
+ * blend that is not working. The plan says which happened, where, and what the midpoint of every
+ * moving number is.
+ *
+ * ### Which options the breakdown is computed under
+ *
+ * With a live scope attached, the scope's own [afield.stdlib.KeyframeScope.codeBlend] — so the panel
+ * reports what the running sketch would really do, including a downgrade from RUNTIME to STATIC. With
+ * no scope there is nothing to ask, so the breakdown is computed under
+ * [afield.stdlib.CodeBlendMode.RUNTIME], which is the setting that reports the most: every site, and
+ * every reason a site cannot be reached at runtime. The header says which of the two it was, because
+ * a reader who does not know that is reading numbers that may not be their numbers.
+ */
+private fun blendFragment(
+    left: afield.stdlib.KeyframeFile,
+    right: afield.stdlib.KeyframeFile,
+    scope: KeyframeScope,
+    live: Boolean
+): String = buildString {
+    val a = scope.Key(liveValues(left.values))
+    val b = scope.Key(liveValues(right.values))
+    val plans = scope.codeBlendPlans(a, b)
+
+    append("<div class='kb-detail'>")
+    append("<div class='kb-detail-head'>")
+    append("<code>${esc(left.relative)}</code> &rarr; <code>${esc(right.relative)}</code>")
+    append(" <span class='kb-dim'>")
+    append(
+        if (live) "under this scope's codeBlend (${esc(scope.codeBlend.mode.name)})"
+        else "no live scope — computed under RUNTIME, which reports the most"
+    )
+    append("</span></div>")
+
+    if (plans.isEmpty()) {
+        append("<div class='kb-status'>Neither key holds a StackSL program or a source block that ")
+        append("the other one holds too, so there is no code to blend. ")
+        append("Numeric slots blend without any of this — see the diff.</div>")
+        append("</div>")
+        return@buildString
+    }
+
+    plans.forEach { (name, plan) ->
+        append("<div class='kb-blend-slot'>")
+        append("<div class='kb-name'>${esc(name)}</div>")
+        append(plan.toHTML())
+        append("</div>")
+    }
+    append("</div>")
+}
+
 // ---------------------------------------------------------------------------------------------
 // Protocol
 // ---------------------------------------------------------------------------------------------
@@ -473,6 +529,24 @@ private object KeyframeBrowserProtocol {
                             req.reqId,
                             title = "${a.relative} → ${b.relative}",
                             html = diff.toHTML()
+                        )
+                    )
+                }
+
+                "blend" -> {
+                    val c = handle.collection()
+                    val a = req.fileId?.let { c.file(it) } ?: return fail("missing or unknown left file")
+                    val b = req.otherId?.let { c.file(it) } ?: return fail("missing or unknown right file")
+                    val live = handle.scope?.get()
+                    val scope = live ?: KeyframeScope().apply {
+                        codeBlend = afield.stdlib.CodeBlendOptions(mode = afield.stdlib.CodeBlendMode.RUNTIME)
+                    }
+                    json.encodeToString(
+                        KBFragment.serializer(),
+                        KBFragment(
+                            req.reqId,
+                            title = "code blend: ${a.relative} → ${b.relative}",
+                            html = blendFragment(a, b, scope, live != null)
                         )
                     )
                 }

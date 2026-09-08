@@ -1,6 +1,6 @@
 # RectSL examples
 
-Every operator in the [cheatsheet](rectsl_cheatsheet.md) turns up somewhere on this page. The tour runs from array primitives that multiply one shape across a wall, through emitters that split and cascade, the pattern language borrowed whole so a scene can be laid out by rhythm, and charts and plotted figures, to the same scenes lowered into a single GLSL distance function. The host side is normal Field Kotlin calling `afield.rectsl.*`.
+Every operator in the [cheatsheet](rectsl_cheatsheet.md) turns up somewhere on this page, and every example is a whole program you can paste into a `#rectsl` box and start pulling apart. They come in order: array primitives that multiply one shape across a wall, then emitters that split and cascade, then the pattern language borrowed whole so a scene can be laid out by rhythm, then charts and plotted figures, and last the same scenes lowered into a single GLSL distance function. The host side is normal Field Kotlin calling `afield.rectsl.*`.
 
 ## Rendered gallery
 
@@ -71,7 +71,8 @@ expect:
 ```
 
 Each example shows its source first, then the render. The source is the whole
-`.rectsl` program: copy it into a `#rectsl` box or edit it in the viewer above.
+`.rectsl` program, and the viewer above is where to edit one and watch it
+re-render, if you would rather scrub a scene than retype it.
 
 ## Reproduction with modification — array primitives
 

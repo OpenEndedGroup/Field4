@@ -1,9 +1,11 @@
 # Your History with Field
 
-Field keeps several kinds of history, each with its own lifetime. Saved document versions live on
-disk. Some runtime visualizers keep a short in-memory window of values. AI4 writes a tool-use log
-per send. The semantic index holds whatever corpus it last indexed. None of them is a complete
-record of everything that happened, and they are spread across a handful of tools:
+Field can tell you what a line said before you saved over it, and what AI4 did on your last send,
+but not from the same place. It keeps several kinds of history, each with its own lifetime. Saved
+document versions live on disk. Some runtime visualizers keep a short in-memory window of values.
+AI4 writes a tool-use log per send. The semantic index holds whatever corpus it last indexed. None
+of them is a complete record of everything that happened, and they are spread across a handful of
+tools:
 
 - **[Document history](document_history.md)** — a full-page timeline of the versions in the document's history store, with restore, cherry-pick and diff.
 - **[Inline history: the History Lens](history_lens.md)** — scrub a single line or selection back through its versions without leaving the editor.
@@ -42,6 +44,8 @@ subject of the rest of this section.
 
 ## Picking a tool
 
+<div class="field-data-table" markdown>
+
 | I want to… | Use |
 | --- | --- |
 | Roll a document back to an earlier save | [Document history](document_history.md) |
@@ -50,3 +54,5 @@ subject of the rest of this section.
 | Understand what the agents are doing and make them do it better | [AI tool-use history](ai_tool_use_history.md) |
 | Turn scattered AI-written docs into real source comments | [AI documentation polish](ai_doc_polish.md) |
 | Find indexed workspace code by describing it | [The semantic index](semantic_index.md) |
+
+</div>

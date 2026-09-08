@@ -1,20 +1,21 @@
 # Agent transcript gallery
 
-Field ships a small, curated corpus of **operation transcripts**: short YAML macros that build a
-whole Field document (boxes, code, graph wiring) from a blank canvas. They are the worked examples
-an agent copies, runs, and adapts when [automating Field](automating_field.md).
+An **operation transcript** is a short YAML macro that builds a whole Field document (boxes, code,
+graph wiring) from a blank canvas. Field ships a small, curated corpus of them, and they are the
+worked examples an agent copies, runs, and adapts when [automating Field](automating_field.md).
 
 These are the same scenes offered as **Starting points** on the [welcome screen](history_overview.md):
 each transcript that is a self-contained scene is materialized into an openable document, so you can
 search for it there and open an editable copy in your workspace. Six are not, and each says why in
-its own entry: a transcript that needs an external asset, a user gesture in a browser, or a renderer
+its own entry. A transcript that needs an external asset, a user gesture in a browser, or a renderer
 from a box outside itself makes a broken starting point, and an integration probe is not a scene.
 
 Every transcript in `dev_docs/agents/transcripts/` has an entry below, and
 `checkAgentTranscriptIndex` keeps it that way: it fails on a transcript with no entry, an entry
 naming a transcript that is not there, an entry offering a starting point that was never generated,
 or an entry filed under a section whose claim about CI does not match how CI checks it. The entries
-are written by hand, one per transcript: which number it prints, and why that number.
+are written by hand, one per transcript, because the useful thing to say about a scene is which
+number it prints and why that number matters, and no generator over the yaml can write that.
 
 Figures are captures of the code running, taken by the docs capture pipeline for the walkthrough
 page linked beside each one. Most entries carry none: a scene that opens a native Vulkan window, or
@@ -37,8 +38,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 85 transcripts on every build, at three
-depths. 57 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 87 transcripts on every build, at three
+depths. 59 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -65,6 +66,14 @@ its box to see the output (a plot, an inline value thumbnail, a printed line).
 
 **hello_display** — Minimal blank-canvas macro that creates one runnable output box.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/hello_display/metadata.edn)
+
+**profiling_timeline** — Three real coroutine workloads: steady arithmetic, periodic CPU bursts,
+and vector allocation. The fourth box records three seconds with JVM stacks and opens the timeline;
+**Hot code** explores sampled classes, methods, and box lines within the same time brush.
+Replay waits for launch startup, verifies the measured lanes and allocation, then stops the workers
+so you can brush and explore a quiet, latched capture. Change the vector box's `reuse` flag to
+compare construction with in-place `set` on Field's vectors. See [Profiling Timeline](profiling_timeline.md).
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/profiling_timeline/metadata.edn)
 
 **hello_display_capture** — The same single display box, paired with the backdoor capture commands
 (`wait-output` / `output` / `screenshot-box`) that collect its output events and a cropped
@@ -619,6 +628,26 @@ dead centre of frame for the whole move, while lerping the two positions cuts th
 
 Walkthrough: [Capturing & replaying live state](keyframer_examples.md).
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/keyframer_worked_example/metadata.edn)
+
+**keyframe_code_blend** — What to do when the two keyframes are *programs*. Two looks for one
+StackSL patch differ in a warp scale, an offset and a tint vector and in nothing else, so the two
+token streams align and those three numbers can be interpolated; change one word instead — `fbm` for
+`noise` — and the alignment reports a divergence and the blend goes back to stepping, because a
+program built from the left structure with the right numbers is neither keyframe at either end. The
+second box is the claim worth checking: one program, expanded once, drawn five times with only a
+push constant changing, with both ends compared pixel for pixel against the programs they are
+supposed to be. The third is where a runtime blend cannot reach — a modifier chain and a random range
+both want literals in those positions, so a RUNTIME request comes back as STATIC, one compile per
+`t`. The last two do the same thing to a pair of `sourceBlock { }` expressions, and they are where
+the generated text stops being text: the blended expression is compiled through K2 and invoked at
+five values of `t`, each result printed beside an expectation computed independently in Kotlin. They
+are two boxes rather than one because a `SourceBackedBlock` hydrates by evaluating its source on its
+own box's engine, and asking that engine to evaluate while it is already mid-evaluation re-runs the
+body that is running — 327 nested runs and 355 seconds, measured. Hydrating into an idle box, which
+is what the split does, runs it once.
+
+Walkthrough: [Blending two programs](keyframer_examples.md#blending-two-programs-not-just-two-numbers).
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/keyframe_code_blend/metadata.edn)
 
 **pattern_rewrite_worked_example** — Six runnable boxes that each hold one
 [user-authored rewrite rule](pattern_rewrite.md) and one `println` that could not compile without it.

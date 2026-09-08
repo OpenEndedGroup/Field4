@@ -85,6 +85,12 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 
 ## Files
 
+- `profiling_timeline.yaml`: three editable CPU/allocation workloads plus a capture box. Replay to
+  get a checked, latched three-second capture in **Show Profiling Timeline**. Workers stop at the
+  end; brush, zoom, inspect a resume, or explore JVM classes and sampled box lines in **Hot code**.
+  Flip the vector box's `reuse` flag and
+  relaunch the workloads to compare allocation with Field's in-place linalg operations.
+
 - `hello_display.yaml`: smallest useful blank-canvas transcript; creates one box, displays HTML, and can be undone.
 - `hello_display_capture.yaml`: same as `hello_display.yaml` but paired with the backdoor capture-command chain (`wait-output` / `output` / `screenshot-box`) documented under "Capturing output and screenshots" — the worked example of capturing a macro's output and a cropped screenshot.
 - `polytope_conway_demo.yaml`: one deliberately compact **polytope review box**. It marks two opposite cube faces with different height attributes, selects and applies `kis` only to those faces, converts the authoritative polygon faces to separate `FLine`s, and ends in the on-canvas `threeLines(...)` viewer. Orbit and hover the result; clicking a face reports its output id, transform role, source elements, and resolved height. Its inspection output also exercises the registered data-class visualizers for the transform and its polygon-to-triangle provenance.

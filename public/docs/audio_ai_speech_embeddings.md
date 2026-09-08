@@ -1,8 +1,9 @@
 # Speech-reactive learned spaces
 
-Field Audio exposes two frame-level speech models behind one operation,
-`analysis.embed_speech`. This is the lane for a field recording where voice activity, vocal
-timbre, prosody, and phonetic motion matter more than beat or harmony.
+A field recording of someone talking gives a beat tracker almost nothing to hold onto. What moves
+in it is voice activity, vocal timbre, prosody and phonetic motion, and that is what
+`analysis.embed_speech` measures. Two speech models sit behind that one operation, and which of
+them you ask changes what the motion is about.
 
 | Backend | Bias | Useful first reading |
 | --- | --- | --- |
@@ -11,7 +12,7 @@ timbre, prosody, and phonetic motion matter more than beat or harmony.
 
 Neither backend is a transcript or a sentence-meaning model. WavLM's middle and later layers can
 organize phonetic structure, but spoken meaning needs a separate ASR or language embedding lane.
-What these two report is where the sound is moving in a learned speech space, frame by frame.
+Both report a position in a learned speech space every 20 ms; neither reports a word.
 
 ## What one job records
 

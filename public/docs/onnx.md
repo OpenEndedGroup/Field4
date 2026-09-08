@@ -10,7 +10,7 @@ space, so a picture can be scored against a written prompt with no training and 
 
 Both run on the ONNX Runtime JNI artifact (`com.microsoft.onnxruntime:onnxruntime`, 1.27.0), which is
 on the classpath already because [semantic search](semantic_index.md) embeds text with it. The weights
-are not: each model is fetched the first time you ask for it, and that is the whole install.
+are not — each model is fetched the first time you ask for it, and that is the whole install.
 
 ```diffstatic {data-lang=kotlin}
 import afield.onnx.*
@@ -150,7 +150,7 @@ in roughly a quarter of the time.
 ### The normalisation window, and what `settled` means
 
 A texture needs values in `[0,1]`, so the raw map has to be normalised against *something*. Picking
-each frame's own min and max makes the image flicker: a hand entering shot rescales the entire
+each frame's own min and max makes the image flicker — a hand entering shot rescales the entire
 background. So `DepthAnything` tracks the window with an exponential moving average and normalises
 against the smoothed version. `infer` returns a `DepthStats` reporting both, so a box can watch that
 decision instead of guessing at it:
@@ -161,7 +161,7 @@ decision instead of guessing at it:
 | `windowMin` / `windowMax` | the smoothed window that was mapped to `0.0` and `1.0` |
 | `settled` | true once the smoothed window has *caught up* with the raw range |
 
-`settled` is the **arrived** state, not the chasing one. It is true on the first frame after
+`settled` is the **arrived** state, not the chasing one — true on the first frame after
 construction or `resetAdaptation()`, because the window is seeded from that frame's own range, and
 false for the frames after the scene changes while the average walks towards the new one. Wait for
 `settled` if you want a stable picture; watch for `!settled` if you want to know one is still
@@ -198,18 +198,18 @@ if (depth.consume()) tex.recordUpload(commandBuffer)
 Two design choices, both the opposite of the obvious one:
 
 - **Frames are dropped, not queued.** `submit` overwrites anything not yet picked up. A queue would
-  grow without bound whenever inference is slower than capture (which is always) and every frame it
+  grow without bound whenever inference is slower than capture — which is always — and every frame it
   held would be staler than the one behind it. `framesSubmitted`, `framesInferred` and `framesDropped`
   are all readable, so you can read the drop rate off the worker.
 - **`consume()` copies, on the calling thread.** `depthFp16` must keep a fixed identity, because
   `StreamingTexture` captures its source buffer once at construction and re-reads it every frame. The
-  worker therefore cannot write into it directly: the renderer could be mid-read and would show a
+  worker therefore cannot write into it directly — the renderer could be mid-read and would show a
   torn map. So the worker publishes into an internal buffer and `consume()` copies under the lock.
   That copy is the only work the render thread does.
 
 Six frames of staleness at 60fps looks fine for displacement, parallax and depth-keyed compositing,
 and looks like lag for anything a hand is steering directly. That is the real constraint, and no
-provider flag fixes it; see [what was measured](#what-was-measured-and-what-it-contradicts).
+provider flag fixes it — see [what was measured](#what-was-measured-and-what-it-contradicts).
 
 ## CLIP: a shared space for pictures and words
 
@@ -294,7 +294,7 @@ showImgGrid(
 ![](assets/onnx/clip.png)
 
 Nothing was trained, and no label was ever written down. The room photograph picks "an empty living
-room" and the car render picks "a car", with "red cloth" second: the car really is sitting on red
+room" and the car render picks "a car", with "red cloth" second — the car really is sitting on red
 drapery.
 
 ### How to read a cosine between a prompt and an image
@@ -304,7 +304,7 @@ threshold on `cosine`.
 
 Look at the numbers in that figure. Every single image↔text cosine sits between about 0.15 and 0.27,
 including the *correct* ones. Meanwhile two unrelated *text* prompts, `storm` and `calm`, sit at
-0.8813. The two towers occupy offset regions of the sphere, the **modality gap**, so:
+0.8813. The two towers occupy offset regions of the sphere — the **modality gap** — so:
 
 | comparison | where it lands | what you may conclude |
 |---|---|---|
@@ -324,8 +324,8 @@ other* and returns probabilities that sum to 1, most likely first. `best()` is i
 ### A knob whose units are meaning
 
 The difference of two prompt embeddings is a *direction*, and projecting a frame onto it is a
-continuous parameter that tracks a semantic axis rather than a pixel statistic. It is two lines,
-`a axisTo b` and then `.project(axis)`, and the figure above runs them on the axis from
+continuous parameter that tracks a semantic axis rather than a pixel statistic. It is two lines —
+`a axisTo b`, then `.project(axis)` — and the figure above runs them on the axis from
 `"an empty living room"` towards `"a car"`.
 
 Both projections come out small and on opposite sides of zero. The same modality gap applies to a
@@ -336,7 +336,7 @@ standard prompt-ensemble trick and one CLIP responds well to.
 
 The rest of `ClipVector` is small and pure: `plus`/`minus`/`times` (not renormalised,
 because the length of a difference is meaningful), `dot`, `cosine`, `normalized`, and
-`toBase64`/`fromBase64` for persisting an embedding: 2732 characters of exact fp32 round trip, for a
+`toBase64`/`fromBase64` for persisting an embedding — 2732 characters of exact fp32 round trip, for a
 stored identity to cosine against later.
 
 ## Getting the models onto a fresh machine
@@ -365,7 +365,7 @@ So depth alone costs about 99 MB and CLIP costs about 608 MB more. What happens 
    a bug in the model rather than in the download.
 3. The sha256 is verified before the move, against a digest recorded in the source. A mismatch deletes
    the partial file and throws.
-4. Then the session is built, which is the slow part; see the caching note above.
+4. Then the session is built, which is the slow part — see the caching note above.
 
 `OnnxModel.isPresent` is a cheap boolean if you want to branch on it, and `Clip.TOKENIZER` reuses the
 same fetch machinery even though nothing about a `tokenizer.json` is ONNX, because it is the same
@@ -383,11 +383,15 @@ problem: a large asset that must not live in the repository.
 Measured on Apple Silicon with 10 cores, at 518² unless stated, and quoted from `OnnxRuntime`'s own
 KDoc. Every row contradicts a plausible guess:
 
+<div class="field-data-table" markdown>
+
 | the guess | what was measured | so |
 |---|---|---|
 | CoreML will accelerate this | 43 of 848 nodes claimed, across 19 partitions; ≈470ms vs ≈388ms for CPU | CoreML is **slower**; `AUTO` resolves to CPU |
 | fp16 weights will run faster | ≈462ms vs ≈388ms — every operator upcasts | fp16's win is download size, **not** speed |
 | pinning threads will help | `setIntraOpNumThreads(4)` gave ≈457ms vs ≈388ms for ORT's default | leave `intraOpThreads` at 0 |
+
+</div>
 
 The fp16 row is the one the name misleads you about: an HF `model_fp16.onnx` still has fp32 *tensors*,
 so nothing is saved at the ORT boundary. Pick it to save 50 MB of disk, never to save time.
@@ -424,7 +428,7 @@ The reference values in both were produced independently, under Python's `onnxru
 Kotlin and NumPy construct a byte-identical image. That last detail is what lets the tolerance be
 `1e-3` instead of twenty times looser.
 
-Run them the usual way; see [building and testing](building_and_testing.md):
+Run them the usual way — see [building and testing](building_and_testing.md):
 
 ```diffstatic {data-lang=bash}
 python3 tools/run_field_tests.py --id onnx.depth.smoke --id onnx.clip.smoke
@@ -453,11 +457,15 @@ The depth figure and the CLIP figure are executed by the docs build every time, 
 the image under each is that box's own output. The other three Kotlin blocks are illustration, and are
 marked as such where they appear:
 
+<div class="field-data-table" markdown>
+
 | block | why it is not executed | what stands behind it |
 |---|---|---|
 | the orientation snippet | `rgbaBytes` is left undefined | every call in it, via both smokes |
 | the session-cache do/don't | half of it is an anti-example that *must* not run | `OnnxSmokeTest.testSessionIsCached` |
 | the worker + `StreamingTexture` | needs a Vulkan device and a webcam | the ONNX half, via `testWorkerPublishesAFrame`; the buffer stride, via `testFp16BufferMatchesVulkanStride` |
+
+</div>
 
 So **`StreamingTexture(...)` and `recordUpload(...)` are the only lines on this page that nothing in
 this repository checks.** The bar in that third column is a narrow one: an assertion somewhere that

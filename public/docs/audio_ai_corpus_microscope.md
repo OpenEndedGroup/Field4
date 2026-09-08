@@ -1,10 +1,13 @@
 # Corpus microscope: from recordings to related windows
 
-The corpus microscope makes source recordings navigable before asking a generator to invent
-anything. It cuts immutable recordings into overlapping windows at 1.5, 3, 6 and 12 seconds,
-measures each window, and retrieves related material with an explicit weighted distance.
+Nancy and Final Out at Candlestick Park are two recordings sitting on disk. Pick six seconds of
+Nancy, and the corpus microscope finds the stretches of either recording that sound most like it,
+having already cut both into overlapping windows at 1.5, 3, 6 and 12 seconds and measured every
+one. Those windows are recorded as boundaries and offsets; the audio itself is never rewritten. How
+closeness gets judged stays yours to set, because the distance is five separate measurements with
+a weight each rather than one similarity number.
 
-The descriptor is five groups of measurements rather than a single similarity number:
+## What each window is measured by
 
 | Group | Measurements |
 | --- | --- |

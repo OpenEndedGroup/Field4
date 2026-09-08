@@ -1,6 +1,8 @@
 # Interactive Guides
 
-Field's guide system lets a box walk someone through a document. A guide can:
+A guide is a box that walks someone else through your document. You write it in the box; the person
+following it gets notes, moving selections and callout lines over the live document rather than a
+recording of one. A guide can:
 
 - show a note next to a box,
 - move the editor to a property and line,
@@ -13,7 +15,13 @@ The core API lives in `slideShow { ... }`. Each `step("...")` defines one stage 
 
 ## Start with a single-step guide
 
-The smallest useful guide is a host box, a `slideShow { ... }` block with at least one `step("...")` in it, a note body, and a coroutine to start the guide running.
+You need five things for the smallest guide that does anything:
+
+- a host box to write it in,
+- a `slideShow { ... }` block,
+- at least one `step("...")`,
+- a note body,
+- a coroutine to start the guide running.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -296,7 +304,17 @@ For line-level teaching, combine `selectBox(...)`, `line = ...`, `highlight = ..
 
 ## Growing a guide
 
-Guides tend to get written in one direction. `slideShow { ... }` with its `step(...)` blocks comes first, then a `markdownNote(...)` in each, then `selectBox(...)` so the reader is looking at what the note describes; that much is already a working guide. Callbacks with `{{templateValues}}`, `withChat()` and `annotate(...)` come afterwards, and only on the steps that need them.
+Guides tend to get written in one direction:
+
+1. `slideShow { ... }` with one or more `step(...)` blocks.
+2. `markdownNote(...)` or `note(...)` in each step, saying what stage the reader is at.
+3. `selectBox(...)`, so the reader is looking at what the note describes. Stop here and you have a working guide.
+4. `linkCallback(...)` and `#custom:name` links, when a step should branch or change state.
+5. `{{templateValues}}`, when a note should show the current guide state.
+6. `withChat()`, when a step needs discussion.
+7. `annotate(...)` or `annotateToLine(...)`, when a sentence is about one exact target.
+
+Steps 4 to 7 go only on the steps that ask for them.
 
 ## Example source map
 

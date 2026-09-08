@@ -2708,6 +2708,166 @@ private fun parseNumberRange(text: String): Pair<String, String>? {
     return normalizeFloat(match.groupValues[1]) to normalizeFloat(match.groupValues[2])
 }
 
+/**
+ * Which of StackSL's token forms a number can be substituted into, for the keyframe code-blend
+ * layer ([afield.stdlib.planStackSLCodeBlend]).
+ *
+ * The distinction the blender needs from this enum is not the shape but the *cost*: a [NUMBER] or a
+ * [VEC] is a plain push, so two of them can be replaced in place by `a b amount mix` and the blend
+ * becomes a push constant the shader reads every frame. A [RANGE] or a [MODIFIER] carries its
+ * numbers inside a token whose grammar demands literals, so those can only be blended by writing a
+ * new number into the source and compiling it again.
+ */
+internal enum class StackSLNumericFormKind {
+    /** A bare number: `0.5`, `-2`, `1e3`. One number, and a push. */
+    NUMBER,
+
+    /** A vector literal: `[0.2,0.4]`, `[1,0,0,1]`. Two to four numbers, and a push. */
+    VEC,
+
+    /** A random-range literal: `0.2_0.8`. Two numbers, and not a push. */
+    RANGE,
+
+    /** A number or top-of-stack modifier chain: `0.5s2`, `|n4p0.25`. Not a push. */
+    MODIFIER,
+}
+
+/**
+ * One StackSL token split into the numbers a blend may move and the text that must stay put.
+ *
+ * [skeleton] is one element longer than [numbers] and interleaves with it, so
+ * `render(numbers.map { … })` rebuilds the token: `[0.2,0.4]` is `["[", ",", "]"]` around
+ * `[0.2, 0.4]`. Rebuilding from the *original* text rather than from a canonical form is what keeps
+ * a blended program looking like the program it came from — spacing, `+` signs and exponent
+ * spelling included.
+ */
+internal class StackSLNumericForm(
+    /** What form the token is, which decides whether a runtime blend can reach it. */
+    val kind: StackSLNumericFormKind,
+    /** The literal text between (and around) the numbers; `numbers.size + 1` elements. */
+    val skeleton: List<String>,
+    /** The numbers, in source order. */
+    val numbers: List<Double>,
+    /** Each number exactly as the token spells it, so an unchanged one can be written back as-is. */
+    val texts: List<String>
+) {
+    /** The token with [values] written back into the numeric slots, in source order. */
+    fun render(values: List<String>): String {
+        require(values.size == numbers.size) { "expected ${numbers.size} values, got ${values.size}" }
+        return buildString {
+            skeleton.forEachIndexed { i, piece ->
+                append(piece)
+                if (i < values.size) append(values[i])
+            }
+        }
+    }
+}
+
+/**
+ * Read [text] as a StackSL token whose numbers can be blended, or return null when it has none that
+ * may be touched.
+ *
+ * The recognition order is the compiler's own token dispatch, which is why this lives beside those
+ * parsers rather than in the blender: `0.5s2` is a modifier chain and not the number `0.5` followed
+ * by junk, and `[0x,1y]` is a stack selector whose `0` and `1` are stack positions — interpolating
+ * those would silently retarget the selector at a different value. Every form the compiler reads
+ * *before* it can reach a number is therefore rejected first, and only the four forms of
+ * [StackSLNumericFormKind] come back.
+ *
+ * The modifier case cross-checks itself: the number spans are found by rescanning the token, and the
+ * count must match what [parseNumberModifier] / [parseTopModifier] parsed out of the same text.
+ * A rescan that drifts from the grammar returns null and the token blends as opaque text.
+ */
+internal fun stackSLNumericForm(text: String): StackSLNumericForm? {
+    fun form(kind: StackSLNumericFormKind, spans: List<IntRange>): StackSLNumericForm? {
+        val numbers = spans.map { text.substring(it).toDoubleOrNull() ?: return null }
+        val skeleton = mutableListOf<String>()
+        var cursor = 0
+        spans.forEach { span ->
+            skeleton += text.substring(cursor, span.first)
+            cursor = span.last + 1
+        }
+        skeleton += text.substring(cursor)
+        return StackSLNumericForm(kind, skeleton, numbers, spans.map { text.substring(it) })
+    }
+
+    // Forms the compiler resolves before any numeric literal. A `?pc.tint[2]` read and a `[0x,1y]`
+    // selector both contain digits that are addresses, not values.
+    if (parseExternalRead(text) != null) return null
+    if (parseExternalWrite(text) != null) return null
+    if (parseWordReference(text) != null) return null
+    if (parseLocalMarkRead(text) != null) return null
+    if (parseLocalMarkCopy(text) != null) return null
+    if (parseLocalMarkMove(text) != null) return null
+    if (parseStackSelectorLiteral(text) != null) return null
+
+    modifierNumberSpans(text)?.let { return form(StackSLNumericFormKind.MODIFIER, it) }
+    numberRangeRegex.matchEntire(text)?.let { m ->
+        val spans = listOfNotNull(m.groups[1]?.range, m.groups[2]?.range)
+        if (spans.size == 2) return form(StackSLNumericFormKind.RANGE, spans)
+    }
+    vecLiteralRegex.matchEntire(text)?.let { m ->
+        val spans = (1..4).mapNotNull { m.groups[it]?.range }
+        if (spans.isNotEmpty()) return form(StackSLNumericFormKind.VEC, spans)
+    }
+    if (numberRegex.matches(text)) return form(StackSLNumericFormKind.NUMBER, listOf(text.indices))
+    return null
+}
+
+/**
+ * Every number span inside a modifier chain — `0.5s2p0.25`, `|n4d0.3` — or null when [text] is not
+ * one.
+ *
+ * This walks the chain a second time rather than threading spans through
+ * [parseModifierStages], which several other call sites use for their own purposes. The walk is
+ * held to the grammar by counting: the numbers found here must be exactly as many as the parsed
+ * chain has, or the answer is thrown away.
+ */
+private fun modifierNumberSpans(text: String): List<IntRange>? {
+    val spans = mutableListOf<IntRange>()
+    var index: Int
+    val chain: ParsedModifierChain
+
+    val top = parseTopModifier(text)
+    if (top != null) {
+        chain = top
+        index = 1
+    } else {
+        chain = parseNumberModifier(text) ?: return null
+        val amount = leadingNumberRegex.find(text, 0)?.takeIf { it.range.first == 0 } ?: return null
+        spans += amount.range
+        index = amount.range.last + 1
+    }
+
+    fun consumeNumber(): IntRange? {
+        val match = leadingNumberRegex.find(text, index)?.takeIf { it.range.first == index } ?: return null
+        index = match.range.last + 1
+        return match.range
+    }
+
+    while (index < text.length) {
+        val modifier = modifierNames.firstOrNull {
+            text.regionMatches(index, it, 0, it.length, ignoreCase = true)
+        } ?: return null
+        index += modifier.length
+
+        consumeNumber()?.let { spans += it }
+        if (index < text.length && text[index].lowercaseChar() == 'p') {
+            index++
+            spans += consumeNumber() ?: return null
+        }
+        if (index < text.length && text[index].lowercaseChar() == 'd') {
+            index++
+            spans += consumeNumber() ?: return null
+        }
+    }
+    if (index != text.length) return null
+
+    val expected = (if (chain.amount != null) 1 else 0) +
+        chain.stages.sumOf { stage -> listOfNotNull(stage.frequency, stage.phase, stage.duty).size }
+    return spans.takeIf { it.size == expected }
+}
+
 private fun normalizeFloat(text: String): String {
     return if (text.contains('.') || text.contains('e', ignoreCase = true)) text else "$text.0"
 }

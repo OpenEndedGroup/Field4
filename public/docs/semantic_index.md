@@ -1,15 +1,16 @@
 # The Semantic Index
 
-The search field on [`/welcome`](history_overview.md) combines two searches over
-the current workspace:
-
-- the ordinary workspace search, which matches document metadata and box text;
-- semantic-index hits, when semantic search is enabled and an index exists.
+The search field on [`/welcome`](history_overview.md) takes the keyboard focus
+as soon as the page opens, and what you type into it runs two searches over the
+current workspace at once. One is the ordinary workspace search, over document
+metadata and box text. The other is the semantic index, which joins in when
+semantic search is enabled and an index has been built.
 
 Results from both are merged by document. Semantic hits are labelled, ranked
 ahead of ordinary matches within each document, and limited to short source
-previews. If the semantic request fails or exceeds the welcome page's short
-timeout, ordinary search results still work.
+previews. Enter opens the first document in the results. If the semantic request
+fails or runs past the welcome page's short timeout, you still get the ordinary
+ones.
 
 ## What the local index contains
 
@@ -45,10 +46,12 @@ this local retrieval path.
 
 ![The semantic search panel on the welcome page](assets/semantic-search.png)
 
-The **Semantic search** panel in `/welcome` exposes the implemented settings and
-cache operations: enable/disable, model preset and paths, dimension/token limit,
-model download, save, rebuild, delete index, and delete models. Rebuild runs in a
-background worker and publishes progress/status to the page.
+The **Semantic search** panel sits under the **AI** section of `/welcome`. That
+is where you switch the feature on, pick a model preset and download it, point
+at a model file and tokenizer by hand, and set the dimension and token limit;
+**Save** writes those settings back. Three buttons below them act on the index
+itself, rebuilding it, deleting it, or deleting the downloaded models. A rebuild
+runs in a background worker and reports its progress on the page.
 
 ## Conversational code search is separate
 

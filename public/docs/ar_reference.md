@@ -1,12 +1,12 @@
 # RemoteJS and WebXR
 
-Field's browser graphics head lives at:
+Field's browser graphics head is a page you open yourself, on whichever device you want the graphics to come out of:
 
 ```diffstatic {data-lang=text}
 https://FIELD_HOST:9092/extensions/remote_ar/index.html
 ```
 
-It connects back to the Field server over WebSocket and executes Javascript boxes in the browser. The same page has three modes:
+Load it on an Android phone, on a headset, or in a second browser window on the machine Field is already running on. Wherever you open it, it connects back to the Field server over WebSocket and executes your Javascript boxes there. The same page has three modes:
 
 - Android and desktop browsers use the browser's native WebXR implementation.
 - The Endrun iOS app injects its ARKit-backed WebXR compatibility layer before this page loads.

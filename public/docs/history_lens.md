@@ -44,9 +44,13 @@ Field has a second inline visual also called `history`, and the two are easy to 
 
 The **`history()` visualizer** (`m.history(value)`) draws a live chart of the last N *runtime* values of an expression, printed inline next to the code that produced it. It tracks a value while your code runs, rather than your source across saves. It is covered with its siblings `histogram()` and `stats()` on the [Visualizers & Controls](visualizers.md) page.
 
+<div class="field-data-table" markdown>
+
 | | History Lens | `history()` visualizer |
 | --- | --- | --- |
 | What it tracks | your source code across saved versions | a numeric value across runtime iterations |
 | Backed by | saved document backups | a rolling in-memory buffer |
 | Opened by | right-click → *Show History Lens* | calling `m.history(x)` in running code |
 | Survives a restart? | yes — it is on disk | no — it is live only |
+
+</div>

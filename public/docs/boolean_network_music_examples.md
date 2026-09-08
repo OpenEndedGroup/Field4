@@ -14,7 +14,7 @@ The bridge is a handful of extension functions on `BooleanNetwork`, all in `Bool
 
 ## From attractor cycle to `NoteProcess`
 
-Take a small attractor, map rising edges to pitches, and render the result as a piano roll. `step.lanes(...)` takes one of four trigger modes and the choice does most of the musical work: a node that stays on for six steps gives six notes under `ACTIVE`, which is the default, and one under `RISING_EDGE`, which is what this fence asks for. `FALLING_EDGE` and `CHANGE` are the other two. Note also that the first step of a run has no previous state to compare against, so every lane already on at step zero counts as a rising edge.
+Take a small attractor, map rising edges to pitches, and render the result as a piano roll. `step.lanes(...)` takes one of four trigger modes and the choice does most of the musical work: a node that stays on for six steps gives six notes under the default `ACTIVE`, and one under `RISING_EDGE`, the mode the fence below asks for. `FALLING_EDGE` and `CHANGE` are the other two. Note also that the first step of a run has no previous state to compare against, so every lane already on at step zero counts as a rising edge.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_network_music_examples/noteprocess_roll.png" wait="1.0" capture="box"}
 :::static
@@ -71,7 +71,7 @@ The seed in the heading is found rather than chosen: the fence sweeps seeds 0 to
 
 ## Previewing Dirt tokens before playback
 
-The same timing layer can carry Dirt sample labels instead of note names, which is how you inspect the Boolean rhythm as a sample rack before anything is played.
+The same timing layer can carry Dirt sample labels instead of note names. Swap the mapping and the Boolean rhythm arrives as a sample rack you can read over before anything is played.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_network_music_examples/dirt_token_roll.png" wait="1.0" capture="box"}
 :::static
@@ -292,7 +292,7 @@ The upper grid is the raw Boolean state and the piano roll underneath is the sam
 
 ## Driving a live Dirt player
 
-`respondAhead(...)` clocks the network in real time and calls back with `BooleanNetworkStep` values, which is enough to drive a `DirtSamplePlayer` directly. It does not start anything itself: it builds a `BooleanNetworkResponseSpec`, and a registered return-value handler launches that spec when it turns up as the box's last expression. So the responder runs because the fence *ends* with it, and the job it starts is registered against the box, which is what makes stopping the box stop the sound.
+`respondAhead(...)` clocks the network in real time and calls back with `BooleanNetworkStep` values, enough to drive a `DirtSamplePlayer` directly. It does not start anything itself: it builds a `BooleanNetworkResponseSpec`, and a registered return-value handler launches that spec when it turns up as the box's last expression. So the responder runs because the fence *ends* with it, and the job it starts belongs to the box. Stop the box and the sound stops.
 
 ```diffstatic {data-lang=kotlin}
 import afield.four.synth.*

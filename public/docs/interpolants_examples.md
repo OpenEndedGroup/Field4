@@ -2,22 +2,25 @@
 
 *Every public declaration used below is listed, with its KDoc, in the codebase reference: [`interpolants.kt`](reference/math.md#interpolants-kt), [`keyframer.kt`](reference/graphics.md#keyframer-kt). Start from [what's already in the box](reference/index.md).*
 
-Some values are supposed to *move*: a control that eases to a target instead of
-snapping, a whole parameter state morphing from one saved look to another, a
-relationship between two signals drifting as they play. This page collects the
-tools for those cases, and draws the motion in each: a `showSignals` plot when
-the value is a signal over time, an `FLine` when the shape is spatial. Three
-families, one habit.
+Some values are supposed to *move* rather than jump. The simplest case is a
+single control that eases towards its target instead of snapping to it, so that
+when you drag it the result feels like aiming at a value rather than setting one.
+The same idea scales up to a whole parameter state morphing between two saved
+looks, and out again to a relationship between two signals drifting as they play.
+This page collects the tools for all three and draws the motion in each, with a
+`showSignals` plot where the value is a signal over time and an `FLine` where the
+shape is spatial.
 For recovering a hidden value from noisy measurements, see
 [State estimation](state_estimation_examples.md).
 
 ## Interpolants: easing a value to a target
 
 An interpolant is a value that chases a target over a controlled number of
-evaluations rather than jumping. `smoothTo(...)` is the workhorse: opacity,
-brightness, a filter cutoff, a camera move, a gesture-derived control. The single
-knob that shapes the approach is `steps`: fewer steps arrive sooner and sharper,
-more steps settle later and softer. The way to feel that is to give three
+evaluations rather than jumping. `smoothTo(...)` is the workhorse. Opacity,
+brightness, a filter cutoff, a camera move, a number coming off a gesture —
+anything you would otherwise assign outright can be handed to it instead. The
+single knob that shapes the approach is `steps`: fewer steps arrive sooner and
+sharper, more steps settle later and softer. The way to feel that is to give three
 interpolants a target that keeps *moving* (a set-point that jumps every 60
 evaluations) and re-aim each one from wherever it currently sits (`startAt`) the
 moment the target changes. Now `steps` reads as responsiveness: the snappy one
@@ -252,7 +255,9 @@ markdown("keys", """
 
 The green step trace sits low for the whole transition and jumps exactly once, at
 the very end — that is `StackSLString`/source-block interpolation, which never
-produces a half-parsed intermediate. The blue gain is the smoothstep, the orange
+produces a half-parsed intermediate. Two programs that differ only in *numbers*
+can do better than that: see
+[blending two programs](keyframer_examples.md#blending-two-programs-not-just-two-numbers). The blue gain is the smoothstep, the orange
 path is the linear vector ease. A `Key` also knows how to `diff` against another
 and emit the `update { ... }` code that reproduces it, so a captured look is both
 a value you can interpolate *toward* and a snippet you can paste back into a box.

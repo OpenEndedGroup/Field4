@@ -749,7 +749,7 @@ code {
     }
 }
 
-/* ── wide tables opt out of the code-table skin ───────────────────────────
+/* ── data tables opt out of the code-table skin ───────────────────────────
    The skin above is a term/meta/body grid: it assigns grid areas to the first
    three cells only. Any table with a fourth column leaves cells 4..n at
    `grid-area: auto`, so they auto-place into the implicit grid, blow the row
@@ -760,38 +760,69 @@ code {
    so hand it back to normal table layout. Keyed off `td:nth-child(4)` rather
    than a class so it protects any future page, not just the reference.
 
+   Two or three columns can be a data table too, and there the column count
+   cannot tell: the skin fires and silently restyles the table as a term list.
+   `morpho_examples.md` was the case that made this worth an escape hatch — a
+   `piece | file | lines` cost table came out as eleven headings with a
+   right-floated filename and the line count on its own line underneath, which
+   reads as a definition list of things that are not definitions. There is no
+   way to distinguish it from the outside, because the two are structurally
+   identical and differ only in what the first column *means*: a term the row
+   defines, or a value in a series. So it is declared, by wrapping the table in
+   `<div class="field-data-table" markdown>`.
+
+   The class sits on a wrapper rather than on the table because `attr_list`
+   cannot attach attributes to a Markdown table; `md_in_html` is on, and the
+   wrapper-div idiom is already how `codebase-reference` and `stacksl-reference`
+   are applied. Each rule below therefore carries a second selector with the
+   `:has(td:nth-child(4))` test swapped for a `.field-data-table` ancestor,
+   sharing one set of declarations so the two paths cannot drift.
+
+   The `@media` bleed at the end of this block is deliberately *not* paired: it
+   spends the reading rail's side slack so a six-column table fits, and a
+   three-column one that took it would sit wider than the prose beside it.
+
    The `:not(.highlighttable)` in every selector is not redundant: it matches the
    skin's own class count so that these rules, coming later in the file, actually
    win the cascade over the skin's per-column `nth-child` rules. Without it the
    skin's right-aligned, small-caps `td:nth-child(2)` leaks through. */
-.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) {
+.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)),
+.md-typeset .field-data-table table:not(.highlighttable):has(td code) {
     display: table;
     table-layout: auto;
     border: 1px solid var(--mono-border) !important;
     background: var(--mono-panel) !important;
 }
 
-.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) thead {
+.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) thead,
+.md-typeset .field-data-table table:not(.highlighttable):has(td code) thead {
     display: table-header-group;
 }
 
-.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) tbody {
+.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) tbody,
+.md-typeset .field-data-table table:not(.highlighttable):has(td code) tbody {
     display: table-row-group;
 }
 
-.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) tr {
+.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) tr,
+.md-typeset .field-data-table table:not(.highlighttable):has(td code) tr {
     display: table-row;
 }
 
 /* The skin draws each row's rule with a grid-placed ::after; cells own it here. */
-.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) tr::after {
+.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) tr::after,
+.md-typeset .field-data-table table:not(.highlighttable):has(td code) tr::after {
     content: none;
 }
 
 .md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) th,
 .md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) td,
 .md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) td:nth-child(2),
-.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) td:nth-child(3) {
+.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) td:nth-child(3),
+.md-typeset .field-data-table table:not(.highlighttable):has(td code) th,
+.md-typeset .field-data-table table:not(.highlighttable):has(td code) td,
+.md-typeset .field-data-table table:not(.highlighttable):has(td code) td:nth-child(2),
+.md-typeset .field-data-table table:not(.highlighttable):has(td code) td:nth-child(3) {
     display: table-cell;
     grid-area: auto;
     justify-self: auto;
@@ -806,13 +837,15 @@ code {
     vertical-align: top;
 }
 
-.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) th {
+.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) th,
+.md-typeset .field-data-table table:not(.highlighttable):has(td code) th {
     color: rgba(255, 255, 255, 0.58);
     font-size: 0.61rem;
     white-space: nowrap;
 }
 
-.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) td:first-child {
+.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) td:first-child,
+.md-typeset .field-data-table table:not(.highlighttable):has(td code) td:first-child {
     color: rgba(255, 255, 255, 0.94);
     font-size: 0.7rem;
 }
@@ -823,7 +856,9 @@ code {
    auto layout then honours. A fixed `min-width` would do it too, but it would
    over-allocate on tables whose first column holds a short label. */
 .md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) th:first-child,
-.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) td:first-child {
+.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) td:first-child,
+.md-typeset .field-data-table table:not(.highlighttable):has(td code) th:first-child,
+.md-typeset .field-data-table table:not(.highlighttable):has(td code) td:first-child {
     overflow-wrap: normal;
     word-break: normal;
 }
@@ -836,12 +871,14 @@ code {
    Note the inner selector is a plain descendant, `table:not(...) td:nth-child(4)`,
    not the `table:has(...)` used above: `:has()` may not be nested inside
    `:has()`, and a rule that tries to is dropped whole. */
-.md-typeset .md-typeset__scrollwrap:has(table:not(.highlighttable) td:nth-child(4)) {
+.md-typeset .md-typeset__scrollwrap:has(table:not(.highlighttable) td:nth-child(4)),
+.md-typeset .field-data-table .md-typeset__scrollwrap {
     margin-left: 0;
     overflow-x: auto;
 }
 
-.md-typeset .md-typeset__table:has(table:not(.highlighttable) td:nth-child(4)) {
+.md-typeset .md-typeset__table:has(table:not(.highlighttable) td:nth-child(4)),
+.md-typeset .field-data-table .md-typeset__table {
     display: inline-block;
     min-width: 100%;
     margin-left: 0;
