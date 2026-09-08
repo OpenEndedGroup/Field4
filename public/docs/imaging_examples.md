@@ -217,8 +217,8 @@ Three detectors, all on a square whose corners are at exactly known coordinates,
 answer can be measured against the truth.
 
 - `harrisResponse()` — `det(M) - k·trace(M)²` over the structure tensor. Large and positive at a
-  corner, **negative along an edge**, near zero on flat ground; that sign structure is what the
-  diverging colour map in the figure is showing.
+  corner, **negative along an edge**, near zero on flat ground; the diverging colour map in the
+  figure is showing exactly that sign structure.
 - `shiTomasiResponse()` — the smaller eigenvalue of the same tensor. No magic `k`, and directly
   interpretable: it is the weakest intensity variation over any direction, so a large value means
   the point is localisable in *both* axes. A straight edge scores ~0, which is the aperture problem
@@ -340,9 +340,9 @@ a `FlowField` of `FlowVector`s, each of which reports whether it converged. A tr
 `ok = false` when the system is ill-conditioned (a smooth region, or a straight edge) or the point
 leaves the frame.
 
-The pyramid is what makes large motions tractable: solve at the coarsest octave where the
-displacement is small, then propagate the estimate down. A 9-pixel shift that a single level cannot
-recover comes back to within half a pixel with four.
+The pyramid is there for large motions. Solve at the coarsest octave, where the displacement is
+small enough for the linearisation to hold, then propagate the estimate down. A 9-pixel shift that
+a single level cannot recover comes back to within half a pixel with four.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/imaging_examples/motion.png" wait="2.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -417,7 +417,7 @@ amplified difference between them.
 
 `colormap(name, lo, hi)` runs a 1-channel image through any of the `Colormaps` ramps (`viridis`,
 `magma`, `inferno`, `plasma`, `turbo`, `coolwarm`, `grayscale`); `colormapDiverging(name)` picks a
-symmetric range around zero, which is the correct default for anything signed.
+symmetric range around zero, the right default for anything signed.
 
 ## Where the pictures come from
 
@@ -508,9 +508,9 @@ one-tap loops it replaces are code the JIT already handles perfectly.
 `convolveSeparableReference`, so the claim can be re-measured at any time. Only the
 separable-convolution family has one; a dash means that operation has no preserved scalar original
 to compare against, not that the speedup is unknown. Where there is a before, the gain is 12.9x
-(Gaussian gray), 13.4x (Gaussian RGB) and 11.8x (Sobel): near-identical, which is what you expect
-when the win is "stopped calling a bounds-checked accessor once per multiply-add" rather than
-anything kernel-specific.
+(Gaussian gray), 13.4x (Gaussian RGB) and 11.8x (Sobel). Those are near enough identical, and they
+should be: the win came from dropping a bounds-checked accessor call out of every multiply-add, and
+that saving does not depend on which kernel is running.
 
 OpenCV is pinned to one thread, because this code is single-threaded; letting OpenCV use every core
 does not help at this size either. Bold means we are faster.
@@ -542,8 +542,8 @@ JVM the only busy process: quiet for a laptop, not a dedicated benchmark box. A 
 short benchmark means scheduler noise rather than a real difference, so treat any two numbers whose
 intervals overlap as a tie. `bilateral` is the one arm whose interval is wide (13% relative), so
 read it as "about 1.2x". The `opencv` columns double as a control across runs, since that code does
-not change; they drifted about 3% between this run and the previous one, which is the scale of
-machine variation to assume when comparing against an older copy of this table.
+not change; they drifted about 3% between this run and the previous one. Assume that much machine
+variation when comparing against an older copy of this table.
 
 ## Reference
 
