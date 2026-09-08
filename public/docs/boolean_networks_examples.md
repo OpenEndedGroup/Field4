@@ -198,7 +198,7 @@ The plot has no legend, so: blue is the mean number of attractors, orange the me
 
 ## Boolean attractors as drum grids
 
-A limit cycle repeats on a fixed period, which is the one thing a rhythm needs. You can treat each node as a lane directly, or gate the cycle with a beat phase such as `step % 4` and turn the same binary motion into kick / snare / hat style triggers.
+A limit cycle repeats on a fixed period, so it is already a rhythm. You can treat each node as a lane directly, or gate the cycle with a beat phase such as `step % 4` and turn the same binary motion into kick / snare / hat style triggers.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_networks_examples/rhythm_cycles.png" wait="1.0" capture="box"}
 :::static
