@@ -20,7 +20,7 @@ range (`0.2_0.5`). No mix expression can be written at either position, so a run
 blend cannot reach them and says so rather than pretending.
 
 ```edn [field-box id="kfb_static" role="properties"]
-{"id" "kfb_static" "index" 0 "name" "Where a runtime blend cannot reach" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Where a runtime blend cannot reach" "_tombstone" false "frame" #afield/rect [80.0 320.0 320.0 52.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_static_code_.kt" "lines" 26 "characters" 1204 "sha256" "2312aae3be1cd91e8cfde0ee6f379b8dd029237bed09ae5a12247d4aec2ee197"}]}
+{"id" "kfb_static" "index" 0 "name" "Where a runtime blend cannot reach" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Where a runtime blend cannot reach" "_tombstone" false "frame" #afield/rect [80.0 720.0 320.0 52.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_static_code_.kt" "lines" 26 "characters" 1204 "sha256" "2312aae3be1cd91e8cfde0ee6f379b8dd029237bed09ae5a12247d4aec2ee197"}]}
 ```
 
 ```kotlin [field-property box="kfb_static" name="code" path="kfb_static_code_.kt"]
@@ -65,7 +65,7 @@ nothing else. Then the blended expression is handed to a SourceBackedBlock whose
 kfb_kotlin, so it compiles and runs *there* while this box is the one evaluating.
 
 ```edn [field-box id="kfb_kotlin_run" role="properties"]
-{"id" "kfb_kotlin_run" "index" 1 "name" "The generated Kotlin, evaluated" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The generated Kotlin, evaluated" "_tombstone" false "frame" #afield/rect [80.0 560.0 320.0 52.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_kotlin_run_code_.kt" "lines" 27 "characters" 1097 "sha256" "f2b156bafb80bccf5e520c45d43904dc45b1bf0b4c3ed828acd698f6281d21e1"}]}
+{"id" "kfb_kotlin_run" "index" 1 "name" "The generated Kotlin, evaluated" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The generated Kotlin, evaluated" "_tombstone" false "frame" #afield/rect [80.0 1360.0 320.0 52.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_kotlin_run_code_.kt" "lines" 27 "characters" 1097 "sha256" "f2b156bafb80bccf5e520c45d43904dc45b1bf0b4c3ed828acd698f6281d21e1"}]}
 ```
 
 ```kotlin [field-property box="kfb_kotlin_run" name="code" path="kfb_kotlin_run_code_.kt"]
@@ -163,7 +163,7 @@ and a generated Kotlin expression reads a registry slot addressed by an integer 
 into its text, because generated text cannot close over a value.
 
 ```edn [field-box id="kfb_kotlin" role="properties"]
-{"id" "kfb_kotlin" "index" 3 "name" "The same blend, in Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The same blend, in Kotlin" "_tombstone" false "frame" #afield/rect [80.0 440.0 320.0 52.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_kotlin_code_.kt" "lines" 36 "characters" 1690 "sha256" "5157bf323ecc83177688aa0c42feb44cef3c5ecb712dc87ae3c07c849ef60b3b"}]}
+{"id" "kfb_kotlin" "index" 3 "name" "The same blend, in Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The same blend, in Kotlin" "_tombstone" false "frame" #afield/rect [80.0 1040.0 320.0 52.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_kotlin_code_.kt" "lines" 36 "characters" 1690 "sha256" "5157bf323ecc83177688aa0c42feb44cef3c5ecb712dc87ae3c07c849ef60b3b"}]}
 ```
 
 ```kotlin [field-property box="kfb_kotlin" name="code" path="kfb_kotlin_code_.kt"]
@@ -219,7 +219,7 @@ is checkable, and this box checks it: one program, five draws, and the two ends
 compared pixel for pixel against the programs they are supposed to be.
 
 ```edn [field-box id="kfb_runtime" role="properties"]
-{"id" "kfb_runtime" "index" 4 "name" "The push-constant convention, rendered" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The push-constant convention, rendered" "_tombstone" false "frame" #afield/rect [80.0 200.0 320.0 52.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_runtime_code_.kt" "lines" 82 "characters" 3351 "sha256" "e6065aa7a2056ccb98fbc46c2919bccfba9d5cb8a98ac892288b8122ed92b86d"}]}
+{"id" "kfb_runtime" "index" 4 "name" "The push-constant convention, rendered" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The push-constant convention, rendered" "_tombstone" false "frame" #afield/rect [80.0 400.0 320.0 52.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_runtime_code_.kt" "lines" 82 "characters" 3351 "sha256" "e6065aa7a2056ccb98fbc46c2919bccfba9d5cb8a98ac892288b8122ed92b86d"}]}
 ```
 
 ```kotlin [field-property box="kfb_runtime" name="code" path="kfb_runtime_code_.kt"]
