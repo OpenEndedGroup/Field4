@@ -38,13 +38,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 88 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 89 transcripts on every build, at three
 depths. 59 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-22 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+23 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -1027,6 +1027,15 @@ hear in a headless build, which is why CI compiles this one and stops there.
 ## Graphics scenes
 
 <!-- transcript-index: verified-by = compile -->
+
+**openxr_eye_intersection** — A white wire cube at the closest-approach midpoint of the two real
+HTC eye rays, with a 3 cm maximum gap and explicit LOCAL-to-world conversion. A translated,
+30-degree-yaw world origin and a hold control make coordinate mistakes visible when you move your
+head. The EXT combined ray is drawn separately because one ray cannot determine depth. macOS
+renders the reference grid and cubes without simulating eye data; hardware validation needs an
+HTC-capable OpenXR runtime. See [the coordinate walkthrough](openxr_eye_intersection.md).
+
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/openxr_eye_intersection/metadata.edn)
 
 These are self-contained scenes that build their own `Window` + `Renderer` and, when run, open a
 **native Vulkan window**, so the live image is a desktop window, not an embedded frame. This page

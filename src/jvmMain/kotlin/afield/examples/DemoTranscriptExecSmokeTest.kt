@@ -303,6 +303,8 @@ object DemoTranscriptExecSmokeTest {
         // of them intentionally reach an external analysis worker or real-time Sonic Pi recorder.
         "audio_render_analysis",
         "graphics_renderer_launch",
+        // Real Vulkan/OpenXR rendering; binocular depth additionally requires HTC eye hardware.
+        "openxr_eye_intersection",
         "afield_four_traditional_triangle",
         // Streams a splat sequence into a native window, and wants a directory of .compressed.ply
         // frames that is deliberately not committed -- so compiled here and no further.

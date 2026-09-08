@@ -138,6 +138,8 @@
   {"doc": "morpho_circuit_search", "box": "morpho_search_control", "codeSha256": "71224652ca0c5c11", "codeLines": 38, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "morpho_circuit_search", "box": "morpho_search_recursion", "codeSha256": "e8a18b12f1f780da", "codeLines": 66, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "onnx_webcam_live", "box": "onnx_webcam", "codeSha256": "f40dd76a37971536", "codeLines": 114, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "openxr_eye_intersection", "box": "eye_ray_renderer", "codeSha256": "5006b1457235f8b5", "codeLines": 19, "receivers": ["afield.Box"], "preamble": "openxr_eye_intersection__eye_ray_renderer.preamble.kt"},
+  {"doc": "openxr_eye_intersection", "box": "eye_ray_scene", "codeSha256": "1ef216bd97910e54", "codeLines": 175, "receivers": ["afield.Box"], "preamble": "openxr_eye_intersection__eye_ray_scene.preamble.kt"},
   {"doc": "pat_fn_graph_fit", "box": "pat_fn_fit", "codeSha256": "5c9c8e2b69b04899", "codeLines": 25, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "pat_fn_graph_fit", "box": "pat_fn_inspect", "codeSha256": "6720e1fe2ab0060c", "codeLines": 20, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "pat_fn_graph_fit", "box": "pat_fn_permute", "codeSha256": "4dc35d2b83ee5bcf", "codeLines": 27, "receivers": ["afield.Box"], "preamble": ""},
