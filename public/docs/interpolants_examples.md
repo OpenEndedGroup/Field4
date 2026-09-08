@@ -255,7 +255,9 @@ markdown("keys", """
 
 The green step trace sits low for the whole transition and jumps exactly once, at
 the very end — that is `StackSLString`/source-block interpolation, which never
-produces a half-parsed intermediate. The blue gain is the smoothstep, the orange
+produces a half-parsed intermediate. Two programs that differ only in *numbers*
+can do better than that: see
+[blending two programs](keyframer_examples.md#blending-two-programs-not-just-two-numbers). The blue gain is the smoothstep, the orange
 path is the linear vector ease. A `Key` also knows how to `diff` against another
 and emit the `update { ... }` code that reproduces it, so a captured look is both
 a value you can interpolate *toward* and a snippet you can paste back into a box.

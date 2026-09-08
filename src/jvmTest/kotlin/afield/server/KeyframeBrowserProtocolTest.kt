@@ -252,6 +252,83 @@ class KeyframeBrowserProtocolTest {
         assertContains(text, """this["glow@radius"] = 2.5f""")
     }
 
+    /**
+     * The code-blend breakdown, with no scope attached: computed under RUNTIME, because that reports
+     * every site and every reason a site cannot be reached at runtime.
+     *
+     * The two saved programs here differ in one number and in nothing else, so the panel has to say
+     * so — and say what the midpoint is, which is the number a reader came for.
+     */
+    @Test
+    fun blendBreaksDownWhatTwoCodeKeysWouldDo() {
+        val dir = tempDir()
+        save(dir, "a.json", "look" to stackSLString("uv 4.0 * fbm"), "gain" to 1f)
+        save(dir, "b.json", "look" to stackSLString("uv 9.0 * fbm"), "gain" to 2f)
+
+        val out = reply(dir, "blend", fileId = 0, otherId = 1)
+        assertTrue(out["ok"]!!.jsonPrimitive.boolean)
+        assertEquals("code blend: a.json → b.json", out["title"]!!.jsonPrimitive.content)
+
+        val html = out["html"]!!.jsonPrimitive.content
+        assertContains(html, "no live scope", message = "the panel says which options it used")
+        assertContains(html, "look", message = "the code slot is named")
+        assertFalse("gain" in html, "the numeric slot is not a code slot and has no plan")
+        assertContains(html, "RUNTIME &rarr; RUNTIME")
+        assertContains(html, "1 moving of 1 paired site(s)")
+        assertContains(html, "6.5", message = "the midpoint of the one moving number")
+        assertContains(html, "?pc.keyframeBlend", message = "the runtime program reads the convention uniform")
+    }
+
+    /**
+     * Two programs that differ structurally: the breakdown has to say *stepping*, and where.
+     *
+     * This is the case the diff panel cannot distinguish from the one above — both say "these two
+     * strings differ" — and the reason this op exists.
+     */
+    @Test
+    fun blendNamesTheDivergenceWhenTwoProgramsCannotBlend() {
+        val dir = tempDir()
+        save(dir, "a.json", "look" to stackSLString("uv 4.0 * fbm"))
+        save(dir, "b.json", "look" to stackSLString("uv 4.0 * noise"))
+
+        val html = reply(dir, "blend", fileId = 0, otherId = 1)["html"]!!.jsonPrimitive.content
+        assertContains(html, "RUNTIME &rarr; STEP")
+        assertContains(html, "differ structurally in 1 place(s)")
+        assertContains(html, "`fbm` vs `noise`")
+    }
+
+    /** With a live scope, the breakdown reports that scope's own options rather than a guess. */
+    @Test
+    fun blendUsesTheLiveScopesOptionsWhenThereIsOne() {
+        val dir = tempDir()
+        save(dir, "a.json", "look" to stackSLString("uv 4.0 * fbm"))
+        save(dir, "b.json", "look" to stackSLString("uv 9.0 * fbm"))
+        val scope = KeyframeScope()
+
+        val stepping = reply(dir, "blend", scope = scope, fileId = 0, otherId = 1)["html"]!!
+            .jsonPrimitive.content
+        assertContains(stepping, "under this scope's codeBlend (STEP)")
+        assertContains(stepping, "STEP &rarr; STEP")
+
+        scope.codeBlend = afield.stdlib.CodeBlendOptions(mode = afield.stdlib.CodeBlendMode.STATIC)
+        val baking = reply(dir, "blend", scope = scope, fileId = 0, otherId = 1)["html"]!!
+            .jsonPrimitive.content
+        assertContains(baking, "under this scope's codeBlend (STATIC)")
+        assertContains(baking, "program at t=0.5")
+        assertContains(baking, "uv 6.5 * fbm")
+    }
+
+    /** A pair of keys with no code in common says so rather than rendering an empty panel. */
+    @Test
+    fun blendSaysWhenThereIsNoCodeToBlend() {
+        val dir = tempDir()
+        save(dir, "a.json", "gain" to 1f)
+        save(dir, "b.json", "gain" to 2f)
+
+        val html = reply(dir, "blend", fileId = 0, otherId = 1)["html"]!!.jsonPrimitive.content
+        assertContains(html, "no code to blend")
+    }
+
     /** Apply without a scope is refused with an actionable message rather than silently doing nothing. */
     @Test
     fun applyWithoutAScopeIsRefusedAndSaysWhy() {

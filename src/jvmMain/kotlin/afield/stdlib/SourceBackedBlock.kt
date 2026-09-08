@@ -14,6 +14,20 @@ import kotlin.script.experimental.api.ResultValue
  * The `sourceBlock { ... }` macro creates these with both a live lambda and the
  * block body source. Persisted copies rehydrate by evaluating [source] inside
  * the original box context.
+ *
+ * **Do not invoke a rehydrating block from inside its own box's running code.** [hydrate] compiles
+ * and evaluates a snippet on [boxId]'s engine, and asking that engine to evaluate while it is
+ * already mid-evaluation **re-runs the box body that is running** — which hydrates again, once per
+ * level, until the stack gives out. Measured at 327 nested runs of one body and 355 seconds on
+ * `dev_docs/agents/transcripts/keyframe_code_blend.yaml` before that box was split in two, off a
+ * single compile of the body: the body was re-*evaluated*, not recompiled.
+ *
+ * Hydrating into a box that is **idle** is fine and does not re-run anything, which is what the
+ * split in that transcript relies on — `kfb_kotlin_run` builds a block whose box is `kfb_kotlin` and
+ * invokes it, and `kfb_kotlin`'s body runs exactly once. A block that arrived from a keyframe file or
+ * from [afield.stdlib.CodeBlendPlan.runtimeSource] is a rehydrating one; invoke it from a frame loop,
+ * a control callback, or another box. A block the `sourceBlock` macro made in *this* execution
+ * carries a live lambda and never hydrates, so it is safe to call immediately.
  */
 class SourceBackedBlock<out T>(
     val boxId: String,
