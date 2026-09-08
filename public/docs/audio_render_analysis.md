@@ -1,10 +1,11 @@
 # Render Field music, then analyse it
 
-Field's sound-producing systems and Field Audio meet at one plain boundary: a finite WAV file.
-Pat, Dirt, Dough and Faust can render faster than real time; Sonic Pi can record a real-time
-performance. Each returns a `RenderedAudioFile`, and the same
-`FieldAudioClient.analyzeRenderedAudio(...)` call then imports its immutable bytes, submits cached
-analysis jobs, follows progress and returns durable results.
+Write a Pat pattern in a box, render twelve cycles of it, and there is a finite WAV file on disk
+before you have heard it play. That file is all Field Audio ever sees of the music. Pat, Dirt,
+Dough and Faust render faster than real time and Sonic Pi records a real-time performance, but
+every one of them hands back the same `RenderedAudioFile`, and
+`FieldAudioClient.analyzeRenderedAudio(...)` takes it from there. It imports the immutable bytes,
+submits cached analysis jobs, follows progress and returns durable results.
 
 The loop:
 
