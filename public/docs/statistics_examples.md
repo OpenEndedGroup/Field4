@@ -4,18 +4,17 @@
 [Math](reference/math.md) and [Data](reference/data.md).*
 
 You have two streams of numbers and one question: **are they related?** Almost every answer Field
-can give you lives in three files, about 3800 lines between them: `afield/stdlib/stats.kt`,
-`afield/stdlib/correlations.kt` and `afield/stdlib/quantilewarp.kt`. This is a worked example of
-all three, and the argument it makes is that *"are they related?"* is six different questions with
-six different answers, and picking the wrong one is how you miss a relationship that is staring at
-you.
+has to it lives in `afield/stdlib/stats.kt`, `afield/stdlib/correlations.kt` and
+`afield/stdlib/quantilewarp.kt`, about 3800 lines between them. This is a worked example of all
+three, and the argument it makes is that *"are they related?"* is six different questions with six
+different answers, and picking the wrong one is how you miss a relationship that is staring at you.
 
-Some of it is the boring, indispensable half: count, quartiles, IQR, MAD, skew, kurtosis,
-histograms, a streaming window of all of it. Some of it is the interesting half: Pearson,
-Spearman, Kendall, Chatterjee's xi, distance correlation, a MIC-like grid scan, and rolling
-versions of the last two. And one file is the odd one out. `quantilewarp.kt` reshapes a signal's
-*distribution* into one you chose, which is what you reach for when the problem is not "are these
-related" but "this signal is the wrong shape to work with".
+The boring, indispensable half gives you count, quartiles, IQR, MAD, skew, kurtosis, histograms and
+a streaming window of all of it. The interesting half gives you Pearson, Spearman, Kendall,
+Chatterjee's xi, distance correlation, a MIC-like grid scan, and rolling versions of the last two.
+And one file is the odd one out. `quantilewarp.kt` reshapes a signal's *distribution* into one you
+chose, which is what you reach for when the problem is not "are these related" but "this signal is
+the wrong shape to work with".
 
 ## Where the family lives
 
@@ -253,7 +252,7 @@ Five things fall out of that table, and each one is a rule about which measure t
 
 **Pearson answers "is this a straight line", and nothing else.** `r = −0.000` on the parabola,
 where `y` is a *noiseless, exact* function of `x`: the dependence is total and the coefficient is
-zero. `pearson` (`correlations.kt:147#each for the means and one for the covariance.`) is the sample covariance over the
+zero. `pearson` (`correlations.kt:152#each for the means and one for the covariance.`) is the sample covariance over the
 product of the standard deviations, and a symmetric parabola has zero covariance with its own
 argument by construction.
 
@@ -261,7 +260,7 @@ argument by construction.
 reads 0.819, which is the whole reason they exist: any strictly increasing reshape of `y` leaves
 them alone. But they side with Pearson on the parabola, and for the same reason: a parabola is a
 function and not a monotone one, and monotone is all either of them can see. `spearman` is literally
-`pearson` on `ranksAverageTies` (`correlations.kt:171#is constant, since every rank is then identical and [pearson]`–`correlations.kt:176#val ry = ranksAverageTies(y)`), so it inherits every
+`pearson` on `ranksAverageTies` (`correlations.kt:176#is constant, since every rank is then identical and [pearson]`–`correlations.kt:181#val ry = ranksAverageTies(y)`), so it inherits every
 Pearson limitation *after* the ranking.
 
 **Chatterjee's xi answers "is `y` a function of `x`", and it is the only asymmetric coefficient
@@ -289,7 +288,7 @@ looking, then use something else to describe what you found.
     Chatterjee's estimator is only defined up to a *random* breaking of the ties among the `x`
     values, so on tied `x` it is a random variable rather than a number. Rather than pick a seed,
     `chatterjeeXi` returns that random variable's **exact expectation**, computed in closed form
-    from the ranks inside each run of equal `x` (`correlations.kt:321#val denominator = 2.0 * denomTerm.toDouble()`–`correlations.kt:343`). So it
+    from the ranks inside each run of equal `x` (`correlations.kt:325#val denominator = 2.0 * denomTerm.toDouble()`–`correlations.kt:353`). So it
     is deterministic, reproducible, and invariant to the order you hand the pairs over in.
 
     Two consequences. A **constant predictor reads 0**: for a single tie group the numerator's
@@ -306,9 +305,10 @@ looking, then use something else to describe what you found.
 
     **Recorded xi values on tied `x` from before 2026-07-30 are wrong.** X-ties then broke by input
     index, which scored how nearly `y` was a function of the order the samples arrived in, so a
-    constant predictor read **0.970**; the `chatterjeeXi` KDoc has the detail. Every other
-    coefficient here refuses that input outright: `pearson`, `spearman` and `kendallTauB` return
-    NaN on a constant, and `distanceCorrelation` returns 0.0.
+    constant predictor read **0.970**; `dev_docs/stdlib_behaviour_changes.md` owns that history and
+    the `chatterjeeXi` KDoc points at it. Every other coefficient here refuses that input outright:
+    `pearson`, `spearman` and `kendallTauB` return NaN on a constant, and `distanceCorrelation`
+    returns 0.0.
 
 ## Is 0.193 big? Measuring the null yourself
 
@@ -424,9 +424,9 @@ subtle one.
 A single coefficient over a whole recording answers the wrong question if the relationship comes
 and goes. `RollingDistanceCorrelation` maintains its row sums, grand sums and cross sums
 incrementally, so a `push` costs O(w) rather than the O(w²) a rebuild would
-(`correlations.kt:670#The maintained row sums, grand sums and cross sums are only ever`). `RollingXiCorrelation` makes no such promise. It recomputes
-`chatterjeeXi` over the window every time, at O(w log w) (`correlations.kt:914#have arrived. Copies the window out in arrival order first,`–
-`correlations.kt:925#val slot = (head + i) % windowSize`). That makes it exactly as trustworthy as the batch call and no faster.
+(`correlations.kt:673#The maintained row sums, grand sums and cross sums are only ever`). `RollingXiCorrelation` makes no such promise. It recomputes
+`chatterjeeXi` over the window every time, at O(w log w) (`correlations.kt:917#have arrived. Copies the window out in arrival order first,`–
+`correlations.kt:928#val slot = (head + i) % windowSize`). That makes it exactly as trustworthy as the batch call and no faster.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/statistics_examples/rolling_regime.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="620" padding="16"}
 :::static
@@ -524,12 +524,11 @@ the change, xi **48**. Distance correlation reacts sooner; xi ends up higher.
 The last line of that figure cross-checks two different algorithms.
 `RollingDistanceCorrelation` never rebuilds a distance matrix (it only adds to and subtracts from
 maintained sums), while `StatsDependence.distanceCorrelation` materialises two full w×w matrices
-and double-centres them (`correlations.kt:415#matrices, which puts the practical ceiling at a few thousand`–`correlations.kt:495#val dcor = dcov / sqrt(dvarx * dvary)`). On the final window they agree
-to **5×10⁻¹⁵**. The KDoc at
-`correlations.kt:667#evicts the oldest pair. There is no reset: build a new`–`correlations.kt:669` warns that the incremental sums drift over a long run,
-and they do — but not far: over **200 000** pushes with a window of 64, the largest
-disagreement sampled against the batch call was **8.6×10⁻¹⁴**. `RollingDependenceTest` pins both
-bounds.
+and double-centres them (`correlations.kt:419#matrices, which puts the practical ceiling at a few thousand`–`correlations.kt:499#val dcor = dcov / sqrt(dvarx * dvary)`). On the final window they agree
+to **5×10⁻¹⁵**. The KDoc warns that the maintained sums accumulate floating-point drift over a
+long run (`correlations.kt:674#recomputed, so a very long run accumulates floating-point drift`),
+and they do, though not far: over **200 000** pushes with a window of 64, the largest disagreement
+sampled against the batch call was **8.6×10⁻¹⁴**. `RollingDependenceTest` pins both bounds.
 
 ## Reshaping a distribution: `quantilewarp.kt`
 
