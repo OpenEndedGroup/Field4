@@ -2,10 +2,12 @@
 
 *Every public declaration used below is listed, with its KDoc, in the codebase reference: [`graph_connectivity.kt`](reference/graphics.md#graph-connectivity-kt), [`smile_neighbors.kt`](reference/data.md#smile-neighbors-kt). Start from [what's already in the box](reference/index.md).*
 
-One point cloud can be read at three scales: which points are *near* a query,
-which points are *connected* into a structure, and how you *route* through that
-structure. This page works up through them in that order, with a drawing at
-each step: neighbor queries first, then the graph, then pathing across it.
+A point cloud gives you a different answer depending on what you ask it. Which
+points are *near* a query is a question about the coordinates and nothing else.
+Which points are *connected* depends on the edges you decide to draw between
+them, and there is more than one defensible answer. How you *route* from one
+point to another is then a question about the graph those edges make. This page
+works up through them in that order, with a drawing at each step.
 
 ## Query neighborhood with exact and approximate search
 

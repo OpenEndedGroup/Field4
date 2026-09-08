@@ -61,7 +61,7 @@ That is where the boundary comes from. Typed columns do not survive a compile bo
 
 ??? aside "Both halves, in the code"
     `DataFramePluginSpike.kt` holds both: the call rewrite and the
-    `ReturnTypeBasedReceiverInjector` that supplies the receiver at `:22`, and `probeAcrossSnippets` at
+    `ReturnTypeBasedReceiverInjector` that supplies the receiver at `:27`, and `probeAcrossSnippets` at
     `:147`, which is what prints the `<empty compile time schema>` result at `:161`.
 
 ### Naming a `@DataSchema` does not, by itself, rescue it
@@ -77,7 +77,7 @@ Kotlin DataFrame does ship a second, separate mechanism for schemas arriving fro
 **Field does not wire it.** The `typed()` route below does the same job without a build step. So typed columns for a schema defined *outside* a box are not reachable by declaring the schema and casting to it.
 
 ??? aside "If the imported-schemas route is ever wanted"
-    `schemasPath` is where to start, and the mechanism is read in `DataFramePluginSpike.kt:171`. It wants a
+    `schemasPath` is where to start, and the mechanism is read in `DataFramePluginSpike.kt:171#ImportedSchemasService`. It wants a
     build-time schema generator writing JSON into a directory, which is the step `typed()` avoids.
 
 ---
@@ -121,7 +121,7 @@ Redeclaring is safe here in a way it is not for `sharedTypes`: nothing is loaded
 
 `typed()` publishes to the preamble, so it looks as though you have to run the box twice. You do not, and the reason is a detail of Field's execution model.
 
-Field re-runs a box's setup blocks (preamble, introduction, attic) before **every** `//%-` fragment, not once per execution: `runLaunchSetupBlocks(box)` sits *inside* the fragment loop (`execution.kt:1400`, defined at `execution.kt:1488`). So a `typed()` call in the first half of a box has already published its schema by the time the second half is compiled:
+Field re-runs a box's setup blocks (preamble, introduction, attic) before **every** `//%-` fragment, not once per execution: `runLaunchSetupBlocks(box)` sits *inside* the fragment loop (`execution.kt:1427#withContext(Runloop.runLoop.main) { runLaunchSetupBlocks(box) }`, defined at `execution.kt:1539#private suspend fun runLaunchSetupBlocks(box: Box): Boolean {`). So a `typed()` call in the first half of a box has already published its schema by the time the second half is compiled:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -147,7 +147,7 @@ Once it has run, the second half is independently re-runnable: select those line
 
 ## Looking at a frame: `.h` and `.h2` { #looking-at-a-frame }
 
-A DataFrame is a first-class Field value: it renders through [the value visualizer](visualizers.md#the-value-visualizer-what-h-draws) like anything else. `DataFrame` is a third-party interface, so it cannot implement `ToHTML` the way Field's own `Table` and `Img` do — which is exactly what `ValuePrinterRegistry` and `H2ValueRegistry` exist for (`DataFrameVisualizer.kt:55`, `DataFrameVisualizer.kt:62#ValuePrinterRegistry.register(DataFrame::class.java) { frame ->`).
+A DataFrame is a first-class Field value: it renders through [the value visualizer](visualizers.md#the-value-visualizer-what-h-draws) like anything else. `DataFrame` is a third-party interface, so it cannot implement `ToHTML` the way Field's own `Table` and `Img` do — which is exactly what `ValuePrinterRegistry` and `H2ValueRegistry` exist for (`DataFrameVisualizer.kt:62#ValuePrinterRegistry.register(DataFrame::class.java) { frame ->`, `DataFrameVisualizer.kt:69#H2ValueRegistry.register(DataFrame::class.java) { frame ->`).
 
 Four things dispatch: a **frame**, a **column**, a **row**, and a **`GroupBy`**.
 
@@ -172,7 +172,7 @@ None of this is a bespoke widget. `.h` renders all four through the existing `ta
 
 ### The compact form costs the same at any size
 
-The compact `.h` form shows the first **10** rows (`DataFrameVisualizer.kt:44`) and says how much it is hiding. It takes them cell by cell, **by index**, never `toList()` on the frame and never `take` on a column (`DataFrameVisualizer.kt:101`), so printing a very large frame costs what printing ten rows costs. That matters, because this is the form that appears in a box output on **every** execution.
+The compact `.h` form shows the first **10** rows (`DataFrameVisualizer.kt:51#const val HEAD_ROWS: Int = 10`) and says how much it is hiding. It takes them cell by cell, **by index**, never `toList()` on the frame and never `take` on a column (`DataFrameVisualizer.kt:119#private fun headCells(column: DataColumn<*>): List<Any?> {`), so printing a very large frame costs what printing ten rows costs. That matters, because this is the form that appears in a box output on **every** execution.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/dataframe-big-head.png" wait="3.0" capture="box" open-outputs="true" w="900" h="440" padding="8" timeout="120" embed=true name="dataframe-big-head"}
 :::static
@@ -199,7 +199,7 @@ The capture above measures it: **1,143 characters for 200,000 rows.** A 5,000-ro
 
 ### `.h2` scrolls the frame itself
 
-`.h2` does not produce a bigger HTML dump. It *adapts* the frame into a lazily-indexed row view — a `List<Map<String, Any?>>` that materialises a row only when asked (`DataFrameVisualizer.kt:136`) — and the **h2 explorer** streams windows of that view by index. The server holds the **frame** behind an `.h2` token, not a rendering of it, so each scroll builds only the window being looked at.
+`.h2` does not produce a bigger HTML dump. It *adapts* the frame into a lazily-indexed row view — a `List<Map<String, Any?>>` that materialises a row only when asked (`DataFrameVisualizer.kt:154#private class LazyRows`) — and the **h2 explorer** streams windows of that view by index. The server holds the **frame** behind an `.h2` token, not a rendering of it, so each scroll builds only the window being looked at.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/dataframe-h2-scroller.png" wait="4.5" capture="box" open-outputs="true" w="900" h="560" padding="8" timeout="150" embed=true name="dataframe-h2-scroller"}
 :::static
@@ -220,9 +220,9 @@ val big = dataFrameOf("i", "sq")(
 display("scroller", big.h2)
 ```
 
-Three things in that picture. The header is the frame's real shape, `15000 rows × 2 columns`, not the size of what was sent. The rows are a **table**, one column per key in the row's own key order (`h2explorer.kt:180#fun recordCells`), because a list of same-shaped maps is a table rather than a column of summaries. And `i` and `sq` are the frame's own column names, arriving from the data rather than from anything this page declared.
+Three things in that picture. The header is the frame's real shape, `15000 rows × 2 columns`, not the size of what was sent. The rows are a **table**, one column per key in the row's own key order (`h2explorer.kt:261#fun recordCells`), because a list of same-shaped maps is a table rather than a column of summaries. And `i` and `sq` are the frame's own column names, arriving from the data rather than from anything this page declared.
 
-Mechanically, the `.h2` output is an `<iframe>` onto `/h2-explorer?root=h2-<token>` (`h2explorer.kt:559#fun installH2ExplorerHandler`), and the explorer asks for its windows over the `/ws` `__h2_explorer__` channel. That is a different path from `/lazy-value-fragment`, which `renderListContinuation` (`ValueVisualizer.kt:2269#private fun renderListContinuation(value: Any?, offset: Int,`) serves when a value is expanded in place. The two are easy to confuse, and only `/h2-explorer` is what `.h2` opens.
+Mechanically, the `.h2` output is an `<iframe>` onto `/h2-explorer?root=h2-<token>` (`h2explorer.kt:849#fun installH2ExplorerHandler`), and the explorer asks for its windows over the `/ws` `__h2_explorer__` channel. That is a different path from `/lazy-value-fragment`, which `renderListContinuation` (`ValueVisualizer.kt:2345#private fun renderListContinuation(value: Any?, offset: Int,`) serves when a value is expanded in place. The two are easy to confuse, and only `/h2-explorer` is what `.h2` opens.
 
 Reusing the general machinery pays off again for nesting: a frame *inside* another value (a list of frames, a data class with a frame field) expands the same way.
 
@@ -230,13 +230,17 @@ Reusing the general machinery pays off again for nesting: a frame *inside* anoth
 
 ## Switches, and the version pin
 
+<div class="field-data-table" markdown>
+
 | what | how |
 |---|---|
-| Turn the plugin off for this JVM | `-Dafield.dataframePlugin=false` (`KotlinInterface2.kt:2959#DataFramePluginSpike`) |
-| Point at a different plugin jar | `-Dafield.dataframePlugin.jar=<path>` (`KotlinInterface2.kt:2963#lprintln("kotlin", "dataframe: plugin disabled by`) |
+| Turn the plugin off for this JVM | `-Dafield.dataframePlugin=false` (`KotlinInterface2.kt:2996#if (System.getProperty("afield.dataframePlugin", "true") != "true") {`) |
+| Point at a different plugin jar | `-Dafield.dataframePlugin.jar=<path>` (`KotlinInterface2.kt:3000#val override = System.getProperty("afield.dataframePlugin.jar")`) |
 | Default jar location | `libs/dataframe-plugin.jar`, git-lfs tracked |
 
-The plugin jar is **not** on the app classpath. It vendors ~1000 classes of the DataFrame runtime of its own, so putting it beside the real `dataframe-core` dependency would put **two copies of `DataFrame`** in front of box code (`KotlinInterface2.kt:2940#The two plugins are located differently on purpose. Wither's jar`). `-Xplugin` loads it in the compiler's own plugin classloader, so only the compiler ever sees it — while the *runtime* goes on the classpath normally (`build.gradle.kts:952#the reproducer afield.examples.ProvideDelegateReplSmokeTest.`).
+</div>
+
+The plugin jar is **not** on the app classpath. It vendors ~1000 classes of the DataFrame runtime of its own, so putting it beside the real `dataframe-core` dependency would put **two copies of `DataFrame`** in front of box code (`KotlinInterface2.kt:2974#The two plugins are located differently on purpose. Wither's jar`). `-Xplugin` loads it in the compiler's own plugin classloader, so only the compiler ever sees it — while the *runtime* goes on the classpath normally (`build.gradle.kts:999#Kotlin DataFrame. The RUNTIME goes on the classpath here`).
 
 The runtime version is pinned to `1.0.0-Beta2`. The plugin was built from Field's `2.4.255-SNAPSHOT` Kotlin fork, whose `libs.versions.toml` names that runtime version, and *the plugin statically interprets the runtime's API*. Moving to a released DataFrame 1.0 therefore means re-syncing the fork and rebuilding the plugin, not bumping a line in `build.gradle.kts`.
 

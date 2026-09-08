@@ -122,6 +122,8 @@ with all of that, measured on a four-node scene built from scratch for the purpo
 triangle instanced by an identity node, a translated node, a *child* of that translated node, and a
 **mirrored** node with `scale (-1, 1, 1)`.
 
+<div class="field-data-table" markdown>
+
 | the scene has | the bridge does |
 |---|---|
 | several nodes referencing meshes | **merges all of them.** Four instances arrive as 4 triangles in 4 components, not "the first one". |
@@ -134,6 +136,8 @@ triangle instanced by an identity node, a translated node, a *child* of that tra
 | materials and textures | **dropped.** A `TriMesh` has no concept of a texture. Use the [Fabricate renderer](fabricate_renderer.md) for those. |
 | animation | **dropped.** The bind pose is baked; node TRS tracks and skinning are not read. |
 | a Y-up / Z-up disagreement | **nothing.** glTF is Y-up by specification and no axis conversion is applied, so a Z-up PLY or OBJ arrives on its side. `rotated(...)` is yours to apply. |
+
+</div>
 
 !!! warning "Mirrors, and where a TRS triple loses one"
 
@@ -558,6 +562,8 @@ would inflate everything below. Each row is a damaged copy of a known-good mesh,
 answer is known, and "repaired" is judged against **the undamaged original** rather than against
 `isValidSolid()`:
 
+<div class="field-data-table" markdown>
+
 | of the 21 Manifold rejects | |
 |---|---|
 | the pre-existing `repaired()` makes valid | **6** — every unwelded-seam and every inconsistent-winding case, all of them faithful |
@@ -565,6 +571,8 @@ answer is known, and "repaired" is judged against **the undamaged original** rat
 | ...of which **faithful** — volume, area *and* genus match the original | **15** |
 | ...of which **valid but the wrong shape** | **4** |
 | cannot be fixed, and say so | **2** |
+
+</div>
 
 That split between 15 faithful and 4 merely valid is the point, and it is why the table's holes are
 not all flat. A fan fill is trivially correct on a planar rim, so a table of flat holes measures

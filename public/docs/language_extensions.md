@@ -1,10 +1,12 @@
 # Field Language Extensions
 
-Field's Monaco editor has a small browser-side extension registry for languages
-that are useful before they are fully integrated into Field. It is intended for
-experiments like RectSL: a language can supply syntax highlighting for embedded
-regions, diagnostics, and a flow/context lens without editing the Kotlin/JS
-Monaco bindings for each new language.
+Write a few lines of your own language inside a triple-quoted string in a Kotlin
+box and Monaco sees one long string, coloured all the way through. Field's editor
+keeps a small browser-side registry that lets you change that, for languages that
+are useful before they are fully integrated into Field. Register an extension and
+your language gets syntax highlighting inside the embedded region, its own
+diagnostics, and a flow/context lens, and nobody has to edit the Kotlin/JS Monaco
+bindings to add the next one. RectSL is the experiment this was built for.
 
 StackSL uses this API internally while keeping its older global hooks available.
 That makes StackSL both a real consumer and the reference implementation.

@@ -1,13 +1,13 @@
 # Faust
 
-[Faust](https://faust.grame.fr) is a functional language for signal processing: you write what the
-signal *is*, and the compiler turns it into efficient code. Field embeds that compiler itself. A
-`#faust` region inside an ordinary Kotlin string is compiled, instantiated and playing through
-Field's audio engine, with the sliders it declares showing up as real Field controls.
+[Faust](https://faust.grame.fr) is a functional language for signal processing. You write what the
+signal *is* and its compiler turns that into efficient code. Field embeds the compiler. A `#faust`
+region inside an ordinary Kotlin string is compiled, instantiated and playing through Field's audio
+engine, with the sliders it declares showing up as real Field controls.
 
-Nothing is installed to make this work. Not `faust`, not LLVM, not a C++ toolchain: Field vendors
-the compiler itself, 5.3MB of platform-independent WebAssembly. The bill arrives as compile speed,
-which [Nothing to install](#nothing-to-install) sets out at the end of the page.
+Nothing is installed to make this work. Not `faust`, not LLVM, not a C++ toolchain. The compiler
+travels with Field as 5.3MB of platform-independent WebAssembly, and the bill arrives as compile
+speed, which [Nothing to install](#nothing-to-install) sets out at the end of the page.
 
 ## A box that is a signal processor
 
@@ -24,8 +24,8 @@ process = os.sawtooth(freq) : fi.lowpass(2, cutoff) * gain <: _,_;
 ```
 
 Returning the result as the box's last expression is what ties the sound to the box. The box stays lit
-while the processor runs, and stopping the box stops the sound *and* releases the DSP: the same path
-any other Field audio launch takes.
+while the processor runs, and stopping the box stops the sound *and* releases the DSP, by the same
+path any other Field audio launch takes.
 
 Three sliders were declared, so three sliders appear in the box's control area. Nobody wrote them:
 they are the program's own `hslider` declarations, with the ranges, defaults and steps it asked for.
@@ -166,8 +166,8 @@ Nothing is recompiled to make eight voices. A Faust wasm factory is built with i
 `WebAssembly.Instance`s of one module are eight independent voices, and they all live in one GraalVM
 context.
 
-Note the second pattern. `Pat` is a rhythm of *anything*: the filter is patterned exactly as the notes
-are, and both go through the same event timeline.
+Note the second pattern. `Pat` is a rhythm of *anything*, so the filter is patterned exactly as the
+notes are, and both go through the same event timeline.
 
 ### The notes land on the sample, not on the block
 

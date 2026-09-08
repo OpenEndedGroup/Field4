@@ -1,8 +1,10 @@
 # What a document is on disk
 
-A Field document is a directory. Opening one reads a single file out of it; saving one writes six or
-more, in a fixed order, on a background thread. This page covers what is in that directory, **which
-artifact wins when Field loads**, and when each of them is written.
+A Field document is a directory. Look inside one and you will find six or more files that the last
+save wrote, in a fixed order, on a background thread; opening the document reads a single one of
+them. This page covers what is in that directory, **which artifact wins when Field loads**, and when
+each of them is written. Edit one of those files by hand and those two answers decide whether your
+edit survives.
 
 [Files, and where they live](files_and_paths.md) covers the `files/` subdirectory — the resolver a
 box uses to find `data.csv`. This page is about everything beside it.
@@ -27,24 +29,24 @@ one does not wait. Within the lock the order is fixed: sidecars first, then `met
 
 The last column is a census of the 401 directories holding a `metadata.edn` in
 `~/Documents/AFieldWorkspace` on 2026-09-04. It sets expectations rather than stating a rule: only
-`metadata.edn` is universal. A document saved by an older Field has no
-`document.md`; one never opened interactively has no `operations.yaml`; and `versions.edn` appears
-only once you name a version or restore one, which is why it is in 10 of 401.
+`metadata.edn` is universal. A document saved by an older Field has no `document.md`; one never
+opened interactively has no `operations.yaml`; and `versions.edn` appears only once you name a
+version or restore one, which is why it is in 10 of 401.
 
-The three backup policies are three different arguments to one function, all in the same twenty
-lines of `saving.kt`: sidecars go through
-`src/jvmMain/kotlin/afield/saving.kt:444#val cd = checkDifference(target, value.inline, maxBackups = 10)`,
+The three backup policies are three different arguments to one function, called three times in a
+single stretch of the save body in `saving.kt`: sidecars go through
+`src/jvmMain/kotlin/afield/saving.kt:462#val cd = checkDifference(target, value.inline, maxBackups = 10)`,
 `metadata.edn` through
-`src/jvmMain/kotlin/afield/saving.kt:470#metadataChanged = checkDifference(metadataPath, ednText)`
+`src/jvmMain/kotlin/afield/saving.kt:488#metadataChanged = checkDifference(metadataPath, ednText)`
 with no `maxBackups` at all, and `document.md` through
-`src/jvmMain/kotlin/afield/saving.kt:481#markdownChanged = checkDifference(markdownPath, markdownText, createBackup = false)`.
-`maxBackups = null` means unlimited — `src/jvmMain/kotlin/afield/saving.kt:1796#if (backupCreated && maxBackups != null)`
+`src/jvmMain/kotlin/afield/saving.kt:499#markdownChanged = checkDifference(markdownPath, markdownText, createBackup = false)`.
+`maxBackups = null` means unlimited — `src/jvmMain/kotlin/afield/saving.kt:1821#if (backupCreated && maxBackups != null)`
 only prunes when a bound was given — so `backups/` in a document you have used for a while is mostly
 one filename. Nothing anywhere prunes `metadata_backup_*.edn`.
 
 A save that changes nothing writes nothing. `File.safeSave` reads the current contents first and
 returns `false` on a byte-identical write
-(`src/jvmMain/kotlin/afield/saving.kt:1804#// If the content is the same, do nothing.`), and the
+(`src/jvmMain/kotlin/afield/saving.kt:1829#// If the content is the same, do nothing.`), and the
 save path treats that `false` as "not altered" and skips history, metrics and the transcript
 checkpoint entirely.
 
@@ -88,12 +90,13 @@ uv run --project . --group backdoor python tools/run_field_tests.py --id example
 ```
 
 which is also what guards it: the smoke asserts this page still contains both blocks verbatim, so a
-change to any of those three `maxBackups` arguments fails a test instead of leaving the page wrong. The producer is
+change to any of those three `maxBackups` arguments fails a test instead of leaving the page wrong.
+The producer is
 `src/jvmMain/kotlin/afield/examples/DocumentOnDiskSmokeTest.kt:35#object DocumentOnDiskSmokeTest`.
 
 Two things in that listing are not about backups. `AGENTS.md` and `README.md` are seeded into any
 new document directory from `templates/` by
-`src/jvmMain/kotlin/afield/saving.kt:1657#private fun ensureAgentGuides(workspaceDir: String)`, once,
+`src/jvmMain/kotlin/afield/saving.kt:1682#private fun ensureAgentGuides(workspaceDir: String)`, once,
 without overwriting a file you have edited. And there is no `operations.yaml` or `transcript.edn`
 here at all: both are written only from state accumulated in memory by an interactive session, and a
 document saved by a program that never moved a box has nothing to checkpoint.
@@ -101,11 +104,11 @@ document saved by a program that never moved a box has nothing to checkpoint.
 ## Which artifact wins on load
 
 Opening a directory parses `metadata.edn`, and through it the sidecars it names
-(`src/jvmMain/kotlin/afield/saving.kt:996#throw FileNotFoundException("missing $METADATA_EDN or $METADATA_JSON in $root")`
+(`src/jvmMain/kotlin/afield/saving.kt:1014#throw FileNotFoundException("missing $METADATA_EDN or $METADATA_JSON in $root")`
 is the failure when it is absent). The loader never touches `document.md`: `DOCUMENT_MARKDOWN`
 occurs twice in `src/`, once as the constant and once in the save path, and the file describes
 itself accurately in its own first paragraph
-(`src/jvmMain/kotlin/afield/saving.kt:655#This is a machine-readable narrative mirror of`). Editing
+(`src/jvmMain/kotlin/afield/saving.kt:673#This is a machine-readable narrative mirror of`). Editing
 `document.md` therefore cannot change what a document opens as.
 
 It has one reader in the tree, and it is not the loader.
@@ -115,12 +118,12 @@ completion ground-truth harness. That is what "written beside it for code and AI
 file's own header is about: a box graph you can read without a Field.
 
 A `metadata.json` from a much older Field is still loadable, and is rewritten as EDN immediately —
-`src/jvmMain/kotlin/afield/saving.kt:1002#save(root, boxes, "upgrade to edn")` runs as part of the
+`src/jvmMain/kotlin/afield/saving.kt:1020#save(root, boxes, "upgrade to edn")` runs as part of the
 open.
 
 Within `metadata.edn`, a sidecar-backed property is stored twice: as a loose file, and as an inline
 string under an `#afield/file-inline` tag carrying both `path` and `inline`
-(`src/jvmMain/kotlin/afield/saving.kt:1612#registerEdn(FileInline::class, "afield/file-inline"`). One
+(`src/jvmMain/kotlin/afield/saving.kt:1630#registerEdn(FileInline::class, "afield/file-inline"`). One
 line decides which copy a load uses:
 
 ```diffstatic {data-lang=kotlin}
@@ -130,14 +133,13 @@ is FileInline -> {
 }
 ```
 
-`src/jvmMain/kotlin/afield/saving.kt:1339#if (!preferInlineFiles && file.exists()) file.readText() else value.inline`.
+`src/jvmMain/kotlin/afield/saving.kt:1357#if (!preferInlineFiles && file.exists()) file.readText() else value.inline`.
 So **if the loose sidecar file exists, its contents win, and the inline copy in `metadata.edn` is not
 read.** Regenerate a `metadata.edn` by hand with new code in the `inline` field, leave
 `<box>_code_.kt` in place, and the document opens with the old code: that one property came from the
-file. Frames, names, topology and everything else on the same box are still read from
-`metadata.edn` exactly as written. The choice is
-per property, and only for the 30 property names in
-`src/jvmMain/kotlin/afield/Boxes.kt:496#var ioSeparateProperties = mutableMapOf(`.
+file. Frames, names, topology and everything else on the same box are still read from `metadata.edn`
+exactly as written. The choice is per property, and only for the 29 property names in
+`src/jvmMain/kotlin/afield/Boxes.kt:498#var ioSeparateProperties = mutableMapOf(`.
 
 `preferInlineFiles` inverts it, and there is one caller who wants that: the history machinery, which
 resolves an old version's properties with
@@ -149,7 +151,7 @@ for both halves asserted side by side.
 
 If you have edited sidecars and want `metadata.edn`'s inline copies brought back into agreement
 without opening the document,
-`src/jvmMain/kotlin/afield/saving.kt:1259#fun refreshInlineFilesFromDisk(directory: String): List<String>`
+`src/jvmMain/kotlin/afield/saving.kt:1277#fun refreshInlineFilesFromDisk(directory: String): List<String>`
 does exactly that and nothing else.
 
 ## Editing the directory under a running Field
@@ -195,9 +197,9 @@ subdirectory
 An autosave — a `save` with no message — that carries fewer boxes than the `metadata.edn` already on
 disk is refused rather than written, when the document has at least four boxes and at least a
 quarter of them (minimum four) are missing from the snapshot:
-`src/jvmMain/kotlin/afield/saving.kt:618#private fun suspiciousPartialAutosave(root: String, snapshot: SaveSnapshot, message: String?): PartialSaveBlock?`.
+`src/jvmMain/kotlin/afield/saving.kt:636#private fun suspiciousPartialAutosave(root: String, snapshot: SaveSnapshot, message: String?): PartialSaveBlock?`.
 The notification says so —
-`src/jvmMain/kotlin/afield/saving.kt:426#metadata.edn was left untouched.` — and an explicit save
+`src/jvmMain/kotlin/afield/saving.kt:444#metadata.edn was left untouched.` — and an explicit save
 with a message bypasses the check entirely, so you can still delete half a document and save it.
 
 ## The three write-only files
@@ -205,7 +207,7 @@ with a message bypasses the check entirely, so you can still delete half a docum
 `operations.yaml` is the operation transcript, and it accumulates in memory rather than on disk.
 Every box move, property edit, execute, launch and stop appends an entry to an in-memory list;
 nothing reaches the file until a save calls
-`src/jvmMain/kotlin/afield/saving.kt:493#OperationTranscript.checkpoint(fn)`, and that call is inside
+`src/jvmMain/kotlin/afield/saving.kt:511#OperationTranscript.checkpoint(fn)`, and that call is inside
 the `if (altered)` branch, so a save that changed no bytes does not checkpoint either. The
 checkpoint **rewrites the whole file** from the whole in-memory list
 (`src/jvmMain/kotlin/afield/operation_transcript.kt:821#fun checkpoint(documentPath: String): Boolean`),
@@ -217,7 +219,7 @@ collapse into one entry, and `_editorState` properties are skipped outright
 It is written atomically, which matters because the save path and any other process sharing the
 workspace can both be reading it. `File.safeSave` has an opt-in `atomic` mode that writes a temp
 file in the same directory and renames it into place
-(`src/jvmMain/kotlin/afield/saving.kt:1820#Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)`),
+(`src/jvmMain/kotlin/afield/saving.kt:1845#Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)`),
 taking a *copy* rather than a rename for the backup so the original never briefly disappears. All
 five transcript writes pass `atomic = true`. Document saves do not: `metadata.edn`, the sidecars and
 `document.md` go through the plain `writeText` branch.
@@ -237,22 +239,22 @@ passes `maxBackups` and not `atomic`.
 ## What is in `document.md`, for the tool that reads it
 
 `document.md` re-encodes `metadata.edn` in a form a text tool can walk. Its shape is fixed by
-`src/jvmMain/kotlin/afield/saving.kt:646#private fun buildDocumentMarkdown(snapshot: SaveSnapshot, documentName: String): String`:
+`src/jvmMain/kotlin/afield/saving.kt:664#private fun buildDocumentMarkdown(snapshot: SaveSnapshot, documentName: String): String`:
 a `field-document` EDN header, then one section per box in parent-first order
-(`src/jvmMain/kotlin/afield/saving.kt:759#private fun parentFirst(transfers: List<BoxTransferEdn>): List<BoxTransferEdn>`),
+(`src/jvmMain/kotlin/afield/saving.kt:777#private fun parentFirst(transfers: List<BoxTransferEdn>): List<BoxTransferEdn>`),
 each with an `edn [field-box id="…" role="properties"]` block carrying every property, followed by
 one fenced block per text property tagged `[field-property box="…" name="…" path="…"]`.
 
-Each box's EDN block also carries a `blockProperties` manifest. It lists,
-per text property, the `name`, the `language`, the sidecar `path` when there is one, and the `lines`,
-`characters` and `sha256` of the text
-(`src/jvmMain/kotlin/afield/saving.kt:930#private fun sha256Hex(text: String): String`). A tool can
+Each box's EDN block also carries a `blockProperties` manifest. It lists, per text property, the
+`name`, the `language`, the sidecar `path` when there is one, and the `lines`, `characters` and
+`sha256` of the text
+(`src/jvmMain/kotlin/afield/saving.kt:948#private fun sha256Hex(text: String): String`). A tool can
 therefore tell whether the fence it is reading still matches the sidecar beside it without opening
 the sidecar. Fence lengths adapt: a property whose text contains a triple backtick is emitted inside
 a longer fence rather than escaped
-(`src/jvmMain/kotlin/afield/saving.kt:900#private fun appendFence(`), and a leading comment block on a
+(`src/jvmMain/kotlin/afield/saving.kt:918#private fun appendFence(`), and a leading comment block on a
 code property is lifted out as narrative prose above the fence
-(`src/jvmMain/kotlin/afield/saving.kt:842#private fun extractLeadingNarrative(property: String, language: String, text: String): ExtractedNarrative?`).
+(`src/jvmMain/kotlin/afield/saving.kt:860#private fun extractLeadingNarrative(property: String, language: String, text: String): ExtractedNarrative?`).
 
 ## The persistent-property list is sticky, and process-global
 
@@ -263,7 +265,7 @@ it while Field runs. Each small language adds its own root markers when it insta
 and the other language roots the same way. `Box.syncToProperty`, the helper that wires an
 output-panel control to a box property, marks that property persistable in each of its five type
 branches
-(`src/jvmMain/kotlin/afield/outputs.kt:2457#fun Box.syncToProperty(propertyName: String, initialValue: Any`).
+(`src/jvmMain/kotlin/afield/outputs.kt:2465#fun Box.syncToProperty(propertyName: String, initialValue: Any`).
 And **loading any document merges that document's own list into the global set**:
 
 ```diffstatic {data-lang=kotlin}
@@ -271,7 +273,7 @@ And **loading any document merges that document's own list into the global set**
 Box.ioPersistentProperties.addAll(propsList)
 ```
 
-`src/jvmMain/kotlin/afield/saving.kt:1197#Box.ioPersistentProperties.addAll(propsList)`, reached from
+`src/jvmMain/kotlin/afield/saving.kt:1215#Box.ioPersistentProperties.addAll(propsList)`, reached from
 `readEdnTransfers` on every open. The set is on the `Box` companion, so it is per *process*, not per
 document: open a document whose header lists a property name, and every other document open in that
 Field will persist that name too, until the process exits. Nothing removes a name.
@@ -279,7 +281,7 @@ Field will persist that name too, until the process exits. Nothing removes a nam
 That is why the list in a saved header is longer than the list in the source. In
 `~/Documents/AFieldWorkspace/keyframeme/document.md` on 2026-09-04 the header carries **78** names
 against the **63** declared in
-`src/jvmMain/kotlin/afield/Boxes.kt:426#var ioPersistentProperties = mutableSetOf(`. Twelve of the
+`src/jvmMain/kotlin/afield/Boxes.kt:428#var ioPersistentProperties = mutableSetOf(`. Twelve of the
 extra 15 are language-root markers registered by the first mechanism above — the `is…Root` flags,
 `mainLanguage`, Nano's two configuration properties, and `spreadsheet`. The other three,
 `house_project`, `ai_chat` and `foo`, entered the set in some earlier session and have been carried
@@ -290,7 +292,7 @@ anything.
 ## What `metadata.edn` is mostly made of
 
 Only properties whose names match one of the 63 patterns in
-`src/jvmMain/kotlin/afield/Boxes.kt:426#var ioPersistentProperties = mutableSetOf(` are written at
+`src/jvmMain/kotlin/afield/Boxes.kt:428#var ioPersistentProperties = mutableSetOf(` are written at
 all; everything else on a box is dropped at save. One of those patterns is a regex, `.*_editorState`,
 and it is the reason a `metadata.edn` is larger than its boxes suggest: in
 `~/Documents/AFieldWorkspace/keyframeme` on 2026-09-04, a five-box document, the `_editorState`
@@ -299,13 +301,13 @@ but the mechanism is general: every editor keeps cursor and fold state per box p
 persists.
 
 That filter runs *before* the sidecar branch
-(`src/jvmMain/kotlin/afield/saving.kt:150#fun toTransfer(boxes: Set<Box>, directory: String): List<BoxTransferEdn>`),
+(`src/jvmMain/kotlin/afield/saving.kt:153#fun toTransfer(boxes: Set<Box>, directory: String): List<BoxTransferEdn>`),
 so a property listed in `ioSeparateProperties` alone is written nowhere: the sidecar branch is never
 reached, and nothing lands inline in `metadata.edn` either. The two lists have to agree, and they do.
 All 29 keys in
-`src/jvmMain/kotlin/afield/Boxes.kt:496#var ioSeparateProperties = mutableMapOf(` are matched by one
+`src/jvmMain/kotlin/afield/Boxes.kt:498#var ioSeparateProperties = mutableMapOf(` are matched by one
 of the 63 patterns, and
-`src/jvmMain/kotlin/afield/examples/SidecarPropertyRegistrationSmokeTest.kt:48#object SidecarPropertyRegistrationSmokeTest`
+`src/jvmMain/kotlin/afield/examples/SidecarPropertyRegistrationSmokeTest.kt:50#object SidecarPropertyRegistrationSmokeTest`
 (`examples.saving.sidecar-property-registration`) is what holds that: it checks the whole registry
 rather than any one property, then drives a save through `toTransfer` and asserts that a property in
 neither list leaves no sidecar and no EDN key.
@@ -316,14 +318,14 @@ language root is *called*: box `c04566d0` in `templates/remote/metadata.json` ca
 Javascript in that template lives in the root's children, under `code` and `customization`. No
 `*_remote_js_.js` exists anywhere in the workspace, and the workspace search's sidecar-suffix list
 does not name it either
-(`src/jvmMain/kotlin/afield/workspace/dir.kt:1120#private val workspaceSearchProperties = linkedSetOf(`).
+(`src/jvmMain/kotlin/afield/workspace/dir.kt:1129#private val workspaceSearchProperties = linkedSetOf(`).
 
 The root box is excluded from the sidecar branch by id, so the root's `metadata` property stays
 inline in `metadata.edn` — that is the property
-`src/jvmMain/kotlin/afield/saving.kt:1038#fun updateRootMetadata(directory: String, metadata: String): Boolean`
+`src/jvmMain/kotlin/afield/saving.kt:1056#fun updateRootMetadata(directory: String, metadata: String): Boolean`
 edits — while a non-root box's `metadata` becomes a `<box>_metadata_.yaml` sidecar. Sidecar filenames
 are `id + "_" + name + "_." + extension` and nothing else
-(`src/jvmMain/kotlin/afield/saving.kt:1633#return id + "_" + name + "_." + extension`), which is why
+(`src/jvmMain/kotlin/afield/saving.kt:1651#return id + "_" + name + "_." + extension`), which is why
 they read as UUIDs: the id is the box's uid, not its name, and renaming a box does not rename its
 sidecars.
 
@@ -331,7 +333,7 @@ sidecars.
 
 `<stem>_backup_00000.<ext>`, zero-padded to five digits, allocated as one past the highest index
 present rather than by rotation
-(`src/jvmMain/kotlin/afield/saving.kt:1881#private fun File.nextSafeSaveBackup(backupDir: File): File`),
+(`src/jvmMain/kotlin/afield/saving.kt:1906#private fun File.nextSafeSaveBackup(backupDir: File): File`),
 so index order is save order and the numbers do not shift under pruning. `metadata.edn` becomes
 `metadata_backup_00000.edn`; `alpha_code_.kt` becomes `alpha_code__backup_00000.kt`, with the double
 underscore, because the stem already ends in one. A backup is skipped when the previous contents are
@@ -340,7 +342,7 @@ already the newest backup, so a save that reverts a file and saves again does no
 Pruning drops the oldest. In the thirteen-save run above the surviving
 `alpha_code__backup_*.kt` are indices 00002 to 00011 — the first two were deleted, and no index was
 reused — against `metadata_backup_00000.edn` through `metadata_backup_00011.edn` still all present
-(`src/jvmMain/kotlin/afield/saving.kt:1895#?.drop(maxBackups)`).
+(`src/jvmMain/kotlin/afield/saving.kt:1920#?.drop(maxBackups)`).
 
 The history panel reads exactly these files:
 the `backups/metadata_backup_*.edn` set sorted lexically — so index order is version order — with

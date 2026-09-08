@@ -1,9 +1,9 @@
 # Patterns: writing rhythm as a function of time
 
-`pat("bd sd hh hh")` is a **pattern**: a function you can ask "what is sounding between
-*here* and *there*?". Ask it about one cycle and you get four events. Ask about the second
-half and you get two. Ask about a hundred cycles and it will tell you, because nothing was
-ever stored; the events are computed from the query.
+`pat("bd sd hh hh")` is a **pattern**, and a pattern is a function you can ask what is
+sounding between *here* and *there*. Ask it about one cycle and you get four events. Ask
+about the second half and you get two. Ask about a hundred cycles and it will tell you,
+because nothing was ever stored; the events are computed from the query.
 
 That one decision is what makes the rest composable. A pattern can be reversed, slowed,
 sliced, stacked against another, or handed a continuous curve to read its volume from, and

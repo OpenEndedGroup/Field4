@@ -6,7 +6,7 @@ Some quantities you care about are never observed directly. You see a noisy
 position but want the velocity; you see one coordinate of a chaotic system but
 need its hidden delayed state; you have a measurement but not the model parameter
 that produced it. State estimation is the machinery for recovering the hidden
-value, and its uncertainty, from a stream of noisy, partial measurements.
+value — and its uncertainty — from a stream of noisy, partial measurements.
 
 `pf.kt` in the standard library gives you two tools for this:
 
@@ -66,7 +66,7 @@ have their own dimension.
 
 ### The `UKFOptions` knobs
 
-`UKFOptions` controls how the filter picks its *sigma points*, the small set of
+`UKFOptions` controls how the filter picks its *sigma points* — the small set of
 sample states it propagates through your nonlinear functions to estimate the new
 mean and covariance:
 
@@ -84,8 +84,8 @@ or `kappa` up.
 ### A tiny helper: `diag`
 
 `Matrix` values are just arrays of arrays, so covariance matrices are easy to
-build inline. Every example defines a one-liner for diagonal matrices; there is
-no library `diag`, and it is small enough to keep in the box:
+build inline. Every example defines a one-liner for diagonal matrices — there is
+no library `diag`, and one line is short enough to keep in the box:
 
 ```diffstatic {data-lang=kotlin}
 fun diag(vararg values: Double): Matrix =
@@ -345,7 +345,7 @@ the particle so each can carry its own:
 
 Here each particle carries a different Mackey-Glass `beta`, the measurements see
 the current point plus the two previous ones, and the weights gradually favour the
-`beta` whose dynamics explain the data. Partway through, the true `beta` jumps;
+`beta` whose dynamics explain the data. Partway through, the true `beta` jumps —
 watch the particle cloud chase it.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/state_estimation_examples/ukf_particle_filter.png" wait="1.0" capture="box" open-outputs="true" padding="20"}

@@ -1,10 +1,13 @@
 # AI features
 
-Field's AI features share the current box and editor context, but they serve
-different jobs: conversation, targeted edits, completion, and generated helper
-functions. All of them need one of three providers configured from
-[`/welcome`](history_overview.md) or the environment: OpenAI, OpenRouter, or
-Anthropic.
+Every AI feature in Field works from where you already are. The box you have
+selected and the spot your cursor sits in travel with the request; what changes
+between features is what you are asking for. `command/ctrl-4` starts a
+conversation about a box, `command/ctrl-3` asks for an edit at one place in the
+editor, `ctrl-space` mixes AI candidates into ordinary completion, and
+`ai("...")` fills in a function body from its signature. None of it works until Field has a provider
+to talk to, so configure OpenAI, OpenRouter or Anthropic from
+[`/welcome`](history_overview.md) or from the environment first.
 
 ## Chat about one box
 

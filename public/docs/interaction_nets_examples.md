@@ -4,7 +4,7 @@
 
 These four are the reduction rules `InteractionNetsSmokeTest` checks; its other two checks cover the drawing helpers rather than the reducer. Each example runs a single `stepDetailed` and shows the result as ordinary Field output: three summary cards across the top, and below them the net before the step and the net after it, both relaxed.
 
-The energies are art direction rather than semantics, which is how `Lambda.rules()` describes them in its own KDoc: every rule splits or attenuates node energy so that a reduction visibly decays instead of merely rewiring. The same KDoc states the scope. There is no fan/fan commuting rule and no lambda frontend, so this is enough to watch beta reduction happen and to build your own vocabulary beside, and not a complete optimal reducer.
+`Lambda.rules()` calls the energies art direction rather than semantics in its own KDoc: every rule splits or attenuates node energy so that a reduction visibly decays instead of merely rewiring. The same KDoc states the scope. There is no fan/fan commuting rule and no lambda frontend, so this is enough to watch beta reduction happen and to build your own vocabulary beside, and not a complete optimal reducer.
 
 ## Beta bridge with swapped pair orientation
 
@@ -169,7 +169,7 @@ println("interaction scheduler ready")
 
 ## DUP splits state into two descendants
 
-`dup-const` replaces the constant with one copy per `DUP` auxiliary, and the copies are not identical to it or to each other. Each inherits half the original's energy attenuated by 0.9, which is 0.81 from the constant's 1.8, and the two are pushed 0.05 apart in hue, so the branches are the same shape in different colours, which is what makes a second duplication further down visible as a gradient rather than as a repeat.
+`dup-const` replaces the constant with one copy per `DUP` auxiliary, and the copies are not identical to it or to each other. Each inherits half the original's energy attenuated by 0.9 (0.81 from the constant's 1.8), and the two are pushed 0.05 apart in hue. Same shape, different colours: a second duplication further down then reads as a gradient rather than as a repeat.
 
 <!--
 FIELD_TEST

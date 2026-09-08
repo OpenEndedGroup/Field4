@@ -96,6 +96,8 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        // Three bounded CPU/allocation workloads, one real recording, then stop and assert samples.
+        "profiling_timeline",
         // The one EXECUTE demo that *launches* rather than executes: its box is a `loop { }`, so the
         // transcript launches it, runs 90 real runloop frames (startRunloopDaemon above is what
         // advances them) and stops it. Safe here because the whole scene is CPU physics plus

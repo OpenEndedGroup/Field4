@@ -155,8 +155,9 @@ them, and hands back both the tile atlas and the grid of IDs it came from; `toRu
 adjacency table straight off that grid: every pair of neighbours it saw becomes a legal pair, and
 how often each tile occurred becomes its weight.
 
-The tile size can be `1 × 1`, which is the clearest way to meet the model: a tile is then just a
-colour, and "learning the rules" is literally "note which colours were seen touching".
+The tile size goes all the way down to `1 × 1`, and at that size the model is at its most legible: a
+tile is then just a colour, and "learning the rules" is literally "note which colours were seen
+touching".
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/simple-tiled.png" wait="1.5" capture="box" open-outputs="true" w="1200" name="wfc-simple-tiled"}
 :::static
@@ -426,9 +427,8 @@ enormous claim.
 
 On this source, 10 empty masks out of 144 produce a table of **282 observed pairs plus 704 invented
 ones**. 71% of the model is fallback rather than evidence, and outputs then contain band pairs the
-source never contained. At `1 × 1` nothing is empty and nothing is invented, which is exactly why the
-speckled figure above is still trustworthy as *evidence about the model* and a `2 × 2` version of it
-would not be.
+source never contained. At `1 × 1` nothing is empty and nothing is invented, so the speckled figure
+above stays trustworthy as *evidence about the model* where a `2 × 2` version of it would not.
 
 So: ask. `widenedMaskCount` says whether the fallback fired at all, `wasWidened(direction, tile)`
 says where, and `observedAllows` is `allows` restricted to what the sample actually showed: the
@@ -514,8 +514,8 @@ markdown("counts",
 Every trace connects. There are no dangling ends anywhere in the output, and there cannot be: a live
 socket on one tile is only ever adjacent to a live socket on the next, so "wires join up" is a
 consequence of edge matching rather than something the generator tries to achieve. The weights are
-doing the aesthetic work: blank is weighted 6 and the four-way cross 0.35, which is why the result
-reads as sparse circuitry rather than a dense maze.
+doing the aesthetic work. Blank is weighted 6 and the four-way cross 0.35, so the result reads as
+sparse circuitry rather than a dense maze.
 
 ## 4. The overlapping model and absolute position
 
@@ -627,12 +627,12 @@ bottom panel is what the same rules produce once they have it.
 And the bottom panel is genuinely new. The flowers are not the source's flowers: different columns,
 different heights, more of them than the source had. But every blossom sits on a stem, and the soil
 runs unbroken along the bottom, because those are 3×3-local facts and the model enforces them.
-`WfcGallery` asserts the first of those as a count of zero floating blossoms, which is the artefact a
-broken pattern model produces.
+`WfcGallery` asserts the first of those as a count of zero floating blossoms. A stemless blossom is
+what a broken pattern model produces.
 
 One API note visible above: `reset()` clears the whole wave, forced cells included. Boundary
-conditions therefore have to be re-applied on every retry, which is what `solveWithRetries`'
-`prepare` block is for.
+conditions therefore have to be re-applied on every retry, and `solveWithRetries` takes a `prepare`
+block to do it in.
 
 ## 5. Neighborhoods beyond von Neumann
 
@@ -984,8 +984,8 @@ happen: colour-map it, contour it, and the result is [`FLine`s](fline_examples.m
 same drawing and export machinery as anything hand-drawn.
 
 The catch is that `sliceIntoUniqueTiles2D` dedupes on **exact float equality**, so a continuous field
-would yield one unique tile per distinct value. Quantise first; here to six levels, which is what
-makes "level *n* may only touch level *n±1*" a learnable rule.
+would yield one unique tile per distinct value. Quantise first. At the six levels used here, "level
+*n* may only touch level *n±1*" becomes a rule the model can learn.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/scalar-field.png" wait="2.0" timeout="180" capture="box" open-outputs="true" w="1200" name="wfc-scalar-field"}
 :::static
@@ -1155,8 +1155,8 @@ lines(contours, channel = "contours", w = 900.0, h = 560.0, fitToSize = true)
 
 ![the six-level source field, a speckled 1x1-tile result, a horizontally banded 3x3-pattern result, and three 3x3+D4 results showing plateaus and basins with no shared direction, above a panel of iso-contour FLines](assets/wfc_examples/scalar-field.png)
 
-Same solver, same rules machinery, no pixels anywhere, and the two float paths fail in
-characteristically different ways, which is the useful part.
+Same solver, same rules machinery, no pixels anywhere. The two float paths fail in characteristically
+different ways, one paragraph each below.
 
 The `1 × 1` tile model does what §2's terrain did: correct, and speckle. Pinning the border to the
 lowest level keeps it from plateauing, but a single value per cell carries no information about slope,
@@ -1192,7 +1192,7 @@ coincide are deduplicated, and an already-symmetric window contributes nothing n
 
 Three seeds are shown rather than one, and the per-seed numbers in the box are the reason. The banded
 model sits at 14.6× on every seed; the D4 model comes out at 2.8×, 1.5× and 1.3×, and the direction
-of what grain is left is different each time, which is the part a single panel cannot show.
+of what grain is left changes from seed to seed. One panel cannot show that.
 
 Two numbers, because they measure different things and only one of them is the headline:
 
@@ -1206,10 +1206,10 @@ Two numbers, because they measure different things and only one of them is the h
 asks whether the model has a systematic preferred direction. That is what D4 removes, and it removes
 nearly all of it. *Per-output* anisotropy takes the ratio within each field and then takes the median:
 it asks whether any single field is directionless. That lands at 1.9×, right at the source's own
-2.1×, which is where it should land: terrain has ridges, and ridges have directions. What was wrong
-before was not that each field had a grain but that *every* field had the *same* grain. Keep the two
-numbers apart, because averaging the two roughnesses before dividing reports a flattering `1.0×` for
-a model whose every individual output is still strongly banded.
+2.1×. Terrain has ridges and ridges have directions, so a grain per field is the answer you want.
+What was wrong before was not that each field had a grain but that *every* field had the *same*
+grain. Keep the two numbers apart, because averaging the two roughnesses before dividing reports a
+flattering `1.0×` for a model whose every individual output is still strongly banded.
 
 Reach for `WfcSymmetry.None` (the default) whenever up is real: §4's flowers grow upward, and a
 model free to rotate them would grow them sideways out of the soil. Reach for `All` for heightfields,
@@ -1231,8 +1231,8 @@ what a hill is.
 
 Four practical notes. Quantising is not optional, because `sliceIntoUniqueTiles2D` dedupes on exact
 float equality; the number of levels is your tile alphabet and therefore your cost knob. Pinning the
-whole border of the *pattern* model over-constrains it into a contradiction — a corner would have to
-satisfy the ring in both directions at once — which is why only the tiled model is pinned here.
+whole border of the *pattern* model over-constrains it into a contradiction (a corner would have to
+satisfy the ring in both directions at once), so only the tiled model is pinned here.
 `sliceIntoOverlappingPatterns2D` grows fast: six levels over a 26 × 18 source already gives 180
 distinct 3 × 3 windows, and rule learning compares every pattern against every other. And
 `expandSymmetry` multiplies exactly that number, so it is the one knob here that can turn a
@@ -1329,10 +1329,10 @@ showImgGrid(
 
 ![a report showing over-constrained rules deadlocking and widened rules solving, above three seeded outputs where two share a seed and match](assets/wfc_examples/contradiction.png)
 
-The two seed-42 panels are identical and seed 43 is not, which is the whole of the reproducibility
-contract. The text panel is the more useful half: it shows *why* the strict rules deadlock (nothing
-may sit east of tile 2, so no row longer than three cells can ever be completed) and that
-`allowMissingAnything()` fixes it while keeping the relation symmetric.
+The two seed-42 panels are identical and seed 43 is not: the reproducibility contract in full. The
+text panel is the more useful half: it shows *why* the strict rules deadlock (nothing may sit east of
+tile 2, so no row longer than three cells can ever be completed) and that `allowMissingAnything()`
+fixes it while keeping the relation symmetric.
 
 That symmetry line is not decoration. Widening a mask in one direction only produces a rule set the
 solver cannot enforce: it would let `allowed[d][t]` admit a neighbour that was never told it may sit
@@ -1355,8 +1355,7 @@ show are different, and they are four that a `println` cannot show you at all:
 - an **invented pair**: adjacency that exists only because the widening fallback filled an empty
   mask. Legal, enforced, and not evidence of anything: the distinction §2 measured.
 
-Each is marked in the picture and stated in the header, which is what makes the before and after of
-`allowMissingAnything()` two things you can look at.
+Each of the four is marked in the picture and stated in the header.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/inline-rules.png" wait="1.5" capture="box" open-outputs="true" w="1200" name="wfc-inline-rules"}
 :::static
@@ -1510,4 +1509,4 @@ solve, must use only pairs the source contained (`observedAllows`, not merely `a
 out more coherent than both the one-colour model and the source itself; the all-deep window must still
 have exactly one southward successor, or the paragraph explaining why that figure is unpinned is
 wrong; and the widening audit pins 1 × 1 at zero invented pairs and 2 × 2 at more invented than
-observed, which is the note in §2 turned into a test.
+observed, so §2's note about widening cannot rot without the build saying so.

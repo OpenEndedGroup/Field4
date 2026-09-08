@@ -1,12 +1,17 @@
 # Field Audio AI
 
-Field Audio AI is an experimental companion system for source-evocative music generation and
-corpus exploration. Field remains the compositional environment: it owns source selections,
-operations, candidate sets, ratings, annotations, provenance, and arrangement. Long-lived Python
-workers perform analysis and inference behind a model-neutral HTTP and WebSocket protocol.
+Point Field at a recording you already have, name four and a half seconds of it, and ask for eight
+variations that keep its room and its grain. Or ask which other stretches of the same folder sound
+like that one. Generating from a source and navigating a corpus are the two things Field Audio AI
+is for.
 
-The companion service is pinned under `services/field-audio-ai` as a Git submodule while its
-architecture is still moving quickly. The Field-side API is in `afield.stdlib.noir.audioai` and names
+The models are not in Field. They run in long-lived Python workers behind a model-neutral HTTP and
+WebSocket protocol, so swapping a checkpoint does not take the piece with it: Field keeps the source
+selections, the operations, the candidate sets, the ratings and annotations, the provenance and the
+arrangement.
+
+The companion service is experimental, and pinned under `services/field-audio-ai` as a Git submodule
+while its architecture moves. The Field-side API is in `afield.stdlib.noir.audioai` and names
 operations such as `generate.style`, `codec.reconstruct`, and `analysis.pitch_poly`, rather than
 depending on AudioCraft classes.
 

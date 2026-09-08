@@ -1,20 +1,20 @@
 # ImGui as an in-VR panel
 
-Field can float a live [Dear ImGui](https://github.com/ocornut/imgui) panel *inside* a 3D scene:
+Field can float a live [Dear ImGui](https://github.com/ocornut/imgui) panel *inside* a 3D scene —
 a clickable control surface hanging in space in front of you. ImGui draws into a texture, the
 texture is mapped onto a quad, the quad is rendered once per eye into a side-by-side stereo image,
 and a controller ray is hit-tested against it so buttons and sliders actually work. On a headset the
 same stereo image feeds the eye swapchains; on the desktop it previews in the window.
 
 The side-by-side stereo target underneath this demo is the same one the Vision Pro front end renders
-through; see **[Apple Vision Pro](vision.md)**, where those eye matrices can come from an uplinked
+through — see **[Apple Vision Pro](vision.md)**, where those eye matrices can come from an uplinked
 head pose instead of from OpenXR or the desktop mock.
 
 ![A single eye of the VR panel: a readable Dear ImGui window titled "Field · VR Panel" with body text, a Click me button, a checkbox, a gain slider, and a ray-hit UV readout](assets/imgui_vr_panel/imgui-vr-panel-eye.png)
 
-That is one eye of the running demo, cropped for legibility. The panel
-title, body text, `Click me` button, `show grid` checkbox, `gain` slider, and the live
-`ray hit u=0.500 v=0.500` readout are all drawn by ImGui into a texture and sampled onto the quad.
+That is one eye of the running demo, cropped for legibility. The panel title, body text, `Click me`
+button, `show grid` checkbox, `gain` slider, and the live `ray hit u=0.500 v=0.500` readout are all
+drawn by ImGui into a texture and sampled onto the quad.
 
 ## The pipeline
 
@@ -36,7 +36,7 @@ one packed side-by-side image
 ```
 
 Because the quad is drawn once per eye, you get correct stereo depth: the panel really sits at a
-distance in the scene, not pasted flat on the screen. Here is the full packed side-by-side frame,
+distance in the scene, not pasted flat on the screen. Here is the full packed side-by-side frame —
 the same pixels a headset would show, one panel per eye:
 
 ![The full side-by-side stereo frame: the ImGui panel rendered twice, left eye and right eye, against a black background](assets/imgui_vr_panel/imgui-vr-panel.png)

@@ -1,8 +1,8 @@
 # FieldML's JVM bridge
 
-FieldML is a small language with a large host. The prelude covers geometry (`fline`, `vec3`, `draw`, `animate`) but Field itself is thousands of Kotlin functions, and the bridge is how a FieldML box reaches them. This page is that bridge: what it can do, what it refuses, and where it stops short.
+FieldML is a small language with a large host. The prelude covers geometry — `fline`, `vec3`, `draw`, `animate` — but Field itself is thousands of Kotlin functions, and the bridge is how a FieldML box reaches them. This page is that bridge: what it can do, what it refuses, and where it stops short.
 
-The short version: **a FieldML box can call a Kotlin method with any number of arguments, positionally or by name, pass a FieldML function where Kotlin wants a lambda (including a `suspend` one), get a real type back on both sides of that lambda, and reach Field's box-code *macros*: `prop`, `moduleHere`, `println` and the rest, which are rewrites over Kotlin source.** The measurement in `FieldMLHostSurfaceCoverageTest` puts the first part at 344 of the 362 public methods of `FLine`, `Img`, the three linalg vectors and Field's two imaging extension files, 95%. The second part is 21 of the 23 callback argument slots across the same types, 91.3%: a lambda handed to a JVM method has its parameters typed from that method's signature, and the two that stay untyped are one erased generic and one nullable Kotlin parameter, both of which would be lies.
+The short version: **a FieldML box can call a Kotlin method with any number of arguments, positionally or by name, pass a FieldML function where Kotlin wants a lambda (including a `suspend` one), get a real type back on both sides of that lambda, and reach Field's box-code *macros*: `prop`, `moduleHere`, `println` and the rest, which are rewrites over Kotlin source.** The measurement in `FieldMLHostSurfaceCoverageTest` puts the first part at 344 of the 362 public methods of `FLine`, `Img`, the three linalg vectors and Field's two imaging extension files — 95%. The second part is 21 of the 23 callback argument slots across the same types — 91.3%: a lambda handed to a JVM method has its parameters typed from that method's signature, and the two that stay untyped are one erased generic and one nullable Kotlin parameter, both of which would be lies.
 
 ## One box, end to end
 
@@ -31,11 +31,11 @@ hostStaticCall "showImg" (thisBox, picture, "main", 480, "Img.generate, driven b
 
 Change `11.0` in `sin (r * 11.0)` and the ring spacing changes; change `"viridis"` to `"magma"` or `"coolwarm"` and the palette does. Both are ordinary edits to a FieldML box that re-run the Kotlin rasteriser.
 
-The last two steps show the two shapes a Kotlin extension function can be called in. `colormap` is an extension on `Img`, so the piped picture is its receiver and `hostExt` reads well. `showImg` is an extension on `Box`, so its receiver is `thisBox` and the picture is an ordinary argument, which is `hostStaticCall`, with every parameter written out in order.
+The last two steps show the two shapes a Kotlin extension function can be called in. `colormap` is an extension on `Img`, so the piped picture is its receiver and `hostExt` reads well. `showImg` is an extension on `Box`, so its receiver is `thisBox` and the picture is an ordinary argument — that is `hostStaticCall`, with every parameter written out in order.
 
 ## Calling a method
 
-`hostCall name arguments target`, with the target last, so it sits at the end of a pipe.
+`hostCall name arguments target` — the target last, so it sits at the end of a pipe.
 
 ```diffstatic {data-lang=fieldml}
 let Img = hostClass "afield.stdlib.Img"
@@ -55,9 +55,9 @@ The arguments are a tuple, and a tuple is spread, so `(1, 0, 0)` is three argume
 | `hostCall "m" [a, b, c] t` | three |
 | `hostCall1 "m" [a, b, c] t` | one, a list |
 
-`hostNew arguments class` and `hostNew0 class` are the same for constructors. `hostStaticCall name arguments class` is the same for statics, and `hostExt class name arguments` is a static called with the piped value in front of the written arguments, which is what a Kotlin extension function compiles to, and most of Field's API is extension functions.
+`hostNew arguments class` and `hostNew0 class` are the same for constructors, and `hostStaticCall name arguments class` is the same for statics. `hostExt class name arguments` is a static called with the piped value in front of the written arguments. That is how a Kotlin extension function compiles, and most of Field's API is extension functions.
 
-Overloads are resolved against the real reflected candidate set, scored per argument, so `hostStaticCall "max" (3, 7)` reaches `Math.max(int, int)` and `(3.5, 7.25)` reaches `Math.max(double, double)`. FieldML has one integer type and one float type, so a conversion happens on nearly every call: `Int` reaches `long`/`short`/`Number`, `Float` reaches `float` and `Double`, a FieldML list reaches a JVM array or a `vararg`, and `hostNull` reaches anything nullable, which is how an optional Kotlin parameter gets filled, since a reflective call cannot use Kotlin's defaults.
+Overloads are resolved against the real reflected candidate set, scored per argument, so `hostStaticCall "max" (3, 7)` reaches `Math.max(int, int)` and `(3.5, 7.25)` reaches `Math.max(double, double)`. FieldML has one integer type and one float type, so a conversion happens on nearly every call: `Int` reaches `long`/`short`/`Number`, `Float` reaches `float` and `Double`, a FieldML list reaches a JVM array or a `vararg`, and `hostNull` reaches anything nullable. That last one fills an optional Kotlin parameter, since a reflective call cannot use Kotlin's defaults.
 
 ## Passing a function
 
@@ -105,7 +105,7 @@ So:
 
 ### `Host` is the dynamic type, and it has a boundary
 
-Reflection cannot always say. A generic erased to `Object`, an array, a `Map`, a nullable Kotlin return that may arrive as nothing at all: for all of these the answer stays the opaque `Host`, because naming a class the program can violate on its first run would be worse than saying nothing.
+Reflection cannot always say. A generic erased to `Object`, an array, a `Map`, a nullable Kotlin return that may arrive as nothing at all — for all of these the answer stays the opaque `Host`, because naming a class the program can violate on its first run would be worse than saying nothing.
 
 `Host` therefore unifies with other types, and satisfies the numeric, vector and equality constraints, so an erased result is usable without a cast. But it is bounded, and the bound is one sentence: **`Host` stands in for a value of unknown *class*, not of unknown *shape*.**
 
@@ -121,7 +121,7 @@ hostInput |> hostGet "whatever" |> head
   so convert it with hostAsList
 ```
 
-Two host types whose classes are both *known* and unrelated do not unify either: `if true then img else fline` is `Img is not FLine (afield.stdlib.Img and afield.graphics.FLine are unrelated)`. Two where one is assignable from the other do, which is what lets a `Vector2f` reach a parameter declared as its read-only `Vector2fc` interface.
+Two host types whose classes are both *known* and unrelated do not unify either: `if true then img else fline` is `Img is not FLine (afield.stdlib.Img and afield.graphics.FLine are unrelated)`. Two where one is assignable from the other do, so a `Vector2f` reaches a parameter declared as its read-only `Vector2fc` interface.
 
 `hostAsList` is the way from an opaque host value to a FieldML list: it converts a JVM `List`, `Set`, array or `Map`, which is also how `Box.parents` becomes something a FieldML box can walk. The rest of the `hostAs…` family is for when a value needs to become a scalar:
 
@@ -153,17 +153,17 @@ The check has teeth. `Vector2f` declares both `void set(int, float)` and `Vector
 
 ## Reaching `afield.four`
 
-`afield.four` is Field's Vulkan layer and the reason this bridge exists: the live workspaces are hundreds of Kotlin boxes driving it. FieldML expresses most of it; the accounting is more use than the headline.
+`afield.four` is Field's Vulkan layer and the reason this bridge exists: the live workspaces are hundreds of Kotlin boxes driving it. FieldML expresses most of it, and the statement-by-statement accounting is worth more here than the headline.
 
-Taking `threebox-2`, the minimal complete `afield.four` scene (a window, a compute shader over 100 000 particles, a draw pass), **18 of its 19 statements are expressible in FieldML**. Six run headlessly and are checked against the same call in Kotlin, including `defaultBuffer { size = N.vec4s }`, whose argument is a Kotlin *receiver* lambda and whose `vec4s` is a member extension property that only exists inside it, and the per-frame builders, because `Frames` is a plain object with no Vulkan in it. Everything downstream of a Vulkan device is expressible but untested here, because a headless test JVM has no device.
+Taking `threebox-2`, the minimal complete `afield.four` scene (a window, a compute shader over 100 000 particles, a draw pass), **18 of its 19 statements are expressible in FieldML**. Six run headlessly and are checked against the same call in Kotlin. Those six include `defaultBuffer { size = N.vec4s }` — whose argument is a Kotlin *receiver* lambda, and whose `vec4s` is a member extension property that only exists inside it — and the per-frame builders, because `Frames` is a plain object with no Vulkan in it. Everything downstream of a Vulkan device is expressible but untested here, because a headless test JVM has no device.
 
-The one that is not expressible is the `import`, and that is not a limitation: FieldML names every class in full and has nothing for an import to do. Five of the eighteen are source macros, which are the next section.
+The one that is not expressible is the `import`, and that is not a limitation: FieldML names every class in full and has nothing for an import to do. Five of the eighteen are source macros, the subject of the next section.
 
 ## Source macros
 
-Some of Field's most useful box-code names are not functions at all. `prop<Double>(speed)`, `moduleHere { }`, `computeModuleHere { }`, `println(x)` are **macros**: registered rewrites over Kotlin *source*, applied before the Kotlin compiler runs. `prop` throws if it is ever really called. FieldML is an interpreter (lex, parse, infer, evaluate) with no Kotlin compile anywhere in its path, so a macro that hands back generated Kotlin has nothing to compile it.
+Some of Field's most useful box-code names are not functions at all. `prop<Double>(speed)`, `moduleHere { }`, `computeModuleHere { }` and `println(x)` are **macros**: registered rewrites over Kotlin *source*, applied before the Kotlin compiler runs. `prop` throws if it is ever really called. FieldML is an interpreter (lex, parse, infer, evaluate) with no Kotlin compile anywhere in its path, so a macro that hands back generated Kotlin has nothing to compile it.
 
-None is needed. Every macro that rewrites a **call** rewrites it to an ordinary `Box` extension function: `moduleHere` becomes `_moduleHere`, `println` becomes `_printlnHere`. And a macro's real work happens while it *expands*: `moduleHere` seeds this box's `vertex` and `fragment` properties, preprocesses both shaders and compiles them; `fieldStatsHere` builds the whole statistics block. So reaching such a macro is two steps, and a compiler is neither of them: run the expansion, then call what it rewrote to.
+No compiler is needed. Every macro that rewrites a **call** rewrites it to an ordinary `Box` extension function: `moduleHere` becomes `_moduleHere`, `println` becomes `_printlnHere`. And a macro's real work happens while it *expands*: `moduleHere` seeds this box's `vertex` and `fragment` properties, preprocesses both shaders and compiles them; `fieldStatsHere` builds the whole statistics block. So reaching such a macro is two steps, and a compiler is neither of them: run the expansion, then call what it rewrote to.
 
 ```diffstatic {data-lang=fieldml}
 // `prop<Double>(swirl)` in a Kotlin box declares an inheritable slot. FieldML has
@@ -180,7 +180,7 @@ let _ = hostMacro "println" "(x)" (7, "from a FieldML box")
 (hostMacroExpand "prop" ("<Double>", "(speed)")).declarations
 ```
 
-That last line is `var Box.speed by Inheritance<Double>()` plus its `Once` twin, the exact text a Kotlin box would have had compiled into its preamble.
+That last line is `var Box.speed by Inheritance<Double>()` plus its `Once` twin — the exact text a Kotlin box would have had compiled into its preamble.
 
 Two shapes, because the macros come in two kinds:
 
@@ -192,7 +192,7 @@ Two shapes, because the macros come in two kinds:
 
 A macro's arguments are **source text**, because that is what a macro consumes: `hostMacroExpand "prop" ("<Double>", "(speed)")` is the `prop<Double>(speed)` call site, one string per piece. `hostMacro` takes those *and* the values for the rewritten call, because only the first can be text in an interpreter. Those values can be a record, which makes it a named call: `_fieldStatsHere` declares a default for every one of its seven parameters, so naming one is the difference between changing one number and writing all seven.
 
-The `prop` family is the one that changes what a document can look like. **A Kotlin box's `speed` and a FieldML box's `prop "speed"` are one property**: the same slot read through the same code, over a shared inheritance walk, rather than two implementations that agree. So a FieldML box can hold a live parameter that a Kotlin box downstream consumes, or read one a Kotlin box exports, and the property inspector sees either.
+The `prop` family is the one that changes what a document can look like. **A Kotlin box's `speed` and a FieldML box's `prop "speed"` are one property** — the same slot read through the same code, over a shared inheritance walk, rather than two implementations that agree. So a FieldML box can hold a live parameter that a Kotlin box downstream consumes, or read one a Kotlin box exports, and the property inspector sees either.
 
 Of the 19 macros Field registers, **15 are reachable**. The four that are not all generate Kotlin *declarations* and nothing else: `sourceBlock` (a lambda whose body is your Kotlin), `jsonParser` (a generated class), `graphLens` (a property reference synthesised from a path) and `ai`. `hostMacroExpand` still hands their generated source back as text, which is as far as an interpreter goes.
 
@@ -203,7 +203,7 @@ Two things to know before you reach for this:
 
 ## Every frame
 
-Field animates by handing Kotlin a `suspend` lambda: `eachFrame { … }`, `loop { … }`, `forever { … }`, `animate { … }`, with `Box.launchFrames` underneath all of them. Every one of those has a parameter typed `suspend Frames.() -> Unit`, which is the shape a FieldML closure has to fill in order to change anything after the first frame. Write the lambda the way the *source* reads, one parameter:
+Field animates by handing Kotlin a `suspend` lambda: `eachFrame { … }`, `loop { … }`, `forever { … }`, `animate { … }`, with `Box.launchFrames` underneath all of them. Every one of those has a parameter typed `suspend Frames.() -> Unit`. A FieldML closure that fills it can go on changing things after the first frame. Write the lambda the way the *source* reads, one parameter:
 
 ```diffstatic {data-lang=fieldml}
 let Phased = hostClass "afield.PhasedKt"
@@ -219,9 +219,9 @@ let animation =
 thisBox |> hostExt Phased "launchFrames" (animation, "spin", "frames", true)
 ```
 
-The `Continuation` in the compiled signature is not something you write. A `suspend Frames.() -> Unit` is really a `Function2` whose second parameter is a continuation and whose return is erased, and the bridge reads that shape, drops the continuation, and coerces your result to the type declared *inside* it, which is what makes `forever`'s `Boolean` actually stop the loop.
+The `Continuation` in the compiled signature is not something you write. A `suspend Frames.() -> Unit` is really a `Function2` whose second parameter is a continuation and whose return is erased, and the bridge reads that shape, drops the continuation, and coerces your result to the type declared *inside* it. Without that last step `forever`'s `Boolean` would never stop the loop.
 
-One thing this does not buy: your FieldML body cannot itself suspend. `Frames.frame()` and `Frames.delay()` are `suspend` members and stay out of reach, so `frames { }`, whose contract is that the body drives `frame()`, is not the one to reach for. `eachFrame`, `loop` and `forever` all keep the suspension in Kotlin and hand you a plain per-frame body, which is what you want anyway.
+One thing this does not buy: your FieldML body cannot itself suspend. `Frames.frame()` and `Frames.delay()` are `suspend` members and stay out of reach, so `frames { }` — whose contract is that the body drives `frame()` — is not the one to reach for. `eachFrame`, `loop` and `forever` all keep the suspension in Kotlin and hand you a plain per-frame body instead.
 
 ![four captures of a native Vulkan window, a second apart: a large filled triangle in the middle of a black frame, at a different rotation in each and shading from green-teal through cyan](assets/fieldml_frames_demo/spin-frames.png)
 
@@ -229,7 +229,7 @@ Those are four frames of the demo below, on a live Vulkan device.
 
 ## By name
 
-Two things plain reflection cannot do, which turn out to be one thing: leave a Kotlin **default** unwritten, and pass an argument **by name**. `Renderer(Window, List)` is all `Class.getConstructors` will tell you, with no hint that the second parameter is called `additionalWindows` or that it defaults to `emptyList()`. Kotlin's own reflection has both, and naming the arguments is what makes the defaults reachable: a positional call has no way to say which parameter it is skipping.
+Two things plain reflection cannot do, which turn out to be one thing: leave a Kotlin **default** unwritten, and pass an argument **by name**. `Renderer(Window, List)` is all `Class.getConstructors` will tell you, with no hint that the second parameter is called `additionalWindows` or that it defaults to `emptyList()`. Kotlin's own reflection has both, and the defaults only come within reach once the arguments are named: a positional call has no way to say which parameter it is skipping.
 
 Write a **record** where a tuple would go.
 
@@ -242,7 +242,7 @@ let img = hostNew {width = 2, height = 2, channels = 3, data = [0.0, 0.0, 0.0, 0
 (img |> hostCall "index" {x = 1, y = 0}, img |> hostCall "index" {c = 2, y = 0, x = 1})
 ```
 
-The rule is the same at every call shape (`hostCall`, `hostStaticCall`, `hostExt`, `hostNew`) and it is the rule those names already had: a tuple spreads positionally, a list spreads positionally, `Unit` is no arguments, and now a record spreads by name. `hostCall1`, which never spreads, is still how you pass one of something.
+The rule is the same at every call shape (`hostCall`, `hostStaticCall`, `hostExt`, `hostNew`), and it is the rule those names already had: a tuple spreads positionally, a list spreads positionally, `Unit` is no arguments, and now a record spreads by name. `hostCall1`, which never spreads, is still how you pass one of something.
 
 | Written | Means |
 | --- | --- |
@@ -268,11 +268,11 @@ One thing to keep in mind: a lambda written *inside* a record does not get its p
 
 ## Open it
 
-There are six Field documents for this page. **If you only open one, open the macro demo**: it needs no GPU and nothing wired up.
+There are six Field documents for this page. **If you only open one, open the macro demo** — it needs no GPU and nothing wired up.
 
 `public/docs/assets/fieldml_macro_demo/metadata.edn` has four boxes: a `prop` written in one and inherited by another that draws a spiral from it, Field's own `println` macro expanded and called, and the generated Kotlin of `prop` and `sourceBlock` as readable text. Run the parameter box, run the drawing box, then change `swirl` or `turns` in the first and run both again.
 
-[Open ↗](/offline.html?file=/field4/assets/fieldml_macro_demo/metadata.edn) , or open `public/docs/assets/fieldml_macro_demo/metadata.edn` from a Field workspace.
+[Open ↗](/offline.html?file=/field4/assets/fieldml_macro_demo/metadata.edn), or open `public/docs/assets/fieldml_macro_demo/metadata.edn` from a Field workspace.
 
 ![two captures of the same FieldML box side by side on black: on the left a wide four-turn cyan spiral filling the frame, on the right a tight nine-turn spiral about half the diameter](assets/fieldml_macro_demo/spiral-pair.png)
 
@@ -294,7 +294,7 @@ There are six Field documents for this page. **If you only open one, open the ma
 
 The next has five boxes: the raster above, a line warped by a FieldML lambda through `FLine.transform`, a box whose host member types are all inferred, one that exercises overload resolution, varargs and `hostNull`, and one that calls Kotlin by name and leaves its defaults alone.
 
-[Open ↗](/offline.html?file=/field4/assets/fieldml_host_bridge_demo/metadata.edn) , or open `public/docs/assets/fieldml_host_bridge_demo/metadata.edn` from a Field workspace.
+[Open ↗](/offline.html?file=/field4/assets/fieldml_host_bridge_demo/metadata.edn), or open `public/docs/assets/fieldml_host_bridge_demo/metadata.edn` from a Field workspace.
 
 Things to change, in the order they are most likely to teach you something:
 
@@ -313,13 +313,13 @@ Things to change, in the order they are most likely to teach you something:
 
 </div>
 
-And a third, for a machine with a GPU: **a whole `afield.four` scene described from FieldML**, with no `hostAs` in it. One box walks up to a live `Renderer`, builds a shader module out of two GLSL strings through `parameters(renderer) { vertex = …; fragment = … }` (the receiver lambda whose `p` is now a typed `Parameters`) attaches a three-vertex mesh, and registers it with the render target. It needs a running Vulkan device, so it does nothing in an ordinary box; connect it to whichever box owns your renderer.
+And a third, for a machine with a GPU: **a whole `afield.four` scene described from FieldML**, with no `hostAs` in it. One box walks up to a live `Renderer`, builds a shader module out of two GLSL strings through `parameters(renderer) { vertex = …; fragment = … }` (the receiver lambda whose `p` is now a typed `Parameters`), attaches a three-vertex mesh, and registers it with the render target. It needs a running Vulkan device, so it does nothing in an ordinary box; connect it to whichever box owns your renderer.
 
-[Open ↗](/offline.html?file=/field4/assets/fieldml_afield_four_demo/metadata.edn) , or open `public/docs/assets/fieldml_afield_four_demo/metadata.edn` from a Field workspace.
+[Open ↗](/offline.html?file=/field4/assets/fieldml_afield_four_demo/metadata.edn), or open `public/docs/assets/fieldml_afield_four_demo/metadata.edn` from a Field workspace.
 
 And a fourth, the same scene with a `Frames` loop on it: **the triangle from the captures above**. This one is self-contained: three boxes, and the first is a small Kotlin box that opens the window and owns the `Renderer`, so there is nothing to wire up. Open it, run `window and renderer`, then run the FieldML box.
 
-[Open ↗](/offline.html?file=/field4/assets/fieldml_frames_demo/metadata.edn) , or open `public/docs/assets/fieldml_frames_demo/metadata.edn` from a Field workspace.
+[Open ↗](/offline.html?file=/field4/assets/fieldml_frames_demo/metadata.edn), or open `public/docs/assets/fieldml_frames_demo/metadata.edn` from a Field workspace.
 
 | In | Change | What happens |
 | --- | --- | --- |
@@ -333,7 +333,7 @@ And one where the **macro builds the scene**: instead of hand-writing `parameter
 
 Then run the fourth box while it is spinning. It writes `spinRate` with `setRootProp`, and the scene reads that slot on *every frame*, so the speed of a running Vulkan scene changes from a different box, with the scene box untouched.
 
-[Open ↗](/offline.html?file=/field4/assets/fieldml_macro_module_demo/metadata.edn) , or open `public/docs/assets/fieldml_macro_module_demo/metadata.edn` from a Field workspace.
+[Open ↗](/offline.html?file=/field4/assets/fieldml_macro_module_demo/metadata.edn), or open `public/docs/assets/fieldml_macro_module_demo/metadata.edn` from a Field workspace.
 
 <div class="field-data-table" markdown>
 
@@ -349,15 +349,15 @@ Then run the fourth box while it is spinning. It writes `spinRate` with `setRoot
 
 There is no picture of this one. What it reports instead is `builtBy = "_moduleHere"`, a 16-byte push-constant block, and 2550 frames drawn between two reads of the shared slot.
 
-And another, the wall past the moving one: **a vertex shader with real inputs**, whose data FieldML recomputes every frame. Two `layout(location = …) in` variables, both written through `Mesh.write`, one call positional and one named, and the named one is the shape that omits `Mesh.write`'s `inside` default. Self-contained the same way the frames demo is.
+And another, the wall past the moving one: **a vertex shader with real inputs**, whose data FieldML recomputes every frame. Two `layout(location = …) in` variables, both written through `Mesh.write` — one call positional, one named — and the named one is the shape that omits `Mesh.write`'s `inside` default. Self-contained the same way the frames demo is.
 
-[Open ↗](/offline.html?file=/field4/assets/fieldml_mesh_demo/metadata.edn) , or open `public/docs/assets/fieldml_mesh_demo/metadata.edn` from a Field workspace.
+[Open ↗](/offline.html?file=/field4/assets/fieldml_mesh_demo/metadata.edn), or open `public/docs/assets/fieldml_mesh_demo/metadata.edn` from a Field workspace.
 
 ![four captures of a native Vulkan window a second apart, each a ring of coloured triangles on black, the hues rotating between frames](assets/fieldml_mesh_demo/ring-frames.png)
 
 One more is about the lambda parameters specifically: a warp with no `hostAs` in it, a raster whose two callbacks have six typed parameters between them, a box of inferred types, and a box that says where the inference still declines to say anything.
 
-[Open ↗](/offline.html?file=/field4/assets/fieldml_lambda_demo/metadata.edn) , or open `public/docs/assets/fieldml_lambda_demo/metadata.edn` from a Field workspace.
+[Open ↗](/offline.html?file=/field4/assets/fieldml_lambda_demo/metadata.edn), or open `public/docs/assets/fieldml_lambda_demo/metadata.edn` from a Field workspace.
 
 <div class="field-data-table" markdown>
 

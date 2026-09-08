@@ -10,12 +10,16 @@ Stack signatures use `a b -- c`, where the top of stack is on the right. If a wo
 
 ## Mental model
 
+<div class="field-data-table" markdown>
+
 | Stage | Meaning |
 | --- | --- |
 | Push | Numbers, colors, `uv`, `p`, `prev`, external reads, vector literals, and store reads put values on the stack. |
 | Transform | Math, swizzles, noise, color grading, and suffix modifiers consume values and push results. |
 | Sample | `sample`, `sample-abs`, and `gather` read configured textures, usually the previous frame; coordinates are raw by default and `.w` variants wrap. |
 | Return | The top value becomes the color unless explicit `->0` through `->3` writes override channels. |
+
+</div>
 
 ## Inputs and constants
 

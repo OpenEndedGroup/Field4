@@ -226,7 +226,7 @@ The two viewers are close in spirit: learn one and the other should feel familia
 
 ### The 3D output area as an instrument: `threeInspect(...)`
 
-`threeInspect(...)` is `threeLines(...)` plus the three things a picture cannot answer about something that gets *built*: **how far apart are these two things**, **what does this look like in section**, and **how does it come apart**. It returns a view you can keep driving, so changing any of the three does not mean re-running the box.
+Three questions come up about anything that is going to get *built*, and a picture answers none of them. How far apart are these two things? What does it look like in section? How does it come apart? `threeInspect(...)` is `threeLines(...)` with an answer to each, and the view it hands back stays live, so changing any of the three does not mean re-running the box.
 
 ```diffstatic {data-lang=kotlin}
 :::static

@@ -966,23 +966,32 @@ needs the user's. Mapping between them is small, unavoidable, and specific to wh
 
 One Monaco module under `src/commonMain/resources`, registered under an AMD name
 (`morpho.js:16#define("bithero/morpho"`) and added to `FIELD_LANGUAGE_MODULES`
-(`bootstrapMonaco.js:49#"bithero/morpho"`). Your Monaco language id has to match the box's
-`code_language` string, lower-cased, or resolve through an alias; a mismatch gives you a working box
-with no highlighting and no error anywhere.
+(`bootstrapMonaco.js:49#"bithero/morpho"`). Your Monaco language id has to *be* the box's
+`code_language` string, lower-cased, and an alias will not stand in for it. That is the string the
+editor passes to `setModelLanguage`, which resolves mime types and then ids and never aliases, and
+which falls back to `plaintext` for an id nobody registered. A mismatch gives you a working box with
+no highlighting and no error anywhere.
 
 Reusing a lookalike grammar is the tempting shortcut and it misleads. MorphoHDL is Python-shaped
 without being Python: `@morpho` is the only decorator there is, `SPLIT` and `CAT` are primitives
 rather than library calls, and Python's grammar renders a truth table like `0b1001_0110` as a plain
 number.
 
-Completion is a second list, and morpho is missing from it. `MorphoExecution` implements `complete`
+Completion is a second list, and morpho spent its first weeks missing from it. `MorphoExecution`
+implements `complete`
 (`MorphoInterface.kt:311#completionRequest: CompletionRequest, reply: (Message) -> Unit) {`)
 by parsing the buffer with morpho's own parser, so it offers whatever cells the user has just
-written instead of a fixed list. Field's suggest widget never asks for it. The gate is
-`DEFAULT_LANGUAGES` (`fieldSuggest.js:8#const DEFAULT_LANGUAGES = new Set([`), `morpho` is not in
-that set, and no test in the bridge covers the omission, so the implementation works and the editor
-cannot reach it. If you are following this template, put your language in both lists at this step
-and open the widget to check.
+written instead of a fixed list — and none of it ran, because Field's suggest widget gates on
+`DEFAULT_LANGUAGES` (`fieldSuggest.js:8#const DEFAULT_LANGUAGES = new Set([`) and morpho was absent.
+
+Both mistakes were live at once, which is the part worth copying down. The grammar was registered as
+`morpho` while boxes ask for `morphohdl`, so the model was `plaintext` and the id in the completion
+list would not have matched anyway. Two lists, two silent failures, and a `complete` implementation
+that had never once been called. `SmallLanguageAnatomyTest` now derives every main language's
+`code_language` from its registration and fails if the lower-cased form is not a grammar Monaco has
+or is not in `DEFAULT_LANGUAGES`, so the next language cannot repeat either half. If you are
+following this template, put your language in both lists at this step and open the widget to check
+that it answers.
 
 ### 6. Hold the bridge to the original
 
@@ -1007,7 +1016,7 @@ The plumbing, step by step:
 | 1. guest-side drivers | `morpho-field-driver.mjs`, `morpho-field-layout.mjs` | 446 |
 | 2. the netlist crossing the boundary | `MorphoNetlist.kt` | 171 |
 | 3–4. registration, and what a box does | `MorphoInterface.kt` | 426 |
-| 5. editor grammar | `morpho.js` | 99 |
+| 5. editor grammar | `morpho.js` | 105 |
 | 6. tests | `MorphoBridgeTest`, `MorphoLanguageTest`, `MorphoRegistrationTest` | 628 |
 | 6. measurement run | `MorphoMeasurements.kt` | 78 |
 
@@ -1030,7 +1039,7 @@ Line counts include KDoc, which in this codebase is a substantial fraction of ev
 layer of the previous section is a separate ~2,400 lines on top of all of this, and needed nothing
 from the bridge that was not already there.
 
-Look at the ratio. Of 2,862 lines, registration proper is sixty, and those sixty were a copy. The
+Look at the ratio. Of 2,868 lines, registration proper is sixty, and those sixty were a copy. The
 boundary in steps 1 and 2 is 890. Checking it in step 6 is 706. Getting a language *registered* in
 Field is nearly free; what costs is carrying its data across a process boundary, deciding what the
 language should *do* once it is running, and reading the other implementation carefully enough not

@@ -1,9 +1,14 @@
 # Short-time spectral spaces
 
-`analysis.embed_spectral` turns a selected sound into several synchronized 25 Hz descriptions of
-its spectral shape. It is model-free and fast: one cached librosa job retains enough
-information for Field to try different temporal pooling, distance metrics, MDS fits, and t-SNE fits
-without analysing the audio again.
+A resonance sliding upward, a hiss that thickens, a room closing in around a voice: none of that
+needs a trained model to notice, only a record of which frequencies are loud from one moment to the
+next. `analysis.embed_spectral` keeps that record in several interchangeable forms rather than
+settling on one.
+
+A single cached librosa job holds all of them, which puts the interesting decisions after the
+analysis instead of inside it: how much audio pools into one point, which distance compares two
+points, whether MDS or t-SNE lays them out. Each of those is a re-fit in Field, not a second pass
+over the sound.
 
 The retained representations follow librosa's
 [mel-spectrogram](https://librosa.org/doc/latest/generated/librosa.feature.melspectrogram.html) and
@@ -24,10 +29,10 @@ more inspectable questions about where acoustic energy is and how the spectral e
 | `MFCC_COSINE` | 20 cepstral coefficients | similar compact envelope/timbre direction |
 | `MFCC_EUCLIDEAN` | 20 cepstral coefficients | similar compact envelope/timbre and coefficient magnitude |
 
-These are alternative readings. Mel Wasserstein is especially useful when a formant, resonant
-background sound, or spectral emphasis slides in frequency: it charges in proportion to how far
-mass moves. MFCCs suppress fine spectral detail and make broad
-envelope changes easier to see. Log-mel retains the most directly inspectable band structure.
+Which row to reach for depends on what is moving. Mel Wasserstein is especially useful when a
+formant, resonant background sound, or spectral emphasis slides in frequency: it charges in
+proportion to how far mass moves. MFCCs suppress fine spectral detail and make broad envelope
+changes easier to see. Log-mel retains the most directly inspectable band structure.
 
 ## What the durable job stores
 

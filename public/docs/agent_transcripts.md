@@ -1,20 +1,21 @@
 # Agent transcript gallery
 
-Field ships a small, curated corpus of **operation transcripts**: short YAML macros that build a
-whole Field document (boxes, code, graph wiring) from a blank canvas. They are the worked examples
-an agent copies, runs, and adapts when [automating Field](automating_field.md).
+An **operation transcript** is a short YAML macro that builds a whole Field document (boxes, code,
+graph wiring) from a blank canvas. Field ships a small, curated corpus of them, and they are the
+worked examples an agent copies, runs, and adapts when [automating Field](automating_field.md).
 
 These are the same scenes offered as **Starting points** on the [welcome screen](history_overview.md):
 each transcript that is a self-contained scene is materialized into an openable document, so you can
 search for it there and open an editable copy in your workspace. Six are not, and each says why in
-its own entry: a transcript that needs an external asset, a user gesture in a browser, or a renderer
+its own entry. A transcript that needs an external asset, a user gesture in a browser, or a renderer
 from a box outside itself makes a broken starting point, and an integration probe is not a scene.
 
 Every transcript in `dev_docs/agents/transcripts/` has an entry below, and
 `checkAgentTranscriptIndex` keeps it that way: it fails on a transcript with no entry, an entry
 naming a transcript that is not there, an entry offering a starting point that was never generated,
 or an entry filed under a section whose claim about CI does not match how CI checks it. The entries
-are written by hand, one per transcript: which number it prints, and why that number.
+are written by hand, one per transcript, because the useful thing to say about a scene is which
+number it prints and why that number matters, and no generator over the yaml can write that.
 
 Figures are captures of the code running, taken by the docs capture pipeline for the walkthrough
 page linked beside each one. Most entries carry none: a scene that opens a native Vulkan window, or
@@ -37,8 +38,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 86 transcripts on every build, at three
-depths. 58 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 87 transcripts on every build, at three
+depths. 59 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -65,6 +66,14 @@ its box to see the output (a plot, an inline value thumbnail, a printed line).
 
 **hello_display** — Minimal blank-canvas macro that creates one runnable output box.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/hello_display/metadata.edn)
+
+**profiling_timeline** — Three real coroutine workloads: steady arithmetic, periodic CPU bursts,
+and vector allocation. The fourth box records three seconds with JVM stacks and opens the timeline;
+**Hot code** explores sampled classes, methods, and box lines within the same time brush.
+Replay waits for launch startup, verifies the measured lanes and allocation, then stops the workers
+so you can brush and explore a quiet, latched capture. Change the vector box's `reuse` flag to
+compare construction with in-place `set` on Field's vectors. See [Profiling Timeline](profiling_timeline.md).
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/profiling_timeline/metadata.edn)
 
 **hello_display_capture** — The same single display box, paired with the backdoor capture commands
 (`wait-output` / `output` / `screenshot-box`) that collect its output events and a cropped

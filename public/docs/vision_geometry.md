@@ -10,11 +10,15 @@
 
 A Live Metal program has three parts, and you write each one somewhere different:
 
+<div class="field-data-table" markdown>
+
 | Part | Where |
 |---|---|
 | **shader** | the box's `msl` property — Metal Shading Language, both entry points |
 | **geometry** | `geometry { … }` in the box's Kotlin, which runs *in the headset* |
 | **uniforms** | the `uniforms=` list on the box's `// {{ visionmetal }}` marker |
+
+</div>
 
 This page is about the middle one.
 
@@ -48,7 +52,7 @@ onStart {
 Positions are in metres, in the space you launched the immersive scene in: `-z` is in front of you,
 `+y` is up. So `cz = -1.2` is 1.2m ahead, and `0.18` is a cube about the size of a grapefruit.
 
-The matching shader goes in the box's `msl` property. It reads `u_phase`: the head generates
+The matching shader goes in the box's `msl` property and reads `u_phase`. The head generates
 `#define u_phase frame.user[0]` from the marker's `uniforms=` list, so shaders name their uniforms
 instead of counting slots.
 
@@ -81,9 +85,9 @@ The first four set *state* and return the builder, so they chain and apply to ev
 after them. The next three build faces from indices. The last four append whole shapes.
 
 `clear()` drops the appended geometry while keeping the current normal, colour and uv, which is what
-a per-frame rebuild wants when every frame starts from the same material. There is no method for
-adding a new vertex *attribute*: the layout is fixed and `extra()` is the escape hatch, as
-[Per-vertex channels](#per-vertex-channels) explains.
+a per-frame rebuild wants when every frame starts from the same material. The vertex layout is
+fixed, so no builder method adds a new *attribute*; `extra()` is the escape hatch, as [Per-vertex
+channels](#per-vertex-channels) explains.
 
 ## Vertices and indices
 
@@ -212,9 +216,9 @@ mesh on screen.
 
 Reach for a rebuild when the *spine or the topology* changes, which is the part a shader cannot do
 for you. If the motion is only a transform (rotating, scaling, displacing along a normal) the shader
-does it for one uniform and no rebuild. Cost scales with the mesh: a few hundred to a couple of
-thousand vertices per frame is comfortable, and at tens of thousands you want to rebuild on demand
-and let the shader animate.
+does it for one uniform and no rebuild. Cost scales with the mesh. A few hundred to a couple of
+thousand vertices per frame is comfortable; at tens of thousands, rebuild on demand and let the
+shader animate.
 
 An empty builder is a legitimate way to draw nothing:
 
@@ -223,11 +227,11 @@ An empty builder is a legitimate way to draw nothing:
 geometry { }   // clears the mesh
 ```
 
-Geometry is explicit all the way: there is **no** fallback to a built-in cube, so a box that never
-calls `geometry { … }` draws nothing, and the head says so once. The **Vision Geometry: Built-in
-Cube** command drops in a known-good mesh when you want to work out whether the problem is your
-shader or your geometry, and **Preview Vision Geometry** comes at the same question from the other
-side (see [below](#previewing-it-on-your-desk)).
+There is **no** fallback to a built-in cube. A box that never calls `geometry { … }` draws nothing,
+and the head says so once. The **Vision Geometry: Built-in Cube** command drops in a known-good mesh
+when you want to work out whether the problem is your shader or your geometry, and **Preview Vision
+Geometry** comes at the same question from the other side (see
+[below](#previewing-it-on-your-desk)).
 
 ## A procedural mesh, start to finish
 
@@ -307,8 +311,8 @@ the box's own output.
 
 !!! warning "It previews your geometry, not your shader"
     The mesh is the real one, the packed vertex array your headset would have received from the same
-    builder. The **shading is a stand-in**: a fixed two-light lambert over your vertex colours, and
-    your MSL is not compiled, translated or simulated here. This answers *"is my geometry the shape I
+    builder. The **shading is a stand-in**, a fixed two-light lambert over your vertex colours. Your
+    MSL is not compiled, translated or simulated here. This answers *"is my geometry the shape I
     meant?"*; **Vision Geometry: Built-in Cube** answers the other half on the device.
 
 ![Cube, sphere, plane and swept tube in one mesh, previewed side by side on a
@@ -425,9 +429,8 @@ tree, while the runner's Field server is watching it, takes the child process do
 The FIELD_TEST asserts as well as draws: the mesh invariants, the analytic vertex and triangle
 counts of every shape primitive, the packed stride against **both** `VISION_METAL_VERTEX_FLOATS` and
 the Swift `LiveMetalVertex` declaration, and image-level facts about each raster (painted fraction,
-colour
-spread, and for the sphere the roundness and area of its silhouette). Every entry's winding fraction
-is asserted too, so a primitive that starts winding the other way fails the build.
+colour spread, and for the sphere the roundness and area of its silhouette). Every entry's winding
+fraction is asserted too, so a primitive that starts winding the other way fails the build.
 
 ## Further reading
 

@@ -5,9 +5,9 @@ desktop capture and it is not a special web page: navigation, cookies, cross-ori
 fonts, audio and browser controls continue to work, while Chromium's composited pixels arrive in
 Field as a sampled Vulkan image.
 
-So it is an always-available browser layer for a Field scene: controllable from code, usable with a
-mouse and keyboard, aimable with an OpenXR controller, and available to every ordinary mesh, shader
-and render pass.
+A Field scene therefore always has a browser layer in it: one you can click and type into with the
+mouse and keyboard, aim at with an OpenXR controller, drive from code, and hand to any ordinary
+mesh, shader or render pass.
 
 The control half of it does not need the texture half. The same tab — navigation, input, JavaScript,
 CDP, the page bridge — is drivable with no renderer and no GPU at all, which is what lets a test,
@@ -16,9 +16,9 @@ render](#a-browser-you-do-not-have-to-render).
 
 ## First, it is simply a browser
 
-`PuppetBrowserWindowPanel` fits a live tab to
-a native Field window without changing its aspect ratio. Clicks, wheel motion, physical keys,
-modifiers and text input go back to the original Chromium page.
+`PuppetBrowserWindowPanel` fits a live tab to a native Field window without changing its aspect
+ratio. Your clicks, wheel motion, physical keys, modifiers and text input go back to the original
+Chromium page.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/puppet_browser/youtube-desktop.png" wait="12" timeout="90" capture="native-window" native-wait-frames="8" embed=true name="youtube-desktop-browser" alt="A complete live YouTube page rendered into a native Field Vulkan window" macro-file="../../dev_docs/agents/transcripts/youtube_mouse_keyboard_browser.yaml" capture-box="youtube_desktop_renderer"}
 val browser = FieldUiBrowserTexture(

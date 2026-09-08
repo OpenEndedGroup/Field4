@@ -2,7 +2,7 @@
 
 *Every public declaration used below is listed, with its KDoc, in the codebase reference: [`booleannetworks.kt`](reference/data.md#booleannetworks-kt). Start from [what's already in the box](reference/index.md).*
 
-A Boolean network's state space is finite, its update rule is explicit, and its attractors are loops or fixed points you can enumerate rather than approximate. So both the mechanism and everything the mechanism does will fit in one picture, which is what the examples below draw.
+A Boolean network's state space is finite, its update rule is explicit, and its attractors are loops or fixed points you can enumerate rather than approximate. Each example below therefore draws the mechanism and everything the mechanism does in one picture.
 
 ## Wiring and state-space, side by side
 
@@ -49,7 +49,7 @@ The left image tells you what depends on what; the right image tells you what th
 
 ## Segment-polarity basins and a real transient
 
-`segmentPolarityNetwork()` has four nodes, so sixteen states, and unlike the toggle it does not spend all of them on one cycle, which is what makes a basin sketch mean anything.
+`segmentPolarityNetwork()` has four nodes, so sixteen states, and unlike the toggle it does not spend all of them on one cycle. There is more than one attractor, so there is more than one basin, and a basin sketch has something to draw.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_networks_examples/segment_basins.png" wait="1.0" capture="box"}
 :::static
@@ -192,13 +192,13 @@ lines(
 )
 ```
 
-The plot has no legend, so: blue is the mean number of attractors, orange the mean period, green the mean number of fixed points, each averaged over 18 seeds at `n = 8` for `k` from 1 to 5, and all three share one y scale. All three rise with `k`, which is the first thing to notice, because it means connectivity buys both more attractors and longer ones rather than trading between them. Orange overtakes blue around the middle of the sweep and turns down at `k = 5`, and green stays under blue throughout, as it has to: a fixed point is a period-1 attractor and so is counted in both.
+The plot has no legend, so: blue is the mean number of attractors, orange the mean period, green the mean number of fixed points, each averaged over 18 seeds at `n = 8` for `k` from 1 to 5, and all three share one y scale. All three rise with `k`. Connectivity buys both more attractors and longer ones rather than trading one against the other. Orange overtakes blue around the middle of the sweep and turns down at `k = 5`, and green stays under blue throughout, as it has to: a fixed point is a period-1 attractor and so is counted in both.
 
 ![](assets/boolean_networks_examples/kauffman_sweep.png)
 
 ## Boolean attractors as drum grids
 
-A limit cycle repeats on a fixed period, which is the one thing a rhythm needs. You can treat each node as a lane directly, or gate the cycle with a beat phase such as `step % 4` and turn the same binary motion into kick / snare / hat style triggers.
+A limit cycle repeats on a fixed period, so it is already a rhythm. You can treat each node as a lane directly, or gate the cycle with a beat phase such as `step % 4` and turn the same binary motion into kick / snare / hat style triggers.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_networks_examples/rhythm_cycles.png" wait="1.0" capture="box"}
 :::static
@@ -266,7 +266,7 @@ lines(
 )
 ```
 
-The middle grid is the raw attractor repeated over two bars. The right grid is the same cycle clock-gated into five kick / snare / hat / clap / percussion lanes, ready to hand to a Drift-style sample rack. Nothing here makes a sound: what the gating produces is a grid of triggers that repeats exactly, which is the part you can read before committing to it.
+The middle grid is the raw attractor repeated over two bars. The right grid is the same cycle clock-gated into five kick / snare / hat / clap / percussion lanes, ready to hand to a Drift-style sample rack. Nothing here makes a sound. The gating produces a grid of triggers that repeats exactly, and you can read that grid off the page before you commit it to a sampler.
 
 ![](assets/boolean_networks_examples/rhythm_cycles.png)
 

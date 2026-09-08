@@ -1,6 +1,8 @@
 # StackSL examples
 
-The words, their stack signatures and the arity conventions are in the [StackSL cheatsheet](stacksl_cheatsheet.md). Each section here puts a short program next to the image or clip it renders. Driving the language from Kotlin and [mutating it under a search loop](#notes-for-llms-and-genetic-search) come at the end.
+`uv fbm palette saturate` is a complete StackSL program: four words, lowered to GLSL. Assign that string to a shader module's slot while the window is up and the picture changes without a teardown. That is the shape the language is built around: short enough to type into something already running, and forgiving enough that a mutation makes a strange image rather than a compile error.
+
+Each section below puts a short program next to the image or clip it renders. The words, their stack signatures and the arity conventions are in the [StackSL cheatsheet](stacksl_cheatsheet.md); driving the language from Kotlin and [mutating it under a search loop](#notes-for-llms-and-genetic-search) come at the end.
 
 StackSL is vector-first: every stack value is a `vec4`. Numbers become `vec4(n)`, swizzles repack into `vec4`, and most operators work component-wise. The compiler emits one callable function:
 

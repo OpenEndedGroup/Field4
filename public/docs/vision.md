@@ -4,10 +4,10 @@
     This is an early snapshot of Field's native **visionOS** front end. Some pieces are
     solid and verified; others are half-built and named as such. Expect it to move.
 
-Field's front end and its Vulkan renderer already talk to each other over JSON: the browser is
-just one client of the Field server. That decoupling is what makes a spatial front end tractable:
-instead of trying to cram a desktop UI into a headset, we give each half of Field a native home on
-visionOS and let them float in the room.
+Field's front end and its Vulkan renderer already talk to each other over JSON. The browser is only
+one client of the Field server, and that decoupling is what makes a spatial front end tractable.
+Rather than cram a desktop UI into a headset, we give each half of Field a native home on visionOS
+and let them float in the room.
 
 - **Docks** — the existing Field web UI (editor, canvas, welcome) rendered in `WKWebView`s the
   system composites and drives. HTML stays HTML; we never texture it.
@@ -71,17 +71,21 @@ corners to resize.
 
 ## Live Metal — programmable native graphics
 
-The second native surface, and a different bargain from the FLine viewer: instead of Field sending
-geometry to be displayed, the headset runs a **program** of yours. A box opens a mixed-immersion
+The second native surface reverses the FLine viewer's bargain. Instead of Field sending geometry
+to be displayed, the headset runs a **program** of yours. A box opens a mixed-immersion
 Compositor Services scene with its own Metal render thread, and you live-code against it.
 
 A program has three explicit parts, in three places:
+
+<div class="field-data-table" markdown>
 
 | Part | Where you write it |
 |---|---|
 | **shader** | the box's `msl` property — Metal Shading Language, both entry points |
 | **geometry** | `geometry { … }` in the box's Kotlin, which runs *in the headset* |
 | **uniforms** | the `uniforms=` list on the box's `// {{ visionmetal }}` marker |
+
+</div>
 
 ```diffstatic {data-lang=kotlin}
 // {{ visionmetal uniforms=phase,amount,tint }}
@@ -369,9 +373,9 @@ geometric `pinchStrength` interpolated from thumb-tip to index-tip distance, 50 
 It is **not part of the visionOS story at all**: on visionOS hands remain a separate concept and are
 not implemented, and `StereoPoseSource` carries controllers, not hands.
 
-The pointer layer reads it. `pinchPointer` (`pointing_pointer.kt:228#fun pinchPointer`) turns a
+The pointer layer reads it. `pinchPointer` (`pointing_pointer.kt:226#fun pinchPointer`) turns a
 `HandTrackingState` into a ray plus a select value, and `OpenXRHmdTarget.handPointer`
-(`pointing_pointer.kt:296#fun afield.four.targets.OpenXRHmdTarget.handPointer`) binds it to
+(`pointing_pointer.kt:294#fun afield.four.targets.OpenXRHmdTarget.handPointer`) binds it to
 `handState(hand)` directly, so a pinched hand drives the same picking layer as a mouse or a
 controller. Two cautions. The ray's **default** convention (wrist through pinch point) has no
 in-tree precedent; pass `eye` for gaze-through-pinch instead, which is the better convention

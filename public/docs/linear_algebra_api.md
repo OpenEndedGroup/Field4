@@ -293,10 +293,14 @@ Alongside the vectors, the library provides rotation and matrix types whose core
 
 ## Storage layouts
 
+<div class="field-data-table" markdown>
+
 | Vector | Layout choices |
 | --- | --- |
 | Vec2 | `PACKED_8`, `ALIGNED_8`, `ALIGNED_16` |
 | Vec3 | `PACKED_12`, `ALIGNED_16` |
 | Vec4 | `PACKED_16`, `ALIGNED_16` |
+
+</div>
 
 A layout name describes both array stride and required base alignment. A segment view never owns the memory and never performs Vulkan synchronization.

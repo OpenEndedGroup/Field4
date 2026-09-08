@@ -1,6 +1,6 @@
 # FieldML examples
 
-FieldML is a small ML-flavored language for Field boxes. It is expression-oriented, statically typed, and meant for compact data transforms that can still return Field-native values such as `FLine`.
+The examples below run the length of FieldML. They start with arithmetic and records, work through functions and pipes, pattern matching and algebraic data types, and end where the language hands off to Field itself: generated geometry, animation, and calls into Kotlin. The [FieldML Cheatsheet](fieldml_cheatsheet.md) gives the type of every name in the prelude.
 
 In a live document, FieldML boxes usually sit under a parent box whose main language is set to FieldML. A run evaluates the box and annotates the last expression inline. `print`, `println`, and `display` are explicit output helpers when you want the value to appear in an output area instead.
 
