@@ -1,6 +1,8 @@
 # Interactive Guides
 
-Field's guide system lets a box walk someone through a document. A guide can:
+A guide is a box that walks someone else through your document. You write it in the box; the person
+following it gets notes, moving selections and callout lines over the live document rather than a
+recording of one. A guide can:
 
 - show a note next to a box,
 - move the editor to a property and line,
