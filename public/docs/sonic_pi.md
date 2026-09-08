@@ -1,10 +1,10 @@
 # Sonic Pi
 
 [Sonic Pi](https://sonic-pi.net) v5 is a live-coding instrument with a genuinely good synth engine, a
-sample library, and an idea of time that a text editor can drive. Field talks to it in *owned* mode:
-Field starts the Sonic Pi server itself and becomes the client it expects, so there is no Sonic Pi
-window. A Field box is the buffer, and Sonic Pi's log, errors and per-line activity come back into
-that box.
+sample library, and an idea of time that a text editor can drive. You write Sonic Pi's Ruby in a
+Field box and run the box. Field talks to it in *owned* mode: Field starts the Sonic Pi server itself
+and becomes the client it expects, so there is no Sonic Pi window. Your box is the buffer, and Sonic
+Pi's log, errors and per-line activity come back into it.
 
 ## Linux AppImage setup
 
