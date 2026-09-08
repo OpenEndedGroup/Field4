@@ -211,10 +211,12 @@ It prints `RUN` / `PASS` / `FAIL` lines; artifacts are retained under
 
 ## What both runners share
 
-Both pipelines talk to Field through `tools/field_backdoor.py`: they start (or
-reuse) a single Field server on your chosen port, create scratch boxes, run the
-example code, and screenshot the resulting output areas — the same ones you see
-when you use Field interactively. Because one server is shared across
-many captures, keep runs on a dedicated port and let the runner own it. When
-something misbehaves, the backdoor's logs under `.field-backdoor/logs/` are the
-first place to look.
+Both pipelines talk to Field through `tools/field_backdoor.py`. Each puts a
+single Field server on your chosen port, creates scratch boxes in it, runs the
+example code, and screenshots the resulting output areas — the same ones you see
+when you use Field interactively. They differ over who owns that server: the
+docs runner always starts its own, as above, while `run_field_tests.py` prewarms
+one by default and attaches to a server already listening on `--port` if you
+pass `--no-prewarm`. Either way one server serves many captures, so keep runs on
+a dedicated port. When something misbehaves, the backdoor's logs under
+`.field-backdoor/logs/` are the first place to look.
