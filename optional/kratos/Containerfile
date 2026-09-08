@@ -1,0 +1,37 @@
+# The reference worker environment, for machines that cannot install it natively.
+#
+# Kratos publishes manylinux_2_28_x86_64 and win_amd64 wheels and nothing else -- no macOS, at any
+# architecture -- so `uv sync --project optional/kratos` fails outright on an Apple Silicon
+# checkout. This image is the same pinned environment, resolved from the same uv.lock, inside a
+# linux/amd64 container. On an arm64 host every instruction is emulated; correct, and slow.
+#
+# The worker source is NOT copied in. Field bind-mounts optional/kratos/python read-only at
+# /opt/field-kratos, so editing the worker does not mean rebuilding the image.
+#
+#   podman build --platform linux/amd64 -t field-kratos:10.4.0 optional/kratos
+#
+FROM docker.io/library/python:3.12-slim-bookworm
+
+# Kratos links OpenMP, and python:slim does not carry libgomp. Without it the import fails with
+# `ImportError: libgomp.so.1` followed by Kratos's own "Unable to find KratosCore ... check your
+# LD_LIBRARY_PATH", which points at the wrong thing entirely.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends libgomp1 \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:0.8.12 /uv /usr/local/bin/uv
+
+# Same pyproject and same lock as the native path, so the two cannot drift to different Kratos
+# builds while claiming to be one reference environment.
+WORKDIR /opt/field-kratos-env
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev \
+ && /opt/field-kratos-env/.venv/bin/python -c "import KratosMultiphysics, \
+      KratosMultiphysics.ConvectionDiffusionApplication, \
+      KratosMultiphysics.FluidDynamicsApplication, \
+      KratosMultiphysics.LinearSolversApplication, \
+      KratosMultiphysics.MeshingApplication, \
+      KratosMultiphysics.StructuralMechanicsApplication, numpy, msgpack"
+
+ENV FIELD_KRATOS_CONTAINER_PYTHON=/opt/field-kratos-env/.venv/bin/python
+WORKDIR /opt/field-kratos

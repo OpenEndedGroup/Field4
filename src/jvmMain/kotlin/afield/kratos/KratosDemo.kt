@@ -16,7 +16,7 @@ id: kratos.embedded.thermal
 runner: jvm-main
 entrypoint: afield.kratos.KratosSmokeTest
 tags: [smoke, kratos, optional, simulation]
-timeoutSec: 120
+timeoutSec: 600
 expect:
   exitCode: 0
   stdoutContains:
@@ -24,18 +24,24 @@ expect:
 */
 object KratosSmokeTest {
     @JvmStatic fun main(args: Array<String>) {
-        val capability = Kratos.probe().get(20,TimeUnit.SECONDS)
-        println(capability)
-        if (!capability.available) {
+        // Whichever launch this machine can run: the venv on a Linux checkout, the container on a
+        // macOS one, and a clear skip when neither is installed.
+        val found = Kratos.probeAny().get(600,TimeUnit.SECONDS)
+        val config = found.config
+        println(found.capability)
+        println("launch=${config.resolvedLaunch()}")
+        if (!found.available) {
             println("Kratos smoke passed (SKIPPED: optional environment absent)")
             return
         }
-        KratosSession.openAsync(SimulationBounds(-1.0,-1.0,-1.0,1.0,1.0,1.0)).get(20,TimeUnit.SECONDS).use { session ->
-            val a = session.solveAsync(KratosDemo.body()).get(20,TimeUnit.SECONDS)!!
+        // Emulated x86-64 runs this an order of magnitude slower than the native reference.
+        val budget = startupBudget(config)
+        KratosSession.openAsync(SimulationBounds(-1.0,-1.0,-1.0,1.0,1.0,1.0),config=config).get(budget,TimeUnit.SECONDS).use { session ->
+            val a = session.solveAsync(KratosDemo.body()).get(budget,TimeUnit.SECONDS)!!
             val stale = session.solveAsync(KratosDemo.body(.63),preview=true)
             val newest = session.solveAsync(KratosDemo.body(.43),preview=true)
-            check(stale.get(20,TimeUnit.SECONDS) == null)
-            val b = newest.get(20,TimeUnit.SECONDS)!!
+            check(stale.get(budget,TimeUnit.SECONDS) == null)
+            val b = newest.get(budget,TimeUnit.SECONDS)!!
             check(a.domain === b.domain && b.domain.buildCount == 1)
             val changed = a.distance.indices.count { (a.distance[it]>0) != (b.distance[it]>0) }
             val delta = a.temperature.indices.maxOf { abs(a.temperature[it]-b.temperature[it]) }
@@ -47,4 +53,7 @@ object KratosSmokeTest {
             println("Kratos smoke passed")
         }
     }
+
+    private fun startupBudget(config: KratosConfig): Long =
+        if (config.resolvedLaunch() is KratosLaunch.Container) 300 else 20
 }

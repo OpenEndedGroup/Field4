@@ -19,6 +19,12 @@ Gradle dependency. The existing `org.msgpack:msgpack-core` dependency is reused.
 flat-array `TriMesh` conversion; `mesh_measure.kt` supplies the BVH evaluator.
 `showMeshGrid` supplies the existing Three.js rendering path.
 
+Field already runs CPython **in this process**, through JEP: `afield.python.PythonInterface`, one
+interpreter and one namespace per Field process. So importing Kratos in-process was available
+rather than impossible, and is still the wrong choice — it would put a solver with no wheel for
+this platform into the same interpreter every Python box in the document shares, where a solver
+abort takes the JVM with it. A separate process is a decision, not a limitation.
+
 The lazy Jolt bootstrap, optional Ceres backend and separate Field Audio client
 establish the capability/environment boundary; the Vision geometry preview
 establishes the mesh-rendering boundary. The audio client also demonstrates
@@ -28,6 +34,22 @@ process and a different session protocol. Mapped storage and direct Vulkan
 upload remain possible extensions; neither is needed for these small arrays.
 
 ## Install and run
+
+Two playgrounds, both editable Kotlin in one box:
+
+| transcript | what it does |
+| --- | --- |
+| `kratos_thermal_playground` | conduction inside a cuboid assembly; sliders preview automatically |
+| `kratos_flow_playground` | flow past a sphere-and-rod obstacle; streamlines and a wake slice, solved on a button |
+
+```bash
+uv run --project . --group backdoor python tools/field_backdoor.py --json --with-playwright --port 9692 --timeout 500 \
+  --command 'macro write kratos_flow_playground --file dev_docs/agents/transcripts/kratos_flow_playground.yaml' \
+  --command 'macro run kratos_flow_playground' \
+  --command 'launch kratos_flow' \
+  --command 'wait-output kratos_flow --contains data-background --timeout 420' \
+  --command 'screenshot-box kratos_flow /tmp/flow.png --padding 16'
+```
 
 For an interactive frontend demo, open **kratos_thermal_playground** from Field's starting points,
 select **Kratos thermal playground** and launch it (Alt-R). Drag the four sliders to resize the
@@ -40,6 +62,46 @@ The editable source is [the OperationTranscript](../../dev_docs/agents/transcrip
 It can also be installed in the current document with `macro write kratos_thermal_playground --file
 dev_docs/agents/transcripts/kratos_thermal_playground.yaml` followed by `macro run kratos_thermal_playground`.
 The standalone [cuboids.kt](examples/cuboids.kt) remains the automated two-edit example.
+
+### On a machine with no Kratos wheels — every macOS one
+
+Kratos publishes `manylinux_2_28_x86_64` and `win_amd64` wheels and nothing else. There is no
+macOS wheel for either architecture, so on an Apple Silicon checkout the command above fails
+during resolution and there is nothing to point `AFIELD_KRATOS_PYTHON` at:
+
+```
+error: Distribution `kratosconvectiondiffusionapplication==10.4.0` can't be installed because it
+doesn't have a source distribution or wheel for the current platform
+```
+
+Run the worker in a container instead. Same `pyproject.toml`, same `uv.lock`, same Kratos build:
+
+```bash
+podman machine start                                     # once, on macOS
+podman build --platform linux/amd64 -t field-kratos:10.4.0 optional/kratos
+uv run --project . --group backdoor python tools/run_field_tests.py --id kratos.embedded.thermal --port 9677
+```
+
+`KratosConfig.container()` selects it explicitly; `Kratos.probeAny()` tries the local venv first
+and falls back to the container, which is what the smoke test and the examples call so that one
+source runs on either machine. `AFIELD_KRATOS_LAUNCH=local|container` pins the choice, and
+`AFIELD_KRATOS_IMAGE` / `AFIELD_KRATOS_RUNTIME` / `AFIELD_KRATOS_PLATFORM` name a different image,
+`docker` instead of `podman`, or no `--platform` flag on an x86-64 Linux host.
+
+Two things are different in this mode and both are in `KratosLaunch`'s KDoc. **The socket runs the
+other way**: a container's network namespace cannot reach the host's loopback interface, so the
+worker binds inside the container (`worker.py --listen`), the runtime publishes that port to the
+host's `127.0.0.1`, and Field dials in rather than being dialled back. The token is still the first
+thing checked. And **every instruction is emulated** on arm64: the same solve that takes 78 ms of
+model update natively takes about 1.3 s here. Component ratios still hold; absolute numbers from
+this mode are not comparable with `VERIFICATION.md`'s.
+
+The image carries the Python environment only. `optional/kratos/python` is bind-mounted read-only,
+so editing `worker.py` or `thermal.py` does not mean rebuilding.
+
+`KratosLaunch.Attach(host, port, token)` covers the third case — a worker already running
+somewhere else, over an SSH tunnel to a Linux box, or under a debugger. Field owns no process
+then and closing the session leaves the worker up.
 
 Reference: Linux x86_64, glibc ≥2.28, CPython 3.12.13, Kratos core and
 ConvectionDiffusionApplication 10.4.0, NumPy 2.2.6, MessagePack 1.1.1.
@@ -103,8 +165,70 @@ experiment.withLatest { result ->
 // finally: experiment.close()
 ```
 
-`SimulationBox` and `SimulationCSG` retain primitive IDs and evaluate analytic
-constructive distances in the worker. `surface()` uses the **existing**
+### Formulation is a plugin
+
+The worker's physics lives in `python/formulations/`, and everything under it is
+formulation-blind: `python/background.py` owns the tetrahedral grid and the geometry
+classification, and the framing, envelope, revision gate, binary arrays and launch own themselves.
+A formulation supplies a name, the Kratos applications it needs, the element it puts on the
+background tetrahedra, its nodal variables and DOFs, and one `solve`. Adding one is a subclass and
+a line in `formulations/__init__.py`.
+
+`hello` reports the whole registry, not just what imported: `formulations` gives
+`{available, summary, element, applications, maxResolution, missing}` per entry, with the import
+error for each missing module. A worker with ConvectionDiffusion but no FluidDynamics reports
+itself available and says which physics it is short of, rather than reporting itself broken.
+
+`KratosSession.openAsync(..., formulation = …)` chooses; `SimulationParameters` is the Kotlin side
+of the same idea and `ThermalParameters` is its one implementation. A session runs exactly one
+formulation and rejects parameters for another, because the background ModelPart carries that
+formulation's element type.
+
+### The two formulations
+
+| | `thermal.stationary` | `flow.embedded` |
+| --- | --- | --- |
+| element | `EmbeddedLaplacianElement3D4N` | `EmbeddedWeaklyCompressibleNavierStokes3D4N` |
+| application | ConvectionDiffusion | FluidDynamics + LinearSolvers |
+| solved region | **inside** the authored solid | **outside** it — the solid is an obstacle |
+| unknowns per node | 1 | 4 (velocity, pressure) |
+| in time | stationary | transient, BDF2 inside the element |
+| algebra | one linear solve, Skyline LU | Newton–Raphson per step, sparse LU |
+| small cuts | epsilon plus the Nitsche penalty | `DistanceModificationProcess`, in C++ |
+| resolution ceiling | 32 | 20 |
+| a solve costs | milliseconds | seconds |
+
+The reversed region is the thing to know. Kratos wants positive `DISTANCE` on the side it solves,
+so conduction and flow ask for opposite signs from the *same* `SimulationGeometry`; `solve_region`
+on the formulation decides it once and no caller negates anything.
+
+`FlowParameters` is transient and marches `steps` steps from a uniform free stream, so one request
+costs roughly `steps × Newton iterations` linear solves. It is a committed solve, not a
+slider-drag preview, and the playground gives it a button rather than a debounce.
+
+The flow element is the maintained one. The legacy `EmbeddedNavierStokes` zeroes the velocity rows
+of negative nodes and leans on the penalty for a diagonal, which left this configuration
+structurally singular on the first Newton step; upstream's own solver already calls the
+weakly-compressible element its successor.
+
+`SimulationResult` is one class for both, because the worker *describes* its result rather than
+the Kotlin type declaring it: a `fields` list says which arrays exist, whether each is nodal or
+per-cell, and how many components it has. `ThermalResult` and `FlowResult` are aliases for it.
+`named`/`sample`/`sampleVector` are the general accessors; `temperature`, `pressure`, `velocity`
+and `speed` are conveniences that fail naming the fields that *are* present.
+`streamlines` integrates a vector field with midpoint RK2 and returns `FLine`s, which
+`tubeMesh` turns into geometry that `surfaceMesh(mesh, "velocity")` colours by speed.
+
+### Geometry
+
+`SimulationBox`, `SimulationSphere`, `SimulationCylinder` (capped, any axis), `SimulationCSG`
+(pairwise) and `SimulationGroup` (n-ary) retain primitive IDs and evaluate analytic
+constructive distances in the worker.
+
+A primitive's tessellation is display only. `SimulationSphere(..., segments = 8)` and
+`segments = 256` classify identically, because the worker evaluates the exact distance and never
+sees a triangle — which is the reason to keep a primitive symbolic instead of shipping its skin.
+`ManifoldGeometry` is the other path and does ship a skin, evaluated through Field's BVH. `surface()` uses the **existing**
 `Solid.cube`, transforms, Boolean operations and `Solid.toTriMesh`, closing
 intermediates. `ManifoldGeometry(id, solid)` snapshots that existing conversion
 and reuses `TriMesh.bvh().signedDistance` on the Field executor. The caller still

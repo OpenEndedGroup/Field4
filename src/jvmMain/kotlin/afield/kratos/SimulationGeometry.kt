@@ -38,6 +38,69 @@ data class SimulationBox(override val id: String, val bounds: SimulationBounds) 
     }
 }
 
+/**
+ * A ball, as an exact distance and as a Manifold solid.
+ *
+ * `segments` is the Manifold tessellation only. The worker never sees it: the analytic distance is
+ * the true sphere, so refining the display surface does not change a single node's classification.
+ * That asymmetry is the point of keeping a primitive symbolic rather than shipping its triangles.
+ */
+data class SimulationSphere(override val id: String, val x: Double, val y: Double, val z: Double,
+                            val radius: Double, val segments: Int = 0) : PrimitiveGeometry {
+    init {
+        require(id.isNotBlank())
+        require(listOf(x, y, z, radius).all(Double::isFinite) && radius > 0) { "sphere needs a finite positive radius" }
+    }
+    override fun expression(): Map<String, Any?> =
+        mapOf("id" to id, "op" to "sphere", "centre" to listOf(x, y, z), "radius" to radius)
+    override fun solid(): Solid = Solid.sphere(radius, segments).use { it.translated(x, y, z) }
+}
+
+/**
+ * A capped cylinder between two points, at any orientation.
+ *
+ * Manifold builds cylinders along +Z, so the solid is one built at the origin and pushed through a
+ * 3x4 affine whose third column is the axis direction. The two columns across it are an arbitrary
+ * orthonormal pair — a cylinder is rotationally symmetric, so which pair does not matter, and
+ * choosing them without a branch avoids the degenerate case where the axis is parallel to whatever
+ * reference vector a naive cross product picked.
+ */
+data class SimulationCylinder(override val id: String,
+                              val ax: Double, val ay: Double, val az: Double,
+                              val bx: Double, val by: Double, val bz: Double,
+                              val radius: Double, val segments: Int = 0) : PrimitiveGeometry {
+    init {
+        require(id.isNotBlank())
+        require(listOf(ax, ay, az, bx, by, bz, radius).all(Double::isFinite) && radius > 0) {
+            "cylinder needs finite endpoints and a positive radius"
+        }
+        require(axisLength() > 0) { "cylinder endpoints must differ" }
+    }
+
+    private fun axisLength(): Double = kotlin.math.sqrt(
+        (bx - ax) * (bx - ax) + (by - ay) * (by - ay) + (bz - az) * (bz - az))
+
+    override fun expression(): Map<String, Any?> = mapOf(
+        "id" to id, "op" to "cylinder", "a" to listOf(ax, ay, az), "b" to listOf(bx, by, bz), "radius" to radius)
+
+    override fun solid(): Solid {
+        val h = axisLength()
+        val (dx, dy, dz) = Triple((bx - ax) / h, (by - ay) / h, (bz - az) / h)
+        // Duff et al's branchless orthonormal basis around (dx, dy, dz).
+        val sign = if (dz >= 0.0) 1.0 else -1.0
+        val a = -1.0 / (sign + dz)
+        val b = dx * dy * a
+        return Solid.cylinder(h, radius, radius, segments).use {
+            it.transformed(
+                1.0 + sign * dx * dx * a, sign * b, -sign * dx,
+                b, sign + dy * dy * a, -dy,
+                dx, dy, dz,
+                ax, ay, az,
+            )
+        }
+    }
+}
+
 enum class SimulationBoolean { UNION, DIFFERENCE, INTERSECTION }
 data class SimulationCSG(override val id: String, val a: PrimitiveGeometry, val b: PrimitiveGeometry,
                          val operation: SimulationBoolean = SimulationBoolean.UNION) : PrimitiveGeometry {
@@ -46,6 +109,38 @@ data class SimulationCSG(override val id: String, val a: PrimitiveGeometry, val 
     override fun solid(): Solid = a.solid().use { left -> b.solid().use { right ->
         when (operation) { SimulationBoolean.UNION -> left + right; SimulationBoolean.DIFFERENCE -> left - right; SimulationBoolean.INTERSECTION -> left and right }
     } }
+}
+
+/**
+ * The n-ary spelling of [SimulationCSG]: one operation over any number of operands.
+ *
+ * Worth preferring over nested pairs for a union of many parts, for the same reason
+ * `Solid.union(list)` beats folding `+`: Manifold plans the whole batch instead of nesting *n−1*
+ * operations, and on the worker side one `np.maximum.reduce` replaces a recursion. `DIFFERENCE`
+ * reads as the first operand minus every other one.
+ */
+data class SimulationGroup(override val id: String, val operation: SimulationBoolean,
+                           val children: List<PrimitiveGeometry>) : PrimitiveGeometry {
+    init {
+        require(id.isNotBlank())
+        require(children.size >= 2) { "$operation needs at least two operands, got ${children.size}" }
+        val duplicates = children.groupBy { it.id }.filterValues { it.size > 1 }.keys
+        require(duplicates.isEmpty()) { "operand ids must be distinct for stable identity: $duplicates" }
+    }
+    override fun expression(): Map<String, Any?> =
+        mapOf("id" to id, "op" to operation.name.lowercase(), "children" to children.map { it.expression() })
+    override fun solid(): Solid {
+        val solids = children.map { it.solid() }
+        try {
+            return when (operation) {
+                SimulationBoolean.UNION -> Solid.union(solids)
+                SimulationBoolean.INTERSECTION -> Solid.intersection(solids)
+                SimulationBoolean.DIFFERENCE -> Solid.difference(solids)
+            }
+        } finally {
+            solids.forEach { it.close() }
+        }
+    }
 }
 
 /**
@@ -68,9 +163,21 @@ class ManifoldGeometry(override val id: String, solid: Solid) : SimulationGeomet
     }
 }
 
-/** Read-only by convention: positions/cells are retained once and shared with result revisions. */
+/**
+ * The discretisation a session solves on, however it was made.
+ *
+ * Two kinds, and [resolution] tells them apart. A **structured** domain (`resolution > 0`) is the
+ * Freudenthal grid the worker builds from bounds; its regularity is what makes barycentric
+ * sampling a closed-form index calculation, and what lets an embedded formulation reclassify
+ * without remeshing. An **unstructured** domain (`resolution == 0`) is a body-fitted tetrahedral
+ * mesh Field produced with TetGen and sent; it has no (i, j, k), so point sampling and slicing
+ * are unavailable on it and [SimulationResult.boundaryMesh] is the view to use instead.
+ */
 class BackgroundDomain private constructor(val id: String, val bounds: SimulationBounds, val resolution: Int,
                                           val positions: DoubleArray, val cells: IntArray, val buildMs: Double) {
+
+    /** True when this is a structured grid and so can be sampled by index. */
+    val isStructured: Boolean get() = resolution > 0
     val nodeCount: Int get() = positions.size / 3
     val cellCount: Int get() = cells.size / 4
     val buildCount: Int = 1
@@ -86,6 +193,19 @@ class BackgroundDomain private constructor(val id: String, val bounds: Simulatio
             return BackgroundDomain(payload["backgroundId"] as String, bounds, resolution,
                 arrays.doubles("positions", nodes, 3), cells, (payload["domainBuildMs"] as Number).toDouble())
         }
+
+        /**
+         * The domain for a mesh Field meshed itself and sent, so nothing comes back over the wire
+         * except an id: the caller already has every coordinate.
+         */
+        fun ofSuppliedMesh(id: String, mesh: afield.tetgen.TetMesh, buildMs: Double): BackgroundDomain {
+            val p = mesh.positions
+            val bounds = SimulationBounds(
+                (0 until mesh.nodeCount).minOf { p[3 * it] }, (0 until mesh.nodeCount).minOf { p[3 * it + 1] },
+                (0 until mesh.nodeCount).minOf { p[3 * it + 2] }, (0 until mesh.nodeCount).maxOf { p[3 * it] },
+                (0 until mesh.nodeCount).maxOf { p[3 * it + 1] }, (0 until mesh.nodeCount).maxOf { p[3 * it + 2] })
+            return BackgroundDomain(id, bounds, 0, mesh.positions, mesh.cells, buildMs)
+        }
     }
 }
 
@@ -93,86 +213,7 @@ class BackgroundDomain private constructor(val id: String, val bounds: Simulatio
 data class SimulationProbe(val id: String, val x: Double, val y: Double, val z: Double) {
     init { require(id.isNotBlank() && listOf(x,y,z).all(Double::isFinite)) }
 }
-data class SimulationProbeSample(val probeId: String, val revision: SimulationRevision, val temperature: Double?)
-
-/** Authoritative raw field, plus derived views which reuse Field's existing mesh graphics. */
-class ThermalResult private constructor(val domain: BackgroundDomain, val revision: SimulationRevision,
-                                       val temperature: DoubleArray, val distance: DoubleArray, val cellState: IntArray,
-                                       val diagnostics: Map<String, Any?>) {
-    fun sample(probe: SimulationProbe): SimulationProbeSample = SimulationProbeSample(probe.id, revision, sample(probe.x,probe.y,probe.z))
-
-    /** Linear interpolation in the *same six-tetrahedra subdivision*, not trilinear hexahedral interpolation. */
-    fun sample(x: Double, y: Double, z: Double): Double? = weights(x,y,z)?.let { (ids, w) ->
-        if (ids.none { distance[it] > 0 }) null else ids.indices.sumOf { temperature[ids[it]] * w[it] }
-    }
-
-    private fun weights(x: Double, y: Double, z: Double): Pair<IntArray, DoubleArray>? {
-        val b = domain.bounds
-        val coord = doubleArrayOf((x-b.minX)/(b.maxX-b.minX), (y-b.minY)/(b.maxY-b.minY), (z-b.minZ)/(b.maxZ-b.minZ))
-        if (coord.any { !it.isFinite() || it < 0 || it > 1 }) return null
-        val base = IntArray(3) { floor(coord[it]*domain.resolution).toInt().coerceAtMost(domain.resolution-1) }
-        val frac = DoubleArray(3) { coord[it]*domain.resolution-base[it] }
-        val order = (0..2).sortedByDescending { frac[it] }
-        val ids = IntArray(4)
-        ids[0] = domain.index(base[0],base[1],base[2])
-        for (i in 0..2) { base[order[i]]++; ids[i+1] = domain.index(base[0],base[1],base[2]) }
-        val weights = doubleArrayOf(1-frac[order[0]], frac[order[0]]-frac[order[1]], frac[order[1]]-frac[order[2]], frac[order[2]])
-        return ids to weights
-    }
-
-    private fun color(value: Double?): FloatArray {
-        if (value == null) return floatArrayOf(.35f,.35f,.35f)
-        val lo = (diagnostics["temperatureMin"] as Number).toDouble()
-        val hi = (diagnostics["temperatureMax"] as Number).toDouble()
-        val t = ((value-lo)/(hi-lo).coerceAtLeast(1e-15)).coerceIn(0.0,1.0).toFloat()
-        return floatArrayOf(t, .25f + .4f*(1-abs(2*t-1)), 1-t)
-    }
-
-    /** Grey vertices have no active background support. Skin sampling is a view, not the raw field. */
-    fun surfaceMesh(skin: TriMesh): TriMesh {
-        val colors = FloatArray(skin.positions.size)
-        for (i in 0 until skin.vertexCount) {
-            val p = skin.positions
-            color(sample(p[i*3].toDouble(),p[i*3+1].toDouble(),p[i*3+2].toDouble())).copyInto(colors, i*3)
-        }
-        return skin.withColors(colors)
-    }
-
-    /** Interior XY slice, cropped by the interpolated distance. Partial edge triangles are omitted. */
-    fun sliceMesh(z: Double = (domain.bounds.minZ+domain.bounds.maxZ)/2, samples: Int = 64): TriMesh {
-        require(samples in 2..256)
-        val n = samples+1
-        val positions = FloatArray(n*n*3)
-        val colors = FloatArray(n*n*3)
-        val inside = BooleanArray(n*n)
-        val b = domain.bounds
-        for (x in 0..samples) for (y in 0..samples) {
-            val index = x*n+y
-            val px = b.minX+(b.maxX-b.minX)*x/samples
-            val py = b.minY+(b.maxY-b.minY)*y/samples
-            positions[3*index]=px.toFloat(); positions[3*index+1]=py.toFloat(); positions[3*index+2]=z.toFloat()
-            val weights = weights(px,py,z)
-            inside[index] = weights?.let { (ids,w) -> ids.indices.sumOf { distance[ids[it]]*w[it] } > 0 } == true
-            color(sample(px,py,z)).copyInto(colors,index*3)
-        }
-        val indices = ArrayList<Int>()
-        fun triangle(a: Int,b: Int,c: Int) { if (inside[a] && inside[b] && inside[c]) { indices.add(a);indices.add(b);indices.add(c) } }
-        for (x in 0 until samples) for (y in 0 until samples) {
-            val i = x*n+y
-            triangle(i,i+n,i+n+1); triangle(i,i+n+1,i+1)
-        }
-        return TriMesh(positions,indices.toIntArray(),colors=colors)
-    }
-
-    internal companion object {
-        fun decode(domain: BackgroundDomain, revision: SimulationRevision, payload: Map<String, Any?>, geometryMs: Double, roundTripMs: Double, writeMs: Double = 0.0, readMs: Double = 0.0): ThermalResult {
-            val diagnostics = payload["diagnostics"].fieldMap()
-            require(diagnostics["backgroundId"] == domain.id && diagnostics.number("buildCount") == 1L) { "Worker rebuilt or replaced the background domain" }
-            val arrays = KratosArrays(payload)
-            val state = arrays.ints("cellState",domain.cellCount)
-            require(state.all { it in 0..2 })
-            return ThermalResult(domain,revision,arrays.doubles("temperature",domain.nodeCount),arrays.doubles("distance",domain.nodeCount),state,
-                diagnostics + mapOf("fieldGeometryEvaluationMs" to geometryMs, "roundTripMs" to roundTripMs, "geometryTransferMs" to writeMs, "resultTransferMs" to readMs))
-        }
-    }
+data class SimulationProbeSample(val probeId: String, val revision: SimulationRevision, val value: Double?) {
+    /** The schema-1 name, when the field being probed is a temperature. */
+    val temperature: Double? get() = value
 }

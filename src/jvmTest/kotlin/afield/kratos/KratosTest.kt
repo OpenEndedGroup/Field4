@@ -21,7 +21,36 @@ class KratosTest {
     @Test fun missingWorkerIsCapabilityNotStartupFailure() {
         val report = Kratos.probe(KratosConfig(python = "/no-such-field-kratos-python")).get(5, TimeUnit.SECONDS)
         assertFalse(report.available)
-        assertTrue(report.message.contains("AFIELD_KRATOS_PYTHON"))
+        // The guidance has to name a route that exists on the machine reading it. "Run uv sync" is
+        // the wrong answer on macOS, where Kratos publishes no wheel and that command cannot
+        // succeed; there the only route is the container.
+        val macOs = System.getProperty("os.name").lowercase().let { it.contains("mac") || it.contains("darwin") }
+        assertTrue(report.message.contains(if (macOs) "KratosConfig.container()" else "AFIELD_KRATOS_PYTHON"))
+        assertTrue(report.message.contains("optional/kratos"))
+    }
+
+    @Test fun containerGuidanceNamesTheBuildRatherThanAnInstall() {
+        val config = KratosConfig(launch = KratosLaunch.Container(
+            image = "field-kratos:no-such-tag", runtime = "no-such-container-runtime"))
+        val message = Kratos.howToInstall(config)
+        assertTrue(message.contains("no-such-container-runtime"), message)
+        assertTrue(message.contains("build --platform linux/amd64"), message)
+    }
+
+    @Test fun attachGuidanceNamesThePortItWouldDial() {
+        val message = Kratos.howToInstall(KratosConfig(
+            launch = KratosLaunch.Attach(port = 45123, token = "t")))
+        assertTrue(message.contains("45123"), message)
+        assertTrue(message.contains("--listen"), message)
+    }
+
+    @Test fun attachingToNothingIsACapabilityNotACrash() {
+        val report = Kratos.probe(KratosConfig(
+            startupTimeoutMs = 500,
+            launch = KratosLaunch.Attach(port = 1, token = "t"),
+        )).get(10, TimeUnit.SECONDS)
+        assertFalse(report.available)
+        assertTrue(report.message.contains("--listen"), report.message)
     }
 
     @Test fun binaryShapeDtypeAndRangeAreChecked() {
@@ -46,10 +75,108 @@ class KratosTest {
         assertFails { readKratosFrame(DataInputStream(ByteArrayInputStream(invalid))) }
     }
 
+    @Test fun flowAndThermalParametersAreNotInterchangeable() {
+        assertEquals("thermal.stationary", ThermalParameters().formulation)
+        assertEquals("flow.embedded", FlowParameters().formulation)
+        // The wire keys are the formulation's own Python signature, not a shared vocabulary.
+        assertEquals(setOf("conductivity", "source", "boundary_value", "penalty"),
+            ThermalParameters().wire().keys)
+        assertEquals(setOf("velocity", "density", "viscosity", "steps", "time_step", "penalty",
+            "max_iterations"), FlowParameters().wire().keys)
+        assertEquals("temperature", ThermalParameters().regions("b")["output"])
+        assertEquals("velocity", FlowParameters().regions("b")["output"])
+    }
+
+    @Test fun flowParametersRefuseAnUnsolvableModel() {
+        assertFails { FlowParameters(viscosity = 0.0) }
+        assertFails { FlowParameters(density = -1.0) }
+        assertFails { FlowParameters(timeStep = 0.0) }
+        assertFails { FlowParameters(steps = 0) }
+        assertFails { FlowParameters(steps = 500) }
+        assertFails { FlowParameters(penalty = 0.0) }
+        assertFails { FlowParameters(velocity = Double.NaN) }
+        // Reynolds is on a length the caller supplies, because the obstacle's size is not
+        // something these parameters know.
+        assertEquals(20.0, FlowParameters(velocity = 1.0, density = 1.0, viscosity = 0.05).reynolds(1.0), 1e-12)
+    }
+
+    @Test fun primitiveExpressionsAreTheShapeTheWorkerParses() {
+        assertEquals(
+            mapOf("id" to "ball", "op" to "sphere", "centre" to listOf(1.0, 2.0, 3.0), "radius" to 0.5),
+            SimulationSphere("ball", 1.0, 2.0, 3.0, 0.5).expression())
+        assertEquals(
+            mapOf("id" to "rod", "op" to "cylinder", "a" to listOf(0.0, 0.0, 0.0),
+                "b" to listOf(0.0, 0.0, 2.0), "radius" to 0.25),
+            SimulationCylinder("rod", 0.0, 0.0, 0.0, 0.0, 0.0, 2.0, 0.25).expression())
+        val group = SimulationGroup("all", SimulationBoolean.UNION, listOf(
+            SimulationBox("a", SimulationBounds(0.0, 0.0, 0.0, 1.0, 1.0, 1.0)),
+            SimulationSphere("b", 0.0, 0.0, 0.0, 1.0)))
+        assertEquals("union", group.expression()["op"])
+        assertEquals(listOf("a", "b"), (group.expression()["children"] as List<*>).map { (it as Map<*, *>)["id"] })
+    }
+
+    @Test fun primitivesRefuseTheDegenerateCasesRatherThanEmittingThem() {
+        assertFails { SimulationSphere("s", 0.0, 0.0, 0.0, 0.0) }
+        assertFails { SimulationSphere("", 0.0, 0.0, 0.0, 1.0) }
+        // Coincident endpoints have no axis to build a basis from.
+        assertFails { SimulationCylinder("c", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0) }
+        assertFails { SimulationCylinder("c", 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, -1.0) }
+        val box = SimulationBox("a", SimulationBounds(0.0, 0.0, 0.0, 1.0, 1.0, 1.0))
+        assertFails { SimulationGroup("g", SimulationBoolean.UNION, listOf(box)) }
+        // Two operands sharing an id would make a selection ambiguous after an edit.
+        assertFails { SimulationGroup("g", SimulationBoolean.UNION, listOf(box, box)) }
+    }
+
+    @Test fun anOffAxisCylinderLandsWhereItsEndpointsSay() {
+        if (!ManifoldLibrary.isAvailable) { println("SKIPPED: ${ManifoldLibrary.describe()}"); return }
+        // The affine basis is the only part of the cylinder that can be silently wrong: a bad one
+        // still produces a closed solid, of the right volume, in the wrong place.
+        val radius = 0.2
+        val cylinder = SimulationCylinder("rod", -1.0, 0.0, 0.0, 1.0, 1.0, 1.0, radius, segments = 64)
+        val mesh = cylinder.surface()
+        val lows = DoubleArray(3) { c -> (0 until mesh.positions.size / 3).minOf { mesh.positions[3 * it + c] }.toDouble() }
+        val highs = DoubleArray(3) { c -> (0 until mesh.positions.size / 3).maxOf { mesh.positions[3 * it + c] }.toDouble() }
+        val axis = doubleArrayOf(2.0, 1.0, 1.0)
+        val length = kotlin.math.sqrt(axis.sumOf { it * it })
+        val ends = listOf(doubleArrayOf(-1.0, 0.0, 0.0), doubleArrayOf(1.0, 1.0, 1.0))
+        for (component in 0 until 3) {
+            val direction = axis[component] / length
+            // A capped cylinder reaches r*sqrt(1-d^2) past its end caps on each axis.
+            val overhang = radius * kotlin.math.sqrt((1.0 - direction * direction).coerceAtLeast(0.0))
+            val low = ends.minOf { it[component] } - overhang
+            val high = ends.maxOf { it[component] } + overhang
+            val actualLow = lows[component]
+            val actualHigh = highs[component]
+            // Inscribed tessellation undershoots the true radius, never overshoots it.
+            assertTrue(actualLow >= low - 1e-9 && actualLow <= low + 0.02,
+                "axis $component low: expected ~$low, got $actualLow")
+            assertTrue(actualHigh <= high + 1e-9 && actualHigh >= high - 0.02,
+                "axis $component high: expected ~$high, got $actualHigh")
+        }
+        // And it is a real solid, not a sheared one: volume within tessellation error of pi r^2 h.
+        val expected = Math.PI * radius * radius * length
+        val volume = cylinder.solid().use { it.checked().volume }
+        assertTrue(kotlin.math.abs(volume - expected) / expected < 0.01, "volume $volume vs $expected")
+    }
+
+    /**
+     * The local-process worker, or null with a reason.
+     *
+     * Deliberately not [KratosConfig.candidates]: the tests below substitute a fault script for
+     * `worker.py` and read the child process's argv, both of which describe
+     * [KratosLaunch.LocalProcess] specifically. Pointed at a container they would pass while
+     * testing something else. The container transport is covered end to end by the
+     * `kratos.embedded.thermal` catalog smoke, which goes through [Kratos.probeAny].
+     */
     private fun configured(): KratosConfig? {
         val config = KratosConfig()
         if (!Files.isExecutable(Path.of(config.python))) {
-            println("SKIPPED optional Kratos runtime tests: uv sync --project optional/kratos")
+            println(
+                "SKIPPED optional Kratos local-worker tests: no interpreter at ${config.python}. " +
+                    "On Linux/Windows: uv sync --project optional/kratos --frozen. On macOS there is " +
+                    "no Kratos wheel to install, so these stay skipped and the container transport is " +
+                    "covered by `run_field_tests.py --id kratos.embedded.thermal`."
+            )
             return null
         }
         return config

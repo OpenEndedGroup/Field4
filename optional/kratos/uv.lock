@@ -8,7 +8,11 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "kratosconvectiondiffusionapplication" },
+    { name = "kratosfluiddynamicsapplication" },
+    { name = "kratoslinearsolversapplication" },
+    { name = "kratosmeshingapplication" },
     { name = "kratosmultiphysics" },
+    { name = "kratosstructuralmechanicsapplication" },
     { name = "msgpack" },
     { name = "numpy" },
 ]
@@ -16,7 +20,11 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "kratosconvectiondiffusionapplication", specifier = "==10.4.0" },
+    { name = "kratosfluiddynamicsapplication", specifier = "==10.4.0" },
+    { name = "kratoslinearsolversapplication", specifier = "==10.4.0" },
+    { name = "kratosmeshingapplication", specifier = "==10.4.0" },
     { name = "kratosmultiphysics", specifier = "==10.4.0" },
+    { name = "kratosstructuralmechanicsapplication", specifier = "==10.4.0" },
     { name = "msgpack", specifier = "==1.1.1" },
     { name = "numpy", specifier = "==2.2.6" },
 ]
@@ -34,6 +42,43 @@ wheels = [
 ]
 
 [[package]]
+name = "kratosfluiddynamicsapplication"
+version = "10.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "kratoslinearsolversapplication" },
+    { name = "kratosmultiphysics" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ee/1b/8d0db64de64d5a59f127c28e0ce5591802cfe266c5ceb42f76c7f0d41de3/kratosfluiddynamicsapplication-10.4.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:9750942432e95d9424a89ab79f0998ce0fbd3ef197afb86da242ec2b7665a901", size = 13598994, upload-time = "2025-12-05T13:25:58.009Z" },
+    { url = "https://files.pythonhosted.org/packages/8f/f6/17b43ff3ca0fee1121a4ae2274715d773990b110dfd53876fd2c0eabcc9a/kratosfluiddynamicsapplication-10.4.0-cp312-cp312-win_amd64.whl", hash = "sha256:9b0232524198abc31b01566f76a67c13e8b9ee5277afa220a0daf897cdcd7801", size = 4617472, upload-time = "2025-12-05T15:25:27.226Z" },
+]
+
+[[package]]
+name = "kratoslinearsolversapplication"
+version = "10.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "kratosmultiphysics" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a1/68/a442e52daf6b9e70a95ca8a6c16fdc42000b92c3a71fda603bb320d2e440/kratoslinearsolversapplication-10.4.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:86afbbbd9cdf51d65018599607eb9c37405157c586edcd72dd08b031aae04a7a", size = 2795146, upload-time = "2025-12-05T13:27:22.073Z" },
+    { url = "https://files.pythonhosted.org/packages/05/cb/d47651dba67086c2b6ff2d634df4defa389288c89a88a8798575bde63064/kratoslinearsolversapplication-10.4.0-cp312-cp312-win_amd64.whl", hash = "sha256:a377cc2dfe84aeffdbe8c00aca642f0a1af7d6d8199247f83884f3536c34bf96", size = 908623, upload-time = "2025-12-05T15:26:03.507Z" },
+]
+
+[[package]]
+name = "kratosmeshingapplication"
+version = "10.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "kratosmultiphysics" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/af/f1/6a0b08468ac1370b0b8a74a709cabe07c7bd075046e788808e8db7fdc860/kratosmeshingapplication-10.4.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:1fd3d1e56b3200261d2d43eeb0f96de39f60c2704c775220712fcb9d9e054a01", size = 7564184, upload-time = "2025-12-05T13:29:18.269Z" },
+    { url = "https://files.pythonhosted.org/packages/49/6c/0f2279550433c0436f262d91ee29d6ae62e0dd726ddf8bcea0f9d736c16e/kratosmeshingapplication-10.4.0-cp312-cp312-win_amd64.whl", hash = "sha256:94e5f006467faade45bef616a0a9fcf96d53351993cc62e4d9fe01b0429b2ea5", size = 1187827, upload-time = "2025-12-05T15:26:30.799Z" },
+]
+
+[[package]]
 name = "kratosmultiphysics"
 version = "10.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -43,6 +88,19 @@ dependencies = [
 wheels = [
     { url = "https://files.pythonhosted.org/packages/95/73/bf7156b68c1c7ba00b8e4eb20976e202ebbd34c6cb6b83333f8e6fcddaf6/kratosmultiphysics-10.4.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:911d9227141100e0ccb11c297fc00b6590a4c29211d545d1eacaff4bd0fa2b74", size = 31739712, upload-time = "2025-12-05T13:30:57.405Z" },
     { url = "https://files.pythonhosted.org/packages/73/f8/32de6581b572f48cb8a94a7c9a83faad07a89154dbf9ea26fa91de18c8fe/kratosmultiphysics-10.4.0-cp312-cp312-win_amd64.whl", hash = "sha256:f0e30ad7370c20408abb75103fa1519dc60c61df00da2567d50c021b3761b6d1", size = 11473893, upload-time = "2025-12-05T15:26:59.869Z" },
+]
+
+[[package]]
+name = "kratosstructuralmechanicsapplication"
+version = "10.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "kratoslinearsolversapplication" },
+    { name = "kratosmultiphysics" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ae/af/d08dc22329e0c81706998ab6f88dd0639e1e05ef3ab93fd697da81481943/kratosstructuralmechanicsapplication-10.4.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:d32c3c90cd34eeb1c161a4cacc534e8441bc09db031034b085bffe462ec1c8bb", size = 8074247, upload-time = "2025-12-05T13:33:46.334Z" },
+    { url = "https://files.pythonhosted.org/packages/7c/d4/22abe21a48d6b14b7c9c01d5f1fd9e520a6b9c1436f798cd4c58d96d2f75/kratosstructuralmechanicsapplication-10.4.0-cp312-cp312-win_amd64.whl", hash = "sha256:6c6354902be8255bdd42c7bbd9cb0ee03dda26faac93c83480b4d16e8a4d7fe1", size = 3549173, upload-time = "2025-12-05T15:28:12.403Z" },
 ]
 
 [[package]]

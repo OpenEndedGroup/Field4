@@ -38,13 +38,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 88 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 89 transcripts on every build, at three
 depths. 59 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-22 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+23 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -933,6 +933,19 @@ Install the worker first with `uv sync --project optional/kratos --frozen` from 
 Requires Manifold. Each slice uses its own colour range; numerical temperature differences are
 reported alongside it. The controls also appear on `/controllers`.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/kratos_thermal_playground/metadata.edn)
+
+**kratos_flow_playground** — Incompressible flow past a sphere-and-rod obstacle, on the same fixed
+background grid and the same optional worker as the thermal playground. Dragging the radius reshapes
+the body immediately, because that part is Manifold alone; solving is a button, because one request
+marches three Newton steps and costs seconds rather than milliseconds. The result comes back as a
+velocity field, which the box integrates into streamlines and draws as tubes coloured by speed,
+beside a mid-plane slice of the wake. At the default settings 729 nodes and 3072 tetrahedra carry a
+Reynolds number of 12 and a speed range of 0.175 to 1.454 m/s: the maximum is the flow accelerating
+around the obstacle, and potential flow around a sphere gives exactly 1.5, which is the quickest way
+to see that the answer is a flow and not a plausible picture. Install the worker first with
+`uv sync --project optional/kratos --frozen`, or build its container where Kratos has no wheels.
+Requires Manifold.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/kratos_flow_playground/metadata.edn)
 
 **audio_render_analysis** — Start with music written in Field rather than an imported recording.
 Four explicit live-coding boxes render Pat/Dirt, Dough and Faust or record Sonic Pi, write a finite

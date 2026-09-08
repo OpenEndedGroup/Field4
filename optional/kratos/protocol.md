@@ -2,9 +2,31 @@
 
 One authenticated loopback TCP connection and one session per owned Python
 process. Every frame is a 4-byte unsigned big-endian payload length followed by
-one MessagePack map; maximum 64 MiB. The parent binds an ephemeral port, passes
-the port as argv and the random token through `FIELD_KRATOS_TOKEN`. The first
-request must carry that token. Nothing listens on a non-loopback interface.
+one MessagePack map; maximum 64 MiB. The first request must carry the random
+token passed through `FIELD_KRATOS_TOKEN`. Nothing listens on a non-loopback
+interface of the host.
+
+## Which end binds
+
+Two directions, one frame stream. Everything below this section is identical in both.
+
+| | who listens | who dials | argv |
+| --- | --- | --- | --- |
+| local process | Field, ephemeral 127.0.0.1 port | the worker | `worker.py --port N` |
+| container | the worker, inside its namespace | Field, on the published port | `worker.py --listen N` |
+
+The dial-back direction is the default and is what `VERIFICATION.md` measured. It cannot be used
+for a container: a container's network namespace does not include the host's loopback interface,
+and on macOS there is a virtual machine in between as well. So a container worker binds `0.0.0.0`
+*inside the container*, the runtime publishes that one port to the host's `127.0.0.1`, and Field
+dials in. The host's exposure is the same loopback-only socket either way.
+
+A worker in `--listen` mode prints `field-kratos listening on <port>` to stdout immediately before
+`accept()`. Field waits for that line rather than for a successful connect, because a container
+runtime publishes a port by running a host-side proxy that **accepts from the moment `run` starts**
+— before the image is unpacked and long before anything has called `bind()`. Dialling on
+connect-success yields a socket that reads EOF on the first frame, which then presents as a
+protocol fault rather than as a race.
 
 ## Envelope on every request and reply
 
@@ -26,18 +48,44 @@ There is no compression, remote access, multiplexing or automatic retry.
 
 ## Commands implemented
 
-- `hello`: import checks, versions, platform, executable, formulation and install
+- `hello`: import checks, versions, platform, executable, formulation catalogue and install
   guidance. Can succeed at the protocol level with `data.available=false`.
+  `data.formulations` maps each registered formulation to
+  `{available, summary, element, applications, maxResolution, missing}`; `missing` carries the
+  import error per module, so a worker without `FluidDynamicsApplication` reports a feature to
+  install rather than a feature that does not exist. `data.usableFormulations` is the subset that
+  can be built and `data.defaultFormulation` is what `createBackgroundDomain` picks by default.
+  `data.available` is true when **at least one** formulation is usable.
 - `createBackgroundDomain`: `bounds=[minX,minY,minZ,maxX,maxY,maxZ]`, `resolution`
-  in 4..32. Returns background UUID, build count, build timing, and binary
-  positions/cells. A second creation in the same session is rejected.
-- `solve`: `geometry` is a nested box/union/difference/intersection expression
-  with stable IDs, **or** `distance` is a binary float64[nodeCount] block.
-  `thermal` contains conductivity, source, boundary_value, penalty. `editClass`
-  and `dirtyBounds` carry invalidation intent; the current implementation uses
-  full-grid updates/cached analytic distances. Results contain temperature,
-  distance, cellState and diagnostics. Explicit setup hooks may inspect request
-  metadata (`regions` carries solid/volume/surface/material/BC/output identities) but the reference solver only consumes the documented thermal keys.
+  in 4..`maxResolution` for the chosen formulation, optional `formulation` (default
+  `thermal.stationary`) and `formulationOptions`. Returns background UUID, build count, build
+  timing, the chosen `formulation`/`element`, a `fields` description of what `solve` will return,
+  and binary positions/cells. A second creation in the same session is rejected.
+- `solve`: `geometry` is a nested primitive/boolean expression with stable IDs, **or** `distance`
+  is a binary float64[nodeCount] block. `parameters` holds the formulation's coefficients;
+  `thermal` is the schema-1 spelling of the same thing for `thermal.stationary` and is still
+  accepted. `editClass` and `dirtyBounds` carry invalidation intent; the current implementation
+  uses full-grid updates/cached analytic distances. Diagnostics echo `formulation` and `fields`.
+  Explicit setup hooks may inspect request metadata (`regions` carries
+  solid/volume/surface/material/BC/output identities) but the reference solver only consumes the
+  documented parameter keys.
+
+## Geometry expressions
+
+Every node carries a stable nonempty `id` and an `op`. Distances are **positive inside**, which is
+Kratos's convention and the opposite of Field's — the Kotlin bridge negates on the way in.
+
+| `op` | keys | |
+| --- | --- | --- |
+| `box` | `min`, `max` | exact |
+| `sphere` | `centre`, `radius` | exact |
+| `cylinder` | `a`, `b`, `radius` | capped, any axis; exact outside, nearest-wall inside |
+| `union` / `intersection` / `difference` | `a` and `b`, **or** `children: [...]` | min/max |
+
+Booleans preserve the sign and the zero surface but are not the exact Euclidean distance to a
+Boolean result. Cut integration reads only the sign and the linear interpolation across an edge,
+so that is enough here; a narrow-band scheme would need more. `difference` with `children` is the
+first operand minus every other one. Maximum nesting depth is 32.
 - `cancel`: acknowledges cancellation. The serialized worker cannot read this
   while a native solve runs; Field's local revision gate is the authority that
   suppresses obsolete work immediately. Client `cancel()` therefore does not
@@ -75,13 +123,24 @@ indices before exposing typed values. Supported dtypes are float64 and int32.
 No boxed arrays of vertex/temperature/distance values appear in MessagePack.
 Small control vectors such as six domain bounds are ordinary MessagePack arrays.
 
-| Name | Shape | dtype | Lifetime / meaning |
-| --- | --- | --- | --- |
-| positions | [nodeCount,3] | float64 | returned once, x/y/z metres |
-| cells | [cellCount,4] | int32 | returned once, zero-based tetrahedral node indices |
-| temperature | [nodeCount] | float64 | result revision, kelvin |
-| distance | [nodeCount] | float64 | result revision, positive inside, metres |
-| cellState | [cellCount] | int32 | 0 inactive, 1 positive, 2 cut |
+Which arrays a result carries is the **formulation's** answer, not the protocol's: every reply's
+`diagnostics.fields` lists `{name, kind, components, unit}` and the client decodes exactly that.
+Adding an output to a formulation therefore needs no protocol change and no client change.
+
+| Name | Shape | dtype | Formulation | Lifetime / meaning |
+| --- | --- | --- | --- | --- |
+| positions | [nodeCount,3] | float64 | any | returned once, x/y/z metres |
+| cells | [cellCount,4] | int32 | any | returned once, zero-based tetrahedral node indices |
+| distance | [nodeCount] | float64 | any | result revision, **positive on the solved side**, metres |
+| cellState | [cellCount] | int32 | any | 0 inactive, 1 positive, 2 cut |
+| temperature | [nodeCount] | float64 | `thermal.stationary` | result revision, kelvin |
+| velocity | [nodeCount,3] | float64 | `flow.embedded` | result revision, m/s |
+| pressure | [nodeCount] | float64 | `flow.embedded` | result revision, Pa |
+
+"Positive on the solved side" is not the same as "positive inside the authored solid". Conduction
+solves inside the part and flow solves around it, so for `flow.embedded` the sign is inverted
+relative to the geometry expression. The worker does that inversion; a client sends the same
+expression either way.
 
 For resolution n, node order is x-major, then y, then z, with (n+1)³ nodes.
 Each cube is divided into six Freudenthal tetrahedra (all permutations of x/y/z),

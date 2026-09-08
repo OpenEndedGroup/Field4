@@ -23,13 +23,13 @@ with socket.create_connection(('127.0.0.1', port)) as connection:
         response = {key: request[key] for key in worker.ENVELOPE}
         worker.send(connection, {**response, 'schemaVersion': 99, 'ok': True, 'obsolete': False, 'data': {}})
     elif mode == 'delay':
-        import thermal
-        solve = thermal.ThermalDomain.solve
+        from formulations import thermal
+        solve = thermal.StationaryThermal.solve
         def delayed(self, *args, **kwargs):
             pathlib.Path(__file__).with_suffix('.started').touch()
             time.sleep(.3)
             return solve(self, *args, **kwargs)
-        thermal.ThermalDomain.solve = delayed
+        thermal.StationaryThermal.solve = delayed
         worker.serve(connection, os.environ['FIELD_KRATOS_TOKEN'])
     elif mode == 'startup':
         pathlib.Path(__file__).with_suffix('.started').touch()

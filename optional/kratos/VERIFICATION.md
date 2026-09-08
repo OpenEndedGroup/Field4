@@ -1,4 +1,192 @@
-# Embedded thermal vertical slice — verification
+# Kratos in Field — verification
+
+## Body-fitted structural, via TetGen (2026-09-08)
+
+`structural.bodyFitted` is the third formulation and the first that is not embedded, because
+Kratos has no immersed structural element. It solves a tetrahedral mesh Field produces from the
+Manifold surface with `afield.tetgen.Tetgen`, sent over the new `createBodyMesh` verb.
+`dev_docs/TETGEN.md` carries the mesher comparison that chose this route; this section records the
+solve.
+
+**Meshing**, natively on macOS, no container: a 2x3x4 cube meshes to a volume of
+`23.999999999999936` against an exact `24.0` — relative error `2.7e-15`, which is the sharp-edge
+claim measured rather than asserted. The L-bracket used in the end-to-end run meshes to 1,434 nodes
+and 5,912 tetrahedra in 67 ms, volume `0.003968000329971304` against Manifold's
+`0.003967999999999999`.
+
+**Validation** against closed-form beam theory, in the worker:
+
+| case | 10x2x2 | 20x3x3 | 30x4x4 |
+| --- | --- | --- | --- |
+| axial extension, `FL/EA` | 99.44% | 100.04% | — |
+| cantilever under self-weight, `wL⁴/8EI` | 35.6% | 62.0% | 75.9% |
+
+Axial is correct, which pins the material, the clamp, the point loads and the solver. The bending
+shortfall is the constant-strain tetrahedron locking — a property of the element, converging from
+below. It is characterised in the test suite rather than asserted away, and quadratic elements are
+the fix.
+
+**End to end from a real Field browser session** on macOS driving the container worker: an
+L-bracket clamped at the base of its post, under gravity plus 4 kN on the arm, 1,434 nodes and
+5,912 tetrahedra, 33 clamped nodes and 68 loaded. Peak displacement 0.250 mm, peak von Mises
+23.8 MPa, relative linear residual 3.3e-11. Assembly 204 ms, solve 771 ms, stress recovery 272 ms —
+all emulated. Evidence: `build/kratos-verification/structural.png` (gitignored), visually inspected;
+the stress band along the re-entrant corner is the feature the body-fitted route exists to
+reproduce.
+
+**Coverage**: 6 Kotlin TetGen tests, including a five-faced cube proving that TetGen's fatal-error
+exception is caught rather than aborting the VM; 23 Python worker tests, of which 4 are structural.
+
+Two test expectations were wrong on first writing and are worth recording, because both would have
+been easy to "fix" by loosening the wrong thing. Asserting that two identical thermal solves return
+**bit-identical** bytes fails: Kratos assembles with OpenMP atomics, so the summation order varies
+and the last ulp with it. And asserting axial extension exact to 2 decimal places fails at the
+coarse mesh at 99.44%: the total force is split equally between end-face nodes regardless of
+tributary area, which is a Saint-Venant end effect that shrinks on refinement to 100.04%.
+
+## Embedded flow, the second formulation (2026-09-08)
+
+`flow.embedded` runs `EmbeddedWeaklyCompressibleNavierStokes3D4N` on the same background grid, the
+same protocol, the same revision gate and the same transport as the thermal slice. Nothing outside
+`python/formulations/flow.py` and `FlowParameters` knew it was being added.
+
+The answer is physical, which is the claim worth making before any picture. Free stream 1.0 m/s
+past a sphere at resolution 8:
+
+```
+x=-1.00  |u|= 1.000   p= +0.998      free stream
+x=-0.62  |u|= 0.883   p= +1.300      slowing into the body
+x=-0.25  |u|= 0.130   p= +1.746      stagnation
+x=+0.50  |u|= 0.977   p= -0.709      wake
+x=+2.00  |u|= 0.995   p= +0.000      recovered, outlet
+```
+
+`speedMax` is 1.454 against the exact potential-flow value of **1.5** at a sphere's equator. All
+Newton steps converged, in 4 then 3 then 3 iterations.
+
+Two findings, both recorded because neither is guessable:
+
+- **The legacy element cannot be used.** `EmbeddedNavierStokes` zeroes the velocity rows of
+  negative nodes and leans on the penalty term for a diagonal; on this configuration the first
+  Newton step died with `THE MATRIX IS STRUCTURALLY SINGULAR ... ZERO COLUMN AT 6`. Upstream's own
+  solver already names the weakly-compressible element its successor, and that one works.
+- **Flow is not a preview.** One request marches `steps` steps of Newton–Raphson, so it costs
+  seconds where conduction costs milliseconds — 24 s for 3 steps at resolution 8 under emulation,
+  and roughly 1.5 s natively. The playground gives it a button; a debounced slider would be a lie
+  about the latency.
+
+19 Python tests pass, of which 4 are new: the reversed solved region (conduction inside the solid,
+flow around it, from one expression), the wake and the acceleration, a geometry edit that keeps the
+same `ModelPart`, and parameter validation. The wake assertion is deliberately loose — at
+resolution 6 the deficit is 11% and at resolution 8 it is 82%, so the test pins that the obstacle
+slows the flow, not by how much.
+
+### The document
+
+`dev_docs/agents/transcripts/kratos_flow_playground.yaml` is one box: four sliders, a Solve button,
+the obstacle as a Manifold surface, streamlines integrated through the returned velocity field and
+drawn as tubes coloured by speed, and a mid-plane slice coloured by speed. Captured from a real
+Field browser session on macOS, driving the container worker:
+
+```
+READY · flow.embedded · revision SimulationRevision(geometry=1, simulation=1)
+Background 14a0fa93-460a-4121-bcc6-4ff2d4fd0782 · builds 1 · 729 nodes · 3072 tetrahedra
+radius 0.30 m · 3 steps of 0.08 s · Re 12
+Speed 0.175–1.454 m/s · pressure -0.81 to 1.34 Pa
+all Newton steps converged · Newton iterations [4, 3, 3]
+Active cells 3060 · cut 186 · classification 32.4 ms
+Newton loop 23930 ms · round trip 24971 ms
+```
+
+Evidence: `build/kratos-verification/flow-playground.png` (gitignored), visually inspected — real
+controls, a real Manifold obstacle, streamlines that part around the body and a blue wake behind
+it. Not attempted: driving the sliders headlessly, and any claim that these timings resemble a
+native worker's.
+
+## Formulation registry (2026-09-08)
+
+The worker's physics moved into `python/formulations/`, behind a registry, with the tetrahedral
+grid and the geometry classification in a Kratos-free `python/background.py`. `hello` now reports
+every registered formulation, whether its applications imported, and the import error when they
+did not; `createBackgroundDomain` takes a `formulation`, and `solve` takes `parameters` (with
+`thermal` still accepted as the schema-1 spelling).
+
+The check that matters for a refactor of verified code is that it changed no numbers. It did not:
+the catalog smoke returns `changedNodes=30` and `maxTemperatureDelta=0.042929105837778495`, digit
+for digit what it returned before, on the same 2,197-node background.
+
+Geometry gained `sphere` and a capped `cylinder` at any axis, and an n-ary spelling of the
+booleans. 15 Python tests pass (up from 8: three geometry, four registry) and 14 Kotlin tests
+(up from 11: three geometry, including an off-axis cylinder whose bounding box and volume are
+checked against closed form, since a wrong affine basis still yields a valid solid in the wrong
+place).
+
+**Not attempted, and not available upstream:** a transient embedded thermal solve. Kratos v10.4.0's
+`python_solvers_wrapper_convection_diffusion` offers `transient` on standard elements and two
+*stationary* embedded variants — `stationary_embedded` (the CutFEM/Nitsche one used here) and
+`stationary_shifted_boundary`. There is no transient cut element, so "transient thermal" would mean
+writing one, not binding one. The shifted-boundary variant is the available second thermal
+formulation and is directly comparable to this one.
+
+## Container transport, on a host with no Kratos wheels (2026-09-08)
+
+The backend below was verified on Linux x86_64. This section is the same slice driven from an
+Apple Silicon macOS checkout, where `uv sync --project optional/kratos --frozen` cannot succeed at
+all — `uv` reports that Kratos publishes `manylinux_2_28_x86_64` and `win_amd64` wheels only.
+
+`podman build --platform linux/amd64 -t field-kratos:10.4.0 optional/kratos` builds the reference
+environment from the same `pyproject.toml` and `uv.lock`, and
+`tools/run_field_tests.py --id kratos.embedded.thermal` passed against it in 23.5 s:
+
+```
+launch=Container(image=field-kratos:10.4.0, runtime=podman, platform=linux/amd64, …)
+executable=/opt/field-kratos-env/.venv/bin/python
+platform=Linux-6.8.8-300.fc40.aarch64-x86_64-with-glibc2.36
+versions={KratosMultiphysics=10.4.0, KratosConvectionDiffusionApplication=10.4.0, numpy=2.2.6, msgpack=1.1.1}
+NO_REMESH background=a9264268-… buildCount=1 changedNodes=30 maxTemperatureDelta=0.042929105837778495 staleRejected=true
+```
+
+The emulated run reproduces the native reference exactly where it should: 30 changed nodal
+classifications, active elements 2,952 → 2,676, cut 1,708 → 1,528, `buildCount` 1, and a relative
+linear residual of 3.39e-15. The maximum nodal change of 0.042929 matches the figure the standalone
+proof records below to five digits.
+
+It reproduces nothing about latency. Every instruction is emulated:
+
+| Component | Native Linux | Emulated container | |
+| --- | ---: | ---: | ---: |
+| Classification | 1.03 ms | 20.06 ms | 19× |
+| Model update | 92.35 ms | 1510.83 ms | 16× |
+| Assembly | 10.35 ms | 184.23 ms | 18× |
+| Linear solve | 10.52 ms | 176.80 ms | 17× |
+
+The ratios between components are what survives, and they say the same thing in both places: the
+full-grid Python-to-Kratos update dominates everything, including the solve. That is a per-entity
+Python loop over nodes and elements, not Kratos work. `VariableUtils.SetSolutionStepValuesVector`
+and `VariableUtils.SetFlag` are the bulk equivalents, and only the elements whose activity actually
+changed need touching at all — 30 nodes moved here, against a loop over 2,197. Neither is
+implemented; both are the first thing to try before any higher resolution.
+
+Two traps, both now handled and both silent if they are not:
+
+- `python:slim` has no `libgomp1`. Without it `import KratosMultiphysics` fails with
+  `ImportError: libgomp.so.1` followed by Kratos's own "Unable to find KratosCore … check your
+  LD_LIBRARY_PATH", which sends you looking in the wrong place.
+- A container runtime publishes a port by running a host-side proxy that accepts connections **from
+  the moment `run` starts** — before the image is unpacked and long before anything calls `bind()`.
+  A first attempt connected successfully to a container whose Python had not started, sent `hello`,
+  and read EOF. Field now waits for the worker's own `field-kratos listening on <port>` line.
+
+Test coverage in this mode: 11 Kotlin tests pass, of which 5 are new — container and attach
+guidance, and attaching to a closed port reported as a capability rather than a crash. The 5
+real-worker Kotlin tests **skip** here and say so; three of them substitute a fault script for
+`worker.py` and read the child's argv, which describes the local-process launch specifically, so
+running them against a container would pass while testing something else. 8 Python tests pass in
+the container, of which 2 are new and cover `--listen` binding and token rejection.
+
+Unverified in this mode: the browser playground (not attempted), the five local-worker Kotlin
+tests, and any claim that emulated timings bound a real interaction. Use a Linux checkout for
+latency work.
 
 ## Frontend playground (2026-09-08)
 

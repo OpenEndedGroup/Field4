@@ -83,6 +83,12 @@ internal class KratosArrays(payload: Map<String, Any?>) {
         require(descriptors.map { it["name"] }.distinct().size == descriptors.size) { "Duplicate array names" }
     }
 
+    /** The dtype the worker actually sent for [name] — a cell field may be int32 or float64. */
+    fun dtypeOf(name: String): String {
+        val d = descriptors.singleOrNull { it["name"] == name } ?: error("Missing array $name")
+        return d["dtype"] as? String ?: error("Array $name has no dtype")
+    }
+
     fun view(name: String, dtype: String, shape: List<Int>): ByteBuffer {
         val d = descriptors.singleOrNull { it["name"] == name } ?: error("Missing array $name")
         require(d["dtype"] == dtype && d["byteOrder"] == "little" && d["storage"] == "inline") { "Invalid type/storage for $name" }

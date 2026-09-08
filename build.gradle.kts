@@ -2913,6 +2913,44 @@ fun JavaExec.configureCeresSmokeTask(entrypoint: String, taskDescription: String
     }
 }
 
+// Build native/field-tetgen: TetGen behind a flat C ABI, for the body-fitted structural route.
+//
+// Unlike Ceres there is nothing to find_package — TetGen is two source files with no dependencies —
+// so the Python script downloads a pinned, checksummed tarball and CMake compiles it straight into
+// the wrapper. That download is why this is a `providers.exec` of the script rather than a pair of
+// cmake calls: the pin, the checksum and the -O0 predicates rule all live in one place.
+//
+// Not wired into `check`: a fresh clone has no network guarantee, and the structural formulation is
+// optional. Run it by hand, then point the runtime at the result if it is not in the default place:
+//
+//     ./gradlew buildTetgenNative
+//     ./gradlew jvmTest --tests 'afield.tetgen.TetgenTest'
+val buildTetgenNative = tasks.register("buildTetgenNative") {
+    group = "build"
+    description = "Builds native/field-tetgen into build/field-tetgen (needs cmake and, once, the network)."
+
+    val sourceDir = layout.projectDirectory.dir("native/field-tetgen")
+    val script = layout.projectDirectory.file("tools/build_tetgen_native.py")
+    inputs.dir(sourceDir)
+    inputs.file(script)
+
+    doLast {
+        val command = listOf("python3", script.asFile.absolutePath)
+        val result = providers.exec {
+            commandLine(command)
+            isIgnoreExitValue = true
+        }
+        val code = result.result.get().exitValue
+        if (code != 0) {
+            throw GradleException(
+                "${command.joinToString(" ")} failed with exit code $code:\n" +
+                    result.standardOutput.asText.get() + result.standardError.asText.get(),
+            )
+        }
+        logger.lifecycle(result.standardOutput.asText.get().trim())
+    }
+}
+
 // Build native/ken-ceres against a Ceres found by CMake's find_package — on macOS, the Homebrew
 // one. Seconds rather than minutes, which is what you want while changing the wrapper; the result
 // carries /opt/homebrew in its load commands, so it is not the one to ship (see
