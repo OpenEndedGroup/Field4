@@ -9,12 +9,12 @@ with a surface** is another. Ask a mesh whether it is closed, subdivide it, smoo
 deflating it, decimate it to a budget, measure its volume, shoot a ray at it, write it out for
 another program to read.
 
-`afield.stdlib` carries a CPU triangle-mesh family for that. There is one value type, `TriMesh`, and
-around it the operations that turn a surface into structure: topology, generators, marching cubes
-over an SDF, Loop subdivision, Laplacian and Taubin smoothing, QEM decimation, curvature, a BVH, OBJ
-and STL I/O, a convex hull. It is the 3D counterpart to the raster
-[imaging family](imaging_examples.md), and it is built the same way: pure Kotlin, no external
-dependency, no GPU, works headless in a box.
+`afield.stdlib` carries a CPU triangle-mesh family for that, built around a single value type,
+`TriMesh`. It generates primitives, marches an SDF into a surface, works out a mesh's topology,
+subdivides it (Loop), smooths it (Laplacian and Taubin), decimates it (QEM), welds it, measures its
+curvature, raycasts it through a BVH, reads and writes OBJ and STL, and takes a convex hull. All of
+it is pure Kotlin with no external dependency and no GPU, and all of it runs headless in a box. It is
+the 3D counterpart to the raster [imaging family](imaging_examples.md) and is built the same way.
 
 Two things about it shape the rest of this page. A `TriMesh` is a **value you can look at**. It
 implements `ToHTML`, so ending a box on one draws it, with the numbers that decide whether it is
@@ -42,8 +42,8 @@ type behaves:
   (`position(i)`, `faceNormal(t)`, `triangle(t)`) hands back a **fresh** `Vec3` that cannot write
   back into the mesh. `positionInto(i, dest)` is there for the inner loop that cares.
 - **Immutable in practice.** Everything returns a new mesh: `translated`, `scaled`, `rotated`,
-  `transformed { }`, `flipped`, `weld`, `loopSubdivide`, `decimate`. That is what makes a pipeline
-  readable as one expression, and it is why re-running a box is always the same answer.
+  `transformed { }`, `flipped`, `weld`, `loopSubdivide`, `decimate`. So a pipeline stays readable as
+  one expression, and re-running a box gives you the same answer every time.
 - **Topology is computed, not stored.** `topology()` builds the edge map, the vertex stars and the
   boundary loops on demand and caches the expensive parts lazily. The mesh itself stays a plain
   buffer that a GPU upload or a file writer can take verbatim.
@@ -58,8 +58,8 @@ Four more generators build a mesh out of something you already have rather than 
 lathe), `tubeMesh` (a rotation-minimising sweep along a 3D path) and `heightfieldMesh`, which has a
 lambda form and an `Img.toHeightfieldMesh()` form, and that second one is the bridge from the
 [imaging family](imaging_examples.md) into this one. The two heightfields are the only panels here
-that are open surfaces (χ=1) rather than closed solids, which is the correct reading of what a
-heightfield is.
+that are open surfaces rather than closed solids, so they report χ=1 instead of 2. A heightfield has
+a rim.
 
 ![Five derived generators: an extruded concave L, a lathed goblet, a helical tube, a heightfield from a lambda, and a heightfield read out of an image — each headed with its call, triangle count, Euler characteristic and genus](assets/mesh_gallery/07-derived-generators.png)
 
@@ -120,13 +120,13 @@ showMeshGrid(
 
 Read the numbers rather than the shapes and the whole story is there. They are what the box
 `println`s when you run it, quoted here because a `showMeshGrid` panel is labelled rather than
-captioned. The sharp union encloses **2.2135**; the filleted one **2.2690**, because a fillet only
-ever *adds* material, which is a property you can assert rather than eyeball. Drilling through drops
-it to **1.8805** and takes χ from
-2 to **0**, genus 0 to **1**: the drill added a handle. The closed shell reports **χ = 4**, which is
-exactly right, if odd at first: a shell is *two* nested closed surfaces, an outer and an
-inner, and 2 + 2 = 4. Cutting it with a half-space glues them into one surface again (χ = 2) and
-halves the *z* extent, from 1.739 to 0.870, which is how you know the cut actually happened.
+captioned. The sharp union encloses **2.2135** and the filleted one **2.2690**, because a fillet only
+ever *adds* material. A test can assert that ordering; your eye cannot. Drilling through drops it to
+**1.8805** and takes χ from 2 to **0**, genus 0 to **1**: the drill added a handle. The closed shell
+reports **χ = 4**, which is exactly right, if odd at first: a shell is *two* nested closed surfaces,
+an outer and an inner, and 2 + 2 = 4. Cutting it with a half-space glues them into one surface again
+(χ = 2) and halves the *z* extent, from 1.739 to 0.870, which is how you know the cut actually
+happened.
 
 `showMeshGrid(...)` is the fastest way to see a whole pipeline: labelled panels side by side, in the
 Three.js viewer, so in a live box you can orbit the whole sheet at once. It is one WebGL context
@@ -138,8 +138,7 @@ Its panels carry a label and no fact line. The counts, extent, χ, genus and vol
 single-mesh `showMesh` and the inline card print are not there, because `showMeshGrid` calls
 `threeGrid` with `facts` left off. To get them under every panel, call `threeGrid(..., facts = true)`
 directly, or hand it `ThreeMeshPanel(label, mesh, facts = "…")` cells with a sentence of your own;
-[polytope_examples.md](polytope_examples.md) does the latter throughout. Every figure on this page
-prints its numbers instead, which is why the paragraphs quote them.
+[polytope_examples.md](polytope_examples.md) does the latter throughout.
 
 The primitives are `sdfSphere`, `sdfBox`, `sdfRoundBox`, `sdfTorus`, `sdfPlane`, `sdfCylinder`,
 `sdfCapsule`, `sdfGyroid` and `sdfMetaballs`. The combinators are `sdfUnion`, `sdfIntersect`,
@@ -385,8 +384,8 @@ lines(mesh.toFLines(MeshLines.CREASES, creaseAngleDegrees = 30.0))
 ```
 
 Going the other way, `tubeMesh(fline, radius, sides, samples, caps)` sweeps a tube along an `FLine`
-using rotation-minimising frames, so it does not twist where the path's curvature swings through
-vertical, which is the failure mode of the obvious Frenet-frame implementation.
+using rotation-minimising frames rather than Frenet frames, so it does not twist where the path's
+curvature swings through vertical.
 
 For files: `toObj(name)` / `objToTriMesh(text)` and `toStlAscii` / `toStlBinary` /
 `stlToTriMesh(bytes)`, plus `saveObj(file)`, `saveStl(file)` and `triMeshFromObj(file)`. The
