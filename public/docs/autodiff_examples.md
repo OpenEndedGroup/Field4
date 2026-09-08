@@ -1,8 +1,10 @@
 # Differentiating Functions
 
-Field's gradients are exact: reverse-mode automatic differentiation over `Double`, second-order
-forward mode beside it, three optimizers on top, and the ability to differentiate an `Fn` graph
-itself.
+Field's derivatives come out of the arithmetic rather than out of a difference quotient.
+Reverse-mode automatic differentiation over `Double` does most of the work, second-order forward
+mode sits beside it for curvature, and SGD, Adam and L-BFGS descend on whatever those two produce.
+An `Fn` graph assembled out of stdlib parts can be differentiated too, with respect to its own
+numeric leaves.
 
 Every figure below is executed when this page is built.
 
@@ -12,10 +14,10 @@ Every figure below is executed when this page is built.
 backward sweep reads off every derivative at once. `grad { }` returns a *function*, so it composes with
 the optimizers rather than needing a wrapper.
 
-`Dual2` is the other direction: a truncated Taylor number `(v, v', v'')` carried along one direction.
-It is the right tool when there is one input and many outputs, and it is what makes `hessian` exact
-rather than a finite difference of an exact gradient. Because the second derivative comes free with the
-forward pass, all three curves below are one sweep.
+`Dual2` works the other way around, carrying a truncated Taylor number `(v, v', v'')` along a single
+direction. It is the right tool when there is one input and many outputs, and it is what makes
+`hessian` exact rather than a finite difference of an exact gradient. Because the second derivative
+comes free with the forward pass, all three curves below are one sweep.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/autodiff_examples/derivatives.png" wait="2.5" capture="box" open-outputs="true" w="1000" h="600" padding="16"}
 :::static
