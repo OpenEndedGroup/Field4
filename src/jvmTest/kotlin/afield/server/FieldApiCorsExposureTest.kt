@@ -316,6 +316,59 @@ class FieldApiCorsExposureTest {
     }
 
     /**
+     * Every place in `src` that *states* the census must state today's census.
+     *
+     * The number above is quoted in prose in several files, and the one that matters is not in a
+     * test: `installFieldApiSameSiteGuard` prints it to the log on every launch that does not set
+     * the switch, so it is the sentence a person actually reads about their own exposure. When the
+     * verbless `route(…) { handle { … } }` shape was brought into the count on `2026-08-22` the
+     * census went from 36 of 40 to 49 of 53, and `dev_docs` was updated. `Server.kt` was not, in
+     * three places, and neither was [FieldApiWriteGuardTest]'s KDoc — so for a fortnight every
+     * launch under-reported Field's unauthenticated write surface by thirteen routes, and nothing
+     * was red. Being wrong quietly, in the reassuring direction, is the whole failure mode this
+     * area exists to prevent.
+     *
+     * So the claim is derived from [EXPECTED_MUTATING_SURFACE] here rather than typed twice.
+     * This file is excluded from the scan because it is the one place entitled to name the old
+     * number, in order to explain that it changed.
+     */
+    @Test
+    fun everyStatedRouteCensusInTheSourceMatchesTheMeasuredOne() {
+        val total = EXPECTED_MUTATING_SURFACE.size
+        val unguarded = EXPECTED_MUTATING_SURFACE.count { it.value == "none" }
+
+        val sources = File(repositoryRoot(), "src").walkTopDown()
+            .filter { it.isFile && it.extension == "kt" }
+            .filter { it.name != "FieldApiCorsExposureTest.kt" }
+            .toList()
+        assertTrue(sources.size > 500, "expected to walk the whole of src; found ${sources.size} files")
+
+        val stale = mutableListOf<String>()
+        sources.forEach { file ->
+            // KDoc wraps mid-sentence, so a claim is regularly split across a `\n * ` boundary.
+            val flat = file.readText().replace(Regex("""\n\s*\*?\s*"""), " ")
+            Regex("""(\d+) of (?:its )?(\d+)\s+state-changing""").findAll(flat).forEach { m ->
+                if (m.groupValues[1].toInt() != unguarded || m.groupValues[2].toInt() != total) {
+                    stale += "${file.name}: \"${m.value}\" should be \"$unguarded of $total state-changing\""
+                }
+            }
+            // The same number, phrased as what turning the switch on would refuse.
+            Regex("""(?:default-deny on|across) (\d+) routes""").findAll(flat).forEach { m ->
+                if (m.groupValues[1].toInt() != unguarded) {
+                    stale += "${file.name}: \"${m.value}\" should be $unguarded routes"
+                }
+            }
+        }
+
+        assertTrue(
+            stale.isEmpty(),
+            "The measured census is $unguarded of $total state-changing routes unguarded, and these " +
+                "statements of it disagree:\n" + stale.joinToString("\n") { "  $it" } +
+                "\n\nUpdate them. The log line in installFieldApiSameSiteGuard is the one a user reads.",
+        )
+    }
+
+    /**
      * The premise the thirteen `ANY` rows above rest on, measured rather than assumed.
      *
      * `route("/welcome") { handle { … } }` installs a handler with no `HttpMethodRouteSelector`,
