@@ -2,7 +2,7 @@
 
 Nano has 32 bytes of RAM, and `load` copies your whole program into them starting at address 0. Code and data therefore share one address space (a store past the end of the program writes into the same bytes the instructions came out of, and reads wrap round at 32), which is why one screenshot of a finished run holds the entire machine. There are four registers, `r0` to `r3`, and a handful of arithmetic and branch instructions; the eight-deep stack that `call` and `ret` use is the only piece kept outside the 32 bytes.
 
-A RAM cell's border says what happened to that byte, and the cases are checked in this order: brightest orange with a fill for the cell the last step wrote, cyan with a fill for the program counter, plain orange for a byte that changed earlier, cyan for a program byte still holding the value it was loaded with, and dim for a byte no program ever occupied. So the run of dim cells at the end is where RAM stops being code.
+A RAM cell's border says what happened to that byte, and where two things are true of the same cell the earlier case in this list wins. Brightest orange with a fill is the cell the last step wrote. Cyan with a fill is the program counter. Plain orange is a byte that changed earlier in the run, cyan is a program byte still holding the value it was loaded with, and dim is a byte no program ever occupied. The run of dim cells at the end of the grid is where RAM stops being code.
 
 The embedded viewer's "Open in Field4" button opens a prepared Nano document with a Nano root already set up.
 
