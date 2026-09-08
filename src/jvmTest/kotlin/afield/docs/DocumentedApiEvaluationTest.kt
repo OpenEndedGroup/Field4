@@ -165,6 +165,12 @@ class DocumentedApiEvaluationTest {
      * and "no cheap evaluator exists" are different sentences.
      */
     private val COMPILE_ONLY_REMAINDER: Map<String, String> = mapOf(
+        "eyeGazeState" to
+            "vision.md; openxr_eye_intersection is COMPILE_ONLY. The target requires a live " +
+                "Vulkan/OpenXR session. Native binding calls and state validity are tested separately.",
+        "htcEyeState" to
+            "vision.md; openxr_eye_intersection is COMPILE_ONLY. The target requires a live " +
+                "Vulkan/OpenXR session and HTC eye tracker. Native calls and triangulation have JVM tests.",
         "appendChild" to
             "puppet_browser.md reaches this inside JavaScript executed by the native Electron " +
                 "producer. The graphics transcript is COMPILE_ONLY because CI has no window or " +

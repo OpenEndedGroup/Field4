@@ -385,6 +385,88 @@ someone, and `willDeadlock()` correctly says no while `deadTransitions()` says w
 Two different faults, two different fixes. The asymmetry fixes one; a fair conflict policy fixes
 the other.
 
+### Laying it out
+
+The drawing above is `PetriLayout.AUTO`, which is what `showPetriNet` picks unless you say
+otherwise. AUTO draws a net that is a single cycle as a ring, and anything else with `FORCE`: a
+spring model that relaxes from 48 seeded starts and keeps whichever result scores best on crossings,
+overlaps, and arcs passing under unrelated nodes. The seed comes from the net's own structure, so a
+net always draws the same way. `RING` and `LAYERED` ask for the other two directly, a circle in
+graph order and left-to-right by distance from the initially marked places.
+
+`PetriLayout.TALA` sends the net to TALA instead, the engine d2 uses for architecture diagrams,
+which places each node at its real size and routes the arcs. Both drawings, of one net:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/petri_nets/tala-vs-force.png" wait="3.0" capture="box" open-outputs="true" embed=true name="petri-tala-vs-force" w="1240" padding="12"}
+:::static
+import afield.petri.*
+import afield.layout.D2Layout
+
+fun table() = petri {
+    for (i in 0 until 5) place("fork.$i", tokens = 1)
+    for (i in 0 until 5) {
+        val left = i
+        val right = (i + 1) % 5
+        t("grab.$i") { from("fork.$left"); to("holding.$i") }
+        t("eat.$i") { from("holding.$i"); from("fork.$right"); to("eating.$i") }
+        t("done.$i") { from("eating.$i"); to("fork.$left"); to("fork.$right") }
+    }
+}
+
+val net = table()
+
+:::fold draw it twice, labelling each panel with the engine and what it cost in crossings
+// Both labels are generated, so the figure reports itself rather than asking you to take a claim
+// on trust. On a machine with no helper the right-hand panel says so, instead of showing FORCE's
+// drawing under TALA's name.
+val forceDrawing = net.frame(PetriLayout.FORCE)
+val talaDrawing = net.frame(PetriLayout.TALA)
+val engine = if (D2Layout.available) "TALA, d2 " + D2Layout.version else "helper absent: FORCE again"
+
+fun label(name: String, drawing: PetriDrawing) =
+    name + " - " + drawing.arcCrossings() + " arc crossings"
+
+showPlaneGrid(
+    label("FORCE, spring model", forceDrawing) to forceDrawing.toFLines(),
+    label(engine, talaDrawing) to talaDrawing.toFLines(),
+    columns = 2,
+    cellWidth = 560,
+    cellHeight = 470,
+)
+displayOpen("main")
+:::endfold
+```
+
+Each panel counts its own crossings, and on this table FORCE wins: none against TALA's three.
+That is the result to expect more often than not, because crossings are the thing FORCE is
+optimising. It relaxes from 48 random starts and keeps whichever result scores best on exactly this
+metric, so where it succeeds it is hard to beat on it. Neither drawing carries names, because past
+28 nodes `toFLines` drops the labels and this table has 30.
+
+The order does reverse. On the smaller table in `dev_docs/agents/transcripts/petri_tala_layout.yaml`
+FORCE crosses five times and TALA once, and TALA gets there in 2.1 s against FORCE's 4.5 s. So the
+choice is per net rather than settled, which is why `AUTO` never makes it for you.
+
+The two panels do not draw their arcs the same way, which is the other half of what TALA gives you.
+A spring model places points and leaves the arcs to whatever runs between them, so FORCE's are
+straight lines from centre to centre. TALA routes each arc around the nodes in its way and
+`toFLines` follows those polylines, which is why the right-hand panel turns corners. On the smaller
+table in the transcript that routing is what takes TALA from one crossing to none. It is also why
+the two sides are not quite comparable as pictures: one is a graph drawing and the other is closer
+to a schematic.
+
+The three in that caption is already the best of four tries. TALA accepts a direction bias, and it
+is worth more than a bigger seed budget: this table crosses itself five times with no bias and three
+under the best of up, down and right, so `PetriLayout.TALA` lays the net out once per direction and
+keeps whichever crosses itself least. Four layouts of a 30-node net still cost less than one FORCE.
+On a net that is already clean the sweep finds nothing to improve and costs the four layouts anyway.
+
+TALA runs in `native/field-d2-layout`, a Go co-process that Field neither builds nor ships. Without
+it `PetriLayout.TALA` draws with `FORCE`, so a document that asks for TALA still opens on a machine
+that has no Go toolchain, and `D2Layout.available` tells you which of the two you are looking at.
+Field prints the build command when a box asks for TALA and cannot find the binary, with an install
+hint when `go` is missing as well.
+
 ### Every interleaving, exactly — and the sequence that breaks it
 
 Both of those answers are narrower than they sound. `willDeadlock()` runs the net forward **under

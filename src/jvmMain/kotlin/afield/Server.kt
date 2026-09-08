@@ -5521,7 +5521,7 @@ private fun fieldApiReadNeedsSameSite(secFetchMode: String?, path: String): Bool
  *
  * ## Why this is off by default, which is the uncomfortable part
  *
- * `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned` counts it: **36 of 40
+ * `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned` counts it: **49 of 53
  * state-changing HTTP routes have no route-specific access control**, `POST
  * /api/shutdown-instance` among them, and there is no `install(Authentication)` anywhere
  * in the tree. The same test separately inventories three WebSocket channels; `/ws` and
@@ -5538,7 +5538,7 @@ private fun fieldApiReadNeedsSameSite(secFetchMode: String?, path: String): Bool
  *    `curl` recipes in its own dev_docs.
  *
  * So: default-permissive, because turning it on is a behaviour change to a running system
- * that nobody is awake to notice, and because a silent default-deny on 36 routes is how you
+ * that nobody is awake to notice, and because a silent default-deny on 49 routes is how you
  * discover which of them the human's own tooling was using. Loud either way, because the
  * failure mode this whole area is about is capability you did not know you had.
  */
@@ -5547,7 +5547,7 @@ internal fun Application.installFieldApiSameSiteGuard() {
     if (!required) {
         lprintln(
             "warning,server",
-            "Field's HTTP API is unauthenticated: 36 of its 40 state-changing routes have no route-specific " +
+            "Field's HTTP API is unauthenticated: 49 of its 53 state-changing routes have no route-specific " +
                 "access control, and the /ws and /controllers/ws WebSocket command channels are also " +
                 "unauthenticated. Its reads are not guarded either, and CORS allows any origin to read the " +
                 "answer: GET /api/instance-info returns the path of your checkout, /api/welcome-changelog " +

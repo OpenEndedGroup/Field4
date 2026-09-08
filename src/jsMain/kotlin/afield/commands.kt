@@ -2413,6 +2413,36 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
         run {
             val e = """
             ({
+                id:'-layout-document', label:'Lay out whole document',
+                detail:'Arrange every box in the document and the connections between them. Needs the optional field-d2-layout helper',
+                run: () => {
+                    import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
+                                uid_action: '-layout-document',
+                                uid_currentSelection: [${selId}]
+                        })})}
+            })
+        """.trimIndent()
+            val a = eval(e)
+            all.push(a)
+        }
+        run {
+            val e = """
+            ({
+                id:'-layout-boxes', label:'Lay out selection',
+                detail:'Arrange the selected boxes and the connections between them, keeping the selection where it sits. Needs the optional field-d2-layout helper',
+                run: () => {
+                    import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
+                                uid_action: '-layout-boxes',
+                                uid_currentSelection: [${selId}]
+                        })})}
+            })
+        """.trimIndent()
+            val a = eval(e)
+            all.push(a)
+        }
+        run {
+            val e = """
+            ({
                 id:'normalize-nested-pan', label:'Normalize Nested contents', 
                 detail:'Reset nest offset so that the boxes appear in the current position when the document is opened',
                 run: () => { 

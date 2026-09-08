@@ -176,6 +176,13 @@ object DemoTranscriptExecSmokeTest {
         // Five pure-compute boxes over the exhaustive state-space analysis. showPetriStateSpace is
         // FLines -> display like showPetriNet, and nothing here makes a sound.
         "petri_state_space",
+        // Three pure-compute boxes drawing one net under FORCE and under TALA. showPetriNet is
+        // FLines -> display, and the TALA half falls back to FORCE when native/field-d2-layout is
+        // not built, so this runs the same either way.
+        "petri_tala_layout",
+        // Nine boxes and their connections, created and wired but never executed: the scene is the
+        // starting position for the "Lay out selection" commands, which the reader runs.
+        "box_layout_demo",
         // Deterministic synthesised audio and token fixtures through the real CodecVisualization
         // renderer; it deliberately does not reach for EnCodec's GPU service, so it completes here.
         "audio_ai_codec",
@@ -304,6 +311,8 @@ object DemoTranscriptExecSmokeTest {
         // of them intentionally reach an external analysis worker or real-time Sonic Pi recorder.
         "audio_render_analysis",
         "graphics_renderer_launch",
+        // Real Vulkan/OpenXR rendering; binocular depth additionally requires HTC eye hardware.
+        "openxr_eye_intersection",
         "afield_four_traditional_triangle",
         // Streams a splat sequence into a native window, and wants a directory of .compressed.ply
         // frames that is deliberately not committed -- so compiled here and no further.

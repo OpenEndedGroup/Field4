@@ -386,6 +386,52 @@ assumes.
 
 ---
 
+## Eye tracking on OpenXR
+
+`OpenXRHmdTarget` enables two optional eye extensions independently when the runtime advertises
+them and the current system reports support:
+
+- `eyeGazeState()` uses `XR_EXT_eye_gaze_interaction` for combined gaze. It returns null when
+  unavailable or not yet initialized. Otherwise check `poseValid` before reading `position` and
+  `orientation`, and `isTracked` when nominal tracking quality is needed. `direction(out)` copies
+  the forward ray direction into a `Vec3` and returns false when the pose is invalid.
+- `htcEyeState()` uses `XR_HTC_eye_tracker` for separate `left` and `right` observations. Each eye
+  has `gazeValid`, `position`, `orientation`, `pupilDiameterValid`, `pupilDiameter`,
+  `pupilPositionValid`, `pupilPosition`, `geometricValid`, `eyeOpenness`, `eyeWide`, and
+  `eyeSqueeze`. Check the corresponding validity flag for each observation; a failed pupil query
+  does not discard a valid gaze or eye geometry query.
+
+Gaze poses use the same OpenXR LOCAL reference space as the controllers: metres, +Y up, with -Z
+as the pose's forward direction. HTC pupil diameter is in **millimetres**; pupil position uses
+normalized sensor coordinates, +X right and +Y up. EXT `sampleTime` and HTC `gazeTime`,
+`pupilTime`, and `geometricTime` are OpenXR timestamps in nanoseconds, not wall-clock times.
+The EXT timestamp may differ from the requested predicted display time, and zero means no
+sample time is available.
+
+These are live state objects updated on the renderer's queue thread. Read them in render
+callbacks, copy values you need to retain, and always check validity: numeric values retain
+their last valid observation. Skipped frames, lost focus, and cleanup invalidate observations.
+Neither extension is required for VR, and neither API synthesizes data from the other.
+
+**Hardware verification is pending.** The native-memory tests cover pose conventions, HTC's
+inline arrays and field ordering, independent validity, and stale-state clearing. A synthetic
+runtime also exercises the actual native calls, input structures, timestamps, unsupported-system
+handling, partial-initialization cleanup, and independent query failures. These tests do not
+establish that a particular headset/runtime supplies these streams. These bindings are separate
+from the visionOS pose uplink and do not add eye data to that protocol.
+
+For a headset check, start a normal OpenXR scene and look for `EXT eye gaze interaction enabled`
+and/or `HTC eye tracker enabled` in the OpenXR log. Inspect the state in the scene's render
+callback: confirm valid gaze follows eye movement with the head stationary, check HTC's pupil
+and geometry validity independently, then check that observations invalidate when the session
+loses focus and recover when focus returns. Run the automated binding checks with
+`./gradlew jvmTest --tests 'afield.four.targets.OpenXREye*Test'`.
+
+The combined-gaze contract follows the
+[Khronos extension specification](https://registry.khronos.org/OpenXR/specs/1.1/html/xrspec.html#XR_EXT_eye_gaze_interaction).
+HTC's native structures follow its
+[published bindings](https://github.com/ViveSoftware/VIVE-OpenXR-Unity/blob/25a5fd212420688952ead9deba735357656278ec/com.htc.upm.vive.openxr/Runtime/Features/EyeTracker/ViveEyeTrackerHelper.cs).
+
 ## Status
 
 Read the third column first: it is the one that decays.

@@ -331,6 +331,21 @@ class OpenXRHmdTarget(
     private val leftHandState = HandTrackingState()
     private val rightHandState = HandTrackingState()
 
+    private var eyeGazeInteraction: ExtEyeGazeInteraction? = null
+    private var htcEyeTracker: HtcEyeTracker? = null
+
+    /**
+     * Combined gaze from XR_EXT_eye_gaze_interaction, or null when unavailable/not initialized.
+     * The state is updated in place; check poseValid (and isTracked for nominal-quality gaze).
+     */
+    fun eyeGazeState(): EyeGazeState? = eyeGazeInteraction?.state
+
+    /**
+     * Per-eye gaze, pupil and geometry from XR_HTC_eye_tracker, or null when unavailable.
+     * Independent of [eyeGazeState]; check each observation's validity before using its values.
+     */
+    fun htcEyeState(): HtcEyeTrackingState? = htcEyeTracker?.state
+
     /** One WiVRn generic tracker: its whitelist index, its space, and the pose we located. */
     private class BodyTracker(val index: Int, val space: XrSpace) {
         val pose = JointPose()
@@ -624,6 +639,9 @@ class OpenXRHmdTarget(
         }
 
         renderer.runOnQueueThread {
+            // Fail closed even when events, frame waiting, view location or rendering are skipped.
+            eyeGazeInteraction?.state?.invalidate()
+            htcEyeTracker?.state?.invalidate()
             CPUSpan.time("xr_events") {
                 if (!pollEvents()) return@runOnQueueThread
             }
@@ -691,6 +709,9 @@ class OpenXRHmdTarget(
                         }
                         if (xdevList != 0L) CPUSpan.time("xr_body_tracking") {
                             syncBodyTracking(xrSessionLocal, xrSpaceLocal, frameState.predictedDisplayTime())
+                        }
+                        if (htcEyeTracker != null && sessionState == XR_SESSION_STATE_FOCUSED) CPUSpan.time("xr_htc_eye_tracking") {
+                            htcEyeTracker?.update(xrSpaceLocal, frameState.predictedDisplayTime())
                         }
 
                         // Acquire all swapchain images first (CPU), then render, then submit+wait, then release.
@@ -861,6 +882,9 @@ class OpenXRHmdTarget(
             initControllerActions(session)
             initHandTracking(session)
             initBodyTracking(session)
+            if (HtcEyeTracker.EXTENSION_NAME in Instance.enabledOpenXRInstanceExtensions) {
+                htcEyeTracker = HtcEyeTracker.create(session, xrSystemId)
+            }
 
             // Swapchain format selection (prefer SRGB)
             val formatCountBuf = stack.callocInt(1)
@@ -1376,6 +1400,9 @@ class OpenXRHmdTarget(
                 listOf(viveFull, viveReduced, viveMinimum)
             )
 
+            // Eye gaze belongs to the same action set, but has no left/right hand subactions.
+            eyeGazeInteraction = ExtEyeGazeInteraction.create(session, xrSystemId, actionSet)
+
             // Attach action set to the session
             val actionSetsBuf = stack.callocPointer(1)
             actionSetsBuf.put(0, actionSet.address())
@@ -1691,7 +1718,12 @@ class OpenXRHmdTarget(
                 .type(XR_TYPE_ACTIONS_SYNC_INFO)
                 .activeActionSets(activeSets)
 
-            xrSyncActions(session, syncInfo)
+            val syncResult = xrSyncActions(session, syncInfo)
+            if (eyeGazeInteraction != null && syncResult == XR_SUCCESS && sessionState == XR_SESSION_STATE_FOCUSED) {
+                CPUSpan.time("xr_eye_gaze") {
+                    eyeGazeInteraction?.update(session, referenceSpace, predictedDisplayTime)
+                }
+            }
 
             updateControllerForHand(
                 session,
@@ -2731,6 +2763,11 @@ class OpenXRHmdTarget(
         swapchains.clear()
 
         // XR resources
+        eyeGazeInteraction?.close()
+        eyeGazeInteraction = null
+        htcEyeTracker?.close()
+        htcEyeTracker = null
+
         leftHandTracker?.let { EXTHandTracking.xrDestroyHandTrackerEXT(it) }
         rightHandTracker?.let { EXTHandTracking.xrDestroyHandTrackerEXT(it) }
         leftHandTracker = null

@@ -146,3 +146,6 @@ Not notation — the API around it.
 | `box.showPetriStateSpace(graph, maxNodes = …)` | raise the node bound, or `Int.MAX_VALUE` to insist |
 | `box.showPetriNet(live)` | the picture, clickable: click a place to inject, a transition to fire |
 | `live.play(cps = 2.0) { … }` | plays a live net in a box, on the beat |
+| `box.showPetriNet(net, layout = …)` | `AUTO` (the default), `RING`, `FORCE`, `LAYERED`, `TALA` |
+| `PetriLayout.TALA` | d2's diagram engine, via the optional `native/field-d2-layout`; draws with `FORCE` when it is absent |
+| `clearPetriLayoutCache()` | re-solve, after building that helper under a running Field |

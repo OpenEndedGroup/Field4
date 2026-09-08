@@ -10,6 +10,7 @@ import afield.four.synth.PatQ
 import afield.graphics.FLine
 import afield.graphics.drawToSVG
 import afield.graphics.lines
+import afield.layout.D2Layout
 import afield.stdlib.FLineIntersection
 import afield.stdlib.Vec2
 import afield.stdlib.arrow
@@ -69,6 +70,8 @@ import kotlin.math.sin
 
  [PetriLayout.RING] draws a cycle as a cycle, which is what most drum nets are, and is chosen
  automatically when the net is one. Otherwise [PetriLayout.FORCE] relaxes a spring model.
+ [PetriLayout.TALA] hands the net to d2's diagram layout engine instead, if you have built the
+ optional helper for it; it falls back to [PetriLayout.FORCE] if you have not.
  [PetriDrawing.at] pins anything you would rather place yourself.
 */
 
@@ -86,6 +89,19 @@ enum class PetriLayout {
 
     /** Left to right by distance from the initially marked places. */
     LAYERED,
+
+    /**
+     * TALA, d2's layout engine for diagrams of labelled boxes, through the optional
+     * `native/field-d2-layout` helper.
+     *
+     * Never chosen by [AUTO] and never a default: it needs a binary Field does not build, so it
+     * has to be asked for. When the helper is missing this quietly becomes [FORCE], which is why
+     * asking for it is safe in a document you might open on another machine.
+     *
+     * Worth asking for when [FORCE] gives you a hairball. TALA places boxes with their real sizes
+     * and routes the arcs, where the spring model treats every node as a point.
+     */
+    TALA,
 }
 
 // ── a frame ────────────────────────────────────────────────────────────────────────────────
@@ -111,8 +127,22 @@ class PetriDrawing(
     pinned: Map<String, Vec2> = emptyMap(),
     val radius: Double = 240.0,
 ) {
+    private val laidOut = petriLayout(net, layout, radius)
+
     /** Where each place and transition sits, in the drawing's own coordinates. */
-    val positions: Map<String, Vec2> = petriLayout(net, layout, radius) + pinned
+    val positions: Map<String, Vec2> = laidOut.positions + pinned
+
+    /**
+     * The polyline each arc follows, for the layouts that route their own edges.
+     *
+     * Empty as soon as anything is [pinned], including everything that goes through [at]: a route
+     * was computed against the positions the engine chose, so moving one node by hand leaves the
+     * arcs at both ends of it describing a drawing that no longer exists. Falling back to straight
+     * arcs for the whole net is coarse, but a mix of routed and straight arcs where only some are
+     * stale reads as a rendering bug rather than as a choice.
+     */
+    internal val routes: Map<Pair<String, String>, List<Vec2>> =
+        if (pinned.isEmpty()) laidOut.routes else emptyMap()
 
     /** A copy with [name] pinned at ([x], [y]). */
     fun at(name: String, x: Number, y: Number): PetriDrawing = PetriDrawing(
@@ -168,13 +198,53 @@ private fun PatArc.contains(instant: PatQ): Boolean = instant >= start && instan
  * Bounded and keyed by value rather than identity, so rebuilding an equal net from the notation
  * hits the same entry.
  */
-private val petriLayoutCache = object : LinkedHashMap<String, Map<String, Vec2>>(32, 0.75f, true) {
-    override fun removeEldestEntry(eldest: Map.Entry<String, Map<String, Vec2>>): Boolean = size > 64
+private val petriLayoutCache = object : LinkedHashMap<String, PetriLayoutResult>(32, 0.75f, true) {
+    override fun removeEldestEntry(eldest: Map.Entry<String, PetriLayoutResult>): Boolean = size > 64
+}
+
+/**
+ * Drops every cached layout, so the next [frame] re-solves.
+ *
+ * Layouts are memoised on the net's structure, so redrawing the same net is free. Two reasons to
+ * throw that away: you have just built `native/field-d2-layout` under a running Field and want
+ * [PetriLayout.TALA] to start using it, or you are timing a layout and need each run to be real
+ * work rather than a map lookup.
+ */
+fun clearPetriLayoutCache() {
+    synchronized(petriLayoutCache) { petriLayoutCache.clear() }
+}
+
+/**
+ * What a layout produced: where the nodes go, and — when the engine routes its own edges — the
+ * polyline each arc should follow.
+ *
+ * [routes] is keyed by the arc's `from to to` names and is empty for the layouts that place
+ * dimensionless points, which is all of them except [PetriLayout.TALA]. An arc with no route is
+ * drawn straight, so the two can be mixed without the caller checking.
+ */
+internal data class PetriLayoutResult(
+    val positions: Map<String, Vec2>,
+    val routes: Map<Pair<String, String>, List<Vec2>> = emptyMap(),
+) {
+    fun translated(dx: Double, dy: Double): PetriLayoutResult {
+        if (dx == 0.0 && dy == 0.0) return this
+        return PetriLayoutResult(
+            positions.mapValues { (_, at) -> vec(at.x + dx, at.y + dy) },
+            routes.mapValues { (_, points) -> points.map { vec(it.x + dx, it.y + dy) } },
+        )
+    }
 }
 
 /** Everything about a net that can move a node, and nothing that cannot. */
 private fun petriLayoutKey(net: PetriNet, layout: PetriLayout, radius: Double): String = buildString {
     append(layout).append('|').append(radius).append('|')
+    // [PetriLayout.TALA] is the one layout whose answer depends on something outside the net:
+    // whether the optional helper is installed, and which d2 it links. Leaving that out of the key
+    // means a drawing produced by the FORCE fallback goes on being served under the TALA key after
+    // you build the helper, with no way back short of restarting Field — and, less visibly, a
+    // helper rebuilt against a newer d2 keeps handing you the old engine's drawing. Consulted only
+    // for TALA, so a net that never asks for it never goes looking for the binary.
+    if (layout == PetriLayout.TALA) append(D2Layout.version ?: "no-helper").append('|')
     append(net.placeNames.joinToString(","))
     for (transition in net.transitions) {
         append('|').append(transition.name).append('<')
@@ -184,7 +254,7 @@ private fun petriLayoutKey(net: PetriNet, layout: PetriLayout, radius: Double): 
     }
 }
 
-private fun petriLayout(net: PetriNet, layout: PetriLayout, radius: Double): Map<String, Vec2> {
+private fun petriLayout(net: PetriNet, layout: PetriLayout, radius: Double): PetriLayoutResult {
     val key = petriLayoutKey(net, layout, radius)
     synchronized(petriLayoutCache) { petriLayoutCache[key] }?.let { return it }
     val solved = petriLayoutUncached(net, layout, radius)
@@ -203,9 +273,9 @@ private fun petriLayout(net: PetriNet, layout: PetriLayout, radius: Double): Map
  * net legible — and it means a component that happens to be a cycle is still drawn as a cycle even
  * when the net as a whole is not one.
  */
-private fun petriLayoutUncached(net: PetriNet, layout: PetriLayout, radius: Double): Map<String, Vec2> {
+private fun petriLayoutUncached(net: PetriNet, layout: PetriLayout, radius: Double): PetriLayoutResult {
     val components = petriComponents(net)
-    if (components.isEmpty()) return emptyMap()
+    if (components.isEmpty()) return PetriLayoutResult(emptyMap())
 
     // Each component is laid out at whatever size *it* needs — a sixteen-place ring cannot be drawn
     // on the same circle as a three-place one without the places overlapping — and the pieces are
@@ -216,20 +286,24 @@ private fun petriLayoutUncached(net: PetriNet, layout: PetriLayout, radius: Doub
 
     val gap = PLACE_RADIUS * 2.0
     val out = HashMap<String, Vec2>()
+    val outRoutes = HashMap<Pair<String, String>, List<Vec2>>()
     var cursor = 0.0
     for (local in laid) {
-        if (local.isEmpty()) continue
-        val minX = local.values.minOf { it.x.toDouble() }
-        val maxX = local.values.maxOf { it.x.toDouble() }
-        for ((name, position) in local) out[name] = vec(position.x - minX + cursor, position.y)
+        if (local.positions.isEmpty()) continue
+        val minX = local.positions.values.minOf { it.x.toDouble() }
+        val maxX = local.positions.values.maxOf { it.x.toDouble() }
+        // Routes are geometry in the same frame as the positions, so every shift applied to one
+        // has to be applied to the other or the arcs come away from the nodes they connect.
+        val shifted = local.translated(cursor - minX, 0.0)
+        out.putAll(shifted.positions)
+        outRoutes.putAll(shifted.routes)
         cursor += (maxX - minX) + gap
     }
     // Re-centre on the origin, so a pinned position is still in a predictable frame.
-    if (out.isNotEmpty()) {
-        val centreX = (out.values.minOf { it.x.toDouble() } + out.values.maxOf { it.x.toDouble() }) / 2.0
-        for ((name, position) in out.toList()) out[name] = vec(position.x - centreX, position.y)
-    }
-    return out
+    val packed = PetriLayoutResult(out, outRoutes)
+    if (out.isEmpty()) return packed
+    val centreX = (out.values.minOf { it.x.toDouble() } + out.values.maxOf { it.x.toDouble() }) / 2.0
+    return packed.translated(-centreX, 0.0)
 }
 
 /** A circle big enough that [count] nodes of radius [PLACE_RADIUS] sit side by side without touching. */
@@ -273,14 +347,17 @@ private fun layoutComponent(
     names: List<String>,
     layout: PetriLayout,
     radius: Double,
-): Map<String, Vec2> {
+): PetriLayoutResult {
     val cycle = petriCycleOrder(net, names)
     val resolved = if (layout != PetriLayout.AUTO) layout
     else if (cycle != null) PetriLayout.RING else PetriLayout.FORCE
     return when (resolved) {
-        PetriLayout.RING -> petriRingLayout(cycle ?: names, radius)
-        PetriLayout.LAYERED -> petriLayeredLayout(net, names, radius)
-        else -> petriForceLayout(net, names, radius)
+        PetriLayout.RING -> PetriLayoutResult(petriRingLayout(cycle ?: names, radius))
+        PetriLayout.LAYERED -> PetriLayoutResult(petriLayeredLayout(net, names, radius))
+        // A missing helper is the normal case, not an error: fall through to the spring model.
+        PetriLayout.TALA -> petriTalaLayout(net, names)
+            ?: PetriLayoutResult(petriForceLayout(net, names, radius))
+        else -> PetriLayoutResult(petriForceLayout(net, names, radius))
     }
 }
 
@@ -410,6 +487,177 @@ private fun petriForceLayout(
     }
 }
 
+/**
+ * The layout behind [PetriLayout.TALA]: the net handed to d2's diagram engine through the
+ * optional `native/field-d2-layout` helper.
+ *
+ * Returns null — not an exception, not a bad drawing — whenever the helper cannot answer: not
+ * built, wrong protocol, timed out, or a net it refused. [layoutComponent] turns that into
+ * [petriForceLayout], so a document asking for TALA still opens on a machine without the binary.
+ *
+ * No `radius` parameter, unlike its siblings. Those need one because they place dimensionless
+ * points and have to be told how far apart; TALA is given the real size of every place and
+ * transition and derives its own extent. The result goes through `fitToSize` regardless.
+ *
+ * Arcs are passed directed, place to transition and transition to place. [petriForceLayout]
+ * deliberately collapses them to undirected unique pairs, because a spring does not care which
+ * way it points and a doubled arc would pull twice; TALA reads direction as flow and lays out
+ * along it, so here the distinction is worth keeping.
+ */
+private fun petriTalaLayout(net: PetriNet, names: List<String>): PetriLayoutResult? {
+    if (names.isEmpty()) return PetriLayoutResult(emptyMap())
+    if (names.size == 1) return PetriLayoutResult(mapOf(names.single() to vec(0.0, 0.0)))
+    if (!D2Layout.available) return null
+
+    val here = names.toSet()
+    // A place is a circle of PLACE_RADIUS. A transition is a bar that rotates to face its arcs,
+    // so the only size that holds at every angle is a square at the bar's full length.
+    val nodes = names.map { name ->
+        val size = if (net.place(name) != null) PLACE_RADIUS * 2.0 else BAR_HALF_LENGTH * 2.0
+        D2Layout.Node(id = name, w = size, h = size)
+    }
+    val edges = ArrayList<D2Layout.Edge>()
+    for (transition in net.transitions) {
+        if (transition.name !in here) continue
+        for (arc in transition.inputs) if (arc.place in here) {
+            edges += D2Layout.Edge(src = arc.place, dst = transition.name)
+        }
+        for (arc in transition.outputs) if (arc.place in here) {
+            edges += D2Layout.Edge(src = transition.name, dst = arc.place)
+        }
+    }
+
+    // TALA takes a direction bias, and which one reads best is a property of the net rather than
+    // something to guess: the dining table on the Petri page crosses itself five times unbiased and
+    // three under the best of the four, while a net that is already clean gains nothing. Each
+    // attempt costs about what one layout costs, so the sweep is still cheaper than one FORCE.
+    val attempts = listOf(
+        D2Layout.Direction.NONE, D2Layout.Direction.UP,
+        D2Layout.Direction.DOWN, D2Layout.Direction.RIGHT,
+    ).mapNotNull { direction ->
+        D2Layout.layout(nodes, edges, engine = D2Layout.Engine.TALA, direction = direction)
+    }
+    // First-wins on a tie, over a fixed list, so the chosen drawing is reproducible.
+    val result = attempts.minByOrNull { drawnCrossings(it, edges) } ?: return null
+    val placed = result.nodes.associateBy { it.id }
+    // A partial answer would draw some of the net in the right place and pile the rest on the
+    // origin, which reads as a bug in the net rather than in the layout. Refuse the whole thing.
+    if (names.any { it !in placed }) return null
+
+    // The helper reports top-left corners; every other layout here reports centres about the
+    // origin, and the component packer in `petriLayout` assumes that.
+    val centres = names.associateWith { name ->
+        val n = placed.getValue(name)
+        n.centreX to n.centreY
+    }
+    val midX = (centres.values.minOf { it.first } + centres.values.maxOf { it.first }) / 2.0
+    val midY = (centres.values.minOf { it.second } + centres.values.maxOf { it.second }) / 2.0
+
+    // The arcs TALA routed around the nodes, carried through the same re-centring as the nodes.
+    // This is most of what a diagram engine does that a spring model does not, and dropping it
+    // was leaving the better half of TALA's answer on the floor.
+    val routes = result.edges.mapNotNull { edge ->
+        if (edge.route.size < 2) return@mapNotNull null
+        val points = edge.route.mapNotNull { point ->
+            if (point.size < 2) null else vec(point[0] - midX, point[1] - midY)
+        }
+        if (points.size < 2) null else (edge.src to edge.dst) to points
+    }.toMap()
+
+    return PetriLayoutResult(
+        centres.mapValues { (_, c) -> vec(c.first - midX, c.second - midY) },
+        routes,
+    )
+}
+
+/**
+ * How many pairs of arcs cross, for arcs drawn along the given polylines.
+ *
+ * A straight arc is a two-point polyline, so routed and straight arcs score on the same scale.
+ * Arcs sharing an endpoint are skipped: every net has those, and counting them would score the
+ * net rather than the drawing.
+ */
+private fun polylineCrossings(arcs: List<Triple<String, String, List<Pair<Double, Double>>>>): Int {
+    fun turns(o: Pair<Double, Double>, a: Pair<Double, Double>, b: Pair<Double, Double>): Double =
+        (a.first - o.first) * (b.second - o.second) - (a.second - o.second) * (b.first - o.first)
+
+    fun crosses(
+        p: Pair<Double, Double>, q: Pair<Double, Double>,
+        r: Pair<Double, Double>, t: Pair<Double, Double>,
+    ): Boolean =
+        (turns(r, t, p) > 0) != (turns(r, t, q) > 0) && (turns(p, q, r) > 0) != (turns(p, q, t) > 0)
+
+    var count = 0
+    for (i in arcs.indices) {
+        for (j in i + 1 until arcs.size) {
+            val (aFrom, aTo, a) = arcs[i]
+            val (bFrom, bTo, b) = arcs[j]
+            if (aFrom == bFrom || aFrom == bTo || aTo == bFrom || aTo == bTo) continue
+            outer@ for (m in 0 until a.size - 1) {
+                for (n in 0 until b.size - 1) {
+                    if (crosses(a[m], a[m + 1], b[n], b[n + 1])) {
+                        // One crossing per pair of arcs, however many segment pairs realise it:
+                        // a route bending across another route twice is one place a reader's eye
+                        // snags, not two, and counting segments would score long routes as worse.
+                        count++
+                        break@outer
+                    }
+                }
+            }
+        }
+    }
+    return count
+}
+
+/** Every arc in the net as a `from to to` pair, in declaration order. */
+private fun PetriNet.arcPairs(): List<Pair<String, String>> = buildList {
+    for (transition in transitions) {
+        for (arc in transition.inputs) add(arc.place to transition.name)
+        for (arc in transition.outputs) add(transition.name to arc.place)
+    }
+}
+
+/**
+ * How many of this drawing's arcs cross each other.
+ *
+ * Counted along whatever each arc actually follows: its routed polyline where the layout supplied
+ * one, and the straight centre-to-centre line where it did not. Comparing two layouts of one net
+ * is what this is for -- [PetriLayout.TALA] uses it to choose between direction biases, and a
+ * figure can print it so the reader is not taking anyone's word for the improvement.
+ */
+fun PetriDrawing.arcCrossings(): Int = polylineCrossings(
+    net.arcPairs().mapNotNull { (from, to) ->
+        val a = positions[from] ?: return@mapNotNull null
+        val b = positions[to] ?: return@mapNotNull null
+        val route = routes[from to to]
+        val points = if (route != null && route.size >= 2) {
+            route.map { it.x.toDouble() to it.y.toDouble() }
+        } else {
+            listOf(a.x.toDouble() to a.y.toDouble(), b.x.toDouble() to b.y.toDouble())
+        }
+        Triple(from, to, points)
+    }
+)
+
+/** The same count for a layout that has not been turned into a [PetriDrawing] yet. */
+private fun drawnCrossings(result: D2Layout.Response, edges: List<D2Layout.Edge>): Int {
+    val centres = result.nodes.associate { it.id to (it.centreX to it.centreY) }
+    val routed = result.edges.associateBy({ it.src to it.dst }, { it.route })
+    return polylineCrossings(
+        edges.mapNotNull { edge ->
+            val route = routed[edge.src to edge.dst]
+            val points = if (route != null && route.size >= 2) {
+                route.mapNotNull { if (it.size < 2) null else it[0] to it[1] }
+            } else {
+                val a = centres[edge.src] ?: return@mapNotNull null
+                val b = centres[edge.dst] ?: return@mapNotNull null
+                listOf(a, b)
+            }
+            if (points.size < 2) null else Triple(edge.src, edge.dst, points)
+        }
+    )
+}
+
 // ── drawing ────────────────────────────────────────────────────────────────────────────────
 
 private const val PLACE_RADIUS = 26.0
@@ -457,10 +705,12 @@ fun PetriDrawing.toFLines(
         val centre = position(transition.name)
         val angle = barAngle(transition, centre)
         for (arc in transition.inputs) {
-            out += arcLine(position(arc.place), centre, arc.kind, arc.weight, transition.name in firing, angle, labels, labelSize)
+            out += arcLine(position(arc.place), centre, arc.kind, arc.weight, transition.name in firing, angle, labels, labelSize,
+                route = routes[arc.place to transition.name])
         }
         for (arc in transition.outputs) {
-            out += arcLine(centre, position(arc.place), null, arc.weight, transition.name in firing, angle, labels, labelSize)
+            out += arcLine(centre, position(arc.place), null, arc.weight, transition.name in firing, angle, labels, labelSize,
+                route = routes[transition.name to arc.place])
         }
     }
 
@@ -615,6 +865,7 @@ private fun PetriDrawing.arcLine(
     barAngle: Double,
     labels: Boolean,
     labelSize: Double,
+    route: List<Vec2>? = null,
 ): List<FLine> {
     val dx = (to.x - from.x).toDouble()
     val dy = (to.y - from.y).toDouble()
@@ -627,23 +878,52 @@ private fun PetriDrawing.arcLine(
     // marks the output direction.
     val startInset = if (kind == null) BAR_HALF_WIDTH + 3.0 else PLACE_RADIUS + 2.0
     val endInset = if (kind == null) PLACE_RADIUS + 3.0 else BAR_HALF_WIDTH + 4.0
-    if (length <= startInset + endInset + 6.0) return emptyList()
 
-    val a = vec(from.x + ux * startInset, from.y + uy * startInset)
-    val b = vec(to.x - ux * endInset, to.y - uy * endInset)
+    // The path the arc follows. A routed layout bends it around the nodes in between; everything
+    // else runs straight. Either way it is trimmed back off both shapes so an arrowhead lands on
+    // a rim rather than in the middle of a circle.
+    val path = trimPath(
+        if (route != null && route.size >= 2) listOf(from) + route + listOf(to) else listOf(from, to),
+        startInset,
+        endInset,
+    )
+    // Too short to be worth drawing once both shapes are taken off it. Measured along the path,
+    // not across the straight line: a routed arc between two neighbours can be plenty long.
+    if (path.size < 2) return emptyList()
+    var drawn = 0.0
+    for (index in 0 until path.size - 1) {
+        drawn += hypot(
+            (path[index + 1].x - path[index].x).toDouble(),
+            (path[index + 1].y - path[index].y).toDouble(),
+        )
+    }
+    if (drawn <= 6.0) return emptyList()
+    val b = path.last()
+    // The head and any weight label read off the last segment, which is the straight line itself
+    // when the arc is not routed.
+    val tailX = path[path.size - 2].x.toDouble()
+    val tailY = path[path.size - 2].y.toDouble()
+    val headLength = hypot(b.x - tailX, b.y - tailY)
+    val hx = if (headLength < 1e-6) ux else (b.x - tailX) / headLength
+    val hy = if (headLength < 1e-6) uy else (b.y - tailY) / headLength
     val tint = if (hot) LIVE else hsl(0.58, 0.22, 0.52, 0.72)
     val out = mutableListOf<FLine>()
+
+    /** The path as one stroked line, for the kinds that draw their own head. */
+    fun strokeWhole(thick: Double, colour: afield.stdlib.Vec4, upTo: Vec2 = b): FLine = fline {
+        moveTo(path.first())
+        for (index in 1 until path.size - 1) lineTo(path[index])
+        lineTo(upTo)
+        stroked = true; filled = false
+        thickness = thick
+        color = colour
+    }
 
     when (kind) {
         PetriArcKind.INHIBIT -> {
             // The standard notation: a small hollow circle at the transition end, no arrowhead.
-            val stop = vec(b.x - ux * 6.0, b.y - uy * 6.0)
-            out += fline {
-                moveTo(a); lineTo(stop)
-                stroked = true; filled = false
-                thickness = if (hot) 2.2 else 1.3
-                color = tint
-            }
+            val stop = vec(b.x - hx * 6.0, b.y - hy * 6.0)
+            out += strokeWhole(if (hot) 2.2 else 1.3, tint, stop)
             out += fline {
                 circle(b.x.toDouble(), b.y.toDouble(), 5.0, 16)
                 stroked = true; filled = false
@@ -653,16 +933,23 @@ private fun PetriDrawing.arcLine(
         }
         PetriArcKind.READ -> {
             // No head at all: nothing flows along a test arc.
-            out += fline {
-                moveTo(a); lineTo(b)
-                stroked = true; filled = false
-                thickness = if (hot) 2.0 else 1.1
-                color = hsl(0.45, 0.35, 0.55, 0.55)
-            }
+            out += strokeWhole(if (hot) 2.0 else 1.1, hsl(0.45, 0.35, 0.55, 0.55))
         }
         else -> {
+            // `arrow` draws a straight shaft plus a head, which is the whole arc when there is no
+            // route and only the last leg of it when there is; the rest of the polyline is stroked
+            // separately so the two meet.
+            if (path.size > 2) {
+                out += fline {
+                    moveTo(path.first())
+                    for (index in 1 until path.size - 1) lineTo(path[index])
+                    stroked = true; filled = false
+                    thickness = if (hot) 2.4 else 1.4
+                    color = tint
+                }
+            }
             out += arrow(
-                Vec2(a), Vec2(b),
+                Vec2(path[path.size - 2]), Vec2(b),
                 color = tint,
                 thickness = if (hot) 2.4 else 1.4,
                 headLength = 11.0,
@@ -672,10 +959,44 @@ private fun PetriDrawing.arcLine(
     }
 
     if (weight > 1 && labels) {
-        val mid = vec((a.x + b.x) / 2.0 + uy * 9.0, (a.y + b.y) / 2.0 - ux * 9.0)
+        val at = path[path.size / 2]
+        val mid = vec(at.x + hy * 9.0, at.y - hx * 9.0)
         out += label(weight.toString(), mid, labelSize * 0.9, tint)
     }
     return out
+}
+
+/**
+ * [points] with [startInset] walked off the front and [endInset] off the back, along the path
+ * rather than along the straight line between its ends.
+ *
+ * Returns fewer than two points when the path is shorter than the two insets together, which is
+ * how a caller learns there is no room to draw the arc at all.
+ */
+private fun trimPath(points: List<Vec2>, startInset: Double, endInset: Double): List<Vec2> {
+    fun walk(path: List<Vec2>, inset: Double): List<Vec2> {
+        var left = inset
+        var index = 0
+        while (index < path.size - 1) {
+            val dx = (path[index + 1].x - path[index].x).toDouble()
+            val dy = (path[index + 1].y - path[index].y).toDouble()
+            val length = hypot(dx, dy)
+            if (length >= left) {
+                if (length < 1e-9) return path.drop(index + 1)
+                val start = vec(path[index].x + dx * (left / length), path[index].y + dy * (left / length))
+                return listOf(start) + path.drop(index + 1)
+            }
+            left -= length
+            index++
+        }
+        return emptyList()
+    }
+
+    val front = walk(points, startInset)
+    if (front.size < 2) return emptyList()
+    val back = walk(front.reversed(), endInset)
+    if (back.size < 2) return emptyList()
+    return back.reversed()
 }
 
 /**

@@ -520,7 +520,7 @@ class Instance(validate: Boolean) {
         /**
          * The OpenXR instance extensions we actually enabled. The optional ones are only present
          * when the runtime advertised them, so consumers that build on them (hand tracking, body
-         * tracking) check here rather than guessing.
+         * tracking, eye tracking) check here rather than guessing.
          */
         var enabledOpenXRInstanceExtensions: Set<String> = emptySet()
             private set
@@ -543,6 +543,8 @@ class Instance(validate: Boolean) {
             val optional = listOf(
                 EXTHandTracking.XR_EXT_HAND_TRACKING_EXTENSION_NAME,
                 EXTHandInteraction.XR_EXT_HAND_INTERACTION_EXTENSION_NAME,
+                EXTEyeGazeInteraction.XR_EXT_EYE_GAZE_INTERACTION_EXTENSION_NAME,
+                afield.four.targets.HtcEyeTracker.EXTENSION_NAME,
                 // Monado vendor extension; the only route to WiVRn's body trackers.
                 afield.four.targets.MndxXDevSpace.EXTENSION_NAME,
             ).filter { it in supported }
