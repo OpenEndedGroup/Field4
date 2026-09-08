@@ -138,13 +138,52 @@ display("main", "<div style=\"padding:24px\">hello from Field</div>")
 
 Runner attributes, by what they decide. Hyphenated names also answer to an underscored spelling, and `public/docs_hooks.py` is the list that settles an argument.
 
-**What comes out.** At least one of `screenshot="assets/example.png"`, `video="assets/example.mp4"` or `audio="assets/example.wav"` is required; `audio` additionally needs `audio-spec="<scene>"` to name the scene to render. A video runs for `duration="5"` seconds at `fps="30"`. `embed=true` puts the result below the code block, and without it the capture still runs and the reader sees nothing at all. `alt="..."` is the image's alt text; `hidden=true` renders the figure without the fence above it.
+**What comes out.** At least one of `screenshot`, `video` or `audio` is required.
 
-**What is photographed.** `capture=` is `box` (the default), `window`, `window-editor`, `editor`, `native-window` for an `afield.four` renderer window, or `ui`, which runs the fence body as a `drive` transcript scripting the live editor through Playwright. A `ui` capture is clipped to `region=` — `box`, `window`, `window-editor` or `editor`, default `window-editor` — or to a CSS selector with `clip-selector="#some-id"`, for an overlay that no box owns. `padding="16"` insets a `box` or `editor` crop. `trim=true` crops the uniform background off any finished capture; `trim-native=true` is the older, narrower form and applies only to a `native-window` graphics capture.
+- `screenshot="assets/example.png"` — where the still lands, relative to this markdown file.
+- `video="assets/example.mp4"` — an H.264/MP4 clip, instead of a still or alongside one.
+- `audio="assets/example.wav"` — a rendered scene; needs `audio-spec` as well.
+- `audio-spec="<scene>"` — which scene `audio` renders.
+- `duration="5"` — video length in seconds.
+- `fps="30"` — video frame rate.
+- `embed=true` — puts the result below the code block. Without it the capture still runs, but nothing of it reaches the page.
+- `alt="..."` — alt text for the embedded image.
+- `hidden=true` — renders the figure without the fence above it.
 
-**When the shutter opens.** `execution=` is `run` (the default) or `launch`, which waits for the box to start, sleeps for `wait="0.75"` seconds, captures, then sends `stop`. `wait-output=true` waits for real output instead of a delay: `wait-output-kind=` is `display` (the default), `inline` or `all`, and `wait-output-channel=` and `wait-output-contains=` narrow which output counts. `native-wait-frames="30"` waits on rendered frames rather than seconds. `timeout="45"` bounds the whole backdoor call, and `force=true` re-captures whatever the cache thinks.
+**What is photographed.**
 
-**Where the code runs.** `name`, `x`, `y`, `w`, `h`, `document` and `property` place the scratch box. `graphics-context=true` asks for a Field with a live Vulkan renderer, which is what any `native-window` capture needs. `macro-file="../../dev_docs/agents/transcripts/hello_display.yaml"` replays an `OperationTranscript` before the fence runs, `macro-name` and `macro-selection` select inside it, and `capture-box="agent_hello_display"` names the box to crop afterwards. `source-box=` with `source-box-properties="vertex,fragment"` takes the code from a committed box under `assets/` instead of from the fence. `open-outputs` defaults to true; `with-editor` is implied by `capture="window-editor"`.
+- `capture="box"` — the default: just the box that ran the code.
+- `capture="window"`, `capture="window-editor"`, `capture="editor"` — the browser window, with or without the editor pane, or the editor pane alone.
+- `capture="native-window"` — an `afield.four` renderer window.
+- `capture="ui"` — runs the fence body as a `drive` transcript scripting the live editor through Playwright.
+- `region="window-editor"` — what a `ui` capture is clipped to: `box`, `window`, `window-editor` (the default) or `editor`.
+- `clip-selector="#some-id"` — clips a `ui` capture to a CSS selector instead, for an overlay that no box owns.
+- `padding="16"` — insets a `box` or `editor` crop.
+- `trim=true` — crops the uniform background off any finished capture.
+- `trim-native=true` — the older, narrower form of the same thing, and only for a `native-window` graphics capture.
+
+**When the shutter opens.**
+
+- `execution="run"` — the default: run the code, wait, capture.
+- `execution="launch"` — wait for the box to start, sleep for `wait`, capture, then send `stop`.
+- `wait="0.75"` — seconds to sleep before capturing.
+- `wait-output=true` — wait for real output rather than for a delay to elapse.
+- `wait-output-kind="display"` — which output counts: `display` (the default), `inline` or `all`.
+- `wait-output-channel=`, `wait-output-contains=` — narrow it further, to a channel or to a substring.
+- `native-wait-frames="30"` — waits on rendered frames rather than on seconds.
+- `timeout="45"` — bounds the whole backdoor call.
+- `force=true` — re-capture whatever the cache thinks.
+
+**Where the code runs.**
+
+- `name`, `x`, `y`, `w`, `h`, `document`, `property` — name and place the scratch box, and say which property the code goes in.
+- `graphics-context=true` — asks for a Field with a live Vulkan renderer, which is what any `native-window` capture needs.
+- `macro-file="../../dev_docs/agents/transcripts/hello_display.yaml"` — replays an `OperationTranscript` before the fence runs.
+- `macro-name`, `macro-selection` — pick a macro and a box selection inside that transcript.
+- `capture-box="agent_hello_display"` — the box to crop after the replay.
+- `source-box=`, `source-box-properties="vertex,fragment"` — take the code from a committed box under `assets/` instead of from the fence.
+- `open-outputs` — true unless you say otherwise.
+- `with-editor` — implied by `capture="window-editor"`.
 
 Reach for `capture="editor"` when the subject is the Monaco pane itself: inline visualizers such as the histogram and piano-roll decorations.
 
