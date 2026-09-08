@@ -2,12 +2,13 @@
 
 *Every public declaration used below is listed, with its KDoc, in the codebase reference: [`spectral.kt`](reference/math.md#spectral-kt). Start from [what's already in the box](reference/index.md).*
 
-The [timeseries toolkit](timeseries_examples.md) works in the time domain: it smooths, gates, and
-flags a stream sample by sample. Sometimes the question is what the signal is *made of* — which
-frequencies carry the energy, how bright the timbre is, where a chirp is heading. That is the
-frequency domain, and `afield.stdlib` has a self-contained family for it: a pure-Kotlin FFT,
-analysis windows, a `Spectrum`, a `Spectrogram` (STFT), the classic spectral features, and a
-resonator filterbank that analyses frequency without a transform at all.
+The [timeseries toolkit](timeseries_examples.md) smooths, gates, and flags a stream sample by
+sample, all of it in the time domain. Sometimes the question is what the signal is *made of* —
+which frequencies carry the energy, how bright the timbre is, where a chirp is heading.
+`afield.stdlib` answers that side of it with a pure-Kotlin FFT, a windowed `Spectrum` and a
+`Spectrogram` (an STFT) on top of it, the classic spectral features, and a resonator filterbank
+that gets at frequency without running a transform at all. That last one is the odd member of the
+family, and the only one where the frequencies it reports are frequencies you chose.
 
 Nothing here needs an external DSP library or a GPU. The FFT is an iterative Cooley–Tukey radix-2
 core with a Bluestein (chirp-z) fallback, so arbitrary non-power-of-two lengths transform exactly.
