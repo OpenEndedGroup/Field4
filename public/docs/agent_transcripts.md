@@ -1,20 +1,21 @@
 # Agent transcript gallery
 
-Field ships a small, curated corpus of **operation transcripts**: short YAML macros that build a
-whole Field document (boxes, code, graph wiring) from a blank canvas. They are the worked examples
-an agent copies, runs, and adapts when [automating Field](automating_field.md).
+An **operation transcript** is a short YAML macro that builds a whole Field document (boxes, code,
+graph wiring) from a blank canvas. Field ships a small, curated corpus of them, and they are the
+worked examples an agent copies, runs, and adapts when [automating Field](automating_field.md).
 
 These are the same scenes offered as **Starting points** on the [welcome screen](history_overview.md):
 each transcript that is a self-contained scene is materialized into an openable document, so you can
 search for it there and open an editable copy in your workspace. Six are not, and each says why in
-its own entry: a transcript that needs an external asset, a user gesture in a browser, or a renderer
+its own entry. A transcript that needs an external asset, a user gesture in a browser, or a renderer
 from a box outside itself makes a broken starting point, and an integration probe is not a scene.
 
 Every transcript in `dev_docs/agents/transcripts/` has an entry below, and
 `checkAgentTranscriptIndex` keeps it that way: it fails on a transcript with no entry, an entry
 naming a transcript that is not there, an entry offering a starting point that was never generated,
 or an entry filed under a section whose claim about CI does not match how CI checks it. The entries
-are written by hand, one per transcript: which number it prints, and why that number.
+are written by hand, one per transcript, because the useful thing to say about a scene is which
+number it prints and why that number matters, and no generator over the yaml can write that.
 
 Figures are captures of the code running, taken by the docs capture pipeline for the walkthrough
 page linked beside each one. Most entries carry none: a scene that opens a native Vulkan window, or
