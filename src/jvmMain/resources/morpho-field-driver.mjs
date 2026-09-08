@@ -3,8 +3,12 @@
 //
 // Two jobs:
 //   1. Replace grower.js, whose constructor builds morpho's own 2D LayoutEngine. The expansion
-//      *schedule* is worth keeping and the layout is not, so the schedule is reproduced here
-//      and MorphoDifferentialTest pins it to identical expansion counts.
+//      *schedule* is worth keeping and the layout is not, so the schedule is reproduced here.
+//      Nothing pins this reimplementation against upstream's schedule step for step: grower.js
+//      is deliberately not vendored, so there is no in-tree copy to compare against. What
+//      MorphoBridgeTest pins is where expansion arrives rather than the route it takes — the
+//      fully grown circuit's gate count against tiny_morpho.py, and 'largest' and 'bfs' reaching
+//      the same gate count, cell count and function as each other.
 //   2. Flatten the compiler's SoA graph into typed arrays that cross into the JVM in a handful
 //      of bulk copies rather than ~10^5 individual polyglot member reads.
 //
