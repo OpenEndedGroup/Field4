@@ -447,16 +447,19 @@ The order does reverse. On the smaller table in `dev_docs/agents/transcripts/pet
 FORCE crosses five times and TALA once, and TALA gets there in 2.1 s against FORCE's 4.5 s. So the
 choice is per net rather than settled, which is why `AUTO` never makes it for you.
 
-TALA is also being asked to work with one hand tied. It returns routed arcs, and routing around the
-nodes is most of how a diagram tool avoids crossings, but [toFLines] draws its own straight arcs
-from centre to centre and keeps only the positions. Taking the routes as well is the obvious next
-move for this drawing.
+The two panels do not draw their arcs the same way, which is the other half of what TALA gives you.
+A spring model places points and leaves the arcs to whatever runs between them, so FORCE's are
+straight lines from centre to centre. TALA routes each arc around the nodes in its way and
+`toFLines` follows those polylines, which is why the right-hand panel turns corners. On the smaller
+table in the transcript that routing is what takes TALA from one crossing to none. It is also why
+the two sides are not quite comparable as pictures: one is a graph drawing and the other is closer
+to a schematic.
 
-One knob is worth knowing about. TALA accepts a direction bias, and it matters more than the seed
-budget: left unbiased this table comes out with six crossings and biased upwards with three, while
-raising the seeds from 3 to 16 reaches four and takes four times as long. `PetriLayout.TALA` lays
-the net out once per direction and keeps whichever crosses itself least, which is where its three
-came from.
+The three in that caption is already the best of four tries. TALA accepts a direction bias, and it
+is worth more than a bigger seed budget: this table crosses itself five times with no bias and three
+under the best of up, down and right, so `PetriLayout.TALA` lays the net out once per direction and
+keeps whichever crosses itself least. Four layouts of a 30-node net still cost less than one FORCE.
+On a net that is already clean the sweep finds nothing to improve and costs the four layouts anyway.
 
 TALA runs in `native/field-d2-layout`, a Go co-process that Field neither builds nor ships. Without
 it `PetriLayout.TALA` draws with `FORCE`, so a document that asks for TALA still opens on a machine
