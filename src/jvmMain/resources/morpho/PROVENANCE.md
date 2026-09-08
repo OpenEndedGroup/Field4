@@ -24,8 +24,9 @@ the bridge is only honest if it is their compiler producing the netlist, not our
 `tiny_morpho.py` is here for two reasons. It carries the MorphoHDL standard library as
 text between the `# MORPHO_BEGIN` / `# MORPHO_END` markers — upstream's JS parses the
 same bytes the Python executes, so there is exactly one copy of the language's circuit
-library. And it is the differential-test oracle: `MorphoDifferentialTest` compiles a
-design through GraalJS and checks the result against this file's own test suite.
+library. And it is the differential oracle: `MorphoBridgeTest` compiles a design
+through GraalJS and pins its gate count against the numbers this file's own
+implementation prints.
 
 ## Deliberately not vendored
 
@@ -36,8 +37,12 @@ WebGL rendering and DOM wiring. Field supplies all of that.
 `grower.js` is also absent, and it is the one interesting omission. Its expansion
 *schedule* (largest-first, chasing single-child chains) is 40 lines we do want, but its
 constructor builds a `LayoutEngine`, so importing it drags in the 2D layout we are
-replacing. `MorphoGraal.kt`'s driver reimplements that schedule with the layout
-dependency removed, and `MorphoDifferentialTest` pins it to identical expansion counts.
+replacing. `morpho-field-driver.mjs` reimplements that schedule with the layout
+dependency removed. Because the original is not vendored, nothing compares the two
+schedules step for step; what `MorphoBridgeTest` pins is the circuit that expansion
+arrives at — its gate count against `tiny_morpho.py`, and the driver's two orders
+(`largest`, morpho's default, and `bfs`) reaching the same gate count, cell count and
+function.
 
 ## A note on the WASM
 

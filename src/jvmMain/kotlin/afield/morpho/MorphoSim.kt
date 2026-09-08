@@ -18,8 +18,8 @@ package afield.morpho
  *
  * Taken from `tiny_morpho.py:361` — `idx = Σ args[k] << k`, `out = (lut >> idx) & 1`. Port *k*
  * contributes bit *k* of the truth-table index. Getting this backwards still passes a symmetric
- * gate like XOR3 and fails only on asymmetric ones, so [MorphoDifferentialTest] checks the
- * shifter and the multiplier, not just the adders.
+ * gate like XOR3 and fails only on asymmetric ones, so `MorphoBridgeTest` checks the shifter
+ * and the multiplier, not just the adders.
  */
 object MorphoSim {
 
