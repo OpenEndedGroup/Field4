@@ -807,7 +807,7 @@ object KotlinSourcePartition {
         /** Whether the declaration ending textually at [line] carries on to the next code line. */
         fun continues(line: Int, hi: Int, inEnum: Boolean): Boolean {
             val next = nextCodeLine(line + 1, hi) ?: return false
-            if (isPrefixOnlyLine(next)) return false
+            if (isPrefixOnlyLine(next)) return continuesIntoAnnotatedAccessor(next, hi)
             if (recognize(masked.code[next]) != null) return false
             // `A,` ends with a comma, which normally means "unfinished" — inside an enum body it means
             // the next entry, and continuing would swallow it.
@@ -818,6 +818,32 @@ object KotlinSourcePartition {
             // accessor it is. Doing this cannot capture a sibling declaration: a modifier run followed
             // by a keyword is a declaration, and the check above has already returned.
             return CONTINUES_BEFORE.containsMatchIn(stripModifiers(masked.code[next].trimStart()))
+        }
+
+        /**
+         * Whether the annotation/modifier run starting at [index] belongs to an accessor of the
+         * declaration above it, rather than starting the next declaration.
+         *
+         * An annotations-only line almost always opens the *next* declaration's head, which is why
+         * [continues] stops at one. A property's accessor is the exception: `@Synchronized`,
+         * `@JvmName("_getBuffer")` and `@OptIn(…)` are routinely written on their own line above the
+         * `get()` or `set()` they annotate, and stopping there ends the property on its signature and
+         * leaves both the annotation and the accessor unattributed. That shape accounts for 13 of the
+         * repository's unattributed code lines across `stats.kt`, `VulkanBuffer.kt`, `keyframes.kt`
+         * and `PersonalLayer.kt`.
+         *
+         * Reading past the run cannot swallow a sibling: if the line the run leads to declares
+         * anything, [recognize] sees it and this returns false. `get`/`set` are not declaration
+         * keywords, so the only way through is an actual accessor.
+         */
+        fun continuesIntoAnnotatedAccessor(index: Int, hi: Int): Boolean {
+            var cursor = index
+            while (cursor < hi && isPrefixOnlyLine(cursor)) {
+                cursor = nextCodeLine(cursor + 1, hi) ?: return false
+            }
+            if (cursor >= hi) return false
+            if (recognize(masked.code[cursor]) != null) return false
+            return ACCESSOR_START.containsMatchIn(stripModifiers(masked.code[cursor].trimStart()))
         }
 
         /** The next line in `[from, hi)` carrying any code at all. */
@@ -1038,4 +1064,7 @@ object KotlinSourcePartition {
      */
     private val CONTINUES_BEFORE =
         Regex("""^(?:\?\.|\?:|::|&&|\|\||[.=,{]|[+*/%]|->|:|by\b|where\b|else\b|catch\b|finally\b|get\b|set\b|@get:|@set:)""")
+
+    /** A line that starts a property accessor. See [Builder.continuesIntoAnnotatedAccessor]. */
+    private val ACCESSOR_START = Regex("""^(?:get\b|set\b)""")
 }

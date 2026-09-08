@@ -171,6 +171,76 @@ class KotlinSourcePartitionTest {
     }
 
     @Test
+    fun `an accessor written with an annotation stays inside its property`() {
+        // The annotation sibling of the case above, and the one the corpus actually had: an
+        // annotations-only line normally opens the next declaration's head, so the scan stopped at
+        // `@Synchronized` and left both it and the `get()` under it unattributed. Thirteen lines of
+        // `src/` sat in that gap, eight of them the four repeats of this exact shape in
+        // `stdlib/stats.kt`.
+        val source = """
+            class Series {
+                val values = mutableListOf<Int>()
+
+                val size: Int
+                    @Synchronized
+                    get() = values.size
+
+                val first: Int
+                    @JvmName("_getFirst")
+                    get() = values.first()
+            }
+        """.trimIndent()
+
+        val partition = KotlinSourcePartition.partition(source)
+        assertEquals(emptyList(), KotlinSourcePartition.verify(partition), "invariants")
+        assertEquals(source.split("\n"), KotlinSourcePartition.reconstruct(partition), "reconstruction")
+        assertEquals(
+            lineOf(source, "get() = values.size"),
+            declaration(partition, "size").endLine,
+            "the annotated accessor is part of the property above it",
+        )
+        // Blank lines between declarations are FILLER by design; unattributed *code* is what the
+        // corpus guard ratchets on, and what this shape was contributing to it.
+        assertEquals(
+            emptyList(),
+            partition.allSpans()
+                .filter { it.kind == KotlinSourcePartition.Kind.FILLER }
+                .flatMap { span -> (span.startLine..span.endLine).map { partition.lines[it - 1] } }
+                .filter { it.isNotBlank() },
+            "no unattributed code should be left over",
+        )
+    }
+
+    @Test
+    fun `an annotation run leading to a declaration still starts that declaration`() {
+        // The refusal that makes the case above safe. Reading past an annotations-only run must stop
+        // when the run leads to something that declares: `get`/`set` are not declaration keywords, so
+        // only a real accessor may pull the run back into the property above.
+        val source = """
+            class Series {
+                val size: Int = 0
+
+                @Synchronized
+                fun clear() {
+                }
+            }
+        """.trimIndent()
+
+        val partition = KotlinSourcePartition.partition(source)
+        assertEquals(emptyList(), KotlinSourcePartition.verify(partition), "invariants")
+        assertEquals(
+            lineOf(source, "val size"),
+            declaration(partition, "size").endLine,
+            "the property must not reach forward over the annotation run",
+        )
+        assertEquals(
+            lineOf(source, "@Synchronized"),
+            declaration(partition, "clear").startLine,
+            "the run belongs to the function it annotates",
+        )
+    }
+
+    @Test
     fun `a declaration starts at its annotation, nested argument lists and all`() {
         // `@Deprecated("Use position", ReplaceWith("position.x.toDouble()"))` defeated a regex that
         // stopped at the first `)`, so the line did not read as annotations-only and the declaration
