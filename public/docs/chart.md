@@ -2,9 +2,10 @@
 
 *`chart()` builds a plot out of geometry rather than out of a browser. That matters for three things; Plotly is better at everything else.*
 
-`afield.Chart` is to a plot what `Table` is to a grid: build it, hand it to `showChart`, and it arrives
-in the repo's style with no markup in the way. It implements `ToHTML`, so `showChart(c)`,
-`display(channel, c)`, `c.h`, and a box whose last expression is a `Chart` all render the same figure.
+`afield.Chart` is to a plot what `Table` is to a grid. You build one up a call at a time, hand it to
+`showChart`, and it arrives in the repo's style with no markup in the way. It implements `ToHTML`,
+so `showChart(c)`, `display(channel, c)`, `c.h`, and a box whose last expression is a `Chart` all
+render the same figure.
 
 ```diffstatic {data-lang=kotlin}
 Chart(title = "residual per iteration", xLabel = "iteration", yLabel = "|r|")
