@@ -4,14 +4,15 @@
 [Field's 3D output](three_output.md#which-renderer-draws-this) — one paragraph on why a pixel width
 is not a style choice. This page is the whole contract, both axes, from the panel's side.*
 
-An output panel is the grey disclosure a box grows when something calls `display`. Closed, it is
-exactly 200 pixels wide (`src/commonMain/resources/outputareas2.js:5#const CLOSED_W`). Open, it is
-whatever size `contentSizeForDisclosure` decides the content wants, re-measured over seven passes
+Call `display` in a box and the box grows a grey disclosure to hold the output. That is an output
+panel. Closed, it is exactly 200 pixels wide
+(`src/commonMain/resources/outputareas2.js:5#const CLOSED_W`). Open, it is whatever size
+`contentSizeForDisclosure` decides the content wants, re-measured over seven passes
 (`src/commonMain/resources/outputareas2.js:17#const AUTO_SIZE_PASSES`) as fonts load and iframes
 boot.
 
-Panels come out the wrong size when an author declares a size in a vocabulary the panel cannot
-read, leaving it to size itself from whatever is left. Nothing throws, nothing is logged, and the
+A panel comes out the wrong size when the size you gave it is in a vocabulary the panel cannot
+read, so it sizes itself from whatever is left instead. Nothing throws, nothing is logged, and the
 result is not obviously wrong: it is a plausible size arrived at from no evidence. The symptoms
 point at the content rather than at the measurement, so this page starts from the symptoms.
 
@@ -66,7 +67,7 @@ different frame shape, one that declares *no* inline width, where the fallback d
 frame to the panel's own width. The frames in the tree that take that path are named
 [below](#four-things-in-the-tree-are-fill-frames).
 
-`src/jvmMain/kotlin/afield/graphics/Three.kt:384#val sizing = if (width != null` is where a caller's
+`src/jvmMain/kotlin/afield/graphics/Three.kt:388#val sizing = if (width != null` is where a caller's
 pixel width beats a percentage, for the same reason and with the same effect.
 
 ## A frame with nothing to report
@@ -104,7 +105,7 @@ vocabulary CSS gives it, that it has no opinion about its own width.
 Two near misses first, because both look like candidates. `Box.three`'s no-width path writes
 `width:100%` but carries no `data-afield-autosize` attribute, so its viewer does report an intrinsic
 width and it is not a fill frame. And
-`src/jvmMain/kotlin/afield/python/PythonInterface.kt:1462#const val EMBED_IFRAME_STYLE` is
+`src/jvmMain/kotlin/afield/python/PythonInterface.kt:1463#const val EMBED_IFRAME_STYLE` is
 `width:960px`, in pixels, with a KDoc explaining why the percentage was rejected.
 
 The frames that do satisfy `isFillWidthIframe` are these, and they do not all get there the same
@@ -117,14 +118,14 @@ way:
   class-set width is not concrete and this frame is the one that genuinely takes the bounding-rect
   fallback and measures the panel it is in.
 - the value-viewer frame
-  (`src/jsMain/kotlin/afield/Outputs.kt:911#<iframe data-afield-autosize="off" src="${src}" loading="lazy"`)
+  (`src/jsMain/kotlin/afield/Outputs.kt:933#<iframe data-afield-autosize="off" src="${src}" loading="lazy"`)
   is the same story: its width lives in the `.value-viz-output-viewer-frame` class.
 - the embedded value explorer a `.h2` panel puts in a box output declares `width:100%` inline, so it
   is the reports-100 shape rather than the measures-itself shape.
 - `keyframeBrowser` when you pass it a non-positive width
-  (`src/jvmMain/kotlin/afield/outputs.kt:869#val declaredWidth = if (width > 0)`), which is the one
+  (`src/jvmMain/kotlin/afield/outputs.kt:879#val declaredWidth = if (width > 0)`), which is the one
   documented opt-in. Its KDoc at
-  `src/jvmMain/kotlin/afield/outputs.kt:817#[width] is a pixel count and not a percentage` is the
+  `src/jvmMain/kotlin/afield/outputs.kt:825#[width] is a pixel count and not a percentage` is the
   in-code account of this section.
 
 ## Why the fallback measures outwards
@@ -203,7 +204,7 @@ picture is taken. A captured panel is not the panel a person sees, so do not rea
 docs figure.
 
 Nor a width: those are pixels in a PNG. The measured version lives in
-`tools/run_ui_regressions.py:3447#id="h2-panel-sizing"`, which asserts geometry rather than
+`tools/run_ui_regressions.py:3651#id="h2-panel-sizing"`, which asserts geometry rather than
 photographing it — see [what is pinned](#what-is-pinned-and-what-is-not).
 
 ## Height is measured from the content edge
@@ -281,7 +282,7 @@ fresh box, and every docs capture.
 What records the drag is a `ResizeObserver` on the panel box
 (`src/commonMain/resources/outputareas2.js:833#d.userResizeObserver = new ResizeObserver`) rather
 than a `mouseup` on the panel
-(`src/commonMain/resources/outputareas2.js:814#d.cw.addEventListener("mouseup"`), and the difference
+(`src/commonMain/resources/outputareas2.js:818#d.cw.addEventListener("mouseup"`), and the difference
 shows on exactly the panels this page is about. A mouse event raised inside an iframe belongs to that
 iframe's document and never reaches the one holding the panel, so releasing the grip over a frame
 records nothing and the next auto-size pass reads the unchanged `st.width`/`st.height` and puts the
@@ -297,7 +298,7 @@ come out `userSized` and never auto-size again.
 browser-driven: they build a real box, run real Kotlin, wait for the auto-size passes to settle, and
 read geometry out of the live DOM.
 
-`tools/run_ui_regressions.py:3447#id="h2-panel-sizing"` builds a box at `--w 1040 --h 200`, displays
+`tools/run_ui_regressions.py:3651#id="h2-panel-sizing"` builds a box at `--w 1040 --h 200`, displays
 40 rows as a `.h2` value explorer, and asserts both axes of the resulting panel:
 
 - `tools/run_ui_regressions.py:1045#result.panelTracksBox =` — the panel is within 24px of the box's
@@ -309,7 +310,7 @@ read geometry out of the live DOM.
   the height it declared, which is the height-axis bug, and the case additionally asserts
   `summaryHeight > 0` so that the fixture cannot pass by having nothing above the frame.
 
-`tools/run_ui_regressions.py:3436#id="output-area-basics"` covers the surrounding behaviour rather
+`tools/run_ui_regressions.py:3640#id="output-area-basics"` covers the surrounding behaviour rather
 than geometry: `display` creating and replacing channel content, embedded scripts executing, output
 actually being visible.
 
@@ -318,7 +319,7 @@ What neither pins:
 - **the fill-frame population.** `h2-panel-sizing` exercises one fill frame; `output-area-basics`
   exercises none. The lazy-output frame and the value-viewer frame are fill frames by the same
   three-part test and are under no geometry assertion anywhere.
-  `src/jvmTest/kotlin/afield/stdlib/KeyframeBrowserTest.kt:580#fun aNonPositiveWidthIsStillTheFillMyColumnEscapeHatch`
+  `src/jvmTest/kotlin/afield/stdlib/KeyframeBrowserTest.kt:952#fun aNonPositiveWidthIsStillTheFillMyColumnEscapeHatch`
   pins `keyframeBrowser`'s *markup*, that a non-positive width still spells `100%`, without
   standing up a browser, so it says nothing about what a panel then does with it.
 - **the screenshot-prep loop.** The regression cases photograph a box but assert nothing about the
