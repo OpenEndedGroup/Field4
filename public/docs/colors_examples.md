@@ -2,11 +2,11 @@
 
 *Every public declaration used below is listed, with its KDoc, in the codebase reference: [`colors.kt`](reference/graphics.md#colors-kt). Start from [what's already in the box](reference/index.md).*
 
-Color trouble usually appears once several related colors have to survive on the same page: geometry goes muddy, two plotted series stop being distinguishable, a control surface stops reading. These examples keep color attached to shapes.
+Picking one color is easy. Trouble starts at six or seven, once they have to work as a set on a single page. Both examples below spend a whole palette on geometry rather than laying it out as a chart of hex values, because drawing it is how you find out which entry is the weak one.
 
 ## HSL vs OKHSL hue sets
 
-Stepping hue changes the colors, but perceived weight can drift: one swatch shouts, the next disappears, and the set stops behaving as the family a legend or a row of note lanes needs.
+Stepping evenly round the hue wheel is the obvious way to ask for ten distinguishable colors, and it mostly works. What drifts is perceived weight. One swatch shouts, the next one disappears, and ten colors that were meant to read as a family stop doing so.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/colors_examples/hsl_okhsl_sets.png" wait="1.0" capture="box"}
 :::static
