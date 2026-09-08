@@ -1,5 +1,6 @@
 package afield
 
+import afield.layout.BoxLayout
 import afield.logger.lblock
 import afield.logger.lprintln
 import afield.stdlib.Action
@@ -731,6 +732,14 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                     val countMessage = formatBoxCountMessage(selected.size, targets.size, "Deleted")
                     notify(countMessage)
                 }
+            }
+
+            actionTable["-layout-boxes"] = { boxes ->
+                BoxLayout.organize(boxes)
+            }
+
+            actionTable["-layout-document"] = { _ ->
+                BoxLayout.organizeDocument()
             }
 
             actionTable["-update-check"] = { _ ->

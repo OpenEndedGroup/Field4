@@ -38,8 +38,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 89 transcripts on every build, at three
-depths. 59 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 91 transcripts on every build, at three
+depths. 61 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -250,6 +250,30 @@ companion Pell numbers, about 2.41× per philosopher, so eleven is 16 238 markin
 is past the budget, and a stubborn-set partial-order reduction turns that into `2n²−2n+2`, a **73×**
 speed-up at eleven and an answer at twelve, while refusing every property the theorem does not cover.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/petri_state_space/metadata.edn)
+
+**petri_tala_layout** — One net, drawn twice, to compare Field's own layout with TALA — the engine
+[d2](https://d2lang.com) uses for architecture diagrams, open-sourced in September 2026 and reached
+through the optional `native/field-d2-layout` co-process. `PetriLayout.FORCE` relaxes a spring model
+from 48 seeded starts and keeps whichever scores best on crossings and overlaps; `PetriLayout.TALA`
+places the nodes at their real sizes instead, laying the net out once per direction bias and keeping
+the fewest crossings. Which wins is per net rather than settled: on the dining table on
+[the Petri page](petri_nets.md) FORCE crosses none and TALA three, while on the smaller table here it
+is five against one, and TALA gets there in 2.1 s to FORCE's 4.5 s. The third box is the one to read
+after running it — it prints which engine actually drew the second panel, because a machine without
+the helper gets FORCE twice and should be told so rather than shown a relabelled drawing.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/petri_tala_layout/metadata.edn)
+
+**box_layout_demo** — The only scene here that is a starting position rather than a result: nine
+boxes wired into a pipeline and placed badly on purpose, so there is something for **Lay out
+selection** and **Lay out whole document** to fix. Both palette commands read each box's frame for
+its size and the box graph for its edges, ask the same `native/field-d2-layout` helper where things
+should go, and animate the boxes into place through `OperationTranscript.recordMove`, so one undo
+puts the document back. Two properties are worth watching for: the boxes keep the sizes you gave
+them, where a diagram tool would resize a container around its contents, and the arrangement lands
+back on the selection's own top-left corner instead of the document origin. Nothing runs when the
+transcript replays — the nine boxes carry one-line comments and no execution — so the scene opens
+the same way every time.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/box_layout_demo/metadata.edn)
 
 **mesh_geometry_examples** — The [mesh and 3D geometry worked example](mesh_examples.md) as seven
 independent boxes, one per stage of the family. *Primitives* builds a cube, an icosphere, a torus and a
