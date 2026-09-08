@@ -109,4 +109,56 @@ class PetriTalaLayoutTest {
         assertEquals(first.keys, second.keys)
         for ((name, at) in first) assertEquals(at, second[name], "$name moved between runs")
     }
+
+    @Test
+    fun talaArcsFollowTheRoutesItReturns() {
+        Assume.assumeTrue(
+            "native/field-d2-layout is not built (see its README); skipping the TALA path",
+            helper.canExecute(),
+        )
+        D2Layout.binaryOverride = helper.path
+        D2Layout.reset()
+        clearPetriLayoutCache()
+
+        val net = philosophers()
+        val tala = net.frame(PetriLayout.TALA)
+        val force = net.frame(PetriLayout.FORCE)
+
+        assertTrue(tala.routes.isNotEmpty(), "TALA returned no routed arcs")
+        // A route with only its two endpoints is a straight line by another name; the point of
+        // taking the routes is the ones that turn a corner.
+        assertTrue(
+            tala.routes.values.any { it.size > 2 },
+            "no route bends, so nothing was gained over drawing straight arcs",
+        )
+        // Every route names an arc that exists.
+        val arcs = buildSet<Pair<String, String>> {
+            for (transition in net.transitions) {
+                for (arc in transition.inputs) add(arc.place to transition.name)
+                for (arc in transition.outputs) add(transition.name to arc.place)
+            }
+        }
+        tala.routes.keys.forEach { assertTrue(it in arcs, "route for a non-existent arc: $it") }
+        assertTrue(force.routes.isEmpty(), "the spring model should not be inventing routes")
+    }
+
+    @Test
+    fun pinningANodeGivesUpTheRoutes() {
+        Assume.assumeTrue(
+            "native/field-d2-layout is not built (see its README); skipping the TALA path",
+            helper.canExecute(),
+        )
+        D2Layout.binaryOverride = helper.path
+        D2Layout.reset()
+        clearPetriLayoutCache()
+
+        val net = philosophers()
+        val tala = net.frame(PetriLayout.TALA)
+        assertTrue(tala.routes.isNotEmpty(), "nothing to give up")
+
+        // A route was computed against the positions the engine chose, so moving a node by hand
+        // leaves the arcs at either end of it describing a drawing that no longer exists.
+        val moved = tala.at("fork.0", 0, 0)
+        assertTrue(moved.routes.isEmpty(), "a pinned node must drop the routes, not keep stale ones")
+    }
 }

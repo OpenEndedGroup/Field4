@@ -324,3 +324,72 @@ func TestUnknownCoordinateModeIsRejected(t *testing.T) {
 		t.Fatal("expected an unknown coordinates mode to be rejected")
 	}
 }
+
+func TestDirectionIsAccepted(t *testing.T) {
+	for _, direction := range []string{"", "up", "down", "left", "right"} {
+		req := dense(5)
+		req.Direction = direction
+		res := handleLayout(req)
+		if !res.OK {
+			t.Fatalf("direction %q: %s", direction, res.Error)
+		}
+	}
+}
+
+func TestUnknownDirectionIsRejected(t *testing.T) {
+	req := dense(5)
+	req.Direction = "widdershins"
+	if handleLayout(req).OK {
+		t.Fatal("expected an unknown direction to be rejected")
+	}
+}
+
+// The bias is meant to change the drawing, not to be quietly dropped on the way through.
+func TestDirectionChangesTheDrawing(t *testing.T) {
+	seen := map[string]string{}
+	for _, direction := range []string{"up", "down", "left", "right"} {
+		req := dense(5)
+		req.Direction = direction
+		req.Seeds = []int64{1}
+		res := handleLayout(req)
+		if !res.OK {
+			t.Fatalf("direction %q: %s", direction, res.Error)
+		}
+		seen[direction] = geometryKey(res)
+	}
+	if seen["up"] == seen["down"] && seen["up"] == seen["left"] && seen["up"] == seen["right"] {
+		t.Fatal("every direction produced the same geometry; the bias is not reaching the engine")
+	}
+}
+
+func TestHierarchyModeIsAccepted(t *testing.T) {
+	req := dense(5)
+	req.Hierarchy = true
+	res := handleLayout(req)
+	if !res.OK {
+		t.Fatalf("hierarchy: %s", res.Error)
+	}
+	if len(res.Nodes) != len(req.Nodes) {
+		t.Fatalf("hierarchy dropped nodes: %d of %d", len(res.Nodes), len(req.Nodes))
+	}
+}
+
+// Routes are the half of the answer a caller that only reads positions throws away.
+func TestEdgesComeBackRouted(t *testing.T) {
+	res := handleLayout(dense(5))
+	if !res.OK {
+		t.Fatal(res.Error)
+	}
+	bent := 0
+	for _, e := range res.Edges {
+		if len(e.Route) < 2 {
+			t.Fatalf("edge %s has a degenerate route: %v", e.ID, e.Route)
+		}
+		if len(e.Route) > 2 {
+			bent++
+		}
+	}
+	if bent == 0 {
+		t.Fatal("no route has an interior point, so routing gained nothing over straight lines")
+	}
+}
