@@ -1,6 +1,7 @@
 import afield.ai.core.LogDispatcher
 import afield.ai.core.LogEvent
 import afield.ai.core.LogSink
+import afield.ai.core.withSink
 import afield.logger.lprintln
 
 // A channel is a comma-separated list of tags. Not a level, not a logger name, and

@@ -56,6 +56,7 @@ expect:
 import afield.ai.core.LogDispatcher
 import afield.ai.core.LogEvent
 import afield.ai.core.LogSink
+import afield.ai.core.withSink
 import afield.logger.lprintln
 
 // A sink is a fun interface, so a lambda will do. This one keeps only my own lines: the
@@ -233,6 +234,7 @@ expect:
 import afield.ai.core.ConsoleMute
 import afield.ai.core.LogDispatcher
 import afield.ai.core.LogSink
+import afield.ai.core.withSink
 import afield.logger.lprintln
 
 val arrived = mutableSetOf<String>()
@@ -282,6 +284,7 @@ expect:
 import afield.ai.core.LogDispatcher
 import afield.ai.core.LogEvent
 import afield.ai.core.LogSink
+import afield.ai.core.withSink
 import afield.logger.lblock
 import afield.logger.lprintln
 
