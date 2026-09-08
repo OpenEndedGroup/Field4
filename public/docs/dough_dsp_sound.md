@@ -1,10 +1,9 @@
 # DoughDSP: hear the primitives
 
 The [`DoughDsp`](https://codeberg.org/uzu/dough) port gives Field a handful of low-level
-DSP building blocks: a plate reverb, an LFO-swept phaser, a resonant lowpass, a click-free
-envelope, a soft clipper, and two aliasing oscillators. A picture of a filter
-curve only gets you so far; the way to know what one of these *does* is to run a real
-signal through it and listen.
+DSP building blocks. A picture of a filter curve only gets you so far; the way to know what a
+plate reverb, an LFO-swept phaser, a resonant lowpass, a click-free envelope, a soft clipper or
+a pair of aliasing oscillators *does* is to run a real signal through it and listen.
 
 The six clips below are the primitives themselves, driven by real signals rather than the
 `patVoice` drum stand-in the pattern pages use. Each is block-rendered offline (exactly as the
@@ -172,10 +171,10 @@ showSignals(
 
 ## ZawOsc / PulzeOsc — raw, aliasing tones
 
-The two naive oscillators, un-bandlimited: one second of a 200 Hz sawtooth
-(`ZawOsc`) then one second of a 200 Hz narrow pulse (`PulzeOsc`, duty 0.3). The raw ramps buzz
-with aliasing, which is the character these two oscillators are for. The plot shows two periods
-of each: a clean rising ramp and a narrow rectangular pulse.
+Both of these oscillators are naive and un-bandlimited. The clip is one second of a 200 Hz
+sawtooth (`ZawOsc`) then one second of a 200 Hz narrow pulse (`PulzeOsc`, duty 0.3). The raw
+ramps buzz with aliasing, which is what they are for. The plot shows two periods of each: a
+clean rising ramp and a narrow rectangular pulse.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/dough_dsp_sound/zaw-pulze.png" wait="1.5" capture="box" open-outputs="true" name="dough-sound-oscillators"}
 :::static
