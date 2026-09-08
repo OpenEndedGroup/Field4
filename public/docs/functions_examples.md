@@ -3798,7 +3798,7 @@ val folded = (sin(1.0) + sin(1.0)).rewriteUntilStable(
 
 ### Evolving and optimizing functions
 
-Occurrence matching, a cost from `graphMetrics`, and the seeded mutation operators in `FnMutations` (jitter/nudge numbers, substitute an op within its family, prune, duplicate, or graft a subtree) compose into `evolve(...)`: a bounded, fully deterministic (µ+λ) hill-climb over `Fn` graphs. Given the same seed and inputs it reproduces the same run, which is what makes evolved gestures repeatable in live art.
+Occurrence matching, a cost from `graphMetrics`, and the seeded mutation operators in `FnMutations` (jitter/nudge numbers, substitute an op within its family, prune, duplicate, or graft a subtree) compose into `evolve(...)`: a bounded, fully deterministic (µ+λ) hill-climb over `Fn` graphs. Given the same seed and inputs it reproduces the same run. A gesture you liked at rehearsal is still there when you reopen the box.
 
 ```diffstatic {data-lang=kotlin}
 val target = triangle(0.5).softClip(0.7)
