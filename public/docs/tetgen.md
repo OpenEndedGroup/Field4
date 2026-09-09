@@ -242,7 +242,7 @@ What tightening does buy is the *bulk* of the tail. The first percentile improve
 `1.2` is a reasonable default on that trade and `1.05` is not: it costs twice the elements of
 `1.414` and makes the tail worse again.
 
-!!! note "This disagrees with `dev_docs/TETGEN.md`, on a different body"
+??? aside "This disagrees with `dev_docs/TETGEN.md`, on a different body"
     That page records that `1.2` removed the last poor element "for no measurable cost", measured on
     a slab welded to a ball. On this bracket it removes nothing and costs 20%. Both runs are real;
     the difference is the geometry, and the useful conclusion is that the default is a default and
@@ -282,7 +282,7 @@ a mesh in place.
 configuration comes out at 430 ms there and 510 ms here. That spread is what a wall-clock median of a
 handful of runs on a laptop is worth; treat these as costs to plan with, not as a benchmark.)
 
-!!! warning "The same solid, built in a different order, meshes differently"
+??? aside "The same solid, built in a different order, meshes differently"
     TetGen is deterministic. The same surface, meshed five times in one process, three times in
     separate JVMs, and once inside a live Field server, gives 66,489 elements every time with the
     same worst element to six decimals.
@@ -551,7 +551,7 @@ knowing precisely because it is the shape of the mistake you will actually make 
 with an unwelded or over-welded seam produces a plausible solid of the wrong size, and nothing in
 this path will tell you. Compare `mesh.volume()` against `Solid.volume` before you trust a result.
 
-!!! warning "The fatal path, and why it does not take the JVM with it"
+??? aside "The fatal path, and why it does not take the JVM with it"
     Two of the eight — self-intersection and degeneracy — reach TetGen's own fatal handler. Built
     normally TetGen calls `exit()` there, which inside a live Field session ends the session. The
     wrapper is compiled with `TETLIBRARY`, which makes TetGen throw an `int` instead, and
@@ -672,7 +672,7 @@ not a re-mesh. Seven times the nodes is seven times the unknowns, though, and th
 the 864-element beam Kratos takes 1.05 s at order 2 against 0.20 s at order 1, for 99.8% against
 69.5%.
 
-!!! warning "TetGen has an `-o2` for this and it cannot be called from the library"
+??? aside "TetGen has an `-o2` for this and it cannot be called from the library"
     TetGen 1.6.0's `highorder()` `delete[]`s the `highordertable` holding every element's extra-node
     pointers before it returns, and `outelements()` then dereferences them. Driven from the command
     line it usually survives; driven through `tetgenio` it does not, because `outelements()`
