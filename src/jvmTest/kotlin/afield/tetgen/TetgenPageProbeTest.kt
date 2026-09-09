@@ -78,6 +78,13 @@ class TetgenPageProbeTest {
         probe("a degenerate two-triangle 'solid'", TriMesh(
             floatArrayOf(0f, 0f, 0f, 1f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f),
             intArrayOf(0, 1, 2, 0, 2, 1, 0, 1, 3, 0, 3, 1)))
+
+        // TetGen dumps the facets it skipped into the working directory on the self-intersection
+        // path. See TetgenWorkingDirectoryLitterTest; without this the suite leaves them in the
+        // repository root.
+        val here = java.io.File(".").absoluteFile.parentFile
+        listOf("tetgen-tmpfile_skipped.node", "tetgen-tmpfile_skipped.face")
+            .forEach { java.io.File(here, it).delete() }
     }
 
     @Test fun doesMarchingCubesConvergeFasterOnASphereThanOnABox() {
