@@ -17,70 +17,60 @@ A **study layer** over the existing session: the human declares a design space o
 parameter/geometry object, an objective reduced from a `SimulationResult`, and gets back either a
 sampled **landscape** or an **optimiser run** — with a figure, and with the best design's geometry.
 
-Four pieces:
-
-1. `src/jvmMain/kotlin/afield/kratos/KratosStudy.kt`
-   - `StudyVariable<D>` — one continuous design variable: name, unit, range, `apply: (D, Double) -> D`.
-   - `StudySpace<D>` — a base design plus its variables; `at(coords)` builds a design.
-   - `StudyCase` — what one design means to the solver: an optional `SimulationGeometry` plus a
-     `SimulationParameters`, so **geometry is a first-class axis** for an embedded formulation
-     (reclassification is free; the background grid is never rebuilt).
-   - `KratosStudy<D>` — `evaluate(coords)`, `grid(steps…)`, `optimise(budget, …)`. Memoised on a
-     quantised coordinate signature, so an overlapping re-run does not re-solve.
-   - `StudyLandscape` / `StudySample` / `StudyOptimisation` — the results.
-   - **Sequential by construction.** `KratosSession` is a newest-wins preview engine: a second
-     `solveAsync` obsoletes the first and the first completes `null`. A study needs *every* answer,
-     so it awaits each solve before submitting the next. That is a property of the session, and the
-     study documents it rather than fighting it.
-
-2. `src/jvmMain/kotlin/afield/kratos/KratosStudyFigure.kt` — a CPU raster (`PngEncoder`, no AWT):
-   a labelled landscape heat map with a colour bar and the best cell marked, and a convergence panel
-   (best-so-far per evaluation, optimiser against the random control arm).
-
-3. `src/jvmMain/kotlin/afield/kratos/KratosStudyRun.kt` — a `jvm-main` entry point that drives the
-   whole thing through the **live container** and writes the figures, plus a small FIELD_TEST-sized
-   smoke.
-
-4. `src/jvmTest/kotlin/afield/kratos/KratosStudyTest.kt` — the layer's own invariants against a
-   fake evaluator (no solver): grid shape and ordering, cache hits, coordinate clamping, optimiser
-   determinism, figure non-degeneracy.
+1. `src/jvmMain/kotlin/afield/kratos/KratosStudy.kt` — `StudyVariable` / `StudySpace` / `StudyCase`
+   / `KratosStudy` (`evaluate`, `grid`, `optimise`, `resultAt`) / `StudySample` / `StudyLandscape` /
+   `StudyOptimisation`.
+2. `src/jvmMain/kotlin/afield/kratos/KratosStudyFigure.kt` — a CPU raster of the landscape and of
+   the convergence, plus `ColourScale` and `StudyTrace`.
+3. `src/jvmMain/kotlin/afield/kratos/KratosStudyRun.kt` — `KratosStudyDemo` (the flagship question,
+   shared by the run, the smoke and the document), `KratosStudyRun` (the nightly experiment) and
+   `KratosStudySmokeTest` (the catalog-sized one).
+4. `src/jvmTest/kotlin/afield/kratos/KratosStudyTest.kt` — the layer's invariants, no solver.
 
 ### The question the flagship study asks
 
-> **Which arm length and which conductivity put 320 K at this point in the part?**
+> **Which arm length and which conductivity put 294.15 K — one kelvin above the skin — at a chosen
+> point inside the part?**
 
-- `thermal.stationary`, bounds ±1 m, resolution 12 (2,197 nodes / 12,288 tets) — the configuration
-  `VERIFICATION.md` already measured.
-- Body: `KratosDemo.body(armEnd)`, the existing two-cuboid assembly.
-- Axis 1 — `armEnd` ∈ [0.35, 0.85] m. **Geometric**, and therefore a `SimulationEdit.GEOMETRY`
-  reclassification of the same background grid.
-- Axis 2 — `conductivity` ∈ [0.8, 6.0] W/(m·K). A `MATERIAL` edit.
-- Objective, minimised: `|T(probe) − 320 K|` at a probe inside the arm but outside the base.
+Chosen because stationary conduction makes the answer a closed form, `k* = q·φ(arm)/(T − T_b)`, so
+the valley in the measured landscape is checkable arithmetic rather than a shape to admire.
 
-Why this objective: for stationary conduction `T = T_b + (q/k)·φ(geometry)`, so a target temperature
-is the level set `k = q·φ(armEnd)/(T − T_b)` — a **curve** in the plane, bent by the geometry axis
-alone. The landscape must therefore be a valley whose shape traces the geometric response φ, and
-each column's minimum is checkable in closed form against a single solve at that `armEnd`. A figure
-that is right is a figure I can arithmetically confirm, not one I merely like the look of.
+### Deviations from the plan as written
 
-Grid: 11 × 11 = 121 solves. Then an optimiser at a matched budget against
-`PopulationSearch.random` as the control arm, which is the repo's own standard for reporting a
-search result.
+- The target temperature was **294.15 K, not 318 K**. The plan guessed; the exploratory corner pass
+  measured the reachable range as 293.35–299.23 K and, more sharply, showed that the level set is
+  interior *at every arm length* only for a target in (293.960, 294.677). Picking a round number
+  blind would have put the valley off the edge of the map.
+- The grid is **15×15, not 11×11**, because the measured cost of one solve (1.6 s) made 225 solves
+  affordable at six minutes.
+- The figure needed a **labelled logarithmic colour stretch** (`ColourScale.STRETCHED`) and a
+  **logarithmic convergence axis**. Neither was foreseen; both were forced by looking at the first
+  rendered figure, in which the bottom third of the map was one flat shade and the convergence
+  panel was a cliff followed by a line along the floor.
+- `optimise` grew a `start` seed and a **refinement stage**, because the first run's honest result
+  was that a global search does not beat a grid on a valley this thin.
 
-### Verification
+## Files changed
 
-Real numbers from `localhost/field-kratos:10.4.0` (warm, 447 MB, built ~11 h ago). The two figures
-are opened and looked at. The target temperature is chosen **after** an exploratory sweep reports
-the achievable range, so that the valley crosses the grid's interior; that ordering is recorded
-rather than hidden.
+| file | why |
+| --- | --- |
+| `src/jvmMain/kotlin/afield/kratos/KratosStudy.kt` | new — the study layer |
+| `src/jvmMain/kotlin/afield/kratos/KratosStudyFigure.kt` | new — landscape and convergence raster |
+| `src/jvmMain/kotlin/afield/kratos/KratosStudyRun.kt` | new — the demo spec, the nightly run, the catalog smoke |
+| `src/jvmTest/kotlin/afield/kratos/KratosStudyTest.kt` | new — 15 tests, no solver |
+| `dev_docs/agents/transcripts/kratos_parameter_study.yaml` | new — the loadable document |
+| `public/docs/assets/agent_transcripts/kratos_parameter_study/**` | new — materialised bundle |
+| `public/docs/assets/kratos_studies/*.png` | new — the committed figures |
+| `optional/kratos/README.md` | the study layer's section |
+| `optional/kratos/VERIFICATION.md` | the measured sweep |
+| `public/docs/agent_transcripts.md` | index entry, figure, and the two counts it asserts |
+| `src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt` | classify the new transcript `COMPILE_ONLY` |
+| `build.gradle.kts` | `runKratosStudy`, following the fifteen `JavaExec` tasks already there |
 
-### Demo artifact
+## Verification
 
-`dev_docs/agents/transcripts/kratos_parameter_study.yaml`, materialised to
-`public/docs/assets/agent_transcripts/kratos_parameter_study/metadata.edn`.
+*(filled in below after the final run)*
 
-### Risks known up front
+## Risks and unknowns
 
-- Per-solve cost under x86-64 emulation is the budget. Measured first; the grid is sized to it.
-- A design whose probe falls outside the solved region samples `null`. That is a real infeasible
-  point and the study reports it as such rather than substituting a zero.
+## Recommendation
