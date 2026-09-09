@@ -542,3 +542,19 @@ fun mdEscape(value: Any?): String {
         }
     }
 }
+
+/**
+ * [mdEscape] as a property, so a value escapes itself where it is interpolated —
+ * `"| ${'$'}{worker.state.md} |"` rather than `"| ${'$'}{mdEscape(worker.state)} |"`. The pair
+ * matches `val Any?.h`, which does the same for the HTML visualizer.
+ *
+ * A `${'$'}{...}` template around a call reads as machinery; a suffix on the value reads as the
+ * value, and a table row built out of six of them stays a table row. Same escaping, same `null`,
+ * and the same two places not to use it — see [mdEscape].
+ *
+ * One thing to know, shared with `.h`: this is an extension on `Any?`, so a bare `${'$'}md` inside
+ * a string template resolves to *some* receiver's `.md` rather than failing to compile, when no
+ * local named `md` is in scope. Name a local `markdown` and interpolate `${'$'}{it.md}` explicitly.
+ */
+val Any?.md: String
+    get() = mdEscape(this)
