@@ -1493,7 +1493,7 @@ Two families of damage need the repairs in this file:
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_repair.kt` — [read the source](source/jvmMain/afield/stdlib/mesh_repair/)
 
-**Used in:** [Solids that cannot fail: Manifold in Field](../manifold.md), [Geometry from disk](../geometry_from_disk.md)
+**Used in:** [Solids that cannot fail: Manifold in Field](../manifold.md), [Geometry from disk](../geometry_from_disk.md), [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md)
 
 ### Top-level functions { #mesh-repair-kt-functions }
 

@@ -82,6 +82,7 @@ nav:
     - Geometry & Solids:
       - Meshes & 3D Geometry: mesh_examples.md
       - Solids & Booleans (Manifold): manifold.md
+      - Tetrahedral Meshing (TetGen): tetgen.md
       - A Solid, Written Down (solidsl): solid_notation.md
       - Geometry From Disk (OBJ, STL, PLY, glTF): geometry_from_disk.md
       - Polytopes & the Conway Algebra: polytope_examples.md

@@ -77,6 +77,34 @@ def manifold_library_path(repo_root: Path) -> Path:
     return next((c for c in candidates if c.exists()), candidates[0])
 
 
+def tetgen_library_path(repo_root: Path) -> Path:
+    """Where `afield.tetgen.TetgenLibrary.resolvedPath` will look, from Python.
+
+    Shaped like [ceres_library_path] rather than [manifold_library_path], because TetGen
+    is the same kind of dependency as Ceres: nothing packages it, so `TetgenLibrary`
+    looks only inside this repo's `build/`. It checks two directories, the second being
+    the multi-config layout CMake uses on Windows, so this checks both and returns the
+    first that exists — falling back to the first candidate so a miss names a plausible
+    place. `-Dafield.tetgen.library` is a JVM property this process cannot see, so only
+    the environment override is honoured; a run that sets the property and not the
+    variable can silence the false alarm by exporting `AFIELD_TETGEN_LIBRARY` too.
+    """
+    override = os.environ.get("AFIELD_TETGEN_LIBRARY", "").strip()
+    if override:
+        return Path(override)
+    if sys.platform.startswith("win"):
+        name = "field_tetgen_jvm.dll"
+    elif sys.platform == "darwin":
+        name = "libfield_tetgen_jvm.dylib"
+    else:
+        name = "libfield_tetgen_jvm.so"
+    candidates = [
+        repo_root / "build" / "field-tetgen" / "build" / name,
+        repo_root / "build" / "field-tetgen" / "build" / "Release" / name,
+    ]
+    return next((c for c in candidates if c.exists()), candidates[0])
+
+
 # A capture that cannot run without a native artifact declares it with `requires="<key>"`
 # on its fence. Each key maps to where the artifact lives and the one command that builds
 # it. Nothing else reads the attribute -- docs_hooks ignores unknown fence attributes, so
@@ -145,6 +173,7 @@ def jep_library_path(repo_root: Path) -> Path:
 NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
     "ceres": (ceres_library_path, "./gradlew buildCeresRedistributable"),
     "manifold": (manifold_library_path, "brew install manifold"),
+    "tetgen": (tetgen_library_path, "python3 tools/build_tetgen_native.py"),
     "jep": (
         jep_library_path,
         "pip install 'jep==4.3.1' jedi into the interpreter Field resolves, then point "
