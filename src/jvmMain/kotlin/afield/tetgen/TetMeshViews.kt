@@ -22,6 +22,12 @@ import kotlin.math.sqrt
  *   you want to know whether the mesher honoured what you asked for.
  * - [qualities] is the radius ratio, which is what a solver's conditioning cares about. TetGen does
  *   not bound it, and it is the number that detects a sliver.
+ *
+ * All of these read a cell's first four indices and ignore the rest, so a 10-node mesh from
+ * [TetMesh.quadratic] measures and draws exactly as its 4-node original does. That is correct rather
+ * than approximate: the six midside nodes sit at the midpoints of straight edges, so the region, the
+ * boundary and every quality measure are the same. What the extra nodes change is the interpolation
+ * inside an element, which none of these views is looking at.
  */
 
 /**
@@ -65,7 +71,7 @@ fun TetMesh.centroids(): DoubleArray {
     for (t in 0 until cellCount) {
         for (c in 0..2) {
             var s = 0.0
-            for (k in 0..3) s += positions[3 * cells[4 * t + k] + c]
+            for (k in 0..3) s += positions[3 * corner(t, k) + c]
             out[3 * t + c] = s * 0.25
         }
     }
@@ -82,14 +88,15 @@ fun TetMesh.centroids(): DoubleArray {
  *
  * The result is a legal [TetMesh] but is **not** a legal input to a solver: cutting a body in half
  * this way leaves the cut face open in the sense that nothing constrains it. It is a view, not a
- * model.
+ * model. It is also always 4-node, even from a quadratic mesh, for the same reason — nothing is
+ * going to integrate over it.
  */
 fun TetMesh.filtered(keep: (Int) -> Boolean): TetMesh {
     val kept = (0 until cellCount).filter(keep)
     val remap = IntArray(nodeCount) { -1 }
     var next = 0
     for (t in kept) for (k in 0..3) {
-        val node = cells[4 * t + k]
+        val node = corner(t, k)
         if (remap[node] < 0) remap[node] = next++
     }
     val out = DoubleArray(3 * next)
@@ -98,7 +105,7 @@ fun TetMesh.filtered(keep: (Int) -> Boolean): TetMesh {
         if (to >= 0) for (c in 0..2) out[3 * to + c] = positions[3 * node + c]
     }
     val connectivity = IntArray(4 * kept.size)
-    for ((i, t) in kept.withIndex()) for (k in 0..3) connectivity[4 * i + k] = remap[cells[4 * t + k]]
+    for ((i, t) in kept.withIndex()) for (k in 0..3) connectivity[4 * i + k] = remap[corner(t, k)]
     return TetMesh(out, connectivity)
 }
 
@@ -170,11 +177,11 @@ fun TetMesh.toTriMesh(shrink: Double = 1.0, cellColors: FloatArray? = null): Tri
     for (t in 0 until cellCount) {
         for (c in 0..2) {
             var s = 0.0
-            for (k in 0..3) s += positions[3 * cells[4 * t + k] + c]
+            for (k in 0..3) s += positions[3 * corner(t, k) + c]
             centroid[c] = s * 0.25
         }
         for (k in 0..3) {
-            val node = cells[4 * t + k]
+            val node = corner(t, k)
             for (c in 0..2) {
                 val p = positions[3 * node + c]
                 positionsOut[3 * (4 * t + k) + c] = (centroid[c] + (p - centroid[c]) * shrink).toFloat()
@@ -217,7 +224,17 @@ private val FACE_CORNERS = arrayOf(
 
 private val EMPTY_FACE = IntArray(0)
 
-private fun TetMesh.coordinate(t: Int, k: Int, c: Int): Double = positions[3 * cells[4 * t + k] + c]
+/**
+ * Corner `k` of tetrahedron `t`, as a node index.
+ *
+ * The stride is [TetMesh.nodesPerCell] and not 4. Reading a 10-node mesh at stride 4 does not throw
+ * and does not go out of bounds — every index it lands on is a real node — so it produces a wrong
+ * picture and a wrong quality histogram rather than an error, which is why nothing in this file
+ * indexes `cells` directly.
+ */
+private fun TetMesh.corner(t: Int, k: Int): Int = cells[nodesPerCell * t + k]
+
+private fun TetMesh.coordinate(t: Int, k: Int, c: Int): Double = positions[3 * corner(t, k) + c]
 
 private fun TetMesh.signedVolumeOf(t: Int): Double {
     val ax = coordinate(t, 1, 0) - coordinate(t, 0, 0)
@@ -235,8 +252,8 @@ private fun TetMesh.signedVolumeOf(t: Int): Double {
 private fun TetMesh.outwardFacesOf(t: Int): List<IntArray> {
     val flip = signedVolumeOf(t) < 0.0
     return FACE_CORNERS.map { face ->
-        if (flip) intArrayOf(cells[4 * t + face[0]], cells[4 * t + face[2]], cells[4 * t + face[1]])
-        else intArrayOf(cells[4 * t + face[0]], cells[4 * t + face[1]], cells[4 * t + face[2]])
+        if (flip) intArrayOf(corner(t, face[0]), corner(t, face[2]), corner(t, face[1]))
+        else intArrayOf(corner(t, face[0]), corner(t, face[1]), corner(t, face[2]))
     }
 }
 

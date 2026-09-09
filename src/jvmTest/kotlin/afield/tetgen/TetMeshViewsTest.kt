@@ -212,6 +212,51 @@ class TetMeshViewsTest {
         blocksFirst.close(); holesFirst.close()
     }
 
+    /**
+     * A 10-node mesh measures and draws exactly as the 4-node mesh it was promoted from.
+     *
+     * `TetMesh.quadratic()` (2026-09-09, `ad7e97b43`) made `nodesPerCell` a variable, and every view
+     * in `TetMeshViews.kt` predates it. Reading a 10-node mesh at stride 4 is the dangerous kind of
+     * wrong: `cellCount` is right, every index landed on is a real node, nothing throws, and the
+     * histogram and the picture are quietly garbage. So this compares view for view rather than
+     * asserting a plausible range.
+     */
+    @Test
+    fun everyViewSeesTheSameBodyBeforeAndAfterPromotionToTenNodes() {
+        val linear = TetMesh(
+            doubleArrayOf(
+                0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0,
+                0.0, 0.0, 1.0, 0.0, 0.0, -1.0,
+            ),
+            intArrayOf(0, 1, 2, 3, 0, 1, 2, 4),
+        )
+        val quadratic = linear.quadratic()
+        assertEquals(10, quadratic.nodesPerCell)
+        assertEquals(2, quadratic.cellCount)
+        // The promotion adds nodes, so a stride-4 read would not even fail on bounds.
+        assertTrue(quadratic.nodeCount > linear.nodeCount)
+
+        assertTrue(linear.qualities().contentEquals(quadratic.qualities()), "radius ratios differ")
+        assertTrue(linear.radiusEdgeRatios().contentEquals(quadratic.radiusEdgeRatios()))
+        assertTrue(linear.centroids().contentEquals(quadratic.centroids()))
+        assertEquals(linear.volume(), quadratic.volume(), 0.0)
+
+        assertEquals(linear.boundary().triangleCount, quadratic.boundary().triangleCount)
+        assertEquals(
+            abs(linear.boundary().signedVolume()),
+            abs(quadratic.boundary().signedVolume()),
+            1e-12,
+        )
+        assertTrue(linear.toTriMesh(shrink = 0.8).positions
+            .contentEquals(quadratic.toTriMesh(shrink = 0.8).positions))
+
+        // A cutaway of a quadratic mesh drops back to 4 nodes, because it is a picture.
+        val half = quadratic.filtered { it == 0 }
+        assertEquals(4, half.nodesPerCell)
+        assertEquals(1, half.cellCount)
+        assertEquals(abs(linear.volumes()[0]), half.volume(), 1e-15)
+    }
+
     @Test fun theRequestedQualityBoundIsHonouredByAlmostEveryElement() {
         if (!available()) return
         val cube = SimulationBox("c", SimulationBounds(0.0, 0.0, 0.0, 2.0, 3.0, 4.0))
