@@ -9,32 +9,6 @@ import afield.logger.lprintln
 import kotlin.script.experimental.api.ResultValue
 
 /**
- * A callable block that keeps the Kotlin source used to create it.
- *
- * The `sourceBlock { ... }` macro creates these with both a live lambda and the
- * block body source. Persisted copies rehydrate by evaluating [source] inside
- * the original box context.
- *
- * **Do not invoke a rehydrating block from inside its own box's running code.** [hydrate] compiles
- * and evaluates a snippet on [boxId]'s engine, and asking that engine to evaluate while it is
- * already mid-evaluation **re-runs the box body that is running** — which hydrates again, once per
- * level, until the stack gives out. Measured at 327 nested runs of one body and 355 seconds on
- * `dev_docs/agents/transcripts/keyframe_code_blend.yaml` before that box was split in two, off a
- * single compile of the body: the body was re-*evaluated*, not recompiled.
- *
- * **Guarded since 2026-09-09:** the second hydration for a box on one thread throws
- * [SourceBackedBlockSelfBoxReentry], whose message names the ways out. That breaks the recursion, so
- * the body runs twice rather than 327 times — but twice is still once too many, and anything the body
- * does before the invocation happens twice, so the split below remains the shape to write.
- *
- * Hydrating into a box that is **idle** is fine and does not re-run anything, which is what the
- * split in that transcript relies on — `kfb_kotlin_run` builds a block whose box is `kfb_kotlin` and
- * invokes it, and `kfb_kotlin`'s body runs exactly once. A block that arrived from a keyframe file or
- * from [afield.stdlib.CodeBlendPlan.runtimeSource] is a rehydrating one; invoke it from a frame loop,
- * a control callback, or another box. A block the `sourceBlock` macro made in *this* execution
- * carries a live lambda and never hydrates, so it is safe to call immediately.
- */
-/**
  * Box ids whose stored source is being hydrated on this thread, by **any** route.
  *
  * Shared with [SourceBackedFnRewriteNumberExpression] on purpose rather than one set each: both
@@ -76,6 +50,32 @@ class SourceBackedBlockSelfBoxReentry(box: Box, source: String) : IllegalStateEx
         "See dev_docs/FN_REWRITE_SELF_BOX_REENTRY.md."
 )
 
+/**
+ * A callable block that keeps the Kotlin source used to create it.
+ *
+ * The `sourceBlock { ... }` macro creates these with both a live lambda and the
+ * block body source. Persisted copies rehydrate by evaluating [source] inside
+ * the original box context.
+ *
+ * **Do not invoke a rehydrating block from inside its own box's running code.** [hydrate] compiles
+ * and evaluates a snippet on [boxId]'s engine, and asking that engine to evaluate while it is
+ * already mid-evaluation **re-runs the box body that is running** — which hydrates again, once per
+ * level, until the stack gives out. Measured at 327 nested runs of one body and 355 seconds on
+ * `dev_docs/agents/transcripts/keyframe_code_blend.yaml` before that box was split in two, off a
+ * single compile of the body: the body was re-*evaluated*, not recompiled.
+ *
+ * **Guarded since 2026-09-09:** the second hydration for a box on one thread throws
+ * [SourceBackedBlockSelfBoxReentry], whose message names the ways out. That breaks the recursion, so
+ * the body runs twice rather than 327 times — but twice is still once too many, and anything the body
+ * does before the invocation happens twice, so the split below remains the shape to write.
+ *
+ * Hydrating into a box that is **idle** is fine and does not re-run anything, which is what the
+ * split in that transcript relies on — `kfb_kotlin_run` builds a block whose box is `kfb_kotlin` and
+ * invokes it, and `kfb_kotlin`'s body runs exactly once. A block that arrived from a keyframe file or
+ * from [afield.stdlib.CodeBlendPlan.runtimeSource] is a rehydrating one; invoke it from a frame loop,
+ * a control callback, or another box. A block the `sourceBlock` macro made in *this* execution
+ * carries a live lambda and never hydrates, so it is safe to call immediately.
+ */
 class SourceBackedBlock<out T>(
     val boxId: String,
     val source: String,
