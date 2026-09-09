@@ -11,6 +11,8 @@ still deserve a human decision.
 
 WHAT MAY BE REMOVED — the retention policy
 ------------------------------------------
+The long version, with the measurements, is ``dev_docs/worktree_retention_policy.md``.
+
 A worktree is only ever a candidate if it matches a *retention family*: a named rule that pairs a
 worktree **root directory** with a set of **branch prefixes**. Both halves must match. Run
 ``--explain-policy`` to print the table without scanning anything.
