@@ -1,11 +1,12 @@
-near (±1.0 wall units): 5246 point(s), max |GPU-CPU| = 1.084e-06, mean = 3.230e-07 (24-bit step 1.192e-07), coordinate residual 4.473e-07
-far (±32.0 wall units): 14600 point(s), max |GPU-CPU| = 4.464e-06, mean = 1.637e-06 (24-bit step 3.815e-06), coordinate residual 4.473e-07
-baked near (±1.0 wall units): 2541 point(s), max |GPU-CPU| = 1.025e-06, mean = 3.317e-07 (24-bit step 1.192e-07), coordinate residual 3.784e-07
-baked far (±32.0 wall units): 10512 point(s), max |GPU-CPU| = 4.933e-06, mean = 1.799e-06 (24-bit step 3.815e-06), coordinate residual 3.784e-07
-gallery/mirrored-orbit near (±1.0 wall units): 1910 point(s), max |GPU-CPU| = 1.499e-06, mean = 6.017e-07 (24-bit step 1.192e-07), coordinate residual 7.597e-07
-gallery/rising-bars near (±1.0 wall units): 3025 point(s), max |GPU-CPU| = 1.660e-06, mean = 8.232e-07 (24-bit step 1.192e-07), coordinate residual 6.110e-07
-gallery/orbit-petals near (±1.0 wall units): 3135 point(s), max |GPU-CPU| = 1.707e-06, mean = 6.532e-07 (24-bit step 1.192e-07), coordinate residual 6.110e-07
-gallery/gradient-sweep near (±1.0 wall units): 2810 point(s), max |GPU-CPU| = 2.467e-06, mean = 6.780e-07 (24-bit step 1.192e-07), coordinate residual 6.110e-07
-gallery/pinwheel near (±1.0 wall units): 4914 point(s), max |GPU-CPU| = 1.814e-06, mean = 7.054e-07 (24-bit step 1.192e-07), coordinate residual 6.110e-07
-gallery/wave-lattice near (±1.0 wall units): 7688 point(s), max |GPU-CPU| = 1.921e-06, mean = 7.470e-07 (24-bit step 1.192e-07), coordinate residual 5.151e-14
-gallery/selection-logic near (±1.0 wall units): 4728 point(s), max |GPU-CPU| = 1.871e-06, mean = 8.289e-07 (24-bit step 1.192e-07), coordinate residual 6.928e-14
+near (±1.0 wall units): 5277 point(s), max |GPU-CPU| = 1.089e-06, mean = 3.199e-07 (24-bit step 1.192e-07), coordinate residual 4.473e-07
+far (±32.0 wall units): 14600 point(s), max |GPU-CPU| = 4.516e-06, mean = 1.627e-06 (24-bit step 3.815e-06), coordinate residual 4.473e-07
+baked near (±1.0 wall units): 2507 point(s), max |GPU-CPU| = 1.025e-06, mean = 3.317e-07 (24-bit step 1.192e-07), coordinate residual 3.784e-07
+baked far (±32.0 wall units): 10512 point(s), max |GPU-CPU| = 4.941e-06, mean = 1.773e-06 (24-bit step 3.815e-06), coordinate residual 3.784e-07
+gallery/mirrored-orbit near (±1.0 wall units): 1895 point(s), max |GPU-CPU| = 1.524e-06, mean = 6.105e-07 (24-bit step 1.192e-07), coordinate residual 7.597e-07
+gallery/rising-bars near (±1.0 wall units): 2942 point(s), max |GPU-CPU| = 1.747e-06, mean = 8.346e-07 (24-bit step 1.192e-07), coordinate residual 6.110e-07
+gallery/orbit-petals near (±1.0 wall units): 3133 point(s), max |GPU-CPU| = 1.720e-06, mean = 6.464e-07 (24-bit step 1.192e-07), coordinate residual 6.110e-07
+gallery/gradient-sweep near (±1.0 wall units): 2810 point(s), max |GPU-CPU| = 2.416e-06, mean = 6.872e-07 (24-bit step 1.192e-07), coordinate residual 6.110e-07
+gallery/pinwheel near (±1.0 wall units): 4907 point(s), max |GPU-CPU| = 1.807e-06, mean = 7.101e-07 (24-bit step 1.192e-07), coordinate residual 6.110e-07
+gallery/wave-lattice near (±1.0 wall units): 7683 point(s), max |GPU-CPU| = 1.980e-06, mean = 7.505e-07 (24-bit step 1.192e-07), coordinate residual 5.151e-14
+gallery/selection-logic near (±1.0 wall units): 4533 point(s), max |GPU-CPU| = 1.887e-06, mean = 8.394e-07 (24-bit step 1.192e-07), coordinate residual 6.928e-14
+gallery/musicality-four-to-the-floor near (±1.0 wall units): 2544 point(s), max |GPU-CPU| = 1.371e-06, mean = 5.961e-07 (24-bit step 1.192e-07), coordinate residual 7.597e-07
