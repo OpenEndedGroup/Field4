@@ -3,6 +3,7 @@ package afield.ai.core.completion
 import afield.ai.FilestoreDir
 import afield.ai.KotlinDefinitionRecord
 import afield.ai.KotlinSourceIndex
+import afield.ai.KotlinSourceIndexDb
 import afield.ai.OpenAiFileStoreCache
 import afield.ai.Sha256
 import afield.ai.core.Ai4ModelDefaults
@@ -12,6 +13,7 @@ import afield.ai.core.LlmThreadState
 import afield.ai.core.SilentLog
 import afield.ai.core.aiProviderConfigRevision
 import afield.ai.core.createLlmBridge
+import afield.logger.lprintln
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
@@ -20,12 +22,29 @@ import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import java.util.zip.ZipFile
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 
 private const val COMPLETION_DOC_PROMPT_VERSION = "completion-doc-param-notes-v2"
+
+/**
+ * The generated-completion-doc cache's file name, spelled once.
+ *
+ * [Ai4CompletionDoc] writes it, `Ai4CompletionDocPolishCli` polishes it, and
+ * `CompletionDocPolishMonitor` reports on it. All three used to spell it themselves, which is how
+ * `~/.afield/filestore` came to be spelled four times before [FilestoreDir] existed.
+ */
+const val GENERATED_COMPLETION_DOCS_FILE = "generated_completion_docs.json"
+
+/**
+ * How many distinct indexed source files [Ai4CompletionDoc.dropStaleGeneratedDocs] probes before it
+ * concludes it is looking at the wrong tree. Definitions come out of the index grouped by file, so a
+ * couple of hundred distinct paths is a broad sample of the checkout and a few hundred `exists` calls.
+ */
+private const val INDEX_TREE_PROBE_FILES = 200
 
 object Ai4CompletionDoc {
     private fun model(): String = Ai4ModelDefaults.envOrDefault(
@@ -52,6 +71,10 @@ object Ai4CompletionDoc {
     }
     private val cache by lazy { GeneratedCompletionDocCache() }
     private val generationLocks = ConcurrentHashMap<String, Any>()
+    private val swept = AtomicBoolean(false)
+
+    /** Separates the jar from the entry in the `jar:file:...!/path/File.kt` paths the index stores. */
+    private const val JAR_ENTRY_MARKER = "!/"
 
     fun resolveDoc(
         fileKey: String,
@@ -81,11 +104,12 @@ object Ai4CompletionDoc {
         val generationLock = generationLocks.computeIfAbsent(lockKey) { Any() }
 
         synchronized(generationLock) {
+            sweepStaleOnce()
             cache.lookup(
                 sourceName = definition.name,
                 sourcePath = definition.filePath,
                 sourceLine = definition.line,
-                sourceCode = definitionSnippet.source
+                sourceHash = definitionSnippet.sourceHash
             )?.let { return generatedDocumentationMarkdown(it.documentation, cached = true) }
 
             val generated = generateDoc(
@@ -108,13 +132,203 @@ object Ai4CompletionDoc {
                 sourceName = definition.name,
                 sourcePath = definition.filePath,
                 sourceLine = definition.line,
-                sourceCode = definitionSnippet.source,
+                sourceHash = definitionSnippet.sourceHash,
                 documentation = generated,
                 model = model()
             )
             return generatedDocumentationMarkdown(generated, cached = false)
         }
     }
+
+    /**
+     * Drop cache records the generation path can no longer reach, and report what went.
+     *
+     * The cache is keyed by declaration identity — prompt version, name, source path, source line, and
+     * a hash of the declaration's own source — so [resolveDoc] never *reads* a record whose declaration
+     * has moved or changed: the recomputed key simply misses, and a fresh doc is generated under a new
+     * key. But that guard only guards the read. Nothing ever removed the record it missed, so the file
+     * was append-only, and every move, every signature edit, and every bump of
+     * [COMPLETION_DOC_PROMPT_VERSION] left its predecessor behind for good.
+     *
+     * Unreachable records are not harmless, because the cache has a second consumer that is not keyed:
+     * `polishCompletionDocs` reads the whole file and integrates the prose into real KDoc. A real run on
+     * 2026-09-04 was handed two records pointing at `afield/four/synth/GraphQuery.kt` — moved to
+     * `afield/graphquery/` long before — and a `generateSmoothIsoContours` record describing
+     * `pointWeights`/`edgeWeights` parameters the declaration no longer has. It was being asked to
+     * document today's source from drafts written against source that is gone.
+     *
+     * So this restores the obvious invariant: the file holds only what [resolveDoc] could still hit. A
+     * record goes when its declaration source is gone, or when the source now at its recorded location
+     * hashes to something else. Nothing is kept on the grounds that its prose still reads well — a draft
+     * is one `FAST_MODEL` call to remake, and wrong KDoc in source is not.
+     *
+     * Deliberately not a wipe when the tree cannot be seen. Snippet bounds come from the
+     * [KotlinSourceIndex], and paths are resolved against `user.dir`, so a missing index or the wrong
+     * working directory would make every record look stale and take the whole cache with it. Those cases
+     * skip and say why. See [cannotSeeTheTree].
+     *
+     * @param cachePath the cache to sweep. Defaults to the one [resolveDoc] reads and writes; the polish
+     *   CLI passes its own `--cache-file`, which is a different process and so a different instance.
+     */
+    fun dropStaleGeneratedDocs(cachePath: Path? = null): StaleSweep {
+        val index = KotlinSourceIndex.latestIndex
+            ?: KotlinSourceIndex.loadIndex()
+            ?: return StaleSweep(skipped = "no Kotlin source index")
+        cannotSeeTheTree(index)?.let { return StaleSweep(skipped = it) }
+        val indexedRoots = sourceRootsIn(index)
+        val target = cachePath?.let { GeneratedCompletionDocCache(it) } ?: cache
+        return target.dropUnreachable { probeDeclarationSource(it, indexedRoots) }
+    }
+
+    /** What [dropStaleGeneratedDocs] did. [dropped] carries one readable line per removed record. */
+    data class StaleSweep(
+        val considered: Int = 0,
+        val kept: Int = 0,
+        /** Left alone because the declaration's source is not something this checkout can see at all. */
+        val unverifiable: Int = 0,
+        val dropped: List<String> = emptyList(),
+        /** Why nothing was examined at all, when the tree could not be seen. */
+        val skipped: String? = null
+    ) {
+        fun describe(): String {
+            if (skipped != null) return "skipped — $skipped"
+            if (considered == 0) return "no records"
+            val tail = if (unverifiable > 0) ", $unverifiable unverifiable" else ""
+            return "dropped ${dropped.size} stale of $considered, kept $kept$tail"
+        }
+    }
+
+    /**
+     * Sweep once per JVM, on the first cache read, so a live Field heals the file it is writing to.
+     *
+     * On the read path rather than at cache load because that is where the sweep's precondition already
+     * holds: [resolveDoc] has been through `findDefinition`, so the index is in memory by now.
+     */
+    private fun sweepStaleOnce() {
+        if (!swept.compareAndSet(false, true)) return
+        val report = runCatching { dropStaleGeneratedDocs() }.getOrElse { error ->
+            lprintln("warning,completion-docs", "stale generated-doc sweep failed: ${error.message}")
+            return
+        }
+        if (report.dropped.isNotEmpty() || report.skipped != null) {
+            lprintln("info,completion-docs", "generated completion docs: ${report.describe()}")
+            report.dropped.forEach { lprintln("info,completion-docs", "  dropped $it") }
+        }
+    }
+
+    /**
+     * Null when [index] plausibly describes the tree under `user.dir`, otherwise why it does not.
+     *
+     * Both failures look identical from inside the sweep — every record stale — and both would be acted
+     * on by deleting the entire cache, so they are separated here instead. One indexed file that
+     * resolves is enough: it says the relative paths in the index and in the cache mean the same thing
+     * here as they did when they were written.
+     */
+    private fun cannotSeeTheTree(index: KotlinSourceIndexDb): String? {
+        if (index.definitions.isEmpty()) return "the Kotlin source index has no definitions"
+        val anyIndexedFileOnDisk = index.definitions.asSequence()
+            .map { it.filePath }
+            .filterNot { it.startsWith("jar:") }
+            .distinct()
+            .take(INDEX_TREE_PROBE_FILES)
+            .any { Files.exists(Paths.get(it)) }
+        if (!anyIndexedFileOnDisk) {
+            return "no indexed source file resolves from ${Paths.get("").toAbsolutePath()}"
+        }
+        return null
+    }
+
+    /**
+     * What the tree says now about the declaration a cache record was drafted from.
+     *
+     * [indexedRoots] is what separates a declaration that went away from one this checkout cannot see:
+     * see [sourceRootsIn].
+     */
+    private fun probeDeclarationSource(
+        record: GeneratedCompletionDocRecord,
+        indexedRoots: Set<String>
+    ): DeclarationSource {
+        if (record.sourcePath.isBlank() || record.sourceLine <= 0) return DeclarationSource.Gone
+        if (record.sourcePath.startsWith("jar:") && jarPathOf(record.sourcePath)?.let(Files::exists) != true) {
+            // The sources jar has been pruned out of the Gradle cache, or this is another machine. The
+            // declaration is no more likely to have changed than the record is to be wrong, and a
+            // dependency's sources come back with the next resolve, so say nothing about it.
+            return DeclarationSource.Unverifiable
+        }
+        val snippet = loadDefinitionSnippet(
+            KotlinDefinitionRecord(
+                name = record.sourceName,
+                kind = "",
+                filePath = record.sourcePath,
+                line = record.sourceLine,
+                fileId = null,
+                contentHash = "",
+                kdoc = null
+            )
+        ) ?: return absentSource(record.sourcePath, indexedRoots)
+        return DeclarationSource.Found(snippet.sourceHash)
+    }
+
+    /**
+     * A record whose declaration source could not be read: did it go away, or was it never here?
+     *
+     * Missing from a source root the index covers is a declaration that went away. Missing from a root
+     * the index has never heard of is a source set this checkout does not have — an uninitialised
+     * `src/personal`, or a jar entry — and nothing this checkout is entitled to an opinion about. A path
+     * that will not even parse is junk, and goes.
+     */
+    private fun absentSource(sourcePath: String, indexedRoots: Set<String>): DeclarationSource {
+        val root = sourceRootOf(sourcePath)
+        return when {
+            root == null -> DeclarationSource.Gone
+            root in indexedRoots -> DeclarationSource.Gone
+            else -> DeclarationSource.Unverifiable
+        }
+    }
+
+    /**
+     * The source roots the index covers, as `src/jvmMain`-shaped prefixes.
+     *
+     * `src/personal` is an optional submodule, so a worktree that has not initialised it has no such
+     * directory and every record under it reads as a deleted declaration — 12 of them, on the run that
+     * prompted this. The index is synced from the same tree the sweep is looking at, so the source sets
+     * it covers are what tell the two absences apart: a file missing from a root the index knows is a
+     * file that went away, and a file missing from a root the index has never heard of is a source set
+     * that is not checked out here. The second keeps its records, and its drafts stay valid for the
+     * checkout that does have the submodule (the cache is per-checkout — see [FilestoreDir]).
+     */
+    private fun sourceRootsIn(index: KotlinSourceIndexDb): Set<String> =
+        index.definitions.asSequence()
+            .map { it.filePath }
+            .filterNot { it.startsWith("jar:") }
+            .mapNotNull(::sourceRootOf)
+            .toSet()
+
+    /** The first two path segments of [path] — `src/jvmMain` for `src/jvmMain/kotlin/afield/Boxes.kt`. */
+    private fun sourceRootOf(path: String): String? {
+        val parsed = runCatching { Paths.get(path) }.getOrNull() ?: return null
+        if (parsed.nameCount == 0) return null
+        return parsed.subpath(0, minOf(2, parsed.nameCount)).toString()
+    }
+
+    /**
+     * The hash a fresh generation would key this location's declaration by, or null if there is none.
+     *
+     * `internal` for one reason: a sweep test has to be able to seed a record that is genuinely current,
+     * and a test that worked out the snippet bounds itself would only be testing its own arithmetic.
+     */
+    internal fun currentDeclarationSourceHash(sourcePath: String, sourceLine: Int): String? =
+        loadDefinitionSnippet(
+            KotlinDefinitionRecord(
+                name = "",
+                kind = "",
+                filePath = sourcePath,
+                line = sourceLine,
+                fileId = null,
+                contentHash = "",
+                kdoc = null
+            )
+        )?.sourceHash
 
     private fun generateDoc(
         fileKey: String,
@@ -364,13 +578,19 @@ Mention side effects, lifecycle, units, or constraints only when the source supp
         return DefinitionSnippet(source = source, sourceHash = Sha256.hexUtf8(source))
     }
 
+    /** The jar behind a `jar:file:...!/entry` source path, or null if that is not what this is. */
+    private fun jarPathOf(filePath: String): Path? {
+        val split = filePath.indexOf(JAR_ENTRY_MARKER)
+        if (!filePath.startsWith("jar:") || split == -1) return null
+        val jarUri = filePath.substring("jar:".length, split)
+        return runCatching { Paths.get(java.net.URI.create(jarUri)) }.getOrNull()
+    }
+
     private fun loadJarDefinitionSnippet(def: KotlinDefinitionRecord): DefinitionSnippet? {
-        val marker = "!/"
-        val split = def.filePath.indexOf(marker)
-        if (!def.filePath.startsWith("jar:") || split == -1) return null
-        val jarUri = def.filePath.substring("jar:".length, split)
-        val entryName = def.filePath.substring(split + marker.length)
-        val jarPath = runCatching { Paths.get(java.net.URI.create(jarUri)) }.getOrNull() ?: return null
+        val split = def.filePath.indexOf(JAR_ENTRY_MARKER)
+        if (split == -1) return null
+        val entryName = def.filePath.substring(split + JAR_ENTRY_MARKER.length)
+        val jarPath = jarPathOf(def.filePath) ?: return null
         if (!Files.exists(jarPath)) return null
         val text = runCatching {
             ZipFile(jarPath.toFile()).use { zip ->
@@ -449,8 +669,25 @@ Mention side effects, lifecycle, units, or constraints only when the source supp
     }
 }
 
+/**
+ * What the tree says now about a cached record's declaration.
+ *
+ * Three states rather than two because "I cannot tell" and "it is gone" must not act the same: the
+ * first keeps the record, the second removes it.
+ */
+internal sealed interface DeclarationSource {
+    /** The declaration is still there, and this is the hash of the source it now spans. */
+    data class Found(val sourceHash: String) : DeclarationSource
+
+    /** No declaration source at the recorded path and line: the file moved, shrank, or went away. */
+    data object Gone : DeclarationSource
+
+    /** The source is in a jar that is not on this machine right now. */
+    data object Unverifiable : DeclarationSource
+}
+
 @JsonIgnoreProperties(ignoreUnknown = true)
-private data class GeneratedCompletionDocRecord(
+internal data class GeneratedCompletionDocRecord(
     val sourceName: String = "",
     val sourcePath: String = "",
     val sourceLine: Int = -1,
@@ -461,13 +698,18 @@ private data class GeneratedCompletionDocRecord(
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-private data class GeneratedCompletionDocCacheDb(
+internal data class GeneratedCompletionDocCacheDb(
     val version: Int = 1,
     val records: MutableMap<String, GeneratedCompletionDocRecord> = mutableMapOf()
 )
 
-private class GeneratedCompletionDocCache(
-    private val dbPath: Path = FilestoreDir.resolve("generated_completion_docs.json")
+/**
+ * `internal` rather than private to the file so a sweep test can seed real records through [put]
+ * instead of hand-writing the JSON — a test that spells the key itself would pass just as happily
+ * against a broken [cacheKey].
+ */
+internal class GeneratedCompletionDocCache(
+    private val dbPath: Path = FilestoreDir.resolve(GENERATED_COMPLETION_DOCS_FILE)
 ) {
     private val mapper = OpenAiFileStoreCache.defaultMapper()
     private val lock = ReentrantReadWriteLock()
@@ -479,9 +721,9 @@ private class GeneratedCompletionDocCache(
         sourceName: String,
         sourcePath: String,
         sourceLine: Int,
-        sourceCode: String
+        sourceHash: String
     ): GeneratedCompletionDocRecord? {
-        val key = cacheKey(sourceName, sourcePath, sourceLine, sourceCode)
+        val key = cacheKey(sourceName, sourcePath, sourceLine, sourceHash)
         return lock.read { db.records[key] }
     }
 
@@ -489,11 +731,10 @@ private class GeneratedCompletionDocCache(
         sourceName: String,
         sourcePath: String,
         sourceLine: Int,
-        sourceCode: String,
+        sourceHash: String,
         documentation: String,
         model: String
     ) {
-        val sourceHash = Sha256.hexUtf8(sourceCode)
         val key = cacheKey(sourceName, sourcePath, sourceLine, sourceHash)
         val record = GeneratedCompletionDocRecord(
             sourceName = sourceName,
@@ -509,19 +750,82 @@ private class GeneratedCompletionDocCache(
         }
     }
 
+    /**
+     * A record's identity: the prompt it was written to, the declaration, and the source it saw.
+     *
+     * Takes the hash rather than either-or, because a caller that passed source text where a hash was
+     * expected used to be rescued by a guess ("64 hex characters is probably already a hash") that no
+     * amount of source text is safe from. Both call sites have the hash in hand — [DefinitionSnippet]
+     * carries it — and so does [dropUnreachable], which is why the three agree on the key by
+     * construction.
+     */
     private fun cacheKey(
         sourceName: String,
         sourcePath: String,
         sourceLine: Int,
-        sourceCodeOrHash: String
-    ): String {
-        val sourceHash = if (sourceCodeOrHash.length == 64 && sourceCodeOrHash.all { it in '0'..'9' || it in 'a'..'f' }) {
-            sourceCodeOrHash
-        } else {
-            Sha256.hexUtf8(sourceCodeOrHash)
+        sourceHash: String
+    ): String =
+        Sha256.hexUtf8("$COMPLETION_DOC_PROMPT_VERSION\n$sourceName\n$sourcePath\n$sourceLine\n$sourceHash")
+
+    /**
+     * Remove every record whose key cannot be recomputed from the tree as it stands, and persist if any
+     * went. See [Ai4CompletionDoc.dropStaleGeneratedDocs] for why this is needed at all.
+     *
+     * Probing happens off-lock, against a snapshot, because it reads a file per record; the removal then
+     * re-checks each doomed record against the live map so a doc generated meanwhile — the same key,
+     * legitimately re-added — is not deleted on the way out.
+     */
+    fun dropUnreachable(
+        probe: (GeneratedCompletionDocRecord) -> DeclarationSource
+    ): Ai4CompletionDoc.StaleSweep {
+        val snapshot = lock.read { db.records.toMap() }
+        if (snapshot.isEmpty()) return Ai4CompletionDoc.StaleSweep()
+
+        var unverifiable = 0
+        val doomed = LinkedHashMap<String, String>()
+        for ((key, record) in snapshot) {
+            when (val source = probe(record)) {
+                DeclarationSource.Unverifiable -> unverifiable++
+                DeclarationSource.Gone -> doomed[key] = "declaration source is gone"
+                is DeclarationSource.Found -> {
+                    val current = cacheKey(record.sourceName, record.sourcePath, record.sourceLine, source.sourceHash)
+                    if (current != key) {
+                        doomed[key] = if (source.sourceHash == record.sourceHash) {
+                            // Same source, different key: the only other ingredient is the prompt, so
+                            // the draft was written to instructions this build no longer uses.
+                            "prompt version changed"
+                        } else {
+                            "declaration source changed"
+                        }
+                    }
+                }
+            }
         }
-        return Sha256.hexUtf8("$COMPLETION_DOC_PROMPT_VERSION\n$sourceName\n$sourcePath\n$sourceLine\n$sourceHash")
+
+        val removed = if (doomed.isEmpty()) {
+            emptyList()
+        } else {
+            lock.write {
+                val gone = doomed.keys.filter { db.records[it] == snapshot[it] }
+                gone.forEach { db.records.remove(it) }
+                if (gone.isNotEmpty()) persistLocked()
+                gone
+            }
+        }
+
+        return Ai4CompletionDoc.StaleSweep(
+            considered = snapshot.size,
+            kept = snapshot.size - removed.size,
+            unverifiable = unverifiable,
+            dropped = removed.map { key ->
+                val record = snapshot.getValue(key)
+                "${record.sourceName} (${record.sourcePath}:${record.sourceLine}) — ${doomed.getValue(key)}"
+            }
+        )
     }
+
+    /** How many records are on disk right now — for a sweep test's before and after. */
+    fun recordCount(): Int = lock.read { db.records.size }
 
     private fun loadOrCreate(): GeneratedCompletionDocCacheDb {
         if (!Files.exists(dbPath)) return GeneratedCompletionDocCacheDb()

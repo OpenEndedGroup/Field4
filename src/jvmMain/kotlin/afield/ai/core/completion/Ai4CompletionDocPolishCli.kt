@@ -29,7 +29,7 @@ import kotlin.io.path.pathString
 import kotlin.system.exitProcess
 
 private val defaultGeneratedDocCachePath: Path
-    get() = afield.ai.FilestoreDir.resolve("generated_completion_docs.json")
+    get() = afield.ai.FilestoreDir.resolve(GENERATED_COMPLETION_DOCS_FILE)
 
 private data class PolishOptions(
     val cacheFile: Path = defaultGeneratedDocCachePath,
@@ -81,6 +81,18 @@ fun main(args: Array<String>) {
         println("Dry run: patch/edit requests update an in-memory overlay only.")
         println("Dry-run patch: ${diffFile.absolutePathString()}")
     }
+
+    // Before anything reads the cache. The file is written keyed by declaration identity but read here
+    // in bulk, so it accumulates records the completion path can no longer reach — a declaration that
+    // moved file, or whose signature changed since its draft was written. Integrating one of those into
+    // real KDoc means documenting today's source from a draft of source that is gone.
+    //
+    // Runs in dry runs too, because it is cache maintenance and not a proposed edit: the records are
+    // already unreachable from completion, the cache is derived and gitignored, and a dry run that
+    // previewed a different cache than the real run will see would be worth less than no preview.
+    val sweep = Ai4CompletionDoc.dropStaleGeneratedDocs(cacheFile)
+    println("Stale-record sweep: ${sweep.describe()}")
+    sweep.dropped.forEach { println("  dropped $it") }
 
     val cacheStatus = completionDocCacheStatus(cacheFile)
     if (!cacheStatus.hasWork) {
@@ -286,6 +298,10 @@ Options:
   --max-output-tokens <n>    Defaults to 24000.
 
 The tool exposes ReplaceInFileRequest for small exact snippet patches and asks the model to prefer it over full-file EditFile.
+
+Before every run, including a dry run, cache records the completion path can no longer reach are dropped:
+a declaration that moved file, or whose source changed since its draft was written. --dry-run withholds
+the model's edits, not this.
         """.trimIndent()
     )
 }
