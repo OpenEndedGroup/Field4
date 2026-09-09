@@ -39,12 +39,13 @@ upload remain possible extensions; neither is needed for these small arrays.
 
 ## Install and run
 
-Two playgrounds, both editable Kotlin in one box:
+Three playgrounds, each editable Kotlin in one box:
 
 | transcript | what it does |
 | --- | --- |
 | `kratos_thermal_playground` | conduction inside a cuboid assembly; sliders preview automatically |
 | `kratos_flow_playground` | flow past a sphere-and-rod obstacle; streamlines and a wake slice, solved on a button |
+| `kratos_structural_playground` | an L-bracket bending; meshes with TetGen at both element orders and draws the locking side by side |
 
 ```bash
 uv run --project . --group backdoor python tools/field_backdoor.py --json --with-playwright --port 9692 --timeout 500 \
@@ -53,6 +54,18 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --with
   --command 'launch kratos_flow' \
   --command 'wait-output kratos_flow --contains data-background --timeout 420' \
   --command 'screenshot-box kratos_flow /tmp/flow.png --padding 16'
+```
+
+The structural one is the same recipe with a longer wait, because its launch action meshes and
+solves the bracket twice — once per element order — and each order is its own worker:
+
+```bash
+uv run --project . --group backdoor python tools/field_backdoor.py --json --with-playwright --port 9696 --timeout 1400 \
+  --command 'macro write kratos_structural_playground --file dev_docs/agents/transcripts/kratos_structural_playground.yaml' \
+  --command 'macro run kratos_structural_playground' \
+  --command 'launch kratos_structural' \
+  --command 'wait-output kratos_structural --contains "the linear element reaches" --timeout 1200' \
+  --command 'screenshot-box kratos_structural /tmp/structural.png --padding 16'
 ```
 
 For an interactive frontend demo, open **kratos_thermal_playground** from Field's starting points,

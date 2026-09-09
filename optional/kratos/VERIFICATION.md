@@ -61,6 +61,25 @@ which has exactly one, and the difference between reporting a concentration and 
 structural (was 4), and the new `kratos.structural.quadratic` catalog smoke alongside
 `kratos.embedded.thermal`. Both smokes pass: 22.8 s and 24.6 s.
 
+**The playground**, `dev_docs/agents/transcripts/kratos_structural_playground.yaml`, is one box: five
+sliders, three buttons, and the whole body-fitted path from a Manifold CSG through TetGen to Kratos
+and back to a picture. Driven headlessly through the backdoor on macOS against the container worker
+it meshes an L-bracket twice and solves both orders — 1681 tetrahedra, 3 kN on the arm — and draws
+the two deflected shapes beside the undeformed part, coloured by von Mises. Measured: **0.187 mm at
+4 nodes against 0.232 mm at 10**, so the linear element reaches 81% here. Milder than the slender
+cantilever's 62% because this bracket is stocky at 4:1, which is the honest shape of the effect and
+why the arm-length slider is the first control.
+
+It also makes the body-fitted constraint visible rather than documented: changing the load reuses the
+mesh and the worker, and changing the arm, the element size or the order closes the session and opens
+a new one. The status line says which just happened.
+
+Two things about it are worth recording. The mesh viewer orbits `+Y`, so the bracket is authored
+`+Y`-up with gravity along `-Y`; built `+Z`-up as physics convention would suggest, the L renders
+end-on as a chevron and the deflection is invisible. And the first draw was taken before the second
+order had landed, which looked like a working comparison with one column — the headless recipe waits
+on `the linear element reaches`, a string that cannot exist until both results are in.
+
 ## Body-fitted structural, via TetGen (2026-09-08)
 
 `structural.bodyFitted` is the third formulation and the first that is not embedded, because

@@ -307,6 +307,8 @@ object DemoTranscriptExecSmokeTest {
         // Persistent optional Kratos worker; exercised separately by the live playground check.
         "kratos_thermal_playground",
         "kratos_flow_playground",
+        // Also wants TetGen: it meshes the bracket here before the worker sees it.
+        "kratos_structural_playground",
         // Every box is compiled through Field's real K2/preamble path, but none is evaluated: four
         // of them intentionally reach an external analysis worker or real-time Sonic Pi recorder.
         "audio_render_analysis",
