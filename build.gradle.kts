@@ -1594,6 +1594,21 @@ tasks.named("compileKotlinJvm") {
     dependsOn(generateLinalgBuildProfile)
 }
 
+// A full Kratos parameter study is several hundred container solves — a nightly experiment, not a
+// smoke, so it gets a task rather than a catalog entry. `kratos.study.parameter-sweep` is the
+// catalog-sized version of the same code path. Pass arguments through -Pkratos:
+//   ./gradlew runKratosStudy -Pkratos="--grid 11 11 --budget 40 --out build/kratos-studies"
+//   ./gradlew runKratosStudy -Pkratos="--explore"
+tasks.register<JavaExec>("runKratosStudy") {
+    group = "verification"
+    description = "Sweeps the Kratos thermal design space against a real worker and writes the landscape and convergence figures. -Pkratos=\"…\" passes arguments."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.kratos.KratosStudyRun")
+    jvmArgs(vectorizationJvmArgs)
+    args((project.findProperty("kratos") as String? ?: "").split(" ").filter { it.isNotBlank() })
+}
+
 tasks.register<JavaExec>("runTrackingResonatorResynthesisExample") {
     group = "application"
     description = "Analyzes a WAV file with TrackingResonatorBank and writes three additive-resynthesis WAV variants."

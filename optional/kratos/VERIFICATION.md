@@ -1,5 +1,95 @@
 # Kratos in Field — verification
 
+## Parameter studies: 225 solves, one background grid (2026-09-09)
+
+Every demo before this one solved exactly once. `afield.kratos.KratosStudy` runs the solver many
+times over a declared design space and compares the answers; this section is the measured sweep.
+
+**The question.** Which arm length and which conductivity put 294.15 K — one kelvin above the skin
+— at the point (0.30, 0, 0) inside `KratosDemo.body(armEnd)`? Arm end 0.35–0.85 m on one axis,
+conductivity 0.8–6.0 W/(m·K) on the other, `thermal.stationary` at resolution 12 (2,197 nodes,
+10,368 tetrahedra), volumetric source 100 W/m³, skin at 293.15 K. Minimise `|T(probe) − 294.15 K|`.
+
+**Choosing the target is part of the method.** `--explore` solves the four corners first and reports
+what is even reachable, because a target outside that range puts the answer off the edge of the map:
+
+| arm | k = 0.8 | k = 6.0 |
+| --- | --- | --- |
+| 0.35 m | 294.677 K | 293.354 K |
+| 0.85 m | 299.228 K | 293.960 K |
+
+The level set is interior at every arm length only for a target in (293.960, 294.677) — a window
+three quarters of a kelvin wide. 294.15 K is inside it and is exactly `T_skin + 1 K`.
+
+**The sweep**, on the container worker (`podman`, `field-kratos:10.4.0`, emulated x86-64):
+
+```
+GRID miss from 294.15 k over 15 arm end x 15 conductivity:
+  225/225 feasible, best 6.96784e-05 at arm end=0.6714, conductivity=4.514
+  grid wall 365.2 s · 225 solves · mean 1623 ms
+NO_REMESH background=e792b674-… buildCount=1 over 225 solves
+BEST Design(armEnd=0.6714, conductivity=4.5143)  probe=294.1501 K  peak=294.7143 K
+```
+
+The `buildCount=1` line is the claim worth reading twice: **one axis of that grid is geometry**, and
+225 different bodies were classified against a single background ModelPart that was built once. A
+sweep over a shape costs what a sweep over a coefficient costs, which is what makes geometry an
+ordinary study axis rather than a reason to open 225 sessions.
+
+**The valley is checkable in closed form, and it checks out.** Stationary conduction gives
+`T = T_b + (q/k)·φ(shape)`, so the target's level set is `k* = q·φ(arm)/(T − T_b)`, and `φ` comes
+out of any single solve in that column. Every column of the measured landscape against that
+prediction, in units of the grid's own spacing (0.371 W/(m·K)):
+
+```
+arm 0.350  measured k*=1.171  closed form k*=1.221  gap 0.13 cells
+arm 0.457  measured k*=3.029  closed form k*=3.056  gap 0.07 cells
+arm 0.671  measured k*=4.514  closed form k*=4.515  gap 0.00 cells
+arm 0.850  measured k*=4.886  closed form k*=4.862  gap 0.06 cells
+```
+
+Worst gap over all fifteen columns: **0.50 cells**; median about 0.19. A grid cannot resolve a
+valley finer than its own spacing, so sub-cell agreement is the strongest statement the measurement
+can make, and quoting it in W/(m·K) would hide that ceiling. The independent confirmation of
+linearity is in the corner table above: `φ` recovered at k = 0.8 and at k = 6.0 agrees to 0.2 % at
+the short arm and to four figures at the long one.
+
+**The cache is real.** Re-running the identical 15×15 grid immediately afterwards cost **0 new
+solves and 225 hits**, and returned the same best to the last digit.
+
+**The optimiser, reported against its control — and the control won.** At a budget of 60
+evaluations the evolutionary run reached a miss of 0.0142 K and the uniform random draw at the same
+budget reached **0.0013 K**, ten times better. That is not a bug and it is exactly why the control
+arm is not optional: the optimum here is not a point but a *curve* — a one-dimensional valley
+through a two-dimensional space — so a large fraction of the space is nearly optimal and 60
+independent draws are very likely to land near the line, while selection concentrates a population
+in one region and a mutation step of 0.18 of the range is coarse compared with how thin the valley
+is. Neither beat the 225-point grid's 7.0e-05, at nearly four times the budget.
+
+The second stage is the one a grid is a prelude to: seeded at the grid's best cell with a step of
+0.02 of the range, a further 30 evaluations refine inside the cell the grid could not see into.
+
+**Coverage.** 15 Kotlin tests in `KratosStudyTest`, all against an analytic objective with no
+solver: grid ordering and the odometer, coordinate clamping, infeasible holes staying `NaN` rather
+than becoming a winning zero, the goal's sense, the colour scale's monotonicity and its inverse, and
+a figure whose green channel must span the ramp — the failure a byte count cannot catch is a figure
+that renders as one flat rectangle. The `kratos.study.parameter-sweep` catalog smoke runs the same
+code path against a real worker at 3×3, and additionally pins that the cache serves a repeated grid
+with zero new solves and that raising conductivity lowers the probe.
+
+Evidence: `public/docs/assets/kratos_studies/kratos-study-sheet.png`, committed and visually
+inspected — the valley curves from the bottom-left to the upper-right exactly where the closed form
+puts it, the grid's best is ringed and the search's best is crossed within a cell of it, and the
+colour bar's ticks are non-uniform because the scale is a labelled logarithmic stretch. Without that
+stretch the bottom third of the map is one flat shade: the miss spans 5 K over the whole space but
+under 0.8 K along the short-arm edge, because a short arm cannot get far from its own skin whatever
+its conductivity.
+
+**Not attempted:** parallel solves. `KratosSession` is newest-wins, so a study is sequential by
+construction; two concurrent solves would need two workers and two background grids. And the study
+holds scalars rather than fields, so looking at the winner costs one extra solve
+(`KratosStudy.resultAt`) rather than 225 retained result arrays.
+
 ## Quadratic tetrahedra, and the end of the bending lock (2026-09-09)
 
 The gap left open by the section below is closed. `structural.bodyFitted` now takes 10-node

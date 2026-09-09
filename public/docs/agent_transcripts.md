@@ -38,13 +38,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 94 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 95 transcripts on every build, at three
 depths. 62 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-25 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+26 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -997,6 +997,21 @@ and dragging the arm longer makes the gap worse. Install the worker first with
 `uv sync --project optional/kratos --frozen`, or build its container where Kratos has no wheels;
 TetGen needs `python3 tools/build_tetgen_native.py` once. Requires Manifold.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/kratos_structural_playground/metadata.edn)
+
+**kratos_parameter_study** — The same worker and the same background grid, asked a question one
+solve cannot answer: which arm length and which conductivity put 294.15 K — one kelvin above the
+skin — at a chosen point inside the part? The box declares a two-axis design space and a scalar
+reduced from each solved field, then either tiles the space on a grid or searches it with an
+evolutionary run reported against a random control at the same budget, and draws the landscape as a
+heat map with the winner ringed beside the winning body and its temperature slice. Stationary
+conduction makes the answer a closed form, `k* = q·φ(arm)/(T − Tb)`, so the dark valley in the
+picture is checkable arithmetic rather than a shape to admire — and nothing in the sweep knows that.
+A change of arm length is a reclassification, never a remesh: 225 solves and `builds` is still 1.
+7×7 is 49 solves and about ninety seconds on the container worker. Install it first with
+`uv sync --project optional/kratos --frozen`, or build the container image where Kratos has no
+wheels. Requires Manifold.
+![A dark heat map of miss-from-target over arm length and conductivity, with a valley curving from the bottom-left to the upper-right, the grid's best cell ringed in white and a search's best crossed in blue; below it, a log-scale best-so-far convergence plot](assets/kratos_studies/kratos-study-sheet.png)
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/kratos_parameter_study/metadata.edn)
 
 **audio_render_analysis** — Start with music written in Field rather than an imported recording.
 Four explicit live-coding boxes render Pat/Dirt, Dough and Faust or record Sonic Pi, write a finite

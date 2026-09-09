@@ -307,6 +307,64 @@ This executes arbitrary local Python with the user's permissions. Hooks must
 preserve topology to retain the no-remesh contract; user-provided hooks are
 outside the verified reference profile.
 
+## Parameter studies: many solves, one question
+
+Everything above answers one question at a time — this geometry, these coefficients, what is the
+field? `afield.kratos.KratosStudy` is the layer that varies the question and compares the answers.
+
+```kotlin
+data class Design(val armEnd: Double, val conductivity: Double)
+
+val study = KratosStudy(
+    session = experiment,
+    space = StudySpace(Design(0.6, 2.0),
+        StudyVariable("arm end", 0.35..0.85, "m") { d, v -> d.copy(armEnd = v) },
+        StudyVariable("conductivity", 0.8..6.0, "w per m k") { d, v -> d.copy(conductivity = v) }),
+    objectiveName = "miss from 294 k",
+    plan = { d -> StudyCase(ThermalParameters(conductivity = d.conductivity, source = 100.0,
+                                              boundaryTemperature = 293.15),
+                            geometry = KratosDemo.body(d.armEnd)) },
+    measure = { _, r -> r.sample(0.30, 0.0, 0.0)?.let { kotlin.math.abs(it - 294.15) } },
+)
+
+val landscape = study.grid(15, 15)          // 225 solves, one background grid
+val search    = study.optimise(budget = 60) // and the random control at the same budget
+display("figure", KratosStudyFigure.sheet(landscape, search))
+```
+
+**Geometry is an ordinary axis**, and that is the point of splitting `plan` from `measure`. For an
+embedded formulation a new shape is a reclassification of the same background grid, so sweeping an
+arm length costs what sweeping a conductivity costs and the two can be axes of the same figure.
+`buildCount` stays 1 across the whole sweep, which the verification run asserts rather than assumes.
+
+**A study is sequential, and has to be.** `KratosSession` is a newest-wins preview engine: a second
+`solveAsync` obsoletes the first, whose future then completes `null`. A study needs every answer, so
+`evaluate` awaits each solve before submitting the next. Submitting in parallel against one session
+gets you one result and *n*−1 nulls. Two sessions would genuinely run two solves at once, at the
+cost of two workers and two background grids.
+
+**An infeasible point is a data point.** A solve that throws, or a `measure` that declines because
+the probe fell outside the solved region, becomes a hole in the landscape carrying its reason — not
+an exception that abandons the other 224 points. `StudyLandscape.matrix()` puts `NaN` there rather
+than a zero, which would be the smallest value on the map and would win.
+
+**Memoisation is on a quantised coordinate signature**, twelve significant figures, so re-running an
+overlapping grid re-solves only what it has not seen and a search that reaches the same point twice
+pays once. `PopulationSearch` gets the same key through `GenomeOps.signature`, so its budget
+accounting agrees. A long sweep reports progress through `onSample`, and a throw from there aborts
+it — which is how a UI cancels without the cancellation being recorded as a hundred failed designs.
+
+`KratosStudyFigure` draws the result: a cell-per-sample heat map with hatched infeasible cells, a
+colour bar whose ticks carry true values, the grid's best ringed and a search's best crossed, and a
+best-so-far convergence panel. No bilinear smoothing — a study's resolution is a real property of
+its answer, and a smoothed picture invents a landscape between points nobody solved. `ColourScale`
+offers a labelled logarithmic stretch for a landscape whose interesting part is shallow.
+
+`KratosStudyDemo` is the worked example, and `./gradlew runKratosStudy -Pkratos="--explore"` reports
+what a design space can even reach before you ask it for something it cannot deliver. See
+`VERIFICATION.md` for the measured sweep and
+`dev_docs/agents/transcripts/kratos_parameter_study.yaml` for the loadable document.
+
 ## Formulation decision and source evidence
 
 Investigated current master `1e6822f8d5bf1352b0b4bf2820257c33c33f6501`, installed
