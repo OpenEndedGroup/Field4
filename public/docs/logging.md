@@ -14,9 +14,9 @@ lprintln("info,mypage", "something happened")
 
 `"info,mypage"` is a **channel**. It is not a level, and it is not a logger name. It is a
 comma-separated list of *tags*, and every consumer downstream selects on those tags. There
-are **911**<!--count:lprintlnChannelCallSites--> places in `src/jvmMain` that call
+are **914**<!--count:lprintlnChannelCallSites--> places in `src/jvmMain` that call
 `lprintln` with the channel written out as a literal, spelling
-**218**<!--count:logChannelStrings--> distinct channel strings between them, so the
+**220**<!--count:logChannelStrings--> distinct channel strings between them, so the
 vocabulary is already large and already load-bearing.
 
 By convention the first tag is a severity, drawn from six the console knows how to colour
@@ -144,7 +144,7 @@ strings (`Logging.kt:80#raw.split(';').map { it.trim() }.filter { it.isNotEmpty(
 or a blank value to mute nothing.
 
 The log widget's filter, at the other extreme, matches any substring. This is not a
-hypothetical difference: **101**<!--count:logChannelSubstringCollisions--> pairs of a real
+hypothetical difference: **108**<!--count:logChannelSubstringCollisions--> pairs of a real
 tag and a real channel string in the tree today are matched by a `LogStream` filter and
 would not be pinned by the same word. `kotlin` is the clearest of them: it is one of the
 most-used tags in the tree, and `kotlinjs` — the Kotlin/JS build — is a *separate* tag that

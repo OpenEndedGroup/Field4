@@ -17,7 +17,7 @@ description of one.
 
 Box 3 is the point of the whole document. Three mechanisms in Field select on "the channel" and all
 three match differently — exact whole string, exact comma-split tag, and case-insensitive substring —
-and 101 pairs of a real tag and a real channel string in this tree are matched by the third and not
+and 108 pairs of a real tag and a real channel string in this tree are matched by the third and not
 the second. Reading that is not the same as watching a real subscriber do it.
 
 Every box cleans up after itself in a `finally`. That is not decoration: `LogDispatcher` is a global,

@@ -29,7 +29,7 @@ val matched = pushed.filter { "«logdemo»" in it }
     .toSet()
 
 // info,kotlinjs matches because "kotlin" is a prefix of "kotlinjs". The pinned console,
-// which splits on commas, would not pin it. Same word, two different answers — and 101
+// which splits on commas, would not pin it. Same word, two different answers — and 108
 // pairs of a real tag and a real channel in this tree differ the same way.
 display("main", Table(
     listOf("channel emitted", "pushed to the subscriber"),
