@@ -1,0 +1,178 @@
+name: fn_rewrite_kotlin_boxes
+description: >
+  The two ways to run a `@{...}` Kotlin right-hand side in an Fn rewrite spec, side by side: one box
+  (does not work — the rewrite hydrates on the running box's own engine and re-runs the body once per
+  level until the stack goes) and two boxes (works — the snippet compiles in a second, idle box).
+  The broken box is created and deliberately NOT executed; run it by hand to watch it fail.
+operations:
+  - create:
+      box: fnrw_host
+      name: Host
+      frame:
+        x: 60.0
+        y: 60.0
+        w: 300.0
+        h: 100.0
+      properties:
+        code: |
+          // An ordinary, idle box. Its only job is to own a live Kotlin engine that somebody else
+          // can compile in. Executing it once is what brings that engine up.
+          println("host engine ready")
+  - execute:
+      box: fnrw_host
+      property: code
+      type: fragment
+      code: |
+          // An ordinary, idle box. Its only job is to own a live Kotlin engine that somebody else
+          // can compile in. Executing it once is what brings that engine up.
+          println("host engine ready")
+  - wait:
+      millis: 250
+  - create:
+      box: fnrw_working
+      name: Two boxes - works
+      frame:
+        x: 60.0
+        y: 200.0
+        w: 460.0
+        h: 120.0
+      properties:
+        code: |
+          // WORKS. `rewriteFn` names the box to compile the `@{...}` snippets in, and that box is
+          // idle, so hydrating there replays nothing. One pass, and the sampled signal really moves.
+          import afield.stdlib.Functions
+          import afield.stdlib.rewriteFn
+
+          val spec = listOf(
+              "#fnrewrite",
+              "sin/*/saw => op=triangle",
+              "sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}",
+              "**/[role=amplitude] => *= @{if (parentOp == \"sin\") 0.75 else 1.0}"
+          ).joinToString("\n")
+
+          // The host comes from TOPOLOGY, not from a hard-coded id: whatever this box is connected
+          // beneath is where the `@{...}` snippets get compiled. Drag a different parent in and the
+          // rewrite follows it.
+          //
+          // NOT `?: error(...)`. Inside a box, `error` is `HasOutput.error(message, property, line)`,
+          // which returns Unit, so the elvis widens this to `Any` and the failure surfaces as a
+          // baffling "receiver type mismatch" on rewriteFn below. Throw explicitly.
+          val host = parents.lastOrNull()
+              ?: throw IllegalStateException("connect this box under a box to compile the @{...} in")
+          println("compiling in parent: " + host.name)
+
+          with(Functions) {
+              val base = (sin(sin(saw(0.18))) * 0.45) over (0.0..3.0)
+              val changed = host.rewriteFn(base, spec)
+              println("before  f(1.0) = " + base.eval(1.0))
+              println("after   f(1.0) = " + changed.eval(1.0))
+              base.withName("before").plot(0.0..3.0, channel = "before", heightPx = 200, title = "before rewrite")
+              changed.withName("after").plot(0.0..3.0, channel = "after", heightPx = 200, title = "after rewrite")
+          }
+  - connect:
+      parent: fnrw_host
+      child: fnrw_working
+  - execute:
+      box: fnrw_working
+      property: code
+      type: fragment
+      code: |
+          // WORKS. `rewriteFn` names the box to compile the `@{...}` snippets in, and that box is
+          // idle, so hydrating there replays nothing. One pass, and the sampled signal really moves.
+          import afield.stdlib.Functions
+          import afield.stdlib.rewriteFn
+
+          val spec = listOf(
+              "#fnrewrite",
+              "sin/*/saw => op=triangle",
+              "sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}",
+              "**/[role=amplitude] => *= @{if (parentOp == \"sin\") 0.75 else 1.0}"
+          ).joinToString("\n")
+
+          // The host comes from TOPOLOGY, not from a hard-coded id: whatever this box is connected
+          // beneath is where the `@{...}` snippets get compiled. Drag a different parent in and the
+          // rewrite follows it.
+          //
+          // NOT `?: error(...)`. Inside a box, `error` is `HasOutput.error(message, property, line)`,
+          // which returns Unit, so the elvis widens this to `Any` and the failure surfaces as a
+          // baffling "receiver type mismatch" on rewriteFn below. Throw explicitly.
+          val host = parents.lastOrNull()
+              ?: throw IllegalStateException("connect this box under a box to compile the @{...} in")
+          println("compiling in parent: " + host.name)
+
+          with(Functions) {
+              val base = (sin(sin(saw(0.18))) * 0.45) over (0.0..3.0)
+              val changed = host.rewriteFn(base, spec)
+              println("before  f(1.0) = " + base.eval(1.0))
+              println("after   f(1.0) = " + changed.eval(1.0))
+              base.withName("before").plot(0.0..3.0, channel = "before", heightPx = 200, title = "before rewrite")
+              changed.withName("after").plot(0.0..3.0, channel = "after", heightPx = 200, title = "after rewrite")
+          }
+  - wait:
+      millis: 250
+  - create:
+      box: fnrw_broken
+      name: One box - does not work
+      frame:
+        x: 60.0
+        y: 360.0
+        w: 460.0
+        h: 120.0
+      properties:
+        code: |
+          // THE WRONG WAY, kept runnable so you can watch it refuse. `rewriteKotlin` takes its box
+          // from `Box.context`, i.e. THIS box, so the first `@{...}` asks this engine to evaluate
+          // while it is already mid-evaluation and the engine re-runs this body.
+          //
+          // Unguarded that was 172 nested entries and 285 snippet compiles, ending in
+          //   Unable to instantiate class ...__code__81: java.lang.StackOverflowError
+          // with the same 115-character snippet taking 1.58s, 2.14s, 2.69s as the chain grew.
+          //
+          // The FnRewriteSelfBoxReentry guard now refuses the second hydration, which breaks the
+          // recursion: this body runs exactly TWICE (watch for two "one box:" lines), the second run
+          // dies at the first @{...}, and the rewrite then completes with the right answer. Look in
+          // the log, channel `error,fn-rewrite`, for the refusal and the three ways out.
+          //
+          // Twice is still once too many -- anything this body does before the rewrite happens twice,
+          // which is why the box above is the form to copy. dev_docs/FN_REWRITE_SELF_BOX_REENTRY.md.
+          import afield.stdlib.Functions
+          import afield.stdlib.rewriteKotlin
+
+          val spec = listOf(
+              "#fnrewrite",
+              "sin/*/saw => op=triangle",
+              "sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}",
+              "**/[role=amplitude] => *= @{if (parentOp == \"sin\") 0.75 else 1.0}"
+          ).joinToString("\n")
+
+          println("one box: body entered")
+
+          with(Functions) {
+              val base = (sin(sin(saw(0.18))) * 0.45) over (0.0..3.0)
+              val changed = base.rewriteKotlin(spec)
+              println("one box: f(1.0) = " + changed.eval(1.0) + " (correct, but the body ran twice)")
+          }
+  - execute:
+      box: fnrw_broken
+      property: code
+      type: fragment
+      code: |
+        import afield.stdlib.Functions
+        import afield.stdlib.rewriteKotlin
+
+        val spec = listOf(
+            "#fnrewrite",
+            "sin/*/saw => op=triangle",
+            "sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}",
+            "**/[role=amplitude] => *= @{if (parentOp == \"sin\") 0.75 else 1.0}"
+        ).joinToString("\n")
+
+        println("one box: body entered")
+
+        with(Functions) {
+            val base = (sin(sin(saw(0.18))) * 0.45) over (0.0..3.0)
+            val changed = base.rewriteKotlin(spec)
+            println("one box: f(1.0) = " + changed.eval(1.0) + " (correct, but the body ran twice)")
+        }
+  - wait:
+      millis: 250
