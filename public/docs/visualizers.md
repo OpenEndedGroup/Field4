@@ -673,7 +673,7 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-markdown.png" wait="2.0" capture="box" open-outputs="true" w="900" embed=true name="display-markdown"}
 :::static
 val readings = linkedMapOf("tempo" to 122, "drift" to -0.004, "voice" to "saw 110 *")
-val rows = readings.entries.joinToString("\n") { (k, v) -> "| ${mdEscape(k)} | ${mdEscape(v)} |" }
+val rows = readings.entries.joinToString("\n") { (k, v) -> "| ${k.md} | ${v.md} |" }
 val report = "converged in 41 steps\nresidual 3.2e-7"
 
 markdown("figure", """
@@ -705,7 +705,7 @@ println("markdown figure ready")
 Three things make this work on real figures rather than just on prose:
 
 - **HTML passes through, inline and block.** `.h`, `diffHtml()`, `graphSvg()` and friends already return HTML; interpolate them directly and they land verbatim, table cells included. Only text you actually wrote as markdown gets escaped.
-- **`mdEscape(value)` for computed values.** Runtime values are not markdown — a `|` splits the row it lands in, a pair of `*` becomes emphasis, a `<b>` is read as a tag and vanishes. Wrap anything you did not write yourself. There is a suffix form, `value.md`, that does exactly the same thing and reads better once a row has six of them in it: `"| ${k.md} | ${v.md} |"`.
+- **`value.md` for computed values.** Runtime values are not markdown — a `|` splits the row it lands in, a pair of `*` becomes emphasis, a `<b>` is read as a tag and vanishes. Escape anything you did not write yourself. The prefix spelling `mdEscape(value)` is the same function and still works; the suffix is what a row of six escapes wants, and it is the one used above.
 - **Fenced bodies are interpolated at column zero**, hard left, the way `$report` is above. Inside a fence whitespace is the content, and splicing at the surrounding indentation would indent only the value's first line.
 
 Beyond GitHub-flavoured markdown there are two additions: `:::row … :::end`, splitting columns on a `---` line, for the before/after shape markdown cannot spell; and `{role:text}` spans — `accent`, `muted`, `dim`, `ok`, `warn`, `bad` — so a callout never needs a hex literal. Neither applies inside code, so a `:::row` or a `{warn:…}` shown *as* an example stays as written.
@@ -898,7 +898,7 @@ controlGroup("surface") {
 // The gradient swatch is the bespoke part and stays as HTML; the card around it does not
 // have to be hand-built any more.
 markdown("preview", """
-    #### ${mdEscape(label)}
+    #### ${label.md}
 
     <div style="height:96px;background:
       radial-gradient(circle at 35% 45%, rgba(64,190,255,0.65), transparent 22%),

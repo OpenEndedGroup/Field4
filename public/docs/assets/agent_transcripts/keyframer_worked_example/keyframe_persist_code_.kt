@@ -51,10 +51,10 @@ println("version 0 migrated: " + migrated.values.toSortedMap())
 // way trimIndent would. The values table stays flat text rather than `migrated.h` — the
 // Key's own HTML gives a Vector3f an interactive 3D axis widget, which reflows the card.
 val versionRows = versions.joinToString("\n") { v ->
-    "| ${v.index} | ${mdEscape(v.file)} | ${mdEscape(v.note ?: "—")} |"
+    "| ${v.index} | ${v.file.md} | ${(v.note ?: "—").md} |"
 }
 val migratedRows = migrated.values.entries.sortedBy { it.key }.joinToString("\n") { (k, v) ->
-    "| ${mdEscape(k)} | ${mdEscape(v)} |"
+    "| ${k.md} | ${v.md} |"
 }
 
 markdown("persist", """

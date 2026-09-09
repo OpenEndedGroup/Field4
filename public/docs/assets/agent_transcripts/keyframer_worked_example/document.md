@@ -19,7 +19,7 @@ write to. The simplest is a uniform Structure — and none of this needs a GPU, 
 Structure is constructible bare and bind/bindings are plain maps.
 
 ```edn [field-box id="keyframe_targets" role="properties"]
-{"id" "keyframe_targets" "index" 0 "name" "What a scope watches — capture, edit, apply" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What a scope watches — capture, edit, apply" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_targets_code_.kt" "lines" 87 "characters" 3407 "sha256" "562d32a9374e2dce2beff54846ac698c33eb5d8758520da6c54346989b0df4b5"}]}
+{"id" "keyframe_targets" "index" 0 "name" "What a scope watches — capture, edit, apply" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What a scope watches — capture, edit, apply" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_targets_code_.kt" "lines" 87 "characters" 3373 "sha256" "50999af5a385488c99575d9240c453b7a84cdd36ad210b627d1f435238216b7c"}]}
 ```
 
 ```kotlin [field-property box="keyframe_targets" name="code" path="keyframe_targets_code_.kt"]
@@ -78,8 +78,8 @@ val restored = scope.capture()
 // markdown() rather than a hand-built card: headings for the captions, GFM tables for the
 // key/value pairs, a fence for the multi-line diff. `key.h` and diffHtml() are HTML from
 // other Field APIs and are *meant* to pass through, so they interpolate directly; every
-// computed value goes through mdEscape, which a table cell effectively requires.
-fun bound(s: Structure, k: String) = mdEscape(s.bindings[k]?.invoke())
+// computed value carries `.md`, which a table cell effectively requires.
+fun bound(s: Structure, k: String) = s.bindings[k]?.invoke().md
 
 markdown("keys", """
     #### 1 — capture()
@@ -95,14 +95,14 @@ markdown("keys", """
     | glow.radius | ${bound(glow, "radius")} |
     | glow.intensity | ${bound(glow, "intensity")} |
     | blur.radius | ${bound(blur, "radius")} |
-    | glow.glow@radius | ${mdEscape(glow.bindings["glow@radius"]?.invoke() ?: "<unbound>")} |
+    | glow.glow@radius | ${(glow.bindings["glow@radius"]?.invoke() ?: "<unbound>").md} |
 
     #### 4 — the bindings/values trap
 
     | binding | value |
     | --- | --- |
-    | bound (via bind) | ${mdEscape(trap["bound"])} |
-    | set (via values) | ${mdEscape(trap["set"])} {warn:← captured as null, silently} |
+    | bound (via bind) | ${trap["bound"].md} |
+    | set (via values) | ${trap["set"].md} {warn:← captured as null, silently} |
 
     #### 5 — captured() again, then re-captured
 
@@ -125,7 +125,7 @@ saveKey writes pretty JSON — and, every single time, ALSO appends a numbered c
 hundred files. What survives the trip is a closed set; everything else is dropped silently.
 
 ```edn [field-box id="keyframe_persist" role="properties"]
-{"id" "keyframe_persist" "index" 1 "name" "Saving is always additive history" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Saving is always additive history" "_tombstone" false "frame" #afield/rect [1100.0 80.0 240.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_persist_code_.kt" "lines" 84 "characters" 3293 "sha256" "533fabd0b452c2b0c6fa26fd8006eee480a760676462334880dabb70c8a4ff43"}]}
+{"id" "keyframe_persist" "index" 1 "name" "Saving is always additive history" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Saving is always additive history" "_tombstone" false "frame" #afield/rect [1100.0 80.0 240.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_persist_code_.kt" "lines" 84 "characters" 3267 "sha256" "f400efad27318a1e4e7cc134240d2aee1e965fb8f8bbb4b24482d923faf03891"}]}
 ```
 
 ```kotlin [field-property box="keyframe_persist" name="code" path="keyframe_persist_code_.kt"]
@@ -182,10 +182,10 @@ println("version 0 migrated: " + migrated.values.toSortedMap())
 // way trimIndent would. The values table stays flat text rather than `migrated.h` — the
 // Key's own HTML gives a Vector3f an interactive 3D axis widget, which reflows the card.
 val versionRows = versions.joinToString("\n") { v ->
-    "| ${v.index} | ${mdEscape(v.file)} | ${mdEscape(v.note ?: "—")} |"
+    "| ${v.index} | ${v.file.md} | ${(v.note ?: "—").md} |"
 }
 val migratedRows = migrated.values.entries.sortedBy { it.key }.joinToString("\n") { (k, v) ->
-    "| ${mdEscape(k)} | ${mdEscape(v)} |"
+    "| ${k.md} | ${v.md} |"
 }
 
 markdown("persist", """
