@@ -184,11 +184,18 @@ arm 0.671  measured k*=4.514  closed form k*=4.515  gap 0.00 cells
 arm 0.850  measured k*=4.886  closed form k*=4.862  gap 0.06 cells
 ```
 
-**Solve cost has drifted and the figure's caption is now optimistic.** The committed sheet says
-`306.0 S OF SOLVER` for its 225 cells; this run measured **390.0 s**, a mean of 1769 ms per solve
-against the ~1360 ms that caption implies — 27% slower. Three other Field JVMs were resident during
-the run, one of them at 4.4 GB, so the honest reading is machine load rather than a regression: the
-per-solve *result* is bit-comparable and only the wall clock moved. Nothing in the API changed.
+**Solve cost is essentially unchanged, and my first reading of it was wrong.** I began by comparing
+this run's `390.0 s of solver` against the committed sheet's caption of `306.0 S OF SOLVER` and
+wrote down a 27% slowdown. That comparison is invalid. `StudySample.asCacheHit()` carries `solveMs`
+through unchanged and `StudyLandscape.summary()` sums it over all 225 cells, so that caption is "what
+these 225 cells cost to solve", counting solves paid for in an earlier stage of the same run — and
+the *mix* of fresh to carried-in cells differs between the two runs, because their coarse grids and
+search budgets differ. It is a fine per-landscape number and a meaningless cross-run one.
+
+The comparable figures are in `optional/kratos/VERIFICATION.md`, which records the earlier sweep as
+`grid wall 365.2 s · mean 1623 ms`. This run: **wall 373.1 s, mean 1769 ms** — 2% on the wall clock
+and 9% on the mean solve, with three other Field JVMs resident, one of them at 4.4 GB. That is
+machine load. Nothing in the API changed and the per-solve results are identical.
 
 **The two runs are not the same experiment, and the committed figure was left alone.** Its
 convergence panel runs to 59 evaluations, so it was produced with a search budget near 60; this run
@@ -234,6 +241,13 @@ colour bar. `KratosStudyFigure.number(6.96784e-05)` returns `"0.00007"`; the two
   `GRID BEST` floor. The refinement seeded from a coarse grid *does* win, which is the finding, but
   a reader could take the convergence panel as evidence that the search arm works well. It works
   correctly; it does not work impressively, and the panel is drawn so that is visible.
+- **The figures' "N s of solver" caption is not a cross-run quantity**, and it reads like one. It
+  sums `solveMs` over every cell of the landscape, cache hits included, so it measures what those
+  cells cost whenever they were first solved rather than what this stage spent. Two runs of the same
+  grid with different coarse/search stages before them will print different values having done
+  identical work. I misread it that way myself before checking; a reader comparing two committed
+  sheets will too. Either the caption should say "to solve these cells" or it should report the
+  landscape's own wall time.
 - **One machine, one container image.** Everything measured here ran against
   `localhost/field-kratos:10.4.0` under `linux/amd64` emulation on Apple silicon. Solve cost on any
   other host is a guess.
