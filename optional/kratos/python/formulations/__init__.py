@@ -31,8 +31,13 @@ def _importable(module):
 
 
 def available():
-    """`{name: {available, summary, element, applications, missing}}` for every registered
-    formulation, with one import attempt per distinct module."""
+    """`{name: {available, summary, element, elements, applications, missing}}` for every registered
+    formulation, with one import attempt per distinct module.
+
+    `element` is what a 4-node mesh gets; `elements` is the whole table when the formulation takes
+    more than one tetrahedron order, and null when it does not. Field reads the latter to know
+    whether meshing at `order = 2` buys anything.
+    """
     cache = {}
     report = {}
     for name, formulation in REGISTRY.items():
@@ -46,6 +51,10 @@ def available():
             'available': not missing,
             'summary': formulation.summary,
             'element': formulation.element,
+            # String keys: the envelope is msgpack and the Kotlin decoder reads maps as
+            # `Map<String, Any?>`, so an int key would arrive as something it cannot look up.
+            'elements': ({str(k): v for k, v in formulation.elements.items()}
+                         if formulation.elements else None),
             'applications': list(formulation.applications),
             'maxResolution': formulation.max_resolution,
             'suppliedMesh': formulation.supplied_mesh,

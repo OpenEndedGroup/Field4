@@ -1,11 +1,15 @@
-# Field → Manifold → Kratos: embedded thermal prototype
+# Field → Manifold → Kratos
 
-An optional persistent Python worker solves stationary conduction inside a cuboid
-assembly on a fixed tetrahedral background. Moving/resizing a cuboid changes the
-nodal distance and cut integration, **not the background nodes or elements**.
-Field returns the temperature as `DoubleArray` data and draws derived `TriMesh`
-views using its existing graphics system. This is a small thermal experiment,
-not a general simulation DSL or a structural analysis backend.
+An optional persistent Python worker solves physics on geometry Field authors. It began as one
+thing — stationary conduction inside a cuboid assembly on a fixed tetrahedral background, where
+moving or resizing a cuboid changes the nodal distance and cut integration and **not the background
+nodes or elements** — and that is still the shape of the embedded formulations. Field returns the
+solved fields as `DoubleArray` data and draws derived `TriMesh` views with its existing graphics.
+
+There are now three formulations: embedded conduction, embedded flow, and body-fitted linear
+elasticity. The last one breaks the no-remesh invariant on purpose, because Kratos has no immersed
+structural element; see [the table below](#the-three-formulations). This is still a bounded set of
+experiments rather than a general simulation DSL.
 
 The measured outcome and validation artifacts are recorded in
 [VERIFICATION.md](VERIFICATION.md).
@@ -175,28 +179,38 @@ background tetrahedra, its nodal variables and DOFs, and one `solve`. Adding one
 a line in `formulations/__init__.py`.
 
 `hello` reports the whole registry, not just what imported: `formulations` gives
-`{available, summary, element, applications, maxResolution, missing}` per entry, with the import
-error for each missing module. A worker with ConvectionDiffusion but no FluidDynamics reports
-itself available and says which physics it is short of, rather than reporting itself broken.
+`{available, summary, element, elements, applications, maxResolution, suppliedMesh, missing}` per
+entry, with the import error for each missing module. A worker with ConvectionDiffusion but no
+FluidDynamics reports itself available and says which physics it is short of, rather than reporting
+itself broken.
 
 `KratosSession.openAsync(..., formulation = …)` chooses; `SimulationParameters` is the Kotlin side
-of the same idea and `ThermalParameters` is its one implementation. A session runs exactly one
-formulation and rejects parameters for another, because the background ModelPart carries that
-formulation's element type.
+of the same idea, implemented by `ThermalParameters`, `FlowParameters` and `StructuralParameters`. A
+session runs exactly one formulation and rejects parameters for another, because the background
+ModelPart carries that formulation's element type.
 
-### The two formulations
+### The three formulations
 
-| | `thermal.stationary` | `flow.embedded` |
-| --- | --- | --- |
-| element | `EmbeddedLaplacianElement3D4N` | `EmbeddedWeaklyCompressibleNavierStokes3D4N` |
-| application | ConvectionDiffusion | FluidDynamics + LinearSolvers |
-| solved region | **inside** the authored solid | **outside** it — the solid is an obstacle |
-| unknowns per node | 1 | 4 (velocity, pressure) |
-| in time | stationary | transient, BDF2 inside the element |
-| algebra | one linear solve, Skyline LU | Newton–Raphson per step, sparse LU |
-| small cuts | epsilon plus the Nitsche penalty | `DistanceModificationProcess`, in C++ |
-| resolution ceiling | 32 | 20 |
-| a solve costs | milliseconds | seconds |
+| | `thermal.stationary` | `flow.embedded` | `structural.bodyFitted` |
+| --- | --- | --- | --- |
+| element | `EmbeddedLaplacianElement3D4N` | `EmbeddedWeaklyCompressibleNavierStokes3D4N` | `SmallDisplacementElement3D4N` or `…3D10N` |
+| application | ConvectionDiffusion | FluidDynamics + LinearSolvers | StructuralMechanics + LinearSolvers |
+| discretisation | background grid | background grid | body-fitted mesh from TetGen |
+| solved region | **inside** the authored solid | **outside** it — the solid is an obstacle | the mesh is the solid |
+| unknowns per node | 1 | 4 (velocity, pressure) | 3 (displacement) |
+| in time | stationary | transient, BDF2 inside the element | stationary |
+| algebra | one linear solve, Skyline LU | Newton–Raphson per step, sparse LU | one linear solve, sparse LU |
+| small cuts | epsilon plus the Nitsche penalty | `DistanceModificationProcess`, in C++ | none — nothing is cut |
+| resolution ceiling | 32 | 20 | whatever you mesh |
+| a solve costs | milliseconds | seconds | milliseconds to seconds |
+
+The third is the odd one out, and the reason is that **Kratos has no immersed structural element**
+— 312 public names in `StructuralMechanicsApplication`, not one matching `embedded`, `shifted` or
+`sbm`. So it takes a mesh over `createBodyMesh` instead of classifying a grid, and a geometry edit
+means a new mesh and a new session. The no-remesh invariant belongs to the embedded formulations and
+this one does not claim it; a full re-tetrahedralization is ~0.2 s, which is what makes that
+affordable. Mesh it with `Tetgen.tetrahedralize(surface, order = 2)` if the part bends —
+`dev_docs/TETGEN.md` has the whole argument and the numbers.
 
 The reversed region is the thing to know. Kratos wants positive `DISTANCE` on the side it solves,
 so conduction and flow ask for opposite signs from the *same* `SimulationGeometry`; `solve_region`

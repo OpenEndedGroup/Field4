@@ -1,5 +1,66 @@
 # Kratos in Field — verification
 
+## Quadratic tetrahedra, and the end of the bending lock (2026-09-09)
+
+The gap left open by the section below is closed. `structural.bodyFitted` now takes 10-node
+tetrahedra as well as 4-node ones and puts `SmallDisplacementElement3D10N` on them, chosen from the
+width of the mesh Field sends rather than from a parameter.
+
+**The measurement**, same beam, same loads, same solver, tip deflection as a fraction of `wL⁴/8EI`:
+
+| mesh | tetrahedra | 4-node | 10-node |
+| --- | --- | --- | --- |
+| 5×1×1 | 30 | 13.2% | **95.4%** |
+| 10×2×2 | 240 | 35.6% | 98.8% |
+| 20×3×3 | 1080 | 62.0% | 99.7% |
+
+Refining the linear mesh was never going to get there — it is still 38% short at 1080 elements. The
+quadratic element is within 5% at thirty. Landing just under 100% is correct rather than a residual
+error: Euler–Bernoulli omits shear (Timoshenko adds 1.0% here) while the fully clamped end face is
+stiffer than beam theory assumes, and the two nearly cancel.
+
+Axial extension goes the other way — 100.80% and 100.66% against the linear element's 99.44% and
+100.04%. That is the load, not the element: a total force split equally over every node in the load
+region is further from the consistent distribution on a quadratic face (nothing at the corners, a
+third at each midside) than on a linear one. The resultant is exact either way, so it is a local end
+effect and it does not touch bending, where the load is gravity.
+
+**End to end**, `tools/run_field_tests.py --id kratos.structural.quadratic`, macOS driving the
+container worker under x86-64 emulation, 27.2 s. One TetGen mesh of an 864-tetrahedron cantilever,
+solved at both orders: **69.5% against 99.8%**. 298 nodes and assembly+solve of 0.20 s at order 1;
+1717 nodes and 1.05 s at order 2.
+
+**TetGen's `-o2` turned out to be unusable**, and this is the finding worth keeping. TetGen 1.6.0's
+`highorder()` `delete[]`s the `highordertable` holding every element's extra-node pointers before
+returning, and `outelements()` then dereferences them. From the command line it usually survives; in
+library mode `outelements()` allocates the output node array first, the allocator returns the block
+just freed, and TetGen reads its own coordinates as pointers. The SIGSEGV's faulting address was
+`0xbfe3d70a40000040` = −0.6200000047683787, which is the x-minimum of the test slab — the diagnosis
+started from the address itself. `tools/tetgen_o2_use_after_free.py` then confirmed it outside the
+JVM entirely: the same cube built twice from the same TetGen source, SIGSEGV as shipped and 229
+nodes / 104 ten-node tetrahedra with that one `delete[]` commented out. So `TetMesh.quadratic()`
+does the promotion on Field's side, which also means the six midside nodes are emitted in Kratos's
+`Tetrahedra3D10` order by construction instead of being recovered from TetGen's internal edge
+tables.
+
+**The failure mode this had to be protected from** is that a mis-ordered quadratic element does not
+fail. It assembles, it solves, and it returns a plausible displacement field that is wrong. So the
+ordering is checked geometrically at both ends — `TetgenTest` on the way out, `SuppliedMesh` on the
+way in — and the two promotion implementations (Kotlin and the Python test helper) are deliberately
+separate so that a divergence is a test failure rather than a wrong answer.
+
+Two things were characterised rather than assumed while landing this. `createBodyMesh` now carries
+`nodesPerCell` explicitly: the same bytes read at the wrong width are a whole number of elements
+with every index in range, and the worker builds 30 tetrahedra out of 12 elements' worth of
+connectivity without complaint. That is pinned as a test. And the von Mises recovery now takes the
+peak over an element's integration points rather than the first — unchanged for the 4-node element,
+which has exactly one, and the difference between reporting a concentration and missing it on the
+10-node element, which has four.
+
+**Coverage**: 9 Kotlin TetGen tests (was 6), 28 Python worker tests (was 23), of which 9 are
+structural (was 4), and the new `kratos.structural.quadratic` catalog smoke alongside
+`kratos.embedded.thermal`. Both smokes pass: 22.8 s and 24.6 s.
+
 ## Body-fitted structural, via TetGen (2026-09-08)
 
 `structural.bodyFitted` is the third formulation and the first that is not embedded, because
@@ -23,8 +84,8 @@ and 5,912 tetrahedra in 67 ms, volume `0.003968000329971304` against Manifold's
 
 Axial is correct, which pins the material, the clamp, the point loads and the solver. The bending
 shortfall is the constant-strain tetrahedron locking — a property of the element, converging from
-below. It is characterised in the test suite rather than asserted away, and quadratic elements are
-the fix.
+below. It was characterised in the test suite rather than asserted away, and quadratic elements were
+named as the fix; the section above is that fix, landed the following day.
 
 **End to end from a real Field browser session** on macOS driving the container worker: an
 L-bracket clamped at the base of its post, under gravity plus 4 kN on the arm, 1,434 nodes and

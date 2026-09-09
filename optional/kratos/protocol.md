@@ -51,7 +51,10 @@ There is no compression, remote access, multiplexing or automatic retry.
 - `hello`: import checks, versions, platform, executable, formulation catalogue and install
   guidance. Can succeed at the protocol level with `data.available=false`.
   `data.formulations` maps each registered formulation to
-  `{available, summary, element, applications, maxResolution, missing}`; `missing` carries the
+  `{available, summary, element, elements, applications, maxResolution, suppliedMesh, missing}`.
+  `element` is what a 4-node mesh gets; `elements` maps nodes-per-tetrahedron (as a string, because
+  the envelope is msgpack and the Kotlin side reads maps as `Map<String, Any?>`) to the element for
+  that width, and is null when the formulation takes only one. `missing` carries the
   import error per module, so a worker without `FluidDynamicsApplication` reports a feature to
   install rather than a feature that does not exist. `data.usableFormulations` is the subset that
   can be built and `data.defaultFormulation` is what `createBackgroundDomain` picks by default.
@@ -61,6 +64,26 @@ There is no compression, remote access, multiplexing or automatic retry.
   `thermal.stationary`) and `formulationOptions`. Returns background UUID, build count, build
   timing, the chosen `formulation`/`element`, a `fields` description of what `solve` will return,
   and binary positions/cells. A second creation in the same session is rejected.
+- `createBodyMesh`: the body-fitted counterpart, for a formulation whose `suppliedMesh` is true.
+  Field meshed the Manifold surface with TetGen and sends the result, because the input that
+  preserves a sharp edge is that triangulation and it lives in the JVM. Takes `formulation`,
+  `positions` as a binary float64[nodeCount, 3] block, `cells` as a binary int32[cellCount,
+  nodesPerCell] block, and `nodesPerCell` — 4 for linear tetrahedra, 10 for quadratic.
+
+  The width is **stated, never inferred**. Both blocks are int32, and 20 linear elements are exactly
+  as many bytes as 8 quadratic ones, so a worker that guessed would sometimes guess wrong, reshape
+  the array, find every index in range, and build a model that solves. Nothing downstream could
+  tell. The reply echoes `nodesPerCell` alongside `nodeCount` and `cellCount` and
+  `KratosSession.openMeshAsync` checks all three.
+
+  A 10-node mesh must use Kratos's `Tetrahedra3D10` node order: four corners, then the midpoints of
+  edges (0,1), (1,2), (0,2), (0,3), (1,3), (2,3). The worker verifies that each of those six nodes
+  really is at the midpoint of the edge it claims, because a mis-ordered quadratic element does not
+  fail — it solves and returns a plausible wrong answer.
+
+  Returns background UUID, build count and timing, `nodeCount`/`cellCount`/`nodesPerCell`, the
+  mesh's `bounds`, the chosen `formulation` and the `element` its width selected, and a `fields`
+  description. No positions come back: the caller already has every coordinate.
 - `solve`: `geometry` is a nested primitive/boolean expression with stable IDs, **or** `distance`
   is a binary float64[nodeCount] block. `parameters` holds the formulation's coefficients;
   `thermal` is the schema-1 spelling of the same thing for `thermal.stationary` and is still
