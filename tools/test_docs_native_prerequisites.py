@@ -7,8 +7,10 @@ from tempfile import TemporaryDirectory
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from build_zensical_docs import (  # noqa: E402
+    NATIVE_PREREQUISITES,
     ceres_library_path,
     check_native_prerequisites,
+    tetgen_library_path,
 )
 
 FENCE = (
@@ -42,6 +44,34 @@ class CeresLibraryPathTests(unittest.TestCase):
         resolved = ceres_library_path(Path("/repo"))
         self.assertEqual(resolved.parent, Path("/repo/build/ken-ceres-redistributable"))
         self.assertTrue(resolved.name.startswith("ken_ceres_jvm") or resolved.name.startswith("libken_ceres_jvm"))
+
+
+class TetgenLibraryPathTests(unittest.TestCase):
+    """The same two properties for TetGen, whose resolver is Ceres' with a second candidate.
+
+    Kept in step with `afield.tetgen.TetgenLibrary.searchedPaths` by hand, so the point of
+    these is to make a drift between the two a test failure rather than a docs build that
+    reports "no artifact" while the JVM happily finds one a directory away.
+    """
+
+    def test_the_environment_override_wins(self):
+        os.environ["AFIELD_TETGEN_LIBRARY"] = "/somewhere/libfield_tetgen_jvm.dylib"
+        self.addCleanup(os.environ.pop, "AFIELD_TETGEN_LIBRARY", None)
+        self.assertEqual(
+            tetgen_library_path(Path("/repo")), Path("/somewhere/libfield_tetgen_jvm.dylib")
+        )
+
+    def test_the_default_is_where_build_tetgen_native_writes(self):
+        os.environ.pop("AFIELD_TETGEN_LIBRARY", None)
+        resolved = tetgen_library_path(Path("/repo"))
+        self.assertEqual(resolved.parent, Path("/repo/build/field-tetgen/build"))
+        self.assertIn("field_tetgen_jvm", resolved.name)
+
+    def test_it_is_registered_so_a_fence_may_declare_it(self):
+        self.assertIn("tetgen", NATIVE_PREREQUISITES)
+        resolve, how_to_build = NATIVE_PREREQUISITES["tetgen"]
+        self.assertIs(resolve, tetgen_library_path)
+        self.assertIn("build_tetgen_native.py", how_to_build)
 
 
 class NativePrerequisiteTests(unittest.TestCase):
