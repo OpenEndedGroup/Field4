@@ -53,8 +53,8 @@ val restored = scope.capture()
 // markdown() rather than a hand-built card: headings for the captions, GFM tables for the
 // key/value pairs, a fence for the multi-line diff. `key.h` and diffHtml() are HTML from
 // other Field APIs and are *meant* to pass through, so they interpolate directly; every
-// computed value goes through mdEscape, which a table cell effectively requires.
-fun bound(s: Structure, k: String) = mdEscape(s.bindings[k]?.invoke())
+// computed value carries `.md`, which a table cell effectively requires.
+fun bound(s: Structure, k: String) = s.bindings[k]?.invoke().md
 
 markdown("keys", """
     #### 1 — capture()
@@ -70,14 +70,14 @@ markdown("keys", """
     | glow.radius | ${bound(glow, "radius")} |
     | glow.intensity | ${bound(glow, "intensity")} |
     | blur.radius | ${bound(blur, "radius")} |
-    | glow.glow@radius | ${mdEscape(glow.bindings["glow@radius"]?.invoke() ?: "<unbound>")} |
+    | glow.glow@radius | ${(glow.bindings["glow@radius"]?.invoke() ?: "<unbound>").md} |
 
     #### 4 — the bindings/values trap
 
     | binding | value |
     | --- | --- |
-    | bound (via bind) | ${mdEscape(trap["bound"])} |
-    | set (via values) | ${mdEscape(trap["set"])} {warn:← captured as null, silently} |
+    | bound (via bind) | ${trap["bound"].md} |
+    | set (via values) | ${trap["set"].md} {warn:← captured as null, silently} |
 
     #### 5 — captured() again, then re-captured
 

@@ -435,7 +435,7 @@ val distinctNormals = gyro.topology.elements(2)
 markdown("gyro", """
     gC · ${gyro.topology.elements(2).size} faces, all
     ${gyro.topology.elements(2).map { gyro.topology.faceCycle(it.id).size }.distinct().joinToString("/")}-gons ·
-    ${distinctNormals.size} distinct face normals: ${mdEscape(distinctNormals.joinToString(" ") { "($it)" })}
+    ${distinctNormals.size} distinct face normals: ${distinctNormals.joinToString(" ") { "($it)" }.md}
 """)
 :::endfold
 ```
@@ -942,8 +942,8 @@ markdown("canon", """
     reciprocal iterations = ${run.reciprocalIterations} ·
     relaxation iterations = ${run.relaxationIterations} · reseeded = ${run.reseeded}
 
-    distinct face degrees, before and after = ${mdEscape(degrees(before))} →
-    ${mdEscape(degrees(after))} · topology object identical =
+    distinct face degrees, before and after = ${degrees(before).md} →
+    ${degrees(after).md} · topology object identical =
     ${run.polyhedron.topology === built.topology}
 """)
 :::endfold
@@ -1050,7 +1050,7 @@ markdown("kkc", """
 
     canonicalize(): converged = ${iterated.converged} · reason = ${iterated.reason}
 
-    relaxWithCeres(): ${mdEscape(solved.summary)}
+    relaxWithCeres(): ${solved.summary.md}
 """)
 :::endfold
 ```
@@ -1138,8 +1138,8 @@ markdown("spectral", """
     edge-length spread ${sci(dev.edgeLengthSpread)} ·
     face-distance spread ${sci(dev.faceDistanceSpread)}
 
-    combinatorial classes — vertices ${mdEscape(dev.orbits.vertexClassSizes)} ·
-    edges ${mdEscape(dev.orbits.edgeClassSizes)} · faces ${mdEscape(dev.orbits.faceClassSizes)} ·
+    combinatorial classes — vertices ${dev.orbits.vertexClassSizes.md} ·
+    edges ${dev.orbits.edgeClassSizes.md} · faces ${dev.orbits.faceClassSizes.md} ·
     fully transitive = ${dev.orbits.fullyTransitive}
 """)
 :::endfold

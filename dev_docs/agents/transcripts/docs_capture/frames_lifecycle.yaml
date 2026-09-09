@@ -276,7 +276,7 @@ operations:
           val notes = mutableListOf<String>()
           var nextDraw = 0.0
 
-          val show: (String) -> Unit = { headline -> markdown("main", mdEscape(headline)) }
+          val show: (String) -> Unit = { headline -> markdown("main", headline.md) }
 
           // Cleanup goes to its OWN channel. Re-running the box immediately repaints "main" from
           // the new launch, which would clobber the old launch's cleanup line before you could
@@ -285,7 +285,7 @@ operations:
           // {ok:} role rather than a hex literal, and survives a theme change.
           val note: (String) -> Unit = { line ->
               notes += line
-              markdown("cleanup", notes.joinToString("\n\n") { "{ok:${mdEscape(it)}}" })
+              markdown("cleanup", notes.joinToString("\n\n") { "{ok:${it.md}}" })
           }
 
           frames {

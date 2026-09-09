@@ -244,7 +244,7 @@ check(ranks.all { (_, position) ->
 }) { "the prior is no longer BASE less STEP per position" }
 
 markdown("main", """
-    {muted:@CommonMembers on ${mdEscape(receiver)} — ${ranks.size} members, first scores ${afield.CommonMemberPrior.BASE}, less ${afield.CommonMemberPrior.STEP} per position}
+    {muted:@CommonMembers on ${receiver.md} — ${ranks.size} members, first scores ${afield.CommonMemberPrior.BASE}, less ${afield.CommonMemberPrior.STEP} per position}
 
     ${prior.h}
 """)

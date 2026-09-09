@@ -247,7 +247,7 @@ val bound = Table(listOf("command", "bound to"))
     .roleBy("bound to") { if (it == "not registered yet") CellRole.WARN else null }
 
 markdown("main", """
-    {muted:${mdEscape(live.path)}}
+    {muted:${live.path.md}}
 
     {muted:${live.problems.size} problem(s) in it}
 

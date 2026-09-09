@@ -34,7 +34,7 @@ import kotlin.math.acos
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.sqrt
-import afield.mdEscape
+import afield.md
 import afield.Table
 import afield.FieldMarkdown
 import afield.CellRole
@@ -1103,7 +1103,7 @@ private fun JoltPhysicsWorld.summaryHtml(): String {
     return FieldMarkdown.card(
         """
         {accent:JoltPhysicsWorld} {muted:${states.size} bodies, $dynamicCount dynamic}""" +
-            (if (grabbed != null) """ {warn:grabbed '${mdEscape(grabbed)}'}""" else "") + """
+            (if (grabbed != null) """ {warn:grabbed '${grabbed.md}'}""" else "") + """
 
         ${bodies.toHTML()}
         """

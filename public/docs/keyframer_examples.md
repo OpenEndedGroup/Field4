@@ -692,7 +692,7 @@ scope.saveKey(path, lossy, note = "with unsupported values")
 
 val versions = scope.keyVersions(path)
 val versionRows = versions.joinToString("\n") { v ->
-    "| ${v.index} | ${mdEscape(v.file)} | ${v.note?.let(::mdEscape) ?: "—"} |"
+    "| ${v.index} | ${v.file.md} | ${v.note?.md ?: "—"} |"
 }
 
 val reloaded = scope.loadKey(path)
@@ -710,7 +710,7 @@ val migrated = newer.loadKey(path, version = 0)
 // interactive 3D axis widget, which is lovely in a box and wrong here: it loads asynchronously and
 // reflowed the card mid-screenshot, so the first capture of this figure came out clipped.
 val migratedRows = migrated.values.entries.sortedBy { it.key }.joinToString("\n") { (k, v) ->
-    "| ${mdEscape(k)} | ${mdEscape(v)} |"
+    "| ${k.md} | ${v.md} |"
 }
 
 // The width is pinned. A `capture="box"` screenshot clips to the output card, and an

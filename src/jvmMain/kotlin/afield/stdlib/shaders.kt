@@ -44,7 +44,7 @@ import java.util.WeakHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.Locale
-import afield.mdEscape
+import afield.md
 import afield.Table
 import afield.FieldMarkdown
 
@@ -1650,9 +1650,9 @@ private fun shaderFieldAutoSummaryHtml(
         {muted:samples} ${batch.batch.samples.size} ·
         {muted:p10/p50/p90} ${format(p10)} / ${format(p50)} / ${format(p90)}
 
-        {muted:filtered feature error} = [${mdEscape(featureError)}]
+        {muted:filtered feature error} = [${featureError.md}]
 
-        {muted:active params} = [${mdEscape(activeParams.joinToString(", ") { format(it) })}]
+        {muted:active params} = [${activeParams.joinToString(", ") { format(it) }.md}]
 
         ${parameters.toHTML()}
         """

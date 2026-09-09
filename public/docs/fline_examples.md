@@ -595,7 +595,7 @@ names whatever you click. See `dev_docs/fline_hit_records.md`, and
 :::static
 
 val status: (String) -> Unit = { message ->
-    markdown("callback-log", "2D callback: ${mdEscape(message)}")
+    markdown("callback-log", "2D callback: ${message.md}")
 }
 
 status("click a shape")
@@ -637,7 +637,7 @@ In practice this is useful for picking diagram elements, selecting generated for
 :::static
 
 val status: (String) -> Unit = { message ->
-    markdown("callback-log-3d", "3D callback: ${mdEscape(message)}")
+    markdown("callback-log-3d", "3D callback: ${message.md}")
 }
 
 status("orbit, hover, then click")
