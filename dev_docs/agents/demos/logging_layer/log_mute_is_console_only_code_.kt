@@ -1,6 +1,7 @@
 import afield.ai.core.ConsoleMute
 import afield.ai.core.LogDispatcher
 import afield.ai.core.LogSink
+import afield.ai.core.withSink
 import afield.logger.lprintln
 
 // Muting does not drop the event. Both console sinks check the mute set and return

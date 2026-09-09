@@ -781,6 +781,21 @@ kotlin {
             target = "es2015"
             freeCompilerArgs.addAll(kotlinExperimentalCompilerArgs)
         }
+
+        // The Kotlin/JS incremental-compilation cache treats every entry in its cache directory as
+        // a library cache, so a Finder-written `.DS_Store` in there aborts the build with
+        // "IC internal error: can not find removed library name; cache dir: …/.DS_Store" — a failure
+        // that reads like a compiler bug but is only stray metadata. `clean` does not protect a long
+        // build, because Finder writes those files whenever a window views a directory and so they
+        // appear *during* it. Sweep them immediately before compiling.
+        doFirst {
+            val cacheRoot = layout.buildDirectory.dir("klib/cache").get().asFile
+            if (cacheRoot.isDirectory) {
+                cacheRoot.walkBottomUp()
+                    .filter { it.isFile && it.name == ".DS_Store" }
+                    .forEach { it.delete() }
+            }
+        }
     }
 
     sourceSets {

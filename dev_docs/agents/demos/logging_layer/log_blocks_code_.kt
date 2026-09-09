@@ -1,6 +1,7 @@
 import afield.ai.core.LogDispatcher
 import afield.ai.core.LogEvent
 import afield.ai.core.LogSink
+import afield.ai.core.withSink
 import afield.logger.lblock
 import afield.logger.lprintln
 
