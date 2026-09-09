@@ -471,6 +471,182 @@ class ReportTests(unittest.TestCase):
         self.assertIn("nightly/journal", out)
 
 
+class PolicyPropertyTests(unittest.TestCase):
+    """Invariants that must hold over a whole synthetic population, in every family configuration.
+
+    The per-case tests above each pin one decision. These pin the relationships *between* decisions,
+    which is where a policy about deleting things tends to go wrong: a flag that is supposed to widen
+    scope quietly lifting a protection, or a report that stops agreeing with the candidate list for
+    some configuration nobody tried by hand.
+    """
+
+    NOW = 1800000000.0
+    OLD = "1767312000 +0000"  # 2026-01-02, ~9080 h before NOW
+    FRESH = "1799996400 +0000"  # NOW minus one hour
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls._tmp = tempfile.TemporaryDirectory()
+        fx = RepoFixture(Path(cls._tmp.name).resolve())
+        cls.fx = fx
+        cls.protected: set[Path] = set()
+        # Root x branch-family x state. Not every combination is meaningful, but every family and
+        # every refusal reason appears under both roots.
+        plan = [
+            (fx.base, "n-stale", "nightly/2026-01-02/stale", cls.OLD, "clean"),
+            (fx.base, "n-dirty", "nightly/2026-01-02/dirty", cls.OLD, "dirty"),
+            (fx.base, "n-ahead", "nightly/2026-01-02/ahead", cls.OLD, "commit"),
+            (fx.base, "n-fresh", "nightly/2026-01-02/fresh", cls.FRESH, "clean"),
+            (fx.base, "r-stale", "review/stale", cls.OLD, "clean"),
+            (fx.base, "journal", "nightly/journal", cls.OLD, "clean"),
+            (fx.base, "cijournal", "nightly/ci-journal", cls.OLD, "clean"),
+            (fx.base, "human", "feature/human-work", cls.OLD, "clean"),
+            (fx.base, "b-stale", "docs/language-2026-01-02", cls.OLD, "clean"),
+            (fx.agent, "a-stale", "claude/session-stale", cls.OLD, "clean"),
+            (fx.agent, "a-dirty", "claude/session-dirty", cls.OLD, "dirty"),
+            (fx.agent, "a-ahead", "claude/session-ahead", cls.OLD, "commit"),
+            (fx.agent, "a-fresh", "claude/session-fresh", cls.FRESH, "clean"),
+            (fx.agent, "ab-stale", "docs/language-2026-01-03", cls.OLD, "clean"),
+            (fx.agent, "a-nightly", "nightly/2026-01-02/misfiled", cls.OLD, "clean"),
+        ]
+        for root, name, branch, when, state in plan:
+            path = fx.add_worktree(root, name, branch, when)
+            if branch in ("nightly/journal", "nightly/ci-journal"):
+                cls.protected.add(path.resolve())
+            if state == "dirty":
+                (path / "wip.txt").write_text("work\n")
+            elif state == "commit":
+                (path / "extra.txt").write_text("extra\n")
+                fx.git("add", "extra.txt", cwd=path)
+                fx.commit("extra", when, cwd=path)
+        cls.trees = fx.trees()
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls._tmp.cleanup()
+
+    # Every property below sweeps all eight family configurations, and the classification of one
+    # worktree does not depend on which families are *enabled* -- only on the policy and the idle
+    # floor. Without these caches the sweep re-forks git a few thousand times for no new information.
+    _rows_cache: dict = {}
+    _removable_cache: dict = {}
+
+    def rows(self, enabled, min_idle=DEFAULT_MIN_IDLE_HOURS):
+        key = (frozenset(enabled), min_idle)
+        if key not in self._rows_cache:
+            self._rows_cache[key] = disk_rows(
+                [self.fx.base, self.fx.agent], self.trees, self.fx.repo, self.fx.main_head, {},
+                self.fx.families, frozenset(enabled), min_idle, self.NOW,
+            )
+        return self._rows_cache[key]
+
+    def removable(self, min_idle: float) -> dict[Path, str]:
+        """Removable worktrees and the family that claims each, independent of what is enabled."""
+        if min_idle not in self._removable_cache:
+            found = {}
+            for tree in self.trees:
+                verdict = classify_worktree(
+                    tree, repo=self.fx.repo, main_head=self.fx.main_head, families=self.fx.families,
+                    cwds={}, min_idle_hours=min_idle, now_epoch=self.NOW,
+                )
+                if verdict.removable and verdict.family is not None:
+                    found[tree.path.resolve()] = verdict.family.name
+            self._removable_cache[min_idle] = found
+        return self._removable_cache[min_idle]
+
+    def selected(self, enabled, min_idle=DEFAULT_MIN_IDLE_HOURS) -> set[Path]:
+        return {
+            path for path, family in self.removable(min_idle).items() if family in enabled
+        }
+
+    def configurations(self):
+        names = [family.name for family in self.fx.families]
+        for bits in range(1 << len(names)):
+            yield frozenset(n for i, n in enumerate(names) if bits >> i & 1)
+
+    def test_the_fixture_actually_exercises_the_policy(self) -> None:
+        """A property suite over a population that reaches nothing would pass vacuously."""
+        self.assertEqual(len(self.trees), 16, "15 worktrees plus the primary checkout")
+        widest = self.selected({"nightly", "docs-blast", "agent-session"})
+        self.assertEqual(
+            {p.name for p in widest}, {"n-stale", "r-stale", "b-stale", "a-stale", "ab-stale"}
+        )
+        self.assertEqual(self.selected({"nightly"}), self.selected(["nightly"]))
+
+    def test_no_configuration_ever_reaches_a_protected_branch(self) -> None:
+        for enabled in self.configurations():
+            self.assertEqual(
+                self.selected(enabled) & self.protected, set(), f"enabled={sorted(enabled)}"
+            )
+
+    def test_enabling_a_family_only_ever_adds(self) -> None:
+        """--family is documented as additive; a widening flag that narrows would be a trap."""
+        for enabled in self.configurations():
+            base = self.selected(enabled)
+            for family in self.fx.families:
+                wider = self.selected(enabled | {family.name})
+                self.assertTrue(
+                    base <= wider,
+                    f"enabling {family.name} removed {sorted(base - wider)} from {sorted(enabled)}",
+                )
+
+    def test_every_selection_is_clean_merged_idle_and_claimed(self) -> None:
+        for enabled in self.configurations():
+            for path in self.selected(enabled):
+                tree = next(t for t in self.trees if t.path.resolve() == path)
+                self.assertEqual(
+                    self.fx.git("status", "--porcelain", cwd=path).stdout.strip(), "", f"{path} dirty"
+                )
+                self.assertEqual(
+                    subprocess.run(
+                        ["git", "-C", str(self.fx.repo), "merge-base", "--is-ancestor",
+                         tree.head, self.fx.main_head], capture_output=True,
+                    ).returncode, 0, f"{path} unmerged",
+                )
+                idle = branch_idle_hours(self.fx.repo, tree.branch, self.NOW)
+                self.assertGreaterEqual(idle, DEFAULT_MIN_IDLE_HOURS, f"{path} not idle")
+                family = family_for(path, tree.branch, self.fx.families)
+                self.assertIn(family.name, enabled, f"{path} claimed by nothing enabled")
+
+    def test_report_and_selection_agree_in_every_configuration(self) -> None:
+        for enabled in self.configurations():
+            reported = {row.path for row in self.rows(enabled) if row.reclaimable}
+            self.assertEqual(reported, self.selected(enabled), f"enabled={sorted(enabled)}")
+
+    def test_an_offer_is_exactly_what_enabling_that_family_would_add(self) -> None:
+        for enabled in self.configurations():
+            offers: dict[str, set[Path]] = {}
+            for row in self.rows(enabled):
+                if row.offered_by is not None:
+                    offers.setdefault(row.offered_by, set()).add(row.path)
+            for family in self.fx.families:
+                if family.name in enabled:
+                    self.assertNotIn(family.name, offers, "an enabled family is not an offer")
+                    continue
+                added = self.selected(enabled | {family.name}) - self.selected(enabled)
+                self.assertEqual(
+                    offers.get(family.name, set()), added,
+                    f"offer for {family.name} misstates what enabling it adds, from {sorted(enabled)}",
+                )
+
+    def test_raising_the_idle_floor_only_ever_removes(self) -> None:
+        enabled = {"nightly", "docs-blast", "agent-session"}
+        previous = self.selected(enabled, min_idle=0.0)
+        self.assertTrue(previous, "a zero floor should select the fresh worktrees too")
+        for floor in (1.0, 12.0, 1000.0, 20000.0):
+            current = self.selected(enabled, min_idle=floor)
+            self.assertTrue(current <= previous, f"floor {floor} added {sorted(current - previous)}")
+            previous = current
+        self.assertEqual(previous, set(), "a floor above every branch's age must select nothing")
+
+    def test_a_zero_floor_still_refuses_dirt_unmerged_work_and_protection(self) -> None:
+        selected = self.selected({"nightly", "docs-blast", "agent-session"}, min_idle=0.0)
+        names = {p.name for p in selected}
+        self.assertIn("n-fresh", names, "only the idle guard should have been holding this back")
+        for refused in ("n-dirty", "a-dirty", "n-ahead", "a-ahead", "journal", "cijournal", "human"):
+            self.assertNotIn(refused, names, refused)
+
+
 class UnchangedBehaviourTests(unittest.TestCase):
     def test_porcelain_parser_keeps_branch_identity(self) -> None:
         trees = parse_worktrees(
