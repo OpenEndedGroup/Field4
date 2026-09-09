@@ -177,7 +177,7 @@ class TetgenPageFenceDryRunTest {
                 println("  h = $h: ${outline.size} points, ${inWindow.size} in the corner window, " +
                     "nearest approach to (1.0, 1.5) = " +
                     "%.5f".format(outline.minOf {
-                        sqrt((it.x - 1.0) * (it.x - 1.0) + (it.y - 1.5) * (it.y - 1.5)).toDouble()
+                        sqrt((it.x - 1.0) * (it.x - 1.0) + (it.y - 1.5) * (it.y - 1.5))
                     }))
             }
         }

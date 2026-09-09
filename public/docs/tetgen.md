@@ -465,6 +465,10 @@ display("main", rate)
 exactBox.close()
 ```
 
+Two panels. The upper one is the corner itself, in a window `0.24` across on a body `2` across, with
+the marched outlines closing on it as `h` falls; the lower one is the same effect measured over the
+whole body, and it is the one that gives the rate.
+
 The numbers, from that run:
 
 <div class="field-data-table" markdown>
@@ -607,9 +611,9 @@ disagree about.
 
 That matters, because the 4-node tetrahedron is a **constant-strain** element. Its four corners
 carry a linear displacement field, so strain is one value for the whole element and cannot vary
-inside it. Bending is precisely the case where strain has to vary across a section — tension on one
-face, compression on the other — and an element that cannot represent that resists it instead. It
-**locks**: far too stiff, converging on the right answer from below and slowly.
+inside it. Bending is precisely the case where strain has to vary across a section: tension on one
+face, compression on the other. An element that cannot represent that resists it instead. It
+**locks**, and is far too stiff, converging on the right answer from below and slowly.
 
 `optional/kratos/VERIFICATION.md` has the measurement. A 1 m × 0.1 m × 0.1 m cantilever under
 self-weight, tip deflection as a fraction of the Euler–Bernoulli `wL⁴/8EI`. These are the solver
@@ -635,7 +639,7 @@ against 99.8%.
 Axial extension is the control that pins the material, the clamp, the loads and the solver, and it
 was never the problem: 99.44% and 100.04% for the linear element on the first two meshes. The
 quadratic element is marginally *worse* there, 100.80% and 100.66%, and that is the load rather than
-the element — a total force split equally over every node in the load region is further from the
+the element. A total force split equally over every node in the load region is further from the
 consistent split on a six-node face (nothing at the corners, a third at each midside) than on a
 three-node one. The resultant is exact either way, so it is a local end effect, and it does not
 touch bending, where the load is gravity.
@@ -657,13 +661,13 @@ quadratic.volume()      // 76958.90896392865 — linear.volume() to the last bit
 quadratic.corners()     // the 4-node view back, sharing the same node array
 ```
 
-The shape does not change, and that is the whole point. The six new nodes sit at the exact midpoints
-of straight edges, so the region, the boundary, the volume and both quality measures come out the
-same numbers; what changes is the interpolation inside an element. `qualities()`, `boundary()`,
-`filtered()` and `toTriMesh()` read a cell's first four indices and are unaffected.
+The shape does not change. The six new nodes sit at the exact midpoints of straight edges, so the
+region, the boundary, the volume and both quality measures come out the same numbers; what changes
+is the interpolation inside an element. `qualities()`, `boundary()`, `filtered()` and `toTriMesh()`
+read a cell's first four indices and are unaffected.
 
 The promotion is cheap and the elements are not. On the bracket at `targetEdgeLength = 5.0` it costs
-71 ms against the mesh's 466 ms, and at 3.0, 73 ms against 782 ms — it is one pass over the edges,
+71 ms against the mesh's 466 ms, and at 3.0, 73 ms against 782 ms. It is one pass over the edges,
 not a re-mesh. Seven times the nodes is seven times the unknowns, though, and that is downstream: on
 the 864-element beam Kratos takes 1.05 s at order 2 against 0.20 s at order 1, for 99.8% against
 69.5%.
