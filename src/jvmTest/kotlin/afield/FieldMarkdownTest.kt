@@ -250,6 +250,20 @@ $json
         assertEquals("null", mdEscape(null))
     }
 
+    @Test
+    fun mdPropertyEscapesTheSameWayTheFunctionDoes() {
+        // The suffix form exists so a table row reads as its values rather than as six calls; it
+        // must not be a second, subtly different escaper.
+        listOf("saw 110 * fold", "a|b", "<b>x</b>", "a\r\nb", 1.5, null)
+            .forEach { assertEquals(mdEscape(it), it.md, "value: $it") }
+    }
+
+    @Test
+    fun mdPropertyIsAvailableOnANullReceiver() {
+        val missing: String? = null
+        assertEquals("null", missing.md)
+    }
+
     // ----------------------------------------------------------------- :::row
 
     @Test

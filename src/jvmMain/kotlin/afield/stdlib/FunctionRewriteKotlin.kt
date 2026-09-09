@@ -25,7 +25,42 @@ import kotlin.script.experimental.api.ResultValue
  * `Number?`; anything else throws, naming the box or the offending source. When
  * there is no box in scope no evaluator is installed at all, so Kotlin right-hand sides are left
  * unapplied; the compiler-free `rewrite(...)` path never needs one.
+ *
+ * **Do not call `rewriteKotlin` (or `thisBox.rewriteFn`) from the body of the box the snippets compile
+ * in.** Hydration evaluates on that box's own engine, which re-instantiates its snippet chain and so
+ * re-runs the body that is already running — once per matched node, until the stack goes. It is guarded
+ * now: the second hydration for a box on one thread throws [FnRewriteSelfBoxReentry], whose message
+ * names the ways out. Same hazard as [afield.stdlib.SourceBackedBlock], reached by a second route; see
+ * `dev_docs/FN_REWRITE_SELF_BOX_REENTRY.md`.
  */
+
+/**
+ * Thrown when a `@{...}` right-hand side would be compiled in a box whose body is already running —
+ * the failure that used to be 172 nested body runs and a `StackOverflowError`. The in-flight set it
+ * consults is [afield.stdlib.hydratingBoxes], shared with [SourceBackedBlock]'s identical guard.
+ *
+ * `rewriteKotlin` compiles each `@{...}` in a box's live engine, and takes that box from `Box.context`:
+ * itself. Evaluating a new snippet re-instantiates the engine's snippet chain, the box body is in that
+ * chain, so the body runs again — and calls `rewriteKotlin` again, once per level, until the stack goes.
+ * Detected on the *second* hydration for the box rather than the first, which costs one extra body run
+ * and in exchange never refuses the legitimate cases (a frame loop or a control callback, where the body
+ * has finished and the hydration is not nested inside another).
+ *
+ * The message names the three ways out, because none of them is guessable from a stack trace. See
+ * `dev_docs/FN_REWRITE_SELF_BOX_REENTRY.md`. [SourceBackedBlockSelfBoxReentry] is the same guard on
+ * [SourceBackedBlock]'s route, and shares this one's in-flight set.
+ */
+class FnRewriteSelfBoxReentry(box: Box, source: String) : IllegalStateException(
+    "This rewrite is compiling '@{$source}' in box '${box.name}' (${box.id}) — the box that is running it, " +
+        "whose body it therefore re-runs, once per matched node, until the stack overflows. " +
+        "Run the rewrite somewhere that is not this box's own body: " +
+        "(1) from another box — `other.rewriteFn(fn, spec)`, e.g. `parents.last().rewriteFn(fn, spec)`, " +
+        "where `other` is idle; " +
+        "(2) from a frame loop or a control callback, after this body has finished; or " +
+        "(3) with a typed evaluator instead of a source string — `fnRewriteNumber { value * 2.0 }` " +
+        "carries a live lambda and never compiles anything. " +
+        "See dev_docs/FN_REWRITE_SELF_BOX_REENTRY.md."
+)
 
 /**
  * Source-backed Kotlin evaluator for `@{...}` fragments inside the Fn rewrite DSL.
@@ -82,6 +117,23 @@ class SourceBackedFnRewriteNumberExpression(
         val box = sourceBackedBlockBox(boxId)
             ?: throw IllegalStateException("Cannot hydrate Fn rewrite Kotlin; box '$boxId' is not loaded.")
 
+        // Refuse the second hydration for this box on this thread — see [FnRewriteSelfBoxReentry].
+        // Logged as well as thrown: the throw lands inside a *re-entrant* run of the box body, and
+        // whatever instantiates the snippet chain absorbs it without reporting, so the throw alone is
+        // invisible to the person whose box just ran twice.
+        if (!hydratingBoxes.get().add(boxId)) {
+            val reentry = FnRewriteSelfBoxReentry(box, source)
+            lprintln("error,fn-rewrite", reentry.message ?: "Fn rewrite re-entered its own box")
+            throw reentry
+        }
+        try {
+            return hydrateInBox(box)
+        } finally {
+            hydratingBoxes.get().remove(boxId)
+        }
+    }
+
+    private fun hydrateInBox(box: Box): (FnRewriteNumberContext) -> Any? {
         val snippet = compileLambda(box)
         val result = snippet.evalAndWait(
             implicits = listOf(box),

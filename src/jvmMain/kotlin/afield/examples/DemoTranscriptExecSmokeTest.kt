@@ -110,6 +110,17 @@ object DemoTranscriptExecSmokeTest {
         // cloth — CPU physics plus showPlane, Skia SVG -> display.
         "simdverlet_world",
         "fn_differentiable_fit_demo",
+        // The two ways to run a `@{...}` Kotlin right-hand side, side by side; all three boxes execute.
+        // `fnrw_broken` is the one-box form, which used to re-enter its own box 172 levels deep and
+        // never return — it is runnable here only because `FnRewriteSelfBoxReentry` now refuses the
+        // second hydration, which breaks the recursion: its body runs exactly twice and the rewrite
+        // then completes. Two "one box: body entered" lines in the verbose output are that, and are
+        // expected. The refusal goes to the `error,fn-rewrite` log channel and NOT to box output, which
+        // is why this stays green under the zero-error-lines assertion. The mechanical pair is
+        // functions.rewrite-kotlin.{live-box,two-box}; this transcript is the loadable version, and it
+        // is also where `parents.last()` as the host-box idiom is demonstrated.
+        // See dev_docs/FN_REWRITE_SELF_BOX_REENTRY.md.
+        "fn_rewrite_kotlin_boxes",
         // Blending two code keyframes. Pure CPU: the StackSL goes through the real compiler and then
         // through afield.stacksl.cpu's GLSL interpreter, and the fourth box compiles generated Kotlin
         // through K2 inside its own box — which is the one part of the feature a unit test cannot

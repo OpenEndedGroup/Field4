@@ -38,8 +38,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 93 transcripts on every build, at three
-depths. 61 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 94 transcripts on every build, at three
+depths. 62 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -672,6 +672,19 @@ is what the split does, runs it once.
 
 Walkthrough: [Blending two programs](keyframer_examples.md#blending-two-programs-not-just-two-numbers).
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/keyframe_code_blend/metadata.edn)
+
+**fn_rewrite_kotlin_boxes** — The same hazard as the pair above, in the rewrite language, and the
+two spellings side by side so the difference is visible rather than described. A `@{...}` right-hand
+side in an `Fn` rewrite spec is Kotlin, and it is compiled in a live box's engine — but which box?
+`rewriteKotlin` answers "the one calling me", so calling it from a box body asks that engine to
+evaluate while the body is still running, and the body runs again: 172 nested entries and a stack
+overflow, measured, until the second hydration was refused. `rewriteFn` answers "the one you name",
+and the box it names here comes from the topology — `parents.lastOrNull()` — so the snippets compile
+in whatever box this one is connected beneath, and dragging a different parent in moves them. The
+third box is the wrong way, kept runnable: its body still runs twice, which is what the refusal
+costs and why the second box is the one to copy.
+
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/fn_rewrite_kotlin_boxes/metadata.edn)
 
 **pattern_rewrite_worked_example** — Six runnable boxes that each hold one
 [user-authored rewrite rule](pattern_rewrite.md) and one `println` that could not compile without it.

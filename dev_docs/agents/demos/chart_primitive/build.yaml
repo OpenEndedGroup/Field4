@@ -14,7 +14,7 @@ operations:
   - create:
       box: chart_one_call
       name: 1 - A chart, in one call
-      frame: { x: 40.0, y: 40.0, w: 700.0, h: 470.0 }
+      frame: { x: 60.0, y: 60.0, w: 305.3, h: 86.0 }
       properties:
         code: |
           import kotlin.math.exp
@@ -41,7 +41,7 @@ operations:
   - create:
       box: chart_dataframe
       name: 2 - A DataFrame charts itself
-      frame: { x: 780.0, y: 40.0, w: 700.0, h: 470.0 }
+      frame: { x: 534.2, y: 60.0, w: 363.9, h: 86.0 }
       properties:
         code: |
           import org.jetbrains.kotlinx.dataframe.api.*
@@ -68,7 +68,7 @@ operations:
   - create:
       box: chart_pick
       name: 3 - Hover a bar, click a datum
-      frame: { x: 40.0, y: 560.0, w: 700.0, h: 470.0 }
+      frame: { x: 60.0, y: 176.0, w: 375.6, h: 86.0 }
       properties:
         code: |
           // Bar and point marks set `onClick`, `hoverColor` and `label`, which is exactly what
@@ -94,7 +94,7 @@ operations:
   - create:
       box: chart_expect
       name: 4 - An assertion you can watch fail
-      frame: { x: 780.0, y: 560.0, w: 700.0, h: 470.0 }
+      frame: { x: 534.2, y: 176.0, w: 434.2, h: 86.0 }
       properties:
         code: |
           import kotlin.math.exp

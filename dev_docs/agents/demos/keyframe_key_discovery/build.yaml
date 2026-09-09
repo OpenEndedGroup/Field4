@@ -34,7 +34,7 @@ operations:
   - create:
       box: kf_before_after
       name: 1 - Six keys, and the pattern that showed two
-      frame: { x: 40.0, y: 40.0, w: 760.0, h: 520.0 }
+      frame: { x: 60.0, y: 60.0, w: 500.0, h: 86.0 }
       properties:
         code: |
           // Six saved keys, and whether the browser can show them to you.
@@ -109,7 +109,7 @@ operations:
   - create:
       box: kf_junk_vs_damage
       name: 2 - Junk is not damage
-      frame: { x: 840.0, y: 40.0, w: 760.0, h: 520.0 }
+      frame: { x: 600.0, y: 60.0, w: 281.8, h: 86.0 }
       properties:
         code: |
           // Two files fail to decode. Only one of them is your problem.
@@ -160,7 +160,7 @@ operations:
   - create:
       box: kf_orphaned_slots
       name: 3 - A saved slot that applies to nowhere
-      frame: { x: 40.0, y: 600.0, w: 760.0, h: 540.0 }
+      frame: { x: 60.0, y: 176.0, w: 492.8, h: 86.0 }
       properties:
         code: |
           // A saved slot that applies to nowhere.
