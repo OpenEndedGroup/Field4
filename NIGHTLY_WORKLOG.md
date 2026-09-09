@@ -137,9 +137,77 @@ of it.
 | `KratosStudyTest` | 15 | 0 | 0 |
 | `KratosTest` | 16 | 0 | 0 |
 
-**Guards.** `checkAgentTranscriptIndex` — failed first (the count regression above), green after the
-fix: *"AgentTranscriptIndexGuard ok — 94 transcript(s), 94 entry/entries"*, 1m 55s with
-`--rerun-tasks`. `compileKotlinJvm` clean after the merge.
+**Guards**, all forced with `--rerun-tasks` so none of them was an `UP-TO-DATE` no-op:
+
+| gate | result |
+| --- | --- |
+| `compileKotlinJvm` | clean after the merge |
+| `checkAgentTranscriptIndex` | failed on the count regression above; green after the fix — *"ok — 94 transcript(s), 94 entry/entries"*, 1m 55s |
+| `checkAgentTranscripts` | ok — 88 documents materialized, committed bundle checked, 2m 08s |
+| `checkAgentTranscriptLayouts` | **fails, and not because of this branch** — see below |
+| `kratos.study.parameter-sweep` | PASS, 44.2 s, against the real container |
+
+`checkAgentTranscriptLayouts` reports six problems and every one of them is `logging_layer`, a demo
+under `dev_docs/agents/demos/` that this branch does not touch: `git diff main...HEAD` over
+`dev_docs/agents/demos/` and `transcript_layout_exceptions.yaml` is empty, and the demo landed in
+`9b78a3057`, an ancestor of `main`. So it is red on `main` too. The thing worth noting is the
+*absence*: the guard says nothing about `kratos_parameter_study`, so this transcript's frames pass.
+
+The catalog smoke is the one that matters most, because it is the piece that will keep running after
+tonight. It solves a 3x3 grid and a budget-6 search on the real worker and asserts the properties
+that fail silently: 9/9 feasible, `buildCount` still 1, a repeated grid costing **0** new solves and
+9 cache hits, a higher conductivity giving a colder probe, and a figure with 380 distinct colours
+rather than a blank one. Mean solve 1565 ms.
+
+### The live sweep, re-run after the merge
+
+`runKratosStudy --grid 15 15 --budget 40 --coarse 5 --refine 30`, against
+`localhost/field-kratos:10.4.0` under `linux/amd64`. 10m 52s wall, exit 0.
+
+```
+background · 2197 nodes · 10368 tetrahedra · builds 1
+FINE GRID  225/225 feasible, best 6.96784e-05 at arm end=0.6714, conductivity=4.514, 390.0 s of solver
+NO_REMESH  buildCount=1 over 350 solves
+CACHE      re-running the same grid cost 0 new solves and 225 hits; best unchanged
+BEST       probe=294.1501 K against a target of 294.15 K · peak in the part 294.7143 K
+total solver time 619.2 s over 350 solves (235 cache hits)
+```
+
+**The physics reproduces exactly.** The fine grid's optimum is the same cell as the committed
+figure's — arm 0.671, k 4.51, and the committed figure's colour-bar minimum reads 0.00007, which is
+this run's 6.96784e-05. The closed-form check agrees at every one of the fifteen arm lengths, worst
+gap **0.50 grid cells** and eleven of fifteen under a third of a cell:
+
+```
+arm 0.350  measured k*=1.171  closed form k*=1.221  gap 0.13 cells
+arm 0.671  measured k*=4.514  closed form k*=4.515  gap 0.00 cells
+arm 0.850  measured k*=4.886  closed form k*=4.862  gap 0.06 cells
+```
+
+**Solve cost has drifted and the figure's caption is now optimistic.** The committed sheet says
+`306.0 S OF SOLVER` for its 225 cells; this run measured **390.0 s**, a mean of 1769 ms per solve
+against the ~1360 ms that caption implies — 27% slower. Three other Field JVMs were resident during
+the run, one of them at 4.4 GB, so the honest reading is machine load rather than a regression: the
+per-solve *result* is bit-comparable and only the wall clock moved. Nothing in the API changed.
+
+**The two runs are not the same experiment, and the committed figure was left alone.** Its
+convergence panel runs to 59 evaluations, so it was produced with a search budget near 60; this run
+used 40, which is why the search and control legends differ (0.0143 and 0.0390 here against 0.0142
+and 0.0132 there). The refinement arm, which shares its seed and budget across both, reproduced to
+every digit printed: **0.00109203**. I did not overwrite the committed PNG — replacing a validated
+figure with one from a different configuration would be churn, and the run wrote to
+`build/kratos-studies-remerge/` instead.
+
+**I opened the regenerated figure rather than trusting that it was written.** It is right: the
+diagonal valley is legible across the whole map, the caption reads `225/225 FEASIBLE · 390.0 S OF
+SOLVER`, the stretched colour bar's ticks are labelled and monotone, the grid best is ringed at the
+cell the closed form predicts, and all three convergence traces sit at or above the `GRID BEST`
+floor — the honest result, which is that a global search does not beat a 225-cell grid and the
+seeded refinement gets within a factor of sixteen of it for a quarter of the evaluations.
+
+One thing I checked and it was **not** a bug: the convergence panel's floor label renders as
+`0.00007` at this font size and I first misread it as `0.0007`, a tenfold disagreement with the
+colour bar. `KratosStudyFigure.number(6.96784e-05)` returns `"0.00007"`; the two labels agree.
 
 ## Risks and unknowns
 
