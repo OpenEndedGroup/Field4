@@ -2,6 +2,7 @@
 
 package afield.rectsl
 
+import afield.four.synth.KolakoskiReading
 import afield.four.synth.PatArc
 import afield.four.synth.PatEvent
 import afield.four.synth.PatPattern
@@ -10,6 +11,7 @@ import afield.four.synth.bipolar
 import afield.four.synth.cosine
 import afield.four.synth.euclid
 import afield.four.synth.isaw
+import afield.four.synth.kolakoski
 import afield.four.synth.num
 import afield.four.synth.nums
 import afield.four.synth.pat
@@ -53,9 +55,9 @@ import afield.four.synth.tri
  * | --- | --- |
  * | clock | `->cps` `->tempo` `->beats-per-cycle` `->duration-cycles` `beats` `cycles` `cycle-secs` |
  * | pat | `pat` and its per-event context `t` `dur` `cyc` `step` `atom` `param` `param?` |
- * | patterns as values | `mini` `sine` `cosine` `saw` `isaw` `tri` `square` `rand` `perlin` `nums` `texts` `segment` `pat-range` `quantise` `bipolar` `euclid` |
+ * | patterns as values | `mini` `sine` `cosine` `saw` `isaw` `tri` `square` `rand` `perlin` `nums` `texts` `segment` `pat-range` `quantise` `bipolar` `euclid` `kolakoski` `kolakoski-gaps` |
  * | variation | `->every` `->off` `->jux` `->degrade` `->swing` `->press` `->iter` `->chunk` |
- * | layout | `strip` `->euclid` |
+ * | layout | `strip` `->euclid` `->kolakoski` |
  * | out | `pat-events` |
  *
  * ## Why a separate file
@@ -323,6 +325,20 @@ private fun RectLangVm.installPatternValueWords() {
         val steps = vm.popNum().toInt()
         val pulses = vm.popNum().toInt()
         vm.push(VPat(euclid(pulses, steps, rotation).onsetsOnly()))
+    }
+
+    // The Kolakoski pair. Two words rather than one word and a mode flag, because RectSL has no
+    // enums and a bare 0/1 on the stack would say nothing at the call site. The alphabet stays at
+    // {1, 2} here; the Kotlin side takes it as a parameter.
+    word("kolakoski") { vm ->
+        val rotation = vm.popNum().toInt()
+        val steps = vm.popNum().toInt()
+        vm.push(VPat(kolakoski(steps, KolakoskiReading.RUNS, rotation = rotation).onsetsOnly()))
+    }
+    word("kolakoski-gaps") { vm ->
+        val rotation = vm.popNum().toInt()
+        val steps = vm.popNum().toInt()
+        vm.push(VPat(kolakoski(steps, KolakoskiReading.GAPS, rotation = rotation).onsetsOnly()))
     }
 
     // Sample-and-hold, the pure kind: `"0 ~ 1" mini nums hold ->rot` holds through the rest.

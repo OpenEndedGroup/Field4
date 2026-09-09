@@ -612,6 +612,67 @@ object PatPianoRollGallery {
                 check(degraded.all { it in 1..7 }) { "?0.4 over eight slots left $degraded" }
             }
         ),
+
+        // 10 ── Kolakoski: the self-describing figure, its gap reading, and the property euclid
+        // has not got.
+        Roll(
+            name = "kolakoski",
+            blurb = "A Kolakoski rhythm reads the word `1 2 2 1 1 2 …` as alternating on- and " +
+                "off-runs, so the figure's own run lengths spell the word back. Two things are " +
+                "meant to be *looked at* here rather than taken on trust. **Prefix stability:** " +
+                "read the first half of the `kolakoski(32)` lane against the whole of " +
+                "`kolakoski(16)` and it is the same figure at half the width, because turning the " +
+                "step count up extends a Kolakoski figure instead of re-placing it. The two " +
+                "`euclid` lanes are the counter-example — `euclid(3,16)`'s first half is not " +
+                "`euclid(3,8)`, because the step count is part of the question a Euclidean rhythm " +
+                "answers. **The gap reading:** `(g16)` treats each term as the distance to the " +
+                "next onset instead of a run length, which fills the long gaps in and leaves at " +
+                "most one rest between hits. The last lane is the same construction over the " +
+                "alphabet {2,3}, whose word has no run shorter than two.",
+            build = {
+                PatRollSpec(
+                    title = "Kolakoski rhythms, against the Euclidean ones",
+                    subtitle = "kolakoski(16) — kolakoski(32) — (g16) — euclid(3,8) — euclid(3,16) — {2,3}",
+                    cycles = 2,
+                    lanes = listOf(
+                        Lane("kolakoski(16)", struct(kolakoski(16), pat("x"))),
+                        Lane("kolakoski(32)", struct(kolakoski(32), pat("x"))),
+                        Lane("kolakoski(16) gaps", struct(kolakoski(16, KolakoskiReading.GAPS), pat("x"))),
+                        Lane("euclid(3,8)", struct(euclid(3, 8), pat("x"))),
+                        Lane("euclid(3,16)", struct(euclid(3, 16), pat("x"))),
+                        Lane("kolakoski(16) a=2 b=3", struct(kolakoski(16, a = 2, b = 3), pat("x"))),
+                    )
+                )
+            },
+            verify = { lanes ->
+                fun lane(label: String) = lanes.first { it.label == label }
+                fun slots(label: String, steps: Int): List<Long> =
+                    lane(label).cycle(0).map { qFloorDiv(it.arc.start, PatQ.of(1, steps)) }
+
+                // The figure the file overview prints: x..xx.x..x..xx.x
+                check(slots("kolakoski(16)", 16) == listOf(0L, 3L, 4L, 6L, 9L, 12L, 13L, 15L)) {
+                    "kolakoski(16) landed on ${slots("kolakoski(16)", 16)}"
+                }
+                // Prefix stability, as the eye is asked to read it: the 32-step figure's first
+                // sixteen steps are the 16-step figure.
+                check(slots("kolakoski(32)", 32).filter { it < 16 } == slots("kolakoski(16)", 16)) {
+                    "the first half of kolakoski(32) is ${slots("kolakoski(32)", 32).filter { it < 16 }}"
+                }
+                // And the counter-example the euclid lanes are here to be: the same comparison
+                // fails for a Euclidean rhythm.
+                check(slots("euclid(3,16)", 16).filter { it < 8 } != slots("euclid(3,8)", 8)) {
+                    "euclid turned out to be prefix-stable, so this roll's blurb is wrong"
+                }
+                // The gap reading is denser, and never leaves two rests in a row.
+                val gaps = slots("kolakoski(16) gaps", 16)
+                check(gaps.size > slots("kolakoski(16)", 16).size) { "the gap reading is not denser: $gaps" }
+                check(gaps.zipWithNext { a, b -> b - a }.all { it <= 2 }) { "a gap left two rests: $gaps" }
+                // {2,3} has no run shorter than two, so no onset is alone on its own.
+                val pairs = slots("kolakoski(16) a=2 b=3", 16)
+                check(pairs.zipWithNext { a, b -> b - a }.any { it == 1L }) { "no adjacent pair in $pairs" }
+                check(pairs.size >= 6) { "{2,3} over sixteen steps left only ${pairs.size} onsets" }
+            }
+        ),
     )
 
     /** Cycle-0 arcs of a lane, for the terse checks above. */

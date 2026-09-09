@@ -55,6 +55,7 @@ object RectSLMusicWorkout {
             "degrade is deterministic" to ::degradeIsDeterministic,
             "strip lays rhythm out in space" to ::stripLaysRhythmOutInSpace,
             "euclid selects the right ordinals" to ::euclidSelectsRightOrdinals,
+            "kolakoski selects the right ordinals" to ::kolakoskiSelectsRightOrdinals,
             "no musical word shadows an old one" to ::noWordShadowsAnOldOne,
             "old scenes are unaffected" to ::oldScenesAreUnaffected
         )
@@ -485,6 +486,28 @@ object RectSLMusicWorkout {
         val slots = live.map { Math.round((it.center.x / 1.5) + 3.5).toInt() }.sorted()
         val gaps = slots.zipWithNext { a, b -> b - a } + (slots.first() + 8 - slots.last())
         require(gaps.sorted() == listOf(2, 3, 3)) { "expected Euclidean gaps 3,2,3; got $gaps from $slots" }
+    }
+
+    private fun kolakoskiSelectsRightOrdinals() {
+        val program = compile(
+            """
+            ->wall 40 20 abstract
+            ->duration 4
+            ->cps 1
+            "k" rect  0.5 ->square
+              16 '( ic 1.5 * 0 ->offset ) array
+              16 0 ->kolakoski
+            ;
+            """.trimIndent()
+        )
+        val live = visibleAt(program, 0.5)
+        // Compared against the language's own mask rather than a transcribed string: the point of
+        // the mutator is that the layout and the rhythm are the same figure.
+        val expected = afield.four.synth.kolakoskiMask(16)
+        val slots = live.map { Math.round((it.center.x / 1.5) + 7.5).toInt() }.sorted()
+        require(slots == expected.indices.filter { expected[it] }) {
+            "->kolakoski kept $slots; the word's onsets are ${expected.indices.filter { expected[it] }}"
+        }
     }
 
     // --- Compatibility ----------------------------------------------------------------------------

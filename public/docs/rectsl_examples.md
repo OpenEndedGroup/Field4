@@ -1136,6 +1136,54 @@ pattern transforms, and the per-event context words.
        style="width:100%;max-width:640px;border-radius:8px;">
 </video>
 
+### Kolakoski rhythms
+
+`euclid` spreads a fixed number of onsets as evenly as the step count allows. `kolakoski` answers a
+different question: the terms of the word `1 2 2 1 1 2 1 2 2 1 …` are read as alternating on- and
+off-runs, so the figure's own run lengths spell the word that made it. Sixteen steps of it are
+`x..xx.x..x..xx.x`. `kolakoski-gaps` reads the same terms as the distance to the next onset instead,
+which fills in to `xx.x.xxx.xx.x.xx`: eleven onsets in sixteen steps against the run reading's
+eight, and never more than one rest between hits.
+
+The figure is *prefix-stable*, which is what makes it usable as a dial: turning `steps` from 16 up to
+32 extends the rhythm rather than redistributing it, where a Euclidean rhythm moves every onset. So
+the top row below can grow without the hits it already has jumping around.
+
+`->kolakoski` is the layout form, `->euclid`'s sibling: it keeps the onsets of a selection and hides
+the rest. The two pattern words push events instead, for `pat` to lay out one copy per hit.
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+->wall 16 9 abstract
+->tempo 120
+->beats-per-cycle 4
+->duration-cycles 2
+->fps 30
+->background 0x0a0a12
+
+# The figure in space: sixteen slots, and the word decides which eight stay lit.
+"slot" rect
+  0.55 1.8 ->wh
+  0x7cf5d0 solid ->fill
+  16 '( f 15 *  7.5 -  2.8 ->xy ) array
+  16 0 ->kolakoski
+;
+
+# The same figure in time: one copy per onset, each alive for its own step.
+"run" rect
+  0.7 ->square
+  0xe0af68 solid ->fill
+  16 0 kolakoski '( f 15 *  7.5 -  0 ->xy ) pat
+;
+
+# The gap reading of the same word, a step later so the two rows can be compared.
+"gap" rect
+  0.7 ->square
+  0xff5a3c solid ->fill
+  16 1 kolakoski-gaps '( f 15 *  7.5 -  -2.8 ->xy ) pat
+;
+```
+
 ## Data visualization
 
 Dense data is an explicit target for RectSL. Three pieces compose it: a **colormap**

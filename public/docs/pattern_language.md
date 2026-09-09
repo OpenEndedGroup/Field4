@@ -64,6 +64,7 @@ brackets group, and a handful of suffixes modify a step.
 | `bd ~ sd ~` | `~` is a rest |
 | `<bd sd>` | alternates: `bd` one cycle, `sd` the next |
 | `bd(3,8)` | Euclidean: three onsets spread over eight slots |
+| `bd(k16)` | Kolakoski: sixteen steps of the self-describing figure (`g` for its gap reading) |
 | `bd?0.3` | dropped 30% of the time, deterministically |
 | `bd:3` | sample index 3, also readable as an `n` parameter |
 | `{bd sd, hh hh hh}` | polymeter — layers of different lengths |
@@ -180,6 +181,49 @@ displayOpen("main")
 `rev` mirrors, `euclid(3,8)` spaces three onsets over eight slots, `iter(4)` advances a
 quarter each cycle, `shuffle(4)` permutes differently every cycle. Read the `slow(2)` lane
 *across* the bar lines: `a b`, then `c d`, then round again.
+
+### A rhythm that describes itself
+
+A Euclidean rhythm needs its density decided in advance: `euclid(3,8)` is the answer to "three
+onsets, eight slots". `kolakoski(16)` answers a different question. The terms of the word
+`1 2 2 1 1 2 1 2 2 1 …` are read as alternating on- and off-runs, so the figure's own run lengths
+spell out the word that made it — sixteen steps of it are `x..xx.x..x..xx.x`. In mini-notation it is
+a `k` inside the Euclidean brackets, and `g` asks for the other reading:
+
+```diffstatic {data-lang=kotlin}
+struct(kolakoski(16), pat("bd"))    // the figure, as a bass drum
+pat("bd(k16) hh*4")                 // the same, in a string
+pat("bd(g16)")                      // each term as the gap to the next onset instead
+```
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/kolakoski.png" wait="2" capture="box" open-outputs="true" name="pat-doc-kolakoski"}
+:::static
+// Two Kolakoski step counts, the gap reading, two Euclidean rhythms for contrast, and the
+// alphabet {2,3} — all over two cycles.
+showPatRoll("kolakoski")
+:::fold open the output pane
+displayOpen("main")
+:::endfold
+```
+
+![Piano roll of kolakoski at 16 and 32 steps, its gap reading, euclid(3,8), euclid(3,16) and the {2,3} alphabet](assets/pattern_language/kolakoski.png)
+
+Read the first half of the `kolakoski(32)` lane against the whole of `kolakoski(16)`: the same figure
+at half the width. Turning the step count up *extends* a Kolakoski rhythm instead of re-placing it,
+so the step count is a dial you can turn while the music plays. The two `euclid` lanes are there as
+the counter-example — `euclid(3,16)`'s first half is not `euclid(3,8)`, because the step count is
+part of the question a Euclidean rhythm answers.
+
+The gap reading — `kolakoski(16, KolakoskiReading.GAPS)`, or `(g16)` in a string — reads the same
+terms as distances between onsets rather than run lengths, which fills the bar in to
+`xx.x.xxx.xx.x.xx`: eleven onsets in sixteen steps against the other reading's eight, and never more
+than one rest between hits.
+
+The alphabet is a parameter too. `kolakoski(16, a = 2, b = 3)` is the self-describing word over
+`{2,3}` — `2 2 3 3 2 2 2 3 3 3 …` — which has no run shorter than two, so that last lane never leaves
+a lone hit. `kolakoskiInv` and `kolakoskiFull` complete the family the way `euclidInv` and
+`euclidFull` do, and `->kolakoski` is in [RectSL](rectsl_cheatsheet.md#rhythm-in-space) for laying
+the figure out in space rather than in time.
 
 ### Time spans cycles, and events can cross bar lines
 

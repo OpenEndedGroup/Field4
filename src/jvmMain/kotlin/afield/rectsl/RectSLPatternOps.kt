@@ -432,6 +432,32 @@ internal fun RectLangVm.installLayoutWordsImpl() {
         }
         vm.push(VSelection(kept))
     }
+
+    // `selection steps rotation -- selection` — the same hide-the-rest layout as `->euclid`, on the
+    // Kolakoski figure instead. `16 array  16 0 ->kolakoski` keeps the eight rects the
+    // self-describing word lands on. Turn `steps` up past the selection and the mask wraps, exactly
+    // as `->euclid`'s does.
+    //
+    // The run-length reading only: it is the one that reads as a rhythm along a row, and a second
+    // word here would need a second worked example to earn its place in the cheatsheet. The gap
+    // reading is on the stack as `kolakoski-gaps` for anything that wants a pattern rather than a
+    // layout.
+    mutator("kolakoski") { vm ->
+        val rotation = vm.popNum().toInt()
+        val steps = vm.popNum().toInt().coerceAtLeast(1)
+        val selection = vm.popSelectionOrActive("->kolakoski")
+        val hits = afield.four.synth.kolakoskiMask(steps, rotation = rotation)
+        val b = vm.builder()
+        val kept = mutableListOf<NodeRef>()
+        selection.refs.forEachIndexed { ordinal, ref ->
+            if (hits.getOrElse(ordinal % hits.size) { false }) {
+                kept += ref
+            } else {
+                b.withActive(ref) { b.multiplyAlpha(constantTrack(0.0)) }
+            }
+        }
+        vm.push(VSelection(kept))
+    }
 }
 
 private fun RectLangVm.stripLayout() {

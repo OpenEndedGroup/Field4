@@ -28,7 +28,7 @@
   const constants = new Set(["pi", "tau"]);
   // The musical layer's non-mutator words. The `->` ones need no entry here: they are
   // recognised through wordDocs' "mutator" effect, one line below in classifyToken.
-  const musicWords = new Set(["beats", "cycles", "cycle-secs", "scene-cycles", "pat", "t", "dur", "cyc", "step", "atom", "atom?", "param", "param?", "mini", "sine", "cosine", "saw", "isaw", "tri", "square", "rand", "perlin", "nums", "texts", "segment", "pat-range", "quantise", "quantize", "bipolar", "euclid", "hold-pat", "fast", "slow", "rev", "palindrome", "iter", "iter-back", "ply", "stut", "linger", "pat-rot", "shuffle", "degrade-by", "swing", "swing-by", "press", "press-by", "pat-delay", "every", "off", "superimpose", "inside", "outside", "sometimes-by", "stack-pat", "cat-pat", "strip"]);
+  const musicWords = new Set(["beats", "cycles", "cycle-secs", "scene-cycles", "pat", "t", "dur", "cyc", "step", "atom", "atom?", "param", "param?", "mini", "sine", "cosine", "saw", "isaw", "tri", "square", "rand", "perlin", "nums", "texts", "segment", "pat-range", "quantise", "quantize", "bipolar", "euclid", "kolakoski", "kolakoski-gaps", "hold-pat", "fast", "slow", "rev", "palindrome", "iter", "iter-back", "ply", "stut", "linger", "pat-rot", "shuffle", "degrade-by", "swing", "swing-by", "press", "press-by", "pat-delay", "every", "off", "superimpose", "inside", "outside", "sometimes-by", "stack-pat", "cat-pat", "strip"]);
   const wordDoc = (signature, detail, insertText = null, effect = "ordinary") =>
     ({ signature, detail, insertText, effect });
   const mutatorDoc = (signature, detail, insertText = null) =>
@@ -266,6 +266,8 @@
     ["quantize", wordDoc("signal step -- signal", "Alias for quantise.")],
     ["bipolar", wordDoc("signal -- signal", "Remap a signal from 0..1 to -1..1.")],
     ["euclid", wordDoc("pulses steps rotation -- pattern", "A Euclidean rhythm as events — the onsets only, not a mask.")],
+    ["kolakoski", wordDoc("steps rotation -- pattern", "A Kolakoski rhythm as events: the terms of the self-describing word read as alternating on/off run lengths, so the figure's own run lengths spell the word back.")],
+    ["kolakoski-gaps", wordDoc("steps rotation -- pattern", "kolakoski, with each term read as the gap to the next onset instead of a run length — denser, and never more than one rest between hits.")],
     ["hold-pat", wordDoc("signal -- track", "Sample-and-hold: a rest keeps the previous value instead of falling to zero. Pure — it looks backwards, it does not remember.")],
 
     ["fast", wordDoc("pattern n -- pattern", "Play n times per cycle.")],
@@ -302,6 +304,7 @@
 
     ["strip", wordDoc("[template] pattern quote -- selection", "Lay one copy per event across the wall instead of across time. One cycle spans the wall; each copy is as wide as its event is long.")],
     ["->euclid", mutatorDoc("selection pulses steps rotation -- selection", "Keep the Euclidean onsets of a selection and hide the rest.")],
+    ["->kolakoski", mutatorDoc("selection steps rotation -- selection", "Keep the Kolakoski onsets of a selection and hide the rest — the run-length reading, as along a row.")],
   ]);
 
   const effects = new Map([

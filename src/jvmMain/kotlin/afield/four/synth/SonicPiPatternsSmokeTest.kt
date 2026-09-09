@@ -274,6 +274,8 @@ object SonicPiPatternsSmokeTest {
         case("bd@3 cp", notation = setOf("elongate")) { pat("bd@3 cp") },
         case("bd(3,8)", notation = setOf("euclid")) { pat("bd(3,8)") },
         case("[bd cp](3,8) hh!2", notation = setOf("euclid", "group", "replicate")) { pat("[bd cp](3,8) hh!2") },
+        case("bd(k16)", notation = setOf("kolakoski")) { pat("bd(k16)") },
+        case("bd(g16,3)", notation = setOf("kolakoski", "kolakoskiGaps")) { pat("bd(g16,3)") },
         case("{bd hh cp}%4", 3, notation = setOf("polymeter")) { pat("{bd hh cp}%4") },
         case("{bd sd, cp hh rim}", 2, notation = setOf("polymeter", "stack")) { pat("{bd sd, cp hh rim}") },
         case("bd:2 hh", notation = setOf("sampleIndex")) { pat("bd:2 hh") },

@@ -11,7 +11,7 @@ import kotlin.test.assertTrue
  * These are not tests of what any one operator *means* — `PatSignalsTest`, `PatAlgebraTest`,
  * `PatCompositionTest` and `MiniNotationTest` do that. They are tests of the properties every
  * operator has to satisfy for the language to be usable at all, swept across a corpus with one
- * expression per operator in all four files:
+ * expression per operator in all five operator files:
  *
  *  1. **Liveness.** Every pattern that is not explicitly allowed to rest makes at least one event in
  *     *every* one of the first six cycles. This is the property that catches the whole "works once,
@@ -196,6 +196,16 @@ class PatContractTest {
         "voiceLead" means chords("c'maj7 a'min7 d'min7").voiceLead().notesOf().texts(),
         "arpeggiate" means chords("c'maj7 f'min7").arpeggiate().texts(),
         "chord" means run(2).scale("major").chord("min7").notesOf().texts(),
+
+        // ── PatKolakoski.kt ──
+        "kolakoski" means mask(kolakoski(16), pat("a")),
+        "kolakoski gaps" means mask(kolakoski(16, KolakoskiReading.GAPS), pat("a")),
+        "kolakoski 2,3" means mask(kolakoski(16, a = 2, b = 3), pat("a")),
+        "kolakoskiInv" means mask(kolakoskiInv(16), pat("a")),
+        "kolakoskiFill" means kolakoskiFill(16, on = pat("a")),
+        "kolakoskiFull" means kolakoskiFull(16, pat("a"), pat("b")),
+        "mini kolakoski" means pat("a(k16) b"),
+        "mini kolakoski gaps" means pat("a(g16,3) b"),
     )
 
     /** A comparable, order-independent signature of one event. */
@@ -524,7 +534,7 @@ class PatContractTest {
         val labels = corpus().map { it.label }
         assertTrue(labels.size >= 100, "the contract corpus has shrunk to ${labels.size} entries")
         assertEquals(labels.size, labels.distinct().size, "duplicate corpus labels")
-        listOf("pure", "mini polymeter", "sine.segment", "appLeft", "voiceLead", "swing").forEach {
+        listOf("pure", "mini polymeter", "sine.segment", "appLeft", "voiceLead", "swing", "kolakoski").forEach {
             assertTrue(it in labels, "the corpus lost its '$it' entry")
         }
     }

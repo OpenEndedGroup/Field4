@@ -67,6 +67,12 @@
 
         val groove = pat("[bd cp](3,8) hh!2")
 
+     A `k` or `g` in the same brackets asks for a Kolakoski figure over that many steps instead —
+     `k` for the self-describing run-length reading, `g` for the gaps one. See PatKolakoski.kt:
+
+        val selfDescribing = pat("bd(k16) hh*4")
+        val dense = pat("bd(g16,3)")
+
      Repetition and density are distinct:
 
         val replicated = pat("bd!2 cp")
@@ -1132,6 +1138,13 @@ object MiniPat {
     data class Slow(val expr: Node, val n: Int) : Node
     data class Elongate(val expr: Node, val steps: Int) : Node
     data class Euclid(val expr: Node, val pulses: Int, val steps: Int, val offset: Int = 0) : Node
+    /** `a(k16)` / `a(g16,3)` — a Kolakoski figure over [steps] steps. See PatKolakoski.kt. */
+    data class Kolakoski(
+        val expr: Node,
+        val steps: Int,
+        val reading: KolakoskiReading,
+        val offset: Int = 0
+    ) : Node
     /** `a?` / `a?0.3` — drop this term with the given probability, independently per event. */
     data class Degrade(val expr: Node, val probability: Double, val salt: Int) : Node
     data class Expr(val body: String, val sourceSpan: PatSourceSpan) : Node
@@ -1264,15 +1277,29 @@ object MiniPat {
                 skipWs()
                 when {
                     match('(') -> {
-                        val pulses = readRequiredInt("Expected Euclidean pulse count at $index")
                         skipWs()
-                        expect(',')
-                        val steps = readRequiredInt("Expected Euclidean step count at $index")
-                        skipWs()
-                        val offset = if (match(',')) readRequiredInt("Expected Euclidean offset at $index") else 0
-                        skipWs()
-                        expect(')')
-                        node = Euclid(node, pulses, steps, offset)
+                        // The bracket suffix means "impose a rhythm of this shape on the term". A
+                        // leading letter says which family: nothing for Euclid, `k`/`g` for the two
+                        // Kolakoski readings. Both then take an optional trailing offset.
+                        val reading = kolakoskiMarker()
+                        node = if (reading == null) {
+                            val pulses = readRequiredInt("Expected Euclidean pulse count at $index")
+                            skipWs()
+                            expect(',')
+                            val steps = readRequiredInt("Expected Euclidean step count at $index")
+                            skipWs()
+                            val offset = if (match(',')) readRequiredInt("Expected Euclidean offset at $index") else 0
+                            skipWs()
+                            expect(')')
+                            Euclid(node, pulses, steps, offset)
+                        } else {
+                            val steps = readRequiredInt("Expected Kolakoski step count at $index")
+                            skipWs()
+                            val offset = if (match(',')) readRequiredInt("Expected Kolakoski offset at $index") else 0
+                            skipWs()
+                            expect(')')
+                            Kolakoski(node, steps, reading, offset)
+                        }
                     }
                     match('%') -> {
                         val subdivision = readRequiredInt("Expected polymetric subdivision at $index")
@@ -1365,6 +1392,21 @@ object MiniPat {
         }
 
         private fun readRequiredInt(message: String): Int = readInt() ?: error(message)
+
+        /**
+         * Consumes the `k`/`g` that turns a `(…)` suffix from Euclidean into Kolakoski, and says
+         * which reading it asked for. Null — and nothing consumed — for a plain `(3,8)`.
+         */
+        private fun kolakoskiMarker(): KolakoskiReading? {
+            if (eof()) return null
+            val reading = when (src[index].lowercaseChar()) {
+                'k' -> KolakoskiReading.RUNS
+                'g' -> KolakoskiReading.GAPS
+                else -> return null
+            }
+            index++
+            return reading
+        }
 
         /** A bare decimal immediately after a modifier, as in `bd?0.3`. No leading whitespace. */
         private fun readDouble(): Double? {
@@ -1480,6 +1522,13 @@ object MiniPat {
             val steps = node.steps.coerceAtLeast(1)
             euclidFill(pulses, steps, rotation = -node.offset, on = compileNode(node.expr))
         }
+        // Same offset sense as `Euclid`: a positive offset in the source rotates the figure earlier.
+        is Kolakoski -> kolakoskiFill(
+            node.steps.coerceAtLeast(1),
+            node.reading,
+            rotation = -node.offset,
+            on = compileNode(node.expr)
+        )
     }
 
     /**

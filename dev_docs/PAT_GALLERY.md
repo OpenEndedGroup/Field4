@@ -8,7 +8,7 @@ correctness while writing no committed assets.
 
 | harness | id | output |
 | --- | --- | --- |
-| `afield.four.synth.PatPianoRollGallery` | `synth.pat.gallery` | 9 piano rolls, **SVG** |
+| `afield.four.synth.PatPianoRollGallery` | `synth.pat.gallery` | 10 piano rolls, **SVG** |
 | `afield.four.synth.PatSoundDocs` | `synth.pat.sound` | 8 stereo **`.wav`**s |
 | `afield.four.synth.PatTranscriptionGallery` | `synth.pat.transcription` | 3 notated-vs-recovered overlays, **SVG** |
 
@@ -148,6 +148,19 @@ and stopped. See "Polymeter was silent after one bar" in
 fast sequence.
 
 ![mini notation](assets/pat_gallery/pat-mini-notation.svg)
+
+**Kolakoski rhythms, against the Euclidean ones.** The word `1 2 2 1 1 2 …` read as alternating on-
+and off-runs, so the figure's own run lengths spell it back. Two properties are drawn rather than
+asserted. Read the first half of the `kolakoski(32)` lane against the whole of `kolakoski(16)`: the
+same figure at half the width, because turning the step count up **extends** a Kolakoski figure
+instead of re-placing it. The two `euclid` lanes are the counter-example — `euclid(3,16)`'s first half
+is not `euclid(3,8)`, because the step count is part of the question a Euclidean rhythm answers. Then
+the gap reading, which treats each term as the distance to the next onset and so leaves at most one
+rest between hits, and the same construction over the alphabet {2,3}, whose word has no run shorter
+than two. The roll's `verify` checks each of those against the language rather than against a
+remembered picture.
+
+![kolakoski](assets/pat_gallery/pat-kolakoski.svg)
 
 ---
 
