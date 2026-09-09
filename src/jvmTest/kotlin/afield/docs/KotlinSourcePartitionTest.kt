@@ -336,6 +336,121 @@ class KotlinSourcePartitionTest {
         )
     }
 
+    @Test
+    fun `an annotated accessor belongs to its property, and a sibling's annotation does not`() {
+        // An annotation run on its own line usually decorates the *next* declaration, and the scanner
+        // used to stop at one for exactly that reason. On a property it can decorate the property's own
+        // accessor instead, and then neither line is a declaration line — the annotation strips to
+        // nothing and `get() = …` has no keyword — so both fell out as FILLER: four times in
+        // `stats.kt`, and once each in `VulkanBuffer.kt` (`@JvmName`) and `keyframes.kt` (`@OptIn`).
+        // Both spellings are here, and so is the sibling case that makes stepping over the run unsafe.
+        val source = """
+            class Counting {
+                private val values = mutableListOf<Int>()
+
+                val size: Int
+                    @Synchronized
+                    get() = values.size
+
+                val first: Int
+                    @Synchronized get() = values.first()
+
+                @Deprecated("use size")
+                fun count(): Int = values.size
+            }
+        """.trimIndent()
+
+        val partition = KotlinSourcePartition.partition(source)
+        assertEquals(emptyList(), KotlinSourcePartition.verify(partition), "invariants")
+        assertEquals(source.split("\n"), KotlinSourcePartition.reconstruct(partition), "reconstruction")
+        assertEquals(
+            lineOf(source, "get() = values.size"),
+            declaration(partition, "size").endLine,
+            "the accessor under its own annotation line belongs to the property"
+        )
+        assertEquals(
+            lineOf(source, "@Synchronized get()"),
+            declaration(partition, "first").endLine,
+            "so does an accessor behind an annotation on one line"
+        )
+        assertEquals(
+            lineOf(source, "@Deprecated"),
+            declaration(partition, "count").startLine,
+            "but a sibling's own annotation must stay with the sibling"
+        )
+        assertEquals(
+            emptyList(),
+            strandedCode(partition),
+            "no line of code should be left unattributed"
+        )
+    }
+
+    @Test
+    fun `an enum entry under its own annotation line is still its own entry`() {
+        // The hazard in looking past an annotation run: inside an enum body the thing below the run is
+        // the *next entry*, and swallowing it would lose a declaration rather than gain a line. The
+        // entry line is not the same shape as an accessor, so the lookahead already stopped — this
+        // fixture is here so that the enum question stays asked out loud in both paths.
+        val source = """
+            enum class Kind {
+                FIRST,
+                @SerialName("second")
+                SECOND,
+            }
+        """.trimIndent()
+
+        val partition = KotlinSourcePartition.partition(source)
+        assertEquals(emptyList(), KotlinSourcePartition.verify(partition), "invariants")
+        assertEquals(source.split("\n"), KotlinSourcePartition.reconstruct(partition), "reconstruction")
+        assertEquals(
+            listOf("FIRST", "SECOND"),
+            partition.allSpans().filter { it.declKind == "enum entry" }.map { it.name },
+            "both entries survive, and the annotated one is not part of the first"
+        )
+    }
+
+    @Test
+    fun `a soft modifier alone on a line does not end an expression body`() {
+        // `value` is a modifier — `value class` — so a line holding nothing but the word reads as a
+        // modifier-only line, which is what an expression body beginning with a parameter called
+        // `value` looks like. The scanner stopped at it and left the whole body unattributed, six
+        // lines of `escapeGlslHtml` in `GlslCompletionSupport.kt`. Looking past the run to the line it
+        // decorates answers this one too: a leading `.` continues, a keyword would not.
+        val source = """
+            private fun escape(value: String): String =
+                value
+                    .replace("&", "&amp;")
+                    .replace("<", "&lt;")
+        """.trimIndent()
+
+        val partition = KotlinSourcePartition.partition(source)
+        assertEquals(emptyList(), KotlinSourcePartition.verify(partition), "invariants")
+        assertEquals(source.split("\n"), KotlinSourcePartition.reconstruct(partition), "reconstruction")
+        assertEquals(
+            lineOf(source, ".replace(\"<\""),
+            declaration(partition, "escape").endLine,
+            "the chained expression body is the function's"
+        )
+        assertEquals(
+            emptyList(),
+            strandedCode(partition),
+            "no line of code should be left unattributed"
+        )
+    }
+
+    /**
+     * The non-blank lines that landed in a [KotlinSourcePartition.Kind.FILLER] span.
+     *
+     * The distinction [SourcePartitionGuard] ratchets on. A blank line between two members is FILLER
+     * by design and says nothing about precision; a line carrying code is a line the scanner could not
+     * attribute, which is the thing worth failing a test over.
+     */
+    private fun strandedCode(partition: KotlinSourcePartition.Partition): List<String> =
+        partition.allSpans()
+            .filter { it.kind == KotlinSourcePartition.Kind.FILLER }
+            .flatMap { span -> (span.startLine..span.endLine).map { partition.lines[it - 1] } }
+            .filter { it.isNotBlank() }
+
     /** The 1-based line of the first line whose text contains [needle]. */
     private fun lineOf(source: String, needle: String): Int {
         val index = source.split("\n").indexOfFirst { needle in it }

@@ -807,7 +807,7 @@ object KotlinSourcePartition {
         /** Whether the declaration ending textually at [line] carries on to the next code line. */
         fun continues(line: Int, hi: Int, inEnum: Boolean): Boolean {
             val next = nextCodeLine(line + 1, hi) ?: return false
-            if (isPrefixOnlyLine(next)) return false
+            if (isPrefixOnlyLine(next)) return continuesPastPrefixRun(next, hi, inEnum)
             if (recognize(masked.code[next]) != null) return false
             // `A,` ends with a comma, which normally means "unfinished" — inside an enum body it means
             // the next entry, and continuing would swallow it.
@@ -817,7 +817,51 @@ object KotlinSourcePartition {
             // Modifiers are stripped before the test so that `private set` on its own line reads as the
             // accessor it is. Doing this cannot capture a sibling declaration: a modifier run followed
             // by a keyword is a declaration, and the check above has already returned.
-            return CONTINUES_BEFORE.containsMatchIn(stripModifiers(masked.code[next].trimStart()))
+            return startsContinuation(next)
+        }
+
+        /**
+         * Whether an annotation/modifier-only run starting at [next] belongs to the declaration above
+         * it, rather than to the one below.
+         *
+         * The run usually decorates the *next* declaration, which is why this used to be a flat
+         * `return false`. But on a property it can decorate the property's own accessor:
+         *
+         *     val size: Int
+         *         @Synchronized
+         *         get() = values.size
+         *
+         * Nothing here is a declaration line — [recognize] strips the annotation and finds no keyword,
+         * and `get() = …` has no keyword of its own — so both lines came out as unattributed FILLER,
+         * four times over in `stats.kt` plus once each in `VulkanBuffer.kt` and `keyframes.kt`. The run
+         * cannot decide this alone: `@Deprecated("x")` above a `fun` looks identical one line at a time.
+         * So look past it and let the line it decorates answer, with the same three questions
+         * [continues] asks of an ordinary next line: a declaration of its own ends the span, so does an
+         * enum entry inside an enum body, and otherwise the shape of the line decides. Asking them here
+         * too is what keeps a sibling declaration's own annotations out of its neighbour.
+         */
+        fun continuesPastPrefixRun(next: Int, hi: Int, inEnum: Boolean): Boolean {
+            var index = next
+            var budget = MAX_PREFIX_RUN
+            while (index < hi && isPrefixOnlyLine(index)) {
+                if (budget-- <= 0) return false
+                index = nextCodeLine(index + 1, hi) ?: return false
+            }
+            if (index >= hi || recognize(masked.code[index]) != null) return false
+            if (inEnum && isEnumEntryLine(index)) return false
+            return startsContinuation(index)
+        }
+
+        /** Whether the code on [index] reads as the continuation of the declaration above it. */
+        fun startsContinuation(index: Int): Boolean {
+            val head = stripModifiers(masked.code[index].trimStart())
+            if (CONTINUES_BEFORE.containsMatchIn(head)) return true
+            // `@Synchronized get() = stagedRoots ?: …` on one line, in `PersonalLayer.kt`: the accessor
+            // is behind an annotation that is not a use-site target, so the `@get:`/`@set:` alternatives
+            // in [CONTINUES_BEFORE] do not reach it. Ask again with the annotation run stripped. This is
+            // deliberately a second question rather than a change to the first: stripping up front would
+            // erase the `@get:` that the first question matches on.
+            return CONTINUES_BEFORE.containsMatchIn(stripModifiers(stripAnnotations(head)))
         }
 
         /** The next line in `[from, hi)` carrying any code at all. */
@@ -936,6 +980,16 @@ object KotlinSourcePartition {
 
     /** How many lines past its opener a wrapped annotation may close on. See [Builder.multiLineAnnotationEnd]. */
     private const val MAX_ANNOTATION_WRAP = 12
+
+    /**
+     * How many annotation/modifier-only lines [Builder.continuesPastPrefixRun] will look past.
+     *
+     * Measured over `src/jvmMain` on 2026-09-09: 1,777 such runs, of which 1,723 are a single line
+     * and 54 are two; none is longer. The bound is well clear of that so that a pathological file
+     * cannot turn one lookahead into a scan of the rest of itself, and it fails closed — past the
+     * budget the run stays FILLER, which is what it was before the lookahead existed.
+     */
+    private const val MAX_PREFIX_RUN = 8
 
     /**
      * The bracket an annotation on [text] leaves open at the end of the line, and how deep, or null.
