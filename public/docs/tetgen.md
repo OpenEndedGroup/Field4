@@ -2,8 +2,9 @@
 
 *Every public declaration used below carries its own KDoc — start from `Tetgen`, `TetMesh` and
 `TetgenLibrary` in `afield.tetgen`. `dev_docs/TETGEN.md` carries the mesher comparison that chose
-this route, and the numbers on this page were all produced in this repository on an Apple M-series
-laptop, natively, with no container.*
+this route, and the numbers on this page were produced in this repository on an Apple M-series
+laptop, natively, with no container. The one exception is labelled where it appears: the beam
+deflections under [Into Kratos](#into-kratos) come from the solver container.*
 
 [Manifold](manifold.md) gives Field surfaces that are guaranteed closed. A closed surface is a
 boundary: it says where the part stops. It says nothing about the inside, and every question worth
@@ -12,7 +13,7 @@ question about the inside.
 
 A tetrahedral mesh is the inside, written down. [TetGen](https://wias-berlin.de/software/tetgen/)
 takes the closed triangle surface and fills the volume it bounds with tetrahedra whose faces match
-that surface exactly. `afield.tetgen` is 564 lines of Kotlin over 263 lines of C++ over TetGen 1.6.0,
+that surface exactly. `afield.tetgen` is 685 lines of Kotlin over 263 lines of C++ over TetGen 1.6.0,
 through Panama/FFM.
 
 ```diffstatic {data-lang=kotlin}
@@ -590,21 +591,91 @@ the refinement to go. The size request is ignored along with everything else, wh
 
 ## Into Kratos
 
-`structural.bodyFitted` is what this feeds. It runs `SmallDisplacementElement3D4N` on the supplied
-mesh with a clamp region, gravity and a total force spread over a load region; `createBodyMesh` is
-the protocol verb and `KratosSession.openMeshAsync` the Kotlin one. `TetMesh`'s flat
-`positions`/`cells` layout is deliberately the layout that goes on the wire, so nothing is reshaped
-in between.
+`structural.bodyFitted` is what this feeds. It runs a small-displacement element on the supplied mesh
+with a clamp region, gravity and a total force spread over a load region; `createBodyMesh` is the
+protocol verb and `KratosSession.openMeshAsync` the Kotlin one. `TetMesh`'s flat `positions`/`cells`
+layout is deliberately the layout that goes on the wire, so nothing is reshaped in between. The mesh
+picks the element: four nodes per cell gets `SmallDisplacementElement3D4N`, ten gets
+`SmallDisplacementElement3D10N`. There is no parameter, so there is nothing for the two ends to
+disagree about.
 
-One limit, recorded rather than worked around, and it belongs to the element rather than to the
-mesh. The 4-node constant-strain tetrahedron **locks** in bending. `optional/kratos/VERIFICATION.md`
-records the solver runs behind that — against closed-form beam theory, 35.6% of `wL⁴/8EI` on a
-10×2×2 mesh rising to 75.9% on 30×4×4, converging from below and slowly, while axial extension comes
-out at 99.44% and 100.04% on the same meshes. Those numbers need the solver container and are not
-re-derived here. Axial being right is what pins the material, the clamp, the loads and the solver;
-read a bending deflection as a lower bound. The fix is quadratic tetrahedra,
-`SmallDisplacementElement3D10N` with TetGen's `-o2`, and the wrapper currently rejects anything but
-4-node output, which makes that a visible gap rather than a silent one.
+That matters, because the 4-node tetrahedron is a **constant-strain** element. Its four corners
+carry a linear displacement field, so strain is one value for the whole element and cannot vary
+inside it. Bending is precisely the case where strain has to vary across a section — tension on one
+face, compression on the other — and an element that cannot represent that resists it instead. It
+**locks**: far too stiff, converging on the right answer from below and slowly.
+
+`optional/kratos/VERIFICATION.md` has the measurement. A 1 m × 0.1 m × 0.1 m cantilever under
+self-weight, tip deflection as a fraction of the Euler–Bernoulli `wL⁴/8EI`. These are the solver
+container's numbers, not this page's; nothing here re-derives them.
+
+<div class="field-data-table" markdown>
+
+| mesh | tetrahedra | 4-node | 10-node |
+|---|---|---|---|
+| 5×1×1 | 30 | 13.2% | **95.4%** |
+| 10×2×2 | 240 | 35.6% | 98.8% |
+| 20×3×3 | 1,080 | 62.0% | 99.7% |
+
+</div>
+
+Refining was never a way out of the left-hand column: the linear element is still 38% short at 1,080
+elements. The quadratic one is within 5% at *thirty*. Landing just under 100% rather than on it is
+correct rather than a residual to chase — Euler–Bernoulli omits shear, worth 1.0% at this aspect
+ratio, while clamping the whole end face is stiffer than beam theory assumes, and the two nearly
+cancel. End to end through the container, on one 864-element TetGen mesh of that same beam, 69.5%
+against 99.8%.
+
+Axial extension is the control that pins the material, the clamp, the loads and the solver, and it
+was never the problem: 99.44% and 100.04% for the linear element on the first two meshes. The
+quadratic element is marginally *worse* there, 100.80% and 100.66%, and that is the load rather than
+the element — a total force split equally over every node in the load region is further from the
+consistent split on a six-node face (nothing at the corners, a third at each midside) than on a
+three-node one. The resultant is exact either way, so it is a local end effect, and it does not
+touch bending, where the load is gravity.
+
+### Asking for 10-node elements
+
+`order = 2` tetrahedralizes exactly as before and then promotes the result.
+
+```diffstatic {data-lang=kotlin}
+val linear = Tetgen.tetrahedralize(surface, targetEdgeLength = 5.0)
+val quadratic = Tetgen.tetrahedralize(surface, targetEdgeLength = 5.0, order = 2)
+// equivalently, from a mesh already in hand: linear.quadratic()
+
+linear.nodeCount        // 8279
+quadratic.nodeCount     // 57495 — 6.94x, one new node per distinct edge
+quadratic.cellCount     // 36475, the same tetrahedra
+quadratic.nodesPerCell  // 10
+quadratic.volume()      // 76958.90896392865 — linear.volume() to the last bit
+quadratic.corners()     // the 4-node view back, sharing the same node array
+```
+
+The shape does not change, and that is the whole point. The six new nodes sit at the exact midpoints
+of straight edges, so the region, the boundary, the volume and both quality measures come out the
+same numbers; what changes is the interpolation inside an element. `qualities()`, `boundary()`,
+`filtered()` and `toTriMesh()` read a cell's first four indices and are unaffected.
+
+The promotion is cheap and the elements are not. On the bracket at `targetEdgeLength = 5.0` it costs
+71 ms against the mesh's 466 ms, and at 3.0, 73 ms against 782 ms — it is one pass over the edges,
+not a re-mesh. Seven times the nodes is seven times the unknowns, though, and that is downstream: on
+the 864-element beam Kratos takes 1.05 s at order 2 against 0.20 s at order 1, for 99.8% against
+69.5%.
+
+!!! warning "TetGen has an `-o2` for this and it cannot be called from the library"
+    TetGen 1.6.0's `highorder()` `delete[]`s the `highordertable` holding every element's extra-node
+    pointers before it returns, and `outelements()` then dereferences them. Driven from the command
+    line it usually survives; driven through `tetgenio` it does not, because `outelements()`
+    allocates the output node array first and the allocator hands back the block just freed — so
+    TetGen reads its own coordinates as pointers. `tools/tetgen_o2_use_after_free.py` pins that
+    outside the JVM: the same cube built twice from the same TetGen source, SIGSEGV as shipped and
+    229 nodes with that one `delete[]` commented out.
+
+    `TetMesh.quadratic()` does the promotion on this side instead, which also means the midside
+    nodes are emitted in Kratos's `Tetrahedra3D10` order by construction rather than recovered from
+    TetGen's internal edge tables. That ordering is checked geometrically at both ends, because a
+    mis-ordered quadratic element does not fail — it assembles, it solves, and it returns a
+    plausible displacement field that is wrong.
 
 ## Installing it
 
