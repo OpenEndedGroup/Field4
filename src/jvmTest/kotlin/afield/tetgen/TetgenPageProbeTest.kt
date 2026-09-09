@@ -8,13 +8,42 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.sqrt
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
-/** Follow-ups on three things the first measurement run said that the dev docs did not. */
+/**
+ * Follow-ups on things the first measurement run said that the dev docs did not — now claims rather
+ * than questions.
+ *
+ * These began as print-only probes. The printing stays, because a number in a build log is what a
+ * page gets edited against, but four of them carry the assertions `public/docs/tetgen.md` rests on:
+ * marching cubes converging first order on a box and second on a sphere, the float32 `TriMesh`
+ * bridge and not the mesher owning the bracket's volume error, TetGen's determinism on one surface,
+ * and which of eight malformed surfaces come back refused.
+ *
+ * The assertions are orderings and ratios, not tolerances on a measured number. Every number here
+ * moves with the geometry, and a tolerance on one of them is a test that has to be re-tuned rather
+ * than a claim that can fail.
+ *
+ * Two are still print-only and deliberately so. [doesTheOrderTheSolidWasBuiltInChangeTheMesh] prints
+ * the surface digests that diagnose a mismatch; the claim itself is asserted in
+ * [TetMeshViewsTest.theOrderTheSolidWasBuiltInChangesTheMeshButNotTheBody]. And
+ * [howMuchDoesTheQualitySwitchActuallyBuy] is wall-clock timing, which is not a thing to assert on a
+ * laptop.
+ */
 class TetgenPageProbeTest {
 
     private fun available(): Boolean = TetgenLibrary.isAvailable && ManifoldLibrary.isAvailable
 
-    @Test fun whereDoesTheBracketsVolumeErrorActuallyComeFrom() {
+    /**
+     * The bracket's volume error is the float32 `TriMesh` bridge, and TetGen adds nothing to it.
+     *
+     * Asserted as an ordering: TetGen must reproduce the surface it was handed far more exactly than
+     * that surface reproduces Manifold's double-precision body. The page says the gap is three
+     * orders of magnitude and more; this asks for three.
+     */
+    @Test
+    fun theBracketsVolumeErrorIsTheBridgeAndNotTheMesher() {
         if (!available()) return
         Solid.scope {
             val part = (Solid.cube(80.0, 40.0, 15.0) + Solid.cube(15.0, 40.0, 70.0)) -
@@ -34,21 +63,44 @@ class TetgenPageProbeTest {
             println("float32 surface volume : $surfaceVolume  rel ${abs(surfaceVolume - manifoldVolume) / manifoldVolume}")
             println("TetGen mesh volume     : ${tet.volume()}  rel to surface " +
                 "${abs(tet.volume() - surfaceVolume) / surfaceVolume}")
+
+            val bridge = abs(surfaceVolume - manifoldVolume) / manifoldVolume
+            val mesher = abs(tet.volume() - surfaceVolume) / surfaceVolume
+            assertTrue(bridge > 1e-10, "the float32 narrowing should be visible, was $bridge")
+            assertTrue(mesher < 1e-13, "TetGen against its own input, $mesher")
+            assertTrue(bridge > 1000.0 * mesher,
+                "the bridge should dominate: bridge $bridge against mesher $mesher")
             Unit
         }
     }
 
-    @Test fun whichBadSurfaceActuallyReachesTheCatchInTheWrapper() {
+    /**
+     * Which of eight malformed surfaces come back refused, and which are meshed anyway.
+     *
+     * The page publishes this as a table, and three of its rows are the surprising ones: TetGen's
+     * input is an unoriented piecewise-linear complex, so an inside-out cube and a cube with a
+     * duplicated face are both legal, and a cube with two corners welded together really is a body
+     * of volume 2/3. Those three volumes are exact geometry, not measurements, which is why they can
+     * be asserted at all.
+     */
+    @Test
+    fun eightMalformedSurfacesSplitFourAndFour() {
         if (!available()) return
+        val refused = mutableMapOf<String, String>()
+        val accepted = mutableMapOf<String, Double>()
         fun probe(name: String, mesh: TriMesh) {
             val outcome = runCatching { Tetgen.tetrahedralize(mesh, targetEdgeLength = 0.4) }
             println("$name -> " + outcome.fold(
                 {
+                    accepted[name] = it.volume()
                     "OK, ${it.cellCount} tets, volume ${"%.6f".format(it.volume())}, " +
                         "surface volume ${"%.6f".format(abs(mesh.signedVolume()))}, " +
                         "boundary ${it.boundary().triangleCount} triangles"
                 },
-                { "${it::class.simpleName}: ${it.message}" }))
+                {
+                    refused[name] = "${it::class.simpleName}"
+                    "${it::class.simpleName}: ${it.message}"
+                }))
         }
 
         val cubeCorners = floatArrayOf(
@@ -85,9 +137,43 @@ class TetgenPageProbeTest {
         val here = java.io.File(".").absoluteFile.parentFile
         listOf("tetgen-tmpfile_skipped.node", "tetgen-tmpfile_skipped.face")
             .forEach { java.io.File(here, it).delete() }
+
+        assertEquals(
+            setOf(
+                "five faces of a cube",
+                "one face of a cube",
+                "two interpenetrating cubes",
+                "a degenerate two-triangle 'solid'",
+            ),
+            refused.keys,
+            "the set of surfaces TetGen refuses has changed",
+        )
+        assertTrue(refused.values.all { it == "TetgenException" }, "refusals were $refused")
+        assertEquals(1.0, accepted.getValue("closed cube (control)"), 1e-6)
+        assertEquals(1.0, accepted.getValue("inside-out cube"), 1e-6,
+            "TetGen's input is unoriented, so winding must not matter")
+        assertEquals(1.0, accepted.getValue("cube + a duplicated face"), 1e-6)
+        assertEquals(2.0 / 3.0, accepted.getValue("cube with two coincident corners"), 1e-6,
+            "welding one corner of a unit cube onto its neighbour leaves 2/3 of it")
     }
 
-    @Test fun doesMarchingCubesConvergeFasterOnASphereThanOnABox() {
+    /**
+     * The claim the whole route rests on: sampling a distance function rounds an edge at every
+     * resolution, and TetGen does not.
+     *
+     * Halving `h` halves the box's worst boundary error and quarters the sphere's — first order
+     * against second. Asserted as the ratio between successive halvings rather than as a fitted
+     * slope, because the ratio is what the page's table shows and a bad ratio names the step it went
+     * wrong at. The bands are wide: the measurements on this machine are 2.02, 2.24, 2.12 and 3.75,
+     * 4.00, 4.20, and anything that stays inside `[1.8, 2.5]` and `[3.2, 4.6]` is still the same
+     * finding.
+     *
+     * The last assertion is the other half of the comparison. TetGen is handed Manifold's exact
+     * triangulation as a constraint, so its worst node lies exactly zero outside the true box — not
+     * nearly zero.
+     */
+    @Test
+    fun marchingCubesIsFirstOrderOnABoxAndSecondOrderOnASphere() {
         if (!available()) return
         val bounds = afield.stdlib.boundsOf(
             afield.stdlib.vec(-1.6, -2.1, -2.6), afield.stdlib.vec(1.6, 2.1, 2.6))
@@ -99,6 +185,7 @@ class TetgenPageProbeTest {
         }
         fun sphereDistance(x: Double, y: Double, z: Double) = sqrt(x * x + y * y + z * z) - 1.5
 
+        val worstErrors = mutableMapOf<String, MutableList<Double>>()
         for ((name, distance) in listOf<Pair<String, (Double, Double, Double) -> Double>>(
             "box   " to ::boxDistance, "sphere" to ::sphereDistance)) {
             for (h in listOf(0.4, 0.2, 0.1, 0.05)) {
@@ -112,10 +199,36 @@ class TetgenPageProbeTest {
                             m.positions[3 * v + 1].toDouble(),
                             m.positions[3 * v + 2].toDouble())))
                     }
+                    worstErrors.getOrPut(name.trim()) { mutableListOf() } += worst
                     println("$name h=$h -> worst ${"%.6f".format(worst)} = ${"%.4f".format(worst / h)} h" +
                         "   (${m.triangleCount} triangles)")
                 }
             }
+        }
+
+        val box = worstErrors.getValue("box")
+        val sphere = worstErrors.getValue("sphere")
+        for (i in 0 until box.size - 1) {
+            val ratio = box[i] / box[i + 1]
+            assertTrue(ratio in 1.8..2.5,
+                "the box error should halve with h; it went ${box[i]} -> ${box[i + 1]}, ratio $ratio")
+        }
+        for (i in 0 until sphere.size - 1) {
+            val ratio = sphere[i] / sphere[i + 1]
+            assertTrue(ratio in 3.2..4.6,
+                "the sphere error should quarter with h; it went ${sphere[i]} -> ${sphere[i + 1]}, " +
+                    "ratio $ratio")
+        }
+
+        Solid.cube(2.0, 3.0, 4.0, center = true).use { exact ->
+            val tet = Tetgen.tetrahedralize(exact.toTriMesh(), targetEdgeLength = 0.25)
+            var outside = 0.0
+            for (v in 0 until tet.nodeCount) {
+                outside = max(outside, max(boxDistance(
+                    tet.positions[3 * v], tet.positions[3 * v + 1], tet.positions[3 * v + 2]), 0.0))
+            }
+            println("TetGen at h = 0.25 -> ${tet.cellCount} elements, worst node outside $outside")
+            assertEquals(0.0, outside, "TetGen put a node outside the true box")
         }
     }
 
@@ -153,10 +266,19 @@ class TetgenPageProbeTest {
         }
     }
 
-    @Test fun isTetGenDeterministic() {
+    /**
+     * TetGen is deterministic: the same surface, meshed five times in one process, gives the same
+     * mesh to the last bit.
+     *
+     * The page's warning box rests on this. A docs capture reported 66,108 elements where every test
+     * run reported 66,489, and the two candidate explanations were a randomising mesher and two
+     * different surfaces. It is the surfaces — see
+     * [TetMeshViewsTest.theOrderTheSolidWasBuiltInChangesTheMeshButNotTheBody] — and this is the half
+     * that rules out the mesher.
+     */
+    @Test
+    fun tetGenGivesTheSameMeshEveryTimeFromOneSurface() {
         if (!available()) return
-        // The docs capture reported 66,108 elements where a test run of the same code reported
-        // 66,489. Either TetGen randomises, or the two runs were not given the same surface.
         Solid.scope {
             val part = (Solid.cube(80.0, 40.0, 15.0) + Solid.cube(15.0, 40.0, 70.0)) -
                 Solid.union(listOf(
@@ -168,17 +290,32 @@ class TetgenPageProbeTest {
             println("surface digest: ${surface.positions.contentHashCode()} / " +
                 "${surface.indices.contentHashCode()}, ${surface.triangleCount} triangles")
             // Same surface object, five times.
+            val cells = mutableSetOf<Int>()
+            val nodes = mutableSetOf<Int>()
+            val volumes = mutableSetOf<Double>()
+            val worst = mutableSetOf<Double>()
             repeat(5) {
                 val m = Tetgen.tetrahedralize(surface, targetEdgeLength = 3.0)
+                cells += m.cellCount; nodes += m.nodeCount
+                volumes += m.volume(); worst += m.qualities().min()
                 println("  run $it: ${m.nodeCount} nodes, ${m.cellCount} elements, " +
                     "volume ${m.volume()}, worst quality ${"%.6f".format(m.qualities().min())}")
             }
+            assertEquals(1, cells.size, "element counts differed across runs: $cells")
+            assertEquals(1, nodes.size, "node counts differed across runs: $nodes")
+            assertEquals(1, volumes.size, "volumes differed across runs: $volumes")
+            assertEquals(1, worst.size, "the worst element differed across runs: $worst")
+
             // And a freshly built surface, in case the Boolean is what varies.
+            val fromFreshSurfaces = mutableSetOf<Int>()
             repeat(2) {
                 val fresh = part.toTriMesh()
+                fromFreshSurfaces += Tetgen.tetrahedralize(fresh, targetEdgeLength = 3.0).cellCount
                 println("  fresh surface digest ${fresh.positions.contentHashCode()}: " +
-                    "${Tetgen.tetrahedralize(fresh, targetEdgeLength = 3.0).cellCount} elements")
+                    "${fromFreshSurfaces.last()} elements")
             }
+            assertEquals(cells, fromFreshSurfaces,
+                "re-deriving the surface from the same Solid changed the mesh")
             Unit
         }
     }
