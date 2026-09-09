@@ -67,9 +67,79 @@ the valley in the measured landscape is checkable arithmetic rather than a shape
 | `src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt` | classify the new transcript `COMPILE_ONLY` |
 | `build.gradle.kts` | `runKratosStudy`, following the fifteen `JavaExec` tasks already there |
 
+## Merge onto current `main` (2026-09-09, second session)
+
+The branch was based on `6658f4d65`; `main` had moved to `4107a579e` with two Kratos commits —
+quadratic tetrahedra and the structural playground. `main` merged in as `675adcc2f`.
+
+**What the merge cost:** four conflicting files, every one of them additive — both sides appended a
+section or an index entry to the same place. `optional/kratos/README.md` auto-merged;
+`optional/kratos/VERIFICATION.md`, `public/docs/agent_transcripts.md` and
+`DemoTranscriptExecSmokeTest.kt` were resolved by keeping both sides. Then one thing the textual
+merge could not catch and a guard did: both sides had bumped the *same two numbers* in the index
+page's totals paragraph by one from the same base, so git kept one side's `+1` and the page claimed
+93 transcripts and 25 compile-only for a corpus that is now 94 and 26. `checkAgentTranscriptIndex`
+failed on exactly that; fixed in `f6a60a96c`.
+
+**Does main's new work change this layer?** No, and the reason is worth writing down rather than
+asserting. `SimulationResult` (+72) and `SimulationGeometry` (+14) are entirely mesh-width plumbing:
+`BackgroundDomain.nodesPerCell`, `cellCount` dividing by it instead of by 4, cell-to-node averaging
+over every node rather than four, and `boundaryMesh` subdividing a quadratic face into four. The
+study layer touches exactly one of those names — `session.domain.cellCount`, in a status string —
+and a structured background grid is always `nodesPerCell = 4`, so the value is unchanged.
+`KratosSession` (+25) is the `nodesPerCell` handshake on `createBodyMesh`, a path a study over an
+embedded formulation never takes. Nothing landed that the study layer now duplicates, and nothing
+landed that it should adopt.
+
+`KratosDemo.body`, the geometry every point of the sweep classifies, is untouched by both commits —
+`4107a579e`'s diff to `KratosDemo.kt` is purely additive from line 57 down. That is why the numbers
+below are comparable to the ones measured before the merge.
+
+**Territory overlap with `4107a579e`'s structural playground:** none. That is a body-fitted
+structural solve, run twice at two element orders and compared; this is a sweep and a search over a
+design space of an embedded thermal problem. They share a worker and nothing else. The one place
+they nearly touch is `KratosStudy.evaluate`, which already refuses a body-fitted study carrying a
+geometry with a message naming the reason ("a geometric axis needs a new session per point rather
+than a study") — that refusal was written before the structural playground existed and is still the
+right answer for it.
+
 ## Verification
 
-*(filled in below after the final run)*
+Everything below was run in this worktree, after the merge, and the numbers are quoted from the
+runs' own output.
+
+**The box Kotlin compiles through Field's real K2 path — this is the thing the previous session
+died before doing.** `kratos_study_code_.kt` was known to be valid repo Kotlin, which is a
+different compiler from the one a box uses.
+
+```
+DEMO_TRANSCRIPT_ONLY=kratos_parameter_study python3 tools/run_field_tests.py --id examples.demo-transcript.exec
+[1/1] PASS examples.demo-transcript.exec (8612 ms)
+  [compile]   kratos_study: PASS
+  [compile] PASS kratos_parameter_study
+  compile=2.28s
+  DemoTranscriptExecSmokeTest ok — 1 demos verified (61 executed, 26 compiled, 7 kotlinjs)
+```
+
+That is the real path, not a proxy: `COMPILE_ONLY` builds the graph through the real create/connect
+apply path, expands macros, runs the real preamble machinery and hands the body to
+`compileSnippetAndWait` with only the terminal evaluation skipped. The compile is where a box
+diverges from repo Kotlin, and it passed with zero diagnostics. The materialised sidecar is
+byte-identical to the `code` block the harness compiled (both 10251 characters, compared
+programmatically), so the file shipped in the bundle is the file that was verified — not a sibling
+of it.
+
+**Unit tests, re-run after the merge**, forced with `--rerun-tasks` (2m 23s of real build, not an
+`UP-TO-DATE` no-op):
+
+| suite | tests | failures | errors |
+| --- | --- | --- | --- |
+| `KratosStudyTest` | 15 | 0 | 0 |
+| `KratosTest` | 16 | 0 | 0 |
+
+**Guards.** `checkAgentTranscriptIndex` — failed first (the count regression above), green after the
+fix: *"AgentTranscriptIndexGuard ok — 94 transcript(s), 94 entry/entries"*, 1m 55s with
+`--rerun-tasks`. `compileKotlinJvm` clean after the merge.
 
 ## Risks and unknowns
 
