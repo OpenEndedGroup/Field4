@@ -387,6 +387,7 @@ class CommandLineTests(unittest.TestCase):
         result = self.run_tool("--base", str(self.fx.base), "--completed", str(path))
         self.assertEqual(result.returncode, 2)
         self.assertIn("outside every enabled retention family", result.stderr)
+        self.assertIn("--family agent-session", result.stderr, "say which flag would help")
         # ...and naming the family makes it work, still as a dry run.
         allowed = self.run_tool(
             "--base", str(self.fx.base), "--completed", str(path), "--family", "agent-session"
@@ -394,6 +395,15 @@ class CommandLineTests(unittest.TestCase):
         self.assertEqual(allowed.returncode, 0, allowed.stderr)
         self.assertIn("branches preserved", allowed.stdout)
         self.assertTrue(path.is_dir(), "dry run must leave the checkout alone")
+
+    def test_completed_on_a_protected_branch_does_not_suggest_a_flag(self) -> None:
+        """There is no flag, and hinting at one invites somebody to go looking for it."""
+        path = self.fx.add_worktree(self.fx.base, "journal", "nightly/journal", "2026-01-02T00:00:00+00:00")
+        result = self.run_tool("--base", str(self.fx.base), "--completed", str(path))
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("protected branch", result.stderr)
+        self.assertIn("no flag will", result.stderr)
+        self.assertNotIn("--family nightly", result.stderr)
 
 
 class ReportTests(unittest.TestCase):

@@ -584,9 +584,21 @@ def main() -> int:
         )
         if verdict.family is None or verdict.family.name not in enabled:
             if path in completed:
+                # Distinguish "you could enable a family for this" from "nothing will ever reach
+                # it": suggesting --family for a protected branch would be an invitation to try.
+                if tree.branch in PROTECTED_BRANCHES:
+                    parser.error(
+                        f"--completed worktree is on a protected branch: {path} ({tree.branch}). "
+                        f"No family reaches it and no flag will."
+                    )
+                offer = family_for(path, tree.branch, families)
+                hint = (
+                    f"Enable it with --family {offer.name}." if offer
+                    else "No retention family covers it; see --explain-policy."
+                )
                 parser.error(
                     f"--completed worktree is outside every enabled retention family: {path} "
-                    f"(branch {tree.branch}). Name its family with --family, or check the path."
+                    f"(branch {tree.branch}). {hint}"
                 )
             continue
         if not verdict.removable:
