@@ -152,14 +152,17 @@ ranks the two in opposite orders.
 import afield.manifold.*
 import afield.tetgen.*
 
+// The same bracket as the figure above, built in the same order — which matters more than it
+// looks like it should. See "the same solid, built in a different order" under Sizing.
 val part = Solid.scope {
+    val foot = Solid.cube(80.0, 40.0, 15.0)
+    val post = Solid.cube(15.0, 40.0, 70.0)
     val bolts = listOf(12.0, 28.0).map {
         Solid.cylinder(40.0, 5.0, segments = 48).translated(55.0, it, -5.0)
     }
     val eye = Solid.cylinder(60.0, 6.0, segments = 48)
         .rotated(0.0, 90.0, 0.0).translated(-20.0, 20.0, 52.0)
-    ((Solid.cube(80.0, 40.0, 15.0) + Solid.cube(15.0, 40.0, 70.0)) -
-        Solid.union(bolts + eye)).copy()
+    ((foot + post) - Solid.union(bolts + eye)).copy()
 }
 val surface = part.toTriMesh()
 val mesh = Tetgen.tetrahedralize(surface, targetEdgeLength = 3.0)
@@ -278,16 +281,34 @@ a mesh in place.
 configuration comes out at 430 ms there and 510 ms here. That spread is what a wall-clock median of a
 handful of runs on a laptop is worth; treat these as costs to plan with, not as a benchmark.)
 
-!!! note "The element count moves between sessions, and the mesher is not the reason"
-    TetGen is deterministic: the same surface meshed five times in one process, and in three
-    separate JVMs, gives the same 66,489 elements with the same worst element to six decimals. But
-    the figure at the top of this page — same code, run inside the docs capture rather than in a
-    test — reported 66,108. A third of a percent, on a surface built by the same three Booleans.
+!!! warning "The same solid, built in a different order, meshes differently"
+    TetGen is deterministic. The same surface, meshed five times in one process, three times in
+    separate JVMs, and once inside a live Field server, gives 66,489 elements every time with the
+    same worst element to six decimals.
 
-    The surface is what to suspect, not the mesh: the count depends on nothing else, so the
-    Boolean's vertex ordering must have differed between the two processes. The cutaway figure now
-    prints the surface's own digest for exactly this reason. Do not assert on an element count
-    across processes; assert on volume, on the sliver count, or on a quality percentile.
+    But *the order you wrote the Booleans in* changes the answer. These two build the same bracket:
+
+    ```
+    val holes = Solid.union(bolts + eye)                     // holes first
+    (Solid.cube(80.0, 40.0, 15.0) + Solid.cube(15.0, 40.0, 70.0)) - holes
+
+    val foot = Solid.cube(80.0, 40.0, 15.0)                  // blocks first
+    val post = Solid.cube(15.0, 40.0, 70.0)
+    (foot + post) - Solid.union(bolts + eye)
+    ```
+
+    Both give volume `76958.9090888672`, and their `TriMesh` **positions arrays are bit-identical**
+    — same digest, same order. The **index** arrays are not: the first triangle is `[0, 1, 53]` one
+    way and `[110, 109, 126]` the other. The wrapper turns each triangle into one TetGen facet in
+    the order given, and Delaunay refinement depends on insertion order, so the two produce
+    **66,489 and 66,108** elements with worst radius ratios `0.03618` and `0.03724`.
+
+    Neither is more correct. Both mesh to the same volume to six decimal places. But it means an
+    element count is not a property of your geometry, it is a property of your geometry *and the
+    expression that built it*. Assert on volume, on the sliver count, or on a quality percentile —
+    never on `cellCount`. Every figure on this page builds the bracket the same way for exactly
+    this reason, and the cutaway prints the surface digest so a mismatch is diagnosable rather than
+    mysterious.
 
 ## The sharp edge
 
@@ -370,26 +391,32 @@ val corner = Chart(title = "one corner of the z = 0 cross section",
                    xLabel = "x", yLabel = "y",
                    note = "a 0.24 x 0.24 window on a body 2 x 3 across. The true corner is at " +
                        "(1.0, 1.5); every level set cuts it off, and halving h halves what is left.")
-corner.width = 470.0; corner.height = 430.0
+corner.width = 780.0; corner.height = 440.0
 corner.xDomain = 0.82 to 1.06
 corner.yDomain = 1.32 to 1.56
 corner.line("the exact surface, and TetGen's",
-    exactCorner.map { it.x.toDouble() }, exactCorner.map { it.y.toDouble() }, thickness = 2.6)
+    exactCorner.map { it.x.toDouble() }, exactCorner.map { it.y.toDouble() },
+    color = vec(1.0, 0.72, 0.35, 1.0), thickness = 3.0)
 corners.forEach { (label, points) ->
-    corner.line(label, points.map { it.x.toDouble() }, points.map { it.y.toDouble() })
+    corner.line(label, points.map { it.x.toDouble() }, points.map { it.y.toDouble() },
+        thickness = 2.0)
 }
 
 // And the convergence, which is the actual finding: slope 1 on the box, slope 2 on the sphere.
 val rate = Chart(title = "worst boundary error against cell size",
                  xLabel = "cell size h", yLabel = "worst distance from the true surface",
                  note = "log-log. The box halves when h halves; the sphere quarters.")
-rate.width = 470.0; rate.height = 430.0
+rate.width = 780.0; rate.height = 440.0
 rate.xKind = ScaleKind.LOG; rate.yKind = ScaleKind.LOG
-rate.line("box — first order", sizes, boxError).points("box — first order", sizes, boxError)
-rate.line("sphere — second order", sizes, sphereError)
-    .points("sphere — second order", sizes, sphereError)
+val blue = vec(0.45, 0.85, 1.0, 1.0)
+val green = vec(0.55, 0.95, 0.55, 1.0)
+rate.line("box — first order", sizes, boxError, color = blue, thickness = 2.4)
+    .points("box — first order", sizes, boxError, color = blue, size = 4.5)
+rate.line("sphere — second order", sizes, sphereError, color = green, thickness = 2.4)
+    .points("sphere — second order", sizes, sphereError, color = green, size = 4.5)
 
-display("main", corner)
+// Two channels, not two displays on one: a second display on the same channel replaces the first.
+display("output", corner)
 display("main", rate)
 exactBox.close()
 ```

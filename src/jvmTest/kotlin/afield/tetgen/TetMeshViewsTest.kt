@@ -161,6 +161,57 @@ class TetMeshViewsTest {
             "cutaway kept ${half.cellCount} of ${mesh.cellCount}")
     }
 
+    /**
+     * The order the input solid was *built* in changes the mesh, and `public/docs/tetgen.md` says so.
+     *
+     * Found on 2026-09-09 by a docs capture reporting 66,108 elements where every test reported
+     * 66,489 — the two fences on that page had written the same bracket's Booleans in a different
+     * order. Manifold hands back bit-identical vertex *positions* either way and a different
+     * *index* order; `field_tetgen.cpp` makes one facet per triangle in the order given, and
+     * Delaunay refinement depends on insertion order.
+     *
+     * Asserted as an inequality on the counts and an equality on the volume, because that pair is
+     * the whole point: the two meshes are different and both are right.
+     */
+    @Test
+    fun theOrderTheSolidWasBuiltInChangesTheMeshButNotTheBody() {
+        if (!available()) return
+        fun bolts() = listOf(12.0, 28.0).map {
+            afield.manifold.Solid.cylinder(40.0, 5.0, segments = 48).translated(55.0, it, -5.0)
+        }
+        fun eye() = afield.manifold.Solid.cylinder(60.0, 6.0, segments = 48)
+            .rotated(0.0, 90.0, 0.0).translated(-20.0, 20.0, 52.0)
+
+        val blocksFirst = afield.manifold.Solid.scope {
+            val foot = afield.manifold.Solid.cube(80.0, 40.0, 15.0)
+            val post = afield.manifold.Solid.cube(15.0, 40.0, 70.0)
+            ((foot + post) - afield.manifold.Solid.union(bolts() + eye())).copy()
+        }
+        val holesFirst = afield.manifold.Solid.scope {
+            val holes = afield.manifold.Solid.union(bolts() + eye())
+            ((afield.manifold.Solid.cube(80.0, 40.0, 15.0) +
+                afield.manifold.Solid.cube(15.0, 40.0, 70.0)) - holes).copy()
+        }
+        val a = blocksFirst.toTriMesh()
+        val b = holesFirst.toTriMesh()
+
+        assertEquals(blocksFirst.volume, holesFirst.volume, 0.0, "the same body, exactly")
+        assertTrue(a.positions.contentEquals(b.positions),
+            "Manifold's vertex positions are expected to be bit-identical either way")
+        assertTrue(!a.indices.contentEquals(b.indices),
+            "if the index orders ever agree, this page's warning is obsolete — delete it")
+
+        val meshA = Tetgen.tetrahedralize(a, targetEdgeLength = 3.0)
+        val meshB = Tetgen.tetrahedralize(b, targetEdgeLength = 3.0)
+        assertTrue(meshA.cellCount != meshB.cellCount,
+            "expected different meshes, both got ${meshA.cellCount}")
+        assertTrue(abs(meshA.volume() - meshB.volume()) / meshA.volume() < 1e-9,
+            "and yet the same body: ${meshA.volume()} against ${meshB.volume()}")
+        println("blocks first ${meshA.cellCount} elements, holes first ${meshB.cellCount}, " +
+            "differing by ${"%.2f".format(100.0 * abs(meshA.cellCount - meshB.cellCount) / meshA.cellCount)}%")
+        blocksFirst.close(); holesFirst.close()
+    }
+
     @Test fun theRequestedQualityBoundIsHonouredByAlmostEveryElement() {
         if (!available()) return
         val cube = SimulationBox("c", SimulationBounds(0.0, 0.0, 0.0, 2.0, 3.0, 4.0))

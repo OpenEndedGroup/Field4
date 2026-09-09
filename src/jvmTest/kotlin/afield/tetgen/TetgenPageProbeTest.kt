@@ -119,6 +119,40 @@ class TetgenPageProbeTest {
         }
     }
 
+    @Test fun doesTheOrderTheSolidWasBuiltInChangeTheMesh() {
+        if (!available()) return
+        // Two constructions of the SAME solid, differing only in the order the operands are
+        // created. If Manifold's output vertex order depends on that, TetGen sees a different
+        // (equally valid) input and refines it differently — which would explain a docs capture
+        // reporting 66,108 elements where every test reports 66,489.
+        fun bolts() = listOf(12.0, 28.0).map {
+            Solid.cylinder(40.0, 5.0, segments = 48).translated(55.0, it, -5.0)
+        }
+        fun eye() = Solid.cylinder(60.0, 6.0, segments = 48)
+            .rotated(0.0, 90.0, 0.0).translated(-20.0, 20.0, 52.0)
+
+        val blocksFirst = Solid.scope {
+            val foot = Solid.cube(80.0, 40.0, 15.0)
+            val post = Solid.cube(15.0, 40.0, 70.0)
+            val holes = Solid.union(bolts() + eye())
+            ((foot + post) - holes).copy()
+        }
+        val holesFirst = Solid.scope {
+            val holes = Solid.union(bolts() + eye())
+            ((Solid.cube(80.0, 40.0, 15.0) + Solid.cube(15.0, 40.0, 70.0)) - holes).copy()
+        }
+        for ((label, solid) in listOf("blocks first" to blocksFirst, "holes first" to holesFirst)) {
+            val s = solid.toTriMesh()
+            val m = Tetgen.tetrahedralize(s, targetEdgeLength = 3.0)
+            println("$label: volume ${solid.volume}, positions ${s.positions.contentHashCode()}, " +
+                "indices ${s.indices.contentHashCode()}, first triangle " +
+                "${s.indices.take(3)}, ${m.nodeCount} nodes, ${m.cellCount} elements, " +
+                "worst quality ${"%.5f".format(m.qualities().min())}, " +
+                "volume ${"%.6f".format(m.volume())}")
+            solid.close()
+        }
+    }
+
     @Test fun isTetGenDeterministic() {
         if (!available()) return
         // The docs capture reported 66,108 elements where a test run of the same code reported
