@@ -142,6 +142,42 @@ def jep_library_path(repo_root: Path) -> Path:
     return named.parent.parent / "lib" / "pythonX.Y" / "site-packages" / "jep" / lib_names[0]
 
 
+def default_python_venv_to_this_tree(repo_root: Path) -> None:
+    """Make Python fences use the venv of the tree being built, not a machine-global one.
+
+    Field resolves its Python/JEP venv from ``~/.afield/python.properties``, which holds an
+    absolute path — on this machine, the primary checkout's ``.venv``. A docs build in any other
+    worktree therefore runs its Python fences against a *different* tree's interpreter, so what
+    the fences import is decided by a file outside the repo and a capture cannot be reproduced
+    from a clean checkout. Declaring a dependency in ``pyproject.toml``'s ``docs`` group does not
+    help, because the declaration lands in this tree's ``.venv`` and JEP never looks there.
+
+    So prefer this tree's own ``.venv`` when it exists and carries JEP. For the primary checkout
+    the two paths coincide and this changes nothing; for a worktree it makes the build
+    self-consistent. An explicit ``FIELD_PYTHON_*`` in the environment still wins.
+
+    Deliberately *not* guarded on ``VIRTUAL_ENV``/``CONDA_PREFIX``. In
+    ``PythonInterface.pythonConfigChoices`` those rank **below** the persisted welcome setting,
+    so an activated venv already loses to ``python.properties`` — and ``uv run`` always exports
+    ``VIRTUAL_ENV``, so treating it as intent would make this a no-op on every invocation.
+    ``FIELD_PYTHON_VENV`` is used because it is the one env var that ranks above the settings
+    file.
+    """
+    for var in ("FIELD_PYTHON_EXECUTABLE", "FIELD_PYTHON_VENV"):
+        if os.environ.get(var, "").strip():
+            return
+
+    venv = repo_root / ".venv"
+    interpreter = venv / ("Scripts" if os.name == "nt" else "bin") / "python3"
+    if not interpreter.exists():
+        return
+    if not list(venv.glob("lib/python*/site-packages/jep")):
+        return
+
+    os.environ["FIELD_PYTHON_VENV"] = str(venv)
+    os.environ["FIELD_PYTHON_EXECUTABLE"] = str(interpreter)
+
+
 NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
     "ceres": (ceres_library_path, "./gradlew buildCeresRedistributable"),
     "manifold": (manifold_library_path, "brew install manifold"),
@@ -506,6 +542,8 @@ def run(args: argparse.Namespace) -> int:
 
     sys.path.insert(0, str(public_dir))
     import docs_hooks  # type: ignore[import-not-found]
+
+    default_python_venv_to_this_tree(repo_root)
 
     check_native_prerequisites(
         public_dir=public_dir,

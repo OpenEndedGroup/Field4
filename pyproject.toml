@@ -16,7 +16,13 @@ backdoor = [
 docs = [
     "jedi>=0.19.2",
     "jep==4.3.1",
+    # The `python.md` fences run real Python through jep, which activates this venv's
+    # site-packages, so whatever those cells import has to be declared here. `numpy` and
+    # `plotly` are what `python-first-cell` and `python-plotly-embed` import; without them
+    # both captures fail with ModuleNotFoundError on any clean checkout.
+    "numpy>=1.26",
     "pillow>=10.0.0",
+    "plotly>=5.20.0",
     "pymdown-extensions>=11.0.0",
     "pyyaml>=6.0.0",
     "websockets>=15.0.0",
