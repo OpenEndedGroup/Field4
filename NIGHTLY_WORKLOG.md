@@ -143,4 +143,47 @@ fix: *"AgentTranscriptIndexGuard ok — 94 transcript(s), 94 entry/entries"*, 1m
 
 ## Risks and unknowns
 
+**Not verified, and each of these is a real gap rather than a formality:**
+
+- **The transcript has never been *run*, only compiled.** `COMPILE_ONLY` is the right
+  classification — a real sweep is minutes of container solver and does not belong in a CI harness
+  that already takes ten — but it means nothing in the automated corpus has ever seen this box's
+  sliders move, its figure appear in `display()`, or its cancel path taken. The pieces are covered
+  separately: the layer by `KratosStudyTest`, the solver path by `kratos.study.parameter-sweep`, the
+  box body by the K2 compile. Nothing covers the three composed, in a window, with a human dragging
+  the grid-size slider. That was never claimed and is not claimed now.
+- **No headless capture.** The figures in the docs are written by `runKratosStudy`, a CPU raster
+  encoded straight to PNG. There is no docs-capture recipe photographing the *box* running, the way
+  `kratos_structural_playground` has one. The index entry's image is therefore a picture of the
+  study layer's own output, not a picture of Field.
+- **`solveCount` counts attempts, not solves.** `KratosStudy.evaluate`'s catch increments `solves`
+  even when the failure happened before the worker was reached — a `plan` that throws, or the
+  formulation-mismatch `require`. The KDoc says "distinct designs actually sent to the worker",
+  which is true on every path a sweep normally takes and false for a study whose `plan` is buggy.
+  Cosmetic, in a diagnostic counter; worth an honest line rather than a fix at this hour.
+- **The optimiser's honest result is still a negative one.** A global search with no prior does not
+  beat a grid on a valley this thin, and the figure says so — every trace sits at or above the
+  `GRID BEST` floor. The refinement seeded from a coarse grid *does* win, which is the finding, but
+  a reader could take the convergence panel as evidence that the search arm works well. It works
+  correctly; it does not work impressively, and the panel is drawn so that is visible.
+- **One machine, one container image.** Everything measured here ran against
+  `localhost/field-kratos:10.4.0` under `linux/amd64` emulation on Apple silicon. Solve cost on any
+  other host is a guess.
+
 ## Recommendation
+
+**Merge.** The branch is on current `main`, it builds, its tests pass, its guard passes, and the one
+thing that was genuinely unverified when the last session died — whether the shipped box Kotlin
+compiles in a box rather than merely in the repo — has now been checked on the real path and passes.
+
+The reasons not to hold it back are that it adds a layer rather than changing one (nothing outside
+`afield/kratos/KratosStudy*` and the transcript's own files behaves differently because of it), and
+that its two riskiest claims are both self-checking: `kratos.study.parameter-sweep` fails if a sweep
+ever rebuilds the background grid or if the figure comes out blank, and the closed-form valley check
+in `runKratosStudy` fails if the measured minimum wanders from `k* = q·φ(arm)/(T − Tb)`.
+
+The one thing I would not do is treat the docs figure as maintained. It is a committed PNG produced
+by a task nobody runs on a schedule, and the first time the demo's geometry or target changes it
+will quietly become a picture of a different study. If this layer earns a second night, giving the
+figure a capture recipe — so that it regenerates and is *looked at* the way the graphics transcripts
+are — is the work worth doing before anything else is added to the layer itself.
