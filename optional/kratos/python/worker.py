@@ -176,12 +176,21 @@ class Session:
                 raise formulations.FormulationError(
                     f'{name} builds its own background grid; use createBackgroundDomain')
             positions, cells = request.get('positions'), request.get('cells')
+            # `nodesPerCell` is explicit rather than inferred from the block length, because a
+            # 4-node block and a 10-node one are both int32 and 20 linear elements is exactly as
+            # many bytes as 8 quadratic ones. Guessing would occasionally guess wrong and build a
+            # model that solves.
+            width = request.get('nodesPerCell', 4)
+            # `type is int` before the lookup: an unhashable value off the wire would raise
+            # TypeError out of `in` instead of the structured refusal every other bad field gets.
+            if type(width) is not int or width not in SuppliedMesh.WIDTHS:
+                raise ValueError('nodesPerCell must be 4 (linear) or 10 (quadratic), got %r' % (width,))
             if not isinstance(positions, bytes) or len(positions) % 24 != 0:
                 raise ValueError('positions must be a float64[nodeCount, 3] binary block')
-            if not isinstance(cells, bytes) or len(cells) % 16 != 0:
-                raise ValueError('cells must be an int32[cellCount, 4] binary block')
+            if not isinstance(cells, bytes) or len(cells) % (4 * width) != 0:
+                raise ValueError('cells must be an int32[cellCount, %d] binary block' % width)
             mesh = SuppliedMesh(np.frombuffer(positions, dtype='<f8').reshape(-1, 3),
-                                np.frombuffer(cells, dtype='<i4').reshape(-1, 4))
+                                np.frombuffer(cells, dtype='<i4').reshape(-1, width))
             self.formulation = formulations.create(name, mesh, request.get('formulationOptions'))
             self.grid = mesh
             self.domain = self.formulation
@@ -189,7 +198,7 @@ class Session:
             return {'backgroundId': mesh.id, 'buildCount': mesh.build_count,
                     'domainBuildMs': self.formulation.build_ms,
                     'nodeCount': mesh.node_count, 'cellCount': mesh.cell_count,
-                    'bounds': mesh.bounds,
+                    'nodesPerCell': mesh.nodes_per_cell, 'bounds': mesh.bounds,
                     'formulation': name, 'element': self.formulation.element,
                     'fields': self.formulation.fields()}
         if command == 'solve':

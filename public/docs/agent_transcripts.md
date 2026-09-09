@@ -971,6 +971,20 @@ to see that the answer is a flow and not a plausible picture. Install the worker
 Requires Manifold.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/kratos_flow_playground/metadata.edn)
 
+**kratos_structural_playground** — An L-bracket bending under load, and the argument for quadratic
+elements made as a picture rather than a table. Unlike the other two this one is **body-fitted**:
+Kratos has no immersed structural element, so TetGen tetrahedralizes the Manifold surface and the
+mesh goes to the worker, which means a geometry edit costs a remesh and a new session where the
+embedded playgrounds reclassify a grid they never rebuild. On launch it meshes the same bracket
+twice, once with 4-node tetrahedra and once with 10-node, solves both under the same 3 kN tip load,
+and draws the two deflected shapes beside the undeformed part, all coloured by von Mises stress. At
+the default settings 1681 tetrahedra give 0.187 mm against 0.232 mm — the linear element reaches 81%
+of the quadratic one's deflection, which is the constant-strain tetrahedron's locking seen directly,
+and dragging the arm longer makes the gap worse. Install the worker first with
+`uv sync --project optional/kratos --frozen`, or build its container where Kratos has no wheels;
+TetGen needs `python3 tools/build_tetgen_native.py` once. Requires Manifold.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/kratos_structural_playground/metadata.edn)
+
 **kratos_parameter_study** — The same worker and the same background grid, asked a question one
 solve cannot answer: which arm length and which conductivity put 294.15 K — one kelvin above the
 skin — at a chosen point inside the part? The box declares a two-axis design space and a scalar

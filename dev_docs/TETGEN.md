@@ -85,38 +85,107 @@ Three things in that build are load-bearing:
 One more, found the hard way while measuring: **TetGen truncates output filenames at the first
 dot**, so `body_h0.0625.off` writes its result to `body_h0.1.mesh`.
 
-## The structural formulation, and its one real limitation
+## The structural formulation
 
-`structural.bodyFitted` runs `SmallDisplacementElement3D4N` on the supplied mesh, with a clamp
-region, gravity, and a total force spread over a load region. `createBodyMesh` is the protocol verb;
+`structural.bodyFitted` runs a small-displacement element on the supplied mesh, with a clamp region,
+gravity, and a total force spread over a load region. `createBodyMesh` is the protocol verb;
 `KratosSession.openMeshAsync` is the Kotlin one.
 
-Validated against closed-form beam theory, and the two results say different things:
+The **mesh chooses the element**, not a parameter: a 4-node mesh gets
+`SmallDisplacementElement3D4N`, a 10-node one gets `SmallDisplacementElement3D10N`. There is nothing
+to configure because there is nothing to disagree about — asking for a quadratic element on a linear
+mesh is not a thing anyone wants, and a parameter would make it expressible.
 
-| case | 10x2x2 | 20x3x3 | 30x4x4 |
+Validated against closed-form beam theory. A 1 m × 0.1 m × 0.1 m cantilever, self-weight, tip
+deflection as a fraction of `wL⁴/8EI`:
+
+| mesh | tetrahedra | 4-node | 10-node |
 | --- | --- | --- | --- |
-| axial extension, `FL/EA` | 99.44% | 100.04% | — |
-| cantilever under self-weight, `wL⁴/8EI` | 35.6% | 62.0% | 75.9% |
+| 5×1×1 | 30 | 13.2% | **95.4%** |
+| 10×2×2 | 240 | 35.6% | 98.8% |
+| 20×3×3 | 1080 | 62.0% | 99.7% |
 
-Axial is right, which pins the material, the clamp, the point loads and the solver. Bending is the
-constant-strain tetrahedron **locking**, a known property of the element and not a fault in the
-model: it converges to the theory from below, and slowly.
+The linear element is the constant-strain tetrahedron **locking** — a known property of the element,
+not a fault in the model. It converges to the theory from below and so slowly that refining is not a
+route to a usable answer: it is still 38% short at 1080 elements. The quadratic element is within 5%
+at *thirty*. On the identical 864-tetrahedron TetGen mesh the smoke test measures 69.5% against
+99.8%.
 
-So: trust this for stiffness-dominated and axial problems, and read a bending deflection as a lower
-bound. The fix is quadratic tetrahedra — `SmallDisplacementElement3D10N` with TetGen's `-o2` — and
-it is the obvious next piece of work. The wrapper currently rejects anything but 4-node output, so
-that is a deliberate, visible gap rather than a silent one.
+Just under 100% is where the quadratic element should land, and is not a residual error to chase.
+Euler–Bernoulli omits shear, which for this aspect ratio adds 1.0% (Timoshenko), while the model
+clamps all three displacements over the whole end face, which is stiffer than beam theory assumes.
+The two nearly cancel.
+
+Axial extension, `FL/EA`, is the control that pins the material, the clamp, the point loads and the
+solver — a constant-strain tetrahedron represents constant strain with no error at all:
+
+| | 10×2×2 | 20×3×3 |
+| --- | --- | --- |
+| 4-node | 99.44% | 100.04% |
+| 10-node | 100.80% | 100.66% |
+
+The quadratic element is *less* exact here, and that is the load rather than the element. A total
+force is split equally over every node in the load region; for a 6-node triangular face the
+consistent split is nothing at the corners and a third at each midside, so an equal split is further
+from consistent on a quadratic mesh. The resultant is exact either way, so this is a local end
+effect — which is why it does not shrink with refinement the way the linear case's does, and why it
+does not touch bending, where the load is gravity.
+
+### TetGen's `-o2` is unusable from the library, so we do it ourselves
+
+`Tetgen.tetrahedralize(surface, order = 2)` tetrahedralizes normally and then calls
+`TetMesh.quadratic()`, which adds a node at the midpoint of every distinct edge. TetGen has a `-o2`
+that does exactly this, and **it cannot be called through `tetgenio`**
+(reproducer: `tools/tetgen_o2_use_after_free.py#def main`):
+
+> TetGen 1.6.0's `highorder()` stores each element's six extra nodes in a `highordertable` and then
+> `delete[]`s that table before returning, leaving every tetrahedron holding a dangling pointer into
+> it. `outelements()` then dereferences those pointers. From the command line it usually survives;
+> in library mode it does not, because `outelements()` allocates the output arrays first and the
+> allocator hands back the block just freed. The crash is a SIGSEGV whose faulting address is a
+> `double` bit pattern from the input body — `0xbfe3d70a40000040`, which is −0.62, a coordinate of
+> the test slab.
+
+The reproducer is what turns that from a reading of the source into a diagnosis. It builds the same
+cube twice from the same TetGen source, differing in one line: stock TetGen dies on SIGSEGV, and
+with `delete [] highordertable;` commented out and nothing else changed it returns 229 nodes and 104
+ten-node tetrahedra. Nothing in Field links it and no gate runs it; it is there to be re-run by
+whoever next wonders whether `-o2` would be simpler.
+
+Doing the promotion on our side is not really a workaround. `highorder()` places each node at the
+exact arithmetic midpoint of a straight edge, which is what `TetMesh.quadratic()` does; and building
+the edge table here means the six midside nodes come out in Kratos's `Tetrahedra3D10` order by
+construction, instead of having to be recovered from TetGen's internal `edge2ver`/`orgpivot` tables
+— which are not public, have changed between releases, and whose misreading produces an element that
+solves and is wrong.
+
+That last risk is why the ordering is checked twice and geometrically, rather than trusted:
+`TetgenTest.quadraticMidsideNodesAreWhereKratosExpectsThem` on the way out, and `SuppliedMesh` on the
+way in, at the worker. The two promotion implementations are deliberately separate, so a divergence
+is a test failure rather than a wrong answer.
+
+The cost is real but small: on the smoke's 864-element beam, 1717 nodes against 298, and assembly
+plus solve of 1.05 s against 0.20 s under x86-64 emulation. Against 62% versus 99.8% that is not a
+trade worth thinking about.
 
 ## Reproducing
 
 ```bash
 ./gradlew buildTetgenNative
 ./gradlew jvmTest --tests 'afield.tetgen.TetgenTest'
+```
+
+```bash
+python3 tools/run_field_tests.py --id kratos.structural.quadratic
+```
+
+```bash
 podman run --rm --platform linux/amd64 -v "$PWD/optional/kratos:/work:ro" -w /work \
   field-kratos:10.4.0 /opt/field-kratos-env/.venv/bin/python -m unittest discover -s /work/tests
 ```
 
-The two measurement harnesses that produced the tables above are not committed: they drive the
-`mmg3d_O3` and `tetgen` binaries over Medit files and depend on a local MMG build, which is not
-something the repository carries. The numbers they produced are here, and
-`optional/kratos/VERIFICATION.md` records the runs.
+The two mesher-comparison harnesses that produced the tables at the top are not committed: they
+drive the `mmg3d_O3` and `tetgen` binaries over Medit files and depend on a local MMG build, which is
+not something the repository carries. The numbers they produced are here, and
+`optional/kratos/VERIFICATION.md` records the runs. The beam tables above *are* reproducible from
+the commands here — they are what `StructuralTest` asserts.

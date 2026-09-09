@@ -307,6 +307,8 @@ object DemoTranscriptExecSmokeTest {
         // Persistent optional Kratos worker; exercised separately by the live playground check.
         "kratos_thermal_playground",
         "kratos_flow_playground",
+        // Also wants TetGen: it meshes the bracket here before the worker sees it.
+        "kratos_structural_playground",
         // The same worker, times fifty: a grid sweep is minutes of solver, so CI compiles it and
         // the `kratos.study.parameter-sweep` catalog entry runs the same code path at 3x3.
         "kratos_parameter_study",

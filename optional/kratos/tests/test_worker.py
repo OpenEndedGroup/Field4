@@ -236,6 +236,29 @@ def beam_mesh(nx, ny, nz, length=1.0, breadth=0.1, depth=0.1):
     return SuppliedMesh(pts, np.array(cells, dtype='<i4'))
 
 
+def promote(mesh):
+    """A 4-node mesh promoted to 10, the way `afield.tetgen.TetMesh.quadratic` does it on the JVM.
+
+    Deliberately a second implementation of the same convention rather than a shared helper. In
+    production the promotion happens in Kotlin and this side only receives the result, so if the two
+    ever disagree about which edge node 4+k bisects, these tests are what notices.
+    """
+    from background import SuppliedMesh
+    positions = [tuple(p) for p in mesh.positions]
+    midpoints = {}
+    cells = []
+    for cell in mesh.cells:
+        row = [int(c) for c in cell]
+        for a, b in SuppliedMesh.QUADRATIC_EDGES:
+            key = (min(row[a], row[b]), max(row[a], row[b]))
+            if key not in midpoints:
+                midpoints[key] = len(positions)
+                positions.append(tuple(0.5 * (mesh.positions[key[0]] + mesh.positions[key[1]])))
+            row.append(midpoints[key])
+        cells.append(row)
+    return SuppliedMesh(np.array(positions, dtype='<f8'), np.array(cells, dtype='<i4'))
+
+
 class StructuralTest(unittest.TestCase):
     """Body-fitted linear elasticity, against closed-form beam theory."""
 
@@ -293,6 +316,147 @@ class StructuralTest(unittest.TestCase):
         self.assertLess(fractions[0], fractions[1], 'refining must reduce the locking')
         self.assertLess(fractions[1], 1.05, 'a stiff element cannot exceed the theory')
         self.assertGreater(fractions[1], 0.5)
+
+    def test_quadratic_tetrahedra_cure_the_bending_lock(self):
+        """The reason 10-node elements exist here, measured on the case that exposed the problem.
+
+        Same beam, same load, same solver -- only the element order differs:
+
+            mesh      cells   4-node   10-node
+            5x1x1        30    13.2%     95.4%
+            10x2x2      240    35.6%     98.8%
+            20x3x3     1080    62.0%     99.7%
+
+        as a fraction of the Euler-Bernoulli tip deflection. The linear element is still 38% short
+        on the finest mesh; the quadratic one is within 5% on the coarsest, which is 30 elements.
+        Refining the linear mesh is not a route to the same place at any affordable size.
+
+        Just under 100% is where this should land, not a residual error to chase. Euler-Bernoulli
+        omits shear (Timoshenko adds 1.0% for this aspect ratio) and the model clamps all three
+        displacements over the whole end face, which is stiffer than the beam theory's assumption.
+        The two nearly cancel.
+        """
+        inertia = self.B * self.D ** 3 / 12.0
+        weight = self.RHO * self.G * self.B * self.D
+        analytic = weight * self.L ** 4 / (8 * self.E * inertia)
+        fractions = {}
+        for res in ((5, 1, 1), (10, 2, 2)):
+            for order in (1, 2):
+                mesh = beam_mesh(*res)
+                if order == 2:
+                    mesh = promote(mesh)
+                f = formulations.create('structural.bodyFitted', mesh)
+                arrays, diag = f.solve(young_modulus=self.E, poisson_ratio=self.NU,
+                                       density=self.RHO, gravity=(0., 0., -self.G),
+                                       clamp=self.CLAMP)
+                tip = mesh.positions[:, 0] > self.L - 1e-9
+                fractions[res, order] = abs(arrays['displacement'][tip, 2]).mean() / analytic
+                self.assertEqual(4 if order == 1 else 10, diag['nodesPerCell'])
+                self.assertEqual('SmallDisplacementElement3D%dN' % (4 if order == 1 else 10),
+                                 diag['element'])
+                self.assertEqual(len(arrays['vonMises']), mesh.cell_count)
+
+        report = ', '.join('%s order %d: %.1f%%' % (r, o, 100 * v)
+                           for (r, o), v in fractions.items())
+        for res in ((5, 1, 1), (10, 2, 2)):
+            self.assertGreater(fractions[res, 2], 0.90, report)
+            self.assertLess(fractions[res, 2], 1.05, 'a stiff element cannot exceed theory: ' + report)
+        # The whole claim in one line: the coarsest quadratic mesh beats the finest linear one.
+        self.assertGreater(fractions[(5, 1, 1), 2], fractions[(10, 2, 2), 1], report)
+        # And it still converges upward, so the remaining gap is discretisation and not a bug.
+        self.assertGreater(fractions[(10, 2, 2), 2], fractions[(5, 1, 1), 2], report)
+
+    def test_quadratic_axial_pays_for_the_inconsistent_end_load(self):
+        """Axial extension stays right, and gets slightly *less* exact than the linear element.
+
+        That is the load, not the element. A total force is split equally over every node in the
+        load region; for a 6-node triangular face the consistent split is nothing at the corners and
+        a third at each midside, so an equal split is further from consistent on a quadratic mesh
+        than on a linear one. The resultant is exact either way, so this is a local end effect --
+        which is why it does not shrink with refinement the way the linear case's does, and why it
+        does not matter for bending, where the load is gravity.
+        """
+        force = 1.0e4
+        exact = force * self.L / (self.E * self.B * self.D)
+        for res in ((10, 2, 2), (20, 3, 3)):
+            mesh = promote(beam_mesh(*res))
+            f = formulations.create('structural.bodyFitted', mesh)
+            arrays, diag = f.solve(young_modulus=self.E, poisson_ratio=self.NU, density=self.RHO,
+                                   gravity=(0., 0., 0.), clamp=self.CLAMP,
+                                   load_region=[self.L - 1e-9, -1, -1, self.L + 1e-9, 1, 1],
+                                   load=(force, 0., 0.))
+            tip = mesh.positions[:, 0] > self.L - 1e-9
+            ratio = arrays['displacement'][tip, 0].mean() / exact
+            self.assertLess(diag['relativeLinearResidual'], 1e-7)
+            self.assertLess(abs(ratio - 1.0), 0.015, '%s quadratic axial: %f' % (res, ratio))
+
+    def test_createBodyMesh_carries_the_width_rather_than_inferring_it(self):
+        """The wire path, where a 4-node block and a 10-node one are both just int32.
+
+        20 linear elements and 8 quadratic ones are the same number of bytes, so the width has to be
+        stated. A worker that guessed would occasionally guess wrong and build a model that solves.
+        """
+        mesh = promote(beam_mesh(2, 1, 1))
+        payload = dict(formulation='structural.bodyFitted',
+                       positions=mesh.positions.astype('<f8').tobytes(),
+                       cells=mesh.cells.astype('<i4').tobytes())
+        session = Session()
+        created = session.dispatch(request('createBodyMesh', nodesPerCell=10, **payload))
+        self.assertEqual(10, created['nodesPerCell'])
+        self.assertEqual(mesh.cell_count, created['cellCount'])
+        self.assertEqual('SmallDisplacementElement3D10N', created['element'])
+
+        # And here is why it has to be stated. The same bytes read as 4-node are a whole number of
+        # elements, every index is in range, and nothing objects: the worker builds 30 tetrahedra
+        # out of 12 elements' worth of connectivity and would go on to solve them. There is no check
+        # available on this side that could catch it -- which is what the width on the wire, and
+        # KratosSession.openMeshAsync verifying it in the reply, are for.
+        self.assertEqual(0, len(payload['cells']) % 16)
+        misread = Session().dispatch(request('createBodyMesh', nodesPerCell=4, **payload))
+        self.assertEqual(30, misread['cellCount'])
+        self.assertNotEqual(created['cellCount'], misread['cellCount'])
+
+        for bad in (0, 6, 'ten', None):
+            with self.assertRaisesRegex(ValueError, 'nodesPerCell must be'):
+                Session().dispatch(request('createBodyMesh', nodesPerCell=bad, **payload))
+
+    def test_the_mesh_chooses_the_element_and_a_bad_width_is_refused(self):
+        from background import SuppliedMesh
+        linear = beam_mesh(2, 1, 1)
+        self.assertEqual(4, linear.nodes_per_cell)
+        self.assertEqual(10, promote(linear).nodes_per_cell)
+        self.assertEqual('SmallDisplacementElement3D4N',
+                         formulations.create('structural.bodyFitted', linear).element)
+        self.assertEqual('SmallDisplacementElement3D10N',
+                         formulations.create('structural.bodyFitted', promote(linear)).element)
+        # A width nobody has an element for is a refusal, not a silently reshaped array.
+        with self.assertRaises(ValueError):
+            SuppliedMesh(linear.positions, np.zeros((3, 8), dtype='<i4'))
+        # And the embedded formulations stay linear-only: there is no 10-node embedded element.
+        with self.assertRaisesRegex(formulations.FormulationError, '4-node'):
+            formulations.create(formulations.DEFAULT, promote(linear))
+
+    def test_a_misordered_quadratic_mesh_is_refused_rather_than_solved(self):
+        """The failure this convention has to be protected from.
+
+        A 10-node element whose midside nodes are attached to the wrong edges assembles, solves, and
+        returns a plausible displacement field that is wrong. Nothing downstream can tell. So the
+        mesh is checked on arrival instead: every node 4..9 must be on the midpoint of the edge
+        Kratos's Tetrahedra3D10 will pair it with.
+        """
+        from background import SuppliedMesh
+        good = promote(beam_mesh(2, 1, 1))
+        # Swap two midside nodes of one element -- geometrically a tiny change, and exactly the
+        # shape of a mistake in reading a mesher's edge numbering.
+        cells = good.cells.copy()
+        cells[0, 4], cells[0, 9] = cells[0, 9], cells[0, 4]
+        with self.assertRaisesRegex(ValueError, 'Tetrahedra3D10 node order'):
+            SuppliedMesh(good.positions, cells)
+        # Nudging a midside node off its edge is caught too, and the message names the element.
+        positions = good.positions.copy()
+        positions[good.cells[0, 5]] += 1e-3
+        with self.assertRaisesRegex(ValueError, 'not on the midpoint of edge'):
+            SuppliedMesh(positions, good.cells)
 
     def test_a_body_fitted_solve_refuses_a_level_set(self):
         mesh = beam_mesh(4, 1, 1)

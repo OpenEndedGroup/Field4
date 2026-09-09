@@ -118,26 +118,64 @@ class SuppliedMesh:
 
     It has no `classify`: there is no level set, and a formulation that asks for one is confused
     about which half of the bridge it is in.
+
+    Cells are 4 or 10 nodes wide. The 10-node case comes from `afield.tetgen.TetMesh.quadratic` on
+    the JVM side, already in Kratos's `Tetrahedra3D10` node order -- corners first, then the
+    midpoints of edges (0,1), (1,2), (0,2), (0,3), (1,3), (2,3). Nothing here re-derives that order;
+    the check below is only that the extra nodes really are those midpoints, which is cheap and
+    catches a mesh assembled against some other convention before it becomes a wrong answer.
     """
+
+    #: Nodes per tetrahedron this class accepts, and the Kratos geometry each means.
+    WIDTHS = {4: 'Tetrahedra3D4', 10: 'Tetrahedra3D10'}
+
+    #: Corner pairs bisected by nodes 4..9 of a 10-node tetrahedron, in Kratos order.
+    QUADRATIC_EDGES = ((0, 1), (1, 2), (0, 2), (0, 3), (1, 3), (2, 3))
 
     def __init__(self, positions, cells):
         self.positions = np.ascontiguousarray(positions, dtype='<f8')
         self.cells = np.ascontiguousarray(cells, dtype='<i4')
         if self.positions.ndim != 2 or self.positions.shape[1] != 3:
             raise ValueError('positions must be an (n, 3) float64 array')
-        if self.cells.ndim != 2 or self.cells.shape[1] != 4:
-            raise ValueError('cells must be an (m, 4) int32 array of tetrahedra')
+        if self.cells.ndim != 2 or self.cells.shape[1] not in self.WIDTHS:
+            raise ValueError('cells must be an (m, 4) or (m, 10) int32 array of tetrahedra')
         if len(self.positions) < 4 or len(self.cells) < 1:
             raise ValueError('a tetrahedral mesh needs at least 4 nodes and 1 element')
         if not np.isfinite(self.positions).all():
             raise ValueError('positions must all be finite')
         if self.cells.min() < 0 or self.cells.max() >= len(self.positions):
             raise ValueError('a cell references a node outside the mesh')
+        if self.nodes_per_cell == 10:
+            self._check_midside_nodes()
         self.id = str(uuid.uuid4())
         self.build_count = 1
         self.build_ms = 0.0
         lo, hi = self.positions.min(axis=0), self.positions.max(axis=0)
         self.bounds = [*lo.tolist(), *hi.tolist()]
+
+    def _check_midside_nodes(self):
+        """Every node 4..9 sits at the midpoint of the edge Kratos will assume it does.
+
+        A quadratic element built from mis-ordered nodes does not fail: it assembles, it solves, and
+        it returns a plausible field that is wrong. This is the one place that can still catch it,
+        and it costs one vectorised subtraction per edge.
+        """
+        p = self.positions[self.cells]
+        # Scale the tolerance to each element, so a millimetre part and a kilometre one are held to
+        # the same relative standard. The agreement is exact in practice; this is slack for a mesh
+        # that arrived through a lossy round trip rather than straight from the mesher.
+        scale = np.ptp(p[:, :4, :], axis=1).max(axis=1) + np.finfo(float).tiny
+        for k, (a, b) in enumerate(self.QUADRATIC_EDGES):
+            error = np.abs(p[:, 4 + k, :] - 0.5 * (p[:, a, :] + p[:, b, :])).max(axis=1)
+            bad = error > 1e-9 * scale
+            if bad.any():
+                raise ValueError(
+                    'node %d of element %d is not on the midpoint of edge (%d, %d); a 10-node mesh '
+                    'must use Kratos Tetrahedra3D10 node order' % (4 + k, int(np.argmax(bad)), a, b))
+
+    @property
+    def nodes_per_cell(self):
+        return self.cells.shape[1]
 
     @property
     def node_count(self):
@@ -158,6 +196,10 @@ class BackgroundGrid:
     6*n**3 tetrahedra: each cube is split by the six permutations of the x/y/z traversal order
     (Freudenthal), which conforms across cell faces without any bookkeeping.
     """
+
+    #: A Freudenthal grid is always linear tetrahedra: the embedded elements have no higher-order
+    #: form, and the whole point of the background grid is that it never changes.
+    nodes_per_cell = 4
 
     def __init__(self, bounds, resolution, max_resolution=32):
         start = time.perf_counter()

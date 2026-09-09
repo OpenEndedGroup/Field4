@@ -61,43 +61,136 @@ object Tetgen {
      * @param preserveSurface forbid Steiner points on the boundary (TetGen's `-Y`). Helps a finely
      *   tessellated convex surface, and hurts a boolean result badly — 109 poor elements against 1
      *   on the measured body. Off unless you have measured your own case.
+     * @param order 1 for 4-node linear tetrahedra, 2 for 10-node quadratic ones. See [TetMesh] for
+     *   what that buys and what it costs; for structural bending it is the difference between a
+     *   deflection that is 76% of the truth and one that is within a percent of it. Order 2 is
+     *   [TetMesh.quadratic] applied to the same tetrahedralization, not a different mesh.
      */
     fun tetrahedralize(
         surface: TriMesh,
         quality: Double = 1.2,
         targetEdgeLength: Double? = null,
         preserveSurface: Boolean = false,
+        order: Int = 1,
     ): TetMesh {
         require(!surface.isEmpty) { "Cannot tetrahedralize an empty surface" }
         require(quality > 1.0) { "quality must exceed 1.0, got $quality" }
+        require(order == 1 || order == 2) { "order must be 1 (4-node) or 2 (10-node), got $order" }
         targetEdgeLength?.let { require(it > 0 && it.isFinite()) { "targetEdgeLength must be positive" } }
         // A regular tetrahedron of edge h has volume h^3/(6*sqrt 2); that is how "about this size"
         // is spelled to TetGen, which only takes a volume bound.
         val maxVolume = targetEdgeLength?.let { it * it * it / (6.0 * Math.sqrt(2.0)) } ?: 0.0
-        return TetgenNative.tetrahedralize(surface, quality, maxVolume, preserveSurface)
+        val linear = TetgenNative.tetrahedralize(surface, quality, maxVolume, preserveSurface)
+        return if (order == 2) linear.quadratic() else linear
     }
 }
 
 /**
- * A tetrahedral mesh: [positions] as xyz triples, [cells] as zero-based node index quadruples.
+ * A tetrahedral mesh: [positions] as xyz triples, [cells] as groups of [nodesPerCell] zero-based
+ * node indices.
  *
  * The same flat layout the Kratos worker uses on the wire, so this crosses the protocol without
  * being reshaped.
+ *
+ * # Linear and quadratic
+ *
+ * [nodesPerCell] is 4 or 10. The *shape* is identical either way — a 10-node tetrahedron's six
+ * extra nodes sit at the exact midpoints of its straight edges, so the mesh occupies the same
+ * region and its boundary is the same faceted surface. What changes is the interpolation: a 4-node
+ * tetrahedron has constant strain, which makes it far too stiff in bending. `dev_docs/TETGEN.md`
+ * has the beam measurement.
+ *
+ * The extra nodes follow Kratos's `Tetrahedra3D10` order, which is also VTK's: node 4 bisects edge
+ * (0,1), then (1,2), (0,2), (0,3), (1,3), (2,3).
+ *
+ * Anything that only wants the shape — volume, the boundary surface, a picture — reads the first
+ * four indices of each cell and ignores the rest; [corners] is that view.
  */
-class TetMesh(val positions: DoubleArray, val cells: IntArray) {
+class TetMesh(val positions: DoubleArray, val cells: IntArray, val nodesPerCell: Int = 4) {
     init {
         require(positions.size % 3 == 0) { "positions must be xyz triples, got ${positions.size}" }
-        require(cells.size % 4 == 0) { "cells must be tetrahedra, got ${cells.size}" }
+        require(nodesPerCell == 4 || nodesPerCell == 10) {
+            "a tetrahedron has 4 nodes or 10, not $nodesPerCell"
+        }
+        require(cells.size % nodesPerCell == 0) {
+            "cells must be groups of $nodesPerCell, got ${cells.size}"
+        }
         val n = positions.size / 3
         require(cells.all { it in 0 until n }) { "a cell references a node outside the mesh" }
     }
 
     val nodeCount: Int get() = positions.size / 3
-    val cellCount: Int get() = cells.size / 4
+    val cellCount: Int get() = cells.size / nodesPerCell
+
+    /** True for 10-node tetrahedra. */
+    val isQuadratic: Boolean get() = nodesPerCell == 10
+
+    /**
+     * The same mesh seen as 4-node tetrahedra, dropping any midside nodes from the connectivity.
+     *
+     * The node array is untouched, so a quadratic mesh's midside nodes stay in [positions] and are
+     * simply unreferenced. Returns `this` when there was nothing to drop.
+     */
+    fun corners(): TetMesh {
+        if (!isQuadratic) return this
+        val linear = IntArray(4 * cellCount) { cells[nodesPerCell * (it / 4) + it % 4] }
+        return TetMesh(positions, linear, 4)
+    }
+
+    /**
+     * The same tetrahedra promoted to 10 nodes, with one new node at the midpoint of every distinct
+     * edge. Returns `this` if it is already quadratic.
+     *
+     * # Why this is here and not in TetGen
+     *
+     * TetGen has a `-o2` for exactly this, and it cannot be used from the library. TetGen 1.6.0's
+     * `highorder()` stores each element's six extra nodes in a `highordertable` and then
+     * `delete[]`s that table before returning, leaving every tetrahedron holding a dangling
+     * pointer. Driven from the command line it usually survives; driven through `tetgenio` it does
+     * not, because `outelements()` allocates the output node array first and the allocator hands
+     * back the block just freed — so TetGen reads its own coordinates as pointers. The crash is a
+     * SIGSEGV on an address that is a `double` bit pattern from the input body.
+     *
+     * `tools/tetgen_o2_use_after_free.py` reproduces that from scratch and pins the cause: the same
+     * cube built twice from the same TetGen source, dying on SIGSEGV as shipped and succeeding with
+     * that one `delete[]` commented out.
+     *
+     * Doing it here is not a workaround so much as a simplification. `highorder()` places each node
+     * at the exact arithmetic midpoint of a straight edge, which is what this does; and building
+     * the table on this side means the six midside nodes are emitted in Kratos's `Tetrahedra3D10`
+     * order by construction, instead of being recovered from TetGen's internal edge numbering.
+     */
+    fun quadratic(): TetMesh {
+        if (isQuadratic) return this
+        // Sorted node pair -> the index of the node bisecting it. One entry per distinct edge, so
+        // adjacent tetrahedra share a midside node and the mesh stays conforming.
+        val midpoints = HashMap<Long, Int>(cellCount * 8)
+        val extra = ArrayList<Double>(cellCount * 9)
+        fun midpointOf(a: Int, b: Int): Int {
+            val key = (minOf(a, b).toLong() shl 32) or maxOf(a, b).toLong()
+            return midpoints.getOrPut(key) {
+                for (c in 0 until 3) extra.add(0.5 * (positions[3 * a + c] + positions[3 * b + c]))
+                nodeCount + extra.size / 3 - 1
+            }
+        }
+        val promoted = IntArray(10 * cellCount)
+        for (t in 0 until cellCount) {
+            val corner = IntArray(4) { cells[4 * t + it] }
+            for (k in 0 until 4) promoted[10 * t + k] = corner[k]
+            for ((k, edge) in QUADRATIC_EDGES.withIndex()) {
+                promoted[10 * t + 4 + k] = midpointOf(corner[edge[0]], corner[edge[1]])
+            }
+        }
+        val grown = positions.copyOf(positions.size + extra.size)
+        for (i in extra.indices) grown[positions.size + i] = extra[i]
+        return TetMesh(grown, promoted, 10)
+    }
 
     /** Signed volume of every tetrahedron; all positive for a consistently oriented mesh. */
     fun volumes(): DoubleArray = DoubleArray(cellCount) { t ->
-        fun at(k: Int, c: Int) = positions[3 * cells[4 * t + k] + c]
+        // Corners only. With straight edges the midside nodes carry no extra shape, so this is the
+        // exact volume of a quadratic element too.
+        fun at(k: Int, c: Int) = positions[3 * cells[nodesPerCell * t + k] + c]
         val ax = at(1, 0) - at(0, 0); val ay = at(1, 1) - at(0, 1); val az = at(1, 2) - at(0, 2)
         val bx = at(2, 0) - at(0, 0); val by = at(2, 1) - at(0, 1); val bz = at(2, 2) - at(0, 2)
         val cx = at(3, 0) - at(0, 0); val cy = at(3, 1) - at(0, 1); val cz = at(3, 2) - at(0, 2)
@@ -107,7 +200,18 @@ class TetMesh(val positions: DoubleArray, val cells: IntArray) {
     /** Total volume — worth asserting against `Solid.volume`, which is exact. */
     fun volume(): Double = volumes().sumOf { Math.abs(it) }
 
-    override fun toString(): String = "TetMesh($nodeCount nodes, $cellCount tetrahedra)"
+    override fun toString(): String =
+        "TetMesh($nodeCount nodes, $cellCount ${if (isQuadratic) "quadratic " else ""}tetrahedra)"
+
+    companion object {
+        /**
+         * The corner pairs bisected by nodes 4..9 of a 10-node tetrahedron, in the order Kratos's
+         * `Tetrahedra3D10` and VTK's `VTK_QUADRATIC_TETRA` both number them.
+         */
+        val QUADRATIC_EDGES: List<IntArray> = listOf(
+            intArrayOf(0, 1), intArrayOf(1, 2), intArrayOf(0, 2),
+            intArrayOf(0, 3), intArrayOf(1, 3), intArrayOf(2, 3))
+    }
 }
 
 /** Thrown when TetGen refuses a surface, carrying its own explanation. */
