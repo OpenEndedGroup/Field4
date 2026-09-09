@@ -5,6 +5,7 @@ import afield.manifold.ManifoldLibrary
 import afield.manifold.Solid
 import afield.stdlib.MeshView
 import afield.stdlib.TriMesh
+import afield.stdlib.Vec2
 import afield.stdlib.boundsOf
 import afield.stdlib.vec
 import kotlin.math.abs
@@ -12,6 +13,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sqrt
 import kotlin.test.Test
+import kotlin.test.assertTrue
 
 /**
  * The bodies of `public/docs/tetgen.md`'s three runner fences, minus the `show…` calls that need a
@@ -179,6 +181,70 @@ class TetgenPageFenceDryRunTest {
                     }))
             }
         }
+
+        // The clip the page's fence applies before charting, rehearsed for the reason the clip
+        // exists: a Chart draws points outside its own domain anyway and the box output panel fits
+        // the result, so one unclipped outline shrinks the whole figure to a stamp in the corner.
+        // That failure is invisible in a green build and cost a capture on 2026-09-09. Every
+        // coordinate below must be inside the window or a break.
+        val (ex, ey) = clippedToWindow(exactCorner)
+        val exFinite = ex.filter { it.isFinite() }
+        val eyFinite = ey.filter { it.isFinite() }
+        println("clipped exact: ${exFinite.size} points, ${ex.count { it.isNaN() }} breaks, " +
+            "x ${"%.4f".format(exFinite.min())}..${"%.4f".format(exFinite.max())}, " +
+            "y ${"%.4f".format(eyFinite.min())}..${"%.4f".format(eyFinite.max())}")
+        assertTrue(exFinite.all { it >= 0.82 - 1e-9 && it <= 1.06 + 1e-9 }, "exact x outside the window")
+        assertTrue(eyFinite.all { it >= 1.32 - 1e-9 && it <= 1.56 + 1e-9 }, "exact y outside the window")
+        for (h in listOf(0.4, 0.2, 0.1)) {
+            Solid.levelSet(bounds, h, parallel = true) { x, y, z -> -boxDistance(x, y, z) }.use { b ->
+                val (cx, cy) = clippedToWindow(b.slice(0.0).toPolygons().first())
+                val fx = cx.filter { it.isFinite() }
+                val fy = cy.filter { it.isFinite() }
+                println("  clipped h = $h: ${fx.size} points in the window, " +
+                    "x ${"%.4f".format(fx.min())}..${"%.4f".format(fx.max())}, " +
+                    "y ${"%.4f".format(fy.min())}..${"%.4f".format(fy.max())}")
+                assertTrue(fx.isNotEmpty(), "h = $h left nothing in the window")
+                assertTrue(fx.all { it >= 0.82 - 1e-9 && it <= 1.06 + 1e-9 }, "x outside the window at h = $h")
+                assertTrue(fy.all { it >= 1.32 - 1e-9 && it <= 1.56 + 1e-9 }, "y outside the window at h = $h")
+            }
+        }
         exactBox.close()
+    }
+
+    /**
+     * The clip `public/docs/tetgen.md`'s sharp-edge fence applies, line for line.
+     *
+     * Liang–Barsky against the chart's own window, with a `NaN` between disjoint runs so that one
+     * outline stays one series and one legend entry. It is here as well as in the page because it is
+     * the one piece of that fence whose failure is a layout failure rather than an exception.
+     */
+    private fun clippedToWindow(loop: List<Vec2>): Pair<List<Double>, List<Double>> {
+        val xLo = 0.82; val xHi = 1.06; val yLo = 1.32; val yHi = 1.56
+        val xs = mutableListOf<Double>()
+        val ys = mutableListOf<Double>()
+        for (i in loop.indices) {
+            val a = loop[i]
+            val b = loop[(i + 1) % loop.size]
+            val ax = a.x.toDouble(); val ay = a.y.toDouble()
+            val dx = b.x.toDouble() - ax; val dy = b.y.toDouble() - ay
+            val edge = doubleArrayOf(-dx, dx, -dy, dy)
+            val slack = doubleArrayOf(ax - xLo, xHi - ax, ay - yLo, yHi - ay)
+            var t0 = 0.0
+            var t1 = 1.0
+            var outside = false
+            for (k in 0..3) {
+                if (edge[k] == 0.0) { if (slack[k] < 0.0) outside = true }
+                else {
+                    val t = slack[k] / edge[k]
+                    if (edge[k] < 0.0 && t > t0) t0 = t
+                    if (edge[k] > 0.0 && t < t1) t1 = t
+                }
+            }
+            if (outside || t0 > t1) continue
+            if (xs.isNotEmpty()) { xs += Double.NaN; ys += Double.NaN }
+            xs += ax + t0 * dx; ys += ay + t0 * dy
+            xs += ax + t1 * dx; ys += ay + t1 * dy
+        }
+        return xs to ys
     }
 }

@@ -45,6 +45,45 @@ class TetgenPageMeasurementTest {
         return mesh to times.sorted()[repeats / 2]
     }
 
+    /**
+     * What `order = 2` costs on the page's bracket, in nodes and in milliseconds.
+     *
+     * Kept separate from the sweep below because it is quick and gets re-run on its own. Measured on
+     * the bracket rather than on a cube because the node growth is set by the mesh's edge-to-cell
+     * ratio, and a body with three bores in it does not have a cube's.
+     */
+    @Test
+    fun printWhatTenNodeElementsCost() {
+        if (!available()) {
+            println("SKIPPED: ${TetgenLibrary.describe()} / ${ManifoldLibrary.describe()}")
+            return
+        }
+        bracket().use { part ->
+            val surface = part.toTriMesh()
+            for (edge in listOf(5.0, 3.0)) {
+                val t0 = System.nanoTime()
+                val linear = Tetgen.tetrahedralize(surface, targetEdgeLength = edge)
+                val meshMs = (System.nanoTime() - t0) / 1e6
+                val t1 = System.nanoTime()
+                val quadratic = linear.quadratic()
+                val promoteMs = (System.nanoTime() - t1) / 1e6
+                val viaArgument = Tetgen.tetrahedralize(surface, targetEdgeLength = edge, order = 2)
+                println("edge $edge -> ${linear.cellCount} tetrahedra")
+                println("   nodes ${linear.nodeCount} -> ${quadratic.nodeCount} " +
+                    "(x${"%.2f".format(quadratic.nodeCount.toDouble() / linear.nodeCount)}), " +
+                    "cells ${quadratic.cellCount} at ${quadratic.nodesPerCell} nodes each")
+                println("   mesh ${"%.0f".format(meshMs)} ms, promote ${"%.0f".format(promoteMs)} ms")
+                println("   volume ${linear.volume()} -> ${quadratic.volume()}")
+                println("   order = 2 argument agrees: ${viaArgument.nodeCount} nodes, " +
+                    "${viaArgument.cellCount} cells, volume ${viaArgument.volume()}")
+                println("   corners() -> ${quadratic.corners().nodesPerCell} nodes per cell, " +
+                    "node array shared ${quadratic.corners().positions === quadratic.positions}")
+                println("   quality identical through the promotion: " +
+                    "${linear.qualities().contentEquals(quadratic.qualities())}")
+            }
+        }
+    }
+
     @Test fun printEveryNumberThePageQuotes() {
         if (!available()) {
             println("SKIPPED: ${TetgenLibrary.describe()} / ${ManifoldLibrary.describe()}")

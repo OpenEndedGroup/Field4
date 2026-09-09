@@ -386,20 +386,57 @@ println("  worst node outside the true box: " +
 
 // One corner of the true cross section, magnified. The exact outline is what TetGen is given and
 // what its boundary reproduces; each level set is a different rounded approximation of it.
-val exactCorner = exactBox.slice(0.0).toPolygons().first()
+//
+// Clip to the window before charting, and this is not cosmetic. A Chart maps every point it is
+// given into frame pixels and does NOT clip to its own axes, and a box output panel then fits
+// whatever geometry it receives. Hand a cross section 2 x 3 across to a 0.24 x 0.24 window and the
+// outline lands some five thousand pixels outside a 780 x 440 frame; the fit shrinks the figure
+// until that fits, and the axes end up an illegible stamp in one corner. A non-finite point breaks
+// the polyline, so the pieces of one outline stay one series with one legend entry.
+val xLo = 0.82; val xHi = 1.06; val yLo = 1.32; val yHi = 1.56
+fun clippedToWindow(loop: List<Vec2>): Pair<List<Double>, List<Double>> {
+    val xs = mutableListOf<Double>()
+    val ys = mutableListOf<Double>()
+    for (i in loop.indices) {
+        val a = loop[i]
+        val b = loop[(i + 1) % loop.size]
+        val ax = a.x.toDouble(); val ay = a.y.toDouble()
+        val dx = b.x.toDouble() - ax; val dy = b.y.toDouble() - ay
+        // Liang–Barsky: the parameter interval of this segment that lies inside the window.
+        val edge = doubleArrayOf(-dx, dx, -dy, dy)
+        val slack = doubleArrayOf(ax - xLo, xHi - ax, ay - yLo, yHi - ay)
+        var t0 = 0.0
+        var t1 = 1.0
+        var outside = false
+        for (k in 0..3) {
+            if (edge[k] == 0.0) { if (slack[k] < 0.0) outside = true }
+            else {
+                val t = slack[k] / edge[k]
+                if (edge[k] < 0.0 && t > t0) t0 = t
+                if (edge[k] > 0.0 && t < t1) t1 = t
+            }
+        }
+        if (outside || t0 > t1) continue
+        if (xs.isNotEmpty()) { xs += Double.NaN; ys += Double.NaN }
+        xs += ax + t0 * dx; ys += ay + t0 * dy
+        xs += ax + t1 * dx; ys += ay + t1 * dy
+    }
+    return xs to ys
+}
+
+val exactCorner = clippedToWindow(exactBox.slice(0.0).toPolygons().first())
 val corner = Chart(title = "one corner of the z = 0 cross section",
                    xLabel = "x", yLabel = "y",
                    note = "a 0.24 x 0.24 window on a body 2 x 3 across. The true corner is at " +
                        "(1.0, 1.5); every level set cuts it off, and halving h halves what is left.")
 corner.width = 780.0; corner.height = 440.0
-corner.xDomain = 0.82 to 1.06
-corner.yDomain = 1.32 to 1.56
-corner.line("the exact surface, and TetGen's",
-    exactCorner.map { it.x.toDouble() }, exactCorner.map { it.y.toDouble() },
+corner.xDomain = xLo to xHi
+corner.yDomain = yLo to yHi
+corner.line("the exact surface, and TetGen's", exactCorner.first, exactCorner.second,
     color = vec(1.0, 0.72, 0.35, 1.0), thickness = 3.0)
 corners.forEach { (label, points) ->
-    corner.line(label, points.map { it.x.toDouble() }, points.map { it.y.toDouble() },
-        thickness = 2.0)
+    val clipped = clippedToWindow(points)
+    corner.line(label, clipped.first, clipped.second, thickness = 2.0)
 }
 
 // And the convergence, which is the actual finding: slope 1 on the box, slope 2 on the sphere.
