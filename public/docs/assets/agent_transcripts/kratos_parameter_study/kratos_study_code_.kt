@@ -1,4 +1,6 @@
 import afield.frames
+import afield.markdown
+import afield.mdEscape
 import afield.kratos.*
 import afield.manifold.ManifoldLibrary
 import afield.stdlib.MeshRenderer
@@ -7,6 +9,7 @@ import afield.stdlib.showMeshGrid
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
+
 
 // Launch (Alt-R), then press "Sweep the grid".
 // Install once: uv sync --project optional/kratos --frozen
@@ -37,11 +40,11 @@ controlGroup("controls") {
 }
 displayOpen("controls")
 
-fun safe(value: Any?): String =
-    value.toString().replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+// Everything this box says is markdown, so it goes through the markdown card. `display` with a
+// hand-rolled div would show the `###` and the `**` literally, and would not theme with the rest
+// of the output.
 fun status(text: String) {
-    display("status", "<div id='kratos-study-status' style='padding:12px;max-width:800px'>$text</div>")
-    displayOpen("status")
+    markdown("status", text.trimIndent(), width = 800)
 }
 // One of the two shapes a press can return. A named holder rather than a Pair of two
 // nullables, so the branch that consumes it reads as what it is.
@@ -52,13 +55,14 @@ status("Starting the optional worker…")
 
 frames {
     if (!ManifoldLibrary.isAvailable) {
-        status("Manifold unavailable: ${safe(ManifoldLibrary.describe())}")
+        status("Manifold unavailable: ${mdEscape(ManifoldLibrary.describe())}")
         return@frames
     }
     val config = KratosConfig.candidates().first()
     val opening = KratosSession.openAsync(
         KratosStudyDemo.BOUNDS, KratosStudyDemo.RESOLUTION, config)
     var session: KratosSession? = null
+    var progress: ProgressReporter? = null
     try {
         while (!opening.isDone) frame()
         val worker = opening.get()
@@ -100,6 +104,9 @@ frames {
                 cancelling.set(false)
                 done.set(0)
                 expected = if (command == "grid") n*n else 2*(n*n/2).coerceAtLeast(4)
+
+                progress = progressReporter(if (command == "grid") "Kratos grid" else "Kratos search")
+                progress?.update(0L, expected.toLong())
                 val active = study
                 running = CompletableFuture.supplyAsync<StudyOutcome> {
                     if (command == "grid") StudyOutcome(active.grid(n, n), null)
@@ -108,6 +115,7 @@ frames {
                 resultText = "Solving $expected designs on one background grid…"
             }
 
+            if (running != null) progress?.update(done.get().toLong(), expected.toLong())
             val pending = running
             if (pending != null && pending.isDone) {
                 running = null
@@ -142,53 +150,52 @@ frames {
                         val predicted = KratosStudyDemo.predictedConductivity(winner, target)
                         val probe = winner.metrics["probe"] ?: Double.NaN
                         val peak = winner.metrics["peak"] ?: Double.NaN
-                        resultText = "<span id='kratos-study-result' " +
-                            "data-arm='${design.armEnd}' data-k='${design.conductivity}'>" +
-                            "<b>Best design</b> arm ${"%.3f".format(design.armEnd)} m · " +
-                            "conductivity ${"%.3f".format(design.conductivity)} W/(m K)<br>" +
-                            "Probe ${"%.4f".format(probe)} K · " +
-                            "asked for ${"%.2f".format(target)} K · " +
-                            "miss ${"%.4f".format(winner.objective ?: Double.NaN)} K<br>" +
-                            "Peak in the part ${"%.4f".format(peak)} K<br>" +
-                            "Closed form says this arm wants k = " +
-                            "${if (predicted == null) "?" else "%.3f".format(predicted)} " +
-                            "W/(m K)<br>" +
-                            "${study.solveCount} solves · ${study.cacheHits} served from cache · " +
-                            "mean ${"%.0f".format(study.meanSolveMs)} ms<br>" +
-                            (landscape?.let { "${it.feasible.size}/${it.samples.size} feasible<br>" } ?: "") +
-                            (optimisation?.let { "${safe(it.run.summary())}<br>" +
-                                (it.control?.let { c -> "${safe(c.summary())}<br>" } ?: "") } ?: "") +
-                            "</span>"
+                        resultText = """
+                            ### Best design
+
+                            - Arm ${"%.3f".format(design.armEnd)} m · conductivity ${"%.3f".format(design.conductivity)} W/(m K)
+                            - Probe ${"%.4f".format(probe)} K · asked for ${"%.2f".format(target)} K · miss ${"%.4f".format(winner.objective ?: Double.NaN)} K
+                            - Peak in the part ${"%.4f".format(peak)} K
+                            - Closed form says this arm wants k = ${if (predicted == null) "?" else "%.3f".format(predicted)} W/(m K)
+                            - ${study.solveCount} solves · ${study.cacheHits} served from cache · mean ${"%.0f".format(study.meanSolveMs)} ms
+                        """.trimIndent() +
+                            (landscape?.let { "\n- ${it.feasible.size}/${it.samples.size} feasible" } ?: "") +
+                            (optimisation?.let { "\n\n${mdEscape(it.run.summary())}" +
+                                (it.control?.let { c -> "\n\n${mdEscape(c.summary())}" } ?: "") } ?: "")
                     }
                 } catch (failure: Exception) {
                     val why = failure.cause?.message ?: failure.message
                     resultText = if (why != null && why.contains("cancelled"))
                         "Cancelled after ${done.get()} solves. Nothing solved was lost — " +
                             "press Sweep again and the cache serves it."
-                    else "Sweep failed: ${safe(why)}"
+                    else "Sweep failed: ${mdEscape(why)}"
                 }
                 cancelling.set(false)
             }
 
-            val progress = if (running == null) "" else
-                "<br>${done.get()} of $expected designs solved…"
-            val text = "<b>${worker.state}</b> · ${worker.formulation}<br>" +
-                "Background ${worker.domain.id} · builds ${worker.domain.buildCount} · " +
-                "${worker.domain.nodeCount} nodes · ${worker.domain.cellCount} tetrahedra<br>" +
-                "Asking for ${"%.2f".format(values[1])} K at " +
-                "(${KratosStudyDemo.PROBE.x}, ${KratosStudyDemo.PROBE.y}, " +
-                "${KratosStudyDemo.PROBE.z}) m<br>" +
-                resultText + progress +
-                "<br><i>Dark is close. Every arm length is a reclassification of the same " +
-                "grid — builds stays 1 however many designs you solve.</i>"
+            val text = """
+                **${mdEscape(worker.state)}** · ${mdEscape(worker.formulation)}
+
+                Background ${mdEscape(worker.domain.id)} · builds ${worker.domain.buildCount} · ${worker.domain.nodeCount} nodes · ${worker.domain.cellCount} tetrahedra
+
+                Asking for ${"%.2f".format(values[1])} K at (${KratosStudyDemo.PROBE.x}, ${KratosStudyDemo.PROBE.y}, ${KratosStudyDemo.PROBE.z}) m
+
+                $resultText
+
+                *Dark is close. Every arm length is a reclassification of the same grid — builds stays 1 however many designs you solve.*
+            """
             if (text != previous) { status(text); previous = text }
             frame()
         }
     } catch (failure: Exception) {
-        status("Worker unavailable: ${safe(failure.cause?.message ?: failure.message)}<br>" +
-            "Install with <code>uv sync --project optional/kratos --frozen</code>, or build " +
-            "the container image where Kratos publishes no wheel, then launch again.")
+        status("""
+            Worker unavailable: ${mdEscape(failure.cause?.message ?: failure.message)}
+
+            Install with `uv sync --project optional/kratos --frozen`, or build
+            the container image where Kratos publishes no wheel, then launch again.
+        """)
     } finally {
+        progress?.finish()
         if (session != null) session!!.close() else opening.thenAccept { it.close() }
     }
 }
