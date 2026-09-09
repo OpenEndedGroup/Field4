@@ -371,7 +371,7 @@ for (h in sizes) {
         "${"%.6f".format(sphereError.last())} = ${"%.4f".format(sphereError.last() / h)} h")
     // A real cross section through the marched body, at z = 0. This is the only honest way to see
     // the rounding: it is 1.5% of the body at h = 0.4, invisible in a render of the whole box.
-    if (h >= 0.1) corners += "level set, h = $h" to b.slice(0.0).toPolygons().first()
+    if (h >= 0.1) corners += "marched, h = $h" to b.slice(0.0).toPolygons().first()
     b.close(); s.close()
 }
 
@@ -426,18 +426,24 @@ fun clippedToWindow(loop: List<Vec2>): Pair<List<Double>, List<Double>> {
 }
 
 val exactCorner = clippedToWindow(exactBox.slice(0.0).toPolygons().first())
-val corner = Chart(title = "one corner of the z = 0 cross section",
+// Keep the note and the series labels short. A Chart's note is one unwrapped line: longer than the
+// figure is wide and it is clipped at the frame edge while still counting towards the bounds the
+// output panel fits, so an overlong caption both loses its own tail and shrinks the whole figure.
+val corner = Chart(title = "the corner at (1.0, 1.5), in a 0.24 x 0.24 window",
                    xLabel = "x", yLabel = "y",
-                   note = "a 0.24 x 0.24 window on a body 2 x 3 across. The true corner is at " +
-                       "(1.0, 1.5); every level set cuts it off, and halving h halves what is left.")
+                   note = "halving h halves the bite the level set takes out of the corner")
 corner.width = 780.0; corner.height = 440.0
 corner.xDomain = xLo to xHi
 corner.yDomain = yLo to yHi
-corner.line("the exact surface, and TetGen's", exactCorner.first, exactCorner.second,
+corner.line("exact, and TetGen's", exactCorner.first, exactCorner.second,
     color = vec(1.0, 0.72, 0.35, 1.0), thickness = 3.0)
-corners.forEach { (label, points) ->
+// Coarsest red through finest blue, explicitly. The default palette gives three of these four
+// series a warm colour and the figure becomes four orange lines.
+val byResolution = listOf(
+    vec(0.95, 0.45, 0.45, 1.0), vec(0.55, 0.95, 0.55, 1.0), vec(0.45, 0.85, 1.0, 1.0))
+corners.forEachIndexed { i, (label, points) ->
     val clipped = clippedToWindow(points)
-    corner.line(label, clipped.first, clipped.second, thickness = 2.0)
+    corner.line(label, clipped.first, clipped.second, color = byResolution[i], thickness = 2.0)
 }
 
 // And the convergence, which is the actual finding: slope 1 on the box, slope 2 on the sphere.
