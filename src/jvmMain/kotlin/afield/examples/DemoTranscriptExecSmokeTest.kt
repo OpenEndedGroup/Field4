@@ -307,6 +307,9 @@ object DemoTranscriptExecSmokeTest {
         // Persistent optional Kratos worker; exercised separately by the live playground check.
         "kratos_thermal_playground",
         "kratos_flow_playground",
+        // The same worker, times fifty: a grid sweep is minutes of solver, so CI compiles it and
+        // the `kratos.study.parameter-sweep` catalog entry runs the same code path at 3x3.
+        "kratos_parameter_study",
         // Every box is compiled through Field's real K2/preamble path, but none is evaluated: four
         // of them intentionally reach an external analysis worker or real-time Sonic Pi recorder.
         "audio_render_analysis",

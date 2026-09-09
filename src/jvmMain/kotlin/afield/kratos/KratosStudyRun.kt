@@ -48,14 +48,31 @@ object KratosStudyDemo {
     const val BOUNDARY = 293.15
 
     /**
-     * K, the temperature the design is asked to deliver at [PROBE].
+     * K, the temperature the design is asked to deliver at [PROBE] — one kelvin above the skin.
      *
-     * Chosen after the exploratory corner sweep in [main] reported the achievable range, so that the
-     * level set crosses the interior of the grid rather than running along an edge. The value it was
-     * chosen from is recorded in `optional/kratos/VERIFICATION.md`; picking it blind and then
-     * discovering the valley was off the map would have been the same experiment with a worse figure.
+     * Chosen after the exploratory corner sweep (`--explore`) reported what is even reachable, so
+     * that the level set crosses the **interior** of the grid at every arm length rather than
+     * running off an edge. Measured on the container worker, 2026-09-09:
+     *
+     * | arm | k = 0.8 | k = 6.0 |
+     * | --- | --- | --- |
+     * | 0.35 m | 294.677 K | 293.354 K |
+     * | 0.85 m | 299.228 K | 293.960 K |
+     *
+     * The valley is interior at every arm length exactly when the target lies above the hottest
+     * temperature the stiffest conductivity can still reach (293.960 K, the long arm) and below the
+     * coolest the softest one produces (294.677 K, the short arm) — a window barely three quarters
+     * of a kelvin wide, worth knowing before choosing a round number. 294.15 K sits inside it and is
+     * exactly [BOUNDARY] + 1 K, so the question reads as
+     * "which designs raise this point exactly one kelvin above its skin?" and the required
+     * conductivity `k* = q·φ / 1 K` sweeps 1.22 → 4.86 W/(m·K) across the arm axis — most of the
+     * width of the material axis, which is what makes the figure worth looking at.
+     *
+     * Picking a target blind and then discovering the valley was off the map would have been the
+     * same experiment with a worse figure, so the exploratory pass is part of the method and not a
+     * false start.
      */
-    const val TARGET = 318.0
+    const val TARGET = 294.15
 
     val ARM: ClosedFloatingPointRange<Double> = 0.35..0.85
     val CONDUCTIVITY: ClosedFloatingPointRange<Double> = 0.8..6.0
@@ -85,7 +102,7 @@ object KratosStudyDemo {
         geometry = KratosDemo.body(design.armEnd),
     )
 
-    fun objectiveName(target: Double = TARGET): String = "miss from ${"%.0f".format(target)} k"
+    fun objectiveName(target: Double = TARGET): String = "miss from ${"%.2f".format(target)} k"
 
     /** The two scalars recorded beside the objective. Reported, never optimised. */
     fun metrics(): Map<String, (Design, SimulationResult) -> Double> = mapOf(
@@ -170,11 +187,16 @@ object KratosStudyDemo {
  * ```
  *
  * Arguments, all optional: `--out <dir>` (default `build/kratos-studies`), `--grid <rows> <cols>`,
- * `--budget <n>` for the optimiser (0 disables it), `--target <kelvin>`, and `--explore` to solve
+ * `--budget <n>` for the global optimiser (0 disables it), `--coarse <n>` for the cheap grid the
+ * refinement starts from, `--refine <n>` for that refinement (0 disables either), `--target
+ * <kelvin>`, and `--explore` to solve
  * only the four corners and report the achievable probe temperatures, which is how [KratosStudyDemo.TARGET]
  * was chosen.
  */
 object KratosStudyRun {
+    /** Green, distinct from the search's blue and the control's orange. */
+    private const val REFINE_COLOUR = 0xFF7BE38B.toInt()
+
     @JvmStatic fun main(args: Array<String>) {
         val options = Options(args)
         val found = Kratos.probeAny().get(600, TimeUnit.SECONDS)
@@ -224,12 +246,55 @@ object KratosStudyRun {
             index++
             if (index % 10 == 0 || !sample.feasible) println("  [$index] $sample")
         }
+        // ------------------------------------------------------------------------------------
+        // Stage 1: a coarse grid, then a refinement seeded from it.
+        //
+        // This is the comparison the whole exercise is for, and it is run FIRST so that neither the
+        // coarse grid nor the refinement can see an answer the fine grid already found. The claim
+        // being tested is that a study does not have to tile finely to answer finely.
+        // ------------------------------------------------------------------------------------
+        val coarse = if (options.coarse <= 0) null else {
+            println("COARSE GRID ${options.coarse}x${options.coarse}")
+            study.grid(options.coarse, options.coarse).also { println("  ${it.summary()}") }
+        }
+        val coarseSolves = study.solveCount
+
+        // mu = 1 on purpose: a (1+lambda) climb spends every evaluation near the seed. A larger mu
+        // would fill its initial population with uniform draws from the whole space, which is the
+        // opposite of what "refine around this point" means.
+        val refinement = if (options.refine <= 0 || coarse?.best == null) null else {
+            println()
+            println("REFINEMENT ${options.refine} evaluations seeded at the coarse grid's best")
+            study.optimise(options.refine, seed = 11L, mu = 1, lambda = 4, sigma = 0.03,
+                control = false, start = coarse.best!!.coordinates, immigrantRate = 0.0)
+                .also { println("  ${it.run.summary()}"); println("  best: ${it.best}") }
+        }
+        val refineSolves = study.solveCount
+
+        // ------------------------------------------------------------------------------------
+        // Stage 2: a search with no prior information at all, and its random control.
+        // ------------------------------------------------------------------------------------
+        val optimisation = if (options.budget <= 0) null else {
+            println()
+            println("GLOBAL SEARCH ${options.budget} evaluations, against a random control")
+            study.optimise(options.budget, seed = 7L).also {
+                println("  ${it.run.summary()}")
+                it.control?.let { c -> println("  ${c.summary()}") }
+                println("  advantage over the control: %+.6g (positive means the search won)"
+                    .format(it.advantage ?: Double.NaN))
+            }
+        }
+        val searchSolves = study.solveCount
+
+        // ------------------------------------------------------------------------------------
+        // Stage 3: the fine grid — the reference answer, and the landscape the figure draws.
+        // ------------------------------------------------------------------------------------
+        println()
         val startedGrid = System.nanoTime()
         val landscape = study.grid(options.rows, options.cols)
         val gridSeconds = (System.nanoTime() - startedGrid) / 1e9
-        println()
-        println("GRID ${landscape.summary()}")
-        println("grid wall %.1f s · %d solves · mean %.0f ms".format(
+        println("FINE GRID ${landscape.summary()}")
+        println("  wall %.1f s · %d solves so far · mean %.0f ms".format(
             gridSeconds, study.solveCount, study.meanSolveMs))
         check(session.domain.buildCount == 1) { "the background grid was rebuilt during the sweep" }
         println("NO_REMESH background=${session.domain.id} buildCount=${session.domain.buildCount} " +
@@ -241,24 +306,53 @@ object KratosStudyRun {
         checks.forEach { println("  $it") }
 
         val solvesBeforeReplay = study.solveCount
+        val hitsBeforeReplay = study.cacheHits
         val replay = study.grid(options.rows, options.cols)
         check(study.solveCount == solvesBeforeReplay) { "a repeated grid re-solved something" }
         println("CACHE re-running the same grid cost ${study.solveCount - solvesBeforeReplay} " +
-            "new solves and ${study.cacheHits} hits; best unchanged at ${replay.best?.objective}")
+            "new solves and ${study.cacheHits - hitsBeforeReplay} hits; " +
+            "best unchanged at ${replay.best?.objective}")
 
-        val optimisation = if (options.budget <= 0) null else {
-            println()
-            println("OPTIMISER budget ${options.budget} evaluations, against a random control")
-            study.optimise(options.budget, seed = 7L).also { println(it.summary()) }
+        // The table the whole run exists to print: what each method reached, and what it cost.
+        //
+        // Budgeted in **evaluations**, because that is what the methods were given and what makes
+        // them comparable; distinct solves are reported once at the bottom, and differ only by the
+        // cache hits (the refinement's seed, for one, was already solved by the coarse grid).
+        println()
+        println("METHOD COMPARISON — objective (lower is better) against evaluations spent")
+        fun row(label: String, value: Double?, evaluations: Int) =
+            println("  %-30s %12s  %4d evaluations".format(
+                label, value?.let { "%.6g".format(it) } ?: "-", evaluations))
+        val coarseCells = options.coarse * options.coarse
+        coarse?.let { row("coarse ${options.coarse}x${options.coarse} grid", it.best?.objective, coarseCells) }
+        refinement?.let { row("  + refinement", it.best?.objective, coarseCells + options.refine) }
+        optimisation?.let {
+            row("global search, no prior", it.best?.objective, options.budget)
+            it.control?.let { c ->
+                row("random control, same budget", it.trace(c).lastOrNull(), options.budget)
+            }
         }
+        row("fine ${options.rows}x${options.cols} grid", landscape.best?.objective, options.rows * options.cols)
+        println("  coarse+refine spent $refineSolves distinct solves of the " +
+            "${coarseCells + options.refine} evaluations it was given; the two search arms together " +
+            "spent ${searchSolves - refineSolves}")
+        println("  ${study.solveCount} distinct designs solved in all, ${study.cacheHits} served from cache")
 
-        val sheet = KratosStudyFigure.sheet(landscape, optimisation)
-        val landscapeOnly = KratosStudyFigure.landscape(landscape, optimisation)
+        // Stretched, and captioned as such: the miss spans 5 K over the whole space but under 1 K
+        // along the short-arm edge, and a linear ramp renders that edge as one flat shade with the
+        // valley invisible inside it.
+        val scale = ColourScale.STRETCHED
+        val extra = listOfNotNull(refinement?.let {
+            StudyTrace("refine", it.trace(it.run), REFINE_COLOUR)
+        })
+        val sheet = KratosStudyFigure.sheet(landscape, optimisation, scale = scale, extra = extra)
+        val landscapeOnly = KratosStudyFigure.landscape(
+            landscape, refinement ?: optimisation, scale = scale)
         write(options.out.resolve("kratos-study-sheet.png"), sheet)
         write(options.out.resolve("kratos-study-landscape.png"), landscapeOnly)
         optimisation?.let {
             write(options.out.resolve("kratos-study-convergence.png"),
-                KratosStudyFigure.convergence(it, landscape.best?.objective))
+                KratosStudyFigure.convergence(it, landscape.best?.objective, extra = extra))
         }
 
         // The winner, as geometry and as a field, which is the other half of what a study owes:
@@ -292,6 +386,8 @@ object KratosStudyRun {
         var rows = 11
         var cols = 11
         var budget = 40
+        var coarse = 5
+        var refine = 30
         var target = KratosStudyDemo.TARGET
         var explore = false
 
@@ -302,6 +398,8 @@ object KratosStudyRun {
                     "--out" -> { out = Path.of(args[++i]).toAbsolutePath() }
                     "--grid" -> { rows = args[++i].toInt(); cols = args[++i].toInt() }
                     "--budget" -> { budget = args[++i].toInt() }
+                    "--refine" -> { refine = args[++i].toInt() }
+                    "--coarse" -> { coarse = args[++i].toInt() }
                     "--target" -> { target = args[++i].toDouble() }
                     "--explore" -> explore = true
                     else -> error("unknown argument ${args[i]}")

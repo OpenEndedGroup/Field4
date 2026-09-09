@@ -158,6 +158,28 @@ class KratosStudyTest {
         assertFails { landscape.matrix() }
     }
 
+    @Test fun theStretchedColourScaleIsMonotoneAndPinsBothEnds() {
+        // A colour scale that did not pin its endpoints would put the extremes of the data
+        // somewhere other than the extremes of the bar, and the bar's own tick values are computed
+        // by inverting it — so a scale whose inverse disagreed would print the wrong numbers.
+        for (scale in ColourScale.entries) {
+            assertEquals(0.0, scale.forward(0.0), 1e-12, "$scale")
+            assertEquals(1.0, scale.forward(1.0), 1e-12, "$scale")
+            var previous = -1.0
+            for (k in 0..100) {
+                val t = k / 100.0
+                val forward = scale.forward(t)
+                assertTrue(forward > previous, "$scale is not monotone at $t")
+                previous = forward
+                assertEquals(t, scale.inverse(forward), 1e-9, "$scale round trip at $t")
+            }
+        }
+        // And it does what it is for: the bottom tenth of the range takes a real share of the ramp.
+        assertTrue(ColourScale.STRETCHED.forward(0.1) > 0.3,
+            "the stretch is too weak to rescue a shallow valley")
+        assertEquals(0.1, ColourScale.LINEAR.forward(0.1), 1e-12)
+    }
+
     @Test fun theFontCoversTheLabelsTheDemoStudyUses() {
         // The dot-matrix font has no lower case and no comma; a label outside its alphabet draws as
         // blanks, so the demo's own axis names are checked here rather than discovered in a figure.

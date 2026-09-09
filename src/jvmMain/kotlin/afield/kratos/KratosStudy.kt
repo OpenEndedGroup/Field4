@@ -68,7 +68,15 @@ class KratosStudy<D>(
     val metrics: Map<String, (D, SimulationResult) -> Double> = emptyMap(),
     /** Per-solve deadline. A container worker under x86-64 emulation is an order of magnitude slow. */
     val timeoutSeconds: Long = 300,
-    /** Called as each sample lands, cached ones included. Progress for a long sweep. */
+    /**
+     * Called as each sample lands, cached ones included. Progress for a long sweep.
+     *
+     * Throwing from here **aborts the sweep**, and deliberately so: it is called outside
+     * [evaluate]'s own failure handling, so a throw propagates out of [grid] instead of being
+     * recorded as an infeasible point. That is how a UI cancels a sweep in progress without the
+     * cancellation being mistaken for a hundred failed designs. Everything solved before the throw
+     * stays in the cache and is not re-solved on the next attempt.
+     */
     val onSample: ((StudySample) -> Unit)? = null,
 ) {
     private val cache = LinkedHashMap<String, StudySample>()
@@ -111,6 +119,9 @@ class KratosStudy<D>(
             return sample
         }
         val design = space.at(clamped)
+        // Counted once, whatever happens after. Incrementing in both the try and the catch would
+        // double-count a design whose solve succeeded and whose `measure` then threw.
+        var counted = false
         val sample = try {
             val case = plan(design)
             require(case.parameters.formulation == session.formulation) {
@@ -137,6 +148,7 @@ class KratosStudy<D>(
                 "the session obsoleted this solve; something else is driving the same session")
             val elapsed = (System.nanoTime() - started) / 1e6
             solves++
+            counted = true
             solveMillis += elapsed
             val value = measure(design, result)
             StudySample(
@@ -149,7 +161,7 @@ class KratosStudy<D>(
                 diagnostics = result.diagnostics,
             )
         } catch (failure: Exception) {
-            solves++
+            if (!counted) solves++
             StudySample(
                 coordinates = clamped, objective = null, metrics = emptyMap(), solveMs = 0.0,
                 cached = false, failure = failure.message ?: failure.toString(), diagnostics = emptyMap(),
@@ -219,7 +231,15 @@ class KratosStudy<D>(
      * Budget is **evaluations**, and a cache hit costs none — so a converged search that keeps
      * re-proposing its incumbent spends its budget on new designs instead of re-solving one.
      *
-     * @param sigma mutation step as a fraction of each variable's range.
+     * @param sigma mutation step as a fraction of each variable's range. The default is a global
+     *   search; a tenth of that, with [start], is a refinement around a point a grid already found.
+     * @param start where to seed the population, or null to draw it. Passing the grid's best with a
+     *   small [sigma] is the two-stage workflow a study is actually for — tile coarsely to locate
+     *   the interesting region, then search finely inside it. Note that a seeded run's control arm
+     *   still draws uniformly from the whole space, which is the comparison worth making: it says
+     *   whether the refinement did better than spending the same budget looking again.
+     * @param immigrantRate fresh random draws per child. Zero for a refinement, whose whole premise
+     *   is that the interesting region is already known.
      */
     fun optimise(
         budget: Int,
@@ -228,6 +248,8 @@ class KratosStudy<D>(
         lambda: Int = 6,
         sigma: Double = 0.18,
         control: Boolean = true,
+        start: DoubleArray? = null,
+        immigrantRate: Double = 0.15,
     ): StudyOptimisation<D> {
         require(budget >= 2) { "an optimiser needs a budget of at least 2, got $budget" }
         require(sigma > 0.0 && sigma <= 1.0) { "sigma must lie in (0, 1], got $sigma" }
@@ -235,7 +257,9 @@ class KratosStudy<D>(
         val objective = Objective<DoubleArray> { Evaluation(fitnessOf(evaluate(it))) }
         val searched = PopulationSearch.evolve(
             ops, objective, budget, seed = seed, mu = mu, lambda = lambda,
-            crossoverRate = 0.3, immigrantRate = 0.15, label = "evolve",
+            crossoverRate = 0.3, immigrantRate = immigrantRate,
+            seeds = start?.let { listOf(space.clamp(it)) } ?: emptyList(),
+            label = if (start == null) "evolve" else "refine",
         )
         val drawn = if (!control) null else PopulationSearch.random(
             ops, objective, budget, seed = seed + 1, label = "random",
