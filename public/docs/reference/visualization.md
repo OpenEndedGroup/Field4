@@ -1188,7 +1188,7 @@ band, the data outside it recolours, the footnote says how many points broke it,
 
 `src/jvmMain/kotlin/afield/visualization/charts.kt` — [read the source](source/jvmMain/afield/visualization/charts/)
 
-**Used in:** [Charts as FLines](../chart.md)
+**Used in:** [Charts as FLines](../chart.md), [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md)
 
 ### Top-level functions { #charts-kt-functions }
 

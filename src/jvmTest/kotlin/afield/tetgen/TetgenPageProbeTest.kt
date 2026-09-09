@@ -119,6 +119,36 @@ class TetgenPageProbeTest {
         }
     }
 
+    @Test fun isTetGenDeterministic() {
+        if (!available()) return
+        // The docs capture reported 66,108 elements where a test run of the same code reported
+        // 66,489. Either TetGen randomises, or the two runs were not given the same surface.
+        Solid.scope {
+            val part = (Solid.cube(80.0, 40.0, 15.0) + Solid.cube(15.0, 40.0, 70.0)) -
+                Solid.union(listOf(
+                    Solid.cylinder(40.0, 5.0, segments = 48).translated(55.0, 12.0, -5.0),
+                    Solid.cylinder(40.0, 5.0, segments = 48).translated(55.0, 28.0, -5.0),
+                    Solid.cylinder(60.0, 6.0, segments = 48).rotated(0.0, 90.0, 0.0)
+                        .translated(-20.0, 20.0, 52.0)))
+            val surface = part.toTriMesh()
+            println("surface digest: ${surface.positions.contentHashCode()} / " +
+                "${surface.indices.contentHashCode()}, ${surface.triangleCount} triangles")
+            // Same surface object, five times.
+            repeat(5) {
+                val m = Tetgen.tetrahedralize(surface, targetEdgeLength = 3.0)
+                println("  run $it: ${m.nodeCount} nodes, ${m.cellCount} elements, " +
+                    "volume ${m.volume()}, worst quality ${"%.6f".format(m.qualities().min())}")
+            }
+            // And a freshly built surface, in case the Boolean is what varies.
+            repeat(2) {
+                val fresh = part.toTriMesh()
+                println("  fresh surface digest ${fresh.positions.contentHashCode()}: " +
+                    "${Tetgen.tetrahedralize(fresh, targetEdgeLength = 3.0).cellCount} elements")
+            }
+            Unit
+        }
+    }
+
     @Test fun howMuchDoesTheQualitySwitchActuallyBuy() {
         if (!available()) return
         // The dev-doc claim is that -q1.2 removes the last poor element "for no measurable cost".

@@ -85,7 +85,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [CorpusOperations.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/CorpusOperations.kt) | Audio AI | audio_ai_corpus_microscope | 0 | 5 | 44% |
 | [CeresRealization.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/CeresRealization.kt) | Polytopes | polytope_examples | 0 | 5 | 75% |
 | [Conway.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Conway.kt) | Polytopes | polytope_examples | 0 | 5 | 64% |
-| [charts.kt](../src/jvmMain/kotlin/afield/visualization/charts.kt) | Visualization | chart | 0 | 5 | 91% |
+| [charts.kt](../src/jvmMain/kotlin/afield/visualization/charts.kt) | Visualization | chart, tetgen | 0 | 5 | 91% |
 | [FaustBox.kt](../src/jvmMain/kotlin/afield/four/synth/FaustBox.kt) | Synthesis | faust | 0 | 4 | 73% |
 | [DoughDspSoundDocs.kt](../src/jvmMain/kotlin/afield/four/synth/DoughDspSoundDocs.kt) | Synthesis | dough_dsp_sound | 0 | 3 | 81% |
 | [MorphoSearchFLines.kt](../src/jvmMain/kotlin/afield/morpho/MorphoSearchFLines.kt) | Languages | morpho_examples | 0 | 3 | 72% |

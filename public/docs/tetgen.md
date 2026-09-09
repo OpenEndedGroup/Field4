@@ -85,6 +85,10 @@ for (t in 0 until half.cellCount) {
 }
 :::fold measure it, then draw the three views
 println("Manifold  ${"%.4f".format(part.volume)} mm³, ${part.triangleCount} triangles, genus ${part.genus}")
+// The surface's own digest, printed because the element count below depends on it and on nothing
+// else — see "the count moves between sessions" under Sizing.
+println("surface   ${surface.vertexCount} vertices, ${surface.triangleCount} triangles, " +
+    "digest ${surface.positions.contentHashCode()}/${surface.indices.contentHashCode()}")
 println("TetGen    $mesh")
 println("          volume ${"%.4f".format(mesh.volume())} mm³")
 println("          inverted elements ${mesh.volumes().count { it <= 0.0 }}")
@@ -94,12 +98,14 @@ println("cutaway   ${half.cellCount} of ${mesh.cellCount} elements, " +
 println("quality   min ${"%.4f".format(quality.min())}, median " +
     "${"%.4f".format(quality.sorted()[quality.size / 2])}")
 
-val view = MeshView(yawDegrees = 38.0, pitchDegrees = 24.0, width = 380, height = 300)
+// Pitch well over the horizon, because the cut plane is horizontal in this frame and a low camera
+// shows the skin instead of the slice.
+val view = MeshView(yawDegrees = 34.0, pitchDegrees = 58.0, distance = 2.2, width = 380, height = 320)
 showMeshGrid(
-    "the closed surface TetGen is given\n${surface.triangleCount} triangles" to surface,
-    "half the elements, skinned\n${half.cellCount} tetrahedra" to half.boundary(),
-    "the same half, elements shrunk to 0.78\ncolour is radius ratio, dark is worse" to
-        half.toTriMesh(shrink = 0.78, cellColors = colors),
+    "the closed surface TetGen is given · ${surface.triangleCount} triangles" to surface,
+    "half the elements, skinned · ${half.cellCount} tetrahedra" to half.boundary(),
+    "the same half, elements shrunk to 0.72 · colour is radius ratio, dark is worse" to
+        half.toTriMesh(shrink = 0.72, cellColors = colors),
     columns = 3,
     cellWidth = 380,
     view = view,
@@ -194,8 +200,8 @@ showChart(
 showMesh(
     slivers.boundary(),
     title = "the 400 worst elements, in place",
-    caption = "radius ratio ${"%.4f".format(quality.sorted().first())} to " +
-        "${"%.4f".format(quality.sorted()[399])} · they line the bores and the re-entrant corner",
+    caption = "radius ratio ${"%.4f".format(sorted.first())} to ${"%.4f".format(sorted[399])} · " +
+        "densest around the three bores, and scattered everywhere else",
     view = MeshView(yawDegrees = 34.0, pitchDegrees = 22.0, width = 760, height = 420),
 )
 part.close()
@@ -272,6 +278,17 @@ a mesh in place.
 configuration comes out at 430 ms there and 510 ms here. That spread is what a wall-clock median of a
 handful of runs on a laptop is worth; treat these as costs to plan with, not as a benchmark.)
 
+!!! note "The element count moves between sessions, and the mesher is not the reason"
+    TetGen is deterministic: the same surface meshed five times in one process, and in three
+    separate JVMs, gives the same 66,489 elements with the same worst element to six decimals. But
+    the figure at the top of this page — same code, run inside the docs capture rather than in a
+    test — reported 66,108. A third of a percent, on a surface built by the same three Booleans.
+
+    The surface is what to suspect, not the mesh: the count depends on nothing else, so the
+    Boolean's vertex ordering must have differed between the two processes. The cutaway figure now
+    prints the surface's own digest for exactly this reason. Do not assert on an element count
+    across processes; assert on volume, on the sliver count, or on a quality percentile.
+
 ## The sharp edge
 
 This is the claim the whole route rests on, so here it is measured rather than asserted, twice.
@@ -315,15 +332,24 @@ fun worstError(xyz: DoubleArray, distance: (Double, Double, Double) -> Double): 
     return worst
 }
 fun coordinates(m: TriMesh) = DoubleArray(m.positions.size) { m.positions[it].toDouble() }
-:::fold march both bodies at four resolutions, then draw the coarse box next to TetGen's
+:::fold march both bodies at four resolutions, then plot the corner and the convergence
+val sizes = listOf(0.4, 0.2, 0.1, 0.05)
+val boxError = mutableListOf<Double>()
+val sphereError = mutableListOf<Double>()
+val corners = mutableListOf<Pair<String, List<Vec2>>>()
+
 println("h      box, worst error        sphere, worst error")
-for (h in listOf(0.4, 0.2, 0.1, 0.05)) {
+for (h in sizes) {
     val b = Solid.levelSet(bounds, h, parallel = true) { x, y, z -> -boxDistance(x, y, z) }
     val s = Solid.levelSet(bounds, h, parallel = true) { x, y, z -> -sphereDistance(x, y, z) }
-    val be = worstError(coordinates(b.toTriMesh()), ::boxDistance)
-    val se = worstError(coordinates(s.toTriMesh()), ::sphereDistance)
-    println("${"%.2f".format(h)}   ${"%.6f".format(be)} = ${"%.4f".format(be / h)} h    " +
-        "${"%.6f".format(se)} = ${"%.4f".format(se / h)} h")
+    boxError += worstError(coordinates(b.toTriMesh()), ::boxDistance)
+    sphereError += worstError(coordinates(s.toTriMesh()), ::sphereDistance)
+    println("${"%.2f".format(h)}   ${"%.6f".format(boxError.last())} = " +
+        "${"%.4f".format(boxError.last() / h)} h    " +
+        "${"%.6f".format(sphereError.last())} = ${"%.4f".format(sphereError.last() / h)} h")
+    // A real cross section through the marched body, at z = 0. This is the only honest way to see
+    // the rounding: it is 1.5% of the body at h = 0.4, invisible in a render of the whole box.
+    if (h >= 0.1) corners += "level set, h = $h" to b.slice(0.0).toPolygons().first()
     b.close(); s.close()
 }
 
@@ -337,15 +363,35 @@ println("TetGen at h = 0.25: ${tet.cellCount} elements, volume ${tet.volume()}")
 println("  worst node outside the true box: " +
     worstError(tet.positions) { x, y, z -> max(boxDistance(x, y, z), 0.0) })
 
-val marched = Solid.levelSet(bounds, 0.4, parallel = true) { x, y, z -> -boxDistance(x, y, z) }
-showMeshGrid(
-    "level set at h = 0.4\nthe corners are gone, and stay gone" to marched.toTriMesh(),
-    "TetGen on the exact surface\nthe corners are corners" to tet.boundary(),
-    columns = 2,
-    cellWidth = 420,
-    view = MeshView(yawDegrees = 32.0, pitchDegrees = 20.0, width = 420, height = 340),
-)
-marched.close(); exactBox.close()
+// One corner of the true cross section, magnified. The exact outline is what TetGen is given and
+// what its boundary reproduces; each level set is a different rounded approximation of it.
+val exactCorner = exactBox.slice(0.0).toPolygons().first()
+val corner = Chart(title = "one corner of the z = 0 cross section",
+                   xLabel = "x", yLabel = "y",
+                   note = "a 0.24 x 0.24 window on a body 2 x 3 across. The true corner is at " +
+                       "(1.0, 1.5); every level set cuts it off, and halving h halves what is left.")
+corner.width = 470.0; corner.height = 430.0
+corner.xDomain = 0.82 to 1.06
+corner.yDomain = 1.32 to 1.56
+corner.line("the exact surface, and TetGen's",
+    exactCorner.map { it.x.toDouble() }, exactCorner.map { it.y.toDouble() }, thickness = 2.6)
+corners.forEach { (label, points) ->
+    corner.line(label, points.map { it.x.toDouble() }, points.map { it.y.toDouble() })
+}
+
+// And the convergence, which is the actual finding: slope 1 on the box, slope 2 on the sphere.
+val rate = Chart(title = "worst boundary error against cell size",
+                 xLabel = "cell size h", yLabel = "worst distance from the true surface",
+                 note = "log-log. The box halves when h halves; the sphere quarters.")
+rate.width = 470.0; rate.height = 430.0
+rate.xKind = ScaleKind.LOG; rate.yKind = ScaleKind.LOG
+rate.line("box — first order", sizes, boxError).points("box — first order", sizes, boxError)
+rate.line("sphere — second order", sizes, sphereError)
+    .points("sphere — second order", sizes, sphereError)
+
+display("main", corner)
+display("main", rate)
+exactBox.close()
 ```
 
 The numbers, from that run:

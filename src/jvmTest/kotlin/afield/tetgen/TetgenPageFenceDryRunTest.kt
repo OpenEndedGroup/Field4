@@ -162,9 +162,23 @@ class TetgenPageFenceDryRunTest {
         println("  worst node outside the true box: " +
             worstError(tet.positions) { x, y, z -> max(boxDistance(x, y, z), 0.0) })
 
-        val marched = Solid.levelSet(bounds, 0.4, parallel = true) { x, y, z -> -boxDistance(x, y, z) }
-        println("panels: marched ${marched.toTriMesh().triangleCount} triangles, " +
-            "tetgen boundary ${tet.boundary().triangleCount} triangles")
-        marched.close(); exactBox.close()
+        // The corner cross sections the figure plots. The whole point of charting them rather than
+        // rendering the two boxes side by side is that the rounding is 1.5% of the body at h = 0.4
+        // and invisible in a render — which is what the first version of this figure proved.
+        val exactCorner = exactBox.slice(0.0).toPolygons().first()
+        println("exact cross section: ${exactCorner.size} points, " +
+            "corner at (${exactCorner.maxOf { it.x }}, ${exactCorner.maxOf { it.y }})")
+        for (h in listOf(0.4, 0.2, 0.1)) {
+            Solid.levelSet(bounds, h, parallel = true) { x, y, z -> -boxDistance(x, y, z) }.use { b ->
+                val outline = b.slice(0.0).toPolygons().first()
+                val inWindow = outline.filter { it.x > 0.55 && it.y > 1.05 }
+                println("  h = $h: ${outline.size} points, ${inWindow.size} in the corner window, " +
+                    "nearest approach to (1.0, 1.5) = " +
+                    "%.5f".format(outline.minOf {
+                        sqrt((it.x - 1.0) * (it.x - 1.0) + (it.y - 1.5) * (it.y - 1.5)).toDouble()
+                    }))
+            }
+        }
+        exactBox.close()
     }
 }
