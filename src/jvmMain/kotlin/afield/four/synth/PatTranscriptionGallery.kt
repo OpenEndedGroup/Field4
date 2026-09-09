@@ -489,9 +489,16 @@ object PatTranscriptionGallery {
         check(told >= 0.80 && untold <= 0.15) {
             "the register-lever caption claims 0.91 vs 0.03; measured $told vs $untold"
         }
-        check(legato.energyMatch.recall <= 0.30 && legato.pitchMatch.recall >= 0.70) {
+        // The caption's "energy 0.13" is the STRICT tally, not the lag-forgiven one: with a flat
+        // envelope exactly one of the nine onsets found lands inside the strict window. Assert that
+        // number, as `PatPitchTranscriptionTest` was changed to do in dceabeffc — `052f26bf5`
+        // replaced patMatchOnsets' median residual with a search over every candidate shift, which
+        // moved the *forgiven* energy figure 0.13 -> 0.375 without changing the detector, the probe
+        // or the onsets. A drifting train is not a lagged one, so the forgiven figure is the one not
+        // to caption. "pitch 0.86" is the forgiven pitch tally and stays as it was.
+        check(legato.energyTally.recall <= 0.30 && legato.pitchMatch.recall >= 0.70) {
             "the legato caption claims energy 0.13 / pitch 0.86; measured " +
-                "${legato.energyMatch.recall} / ${legato.pitchMatch.recall}"
+                "${legato.energyTally.recall} / ${legato.pitchMatch.recall}"
         }
         val repeated = results.named("repeated-pitch")
         check(repeated.mergedTally.recall > repeated.pitchTally.recall) {
