@@ -96,6 +96,8 @@ class TetgenTest {
         assertFails { Tetgen.tetrahedralize(cube, quality = 0.5) }
         assertFails { Tetgen.tetrahedralize(cube, targetEdgeLength = 0.0) }
         assertFails { Tetgen.tetrahedralize(cube, targetEdgeLength = -1.0) }
+        assertFails { Tetgen.tetrahedralize(cube, order = 3) }
+        assertFails { Tetgen.tetrahedralize(cube, order = 0) }
         assertFails { Tetgen.tetrahedralize(TriMesh(FloatArray(0), IntArray(0))) }
     }
 
@@ -103,10 +105,109 @@ class TetgenTest {
         assertFails { TetMesh(doubleArrayOf(0.0, 0.0), intArrayOf()) }
         assertFails { TetMesh(DoubleArray(12), intArrayOf(0, 1, 2)) }
         assertFails { TetMesh(DoubleArray(12), intArrayOf(0, 1, 2, 9)) }
+        assertFails { TetMesh(DoubleArray(12), intArrayOf(0, 1, 2, 3), nodesPerCell = 5) }
+        // 10 indices are not a whole number of 4-node cells, and must not be read as two-and-a-half.
+        assertFails { TetMesh(DoubleArray(30), IntArray(10), nodesPerCell = 4) }
         val unit = TetMesh(doubleArrayOf(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0),
             intArrayOf(0, 1, 2, 3))
         assertEquals(4, unit.nodeCount)
         assertEquals(1, unit.cellCount)
         assertEquals(1.0 / 6.0, unit.volume(), 1e-15)
+    }
+
+    /**
+     * The load-bearing check for quadratic tetrahedra: every midside node is where Kratos's
+     * `Tetrahedra3D10` will assume it is.
+     *
+     * Getting this wrong does not crash and does not look wrong — the element solves, and returns a
+     * displacement field that is quietly incorrect. So the assertion is geometric and exhaustive:
+     * for every element, node `4+k` must sit at the midpoint of the k-th edge in Kratos's order.
+     */
+    @Test
+    fun quadraticMidsideNodesAreWhereKratosExpectsThem() {
+        if (!available()) return
+        val body = SimulationGroup("body", SimulationBoolean.UNION, listOf(
+            SimulationBox("slab", SimulationBounds(-.62, -.24, -.24, .18, .24, .24)),
+            SimulationSphere("head", .34, 0.0, 0.0, .30, segments = 32)))
+        val mesh = Tetgen.tetrahedralize(body.surface(), targetEdgeLength = 0.2, order = 2)
+        assertEquals(10, mesh.nodesPerCell)
+        assertTrue(mesh.isQuadratic)
+        assertTrue(mesh.cellCount > 20, "expected a real mesh, got ${mesh.cellCount}")
+
+        val edges = arrayOf(intArrayOf(0, 1), intArrayOf(1, 2), intArrayOf(0, 2),
+                            intArrayOf(0, 3), intArrayOf(1, 3), intArrayOf(2, 3))
+        var worst = 0.0
+        for (cell in 0 until mesh.cellCount) {
+            val base = 10 * cell
+            for ((k, edge) in edges.withIndex()) {
+                val a = mesh.cells[base + edge[0]]
+                val b = mesh.cells[base + edge[1]]
+                val mid = mesh.cells[base + 4 + k]
+                for (c in 0 until 3) {
+                    val expected = 0.5 * (mesh.positions[3 * a + c] + mesh.positions[3 * b + c])
+                    worst = maxOf(worst, abs(mesh.positions[3 * mid + c] - expected))
+                }
+            }
+        }
+        // TetGen forms these as 0.5*(p+q) in double, so agreement is to the last bit, not to a
+        // tolerance. Anything above zero here means the permutation is being inferred, not read.
+        assertEquals(0.0, worst, 0.0, "midside node displaced by $worst from its edge midpoint")
+    }
+
+    @Test fun quadraticRefinesTheInterpolationAndNotTheShape() {
+        if (!available()) return
+        val cube = SimulationBox("c", SimulationBounds(0.0, 0.0, 0.0, 2.0, 3.0, 4.0))
+        val linear = Tetgen.tetrahedralize(cube.surface(), targetEdgeLength = 0.5)
+        val quadratic = Tetgen.tetrahedralize(cube.surface(), targetEdgeLength = 0.5, order = 2)
+
+        // Same tetrahedralization underneath: -o2 runs after refinement, so the element count and
+        // the occupied volume are unchanged and only the node count grows.
+        assertEquals(linear.cellCount, quadratic.cellCount)
+        assertEquals(24.0, quadratic.volume(), 1e-10)
+        assertTrue(quadratic.nodeCount > linear.nodeCount * 2,
+            "10-node tetrahedra add a node per edge: ${linear.nodeCount} -> ${quadratic.nodeCount}")
+        assertEquals(0, quadratic.volumes().count { it <= 0.0 })
+
+        // And `corners()` is the linear view of it — same cells, same shape, no midside indices.
+        val corners = quadratic.corners()
+        assertEquals(4, corners.nodesPerCell)
+        assertEquals(quadratic.cellCount, corners.cellCount)
+        assertEquals(quadratic.volume(), corners.volume(), 1e-12)
+        assertTrue(corners.cells.contentEquals(
+            IntArray(4 * quadratic.cellCount) { quadratic.cells[10 * (it / 4) + it % 4] }))
+        assertTrue(corners.cells.contentEquals(linear.cells),
+            "promotion must not disturb the tetrahedralization it was handed")
+    }
+
+    /**
+     * Adjacent tetrahedra must *share* the node on the edge between them.
+     *
+     * Giving each element its own copy would satisfy every midpoint check above and still be wrong:
+     * the mesh would be a pile of tetrahedra touching at their corners only, free to open up along
+     * every shared face. A solve on it converges to a body made of unglued pieces.
+     */
+    @Test
+    fun midsideNodesAreSharedSoTheMeshStaysConforming() {
+        if (!available()) return
+        val cube = SimulationBox("c", SimulationBounds(0.0, 0.0, 0.0, 1.0, 1.0, 1.0))
+        val linear = Tetgen.tetrahedralize(cube.surface(), targetEdgeLength = 0.34)
+        val quadratic = linear.quadratic()
+
+        // Count the distinct edges of the linear mesh independently of the promotion.
+        val edges = HashSet<Long>()
+        for (t in 0 until linear.cellCount) for (a in 0 until 4) for (b in a + 1 until 4) {
+            val p = linear.cells[4 * t + a]
+            val q = linear.cells[4 * t + b]
+            edges.add((minOf(p, q).toLong() shl 32) or maxOf(p, q).toLong())
+        }
+        assertEquals(linear.nodeCount + edges.size, quadratic.nodeCount,
+            "exactly one new node per distinct edge, shared by every element on it")
+
+        // Every midside index must be one no corner uses, and every new node must be referenced.
+        val referenced = quadratic.cells.toHashSet()
+        assertEquals(quadratic.nodeCount, referenced.size, "no orphaned nodes")
+        assertTrue(quadratic.isQuadratic)
+        // Idempotent: promoting an already-quadratic mesh is the identity, not a 22-node element.
+        assertTrue(quadratic.quadratic() === quadratic)
     }
 }

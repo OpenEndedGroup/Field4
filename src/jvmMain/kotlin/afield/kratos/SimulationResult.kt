@@ -324,12 +324,17 @@ class SimulationResult internal constructor(
      * (von Mises, say) is averaged onto each vertex from the cells that touch it, which is a
      * display choice and not a stress-recovery scheme — do not read peak values off it.
      *
+     * On a quadratic mesh each boundary triangle is split into four on the element's own midside
+     * nodes, so a deflected part draws with the curvature the elements actually carry instead of a
+     * fan of flat facets. That costs four times the triangles and adds no new points.
+     *
      * @param displacementScale offsets every vertex by `displacementScale` times the nodal
      *   displacement, if the result has one. Real deflections are invisible at true scale; a few
      *   hundred is usually what makes a picture. `0.0` draws the undeformed part.
      */
     fun boundaryMesh(field: String = primaryFieldOrNull() ?: "", displacementScale: Double = 0.0): TriMesh {
-        val faces = boundaryFaces()
+        val corners = boundaryFaces()
+        val faces = subdivided(corners) ?: corners
         val used = faces.distinct().sorted()
         val remap = HashMap<Int, Int>(used.size * 2)
         used.forEachIndexed { at, node -> remap[node] = at }
@@ -377,24 +382,33 @@ class SimulationResult internal constructor(
         val perCell = cells[name] ?: error("No field '$name'; nodal $fieldNames, cell ${cells.keys}")
         val total = DoubleArray(domain.nodeCount)
         val count = IntArray(domain.nodeCount)
-        for (cell in 0 until domain.cellCount) for (corner in 0 until 4) {
-            val node = domain.cells[4 * cell + corner]
+        // Every node of the cell, midside ones included, so a quadratic mesh's extra nodes are
+        // coloured rather than left at zero.
+        for (cell in 0 until domain.cellCount) for (corner in 0 until domain.nodesPerCell) {
+            val node = domain.cells[domain.nodesPerCell * cell + corner]
             total[node] += perCell[cell]; count[node]++
         }
         return DoubleArray(domain.nodeCount) { if (count[it] > 0) total[it] / count[it] else 0.0 }
     }
 
-    /** Triangles belonging to exactly one tetrahedron, wound outward. */
+    /**
+     * Triangles belonging to exactly one tetrahedron, wound outward.
+     *
+     * Corners only: a face is shared or not according to its three corners, and on a quadratic mesh
+     * the midside nodes of a shared face are shared with it, so they add nothing to the test. They
+     * come back in [subdivided], which needs to know which face it is looking at.
+     */
     private fun boundaryFaces(): IntArray {
+        val width = domain.nodesPerCell
         val seen = HashMap<Long, Int>(domain.cellCount * 2)
         val order = intArrayOf(0, 2, 1, /**/ 0, 1, 3, /**/ 1, 2, 3, /**/ 0, 3, 2)
         val faces = ArrayList<Int>()
         val keys = ArrayList<Long>()
         for (cell in 0 until domain.cellCount) {
             for (f in 0 until 4) {
-                val a = domain.cells[4 * cell + order[3 * f]]
-                val b = domain.cells[4 * cell + order[3 * f + 1]]
-                val c = domain.cells[4 * cell + order[3 * f + 2]]
+                val a = domain.cells[width * cell + order[3 * f]]
+                val b = domain.cells[width * cell + order[3 * f + 1]]
+                val c = domain.cells[width * cell + order[3 * f + 2]]
                 val sorted = intArrayOf(a, b, c).sortedArray()
                 // Three node indices packed into one long; meshes here are far below 2^21 nodes.
                 val key = (sorted[0].toLong() shl 42) or (sorted[1].toLong() shl 21) or sorted[2].toLong()
@@ -407,6 +421,50 @@ class SimulationResult internal constructor(
             kept.add(faces[3 * i]); kept.add(faces[3 * i + 1]); kept.add(faces[3 * i + 2])
         }
         return kept.toIntArray()
+    }
+
+    /**
+     * Each boundary triangle split into four on its midside nodes — the quadratic mesh's own extra
+     * nodes, not new ones.
+     *
+     * Undeformed this changes nothing visible: the midside node lies exactly on the straight edge.
+     * Deformed it is the whole point. A quadratic element's displacement varies quadratically along
+     * an edge, so drawing corner-to-corner would straighten out precisely the curvature that makes
+     * these elements worth using, and a bent beam would render as a fan of flat facets.
+     *
+     * Returns null when there are no midside nodes to split on.
+     */
+    private fun subdivided(faces: IntArray): IntArray? {
+        if (domain.nodesPerCell != 10) return null
+        // Corner pair -> the midside node bisecting it, harvested from the connectivity rather than
+        // recomputed, using the one definition of which edge node 4+k belongs to.
+        val edges = afield.tetgen.TetMesh.QUADRATIC_EDGES
+        val midpoints = HashMap<Long, Int>(domain.cellCount * 4)
+        // Two indices in a long, 32 bits each — unlike boundaryFaces above, which needs three in
+        // one key and so is capped at 2^21 nodes.
+        fun key(a: Int, b: Int): Long =
+            (minOf(a, b).toLong() shl 32) or maxOf(a, b).toLong()
+        for (cell in 0 until domain.cellCount) {
+            val base = 10 * cell
+            for ((k, edge) in edges.withIndex()) {
+                midpoints[key(domain.cells[base + edge[0]], domain.cells[base + edge[1]])] =
+                    domain.cells[base + 4 + k]
+            }
+        }
+        val split = ArrayList<Int>(faces.size * 4)
+        for (t in faces.indices step 3) {
+            val a = faces[t]; val b = faces[t + 1]; val c = faces[t + 2]
+            // The three sides of a boundary face are all edges of the tetrahedron it came from, so
+            // all three lookups hit unless the mesh is not what it says it is.
+            val ab = midpoints[key(a, b)] ?: return null
+            val bc = midpoints[key(b, c)] ?: return null
+            val ca = midpoints[key(c, a)] ?: return null
+            split.add(a); split.add(ab); split.add(ca)
+            split.add(ab); split.add(b); split.add(bc)
+            split.add(ca); split.add(bc); split.add(c)
+            split.add(ab); split.add(bc); split.add(ca)
+        }
+        return split.toIntArray()
     }
 
     internal companion object {

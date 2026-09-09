@@ -38,13 +38,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 92 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 93 transcripts on every build, at three
 depths. 61 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-24 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+25 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -970,6 +970,20 @@ to see that the answer is a flow and not a plausible picture. Install the worker
 `uv sync --project optional/kratos --frozen`, or build its container where Kratos has no wheels.
 Requires Manifold.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/kratos_flow_playground/metadata.edn)
+
+**kratos_structural_playground** — An L-bracket bending under load, and the argument for quadratic
+elements made as a picture rather than a table. Unlike the other two this one is **body-fitted**:
+Kratos has no immersed structural element, so TetGen tetrahedralizes the Manifold surface and the
+mesh goes to the worker, which means a geometry edit costs a remesh and a new session where the
+embedded playgrounds reclassify a grid they never rebuild. On launch it meshes the same bracket
+twice, once with 4-node tetrahedra and once with 10-node, solves both under the same 3 kN tip load,
+and draws the two deflected shapes beside the undeformed part, all coloured by von Mises stress. At
+the default settings 1681 tetrahedra give 0.187 mm against 0.232 mm — the linear element reaches 81%
+of the quadratic one's deflection, which is the constant-strain tetrahedron's locking seen directly,
+and dragging the arm longer makes the gap worse. Install the worker first with
+`uv sync --project optional/kratos --frozen`, or build its container where Kratos has no wheels;
+TetGen needs `python3 tools/build_tetgen_native.py` once. Requires Manifold.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/kratos_structural_playground/metadata.edn)
 
 **audio_render_analysis** — Start with music written in Field rather than an imported recording.
 Four explicit live-coding boxes render Pat/Dirt, Dough and Faust or record Sonic Pi, write a finite

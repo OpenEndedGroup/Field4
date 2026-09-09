@@ -174,12 +174,20 @@ class ManifoldGeometry(override val id: String, solid: Solid) : SimulationGeomet
  * are unavailable on it and [SimulationResult.boundaryMesh] is the view to use instead.
  */
 class BackgroundDomain private constructor(val id: String, val bounds: SimulationBounds, val resolution: Int,
-                                          val positions: DoubleArray, val cells: IntArray, val buildMs: Double) {
+                                          val positions: DoubleArray, val cells: IntArray, val buildMs: Double,
+                                          /**
+                                           * 4 for linear tetrahedra, 10 for quadratic ones. A
+                                           * structured grid is always linear; a supplied mesh is
+                                           * whatever [afield.tetgen.Tetgen] was asked for. Anything
+                                           * reading connectivity for its *shape* wants the first
+                                           * four of each group and this as the stride.
+                                           */
+                                          val nodesPerCell: Int = 4) {
 
     /** True when this is a structured grid and so can be sampled by index. */
     val isStructured: Boolean get() = resolution > 0
     val nodeCount: Int get() = positions.size / 3
-    val cellCount: Int get() = cells.size / 4
+    val cellCount: Int get() = cells.size / nodesPerCell
     val buildCount: Int = 1
     internal fun index(x: Int, y: Int, z: Int): Int = (x * (resolution+1) + y) * (resolution+1) + z
     internal companion object {
@@ -204,7 +212,7 @@ class BackgroundDomain private constructor(val id: String, val bounds: Simulatio
                 (0 until mesh.nodeCount).minOf { p[3 * it] }, (0 until mesh.nodeCount).minOf { p[3 * it + 1] },
                 (0 until mesh.nodeCount).minOf { p[3 * it + 2] }, (0 until mesh.nodeCount).maxOf { p[3 * it] },
                 (0 until mesh.nodeCount).maxOf { p[3 * it + 1] }, (0 until mesh.nodeCount).maxOf { p[3 * it + 2] })
-            return BackgroundDomain(id, bounds, 0, mesh.positions, mesh.cells, buildMs)
+            return BackgroundDomain(id, bounds, 0, mesh.positions, mesh.cells, buildMs, mesh.nodesPerCell)
         }
     }
 }

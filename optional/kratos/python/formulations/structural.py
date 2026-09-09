@@ -17,6 +17,11 @@ What changes for the bridge, and what does not:
   * a geometry edit means a new mesh, and therefore a new session. Nothing here pretends the
     no-remesh invariant survives -- it belongs to the embedded formulations.
 
+The mesh also chooses the element. A 4-node tetrahedron has constant strain and locks badly in
+bending; a 10-node one has linear strain and does not. Field decides which by what it asks TetGen
+for, and this formulation reads the width of what arrives -- there is no parameter, because a
+parameter could disagree with the mesh.
+
 Everything else -- protocol, framing, revisions, binary arrays, transport -- is untouched.
 """
 import time
@@ -32,6 +37,14 @@ class BodyFittedStructural(Formulation):
                     'KratosMultiphysics.StructuralMechanicsApplication',
                     'KratosMultiphysics.LinearSolversApplication')
     element = 'SmallDisplacementElement3D4N'
+    #: Both tetrahedron orders, picked from the mesh Field sends rather than from a parameter --
+    #: the mesh already decided, and disagreeing with it is not a thing anyone wants to express.
+    #:
+    #: The 4-node element has constant strain, which makes it far too stiff in bending: a cantilever
+    #: under self-weight reaches 13%, 36% and 62% of Euler-Bernoulli over three refinements, still
+    #: far short and climbing slowly. The 10-node element has linear strain, does not lock that way,
+    #: and reaches 95% on the coarsest of those three. `dev_docs/TETGEN.md` has both tables.
+    elements = {4: 'SmallDisplacementElement3D4N', 10: 'SmallDisplacementElement3D10N'}
     summary = 'linear-elastic small displacement on a body-fitted tetrahedral mesh (TetGen)'
     supplied_mesh = True
 
@@ -111,6 +124,12 @@ class BodyFittedStructural(Formulation):
         loaded = self._region_mask(load_region)
         # The requested force is the total over the region, so the answer does not change when the
         # mesh is refined and the region picks up more nodes.
+        #
+        # Equally, not by tributary area, which makes the traction slightly non-uniform near the
+        # loaded face -- a Saint-Venant end effect that decays within a diameter and shrinks under
+        # refinement. On a 10-node mesh it is a little further from consistent still (the consistent
+        # nodal loads for a quadratic face are negative at the corners), but the resultant is exact
+        # either way, so equilibrium and everything away from the end are unaffected.
         share = (np.asarray(load, float) / loaded.sum()) if loaded.any() else np.zeros(3)
 
         acceleration = [float(g) for g in gravity]
@@ -139,8 +158,12 @@ class BodyFittedStructural(Formulation):
                 raise ArithmeticError('Kratos returned nonfinite displacements; check the clamp '
                                       'region actually restrains all six rigid-body modes')
             start = time.perf_counter()
-            stress = np.array([element.CalculateOnIntegrationPoints(
-                SMA.VON_MISES_STRESS, self.mp.ProcessInfo)[0] for element in self.elements],
+            # The peak over the element's integration points, not the first one. A 4-node element
+            # has exactly one, so this is unchanged there; a 10-node element has four and its stress
+            # varies across them, and reporting a corner-ish sample would understate exactly the
+            # concentrations these elements were introduced to resolve.
+            stress = np.array([max(element.CalculateOnIntegrationPoints(
+                SMA.VON_MISES_STRESS, self.mp.ProcessInfo)) for element in self.elements],
                 dtype='<f8')
             stress_ms = (time.perf_counter() - start) * 1000
         finally:
@@ -151,6 +174,7 @@ class BodyFittedStructural(Formulation):
         return arrays, {
             'backgroundId': self.grid.id, 'buildCount': self.grid.build_count,
             'nodeCount': self.grid.node_count, 'cellCount': self.grid.cell_count,
+            'nodesPerCell': self.nodes_per_cell, 'element': self.element,
             'clampedNodes': int(clamped.sum()), 'loadedNodes': int(loaded.sum()),
             'modelUpdateMs': model_ms, 'assemblyMs': assembly_ms, 'solveMs': solve_ms,
             'assemblyAndSolveMs': assembly_ms + solve_ms, 'stressRecoveryMs': stress_ms,

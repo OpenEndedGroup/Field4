@@ -372,12 +372,18 @@ data class FlowParameters(
  * [afield.tetgen.Tetgen]. A geometry change means a new mesh and therefore a new session; the
  * no-remesh invariant belongs to the embedded formulations and this one does not claim it.
  *
- * Read the limitation before reading a number: `SmallDisplacementElement3D4N` is a constant-strain
- * tetrahedron, which is **exact in axial extension and locks in bending**. Measured against a
- * slender cantilever under self-weight it reaches 36%, 62% and 76% of the Euler–Bernoulli
- * deflection at three refinements, converging but slowly, while the same model reproduces axial
- * extension to 0.04%. Trust it for stiffness-dominated and axial problems; treat bending
- * deflections as a lower bound until this grows quadratic elements.
+ * # Mesh the part with `order = 2` if it bends
+ *
+ * The element is chosen by the mesh, not by a parameter here. A 4-node mesh gets
+ * `SmallDisplacementElement3D4N`, a constant-strain tetrahedron that is exact in axial extension
+ * and **locks badly in bending** — on a slender cantilever under self-weight it reaches 13%, 36%
+ * and 62% of the Euler–Bernoulli deflection as the mesh refines, still far short and climbing
+ * slowly. A 10-node mesh, from `Tetgen.tetrahedralize(surface, order = 2)`, gets
+ * `SmallDisplacementElement3D10N` and reaches 95% on the *coarsest* of those three and 99% on the
+ * middle one.
+ *
+ * So: pass `order = 2` unless the part is loaded purely in tension or compression, where the linear
+ * element is already exact and much cheaper. `dev_docs/TETGEN.md` has both convergence tables.
  *
  * @param clamp an axis-aligned box; every node inside it is fully fixed. Must catch at least one
  *   node, or the stiffness matrix is singular and the solve says so.
@@ -590,10 +596,13 @@ class KratosSession private constructor(private val connection: KratosConnection
                         .order(java.nio.ByteOrder.LITTLE_ENDIAN)
                     mesh.cells.forEach { cells.putInt(it) }
                     val payload = worker.call("createBodyMesh", 0, 0, mapOf(
-                        "formulation" to formulation,
+                        "formulation" to formulation, "nodesPerCell" to mesh.nodesPerCell,
                         "positions" to positions.array(), "cells" to cells.array()))
+                    // Including the width: a 10-node mesh read as 4-node would build a model that
+                    // solves, so this is checked rather than assumed.
                     check(payload.number("nodeCount") == mesh.nodeCount.toLong() &&
-                        payload.number("cellCount") == mesh.cellCount.toLong()) {
+                        payload.number("cellCount") == mesh.cellCount.toLong() &&
+                        payload.number("nodesPerCell") == mesh.nodesPerCell.toLong()) {
                         "worker received a different mesh than was sent: $payload"
                     }
                     val domain = BackgroundDomain.ofSuppliedMesh(

@@ -31,6 +31,9 @@ class Formulation:
     applications = ()
     #: Registered Kratos element for a 3D linear tetrahedron.
     element = None
+    #: `{nodes per tetrahedron: element name}` for a formulation that accepts more than one
+    #: tetrahedron order. `None` means 4-node only, and [element] is it.
+    elements = None
     #: One-line description, reported by `hello`.
     summary = ''
     #: Largest resolution this profile's linear solver is honest about.
@@ -75,10 +78,32 @@ class Formulation:
     def finish(self, model_part):
         """Anything the ModelPart needs *after* its nodes and elements exist — conditions, mostly."""
 
+    @classmethod
+    def element_for(cls, nodes_per_cell):
+        """The Kratos element this formulation puts on a tetrahedron of the given width.
+
+        Shadowing the class attribute on the instance, rather than reading the mesh inside `build`
+        at every use, keeps `self.element` meaning one thing: the element this session is actually
+        running. `formulations.available()` still reports the class default plus the whole table.
+        """
+        if cls.elements is None:
+            if nodes_per_cell != 4:
+                raise FormulationError(
+                    f'{cls.name} runs on 4-node tetrahedra; this mesh has {nodes_per_cell} nodes '
+                    'per element')
+            return cls.element
+        chosen = cls.elements.get(nodes_per_cell)
+        if chosen is None:
+            raise FormulationError(
+                f'{cls.name} runs on {sorted(cls.elements)}-node tetrahedra; this mesh has '
+                f'{nodes_per_cell} nodes per element')
+        return chosen
+
     def build(self):
         import KratosMultiphysics as K
         self.K = K
         K.Logger.GetDefaultOutput().SetSeverity(K.Logger.Severity.WARNING)
+        self.element = self.element_for(self.grid.nodes_per_cell)
         start = time.perf_counter()
         self.model = K.Model()
         self.mp = model_part = self.model.CreateModelPart(self.name.replace('.', '_'))
@@ -113,6 +138,10 @@ class Formulation:
     @property
     def cells(self):
         return self.grid.cells
+
+    @property
+    def nodes_per_cell(self):
+        return self.grid.nodes_per_cell
 
     @property
     def id(self):
