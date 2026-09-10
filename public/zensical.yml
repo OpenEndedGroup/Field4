@@ -170,6 +170,7 @@ nav:
       - Graphics: reference/graphics.md
       - Polytopes: reference/polytopes.md
       - Solvers: reference/solvers.md
+      - Simulation: reference/simulation.md
       - Imaging: reference/imaging.md
       - ALife: reference/alife.md
       - Search: reference/search.md
