@@ -523,4 +523,63 @@ class PatCondenseTest {
             assertEquals(figure, condensed.notation, "\"$bar\" through audio")
         }
     }
+
+    // ── 8. the limits, pinned so the list in the docs stays true ──────────────────────────────
+
+    /**
+     * **What the search cannot find.** Each case is a *live pattern*, so the source string is not in
+     * the candidate set and the search has to earn the answer on its own.
+     *
+     * These are pinned rather than left in prose because a limits list nobody runs goes stale, and
+     * every one of them is a plausible next operator: whichever gets built should turn one of these
+     * assertions red.
+     */
+    @Test
+    fun `the four things the search cannot find are the four things it says it cannot find`() {
+        // 1. Alternation is proposed only at the top level, one whole cycle per alternative. A `<>`
+        //    nested inside a sequence is out of reach, so `bd <sd cp>` costs 17 instead of 10.
+        val alternating = patCondense(pat("bd <sd cp>"), cycles = 2)
+        assertTrue(alternating.exact)
+        assertEquals("<[bd sd] [bd cp]>", alternating.notation)
+        assertTrue(
+            alternating.notation.length > "bd <sd cp>".length,
+            "the search now beats the hand-written alternation, so limit 1 is gone"
+        )
+
+        // 2. Polymeter is never proposed at all. `{a b c}%8` phases over three cycles and comes back
+        //    as those three cycles written out, which is 54 characters against 9.
+        val polymeter = patCondense(pat("{a b c}%8"), cycles = 3)
+        assertTrue(polymeter.exact)
+        assertTrue(
+            "polymeter" !in polymeter.structure,
+            "the search proposed a polymeter, so limit 2 is gone: ${polymeter.notation}"
+        )
+        assertTrue(polymeter.notation.length > 40, "unexpectedly short: ${polymeter.notation}")
+
+        // 3. A rhythm figure is recognised only over a single repeated *atom*. `[bd cp](3,8)` puts a
+        //    two-atom group on the Euclidean onsets, and the recogniser will not look at it.
+        val grouped = patCondense(pat("[bd cp](3,8)"), cycles = 1)
+        assertTrue(grouped.exact)
+        assertTrue(
+            "euclid" !in grouped.structure,
+            "the search found a Euclidean figure under a group, so limit 3 is gone: ${grouped.notation}"
+        )
+
+        // 4. The Kolakoski alphabet is a parameter of `kolakoskiMask` and not of the notation: there
+        //    is no spelling for {2,3}, only `k` and `g` over {1,2}. So that figure decomposes.
+        val alphabet = patCondense(kolakoskiMask(16, a = 2, b = 3))
+        assertTrue(alphabet.exact)
+        assertTrue(
+            alphabet.notation.length > "x(k16)".length,
+            "the notation grew a spelling for the alphabet, so limit 4 is gone: ${alphabet.notation}"
+        )
+
+        println(
+            "  known limits, as they currently read:\n" +
+                "    bd <sd cp>      → ${alternating.notation}\n" +
+                "    {a b c}%8       → ${polymeter.notation}\n" +
+                "    [bd cp](3,8)    → ${grouped.notation}\n" +
+                "    kolakoski{2,3}  → ${alphabet.notation}"
+        )
+    }
 }
