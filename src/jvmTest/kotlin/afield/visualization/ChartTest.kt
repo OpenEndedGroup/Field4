@@ -156,6 +156,127 @@ class ChartTest {
         assertTrue(moved >= 30, "on a fixed domain, 30 of 41 nodes must move; only $moved did")
     }
 
+    // ── staying inside the frame ──────────────────────────────────────────────────
+    //
+    // `ChartGallery` takes these to rendered pixels and to a panel's fit; this half is the
+    // arithmetic, so a failure names a coordinate rather than a percentage of ink. Each one carries
+    // its counterfactual, because a clip that stopped working would otherwise leave a test that
+    // passes on input that has quietly become harmless.
+
+    /** The union of everything a chart draws, as `(x0, y0, x1, y1)` in figure pixels. */
+    private fun drawnBox(chart: Chart): DoubleArray {
+        val points = chart.toFLines().flatMap { line -> line.nodes.mapNotNull { it.toOrNull } }
+        return doubleArrayOf(
+            points.minOf { it.x.toDouble() }, points.minOf { it.y.toDouble() },
+            points.maxOf { it.x.toDouble() }, points.maxOf { it.y.toDouble() },
+        )
+    }
+
+    @Test
+    fun `a line outside an explicit domain is clipped to the plot, and would not have been`() {
+        // The tetgen corner, reduced: a 2 x 3 outline charted into a 0.24 x 0.24 window on one of
+        // its corners. Unclipped, this reached 5137 px outside a 677 x 346 plot.
+        fun corner(clip: Boolean): Chart =
+            Chart(title = "corner", xLabel = "x", yLabel = "y")
+                .line("outline", listOf(-1.0, 1.0, 1.0, -1.0, -1.0), listOf(-1.5, -1.5, 1.5, 1.5, -1.5))
+                .also {
+                    it.width = 780.0; it.height = 440.0
+                    it.xDomain = 0.82 to 1.06
+                    it.yDomain = 1.32 to 1.56
+                    it.clip = clip
+                }
+
+        val clipped = corner(clip = true)
+        val plot = clipped.plotRect()
+        val drawn = clipped.toFLines().first { it.label == "outline" }.nodes.mapNotNull { it.toOrNull }
+        assertTrue(drawn.isNotEmpty(), "the visible part of the outline must still be drawn")
+        drawn.forEach {
+            assertTrue(
+                it.x >= plot.x - 0.5 && it.x <= plot.x + plot.w + 0.5 &&
+                    it.y >= plot.y - 0.5 && it.y <= plot.y + plot.h + 0.5,
+                "a clipped series must stay inside plotRect; ${it.x},${it.y} is not in $plot"
+            )
+        }
+        // One FLine and not one per surviving run: a clipped series is still one series and one
+        // legend entry. The corner clips to an L, so what survives is more than a stub.
+        assertEquals(1, clipped.toFLines().count { it.label == "outline" }, "one series, one line")
+        assertTrue(drawn.size >= 3, "the corner clips to an L, so at least 3 nodes survive")
+
+        // The counterfactual: the same numbers with the clip off must land far outside, or this test
+        // is asserting a property of its input rather than of the code.
+        val loose = corner(clip = false).toFLines()
+            .first { it.label == "outline" }.nodes.mapNotNull { it.toOrNull }
+        val excursion = loose.maxOf { p ->
+            val (px, py) = p.x.toDouble() to p.y.toDouble()
+            maxOf(plot.x - px, px - (plot.x + plot.w), plot.y - py, py - (plot.y + plot.h), 0.0)
+        }
+        assertTrue(excursion > 2000.0, "unclipped, this data must reach far outside; it reached $excursion px")
+    }
+
+    @Test
+    fun `a long note wraps instead of dragging the figure's bounds`() {
+        // Verbatim the note the tetgen corner figure shipped with at 9f7ffc4f2, before it was
+        // shortened by hand at 281f3948f to work around exactly this.
+        val note = "a 0.24 x 0.24 window on a body 2 x 3 across. The true corner is at " +
+            "(1.0, 1.5); every level set cuts it off, and halving h halves what is left."
+        fun figure(clip: Boolean) =
+            Chart(title = "a long note", xLabel = "x", yLabel = "y", note = note)
+                .line("ramp", (0..10).map { it }, (0..10).map { it })
+                .also { it.width = 780.0; it.height = 440.0; it.clip = clip }
+
+        val wrapped = drawnBox(figure(clip = true))
+        assertTrue(
+            wrapped[0] >= -4.0 && wrapped[1] >= -4.0 && wrapped[2] <= 784.0 && wrapped[3] <= 444.0,
+            "a wrapped figure must fit its own 780x440 frame; it drew ${wrapped.toList()}"
+        )
+        // The counterfactual, and the number that matters: unwrapped it was 1240 px wide, so a panel
+        // fitting those bounds drew a 780 px figure at 63% of its declared size.
+        val unwrapped = drawnBox(figure(clip = false))
+        val looseWidth = unwrapped[2] - unwrapped[0]
+        assertTrue(looseWidth > 1200.0, "unwrapped, this note must overhang badly; it was $looseWidth px wide")
+        assertTrue(780.0 / looseWidth < 0.70, "unwrapped, the figure must shrink below 70%; it was ${780.0 / looseWidth}")
+    }
+
+    @Test
+    fun `a log x axis drops a datum it cannot represent instead of moving the axis`() {
+        // `resolvedYDomain` has always dropped a non-positive datum on a log axis; `resolvedXDomain`
+        // did not, so one zero sent `padDegenerate` down its `a = b / 100` path and gave 10..1000 —
+        // and 0.001 and 0.1 were then drawn off the left of the frame with no explicit domain in
+        // sight. Measured before the fix: the smallest datum sat 1645 px left of the axis.
+        val chart = Chart(xLabel = "n").line("t", listOf(0.0, 0.001, 0.1, 10.0, 1000.0), listOf(1, 2, 3, 4, 5))
+        chart.xKind = ScaleKind.LOG
+        val (lo, hi) = chart.resolvedXDomain()
+        assertEquals(0.001, lo, 1e-12, "the smallest representable datum must be on the axis")
+        assertEquals(1000.0, hi, 1e-9)
+        // y already did this, and the symmetry is the whole point of the change.
+        val onY = Chart().line("t", listOf(1, 2, 3), listOf(0.0, 0.5, 50.0)).also { it.yKind = ScaleKind.LOG }
+        assertEquals(0.5, onY.resolvedYDomain().first, 1e-12, "y has always dropped the zero")
+    }
+
+    @Test
+    fun `a bar and a rule off the axis are dropped, not flattened onto the frame`() {
+        // Both bars run 0..1 and 0..2, entirely below a 10..20 window. Before `clipSpan`, `coerceIn`
+        // collapsed each to the frame line and `max(1.0, ...)` drew a one-pixel smear along it.
+        val bars = Chart().bars("cost", listOf("a", "b"), listOf(1, 2))
+        bars.yDomain = 10.0 to 20.0
+        assertEquals(
+            0, bars.toFLines().count { it.label?.startsWith("cost") == true },
+            "a bar with no part inside the window must not be drawn at all"
+        )
+        // And the counterfactual: inside the window they draw.
+        val inside = Chart().bars("cost", listOf("a", "b"), listOf(1, 2))
+        inside.yDomain = 0.0 to 4.0
+        assertEquals(2, inside.toFLines().count { it.label?.startsWith("cost") == true }, "both bars draw")
+
+        // A rule off the axis has no honest position, so it is not drawn.
+        val boxed = Chart().line("s", listOf(1, 2, 3), listOf(1, 2, 3)).rule(99.0, "way up there")
+        boxed.yDomain = 0.0 to 4.0
+        assertEquals(0, boxed.toFLines().count { it.label == "way up there" }, "an off-axis rule is dropped")
+        // With no explicit domain the same rule is inside the derived domain, and draws.
+        val free = Chart().line("s", listOf(1, 2, 3), listOf(1, 2, 3)).rule(99.0, "way up there")
+        assertEquals(1, free.toFLines().count { it.label == "way up there" }, "an in-domain rule draws")
+    }
+
     // ── loudness ──────────────────────────────────────────────────────────────────
 
     @Test

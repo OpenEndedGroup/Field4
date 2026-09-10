@@ -6,6 +6,7 @@ import afield.FLineClick
 import afield.ScaleKind
 import afield.chart
 import afield.getFLineClickCallback
+import org.jetbrains.kotlinx.dataframe.api.dataFrameOf
 import afield.graphics.linesToHTML
 import afield.graphics.outputTo
 import afield.hexColor
@@ -475,6 +476,71 @@ object ChartGallery {
                 "against ${"%.0f".format(room)} px of room; drawn, ${extentReport(noted)}"
         )
 
+        // ── (iii) a note nobody typed ─────────────────────────────────────────────
+        // The survey's most interesting hit: `DataFrameCharts.chart` *generates* a footnote, and on
+        // a categorical x with spare numeric columns it generates one of unbounded length out of the
+        // column names. No caller wrote it, no reviewer saw it, and it is reachable from
+        // `showChart(frame)` — one word.
+        val frame = dataFrameOf(
+            "component", "leakage current", "quiescent draw", "peak inrush", "settling time",
+        )(
+            "regulator", 0.4, 12.0, 320.0, 1.8,
+            "level shifter", 1.1, 3.0, 41.0, 0.3,
+            "charge pump", 0.7, 21.0, 512.0, 4.4,
+        )
+        // `x = "component"` and not auto-selection: with two or more numeric columns the auto path
+        // picks a *numeric* x, and the branch that generates the long footnote is the categorical
+        // one. Naming the categorical column is how a caller reaches it, and it is the obvious thing
+        // to write for a frame shaped like this.
+        val generated = frame.chart(x = "component", title = "a note the library wrote")
+        generated.width = 780.0
+        generated.height = 440.0
+        val generatedNote = generated.note ?: ""
+        val generatedWidth = afield.chartLabelWidth(generatedNote)
+        if (generatedWidth <= generated.width) {
+            problems += "the generated-note case is toothless: DataFrameCharts produced only " +
+                "${"%.0f".format(generatedWidth)} px of footnote on a ${generated.width.toInt()} px " +
+                "frame, so it no longer demonstrates a note nobody typed running off the edge"
+        }
+        problems += frameProblems("generated-note", generated)
+        println(
+            "  generated-note: DataFrameCharts wrote ${generatedNote.length} chars, " +
+                "${"%.0f".format(generatedWidth)} px on one line; drawn, ${extentReport(generated)}"
+        )
+
+        // ── (iv) a log x axis with a datum that is not on it ──────────────────────
+        // Found by reading rather than by report: `resolvedYDomain` drops a non-positive datum on a
+        // log axis and `resolvedXDomain` did not, so one zero in x dragged the domain to hi/100 and
+        // put every small positive datum off the left of the frame — no explicit domain required.
+        val logged = Chart(title = "a log x axis with a zero in it", xLabel = "n", yLabel = "t")
+            .line("measured", listOf(0.0, 0.001, 0.1, 10.0, 1000.0), listOf(1.0, 2.0, 3.0, 4.0, 5.0))
+        logged.xKind = ScaleKind.LOG
+        val (lx0, lx1) = logged.resolvedXDomain()
+        if (lx0 > 0.001) {
+            problems += "a log x domain of ${"%.2e".format(lx0)}..${"%.2e".format(lx1)} excludes the " +
+                "0.001 datum, so it is drawn off the left of the axis"
+        }
+        problems += frameProblems("log-x-with-zero", logged)
+        // The counterfactual, stated as the domain the unfiltered code actually produced —
+        // `padDegenerate(0, 1000, LOG)` takes its `a = b / 100` path and gives 10..1000. Pinned as a
+        // rendering rather than as a comment, so removing the filter fails here and not silently.
+        val unfiltered = Chart(title = "the pre-fix domain", xLabel = "n", yLabel = "t")
+            .line("measured", listOf(0.001, 0.1, 10.0, 1000.0), listOf(2.0, 3.0, 4.0, 5.0))
+        unfiltered.xKind = ScaleKind.LOG
+        unfiltered.xDomain = 10.0 to 1000.0
+        unfiltered.clip = false
+        val leftOfAxis = unfiltered.plotRect().x -
+            (drawnBounds(unfiltered)?.x ?: unfiltered.plotRect().x)
+        if (leftOfAxis < 400.0) {
+            problems += "the log-x counterfactual is toothless: on the pre-fix domain 10..1000 the " +
+                "0.001 datum lands only ${"%.0f".format(leftOfAxis)} px left of the axis"
+        }
+        println(
+            "  log-x-with-zero: domain ${"%.2e".format(lx0)}..${"%.2e".format(lx1)}, " +
+                "${extentReport(logged)}; on the pre-fix domain the smallest datum sat " +
+                "${"%.0f".format(leftOfAxis)} px left of the axis"
+        )
+
         // Both cases, before and after, as a *panel* would draw them — because "it compiles" is not
         // verification for anything visual, and the raw 780 x 440 raster is not what a reader saw.
         // The before half is `clip = false`, which is the behaviour these two defects were, so the
@@ -498,7 +564,7 @@ object ChartGallery {
 
         check(problems.isEmpty()) { "figures left their own frame:\n  - " + problems.joinToString("\n  - ") }
         println(
-            "  frame gate: 2 regression figures + ${FIGURES.size} gallery figures inside their own " +
+            "  frame gate: 4 regression figures + ${FIGURES.size} gallery figures inside their own " +
                 "frames to within $FRAME_SLOP px"
         )
     }

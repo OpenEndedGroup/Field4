@@ -810,6 +810,11 @@ class Chart(
             for (i in 0 until mark.count) {
                 val v = mark.x[i]
                 if (!v.isFinite()) continue
+                // Symmetric with [resolvedYDomain], which has always done this and which x had not.
+                // A non-positive datum is not representable on a log axis; letting it into the domain
+                // sends `padDegenerate` down its `a = b / 100` path, and every genuinely small
+                // positive datum then maps to the left of the frame instead of onto the axis.
+                if (xKind == ScaleKind.LOG && v <= 0.0) continue
                 lo = min(lo, v - half); hi = max(hi, v + half)
             }
         }
