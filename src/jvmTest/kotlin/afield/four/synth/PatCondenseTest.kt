@@ -492,4 +492,35 @@ class PatCondenseTest {
         assertEquals("60(3,8)", condensed.notation)
         assertTrue(rendersTheSame(flat, condensed.notation, 1))
     }
+
+    /**
+     * The same loop with the audio actually in it: render a bar to samples, listen to the samples,
+     * condense what was heard. Nothing between the render and the transcription sees the pattern.
+     *
+     * This is the sentence `PatTranscription.kt`'s header is reaching for. Its arrow "→ revise the
+     * generating code" landed on a slot list; it now lands on a figure.
+     */
+    @Test
+    fun `a bar rendered to audio and heard back condenses to the figure that made it`() {
+        for ((bar, figure) in listOf(
+            "60 ~ ~ 60 ~ 60 ~ ~" to "60(3,8)",
+            "60 ~ ~ 60 60 ~ 60 ~" to "60(k8)"
+        )) {
+            val audio = patRenderStereo(
+                pat(bar),
+                cycles = 1,
+                cps = 0.5,
+                voice = patVoice(decay = 0.06, sustain = 0.6)
+            )
+            val heard = patTranscribe(audio.mono, PatSoundDocs.SR, minHz = 180.0, maxHz = 420.0)
+            assertEquals(
+                bar, heard.miniNotation,
+                "the transcriber did not recover the bar, so the condensation below would be about " +
+                    "something else: grid ${heard.grid?.describe()}"
+            )
+            val condensed = patCondense(heard)
+            assertTrue(condensed.exact, "\"$bar\" heard back did not condense: ${condensed.refusal}")
+            assertEquals(figure, condensed.notation, "\"$bar\" through audio")
+        }
+    }
 }

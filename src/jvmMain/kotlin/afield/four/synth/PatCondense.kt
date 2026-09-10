@@ -149,6 +149,38 @@ fun patCondense(transcription: PatTranscription): PatCondensation =
     patCondense(transcription.miniNotation, cycles = 1)
 
 /**
+ * Draw each of [sources] against its own condensation in this box's output, and return what was found.
+ *
+ * One pair of lanes per source: the rhythm as given above, the condensation *played* below. If the
+ * two lanes of a pair are not the same picture, the search is wrong, and that is easier to see than
+ * to read. Returns the [PatCondensation]s so a box can print `notation`, `compression` or `limits`
+ * beside the figure.
+ *
+ * ```
+ * showPatCondense("x ~ ~ x ~ x ~ ~", "bd [hh hh] sd [cp cp]").forEach { println(it.describe()) }
+ * ```
+ */
+fun afield.Box.showPatCondense(
+    vararg sources: String,
+    channel: String = "main"
+): List<PatCondensation> {
+    val found = sources.map { patCondense(it) }
+    if (found.isEmpty()) return found
+    val lanes = sources.zip(found).flatMap { (source, condensation) ->
+        listOf(source to pat(source), "→ ${condensation.notation}" to pat(condensation.notation))
+    }
+    val best = found.minOf { it.compression }
+    showPatRollOf(
+        *lanes.toTypedArray(),
+        title = "patCondense",
+        subtitle = "given (above) against condensed (below); best ${"%.2f".format(best)} of the flat spelling",
+        cycles = found.maxOf { it.cycles },
+        channel = channel
+    )
+    return found
+}
+
+/**
  * The search proper.
  *
  * @param fallback the string to hand back if the target cannot be reduced to a grid at all. When the
