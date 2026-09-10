@@ -45,6 +45,8 @@ import kotlin.io.path.exists
  * solve that is noise, so a geometry edit simply re-meshes. No part of this tries to update a mesh
  * in place.
  */
+
+/** Entry point; use [tetrahedralize] to convert a closed [afield.stdlib.TriMesh] surface into a [TetMesh]. */
 object Tetgen {
 
     /**
