@@ -27,7 +27,26 @@ showPatRollOf(
     "condensed: ${condensed.notation}" to pat(condensed.notation),
     title = "audio in, structure out",
     subtitle = "${audio.mono.size} samples at ${PatSoundDocs.SR} Hz, and no knowledge of what made them",
-    cycles = 1
+    cycles = 1,
+    channel = "roll"
+)
+
+// The two players are the claim you can hear. The first is the EXACT buffer patTranscribe was
+// given - not a re-render of `bar`, the same floats - so what you hear is what was listened to.
+// The second is `condensed.notation` sent back through the same voice. If patCondense is right
+// they are the same bar, and the point of a shortest notation is that shortening it cost nothing.
+display(
+    "played",
+    afield.four.audio.WavFloatArrayWriter.encodeStereo16(
+        audio.left, audio.right, PatSoundDocs.SR, normalizePeak = 0.9f
+    )
+)
+showPatAudio(
+    pat(condensed.notation),
+    cycles = 1,
+    cps = 0.5,
+    voice = patVoice(decay = 0.06, sustain = 0.6),
+    channel = "condensed"
 )
 
 markdown(
@@ -46,5 +65,10 @@ markdown(
     The `heard` row is everything `patTranscribe` can say on its own. The last row is the same
     bar after `patCondense(heard)`, and it names the figure. Nothing between the render and the
     transcription looked at `bar`.
+
+    Four outputs, each on its own channel: **roll** draws the three lanes, **played** is the
+    buffer that was actually transcribed, **condensed** is `${condensed.notation}` rendered
+    back through the same voice, and this table is **main**. The two players should be the
+    same bar — that is the claim, and it is the one part of this box you can check by ear.
     """.trimIndent()
 )

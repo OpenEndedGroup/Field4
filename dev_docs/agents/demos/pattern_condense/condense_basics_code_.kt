@@ -18,7 +18,7 @@ val rhythms = listOf(
     "a b c d e c a d"
 )
 
-val found = showPatCondense(*rhythms.toTypedArray())
+val found = showPatCondense(*rhythms.toTypedArray(), channel = "roll")
 
 val rows = rhythms.zip(found).joinToString("\n") { (source, c) ->
     "| `$source` | `${c.notation}` | ${c.notation.length}/${c.flat.length} | " +
@@ -39,5 +39,8 @@ markdown(
     scored on description length has to be shown *not* naming a figure as well as naming one.
 
     Bounds this run used: ${found.first().limits}
+
+    The figure is on the **roll** channel beside this one. These rhythms are abstract — `x`,
+    `bd`, `a` — so there is nothing to play here; box 3 is the one you can listen to.
     """.trimIndent()
 )
