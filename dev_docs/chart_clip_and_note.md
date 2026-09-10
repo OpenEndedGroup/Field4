@@ -116,13 +116,20 @@ And the one nobody was looking for: palette slot 5, pink `#ff7a9e`, is ΔE2000 *
 colour a reader cannot tell from its sixth series, and being visible is the entire point of
 `expect()`. Slot 1, orange, is 24.96, borderline.
 
-That is **not fixed here** — moving either colour rewrites every committed capture in the repo and
-touches `Table`'s column accents and Plotly's `showSignals` too. It is pinned at
-`MIN_PALETTE_AGAINST_BAD = 12.0`, a ratchet and not a target.
+That was **not fixed here** — the estimate at the time was that moving either colour rewrites every
+committed capture in the repo and touches `Table`'s column accents and Plotly's `showSignals` too,
+so it was pinned at `MIN_PALETTE_AGAINST_BAD = 12.0`, a ratchet and not a target.
+
+It is fixed now, and the estimate was wrong about the cost in both directions.
+`dev_docs/chart_bad_separation.md` has it: `CHART_BAD` moved to `#e60000` and the palette did not
+move at all, so the accents and `showSignals` were never in scope, and two committed captures
+changed rather than all of them. The slot accounting in the paragraph above is fixed there too.
 
 The Kotlin CIEDE2000 in `ChartGallery` agrees with an independent Python reference to 0.01 on all
 four of those statistics, which is the reason to trust forty lines of colour-difference arithmetic
-in a test harness.
+in a test harness. The 0.01 is 8-bit quantisation and nothing else: the constants are `float32`, so
+`vec(1.0, 0.42, 0.42)` measures 12.24 against that pink and the `#ff6b6b` it renders to measures
+12.25. Fed the same float, the two agree exactly.
 
 ## The sixth gate
 

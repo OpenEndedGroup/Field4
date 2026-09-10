@@ -4,6 +4,7 @@ import afield.graphics.FLine
 import afield.stdlib.hoverColor
 import afield.stdlib.label
 import afield.stdlib.onClick
+import afield.stdlib.vec
 import org.jetbrains.kotlinx.dataframe.api.dataFrameOf
 import kotlin.math.abs
 import kotlin.test.Test
@@ -412,5 +413,57 @@ class ChartTest {
         // Three data, two drawn nodes: a missing measurement is a gap and never a zero.
         val drawn = chart.toFLines().first { it.label == "v" }.nodes.mapNotNull { it.toOrNull }
         assertEquals(2, drawn.size, "a null cell must not be plotted as 0")
+    }
+
+    // ── palette slots ─────────────────────────────────────────────────────────────
+
+    @Test
+    fun `a mark given a colour does not consume a palette slot`() {
+        val hand = vec(1.0, 0.72, 0.35, 1.0)
+        val chart = Chart()
+            .line("hand-coloured", listOf(0, 1), listOf(1.0, 2.0), color = hand)
+            .line("first default", listOf(0, 1), listOf(3.0, 4.0))
+            .line("second default", listOf(0, 1), listOf(5.0, 6.0))
+
+        assertEquals(hand, chart.marks[0].color)
+        // The point of the fix: the first defaulted mark gets slot 0, not slot 1. `#ffb859` beside
+        // the palette's `#ff9e4a` is how tetgen.md's corner figure became four warm lines.
+        assertEquals(hexColor(signalPalette[0]), chart.marks[1].color)
+        assertEquals(hexColor(signalPalette[1]), chart.marks[2].color)
+    }
+
+    @Test
+    fun `a frame's series colours are the slots Table accent would use`() {
+        val runs = dataFrameOf("iteration", "a", "b", "c")(
+            0, 1.0, 0.5, 0.2,
+            1, 0.5, 0.4, 0.1,
+        )
+        // Each column is two marks — a line and its points, the dots explicitly in the line's own
+        // colour — so counting marks rather than slots gave column n slot 2n, and a three-series
+        // frame charted cyan/green/purple against a table's cyan/orange/green for the same numbers.
+        val byLabel = runs.chart().marks.groupBy { it.label }
+        listOf("a", "b", "c").forEachIndexed { i, name ->
+            val slot = hexColor(signalPalette[i])
+            byLabel.getValue(name).forEach {
+                assertEquals(slot, it.color, "series `$name` should be on palette slot $i")
+            }
+        }
+    }
+
+    @Test
+    fun `the palette wraps, and a failing datum is never a series colour`() {
+        var chart = Chart()
+        repeat(signalPalette.size + 2) { i ->
+            chart = chart.line("s$i", listOf(0, 1), listOf(i.toDouble(), i + 1.0))
+        }
+        assertEquals(chart.marks[0].color, chart.marks[signalPalette.size].color, "the palette wraps")
+
+        // CIEDE2000 is `ChartGallery.checkPaletteSeparation`'s job — it owns the 25.0 floor and the
+        // colour science. What is arithmetic, and what a reader of a chart actually depends on, is
+        // that CHART_BAD is not one of the colours a series can be drawn in.
+        assertTrue(
+            signalPalette.none { hexColor(it) == CHART_BAD },
+            "CHART_BAD $CHART_BAD is a signalPalette entry, so a failing datum is invisible"
+        )
     }
 }

@@ -336,7 +336,10 @@ class ChartMark internal constructor(
     val baseline: DoubleArray?,
     /** Bar/bin width in data units; 0 means "derive it from the spacing". */
     val binWidth: Double,
-    /** Colour, RGBA in `0..1`. Defaults to this mark's slot in [signalPalette]. */
+    /**
+     * Colour, RGBA in `0..1`. Defaults to the next unused slot in [signalPalette] — *next unused*,
+     * so passing a colour explicitly leaves the slot for the following mark rather than burning it.
+     */
     var color: Vec4,
     /** Dot radius, in pixels. */
     var size: Double,
@@ -389,8 +392,21 @@ val CHART_MUTED: Vec4 = vec(0.53, 0.53, 0.53, 1.0)
 /** The gridline colour: the same grey at a tenth of the weight, so data always wins. */
 val CHART_GRID: Vec4 = vec(0.53, 0.53, 0.53, 0.22)
 
-/** What a failed [Chart.expect] recolours to, matching [CellRole.BAD]'s intent. */
-val CHART_BAD: Vec4 = vec(1.0, 0.42, 0.42, 1.0)
+/**
+ * What a failed [Chart.expect] recolours to, matching [CellRole.BAD]'s intent.
+ *
+ * A saturated red rather than the soft `#ff6b6b` this was, and saturated *because* of the
+ * measurement: at `vec(1.0, 0.42, 0.42)` it sat CIEDE2000 **12.24** from [signalPalette] slot 5,
+ * the pink, so a six-series chart recoloured its failing data to a colour a reader could not tell
+ * from its sixth series — with being visible the entire point of `expect`. This renders `#e60000`
+ * and is **29.32** from the nearest slot (slot 1's orange, with the pink now at 29.40), further
+ * apart than the palette's own weakest internal pair at 23.81, and still 45.72 off the figure
+ * background. `ChartGallery.checkPaletteSeparation` holds it there.
+ *
+ * The palette itself did not move, so [Table.accent] and `showSignals` are untouched. Note that
+ * `--field-danger` `#ff5050` was not an option: it is 16.59 from the same pink.
+ */
+val CHART_BAD: Vec4 = vec(0.9, 0.0, 0.0, 1.0)
 
 /**
  * Marks, axes, and the claims made about them.
@@ -546,7 +562,22 @@ class Chart(
 
     // ── construction ──────────────────────────────────────────────────────────────
 
-    private fun nextColor(): Vec4 = hexColor(signalPalette[markList.size % signalPalette.size])
+    /**
+     * How many palette slots have been handed out — *not* how many marks there are.
+     *
+     * These were the same number until a mark given an explicit colour was found to consume a slot
+     * anyway, so the next automatic mark skipped one. Two ways that bit: a caller who colours one
+     * series by hand and lets the rest default lands the next series on slot 1 rather than slot 0,
+     * which is how `tetgen.md` got a hand-picked `#ffb859` next to the palette's `#ff9e4a`; and
+     * `DataFrameCharts.chart` with `points = true` adds two marks per column — the dots explicitly
+     * in the line's own colour — so column *n* took slot `2n` and a three-column frame went
+     * cyan/green/purple while `Table.accent` on the same frame went cyan/orange/green, in flat
+     * contradiction of the promise those two make to agree.
+     */
+    private var paletteSlotsUsed = 0
+
+    private fun nextColor(): Vec4 =
+        hexColor(signalPalette[paletteSlotsUsed++ % signalPalette.size])
 
     private fun add(mark: ChartMark): Chart = apply { markList += mark }
 

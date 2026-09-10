@@ -585,17 +585,24 @@ object ChartGallery {
      *
      * What actually happened on that page: its first series was hand-coloured
      * `vec(1.0, 0.72, 0.35)` = `#ffb859`, which is **ΔE*ab 13.91** from palette slot 1 `#ff9e4a` —
-     * the slot the *second* series then took, because an explicitly coloured mark still consumes
+     * the slot the *second* series then took, because an explicitly coloured mark still consumed
      * one. Series three and four took green and yellow, and yellow is 23.81 from that orange. So
      * three warm lines, and the cause is a hand-picked colour colliding with the palette rather than
-     * the palette colliding with itself.
+     * the palette colliding with itself. That slot accounting is fixed — see `Chart.paletteSlotsUsed`
+     * — so the collision is no longer reachable by hand-colouring one series and defaulting the rest.
      *
-     * And the one that was not being looked for: palette slot 5, pink `#ff7a9e`, is **ΔE2000 12.25**
-     * from [CHART_BAD] `#ff6b6b`. A six-series chart with an `expect()` claim recolours its failing
-     * data to a colour a reader cannot tell from its sixth series. Slot 1, orange, is 24.96, which is
-     * borderline. That is a real defect and it is *not* fixed here: moving either colour rewrites
-     * every committed capture in the repo, which is its own change and not a passenger on a clip fix.
-     * It is pinned at its current value so it cannot get worse unnoticed.
+     * And the one that was not being looked for, found by this measurement and **since fixed**:
+     * palette slot 5, pink `#ff7a9e`, was ΔE2000 12.24 from [CHART_BAD] when [CHART_BAD] was the
+     * soft `#ff6b6b`, with slot 1's orange a borderline 24.96 behind it. A six-series chart with an
+     * `expect()` claim recoloured its failing data to a colour a reader could not tell from its
+     * sixth series. [CHART_BAD] is now `#e60000` and its nearest slot is **29.32** — see
+     * `dev_docs/chart_bad_separation.md` for why the colour that moved was [CHART_BAD] and not the
+     * palette, and for what it cost in re-rendered captures.
+     *
+     * The numbers here are of the `Vec4` constants, which are float32, and that is where the 0.01
+     * disagreements in this file's history came from: `vec(1.0, 0.42, 0.42)` measures 12.24 while
+     * the `#ff6b6b` it renders to measures 12.25. Both are right, of different things; the
+     * assertions below are on the constants, because a constant is what a future edit would move.
      */
     private fun checkPaletteSeparation() {
         val labs = signalPalette.map { toLab(hexColor(it)) }
@@ -621,31 +628,51 @@ object ChartGallery {
         val nearestToBad = labs.withIndex().minBy { deltaE2000(it.value, badLab) }
         val badGap = deltaE2000(nearestToBad.value, badLab)
         check(badGap >= MIN_PALETTE_AGAINST_BAD) {
-            "signalPalette slot ${nearestToBad.index} is ${"%.2f".format(badGap)} from CHART_BAD, " +
-                "which is worse than the $MIN_PALETTE_AGAINST_BAD this was already at — a failing " +
-                "datum would be even harder to tell from that series than it already is"
+            "signalPalette slot ${nearestToBad.index} is only ${"%.2f".format(badGap)} from " +
+                "CHART_BAD in CIEDE2000, floor is $MIN_PALETTE_AGAINST_BAD — a chart with that many " +
+                "series would recolour its failing data to something a reader cannot tell from its " +
+                "last series, and being visible is the whole point of expect()"
+        }
+
+        // CHART_BAD earns this one by being the darkest thing the figure draws data in: getting it
+        // clear of the palette above meant darkening it (L* 64.1 -> 47.9) as well as saturating it,
+        // so the next move in that direction is the one that makes a failing datum invisible.
+        val badVsBackground = deltaE2000(badLab, background)
+        check(badVsBackground >= MIN_PALETTE_AGAINST_BACKGROUND) {
+            "CHART_BAD is only ${"%.2f".format(badVsBackground)} from the figure background, floor " +
+                "is $MIN_PALETTE_AGAINST_BACKGROUND — a failing datum would be invisible"
         }
         println(
             "  palette: ${signalPalette.size} colours, ${pairs.size} pairs, CIEDE2000 min " +
                 "${"%.2f".format(worst.first)} (slots ${worst.second}/${worst.third}), median " +
                 "${"%.2f".format(pairs.map { it.first }.sorted()[pairs.size / 2])}, faintest against " +
-                "background ${"%.2f".format(faintest)}; nearest to CHART_BAD is slot " +
-                "${nearestToBad.index} at ${"%.2f".format(badGap)} — a known defect, pinned, not fixed"
+                "background ${"%.2f".format(faintest)}; CHART_BAD's nearest slot is " +
+                "${nearestToBad.index} at ${"%.2f".format(badGap)} (floor $MIN_PALETTE_AGAINST_BAD), " +
+                "and it sits ${"%.2f".format(badVsBackground)} off the background"
         )
     }
 
     /** The weakest pair the default categorical palette is allowed to have. Measured at 23.81. */
     private const val MIN_PALETTE_SEPARATION = 20.0
 
-    /** How far a series colour must sit from the dark figure background. Measured at 55.60. */
+    /**
+     * How far a series colour — or [CHART_BAD] — must sit from the dark figure background.
+     * Measured at 55.60 for the faintest palette slot and 45.72 for [CHART_BAD].
+     */
     private const val MIN_PALETTE_AGAINST_BACKGROUND = 40.0
 
     /**
-     * A ratchet, not a target. Slot 5 is 12.25 from [CHART_BAD] today and that is already too close;
-     * this stops it getting closer while the real fix — moving one of the two colours, and
-     * re-rendering every committed capture — is done as its own change.
+     * How far [CHART_BAD] must sit from every [signalPalette] slot. Measured at 29.32 against
+     * slot 1's orange, with the pink that was the collision now at 29.40.
+     *
+     * 25.0 sits above [MIN_PALETTE_SEPARATION] because a failing datum has to survive a reader who
+     * is not looking for it, where two series only have to be told apart from each other. It also
+     * sits just above the 24.96 the old `#ff6b6b` measured against that same orange, which is the
+     * pair the gallery's own `expect` figure was drawn in and which is legible as a collision in
+     * the version of it committed before this change. The 4.25 of headroom under 29.32 is so that
+     * recolouring a palette slot for its own reasons cannot redden this by a rounding error.
      */
-    private const val MIN_PALETTE_AGAINST_BAD = 12.0
+    private const val MIN_PALETTE_AGAINST_BAD = 25.0
 
     /** sRGB in `0..1` to CIE L*a*b* under D65, the space the difference below is defined in. */
     private fun toLab(c: Vec4): DoubleArray {
