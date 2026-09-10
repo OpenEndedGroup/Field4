@@ -184,6 +184,58 @@ class LanguagesCategoryTest {
         )
     }
 
+    /**
+     * A floor under the corpus, and the failure it is aimed at.
+     *
+     * The drift guard compares the committed pages against what the source produces, so a root
+     * deleted from `SOURCE_ROOTS`, or an `EXCLUDE_PREFIXES` entry widened until it swallows a whole
+     * package, is *faithful* — regenerate and every guard goes green while a hundred symbols quietly
+     * leave the site. `dev_docs/kdoc_reference_contract.md` records 26 files that are annotated with
+     * a category that has a page and appear on no page, which is that failure standing still: it is
+     * invisible precisely because nothing counts.
+     *
+     * Two floors, both deliberately a little below the measurement at the time of writing
+     * (16 roots, 306 files, 18 pages) so that ordinary growth does not touch them and a subtraction
+     * does. The per-root half is the one that matters — a corpus can stay large while one package
+     * vanishes from it.
+     */
+    @Test
+    fun `every documented source root is represented on some committed reference page`() {
+        val pages = File(repoRoot(), "public/docs/reference")
+            .listFiles { f -> f.isFile && f.extension == "md" && f.name != "index.md" }
+            ?.associate { it.name to it.readText() }
+            ?: fail("public/docs/reference is not a directory")
+
+        // renderFileSection emits exactly this heading for every file it publishes.
+        val published = pages.values.flatMap { text ->
+            Regex("""^## (\S+\.kt) \{ #""", RegexOption.MULTILINE).findAll(text)
+                .map { it.groupValues[1] }
+        }.toSet()
+
+        assertTrue(
+            published.size >= 290,
+            "only ${published.size} source files are published across ${pages.size} category " +
+                "pages, against a floor of 290. Either a source root was dropped, an " +
+                "EXCLUDE_PREFIXES entry grew teeth, or this scan has rotted — check which before " +
+                "lowering the number."
+        )
+
+        val roots = StdlibReferenceGenerator.sourceRoots()
+        assertTrue(roots.size >= 16, "SOURCE_ROOTS has shrunk to ${roots.size}, from 16")
+        val unrepresented = roots.filter { root ->
+            val names = File(repoRoot(), root).walkTopDown()
+                .filter { it.isFile && it.extension == "kt" }.map { it.name }.toSet()
+            assertTrue(names.isNotEmpty(), "`$root` contains no Kotlin at all")
+            names.none { it in published }
+        }
+        assertTrue(
+            unrepresented.isEmpty(),
+            "these source roots are in SOURCE_ROOTS and contribute no file section to any " +
+                "committed page, so the generator is reading them and publishing nothing: " +
+                "$unrepresented"
+        )
+    }
+
     // ---------------------------------------------------------------------------------------------
 
     /** The path prefixes the generator files under [StdlibReferenceGenerator.LANGUAGES]. */

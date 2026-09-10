@@ -152,9 +152,9 @@ will not reach the page. The guard treats them as benign, annotated or not.
 
 This is the part that surprises people, and it has already caused one confident misattribution. The
 generated pages carry `Used in:` back-links, and those are *derived from the docs pages themselves*,
-not from KDoc. `StdlibReferenceGenerator.buildEvidenceIndex` (`StdlibReferenceGenerator.kt:1045#private fun buildEvidenceIndex`)
+not from KDoc. `StdlibReferenceGenerator.buildEvidenceIndex` (`StdlibReferenceGenerator.kt:1559#private fun buildEvidenceIndex`)
 lists **every** `public/docs/*.md` except the nine in `EVIDENCE_PAGE_BLOCKLIST`
-(`StdlibReferenceGenerator.kt:320#EVIDENCE_PAGE_BLOCKLIST`), reduces each to its *code* text only — fenced blocks plus
+(`StdlibReferenceGenerator.kt:625#EVIDENCE_PAGE_BLOCKLIST`), reduces each to its *code* text only — fenced blocks plus
 inline code spans, with bare filename spans dropped (`codeTextOf`, `:1091`) — and links a page to
 a source file when at least `MIN_EVIDENCE_HITS` = 2 (`:94`) tokens that are **uniquely owned** by
 that one file (ownership built at `:1038-1040`, applied at `:1049`) match in it.
@@ -214,7 +214,7 @@ A generated page is a **completion category**, and a file's category is normally
 `@file:CompletionCategory("…")` it carries. `StdlibReferenceGenerator.fileCategory` reads exactly
 that annotation and nothing else; a file under a source root with no annotation falls through to
 `inferredCategory`, and a file that reaches `Uncategorised` is a **build failure** rather than a page
-(`StdlibReferenceGenerator.kt:340#UNCATEGORISED` says why: the drift guard certifies faithfulness, not
+(`StdlibReferenceGenerator.kt:439#UNCATEGORISED` says why: the drift guard certifies faithfulness, not
 correctness, so once an `uncategorised.md` is committed every guard goes green while the site ships a
 page named after the fact that nobody categorised it).
 
@@ -235,7 +235,7 @@ not know they existed. The obvious move — annotate them — is the one move th
 So a `@file:` line added to publish a page can change — or delete — rows in a working programmer's
 autocomplete, and can do it for a declaration in a different package that merely shares a name. The
 measured cost of the near-miss is recorded on `EXCLUDE_PREFIXES`
-(`src/jvmMain/kotlin/afield/docs/StdlibReferenceGenerator.kt:190#Excluding by path costs nothing`):
+(`src/jvmMain/kotlin/afield/docs/StdlibReferenceGenerator.kt:232#Excluding by path costs nothing`):
 eleven candidate files, 574 declaration names, 235 of them also declared elsewhere *and* present in
 real box code.
 
@@ -267,7 +267,7 @@ diff` can be asked rather than believed.
 
 ### The mechanism actually used
 
-`CATEGORY_BY_PATH` (`src/jvmMain/kotlin/afield/docs/StdlibReferenceGenerator.kt:269#private val CATEGORY_BY_PATH`)
+`CATEGORY_BY_PATH` (`src/jvmMain/kotlin/afield/docs/StdlibReferenceGenerator.kt:366#private val CATEGORY_BY_PATH`)
 maps a repo-relative path prefix to a page label, first match wins, and is read by the generator and
 by nothing else. It is not new machinery: the `afield/visualization/` entry in it *is* the hardcoded
 `if` it generalises, which has assigned a category by path since the reference shipped.
