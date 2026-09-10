@@ -334,6 +334,39 @@ The rule underneath all five rows is the same one: **a file's own label wins**, 
 already chosen a category has already answered this question. Adding one to the Languages page means
 editing its annotations, which means changing completion, which means it is not a documentation task.
 
+### Choosing a page is not the same as appearing on one — 26 files, measured
+
+The four rows above used to end "so each is already published under a category its own source chose",
+and that sentence was **false**, in a way that hid a real gap for as long as it stood. A file's label
+decides *which* page it belongs on. `SOURCE_ROOTS` decides *whether the file is read at all*. A file
+can have answered the first question and still be invisible, and 26 of them are.
+
+Measured 2026-09-10 over all 18 committed pages read whole, with the exact section heading the
+generator emits (`## <basename> { #`) as the predicate:
+
+| package | files | label they chose |
+| --- | --- | --- |
+| `afield.solidsl` | 9 | `Graphics` |
+| `afield.petri` | 6 | `Visualization` (5), `Audio` (1) |
+| `afield.onnx` | 4 | `Machine learning` |
+| `afield.brief` | 2 | `Solvers` |
+| `afield.manifold` | 2 | `Graphics` |
+| `afield.graphics` | 2 | `Graphics` |
+| `afield.macros` | 1 | `Workspace` |
+
+Denominator: 248 files in `src/jvmMain` carry a file-level `@file:CompletionCategory`; 219 sit inside
+a source root and are published; 28 do not, of which 2 say `Internal` and are correctly absent
+(`ManifoldNative.kt` and `StdlibReferenceGenerator.kt` itself), leaving these 26.
+
+Two of them are worth naming. `Solid.kt` and `Section.kt` say `Graphics`, and `Solid` is the type
+`manifold.md`, `tetgen.md`, `mesh_examples.md` and `solid_notation.md` are all written about. And the
+`Graphics` blurb's claim to cover "the small shading languages' host side" is, today, a promise the
+page does not keep: every `solidsl` file that phrase refers to is one of the 26.
+
+Nothing here is fixed by the change that measured it, deliberately — six more roots is a different
+diff, and the `Used in:` links are corpus-global, so it wants a night of its own. But the false
+sentence is gone, and the number has a denominator now.
+
 ### Adding a language package to the reference
 
 1. Add the root to `SOURCE_ROOTS`. `SourcePageGenerator` reads the same list, so its "read the

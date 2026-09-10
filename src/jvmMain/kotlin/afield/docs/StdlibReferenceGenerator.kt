@@ -129,11 +129,31 @@ object StdlibReferenceGenerator {
      * - **Route A with a Kotlin compiler behind it** — an embedded-region extension that appears
      *   inside a Kotlin string, compiled on the JVM: `rectsl`, `stacksl`.
      *
-     * `petri`, `solidsl`, `brief` and `macros` are all deliberately absent, and not because they are
-     * uninteresting: each one already labels its own files (`Visualization`/`Audio`, `Graphics`,
-     * `Solvers`, `Workspace` respectively), so each is already published under a category its own
-     * source chose. `graphquery` is absent because it is a query notation over the reflective object
+     * `petri`, `solidsl`, `brief` and `macros` are all deliberately absent from *this list*, and not
+     * because they are uninteresting: each one already labels its own files
+     * (`Visualization`/`Audio`, `Graphics`, `Solvers`, `Workspace` respectively), so each has
+     * already answered the question of which page it belongs on, and moving it would mean editing
+     * annotations. `graphquery` is absent because it is a query notation over the reflective object
      * graph rather than a language on either route — no `BoxExecution`, no editor extension.
+     *
+     * **This paragraph used to end "so each is already published under a category its own source
+     * chose", and that was false.** Choosing a page and appearing on one are different things: a
+     * file's label decides *which* page, and this list decides *whether* the file is read at all.
+     * Measured 2026-09-10 over all 18 committed pages, whole, with the section heading this
+     * generator emits (`## <basename> { #`) as the predicate: **26** files in `src/jvmMain` carry a
+     * file-level `@file:CompletionCategory` naming a category that has a page, and appear on no
+     * page — 9 in `solidsl`, 6 in `petri`, 4 in `onnx`, 2 each in `brief`, `manifold` and
+     * `afield.graphics`, 1 in `macros`. `Solid.kt` and `Section.kt` say `Graphics`, and
+     * `Solid` is the type `manifold.md`, `tetgen.md`, `mesh_examples.md` and `solid_notation.md` are
+     * all written about. The `Graphics` blurb's claim to cover "the small shading languages' host
+     * side" is, today, a promise the page does not keep — every `solidsl` file it refers to is one
+     * of the 26. (Two more, `ManifoldNative.kt` and this file, say `Internal` and are correctly
+     * absent; they are not in the 26.)
+     *
+     * That gap is **not fixed here**, deliberately: six more roots is a different change with a
+     * different diff, and the evidence links are corpus-global, so it wants its own night. It is
+     * recorded rather than left for the next reader to rediscover, which is what the false sentence
+     * prevented for as long as it stood.
      *
      * The three simulation roots — `afield.four.physics`, `afield.kratos` and `afield.tetgen` —
      * were derived the same way, from a question rather than a taste: *which completion category
@@ -147,9 +167,11 @@ object StdlibReferenceGenerator {
      * and `public/docs/physics.md` is a whole page written about symbols this reference did not
      * know existed. See [CATEGORY_BY_PATH] for how it is labelled without an annotation.
      *
-     * The other unpublished annotated category is `Machine learning` — four files in
-     * `afield.onnx`. It is deliberately left for its own change rather than folded in here: it is
-     * a different subject with a different orientation problem, and two widenings in one diff make
+     * The other completion category with no page at all is `Machine learning` — four files in
+     * `afield.onnx`, every one of them already annotated, so publishing it needs a root, two
+     * `EXCLUDE_PREFIXES` entries for its smoke tests and a blurb, and no [CATEGORY_BY_PATH] entry
+     * whatever. It is deliberately left for its own change rather than folded in here: it is a
+     * different subject with a different orientation problem, and two widenings in one diff make
      * neither of them readable against the corpus-global evidence links.
      */
     private val SOURCE_ROOTS = listOf(
