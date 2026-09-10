@@ -23,8 +23,10 @@ import org.jetbrains.skia.ImageInfo
 import org.jetbrains.skia.Surface
 import java.io.File
 import kotlin.math.abs
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.exp
+import kotlin.math.hypot
 import kotlin.math.ln
 import kotlin.math.pow
 import kotlin.math.sin
@@ -243,6 +245,7 @@ object ChartGallery {
         checkPixelMapping()
         checkInteractivePath()
         checkNothingLeavesTheFrame(dir)
+        checkPaletteSeparation()
 
         println("chart gallery rendered ${FIGURES.size + 1} figure(s) into ${dir.absolutePath}")
     }
@@ -566,6 +569,143 @@ object ChartGallery {
         println(
             "  frame gate: 4 regression figures + ${FIGURES.size} gallery figures inside their own " +
                 "frames to within $FRAME_SLOP px"
+        )
+    }
+
+    // ── is the default palette actually distinguishable? ──────────────────────────
+
+    /**
+     * The third cause of `sharp_edge.png` was reported as "four near-identical warm series colours".
+     * Measured rather than judged, and the report is **wrong about the palette** — it is right about
+     * that figure. Both numbers, and the one nobody was looking for, are below.
+     *
+     * CIEDE2000 over the six [signalPalette] entries, 15 unordered pairs: min **23.81**
+     * (orange vs yellow), median 47.48, max 74.94. A working floor for a categorical palette is
+     * around 20–25, so the palette clears it, if only just at its weakest pair.
+     *
+     * What actually happened on that page: its first series was hand-coloured
+     * `vec(1.0, 0.72, 0.35)` = `#ffb859`, which is **ΔE*ab 13.91** from palette slot 1 `#ff9e4a` —
+     * the slot the *second* series then took, because an explicitly coloured mark still consumes
+     * one. Series three and four took green and yellow, and yellow is 23.81 from that orange. So
+     * three warm lines, and the cause is a hand-picked colour colliding with the palette rather than
+     * the palette colliding with itself.
+     *
+     * And the one that was not being looked for: palette slot 5, pink `#ff7a9e`, is **ΔE2000 12.25**
+     * from [CHART_BAD] `#ff6b6b`. A six-series chart with an `expect()` claim recolours its failing
+     * data to a colour a reader cannot tell from its sixth series. Slot 1, orange, is 24.96, which is
+     * borderline. That is a real defect and it is *not* fixed here: moving either colour rewrites
+     * every committed capture in the repo, which is its own change and not a passenger on a clip fix.
+     * It is pinned at its current value so it cannot get worse unnoticed.
+     */
+    private fun checkPaletteSeparation() {
+        val labs = signalPalette.map { toLab(hexColor(it)) }
+        val pairs = mutableListOf<Triple<Double, Int, Int>>()
+        for (i in labs.indices) for (j in i + 1 until labs.size) {
+            pairs += Triple(deltaE2000(labs[i], labs[j]), i, j)
+        }
+        val worst = pairs.minBy { it.first }
+        check(worst.first >= MIN_PALETTE_SEPARATION) {
+            "signalPalette slots ${worst.second} and ${worst.third} are only " +
+                "${"%.2f".format(worst.first)} apart in CIEDE2000, floor is $MIN_PALETTE_SEPARATION — " +
+                "two series in one figure would read as one"
+        }
+
+        val background = toLab(afield.hexColor("#12151c"))
+        val faintest = labs.minOf { deltaE2000(it, background) }
+        check(faintest >= MIN_PALETTE_AGAINST_BACKGROUND) {
+            "a palette colour is only ${"%.2f".format(faintest)} from the figure background, floor is " +
+                "$MIN_PALETTE_AGAINST_BACKGROUND"
+        }
+
+        val badLab = toLab(CHART_BAD)
+        val nearestToBad = labs.withIndex().minBy { deltaE2000(it.value, badLab) }
+        val badGap = deltaE2000(nearestToBad.value, badLab)
+        check(badGap >= MIN_PALETTE_AGAINST_BAD) {
+            "signalPalette slot ${nearestToBad.index} is ${"%.2f".format(badGap)} from CHART_BAD, " +
+                "which is worse than the $MIN_PALETTE_AGAINST_BAD this was already at — a failing " +
+                "datum would be even harder to tell from that series than it already is"
+        }
+        println(
+            "  palette: ${signalPalette.size} colours, ${pairs.size} pairs, CIEDE2000 min " +
+                "${"%.2f".format(worst.first)} (slots ${worst.second}/${worst.third}), median " +
+                "${"%.2f".format(pairs.map { it.first }.sorted()[pairs.size / 2])}, faintest against " +
+                "background ${"%.2f".format(faintest)}; nearest to CHART_BAD is slot " +
+                "${nearestToBad.index} at ${"%.2f".format(badGap)} — a known defect, pinned, not fixed"
+        )
+    }
+
+    /** The weakest pair the default categorical palette is allowed to have. Measured at 23.81. */
+    private const val MIN_PALETTE_SEPARATION = 20.0
+
+    /** How far a series colour must sit from the dark figure background. Measured at 55.60. */
+    private const val MIN_PALETTE_AGAINST_BACKGROUND = 40.0
+
+    /**
+     * A ratchet, not a target. Slot 5 is 12.25 from [CHART_BAD] today and that is already too close;
+     * this stops it getting closer while the real fix — moving one of the two colours, and
+     * re-rendering every committed capture — is done as its own change.
+     */
+    private const val MIN_PALETTE_AGAINST_BAD = 12.0
+
+    /** sRGB in `0..1` to CIE L*a*b* under D65, the space the difference below is defined in. */
+    private fun toLab(c: Vec4): DoubleArray {
+        fun linear(v: Float): Double {
+            val u = v.toDouble().coerceIn(0.0, 1.0)
+            return if (u <= 0.04045) u / 12.92 else ((u + 0.055) / 1.055).pow(2.4)
+        }
+        val r = linear(c.x); val g = linear(c.y); val b = linear(c.z)
+        val x = (r * 0.4124564 + g * 0.3575761 + b * 0.1804375) / 0.95047
+        val y = r * 0.2126729 + g * 0.7151522 + b * 0.0721750
+        val z = (r * 0.0193339 + g * 0.1191920 + b * 0.9503041) / 1.08883
+        fun f(t: Double) = if (t > 216.0 / 24389.0) t.pow(1.0 / 3.0) else (841.0 / 108.0) * t + 4.0 / 29.0
+        val fx = f(x); val fy = f(y); val fz = f(z)
+        return doubleArrayOf(116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz))
+    }
+
+    /**
+     * CIEDE2000, and not the Euclidean CIE76 it replaced, because CIE76 badly overstates the
+     * difference between two saturated colours of similar hue — which is exactly the case being
+     * judged here and exactly where it would have said the palette was fine.
+     */
+    private fun deltaE2000(a: DoubleArray, b: DoubleArray): Double {
+        val (l1, a1, b1) = Triple(a[0], a[1], a[2])
+        val (l2, a2, b2) = Triple(b[0], b[1], b[2])
+        val c1 = hypot(a1, b1); val c2 = hypot(a2, b2)
+        val cBar = (c1 + c2) / 2.0
+        val g = 0.5 * (1 - sqrt(cBar.pow(7) / (cBar.pow(7) + 25.0.pow(7))))
+        val a1p = (1 + g) * a1; val a2p = (1 + g) * a2
+        val c1p = hypot(a1p, b1); val c2p = hypot(a2p, b2)
+        fun hue(ap: Double, bp: Double) = if (ap == 0.0 && bp == 0.0) 0.0
+        else (Math.toDegrees(atan2(bp, ap)) + 360.0) % 360.0
+        val h1p = hue(a1p, b1); val h2p = hue(a2p, b2)
+        val dLp = l2 - l1
+        val dCp = c2p - c1p
+        val dhp = when {
+            c1p * c2p == 0.0 -> 0.0
+            abs(h2p - h1p) <= 180.0 -> h2p - h1p
+            h2p - h1p > 180.0 -> h2p - h1p - 360.0
+            else -> h2p - h1p + 360.0
+        }
+        val dHp = 2 * sqrt(c1p * c2p) * sin(Math.toRadians(dhp) / 2.0)
+        val lBar = (l1 + l2) / 2.0
+        val cBarP = (c1p + c2p) / 2.0
+        val hBarP = when {
+            c1p * c2p == 0.0 -> h1p + h2p
+            abs(h1p - h2p) <= 180.0 -> (h1p + h2p) / 2.0
+            h1p + h2p < 360.0 -> (h1p + h2p + 360.0) / 2.0
+            else -> (h1p + h2p - 360.0) / 2.0
+        }
+        val t = 1 - 0.17 * cos(Math.toRadians(hBarP - 30)) + 0.24 * cos(Math.toRadians(2 * hBarP)) +
+            0.32 * cos(Math.toRadians(3 * hBarP + 6)) - 0.20 * cos(Math.toRadians(4 * hBarP - 63))
+        val dTheta = 30 * exp(-((hBarP - 275) / 25).pow(2))
+        val rc = 2 * sqrt(cBarP.pow(7) / (cBarP.pow(7) + 25.0.pow(7)))
+        val sl = 1 + (0.015 * (lBar - 50).pow(2)) / sqrt(20 + (lBar - 50).pow(2))
+        val sc = 1 + 0.045 * cBarP
+        val sh = 1 + 0.015 * cBarP * t
+        val rt = -sin(Math.toRadians(2 * dTheta)) * rc
+        return sqrt(
+            (dLp / sl).pow(2) + (dCp / sc).pow(2) + (dHp / sh).pow(2) +
+                rt * (dCp / sc) * (dHp / sh)
         )
     }
 
