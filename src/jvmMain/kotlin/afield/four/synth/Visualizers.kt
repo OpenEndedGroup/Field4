@@ -11,6 +11,28 @@ import kotlinx.coroutines.*
 import java.util.*
 import kotlin.math.*
 
+/**
+ * How to look at the audio. Every function here is an extension on a type declared elsewhere in this
+ * category, and none of them changes what you hear.
+ *
+ * Most of it happens without being asked for. [registerSynthVisualizers] runs on each new root box
+ * and registers a value printer for [AudioPatchSpec], [Scope], [StereoScope], [SpectralWavetable],
+ * [ADSR], [AR], [BreakpointEnvelope], [EnvelopeFollower], [Compressor] and [Limiter], so returning
+ * one of those from a box draws it. The six envelope and dynamics types can be metered at all because
+ * each keeps a trace of its own state as it runs; anything else has to be tapped.
+ *
+ * Tapping means a [Scope]. It passes its input through untouched while recording it into a ring
+ * buffer, so `saw.scope()` sits anywhere in a graph without altering it, and `snapshot()` lifts a
+ * still [AudioSnapshot] out of the ring. From a snapshot come the three renderings the file offers
+ * everywhere: `waveformSvg`, `spectrumSvg`, and `summaryHtml` for the two side by side.
+ *
+ * The `live*` family is those same renderings on a timer. Each starts a coroutine on the current box
+ * that re-renders at `refreshHz`, clamped between 1 and 60, and displays into a named channel, then
+ * returns its own receiver so the call can sit in the middle of an expression. They need a box
+ * context and throw without one. One job is kept per box and channel, a second install cancelling the
+ * first, and the job is registered with the box so it stops when the box does.
+ */
+
 private const val SYNTH_BLUE = "#0af"
 private const val FIELD_ORANGE = "#f80"
 private const val DEFAULT_BACKGROUND = "#000000"
@@ -120,6 +142,15 @@ internal class StereoTrace(
     }
 }
 
+/**
+ * A still copy of some audio: [left], an optional [right], and the [sampleRate] the samples were
+ * taken at.
+ *
+ * Everything in this file ultimately draws one of these. It is a plain value rather than a view on a
+ * live buffer, so it can be held onto, compared with one taken later, or rendered while the graph
+ * carries on moving. [isStereo] reports whether [right] arrived, and [frameCount] is the shorter of
+ * the two channels when it did.
+ */
 data class AudioSnapshot(
     val left: FloatArray,
     val right: FloatArray? = null,
@@ -212,6 +243,15 @@ data class AudioSnapshot(
     )
 }
 
+/**
+ * A tap on a mono signal: passes its input through unchanged and keeps the last [historySize]
+ * samples of what went by.
+ *
+ * `Signal.scope()` is the usual way to insert one, and because what comes out is exactly what went in
+ * it can go anywhere in a graph. The ring is overwritten in place, so a `Scope` is a window on the
+ * recent past rather than a recording; [snapshot] copies out of it. Returning one from a box draws
+ * its waveform and spectrum, since [registerSynthVisualizers] gives it a value printer.
+ */
 class Scope(
     historySize: Int = 4096
 ) : SignalProcessor() {
@@ -225,6 +265,14 @@ class Scope(
     }
 }
 
+/**
+ * The stereo tap. It wraps a [StereoRenderable] rather than sitting in a mono chain, and keeps both
+ * channels.
+ *
+ * `StereoRenderable.scope()` is the usual way to get one, and it calls [StereoRenderable.hold] on the
+ * source on the way in, so a stateful stereo generator does not advance itself twice for being
+ * watched. Everything else matches [Scope].
+ */
 class StereoScope(
     private val source: StereoRenderable,
     historySize: Int = 4096

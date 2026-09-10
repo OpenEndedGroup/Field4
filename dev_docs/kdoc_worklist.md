@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 6875 of 12746 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 6882 of 12746 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
 
-**835 undocumented entry points** (types, top-level functions and values) and 4746 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**828 undocumented entry points** (types, top-level functions and values) and 4746 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -15,16 +15,16 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [RectSL.kt](../src/jvmMain/kotlin/afield/rectsl/RectSL.kt) | Languages | rectsl_inverse_animation, rectsl_examples, rectsl_cheatsheet | 105 | 409 | 7% |
 | [synth.kt](../src/jvmMain/kotlin/afield/four/synth/synth.kt) | Synthesis | sound_paths | 53 | 0 | 24% |
 | [TidalPatterns.kt](../src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt) | Patterns | pattern_language, petri_nets, sonic_pi | 44 | 78 | 21% |
-| [Visualizers.kt](../src/jvmMain/kotlin/afield/four/synth/Visualizers.kt) | Synthesis | visualizers | 40 | 11 | 0% |
+| [Visualizers.kt](../src/jvmMain/kotlin/afield/four/synth/Visualizers.kt) | Synthesis | visualizers | 37 | 11 | 5% |
 | [Expr.kt](../src/jvmMain/kotlin/afield/ml/ast/Expr.kt) | Languages | pattern_rewrite | 33 | 57 | 2% |
 | [dynamic_graph_systems.kt](../src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt) | Data | dynamic_graph_systems_examples | 20 | 120 | 10% |
 | [wfc.kt](../src/jvmMain/kotlin/afield/stdlib/wfc.kt) | Data | wfc_examples | 20 | 59 | 30% |
-| [Sequencing.kt](../src/jvmMain/kotlin/afield/four/synth/Sequencing.kt) | Patterns | boolean_network_music_examples, visualizers | 13 | 38 | 0% |
 | [PythonInterface.kt](../src/jvmMain/kotlin/afield/python/PythonInterface.kt) | Languages | python | 13 | 27 | 4% |
 | [BooleanNetworkSequencing.kt](../src/jvmMain/kotlin/afield/four/synth/BooleanNetworkSequencing.kt) | Patterns | boolean_network_music_examples | 13 | 19 | 2% |
 | [Protocol.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt) | Audio AI | field_audio_service_reference, audio_ai_analysis, visualizers | 11 | 61 | 73% |
 | [StackSL.kt](../src/jvmMain/kotlin/afield/stacksl/StackSL.kt) | Languages | stacksl_examples | 11 | 44 | 3% |
 | [Signal.kt](../src/jvmMain/kotlin/afield/four/synth/Signal.kt) | Synthesis | sound_paths, faust, visualizers | 10 | 53 | 26% |
+| [Sequencing.kt](../src/jvmMain/kotlin/afield/four/synth/Sequencing.kt) | Patterns | boolean_network_music_examples, visualizers | 9 | 38 | 7% |
 | [NanoInterface.kt](../src/jvmMain/kotlin/afield/nano/NanoInterface.kt) | Languages | document_on_disk | 9 | 7 | 15% |
 | [DirtSamples.kt](../src/jvmMain/kotlin/afield/four/synth/DirtSamples.kt) | Audio | boolean_network_music_examples | 8 | 42 | 5% |
 | [ParamQuery.kt](../src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt) | Synthesis | graph_query | 4 | 46 | 8% |
@@ -250,10 +250,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `ParamPath` | class | `src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt:114` |
 | `ParamSet` | class | `src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt:167` |
 | `ParamSetScope` | class | `src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt:329` |
-| `ScheduledNote` | class | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:26` |
-| `NoteWindowSnapshot` | class | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:87` |
-| `NoteSequenceScope` | class | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:113` |
-| `NoteProcess` | class | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:178` |
 | `SonicPiLogMessage` | class | `src/jvmMain/kotlin/afield/four/synth/SonicPi.kt:918` |
 | `SonicPiError` | class | `src/jvmMain/kotlin/afield/four/synth/SonicPi.kt:932` |
 | `SonicPiVersion` | class | `src/jvmMain/kotlin/afield/four/synth/SonicPi.kt:960` |
@@ -264,9 +260,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `ArpMode` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:998` |
 | `PatResponseScope` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:1863` |
 | `PatResponseSpec` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:1888` |
-| `AudioSnapshot` | class | `src/jvmMain/kotlin/afield/four/synth/Visualizers.kt:123` |
-| `Scope` | class | `src/jvmMain/kotlin/afield/four/synth/Visualizers.kt:215` |
-| `StereoScope` | class | `src/jvmMain/kotlin/afield/four/synth/Visualizers.kt:228` |
 | `Expr` | interface | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:5` |
 | `EInt` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:9` |
 | `EFloat` | class | `src/jvmMain/kotlin/afield/ml/ast/Expr.kt:10` |
@@ -356,5 +349,12 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `RectVertex` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1315` |
 | `RectMesh` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1322` |
 | `RectMeshAttributeNames` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1327` |
+| `RectMaterialShaderCode` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1334` |
+| `FramePacket` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1346` |
+| `SemanticFrame` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1353` |
+| `RectCollider` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1359` |
+| `ContactPair` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1367` |
+| `VisualEvent` | interface | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1373` |
+| `MotionMetrics` | class | `src/jvmMain/kotlin/afield/rectsl/RectSL.kt:1438` |
 
-…and **715 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **708 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.

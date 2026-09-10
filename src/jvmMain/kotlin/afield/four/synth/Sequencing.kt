@@ -18,11 +18,39 @@ import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.roundToInt
 
+/**
+ * Notes with times on them, and a lazy player for a stream of them. [ScheduledNote] is the event,
+ * `noteProcess { … }` turns a suspending block into a [NoteProcess], and a [NoteProcess] draws itself
+ * as a piano roll.
+ *
+ * Time is in seconds and pitch is a MIDI number, fractional wherever you want it, with
+ * [midiToFrequency] and [frequencyToMidi] to cross between the two. Inside the block the receiver is
+ * a [NoteSequenceScope] carrying a cursor, so consecutive `note(…)` calls lay themselves out end to
+ * end and `rest(…)` leaves a gap.
+ *
+ * The block is a generator rather than a list, which is what makes `while (true)` a legitimate way to
+ * write a sequence: a [NoteProcess] pulls from it only as far as the window it is asked about, keeps
+ * a few seconds of what has already gone past, and drops the rest. Moving the playhead is what
+ * unrolls more.
+ *
+ * Nothing here makes a sound. A [NoteProcess] is a structure to read notes out of and to look at;
+ * `TidalPatterns.kt` is the other way to write one, and the synthesis category is what plays it.
+ */
+
 private const val PIANO_ROLL_BLUE = "#0af"
 private const val PIANO_ROLL_ORANGE = "#f80"
 private const val PIANO_ROLL_BACKGROUND = "#000000"
 private const val PIANO_ROLL_FONT = "\"Iosevka Web\", \"IBM Plex Mono\", monospace"
 
+/**
+ * One note: when it starts, how long it lasts, what pitch it is, and how hard.
+ *
+ * [start] and [duration] are in seconds, [pitch] is a MIDI number with [frequencyHz] to convert, and
+ * [label] and [color] exist for the piano roll rather than for the sound. Every number is checked for
+ * being finite at construction and the duration for not being negative, so a note built out of
+ * arithmetic that went wrong fails where it was made instead of where it is drawn. `note(…)` is the
+ * shorter spelling and takes any `Number`.
+ */
 data class ScheduledNote(
     val start: Double,
     val duration: Double,
@@ -84,6 +112,15 @@ private fun Float.prettyPitch(): String = String.format(Locale.US, "%.3f", this)
 
 private fun String.prettyText(limit: Int): String = if (length <= limit) this else take(limit - 3) + "..."
 
+/**
+ * The notes visible in one span of time, taken around the playhead they were asked for.
+ *
+ * [notes] is everything *intersecting* [windowStartSeconds] to [windowEndSeconds], so a note that
+ * began before the window and is still sounding inside it is included, and the piano roll can draw it
+ * running off the left edge. [exhausted] says the sequence behind the window has run out, and
+ * [generatedUntilSeconds] how far it has been unrolled so far. It renders as a piano roll, so
+ * returning one from a box draws it.
+ */
 data class NoteWindowSnapshot(
     val notes: List<ScheduledNote>,
     val playheadSeconds: Double,
@@ -110,6 +147,16 @@ data class NoteWindowSnapshot(
     )
 }
 
+/**
+ * The receiver inside `noteProcess { … }`, and the cursor that lets a sequence read in the order it
+ * is played.
+ *
+ * [note] and [chord] place what they are given at [cursorSeconds] and then move the cursor to the end
+ * of it, so consecutive calls run end to end and [rest] leaves a gap. Passing an explicit `start`
+ * overrides the cursor for that one note and leaves it where it was if the note ends earlier, which
+ * is how a counter-melody is written against a line already laid down. [emit] does the same for a
+ * [ScheduledNote] you built elsewhere.
+ */
 class NoteSequenceScope internal constructor(
     private val scope: GeneratorScope<Unit, ScheduledNote>
 ) {
@@ -175,6 +222,19 @@ class NoteSequenceScope internal constructor(
     }
 }
 
+/**
+ * A sequence of notes pulled from a generator on demand, with a playhead and a window onto it.
+ *
+ * Nothing is materialised until it is asked for, which is what makes an endless sequence practical.
+ * [at] moves the playhead and unrolls [defaultFutureSeconds] past it; [historyRetentionSeconds] of
+ * what has already gone by is kept for the roll to draw and the rest is dropped, so a `while (true)`
+ * block does not grow without bound. [exhausted] is how a finite sequence reports that it is done.
+ *
+ * [snapshot] takes a [NoteWindowSnapshot] around the playhead and [notesBetween] answers about any
+ * span, unrolling as far as it has to; both can be called while the playhead is being moved
+ * elsewhere. Construct one with `noteProcess { … }` or `notes { … }`, which are the same function,
+ * or from a pattern with `PatPattern.notes(…)` in `TidalPatterns.kt`.
+ */
 class NoteProcess internal constructor(
     private val iteratorFactory: () -> Iterator<ScheduledNote>,
     historyRetentionSeconds: Double = 8.0,
