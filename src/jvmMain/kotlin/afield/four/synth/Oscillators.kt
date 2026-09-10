@@ -4,6 +4,29 @@ package afield.four.synth
 import java.util.concurrent.ThreadLocalRandom
 import kotlin.math.*
 
+/**
+ * The sources: oscillators, noise, and the samplers that stand in for one. All of them are [Signal]s
+ * taking [Param]s, so a frequency can itself be an oscillator and FM costs nothing to ask for.
+ *
+ * [SawOsc], [SquareOsc], [PulseOsc] and [TriOsc] are corrected with PolyBLEP, a polynomial stand-in
+ * for a bandlimited step subtracted at each discontinuity, so they hold up at the top of the keyboard
+ * where a naive ramp would fold. [SineOsc] has nothing to correct, and [Phasor]'s bare 0-to-1 ramp is
+ * the phase source to start from when shaping a waveform of your own.
+ *
+ * [SuperSaw] is a detuned bank with the spread, the blend, the detune curve and the phase alignment
+ * all exposed. The `Super*` voices beside it are continuous ports of the SuperDirt synths of the same
+ * names, so a pattern written for Tidal has something to play. [WavetableOsc] reads a single cycle out
+ * of a `FloatArray`, and [Wavetables] builds the ordinary ones by summing harmonics.
+ *
+ * The three noise generators differ in spectrum: [WhiteNoise] is flat, [PinkNoise] is a bank of
+ * one-pole filters over white and falls about 3 dB per octave, [BrownNoise] is a leaky random walk and
+ * falls about 6. [Impulse] emits one sample of 1 each time its phase wraps, which is the trigger
+ * [SampleAndHold] is usually waiting for.
+ *
+ * `synth.kt` carries lowercase aliases for the common ones (`sine`, `saw`, `white`), and each one
+ * hands back a fresh instance every time it is read.
+ */
+
 // ═══════════════════════════════════════════════════════════════════
 //  Phasor – raw phase ramp [0, 1)
 // ═══════════════════════════════════════════════════════════════════

@@ -4,10 +4,34 @@ package afield.four.synth
 import kotlin.math.*
 import kotlin.random.Random
 
+/**
+ * The mono effects: delays, reverbs, distortions and dynamics, each one a [SignalProcessor] that `/`
+ * pipes a signal into.
+ *
+ * `saw / Delay(0.25.p)` is the whole calling convention. Every control is a [Param] rendered once per
+ * sample, so a delay time or a compressor threshold can itself be a signal, and a sweep of one lands
+ * sample-accurate rather than once a block. All of them take and return mono; stereo comes after
+ * them, from [Pan] or [StereoSignal].
+ *
+ * The delay-line readers are not uniform, and it is audible. [Delay] interpolates between samples
+ * with a cubic fit; [Chorus] and [Flanger] read the nearest whole sample, so a slow sweep through
+ * either of those has a faint stepping to it that [Delay] does not. [Compressor] and [Limiter] also
+ * keep a running trace of their own gain reduction, which is what the meters in `Visualizers.kt`
+ * draw.
+ */
+
 // ═══════════════════════════════════════════════════════════════════
 //  Delay – fractional delay line with interpolation
 // ═══════════════════════════════════════════════════════════════════
 
+/**
+ * A feedback delay line, read at fractional sample positions.
+ *
+ * [delayTime] is in seconds, clamped to the buffer, which is allocated once from [maxDelaySec]. The
+ * read uses a four-point cubic fit rather than the nearest sample, so sweeping the delay time slides
+ * instead of stepping. With [feedback] at zero you get one echo; above that the line re-circulates,
+ * and negative values invert each pass. [mix] crossfades the dry input against the delayed sample.
+ */
 class Delay(
     /** Delay time in seconds. */
     val delayTime: Param = Param(0.3f),
@@ -69,6 +93,18 @@ class Delay(
 // ═══════════════════════════════════════════════════════════════════
 
 
+/**
+ * Schroeder reverb, following the Freeverb topology: eight comb filters in parallel, each with a
+ * one-pole damper in its feedback path, summed and then passed through four allpasses in series.
+ *
+ * The comb and allpass lengths are Freeverb's own constants, quoted at 44.1 kHz and rescaled to the
+ * engine's sample rate on the first block. [roomSize] maps onto comb feedback from 0.7 to 0.98, so
+ * the shortest setting is a small room rather than no reverb; [damping] rolls the top off each
+ * repeat. The input is attenuated hard on the way in, Freeverb's own fixed gain, which is what keeps
+ * the summed output of eight comb filters at that much feedback in range. The output is one channel:
+ * the stereo
+ * spread of the original algorithm is not here, and a wide reverb wants two of these fed from [Pan].
+ */
 class FreeVerb(
     val roomSize: Param = Param(0.8f),
     val damping: Param = Param(0.5f),
@@ -158,6 +194,17 @@ class FreeVerb(
 // ═══════════════════════════════════════════════════════════════════
 
 
+/**
+ * A spring tank, built as six short delay lines summed with alternating polarity and then dispersed
+ * through four allpasses in series.
+ *
+ * The characteristic sound is in the dispersion rather than in the delays: [tension] raises the
+ * allpass coefficient, which is what smears a transient into the metallic chirp a real spring makes,
+ * and it drives the input a little harder as it goes. [decay] sets the feedback in the lines, [tone]
+ * opens both their damping and a one-pole on the way out. The lines are all under 25 ms, so the tank
+ * is bright and small; a hall is [FreeVerb]'s job. Lengths are quoted at 44.1 kHz and rebuilt
+ * whenever the engine's sample rate changes.
+ */
 class SpringReverb(
     /** Overall spring tension / metallic dispersion (0…1). */
     val tension: Param = Param(0.55f),
@@ -278,6 +325,20 @@ class SpringReverb(
 // ═══════════════════════════════════════════════════════════════════
 
 
+/**
+ * Convolves the input with an [impulse] response directly in the time domain, one dot product per
+ * output sample.
+ *
+ * There is no FFT here, so the cost is the impulse length times the block size, every block, and
+ * [maxIrSamples] is the ceiling that keeps that affordable: the default 8192 taps is about 0.17 s at
+ * 48 kHz. That is enough for a room, a cabinet or a short plate, and not enough for a cathedral.
+ *
+ * The impulse is resampled from its own rate to the engine's on the first block and rebuilt if the
+ * engine's rate changes. With [normalize] left on it is also scaled to unit energy, so swapping one
+ * impulse for another changes the character without changing the level; [gain] then trims the wet
+ * path and [mix] crossfades it against the dry. [syntheticImpulse] makes a plausible decaying noise
+ * burst for when there is no file to load.
+ */
 class ConvolutionReverb(
     val impulse: AudioSample,
     /** Dry/wet mix (0 = dry, 1 = convolved). */
@@ -381,6 +442,14 @@ class ConvolutionReverb(
 // ═══════════════════════════════════════════════════════════════════
 
 
+/**
+ * Several taps of one modulated delay line, averaged: [voices] readers of a 50 ms buffer, each swept
+ * by its own LFO at [rate] and started a fraction of a cycle apart from its neighbours.
+ *
+ * [depth] is the widest excursion in seconds, and each voice's delay swings between zero and that.
+ * The taps are read at whole samples rather than interpolated, so a slow, deep sweep has a faint
+ * granularity to it. There is no feedback path; for that, reach for [Flanger].
+ */
 class Chorus(
     /** LFO rate in Hz. */
     val rate: Param = Param(1.5f),
@@ -442,6 +511,15 @@ class Chorus(
 // ═══════════════════════════════════════════════════════════════════
 
 
+/**
+ * Memoryless distortion: multiply by [drive], then push each sample through [transferFn] on its own.
+ *
+ * The companion object holds the usual four, so `Waveshaper.tanh()` and `Waveshaper.chebyshev(3)` are
+ * there without writing a lambda, and an arbitrary `(Float) -> Float` is just as welcome. Nothing is
+ * oversampled, so a transfer function with a corner in it (hard clipping, high Chebyshev orders) will
+ * fold aliases back down when the input is bright. The smooth shapers are gentler about it, and a
+ * lowpass before the shaper is the usual answer.
+ */
 class Waveshaper(
     /** Transfer function: input sample → output sample. */
     val transferFn: (Float) -> Float,
@@ -488,12 +566,23 @@ class Waveshaper(
 //  Rectifier – half/full-wave rectification with blend control
 // ═══════════════════════════════════════════════════════════════════
 
+/** Which part of the waveform a [Rectifier] keeps. */
 enum class RectifierMode {
     HALF_WAVE,
     FULL_WAVE,
     NEGATIVE_HALF
 }
 
+/**
+ * Folds a waveform against zero: [drive] and [bias] first, then the [mode]'s rule, then [mix] against
+ * the dry input.
+ *
+ * `HALF_WAVE` keeps what is above zero and `NEGATIVE_HALF` what is below, each of which halves the
+ * energy and adds a DC component. `FULL_WAVE` takes the absolute value, which doubles the perceived
+ * pitch of anything periodic. [bias] shifts the waveform across zero before the fold, so it is the
+ * control that decides how much of the wave survives, and sweeping it is more interesting than
+ * sweeping [drive]. A [DCBlocker] afterwards is usually wanted.
+ */
 class Rectifier(
     val mode: RectifierMode = RectifierMode.FULL_WAVE,
     val drive: Param = Param(1f),
@@ -535,6 +624,19 @@ class Rectifier(
 //  StagedWaveFolder – multi-stage analog-style folding
 // ═══════════════════════════════════════════════════════════════════
 
+/**
+ * A wavefolder: anything that leaves the window between two thresholds is reflected back inside, and
+ * that happens [stages] times over with gain in between.
+ *
+ * Reflection is what makes this different from clipping. A sample well past the threshold does not
+ * flatten, it comes back down the other way, so raising [drive] adds folds and therefore harmonics
+ * instead of adding loudness. The reflection repeats until the value is inside the window, so the
+ * output is bounded by [threshold] and [symmetry] no matter what arrives.
+ *
+ * [symmetry] opens one side of the window and tightens the other, which is where the even harmonics
+ * come from; [bias] moves the signal within the window before the first fold; [stageGain] multiplies
+ * between stages so the later folds reach further than the first; [makeup] trims what comes out.
+ */
 class StagedWaveFolder(
     val drive: Param = Param(2f),
     val threshold: Param = Param(0.7f),
@@ -622,6 +724,19 @@ class StagedWaveFolder(
 // ═══════════════════════════════════════════════════════════════════
 
 
+/**
+ * A peak compressor with a soft knee: above [threshold] the level is reduced towards [ratio], and
+ * [attack] and [release] decide how quickly the gain follows.
+ *
+ * The detector reads the instantaneous absolute value, not an RMS window, so short transients are
+ * seen in full and [attack] is the only thing standing between them and the gain reduction.
+ * Smoothing happens in decibels on the target level rather than on the linear gain. [kneeWidth] is
+ * the dB span, centred on the threshold, over which the ratio comes in gradually; set it to zero for
+ * a hard knee. [makeupGain] is applied after, also in dB.
+ *
+ * For a guaranteed ceiling, put a [Limiter] after this one. Even at a high ratio with a fast attack
+ * the dB envelope has to catch up with a transient, so some of it gets through.
+ */
 class Compressor(
     /** Threshold in dB. */
     val threshold: Param = Param(-12f),
@@ -701,6 +816,16 @@ class Compressor(
 // ═══════════════════════════════════════════════════════════════════
 
 
+/**
+ * A brick wall at [ceiling] dB: gain drops the instant a sample would exceed it and recovers over
+ * [release].
+ *
+ * The attack is not a parameter because there is none. When the required gain is lower than the
+ * current gain the limiter jumps straight to it in that sample, so nothing passes the ceiling and
+ * there is no lookahead to pay for; the audible cost is that a loud transient pulls the whole signal
+ * down with it for as long as [release] says. This is the last thing in a chain, after any
+ * [Compressor].
+ */
 class Limiter(
     /** Ceiling in dB (e.g. -0.3). */
     val ceiling: Param = Param(-0.3f),
@@ -748,6 +873,15 @@ class Limiter(
 // ═══════════════════════════════════════════════════════════════════
 
 
+/**
+ * Quantises amplitude to [bits] and holds each sample for [downsample] samples: the two halves of
+ * digital degradation, separated.
+ *
+ * [bits] rounds to `2^bits` levels, which adds the harmonic grit; [downsample] is a plain
+ * sample-and-hold, which folds anything above the reduced Nyquist back down as aliasing. Neither is
+ * filtered, because the aliasing is the effect. Both are [Param]s and both take fractional values, so
+ * either can be swept, and a sweep of [downsample] slides the aliases rather than stepping them.
+ */
 class BitCrusher(
     /** Effective bit depth (1…32). */
     val bits: Param = Param(8f),
@@ -785,6 +919,15 @@ class BitCrusher(
 // ═══════════════════════════════════════════════════════════════════
 
 
+/**
+ * One short delay line, swept by an internal LFO at [rate] and fed back on itself.
+ *
+ * The ceiling on the delay is 20 ms, which is what separates this from [Chorus]: the delayed copy
+ * stays close enough to the dry signal to interfere with it, and the moving comb notches are the
+ * sound. [depth] is the widest excursion in seconds and the sweep runs from zero to it. [feedback]
+ * sharpens the notches into resonances and inverts them when negative. The line is read at whole
+ * samples.
+ */
 class Flanger(
     /** LFO rate in Hz. */
     val rate: Param = Param(0.3f),
@@ -840,6 +983,14 @@ class Flanger(
 // ═══════════════════════════════════════════════════════════════════
 
 
+/**
+ * Multiplies the input by an internal sine at [carrierFreq].
+ *
+ * Every partial in the input comes out as a pair, one at the sum of the two frequencies and one at
+ * the difference, and the original is gone: that missing fundamental is why a ring-modulated voice
+ * reads as a machine rather than as a filtered voice. [carrierFreq] is a [Param], so it can be swept,
+ * or driven from another oscillator for something closer to FM.
+ */
 class RingModulator(
     val carrierFreq: Param = Param(300f)
 ) : SignalProcessor() {

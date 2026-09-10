@@ -12,11 +12,45 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 import kotlin.math.abs
 
+/**
+ * The value types the rest of the synthesis category is written in, and the per-block contract they
+ * render under. [Signal] is a mono source rendered a block at a time; [Param] is a control value that
+ * is itself a [Signal], so anything with a knob can be driven by anything that makes samples;
+ * [SignalProcessor] is a [Signal] that reads another one; [StereoRenderable] and [StereoNode] are the
+ * two-channel half.
+ *
+ * [SynthContext] is what a block of rendering is handed: the sample rate and buffer size, how long
+ * the graph has been running, the Ableton Link reading taken at the top of the block, and a
+ * scratch-buffer pool to borrow from instead of allocating. Its `cycleId` is also the cache key that
+ * makes sharing safe, since [Signal.render] evaluates a node once per block and replays the result to
+ * every later reader. That is why `val o = sine; o + o * 0.5f` is one oscillator heard twice rather
+ * than two that have drifted apart.
+ *
+ * Arithmetic on signals builds graph nodes rather than numbers, and `/` is overloaded twice: a
+ * [Signal] on the right divides sample by sample, a [SignalProcessor] on the right pipes into it.
+ * Most of the nodes those operators construct are private. [Const], [Mix], [Pan] and [StereoSignal]
+ * are public, for graphs you would rather assemble by hand.
+ *
+ * Nothing here opens an audio device. Closing a graph with `audio { … }` and returning it from a box
+ * is what reaches [FieldAudioEngine]; `synth.kt` is the terse surface that does it.
+ */
+
 // ═══════════════════════════════════════════════════════════════════
 //  SynthContext – runtime context carried through the signal graph
 // ═══════════════════════════════════════════════════════════════════
 
 
+/**
+ * The per-block runtime a signal graph renders against: the sample rate and buffer size it was opened
+ * with, [time] since it started, and whatever Ableton Link reported at the top of this block.
+ *
+ * [FieldAudioEngine] holds one of these and advances it once per block; every node in the graph it
+ * renders is handed the same instance. [cycleId] is what changes on that advance, and it is the key
+ * [Signal.render] memoizes on, so the context is also what makes a shared node evaluate once. A node
+ * that needs scratch space should [acquireBuf] and [releaseBuf] rather than allocate, since rendering
+ * happens on the audio thread. Offline rendering, in the docs galleries and the smoke tests, builds
+ * its own context and drives it directly.
+ */
 class SynthContext(
     /** Sample rate in Hz (e.g. 48000). */
     val sampleRate: Float,
@@ -433,6 +467,20 @@ private class OffsetParam(
     override fun toString(): String = "OffsetParam(source=$source, offset=$offset)"
 }
 
+/**
+ * The receiver inside `Param { … }`: the block reads the audio clock off it and hands values back
+ * through [yield].
+ *
+ * Everything on it reads through to the [SynthContext] of the block being rendered right now, so
+ * [time], [sampleRate], [linkBeat] and the rest are the same clock the graph is running on. Reading
+ * any of them outside a render call throws rather than returning a stale number.
+ *
+ * A block that simply returns a number behaves as a per-block supplier and is re-entered every block.
+ * A block that calls [yield] instead becomes a coroutine: it resumes where it left off once per
+ * block and keeps its locals in between, which is how a stepped sequence is written as a
+ * `while (true)` loop rather than as an index into an array. When such a block finally returns, the
+ * parameter holds the last value it yielded.
+ */
 class ParamScope internal constructor() {
     internal var currentContext: SynthContext? = null
     internal var yieldedValue: Float = 0f
@@ -588,6 +636,15 @@ private object ParamCoroutineStates {
 // ═══════════════════════════════════════════════════════════════════
 
 
+/**
+ * A [Signal] that reads another one: the base class every filter and effect in this category extends.
+ *
+ * The input arrives by assignment rather than through the constructor, which is what lets `/` read as
+ * a pipe. [Signal.through] sets [input] and returns the processor, so `saw / OnePole(800.p)` is a
+ * filter whose input is a saw and is itself a [Signal] ready to be filtered again. Until something
+ * sets it, [input] is a silent [Const], so a processor rendered on its own produces zeros rather than
+ * failing.
+ */
 abstract class SignalProcessor : Signal() {
     /** The signal feeding this processor. */
     var input: Signal = Const(0f)
@@ -598,6 +655,12 @@ abstract class SignalProcessor : Signal() {
 // ═══════════════════════════════════════════════════════════════════
 
 
+/**
+ * A signal that holds one number.
+ *
+ * Plain `Float` and `Double` operands in signal arithmetic lift to this, and it is what an
+ * unconnected [SignalProcessor] reads, so most instances are made for you rather than written.
+ */
 class Const(val value: Float) : Signal() {
     override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
         Buf.fill(output, value, 0, numFrames)
@@ -660,6 +723,15 @@ internal class BinaryOp(
 }
 
 
+/**
+ * Sums any number of signals, with [add] to extend the set after construction.
+ *
+ * `a + b` builds the equivalent graph for two sources, so this is for when the count is decided at
+ * runtime or when you want to keep the node and feed it more later. Nothing is scaled on the way
+ * out: eight voices through a `Mix` are eight times the amplitude of one, and it is on you to divide.
+ * Sources are pulled through [Signal.render], so one that also appears elsewhere in the graph is
+ * still evaluated once a block.
+ */
 class Mix(vararg sources: Signal) : Signal(), LiveGraphInspectable {
     private val srcs = sources.toMutableList()
     private var tmp = FloatArray(0)
@@ -726,6 +798,12 @@ abstract class StereoNode : StereoRenderable {
     override fun toString(): String = synthPrettyObject(this)
 }
 
+/**
+ * Wraps a bare [StereoRenderable] in [StereoNode]'s per-block cache.
+ *
+ * Call [StereoRenderable.hold] rather than this constructor: it returns a [StereoNode] as it stands
+ * and only wraps what actually needs wrapping.
+ */
 class StereoHold(
     private val source: StereoRenderable
 ) : StereoNode(), LiveGraphInspectable {
@@ -738,8 +816,23 @@ class StereoHold(
     )
 }
 
+/**
+ * Gives a stereo source the per-block cache, wrapping it in a [StereoHold] only if it is not already
+ * a [StereoNode].
+ *
+ * Unlike [Signal.hold] this is not just an intent marker: a bare [StereoRenderable] reached twice in
+ * one block really is rendered twice, and a stateful one will advance itself twice for it.
+ */
 fun StereoRenderable.hold(): StereoRenderable = if (this is StereoNode) this else StereoHold(this)
 
+/**
+ * Two mono signals as a stereo pair: [left] into the left channel, [right] into the right, each
+ * rendered on its own.
+ *
+ * The two sides need not be different graphs. `StereoSignal(o, o)` is one oscillator in the middle of
+ * the image, because the second `render` replays the block the first one just computed. For a mono
+ * source positioned by angle instead of by channel, use [Pan].
+ */
 class StereoSignal(
     val left: Signal,
     val right: Signal
@@ -757,6 +850,15 @@ class StereoSignal(
 }
 
 
+/**
+ * Places a mono signal in the stereo image at [pan]: -1 hard left, 0 centred, +1 hard right, with
+ * anything outside that clamped.
+ *
+ * The law is constant power. The two channels come out as the cosine and the sine of a quarter turn
+ * offset by the pan angle, so a centred signal is 0.707 in each channel rather than 1.0 and sweeping
+ * across the image does not change how loud it is. [pan] is a [Param] rendered per sample, so an LFO
+ * or an envelope can do the sweeping.
+ */
 class Pan(
     private val source: Signal,
     val pan: Param = Param(0f)

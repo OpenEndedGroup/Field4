@@ -6,6 +6,22 @@ import kotlin.math.exp
 import kotlin.math.pow
 import kotlin.math.sqrt
 
+/**
+ * Control shapes: [Gate], [ADSR], [AR], [Line] and [BreakpointEnvelope] generate one, [Slew] limits
+ * how fast one can move, and [EnvelopeFollower] recovers one from a signal that already exists.
+ *
+ * Everything here is a [Signal] rather than a [SignalProcessor], so `/` does not reach it. An
+ * envelope is applied by multiplying, `SawOsc(220.p) * env`, and the two that read a signal take it
+ * as a constructor argument instead of through an input. What comes out is a stream of samples like
+ * any other, so an envelope can be handed to a filter cutoff or a delay time as readily as to an
+ * amplitude.
+ *
+ * Times are in seconds throughout, and the gated envelopes watch a signal rather than wait for a
+ * method call: [ADSR] follows the level of its gate and holds at sustain while it is high, [AR] fires
+ * on the rising edge and runs to the end regardless. Every `curve` argument is an exponent applied to
+ * a normalised ramp, so 1 is linear, below 1 starts fast and above 1 starts slow.
+ */
+
 // ═══════════════════════════════════════════════════════════════════
 //  Gate – simple on/off trigger signal
 // ═══════════════════════════════════════════════════════════════════
@@ -234,7 +250,21 @@ class Line(
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Multi-segment envelope defined by breakpoints.
+ * One corner of a [BreakpointEnvelope]: reach [value] at [time] seconds.
+ *
+ * [curve] shapes the segment *arriving* at this breakpoint rather than the one leaving it, so the
+ * exponent that makes an attack snap belongs on the point at the top of it.
+ */
+data class Breakpoint(val time: Float, val value: Float, val curve: Float = 1f)
+
+/**
+ * An envelope of as many segments as you care to give it, each one a [Breakpoint] naming a time and a
+ * level to arrive at.
+ *
+ * Where [ADSR] has a shape with parameters, this has a shape you write out. Points are sorted by
+ * time, so they need not arrive in order; before the first the envelope sits at its value and after
+ * the last it holds there for good. There is no sustain stage: a level you want held is two points at
+ * the same value.
  *
  * ```kotlin
  * val env = BreakpointEnvelope(
@@ -245,9 +275,10 @@ class Line(
  *     Breakpoint(1.5f, 0f)       // release to 0 over 500ms
  * )
  * ```
+ *
+ * The clock runs from construction and stops at the last point. [trigger] restarts it, and clearing
+ * [running] freezes the envelope where it stands without resetting it.
  */
-data class Breakpoint(val time: Float, val value: Float, val curve: Float = 1f)
-
 class BreakpointEnvelope(
     vararg points: Breakpoint
 ) : Signal() {

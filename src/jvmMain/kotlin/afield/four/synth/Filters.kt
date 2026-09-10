@@ -3,6 +3,26 @@ package afield.four.synth
 
 import kotlin.math.*
 
+/**
+ * The filters, and the one saturator that keeps them company. Each is a [SignalProcessor], so
+ * `saw / SVF(cutoff = 800.p)` is how one gets used, and every coefficient is recomputed per sample
+ * from its [Param]s, which is what lets a cutoff be swept at audio rate.
+ *
+ * Which one to reach for. [SVF] is the default for anything modulated: it is the state-variable form
+ * under a topology-preserving transform, and it stays well behaved while the cutoff is moving.
+ * [Biquad] is the Audio EQ Cookbook set, second order in eight responses including the two shelves
+ * and a peaking EQ, and is what to use for a fixed curve. [OnePole] is 6 dB per octave and costs
+ * almost nothing. [MoogLadder] and [DiodeLadder] are four-pole resonant lowpasses that keep the
+ * character of the circuits they are named after.
+ *
+ * The rest are more particular. [CombFilter] and [AllpassFilter] are the classic reverb building
+ * blocks offered raw, in feedforward or feedback form; the reverbs in `Effects.kt` build their own
+ * rather than compose these. [FormantFilter] parks three bandpasses on vowel formants and morphs
+ * between A, E, I, O and U on a single control. [DCBlocker] is the one-line high-pass that removes
+ * the offset rectification and asymmetric shaping leave behind. [Saturator] is a bare `tanh` with a
+ * drive in front of it, which is often what a ladder filter's output wants next.
+ */
+
 // ═══════════════════════════════════════════════════════════════════
 //  OnePole – simple one-pole filter
 // ═══════════════════════════════════════════════════════════════════
